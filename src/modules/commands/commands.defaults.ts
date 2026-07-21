@@ -64,6 +64,13 @@ export function registerDefaultCommands(
       run: () => context.theme.toggleDark(),
     },
     {
+      id: 'view.toggleWordWrap',
+      title: 'View: Toggle Word Wrap',
+      category: 'View',
+      when: hasDocument,
+      run: () => getEditor().toggleWordWrap(),
+    },
+    {
       id: 'go.top',
       title: 'Go: Top of File',
       category: 'Go',
