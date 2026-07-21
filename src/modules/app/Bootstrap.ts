@@ -94,6 +94,7 @@ export async function boot(options: BootOptions = {}): Promise<BootedApp> {
       treeHovered: workspace.tree.hoveredIndex.value,
       editorScrollTop: editor.viewport.scrollTop.value,
       editorScrollLeft: editor.viewport.scrollLeft.value,
+      changesScrollTop: workspace.gitPanel.changesScrollTop.value,
       gitLogScrollTop: workspace.gitPanel.logScrollTop.value,
       gitLogIndex: workspace.gitPanel.logIndex.value,
       gitLogLoaded: workspace.commitLog.value?.loadedCount ?? 0,
@@ -173,21 +174,21 @@ export async function boot(options: BootOptions = {}): Promise<BootedApp> {
   let frame = 0;
   // Smooth-scroll animation clock. dt is clamped so a resume from idle (a "paused clock") advances
   // one frame's worth, not the whole idle gap — the paused-clock invariant.
-  let lastFrameMs = 0;
-  const MAX_DT = 0.1; // seconds
+  let lastFrameMilliseconds = 0;
+  const MAXIMUM_DELTA_TIME_SECONDS = 0.1;
   const onFrame = (): void => {
     frame += 1;
-    // Drive the commit-log glide: step the momentum by real dt; keep requesting frames while it
-    // moves so the animation is self-sustaining even on frames that advance 0 whole rows.
-    const nowMs = performance.now();
-    const dt = lastFrameMs === 0 ? 1 / 30 : Math.min(MAX_DT, (nowMs - lastFrameMs) / 1000);
-    lastFrameMs = nowMs;
-    if (workspace.gitPanel.logMomentum.value.velocity !== 0) {
-      if (workspace.tickGitLogScroll(dt)) renderer.requestRender();
-    }
+    // Drive every pane glide: step all momentum by real dt; keep requesting frames while any
+    // remains moving, including frames that advance 0 whole rows.
+    const nowMilliseconds = performance.now();
+    const deltaTimeSeconds = lastFrameMilliseconds === 0
+      ? 1 / 30
+      : Math.min(MAXIMUM_DELTA_TIME_SECONDS, (nowMilliseconds - lastFrameMilliseconds) / 1000);
+    lastFrameMilliseconds = nowMilliseconds;
+    if (workspace.tickScrollAnimations(deltaTimeSeconds)) renderer.requestRender();
     // Drag-edge auto-scroll: while a selection drag holds at a pane edge, keep scrolling +
     // extending the selection (the view returns true while active so frames keep coming).
-    if (view.tickDragAutoScroll(dt)) renderer.requestRender();
+    if (view.tickDragAutoScroll(deltaTimeSeconds)) renderer.requestRender();
     // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
     // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
     // the reactive effect: the write triggers one repaint and converges — no feedback loop.
@@ -309,6 +310,7 @@ export async function boot(options: BootOptions = {}): Promise<BootedApp> {
   };
   const moveChanges = (direction: 1 | -1): void => {
     const gitPanel = workspace.gitPanel;
+    workspace.haltGitChangesScroll(); // keyboard is precise — adopt-and-stop wheel glide
     const rows = currentChangeRows();
     const next = nextFileRow(rows, gitPanel.changesIndex.value, direction);
     if (next >= 0) gitPanel.changesIndex.value = next;
@@ -338,6 +340,7 @@ export async function boot(options: BootOptions = {}): Promise<BootedApp> {
       normalizeChangesIndex();
       if (workspace.gitPanel.region.value === 'changes') moveChanges(-1);
       else if (workspace.gitPanel.logIndex.value === 0) {
+        workspace.haltGitChangesScroll();
         workspace.gitPanel.region.value = 'changes'; // flow back up into the changes
         const rows = currentChangeRows();
         const last = nextFileRow(rows, rows.length, -1);
@@ -369,11 +372,18 @@ export async function boot(options: BootOptions = {}): Promise<BootedApp> {
       workspace.requestDiscardAtRow(workspace.gitPanel.changesIndex.value);
     },
     'git.leave': () => workspace.focusFiles(),
-    'tree.up': () => workspace.tree.moveSelection(-1),
-    'tree.down': () => workspace.tree.moveSelection(1),
+    'tree.up': () => {
+      workspace.haltTreeScroll();
+      workspace.tree.moveSelection(-1);
+    },
+    'tree.down': () => {
+      workspace.haltTreeScroll();
+      workspace.tree.moveSelection(1);
+    },
     'tree.activate': () => void workspace.activate(),
     'tree.rightExpandOrOpen': () => {
       // Right on a FILE opens it; on a collapsed dir expands; on an expanded dir steps into it.
+      workspace.haltTreeScroll();
       if (workspace.tree.selected?.isDir && workspace.tree.selected.expanded)
         workspace.tree.moveSelection(1);
       else workspace.activate();

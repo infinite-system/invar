@@ -183,6 +183,10 @@ export function buildRootView(
   // layout — pre-layout reads return 0).
   const barScales = new Map<object, number>();
   const barThickness = new Map<object, number>();
+  // OpenTUI's ScrollBar synchronizes through Slider.value, whose setter invokes onChange even for
+  // programmatic projection updates. Ignore those callbacks: only a real thumb interaction may
+  // halt momentum and adopt scroll authority.
+  let synchronizingScrollbarProjection = false;
 
   // Thin draggable scrollbars (OpenTUI ScrollBar: built-in draggable thumb + onChange). Each bar
   // is a 1-cell strip INSIDE its pane's border; onChange writes the SAME model offset the wheel
@@ -194,6 +198,8 @@ export function buildRootView(
     width: 1,
     showArrows: false,
     onChange: (position) => {
+      if (synchronizingScrollbarProjection) return;
+      workspace.editor.viewport.haltScrollMomentum();
       workspace.editor.viewport.scrollTop.value = trueScrollPosition(editorVerticalBar, position);
     },
   });
@@ -204,6 +210,8 @@ export function buildRootView(
     height: 1,
     showArrows: false,
     onChange: (position) => {
+      if (synchronizingScrollbarProjection) return;
+      workspace.editor.viewport.haltScrollMomentum();
       workspace.editor.viewport.scrollLeft.value = trueScrollPosition(editorHorizontalBar, position);
     },
   });
@@ -216,6 +224,8 @@ export function buildRootView(
     width: 2,
     showArrows: false,
     onChange: (position) => {
+      if (synchronizingScrollbarProjection) return;
+      workspace.haltGitChangesScroll();
       workspace.gitPanel.changesScrollTop.value = trueScrollPosition(changesBar, position);
     },
   });
@@ -226,6 +236,7 @@ export function buildRootView(
     width: 2,
     showArrows: false,
     onChange: (position) => {
+      if (synchronizingScrollbarProjection) return;
       workspace.haltGitLogScroll(); // thumb drag adopts authority (One-Writer)
       workspace.gitPanel.logScrollTop.value = trueScrollPosition(logBar, position);
       void workspace.commitLog.value?.ensureRange(workspace.gitPanel.logScrollTop.value, 50);
@@ -297,64 +308,74 @@ export function buildRootView(
   }
 
   function syncScrollbars(): void {
-    const editor = workspace.editor;
-    const editorVisible = editor.hasDocument.value;
-    const viewportHeight = editorViewportHeight();
-    const viewportWidth = editorViewportWidth();
-    // The editor's scroll region = the CODE area's content rect, in editorArea's content box.
-    const editorRegion = {
-      top: 0,
-      left: Math.max(0, codeBody.x - (editorArea.x + 1)),
-      width: Math.max(1, (codeBody.width as number) || viewportWidth + 1),
-      height: viewportHeight,
-    };
-    applyBarGeometry(editorVerticalBar, 'vertical', editorRegion, {
-      scrollSize: editorVisible ? editor.document.lineCount : 0,
-      viewportSize: viewportHeight,
-      scrollPosition: editor.viewport.scrollTop.value,
-    });
-    let widestVisible = 0;
-    if (editorVisible) {
-      const top = editor.viewport.scrollTop.value;
-      for (const line of editor.document.slice(top, viewportHeight)) {
-        widestVisible = Math.max(widestVisible, lineWidth(line));
+    synchronizingScrollbarProjection = true;
+    try {
+      const editor = workspace.editor;
+      const editorVisible = editor.hasDocument.value;
+      const viewportHeight = editorViewportHeight();
+      const viewportWidth = editorViewportWidth();
+      // The editor's scroll region = the CODE area's content rect, in editorArea's content box.
+      const editorRegion = {
+        top: 0,
+        left: Math.max(0, codeBody.x - (editorArea.x + 1)),
+        width: Math.max(1, (codeBody.width as number) || viewportWidth + 1),
+        height: viewportHeight,
+      };
+      applyBarGeometry(editorVerticalBar, 'vertical', editorRegion, {
+        scrollSize: editorVisible ? editor.document.lineCount : 0,
+        viewportSize: viewportHeight,
+        scrollPosition: editor.viewport.scrollTop.value,
+      });
+      let widestVisibleLineWidth = 0;
+      if (editorVisible) {
+        const firstVisibleLine = editor.viewport.scrollTop.value;
+        for (const line of editor.document.slice(firstVisibleLine, viewportHeight)) {
+          widestVisibleLineWidth = Math.max(widestVisibleLineWidth, lineWidth(line));
+        }
       }
-    }
-    applyBarGeometry(editorHorizontalBar, 'horizontal', editorRegion, {
-      scrollSize: widestVisible,
-      viewportSize: viewportWidth,
-      scrollPosition: editor.viewport.scrollLeft.value,
-    });
+      applyBarGeometry(editorHorizontalBar, 'horizontal', editorRegion, {
+        scrollSize: widestVisibleLineWidth,
+        viewportSize: viewportWidth,
+        scrollPosition: editor.viewport.scrollLeft.value,
+      });
 
-    // Git regions, in the sidebar's content box: branch row 0; changes rows 1..; divider;
-    // log rows below — offsets RECOMPUTED from the rendered geometry each frame (splitRatio and
-    // the changes count move them).
-    const gitVisible = workspace.sidebarView.value === 'git' && workspace.git.value !== null;
-    const sidebarInnerWidth = SIDEBAR_WIDTH - 2;
-    const changesRegion = { top: 1, left: 0, width: sidebarInnerWidth, height: Math.max(1, gitPanelGeometry.changesRows) };
-    applyBarGeometry(changesBar, 'vertical', changesRegion, {
-      scrollSize: gitVisible ? gitChangeRowsNow().length : 0,
-      viewportSize: gitPanelGeometry.changesRows,
-      scrollPosition: workspace.gitPanel.changesScrollTop.value,
-    });
-    const knownEnd = workspace.commitLog.value?.knownEnd.value ?? Number.POSITIVE_INFINITY;
-    const logRegion = {
-      top: gitPanelGeometry.dividerRow, // content-relative first log row (screen divider + 1)
-      left: 0,
-      width: sidebarInnerWidth,
-      height: Math.max(1, gitPanelGeometry.logRows),
-    };
-    applyBarGeometry(logBar, 'vertical', logRegion, {
-      // Unknown history length: a rolling virtual size keeps the thumb draggable; it refines once
-      // the end is discovered (a short page sets knownEnd).
-      scrollSize: gitVisible
-        ? Number.isFinite(knownEnd)
-          ? (knownEnd as number)
-          : workspace.gitPanel.logScrollTop.value + gitPanelGeometry.logRows * 4
-        : 0,
-      viewportSize: gitPanelGeometry.logRows,
-      scrollPosition: workspace.gitPanel.logScrollTop.value,
-    });
+      // Git regions, in the sidebar's content box: branch row 0; changes rows 1..; divider;
+      // log rows below — offsets RECOMPUTED from the rendered geometry each frame (splitRatio and
+      // the changes count move them).
+      const gitVisible = workspace.sidebarView.value === 'git' && workspace.git.value !== null;
+      const sidebarInnerWidth = SIDEBAR_WIDTH - 2;
+      const changesRegion = {
+        top: 1,
+        left: 0,
+        width: sidebarInnerWidth,
+        height: Math.max(1, gitPanelGeometry.changesRows),
+      };
+      applyBarGeometry(changesBar, 'vertical', changesRegion, {
+        scrollSize: gitVisible ? gitChangeRowsNow().length : 0,
+        viewportSize: gitPanelGeometry.changesRows,
+        scrollPosition: workspace.gitPanel.changesScrollTop.value,
+      });
+      const knownEnd = workspace.commitLog.value?.knownEnd.value ?? Number.POSITIVE_INFINITY;
+      const logRegion = {
+        top: gitPanelGeometry.dividerRow, // content-relative first log row (screen divider + 1)
+        left: 0,
+        width: sidebarInnerWidth,
+        height: Math.max(1, gitPanelGeometry.logRows),
+      };
+      applyBarGeometry(logBar, 'vertical', logRegion, {
+        // Unknown history length: a rolling virtual size keeps the thumb draggable; it refines
+        // once the end is discovered (a short page sets knownEnd).
+        scrollSize: gitVisible
+          ? Number.isFinite(knownEnd)
+            ? (knownEnd as number)
+            : workspace.gitPanel.logScrollTop.value + gitPanelGeometry.logRows * 4
+          : 0,
+        viewportSize: gitPanelGeometry.logRows,
+        scrollPosition: workspace.gitPanel.logScrollTop.value,
+      });
+    } finally {
+      synchronizingScrollbarProjection = false;
+    }
   }
 
   function renderTree(): StyledText {
@@ -706,25 +727,17 @@ export function buildRootView(
   // onMouseScroll (events bubble to the box). Each scrollable pane mutates only its own window
   // (scrollTop / selection), never materializing the whole list — the frame effect observes those
   // signals and repaints. invariant: Cost tracks the actively observed set (project.invariants.md)
-  const WHEEL_STEP = 3;
-  const wheelDelta = (event: { scroll?: { direction?: string } }): number =>
-    (event.scroll?.direction === 'up' ? -1 : 1) * WHEEL_STEP;
   sidebar.onMouseScroll = (event) => {
     if (workspace.sidebarView.value === 'git') {
       // Route by pointer position: wheel over the changes region scrolls it; over the log, the
       // momentum glide (same gesture, per-region window).
       const row = event.y - sidebar.y;
       if (row < gitPanelGeometry.dividerRow) {
-        const total = gitChangeRowsNow().length;
-        const maxTop = Math.max(0, total - gitPanelGeometry.changesRows);
-        workspace.gitPanel.changesScrollTop.value = Math.max(
-          0,
-          Math.min(workspace.gitPanel.changesScrollTop.value + wheelDelta(event), maxTop),
-        );
+        workspace.impulseGitChangesScroll(event.scroll?.direction === 'up' ? -1 : 1);
       } else {
         workspace.impulseGitLog(event.scroll?.direction === 'up' ? -1 : 1);
       }
-    } else workspace.tree.moveSelection(wheelDelta(event));
+    } else workspace.impulseTreeScroll(event.scroll?.direction === 'up' ? -1 : 1);
   };
   editorArea.onMouseScroll = (event) => {
     if (!workspace.editor.hasDocument.value) return;
@@ -734,15 +747,10 @@ export function buildRootView(
     const direction = event.scroll?.direction;
     const horizontal = direction === 'left' || direction === 'right' || event.modifiers.shift;
     if (horizontal) {
-      // Clamp to the widest VISIBLE line (O(window), never the whole file).
-      const top = workspace.editor.viewport.scrollTop.value;
-      const visible = workspace.editor.document.slice(top, editorViewportHeight());
-      let widestVisible = 0;
-      for (const line of visible) widestVisible = Math.max(widestVisible, lineWidth(line));
       const backward = direction === 'left' || direction === 'up';
-      workspace.editor.viewport.scrollByColumns((backward ? -1 : 1) * WHEEL_STEP, widestVisible);
+      workspace.impulseEditorHorizontalScroll(backward ? -1 : 1);
     } else {
-      workspace.editor.viewport.scrollBy(wheelDelta(event), workspace.editor.document.lineCount);
+      workspace.impulseEditorVerticalScroll(direction === 'up' ? -1 : 1);
     }
   };
 
@@ -911,6 +919,7 @@ export function buildRootView(
       const hit = gitRowAt(event.y);
       if (!hit) return;
       if (hit.region === 'changes') {
+        workspace.haltGitChangesScroll();
         const rows = gitChangeRowsNow();
         const row = rows[hit.index];
         if (row?.kind !== 'file') return;
@@ -938,6 +947,7 @@ export function buildRootView(
       return;
     }
     workspace.focusFiles(); // click-to-focus
+    workspace.haltTreeScroll();
     const rowIndex = treeWindowTop() + (event.y - (sidebar.y + 1)); // +1: sidebar top border
     if (rowIndex < 0 || rowIndex >= workspace.tree.rows.length) return;
     // Single-click activation: one click selects AND opens the file / toggles the folder.

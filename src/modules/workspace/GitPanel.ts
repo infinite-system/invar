@@ -38,6 +38,9 @@ class $GitPanel {
   get changesScrollTop() {
     return ref(0);
   }
+  get changesMomentum() {
+    return shallowRef<ScrollMomentum>(AT_REST);
+  }
   get changesHovered() {
     return ref(-1);
   }

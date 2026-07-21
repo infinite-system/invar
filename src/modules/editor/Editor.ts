@@ -86,6 +86,7 @@ class $Editor {
 
   /** Place the cursor at a grapheme column, recording the matching DISPLAY column as the goal. */
   placeCursor(line: number, column: number): void {
+    this.viewport.haltScrollMomentum();
     const goalDisplayColumn = displayColumn(this.document.line(line), column);
     this.cursor.set(line, column, goalDisplayColumn);
     this.viewport.scrollToColumn(goalDisplayColumn); // keep the caret horizontally visible
