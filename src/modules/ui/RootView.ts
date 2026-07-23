@@ -114,6 +114,8 @@ function $buildRootView(
   quickOpen: QuickOpen.Instance,
   shortcutHelp: ShortcutHelp.Instance,
   overlayCoordinator: OverlayCoordinator.Instance,
+  activateQuickOpen: () => void,
+  revealFindMatch: () => void,
 ): RootView {
   const root = renderer.root;
   const readPalette = () => theme.palette;
@@ -747,6 +749,8 @@ function $buildRootView(
     tooltip,
     theme,
     workspaceSet,
+    activateQuickOpen,
+    revealFindMatch,
   });
 
   const scrollbarSync = new ScrollbarSync.Class({
