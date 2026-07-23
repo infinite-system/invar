@@ -42,6 +42,7 @@ import { TerminalFactory } from '../terminal/TerminalFactory';
 import { AgentFactory } from '../agent/AgentFactory';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
 import { TtsFactory } from '../narration/TtsFactory';
+import type { TtsBackend } from '../narration/TtsBackend';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 
@@ -236,6 +237,15 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
   // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
   let narration: NarrationProjection.Instance | null = null;
+  // A one-shot TTS backend for the "Narration: Test Voice" audition — recreated per test in the current
+  // selected voice; the previous one is disposed so repeated tests never pile up. Under
+  // INVAR_TTS_BACKEND=mock (the gate) this is silent.
+  let testVoiceBackend: TtsBackend | null = null;
+  const testNarrationVoice = (): void => {
+    testVoiceBackend?.dispose();
+    testVoiceBackend = TtsFactory.Class.createBackend({ voice: settings.agentNarrationVoice.value, rate: settings.agentNarrationRate.value });
+    testVoiceBackend.speak('Narration voice test — the quick brown fox jumps over the lazy dog.');
+  };
   const ensureAgent = (): void => {
     if (agentRegistered) return;
     agentRegistered = true;
@@ -251,12 +261,13 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       narration = new NarrationProjection.Class(
         agentPane.agentSession,
         settings.agentAudioNarration,
-        TtsFactory.Class.createBackend(),
+        TtsFactory.Class.createBackend({ voice: settings.agentNarrationVoice.value, rate: settings.agentNarrationRate.value }),
       );
     }
   };
   app.onDispose(() => {
     narration?.dispose();
+    testVoiceBackend?.dispose();
     panelHost.dispose();
   });
 
@@ -387,6 +398,12 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       paletteOpen: commands.open.value,
       paletteQuery: commands.open.value ? commands.query.value : '',
       paletteMatches: commands.open.value ? commands.filtered.length : 0,
+      // Settings panel + voice picker (drives smoke-voice-picker): the selected row's label + displayed
+      // value, and the live agentNarrationVoice setting. (settingsOpen is already exposed below.)
+      settingsSelectedLabel: settingsPanel.open.value ? (settingsPanel.rows()[settingsPanel.selectedIndex.value]?.label ?? '') : '',
+      settingsSelectedValue: settingsPanel.open.value ? (settingsPanel.rows()[settingsPanel.selectedIndex.value]?.valueText ?? '') : '',
+      narrationVoice: settings.agentNarrationVoice.value,
+      narrationRate: settings.agentNarrationRate.value,
       focus: workspaceSet.active.focus.value,
       // The activity bar's active view (files/git/extensions) — the authoritative channel a driven
       // contract reads to assert a click/chord switched the sidebar (paired with FrameProbe for the accent).
@@ -731,6 +748,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     openHoveredMarkdownReference: () => view.activeMarkdownSplitView()?.openHoveredReference(),
     openShortcutHelp: () =>
       overlayCoordinator.openExclusiveOverlay('shortcutHelp', () => shortcutHelp.show()),
+    testNarrationVoice,
   });
 
   // --- input: handlers MUTATE model state only; the frame effect repaints. -----------------
