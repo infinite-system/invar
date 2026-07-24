@@ -74,6 +74,7 @@ Change a convention → change it HERE (and note the why in decisions.md).
   4. **Tests are strictly colocated:** `Foo.test.ts` beside `Foo.ts`, never in `__tests__/`
      directories; PAIR-COMPLETENESS — every eponymous class file has its colocated test
      (explicit enumerated exemptions only, e.g. pure contract-interface files).
+- BLAME HYGIENE: every grammar-only conversion commit is appended by full hash to `.git-blame-ignore-revs`; phase-2 waves extend the same list.
   Existing violations (~824 sites inventoried) are converted by the scheduled big-bang sweep;
   new code NEVER adds more. When editing a file the sweep has not reached yet, follow the new
   grammar for what you ADD; converting the rest of the file is optional, not required.

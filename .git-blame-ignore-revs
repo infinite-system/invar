@@ -1,0 +1,5 @@
+# Bulk file-grammar-only refactors belong here as full commit hashes so semantic blame crosses the
+# mechanical move unchanged. Phase-2 conversion waves append their conversion commit hashes below.
+# Suggested local setup: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+1384b3c58f975062f2386b643c6a9683ec116818
