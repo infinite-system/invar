@@ -88,12 +88,15 @@ try {
     (status) => status.ready === true,
     20_000,
   );
-  driver.sendKeys('Down');
-  await driver.awaitQuiescence();
-  driver.sendKeys('Enter');
-  let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('export const answer') !== null
-      && String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/answer.ts'),
+  driver.sendKeys('Down', 'Enter');
+  let snapshot = await driver.awaitGridCondition(
+    'the answer declaration is visible after opening answer.ts',
+    (candidate) => candidate.findText('export const answer') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    (status) => String(status.activeBuffer).endsWith('/answer.ts'),
   );
   const symbolPosition = declarationSymbolPosition(snapshot);
   HarnessSmoke.Class.requireCondition(symbolPosition !== null, 'answer declaration cell is visible');

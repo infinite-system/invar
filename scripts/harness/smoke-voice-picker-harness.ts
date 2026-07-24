@@ -40,11 +40,11 @@ function widgetPosition(
   return { row: rowPosition.row, column };
 }
 
-async function clickWidget(
+function clickWidget(
   driver: PtyTestDriver.Model,
   rowLabel: string,
   widgetGlyph: string,
-): Promise<void> {
+): void {
   const position = widgetPosition(driver.snapshot(), rowLabel, widgetGlyph);
   driver.sendMouse({
     kind: 'press',
@@ -58,7 +58,6 @@ async function clickWidget(
     row: position.row,
     button: 'left',
   });
-  await driver.awaitQuiescence();
 }
 
 const repositoryRoot = process.cwd();
@@ -154,7 +153,7 @@ try {
   HarnessSmoke.Class.pass('Right cycles to the first discovered voice');
 
   console.log('== harness voice picker: mouse enum, number, and boolean edits ==');
-  await clickWidget(driver, 'Narration voice', '>');
+  clickWidget(driver, 'Narration voice', '>');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
@@ -162,7 +161,7 @@ try {
   );
   HarnessSmoke.Class.pass('voice arrow advances from aaa to bbb');
 
-  await clickWidget(driver, 'Narration speed', '+');
+  clickWidget(driver, 'Narration speed', '+');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
@@ -172,7 +171,7 @@ try {
 
   status = HarnessSmoke.Class.readStatus(statusPath);
   const narrationEnabledBefore = status.narrationEnabled;
-  await clickWidget(driver, 'Speak agent replies', ']');
+  clickWidget(driver, 'Speak agent replies', ']');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,

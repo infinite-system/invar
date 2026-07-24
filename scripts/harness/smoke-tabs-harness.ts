@@ -6,7 +6,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pass, requireCondition, statusField } from './HarnessSmokeSupport';
+import {
+  awaitStatusPublication,
+  pass,
+  requireCondition,
+  statusField,
+} from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function badgePosition(
@@ -54,12 +59,17 @@ try {
     if ((statusField<number>(statusPath, 'bufferTabCount') ?? 0) >= 8) break;
     if (statusField<string>(statusPath, 'focus') !== 'files') {
       driver.sendKeys('Tab');
-      await driver.awaitQuiescence();
+      await awaitStatusPublication(
+        statusPath,
+        (status) => status.focus === 'files',
+      );
     }
-    driver.sendKeys('Down');
-    await driver.awaitQuiescence();
-    driver.sendKeys('Enter');
-    await driver.awaitQuiescence();
+    const previousTabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
+    driver.sendKeys('Down', 'Enter');
+    await awaitStatusPublication(
+      statusPath,
+      (status) => Number(status.bufferTabCount) > previousTabCount,
+    );
   }
   let snapshot = driver.snapshot();
   const tabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 0;

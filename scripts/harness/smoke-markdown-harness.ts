@@ -270,7 +270,7 @@ try {
     (status) => Number(status.markdownPreviewScrollTop) > 0
       && Number(status.markdownPreviewSelectionChars) > 100,
   );
-  driver.sendMouse({
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
     column: selectionColumn,
     row: snapshot.rows - 1,
@@ -322,8 +322,11 @@ try {
   driver.sendText('#');
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.sourceFindQuery === '#');
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'Escape closes source Find and reveals the Markdown preview border',
+    (candidate) => candidate.findText('╭─Find') === null
+      && candidate.findText('╭─Preview') !== null,
+  );
   const reopenedPreview = previewBorder(snapshot);
   clickCell(driver, reopenedPreview.column + 5, reopenedPreview.row + 2);
   await HarnessSmoke.Class.awaitStatus(

@@ -127,7 +127,7 @@ async function scrollTopAfterNotch(
   const launchedDriver = await launchDriver(label, workspaceRoot);
   try {
     await openOnlyFile(launchedDriver);
-    launchedDriver.driver.sendMouse({
+    launchedDriver.driver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
       column: 59,
       row: 11,
@@ -524,14 +524,15 @@ try {
       await setSetting('typescriptServer', 'tsgo');
       const launchedDriver = await launchDriver(label, lspFixture, 120, 36);
       try {
-        launchedDriver.driver.sendKeys('Down');
-        await launchedDriver.driver.awaitQuiescence();
-        launchedDriver.driver.sendKeys('Enter');
+        launchedDriver.driver.sendKeys('Down', 'Enter');
         const status = await HarnessSmoke.Class.awaitStatus(
           launchedDriver.driver,
           launchedDriver.statusPath,
-          (candidate) => candidate.lspSizeSuppressed === true
-            || Number(candidate.diagnosticsCount) > 0,
+          (candidate) => String(candidate.activeBuffer).endsWith('/big.ts')
+            && (
+              candidate.lspSizeSuppressed === true
+              || Number(candidate.diagnosticsCount) > 0
+            ),
           60_000,
         );
         return {

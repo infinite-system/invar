@@ -106,7 +106,7 @@ try {
     directoryStatusPath,
     (status) => Number(status.gitChangedCount) >= 1,
   );
-  directoryDriver.sendKeys('o');
+  directoryDriver.sendKeysWithoutFrameExpectation('o');
   await HarnessSmoke.Class.awaitFrameSilence(directoryDriver, 600);
   const afterOpenStatus = HarnessSmoke.Class.readStatus(directoryStatusPath);
   HarnessSmoke.Class.requireCondition(

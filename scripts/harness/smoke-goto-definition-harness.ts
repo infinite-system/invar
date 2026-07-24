@@ -86,9 +86,7 @@ try {
     (status) => status.ready === true,
     20_000,
   );
-  driver.sendKeys('Down');
-  await driver.awaitQuiescence();
-  driver.sendKeys('Enter');
+  driver.sendKeys('Down', 'Enter');
   let snapshot = await driver.awaitGridCondition(
     'the greetWidget use site in bar.ts is visible',
     (candidate) => candidate.findText('const message') !== null,

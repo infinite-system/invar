@@ -110,8 +110,12 @@ try {
 
   console.log('== harness agent permissions: stray input is swallowed ==');
   await submitPrompt(driver, statusPath, 'third-gated-command');
-  driver.sendText('zqx');
-  await driver.awaitQuiescence();
+  driver.sendRawInputWithoutFrameExpectation('zqx');
+  await driver.awaitGridCondition(
+    'the permission prompt remains visible without rendering stray input',
+    (snapshot) => snapshot.findText('? Claude wants to run') !== null
+      && snapshot.findText('zqx') === null,
+  );
   status = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
     status.agentPendingPermissionTool === 'Bash',

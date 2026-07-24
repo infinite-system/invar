@@ -91,9 +91,7 @@ async function runServerCase(
       (status) => status.ready === true,
       20_000,
     );
-    driver.sendKeys('Down');
-    await driver.awaitQuiescence();
-    driver.sendKeys('Enter');
+    driver.sendKeys('Down', 'Enter');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
