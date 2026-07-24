@@ -47,17 +47,36 @@ Change a convention → change it HERE (and note the why in decisions.md).
   a subclass/other module needs the raw form (parallel to `$Class`); (b) manifest-shape only — a tiny
   inline-body capability needs no `$name` backing. CHECK: conventions-gate grep for the `…Implementation`
   suffix.
-- MANIFEST-ON-TOP (file layout, STANDARD): the `class $X { static … }` + `export namespace X { … }`
-  manifest block goes at the TOP of the file — directly after imports and any public types, ABOVE the
-  `$name` implementations. You open a capability file and read its whole surface (the Class and its
-  members) first, then drill into the bodies below. This is SAFE ONLY because `$name` impls are FUNCTION
-  DECLARATIONS: `function $foo(){}` is hoisted and initialized before the `class` statement executes, so
-  `static foo = $foo` binds the real function even though it appears above it. HARD REQUIREMENT (what
-  makes the layout safe): a manifest `$name` impl MUST be a `function` declaration — NEVER
-  `const $foo = () => …` or a function expression; those live in the temporal dead zone, so a top-placed
-  manifest referencing them throws `Cannot access '$foo' before initialization` at load. Reference file:
-  `src/modules/commands/CommandDefaults.ts`. (A gate check enforcing "manifest impls are function
-  declarations" belongs in `scripts/check-exported-capabilities.mjs`.)
+- ~~MANIFEST-ON-TOP~~ **SUPERSEDED (2026-07-24) by FILE GRAMMAR below.** The old layout kept
+  `$name` implementations as module-level function declarations below the manifest (hoisting made
+  it safe). Retired by user adjudication: detached functions are invisible to BOTH governing
+  systems — not on the seam (not overridable/stubbable/fork-reachable) and not on a `Reactive()`
+  prototype (can never join the graph). One grammar replaces two.
+- FILE GRAMMAR (2026-07-24, user-adjudicated; the AST checker enforcing it arrives with the
+  scheduled grammar sweep — the LAW applies to all NEW/EDITED code NOW, ahead of enforcement):
+  1. **Sequence:** imports → `// invariant:` annotations → the EPONYMOUS declaration → exported
+     types → end of file. Nothing else at module level. The eponymous declaration is the class
+     the file is named for (namespace-pattern manifest included); in the enumerated
+     contract-interface files (AgentBackend, TtsBackend, PaneContent, TerminalBackend,
+     LanguageProvider, AgentEvents) it is the eponymous INTERFACE — the seam itself. Types are
+     second-order citizens: they describe, the class generates; TS type hoisting makes
+     below-class types legal even in the class's own signatures.
+  2. **No detached behavior or data:** module-level helper functions become `protected` static
+     or instance METHODS on the class (prototype methods — never arrow-function class fields,
+     which bind per-instance and break `super` chains). Module-level constants (sentinels,
+     regexes, tables) become **`protected static` GETTERS** — getters late-bind through the
+     prototype so an override governs every use including the base's own; a shadowed readonly
+     field does not. Expensive constructions use the `$`-prefixed cached-getter convention.
+     The old `$name` backing-function shape collapses: the manifest member IS the method.
+  3. **`protected` is the floor:** no `private` modifier, no `#fields` in `src/modules/**` —
+     TypeScript `private` blocks subclass override exactly like detachment did (recorded
+     invariant: *Construction goes through overridable seams*; everything must extend).
+  4. **Tests are strictly colocated:** `Foo.test.ts` beside `Foo.ts`, never in `__tests__/`
+     directories; PAIR-COMPLETENESS — every eponymous class file has its colocated test
+     (explicit enumerated exemptions only, e.g. pure contract-interface files).
+  Existing violations (~824 sites inventoried) are converted by the scheduled big-bang sweep;
+  new code NEVER adds more. When editing a file the sweep has not reached yet, follow the new
+  grammar for what you ADD; converting the rest of the file is optional, not required.
 - Reactive state = ref-returning getters; cheap derived state = PLAIN getters (never `computed()`
   unless memoization is proven). Cross-module deps are read LATE (getters/method bodies) — never
   top-level `new`/snapshot. Owned constructions go through overridable `createX()` seams.
