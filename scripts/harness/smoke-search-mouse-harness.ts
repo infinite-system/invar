@@ -123,8 +123,13 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) => resultRowBackground(candidate, 'sample.txt') !== unselectedBackground,
   );
+  const hoverStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.quickOpenSelected === 0,
+  );
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).quickOpenSelected === 0,
+    hoverStatus.quickOpenSelected === 0,
     'hover leaves keyboard selection unchanged',
   );
   driver.sendMouse({
@@ -175,8 +180,12 @@ try {
     statusPath,
     (status) => status.findCurrentMatchIndex === 1,
   );
+  snapshot = await driver.awaitGridCondition(
+    'the Find counter paints the second of four matches',
+    (candidate) => candidate.textRows().some((rowText) => rowText.includes('2 of 4')),
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().textRows().some((rowText) => rowText.includes('2 of 4')),
+    snapshot.textRows().some((rowText) => rowText.includes('2 of 4')),
     'next button advances the rendered counter to 2 of 4',
   );
   driver.sendMouse({
@@ -237,7 +246,12 @@ try {
     (candidate) => candidate.findText('sibling-alpha') !== null
       && candidate.findText('sibling-beta') !== null,
   );
-  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.quickOpenMode === 'workspacePath'
+      && candidate.quickOpenPathOpenable === true,
+  );
   HarnessSmoke.Class.requireCondition(
     status.quickOpenMode === 'workspacePath' && status.quickOpenPathOpenable === true,
     'navigator opens on the real parent directory',
@@ -255,7 +269,15 @@ try {
       && candidate.quickOpenMatches === 2,
   );
   HarnessSmoke.Class.pass('partial path is flagged and filters live to two siblings');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the un-openable path warning is painted in a distinct color',
+    (candidate) => {
+      const candidateAlert = warningAlert(candidate);
+      return candidateAlert.character === '!'
+        && candidateAlert.foreground !== null
+        && candidateAlert.foreground !== 0xa9b1d6;
+    },
+  );
   const alert = warningAlert(snapshot);
   HarnessSmoke.Class.requireCondition(
     alert.character === '!'
@@ -276,7 +298,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-search-mouse-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(navigatorBase, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }
