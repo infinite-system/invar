@@ -41,7 +41,7 @@ describe('AgentSession', () => {
 
     expect(session.transcript).toEqual([
       { role: 'user', text: 'hi' },
-      { role: 'assistant', text: 'Hello there' },
+      { role: 'assistant', text: 'Hello there', engine: 'claude' },
     ]);
     expect(session.status.value).toBe('streaming');
   });
@@ -62,10 +62,10 @@ describe('AgentSession', () => {
 
     expect(session.transcript).toEqual([
       { role: 'user', text: 'read the file' },
-      { role: 'assistant', text: 'Let me look.' },
+      { role: 'assistant', text: 'Let me look.', engine: 'claude' },
       { role: 'tool-use', id: 't1', name: 'readFile', input: { path: 'a.ts' } },
       { role: 'tool-result', id: 't1', result: 'file contents', isError: false },
-      { role: 'assistant', text: 'Done.' },
+      { role: 'assistant', text: 'Done.', engine: 'claude' },
     ]);
     expect(session.status.value).toBe('streaming');
   });
@@ -242,6 +242,42 @@ describe('AgentSession — engine swap (live provider switch)', () => {
     const next = new MockAgentBackend.Class();
     expect(session.swapBackend(next, 'codex')).toBe(false);
     expect(session.transcript.at(-1)).not.toMatchObject({ role: 'system' });
+  });
+
+  test('assistant entries are stamped with the engine that PRODUCED them; a swap relabels NEW entries only', () => {
+    const backend = new MockAgentBackend.Class();
+    const session = new AgentSession.Class(backend, 'claude');
+    expect(session.activeEngine).toBe('claude');
+
+    session.send('first question');
+    backend.emit({ kind: 'text-delta', text: 'answered by claude' });
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+
+    const next = new MockAgentBackend.Class();
+    expect(session.swapBackend(next, 'codex')).toBe(true);
+    expect(session.activeEngine).toBe('codex');
+
+    session.send('second question');
+    next.emit({ kind: 'text-delta', text: 'answered by codex' });
+
+    const assistantEntries = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(assistantEntries).toEqual([
+      { role: 'assistant', text: 'answered by claude', engine: 'claude' }, // history KEEPS its producer
+      { role: 'assistant', text: 'answered by codex', engine: 'codex' }, // new turns carry the new engine
+    ]);
+  });
+
+  test('a pending permission request is stamped with the ACTIVE engine', () => {
+    const backend = new MockAgentBackend.Class();
+    const session = new AgentSession.Class(backend, 'codex');
+    session.send('go');
+    backend.emit({ kind: 'permission-request', id: 'p1', toolName: 'Bash', input: {}, respond: () => {} });
+    expect(session.transcript.at(-1)).toMatchObject({ role: 'permission-request', engine: 'codex' });
+  });
+
+  test('direct construction without an engine defaults to claude (the pre-stamp historical producer)', () => {
+    const { session } = makeSession();
+    expect(session.activeEngine).toBe('claude');
   });
 
   test('permissionPromptsSupported reflects the CURRENT backend after a swap', () => {

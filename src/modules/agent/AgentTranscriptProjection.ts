@@ -12,6 +12,7 @@ import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { WrapText } from '../ui/WrapText';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { AgentToolSummary } from './AgentToolSummary';
+import { AgentProviderRegistry } from './AgentProviderRegistry';
 import type { TranscriptEntry } from './AgentEvents';
 
 /** One projected visual line: its text, paint colour, weight, the transcript entry it belongs to, and
@@ -30,8 +31,18 @@ export interface ProjectedLine {
 // AgentTranscriptIconSet ladder — no private glyph ladders in this module.
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
 
-/** The empty-transcript hint (shown before any turn). */
-const EMPTY_HINT = 'Ask Claude anything. Type a prompt and press Enter.';
+/** The empty-transcript greeting (shown before any turn) — named for the ACTIVE provider, never a
+ *  hard-coded engine (the frozen-'Claude' bug: the greeting claimed Claude while codex would answer). */
+function emptyGreeting(activeProviderLabel: string): string {
+  return `Ask ${activeProviderLabel} anything. Type a prompt and press Enter.`;
+}
+
+/** The display label for the engine that PRODUCED an entry. Entries predating the engine stamp were
+ *  all produced when only Claude ran, so an absent engine sensibly defaults to 'claude'. Per-entry and
+ *  immutable, so the memoized projection cache stays valid across engine switches. */
+function producerLabel(engine: string | undefined): string {
+  return AgentProviderRegistry.Class.displayLabel(engine ?? 'claude');
+}
 
 /** Truncate to `width` DISPLAY CELLS (grapheme-safe through the shared geometry seam), appending an
  *  ellipsis when it overflows — a code-point count here let CJK summaries overflow the pane. */
@@ -108,7 +119,9 @@ function projectEntry(
         blank(); // trailing space after the user's own turn
         break;
       case 'assistant':
-        lines.push({ text: 'Claude', color: palette.func, bold: true, entryIndex, toggleable: false });
+        // The role label names the engine that PRODUCED this turn (entry-stamped): after a switch,
+        // new turns say the new engine while history keeps the label of the engine that wrote it.
+        lines.push({ text: producerLabel(entry.engine), color: palette.func, bold: true, entryIndex, toggleable: false });
         for (const wrapped of wrap(entry.text, width))
           lines.push({ text: wrapped, color: palette.fg, bold: false, entryIndex, toggleable: false });
         break;
@@ -140,7 +153,7 @@ function projectEntry(
         const phrase = AgentToolSummary.Class.summarize(entry.toolName, entry.input) || entry.toolName;
         if (entry.status === 'pending') {
           lines.push({
-            text: truncate(`? Claude wants to run  ${phrase}`, width, glyphLevel),
+            text: truncate(`? ${producerLabel(entry.engine)} wants to run  ${phrase}`, width, glyphLevel),
             color: palette.warning,
             bold: true,
             entryIndex,
@@ -197,6 +210,7 @@ function $project(
   glyphLevel: GlyphLevel,
   width: number,
   expandedIndices: ReadonlySet<number>,
+  activeProviderLabel: string,
 ): ProjectedLine[] {
   const lines: ProjectedLine[] = [];
   transcript.forEach((entry, entryIndex) => {
@@ -221,7 +235,8 @@ function $project(
     }
     for (const line of entryLines) lines.push(line);
   });
-  if (lines.length === 0) lines.push({ text: EMPTY_HINT, color: palette.dim, bold: false, entryIndex: -1, toggleable: false });
+  if (lines.length === 0)
+    lines.push({ text: emptyGreeting(activeProviderLabel), color: palette.dim, bold: false, entryIndex: -1, toggleable: false });
   return lines;
 }
 

@@ -8,7 +8,8 @@ const project = (
   width: number,
   expanded: ReadonlySet<number> = new Set(),
   glyph: 'nerd' | 'unicode' | 'ascii' = 'unicode',
-) => AgentTranscriptProjection.Class.project(transcript, DARK, glyph, width, expanded);
+  activeProviderLabel = 'Claude',
+) => AgentTranscriptProjection.Class.project(transcript, DARK, glyph, width, expanded, activeProviderLabel);
 
 describe('AgentTranscriptProjection.project', () => {
   test('an empty transcript projects the single empty-state hint (not a toggle row)', () => {
@@ -17,6 +18,13 @@ describe('AgentTranscriptProjection.project', () => {
     expect(lines[0]?.text).toContain('Ask Claude');
     expect(lines[0]?.toggleable).toBe(false);
     expect(lines[0]?.entryIndex).toBe(-1);
+  });
+
+  test('the greeting names the ACTIVE provider, not a hard-coded Claude', () => {
+    const lines = project([], 40, new Set(), 'unicode', 'Codex');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toContain('Ask Codex anything');
+    expect(lines[0]?.text).not.toContain('Claude');
   });
 
   test('user + assistant render a bold label line then wrapped body lines tagged to their entry', () => {
@@ -44,6 +52,24 @@ describe('AgentTranscriptProjection.project', () => {
   test('user→assistant has EXACTLY one blank between them (no double)', () => {
     const lines = project([{ role: 'user', text: 'hi' }, { role: 'assistant', text: 'yo' }], 40);
     expect(lines.map((line) => line.text)).toEqual(['You', 'hi', '', 'Claude', 'yo']);
+  });
+
+  test('assistant rows are labeled by the engine that PRODUCED them (entry-stamped, per entry)', () => {
+    const lines = project(
+      [
+        { role: 'assistant', text: 'from claude', engine: 'claude' },
+        { role: 'assistant', text: 'from codex', engine: 'codex' },
+        { role: 'assistant', text: 'from echo', engine: 'echo' },
+      ],
+      40,
+    );
+    const labels = lines.filter((line) => line.bold).map((line) => line.text);
+    expect(labels).toEqual(['Claude', 'Codex', 'Echo']);
+  });
+
+  test('an assistant entry WITHOUT an engine stamp (historical) defaults to the Claude label', () => {
+    const lines = project([{ role: 'assistant', text: 'old turn' }], 40, new Set(), 'unicode', 'Codex');
+    expect(lines[0]).toMatchObject({ text: 'Claude', bold: true });
   });
 
   test('a Read tool-use collapses to the human phrase "Reading <basename>", not raw JSON', () => {
@@ -139,6 +165,15 @@ describe('permission-request projection', () => {
     expect(lines[1]!.text).toContain('[y] allow');
     expect(lines[1]!.text).toContain('[n] deny');
     expect(lines[1]!.text).toContain('[a] always');
+  });
+
+  test('a PENDING prompt names the engine that is asking (entry-stamped)', () => {
+    const lines = project(
+      [{ role: 'permission-request', id: 'p1', toolName: 'Bash', input: { command: 'ls' }, status: 'pending', engine: 'codex' }],
+      70,
+    );
+    expect(lines[0]!.text).toContain('? Codex wants to run');
+    expect(lines[0]!.text).not.toContain('Claude');
   });
 
   test('RESOLVED renders one compact record line (✓ allowed / ✗ denied)', () => {

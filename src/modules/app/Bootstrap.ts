@@ -581,6 +581,9 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPendingPermissionTool: agentPaneContent?.agentSession.pendingPermission?.toolName ?? '',
       // The live engine label (drives the engine-switch smoke) — flips claude⇄codex on cycle.
       agentEngine: agentPaneContent?.currentEngine ?? '',
+      // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
+      // engine ('Claude'/'Codex'/…, '(working…)' while busy), never a frozen 'Claude'.
+      agentTitle: agentPaneContent?.title ?? '',
     });
   };
 

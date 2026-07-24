@@ -39,4 +39,12 @@ describe('AgentProviderRegistry — the one provider authority (review B6)', () 
     process.env.INVAR_AGENT_ENGINES = 'claude';
     expect(AgentProviderRegistry.Class.nextEngine('claude')).toBeNull();
   });
+
+  test('displayLabel is the ONE engine→human-label mapping (title, role rows, greeting all read it)', () => {
+    expect(AgentProviderRegistry.Class.displayLabel('claude')).toBe('Claude');
+    expect(AgentProviderRegistry.Class.displayLabel('codex')).toBe('Codex');
+    expect(AgentProviderRegistry.Class.displayLabel('echo')).toBe('Echo');
+    expect(AgentProviderRegistry.Class.displayLabel('mystery')).toBe('Mystery'); // honest, never blank
+    expect(AgentProviderRegistry.Class.displayLabel('')).toBe('Agent');
+  });
 });

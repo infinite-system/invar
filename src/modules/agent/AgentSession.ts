@@ -12,6 +12,7 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { AgentBackend } from './AgentBackend';
 import type { AgentEvent, AgentStatus, PermissionDecision, TranscriptEntry } from './AgentEvents';
+import type { ResolvedEngine } from './AgentProviderRegistry';
 import { TranscriptContextSerializer } from './TranscriptContextSerializer';
 
 class $AgentSession {
@@ -31,8 +32,20 @@ class $AgentSession {
    *  and a pointer entry only flips pending→resolved. */
   private pendingPermissionScanFrom = 0;
 
-  constructor(private backend: AgentBackend) {
+  /** The engine currently answering — the registry's RESOLVED engine, passed by the factory at
+   *  construction and updated on every swap. Stamped onto each assistant/permission entry as it opens,
+   *  so the transcript records who PRODUCED each turn (history keeps its label across switches).
+   *  Defaults to 'claude' (the only engine that existed before the stamp) for direct construction. */
+  private currentEngine: ResolvedEngine;
+
+  constructor(private backend: AgentBackend, activeEngine: ResolvedEngine = 'claude') {
+    this.currentEngine = activeEngine;
     this.backend.onEvent((event) => this.fold(event));
+  }
+
+  /** The engine currently answering (the pane title + greeting read this when no engine port is bound). */
+  get activeEngine(): ResolvedEngine {
+    return this.currentEngine;
   }
 
   /** Bumped on every folded event — the reactive paint signal the frame effect observes so async
@@ -97,15 +110,16 @@ class $AgentSession {
    *  is disposed, the new one wired, a visible system note is appended, and a bounded context preamble is
    *  armed so the new engine inherits the conversation on the next send. Ignored while a turn is busy
    *  (switch only at rest). Returns whether the swap happened. */
-  swapBackend(nextBackend: AgentBackend, providerLabel: string): boolean {
+  swapBackend(nextBackend: AgentBackend, nextEngine: ResolvedEngine): boolean {
     if (this.busy || nextBackend === this.backend) return false;
     // Serialize the conversation BEFORE the switch note, so the preamble carries real context only.
     const preamble = TranscriptContextSerializer.Class.serialize(this.entries);
     this.backend.dispose();
     this.backend = nextBackend;
+    this.currentEngine = nextEngine; // entries from here on are stamped with the NEW producer
     this.assistantTurnOpen = false;
     this.backend.onEvent((event) => this.fold(event));
-    this.entries.push({ role: 'system', text: `switched to ${providerLabel} — context ported` });
+    this.entries.push({ role: 'system', text: `switched to ${nextEngine} — context ported` });
     this.pendingContextPreamble = preamble || null;
     this.renderRevision.value++;
     return true;
@@ -141,7 +155,7 @@ class $AgentSession {
         break;
       case 'text-delta':
         if (!this.assistantTurnOpen) {
-          this.entries.push({ role: 'assistant', text: '' });
+          this.entries.push({ role: 'assistant', text: '', engine: this.currentEngine });
           this.assistantTurnOpen = true;
         }
         {
@@ -162,7 +176,7 @@ class $AgentSession {
         break;
       case 'permission-request':
         this.assistantTurnOpen = false;
-        this.entries.push({ role: 'permission-request', id: event.id, toolName: event.toolName, input: event.input, status: 'pending' });
+        this.entries.push({ role: 'permission-request', id: event.id, toolName: event.toolName, input: event.input, status: 'pending', engine: this.currentEngine });
         this.pendingPermissionResponders.set(event.id, event.respond);
         this.status.value = 'awaiting-tool'; // the turn is paused on a gated tool
         break;

@@ -271,6 +271,61 @@ describe('AgentPaneContent — engine switcher', () => {
   });
 });
 
+describe('AgentPaneContent — live provider identity (title + greeting + labels)', () => {
+  test('the title derives LIVE from the engine port (registry display label), including busy state', () => {
+    const { pane, backend } = makePane();
+    const enginePort = new FakeEnginePort();
+    enginePort.provider = 'codex';
+    pane.attachEnginePort(enginePort);
+    expect(pane.title).toBe('Codex');
+    pane.agentSession.send('go'); // busy
+    expect(pane.title).toBe('Codex (working…)');
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(pane.title).toBe('Codex');
+  });
+
+  test('cycling the engine relabels the title IMMEDIATELY (no frozen label)', () => {
+    const { pane } = makePane();
+    const enginePort = new FakeEnginePort();
+    pane.attachEnginePort(enginePort);
+    expect(pane.title).toBe('Claude');
+    pane.handleKey({ name: 'e', ctrl: true } as never); // claude → codex
+    expect(pane.title).toBe('Codex');
+  });
+
+  test('with no engine port bound, the title falls back to the SESSION active engine', () => {
+    const backend = new MockAgentBackend.Class();
+    const session = new AgentSession.Class(backend, 'codex');
+    const pane = new AgentPaneContent.Class(session);
+    expect(pane.title).toBe('Codex');
+  });
+
+  test('the empty-transcript greeting names the active provider', () => {
+    const { pane } = makePane();
+    const enginePort = new FakeEnginePort();
+    enginePort.provider = 'codex';
+    pane.attachEnginePort(enginePort);
+    const painted = paintedText(pane.render(context()));
+    expect(painted).toContain('Ask Codex anything');
+    expect(painted).not.toContain('Ask Claude');
+  });
+
+  test('after a switch, NEW assistant rows carry the new engine label while history keeps its own', () => {
+    const { pane, backend } = makePane();
+    backend.emit({ kind: 'text-delta', text: 'first answer' });
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    const next = new MockAgentBackend.Class();
+    expect(pane.agentSession.swapBackend(next, 'codex')).toBe(true);
+    pane.agentSession.send('again');
+    next.emit({ kind: 'text-delta', text: 'second answer' });
+    const rows = chunkTexts(pane.render(context({ height: 24 })));
+    const claudeLabelRow = rows.findIndex((text) => text.trim() === 'Claude');
+    const codexLabelRow = rows.findIndex((text) => text.trim() === 'Codex');
+    expect(claudeLabelRow).toBeGreaterThanOrEqual(0); // history keeps the old producer's label
+    expect(codexLabelRow).toBeGreaterThan(claudeLabelRow); // the new turn is labeled by the new engine
+  });
+});
+
 describe('AgentPaneContent — system (engine switch) note renders', () => {
   test('a system entry renders as a dim centered aside', () => {
     const { pane, backend } = makePane();

@@ -61,10 +61,14 @@ function $createBackend(options: AgentCreateOptions): AgentBackend {
   return new EchoAgentBackend.Class();
 }
 
-/** Wire backend + session into a ready AgentPaneContent. */
+/** Wire backend + session into a ready AgentPaneContent. The session is told the registry's RESOLVED
+ *  engine — the same resolution the mode line and cycling read — so the pane's identity surfaces
+ *  (title, assistant row labels, greeting) can never claim an engine the resolution didn't pick. Under
+ *  the hermetic INVAR_AGENT_BACKEND=echo force the echo IMPERSONATES the resolved engine by design
+ *  (the driving smokes prove claude⇄codex identity mechanics without a real subprocess). */
 function $create(options: AgentCreateOptions = {}): AgentPaneContent.Model {
   const backend = options.backend ?? AgentFactory.Class.createBackend(options);
-  const session = new AgentSession.Class(backend);
+  const session = new AgentSession.Class(backend, AgentProviderRegistry.Class.resolve(options.provider).engine);
   return new AgentPaneContent.Class(session);
 }
 
