@@ -186,6 +186,13 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   concurrent; if a smoke fails oddly while several gates run, RE-RUN IT ISOLATED before treating it as
   real (a load flake re-runs green). Over-spawn → tell the fleet to cap. When adding a smoke, PID-
   namespace its tmux sessions from the start, or it silently re-breaks concurrent gating.
+  QUIET-MACHINE SURVIVES THE HARNESS ERA (2026-07-24, paid for twice): marker/condition waits
+  killed the flake class, but two shapes remain TIME-COUPLED and load-sensitive: (1) ABSENCE
+  assertions ("no frame/blame/repaint in this window") — proving a negative needs a clock, and
+  load stretches when frames land into the window; (2) any TIMEOUT-bounded wait — load can push a
+  legitimate completion past the bound. Therefore: NO builder launches while a gate runs and no
+  gate launches while builders churn, exactly as before the harness. "The suite is deterministic"
+  is not an exemption — determinism holds for what happens, not for when.
   DETERMINISTIC-INSTRUMENT REDS ARE DEFECTS (2026-07-24): the clearance/rerun protocol exists ONLY
   for timing-sensitive instruments (tmux smokes). A PTY-harness smoke red is never "cleared" by
   rerunning — determinism is its contract, so an in-gate red after solo greens is evidence of an
