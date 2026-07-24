@@ -99,8 +99,12 @@ async function driveKittyTier(): Promise<void> {
         && driver.outputSequenceCount('i=70') > 0,
       'kitty transmit APC and image id reached the raw PTY stream',
     );
+    const kittyProjectionSnapshot = await driver.awaitGridCondition(
+      'the kitty projection leaves its underlying emulator cells blank',
+      (candidate) => halfBlockCount(candidate) === 0,
+    );
     HarnessSmoke.Class.requireCondition(
-      halfBlockCount(driver.snapshot()) === 0,
+      halfBlockCount(kittyProjectionSnapshot) === 0,
       'kitty projection leaves the underlying cells blank',
     );
 
@@ -158,8 +162,12 @@ async function driveSixelTier(): Promise<void> {
       driver.outputSequenceCount('\x1bP0;1;0q"1;1;') > 0,
       'sixel DCS introducer and raster attributes reached the raw PTY stream',
     );
+    const sixelProjectionSnapshot = await driver.awaitGridCondition(
+      'the sixel projection leaves its underlying emulator cells blank',
+      (candidate) => halfBlockCount(candidate) === 0,
+    );
     HarnessSmoke.Class.requireCondition(
-      halfBlockCount(driver.snapshot()) === 0,
+      halfBlockCount(sixelProjectionSnapshot) === 0,
       'sixel projection leaves the underlying cells blank',
     );
     driver.sendKeys('Control+q');

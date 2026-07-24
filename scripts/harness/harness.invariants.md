@@ -218,27 +218,35 @@ gate log omitting the measurement boundary.
 ### Harness waits observe conditions not frame ordinals
 
 **Invariant:** If a harness waits for a user-visible transition, then it resolves from a named grid
-condition or synchronized-output quiescence, never from a target frame ordinal.
+condition or synchronized-output quiescence, never from a target frame ordinal. If it asserts a
+visual outcome after an action, then a named grid condition first waits for the asserted content;
+sampling after synchronized-output quiescence alone is not sufficient when the action can span
+frames.
 
 **Scope:** `PtyTestDriver`, every `scripts/harness/smoke-*-harness.ts` port, and shared harness
 helpers. Frame counts may diagnose output volume, but they never identify the state a waiter expects.
 
 **Mechanism:** `PtyTestDriver.awaitGridCondition` flushes and checks the current emulator grid first,
 then checks again after each future synchronized-frame completion event. `awaitQuiescence` waits on a
-completion event associated with pending input, without calculating a target frame number.
+completion event associated with pending input, without calculating a target frame number. Harness
+ports use `awaitGridCondition` on the visual assertion predicate before sampling the returned
+snapshot.
 
 **Generates:** already-satisfied fast paths; transition waits named for visible outcomes; timeout
 errors containing the predicate description and final relevant grid region; frame coalescing and
-zero-frame actions that cannot strand a condition already visible.
+zero-frame actions that cannot strand a condition already visible; visual assertions that cannot
+race a later paint from the action they verify.
 
 **Rejected alternatives:** Wait for frame N — repaint coalescing changes frame ordinals under load,
 and an action whose target is already rendered may emit no frame.
 
 **Evidence:** `scripts/harness/PtyTestDriver.ts`; the recorded-stream cases in
-`scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`.
+`scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
 
 **Impossible if true:** A transition timeout that names a target frame ordinal; a satisfied grid
-predicate waiting for another frame; two coalesced invalidations requiring two completed frames.
+predicate waiting for another frame; two coalesced invalidations requiring two completed frames; a
+visual assertion sampling the grid after only status publication or output quiescence.
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
 scripts/harness/SynchronizedOutputQuiescence.test.ts`

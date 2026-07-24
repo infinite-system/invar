@@ -124,14 +124,16 @@ try {
   driver.sendKeys('Enter');
   const expectedTerminalColumns = initialRightColumns - 4;
   const terminalSizePattern = new RegExp(`(?:^|\\D)\\d+ ${expectedTerminalColumns}(?:\\D|$)`);
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.textRows().some((rowText) => terminalSizePattern.test(rowText)),
+  const focusedTerminalSnapshot = await driver.awaitGridCondition(
+    'the terminal reports its split width while the blurred agent keeps its composer text',
+    (candidate) => candidate.textRows().some((rowText) => terminalSizePattern.test(rowText))
+      && candidate.findText('AGENTKEY') !== null,
   );
   HarnessSmoke.Class.pass(
     `terminal reported its padded sub-width ${expectedTerminalColumns}`,
   );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().findText('AGENTKEY') !== null,
+    focusedTerminalSnapshot.findText('AGENTKEY') !== null,
     'blurred agent kept its composer text and terminal keys did not leak',
   );
 

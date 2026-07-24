@@ -66,8 +66,12 @@ try {
     typeof clickedStatus.activeBuffer === 'string',
     `click opened the clicked row (${String(clickedStatus.activeBuffer).split('/').at(-1)})`,
   );
+  const clickedFileSnapshot = await driver.awaitGridCondition(
+    'the clicked file content is visible in the emulator grid',
+    (candidate) => candidate.findText('x') !== null,
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().findText('x') !== null,
+    clickedFileSnapshot.findText('x') !== null,
     'the clicked file content is visible in the emulator grid',
   );
 

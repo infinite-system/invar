@@ -26,7 +26,8 @@ async function submitPrompt(
     `the permission prompt for ${prompt} is visibly rendered`,
     (snapshot) => snapshot.findText('? Claude wants to run') !== null
       && snapshot.findText(`$ echo gated for: ${prompt}`) !== null
-      && snapshot.findText('[y] allow') !== null,
+      && snapshot.findText('[y] allow') !== null
+      && snapshot.findText('▸ ⚙ Bash') === null,
   );
 }
 
@@ -101,7 +102,8 @@ try {
   await answerPermission(driver, statusPath, 'n');
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('✗ denied') !== null
-      && candidate.findText('will not run that command') !== null,
+      && candidate.findText('will not run that command') !== null
+      && candidate.findText('▸ ✓ gated for: second-gated-command') === null,
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('▸ ✓ gated for: second-gated-command') === null,

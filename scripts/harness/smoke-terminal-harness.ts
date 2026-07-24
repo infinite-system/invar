@@ -14,10 +14,6 @@ function terminalSizePattern(rows: number, columns: number): RegExp {
   return new RegExp(`(?:^|\\D)${rows} ${columns}(?:\\D|$)`);
 }
 
-function snapshotContainsPattern(driver: PtyTestDriver.Model, pattern: RegExp): boolean {
-  return driver.snapshot().textRows().some((rowText) => pattern.test(rowText));
-}
-
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
 const statusPath = join(homeDirectory, 'status.json');
 
@@ -159,8 +155,14 @@ try {
   );
   HarnessSmoke.Class.pass('nested shell reflowed to the resized padded geometry');
 
+  const clockSnapshot = await driver.awaitGridCondition(
+    'the status-bar minute clock renders as HH MM',
+    (candidate) => candidate.textRows().some(
+      (rowText) => /[0-2][0-9]:[0-5][0-9]/.test(rowText),
+    ),
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().textRows().some((rowText) => /[0-2][0-9]:[0-5][0-9]/.test(rowText)),
+    clockSnapshot.textRows().some((rowText) => /[0-2][0-9]:[0-5][0-9]/.test(rowText)),
     'status-bar minute clock renders HH:MM',
   );
   await HarnessSmoke.Class.awaitFrameSilence(driver);
@@ -173,8 +175,12 @@ try {
 
   driver.sendKeys('Control+q');
   HarnessSmoke.Class.requireCondition(await driver.exitCode() === 0, 'Ctrl+Q quits from the terminal');
+  const exitedSnapshot = await driver.awaitGridCondition(
+    'the application screen is absent after quit',
+    (candidate) => !candidate.textRows().some((rowText) => /Files/.test(rowText)),
+  );
   HarnessSmoke.Class.requireCondition(
-    !snapshotContainsPattern(driver, /Files/),
+    !exitedSnapshot.textRows().some((rowText) => /Files/.test(rowText)),
     'the application screen is gone after quit',
   );
   console.log('smoke-terminal-harness: ALL-PASS');

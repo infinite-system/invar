@@ -71,11 +71,18 @@ try {
       (status) => Number(status.bufferTabCount) > previousTabCount,
     );
   }
-  let snapshot = driver.snapshot();
   const tabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
   requireCondition(tabCount >= 8, `opened ${tabCount} tabs`);
 
   console.log('== harness tabs: filenames, close marks, and breadcrumb paint without dividers ==');
+  let snapshot = await driver.awaitGridCondition(
+    'the overflowed tab strip paints filenames, close marks, and the active breadcrumb',
+    (candidate) => candidate.textRows().some(
+      (rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText),
+    )
+      && candidate.findText('›') !== null
+      && !candidate.textRows().some((rowText) => /✕ *❯/.test(rowText)),
+  );
   requireCondition(
     snapshot.textRows().some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)),
     'a buffer tab paints a filename and close mark',
@@ -101,7 +108,10 @@ try {
   pass('Ctrl+PageUp returned to the starting tab');
 
   console.log('== harness tabs: count badge opens the all-buffers dropdown ==');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the buffer count badge is visible after positional tab cycling',
+    (candidate) => badgePosition(candidate.textRows(), tabCount) !== null,
+  );
   const badge = badgePosition(snapshot.textRows(), tabCount);
   requireCondition(badge !== null, 'count badge is visible');
   requireCondition(badge.text.includes(`/${tabCount}`), `count badge shows total ${badge.text}`);
@@ -121,7 +131,10 @@ try {
     await driver.awaitQuiescence();
   }
   const activeIndexBeforeArrow = statusField<number>(statusPath, 'activeBufferIndex');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the buffer count badge remains visible beside the tab pan arrows',
+    (candidate) => badgePosition(candidate.textRows(), tabCount) !== null,
+  );
   const refreshedBadge = badgePosition(snapshot.textRows(), tabCount);
   requireCondition(refreshedBadge !== null, 'count badge remains visible beside the pan arrows');
   driver.sendMouse({

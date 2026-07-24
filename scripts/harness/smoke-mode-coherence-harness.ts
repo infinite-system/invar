@@ -117,7 +117,10 @@ try {
   await assertOnlyOverlay(driver, statusPath, 'commandPalette', 'Command Palette');
   const tabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 1;
   const badgeMarker = `/${tabCount}`;
-  const snapshot = driver.snapshot();
+  const snapshot = await driver.awaitGridCondition(
+    'the buffer-count badge is visible behind the command palette',
+    (candidate) => candidate.findText(badgeMarker) !== null,
+  );
   const badgePosition = snapshot.findText(badgeMarker);
   requireCondition(badgePosition !== null, 'buffer-count badge is visible');
   driver.sendMouse({

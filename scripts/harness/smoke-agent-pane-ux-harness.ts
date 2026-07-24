@@ -175,7 +175,9 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the waiting tool note disappears after the agent session returns to idle',
     (candidate) => candidate.findText('⧗ Bash') === null
-      && candidate.findText('$ echo') !== null,
+      && candidate.findText('$ echo') !== null
+      && candidate.findText('{"command"') === null
+      && candidate.findText('  "command"') === null,
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('⧗ Bash') === null,
@@ -213,12 +215,17 @@ try {
     row: collapsedToolPosition.row,
     button: 'left',
   });
-  snapshot = await driver.awaitSnapshot(
+  snapshot = await driver.awaitGridCondition(
+    'the expanded Bash tool row paints its pretty-printed command input',
     (candidate) => candidate.findText('  "command"') !== null,
   );
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).agentExpandedCount === 1,
+    snapshot.findText('  "command"') !== null,
     'click expands the full pretty-printed tool input',
+  );
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).agentExpandedCount === 1,
+    'expanded tool state is published',
   );
   const expandedToolPosition = snapshot.findText('▾ ⚙ Bash');
   HarnessSmoke.Class.requireCondition(expandedToolPosition !== null, 'expanded tool row paints');
@@ -240,8 +247,12 @@ try {
     statusPath,
     (status) => status.agentExpandedCount === 0,
   );
+  snapshot = await driver.awaitGridCondition(
+    'the wrapped reply row ending in phase 2 is visible after the tool collapses',
+    (candidate) => candidate.findText('phase 2).') !== null,
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().findText('phase 2).') !== null,
+    snapshot.findText('phase 2).') !== null,
     'long reply wraps onto a later visual row',
   );
 
@@ -250,8 +261,10 @@ try {
   await awaitIdle(driver, statusPath);
   await submitTurn(driver, statusPath, 'gamma-newest-prompt');
   await awaitIdle(driver, statusPath);
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('gamma-newest-prompt') !== null,
+  snapshot = await driver.awaitGridCondition(
+    'the newest prompt and transcript scrollbar are visible at the tail',
+    (candidate) => candidate.findText('gamma-newest-prompt') !== null
+      && verticalScrollBarRun(candidate) >= 2,
   );
   let status = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
@@ -289,8 +302,12 @@ try {
     driver.sendKeys('PageUp');
     await driver.awaitQuiescence();
   }
+  snapshot = await driver.awaitGridCondition(
+    'PageUp reveals the earliest transcript turn',
+    (candidate) => candidate.findText('alpha-marker') !== null,
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().findText('alpha-marker') !== null,
+    snapshot.findText('alpha-marker') !== null,
     'PageUp reveals the earliest turn',
   );
   for (let wheelEvent = 0; wheelEvent < 80; wheelEvent++) {

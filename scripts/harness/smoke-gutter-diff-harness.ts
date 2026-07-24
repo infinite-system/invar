@@ -85,9 +85,12 @@ let deleteDriver: PtyTestDriver.Model | null = null;
 try {
   console.log('== harness gutter-diff: clean, modified, and added markers ==');
   await openTrackedFile(editDriver, editStatusPath, trackedPath);
-  await editDriver.awaitQuiescence();
+  const cleanSnapshot = await editDriver.awaitGridCondition(
+    'the clean tracked file paints without a diff glyph',
+    (candidate) => candidate.findText('alpha') !== null && hasNoDiffMarker(candidate),
+  );
   HarnessSmoke.Class.requireCondition(
-    hasNoDiffMarker(editDriver.snapshot()),
+    hasNoDiffMarker(cleanSnapshot),
     'clean HEAD file has no diff glyph',
   );
 

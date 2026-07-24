@@ -111,8 +111,12 @@ try {
   });
   await driver.awaitQuiescence();
   await driver.assertNoCompleteFrameEmittedFor(200);
+  snapshot = await driver.awaitGridCondition(
+    'no hover card is visible before the dwell threshold',
+    (candidate) => hoverCardTextSpan(candidate) === null,
+  );
   HarnessSmoke.Class.requireCondition(
-    hoverCardTextSpan(driver.snapshot()) === null,
+    hoverCardTextSpan(snapshot) === null,
     'no hover card appears before the 0.5 second dwell threshold',
   );
 
@@ -145,8 +149,12 @@ try {
     statusPath,
     (status) => Number(status.lastCopyChars) > copyCountBefore,
   );
+  snapshot = await driver.awaitGridCondition(
+    'the hover card remains visible after copying its selection',
+    (candidate) => hoverCardTextSpan(candidate) !== null,
+  );
   HarnessSmoke.Class.requireCondition(
-    hoverCardTextSpan(driver.snapshot()) !== null,
+    hoverCardTextSpan(snapshot) !== null,
     'card owns copy selection and stays open through Ctrl+C',
   );
 

@@ -112,7 +112,14 @@ try {
   );
 
   console.log('== harness agent search: click the themed search icon ==');
-  let snapshot = driver.snapshot();
+  let snapshot = await driver.awaitGridCondition(
+    'the themed search icon paints in the agent engine mode line',
+    (candidate) => {
+      const candidateSearchIconPosition = candidate.findText('⌕');
+      return candidateSearchIconPosition !== null
+        && candidate.rowText(candidateSearchIconPosition.row).includes('engine:');
+    },
+  );
   const searchIconPosition = snapshot.findText('⌕');
   HarnessSmoke.Class.requireCondition(
     searchIconPosition !== null

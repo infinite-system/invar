@@ -63,9 +63,13 @@ try {
     20_000,
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  let snapshot = await driver.awaitSnapshot(
+  let snapshot = await driver.awaitGridCondition(
+    'the Claude pane title and engine-cycle affordance are visible',
     (candidate) => candidate.findText('engine: claude') !== null
-      && candidate.findText('Ask Claude anything') !== null,
+      && candidate.findText('Ask Claude anything') !== null
+      && candidate.findText('╭─Claude') !== null
+      && candidate.findText('⇄') !== null
+      && candidate.findText('ctrl+e') !== null,
   );
   let status = HarnessSmoke.Class.readStatus(firstStatusPath);
   HarnessSmoke.Class.requireCondition(
@@ -80,16 +84,22 @@ try {
   );
 
   await submitTurn(driver, 'Please remember this token for later: MAGENTA-8842.');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the pre-switch reply carries the Claude transcript label',
+    (candidate) => hasTranscriptLabel(candidate, 'Claude'),
+  );
   HarnessSmoke.Class.requireCondition(
     hasTranscriptLabel(snapshot, 'Claude'),
     'pre-switch reply is labeled Claude',
   );
   driver.sendRawInput('\x1b[27;5;101~');
-  snapshot = await driver.awaitSnapshot(
+  snapshot = await driver.awaitGridCondition(
+    'the Codex pane is visible while the Claude transcript label remains',
     (candidate) => candidate.findText('switched to codex') !== null
       && candidate.findText('context ported') !== null
-      && candidate.findText('engine: codex') !== null,
+      && candidate.findText('engine: codex') !== null
+      && candidate.findText('╭─Codex') !== null
+      && hasTranscriptLabel(candidate, 'Claude'),
   );
   status = HarnessSmoke.Class.readStatus(firstStatusPath);
   HarnessSmoke.Class.requireCondition(
@@ -102,9 +112,11 @@ try {
   );
 
   await submitTurn(driver, 'What token did I ask you to remember?');
-  snapshot = await driver.awaitSnapshot(
+  snapshot = await driver.awaitGridCondition(
+    'the ported context reply carries the Codex transcript label',
     (candidate) => candidate.findText('Context ported from the previous engine') !== null
-      && candidate.findText('MAGENTA-8842') !== null,
+      && candidate.findText('MAGENTA-8842') !== null
+      && hasTranscriptLabel(candidate, 'Codex'),
   );
   HarnessSmoke.Class.requireCondition(
     hasTranscriptLabel(snapshot, 'Codex'),
@@ -145,9 +157,11 @@ try {
     20_000,
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  snapshot = await driver.awaitSnapshot(
+  snapshot = await driver.awaitGridCondition(
+    'the fresh Codex provider paints no frozen Claude identity',
     (candidate) => candidate.findText('Ask Codex anything') !== null
-      && candidate.findText('╭─Codex') !== null,
+      && candidate.findText('╭─Codex') !== null
+      && candidate.findText('Ask Claude') === null,
   );
   status = HarnessSmoke.Class.readStatus(secondStatusPath);
   HarnessSmoke.Class.requireCondition(
@@ -157,8 +171,12 @@ try {
     'Codex-provider boot has no frozen Claude identity',
   );
   await submitTurn(driver, 'hello codex');
+  snapshot = await driver.awaitGridCondition(
+    'the first fresh-provider reply carries the Codex transcript label',
+    (candidate) => hasTranscriptLabel(candidate, 'Codex'),
+  );
   HarnessSmoke.Class.requireCondition(
-    hasTranscriptLabel(driver.snapshot(), 'Codex'),
+    hasTranscriptLabel(snapshot, 'Codex'),
     'first Codex-provider reply is labeled Codex',
   );
   driver.sendKeys('Control+q');

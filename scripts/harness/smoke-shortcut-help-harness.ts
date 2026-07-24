@@ -115,7 +115,10 @@ try {
     statusPath,
     (status) => String(status.activeBuffer).endsWith('/document.txt'),
   );
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the status bar question-mark shortcut button is visible',
+    (candidate) => candidate.rowText(candidate.rows - 1).lastIndexOf('?') >= 0,
+  );
   const statusBarRow = snapshot.rows - 1;
   const helpButtonColumn = snapshot.rowText(statusBarRow).lastIndexOf('?');
   HarnessSmoke.Class.requireCondition(helpButtonColumn >= 0, 'status-bar question-mark button is visible');

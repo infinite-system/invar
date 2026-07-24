@@ -309,8 +309,17 @@ try {
     const proof = verticalScrollBarProof(candidate);
     return proof !== null && proof.thumbStartRow === initialThumb.thumbStartRow;
   });
+  const clippedTreeSnapshot = await overflowDriver.awaitGridCondition(
+    'the tree filename tail is clipped at the leftmost horizontal offset',
+    (candidate) => {
+      const proof = verticalScrollBarProof(candidate);
+      return proof !== null
+        && proof.thumbStartRow === initialThumb.thumbStartRow
+        && candidate.findText('CHANGES-END-MARKER') === null;
+    },
+  );
   requireCondition(
-    overflowDriver.snapshot().findText('CHANGES-END-MARKER') === null,
+    clippedTreeSnapshot.findText('CHANGES-END-MARKER') === null,
     'tree filename tail starts clipped',
   );
   await sendWheelUntil(

@@ -116,8 +116,12 @@ try {
 
   console.log('== harness editor: undo to disk state clears flag and rendered dirty dot ==');
   requireEqual(statusField<boolean>(statusPath, 'dirty'), true, 'buffer is dirty after typing');
+  snapshot = await driver.awaitGridCondition(
+    'the active tab paints its dirty dot',
+    (candidate) => activeTabHasDirtyDot(candidate, activeBufferPath),
+  );
   requireCondition(
-    activeTabHasDirtyDot(driver.snapshot(), activeBufferPath),
+    activeTabHasDirtyDot(snapshot, activeBufferPath),
     'active tab paints the dirty dot',
   );
   for (let undoAttempt = 1; undoAttempt <= 5; undoAttempt++) {
@@ -126,17 +130,28 @@ try {
     await driver.awaitQuiescence();
   }
   requireEqual(statusField<boolean>(statusPath, 'dirty'), false, 'undo cleared the dirty flag');
+  snapshot = await driver.awaitGridCondition(
+    'undo clears the active tab dirty dot',
+    (candidate) => !activeTabHasDirtyDot(candidate, activeBufferPath),
+  );
   requireCondition(
-    !activeTabHasDirtyDot(driver.snapshot(), activeBufferPath),
+    !activeTabHasDirtyDot(snapshot, activeBufferPath),
     'undo cleared the rendered dirty dot',
   );
   driver.sendText('X');
-  await driver.awaitSnapshot((candidate) => candidate.findText('X') !== null);
+  snapshot = await driver.awaitGridCondition(
+    'the fixture content line is visible after restoring the edit',
+    (candidate) => candidate.findText('X') !== null
+      && candidate.findText('tiny project') !== null,
+  );
 
   console.log('== harness editor: drag selection persists and Ctrl+C copies ==');
-  snapshot = driver.snapshot();
   const selectionLine = snapshot.findText('tiny project');
   requireCondition(selectionLine !== null, 'fixture content line is visible for drag selection');
+  const unselectedBackground = snapshot.cell(
+    selectionLine.row,
+    selectionLine.column,
+  )?.background;
   await dragBetweenCells(
     driver,
     selectionLine.column,
@@ -144,8 +159,12 @@ try {
     selectionLine.column + 10,
     selectionLine.row,
   );
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'hasSelection') === true,
+  await driver.awaitGridCondition(
+    'the dragged editor selection paints before the untouched interval begins',
+    (candidate) => statusField<boolean>(statusPath, 'hasSelection') === true
+      && candidate.rowCells(selectionLine.row)
+        .slice(selectionLine.column, selectionLine.column + 11)
+        .some((cell) => cell.background !== unselectedBackground),
   );
   await driver.assertNoCompleteFrameEmittedFor(800);
   requireEqual(
@@ -169,7 +188,10 @@ try {
   );
 
   console.log('== harness editor: real SGR mouse click reaches the app ==');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the editor click target is visible after clearing the selection',
+    (candidate) => candidate.findText('tiny project') !== null,
+  );
   const clickTarget = snapshot.findText('tiny project');
   requireCondition(clickTarget !== null, 'editor click target is visible');
   clickCell(driver, clickTarget.column, clickTarget.row);
@@ -177,7 +199,10 @@ try {
   pass('mouse click is published by the real input path');
 
   console.log('== harness editor: End reveals the long line end ==');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the long fixture line is visible before moving to its end',
+    (candidate) => candidate.findText('Fixture') !== null,
+  );
   const longLineHead = snapshot.findText('Fixture');
   requireCondition(longLineHead !== null, 'long fixture line is visible');
   clickCell(driver, longLineHead.column, longLineHead.row);
@@ -273,7 +298,10 @@ try {
     statusPath,
     (status) => status.focus === 'files',
   );
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the source tree row is visible after returning focus to files',
+    (candidate) => candidate.findText('src') !== null,
+  );
   const sourceTreePosition = snapshot.findText('src');
   requireCondition(sourceTreePosition !== null, 'source tree row is visible');
   driver.sendMouseWithoutFrameExpectation({
@@ -293,7 +321,10 @@ try {
     (status) => status.focus === 'files' && status.treeSelected === 0,
   );
   pass('tree click focuses files and selects row zero');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the editor pane click target remains visible after the tree click',
+    (candidate) => candidate.findText('tiny project') !== null,
+  );
   const editorClickPosition = snapshot.findText('tiny project');
   requireCondition(editorClickPosition !== null, 'editor pane click target remains visible');
   clickCell(driver, editorClickPosition.column, editorClickPosition.row);
@@ -301,7 +332,10 @@ try {
   pass('editor click restores editor focus');
   clickCell(driver, editorClickPosition.column + 3, editorClickPosition.row);
   await driver.awaitQuiescence();
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the source tree row is available after restoring editor focus',
+    (candidate) => candidate.findText('src') !== null,
+  );
   let greeterTreePosition = snapshot.findText('greeter.ts');
   if (!greeterTreePosition || greeterTreePosition.column > 30) {
     const refreshedSourcePosition = snapshot.findText('src');
