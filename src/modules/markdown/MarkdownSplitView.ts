@@ -20,34 +20,19 @@ import { MarkdownPreview } from './MarkdownPreview';
 import type { MarkdownSource } from './MarkdownDocument';
 import { MarkdownRenderable, type MarkdownReferenceHit } from './MarkdownRenderable';
 
-export interface MarkdownSplitViewOptions {
-  source: MarkdownSource;
-  sourcePath: string;
-  sourceRenderable: BoxRenderable;
-  parentRenderable: BoxRenderable;
-  settings: Settings.Instance;
-  findBar: FindBar.Instance;
-  resolveReference(reference: string): string | null;
-  openReference(path: string): void;
-  showReferenceTooltip(path: string, screenColumn: number, screenRow: number): void;
-  clearReferenceTooltip(): void;
-}
-
-type MarkdownSplitPane = 'source' | 'preview';
-
 class $MarkdownSplitView {
   readonly rootRenderable: BoxRenderable;
   readonly preview: MarkdownPreview.Instance;
   readonly previewRenderable: MarkdownRenderable.Model;
-  private readonly previewPaneRenderable: BoxRenderable;
-  private readonly dividerRenderable: BoxRenderable;
-  private readonly paneSplitter: SplitterModel.Instance;
-  private readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
-  private readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
-  private dividerHovered = false;
-  private dividerDragActive = false;
-  private lastLaidOutWidth = -1;
-  private renderedPreviewText = '';
+  protected readonly previewPaneRenderable: BoxRenderable;
+  protected readonly dividerRenderable: BoxRenderable;
+  protected readonly paneSplitter: SplitterModel.Instance;
+  protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
+  protected readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected dividerHovered = false;
+  protected dividerDragActive = false;
+  protected lastLaidOutWidth = -1;
+  protected renderedPreviewText = '';
 
   get focusedPane() {
     return ref<MarkdownSplitPane>('source');
@@ -143,7 +128,7 @@ class $MarkdownSplitView {
     });
   }
 
-  private createSelectionDragBehavior(): SelectionDragBehavior.Model {
+  protected createSelectionDragBehavior(): SelectionDragBehavior.Model {
     // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
     return new SelectionDragBehavior.Class({
       viewportRectangle: () => ({
@@ -293,7 +278,7 @@ class $MarkdownSplitView {
     if (path) this.options.openReference(path);
   }
 
-  private revealFindMatch(match: FindInBufferMatch): void {
+  protected revealFindMatch(match: FindInBufferMatch): void {
     this.focusPreview();
     this.previewTextBuffer.cursor.set(match.line, match.endColumn);
     this.previewTextBuffer.cursor.anchor.value = {
@@ -305,7 +290,7 @@ class $MarkdownSplitView {
     this.update();
   }
 
-  private synchronizeRenderedPreviewDocument(): boolean {
+  protected synchronizeRenderedPreviewDocument(): boolean {
     const renderedText = this.preview
       .allRows(this.previewViewportWidth())
       .map((row) => this.preview.textForRow(row))
@@ -318,7 +303,7 @@ class $MarkdownSplitView {
     return true;
   }
 
-  private applyPreviewSelection(): void {
+  protected applyPreviewSelection(): void {
     const selection = this.previewTextBuffer.cursor.selectionRange();
     const firstVisibleRow = this.preview.scrollTop.value;
     const viewportHeight = this.previewViewportHeight();
@@ -347,7 +332,7 @@ class $MarkdownSplitView {
     this.previewRenderable.setSelectionRange(anchorColumn, anchorRow, focusColumn, focusRow);
   }
 
-  private bindPreviewEvents(): void {
+  protected bindPreviewEvents(): void {
     const previewBody = this.previewRenderable.bodyRenderable;
     previewBody.onMouseDown = (event) => {
       this.focusPreview();
@@ -394,7 +379,7 @@ class $MarkdownSplitView {
     };
   }
 
-  private resolvedReferenceAt(
+  protected resolvedReferenceAt(
     screenColumn: number,
     screenRow: number,
   ): { hit: MarkdownReferenceHit; path: string } | null {
@@ -404,7 +389,7 @@ class $MarkdownSplitView {
     return path ? { hit, path } : null;
   }
 
-  private bindDividerEvents(): void {
+  protected bindDividerEvents(): void {
     this.dividerRenderable.onMouseDown = (event) => {
       this.captureDragTarget(this.dividerRenderable);
       this.paneSplitter.size.value = this.options.settings.markdownSplitRatio.value;
@@ -436,16 +421,16 @@ class $MarkdownSplitView {
     };
   }
 
-  private paneExtentWidth(): number {
+  protected paneExtentWidth(): number {
     return Math.max(2, (Number(this.rootRenderable.width) || 80) - 1);
   }
 
-  private sourcePaneWidth(): number {
+  protected sourcePaneWidth(): number {
     const ratio = Math.max(0.2, Math.min(0.8, this.options.settings.markdownSplitRatio.value));
     return Math.max(1, Math.round(this.paneExtentWidth() * ratio));
   }
 
-  private synchronizePaneGeometry(): void {
+  protected synchronizePaneGeometry(): void {
     const sourcePaneWidth = this.sourcePaneWidth();
     this.options.sourceRenderable.width = sourcePaneWidth;
     this.options.sourceRenderable.height = '100%';
@@ -453,7 +438,7 @@ class $MarkdownSplitView {
     this.paneSplitter.setExtentCells(this.paneExtentWidth());
   }
 
-  private previewViewportWidth(): number {
+  protected previewViewportWidth(): number {
     return Math.max(
       1,
       Number(this.previewRenderable.bodyRenderable.width) ||
@@ -462,7 +447,7 @@ class $MarkdownSplitView {
     );
   }
 
-  private previewViewportHeight(): number {
+  protected previewViewportHeight(): number {
     return Math.max(
       1,
       Number(this.previewRenderable.bodyRenderable.height) ||
@@ -471,7 +456,7 @@ class $MarkdownSplitView {
     );
   }
 
-  private captureDragTarget(target: object): void {
+  protected captureDragTarget(target: object): void {
     const renderableWithContext = target as {
       _ctx?: { setCapturedRenderable?: (renderable: unknown) => void };
     };
@@ -499,3 +484,18 @@ export namespace MarkdownSplitView {
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
+export interface MarkdownSplitViewOptions {
+  source: MarkdownSource;
+  sourcePath: string;
+  sourceRenderable: BoxRenderable;
+  parentRenderable: BoxRenderable;
+  settings: Settings.Instance;
+  findBar: FindBar.Instance;
+  resolveReference(reference: string): string | null;
+  openReference(path: string): void;
+  showReferenceTooltip(path: string, screenColumn: number, screenRow: number): void;
+  clearReferenceTooltip(): void;
+}
+
+type MarkdownSplitPane = 'source' | 'preview';

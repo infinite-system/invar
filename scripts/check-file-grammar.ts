@@ -46,7 +46,7 @@ export interface FileGrammarInspectionOptions {
   testFileExists?: (projectRelativeFileName: string) => boolean;
 }
 
-export const CONVERTED_MODULES = new Set<string>(['syntax']);
+export const CONVERTED_MODULES = new Set<string>(['markdown', 'syntax']);
 
 const contractInterfaceFiles = new Map<string, string>([
   [
