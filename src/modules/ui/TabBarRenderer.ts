@@ -26,6 +26,10 @@ function ellipsize(text: string, width: number): string {
   return `${text.slice(0, width - 1)}…`;
 }
 
+function appendHorizontalGap(chunks: TextChunk[], color: string, gapWidth: number): void {
+  if (gapWidth > 0) chunks.push(fg(color)(' '.repeat(gapWidth)));
+}
+
 export type WorkspaceTabBarSegment = {
   kind: 'tab' | 'panBackward' | 'panForward' | 'add';
   workspaceIndex: number;
@@ -242,10 +246,9 @@ function $renderWorkspaceTabBar(context: WorkspaceTabBarRenderContext): Workspac
     });
     columnIndex += measuredWorkspaceTab.width;
   }
-  while (columnIndex < availableTabsWidth) {
-    chunks.push(fg(palette.fg)(' '));
-    columnIndex += 1;
-  }
+  const controlsGapWidth = availableTabsWidth - columnIndex;
+  appendHorizontalGap(chunks, palette.fg, controlsGapWidth);
+  columnIndex += controlsGapWidth;
   const controls: Array<{ kind: 'panBackward' | 'panForward' | 'add'; text: string }> = [
     { kind: 'panBackward', text: ' ‹ ' },
     { kind: 'panForward', text: ' › ' },
@@ -280,10 +283,9 @@ function $renderWorkspaceTabBar(context: WorkspaceTabBarRenderContext): Workspac
     chunks.push(rowBackground ? bg(rowBackground)(styledDetail) : styledDetail);
     detailColumnIndex += measuredWorkspaceTab.width;
   }
-  while (detailColumnIndex < barWidth) {
-    chunks.push(fg(palette.fg)(' '));
-    detailColumnIndex += 1;
-  }
+  const detailGapWidth = barWidth - detailColumnIndex;
+  appendHorizontalGap(chunks, palette.fg, detailGapWidth);
+  detailColumnIndex += detailGapWidth;
   return { text: new StyledText(chunks), segments, revealedIndex };
 }
 
@@ -395,10 +397,9 @@ function $renderBufferTabBar(context: BufferTabBarRenderContext): BufferTabBarRe
   }
 
   // Fill the gap between the last tab and the right controls.
-  while (column < tabsAreaWidth) {
-    chunks.push(fg(palette.fg)(' '));
-    column += 1;
-  }
+  const rightControlsGapWidth = tabsAreaWidth - column;
+  appendHorizontalGap(chunks, palette.fg, rightControlsGapWidth);
+  column += rightControlsGapWidth;
 
   let moreLeft = false;
   let moreRight = false;
