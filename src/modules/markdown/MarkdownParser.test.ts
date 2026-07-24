@@ -1,10 +1,28 @@
 import { test, expect } from 'bun:test';
-import { MarkdownParser, InlineStyle, type BlockRecord } from '../MarkdownParser';
+import { MarkdownParser, type BlockRecord } from './MarkdownParser';
 
 const parse = (source: string, revision = 0): readonly BlockRecord[] =>
   new MarkdownParser.Class().parse(source, revision).blocks;
 
 const kinds = (source: string) => parse(source).map((block) => block.kind);
+
+test('empty packed arrays remain an overridable late-bound seam', () => {
+  const replacementEmptyNumbers = Object.freeze([17]);
+  const replacementEmptyStrings = Object.freeze(['replacement']);
+  class CustomMarkdownParser extends MarkdownParser.$Class {
+    protected static override get $emptyNumbers(): readonly number[] {
+      return replacementEmptyNumbers;
+    }
+
+    protected static override get $emptyStrings(): readonly string[] {
+      return replacementEmptyStrings;
+    }
+  }
+
+  const [horizontalRule] = new CustomMarkdownParser().parse('---').blocks;
+  expect(horizontalRule!.spans).toBe(replacementEmptyNumbers);
+  expect(horizontalRule!.links).toBe(replacementEmptyStrings);
+});
 
 test('parses a heading with level', () => {
   const [atx] = parse('## Title here');
@@ -81,10 +99,10 @@ test('packs inline emphasis strong code and link into flat spans', () => {
     });
   }
   expect(runs).toEqual([
-    { text: 'bold', style: InlineStyle.Strong, link: 0 },
-    { text: 'em', style: InlineStyle.Emphasis, link: 0 },
-    { text: 'code', style: InlineStyle.Code, link: 0 },
-    { text: 'link', style: InlineStyle.Link, link: 1 },
+    { text: 'bold', style: MarkdownParser.Class.inlineStyles.strong, link: 0 },
+    { text: 'em', style: MarkdownParser.Class.inlineStyles.emphasis, link: 0 },
+    { text: 'code', style: MarkdownParser.Class.inlineStyles.code, link: 0 },
+    { text: 'link', style: MarkdownParser.Class.inlineStyles.link, link: 1 },
   ]);
   expect(paragraph!.links).toEqual(['https://x.y']);
 });

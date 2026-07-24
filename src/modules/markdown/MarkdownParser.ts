@@ -1,68 +1,41 @@
-export type BlockKind =
-  | 'heading'
-  | 'paragraph'
-  | 'list'
-  | 'listitem'
-  | 'code'
-  | 'blockquote'
-  | 'table'
-  | 'hr';
-
-export const enum InlineStyle {
-  Emphasis = 1,
-  Strong = 2,
-  Code = 3,
-  Link = 4,
-}
-
-export interface BlockRange {
-  /** Zero-based, inclusive source line. */
-  startLine: number;
-  /** Zero-based, exclusive source line. */
-  endLine: number;
-  /** Inclusive UTF-16 source offset. */
-  startOffset: number;
-  /** Exclusive UTF-16 source offset. */
-  endOffset: number;
-}
-
-/**
- * Compact block record. Inline spans are packed as repeated
- * [start, end, InlineStyle, linkIndexPlusOne] integers, never token objects.
- */
-export interface BlockRecord {
-  kind: BlockKind;
-  level?: number;
-  marker?: string;
-  language?: string;
-  text: string;
-  spans: readonly number[];
-  links: readonly string[];
-  range: BlockRange;
-}
-
-export interface MarkdownParseResult {
-  revision: number;
-  blocks: readonly BlockRecord[];
-}
-
-interface SourceLine {
-  text: string;
-  startOffset: number;
-  endOffset: number;
-}
-
-interface InlineResult {
-  text: string;
-  spans: number[];
-  links: string[];
-}
-
-const EMPTY_NUMBERS: readonly number[] = Object.freeze([]);
-const EMPTY_STRINGS: readonly string[] = Object.freeze([]);
-
 // invariant: Markdown blocks stay compact (src/modules/markdown/markdown.invariants.md)
 class $MarkdownParser {
+  protected static get $inlineStyles(): InlineStyles {
+    const inlineStyles: InlineStyles = Object.freeze({
+      emphasis: 1,
+      strong: 2,
+      code: 3,
+      link: 4,
+    });
+    Object.defineProperty(this, '$inlineStyles', {
+      configurable: true,
+      value: inlineStyles,
+    });
+    return inlineStyles;
+  }
+
+  static get inlineStyles(): InlineStyles {
+    return this.$inlineStyles;
+  }
+
+  protected static get $emptyNumbers(): readonly number[] {
+    const emptyNumbers: readonly number[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyNumbers', {
+      configurable: true,
+      value: emptyNumbers,
+    });
+    return emptyNumbers;
+  }
+
+  protected static get $emptyStrings(): readonly string[] {
+    const emptyStrings: readonly string[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyStrings', {
+      configurable: true,
+      value: emptyStrings,
+    });
+    return emptyStrings;
+  }
+
   parse(text: string, revision = 0): MarkdownParseResult {
     const lines = this.splitSourceLines(text);
     const blocks: BlockRecord[] = [];
@@ -125,7 +98,7 @@ class $MarkdownParser {
     // Plain parser currently owns no native handle. The seam remains for a future parser.
   }
 
-  private splitSourceLines(source: string): SourceLine[] {
+  protected splitSourceLines(source: string): SourceLine[] {
     const lines: SourceLine[] = [];
     const expression = /.*(?:\r\n|\n|$)/g;
     let match: RegExpExecArray | null;
@@ -145,7 +118,7 @@ class $MarkdownParser {
     return lines.length ? lines : [{ text: '', startOffset: 0, endOffset: 0 }];
   }
 
-  private readCodeBlock(
+  protected readCodeBlock(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -169,7 +142,7 @@ class $MarkdownParser {
     return endLine;
   }
 
-  private readTable(
+  protected readTable(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -197,7 +170,7 @@ class $MarkdownParser {
     return endLine;
   }
 
-  private readHeading(
+  protected readHeading(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -229,7 +202,7 @@ class $MarkdownParser {
     return startLine;
   }
 
-  private readBlockquote(
+  protected readBlockquote(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -246,7 +219,7 @@ class $MarkdownParser {
     return endLine;
   }
 
-  private readList(
+  protected readList(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -271,7 +244,7 @@ class $MarkdownParser {
     return endLine;
   }
 
-  private readParagraph(
+  protected readParagraph(
     lines: readonly SourceLine[],
     startLine: number,
     blocks: BlockRecord[],
@@ -287,7 +260,7 @@ class $MarkdownParser {
     return endLine;
   }
 
-  private startsBlock(lines: readonly SourceLine[], lineIndex: number): boolean {
+  protected startsBlock(lines: readonly SourceLine[], lineIndex: number): boolean {
     const text = lines[lineIndex]!.text;
     return (
       /^\s*(#{1,6})\s+/.test(text) ||
@@ -299,7 +272,7 @@ class $MarkdownParser {
     );
   }
 
-  private createInlineBlock(
+  protected createInlineBlock(
     kind: BlockKind,
     sourceText: string,
     startLine: number,
@@ -310,21 +283,22 @@ class $MarkdownParser {
     return this.createBlock(kind, inline.text, startLine, endLine, lines, inline.spans, inline.links);
   }
 
-  private createBlock(
+  protected createBlock(
     kind: BlockKind,
     text: string,
     startLine: number,
     endLine: number,
     lines: readonly SourceLine[],
-    spans: readonly number[] = EMPTY_NUMBERS,
-    links: readonly string[] = EMPTY_STRINGS,
+    spans?: readonly number[],
+    links?: readonly string[],
   ): BlockRecord {
     const finalLine = lines[Math.max(startLine, endLine - 1)]!;
+    const parserClass = this.constructor as typeof $MarkdownParser;
     return {
       kind,
       text,
-      spans,
-      links,
+      spans: spans ?? parserClass.$emptyNumbers,
+      links: links ?? parserClass.$emptyStrings,
       range: {
         startLine,
         endLine,
@@ -334,11 +308,13 @@ class $MarkdownParser {
     };
   }
 
-  private parseInline(source: string): InlineResult {
+  protected parseInline(source: string): InlineResult {
     let output = '';
     const spans: number[] = [];
     const links: string[] = [];
     let sourceIndex = 0;
+    const parserClass = this.constructor as typeof $MarkdownParser;
+    const inlineStyles = parserClass.inlineStyles;
 
     while (sourceIndex < source.length) {
       const linkMatch = source.slice(sourceIndex).match(/^\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/);
@@ -346,7 +322,7 @@ class $MarkdownParser {
         const start = output.length;
         output += linkMatch[1]!;
         links.push(linkMatch[2]!);
-        spans.push(start, output.length, InlineStyle.Link, links.length);
+        spans.push(start, output.length, inlineStyles.link, links.length);
         sourceIndex += linkMatch[0].length;
         continue;
       }
@@ -355,7 +331,7 @@ class $MarkdownParser {
       if (codeMatch) {
         const start = output.length;
         output += codeMatch[1]!;
-        spans.push(start, output.length, InlineStyle.Code, 0);
+        spans.push(start, output.length, inlineStyles.code, 0);
         sourceIndex += codeMatch[0].length;
         continue;
       }
@@ -364,7 +340,7 @@ class $MarkdownParser {
       if (strongMatch) {
         const start = output.length;
         output += strongMatch[2]!;
-        spans.push(start, output.length, InlineStyle.Strong, 0);
+        spans.push(start, output.length, inlineStyles.strong, 0);
         sourceIndex += strongMatch[0].length;
         continue;
       }
@@ -373,7 +349,7 @@ class $MarkdownParser {
       if (emphasisMatch) {
         const start = output.length;
         output += emphasisMatch[2]!;
-        spans.push(start, output.length, InlineStyle.Emphasis, 0);
+        spans.push(start, output.length, inlineStyles.emphasis, 0);
         sourceIndex += emphasisMatch[0].length;
         continue;
       }
@@ -391,24 +367,24 @@ class $MarkdownParser {
     return { text: output, spans, links };
   }
 
-  private matchListItem(text: string): { indent: string; marker: string; text: string } | null {
+  protected matchListItem(text: string): { indent: string; marker: string; text: string } | null {
     const match = text.match(/^(\s*)([-+*]|\d+[.)])\s+(.+)$/);
     return match ? { indent: match[1]!, marker: match[2]!, text: match[3]! } : null;
   }
 
-  private isTableSeparator(text: string): boolean {
+  protected isTableSeparator(text: string): boolean {
     return /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(text);
   }
 
-  private normalizeTableRow(text: string): string {
+  protected normalizeTableRow(text: string): string {
     return text.trim().replace(/^\||\|$/g, '').split('|').map((cell) => cell.trim()).join(' │ ');
   }
 
-  private isHorizontalRule(text: string): boolean {
+  protected isHorizontalRule(text: string): boolean {
     return /^\s{0,3}((\*\s*){3,}|(-\s*){3,}|(_\s*){3,})$/.test(text);
   }
 
-  private isBlank(text: string): boolean {
+  protected isBlank(text: string): boolean {
     return /^\s*$/.test(text);
   }
 }
@@ -417,4 +393,64 @@ export namespace MarkdownParser {
   export const $Class = $MarkdownParser;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export type BlockKind =
+  | 'heading'
+  | 'paragraph'
+  | 'list'
+  | 'listitem'
+  | 'code'
+  | 'blockquote'
+  | 'table'
+  | 'hr';
+
+export interface InlineStyles {
+  readonly emphasis: number;
+  readonly strong: number;
+  readonly code: number;
+  readonly link: number;
+}
+
+export interface BlockRange {
+  /** Zero-based, inclusive source line. */
+  startLine: number;
+  /** Zero-based, exclusive source line. */
+  endLine: number;
+  /** Inclusive UTF-16 source offset. */
+  startOffset: number;
+  /** Exclusive UTF-16 source offset. */
+  endOffset: number;
+}
+
+/**
+ * Compact block record. Inline spans are packed as repeated
+ * [start, end, inline style, linkIndexPlusOne] integers, never token objects.
+ */
+export interface BlockRecord {
+  kind: BlockKind;
+  level?: number;
+  marker?: string;
+  language?: string;
+  text: string;
+  spans: readonly number[];
+  links: readonly string[];
+  range: BlockRange;
+}
+
+export interface MarkdownParseResult {
+  revision: number;
+  blocks: readonly BlockRecord[];
+}
+
+interface SourceLine {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+interface InlineResult {
+  text: string;
+  spans: number[];
+  links: string[];
 }
