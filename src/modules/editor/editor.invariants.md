@@ -1,10 +1,10 @@
 # Editor — Invariants
 
-Load-bearing rules for `src/modules/editor/` (`Editor`, `TextDocument`, `Cursor`, `Viewport`)
-and the `storage` undo store it drives. Stands on `project.invariants.md`; references are by
-name. Several records are `provisional` because the fast-built M3 code partially violates them —
-those violations are the coordinate/selection rework backlog, and each record's Verification is
-what promotes it to `established` as the rework lands.
+Load-bearing rules for `src/modules/editor/` (`ReadOnlyTextBuffer`, `Editor`, `TextDocument`,
+`Cursor`, `Viewport`) and the `storage` undo store it drives. Stands on `project.invariants.md`;
+references are by name. Several records are `provisional` because the fast-built M3 code partially
+violates them — those violations are the coordinate/selection rework backlog, and each record's
+Verification is what promotes it to `established` as the rework lands.
 
 ## Reality-based invariants
 
@@ -113,22 +113,21 @@ edit size, not line count.
 cursor, and any insert/delete/paste replaces exactly that range and collapses the selection;
 copy/cut read exactly that range as grapheme-correct text.
 
-**Scope:** `Cursor` (anchor), `Editor` selection + edit/clipboard ops, the view's selection
-highlight.
+**Scope:** `Cursor` (anchor), `ReadOnlyTextBuffer` selection/copy, `Editor` replacement edits, and
+each view's selection highlight.
 
-**Mechanism:** Cursor gains an optional anchor; shift+movement and mouse-drag set/extend it;
-edits with an active selection delete the range first; copy/cut/paste go through the `Clipboard`
-system capability. Spans use the grapheme coordinate model (first reality invariant above).
+**Mechanism:** `ReadOnlyTextBuffer` composes `TextDocument` and `Cursor`, reads the normalized
+anchor-to-cursor range, and copies it through `Clipboard`. `Editor` extends that raw class and
+deletes the same range before mutation. Spans use the grapheme coordinate model (first reality
+invariant above).
 
 **Generates:** shift+arrow / mouse-drag selection; selection-aware editing; copy/cut/paste; the
 selection highlight in `RootView`.
 
-**Evidence:** IMPLEMENTED — `Cursor.ts` `anchor` + `selectionRange()` (normalized); `Editor`
-selection-aware `insertText`/`insertNewline`/`backspace`/`deleteChar` (replace-selection),
-`copySelection`/`cutSelection`/`pasteClipboard` via `system/Clipboard.ts` (Static, OS tools + OSC 52),
-`selectAll`, extend-on-shift movement; `Bootstrap` wires shift+arrow extend + Ctrl+C/X/V/A. Tested:
-`editor/__tests__/selection.test.ts` (7 tests, grapheme-correct multi-line ranges). The visual
-selection HIGHLIGHT in RootView is pending the tmux visual pass.
+**Evidence:** `Cursor.ts` `anchor` + `selectionRange()`; `ReadOnlyTextBuffer.ts`
+`selectionText`/`copySelection`/`selectAll`; `Editor.ts` selection-aware
+`insertText`/`insertNewline`/`backspace`/`deleteChar` and `cutSelection`/`pasteClipboard`;
+`ReadOnlyTextBuffer.test.ts`; `editor/__tests__/selection.test.ts`; `scripts/smoke-editor.sh`.
 
 **Impossible if true:** typing over a selection that leaves the selected text in place; a copy
 that returns text split mid-grapheme; a paste that inserts without removing the selection.
@@ -136,9 +135,40 @@ that returns text split mid-grapheme; a paste that inserts without removing the 
 **Verification:** tests for shift-extend, replace-on-insert, and copy/cut/paste round-trip
 (including a multi-line and an astral-char selection).
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
+
+### Read-only text behavior excludes editing
+
+**Invariant:** If a surface needs document text, cursor selection, clipboard copy, and find
+targeting without mutation, then it consumes `ReadOnlyTextBuffer`, while `Editor` alone adds
+editing, undo, persistence, and viewport behavior.
+
+**Scope:** `ReadOnlyTextBuffer`, `Editor`, `DiffView`, and `MarkdownSplitView`.
+
+**Mechanism:** The raw stateful `ReadOnlyTextBuffer` composes `TextDocument` and `Cursor` and
+publishes only selection, copy, and read-only `FindBarTarget` behavior. `Editor` extends its
+`$Class`; Diff and Markdown construct the raw class directly.
+
+**Generates:** One selectable and searchable read-only text model; an editable `Editor` layer
+without dead mutation paths in Diff or Markdown.
+
+**Rejected alternatives:** Construct `Editor` and set `readOnly` — every read-only consumer
+inherits mutation, undo, persistence, and viewport behavior it must suppress.
+
+**Evidence:** `src/modules/editor/ReadOnlyTextBuffer.ts`;
+`src/modules/editor/ReadOnlyTextBuffer.test.ts`; `src/modules/editor/Editor.ts`;
+`src/modules/diff/DiffView.ts`; `src/modules/markdown/MarkdownSplitView.ts`.
+
+**Impossible if true:** `DiffView` or `MarkdownSplitView` importing or constructing `Editor`; a
+`ReadOnlyTextBuffer` exposing insert, delete, undo, redo, save, or viewport state.
+
+**Verification:** `bun test src/modules/editor/ReadOnlyTextBuffer.test.ts && ! rg "new Editor\\.Class|from '../editor/Editor'" src/modules/diff src/modules/markdown`
+
+**Status:** established
+
+**Last refined:** 2026-07-24
 
 ### Word deletion uses the navigation boundary
 

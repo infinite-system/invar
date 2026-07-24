@@ -443,8 +443,9 @@ thing was mis-identified — the true shared behavior is a sub-part.
 
 **Generates:** One `TextEditing.deletePreviousWord` across editor / find / quick-open / palette /
 composer; one `ScrollableTextViewport` for virtualized momentum scroll; the transcript/composer split
-(shared wrap + selection + per-row highlight, *separate* scroll); uniformity-by-reuse — a new consumer
-is one wire-up, not a reimplementation.
+(shared wrap + selection + per-row highlight, *separate* scroll); one `ReadOnlyTextBuffer` below
+editable `Editor` behavior; uniformity-by-reuse — a new consumer is one wire-up, not a
+reimplementation.
 
 **Rejected alternatives:** Unify by surface similarity (force the composer through the scroll engine) —
 bolts on momentum + a scrollbar it must then suppress. Duplicate per consumer (a word-delete in each
@@ -453,7 +454,8 @@ input) — drifts.
 **Evidence:** `TextEditing.deletePreviousWord` shared by editor, find bar, quick-open, and the command
 palette (one generator, four consumers); the composer refused `ScrollableTextViewport` because it would
 suppress momentum + the scrollbar, and split to a shared wrap + selection seam instead
-(agent-pane-scroll build, 2026-07-23).
+(agent-pane-scroll build, 2026-07-23); `src/modules/editor/ReadOnlyTextBuffer.ts` is consumed by
+`Editor`, `DiffView`, and `MarkdownSplitView` without exposing editing or undo.
 
 **Impossible if true:** A behavior implemented more than once across consumers that share its generator;
 a consumer of a shared seam that must disable that seam's core/generative behavior (peripheral config
@@ -464,7 +466,7 @@ consumers all exercise its core, differing only in peripheral flags.
 
 **Status:** established
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-24
 
 ### The app is built only after the kernel is sealed
 

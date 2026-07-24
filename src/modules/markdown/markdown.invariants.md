@@ -277,22 +277,23 @@ reference text and its clickable cells disagreeing.
 
 **Last refined:** 2026-07-22
 
-### Markdown preview selection reuses editor drag behavior
+### Markdown preview selection reuses shared drag behavior
 
-**Invariant:** If a user drags a selection in the rendered preview, then the shared editor drag-edge
+**Invariant:** If a user drags a selection in the rendered preview, then the shared drag-edge
 behavior extends one preview text range, autoscrolls that pane, and Ctrl C copies exactly that range.
 
-**Scope:** `MarkdownSplitView.createSelectionDragBehavior`, its read-only preview `Editor`,
+**Scope:** `MarkdownSplitView.createSelectionDragBehavior`, its preview `ReadOnlyTextBuffer`,
 `MarkdownRenderable` cell mapping, and Bootstrap copy routing.
 
 **Mechanism:** `SelectionDragBehavior` receives preview-specific cell mapping and scroll callbacks,
-while the range itself lives in the existing `Editor.cursor` model and paints through
-`SelectableText`. The source editor keeps its own selection and remains the only paste target.
+while the range lives in `ReadOnlyTextBuffer.cursor` and paints through `SelectableText`. The source
+editor keeps its own selection and remains the only paste target.
 
 **Generates:** preview drag selection; edge autoscroll; exact rendered-text copy; editable-source
 paste without a third selection model.
 
-**Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; shared behavior tests in
+**Evidence:** `src/modules/markdown/MarkdownSplitView.ts` (`previewTextBuffer`);
+`src/modules/editor/ReadOnlyTextBuffer.ts`; shared behavior tests in
 `src/modules/ui/SelectionDragBehavior.test.ts`; `scripts/smoke-markdown.sh`.
 
 **Impossible if true:** a preview drag highlight disappearing on repaint; a held edge drag leaving
@@ -303,7 +304,7 @@ rendered selection; Ctrl V mutating the read-only preview.
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-24
 
 ### Markdown panes keep independent find state
 
@@ -313,13 +314,15 @@ match list, current match, and visible highlights when focus moves to the other 
 **Scope:** `FindBar.openForTarget`, source and preview target identifiers, RootView source
 highlighting, and `MarkdownRenderable` preview highlighting.
 
-**Mechanism:** `FindBar` stores one `FindInBuffer` engine per stable pane identifier instead of one
-global engine. Each renderer reads only its own retained engine, and each target owns match reveal.
+**Mechanism:** The preview's `ReadOnlyTextBuffer` exposes a stable read-only target, and `FindBar`
+stores one `FindInBuffer` engine per stable pane identifier instead of one global engine. Each
+renderer reads only its own retained engine, and each target owns match reveal.
 
 **Generates:** Ctrl F bound to the focused pane; simultaneous source and preview highlights; separate
 queries and match counters; find-only behavior in the read-only preview.
 
 **Evidence:** `src/modules/search/FindBar.ts`; `src/modules/ui/RootView.ts` (`findTarget`);
+`src/modules/editor/ReadOnlyTextBuffer.ts` (`findTarget`);
 `src/modules/markdown/MarkdownSplitView.ts` (`findTarget`); `scripts/smoke-markdown.sh`.
 
 **Impossible if true:** searching the preview replacing the source query or match list; a preview
@@ -329,4 +332,4 @@ match moving the source cursor; a source match being painted in the preview pane
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-24

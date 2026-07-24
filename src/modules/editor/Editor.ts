@@ -5,27 +5,22 @@
 // invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, type Ref } from 'vue';
-import { TextDocument } from './TextDocument';
 import { Viewport } from './Viewport';
-import { Cursor } from './Cursor';
 import { EditorCoordinates } from './EditorCoordinates';
 import { TextEditing } from './TextEditing';
 import { EditorWrap } from './EditorWrap';
+import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
 import { UndoStore, type EditKind } from '../storage/UndoStore';
 import { Files } from '../system/Files';
 import { Clock } from '../system/Clock';
 import { Clipboard } from '../system/Clipboard';
 
-class $Editor {
+class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
-  document = this.createDocument();
   viewport = this.createViewport();
-  cursor = this.createCursor();
   private undo = this.createUndo();
 
-  protected createDocument() { return new TextDocument.Class(); }
   protected createViewport() { return new Viewport.Class(); }
-  protected createCursor() { return new Cursor.Class(); }
   protected createUndo() { return new UndoStore.Class(); }
 
   get hasDocument() {
@@ -33,6 +28,9 @@ class $Editor {
   }
   get readOnly() {
     return ref(false);
+  }
+  protected override get selectionAvailable(): boolean {
+    return this.hasDocument.value;
   }
   // Word wrap is a VIEW MODE: when on, rendering/caret/selection route through the pure
   // logical↔visual mapping in editor.wrap.ts and horizontal scroll is inert. The document model
@@ -145,17 +143,15 @@ class $Editor {
 
   /** Release the owned document text + undo history so a closed/dehydrated tab frees memory promptly
    *  (the Editor holds no external listeners/timers, so dropping these + the reference is complete). */
-  dispose(): void {
+  override dispose(): void {
     this.undo.clear();
-    this.document.loadFromText('', '');
+    super.dispose();
     this.hasDocument.value = false;
   }
 
   /** Open a VIRTUAL read-only diff document (git panel drill-in). */
   openDiff(displayPath: string, diffText: string): void {
-    this.document.loadFromText(diffText, `${displayPath}.diff`);
-    this.placeCursor(0, 0);
-    this.cursor.clearSelection();
+    this.openText(`${displayPath}.diff`, diffText);
     this.viewport.scrollTop.value = 0;
     this.viewport.scrollLeft.value = 0;
     this.hasDocument.value = true;
@@ -164,40 +160,6 @@ class $Editor {
   }
 
   // --- selection ------------------------------------------------------------
-
-  get hasSelection(): boolean {
-    return this.cursor.hasSelection;
-  }
-
-  selectionText(): string {
-    const range = this.cursor.selectionRange();
-    return range ? this.document.sliceRange(range.start, range.end) : '';
-  }
-
-  selectAll(): void {
-    if (!this.hasDocument.value) return;
-    const last = this.document.lineCount - 1;
-    this.placeCursor(0, 0);
-    this.cursor.setAnchorHere();
-    this.placeCursor(last, EditorCoordinates.Class.graphemeCount(this.document.line(last)));
-  }
-
-  /** Select the word (run of word characters) at a document position — the double-click gesture. */
-  selectWord(line: number, column: number): void {
-    if (!this.hasDocument.value) return;
-    const bounds = EditorCoordinates.Class.wordBounds(this.document.line(line), column);
-    this.placeCursor(line, bounds.start);
-    this.cursor.setAnchorHere();
-    this.placeCursor(line, bounds.end);
-  }
-
-  /** Select the entire line (start → end) — the triple-click / click-again-on-selected-word gesture. */
-  selectLine(line: number): void {
-    if (!this.hasDocument.value) return;
-    this.placeCursor(line, 0);
-    this.cursor.setAnchorHere();
-    this.placeCursor(line, EditorCoordinates.Class.graphemeCount(this.document.line(line)));
-  }
 
   /** Delete from the cursor to the LINE START (text to the right of the cursor stays). With an active
    *  selection, delete the selection instead. Cmd/Ctrl+Backspace. */
@@ -233,7 +195,7 @@ class $Editor {
    * Wrap mode: the goal is the visual column WITHIN the cursor's wrapped row, horizontal scroll
    * stays inert, and the reveal moves by visual rows.
    */
-  placeCursor(line: number, column: number): void {
+  override placeCursor(line: number, column: number): void {
     this.viewport.haltScrollMomentum(); // precise cursor move adopts authority, stops wheel glide
     const lineText = this.document.line(line);
     const absoluteDisplayColumn = EditorCoordinates.Class.displayColumn(lineText, column);
@@ -394,13 +356,6 @@ class $Editor {
   }
 
   // --- clipboard ------------------------------------------------------------
-
-  /** Copy the selection to the clipboard; returns the number of characters copied (0 = nothing). */
-  async copySelection(): Promise<number> {
-    const text = this.selectionText();
-    if (text) await Clipboard.Class.copy(text);
-    return text.length;
-  }
 
   async cutSelection(): Promise<void> {
     if (this.readOnly.value || !this.hasDocument.value) return;

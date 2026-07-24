@@ -7,8 +7,8 @@
 import { BoxRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { Editor } from '../editor/Editor';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
@@ -42,7 +42,7 @@ class $MarkdownSplitView {
   private readonly previewPaneRenderable: BoxRenderable;
   private readonly dividerRenderable: BoxRenderable;
   private readonly paneSplitter: SplitterModel.Instance;
-  private readonly previewSelectionEditor: Editor.Instance;
+  private readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
   private readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
   private dividerHovered = false;
   private dividerDragActive = false;
@@ -96,7 +96,7 @@ class $MarkdownSplitView {
     this.preview = this.createPreview();
     this.previewRenderable = this.createPreviewRenderable();
     this.previewPaneRenderable.add(this.previewRenderable);
-    this.previewSelectionEditor = this.createPreviewSelectionEditor();
+    this.previewTextBuffer = this.createPreviewTextBuffer();
     this.paneSplitter = this.createPaneSplitter();
     this.previewSelectionDragBehavior = this.createSelectionDragBehavior();
 
@@ -123,10 +123,10 @@ class $MarkdownSplitView {
     return new MarkdownRenderable.Class(this.renderer, this.preview, this.theme);
   }
 
-  protected createPreviewSelectionEditor(): Editor.Instance {
-    const editor = new Editor.Class();
-    editor.openDiff(`${this.options.sourcePath} (rendered preview)`, '');
-    return editor;
+  protected createPreviewTextBuffer(): ReadOnlyTextBuffer.Model {
+    const textBuffer = new ReadOnlyTextBuffer.Class();
+    textBuffer.openText(`${this.options.sourcePath} (rendered preview)`, '');
+    return textBuffer;
   }
 
   protected createPaneSplitter(): SplitterModel.Instance {
@@ -144,7 +144,7 @@ class $MarkdownSplitView {
   }
 
   private createSelectionDragBehavior(): SelectionDragBehavior.Model {
-    // invariant: Markdown preview selection reuses editor drag behavior (src/modules/markdown/markdown.invariants.md)
+    // invariant: Markdown preview selection reuses shared drag behavior (src/modules/markdown/markdown.invariants.md)
     return new SelectionDragBehavior.Class({
       viewportRectangle: () => ({
         leftColumn: this.previewRenderable.bodyRenderable.x,
@@ -159,21 +159,29 @@ class $MarkdownSplitView {
       horizontalScrollPosition: () => 0,
       horizontalScrollingEnabled: () => false,
       lineGraphemeCount: (lineIndex) =>
-        EditorCoordinates.Class.graphemeCount(this.previewSelectionEditor.document.line(lineIndex)),
+        EditorCoordinates.Class.graphemeCount(this.previewTextBuffer.document.line(lineIndex)),
       beginSelection: (position, pointerDisplayColumn) => {
         this.focusPreview();
-        this.previewSelectionEditor.cursor.set(position.line, position.column, pointerDisplayColumn);
-        this.previewSelectionEditor.cursor.setAnchorHere();
+        this.previewTextBuffer.cursor.set(
+          position.line,
+          position.column,
+          pointerDisplayColumn,
+        );
+        this.previewTextBuffer.cursor.setAnchorHere();
         this.selectionRevision.value += 1;
       },
       extendSelection: (position, pointerDisplayColumn) => {
-        this.previewSelectionEditor.cursor.set(position.line, position.column, pointerDisplayColumn);
+        this.previewTextBuffer.cursor.set(
+          position.line,
+          position.column,
+          pointerDisplayColumn,
+        );
         this.selectionRevision.value += 1;
         this.applyPreviewSelection();
       },
       finishSelection: () => {
-        if (!this.previewSelectionEditor.cursor.hasSelection) {
-          this.previewSelectionEditor.cursor.clearSelection();
+        if (!this.previewTextBuffer.cursor.hasSelection) {
+          this.previewTextBuffer.cursor.clearSelection();
         }
         this.selectionRevision.value += 1;
         this.applyPreviewSelection();
@@ -206,12 +214,10 @@ class $MarkdownSplitView {
 
   findTarget(): FindBarTarget {
     this.synchronizeRenderedPreviewDocument();
-    return {
-      identifier: this.previewFindTargetIdentifier(),
-      document: this.previewSelectionEditor.document,
-      replaceAllowed: false,
-      revealMatch: (match) => this.revealFindMatch(match),
-    };
+    return this.previewTextBuffer.findTarget(
+      this.previewFindTargetIdentifier(),
+      (match) => this.revealFindMatch(match),
+    );
   }
 
   update(): void {
@@ -268,18 +274,18 @@ class $MarkdownSplitView {
   }
 
   async copySelection(): Promise<number> {
-    return this.previewSelectionEditor.copySelection();
+    return this.previewTextBuffer.copySelection();
   }
 
   selectAll(): void {
-    this.previewSelectionEditor.selectAll();
+    this.previewTextBuffer.selectAll();
     this.selectionRevision.value += 1;
     this.applyPreviewSelection();
   }
 
   selectionCharacterCount(): number {
     void this.selectionRevision.value;
-    return this.previewSelectionEditor.selectionText().length;
+    return this.previewTextBuffer.selectionText().length;
   }
 
   openHoveredReference(): void {
@@ -289,8 +295,8 @@ class $MarkdownSplitView {
 
   private revealFindMatch(match: FindInBufferMatch): void {
     this.focusPreview();
-    this.previewSelectionEditor.cursor.set(match.line, match.endColumn);
-    this.previewSelectionEditor.cursor.anchor.value = {
+    this.previewTextBuffer.cursor.set(match.line, match.endColumn);
+    this.previewTextBuffer.cursor.anchor.value = {
       line: match.line,
       col: match.startColumn,
     };
@@ -306,15 +312,14 @@ class $MarkdownSplitView {
       .join('\n');
     if (renderedText === this.renderedPreviewText) return false;
     this.renderedPreviewText = renderedText;
-    this.previewSelectionEditor.document.replaceAll(renderedText.split('\n'));
-    this.previewSelectionEditor.cursor.clearSelection();
+    this.previewTextBuffer.replaceText(renderedText);
     this.options.findBar.engineFor(this.previewFindTargetIdentifier())?.findAll();
     this.selectionRevision.value += 1;
     return true;
   }
 
   private applyPreviewSelection(): void {
-    const selection = this.previewSelectionEditor.cursor.selectionRange();
+    const selection = this.previewTextBuffer.cursor.selectionRange();
     const firstVisibleRow = this.preview.scrollTop.value;
     const viewportHeight = this.previewViewportHeight();
     if (
@@ -329,13 +334,13 @@ class $MarkdownSplitView {
     const focusRow = Math.min(viewportHeight - 1, selection.end.line - firstVisibleRow);
     const anchorColumn = selection.start.line >= firstVisibleRow
       ? EditorCoordinates.Class.displayColumn(
-          this.previewSelectionEditor.document.line(selection.start.line),
+          this.previewTextBuffer.document.line(selection.start.line),
           selection.start.col,
         )
       : 0;
     const focusColumn = selection.end.line < firstVisibleRow + viewportHeight
       ? EditorCoordinates.Class.displayColumn(
-          this.previewSelectionEditor.document.line(selection.end.line),
+          this.previewTextBuffer.document.line(selection.end.line),
           selection.end.col,
         )
       : this.previewViewportWidth();
@@ -476,7 +481,7 @@ class $MarkdownSplitView {
   dispose(): void {
     try {
       this.preview.dispose();
-      this.previewSelectionEditor.dispose();
+      this.previewTextBuffer.dispose();
       this.rootRenderable.remove(this.options.sourceRenderable);
       this.options.sourceRenderable.flexGrow = 1;
       this.options.sourceRenderable.flexShrink = 1;

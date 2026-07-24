@@ -46,14 +46,15 @@ own query, matches, current match, and highlights without changing the other pan
 **Scope:** `DiffView.findTarget`, `FindBar.openForTarget`, and per-side highlighting in
 `DiffView.renderPane`.
 
-**Mechanism:** Each side exposes a stable target identifier and its own read-only text document.
+**Mechanism:** Each side owns one `ReadOnlyTextBuffer` and exposes its stable read-only find target.
 `FindBar` retains one engine per identifier, while `DiffView` reveals and paints through the side
 that supplied the engine.
 
 **Generates:** focused-side Ctrl F; independent base/current searches; simultaneous retained match
 highlights; no replace operation against either read-only side.
 
-**Evidence:** `src/modules/diff/DiffView.ts` (`attachFindBar`, `findTarget`, `highlightLine`);
+**Evidence:** `src/modules/diff/DiffView.ts` (`previousTextBuffer`, `currentTextBuffer`,
+`findTarget`, `highlightLine`); `src/modules/editor/ReadOnlyTextBuffer.ts` (`findTarget`);
 `src/modules/search/FindBar.ts` (`enginesByTargetIdentifier`).
 
 **Impossible if true:** searching current erasing the base query; a base match highlighting current
@@ -63,7 +64,7 @@ text; replace mode mutating either diff side.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-24
 
 ### Replace hunks pair before adding fillers
 
@@ -207,24 +208,26 @@ the same session resets a completed split drag to one half; both pane widths gro
 
 **Last refined:** 2026-07-21
 
-### Diff selection reuses editor drag behavior
+### Diff selection reuses shared drag behavior
 
-**Invariant:** If text is selected in either read-only diff pane, then the editor's cursor selection
-model and shared drag-edge behavior extend the underlying pane text while the aligned diff scrolls.
+**Invariant:** If text is selected in either read-only diff pane, then its `ReadOnlyTextBuffer`
+cursor selection and shared drag-edge behavior extend the underlying pane text while the aligned
+diff scrolls.
 
 **Scope:** `SelectionDragBehavior`, `DiffView.createSelectionDragBehavior`, the active read-only
-`Editor` selection model, and Ctrl+C routing in `Bootstrap` while `Workspace.showingDiff` is true.
+`ReadOnlyTextBuffer`, and Ctrl+C routing in `Bootstrap` while `Workspace.showingDiff` is true.
 
 **Mechanism:** Both `RootView`'s normal editor and `DiffView` construct `SelectionDragBehavior` with
 their own coordinate/scroll callbacks. Diff hit-testing maps an aligned row to its real side line,
-stores the range in an `Editor.cursor`, paints it through `SelectableText`, and copies through
-`Editor.copySelection`; filler rows never enter the copied document range.
+stores the range in that side's `ReadOnlyTextBuffer.cursor`, paints it through `SelectableText`,
+and copies through `ReadOnlyTextBuffer.copySelection`; filler rows never enter the copied document
+range.
 
 **Generates:** per-pane click-drag selection; vertical and horizontal drag-edge autoscroll; exact
 underlying-text copy; one pointer-rate and lifecycle rule shared with the editor.
 
-**Rejected alternatives:** A native-only diff selection or a second diff-specific selection model —
-either can disagree with the cursor range that Ctrl+C copies after repaint or scrolling.
+**Rejected alternatives:** A native-only diff selection or a diff-specific selection model —
+either can disagree with the shared cursor range that Ctrl+C copies after repaint or scrolling.
 
 **Evidence:** `src/modules/ui/SelectionDragBehavior.test.ts`; `scripts/smoke-diff-overview.sh`; live
 callers `RootView` and `DiffView` both construct `SelectionDragBehavior`.
@@ -236,7 +239,7 @@ the aligned scroll offset unchanged; Ctrl+C copying alignment filler or text out
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### Base and current stay unambiguous
 

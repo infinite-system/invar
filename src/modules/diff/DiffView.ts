@@ -28,7 +28,7 @@ import {
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { Editor } from '../editor/Editor';
+import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import { Highlighter, type LangId, type Role } from '../syntax/Highlighter';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
@@ -174,9 +174,9 @@ class $DiffView {
   private paneDividerHovered = false;
   private paneDividerDragActive = false;
   private activeSelectionSide: 'previous' | 'current' | null = null;
-  private selectionEditor: Editor.Instance | null = null;
-  private readonly previousFindEditor: Editor.Instance;
-  private readonly currentFindEditor: Editor.Instance;
+  private activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
+  private readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
+  private readonly currentTextBuffer: ReadOnlyTextBuffer.Model;
   private focusedFindSide: 'previous' | 'current' = 'current';
   private findBarSource: FindBar.Instance | null = null;
   private findIdentifier = 'diff';
@@ -228,11 +228,11 @@ class $DiffView {
     this.alignment = DiffAlignment.Class.align(options.previousVersionText, options.currentVersionText);
     this.previousVersionLines = DiffAlignment.Class.splitLines(options.previousVersionText);
     this.currentVersionLines = DiffAlignment.Class.splitLines(options.currentVersionText);
-    this.previousFindEditor = this.createFindEditor(
+    this.previousTextBuffer = this.createReadOnlyTextBuffer(
       options.previousVersionPath ?? 'previous version',
       options.previousVersionText,
     );
-    this.currentFindEditor = this.createFindEditor(
+    this.currentTextBuffer = this.createReadOnlyTextBuffer(
       options.currentVersionPath ?? 'current version',
       options.currentVersionText,
     );
@@ -341,10 +341,10 @@ class $DiffView {
     return new SolidThumbScrollBar.Class(this.renderer, options);
   }
 
-  createFindEditor(path: string, text: string): Editor.Instance {
-    const editor = new Editor.Class();
-    editor.openDiff(path, text);
-    return editor;
+  createReadOnlyTextBuffer(path: string, text: string): ReadOnlyTextBuffer.Model {
+    const textBuffer = new ReadOnlyTextBuffer.Class();
+    textBuffer.openText(path, text);
+    return textBuffer;
   }
 
   attachFindBar(findBar: FindBar.Instance, identifier: string): void {
@@ -356,13 +356,11 @@ class $DiffView {
   findTarget(): FindBarTarget {
     // invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md)
     const side = this.focusedFindSide;
-    const editor = side === 'previous' ? this.previousFindEditor : this.currentFindEditor;
-    return {
-      identifier: this.findTargetIdentifier(side),
-      document: editor.document,
-      replaceAllowed: false,
-      revealMatch: (match) => this.revealFindMatch(side, match),
-    };
+    const textBuffer = side === 'previous' ? this.previousTextBuffer : this.currentTextBuffer;
+    return textBuffer.findTarget(
+      this.findTargetIdentifier(side),
+      (match) => this.revealFindMatch(side, match),
+    );
   }
 
   createPaneRenderables(side: 'previous' | 'current'): DiffPaneRenderables {
@@ -894,7 +892,7 @@ class $DiffView {
   }
 
   private createSelectionDragBehavior(side: 'previous' | 'current'): SelectionDragBehavior.Model {
-    // invariant: Diff selection reuses editor drag behavior (src/modules/diff/diff.invariants.md)
+    // invariant: Diff selection reuses shared drag behavior (src/modules/diff/diff.invariants.md)
     return new SelectionDragBehavior.Class({
       viewportRectangle: () => {
         const codeRenderable = this.paneRenderables(side).code;
@@ -909,19 +907,29 @@ class $DiffView {
       horizontalScrollPosition: () => this.horizontalScrollOffset.value,
       horizontalScrollingEnabled: () => true,
       lineGraphemeCount: (lineIndex) =>
-        this.selectionEditor ? EditorCoordinates.Class.graphemeCount(this.selectionEditor.document.line(lineIndex)) : 0,
+        this.activeSelectionBuffer
+          ? EditorCoordinates.Class.graphemeCount(
+              this.activeSelectionBuffer.document.line(lineIndex),
+            )
+          : 0,
       beginSelection: (position, pointerDisplayColumn) => {
         this.activateSelection(side, position, pointerDisplayColumn);
       },
       extendSelection: (position, pointerDisplayColumn) => {
-        if (this.activeSelectionSide !== side || !this.selectionEditor) return;
-        this.selectionEditor.cursor.set(position.line, position.column, pointerDisplayColumn);
+        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer) return;
+        this.activeSelectionBuffer.cursor.set(
+          position.line,
+          position.column,
+          pointerDisplayColumn,
+        );
         this.selectionRevision.value += 1;
         this.update();
       },
       finishSelection: () => {
-        if (this.activeSelectionSide !== side || !this.selectionEditor) return;
-        if (!this.selectionEditor.cursor.hasSelection) this.selectionEditor.cursor.clearSelection();
+        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer) return;
+        if (!this.activeSelectionBuffer.cursor.hasSelection) {
+          this.activeSelectionBuffer.cursor.clearSelection();
+        }
         this.selectionRevision.value += 1;
         this.update();
       },
@@ -1006,14 +1014,17 @@ class $DiffView {
     this.focusedFindSide = side;
     if (side === 'previous') this.currentSelectionDragBehavior.end();
     else this.previousSelectionDragBehavior.end();
-    this.selectionEditor?.dispose();
-    this.selectionEditor = new Editor.Class();
-    const versionText = side === 'previous' ? this.options.previousVersionText : this.options.currentVersionText;
-    const versionPath = side === 'previous' ? this.options.previousVersionPath : this.options.currentVersionPath;
-    this.selectionEditor.openDiff(versionPath ?? `${side} version`, versionText);
+    this.previousTextBuffer.cursor.clearSelection();
+    this.currentTextBuffer.cursor.clearSelection();
+    this.activeSelectionBuffer =
+      side === 'previous' ? this.previousTextBuffer : this.currentTextBuffer;
     this.activeSelectionSide = side;
-    this.selectionEditor.cursor.set(position.line, position.column, pointerDisplayColumn);
-    this.selectionEditor.cursor.setAnchorHere();
+    this.activeSelectionBuffer.cursor.set(
+      position.line,
+      position.column,
+      pointerDisplayColumn,
+    );
+    this.activeSelectionBuffer.cursor.setAnchorHere();
     this.selectionRevision.value += 1;
     this.update();
   }
@@ -1032,8 +1043,11 @@ class $DiffView {
       this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(matchingAlignedRowIndex);
     }
     this.activateSelection(side, { line: match.line, column: match.endColumn }, match.endColumn);
-    if (this.selectionEditor) {
-      this.selectionEditor.cursor.anchor.value = { line: match.line, col: match.startColumn };
+    if (this.activeSelectionBuffer) {
+      this.activeSelectionBuffer.cursor.anchor.value = {
+        line: match.line,
+        col: match.startColumn,
+      };
     }
     this.selectionRevision.value += 1;
     this.update();
@@ -1041,7 +1055,7 @@ class $DiffView {
 
   selectionCharacterCount(): number {
     void this.selectionRevision.value;
-    return this.selectionEditor?.selectionText().length ?? 0;
+    return this.activeSelectionBuffer?.selectionText().length ?? 0;
   }
 
   selectionRange(): {
@@ -1050,18 +1064,18 @@ class $DiffView {
     end: { line: number; col: number };
   } | null {
     void this.selectionRevision.value;
-    const range = this.selectionEditor?.cursor.selectionRange();
+    const range = this.activeSelectionBuffer?.cursor.selectionRange();
     if (!range || !this.activeSelectionSide) return null;
     return { side: this.activeSelectionSide, start: range.start, end: range.end };
   }
 
   async copySelection(): Promise<number> {
-    return this.selectionEditor?.copySelection() ?? 0;
+    return this.activeSelectionBuffer?.copySelection() ?? 0;
   }
 
   private applyPaneSelection(side: 'previous' | 'current'): void {
     const codeRenderable = this.paneRenderables(side).code;
-    const selectionRange = this.selectionEditor?.cursor.selectionRange();
+    const selectionRange = this.activeSelectionBuffer?.cursor.selectionRange();
     if (this.activeSelectionSide !== side || !selectionRange) {
       codeRenderable.clearSelectionRange();
       return;
@@ -1257,9 +1271,9 @@ class $DiffView {
 
   dispose(): void {
     try {
-      this.selectionEditor?.dispose();
-      this.previousFindEditor.dispose();
-      this.currentFindEditor.dispose();
+      this.activeSelectionBuffer = null;
+      this.previousTextBuffer.dispose();
+      this.currentTextBuffer.dispose();
       (this.options.parentRenderable ?? this.renderer.root).remove(this.rootRenderable);
       this.rootRenderable.destroyRecursively();
     } catch {
