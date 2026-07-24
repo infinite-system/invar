@@ -629,3 +629,18 @@ NOT a fourth experiment. The loop's letter says "invent one"; its generator is u
 inventory accrues rebase drift and review burden, and adoption feedback should steer invention.
 Encoded in the skill as the INVENTORY THROTTLE: ≥2 parked unadopted experiments → skip invention,
 report the shelf. A loop that cannot decline its own default is a metronome, not a conductor.
+
+### Part 11 addendum 2 — the flake that wasn't (2026-07-24, 11:20)
+The sbrate gate went red on smoke-agent-pane-ux. Everything pattern-matched "load flake": two codex
+builders churning mid-gate (conductor-launched — a real protocol breach on its own), a
+change-adjacent smoke, and 2× solo reruns green. So it was cleared and landed. All three signals
+were real; the conclusion was still false. The smoke on the COMMITTED tip asserted the scrollbar
+thumb by grepping for the █ glyph — the exact painter the diff outlaws — a DETERMINISTIC red. The
+solo reruns were green because the builder's worktree already carried its uncommitted smoke repair:
+the reruns ran different code than the merge landed. Main carried a red smoke until the builder's
+stand-down correction; its repair (ad5d218, bg-lane column-exact assertion) fast-forwarded clean.
+Doctrine (now in the skill): before clearing any red as flake, DIFF THE FAILING SMOKE between the
+gate's tree and the rerun's tree — `git status` the worktree first; if the file differs, the rerun
+proves nothing. The generator underneath: the thing you verified must be the thing you land — same
+law as "a SKIP is not a PASS" and "merge untracked files". A deterministic failure wearing a flake's
+clothing is found by provenance of the test code, not by rerun statistics.
