@@ -4,53 +4,23 @@ import { MarkdownDocument, type MarkdownDocumentOptions, type MarkdownSource } f
 import type { BlockRecord, BlockKind } from './MarkdownParser';
 import { StatusChannel } from '../system/StatusChannel';
 
-export interface RenderTarget {
-  requestRender(): void;
-}
-
-export type PreviewRowRole =
-  | 'content'
-  | 'codeBorder'
-  | 'codeContent'
-  | 'quote'
-  | 'table'
-  | 'rule'
-  | 'spacer'
-  | 'status';
-
-/** Ephemeral flyweight row. Only rows in the requested viewport are instantiated. */
-export interface PreviewRow {
-  block: BlockRecord | null;
-  blockIndex: number;
-  textStart: number;
-  textEnd: number;
-  prefix: string;
-  suffix: string;
-  role: PreviewRowRole;
-  overrideText?: string;
-}
-
-type EmitRow = (
-  block: BlockRecord | null,
-  blockIndex: number,
-  textStart: number,
-  textEnd: number,
-  prefix: string,
-  suffix: string,
-  role: PreviewRowRole,
-  overrideText?: string,
-) => boolean;
-
-const EMPTY_BLOCKS: readonly BlockRecord[] = Object.freeze([]);
-
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPreview {
+  protected static get $emptyBlocks(): readonly BlockRecord[] {
+    const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyBlocks', {
+      configurable: true,
+      value: emptyBlocks,
+    });
+    return emptyBlocks;
+  }
+
   declare $watchEffect: typeof import('vue').watchEffect;
   declare $stopEffects: () => void;
 
-  private renderTarget: RenderTarget | null = null;
-  private documentOptions: MarkdownDocumentOptions = {};
+  protected renderTarget: RenderTarget | null = null;
+  protected documentOptions: MarkdownDocumentOptions = {};
 
   get document() {
     return shallowRef<MarkdownDocument.Model | null>(null);
@@ -63,7 +33,8 @@ class $MarkdownPreview {
   }
 
   get blocks(): readonly BlockRecord[] {
-    return this.document.value?.blocks.value ?? EMPTY_BLOCKS;
+    const previewClass = this.constructor as typeof $MarkdownPreview;
+    return this.document.value?.blocks.value ?? previewClass.$emptyBlocks;
   }
 
   get parsedRevision(): number {
@@ -188,7 +159,7 @@ class $MarkdownPreview {
     return new MarkdownDocument.Class(source, this.documentOptions);
   }
 
-  private invalidateRender(): void {
+  protected invalidateRender(): void {
     void this.active.value;
     void this.scrollTop.value;
     const document = this.document.value;
@@ -200,7 +171,7 @@ class $MarkdownPreview {
     this.renderTarget?.requestRender();
   }
 
-  private collectRows(
+  protected collectRows(
     blocks: readonly BlockRecord[],
     width: number,
     firstVisible: number,
@@ -230,7 +201,7 @@ class $MarkdownPreview {
     return rows;
   }
 
-  private visitBlocks(blocks: readonly BlockRecord[], width: number, emit: EmitRow): void {
+  protected visitBlocks(blocks: readonly BlockRecord[], width: number, emit: EmitRow): void {
     for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
@@ -239,7 +210,7 @@ class $MarkdownPreview {
     }
   }
 
-  private visitBlock(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
+  protected visitBlock(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
     switch (block.kind) {
       case 'code':
         return this.visitCode(block, blockIndex, width, emit);
@@ -259,7 +230,7 @@ class $MarkdownPreview {
     }
   }
 
-  private visitCode(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
+  protected visitCode(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
     const label = block.language ? ` ${block.language} ` : '';
     const remaining = Math.max(0, width - label.length - 2);
     if (emit(block, blockIndex, 0, 0, '', '', 'codeBorder', `┌${label}${'─'.repeat(remaining)}┐`.slice(0, width))) {
@@ -269,7 +240,7 @@ class $MarkdownPreview {
     return emit(block, blockIndex, 0, 0, '', '', 'codeBorder', `└${'─'.repeat(Math.max(0, width - 2))}┘`.slice(0, width));
   }
 
-  private visitWrapped(
+  protected visitWrapped(
     block: BlockRecord,
     blockIndex: number,
     width: number,
@@ -320,7 +291,7 @@ class $MarkdownPreview {
     return false;
   }
 
-  private statusRow(text: string): PreviewRow {
+  protected statusRow(text: string): PreviewRow {
     return {
       block: null,
       blockIndex: -1,
@@ -340,3 +311,40 @@ export namespace MarkdownPreview {
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
+export interface RenderTarget {
+  requestRender(): void;
+}
+
+export type PreviewRowRole =
+  | 'content'
+  | 'codeBorder'
+  | 'codeContent'
+  | 'quote'
+  | 'table'
+  | 'rule'
+  | 'spacer'
+  | 'status';
+
+/** Ephemeral flyweight row. Only rows in the requested viewport are instantiated. */
+export interface PreviewRow {
+  block: BlockRecord | null;
+  blockIndex: number;
+  textStart: number;
+  textEnd: number;
+  prefix: string;
+  suffix: string;
+  role: PreviewRowRole;
+  overrideText?: string;
+}
+
+type EmitRow = (
+  block: BlockRecord | null,
+  blockIndex: number,
+  textStart: number,
+  textEnd: number,
+  prefix: string,
+  suffix: string,
+  role: PreviewRowRole,
+  overrideText?: string,
+) => boolean;
