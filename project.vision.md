@@ -238,6 +238,15 @@ proven to hold order at fleet velocity. The capsule model makes it installable:
   through a browser driver, a library through property tests, a service through request smokes.
   The harness-builder's core competence is choosing and wiring the driving instrument for the
   user's domain; the lattice above it is universal.
+- **Agents are peers on a visible bus.** Model CLI harnesses (claude code, codex) are the labor
+  PRIMITIVES; Invar is the harness above them — `AgentProviderRegistry` already treats engines as
+  swappable. The missing orchestration primitive is the `AgentMessageBus`: cross-workspace agent
+  messages are transcript EVENTS stamped with sender/recipient/engine, appended to BOTH sessions'
+  transcripts, so the user watching either pane sees the conversation — the same visibility the
+  conductor's fork-message streams have today. The membrane governs the bus (per-workspace policy
+  decides who may message whom; agent-to-agent asks stay visible and escalatable; the approver is
+  never the requester). Payoff: conductor-in-app — fleet orchestration becomes an observable,
+  replayable, governed conversation instead of an external process.
 - **The reduction:** Invar = ivue + IBR, and the capsule is IBR's generative principle applied
   to the meta-invariant itself — the kernel (contracts, gating, driven verification,
   provenance, fleet discipline) stops being a description of how this repo was built and
