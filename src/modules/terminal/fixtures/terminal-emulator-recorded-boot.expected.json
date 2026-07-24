@@ -1,0 +1,386 @@
+{
+  "columns": 80,
+  "rows": 24,
+  "textRows": {
+    "0": " ● tui-editor                                                           ‹  ›  +",
+    "1": "",
+    "2": "    ╭─Files────────────────────────╮   no open files",
+    "3": "▎ ▤ │                              │",
+    "4": "    │                              │ ╭─────────────────────────────────────────╮",
+    "5": "  ⎇ │                              │ │                                         │",
+    "6": "    │                              │ │   Invar — a terminal code workspace     │",
+    "7": "  ⊞ │                              │ │                                         │",
+    "8": "    │                              │ │   ↑/↓  navigate files      Enter  open /│",
+    "9": "    │                              │ │   Tab  switch pane         Ctrl+P comman│",
+    "10": "    │                              │ │   Ctrl+Q or F10  quit   (VS Code: Ctrl+X│",
+    "11": "    │                              │ │                                         │",
+    "12": "    │                              │ │                                         │",
+    "13": "    │                              │ │                                         │",
+    "14": "    │                              │ │                                         │",
+    "15": "    │                              │ │                                         │",
+    "16": "    │                              │ │                                         │",
+    "17": "    │                              │ │                                         │",
+    "18": "    │                              │ │                                         │",
+    "19": "    │                              │ │                                         │",
+    "20": "    │                              │ │                                         │",
+    "21": "    │                              │ │                                         │",
+    "22": "    ╰──────────────────────────────╯ ╰─────────────────────────────────────────╯",
+    "23": " tui-editor  ·  [Files]  ·  Ctrl+Q/F10 quit                   18:29  ✦  ❯  ⚙  ?"
+  },
+  "cursor": {
+    "row": 23,
+    "column": 80
+  },
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 2830145
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 14,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 7896217
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 2830145
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 16,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 77,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 36,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1052692
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 37,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 7896217
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 52,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 3,
+      "column": 5,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 3,
+      "column": 7,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 3,
+      "column": 34,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 10133155
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 4,
+      "column": 37,
+      "characters": "╭",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 1052692
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 5,
+      "column": 1,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 7896217
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    }
+  ]
+}

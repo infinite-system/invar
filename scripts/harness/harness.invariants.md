@@ -138,44 +138,41 @@ for a block glyph; a snapshot cell lacking the emulator color mode or SGR attrib
 
 **Last refined:** 2026-07-24
 
-### Tmux smokes remain an independent verification ring
+### The conformance corpus replaces the tmux ring
 
-**Invariant:** If the PTY harness is the per-gate smoke suite, then a tmux sentinel ring — one
-original per risk family — runs in every gate as a NON-BLOCKING divergence signal (`ring_step`:
-a ring red with a green harness twin is a flake or a candidate emulator divergence, never a gate
-verdict), and the full tmux suite remains runnable unchanged behind `INVAR_FULL_TMUX=1`. The
-ring retires when the emulator conformance corpus (byte-fixtures → expected grids, in `bun
-test`) proves the oracle directly.
+**Invariant:** If the PTY harness uses `TerminalEmulator` as its screen oracle, then the blocking
+`bun test` phase proves that oracle directly from byte fixtures, while tmux originals run only in
+explicit `INVAR_FULL_TMUX=1` audits and never in the normal merge gate.
 
-**Scope:** Post-swap (2026-07-24, user-approved after the 42/42 port campaign): the per-gate ring
-is `smoke-wrap.sh` (editor timing), `smoke-git-log.sh` (git fixtures), `smoke-agent-pane-ux.sh`
-(agent UI), and `smoke-terminal.sh` (nested PTY). The remaining tmux originals stay registered
-via `full_tmux_step` (skipped unless `INVAR_FULL_TMUX=1`; a weekly full run is doctrine — see the
-conductor skill). Originals are never edited to manufacture harness parity.
+**Scope:** Post-corpus (2026-07-24, user-approved after the 42/42 port campaign and sentinel-ring
+demotion): `TerminalEmulatorConformance.test.ts` is the normal-gate oracle proof. Every original tmux
+smoke stays registered through `full_tmux_step` for weekly or requested audits; originals are never
+edited to manufacture harness parity.
 
-**Mechanism:** The harness trusts the same `TerminalEmulator` used by the integrated terminal, so a
-shared emulator defect can fool both production and the harness. Keeping the original tmux path
-preserves a structurally different emulator and observation stack that can expose that common-mode
-failure.
+**Mechanism:** The corpus feeds exact bytes into the same `TerminalEmulator` used by the harness and
+asserts hand-authored expected grids, metadata, modes, write-boundary behavior, and recorded OpenTUI
+streams. This specifies the common dependency deterministically; a statistical second-emulator sample
+is no longer needed on every commit.
 
-**Generates:** additive merge-gate entries; cross-oracle disagreement as a visible failure; migration
-without deleting prior evidence.
+**Generates:** a blocking sub-second oracle proof in `bun test`; no tmux sentinel time or flake in the
+normal gate; unchanged tmux originals available for explicit cross-stack audits.
 
-**Rejected alternatives:** Replace each tmux smoke as soon as it is ported — removes the only
-independent screen parser and makes emulator defects self-confirming.
+**Rejected alternatives:** Keep four non-blocking tmux sentinels — a red non-verdict adds time and
+indeterminism while the byte corpus states the expected result directly.
 
-**Evidence:** `scripts/merge-gate.sh`; the fourteen matching `scripts/smoke-*.sh` and
-`scripts/harness/smoke-*-harness.ts` pairs named in Scope.
+**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts`;
+`src/modules/terminal/terminal.invariants.md` `Terminal emulator behavior is specified by byte
+fixtures`; `scripts/merge-gate.sh` has no `ring_step` and keeps tmux smokes behind
+`full_tmux_step`.
 
-**Impossible if true:** a harness port deleting or deregistering its tmux original; both verification
-rings depending on `TerminalEmulator`; a common emulator bug passing without an independent check.
+**Impossible if true:** the normal merge gate launching a tmux smoke; an emulator change bypassing
+the blocking byte corpus; deleting the original tmux audit paths.
 
-**Verification:** `for smoke in editor find comment-styling bracket-match indent-guides move-line
-word-delete paste tabs workspace-tabs mode-coherence wrap selection scrollbars; do rg -q "smoke:
-${smoke//-/[ -]}" scripts/merge-gate.sh && test -f "scripts/smoke-${smoke}.sh" && test -f
-"scripts/harness/smoke-${smoke}-harness.ts" || exit; done`
+**Verification:** `bun test src/modules/terminal/TerminalEmulatorConformance.test.ts && ! rg
+"ring_step" scripts/merge-gate.sh && rg "full_tmux_step .*smoke: (wrap|git-log|agent-pane-ux|terminal)"
+scripts/merge-gate.sh`
 
-**Status:** provisional
+**Status:** established
 
 **Last refined:** 2026-07-24
 

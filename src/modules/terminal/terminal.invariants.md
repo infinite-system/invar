@@ -41,6 +41,59 @@ disagrees with what the emulator parsed; two VT parsers for one terminal.
 
 ## Chosen invariants
 
+### Terminal emulator behavior is specified by byte fixtures
+
+**Invariant:** If `TerminalEmulator` parses or projects a terminal sequence, then a deterministic
+input-byte fixture specifies its expected cells, cursor, metadata, or mode state, and every new
+capability or `@xterm/headless` upgrade lands with the corresponding fixture.
+
+**Scope:** `TerminalEmulator`, `TerminalEmulatorConformance.test.ts`, and the recorded fixtures in
+`src/modules/terminal/fixtures/`. The corpus specifies the OpenTUI dialect Invar uses, not every
+historical VT sequence.
+
+**Components:**
+- Grid semantics — SGR colors and attributes, cursor movement, erase, scroll, insertion, deletion,
+  wide cells, astral characters, and combining marks have hand-authored expected cells.
+- Stateful protocols — OSC title and cwd plus DEC synchronized output, bracketed paste, mouse,
+  origin, and alternate-screen modes have explicit expected state.
+- Chunk boundaries — representative ESC, CSI, OSC, DCS, APC, DEC private-mode, CJK, astral, and
+  combining sequences are split at every byte boundary across two writes.
+- Recorded dialect — real 80x24 OpenTUI boot, F1 keypress-diff, and light-theme streams pin every
+  text row, cursor position, and one cell for every distinct style signature.
+- Documented gaps — OSC 52 clipboard, OSC 10/11 color, OSC 99 notification, OSC 1337 capability,
+  and OSC 66 shell-integration requests are not implemented; XTGETTCAP DCS, Kitty keyboard and
+  graphics probes, CSI version/pixel/modify-other-keys probes, sixel, and DEC modes 2027/2031 are
+  ignored. DECRQM status replies pass back to the child without changing the grid. Cursor shape and
+  OSC 8 hyperlink targets are not projected, although hyperlink underline styling remains visible.
+
+**Mechanism:** The table-driven corpus writes bytes only through `TerminalEmulator.write`, flushes
+the real asynchronous parser, and asserts the public flattened-cell seam. Recorded fixtures are
+captured through `PtyTestDriver`, so the corpus also fails when OpenTUI begins emitting a dialect the
+hand-authored cases do not cover.
+
+**Generates:** a millisecond blocking oracle proof in every `bun test`; fixture-required emulator
+changes; retirement of the statistical tmux sentinel ring from the normal merge gate.
+
+**Rejected alternatives:** Keep the tmux sentinel ring as the oracle check — it samples a second
+emulator through timed end-to-end drives and adds minutes without specifying which bytes must produce
+which cells.
+
+**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts` (161 tests: 51 direct
+fixtures, 107 every-byte-boundary cases, and 3 recorded-real streams);
+`scripts/harness/record-terminal-emulator-fixtures.ts`;
+`src/modules/terminal/fixtures/`.
+
+**Impossible if true:** an emulator capability changing without an expected byte fixture; a parser
+state bug that appears only when a control or UTF-8 sequence crosses a write boundary; an OpenTUI
+dialect change silently redefining the harness oracle; the normal merge gate needing a tmux
+cross-oracle sample.
+
+**Verification:** `bun test src/modules/terminal/TerminalEmulatorConformance.test.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-24
+
 ### One openpty allocator serves both PTY roles
 
 **Invariant:** If Invar or its byte-level test harness needs a pseudo-terminal, then both allocate,

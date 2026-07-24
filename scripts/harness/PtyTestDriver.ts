@@ -271,6 +271,10 @@ class $PtyTestDriver {
     return sequenceCount;
   }
 
+  recordedOutput(): string {
+    return this.observedOutput;
+  }
+
   async exitCode(): Promise<number> {
     return this.child.exited;
   }

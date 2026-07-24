@@ -35,6 +35,9 @@ class $TerminalEmulator {
   private readonly reusableCell: { cell: IBufferCell | undefined } = { cell: undefined };
   private replyCallback: ((data: string) => void) | null = null;
   private cellsChangedCallback: (() => void) | null = null;
+  protected terminalTitle = '';
+  protected terminalCurrentWorkingDirectory = '';
+  protected isSgrMouseEncodingEnabledValue = false;
 
   constructor(columns: number, rows: number) {
     this.terminal = new Terminal({
@@ -45,6 +48,19 @@ class $TerminalEmulator {
     });
     this.terminal.onData((data) => this.replyCallback?.(data));
     this.terminal.onWriteParsed(() => this.cellsChangedCallback?.());
+    this.terminal.onTitleChange((title) => this.observeTitle(title));
+    this.terminal.parser.registerOscHandler(
+      7,
+      (currentWorkingDirectory) => this.observeCurrentWorkingDirectory(currentWorkingDirectory),
+    );
+    this.terminal.parser.registerCsiHandler(
+      { prefix: '?', final: 'h' },
+      (parameters) => this.observePrivateModeChange(parameters, true),
+    );
+    this.terminal.parser.registerCsiHandler(
+      { prefix: '?', final: 'l' },
+      (parameters) => this.observePrivateModeChange(parameters, false),
+    );
   }
 
   /** Feed child bytes into the parser. onCellsChanged fires once per parsed pulse (coalescing). */
@@ -88,6 +104,38 @@ class $TerminalEmulator {
     return this.terminal.buffer.active.cursorY;
   }
 
+  get title(): string {
+    return this.terminalTitle;
+  }
+
+  get currentWorkingDirectory(): string {
+    return this.terminalCurrentWorkingDirectory;
+  }
+
+  get isBracketedPasteEnabled(): boolean {
+    return this.terminal.modes.bracketedPasteMode;
+  }
+
+  get mouseTrackingMode(): 'none' | 'x10' | 'vt200' | 'drag' | 'any' {
+    return this.terminal.modes.mouseTrackingMode;
+  }
+
+  get isSgrMouseEncodingEnabled(): boolean {
+    return this.isSgrMouseEncodingEnabledValue;
+  }
+
+  get isOriginModeEnabled(): boolean {
+    return this.terminal.modes.originMode;
+  }
+
+  get isSynchronizedOutputEnabled(): boolean {
+    return this.terminal.modes.synchronizedOutputMode;
+  }
+
+  get isAlternateScreenActive(): boolean {
+    return this.terminal.buffer.active.type === 'alternate';
+  }
+
   /** Pull one visible cell (viewport row/column) into a flat struct. Reuses a single xterm cell
    *  object across the pull to stay allocation-free per cell — the flyweight viewport-pull.
    *
@@ -126,6 +174,25 @@ class $TerminalEmulator {
       isOverline: Boolean(cell.isOverline()),
       width: cell.getWidth(),
     };
+  }
+
+  protected observePrivateModeChange(
+    parameters: Array<number | number[]>,
+    isEnabled: boolean,
+  ): false {
+    if (parameters.some((parameter) => parameter === 1006)) {
+      this.isSgrMouseEncodingEnabledValue = isEnabled;
+    }
+    return false;
+  }
+
+  protected observeTitle(title: string): void {
+    this.terminalTitle = title;
+  }
+
+  protected observeCurrentWorkingDirectory(currentWorkingDirectory: string): false {
+    this.terminalCurrentWorkingDirectory = currentWorkingDirectory;
+    return false;
   }
 
   dispose(): void {

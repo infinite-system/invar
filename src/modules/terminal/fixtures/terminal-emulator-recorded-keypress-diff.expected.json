@@ -1,0 +1,336 @@
+{
+  "columns": 80,
+  "rows": 24,
+  "textRows": {
+    "0": " ● tui-editor                                                           ‹  ›  +",
+    "1": "   feat-emulator-con…",
+    "2": "    ╭─Files─────╭─Command Palette──────────────────────────────╮",
+    "3": "▎ ▤ │ ▸ src     │> ▏                                           │",
+    "4": " 5  │ ⛃ data.jso│› Application: Quit                           │───────────────╮",
+    "5": "  ⎇ │ ✎ README.m│  Files: Refresh Tree                         │               │",
+    "6": "    │           │  Help: Keyboard Shortcuts                    │ workspace     │",
+    "7": "  ⊞ │           │  Narration: Test Voice                       │               │",
+    "8": "    │           │  View: Focus File Explorer                   │  Enter  open /│",
+    "9": "    │           │  View: Show Explorer                         │  Ctrl+P comman│",
+    "10": "    │           │  View: Show Extensions                       │VS Code: Ctrl+X│",
+    "11": "    │           │  View: Show Source Control                   │               │",
+    "12": "    │           │  View: Toggle Activity Bar                   │               │",
+    "13": "    │           │  View: Toggle Light/Dark Theme               │               │",
+    "14": "    │           │  Workspace: Open Folder                      │               │",
+    "15": "    │           ╰──────────────────────────────────────────────╯               │",
+    "16": "    │                              │ │                                         │",
+    "17": "    │                              │ │                                         │",
+    "18": "    │                              │ │                                         │",
+    "19": "    │                              │ │                                         │",
+    "20": "    │                              │ │                                         │",
+    "21": "    │                              │ │                                         │",
+    "22": "    ╰──────────────────────────────╯ ╰─────────────────────────────────────────╯",
+    "23": " tui-editor  ·  [Files]  ·  Ctrl+Q/F10 quit                   18:29  ✦  ❯  ⚙  ?"
+  },
+  "cursor": {
+    "row": 23,
+    "column": 80
+  },
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 2830145
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 22,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 7896217
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 2830145
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 24,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 0,
+      "column": 77,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 11121110
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 2,
+      "column": 64,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 3,
+      "column": 5,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 8037111
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 2830145
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 3,
+      "column": 20,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 4,
+      "column": 17,
+      "characters": "›",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 7896217
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1447454
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 4,
+      "column": 64,
+      "characters": "─",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 1052692
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1710886
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    },
+    {
+      "row": 16,
+      "column": 36,
+      "characters": " ",
+      "width": 1,
+      "foreground": {
+        "mode": "rgb",
+        "value": 16777215
+      },
+      "background": {
+        "mode": "rgb",
+        "value": 1052692
+      },
+      "attributes": {
+        "isBold": false,
+        "isDim": false,
+        "isItalic": false,
+        "isUnderline": false,
+        "isBlink": false,
+        "isInverse": false,
+        "isInvisible": false,
+        "isStrikethrough": false,
+        "isOverline": false
+      }
+    }
+  ]
+}
