@@ -3,30 +3,27 @@ import { ref, shallowRef } from 'vue';
 import { MarkdownParser, type BlockRecord, type MarkdownParseResult } from './MarkdownParser';
 import { StatusChannel } from '../system/StatusChannel';
 
-export interface MarkdownSource {
-  readonly revision: { value: number };
-  /** TextDocument.Model supplies a string getter; the callable form supports narrow test doubles. */
-  readonly text: string | (() => string);
-}
-
-export interface MarkdownDocumentOptions {
-  debounceMs?: number;
-}
-
-const EMPTY_BLOCKS: readonly BlockRecord[] = Object.freeze([]);
-
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
 // invariant: Applied blocks match the current revision (src/modules/markdown/markdown.invariants.md)
 class $MarkdownDocument {
+  protected static get $emptyBlocks(): readonly BlockRecord[] {
+    const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyBlocks', {
+      configurable: true,
+      value: emptyBlocks,
+    });
+    return emptyBlocks;
+  }
+
   declare $watch: typeof import('vue').watch;
   declare $stopEffects: () => void;
 
-  private parser: MarkdownParser.Model | null = null;
-  private parseTimer: ReturnType<typeof setTimeout> | null = null;
-  private lifecycleGeneration = 0;
-  private requestSequence = 0;
-  private latestRequest = 0;
-  private readonly debounceMs: number;
+  protected parser: MarkdownParser.Model | null = null;
+  protected parseTimer: ReturnType<typeof setTimeout> | null = null;
+  protected lifecycleGeneration = 0;
+  protected requestSequence = 0;
+  protected latestRequest = 0;
+  protected readonly debounceMs: number;
 
   constructor(
     readonly source: MarkdownSource,
@@ -36,7 +33,8 @@ class $MarkdownDocument {
   }
 
   get blocks() {
-    return shallowRef<readonly BlockRecord[]>(EMPTY_BLOCKS);
+    const documentClass = this.constructor as typeof $MarkdownDocument;
+    return shallowRef<readonly BlockRecord[]>(documentClass.$emptyBlocks);
   }
   get revision() {
     return ref(-1);
@@ -85,7 +83,8 @@ class $MarkdownDocument {
     this.latestRequest = ++this.requestSequence;
     this.parser?.dispose();
     this.parser = null;
-    this.blocks.value = EMPTY_BLOCKS;
+    const documentClass = this.constructor as typeof $MarkdownDocument;
+    this.blocks.value = documentClass.$emptyBlocks;
     this.revision.value = -1;
     this.parsing.value = false;
     this.error.value = null;
@@ -111,11 +110,11 @@ class $MarkdownDocument {
     return typeof this.source.text === 'function' ? this.source.text() : this.source.text;
   }
 
-  private onSourceRevision(revision: number): void {
+  protected onSourceRevision(revision: number): void {
     this.scheduleParse(revision);
   }
 
-  private scheduleParse(revision: number): void {
+  protected scheduleParse(revision: number): void {
     if (!this.opened.value) return;
     if (this.parseTimer) clearTimeout(this.parseTimer);
 
@@ -132,7 +131,7 @@ class $MarkdownDocument {
   }
 
   // invariant: Applied blocks match the current revision (src/modules/markdown/markdown.invariants.md)
-  private async startParse(revision: number, generation: number, requestId: number): Promise<void> {
+  protected async startParse(revision: number, generation: number, requestId: number): Promise<void> {
     if (!this.isCurrent(revision, generation, requestId) || !this.parser) return;
 
     const sourceText = this.readSourceText();
@@ -147,7 +146,7 @@ class $MarkdownDocument {
     }
   }
 
-  private applyResult(result: MarkdownParseResult, generation: number, requestId: number): void {
+  protected applyResult(result: MarkdownParseResult, generation: number, requestId: number): void {
     if (!this.isCurrent(result.revision, generation, requestId)) return;
 
     this.blocks.value = result.blocks;
@@ -163,7 +162,7 @@ class $MarkdownDocument {
     });
   }
 
-  private isCurrent(revision: number, generation: number, requestId: number): boolean {
+  protected isCurrent(revision: number, generation: number, requestId: number): boolean {
     return (
       this.opened.value &&
       generation === this.lifecycleGeneration &&
@@ -178,4 +177,14 @@ export namespace MarkdownDocument {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+export interface MarkdownSource {
+  readonly revision: { value: number };
+  /** TextDocument.Model supplies a string getter; the callable form supports narrow test doubles. */
+  readonly text: string | (() => string);
+}
+
+export interface MarkdownDocumentOptions {
+  debounceMs?: number;
 }
