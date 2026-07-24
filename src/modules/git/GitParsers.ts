@@ -1,18 +1,289 @@
 // Pure parsers for stable Git CLI formats. These produce compact plain records; callers may
 // retain or virtualize the arrays without creating a reactive object per status/commit row.
-
 import { Static } from 'ivue/extras';
 
-export const LOG_FIELD_SEPARATOR = '\x1f';
-export const LOG_RECORD_SEPARATOR = '\x1e';
-export const LOG_FORMAT = [
-  '%H',
-  '%h',
-  '%an',
-  '%ad',
-  '%s',
-  '%D',
-].join('%x1f') + '%x1e';
+class $GitParsers {
+  static parseStatusPorcelainV2(output: string): GitStatusSnapshot {
+    const statusSnapshot: GitStatusSnapshot = {
+      branch: '',
+      head: '',
+      staged: [],
+      unstaged: [],
+      untracked: [],
+    };
+
+    for (const rawLine of output.split(/\r?\n/)) {
+      if (!rawLine) {
+        continue;
+      }
+      if (rawLine.startsWith('# branch.oid ')) {
+        const headSha = rawLine.slice('# branch.oid '.length);
+        statusSnapshot.head = headSha === '(initial)' ? '' : headSha;
+        continue;
+      }
+      if (rawLine.startsWith('# branch.head ')) {
+        statusSnapshot.branch = rawLine.slice('# branch.head '.length);
+        continue;
+      }
+      if (rawLine.startsWith('? ')) {
+        statusSnapshot.untracked.push(this.makeFileRecord(rawLine.slice(2), '??'));
+        continue;
+      }
+      if (rawLine.startsWith('! ')) {
+        continue;
+      }
+      if (rawLine.startsWith('1 ')) {
+        const parsePrefix = this.splitPrefix(rawLine, 8);
+        if (!parsePrefix) {
+          continue;
+        }
+        this.addTrackedRecord(
+          statusSnapshot,
+          this.makeFileRecord(parsePrefix.rest, parsePrefix.fields[1] ?? '..'),
+        );
+        continue;
+      }
+      if (rawLine.startsWith('2 ')) {
+        const parsePrefix = this.splitPrefix(rawLine, 9);
+        if (!parsePrefix) {
+          continue;
+        }
+        const tabIndex = parsePrefix.rest.indexOf('\t');
+        const path = tabIndex < 0 ? parsePrefix.rest : parsePrefix.rest.slice(0, tabIndex);
+        const originalPath =
+          tabIndex < 0 ? undefined : parsePrefix.rest.slice(tabIndex + 1);
+        this.addTrackedRecord(
+          statusSnapshot,
+          this.makeFileRecord(path, parsePrefix.fields[1] ?? '..', originalPath),
+        );
+        continue;
+      }
+      if (rawLine.startsWith('u ')) {
+        const parsePrefix = this.splitPrefix(rawLine, 10);
+        if (!parsePrefix) {
+          continue;
+        }
+        this.addTrackedRecord(
+          statusSnapshot,
+          this.makeFileRecord(parsePrefix.rest, parsePrefix.fields[1] ?? 'UU'),
+        );
+      }
+    }
+
+    return statusSnapshot;
+  }
+
+  protected static splitPrefix(
+    rawLine: string,
+    fieldCount: number,
+  ): SplitPrefixResult | null {
+    const fields: string[] = [];
+    let startIndex = 0;
+
+    while (fields.length < fieldCount) {
+      const separatorIndex = rawLine.indexOf(' ', startIndex);
+      if (separatorIndex < 0) {
+        return null;
+      }
+      fields.push(rawLine.slice(startIndex, separatorIndex));
+      startIndex = separatorIndex + 1;
+    }
+
+    return { fields, rest: rawLine.slice(startIndex) };
+  }
+
+  protected static decodeGitPath(quotedPath: string): string {
+    if (quotedPath.length < 2 || quotedPath[0] !== '"' || quotedPath[quotedPath.length - 1] !== '"') {
+      return quotedPath;
+    }
+
+    const decodedBytes: number[] = [];
+    let scanIndex = 1;
+    while (scanIndex < quotedPath.length - 1) {
+      const character = quotedPath[scanIndex];
+      if (character !== '\\') {
+        const codePoint = quotedPath.codePointAt(scanIndex);
+        decodedBytes.push(...this.textEncoder.encode(String.fromCodePoint(codePoint ?? 0)));
+        scanIndex += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
+        continue;
+      }
+
+      const escapeSequence = quotedPath[scanIndex + 1];
+      if (escapeSequence === undefined) {
+        break;
+      }
+      const octalSequence = quotedPath.slice(scanIndex + 1, scanIndex + 4);
+      if (/^[0-7]{3}$/.test(octalSequence)) {
+        decodedBytes.push(Number.parseInt(octalSequence, 8));
+        scanIndex += 4;
+        continue;
+      }
+
+      decodedBytes.push(this.decodedCharacterCode(escapeSequence));
+      scanIndex += 2;
+    }
+
+    return this.textDecoder.decode(Uint8Array.from(decodedBytes));
+  }
+
+  protected static decodedCharacterCode(escapedCharacter: string): number {
+    const escapedCharacterCodes: Record<string, number> = {
+      a: 7,
+      b: 8,
+      t: 9,
+      n: 10,
+      v: 11,
+      f: 12,
+      r: 13,
+      '"': 34,
+      '\\': 92,
+    };
+    return escapedCharacterCodes[escapedCharacter] ?? escapedCharacter.codePointAt(0) ?? 0;
+  }
+
+  protected static makeFileRecord(
+    path: string,
+    status: string,
+    originalPath?: string,
+  ): GitFileRecord {
+    return {
+      path: this.decodeGitPath(path),
+      xy: status,
+      x: status[0] ?? '.',
+      y: status[1] ?? '.',
+      ...(originalPath === undefined
+        ? {}
+        : { originalPath: this.decodeGitPath(originalPath) }),
+    };
+  }
+
+  protected static addTrackedRecord(
+    statusSnapshot: GitStatusSnapshot,
+    fileRecord: GitFileRecord,
+  ): void {
+    if (fileRecord.x !== '.') {
+      statusSnapshot.staged.push(fileRecord);
+    }
+    if (fileRecord.y !== '.') {
+      statusSnapshot.unstaged.push(fileRecord);
+    }
+  }
+
+  static parseLog(output: string): CommitRecord[] {
+    const commits: CommitRecord[] = [];
+
+    for (const rawRecord of output.split(this.logRecordSeparator)) {
+      const parsedRecord = rawRecord.replace(/^\r?\n+|\r?\n+$/g, '');
+      if (!parsedRecord) {
+        continue;
+      }
+      const fields = parsedRecord.split(this.logFieldSeparator);
+      if (fields.length < 5) {
+        continue;
+      }
+      const refsField = fields.slice(5).join(this.logFieldSeparator);
+      commits.push({
+        sha: fields[0] ?? '',
+        shortSha: fields[1] ?? '',
+        author: fields[2] ?? '',
+        dateIso: fields[3] ?? '',
+        subject: fields[4] ?? '',
+        refs: refsField
+          .split(',')
+          .map((refName) => refName.trim())
+          .filter(Boolean),
+      });
+    }
+
+    return commits;
+  }
+
+  /** One branch name per line (`for-each-ref --format=%(refname:short)` output). */
+  static parseNameStatus(output: string): CommitFileChange[] {
+    const changes: CommitFileChange[] = [];
+
+    for (const rawLine of output.split(/\r?\n/)) {
+      if (!rawLine) {
+        continue;
+      }
+      const fields = rawLine.split('\t');
+      const statusField = fields[0];
+      const status = statusField?.[0];
+      if (!status || !/[A-Z]/.test(status) || fields.length < 2) {
+        continue;
+      }
+      if ((status === 'R' || status === 'C') && fields.length >= 3) {
+        changes.push({
+          status,
+          path: this.decodeGitPath(fields[2] ?? ''),
+          originalPath: this.decodeGitPath(fields[1] ?? ''),
+        });
+      } else {
+        changes.push({
+          status,
+          path: this.decodeGitPath(fields[1] ?? ''),
+        });
+      }
+    }
+
+    return changes;
+  }
+
+  static parseLocalBranches(output: string): string[] {
+    return output
+      .split('\n')
+      .map((branchName) => branchName.trim())
+      .filter((branchName) => branchName.length > 0);
+  }
+
+  protected static get logFieldSeparator(): string {
+    return '\x1f';
+  }
+
+  protected static get logRecordSeparator(): string {
+    return '\x1e';
+  }
+
+  static get logFormat(): string {
+    return [
+      '%H',
+      '%h',
+      '%an',
+      '%ad',
+      '%s',
+      '%D',
+    ].join('%x1f') + '%x1e';
+  }
+
+  protected static get textEncoder(): TextEncoder {
+    const cache = this.$textEncoderCache;
+    if (cache.textEncoder === null) {
+      cache.textEncoder = new TextEncoder();
+    }
+    return cache.textEncoder;
+  }
+
+  protected static get textDecoder(): TextDecoder {
+    const cache = this.$textDecoderCache;
+    if (cache.textDecoder === null) {
+      cache.textDecoder = new TextDecoder();
+    }
+    return cache.textDecoder;
+  }
+
+  protected static $textEncoderCache: { textEncoder: TextEncoder | null } = {
+    textEncoder: null,
+  };
+
+  protected static $textDecoderCache: { textDecoder: TextDecoder | null } = {
+    textDecoder: null,
+  };
+}
+
+export namespace GitParsers {
+  export const $Class = $GitParsers;
+  export const Class = Static($GitParsers);
+}
 
 export interface GitFileRecord {
   path: string;
@@ -44,136 +315,6 @@ interface SplitPrefixResult {
   rest: string;
 }
 
-function splitPrefix(line: string, fieldCount: number): SplitPrefixResult | null {
-  const fields: string[] = [];
-  let position = 0;
-
-  while (fields.length < fieldCount) {
-    const separator = line.indexOf(' ', position);
-    if (separator < 0) return null;
-    fields.push(line.slice(position, separator));
-    position = separator + 1;
-  }
-
-  return { fields, rest: line.slice(position) };
-}
-
-function decodeGitPath(path: string): string {
-  if (path.length < 2 || path[0] !== '"' || path[path.length - 1] !== '"') return path;
-
-  const bytes: number[] = [];
-  const encoder = new TextEncoder();
-  const escapes: Record<string, number> = {
-    a: 7,
-    b: 8,
-    t: 9,
-    n: 10,
-    v: 11,
-    f: 12,
-    r: 13,
-    '"': 34,
-    '\\': 92,
-  };
-
-  let position = 1;
-  while (position < path.length - 1) {
-    const character = path[position]!;
-    if (character !== '\\') {
-      const codePoint = path.codePointAt(position)!;
-      bytes.push(...encoder.encode(String.fromCodePoint(codePoint)));
-      position += codePoint > 0xffff ? 2 : 1;
-      continue;
-    }
-
-    const escaped = path[position + 1];
-    if (escaped === undefined) break;
-    if (/[0-7]/.test(escaped)) {
-      const octal = path.slice(position + 1, position + 4);
-      if (/^[0-7]{3}$/.test(octal)) {
-        bytes.push(Number.parseInt(octal, 8));
-        position += 4;
-        continue;
-      }
-    }
-
-    bytes.push(escapes[escaped] ?? escaped.charCodeAt(0));
-    position += 2;
-  }
-
-  return new TextDecoder().decode(Uint8Array.from(bytes));
-}
-
-function makeFileRecord(path: string, xy: string, originalPath?: string): GitFileRecord {
-  return {
-    path: decodeGitPath(path),
-    xy,
-    x: xy[0] ?? '.',
-    y: xy[1] ?? '.',
-    ...(originalPath === undefined ? {} : { originalPath: decodeGitPath(originalPath) }),
-  };
-}
-
-function addTrackedRecord(snapshot: GitStatusSnapshot, record: GitFileRecord): void {
-  if (record.x !== '.') snapshot.staged.push(record);
-  if (record.y !== '.') snapshot.unstaged.push(record);
-}
-
-function $parseStatusPorcelainV2(output: string): GitStatusSnapshot {
-  const snapshot: GitStatusSnapshot = {
-    branch: '',
-    head: '',
-    staged: [],
-    unstaged: [],
-    untracked: [],
-  };
-
-  for (const rawLine of output.split(/\r?\n/)) {
-    if (!rawLine) continue;
-    if (rawLine.startsWith('# branch.oid ')) {
-      const head = rawLine.slice('# branch.oid '.length);
-      snapshot.head = head === '(initial)' ? '' : head;
-      continue;
-    }
-    if (rawLine.startsWith('# branch.head ')) {
-      snapshot.branch = rawLine.slice('# branch.head '.length);
-      continue;
-    }
-    if (rawLine.startsWith('? ')) {
-      snapshot.untracked.push(makeFileRecord(rawLine.slice(2), '??'));
-      continue;
-    }
-    if (rawLine.startsWith('! ')) continue;
-
-    if (rawLine.startsWith('1 ')) {
-      const split = splitPrefix(rawLine, 8);
-      if (!split) continue;
-      addTrackedRecord(snapshot, makeFileRecord(split.rest, split.fields[1] ?? '..'));
-      continue;
-    }
-
-    if (rawLine.startsWith('2 ')) {
-      const split = splitPrefix(rawLine, 9);
-      if (!split) continue;
-      const tab = split.rest.indexOf('\t');
-      const path = tab < 0 ? split.rest : split.rest.slice(0, tab);
-      const originalPath = tab < 0 ? undefined : split.rest.slice(tab + 1);
-      addTrackedRecord(
-        snapshot,
-        makeFileRecord(path, split.fields[1] ?? '..', originalPath),
-      );
-      continue;
-    }
-
-    if (rawLine.startsWith('u ')) {
-      const split = splitPrefix(rawLine, 10);
-      if (!split) continue;
-      addTrackedRecord(snapshot, makeFileRecord(split.rest, split.fields[1] ?? 'UU'));
-    }
-  }
-
-  return snapshot;
-}
-
 export interface CommitFileChange {
   /** One status letter: M/A/D/R/C/T/U — a rename/copy similarity score suffix (R100) is dropped. */
   status: string;
@@ -181,76 +322,4 @@ export interface CommitFileChange {
   path: string;
   /** A rename/copy's source path. */
   originalPath?: string;
-}
-
-/**
- * Parse `git show --name-status --format=` output: one `<STATUS>\t<path>` line per changed file;
- * renames/copies are `R<score>\t<old>\t<new>` (the new path is the file's identity).
- */
-function $parseNameStatus(output: string): CommitFileChange[] {
-  const changes: CommitFileChange[] = [];
-
-  for (const rawLine of output.split(/\r?\n/)) {
-    if (!rawLine) continue;
-    const fields = rawLine.split('\t');
-    const statusField = fields[0];
-    const status = statusField?.[0];
-    if (!status || !/[A-Z]/.test(status) || fields.length < 2) continue;
-    if ((status === 'R' || status === 'C') && fields.length >= 3) {
-      changes.push({
-        status,
-        path: decodeGitPath(fields[2]!),
-        originalPath: decodeGitPath(fields[1]!),
-      });
-    } else {
-      changes.push({ status, path: decodeGitPath(fields[1]!) });
-    }
-  }
-
-  return changes;
-}
-
-function $parseLog(output: string): CommitRecord[] {
-  const commits: CommitRecord[] = [];
-
-  for (const rawRecord of output.split(LOG_RECORD_SEPARATOR)) {
-    const record = rawRecord.replace(/^\r?\n+|\r?\n+$/g, '');
-    if (!record) continue;
-    const fields = record.split(LOG_FIELD_SEPARATOR);
-    if (fields.length < 5) continue;
-    const refsField = fields.slice(5).join(LOG_FIELD_SEPARATOR);
-    commits.push({
-      sha: fields[0] ?? '',
-      shortSha: fields[1] ?? '',
-      author: fields[2] ?? '',
-      dateIso: fields[3] ?? '',
-      subject: fields[4] ?? '',
-      refs: refsField
-        .split(',')
-        .map((refName) => refName.trim())
-        .filter(Boolean),
-    });
-  }
-
-  return commits;
-}
-
-/** One branch name per line (`for-each-ref --format=%(refname:short)` output). */
-function $parseLocalBranches(output: string): string[] {
-  return output
-    .split('\n')
-    .map((branchName) => branchName.trim())
-    .filter((branchName) => branchName.length > 0);
-}
-
-class $GitParsers {
-  static parseStatusPorcelainV2 = $parseStatusPorcelainV2;
-  static parseLog = $parseLog;
-  static parseNameStatus = $parseNameStatus;
-  static parseLocalBranches = $parseLocalBranches;
-}
-
-export namespace GitParsers {
-  export const $Class = $GitParsers;
-  export const Class = Static($GitParsers);
 }

@@ -2,7 +2,7 @@
 // fetched changed-file lists. Fetching happens only on expand (`git show --name-status` for that
 // one sha — never a pre-fetch of neighbors), the expanded set is hard-bounded (expanding past the
 // capacity collapses the oldest expansion, which is also the cache eviction — cost tracks the
-// observed set), and collapse discards an in-flight fetch (stale-superseded, per-sha tickets).
+// actively observed set), and collapse discards an in-flight fetch (stale superseded, per-sha tickets).
 //
 // The fetch is injectable (constructor `fetch`) so the expansion/eviction/supersession logic is
 // unit-testable with no git; the default shells out via GitCommands + parseNameStatus.
@@ -15,16 +15,6 @@ import { shallowRef } from 'vue';
 import { GitCommands } from './GitCommands';
 import { GitParsers, type CommitFileChange } from './GitParsers';
 import type { ExpandedCommit } from './GitLogRows';
-
-export type CommitFilesFetch = (sha: string) => Promise<readonly CommitFileChange[]>;
-
-export interface CommitExpansionOptions {
-  fetch?: CommitFilesFetch;
-  /** Most commits expanded (and cached) at once; expanding beyond collapses the oldest. */
-  capacity?: number;
-}
-
-export const DEFAULT_EXPANSION_CAPACITY = 32;
 
 class $CommitExpansion {
   constructor(
@@ -39,13 +29,17 @@ class $CommitExpansion {
   }
 
   /** Expansion order, oldest first — the bounded-eviction queue. */
-  private expansionOrder: string[] = [];
+  protected expansionOrder: string[] = [];
   /** Per-sha stale-supersession tickets: a collapse (or re-expand) invalidates an in-flight fetch. */
-  private fetchTickets = new Map<string, number>();
-  private nextTicket = 0;
+  protected fetchTickets = new Map<string, number>();
+  protected nextTicket = 0;
+
+  protected static get defaultCapacity(): number {
+    return 32;
+  }
 
   get capacity(): number {
-    return this.options.capacity ?? DEFAULT_EXPANSION_CAPACITY;
+    return this.options.capacity ?? this.defaultCapacity;
   }
 
   isExpanded(sha: string): boolean {
@@ -54,8 +48,11 @@ class $CommitExpansion {
 
   /** Expand a collapsed commit / collapse an expanded one (click or Enter on its header row). */
   toggle(commitIndex: number, sha: string): void {
-    if (this.isExpanded(sha)) this.collapse(sha);
-    else void this.expand(commitIndex, sha);
+    if (this.isExpanded(sha)) {
+      this.collapse(sha);
+      return;
+    }
+    void this.expand(commitIndex, sha);
   }
 
   /**
@@ -64,10 +61,14 @@ class $CommitExpansion {
    * Expanding past the capacity collapses the oldest expansion first (bounded cache).
    */
   async expand(commitIndex: number, sha: string): Promise<void> {
-    if (this.isExpanded(sha)) return;
+    if (this.isExpanded(sha)) {
+      return;
+    }
     while (this.expansionOrder.length >= this.capacity) {
       const oldest = this.expansionOrder[0];
-      if (oldest === undefined) break;
+      if (oldest === undefined) {
+        break;
+      }
       this.collapse(oldest);
     }
     this.expansionOrder.push(sha);
@@ -75,7 +76,9 @@ class $CommitExpansion {
     const ticket = ++this.nextTicket;
     this.fetchTickets.set(sha, ticket);
     const files = await this.fetchFiles(sha);
-    if (this.fetchTickets.get(sha) !== ticket) return; // collapsed/superseded meanwhile — discard
+    if (this.fetchTickets.get(sha) !== ticket) {
+      return;
+    }
     this.fetchTickets.delete(sha);
     this.setEntry({ commitIndex, sha, files });
   }
@@ -83,7 +86,7 @@ class $CommitExpansion {
   /** Collapse: drop the entry AND its cached files (evict on collapse — re-expanding refetches). */
   collapse(sha: string): void {
     this.fetchTickets.delete(sha);
-    this.expansionOrder = this.expansionOrder.filter((expandedSha) => expandedSha !== sha);
+    this.expansionOrder = this.expansionOrder.filter((openSha) => openSha !== sha);
     if (this.isExpanded(sha)) {
       this.entries.value = this.entries.value.filter((entry) => entry.sha !== sha);
     }
@@ -93,29 +96,48 @@ class $CommitExpansion {
   reset(): void {
     this.fetchTickets.clear();
     this.expansionOrder = [];
-    if (this.entries.value.length > 0) this.entries.value = [];
+    if (this.entries.value.length > 0) {
+      this.entries.value = [];
+    }
   }
 
-  private setEntry(entry: ExpandedCommit): void {
-    const next = this.entries.value.filter((existing) => existing.sha !== entry.sha);
-    next.push(entry);
-    next.sort((first, second) => first.commitIndex - second.commitIndex);
-    this.entries.value = next;
+  protected setEntry(entry: ExpandedCommit): void {
+    const nextEntries = this.entries.value.filter(
+      (existingEntry) => existingEntry.sha !== entry.sha,
+    );
+    nextEntries.push(entry);
+    nextEntries.sort((first, second) => first.commitIndex - second.commitIndex);
+    this.entries.value = nextEntries;
   }
 
-  /** Overridable via constructor `fetch` (tests inject a fake). Failures degrade to an empty list
-   *  (the commit shows expanded with no file rows — never a thrown error). */
+  /**
+   * Overridable via constructor `fetch` (tests inject a fake). Failures degrade to an empty list
+   * (the commit shows expanded with no file rows — never a thrown error).
+   */
   protected async fetchFiles(sha: string): Promise<readonly CommitFileChange[]> {
-    if (this.options.fetch) return this.options.fetch(sha);
+    if (this.options.fetch) {
+      return this.options.fetch(sha);
+    }
     const result = await GitCommands.Class.showNameStatus(this.cwd, sha);
-    if (result.code !== 0) return [];
+    if (result.code !== 0) {
+      return [];
+    }
     return GitParsers.Class.parseNameStatus(result.stdout);
   }
 }
 
 export namespace CommitExpansion {
   export const $Class = $CommitExpansion;
-  export let Class = Reactive($Class);
+  export let Class = Reactive($CommitExpansion);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
+export type CommitFilesFetch = (sha: string) => Promise<readonly CommitFileChange[]>;
+
+export interface CommitExpansionOptions {
+  fetch?: CommitFilesFetch;
+  /** Most commits expanded (and cached) at once; expanding beyond collapses the oldest. */
+  capacity?: number;
+}
+

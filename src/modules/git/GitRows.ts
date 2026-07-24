@@ -5,6 +5,89 @@
 import { Static } from 'ivue/extras';
 import type { GitFileRecord } from './GitParsers';
 
+class $GitRows {
+  /** Porcelain xy → one human letter for the bucket's relevant side. */
+  static statusGlyph(xy: string, bucket: ChangeBucket): string {
+    if (bucket === 'untracked') {
+      return '?';
+    }
+
+    const stagedStatus = xy.charAt(0);
+    const unstagedStatus = xy.charAt(1);
+    const relevant = bucket === 'staged' ? stagedStatus : unstagedStatus;
+    const knownStatuses = ['M', 'A', 'D', 'R', 'C', 'U', 'T'];
+    if (knownStatuses.includes(relevant)) {
+      return relevant;
+    }
+    return 'M';
+  }
+
+  /** Build the flat row list: headers with counts, glyphed file rows, or a single placeholder. */
+  static buildChangeRows(
+    staged: readonly GitFileRecord[],
+    unstaged: readonly GitFileRecord[],
+    untracked: readonly GitFileRecord[],
+  ): ChangeRow[] {
+    const rows: ChangeRow[] = [];
+    const sections: Array<{
+      label: string;
+      bucket: ChangeBucket;
+      files: readonly GitFileRecord[];
+    }> = [
+      { label: 'Staged Changes', bucket: 'staged', files: staged },
+      { label: 'Changes', bucket: 'unstaged', files: unstaged },
+      { label: 'Untracked', bucket: 'untracked', files: untracked },
+    ];
+
+    for (const section of sections) {
+      if (section.files.length === 0) {
+        continue;
+      }
+      rows.push({
+        kind: 'header',
+        label: section.label,
+        count: section.files.length,
+      });
+      for (const file of section.files) {
+        rows.push({
+          kind: 'file',
+          bucket: section.bucket,
+          path: file.path,
+          glyph: this.statusGlyph(file.xy, section.bucket),
+        });
+      }
+    }
+
+    if (rows.length === 0) {
+      rows.push({ kind: 'placeholder', label: '(no changes)' });
+    }
+    return rows;
+  }
+
+  /** Index of the next/previous FILE row from `fromIndex` (headers are skipped); -1 if none. */
+  static nextFileRow(
+    rows: readonly ChangeRow[],
+    fromIndex: number,
+    direction: 1 | -1,
+  ): number {
+    for (
+      let index = fromIndex + direction;
+      index >= 0 && index < rows.length;
+      index += direction
+    ) {
+      if (rows[index]?.kind === 'file') {
+        return index;
+      }
+    }
+    return -1;
+  }
+}
+
+export namespace GitRows {
+  export const $Class = $GitRows;
+  export const Class = Static($GitRows);
+}
+
 export type ChangeBucket = 'staged' | 'unstaged' | 'untracked';
 
 export interface HeaderRow {
@@ -25,63 +108,3 @@ export interface PlaceholderRow {
 }
 export type ChangeRow = HeaderRow | FileRow | PlaceholderRow;
 
-/** Porcelain xy → one human letter for the bucket's relevant side. */
-function $statusGlyph(xy: string, bucket: ChangeBucket): string {
-  if (bucket === 'untracked') return '?';
-  const staged = xy.charAt(0);
-  const worktree = xy.charAt(1);
-  const relevant = bucket === 'staged' ? staged : worktree;
-  const known = ['M', 'A', 'D', 'R', 'C', 'U', 'T'];
-  if (known.includes(relevant)) return relevant;
-  return 'M';
-}
-
-/** Build the flat row list: headers with counts, glyphed file rows, or a single placeholder. */
-function $buildChangeRows(
-  staged: readonly GitFileRecord[],
-  unstaged: readonly GitFileRecord[],
-  untracked: readonly GitFileRecord[],
-): ChangeRow[] {
-  const rows: ChangeRow[] = [];
-  const sections: Array<{ label: string; bucket: ChangeBucket; files: readonly GitFileRecord[] }> = [
-    { label: 'Staged Changes', bucket: 'staged', files: staged },
-    { label: 'Changes', bucket: 'unstaged', files: unstaged },
-    { label: 'Untracked', bucket: 'untracked', files: untracked },
-  ];
-  for (const section of sections) {
-    if (section.files.length === 0) continue;
-    rows.push({ kind: 'header', label: section.label, count: section.files.length });
-    for (const file of section.files) {
-      rows.push({
-        kind: 'file',
-        bucket: section.bucket,
-        path: file.path,
-        glyph: $statusGlyph(file.xy, section.bucket),
-      });
-    }
-  }
-  if (rows.length === 0) rows.push({ kind: 'placeholder', label: '(no changes)' });
-  return rows;
-}
-
-/** Index of the next/previous FILE row from `fromIndex` (headers are skipped); -1 if none. */
-function $nextFileRow(rows: readonly ChangeRow[], fromIndex: number, direction: 1 | -1): number {
-  for (let index = fromIndex + direction; index >= 0 && index < rows.length; index += direction) {
-    if (rows[index]?.kind === 'file') return index;
-  }
-  return -1;
-}
-
-class $GitRows {
-  /** Porcelain xy → one human letter for the bucket's relevant side. */
-  static statusGlyph = $statusGlyph;
-  /** Build the flat row list: headers with counts, glyphed file rows, or a single placeholder. */
-  static buildChangeRows = $buildChangeRows;
-  /** Index of the next/previous FILE row (headers skipped); -1 if none. */
-  static nextFileRow = $nextFileRow;
-}
-
-export namespace GitRows {
-  export const $Class = $GitRows;
-  export const Class = Static($GitRows);
-}

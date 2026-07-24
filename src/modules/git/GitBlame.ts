@@ -8,6 +8,93 @@ import { Static } from 'ivue/extras';
 
 /** Authorship of ONE line: who last touched it, when, the commit summary, and its sha. `uncommitted` is
  *  true for a working-tree line git has not committed yet (the all-zero sha). */
+class $GitBlame {
+  protected static get uncommittedSha(): string {
+    return '0000000000000000000000000000000000000000';
+  }
+
+  protected static get porcelainHeaderPattern(): RegExp {
+    return /^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$/;
+  }
+
+  protected static parsePorcelainMetadataLine(headerLine: string): {
+    sha: string;
+    lineNumber: number;
+  } {
+    const match = this.porcelainHeaderPattern.exec(headerLine);
+    if (!match) {
+      return { sha: '', lineNumber: 0 };
+    }
+    return {
+      sha: match[1] ?? '',
+      lineNumber: Number.parseInt(match[2] ?? '0', 10),
+    };
+  }
+
+  static parsePorcelain(output: string): Map<number, BlameLine> {
+    const shaMetadata = new Map<string, { author: string; authorTimeMs: number; summary: string }>();
+    const result = new Map<number, BlameLine>();
+    const rawLines = output.split('\n');
+    let rawLineIndex = 0;
+
+    while (rawLineIndex < rawLines.length) {
+      const header = this.parsePorcelainMetadataLine(rawLines[rawLineIndex] ?? '');
+      if (!header.sha) {
+        rawLineIndex += 1;
+        continue;
+      }
+
+      const metadata = shaMetadata.get(header.sha) ?? {
+        author: '',
+        authorTimeMs: 0,
+        summary: '',
+      };
+      rawLineIndex += 1;
+
+      // Consume this hunk's metadata lines up to the tab-prefixed content line. On a repeated sha there
+      // are none (git omits already-sent metadata), so the cached metadata is reused unchanged.
+      while (
+        rawLineIndex < rawLines.length &&
+        !(rawLines[rawLineIndex] ?? '').startsWith('\t')
+      ) {
+        const currentLine = rawLines[rawLineIndex] ?? '';
+        if (currentLine.startsWith('author ')) {
+          metadata.author = currentLine.slice('author '.length);
+        } else if (currentLine.startsWith('author-time ')) {
+          metadata.authorTimeMs = Number.parseInt(currentLine.slice('author-time '.length), 10) * 1000;
+        } else if (currentLine.startsWith('summary ')) {
+          metadata.summary = currentLine.slice('summary '.length);
+        }
+        rawLineIndex += 1;
+      }
+      shaMetadata.set(header.sha, metadata);
+
+      if (
+        rawLineIndex < rawLines.length &&
+        (rawLines[rawLineIndex] ?? '').startsWith('\t')
+      ) {
+        rawLineIndex += 1;
+      }
+
+      const isUncommittedLine = header.sha === this.uncommittedSha;
+      result.set(header.lineNumber, {
+        sha: header.sha,
+        author: isUncommittedLine ? 'You (uncommitted)' : metadata.author,
+        authorTimeMs: metadata.authorTimeMs,
+        summary: isUncommittedLine ? 'Uncommitted changes' : metadata.summary,
+        uncommitted: isUncommittedLine,
+      });
+    }
+
+    return result;
+  }
+}
+
+export namespace GitBlame {
+  export const $Class = $GitBlame;
+  export const Class = Static($GitBlame);
+}
+
 export interface BlameLine {
   readonly sha: string;
   readonly author: string;
@@ -16,54 +103,3 @@ export interface BlameLine {
   readonly uncommitted: boolean;
 }
 
-const UNCOMMITTED_SHA = '0000000000000000000000000000000000000000';
-const HEADER = /^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$/;
-
-/** Parse `git blame --porcelain` into a 1-based line → BlameLine map. A commit's author/summary
- *  metadata is emitted only on its FIRST hunk, so it is remembered per sha and reused for later hunks. */
-function $parsePorcelain(output: string): Map<number, BlameLine> {
-  const shaMetadata = new Map<string, { author: string; authorTimeMs: number; summary: string }>();
-  const result = new Map<number, BlameLine>();
-  const rawLines = output.split('\n');
-  let index = 0;
-  while (index < rawLines.length) {
-    const header = HEADER.exec(rawLines[index] ?? '');
-    if (!header) {
-      index += 1;
-      continue;
-    }
-    const sha = header[1] as string;
-    const finalLine = Number.parseInt(header[2] as string, 10);
-    const metadata = shaMetadata.get(sha) ?? { author: '', authorTimeMs: 0, summary: '' };
-    index += 1;
-    // Consume this hunk's metadata lines up to the tab-prefixed content line. On a repeated sha there
-    // are none (git omits already-sent metadata), so the cached metadata is reused unchanged.
-    while (index < rawLines.length && !(rawLines[index] ?? '').startsWith('\t')) {
-      const line = rawLines[index] as string;
-      if (line.startsWith('author ')) metadata.author = line.slice('author '.length);
-      else if (line.startsWith('author-time ')) metadata.authorTimeMs = Number.parseInt(line.slice('author-time '.length), 10) * 1000;
-      else if (line.startsWith('summary ')) metadata.summary = line.slice('summary '.length);
-      index += 1;
-    }
-    shaMetadata.set(sha, metadata);
-    if (index < rawLines.length && (rawLines[index] ?? '').startsWith('\t')) index += 1; // skip content line
-    const uncommitted = sha === UNCOMMITTED_SHA;
-    result.set(finalLine, {
-      sha,
-      author: uncommitted ? 'You (uncommitted)' : metadata.author,
-      authorTimeMs: metadata.authorTimeMs,
-      summary: uncommitted ? 'Uncommitted changes' : metadata.summary,
-      uncommitted,
-    });
-  }
-  return result;
-}
-
-class $GitBlame {
-  static parsePorcelain = $parsePorcelain;
-}
-
-export namespace GitBlame {
-  export const $Class = $GitBlame;
-  export const Class = Static($GitBlame);
-}

@@ -2,9 +2,9 @@ import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GitCommands, type GitCommandResult } from '../GitCommands';
-import { GitRepository } from '../GitRepository';
-import { Processes } from '../../system/Processes';
+import { GitCommands, type GitCommandResult } from './GitCommands';
+import { GitRepository } from './GitRepository';
+import { Processes } from '../system/Processes';
 
 interface DeferredResult {
   promise: Promise<GitCommandResult>;
@@ -73,7 +73,7 @@ test('an unchanged background refresh preserves quiescent Git refs', async () =>
 
   class FakeGitCommands extends GitCommands.$Class {
     static override statusPorcelainV2Branch(): Promise<GitCommandResult> {
-      requestCount++;
+      requestCount += 1;
       if (requestCount === 1) {
         return Promise.resolve({
           code: 0,
@@ -94,6 +94,7 @@ test('an unchanged background refresh preserves quiescent Git refs', async () =>
 
   const backgroundRefresh = repository.refresh({ background: true });
   expect(repository.refreshing.value).toBe(false);
+
   backgroundResult.resolve({
     code: 0,
     stdout: statusOutput('main', 'same.ts'),

@@ -2,7 +2,7 @@
 // mtime-keyed invalidation, negative caching, stat memoization within a paint tick, and disposal
 // making in-flight loads inert. All through injected blame/mtime seams — no git, no filesystem.
 import { test, expect, describe } from 'bun:test';
-import { GitBlameCache, MAX_BLAMED_FILES } from './GitBlameCache';
+import { GitBlameCache } from './GitBlameCache';
 
 const PORCELAIN_FOR = (author: string) =>
   [
@@ -66,11 +66,11 @@ describe('GitBlameCache', () => {
       blame: async () => PORCELAIN_FOR('Ada'),
       mtime: () => 1,
     });
-    for (let fileIndex = 0; fileIndex < MAX_BLAMED_FILES + 5; fileIndex++) {
+    for (let fileIndex = 0; fileIndex < GitBlameCache.Class.maximumBlamedFiles + 5; fileIndex++) {
       cache.lineBlame(`/repo/file-${fileIndex}.ts`, 0);
       await wait(1);
     }
-    expect(cache.cachedFileCount).toBeLessThanOrEqual(MAX_BLAMED_FILES);
+    expect(cache.cachedFileCount).toBeLessThanOrEqual(GitBlameCache.Class.maximumBlamedFiles);
   });
 
   test('the stat probe is memoized within a paint tick (two same-frame queries, one stat)', async () => {

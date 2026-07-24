@@ -12,21 +12,11 @@ import {
   type GitFileRecord,
 } from './GitParsers';
 
-export interface LoadHistoryOptions {
-  branch?: string;
-  limit?: number;
-  cursor?: string;
-}
-
-export interface GitRefreshOptions {
-  background?: boolean;
-}
-
 class $GitRepository {
-  private refreshRequestId = 0;
-  private backgroundRefreshInFlight = false;
-  private historyRequestId = 0;
-  private operationId = 0;
+  protected refreshRequestId = 0;
+  protected backgroundRefreshInFlight = false;
+  protected historyRequestId = 0;
+  protected operationId = 0;
 
   constructor(readonly cwd: string) {}
 
@@ -59,12 +49,12 @@ class $GitRepository {
     return ref<string | null>(null);
   }
 
-  private commandError(action: string, result: GitCommandResult): string {
+  protected commandError(action: string, result: GitCommandResult): string {
     const detail = result.stderr.trim() || result.stdout.trim();
     return detail || `${action} exited with code ${result.code}`;
   }
 
-  private publishStatus(): void {
+  protected publishStatus(): void {
     StatusChannel.Class.update({
       gitBranch: this.branch.value,
       gitHead: this.head.value,
@@ -81,8 +71,12 @@ class $GitRepository {
   // invariant: Only the newest Git request mutates state (src/modules/git/git.invariants.md)
   async refresh(options: GitRefreshOptions = {}): Promise<void> {
     const background = options.background === true;
-    if (background && (this.backgroundRefreshInFlight || this.refreshing.value)) return;
-    if (background) this.backgroundRefreshInFlight = true;
+    if (background && (this.backgroundRefreshInFlight || this.refreshing.value)) {
+      return;
+    }
+    if (background) {
+      this.backgroundRefreshInFlight = true;
+    }
     const requestId = ++this.refreshRequestId;
     if (!background) {
       this.refreshing.value = true;
@@ -91,21 +85,29 @@ class $GitRepository {
     }
 
     try {
-      const result = await GitCommands.Class.statusPorcelainV2Branch(this.cwd);
-      if (requestId !== this.refreshRequestId) return;
-      if (result.code !== 0) {
-        this.error.value = this.commandError('git status', result);
+      const statusResult = await GitCommands.Class.statusPorcelainV2Branch(this.cwd);
+      if (requestId !== this.refreshRequestId) {
+        return;
+      }
+      if (statusResult.code !== 0) {
+        this.error.value = this.commandError('git status', statusResult);
         return;
       }
 
-      const status = GitParsers.Class.parseStatusPorcelainV2(result.stdout);
-      if (requestId !== this.refreshRequestId) return;
+      const status = GitParsers.Class.parseStatusPorcelainV2(statusResult.stdout);
+      if (requestId !== this.refreshRequestId) {
+        return;
+      }
       if (status.branch !== this.branch.value) {
-        this.historyRequestId++;
+        this.historyRequestId += 1;
         this.historyPage.value = [];
       }
-      if (status.branch !== this.branch.value) this.branch.value = status.branch;
-      if (status.head !== this.head.value) this.head.value = status.head;
+      if (status.branch !== this.branch.value) {
+        this.branch.value = status.branch;
+      }
+      if (status.head !== this.head.value) {
+        this.head.value = status.head;
+      }
       if (!this.fileRecordsMatch(this.staged.value, status.staged)) {
         this.staged.value = status.staged;
       }
@@ -118,12 +120,18 @@ class $GitRepository {
       this.error.value = null;
       this.lastRefreshAt.value = Clock.Class.now();
     } catch (error) {
-      if (requestId !== this.refreshRequestId) return;
+      if (requestId !== this.refreshRequestId) {
+        return;
+      }
       this.error.value = `git status failed: ${String(error)}`;
     } finally {
-      if (background) this.backgroundRefreshInFlight = false;
+      if (background) {
+        this.backgroundRefreshInFlight = false;
+      }
       if (requestId === this.refreshRequestId) {
-        if (!background) this.refreshing.value = false;
+        if (!background) {
+          this.refreshing.value = false;
+        }
         this.publishStatus();
       }
     }
@@ -132,11 +140,13 @@ class $GitRepository {
   // invariant: The git panel converges without watcher notifications (src/modules/git/git.invariants.md)
   // An unchanged background reconcile must not replace panel-observed refs, or the polling floor
   // would wake an otherwise quiescent render loop on every interval.
-  private fileRecordsMatch(
+  protected fileRecordsMatch(
     currentRecords: GitFileRecord[],
     nextRecords: GitFileRecord[],
   ): boolean {
-    if (currentRecords.length !== nextRecords.length) return false;
+    if (currentRecords.length !== nextRecords.length) {
+      return false;
+    }
     return currentRecords.every((currentRecord, recordIndex) => {
       const nextRecord = nextRecords[recordIndex];
       return nextRecord !== undefined
@@ -155,28 +165,34 @@ class $GitRepository {
     const branch = options.branch ?? this.branch.value;
 
     try {
-      const result = await GitCommands.Class.log({
+      const historyResult = await GitCommands.Class.log({
         cwd: this.cwd,
         branch: branch && branch !== '(detached)' ? branch : undefined,
         limit,
         cursor: options.cursor,
       });
-      if (requestId !== this.historyRequestId) return [];
-      if (result.code !== 0) {
+      if (requestId !== this.historyRequestId) {
+        return [];
+      }
+      if (historyResult.code !== 0) {
         this.historyPage.value = [];
-        this.error.value = this.commandError('git log', result);
+        this.error.value = this.commandError('git log', historyResult);
         this.publishStatus();
         return [];
       }
 
-      const commits = GitParsers.Class.parseLog(result.stdout).slice(0, limit);
-      if (requestId !== this.historyRequestId) return [];
+      const commits = GitParsers.Class.parseLog(historyResult.stdout).slice(0, limit);
+      if (requestId !== this.historyRequestId) {
+        return [];
+      }
       this.historyPage.value = commits;
       this.error.value = null;
       this.publishStatus();
       return commits;
     } catch (error) {
-      if (requestId !== this.historyRequestId) return [];
+      if (requestId !== this.historyRequestId) {
+        return [];
+      }
       this.historyPage.value = [];
       this.error.value = `git log failed: ${String(error)}`;
       this.publishStatus();
@@ -185,7 +201,9 @@ class $GitRepository {
   }
 
   async stage(paths: string[]): Promise<boolean> {
-    return this.runOperation('git add', () => GitCommands.Class.stage(this.cwd, paths));
+    return this.runOperation('git add', () =>
+      GitCommands.Class.stage(this.cwd, paths),
+    );
   }
 
   async unstage(paths: string[]): Promise<boolean> {
@@ -195,19 +213,18 @@ class $GitRepository {
   }
 
   async stageAll(): Promise<boolean> {
-    const paths = this.uniquePaths([...this.unstaged.value, ...this.untracked.value]);
-    return this.stage(paths);
+    return this.stage(this.uniquePaths([...this.unstaged.value, ...this.untracked.value]));
   }
 
   async unstageAll(): Promise<boolean> {
     return this.unstage(this.uniquePaths(this.staged.value));
   }
 
-  private uniquePaths(records: GitFileRecord[]): string[] {
+  protected uniquePaths(records: GitFileRecord[]): string[] {
     return [...new Set(records.map((record) => record.path))];
   }
 
-  private async runOperation(
+  protected async runOperation(
     action: string,
     run: () => Promise<GitCommandResult>,
   ): Promise<boolean> {
@@ -233,10 +250,10 @@ class $GitRepository {
   }
 
   dispose(): void {
-    this.refreshRequestId++;
+    this.refreshRequestId += 1;
     this.backgroundRefreshInFlight = false;
-    this.historyRequestId++;
-    this.operationId++;
+    this.historyRequestId += 1;
+    this.operationId += 1;
     this.refreshing.value = false;
     // No owned effects here — bumping the request IDs makes any in-flight refresh/history/op inert.
     // (Do NOT call $stopEffects: it clears cached ref-getter STATE cells, corrupting the
@@ -247,7 +264,18 @@ class $GitRepository {
 
 export namespace GitRepository {
   export const $Class = $GitRepository;
-  export let Class = Reactive($Class);
+  export let Class = Reactive($GitRepository);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
+export interface LoadHistoryOptions {
+  branch?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface GitRefreshOptions {
+  background?: boolean;
+}
+

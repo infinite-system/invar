@@ -14,43 +14,13 @@ import { Static } from 'ivue/extras';
 import type { CommitFileChange, CommitRecord } from './GitParsers';
 
 /** One expanded commit: its position in the log, its sha, and its changed files (null = loading). */
-export interface ExpandedCommit {
-  commitIndex: number;
-  sha: string;
-  files: readonly CommitFileChange[] | null;
-}
-
-export interface CommitHeaderRow {
-  kind: 'commit';
-  commitIndex: number;
-  /** undefined = the commit page is not fetched yet (renders the "…" placeholder). */
-  record: CommitRecord | undefined;
-  expanded: boolean;
-}
-export interface CommitFileRow {
-  kind: 'commitFile';
-  commitIndex: number;
-  sha: string;
-  path: string;
-  /** Status letter: M/A/D/R/C/T/U — glyph-colored like the changes list. */
-  glyph: string;
-  originalPath?: string;
-}
-export interface CommitLoadingRow {
-  kind: 'loading';
-  commitIndex: number;
-  sha: string;
-}
-export type CommitLogRow = CommitHeaderRow | CommitFileRow | CommitLoadingRow;
-
-/** Stateless capability: pure flat-row arithmetic + window construction for the commit log. */
 class $GitLogRows {
   /** Extra flat rows an expanded commit contributes beyond its header row. */
   static expandedRowCount(entry: ExpandedCommit): number {
     return entry.files === null ? 1 : entry.files.length;
   }
 
-  private static sortedByIndex(expanded: readonly ExpandedCommit[]): ExpandedCommit[] {
+  protected static sortedByIndex(expanded: readonly ExpandedCommit[]): ExpandedCommit[] {
     return [...expanded].sort((first, second) => first.commitIndex - second.commitIndex);
   }
 
@@ -155,3 +125,35 @@ export namespace GitLogRows {
   export const $Class = $GitLogRows;
   export const Class = Static($GitLogRows);
 }
+
+export interface ExpandedCommit {
+  commitIndex: number;
+  sha: string;
+  files: readonly CommitFileChange[] | null;
+}
+
+export interface CommitHeaderRow {
+  kind: 'commit';
+  commitIndex: number;
+  /** undefined = the commit page is not fetched yet (renders the "…" placeholder). */
+  record: CommitRecord | undefined;
+  expanded: boolean;
+}
+export interface CommitFileRow {
+  kind: 'commitFile';
+  commitIndex: number;
+  sha: string;
+  path: string;
+  /** Status letter: M/A/D/R/C/T/U — glyph-colored like the changes list. */
+  glyph: string;
+  originalPath?: string;
+}
+export interface CommitLoadingRow {
+  kind: 'loading';
+  commitIndex: number;
+  sha: string;
+}
+export type CommitLogRow = CommitHeaderRow | CommitFileRow | CommitLoadingRow;
+
+/** Stateless capability: pure flat-row arithmetic + window construction for the commit log. */
+

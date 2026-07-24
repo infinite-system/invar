@@ -6,32 +6,63 @@
 // invariant: A relative time reads in the largest fitting unit (src/modules/git/git.invariants.md)
 import { Static } from 'ivue/extras';
 
-const SECOND_MS = 1000;
-const MINUTE_MS = 60 * SECOND_MS;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
-const WEEK_MS = 7 * DAY_MS;
-const MONTH_MS = 30 * DAY_MS;
-const YEAR_MS = 365 * DAY_MS;
-
-/** "1 day ago" / "3 days ago" — singular when the count is exactly one. */
-function agoPhrase(count: number, unit: string): string {
-  const whole = Math.max(1, Math.round(count));
-  return `${whole} ${unit}${whole === 1 ? '' : 's'} ago`;
-}
-
 class $RelativeTime {
-  /** Format the gap between `fromMs` and `nowMs` in the largest fitting unit. A future or equal instant
-   *  reads "just now" (a clock skew never produces a negative age). */
+  protected static get secondMilliseconds(): number {
+    return 1000;
+  }
+
+  protected static get minuteMilliseconds(): number {
+    return 60 * this.secondMilliseconds;
+  }
+
+  protected static get hourMilliseconds(): number {
+    return 60 * this.minuteMilliseconds;
+  }
+
+  protected static get dayMilliseconds(): number {
+    return 24 * this.hourMilliseconds;
+  }
+
+  protected static get weekMilliseconds(): number {
+    return 7 * this.dayMilliseconds;
+  }
+
+  protected static get monthMilliseconds(): number {
+    return 30 * this.dayMilliseconds;
+  }
+
+  protected static get yearMilliseconds(): number {
+    return 365 * this.dayMilliseconds;
+  }
+
+  protected static agoPhrase(elapsedMilliseconds: number, unitName: string): string {
+    const unitValue = Math.max(1, Math.round(elapsedMilliseconds));
+    return `${unitValue} ${unitName}${unitValue === 1 ? '' : 's'} ago`;
+  }
+
+  /** Format the gap between `fromMs` and `nowMs` in the largest fitting unit. A future or equal
+   * instant reads "just now" (a clock skew never produces a negative age). */
   static format(fromMs: number, nowMs: number): string {
-    const elapsed = nowMs - fromMs;
-    if (elapsed < 45 * SECOND_MS) return 'just now';
-    if (elapsed < 45 * MINUTE_MS) return agoPhrase(elapsed / MINUTE_MS, 'minute');
-    if (elapsed < 24 * HOUR_MS) return agoPhrase(elapsed / HOUR_MS, 'hour');
-    if (elapsed < 7 * DAY_MS) return agoPhrase(elapsed / DAY_MS, 'day');
-    if (elapsed < 30 * DAY_MS) return agoPhrase(elapsed / WEEK_MS, 'week');
-    if (elapsed < 365 * DAY_MS) return agoPhrase(elapsed / MONTH_MS, 'month');
-    return agoPhrase(elapsed / YEAR_MS, 'year');
+    const elapsedMilliseconds = nowMs - fromMs;
+    if (elapsedMilliseconds < 45 * this.secondMilliseconds) {
+      return 'just now';
+    }
+    if (elapsedMilliseconds < 45 * this.minuteMilliseconds) {
+      return this.agoPhrase(elapsedMilliseconds / this.minuteMilliseconds, 'minute');
+    }
+    if (elapsedMilliseconds < 24 * this.hourMilliseconds) {
+      return this.agoPhrase(elapsedMilliseconds / this.hourMilliseconds, 'hour');
+    }
+    if (elapsedMilliseconds < 7 * this.dayMilliseconds) {
+      return this.agoPhrase(elapsedMilliseconds / this.dayMilliseconds, 'day');
+    }
+    if (elapsedMilliseconds < 30 * this.dayMilliseconds) {
+      return this.agoPhrase(elapsedMilliseconds / this.weekMilliseconds, 'week');
+    }
+    if (elapsedMilliseconds < 365 * this.dayMilliseconds) {
+      return this.agoPhrase(elapsedMilliseconds / this.monthMilliseconds, 'month');
+    }
+    return this.agoPhrase(elapsedMilliseconds / this.yearMilliseconds, 'year');
   }
 }
 

@@ -11,19 +11,10 @@ import { GitCommands } from './GitCommands';
 import { GitParsers, type CommitRecord } from './GitParsers';
 import { GitWindow } from './GitWindow';
 
-/** Page fetch seam. Resolve records on success (short/empty page = genuine end of history), or
- *  NULL on command failure — failure must never be conflated with an empty page. */
-export type CommitPageFetch = (
-  skip: number,
-  limit: number,
-  branch?: string,
-) => Promise<CommitRecord[] | null>;
-
-export interface CommitLogOptions {
-  branch?: string;
-  fetch?: CommitPageFetch;
-}
-
+/**
+ * Page fetch seam. Resolve records on success (short/empty page = genuine end of history), or
+ * NULL on command failure — failure must never be conflated with an empty page.
+ */
 class $CommitLog {
   constructor(
     readonly cwd: string,
@@ -31,24 +22,31 @@ class $CommitLog {
   ) {}
 
   // invariant: The log branch viewer is read-only (src/modules/git/git.invariants.md)
-  /** The LOCAL branch this log window is sourced from; undefined = follow HEAD (the checked-out
-   *  branch). This is the ONE ref parameter threaded through the shared page-fetch generator — the
-   *  branch viewer re-sources the SAME virtualized pipeline instead of forking a second one. */
+  /**
+   * The LOCAL branch this log window is sourced from; undefined = follow HEAD (the checked-out
+   * branch). This is the ONE ref parameter threaded through the shared page-fetch generator — the
+   * branch viewer re-sources the SAME virtualized pipeline instead of forking a second one.
+   */
   get branch() {
     return ref<string | undefined>(this.options.branch);
   }
 
   /** Re-source the window from another local branch (undefined = follow HEAD). The sparse cache
-   *  indexes offsets from the VIEWED ref's tip, so a branch change invalidates every entry. */
+   * indexes offsets from the VIEWED ref's tip, so a branch change invalidates every entry.
+   */
   setBranch(branchName: string | undefined): void {
-    if (this.branch.value === branchName) return;
+    if (this.branch.value === branchName) {
+      return;
+    }
     this.branch.value = branchName;
     this.reset();
   }
 
   // invariant: The commit log follows repository reality (src/modules/git/git.invariants.md)
-  /** The tip SHA this window currently DISPLAYS (cache index 0), or null before the first page
-   *  loads. Comparing it against the viewed ref's real tip is the cheap staleness check. */
+  /**
+   * The tip SHA this window currently DISPLAYS (cache index 0), or null before the first page
+   * loads. Comparing it against the viewed ref's real tip is the cheap staleness check.
+   */
   get loadedTipSha(): string | null {
     return this.cache.value.get(0)?.sha ?? null;
   }
@@ -65,7 +63,7 @@ class $CommitLog {
   }
 
   // Stale-supersession token — only the newest ensureRange may mutate state.
-  private loadId = 0;
+  protected loadId = 0;
 
   get loadedCount(): number {
     return this.cache.value.size;
@@ -74,22 +72,31 @@ class $CommitLog {
   /** Records for `[start, start+count)`; `undefined` = not yet loaded (render a placeholder row). */
   rows(start: number, count: number): (CommitRecord | undefined)[] {
     const cachedRecords = this.cache.value; // subscribe
-    const records: (CommitRecord | undefined)[] = [];
-    for (let index = start; index < start + count; index++) {
-      records.push(index >= 0 ? cachedRecords.get(index) : undefined);
+    const rows: (CommitRecord | undefined)[] = [];
+    for (let index = start; index < start + count; index += 1) {
+      rows.push(index >= 0 ? cachedRecords.get(index) : undefined);
     }
-    return records;
+    return rows;
   }
 
-  /** Fetch one page `[skip, skip+limit)` from the VIEWED branch (undefined = HEAD). Overridable via
-   *  constructor `fetch` (tests inject a fake; it receives the branch as its third argument).
-   *  Returns NULL on command failure — a failed `git log` is not an empty page, and the two must
-   *  stay distinguishable or a transient failure gets cached as end-of-history. */
-  protected async fetchPage(skip: number, limit: number): Promise<CommitRecord[] | null> {
+  /**
+   * Fetch one page `[skip, skip+limit)` from the VIEWED branch (undefined = HEAD). Overridable via
+   * constructor `fetch` (tests inject a fake; it receives the branch as its third argument).
+   * Returns NULL on command failure — a failed `git log` is not an empty page, and the two must
+   * stay distinguishable or a transient failure gets cached as end-of-history.
+   */
+  protected async fetchPage(
+    skip: number,
+    limit: number,
+  ): Promise<CommitRecord[] | null> {
     const branch = this.branch.value;
-    if (this.options.fetch) return this.options.fetch(skip, limit, branch);
+    if (this.options.fetch) {
+      return this.options.fetch(skip, limit, branch);
+    }
     const result = await GitCommands.Class.log({ cwd: this.cwd, branch, skip, limit });
-    if (result.code !== 0) return null;
+    if (result.code !== 0) {
+      return null;
+    }
     return GitParsers.Class.parseLog(result.stdout);
   }
 
@@ -101,34 +108,52 @@ class $CommitLog {
    */
   async ensureRange(start: number, count: number, keepMargin = count): Promise<void> {
     const loadToken = ++this.loadId;
-    const gaps = GitWindow.Class.missingRanges(new Set(this.cache.value.keys()), start, count);
+    const gaps = GitWindow.Class.missingRanges(
+      new Set(this.cache.value.keys()),
+      start,
+      count,
+    );
     for (const { offset, length } of gaps) {
       const page = await this.fetchPage(offset, length);
-      if (loadToken !== this.loadId) return; // superseded by a newer ensureRange — discard
-      if (page === null) return; // command FAILED — no records, and NO end-of-history inference:
-      // the rows stay unloaded placeholders and the next ensure retries them. Advancing knownEnd
-      // here would cache a transient failure as an empty repository.
-      const next = new Map(this.cache.value);
-      page.forEach((record, pageOffset) => next.set(offset + pageOffset, record));
-      if (page.length < length) this.knownEnd.value = offset + page.length; // reached the end
-      this.cache.value = next;
+      if (loadToken !== this.loadId) {
+        return;
+      }
+      if (page === null) {
+        return;
+      }
+      const nextCache = new Map(this.cache.value);
+      page.forEach((record, pageOffset) => {
+        nextCache.set(offset + pageOffset, record);
+      });
+      if (page.length < length) {
+        this.knownEnd.value = offset + page.length;
+      }
+      this.cache.value = nextCache;
     }
     this.evict(start, count, keepMargin);
   }
 
-  private evict(start: number, count: number, margin: number): void {
+  protected evict(start: number, count: number, margin: number): void {
     const keepStart = Math.max(0, start - margin);
     const keepCount = count + margin * 2;
-    const drop = GitWindow.Class.evictable(this.cache.value.keys(), keepStart, keepCount);
-    if (drop.length === 0) return;
-    const next = new Map(this.cache.value);
-    for (const index of drop) next.delete(index);
-    this.cache.value = next;
+    const cacheKeysToDrop = GitWindow.Class.evictable(
+      this.cache.value.keys(),
+      keepStart,
+      keepCount,
+    );
+    if (cacheKeysToDrop.length === 0) {
+      return;
+    }
+    const nextCache = new Map(this.cache.value);
+    for (const index of cacheKeysToDrop) {
+      nextCache.delete(index);
+    }
+    this.cache.value = nextCache;
   }
 
   /** Drop everything (e.g. after a commit/refresh changes history). */
   reset(): void {
-    this.loadId++;
+    this.loadId += 1;
     this.cache.value = new Map();
     this.knownEnd.value = Number.POSITIVE_INFINITY;
   }
@@ -136,7 +161,19 @@ class $CommitLog {
 
 export namespace CommitLog {
   export const $Class = $CommitLog;
-  export let Class = Reactive($Class);
+  export let Class = Reactive($CommitLog);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
+export type CommitPageFetch = (
+  skip: number,
+  limit: number,
+  branch?: string,
+) => Promise<CommitRecord[] | null>;
+
+export interface CommitLogOptions {
+  branch?: string;
+  fetch?: CommitPageFetch;
+}
+

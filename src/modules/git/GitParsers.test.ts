@@ -1,12 +1,16 @@
-import { expect, test } from 'bun:test';
-import {
-  LOG_FIELD_SEPARATOR,
-  LOG_RECORD_SEPARATOR,
-  GitParsers,
-} from '../GitParsers';
+import { test, expect } from 'bun:test';
+import { GitParsers } from './GitParsers';
+
+const LOG_FIELD_SEPARATOR = '\x1f';
+const LOG_RECORD_SEPARATOR = '\x1e';
 
 test('name-status parser yields one status letter + path per line', () => {
-  const output = ['M\tsrc/modules/git/GitCommands.ts', 'A\tdocs/new.md', 'D\told.txt', ''].join('\n');
+  const output = [
+    'M\tsrc/modules/git/GitCommands.ts',
+    'A\tdocs/new.md',
+    'D\told.txt',
+    '',
+  ].join('\n');
   expect(GitParsers.Class.parseNameStatus(output)).toEqual([
     { status: 'M', path: 'src/modules/git/GitCommands.ts' },
     { status: 'A', path: 'docs/new.md' },
@@ -17,7 +21,11 @@ test('name-status parser yields one status letter + path per line', () => {
 test('name-status parser shows a rename as its NEW path with glyph R and keeps the source', () => {
   const output = 'R100\tsrc/old-name.ts\tsrc/new-name.ts\n';
   expect(GitParsers.Class.parseNameStatus(output)).toEqual([
-    { status: 'R', path: 'src/new-name.ts', originalPath: 'src/old-name.ts' },
+    {
+      status: 'R',
+      path: 'src/new-name.ts',
+      originalPath: 'src/old-name.ts',
+    },
   ]);
 });
 

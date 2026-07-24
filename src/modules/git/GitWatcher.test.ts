@@ -10,15 +10,24 @@ import {
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GitRepository, type GitRefreshOptions } from '../GitRepository';
-import { gitCleanEnv } from './gitCleanEnv';
-import { GitWatcher } from '../GitWatcher';
+import { GitRepository, type GitRefreshOptions } from './GitRepository';
+import { GitWatcher } from './GitWatcher';
+
+function gitCleanEnv(): Record<string, string> {
+  const cleaned: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
 
 // These tests exercise the REAL fs.watch inotify path. A resource-starved sandbox (exhausted inotify
 // instances) makes fs.watch throw EMFILE — an ENVIRONMENT limitation, not a code fault (the feature is
 // also covered end-to-end by scripts/smoke-git-watch.sh). Skip cleanly when the OS can't open a watch,
 // so the merge gate is not blocked by an unavailable OS capability; on real hardware the tests run.
-const FS_WATCH_AVAILABLE = (() => {
+const fsWatchAvailable = (() => {
   const probeDirectory = mkdtempSync(join(tmpdir(), 'invar-fswatch-probe-'));
   try {
     const handle = watch(probeDirectory, () => {});
@@ -30,10 +39,12 @@ const FS_WATCH_AVAILABLE = (() => {
     rmSync(probeDirectory, { recursive: true, force: true });
   }
 })();
-if (!FS_WATCH_AVAILABLE) {
-  console.warn('GitWatcher.test: fs.watch unavailable (EMFILE — inotify exhausted); skipping watch-path tests. smoke-git-watch.sh covers the behavior.');
+if (!fsWatchAvailable) {
+  console.warn(
+    'GitWatcher.test: fs.watch unavailable (EMFILE — inotify exhausted); skipping watch-path tests. smoke-git-watch.sh covers the behavior.',
+  );
 }
-const watchTest = test.skipIf(!FS_WATCH_AVAILABLE);
+const watchTest = test.skipIf(!fsWatchAvailable);
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -45,20 +56,26 @@ async function waitUntil(
 ): Promise<void> {
   const deadline = Date.now() + timeoutMilliseconds;
   while (!condition()) {
-    if (Date.now() >= deadline) throw new Error('Timed out waiting for condition');
+    if (Date.now() >= deadline) {
+      throw new Error('Timed out waiting for condition');
+    }
     await wait(5);
   }
 }
 
 function git(cwd: string, arguments_: string[]): void {
-  const result = spawnSync('git', arguments_, { cwd, encoding: 'utf8', env: gitCleanEnv() });
+  const result = spawnSync('git', arguments_, {
+    cwd,
+    encoding: 'utf8',
+    env: gitCleanEnv(),
+  });
   if (result.status !== 0) {
     throw new Error(`git ${arguments_.join(' ')} failed: ${result.stderr}`);
   }
 }
 
 /** A temp git repository with a real `node_modules/` gitignore, a large-ish ignored subtree, and
- *  tracked nested files. Returns the repository root; the caller removes it. */
+ * tracked nested files. Returns the repository root; the caller removes it. */
 function makeRepository(): string {
   const cwd = mkdtempSync(join(tmpdir(), 'invar-git-watch-'));
   git(cwd, ['init', '-q']);
@@ -83,7 +100,7 @@ function makeRepository(): string {
   return cwd;
 }
 
-test('watcher disposal cancels a pending refresh', async () => {
+watchTest('watcher disposal cancels a pending refresh', async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'invar-git-watch-'));
   let refreshCount = 0;
   const repository = {
@@ -147,7 +164,7 @@ watchTest('a runtime-created symlink is never watched and never throws from the 
     expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
 
     // A SELF-referential symlink: stat() throws ELOOP — from an fs.watch callback that would have
-    // been an unhandled exception killing the process. lstat + the callback guard must absorb it.
+    // been an unhandled exception killing the process. lstat + callback guard must absorb it.
     symlinkSync(join(cwd, 'self-loop'), join(cwd, 'self-loop'));
     expect(() => watcher.simulateDirectoryEvent(cwd, 'self-loop')).not.toThrow();
     expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
@@ -156,7 +173,9 @@ watchTest('a runtime-created symlink is never watched and never throws from the 
     // Control: a REAL runtime-created directory still gains a watch through the same path.
     mkdirSync(join(cwd, 'real-new-directory'));
     watcher.simulateDirectoryEvent(cwd, 'real-new-directory');
-    expect(watcher.watchedDirectories().some((path) => path.endsWith('real-new-directory'))).toBe(true);
+    expect(
+      watcher.watchedDirectories().some((path) => path.endsWith('real-new-directory')),
+    ).toBe(true);
   } finally {
     watcher.dispose();
     rmSync(cwd, { recursive: true, force: true });
@@ -164,7 +183,7 @@ watchTest('a runtime-created symlink is never watched and never throws from the 
   }
 });
 
-test('onReconciled fires after a completed background refresh and never after disposal', async () => {
+watchTest('onReconciled fires after a completed background refresh and never after disposal', async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'invar-git-watch-'));
   let refreshCount = 0;
   let reconciledCount = 0;
@@ -189,10 +208,10 @@ test('onReconciled fires after a completed background refresh and never after di
   try {
     watcher.trigger();
     await waitUntil(() => reconciledCount === 1);
-    expect(refreshCount).toBe(1); // the follow-up rode the SAME completed refresh, no extra one
+    expect(refreshCount).toBe(1);
 
     watcher.trigger();
-    watcher.dispose(); // disposal wins the race: the pending debounce never flushes
+    watcher.dispose();
     await wait(40);
     expect(reconciledCount).toBe(1);
   } finally {
@@ -201,7 +220,7 @@ test('onReconciled fires after a completed background refresh and never after di
   }
 });
 
-test('reconcile floor refreshes after watcher failure and stops on disposal', async () => {
+watchTest('reconcile floor refreshes after watcher failure and stops on disposal', async () => {
   const cwd = makeRepository();
   const repository = new GitRepository.Class(cwd);
   await repository.refresh();
@@ -242,9 +261,10 @@ test('reconcile floor refreshes after watcher failure and stops on disposal', as
     completedRefreshCount = 0;
     writeFileSync(join(cwd, 'root.txt'), 'changed without a watcher event\n');
 
-    await waitUntil(() =>
-      completedRefreshCount > 0
-      && repository.unstaged.value.some((record) => record.path === 'root.txt'),
+    await waitUntil(
+      () =>
+        completedRefreshCount > 0
+        && repository.unstaged.value.some((record) => record.path === 'root.txt'),
     );
     expect(completedRefreshCount).toBeGreaterThan(0);
 
@@ -338,7 +358,9 @@ watchTest('a newly created nested directory is watched but a new ignored directo
     const ignoredDirectory = join(cwd, 'node_modules', 'package-new');
     mkdirSync(ignoredDirectory, { recursive: true });
     await wait(120);
-    expect(watcher.watchedDirectories().some((path) => path.includes('node_modules'))).toBe(false);
+    expect(watcher.watchedDirectories().some((path) => path.includes('node_modules'))).toBe(
+      false,
+    );
   } finally {
     watcher.dispose();
     rmSync(cwd, { recursive: true, force: true });
