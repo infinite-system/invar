@@ -42,7 +42,9 @@ function previewHasMarker(snapshot: HarnessSnapshot.Model, marker: string): bool
   );
 }
 
-function previewButton(snapshot: HarnessSnapshot.Model): { row: number; column: number } {
+function findPreviewButton(
+  snapshot: HarnessSnapshot.Model,
+): { row: number; column: number } | null {
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
     const countMatch = rowText.match(/\d+\/\d+/);
@@ -51,6 +53,12 @@ function previewButton(snapshot: HarnessSnapshot.Model): { row: number; column: 
       return { row, column: countColumn - 3 };
     }
   }
+  return null;
+}
+
+function previewButton(snapshot: HarnessSnapshot.Model): { row: number; column: number } {
+  const button = findPreviewButton(snapshot);
+  if (button) return button;
   throw new Error(`FAIL Markdown preview button missing\n${snapshot.text()}`);
 }
 
@@ -104,7 +112,10 @@ try {
       && status.markdownPreviewOpen === false,
   );
   HarnessSmoke.Class.pass('Markdown opens source-only by default');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the README editor tab and Markdown preview button are painted',
+    (candidate) => findPreviewButton(candidate) !== null,
+  );
   let button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot(
@@ -128,7 +139,11 @@ try {
     (status) => status.markdownPreviewOpen === false,
   );
   HarnessSmoke.Class.pass('second click returns to source-only');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the preview pane is absent and the Markdown preview button is painted',
+    (candidate) => candidate.findText('╭─Preview') === null
+      && findPreviewButton(candidate) !== null,
+  );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot(
@@ -170,7 +185,10 @@ try {
   );
   HarnessSmoke.Class.pass('Ctrl+Enter opens the hovered reference');
 
-  snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('README.md') !== null);
+  snapshot = await driver.awaitGridCondition(
+    'the target file content is painted before returning to the README tab',
+    (candidate) => candidate.findText('openedFromMarkdown') !== null,
+  );
   const readmeTabPosition = snapshot.findText('README.md');
   if (!readmeTabPosition) throw new Error('FAIL README tab missing');
   clickCell(driver, readmeTabPosition.column + 2, readmeTabPosition.row);
@@ -209,7 +227,11 @@ try {
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.markdownPreviewOpen === false);
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the remount action starts from a source-only Markdown editor',
+    (candidate) => candidate.findText('╭─Preview') === null
+      && findPreviewButton(candidate) !== null,
+  );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot(
@@ -327,7 +349,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-markdown-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

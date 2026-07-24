@@ -162,8 +162,17 @@ try {
   );
   if (!advertisedKey) throw new Error('FAIL advertised Go to File chord disappeared');
   driver.sendKeys(advertisedKey);
-  await driver.awaitSnapshot((candidate) => candidate.findText('Go to File') !== null);
-  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.quickOpenOpen === true
+      && candidate.shortcutHelpOpen === false,
+  );
+  await driver.awaitGridCondition(
+    'Quick Open replaces the shortcut sheet in the exclusive overlay slot',
+    (candidate) => candidate.findText('Go to File') !== null
+      && candidate.findText('Keyboard Shortcuts') === null,
+  );
   HarnessSmoke.Class.requireCondition(
     status.quickOpenOpen === true && status.shortcutHelpOpen === false,
     'advertised chord opens Quick Open and closes the sheet',
@@ -184,7 +193,7 @@ try {
   );
   console.log('smoke-shortcut-help-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

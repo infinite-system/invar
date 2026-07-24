@@ -137,7 +137,7 @@ async function scrollTopAfterNotch(
     await settleMomentum(launchedDriver);
     return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
   } finally {
-    launchedDriver.driver.dispose();
+    await launchedDriver.driver.dispose();
   }
 }
 
@@ -157,7 +157,7 @@ async function scrollTopAfterFling(label: string, workspaceRoot: string): Promis
     await settleMomentum(launchedDriver);
     return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
   } finally {
-    launchedDriver.driver.dispose();
+    await launchedDriver.driver.dispose();
   }
 }
 
@@ -234,7 +234,7 @@ async function snapshotForSetting(
     await HarnessSmoke.Class.awaitFrameSilence(launchedDriver.driver);
     return launchedDriver.driver.snapshot();
   } finally {
-    launchedDriver.driver.dispose();
+    await launchedDriver.driver.dispose();
   }
 }
 
@@ -372,7 +372,7 @@ try {
       await settleMomentum(launchedDriver);
       return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollLeft);
     } finally {
-      launchedDriver.driver.dispose();
+      await launchedDriver.driver.dispose();
     }
   }
   const altHorizontalOffset = await horizontalOffset('horizontal-alt', 'alt');
@@ -423,7 +423,7 @@ try {
       await settleMomentum(launchedDriver);
       return paintedScrollbarColumnCount(launchedDriver.driver.snapshot());
     } finally {
-      launchedDriver.driver.dispose();
+      await launchedDriver.driver.dispose();
     }
   }
   await setSetting('theme', 'dark');
@@ -500,7 +500,7 @@ try {
       );
       return markerRow(snapshot, 'init');
     } finally {
-      launchedDriver.driver.dispose();
+      await launchedDriver.driver.dispose();
     }
   }
   const highLogRegion = await gitCommitRow('git-ratio-low', 0.3);
@@ -539,7 +539,7 @@ try {
           diagnosticsCount: Number(status.diagnosticsCount),
         };
       } finally {
-        launchedDriver.driver.dispose();
+        await launchedDriver.driver.dispose();
       }
     }
     const suppressedResult = await lspResult('lsp-suppressed', 1);
