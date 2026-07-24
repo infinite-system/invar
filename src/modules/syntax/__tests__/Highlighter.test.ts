@@ -137,6 +137,44 @@ test('sliceSpans cuts at grapheme boundaries, never inside a cluster', () => {
   expect(Highlighter.Class.sliceSpans(spans, 2, 3)).toEqual([{ text: '👍', role: 'string' }]);
 });
 
+test('horizontal display-column slicing preserves logical roles at an astral boundary', () => {
+  const line = '// prefix 👍 tailcomment afterfind';
+  const logicalLineSpans = Highlighter.Class.highlightLine(line, 'typescript');
+  const astralGraphemeIndex = EditorCoordinates.Class.graphemes(line).indexOf('👍');
+  const scrollLeft = EditorCoordinates.Class.displayColumn(line, astralGraphemeIndex) + 1;
+  const viewportWidth = 24;
+  let windowStartGraphemeIndex = EditorCoordinates.Class.graphemeAtDisplayColumn(line, scrollLeft);
+  if (EditorCoordinates.Class.displayColumn(line, windowStartGraphemeIndex) < scrollLeft) {
+    windowStartGraphemeIndex += 1;
+  }
+  const windowEndGraphemeIndex =
+    EditorCoordinates.Class.graphemeAtDisplayColumn(line, scrollLeft + viewportWidth) + 1;
+  const windowText = line.slice(
+    EditorCoordinates.Class.graphemeToU16(line, windowStartGraphemeIndex),
+    EditorCoordinates.Class.graphemeToU16(line, windowEndGraphemeIndex),
+  );
+  const windowSpans = Highlighter.Class.sliceSpans(
+    logicalLineSpans,
+    windowStartGraphemeIndex,
+    windowEndGraphemeIndex,
+  );
+
+  expect(windowText.startsWith(' tailcomment')).toBe(true);
+  expect(windowSpans.map((span) => span.text).join('')).toBe(windowText);
+  expect(windowSpans.every((span) => span.role === 'comment')).toBe(true);
+  const postFindStartGraphemeIndex = EditorCoordinates.Class.u16ToGrapheme(
+    windowText,
+    windowText.indexOf('afterfind'),
+  );
+  const postFindSpans = Highlighter.Class.sliceSpans(
+    windowSpans,
+    postFindStartGraphemeIndex,
+    EditorCoordinates.Class.graphemeCount(windowText),
+  );
+  expect(postFindSpans.map((span) => span.text).join('')).toBe('afterfind');
+  expect(postFindSpans.every((span) => span.role === 'comment')).toBe(true);
+});
+
 test('wrap continuation rows of a long // comment slice to all-comment spans', () => {
   const line = '// alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima';
   const wrapWidth = 24;

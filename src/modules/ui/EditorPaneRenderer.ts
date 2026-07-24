@@ -271,10 +271,10 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
     });
     return { gutter: new StyledText(gutterChunks), code: new StyledText(codeChunks), wrapRowsWindow };
   }
-  // COLUMN virtualization (the horizontal twin of the line flyweight): each visible line is sliced to
-  // the visible display-column window BEFORE tokenizing, so per-frame cost tracks visible columns —
-  // never total line length (50k-char lines render at normal speed). Trade-off: tokens start at the
-  // slice, so left-context-sensitive highlighting can differ at the boundary (documented).
+  // COLUMN virtualization (the horizontal twin of the line flyweight): each visible logical line is
+  // tokenized once, then its spans and text are sliced to the same grapheme window. Tokenizing the
+  // context-free visible text would lose any role established to its left (`//`, `/*`, a string
+  // delimiter), while slicing the logical spans preserves that role through horizontal scroll.
   const scrollLeft = editor.viewport.scrollLeft.value;
   const viewportWidth = context.viewportWidth;
   visibleLines.forEach((text, visibleIndex) => {
@@ -285,17 +285,19 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
     pushGutterMarker(lineNumber, isCurrentLine);
     let windowText = text;
     let windowStartGrapheme = 0;
+    let windowEndGraphemeIndex = EditorCoordinates.Class.graphemeCount(text);
     if (scrollLeft > 0 || text.length > viewportWidth) { // O(1) test; a needless slice is harmless
       let startGrapheme = EditorCoordinates.Class.graphemeAtDisplayColumn(text, scrollLeft);
       if (EditorCoordinates.Class.displayColumn(text, startGrapheme) < scrollLeft) startGrapheme += 1; // never split a straddling wide glyph
       const endGrapheme = EditorCoordinates.Class.graphemeAtDisplayColumn(text, scrollLeft + viewportWidth) + 1;
       windowStartGrapheme = startGrapheme;
+      windowEndGraphemeIndex = endGrapheme;
       windowText = text.slice(EditorCoordinates.Class.graphemeToU16(text, startGrapheme), EditorCoordinates.Class.graphemeToU16(text, endGrapheme));
     }
-    // Tokens for the visible column window, ONCE per line (the documented column-virtualization
-    // trade-off stays: tokens start at the slice). Sub-segments (find/diagnostic/bracket
-    // boundaries) then SLICE these spans instead of re-tokenizing mid-line fragments.
-    const lineWindowSpans = plainForeground ? null : Highlighter.Class.highlightLine(windowText, language);
+    const logicalLineSpans = plainForeground ? null : Highlighter.Class.highlightLine(text, language);
+    const lineWindowSpans = logicalLineSpans === null
+      ? null
+      : Highlighter.Class.sliceSpans(logicalLineSpans, windowStartGrapheme, windowEndGraphemeIndex);
     pushCodeChunks(windowText, lineNumber, windowStartGrapheme, lineWindowSpans);
     if (visibleIndex < visibleLines.length - 1) {
       gutterChunks.push(fg(palette.fg)('\n'));
