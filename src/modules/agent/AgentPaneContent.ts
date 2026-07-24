@@ -21,7 +21,11 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
+import { TextDocument } from '../editor/TextDocument';
+import type { FindBar, FindBarTarget } from '../search/FindBar';
+import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
 import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';
+import { AgentTranscriptSearch, type TranscriptMatchHighlight } from './AgentTranscriptSearch';
 import { AgentTranscriptProjection, type ProjectedLine } from './AgentTranscriptProjection';
 import { AgentComposer } from './AgentComposer';
 import { AgentSpinner } from './AgentSpinner';
@@ -36,6 +40,10 @@ const TRANSCRIPT_PAD_RIGHT = 2;
 const COMPOSER_CHROME_ROWS = 6;
 /** How long each pending tool is shown before the waiting-note cycles to the next one. */
 const WAITING_CYCLE_MILLISECONDS = 1500;
+
+/** The FindBar target identifier the transcript wires in under (one retained engine per identifier —
+ *  the transcript's query/matches survive focus moving to another searchable pane, like every target). */
+export const AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER = 'agent-transcript';
 
 /** The scroll seam the transcript drives: the host binds this to a ScrollableTextViewport so the pane
  *  stays a pure model (no renderer dependency) while gaining momentum + smooth glide + a real scrollbar. */
@@ -105,6 +113,16 @@ class $AgentPaneContent implements PaneContent {
   private scrollPort: AgentScrollPort | null = null;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
   private enginePort: AgentEnginePort | null = null;
+  /** The shared FindBar (bound by the host) — transcript search reuses ITS engine/count/cycling UX
+   *  (one search vocabulary across panes), never a second pane-local query model. */
+  private findBar: FindBar.Instance | null = null;
+  /** The search MIRROR document: a plain-text projection of the SAME projected lines the pane paints,
+   *  refreshed inside render() whenever the projected text changes. It is a projection, not a second
+   *  history — it can be rebuilt from the transcript at any time and holds nothing of its own. */
+  // invariant: Transcript search is a projection of the transcript (src/modules/agent/agent.invariants.md)
+  private readonly transcriptSearchDocument = new TextDocument.Class();
+  /** The mirror's last synchronized text (identity compare gates replaceAll + findAll re-runs). */
+  private lastTranscriptSearchText: string | null = null;
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
   private lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
@@ -142,6 +160,15 @@ class $AgentPaneContent implements PaneContent {
       void this.spinner.running.value;
       void this.viewRevision.value;
       void this.permissionMode?.value;
+      // Transcript-search state repaints through the SAME fuse: the bar opening (which creates the
+      // engine), the live query, the matches, and the cycled current match all change what the body
+      // rows paint. Before the engine exists only `open` is subscribed — its flip re-runs this
+      // computed, which then finds and subscribes the fresh engine.
+      void this.findBar?.open.value;
+      const transcriptSearchEngine = this.findBar?.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER);
+      void transcriptSearchEngine?.query.value;
+      void transcriptSearchEngine?.matches.value;
+      void transcriptSearchEngine?.currentMatchIndex.value;
       fuseCounter += 1;
       return fuseCounter;
     });
@@ -188,6 +215,58 @@ class $AgentPaneContent implements PaneContent {
   /** Bind the engine seam so the mode line shows the engine + click/Ctrl+E cycle it. */
   attachEnginePort(port: AgentEnginePort): void {
     this.enginePort = port;
+  }
+  /** Bind the shared FindBar so Ctrl+F searches the transcript through the SAME bar/engine every other
+   *  searchable pane uses (count, cycling, case toggle — one search vocabulary). */
+  attachFindBar(findBar: FindBar.Instance): void {
+    this.findBar = findBar;
+  }
+
+  /** The transcript as a FindBar target: the mirror document (read-only — replace is peripheral config
+   *  the target declines, the markdown preview's exact shape) plus the pane's own reveal writer. */
+  findTarget(): FindBarTarget {
+    return {
+      identifier: AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER,
+      document: this.transcriptSearchDocument,
+      replaceAllowed: false,
+      revealMatch: (match) => this.revealTranscriptMatch(match),
+    };
+  }
+
+  /** The transcript search engine once the bar has been opened for the transcript at least once (the
+   *  FindBar retains one engine per target identifier), else null — zero cost before first use. */
+  private transcriptSearchEngine(): FindInBuffer.Instance | null {
+    return this.findBar?.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) ?? null;
+  }
+
+  /** Scroll the transcript viewport so the revealed match's line sits mid-body (the pane's one scroll
+   *  writer for a search jump — adopt-and-stop like every other scroll authority). */
+  private revealTranscriptMatch(match: FindInBufferMatch): void {
+    const scrollPort = this.scrollPort;
+    if (!scrollPort) return;
+    const targetTop = Math.max(0, match.line - Math.floor(this.lastBodyHeight / 2));
+    scrollPort.scrollRowsBy(targetTop - scrollPort.scrollTop);
+    this.viewRevision.value += 1;
+  }
+
+  /** Refresh the search mirror from THIS frame's projected lines and re-derive matches when the text
+   *  changed. Runs only while the engine exists AND is live (bar open on the transcript, or a retained
+   *  non-empty query keeping highlights fresh) — idle sessions and never-searched panes pay nothing.
+   *  Returns the engine when its matches should paint. */
+  private synchronizeTranscriptSearch(lines: readonly ProjectedLine[]): FindInBuffer.Instance | null {
+    const findBar = this.findBar;
+    const engine = this.transcriptSearchEngine();
+    if (!findBar || !engine) return null;
+    const barOpenOnTranscript =
+      findBar.open.value && findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER;
+    if (!barOpenOnTranscript && engine.query.value.length === 0) return null;
+    const searchableText = AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n');
+    if (searchableText !== this.lastTranscriptSearchText) {
+      this.lastTranscriptSearchText = searchableText;
+      this.transcriptSearchDocument.replaceAll(searchableText.split('\n'));
+      engine.findAll();
+    }
+    return engine;
   }
   /** The current engine label (for the frame dump / smoke), or '' when unbound. */
   get currentEngine(): string {
@@ -303,6 +382,22 @@ class $AgentPaneContent implements PaneContent {
       return this.transcriptSelection.rangeForLine(absoluteLine, WrapText.Class.displayWidth(row.text));
     });
 
+    // Transcript search: refresh the mirror projection, then derive each visible row's match spans
+    // (display cells) for the renderer's per-row highlight machinery. Empty everywhere when no search.
+    const transcriptSearchEngine = this.synchronizeTranscriptSearch(lines);
+    const searchMatches = transcriptSearchEngine?.matches.value ?? [];
+    const searchCurrentMatchIndex = transcriptSearchEngine?.currentMatchIndex.value ?? -1;
+    const searchHighlights: (readonly TranscriptMatchHighlight[])[] = bodyRows.map((row, rowIndex) => {
+      if (rowIndex < padCount || searchMatches.length === 0) return [];
+      const absoluteLine = firstLine + (rowIndex - padCount);
+      return AgentTranscriptSearch.Class.highlightsForLine(
+        row.text,
+        absoluteLine,
+        searchMatches,
+        searchCurrentMatchIndex,
+      );
+    });
+
     // The rule is inset by the L/R gutter too (side margins → airier canvas).
     const ruleWidth = Math.max(1, context.width - TRANSCRIPT_PAD_LEFT - TRANSCRIPT_PAD_RIGHT);
     const rule = ThemeIcons.Class.agentTranscriptIconsFor(context.glyphLevel).rule.repeat(ruleWidth);
@@ -319,6 +414,7 @@ class $AgentPaneContent implements PaneContent {
       padLeft: TRANSCRIPT_PAD_LEFT,
       bodyRows,
       selectionRanges,
+      searchHighlights,
       thinking,
       waitingNote,
       rule,

@@ -42,7 +42,7 @@ import { TerminalFactory } from '../terminal/TerminalFactory';
 import { AgentFactory } from '../agent/AgentFactory';
 import { BracketMatch } from '../editor/BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import { AgentPaneContent, type AgentEnginePort } from '../agent/AgentPaneContent';
+import { AgentPaneContent, AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER, type AgentEnginePort } from '../agent/AgentPaneContent';
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
 import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend';
@@ -300,6 +300,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPaneContent = agentPane;
       agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
       agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
+      agentPane.attachFindBar(findBar); // transcript search reuses THE find bar (Ctrl+F while focused)
       narration = new NarrationProjection.Class(
         agentPane.agentSession,
         settings.agentAudioNarration,
@@ -1283,6 +1284,55 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     'help.shortcuts',
   ]);
 
+  // The find/replace bar's key handling, shared VERBATIM by the two routes that reach it — the global
+  // 'find' context (editor / markdown preview / diff targets) and the focused agent pane's interception
+  // (the transcript target) — so transcript search speaks the ONE find vocabulary: type = live query,
+  // Enter/Shift+Enter cycle + reveal, Tab switches field, Esc closes (returning keys to whatever owns
+  // them beneath — the editor there, the agent composer here).
+  const handleFindBarKey = (key: KeyEvent): void => {
+    // Ctrl+H arrives as the ASCII Backspace control byte (0x08) — same normalization as the router.
+    const rawControlH = key.name === 'backspace' && key.sequence === '\u0008';
+    const normalizedChordEvent = {
+      name: rawControlH ? 'h' : key.name,
+      ctrl: rawControlH ? true : key.ctrl,
+      shift: key.shift,
+      option: key.option || key.meta,
+      super: key.super,
+    };
+    const findResolution = keybindings.resolve(normalizedChordEvent, 'find', Date.now());
+    if (findResolution.action) {
+      actionHandlers[findResolution.action]?.(key);
+      return;
+    }
+    if (key.name === 'escape') {
+      findBar.close();
+      return;
+    }
+    if (key.name === 'return') {
+      if (key.ctrl && key.shift) findBar.replaceAll();
+      else if (key.ctrl) findBar.replaceCurrent();
+      else if (key.shift) findBar.previous();
+      else findBar.next();
+      revealFindMatch();
+      return;
+    }
+    if (key.name === 'tab') {
+      findBar.switchField();
+      return;
+    }
+    if (key.name === 'backspace') {
+      findBar.backspace();
+      revealFindMatch();
+      return;
+    }
+    if (isTypedCharacter(key)) {
+      findBar.append(key.sequence);
+      revealFindMatch();
+      return;
+    }
+    // swallow other keys while the bar is open
+  };
+
   const keyTick = (key: KeyEvent): void => {
     tooltip.clear(); // any keypress hides the tooltip (display-only affordance)
     if (key.name === 'escape') narration?.bargeIn(); // Escape is the EXPLICIT "stop narration"; ordinary typing/paste/navigation lets it play on, so you can read/compose/work while listening (barge-in should be intentional, not a side effect of every keystroke)
@@ -1326,17 +1376,33 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     // unencodable key is swallowed so it never drives the hidden editor beneath.
     // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
     if (panelHost.visible.value && panelHost.focused.value) {
-      // The focused agent pane resolves ONE binding before its composer swallows the key: Ctrl+C / Cmd+C
-      // copies its selection (transcript or composer). Everything else is delivered to the pane.
+      // The focused agent pane resolves a FEW bindings before its composer swallows the key: Ctrl+C /
+      // Cmd+C copies its selection, and the global find chords open TRANSCRIPT SEARCH — the same
+      // FindBar every searchable pane shares, bound to the pane's transcript target (replace is
+      // read-only-declined by the target, so Ctrl+H also lands in find mode). While that bar is open
+      // on the transcript, it owns the keyboard through the SAME shared handler the 'find' context
+      // uses; Esc closes it and keys fall back to the composer. Everything else goes to the pane.
       const focusedContent = panelHost.focusedContent;
-      if (focusedContent?.id === 'agent' && agentPaneContent?.hasSelection()) {
-        const resolution = keybindings.resolve(
+      if (focusedContent?.id === 'agent' && agentPaneContent) {
+        if (findBar.open.value && findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) {
+          handleFindBarKey(key);
+          return;
+        }
+        const agentResolution = keybindings.resolve(
           { name: key.name, ctrl: key.ctrl, shift: key.shift, option: key.option || key.meta, super: key.super },
           'agent',
           Date.now(),
         );
-        if (resolution.action === 'agent.copy') {
+        if (agentResolution.action === 'agent.copy' && agentPaneContent.hasSelection()) {
           actionHandlers['agent.copy']?.(key);
+          return;
+        }
+        if (agentResolution.action === 'find.open' || agentResolution.action === 'find.replace') {
+          const transcriptFindTarget = agentPaneContent.findTarget();
+          overlayCoordinator.openExclusiveOverlay('findBar', () =>
+            findBar.openForTarget(transcriptFindTarget, 'find'),
+          );
+          revealFindMatch();
           return;
         }
       }
@@ -1426,40 +1492,11 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
 
     // Find/replace bar has keyboard: type edits the focused field (live find), Enter/Shift+Enter cycle
     // matches, Ctrl+Enter replaces, Tab switches field, Esc closes. Handled inline (not via the registry)
-    // because it composes typed input with the match-reveal, like the palette's query editing.
+    // because it composes typed input with the match-reveal, like the palette's query editing. The body
+    // is the SHARED handler — the focused agent pane routes to the same one for its transcript target.
     if (context === 'find') {
-      const findResolution = keybindings.resolve(normalizedChordEvent, 'find', Date.now());
-      if (findResolution.action) {
-        actionHandlers[findResolution.action]?.(key);
-        return;
-      }
-      if (key.name === 'escape') {
-        findBar.close();
-        return;
-      }
-      if (key.name === 'return') {
-        if (key.ctrl && key.shift) findBar.replaceAll();
-        else if (key.ctrl) findBar.replaceCurrent();
-        else if (key.shift) findBar.previous();
-        else findBar.next();
-        revealFindMatch();
-        return;
-      }
-      if (key.name === 'tab') {
-        findBar.switchField();
-        return;
-      }
-      if (key.name === 'backspace') {
-        findBar.backspace();
-        revealFindMatch();
-        return;
-      }
-      if (isTypedCharacter(key)) {
-        findBar.append(key.sequence);
-        revealFindMatch();
-        return;
-      }
-      return; // swallow other keys while the bar is open
+      handleFindBarKey(key);
+      return;
     }
 
     // iTerm2 "Natural Text Editing" remaps Cmd+Left → a RAW ^A byte (0x01), which collides with
