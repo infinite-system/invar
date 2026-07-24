@@ -114,7 +114,8 @@ function $render(context: TerminalPaneRenderContext): StyledText {
         characters: ' ', foreground: 0, background: 0,
         isForegroundDefault: true, isForegroundRgb: false, isForegroundPalette: false,
         isBackgroundDefault: true, isBackgroundRgb: false, isBackgroundPalette: false,
-        isBold: false, isInverse: false, width: 1,
+        isBold: false, isDim: false, isItalic: false, isUnderline: false, isBlink: false,
+        isInverse: false, isInvisible: false, isStrikethrough: false, isOverline: false, width: 1,
       };
       const key = styleKey(cell);
       if (runCell && key !== runKey) flushRun();

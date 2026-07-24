@@ -19,7 +19,14 @@ export interface TerminalCell {
   isBackgroundRgb: boolean;
   isBackgroundPalette: boolean;
   isBold: boolean;
+  isDim: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  isBlink: boolean;
   isInverse: boolean;
+  isInvisible: boolean;
+  isStrikethrough: boolean;
+  isOverline: boolean;
   width: number;
 }
 
@@ -109,7 +116,14 @@ class $TerminalEmulator {
       isBackgroundRgb: Boolean(cell.isBgRGB()),
       isBackgroundPalette: Boolean(cell.isBgPalette()),
       isBold: Boolean(cell.isBold()),
+      isDim: Boolean(cell.isDim()),
+      isItalic: Boolean(cell.isItalic()),
+      isUnderline: Boolean(cell.isUnderline()),
+      isBlink: Boolean(cell.isBlink()),
       isInverse: Boolean(cell.isInverse()),
+      isInvisible: Boolean(cell.isInvisible()),
+      isStrikethrough: Boolean(cell.isStrikethrough()),
+      isOverline: Boolean(cell.isOverline()),
       width: cell.getWidth(),
     };
   }

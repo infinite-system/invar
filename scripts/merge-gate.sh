@@ -102,8 +102,12 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
   step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
   step "smoke: selection"   bash scripts/smoke-selection.sh
+  # invariant: Tmux smokes remain an independent verification ring (scripts/harness/harness.invariants.md)
+  step "smoke: selection harness" bun scripts/harness/smoke-selection-harness.ts
   step "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
+  step "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
   step "smoke: wrap"        bash scripts/smoke-wrap.sh
+  step "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
   step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
   step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
   # Commit-log freshness (external commits appear via the tip-SHA reconcile) + the read-only
