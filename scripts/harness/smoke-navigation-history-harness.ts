@@ -32,6 +32,10 @@ try {
   await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha.ts') !== null, 15_000);
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === alphaPath);
+  await driver.awaitGridCondition(
+    'alpha.ts content is visible after opening the file',
+    (snapshot) => snapshot.findText('alpha one') !== null,
+  );
   HarnessSmoke.Class.pass('alpha.ts opened as the active buffer');
   driver.sendKeys('Down', 'Down', 'Down');
   await HarnessSmoke.Class.awaitStatus(
@@ -40,13 +44,22 @@ try {
     (status) => status.cursor?.line === 3 && status.cursor.col === 0,
   );
   HarnessSmoke.Class.pass('cursor moved to alpha.ts line 3 (3,0)');
+  await driver.awaitQuiescence();
 
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.focus === 'files',
+  );
   driver.sendKeys('Down');
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.treeSelected === 1);
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await driver.awaitGridCondition(
+    'beta.ts content is visible after opening the file',
+    (snapshot) => snapshot.findText('beta one') !== null,
+  );
   HarnessSmoke.Class.pass('beta.ts opened as the active buffer');
 
   console.log('== harness navigation history: Alt+[ and Alt+] replay both directions ==');
@@ -61,8 +74,16 @@ try {
     backStatus.cursor?.line === 3 && backStatus.cursor.col === 0,
     'Alt+[ restored the cursor to where it was left (3,0)',
   );
+  await driver.awaitGridCondition(
+    'alpha.ts content is visible after navigating back',
+    (snapshot) => snapshot.findText('alpha one') !== null,
+  );
   driver.sendKeys('Alt+]');
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await driver.awaitGridCondition(
+    'beta.ts content is visible after navigating forward',
+    (snapshot) => snapshot.findText('beta one') !== null,
+  );
   HarnessSmoke.Class.pass('Alt+] returned forward to beta.ts');
 
   console.log('== harness navigation history: breadcrumb buttons drive the same history ==');
@@ -83,6 +104,10 @@ try {
   driver.sendMouse({ kind: 'press', column: backColumn, row: breadcrumbRow, button: 'left' });
   driver.sendMouse({ kind: 'release', column: backColumn, row: breadcrumbRow, button: 'left' });
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === alphaPath);
+  await driver.awaitGridCondition(
+    'alpha.ts content is visible after clicking the back breadcrumb',
+    (candidate) => candidate.findText('alpha one') !== null,
+  );
   HarnessSmoke.Class.pass('clicking ‹ went back to alpha.ts');
   snapshot = driver.snapshot();
   driver.sendMouse({
@@ -98,12 +123,16 @@ try {
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await driver.awaitGridCondition(
+    'beta.ts content is visible after clicking the forward breadcrumb',
+    (candidate) => candidate.findText('beta one') !== null,
+  );
   HarnessSmoke.Class.pass('clicking › went forward to beta.ts');
 
   driver.sendKeys('Control+q');
   console.log('smoke-navigation-history-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

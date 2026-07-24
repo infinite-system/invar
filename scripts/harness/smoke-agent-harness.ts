@@ -141,6 +141,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-agent-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

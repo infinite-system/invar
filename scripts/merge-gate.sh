@@ -180,6 +180,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
   step "smoke: activitybar" bash scripts/smoke-activitybar.sh
   step "smoke: panel-split" bash scripts/smoke-panel-split.sh
+  # invariant: Shared seam changes verify every consumer (scripts/harness/harness.invariants.md)
   # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
   # the independent terminal-emulator verification ring.
   step "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts

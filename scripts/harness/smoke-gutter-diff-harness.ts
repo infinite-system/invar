@@ -124,7 +124,7 @@ try {
     (snapshot) => markerHasForeground(snapshot, 'added line', '▎', addedColor),
   );
   HarnessSmoke.Class.pass('appended buffer line paints the added-colored ▎ glyph');
-  editDriver.dispose();
+  await editDriver.dispose();
 
   console.log('== harness gutter-diff: deleted-line marker ==');
   HarnessSmoke.Class.runGit(fixtureRoot, ['checkout', '-q', '--', 'tracked.txt']);
@@ -146,8 +146,8 @@ try {
   deleteDriver.sendKeys('Control+q');
   console.log('smoke-gutter-diff-harness: ALL-PASS');
 } finally {
-  editDriver.dispose();
-  deleteDriver?.dispose();
+  await editDriver.dispose();
+  await deleteDriver?.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

@@ -109,7 +109,7 @@ try {
     + `boundary=input-write→DEC-2026-end-marker-byte-arrival`,
   );
 } finally {
-  driver.dispose();
+  await driver.dispose();
   await Promise.race([driver.exitCode(), Bun.sleep(1_000)]);
   rmSync(measurementRoot, { recursive: true, force: true });
 }

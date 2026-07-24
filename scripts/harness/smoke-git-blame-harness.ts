@@ -70,8 +70,12 @@ try {
     (status) => status.currentLineBlameAuthor === 'Blame Tester',
   );
   HarnessSmoke.Class.pass("cursor-line blame author is 'Blame Tester' (probe)");
+  const blameSnapshot = await driver.awaitGridCondition(
+    'the status bar renders the current line blame author',
+    (candidate) => candidate.rowText(candidate.rows - 1).includes('Blame Tester'),
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().rowText(driver.snapshot().rows - 1).includes('Blame Tester'),
+    blameSnapshot.rowText(blameSnapshot.rows - 1).includes('Blame Tester'),
     'status bar renders the blame author',
   );
 
@@ -97,7 +101,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-git-blame-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

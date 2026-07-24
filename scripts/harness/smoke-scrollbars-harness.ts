@@ -379,8 +379,8 @@ try {
   fitsDriver.sendKeys('Control+q');
   console.log('smoke-scrollbars-harness: ALL-PASS');
 } finally {
-  overflowDriver.dispose();
-  fitsDriver?.dispose();
+  await overflowDriver.dispose();
+  await fitsDriver?.dispose();
   rmSync(overflowFixtureRoot, { recursive: true, force: true });
   rmSync(fitsFixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });

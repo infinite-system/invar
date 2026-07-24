@@ -46,15 +46,19 @@ try {
   HarnessSmoke.Class.pass(
     `Enter opened the fuzzy-matched file (${String(openedStatus.activeBuffer).split('/').at(-1)})`,
   );
+  const openedSnapshot = await driver.awaitGridCondition(
+    'the opened widget file content is visible in the emulator grid',
+    (candidate) => candidate.findText('content') !== null,
+  );
   HarnessSmoke.Class.requireCondition(
-    driver.snapshot().findText('content') !== null,
+    openedSnapshot.findText('content') !== null,
     'the opened file content is visible in the emulator grid',
   );
 
   driver.sendKeys('Control+q');
   console.log('smoke-quickopen-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

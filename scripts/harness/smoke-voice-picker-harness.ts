@@ -104,9 +104,16 @@ try {
     statusPath,
     (status) => Number(status.paletteMatches) >= 1,
   );
+  await driver.awaitGridCondition(
+    'the Narration Test Voice command is visible in the command palette',
+    (snapshot) => snapshot.findText('Narration: Test Voice') !== null,
+  );
   HarnessSmoke.Class.pass('Narration Test Voice is registered in the command palette');
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await driver.awaitGridCondition(
+    'the command palette is closed before opening settings',
+    (snapshot) => snapshot.findText('Command Palette') === null,
+  );
 
   console.log('== harness voice picker: keyboard dynamic-enum edit ==');
   driver.sendKeys('Control+,');
@@ -114,6 +121,10 @@ try {
     driver,
     statusPath,
     (status) => status.settingsOpen === true,
+  );
+  await driver.awaitGridCondition(
+    'the settings view is visible before keyboard navigation',
+    (snapshot) => snapshot.findText('Settings') !== null,
   );
   for (let navigationStep = 0; navigationStep < 30; navigationStep++) {
     if (HarnessSmoke.Class.readStatus(statusPath).settingsSelectedLabel === 'Narration voice') break;
@@ -132,6 +143,13 @@ try {
     statusPath,
     (candidate) => candidate.narrationVoice === 'aaa'
       && candidate.settingsSelectedValue === 'aaa',
+  );
+  await driver.awaitGridCondition(
+    'the Narration voice row visibly shows aaa before mouse editing',
+    (snapshot) => {
+      const voicePosition = snapshot.findText('Narration voice');
+      return voicePosition !== null && snapshot.rowText(voicePosition.row).includes('aaa');
+    },
   );
   HarnessSmoke.Class.pass('Right cycles to the first discovered voice');
 
@@ -165,7 +183,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-voice-picker-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(dataDirectory, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });

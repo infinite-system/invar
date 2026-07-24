@@ -168,7 +168,14 @@ try {
       && candidate.findQuery === 'needle'
       && candidate.findMatchCount === 4,
   );
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the retained transcript search paints its current and other matches',
+    (candidate) => {
+      const candidateBackgroundCounts = visibleNeedleBackgroundCounts(candidate);
+      return candidateBackgroundCounts.current >= 1
+        && candidateBackgroundCounts.other >= 1;
+    },
+  );
   const backgroundCounts = visibleNeedleBackgroundCounts(snapshot);
   HarnessSmoke.Class.requireCondition(
     backgroundCounts.current >= 1 && backgroundCounts.other >= 1,
@@ -183,9 +190,20 @@ try {
     (candidate) => candidate.findCurrentMatchIndex === 1,
   );
   driver.sendKeys('Enter');
-  await driver.awaitQuiescence();
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.findCurrentMatchIndex === 2,
+  );
   driver.sendKeys('Enter');
-  snapshot = await driver.awaitSnapshot(
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.findCurrentMatchIndex === 3
+      && Number(candidate.agentScrollTop) > 0,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the final transcript search match is visible',
     (candidate) => candidate.findText('omega needle last') !== null,
   );
   status = HarnessSmoke.Class.readStatus(statusPath);
@@ -232,6 +250,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-agent-search-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

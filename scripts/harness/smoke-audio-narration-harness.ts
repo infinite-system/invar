@@ -107,7 +107,7 @@ try {
   );
 
   console.log('== harness audio narration: enabled setting speaks and supports barge-in ==');
-  driver.dispose();
+  await driver.dispose();
   driver = null;
   await writeNarrationSetting(settingsPath, true);
   const enabledStatusPath = join(homeDirectory, 'enabled-status.json');
@@ -158,6 +158,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-audio-narration-harness: ALL-PASS');
 } finally {
-  driver?.dispose();
+  await driver?.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

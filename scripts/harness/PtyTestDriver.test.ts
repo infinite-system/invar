@@ -119,7 +119,7 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       );
       expect(snapshot.findText('ALREADY READY')).not.toBeNull();
     } finally {
-      driver.dispose();
+      await driver.dispose();
     }
   });
 
@@ -134,7 +134,7 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       expect(snapshot.findText('THIRD READY')).not.toBeNull();
       expect(driver.outputSequenceCount(beginSynchronizedOutput)).toBe(3);
     } finally {
-      driver.dispose();
+      await driver.dispose();
     }
   });
 
@@ -164,7 +164,39 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       expect(timeoutError?.message).toContain('FINAL UNSATISFIED');
       expect(timeoutError?.message).not.toContain('synchronized frame 3');
     } finally {
-      driver.dispose();
+      await driver.dispose();
     }
+  });
+});
+
+describe('PtyTestDriver.dispose', () => {
+  test('does not resolve until the child process exits', async () => {
+    const recordedStreamProgram = `
+      process.on('SIGTERM', () => {
+        setTimeout(() => process.exit(0), 80);
+      });
+      process.stdout.write(${JSON.stringify(recordedFrame('READY TO DISPOSE'))});
+      await Bun.sleep(1_000);
+    `;
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: process.cwd(),
+      repositoryRoot: process.cwd(),
+      columns: 40,
+      rows: 4,
+      command: [process.execPath, '-e', recordedStreamProgram],
+    });
+    await driver.awaitGridCondition(
+      'the disposal fixture child is ready',
+      (snapshot) => snapshot.findText('READY TO DISPOSE') !== null,
+    );
+
+    const disposalPromise = driver.dispose();
+    const resolvedBeforeChildExit = await Promise.race([
+      disposalPromise.then(() => true),
+      Bun.sleep(20).then(() => false),
+    ]);
+    expect(resolvedBeforeChildExit).toBeFalse();
+    await disposalPromise;
+    expect(await driver.exitCode()).toBe(0);
   });
 });

@@ -244,3 +244,37 @@ scripts/harness/SynchronizedOutputQuiescence.test.ts`
 **Status:** established
 
 **Last refined:** 2026-07-24
+
+### Shared seam changes verify every consumer
+
+**Invariant:** If a shared harness seam changes behavior, then verification covers every registered
+consumer of that seam before the change is complete.
+
+**Scope:** `PtyTestDriver`, `HarnessSmoke`, `HarnessSmokeSupport`, and every registered
+`scripts/harness/smoke-*-harness.ts` consumer. A change confined to one smoke without changing shared
+behavior is outside this rule.
+
+**Mechanism:** Shared wait, input, status, and screen-oracle helpers generate behavior for all harness
+ports. `scripts/merge-gate.sh` is the authoritative consumer registry, so running every registered
+harness smoke exposes both direct regressions and consumer assumptions that unit tests of the seam
+cannot observe.
+
+**Generates:** Full registered-consumer verification for shared harness changes; per-consumer
+diagnoses when semantics move; focused repetition only after the complete consumer set passes once.
+
+**Rejected alternatives:** Verify only the smokes changed in the same commit — a shared seam can
+break an unchanged consumer whose prior assumption was never encoded in the seam's unit tests.
+
+**Evidence:** The `PtyTestDriver.awaitQuiescence` and status-wait change in commit `32a843d` passed its
+three focused smokes but regressed seven previously green registered harness ports.
+
+**Impossible if true:** A shared harness change called complete after only a selected subset of its
+registered consumers passes; an unchanged registered smoke regression first discovered by a later
+full gate.
+
+**Verification:** Run every `smoke-*-harness.ts` registered in `scripts/merge-gate.sh` once and
+require every exit status to be zero.
+
+**Status:** established
+
+**Last refined:** 2026-07-24

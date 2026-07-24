@@ -114,8 +114,8 @@ try {
   guidesOffDriver.sendKeys('Control+q');
   console.log('smoke-indent-guides-harness: ALL-PASS');
 } finally {
-  guidesOnDriver.dispose();
-  guidesOffDriver?.dispose();
+  await guidesOnDriver.dispose();
+  await guidesOffDriver?.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

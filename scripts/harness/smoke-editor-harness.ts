@@ -255,13 +255,12 @@ try {
     () => (statusField<number>(statusPath, 'editorScrollLeft') ?? 0) > 5,
   );
   const edgeScrollLeft = statusField<number>(statusPath, 'editorScrollLeft') ?? 0;
-  driver.sendMouse({
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
     column: 117,
     row: fixturePosition.row,
     button: 'left',
   });
-  await driver.awaitQuiescence();
   requireCondition(edgeScrollLeft > 5, `edge hold auto-scrolled to ${edgeScrollLeft}`);
   driver.sendKeys('Escape');
   await driver.awaitQuiescence();
@@ -414,6 +413,6 @@ try {
   requireCondition(exitResult === 'exited', 'editor process exited after Ctrl+Q');
   console.log('smoke-editor-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

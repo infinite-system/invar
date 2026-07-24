@@ -81,7 +81,7 @@ try {
   HarnessSmoke.Class.pass('panel returned to 0 after external revert');
 
   console.log('== harness git-watch: opening an untracked directory symlink does not crash ==');
-  driver.dispose();
+  await driver.dispose();
   directoryFixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-directory-harness-'));
   symlinkTargetRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-target-harness-'));
   await Bun.write(join(symlinkTargetRoot, 'pkg.js'), 'module.exports={};\n');
@@ -118,8 +118,8 @@ try {
   directoryDriver.sendKeys('Control+q');
   console.log('smoke-git-watch-harness: ALL-PASS');
 } finally {
-  driver.dispose();
-  directoryDriver?.dispose();
+  await driver.dispose();
+  await directoryDriver?.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
   if (directoryFixtureRoot) rmSync(directoryFixtureRoot, { recursive: true, force: true });

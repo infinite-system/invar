@@ -135,7 +135,7 @@ try {
   HarnessSmoke.Class.pass('switched agent pane remains idle-quiescent');
 
   console.log('== harness agent engine: fresh Codex-provider boot ==');
-  driver.dispose();
+  await driver.dispose();
   const secondStatusPath = join(homeDirectory, 'codex-status.json');
   driver = createDriver(repositoryRoot, fixtureRoot, homeDirectory, secondStatusPath, 'codex');
   await HarnessSmoke.Class.awaitStatus(
@@ -164,6 +164,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-agent-engine-switch-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

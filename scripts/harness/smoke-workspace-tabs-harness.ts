@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import {
+  awaitStatus,
   clickMarker,
   markerForeground,
   pass,
@@ -81,15 +82,29 @@ try {
   );
   requireCondition(snapshot.findText('…') !== null, 'long project name is capped with an ellipsis');
 
-  const secondNameForeground = markerForeground(snapshot, secondName.slice(0, 17));
   const secondNamePosition = snapshot.findText(secondName.slice(0, 17));
   requireCondition(secondNamePosition !== null, 'second workspace name paints');
-  const branchRow = secondNamePosition.row + 1;
+  snapshot = await driver.awaitGridCondition(
+    'the active workspace detail and readable name foregrounds match',
+    (candidate) => {
+      const candidateNamePosition = candidate.findText(secondName.slice(0, 17));
+      if (!candidateNamePosition) return false;
+      const candidateNameForeground = markerForeground(candidate, secondName.slice(0, 17));
+      const candidateBranchCell = candidate.rowCells(candidateNamePosition.row + 1).find(
+        (cell, column) => column >= candidateNamePosition.column && cell.characters !== ' ',
+      );
+      return candidateBranchCell?.foreground === candidateNameForeground;
+    },
+  );
+  const settledSecondNameForeground = markerForeground(snapshot, secondName.slice(0, 17));
+  const settledSecondNamePosition = snapshot.findText(secondName.slice(0, 17));
+  if (!settledSecondNamePosition) throw new Error('Second workspace name disappeared');
+  const branchRow = settledSecondNamePosition.row + 1;
   const branchCell = snapshot.rowCells(branchRow).find(
-    (cell, column) => column >= secondNamePosition.column && cell.characters !== ' ',
+    (cell, column) => column >= settledSecondNamePosition.column && cell.characters !== ' ',
   );
   requireCondition(
-    branchCell?.foreground === secondNameForeground,
+    branchCell?.foreground === settledSecondNameForeground,
     'active workspace detail foreground matches the readable name foreground',
   );
 
@@ -130,8 +145,12 @@ try {
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
   driver.sendKeys('Escape');
-  snapshot = await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'workspaceTabPosition') === 'left',
+  snapshot = await driver.awaitGridCondition(
+    'the left-oriented workspace strip stacks the second project in the left column',
+    (candidate) => {
+      const secondProjectPosition = candidate.findText(secondName.slice(0, 17));
+      return secondProjectPosition?.row === 1 && secondProjectPosition.column < 22;
+    },
   );
   const secondVerticalPosition = snapshot.findText(secondName.slice(0, 17));
   requireCondition(
@@ -143,8 +162,9 @@ try {
   driver.sendKeys('Left');
   await driver.awaitQuiescence();
   driver.sendKeys('Escape');
-  snapshot = await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'workspaceTabPosition') === 'top',
+  snapshot = await driver.awaitGridCondition(
+    'the workspace strip returns to the top row',
+    (candidate) => candidate.findText(secondName.slice(0, 17))?.row === 0,
   );
   requireCondition(
     snapshot.findText(secondName.slice(0, 17))?.row === 0,
@@ -154,20 +174,24 @@ try {
   console.log('== harness workspace tabs: Ctrl+Shift brackets cycle projects ==');
   const cycleRootBefore = statusField<string>(statusPath, 'activeWorkspaceRoot');
   driver.sendRawInput('\x1b[93;6u');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'activeWorkspaceRoot') !== cycleRootBefore,
+  await awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.activeWorkspaceRoot !== cycleRootBefore,
   );
   pass('Ctrl+Shift+] cycles to the next project');
   driver.sendRawInput('\x1b[91;6u');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'activeWorkspaceRoot') === cycleRootBefore,
+  await awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.activeWorkspaceRoot === cycleRootBefore,
   );
   pass('Ctrl+Shift+[ cycles back to the previous project');
 
   driver.sendKeys('Control+q');
   console.log('smoke-workspace-tabs-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(firstRoot, { recursive: true, force: true });
   rmSync(secondRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });

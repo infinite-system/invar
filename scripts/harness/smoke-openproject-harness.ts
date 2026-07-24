@@ -67,9 +67,18 @@ try {
     openedStatus.quickOpenSelected === 0,
     'the first folder is selected on open',
   );
+  await driver.awaitGridCondition(
+    'the first open-project folder is visibly selected',
+    (candidate) => markerHasSelectionBackground(candidate, 'folder-00'),
+  );
 
   console.log('== harness open-project: deep keyboard selection stays in the drawn window ==');
   for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.quickOpenSelected === 20,
+  );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => markerHasSelectionBackground(candidate, 'folder-20'),
   );
@@ -86,7 +95,13 @@ try {
 
   console.log('== harness open-project: last row remains visible and wraps to the top ==');
   for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
-  snapshot = await driver.awaitSnapshot(
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.quickOpenSelected === 40,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the final proj folder is visibly selected',
     (candidate) => markerHasSelectionBackground(candidate, 'proj'),
   );
   HarnessSmoke.Class.requireCondition(
@@ -95,7 +110,13 @@ try {
   );
   HarnessSmoke.Class.pass('the last folder is visible with a selection background');
   driver.sendKeys('Down');
-  snapshot = await driver.awaitSnapshot(
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.quickOpenSelected === 0,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the wrapped first folder is visibly selected',
     (candidate) => markerHasSelectionBackground(candidate, 'folder-00'),
   );
   HarnessSmoke.Class.requireCondition(
@@ -120,7 +141,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-openproject-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(navigatorBase, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

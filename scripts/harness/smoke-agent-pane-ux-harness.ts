@@ -172,7 +172,11 @@ try {
     'thinking word starts in a stable column across animation frames',
   );
   await awaitIdle(driver, statusPath);
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the waiting tool note disappears after the agent session returns to idle',
+    (candidate) => candidate.findText('⧗ Bash') === null
+      && candidate.findText('$ echo') !== null,
+  );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('⧗ Bash') === null,
     'waiting note disappears when the session returns to idle',
@@ -306,7 +310,10 @@ try {
   HarnessSmoke.Class.pass('scrolling to the bottom re-arms tail anchoring');
 
   console.log('== harness agent pane UX: transcript and composer selection/copy ==');
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the newest transcript row is visible after tail anchoring is restored',
+    (candidate) => candidate.findText('gamma-newest-prompt') !== null,
+  );
   const transcriptPosition = snapshot.findText('gamma-newest-prompt');
   HarnessSmoke.Class.requireCondition(transcriptPosition !== null, 'newest transcript row is visible');
   if (!transcriptPosition) throw new Error('Transcript selection target disappeared');
@@ -373,6 +380,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-agent-pane-ux-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

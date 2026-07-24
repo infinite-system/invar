@@ -22,6 +22,12 @@ async function submitPrompt(
     statusPath,
     (status) => status.agentPendingPermissionTool === 'Bash',
   );
+  await driver.awaitGridCondition(
+    `the permission prompt for ${prompt} is visibly rendered`,
+    (snapshot) => snapshot.findText('? Claude wants to run') !== null
+      && snapshot.findText(`$ echo gated for: ${prompt}`) !== null
+      && snapshot.findText('[y] allow') !== null,
+  );
 }
 
 async function answerPermission(
@@ -145,6 +151,6 @@ try {
   await driver.exitCode();
   console.log('smoke-agent-permissions-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

@@ -215,7 +215,7 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-goto-definition-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

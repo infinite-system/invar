@@ -130,7 +130,7 @@ async function runServerCase(
     HarnessSmoke.Class.pass(`[${serverName}] hover card surfaces the diagnostic message`);
     driver.sendKeys('Control+q');
   } finally {
-    driver.dispose();
+    await driver.dispose();
     rmSync(fixtureRoot, { recursive: true, force: true });
     rmSync(homeDirectory, { recursive: true, force: true });
   }

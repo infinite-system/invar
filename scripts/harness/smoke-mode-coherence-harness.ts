@@ -62,7 +62,7 @@ async function proveQuitFromOverlay(
     ]);
     requireCondition(exitResult === 'exited', `reserved Ctrl+Q quits from ${overlayLabel}`);
   } finally {
-    driver.dispose();
+    await driver.dispose();
     rmSync(sessionRoot, { recursive: true, force: true });
   }
 }
@@ -145,7 +145,7 @@ try {
     false,
     'F1 switched the context-menu slot to the palette',
   );
-  driver.dispose();
+  await driver.dispose();
 
   console.log('== harness mode coherence: reserved quit bypasses each input capture ==');
   await proveQuitFromOverlay(fixtureRoot, 'Find', 'Control+f', 'findBar');
@@ -153,7 +153,7 @@ try {
   await proveQuitFromOverlay(fixtureRoot, 'Command Palette', 'F1', 'commandPalette');
   console.log('smoke-mode-coherence-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
 }

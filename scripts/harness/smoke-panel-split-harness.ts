@@ -180,6 +180,6 @@ try {
   driver.sendKeys('Control+q');
   console.log('smoke-panel-split-harness: ALL-PASS');
 } finally {
-  driver.dispose();
+  await driver.dispose();
   rmSync(homeDirectory, { recursive: true, force: true });
 }

@@ -48,6 +48,7 @@ class $PtyTestDriver {
   private readonly outputDecoder = new TextDecoder();
   private observedOutput = '';
   private frameExpectationPredecessor: CompletedSynchronizedFrame | null | undefined = null;
+  private disposalPromise: Promise<void> | null = null;
   private disposed = false;
 
   constructor(private readonly options: PtyTestDriverOptions) {
@@ -274,14 +275,20 @@ class $PtyTestDriver {
     return this.child.exited;
   }
 
-  dispose(): void {
-    if (this.disposed) return;
+  dispose(): Promise<void> {
+    if (this.disposalPromise) return this.disposalPromise;
     this.disposed = true;
+    this.disposalPromise = this.finishDisposal();
+    return this.disposalPromise;
+  }
+
+  private async finishDisposal(): Promise<void> {
     try {
       this.child.kill();
     } catch {
       // The app already exited.
     }
+    await this.child.exited;
     this.openPty.close();
     this.emulator.dispose();
   }
