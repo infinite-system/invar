@@ -212,66 +212,63 @@ picker cannot select; a hardcoded voice list.
 **Invariant:** The text handed to the TTS backend is PROSE, never raw markdown. An assistant turn is run
 through a pure transform before `speak()`: markdown syntax is stripped (backticks, emphasis, headings,
 bullets, blockquotes, links → their text), fenced code blocks become a spoken "code block" placeholder,
-and filesystem paths collapse to their last segment (`/tmp/wt-voice` → "wt-voice"). Otherwise piper/espeak
-spell paths and punctuation letter-by-letter — the "bebebe" babble. A single-slash word ("and/or") is not
-a path and is left intact.
+and bare filesystem paths collapse to their last segment (`/tmp/wt-voice` → "wt-voice"). Inline-code
+backticks are decoration, so they are removed while their content stays verbatim. A single-slash word
+("and/or") is not a path and is left intact.
 
 **Scope:** `SpeakableText.forSpeech` (pure string→string), called by `NarrationProjection` immediately
 before `tts.speak()`.
 
 **Mechanism:** `NarrationProjection.onTranscriptChanged` computes `SpeakableText.Class.forSpeech(entry.text)`
 and speaks THAT (also recording it as `lastSpoken`). `forSpeech` applies ordered regex/token passes:
-fenced blocks → placeholder, inline code → content (paths simplified), links → text, line markers
-(#/-/>) dropped, emphasis unwrapped, bare path tokens → last segment, whitespace collapsed.
+fenced blocks → placeholder, inline code → protected placeholders, links → text, line markers (#/-/>)
+dropped, emphasis unwrapped, bare path tokens → last segment, whitespace collapsed, then inline-code
+content restored in place.
 
 **Generates:** natural-sounding narration of an assistant's markdown reply; no spelled-out slashes,
 backticks, or asterisks; code blocks announced rather than read.
 
-**Evidence:** `src/modules/narration/SpeakableText.test.ts` (fenced block, inline-code path vs word,
-bare path, and/or preserved, headings/bullets/quotes, emphasis, links, the reported babble case,
+**Evidence:** `src/modules/narration/SpeakableText.test.ts` (fenced block, verbatim inline-code paths,
+expressions and identifiers, bare path, and/or preserved, headings/bullets/quotes, emphasis, links,
 whitespace normalization, empty input).
 
 **Impossible if true:** narration reading a backtick or asterisk aloud; an absolute path spoken
-slash-by-slash; a fenced code block read as source.
+slash-by-slash when it appears as bare prose; a fenced code block read as source; inline-code content
+removed with its backticks.
 
 **Verification:** `bun test src/modules/narration/SpeakableText.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-24
 
-### Inline code is spoken as words, not symbols
+### Inline code content is preserved without backticks
 
-**Invariant:** Inline code and bare code tokens are made SPEAKABLE before narration, never read
-character-by-character. A code EXPRESSION (brackets `(){}[]`, operators `;=<>`, or several stray
-symbols — e.g. `get hasDocument() { return ref(false) }`) is spoken as the single word "code"; a plain
-identifier is spoken as its split words (`hasDocument` → "has Document", `attachWordWrap` → "attach Word
-Wrap", camelCase / PascalCase / snake_case / kebab all split) with any known file extension dropped
-(`Editor.ts` → "Editor"); a path collapses to its last segment. So piper/espeak never spell out parens,
-braces, dots, or mashed camelCase — the residual garble the user reported after the markdown fix.
+**Invariant:** If an assistant message contains a single-backtick inline-code span, then narration
+removes the two delimiter backticks and preserves every character between them in the same position.
+Code expressions, paths, identifiers, and symbol-only spans all retain their content.
 
-**Scope:** `SpeakableText` (`simplifyInlineCode`, `isCodeExpression`, `splitWords`, `dropExtension`,
-`speakBareToken`, `isBareCodeIdentifier`), called by `NarrationProjection` before `tts.speak()`.
+**Scope:** Single-backtick inline-code spans handled by `SpeakableText.forSpeech`, called by
+`NarrationProjection` before `tts.speak()`. Fenced multi-line code blocks are outside this invariant.
 
-**Mechanism:** the inline-code pass classifies each backticked span: path → `lastSegment` + `dropExtension`;
-code expression (`isCodeExpression`) → "code"; else `splitWords(dropExtension(...))`. Bare prose tokens
-get the same treatment via `speakBareToken`, but camelCase splitting requires TWO+ humps
-(`isBareCodeIdentifier`) so ordinary CamelCase brand words ("GitHub", "JavaScript", "iPhone" — one hump)
-are left intact.
+**Mechanism:** `SpeakableText.forSpeech` extracts inline-code content into collision-free placeholders
+before prose transforms run. After markdown decoration and bare prose tokens are transformed, it
+restores each captured content string at its placeholder.
 
-**Generates:** dense code-heavy replies that narrate as comprehensible prose — "Editor defines code, and
-code plus attach Word Wrap follow suit" instead of "Editor dot tee-ess … open-paren close-paren
-open-brace …".
+**Generates:** narration that never silently loses the command, filename, expression, or symbol sequence
+the assistant placed inline; removal of backtick decoration without deletion of message content.
 
-**Evidence:** `src/modules/narration/SpeakableText.test.ts` (the exact reported snippet: `Editor.ts` →
-"Editor", the `get hasDocument(){…}` expression → "code", `attachWordWrap` → "attach Word Wrap", with
-no `(){}[];=` and no ".ts" surviving; identifier splitting; brand words spared).
+**Evidence:** `src/modules/narration/NarrationProjection.test.ts` (mixed prose, message start/end,
+multiple spans, symbol-only span); `src/modules/narration/SpeakableText.test.ts` (paths, identifiers,
+expressions, and dense inline code retain content); `scripts/harness/smoke-audio-narration-harness.ts`
+(an echo reply containing `bun test` reaches the mock TTS as `bun test`).
 
-**Impossible if true:** narration spelling parens/braces/dots of a code span; a mashed camelCase
-identifier read as one run; a bare ".ts" spoken as "dot tee-ess"; a common CamelCase brand word split.
+**Impossible if true:** `run bun test first` becoming `run first`; a symbol-only inline span
+disappearing; an inline path or expression being replaced by a generic word; a delimiter backtick
+reaching the TTS backend.
 
-**Verification:** `bun test src/modules/narration/SpeakableText.test.ts`
+**Verification:** `bun test src/modules/narration/NarrationProjection.test.ts src/modules/narration/SpeakableText.test.ts && bun scripts/harness/smoke-audio-narration-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-24

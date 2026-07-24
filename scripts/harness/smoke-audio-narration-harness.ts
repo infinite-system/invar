@@ -128,12 +128,14 @@ try {
     enabledStatusPath,
     (status) => status.panelActiveContent === 'agent',
   );
-  await driveTurn(driver, enabledStatusPath, 'speak this reply');
+  const inlineCodePrompt = 'run `bun test` first';
+  await driveTurn(driver, enabledStatusPath, inlineCodePrompt);
   let enabledStatus = HarnessSmoke.Class.readStatus(enabledStatusPath);
   HarnessSmoke.Class.requireCondition(
     Number(enabledStatus.narrationSpokenCount) > 0
-      && String(enabledStatus.narrationLastSpoken).includes('You said'),
-    'enabled narration speaks the assistant transcript turn',
+      && String(enabledStatus.narrationLastSpoken).includes('run bun test first')
+      && !String(enabledStatus.narrationLastSpoken).includes('`bun test`'),
+    'enabled narration speaks inline code content without backticks',
   );
 
   const bargeInCountBeforeTyping = Number(enabledStatus.narrationBargeInCount);

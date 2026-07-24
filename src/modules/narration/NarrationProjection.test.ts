@@ -42,6 +42,49 @@ test('ON: a completed assistant turn is spoken once, in full', () => {
   expect(projection.lastSpoken.value).toBe('hello world');
 });
 
+test('inline code content is narrated in place for every adjacent position and content shape', () => {
+  const narrationCases = [
+    {
+      description: 'mixed with prose',
+      assistantReply: 'run `bun test` first',
+      expectedSpokenText: 'run bun test first',
+    },
+    {
+      description: 'at the message start',
+      assistantReply: '`bun test` comes first',
+      expectedSpokenText: 'bun test comes first',
+    },
+    {
+      description: 'at the message end',
+      assistantReply: 'finish with `bun test`',
+      expectedSpokenText: 'finish with bun test',
+    },
+    {
+      description: 'in multiple spans',
+      assistantReply: 'run `bun test` then `bun run build`',
+      expectedSpokenText: 'run bun test then bun run build',
+    },
+    {
+      description: 'when the span contains only symbols',
+      assistantReply: 'keep `---` here',
+      expectedSpokenText: 'keep --- here',
+    },
+  ];
+
+  for (const narrationCase of narrationCases) {
+    const {
+      backend: agentBackend,
+      tts: textToSpeechBackend,
+      projection: narrationProjection,
+    } = wire(true);
+    agentBackend.script(completedTurn(narrationCase.assistantReply));
+    expect(textToSpeechBackend.spoken, narrationCase.description).toEqual([
+      narrationCase.expectedSpokenText,
+    ]);
+    narrationProjection.dispose();
+  }
+});
+
 test('MILESTONE filter: streaming text is NOT spoken until the turn completes', () => {
   const { backend, tts } = wire(true);
   backend.emit({ kind: 'session-start' });
