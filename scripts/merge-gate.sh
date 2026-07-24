@@ -208,6 +208,14 @@ if [ "${FAST:-0}" != "1" ]; then
   # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
   step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh
+  # wave 4
+  step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
+  step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
+  step "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
+  step "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
+  step "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
+  step "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
   # 6) Perf baselines — SOFT: memory/CPU/latency are measured + REPORTED so a regression surfaces in
   #    the gate (it was previously unwired = a perf regression could ship). Non-blocking: the numbers
   #    are informational and the load-bearing idle-quiescence invariant is hard-gated above. Slow

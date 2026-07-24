@@ -1,0 +1,579 @@
+#!/usr/bin/env bun
+// Byte-level settings applied-effect port. Every setting driven by the original smoke is loaded from
+// one per-run isolated HOME, then proven through real PTY input plus emulator cells or status output.
+//
+// invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
+// invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+import {
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { HarnessSnapshot } from './HarnessSnapshot';
+import { HarnessSmoke } from './HarnessSmoke';
+import { PtyTestDriver } from './PtyTestDriver';
+
+type SettingValue = boolean | number | string;
+
+interface LaunchedDriver {
+  driver: PtyTestDriver.Model;
+  statusPath: string;
+}
+
+const coveredSettingNames = new Set([
+  'verticalFlingCeiling',
+  'scrollAccelGain',
+  'scrollFriction',
+  'linesPerNotch',
+  'horizontalScrollModifier',
+  'fastScrollModifier',
+  'fastScrollMultiplier',
+  'scrollbarThickness',
+  'glyphMode',
+  'theme',
+  'wordWrap',
+  'showActivityBar',
+  'showIndentGuides',
+  'workspaceTabPosition',
+  'typescriptServer',
+  'lspFileSizeLimitKb',
+  'agentProvider',
+  'agentSkipPermissions',
+  'agentModel',
+  'agentAudioNarration',
+  'agentNarrationVoice',
+  'agentNarrationRate',
+  'sidebarWidth',
+  'gitSplitRatio',
+  'diffSplitRatio',
+  'markdownSplitRatio',
+]);
+
+const settingsHome = mkdtempSync(join(tmpdir(), 'tui-settings-applied-harness-home-'));
+const settingsDirectory = join(settingsHome, '.config', 'invar');
+const settingsPath = join(settingsDirectory, 'settings.json');
+mkdirSync(settingsDirectory, { recursive: true });
+await Bun.write(settingsPath, '{}\n');
+
+async function setSetting(settingName: string, value: SettingValue): Promise<void> {
+  const settings = JSON.parse(await Bun.file(settingsPath).text()) as Record<string, SettingValue>;
+  settings[settingName] = value;
+  const temporaryPath = `${settingsPath}.temporary`;
+  await Bun.write(temporaryPath, `${JSON.stringify(settings, null, 2)}\n`);
+  renameSync(temporaryPath, settingsPath);
+}
+
+async function launchDriver(
+  label: string,
+  workspaceRoot: string,
+  columns = 120,
+  rows = 40,
+): Promise<LaunchedDriver> {
+  const statusPath = join(settingsHome, `status-${label}.json`);
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot,
+    columns,
+    rows,
+    homeDirectory: settingsHome,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      COLORTERM: 'truecolor',
+    },
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.ready === true,
+    15_000,
+  );
+  return { driver, statusPath };
+}
+
+async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
+  for (let openAttempt = 0; openAttempt < 4; openAttempt++) {
+    const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
+    if (typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0) return;
+    launchedDriver.driver.sendKeys('Enter');
+    try {
+      await HarnessSmoke.Class.awaitStatus(
+        launchedDriver.driver,
+        launchedDriver.statusPath,
+        (candidate) => typeof candidate.activeBuffer === 'string'
+          && candidate.activeBuffer.length > 0,
+        1_000,
+      );
+      return;
+    } catch {
+      await Bun.sleep(100);
+    }
+  }
+  throw new Error('FAIL fixture file did not open');
+}
+
+async function settleMomentum(launchedDriver: LaunchedDriver): Promise<void> {
+  await Bun.sleep(1_200);
+  await HarnessSmoke.Class.awaitFrameSilence(launchedDriver.driver);
+}
+
+async function scrollTopAfterNotch(
+  label: string,
+  workspaceRoot: string,
+  alt: boolean,
+): Promise<number> {
+  const launchedDriver = await launchDriver(label, workspaceRoot);
+  try {
+    await openOnlyFile(launchedDriver);
+    launchedDriver.driver.sendMouse({
+      kind: 'wheel',
+      column: 59,
+      row: 11,
+      direction: 'down',
+      alt,
+    });
+    await settleMomentum(launchedDriver);
+    return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
+  } finally {
+    launchedDriver.driver.dispose();
+  }
+}
+
+async function scrollTopAfterFling(label: string, workspaceRoot: string): Promise<number> {
+  const launchedDriver = await launchDriver(label, workspaceRoot);
+  try {
+    await openOnlyFile(launchedDriver);
+    for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
+      launchedDriver.driver.sendMouseWithoutFrameExpectation({
+        kind: 'wheel',
+        column: 59,
+        row: 11,
+        direction: 'down',
+      });
+      await Bun.sleep(30);
+    }
+    await settleMomentum(launchedDriver);
+    return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
+  } finally {
+    launchedDriver.driver.dispose();
+  }
+}
+
+function markerRow(snapshot: HarnessSnapshot.Model, marker: string): number {
+  return snapshot.findText(marker)?.row ?? -1;
+}
+
+function sidebarDividerColumn(snapshot: HarnessSnapshot.Model): number {
+  for (const row of [3, 5, 7, 10]) {
+    const rowText = snapshot.rowText(row);
+    for (let column = 6; column < Math.min(90, snapshot.columns); column++) {
+      if (rowText[column] === '│') return column;
+    }
+  }
+  return -1;
+}
+
+function paintedScrollbarColumnCount(snapshot: HarnessSnapshot.Model): number {
+  const fillCounts = new Map<number, number>();
+  for (let row = 2; row < Math.min(34, snapshot.rows); row++) {
+    for (let column = 24; column < Math.min(32, snapshot.columns); column++) {
+      const cell = snapshot.cell(row, column);
+      if (!cell?.isBackgroundRgb) continue;
+      fillCounts.set(cell.background, (fillCounts.get(cell.background) ?? 0) + 1);
+    }
+  }
+  let sidebarBackground = -1;
+  let largestFillCount = -1;
+  for (const [background, count] of fillCounts) {
+    if (count > largestFillCount) {
+      sidebarBackground = background;
+      largestFillCount = count;
+    }
+  }
+  const paintedRowsByColumn = new Map<number, number>();
+  for (let row = 2; row < Math.min(34, snapshot.rows); row++) {
+    for (let column = 24; column < Math.min(32, snapshot.columns); column++) {
+      const cell = snapshot.cell(row, column);
+      if (
+        cell?.isBackgroundRgb
+        && cell.background !== 0
+        && cell.background !== sidebarBackground
+      ) {
+        paintedRowsByColumn.set(column, (paintedRowsByColumn.get(column) ?? 0) + 1);
+      }
+    }
+  }
+  return [...paintedRowsByColumn.values()].filter((paintedRows) => paintedRows > 20).length;
+}
+
+function firstSubfolderGlyphs(snapshot: HarnessSnapshot.Model): string {
+  const position = snapshot.findText('subfolder');
+  if (!position) return '';
+  return Array.from(snapshot.rowText(position.row)).slice(1, 6).join('');
+}
+
+function indentGuideCellCount(snapshot: HarnessSnapshot.Model): number {
+  const position = snapshot.findText('deeply(');
+  if (!position || position.column < 8) return 0;
+  return snapshot.rowCells(position.row)
+    .slice(position.column - 8, position.column)
+    .filter((cell) => cell.characters !== ' ')
+    .length;
+}
+
+async function snapshotForSetting(
+  label: string,
+  workspaceRoot: string,
+  openFile: boolean,
+): Promise<HarnessSnapshot.Model> {
+  const launchedDriver = await launchDriver(label, workspaceRoot);
+  try {
+    if (openFile) await openOnlyFile(launchedDriver);
+    await HarnessSmoke.Class.awaitFrameSilence(launchedDriver.driver);
+    return launchedDriver.driver.snapshot();
+  } finally {
+    launchedDriver.driver.dispose();
+  }
+}
+
+const fixtureDirectories: string[] = [];
+function createFixture(prefix: string): string {
+  const directory = mkdtempSync(join(tmpdir(), prefix));
+  fixtureDirectories.push(directory);
+  return directory;
+}
+
+const longFixture = createFixture('tui-settings-long-harness-');
+let longText = '';
+for (let lineNumber = 0; lineNumber < 300; lineNumber++) {
+  longText += `line ${String(lineNumber).padStart(3, '0')} ${'x'.repeat(180)}\n`;
+}
+await Bun.write(join(longFixture, 'long.txt'), longText);
+
+const treeFixture = createFixture('tui-settings-tree-harness-');
+for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
+  await Bun.write(
+    join(treeFixture, `file-${String(fileNumber).padStart(2, '0')}.txt`),
+    'x\n',
+  );
+}
+mkdirSync(join(treeFixture, 'subfolder'));
+
+const wrapFixture = createFixture('tui-settings-wrap-harness-');
+await Bun.write(join(wrapFixture, 'w.txt'), `${'A'.repeat(300)}\nMARKERLINE\n`);
+
+const gitFixture = createFixture('tui-settings-git-harness-');
+await Bun.write(join(gitFixture, 'f.txt'), 'a\n');
+HarnessSmoke.Class.runGit(gitFixture, ['init', '-q']);
+HarnessSmoke.Class.runGit(gitFixture, ['add', 'f.txt']);
+HarnessSmoke.Class.runGit(gitFixture, [
+  '-c',
+  'user.name=settings-harness',
+  '-c',
+  'user.email=settings-harness@example.test',
+  'commit',
+  '-qm',
+  'init',
+]);
+await Bun.write(join(gitFixture, 'f.txt'), 'a\nb\n');
+await Bun.write(join(gitFixture, 'g.txt'), 'n\n');
+
+const indentFixture = createFixture('tui-settings-indent-harness-');
+await Bun.write(join(indentFixture, 'i.ts'), 'function f() {\n        deeply();\n}\n');
+
+const lspFixture = createFixture('tui-settings-lsp-harness-');
+symlinkSync(join(process.cwd(), 'node_modules'), join(lspFixture, 'node_modules'));
+await Bun.write(
+  join(lspFixture, 'tsconfig.json'),
+  '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", '
+    + '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
+);
+await Bun.write(
+  join(lspFixture, 'big.ts'),
+  `// padding ${'x'.repeat(1_500)}\nconst bad: number = "nope";\n`,
+);
+
+try {
+  await setSetting('showActivityBar', false);
+  await setSetting('wordWrap', false);
+  await setSetting('fastScrollModifier', 'none');
+
+  console.log('== harness settings: scrolling settings change driven distance and routing ==');
+  await setSetting('linesPerNotch', 1);
+  const oneLineNotch = await scrollTopAfterNotch('notch-one', longFixture, false);
+  await setSetting('linesPerNotch', 8);
+  const eightLineNotch = await scrollTopAfterNotch('notch-eight', longFixture, false);
+  HarnessSmoke.Class.requireCondition(
+    eightLineNotch > oneLineNotch,
+    `linesPerNotch 8 moves farther than 1 (${oneLineNotch} to ${eightLineNotch})`,
+  );
+
+  await setSetting('linesPerNotch', 1);
+  await setSetting('scrollAccelGain', 5);
+  const lowGain = await scrollTopAfterNotch('gain-low', longFixture, false);
+  await setSetting('scrollAccelGain', 120);
+  const highGain = await scrollTopAfterNotch('gain-high', longFixture, false);
+  HarnessSmoke.Class.requireCondition(
+    highGain > lowGain,
+    `scrollAccelGain 120 moves farther than 5 (${lowGain} to ${highGain})`,
+  );
+  await setSetting('scrollAccelGain', 34);
+
+  await setSetting('verticalFlingCeiling', 80);
+  const lowCeiling = await scrollTopAfterFling('ceiling-low', longFixture);
+  await setSetting('verticalFlingCeiling', 1_500);
+  const highCeiling = await scrollTopAfterFling('ceiling-high', longFixture);
+  HarnessSmoke.Class.requireCondition(
+    highCeiling > lowCeiling,
+    `verticalFlingCeiling 1500 flings farther than 80 (${lowCeiling} to ${highCeiling})`,
+  );
+  await setSetting('verticalFlingCeiling', 220);
+
+  await setSetting('scrollFriction', 0.001);
+  const lowFriction = await scrollTopAfterFling('friction-low', longFixture);
+  await setSetting('scrollFriction', 0.4);
+  const highFriction = await scrollTopAfterFling('friction-high', longFixture);
+  HarnessSmoke.Class.requireCondition(
+    lowFriction !== highFriction,
+    `scrollFriction changes glide distance (${lowFriction} versus ${highFriction})`,
+  );
+  await setSetting('scrollFriction', 0.015);
+
+  await setSetting('linesPerNotch', 1);
+  await setSetting('horizontalScrollModifier', 'ctrl');
+  await setSetting('fastScrollModifier', 'none');
+  await setSetting('fastScrollMultiplier', 6);
+  const baseAltNotch = await scrollTopAfterNotch('fast-base', longFixture, true);
+  await setSetting('fastScrollModifier', 'alt');
+  const fastAltNotch = await scrollTopAfterNotch('fast-alt', longFixture, true);
+  HarnessSmoke.Class.requireCondition(
+    fastAltNotch > baseAltNotch,
+    `Alt fast modifier and multiplier increase the step (${baseAltNotch} to ${fastAltNotch})`,
+  );
+  await setSetting('fastScrollModifier', 'none');
+
+  async function horizontalOffset(label: string, modifier: string): Promise<number> {
+    await setSetting('horizontalScrollModifier', modifier);
+    const launchedDriver = await launchDriver(label, longFixture);
+    try {
+      await openOnlyFile(launchedDriver);
+      for (let wheelIndex = 0; wheelIndex < 3; wheelIndex++) {
+        launchedDriver.driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 59,
+          row: 11,
+          direction: 'down',
+          alt: true,
+        });
+        await Bun.sleep(120);
+      }
+      await settleMomentum(launchedDriver);
+      return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollLeft);
+    } finally {
+      launchedDriver.driver.dispose();
+    }
+  }
+  const altHorizontalOffset = await horizontalOffset('horizontal-alt', 'alt');
+  const disabledHorizontalOffset = await horizontalOffset('horizontal-none', 'none');
+  HarnessSmoke.Class.requireCondition(
+    altHorizontalOffset > disabledHorizontalOffset,
+    `horizontalScrollModifier routes Alt-wheel horizontally (${disabledHorizontalOffset} to ${altHorizontalOffset})`,
+  );
+  await setSetting('horizontalScrollModifier', 'alt');
+
+  console.log('== harness settings: layout and visual settings change emulator cells ==');
+  await setSetting('wordWrap', false);
+  const wrapOffSnapshot = await snapshotForSetting('wrap-off', wrapFixture, true);
+  await setSetting('wordWrap', true);
+  const wrapOnSnapshot = await snapshotForSetting('wrap-on', wrapFixture, true);
+  HarnessSmoke.Class.requireCondition(
+    markerRow(wrapOnSnapshot, 'MARKER') > markerRow(wrapOffSnapshot, 'MARKER'),
+    'wordWrap pushes the marker onto a lower visual row',
+  );
+  await setSetting('wordWrap', false);
+
+  await setSetting('sidebarWidth', 28);
+  const narrowSidebar = sidebarDividerColumn(
+    await snapshotForSetting('sidebar-narrow', treeFixture, false),
+  );
+  await setSetting('sidebarWidth', 44);
+  const wideSidebar = sidebarDividerColumn(
+    await snapshotForSetting('sidebar-wide', treeFixture, false),
+  );
+  HarnessSmoke.Class.requireCondition(
+    wideSidebar > narrowSidebar,
+    `sidebarWidth moves the real divider (${narrowSidebar} to ${wideSidebar})`,
+  );
+  await setSetting('sidebarWidth', 32);
+
+  async function scrollbarColumns(label: string, thickness: number): Promise<number> {
+    await setSetting('scrollbarThickness', thickness);
+    const launchedDriver = await launchDriver(label, treeFixture);
+    try {
+      for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
+        launchedDriver.driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 9,
+          row: 9,
+          direction: 'down',
+        });
+      }
+      await settleMomentum(launchedDriver);
+      return paintedScrollbarColumnCount(launchedDriver.driver.snapshot());
+    } finally {
+      launchedDriver.driver.dispose();
+    }
+  }
+  await setSetting('theme', 'dark');
+  const thinScrollbarColumns = await scrollbarColumns('scrollbar-thin', 1);
+  const thickScrollbarColumns = await scrollbarColumns('scrollbar-thick', 3);
+  HarnessSmoke.Class.requireCondition(
+    thinScrollbarColumns === 1 && thickScrollbarColumns === 3,
+    `scrollbarThickness paints 1 then 3 real columns (${thinScrollbarColumns}/${thickScrollbarColumns})`,
+  );
+  await setSetting('scrollbarThickness', 1);
+
+  await setSetting('theme', 'dark');
+  const darkSnapshot = await snapshotForSetting('theme-dark', treeFixture, false);
+  await setSetting('theme', 'light');
+  const lightSnapshot = await snapshotForSetting('theme-light', treeFixture, false);
+  const darkStatusBackground = darkSnapshot.cell(darkSnapshot.rows - 1, 10)?.background;
+  const lightStatusBackground = lightSnapshot.cell(lightSnapshot.rows - 1, 10)?.background;
+  HarnessSmoke.Class.requireCondition(
+    darkStatusBackground !== lightStatusBackground,
+    `theme changes the status palette (${String(darkStatusBackground)} versus ${String(lightStatusBackground)})`,
+  );
+  await setSetting('theme', 'dark');
+
+  await setSetting('glyphMode', 'ascii');
+  const asciiGlyphs = firstSubfolderGlyphs(
+    await snapshotForSetting('glyph-ascii', treeFixture, false),
+  );
+  await setSetting('glyphMode', 'nerd');
+  const nerdGlyphs = firstSubfolderGlyphs(
+    await snapshotForSetting('glyph-nerd', treeFixture, false),
+  );
+  HarnessSmoke.Class.requireCondition(
+    asciiGlyphs !== nerdGlyphs,
+    `glyphMode changes rendered tree glyphs (${JSON.stringify(asciiGlyphs)} versus ${JSON.stringify(nerdGlyphs)})`,
+  );
+  await setSetting('glyphMode', 'auto');
+
+  await setSetting('showActivityBar', true);
+  const activityBarDivider = sidebarDividerColumn(
+    await snapshotForSetting('activity-on', treeFixture, false),
+  );
+  await setSetting('showActivityBar', false);
+  const noActivityBarDivider = sidebarDividerColumn(
+    await snapshotForSetting('activity-off', treeFixture, false),
+  );
+  HarnessSmoke.Class.requireCondition(
+    activityBarDivider - noActivityBarDivider === 4,
+    `showActivityBar shifts the sidebar by four columns (${noActivityBarDivider} to ${activityBarDivider})`,
+  );
+
+  await setSetting('showIndentGuides', true);
+  const guideCells = indentGuideCellCount(
+    await snapshotForSetting('guides-on', indentFixture, true),
+  );
+  await setSetting('showIndentGuides', false);
+  const noGuideCells = indentGuideCellCount(
+    await snapshotForSetting('guides-off', indentFixture, true),
+  );
+  HarnessSmoke.Class.requireCondition(
+    guideCells > 0 && noGuideCells === 0,
+    `showIndentGuides paints then removes guide cells (${guideCells}/${noGuideCells})`,
+  );
+  await setSetting('showIndentGuides', true);
+
+  console.log('== harness settings: Git split ratio moves the commit-log region ==');
+  async function gitCommitRow(label: string, ratio: number): Promise<number> {
+    await setSetting('gitSplitRatio', ratio);
+    const launchedDriver = await launchDriver(label, gitFixture);
+    try {
+      launchedDriver.driver.sendKeys('Control+g');
+      const snapshot = await launchedDriver.driver.awaitSnapshot(
+        (candidate) => candidate.findText('init') !== null,
+        15_000,
+      );
+      return markerRow(snapshot, 'init');
+    } finally {
+      launchedDriver.driver.dispose();
+    }
+  }
+  const highLogRegion = await gitCommitRow('git-ratio-low', 0.3);
+  const lowLogRegion = await gitCommitRow('git-ratio-high', 0.7);
+  HarnessSmoke.Class.requireCondition(
+    lowLogRegion > highLogRegion,
+    `gitSplitRatio 0.7 moves the commit row lower than 0.3 (${highLogRegion} to ${lowLogRegion})`,
+  );
+  await setSetting('gitSplitRatio', 0.5);
+
+  console.log('== harness settings: LSP file-size budget gates the real language server ==');
+  const tsgoPath = join(process.cwd(), 'node_modules', '.bin', 'tsgo');
+  if (!(await Bun.file(tsgoPath).exists())) {
+    console.log('  SKIP  tsgo not installed — lspFileSizeLimitKb applied-effect drive skipped');
+  } else {
+    async function lspResult(
+      label: string,
+      fileSizeLimitKilobytes: number,
+    ): Promise<{ sizeSuppressed: boolean; diagnosticsCount: number }> {
+      await setSetting('lspFileSizeLimitKb', fileSizeLimitKilobytes);
+      await setSetting('typescriptServer', 'tsgo');
+      const launchedDriver = await launchDriver(label, lspFixture, 120, 36);
+      try {
+        launchedDriver.driver.sendKeys('Down');
+        await launchedDriver.driver.awaitQuiescence();
+        launchedDriver.driver.sendKeys('Enter');
+        const status = await HarnessSmoke.Class.awaitStatus(
+          launchedDriver.driver,
+          launchedDriver.statusPath,
+          (candidate) => candidate.lspSizeSuppressed === true
+            || Number(candidate.diagnosticsCount) > 0,
+          60_000,
+        );
+        return {
+          sizeSuppressed: status.lspSizeSuppressed === true,
+          diagnosticsCount: Number(status.diagnosticsCount),
+        };
+      } finally {
+        launchedDriver.driver.dispose();
+      }
+    }
+    const suppressedResult = await lspResult('lsp-suppressed', 1);
+    const attachedResult = await lspResult('lsp-attached', 2_048);
+    HarnessSmoke.Class.requireCondition(
+      suppressedResult.sizeSuppressed && suppressedResult.diagnosticsCount === 0,
+      '1 KB budget size-suppresses the file and receives no diagnostics',
+    );
+    HarnessSmoke.Class.requireCondition(
+      !attachedResult.sizeSuppressed && attachedResult.diagnosticsCount > 0,
+      '2048 KB budget attaches the LSP and receives diagnostics',
+    );
+    await setSetting('lspFileSizeLimitKb', 2_048);
+  }
+
+  console.log('== harness settings: schema coverage meta-gate ==');
+  const settingsSource = await Bun.file(join(process.cwd(), 'src/modules/settings/Settings.ts')).text();
+  const defaultsBlock = settingsSource.match(/static get defaults[\s\S]*?return \{([\s\S]*?)\n\s*\};/)?.[1]
+    ?? '';
+  const schemaSettingNames = [...defaultsBlock.matchAll(/^\s*([A-Za-z0-9_]+):/gm)]
+    .map((match) => match[1])
+    .filter((settingName): settingName is string => Boolean(settingName));
+  const uncoveredSettings = schemaSettingNames.filter(
+    (settingName) => !coveredSettingNames.has(settingName),
+  );
+  HarnessSmoke.Class.requireCondition(
+    schemaSettingNames.length > 0 && uncoveredSettings.length === 0,
+    `all ${schemaSettingNames.length} schema fields have an applied-effect drive`,
+  );
+
+  console.log('smoke-settings-applied-harness: ALL-PASS');
+} finally {
+  rmSync(settingsHome, { recursive: true, force: true });
+  for (const fixtureDirectory of fixtureDirectories) {
+    rmSync(fixtureDirectory, { recursive: true, force: true });
+  }
+}
