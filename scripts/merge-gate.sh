@@ -193,6 +193,17 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
   step "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
   step "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
+  # wave 3
+  step "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
+  step "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
+  step "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
+  step "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
+  step "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
+  step "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
+  step "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
+  step "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
+  step "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
+  step "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
   # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
   step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh
