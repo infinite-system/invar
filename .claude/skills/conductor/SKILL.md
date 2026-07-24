@@ -84,6 +84,11 @@ A second, SEPARATELY-BUDGETED weekly pool exists: **`gpt-5.3-codex-spark`** (dis
 - **sol high (default) — anything requiring judgment**: seam-semantics changes, shared-driver /
   shared-generator edits, adjudications, investigations/bisects, zero-behavior-change refactors
   with subtle semantics (`this`-capture, reactivity), and any brief containing "diagnose".
+- **The budgets are INDEPENDENT**: sol and Spark draw from separate weekly limits (`codex`
+  status shows both). sol hitting its limit says NOTHING about Spark's remaining budget — when
+  sol is exhausted or rate-limited, the fleet is NOT down: route Spark-eligible work to Spark
+  and keep moving; hold only the judgment-tier work for sol's reset. Check both meters before
+  declaring the fleet blocked.
 - **Calibrate empirically**: when a big mechanical campaign launches, send one wave to Spark
   with the identical brief, judge on delivery as always, compare its gate-rejection/rework rate
   against a sol wave, and route the remainder accordingly. If Spark's rejection rate rises,
