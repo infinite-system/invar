@@ -247,6 +247,14 @@ proven to hold order at fleet velocity. The capsule model makes it installable:
   decides who may message whom; agent-to-agent asks stay visible and escalatable; the approver is
   never the requester). Payoff: conductor-in-app — fleet orchestration becomes an observable,
   replayable, governed conversation instead of an external process.
+- **The console.** The conductor gets a seat in the UI: Ctrl+` (the Counter-Strike homage — raw
+  tilde belongs to the editor as a character) or a clicked status-bar affordance rolls a
+  half-window down from the top: the GLOBAL agent (the message bus's root node, watching every
+  workspace's status projection, dispatching over the bus) beside the GLOBAL terminal (machine-
+  wide actions). The per-workspace refactor does not delete today's shared agent and terminal —
+  it PROMOTES them into this pair. The console is the widest membrane profile, but a profile
+  still: privileged, never ungoverned. Summonable from anywhere, gone on dismiss, replayable
+  from its transcript — the fleet's cockpit as furniture.
 - **The reduction:** Invar = ivue + IBR, and the capsule is IBR's generative principle applied
   to the meta-invariant itself — the kernel (contracts, gating, driven verification,
   provenance, fleet discipline) stops being a description of how this repo was built and
