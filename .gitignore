@@ -14,3 +14,4 @@ artifacts/*.tmp
 artifacts/home/
 dist/
 artifacts/*.pulse
+.perf-history/

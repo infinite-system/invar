@@ -108,6 +108,11 @@ function $key(keyName: string): string {
 
   if (baseKey.length === 1) {
     let sequence = hasShift ? baseKey.toUpperCase() : baseKey;
+    if (hasControl && !canEncodeAsControlCharacter(sequence)) {
+      const modifierParameter = 1 + Number(hasShift) + (Number(hasAlt) * 2)
+        + (Number(hasControl) * 4);
+      return `\x1b[${sequence.codePointAt(0)};${modifierParameter}u`;
+    }
     if (hasControl) sequence = controlCharacter(sequence);
     return hasAlt ? `\x1b${sequence}` : sequence;
   }
@@ -152,6 +157,12 @@ function $mouse(event: HarnessMouseEvent): string {
 
 function $paste(text: string): string {
   return `\x1b[200~${text}\x1b[201~`;
+}
+
+function canEncodeAsControlCharacter(character: string): boolean {
+  const upperCharacter = character.toUpperCase();
+  const characterCode = upperCharacter.charCodeAt(0);
+  return upperCharacter === '?' || (characterCode >= 64 && characterCode <= 95);
 }
 
 function controlCharacter(character: string): string {

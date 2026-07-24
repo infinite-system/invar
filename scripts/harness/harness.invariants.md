@@ -51,8 +51,8 @@ a silence assertion passing after a complete frame arrived during its interval.
 `OpenPty` slave, sends terminal-encoded key, mouse, and paste bytes through the master, and observes
 only bytes returned through that same master.
 
-**Scope:** `PtyTestDriver` and every `scripts/harness/smoke-*-harness.ts` proof-of-concept smoke.
-Unit tests of byte encoders and recorded-stream quiescence are intentionally process-free.
+**Scope:** `PtyTestDriver` and every `scripts/harness/smoke-*-harness.ts` smoke. Unit tests of byte
+encoders and recorded-stream quiescence are intentionally process-free.
 
 **Mechanism:** `PtyTestDriver` role-inverts the shared `OpenPty` allocator: the harness owns the master
 as the terminal and Invar owns the slave as its stdin, stdout, and stderr. The child environment
@@ -61,12 +61,14 @@ declares `TERM=xterm-256color` and `COLORTERM=truecolor`; no harness-only app be
 **Generates:** real termios and terminal-protocol behavior; named key encoding; SGR mouse input;
 bracketed paste; resize through the same PTY generator as the integrated terminal.
 
-**Evidence:** `scripts/harness/PtyTestDriver.ts`; the three `smoke-*-harness.ts` files.
+**Evidence:** `scripts/harness/PtyTestDriver.ts`; the fourteen `smoke-*-harness.ts` files.
 
 **Impossible if true:** a smoke calling an app model directly; bytes bypassing the PTY; a test-only
 input or rendering hook inside Invar.
 
-**Verification:** `bun scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-selection-harness.ts && bun scripts/harness/smoke-scrollbars-harness.ts`
+**Verification:** `for smoke in editor find comment-styling bracket-match indent-guides move-line
+word-delete paste tabs workspace-tabs mode-coherence wrap selection scrollbars; do bun
+"scripts/harness/smoke-${smoke}-harness.ts" || exit; done`
 
 **Status:** provisional
 
@@ -141,9 +143,10 @@ for a block glyph; a snapshot cell lacking the emulator color mode or SGR attrib
 **Invariant:** If a behavior is ported to the PTY harness, then its original tmux smoke remains
 registered and unchanged as an independent terminal-emulator cross-check.
 
-**Scope:** `smoke-wrap`, `smoke-selection`, and `smoke-scrollbars` plus their additive harness ports in
-`scripts/merge-gate.sh`. Future ports follow the same rule until a separate decision replaces the
-independent ring.
+**Scope:** The fourteen tmux smokes with additive harness ports in `scripts/merge-gate.sh`: editor,
+find, comment-styling, bracket-match, indent-guides, move-line, word-delete, paste, tabs,
+workspace-tabs, mode-coherence, wrap, selection, and scrollbars. Future ports follow the same rule
+until a separate decision replaces the independent ring.
 
 **Mechanism:** The harness trusts the same `TerminalEmulator` used by the integrated terminal, so a
 shared emulator defect can fool both production and the harness. Keeping the original tmux path
@@ -156,13 +159,55 @@ without deleting prior evidence.
 **Rejected alternatives:** Replace each tmux smoke as soon as it is ported — removes the only
 independent screen parser and makes emulator defects self-confirming.
 
-**Evidence:** `scripts/merge-gate.sh`; `scripts/smoke-wrap.sh`; `scripts/smoke-selection.sh`;
-`scripts/smoke-scrollbars.sh`.
+**Evidence:** `scripts/merge-gate.sh`; the fourteen matching `scripts/smoke-*.sh` and
+`scripts/harness/smoke-*-harness.ts` pairs named in Scope.
 
 **Impossible if true:** a harness port deleting or deregistering its tmux original; both verification
 rings depending on `TerminalEmulator`; a common emulator bug passing without an independent check.
 
-**Verification:** `rg "smoke: (wrap|selection|scrollbars)" scripts/merge-gate.sh`
+**Verification:** `for smoke in editor find comment-styling bracket-match indent-guides move-line
+word-delete paste tabs workspace-tabs mode-coherence wrap selection scrollbars; do rg -q "smoke:
+${smoke//-/[ -]}" scripts/merge-gate.sh && test -f "scripts/smoke-${smoke}.sh" && test -f
+"scripts/harness/smoke-${smoke}-harness.ts" || exit; done`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Input byte latency uses a reviewed gate baseline
+
+**Invariant:** If the merge gate measures input byte flush latency, then it runs five independent
+sessions, records their median p50 and p95 at the named byte-arrival boundary, appends the result to
+ignored NDJSON history, warns above the reviewed p50 baseline times 1.3, and fails above baseline
+times 2.
+
+**Scope:** `scripts/harness/input-byte-flush-gate.ts`, its unskipped `scripts/merge-gate.sh` step,
+the machine-readable block in `project.performance-baselines.md`, and
+`.perf-history/input-byte-flush.ndjson`. The broader soft performance suite remains outside this
+hard latency check.
+
+**Mechanism:** `input-byte-flush-gate.ts` launches
+`scripts/harness/measure-input-byte-flush.ts` five times, rejects a boundary mismatch, takes the
+median of session p50 and p95 values, reads thresholds from the reviewed JSON block, appends one
+history object, and returns non-zero above the failure threshold. `reporting_step` preserves its
+successful p50, p95, and boundary output in the merge-gate log.
+
+**Generates:** an always-run latency regression signal under `SKIP_PERF` and `FAST`; commit-addressed
+history; a non-blocking warning band; an explicit landing diff whenever the baseline changes.
+
+**Rejected alternatives:** Update the baseline from measurement history — lets the tested commit
+move its own threshold and makes regressions self-ratifying.
+
+**Evidence:** `scripts/harness/input-byte-flush-gate.ts`; `scripts/merge-gate.sh`;
+`project.performance-baselines.md` `Input byte flush merge-gate baseline`.
+
+**Impossible if true:** `SKIP_PERF=1` bypassing the latency check; a p50 above baseline times 2
+leaving the gate green; a history line without sha, timestamp, p50, p95, and boundary; a successful
+gate log omitting the measurement boundary.
+
+**Verification:** `bun scripts/harness/input-byte-flush-gate.ts &&
+(INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS=0 bun scripts/harness/input-byte-flush-gate.ts; test $?
+-ne 0)`
 
 **Status:** provisional
 

@@ -106,7 +106,7 @@ try {
     + `snapshot-ready-p50=${snapshotReadyPercentiles.p50.toFixed(3)}ms `
     + `post-arrival-oracle-p50=${postArrivalOraclePercentiles.p50.toFixed(3)}ms `
     + `median-frame-bytes=${medianFrameByteCount} `
-    + `boundary=input-write-start-to-dec2026-end-byte-arrival`,
+    + `boundary=input-write→DEC-2026-end-marker-byte-arrival`,
   );
 } finally {
   driver.dispose();

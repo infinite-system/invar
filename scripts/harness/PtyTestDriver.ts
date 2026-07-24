@@ -37,6 +37,8 @@ class $PtyTestDriver {
   private readonly emulator: TerminalEmulator.Model;
   private readonly quiescence = new SynchronizedOutputQuiescence.Class();
   private readonly child: ReturnType<typeof Bun.spawn>;
+  private readonly outputDecoder = new TextDecoder();
+  private observedOutput = '';
   private minimumCompletedFrameCount = 1;
   private disposed = false;
 
@@ -48,6 +50,7 @@ class $PtyTestDriver {
     this.emulator = new TerminalEmulator.Class(columns, rows);
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
+      this.observedOutput += this.outputDecoder.decode(bytes, { stream: true });
       this.quiescence.observe(bytes);
       this.emulator.write(bytes);
     });
@@ -105,8 +108,23 @@ class $PtyTestDriver {
     this.openPty.write(text);
   }
 
+  sendRawInput(inputBytes: string): void {
+    if (!inputBytes) return;
+    this.expectNextFrame();
+    this.openPty.write(inputBytes);
+  }
+
+  sendRawInputWithoutFrameExpectation(inputBytes: string): void {
+    if (!inputBytes) return;
+    this.openPty.write(inputBytes);
+  }
+
   sendMouse(event: HarnessMouseEvent): void {
     this.expectNextFrame();
+    this.openPty.write(HarnessInput.Class.mouse(event));
+  }
+
+  sendMouseWithoutFrameExpectation(event: HarnessMouseEvent): void {
     this.openPty.write(HarnessInput.Class.mouse(event));
   }
 
@@ -130,6 +148,28 @@ class $PtyTestDriver {
 
   async assertNoCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
     await this.quiescence.assertNoCompletedFrameFor(durationMilliseconds);
+  }
+
+  async assertAtMostOneCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
+    const initialCompletedFrameCount = this.quiescence.completedFrameCount;
+    const deadline = performance.now() + durationMilliseconds;
+    try {
+      await this.assertNoCompleteFrameEmittedFor(durationMilliseconds);
+      return;
+    } catch (firstFrameError) {
+      if (this.quiescence.completedFrameCount - initialCompletedFrameCount > 1) {
+        throw firstFrameError;
+      }
+      const remainingMilliseconds = deadline - performance.now();
+      if (remainingMilliseconds > 0) {
+        await this.assertNoCompleteFrameEmittedFor(remainingMilliseconds);
+      }
+      if (this.quiescence.completedFrameCount - initialCompletedFrameCount > 1) {
+        throw new Error(
+          `Expected at most one complete synchronized frame for ${durationMilliseconds} ms`,
+        );
+      }
+    }
   }
 
   async awaitSnapshot(
@@ -171,6 +211,19 @@ class $PtyTestDriver {
       this.emulator.cursorRow,
       copiedCells,
     );
+  }
+
+  outputSequenceCount(sequence: string): number {
+    if (!sequence) return 0;
+    let sequenceCount = 0;
+    let searchOffset = 0;
+    while (searchOffset < this.observedOutput.length) {
+      const sequenceOffset = this.observedOutput.indexOf(sequence, searchOffset);
+      if (sequenceOffset < 0) break;
+      sequenceCount++;
+      searchOffset = sequenceOffset + sequence.length;
+    }
+    return sequenceCount;
   }
 
   async exitCode(): Promise<number> {

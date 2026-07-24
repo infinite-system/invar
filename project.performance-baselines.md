@@ -3,6 +3,24 @@
 Measured with `scripts/perf-baselines.sh` (rerunnable, session-scoped: unique tmux sessions +
 per-session status side channels, so live demo instances are never touched).
 
+## Input byte flush merge-gate baseline
+
+The gate reads this block directly. The baseline changes only through an explicit edit in a landing
+diff; measurements append history but never rewrite the baseline.
+
+<!-- input-byte-flush-baseline:begin -->
+```json
+{
+  "metric": "input-byte-flush",
+  "p50Milliseconds": 2.97,
+  "boundary": "input-write→DEC-2026-end-marker-byte-arrival",
+  "warningMultiplier": 1.3,
+  "failureMultiplier": 2,
+  "baselineChangePolicy": "Explicit edit in a landing diff only; measurement history never updates this block."
+}
+```
+<!-- input-byte-flush-baseline:end -->
+
 ## CURRENT baseline — 2026-07-24, repaired harness (the authoritative numbers)
 
 Single full run on main@56fe6df + the review-fix branch (`fix-git-perf-review`), after the harness

@@ -72,6 +72,20 @@ soft_step() {
   fi
   rm -f /tmp/merge-gate-soft.$$.log
 }
+# A reporting hard step: unlike step(), successful measurement output is part of the gate log.
+reporting_step() {
+  local name="$1"; shift
+  echo "== merge-gate: $name =="
+  if "$@" >/tmp/merge-gate-reporting.$$.log 2>&1; then
+    sed 's/^/    | /' /tmp/merge-gate-reporting.$$.log
+    echo "  OK    $name"
+  else
+    echo "  FAIL  $name"
+    tail -40 /tmp/merge-gate-reporting.$$.log | sed 's/^/    | /'
+    fail=1
+  fi
+  rm -f /tmp/merge-gate-reporting.$$.log
+}
 
 # 1) Fast inner gate: tsc + conventions + unwired-capability + settings-applied META.
 step "conventions-gate (tsc + conventions + unwired + settings-meta)" bash scripts/conventions-gate.sh
@@ -87,19 +101,29 @@ step "invariant contracts --refs (annotations resolve)" node .claude/skills/inva
 step "unit tests (bun test)" bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
 step "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
+# This latency check is deliberately outside SKIP_PERF and FAST. It names the raw-byte boundary,
+# records every result, and blocks only at the reviewed baseline's failure multiplier.
+# invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
+reporting_step "input byte flush latency (5-session median)" bun scripts/harness/input-byte-flush-gate.ts
 
 if [ "${FAST:-0}" != "1" ]; then
   # 4) Driving SMOKES — the real user paths.
   step "smoke: editor"      bash scripts/smoke-editor.sh
+  step "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).
   step "smoke: move-line"   bash scripts/smoke-move-line.sh
+  step "smoke: move-line harness" bun scripts/harness/smoke-move-line-harness.ts
   step "smoke: indent-guides" bash scripts/smoke-indent-guides.sh
+  step "smoke: indent-guides harness" bun scripts/harness/smoke-indent-guides-harness.ts
   # Bracket matching: cursor on a `{` highlights it + its balanced `}` (match background via FrameProbe);
   # moving off clears it. Pure finder + real-tokenizer string/comment gate.
   step "smoke: bracket-match" bash scripts/smoke-bracket-match.sh
+  step "smoke: bracket-match harness" bun scripts/harness/smoke-bracket-match-harness.ts
   step "smoke: tabs"        bash scripts/smoke-tabs.sh
+  step "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
   step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
+  step "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
   step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
   step "smoke: selection"   bash scripts/smoke-selection.sh
   # invariant: Tmux smokes remain an independent verification ring (scripts/harness/harness.invariants.md)
@@ -109,6 +133,7 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: wrap"        bash scripts/smoke-wrap.sh
   step "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
   step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
+  step "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
   step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
   # Commit-log freshness (external commits appear via the tip-SHA reconcile) + the read-only
   # branch VIEWER (cycle/menu/Esc, by-SHA drill-down, worktree/HEAD byte-identical after).
@@ -117,9 +142,12 @@ if [ "${FAST:-0}" != "1" ]; then
   # non-git document shows none. Scratch repo + non-git dir; async blame is cached per file.
   step "smoke: git-blame"   bash scripts/smoke-git-blame.sh
   step "smoke: find"        bash scripts/smoke-find.sh
+  step "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
   step "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
+  step "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
   step "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
   step "smoke: word-delete" bash scripts/smoke-word-delete.sh
+  step "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   step "smoke: quick-open"  bash scripts/smoke-quickopen.sh
   step "smoke: open-project" bash scripts/smoke-openproject.sh
   step "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
@@ -141,6 +169,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
   step "smoke: paste"       bash scripts/smoke-paste.sh
+  step "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
   step "smoke: audio-narration" bash scripts/smoke-audio-narration.sh

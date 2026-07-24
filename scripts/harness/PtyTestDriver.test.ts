@@ -10,6 +10,7 @@ describe('HarnessInput', () => {
     expect(HarnessInput.Class.key('Alt+z')).toBe('\x1bz');
     expect(HarnessInput.Class.key('Shift+Tab')).toBe('\x1b[Z');
     expect(HarnessInput.Class.key('Control+Right')).toBe('\x1b[1;5C');
+    expect(HarnessInput.Class.key('Control+,')).toBe('\x1b[44;5u');
     expect(HarnessInput.Class.key('Alt+F5')).toBe('\x1b[15;3~');
   });
 
