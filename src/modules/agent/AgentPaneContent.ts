@@ -71,6 +71,13 @@ export interface AgentEnginePort {
   cycle(): boolean;
 }
 
+/** The host-owned transcript-search action seam. The pane paints and hit-tests the affordance, while
+ *  the host remains the one owner of overlay coordination. Keyboard and mouse both call `open()`. */
+export interface AgentTranscriptSearchPort {
+  readonly findBar: FindBar.Instance;
+  open(): void;
+}
+
 /** Which surface a pane-local row belongs to (for pointer/selection routing). */
 export type AgentPaneRegion =
   | { readonly kind: 'transcript'; readonly localRow: number }
@@ -114,9 +121,9 @@ class $AgentPaneContent implements PaneContent {
   private scrollPort: AgentScrollPort | null = null;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
   private enginePort: AgentEnginePort | null = null;
-  /** The shared FindBar (bound by the host) — transcript search reuses ITS engine/count/cycling UX
-   *  (one search vocabulary across panes), never a second pane-local query model. */
-  private findBar: FindBar.Instance | null = null;
+  /** Host-owned shared FindBar + open action. The pane owns neither overlay coordination nor a second
+   *  query model; it only projects the affordance and invokes the same action Ctrl+F invokes. */
+  private transcriptSearchPort: AgentTranscriptSearchPort | null = null;
   /** The search MIRROR document: a plain-text projection of the SAME projected lines the pane paints,
    *  refreshed inside render() whenever the projected text changes. It is a projection, not a second
    *  history — it can be rebuilt from the transcript at any time and holds nothing of its own. */
@@ -126,6 +133,8 @@ class $AgentPaneContent implements PaneContent {
   private lastTranscriptSearchText: string | null = null;
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
   private lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
+  /** The mode-line search button's click region, resolved by the same layout that paints the glyph. */
+  private lastSearchSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
   private permissionMode: Ref<boolean> | null = null;
 
@@ -165,8 +174,9 @@ class $AgentPaneContent implements PaneContent {
       // engine), the live query, the matches, and the cycled current match all change what the body
       // rows paint. Before the engine exists only `open` is subscribed — its flip re-runs this
       // computed, which then finds and subscribes the fresh engine.
-      void this.findBar?.open.value;
-      const transcriptSearchEngine = this.findBar?.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER);
+      void this.transcriptSearchPort?.findBar.open.value;
+      const transcriptSearchEngine =
+        this.transcriptSearchPort?.findBar.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER);
       void transcriptSearchEngine?.query.value;
       void transcriptSearchEngine?.matches.value;
       void transcriptSearchEngine?.currentMatchIndex.value;
@@ -222,10 +232,10 @@ class $AgentPaneContent implements PaneContent {
   attachEnginePort(port: AgentEnginePort): void {
     this.enginePort = port;
   }
-  /** Bind the shared FindBar so Ctrl+F searches the transcript through the SAME bar/engine every other
-   *  searchable pane uses (count, cycling, case toggle — one search vocabulary). */
-  attachFindBar(findBar: FindBar.Instance): void {
-    this.findBar = findBar;
+  /** Bind the shared FindBar and the host-owned open action so Ctrl+F and the mode-line icon reach the
+   *  same overlay-coordinated path (count, cycling, case toggle — one search vocabulary). */
+  attachTranscriptSearchPort(transcriptSearchPort: AgentTranscriptSearchPort): void {
+    this.transcriptSearchPort = transcriptSearchPort;
   }
 
   /** The transcript as a FindBar target: the mirror document (read-only — replace is peripheral config
@@ -242,7 +252,7 @@ class $AgentPaneContent implements PaneContent {
   /** The transcript search engine once the bar has been opened for the transcript at least once (the
    *  FindBar retains one engine per target identifier), else null — zero cost before first use. */
   private transcriptSearchEngine(): FindInBuffer.Instance | null {
-    return this.findBar?.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) ?? null;
+    return this.transcriptSearchPort?.findBar.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) ?? null;
   }
 
   /** Scroll the transcript viewport so the revealed match's line sits mid-body (the pane's one scroll
@@ -260,7 +270,7 @@ class $AgentPaneContent implements PaneContent {
    *  non-empty query keeping highlights fresh) — idle sessions and never-searched panes pay nothing.
    *  Returns the engine when its matches should paint. */
   private synchronizeTranscriptSearch(lines: readonly ProjectedLine[]): FindInBuffer.Instance | null {
-    const findBar = this.findBar;
+    const findBar = this.transcriptSearchPort?.findBar;
     const engine = this.transcriptSearchEngine();
     if (!findBar || !engine) return null;
     const barOpenOnTranscript =
@@ -432,9 +442,9 @@ class $AgentPaneContent implements PaneContent {
     });
   }
 
-  /** The mode line: an ENGINE segment (claude⇄codex, click / Ctrl+E cycles) followed by the PERMISSION
-   *  segment ("⏵⏵ bypass permissions on" ↔ "? ask permissions", Shift+Tab cycles). Records the engine
-   *  segment's cell range so onPointerDown can hit-test a click on it. */
+  /** The mode line: ENGINE (click / Ctrl+E), SEARCH (click / Ctrl+F), then PERMISSION (Shift+Tab).
+   *  The layout records button cell ranges while emitting their segments, so paint and hit-test share
+   *  one geometry source. */
   private modeLineSegments(context: PaneRenderContext, modeLineRow: number): ThinkingSegment[] {
     const bypass = this.permissionMode?.value ?? false;
     const arrow = context.glyphLevel === 'ascii' ? '>>' : '⏵⏵';
@@ -446,18 +456,45 @@ class $AgentPaneContent implements PaneContent {
         : 'bypass permissions off (prompts unavailable on this backend)';
 
     const segments: ThinkingSegment[] = [{ text: ' '.repeat(TRANSCRIPT_PAD_LEFT), color: context.palette.dim, bold: false }];
+    let modeLineColumn = TRANSCRIPT_PAD_LEFT;
     // Engine segment (only when bound). The cycle affordance shows when >1 engine is switchable.
     this.lastEngineSegment = null;
     if (this.enginePort) {
       const cyclable = this.enginePort.canCycle;
       const cycleGlyph = cyclable ? (context.glyphLevel === 'ascii' ? ' <->' : ' ⇄') : '';
       const engineText = `engine: ${this.enginePort.provider}${cycleGlyph}`;
-      const startColumn = TRANSCRIPT_PAD_LEFT;
-      const endColumn = startColumn + Array.from(engineText).length;
+      const startColumn = modeLineColumn;
+      const endColumn = startColumn + WrapText.Class.displayWidth(engineText);
       this.lastEngineSegment = { row: modeLineRow, startColumn, endColumn };
       segments.push({ text: engineText, color: cyclable ? context.palette.accent : context.palette.dim, bold: cyclable });
-      segments.push({ text: '  ·  ', color: context.palette.dim, bold: false });
+      modeLineColumn = endColumn;
+      const separatorText = '  ·  ';
+      segments.push({ text: separatorText, color: context.palette.dim, bold: false });
+      modeLineColumn += WrapText.Class.displayWidth(separatorText);
     }
+
+    // Search is a compact chrome button beside the engine control. Its glyph comes from the SAME
+    // semantic find-icon ladder the FindBar itself uses; the padded cells form its mouse target.
+    this.lastSearchSegment = null;
+    if (this.transcriptSearchPort) {
+      const searchButtonText = ` ${ThemeIcons.Class.findIconsFor(context.glyphLevel).search} `;
+      const startColumn = modeLineColumn;
+      const endColumn = startColumn + WrapText.Class.displayWidth(searchButtonText);
+      this.lastSearchSegment = { row: modeLineRow, startColumn, endColumn };
+      const searchIsOpen =
+        this.transcriptSearchPort.findBar.open.value &&
+        this.transcriptSearchPort.findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER;
+      segments.push({
+        text: searchButtonText,
+        color: searchIsOpen ? context.palette.accent : context.palette.info,
+        bold: true,
+      });
+      modeLineColumn = endColumn;
+      const separatorText = '  ·  ';
+      segments.push({ text: separatorText, color: context.palette.dim, bold: false });
+      modeLineColumn += WrapText.Class.displayWidth(separatorText);
+    }
+
     segments.push({
       text: permissionText,
       color: bypass ? context.palette.accent : askSupported ? context.palette.info : context.palette.dim,
@@ -629,13 +666,23 @@ class $AgentPaneContent implements PaneContent {
     return true;
   }
 
-  /** A pointer-down inside the pane at content-local (column, row): click the mode-line ENGINE segment to
-   *  cycle engines, or toggle a tool row's expand state. Called by the host for a BARE click in the
-   *  transcript region AND for any click on the inert 'other' rows (so the mode-line segment is reachable). */
+  /** A pointer-down inside the pane at content-local (column, row): run a mode-line action or toggle a
+   *  tool row's expand state. Called by the host for a BARE transcript click and for chrome rows. */
   onPointerDown(column: number, row: number): boolean {
     const engine = this.lastEngineSegment;
     if (engine && this.enginePort?.canCycle && row === engine.row && column >= engine.startColumn && column < engine.endColumn) {
       return this.cycleEngine();
+    }
+    const search = this.lastSearchSegment;
+    if (
+      search &&
+      row === search.row &&
+      column >= search.startColumn &&
+      column < search.endColumn
+    ) {
+      // invariant: No action requires a memorized motion (project.invariants.md)
+      this.transcriptSearchPort?.open();
+      return true;
     }
     const line = this.lastBodyRows[row];
     if (!line || !line.toggleable || line.entryIndex < 0) return false;

@@ -133,7 +133,7 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
   step "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
   step "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
-  step "smoke: transcript-search" bash scripts/smoke-transcript-search.sh
+  step "smoke: agent-search" bash scripts/smoke-agent-search.sh
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
   step "smoke: paste"       bash scripts/smoke-paste.sh

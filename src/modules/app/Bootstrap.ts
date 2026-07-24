@@ -42,7 +42,12 @@ import { TerminalFactory } from '../terminal/TerminalFactory';
 import { AgentFactory } from '../agent/AgentFactory';
 import { BracketMatch } from '../editor/BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import { AgentPaneContent, AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER, type AgentEnginePort } from '../agent/AgentPaneContent';
+import {
+  AgentPaneContent,
+  AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER,
+  type AgentEnginePort,
+  type AgentTranscriptSearchPort,
+} from '../agent/AgentPaneContent';
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
 import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend';
@@ -243,6 +248,20 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // The agent pane instance once ensured — the frame dump reads its view state (scroll/collapse) so the
   // driving smoke asserts the UX without pane-scraping. Null until the pane is first toggled.
   let agentPaneContent: AgentPaneContent.Model | null = null;
+  // ONE transcript-search action, shared by Ctrl+F and the pane's clickable search icon. Overlay
+  // exclusivity stays host-owned; the pane only invokes this port.
+  const openAgentTranscriptSearch = (): void => {
+    if (!agentPaneContent) return;
+    const transcriptFindTarget = agentPaneContent.findTarget();
+    overlayCoordinator.openExclusiveOverlay('findBar', () =>
+      findBar.openForTarget(transcriptFindTarget, 'find'),
+    );
+    revealFindMatch();
+  };
+  const agentTranscriptSearchPort: AgentTranscriptSearchPort = {
+    findBar,
+    open: openAgentTranscriptSearch,
+  };
   // A one-shot TTS backend for the "Narration: Test Voice" audition — recreated per test in the current
   // selected voice; the previous one is disposed so repeated tests never pile up. Under
   // INVAR_TTS_BACKEND=mock (the gate) this is silent.
@@ -300,7 +319,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPaneContent = agentPane;
       agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
       agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
-      agentPane.attachFindBar(findBar); // transcript search reuses THE find bar (Ctrl+F while focused)
+      agentPane.attachTranscriptSearchPort(agentTranscriptSearchPort); // icon + Ctrl+F share ONE action
       narration = new NarrationProjection.Class(
         agentPane.agentSession,
         settings.agentAudioNarration,
@@ -1401,11 +1420,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
           return;
         }
         if (agentResolution.action === 'find.open' || agentResolution.action === 'find.replace') {
-          const transcriptFindTarget = agentPaneContent.findTarget();
-          overlayCoordinator.openExclusiveOverlay('findBar', () =>
-            findBar.openForTarget(transcriptFindTarget, 'find'),
-          );
-          revealFindMatch();
+          openAgentTranscriptSearch();
           return;
         }
       }

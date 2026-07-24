@@ -50,7 +50,7 @@ function $renderFindBar(context: FindBarRenderContext): FindBarRenderResult {
   const counter = matchCount > 0 ? `${position} of ${matchCount}` : engine && engine.query.value ? 'no results' : '';
 
   const chunks: TextChunk[] = [];
-  chunks.push(fg(palette.fg)(`⌕ ${engine?.query.value ?? ''}${queryFocused ? '▏' : ''}   `));
+  chunks.push(fg(palette.fg)(`${findIcons.search} ${engine?.query.value ?? ''}${queryFocused ? '▏' : ''}   `));
   chunks.push(fg(palette.dim)(`${counter}\n`));
   if (replaceMode) {
     chunks.push(fg(palette.fg)(`⇄ ${engine?.replacement.value ?? ''}${queryFocused ? '' : '▏'}\n`));

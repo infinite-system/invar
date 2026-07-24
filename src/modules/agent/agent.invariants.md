@@ -155,36 +155,44 @@ toggle) — never a second pane-local search input.
 
 **Scope:** `AgentTranscriptSearch`, the search-mirror document and find-target seam in
 `AgentPaneContent`, the search-highlight painting in `AgentPaneRenderer`, and the Ctrl+F routing for
-the focused agent pane in `Bootstrap`.
+the focused agent pane in `Bootstrap`. It also covers the themed search icon and its hit-zone in the
+agent mode line.
 
-**Mechanism:** Ctrl+F while the agent pane is focused opens the shared `FindBar` for a
-`FindBarTarget` (`agent-transcript`, `replaceAllowed: false` — the markdown preview's read-only
-shape). The target's document is a MIRROR: `AgentPaneContent.synchronizeTranscriptSearch()` rebuilds
-it inside `render()` from the same `AgentTranscriptProjection` lines the frame paints, re-running the
-engine only when the projected text changed. `AgentTranscriptSearch` converts the engine's
-grapheme-column matches to per-row DISPLAY-CELL spans (shared `EditorCoordinates`/`WrapText` seams —
-never UTF-16 slicing); the renderer paints them per row, current match as a selection, others with the
-editor's find-match background. Reveal scrolls the existing transcript scroll port; Esc closes the bar
-and the keys fall back to the composer. Matching inside a COLLAPSED tool row's full JSON is
-deliberately out of scope — expanding the row makes its body visible and therefore searchable.
+**Mechanism:** `Bootstrap.openAgentTranscriptSearch` is the one overlay-coordinated action called by
+both Ctrl+F and `AgentPaneContent.onPointerDown` for the mode-line search button. The button glyph
+comes from the shared `ThemeIcons.findIconsFor` ladder, and `modeLineSegments` records its hit-zone
+while emitting the same segment. The action opens the shared `FindBar` for a `FindBarTarget`
+(`agent-transcript`, `replaceAllowed: false` — the markdown preview's read-only shape), upholding
+[No action requires a memorized motion](../../../project.invariants.md#no-action-requires-a-memorized-motion).
+The target's document is a MIRROR: `AgentPaneContent.synchronizeTranscriptSearch()` rebuilds it inside
+`render()` from the same `AgentTranscriptProjection` lines the frame paints, re-running the engine only
+when the projected text changed. `AgentTranscriptSearch` converts the engine's grapheme-column matches
+to per-row DISPLAY-CELL spans (shared `EditorCoordinates`/`WrapText` seams — never UTF-16 slicing); the
+renderer paints them per row, current match as a selection, others with the editor's find-match
+background. Reveal scrolls the existing transcript scroll port; Esc closes the bar and the keys fall
+back to the composer. Matching inside a COLLAPSED tool row's full JSON is deliberately out of scope —
+expanding the row makes its body visible and therefore searchable.
 
 **Generates:** live match count + highlights over a streaming transcript for free (the mirror refresh
 rides the frames the stream already causes); retained per-target query/matches when focus moves
 between the editor and the transcript (FindBar's engine map); search over any FUTURE projection change
-(new row kinds are searchable the moment they project) with zero search-side code.
+(new row kinds are searchable the moment they project) with zero search-side code; keyboard and mouse
+access through one action.
 
 **Impossible if true:** a search-owned copy of transcript entries that can drift from the session; a
 second search input/keymap vocabulary local to the pane; matches found in text the pane does not
-display (collapsed JSON); a highlight positioned by UTF-16 offsets.
+display (collapsed JSON); a highlight positioned by UTF-16 offsets; transcript search reachable only
+through Ctrl+F; the search icon opening a different target or bypassing overlay coordination.
 
 **Evidence:** `src/modules/agent/AgentTranscriptSearch.test.ts` drives the real pipeline (entries →
 projection → mirror document → FindInBuffer → display-cell spans): collapsed summary matches while
 the hidden JSON does not until expanded; CJK-prefixed matches land on display cells;
-`scripts/smoke-transcript-search.sh` drives Ctrl+F in the live pane and asserts the count, the painted
-highlight cells (FrameProbe), next-match viewport follow, Esc returning keys to the composer, and idle
-quiescence with the bar open.
+`scripts/smoke-agent-search.sh` clicks the themed mode-line icon through mouse injection, then drives
+Ctrl+F in the live pane and asserts both bind the same transcript target; it also asserts the count, the
+painted highlight cells (FrameProbe), next-match viewport follow, Esc returning keys to the composer,
+and idle quiescence with the bar open.
 
-**Verification:** `bun test src/modules/agent/AgentTranscriptSearch.test.ts && bash scripts/smoke-transcript-search.sh`
+**Verification:** `bun test src/modules/agent/AgentTranscriptSearch.test.ts && bash scripts/smoke-agent-search.sh`
 
 **Status:** provisional
 

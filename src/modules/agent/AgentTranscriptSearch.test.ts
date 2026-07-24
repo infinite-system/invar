@@ -17,7 +17,14 @@ function searchTranscript(
   expandedIndices: ReadonlySet<number> = new Set(),
   width = 60,
 ) {
-  const lines = AgentTranscriptProjection.Class.project(transcript, DARK, 'unicode', width, expandedIndices);
+  const lines = AgentTranscriptProjection.Class.project(
+    transcript,
+    DARK,
+    'unicode',
+    width,
+    expandedIndices,
+    'Claude',
+  );
   const document = new TextDocument.Class();
   document.replaceAll(AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n').split('\n'));
   const engine = new FindInBuffer.Class(document);
@@ -117,6 +124,7 @@ describe('AgentTranscriptSearch — the match projection over projected transcri
       'unicode',
       40,
       new Set(),
+      'Claude',
     );
     expect(AgentTranscriptSearch.Class.searchableLineTexts(lines)).toEqual(lines.map((line) => line.text));
   });

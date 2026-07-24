@@ -38,9 +38,11 @@ export interface ActivityIconSet {
   accentBar: string;
 }
 
-/** Find-bar action-button glyphs — SINGLE-CELL each so the button hit-zone columns align (the
- *  case-sensitivity affordance keeps its VS Code `Aa` two-letter label, not a glyph). */
+/** Find/search glyphs — SINGLE-CELL each so button hit-zone columns align. `search` is shared by
+ *  every chrome affordance that opens the FindBar; the case-sensitivity affordance keeps its VS Code
+ *  `Aa` two-letter label rather than using a glyph. */
 export interface FindIconSet {
+  search: string;
   previous: string;
   next: string;
   replace: string;
@@ -154,9 +156,9 @@ const AGENT_ICON: Record<GlyphLevel, string> = {
 // Find-bar action glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
 // letter/arrow fallback so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
 const FIND_ICONS: Record<GlyphLevel, FindIconSet> = {
-  nerd: { previous: '\u{f062}', next: '\u{f063}', replace: '\u{f021}', replaceAll: '\u{f051}', toggleMode: '\u{f0ec}' }, // fa up / down / refresh / step-forward / exchange
-  unicode: { previous: '↑', next: '↓', replace: '⟳', replaceAll: '⇊', toggleMode: '⇅' },
-  ascii: { previous: '^', next: 'v', replace: 'r', replaceAll: 'R', toggleMode: 'x' },
+  nerd: { search: '\u{f002}', previous: '\u{f062}', next: '\u{f063}', replace: '\u{f021}', replaceAll: '\u{f051}', toggleMode: '\u{f0ec}' }, // fa search / up / down / refresh / step-forward / exchange
+  unicode: { search: '⌕', previous: '↑', next: '↓', replace: '⟳', replaceAll: '⇊', toggleMode: '⇅' },
+  ascii: { search: '/', previous: '^', next: 'v', replace: 'r', replaceAll: 'R', toggleMode: 'x' },
 };
 
 function $iconSetFor(level: GlyphLevel): IconSet {
