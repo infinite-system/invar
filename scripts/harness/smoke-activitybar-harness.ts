@@ -12,16 +12,6 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-if (process.env.INVAR_RUN_BLOCKED_ACTIVITYBAR_PORT !== '1') {
-  console.log(
-    'smoke-activitybar-harness: SKIP — authoritative smoke-activitybar.sh fails on '
-    + 'baseline 17ec69f: it requires the git badge at column 0, while both terminal grids '
-    + 'show the count at column 1. Set INVAR_RUN_BLOCKED_ACTIVITYBAR_PORT=1 only to inspect '
-    + 'the otherwise-complete byte port; a skip is not a pass.',
-  );
-  process.exit(0);
-}
-
 function glyphRow(snapshot: HarnessSnapshot.Model, glyph: string): number {
   for (let row = 0; row < snapshot.rows; row++) {
     if (snapshot.cell(row, 2)?.characters === glyph) return row;
@@ -115,16 +105,25 @@ try {
     HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'git',
     'clicking Source Control switched the view',
   );
-  HarnessSmoke.Class.pass('accent moved to the Source Control icon row');
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cell(gitRow, 0)?.characters === '|',
+    'accent moved to column 0 on the Source Control icon row',
+  );
   HarnessSmoke.Class.requireCondition(
     snapshot.cell(filesRow, 0)?.characters === ' ',
     'the Explorer button is no longer accented',
   );
   HarnessSmoke.Class.requireCondition(accentCount(snapshot) === 1, 'still exactly one active item');
   HarnessSmoke.Class.pass('Source Control view renders the git panel');
+  // Adjudicated from both terminal grids plus lineage: 140ea02 intentionally moved the badge from
+  // column 0 to column 1, closer to the centred icon, while the icon-row accent remains at column 0.
   HarnessSmoke.Class.requireCondition(
-    snapshot.cell(gitRow - 1, 0)?.characters === '1',
-    'git badge shows one change in the top-left column-0 cell',
+    snapshot.cell(gitRow - 1, 0)?.characters === ' ',
+    'git badge row leaves column 0 clear',
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cell(gitRow - 1, 1)?.characters === '1',
+    'git badge shows one change in column 1 above the icon',
   );
 
   clickCell(driver, 1, extensionsRow);

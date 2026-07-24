@@ -141,8 +141,10 @@ expect_equal "$(char_at "$git_row" 0)" "$accent_bar" 'accent moved to the Source
 expect_equal "$(char_at "$files_row" 0)" ' ' 'the Explorer button is no longer accented'
 expect_equal "$(accent_count_col0)" '1' 'still exactly one active item after switch'
 expect_frame_contains 'Git' 'Source Control view renders the git panel (sidebar title)'
-# The count/flag badge sits TOP-LEFT (row = glyph row, col 0) — the same corner the editor tabs use.
-expect_equal "$(char_at "$((git_row - 1))" 0)" '1' 'git badge shows the change count in the TOP-LEFT cell (row above the icon)'
+# Adjudicated from the driven frame plus lineage: 140ea02 intentionally moved the badge from col 0
+# to col 1, closer to the centred icon, while the icon-row accent remains at col 0.
+expect_equal "$(char_at "$((git_row - 1))" 0)" ' ' 'git badge row leaves column 0 clear'
+expect_equal "$(char_at "$((git_row - 1))" 1)" '1' 'git badge shows the change count in column 1 above the icon'
 
 echo '== click Extensions: content switches to the placeholder =='
 "$harness" click "$session_name" 1 "$extensions_row" >/dev/null
