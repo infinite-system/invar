@@ -3,7 +3,26 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR — 2026-07-24 (CURRENT) — POST-BIG-RUN REVIEW PHASE
+## RESUME ANCHOR — 2026-07-24 PM (CURRENT) — FIX-TRACKS + REVIEW EXTRACTIONS + HARNESS LANDED
+
+**Ground-truth against git first — anchors lag. `origin/main` was `271d4b3` at this writing.**
+
+**State: all five 07-24 morning user bugs FIXED** (identity 2c2e781, scrollbars+rate 811ba62,
+comment styling wrap/JSDoc 54862e4 + hscroll third path 0a9e382, plus the ad5d218 smoke-repair
+lesson — see "clearance provenance" in /conductor SKILL.md). **Adopted + landed:** transcript
+search with clickable ⌕ (5bd08ba). **Review extractions landed** (user-selected #13/#2/#6):
+AppStatusProjection ef2d75c, Processes.spawn hermetic seam f7c020e, ReadOnlyTextBuffer fabedb9.
+**PTY byte-tracking harness landed 271d4b3** (OpenPty shared seam, TerminalEmulator as oracle,
+DEC 2026 marker quiescence, 3 deterministic smoke ports 3.7–17.2× faster than tmux twins, which
+stay registered as the independent ring). New skill: `.claude/skills/generator-audit/SKILL.md`
+(review-as-reduction procedure + substrate-uniformity rationale). **In flight:** input-latency
+bisect (codex investigator, /tmp/wt-bisect, diagnosis-only brief). **Held for later (user):**
+review #1 NdjsonSubprocessTransport, #7 per-surface action tables; #9 shelved. Shelf unchanged:
+experiment/file-references-v1, experiment/terminal-ansi-v1. Designed, awaiting go: iv-remote
+audio side-channel (narration text-forwarding + opus sample tier). Fleet policy: codex-only
+dispatches (Anthropic tokens). Prior anchor below kept for history.
+
+## PRIOR ANCHOR — 2026-07-24 AM — POST-BIG-RUN REVIEW PHASE
 
 **Ground-truth against git first — anchors lag. `origin/main` was `95f4879` at this writing.**
 
