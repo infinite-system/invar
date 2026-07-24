@@ -99,6 +99,41 @@ Mechanics (each gotcha here cost a real failure):
 - Judge-on-delivery: a disproportionate diff is declined without ceremony — the branch stays
   (never deleted), only merge is withheld. Gate serially on a quiet machine.
 
+## Substrate uniformity — why the audit works here, and its blind spot
+
+The procedure's precision is proportional to the substrate's uniformity. Four mechanisms:
+
+1. **A uniform grammar turns semantic violations into visible anomalies.** Duplicate / bypass /
+   suppress are deviations from an expected shape, and deviation is only detectable against a
+   background of sameness. A direct `Bun.spawn` inside a backend was findable by one grep because
+   the grammar says syscalls live behind a `Static()` seam — off-pattern syntactically before any
+   semantic analysis. Low structural entropy makes defects high-contrast.
+2. **`Static()` manifests pre-compute half the audit.** The lens prompt says "name the generator
+   each module implies" — but modules here DECLARE their generators; the manifest is the claimed
+   seam inventory. The reviewer's job collapses to diffing the claim against the usage. An
+   inferred seam can be argued with; a declared one can only be violated.
+3. **One navigable object graph makes authority questions answerable.** "Who else writes this?"
+   is traceable when all state is refs one hop apart — duplicate-authority bugs (the
+   provider-identity class) hide behind event buses and DI indirection elsewhere.
+4. **A boring substrate frees the reviewer's whole budget for domain structure.** No framework
+   physics to simulate; the runtime model fits in a sentence. The same compression that lets a
+   one-page-primed builder ship correct code lets a context-free reviewer audit in one pass.
+
+**The blind spot:** uniformity reveals deviation FROM the pattern, not wrongness OF the pattern.
+A mistake embedded in the convention itself is invisible-by-normality — everything matches, so
+nothing stands out (the functional `main.ts` remnant survived every convention check because it
+looked like what entry points conventionally look like). False UNIFICATION (finding #7's one
+action table serving three surfaces) is likewise invisible to shape-matching — its shape was
+perfectly uniform; only the semantic step (consumers suppressing the seam's core) exposes it.
+So: expect bypass and duplication to surface nearly mechanically; budget real reviewer reasoning
+for false shared generators and convention-embedded mistakes — and treat "it matches the
+convention" as zero evidence of correctness during triage.
+
+Division of labor: the architecture is the evidence base, the recorded doctrine is the query,
+the reviewer is the executor. Each alone underperforms; together a context-free agent finds
+structural bugs in one pass. Corollary: every convention the gate enforces is also quietly
+buying cheaper audits forever.
+
 ## Quality bar
 
 The audit succeeded when its findings are *generative*: each accepted extraction deletes a bug
