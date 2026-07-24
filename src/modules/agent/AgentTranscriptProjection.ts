@@ -12,7 +12,29 @@ import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { WrapText } from '../ui/WrapText';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { AgentToolSummary } from './AgentToolSummary';
+import { AgentFileReferences } from './AgentFileReferences';
 import type { TranscriptEntry } from './AgentEvents';
+
+/** A clickable file-reference span on a projected line, RESOLVED (workspace-confined + existing) by the
+ *  caller-supplied resolver. Cells are display cells within the line's text — the renderer paints the
+ *  link affordance over exactly this span and the pointer hit-map opens exactly this span. */
+export interface FileReferenceSpan {
+  /** First display cell of the reference span within the row text. */
+  readonly startCell: number;
+  /** One past the last display cell of the span. */
+  readonly endCell: number;
+  /** The ABSOLUTE resolved path the click opens (from the resolver — never re-parsed text). */
+  readonly path: string;
+  /** 1-based target line from a `:line` suffix, or null. */
+  readonly line: number | null;
+  /** 1-based target column from a `:line:column` suffix, or null. */
+  readonly column: number | null;
+}
+
+/** Resolves a written reference (relative or absolute) to an absolute workspace path, or null when it
+ *  does not exist inside the workspace root. MUST be identity-stable across frames (the per-entry
+ *  projection cache assumes the same resolver yields the same spans). */
+export type ReferenceResolver = (reference: string) => string | null;
 
 /** One projected visual line: its text, paint colour, weight, the transcript entry it belongs to, and
  *  whether clicking it toggles that entry's collapsed/expanded state (tool rows only). */
@@ -24,6 +46,8 @@ export interface ProjectedLine {
   readonly entryIndex: number;
   /** True when a pointer-down on this line toggles the entry's expand state. */
   readonly toggleable: boolean;
+  /** Resolved clickable file references on this line (absent when none / no resolver supplied). */
+  readonly references?: readonly FileReferenceSpan[];
 }
 
 // Transcript glyphs (carets, tool cog, result marks, ellipses) come from the theme's
@@ -52,6 +76,37 @@ function toolInputPretty(input: unknown): string {
   return typeof input === 'string' ? input : JSON.stringify(input, null, 2) ?? '';
 }
 
+/** The tool input's real file target (`file_path` / `notebook_path`), or null. The REAL path — the
+ *  collapsed summary's basename is only where the affordance paints, never what the click opens. */
+function toolInputFilePath(input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null;
+  const record = input as Record<string, unknown>;
+  const candidate = record['file_path'] ?? record['notebook_path'];
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : null;
+}
+
+/** Detect + resolve the file references in one visual row's text. Undefined when the caller supplied no
+ *  resolver or nothing on the row resolves — a row without references costs one field read at paint. */
+function resolvedReferences(rowText: string, resolveReference: ReferenceResolver | undefined): FileReferenceSpan[] | undefined {
+  if (!resolveReference) return undefined;
+  const detected = AgentFileReferences.Class.detectInText(rowText);
+  if (detected.length === 0) return undefined;
+  const spans: FileReferenceSpan[] = [];
+  for (const candidate of detected) {
+    const resolvedPath = resolveReference(candidate.reference);
+    if (resolvedPath) {
+      spans.push({
+        startCell: candidate.startCell,
+        endCell: candidate.endCell,
+        path: resolvedPath,
+        line: candidate.line,
+        column: candidate.column,
+      });
+    }
+  }
+  return spans.length > 0 ? spans : undefined;
+}
+
 /** The per-entry projection cache record: an entry's lines are reusable while every input that shaped
  *  them is unchanged. Entries are stable objects in the append-only transcript, so a WeakMap keyed on
  *  the ENTRY holds each record; the mutable inputs (an assistant's growing text, a permission's status,
@@ -62,6 +117,9 @@ interface EntryProjectionCache {
   palette: Palette;
   expanded: boolean;
   isFirst: boolean;
+  /** Whether a reference resolver was supplied (a late-attached resolver must invalidate the lines;
+   *  the resolver itself is required to be identity-stable, so presence is the only tracked change). */
+  hadResolver: boolean;
   /** The entry's mutable content stamp (assistant text / permission status; '' for immutable roles). */
   stamp: string;
   lines: ProjectedLine[];
@@ -83,6 +141,7 @@ function projectEntry(
   glyphLevel: GlyphLevel,
   width: number,
   expanded: boolean,
+  resolveReference: ReferenceResolver | undefined,
 ): ProjectedLine[] {
   const lines: ProjectedLine[] = [];
   const transcriptIcons = ThemeIcons.Class.agentTranscriptIconsFor(glyphLevel);
@@ -104,13 +163,13 @@ function projectEntry(
       case 'user':
         lines.push({ text: 'You', color: palette.accent, bold: true, entryIndex, toggleable: false });
         for (const wrapped of wrap(entry.text, width))
-          lines.push({ text: wrapped, color: palette.accent, bold: false, entryIndex, toggleable: false });
+          lines.push({ text: wrapped, color: palette.accent, bold: false, entryIndex, toggleable: false, references: resolvedReferences(wrapped, resolveReference) });
         blank(); // trailing space after the user's own turn
         break;
       case 'assistant':
         lines.push({ text: 'Claude', color: palette.func, bold: true, entryIndex, toggleable: false });
         for (const wrapped of wrap(entry.text, width))
-          lines.push({ text: wrapped, color: palette.fg, bold: false, entryIndex, toggleable: false });
+          lines.push({ text: wrapped, color: palette.fg, bold: false, entryIndex, toggleable: false, references: resolvedReferences(wrapped, resolveReference) });
         break;
       case 'error':
         lines.push({ text: '! error', color: palette.error, bold: true, entryIndex, toggleable: false });
@@ -120,16 +179,41 @@ function projectEntry(
       case 'tool-use': {
         const marker = expanded ? caret.expanded : caret.collapsed;
         const head = `${marker} ${transcriptIcons.tool} ${entry.name}`;
+        // The tool input's REAL file target (file_path/notebook_path), resolved through the same
+        // resolver — the collapsed summary's basename becomes a clickable span carrying the real path.
+        const inputFilePath = toolInputFilePath(entry.input);
+        const resolvedInputPath = inputFilePath && resolveReference ? resolveReference(inputFilePath) : null;
         if (!expanded) {
           // COLLAPSED: a readable human phrase (tool name + salient arg), never the raw JSON.
           const summary = AgentToolSummary.Class.summarize(entry.name, entry.input);
           const oneLine = summary.length > 0 ? `${head}  ${summary}` : head;
-          lines.push({ text: truncate(oneLine, width, glyphLevel), color: palette.type, bold: true, entryIndex, toggleable: true });
+          const rowText = truncate(oneLine, width, glyphLevel);
+          let summaryReferences: FileReferenceSpan[] | undefined;
+          if (inputFilePath !== null && resolvedInputPath !== null) {
+            const summarySpan = AgentFileReferences.Class.summarySpan(rowText, inputFilePath);
+            if (summarySpan) {
+              summaryReferences = [{
+                startCell: summarySpan.startCell,
+                endCell: summarySpan.endCell,
+                path: resolvedInputPath,
+                line: summarySpan.line,
+                column: summarySpan.column,
+              }];
+            }
+          }
+          lines.push({
+            text: rowText,
+            color: palette.type,
+            bold: true,
+            entryIndex,
+            toggleable: true,
+            references: summaryReferences,
+          });
         } else {
-          // EXPANDED: full pretty-printed input for those who want the detail.
+          // EXPANDED: full pretty-printed input for those who want the detail (paths inside stay links).
           lines.push({ text: truncate(head, width, glyphLevel), color: palette.type, bold: true, entryIndex, toggleable: true });
           for (const wrapped of wrap(toolInputPretty(entry.input), width))
-            lines.push({ text: wrapped, color: palette.dim, bold: false, entryIndex, toggleable: true });
+            lines.push({ text: wrapped, color: palette.dim, bold: false, entryIndex, toggleable: true, references: resolvedReferences(wrapped, resolveReference) });
         }
         break;
       }
@@ -197,12 +281,14 @@ function $project(
   glyphLevel: GlyphLevel,
   width: number,
   expandedIndices: ReadonlySet<number>,
+  resolveReference?: ReferenceResolver,
 ): ProjectedLine[] {
   const lines: ProjectedLine[] = [];
   transcript.forEach((entry, entryIndex) => {
     const expanded = expandedIndices.has(entryIndex);
     const isFirst = entryIndex === 0;
     const stamp = stampOf(entry);
+    const hadResolver = resolveReference !== undefined;
     const cached = entryProjectionCache.get(entry);
     let entryLines: ProjectedLine[];
     if (
@@ -212,12 +298,13 @@ function $project(
       cached.palette === palette &&
       cached.expanded === expanded &&
       cached.isFirst === isFirst &&
+      cached.hadResolver === hadResolver &&
       cached.stamp === stamp
     ) {
       entryLines = cached.lines;
     } else {
-      entryLines = projectEntry(entry, entryIndex, palette, glyphLevel, width, expanded);
-      entryProjectionCache.set(entry, { width, glyphLevel, palette, expanded, isFirst, stamp, lines: entryLines });
+      entryLines = projectEntry(entry, entryIndex, palette, glyphLevel, width, expanded, resolveReference);
+      entryProjectionCache.set(entry, { width, glyphLevel, palette, expanded, isFirst, hadResolver, stamp, lines: entryLines });
     }
     for (const line of entryLines) lines.push(line);
   });

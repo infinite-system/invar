@@ -1288,11 +1288,28 @@ class $Workspace {
     return null;
   }
 
-  openFileReference(reference: string): boolean {
+  /** Open a resolved file reference as a real tab; with a 1-based `line` (and optional `column`) the
+   *  cursor lands on it and is revealed — the same open+place+reveal discipline as jumpToLocation, with
+   *  the same explicit source/destination history recording. Line-less calls keep the original
+   *  markdown-reference behavior exactly. */
+  openFileReference(reference: string, line: number | null = null, column: number | null = null): boolean {
     const resolvedPath = this.resolveFileReference(reference);
     if (!resolvedPath) return false;
-    this.openFileInTab(resolvedPath);
-    this.focus.value = 'editor';
+    if (line === null) {
+      this.openFileInTab(resolvedPath);
+      this.focus.value = 'editor';
+      return true;
+    }
+    this.recordCurrentLocation();
+    this.withSuppressedLocationRecording(() => {
+      this.openFileInTab(resolvedPath);
+      this.focus.value = 'editor';
+      // Clamp into the opened document (a stale ":line" beyond EOF lands on the last line, never past it).
+      const targetLine = Math.min(Math.max(0, line - 1), Math.max(0, this.editor.document.lineCount - 1));
+      this.editor.placeCursor(targetLine, Math.max(0, (column ?? 1) - 1));
+      this.editor.revealCursor();
+    });
+    this.recordCurrentLocation();
     return true;
   }
 

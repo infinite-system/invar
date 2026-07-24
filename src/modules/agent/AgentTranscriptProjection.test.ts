@@ -199,3 +199,67 @@ describe('per-entry memoization (review B7 — O(changed), not O(transcript))', 
     expect(narrow[0]).not.toBe(collapsed[0]);
   });
 });
+
+describe('file-reference projection (resolver-gated clickable spans)', () => {
+  const projectWithResolver = (
+    transcript: TranscriptEntry[],
+    resolver: (reference: string) => string | null,
+    expanded: ReadonlySet<number> = new Set(),
+    width = 60,
+  ) => AgentTranscriptProjection.Class.project(transcript, DARK, 'unicode', width, expanded, resolver);
+
+  test('an assistant row carries a resolved reference span; unresolved candidates carry none', () => {
+    const resolver = (reference: string) => (reference === 'src/a.ts' ? '/root/src/a.ts' : null);
+    const lines = projectWithResolver(
+      [{ role: 'assistant', text: 'edit src/a.ts and skip src/missing.ts' }],
+      resolver,
+    );
+    const row = lines.find((line) => line.text.includes('src/a.ts'))!;
+    expect(row.references).toHaveLength(1);
+    expect(row.references![0]).toMatchObject({ path: '/root/src/a.ts', line: null });
+    expect(row.references![0]!.startCell).toBe('edit '.length);
+  });
+
+  test('a :line suffix survives into the span (1-based), whole token underlined', () => {
+    const lines = projectWithResolver(
+      [{ role: 'assistant', text: 'see src/a.ts:7 here' }],
+      () => '/root/src/a.ts',
+    );
+    const row = lines.find((line) => line.text.includes('src/a.ts:7'))!;
+    expect(row.references![0]).toMatchObject({ path: '/root/src/a.ts', line: 7 });
+    expect(row.references![0]!.endCell - row.references![0]!.startCell).toBe('src/a.ts:7'.length);
+  });
+
+  test('a collapsed tool row maps its summary BASENAME to the REAL tool-input path', () => {
+    const lines = projectWithResolver(
+      [{ role: 'tool-use', id: 't1', name: 'Read', input: { file_path: '/root/src/deep/Foo.ts' } }],
+      (reference) => (reference === '/root/src/deep/Foo.ts' ? '/root/src/deep/Foo.ts' : null),
+    );
+    const row = lines.find((line) => line.text.includes('Reading Foo.ts'))!;
+    expect(row.toggleable).toBe(true); // the row still toggles outside the span
+    expect(row.references).toHaveLength(1);
+    expect(row.references![0]!.path).toBe('/root/src/deep/Foo.ts');
+    const spanText = row.text.slice(row.references![0]!.startCell, row.references![0]!.endCell);
+    expect(spanText).toBe('Foo.ts');
+  });
+
+  test('user rows detect references too', () => {
+    const lines = projectWithResolver([{ role: 'user', text: 'open src/a.ts please' }], () => '/root/src/a.ts');
+    const row = lines.find((line) => line.text.includes('src/a.ts'))!;
+    expect(row.references).toHaveLength(1);
+  });
+
+  test('without a resolver no references are attached (pure syntax never paints a false link)', () => {
+    const lines = project([{ role: 'assistant', text: 'edit src/a.ts now' }], 60);
+    const row = lines.find((line) => line.text.includes('src/a.ts'))!;
+    expect(row.references).toBeUndefined();
+  });
+
+  test('attaching a resolver later invalidates the per-entry cache (presence is a cache key)', () => {
+    const transcript: TranscriptEntry[] = [{ role: 'assistant', text: 'edit src/a.ts now' }];
+    const before = project(transcript, 60);
+    expect(before.find((line) => line.text.includes('src/a.ts'))!.references).toBeUndefined();
+    const after = projectWithResolver(transcript, () => '/root/src/a.ts', new Set(), 60);
+    expect(after.find((line) => line.text.includes('src/a.ts'))!.references).toHaveLength(1);
+  });
+});

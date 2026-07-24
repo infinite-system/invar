@@ -300,6 +300,17 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPaneContent = agentPane;
       agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
       agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
+      // Transcript file references delegate to the ACTIVE workspace's existing reference boundary +
+      // open-at-line path (no agent-owned navigation); opening hands the keyboard to the editor.
+      // invariant: File references in the transcript are clickable projections (src/modules/agent/agent.invariants.md)
+      agentPane.attachNavigationPort({
+        resolveReference: (reference) => workspaceSet.active.resolveFileReference(reference),
+        openReference: (path, line, column) => {
+          const opened = workspaceSet.active.openFileReference(path, line, column);
+          if (opened) panelHost.blur();
+          return opened;
+        },
+      });
       narration = new NarrationProjection.Class(
         agentPane.agentSession,
         settings.agentAudioNarration,

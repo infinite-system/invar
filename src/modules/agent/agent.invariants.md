@@ -143,6 +143,54 @@ and asserts the echoed reply renders in the panel cells.
 
 **Last refined:** 2026-07-23
 
+### File references in the transcript are clickable projections
+
+**Invariant:** A file reference the transcript already carries as DATA — a path (optional `:line` /
+`:line:column`) in assistant/user text, or a tool input's `file_path` behind a summary row — projects
+into a click that opens the file through the workspace's EXISTING open-at-line seam. The agent module
+adds detection, hit-mapping, and delegation only: no agent-owned navigation machinery, no re-parsing
+of rendered summaries (the summary basename is only where the affordance paints; the click carries the
+real tool-input path), and no link affordance on anything the workspace resolver did not confirm
+inside the root.
+
+**Scope:** `AgentFileReferences` (pure syntax detection), `AgentTranscriptProjection` (resolver-gated
+`references` spans on `ProjectedLine`), `AgentPaneRenderer` (accent + underline span paint),
+`AgentPaneContent` (`AgentNavigationPort`, pointer hit-map precedence), and the Bootstrap binding to
+`Workspace.resolveFileReference` / `Workspace.openFileReference`.
+
+**Mechanism:** `AgentFileReferences.detectInText` finds syntactic candidates (display-cell spans via
+the shared WrapText geometry); the projection filters them through an injected, identity-stable
+resolver and attaches resolved spans to its lines; the pane memoizes resolution per reference string
+(an fs probe runs only when a NEW reference string first appears — never per frame; deliberately
+session-lifetime, no mtime invalidation) and its `onPointerDown` gives a reference span precedence
+over the row's tool-toggle; opening delegates to the workspace's `openFileInTab` + `placeCursor` +
+`revealCursor` path with the same history-recording discipline as go-to-definition. Reference clicks
+resolve against the pane's bound workspace; the memo is not invalidated on workspace switch (a
+recorded cheap-call).
+
+**Generates:** the tool summary's basename as a link for free (the data was always there); `:line`
+landing without any new cursor machinery; the same spans reusable later for keyboard traversal or
+hover previews; diffs-in-real-view (Tier-M) rides the same delegation seam.
+
+**Impossible if true:** the agent module growing its own file-opening code path; a link painted for a
+path that does not resolve inside the workspace root; a click that re-parses a summary string to
+guess a path; per-frame stat storms from render-time detection.
+
+**Evidence:** `AgentFileReferences.test.ts` (syntax: relative/absolute, `:line[:col]`, URLs rejected,
+display-cell spans, summary basename); `AgentTranscriptProjection.test.ts` file-reference describe
+(resolver-gating, real-path tool spans, cache invalidation on resolver attach);
+`AgentPaneContent.test.ts` clickable-file-references describe (span click opens at line, off-span
+click preserved, tool-row toggle preserved); `scripts/smoke-file-references.sh` drives the real pane:
+link affordance asserted via FrameProbe fg, a harness CLICK on the span opens the tab at the line
+(status probe `activeBuffer` + `cursorLineIndex`), a non-reference click still toggles, idle
+frame-delta ≤ 1.
+
+**Verification:** `bun test src/modules/agent/ && bash scripts/smoke-file-references.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
 ### One session is one Reactive instance
 
 **Invariant:** A session's state (`transcript`, `status`, `renderRevision`) is exactly one `Reactive`

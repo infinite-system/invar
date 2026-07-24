@@ -23,6 +23,21 @@ class $EchoAgentBackend implements AgentBackend {
 
   send(prompt: string): void {
     if (this.disposed) return;
+
+    // File-reference driving path (env-gated): treat the PROMPT as a workspace path[:line[:col]] and
+    // reply with assistant text that mentions it PLUS a scripted Read tool-use whose input carries the
+    // REAL file_path — smoke-file-references drives detection, the link affordance, and click-to-open
+    // against this hermetically (no subprocess, no billing).
+    if (process.env.INVAR_AGENT_ECHO_FILEREF === '1') {
+      const referenceToken = prompt.trim();
+      const pathWithoutLineSuffix = referenceToken.replace(/:\d+(?::\d+)?$/, '');
+      this.emit({ kind: 'text-delta', text: `Take a look at ${referenceToken} for the details.` });
+      this.emit({ kind: 'tool-use', id: 'echo-fileref-tool', name: 'Read', input: { file_path: pathWithoutLineSuffix } });
+      this.emit({ kind: 'tool-result', id: 'echo-fileref-tool', result: 'scripted read result', isError: false });
+      this.emit({ kind: 'session-end', reason: 'completed' });
+      return;
+    }
+
     const reply = `You said: “${prompt}”. This is the local echo backend — real Claude arrives when CliStreamBackend is wired (phase 2).`;
     // Stream the reply as word-sized deltas so the pane shows real incremental accumulation.
     for (const word of reply.split(' ')) this.emit({ kind: 'text-delta', text: `${word} ` });

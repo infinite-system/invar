@@ -50,6 +50,19 @@ export interface AgentScrollPort {
   scrollToBottom(): void;
 }
 
+/** The navigation seam the host binds so a transcript file reference is a CLICK: resolution routes
+ *  through the workspace's existing reference boundary (root-confined + existence-checked) and opening
+ *  routes through the workspace's existing open-at-line path — the pane owns no navigation machinery.
+ *  `resolveReference` must be cheap to call repeatedly (the pane caches per reference string). */
+export interface AgentNavigationPort {
+  /** Resolve a written reference (relative or absolute) to an absolute path inside the workspace root,
+   *  or null (missing, outside the root, a directory). */
+  resolveReference(reference: string): string | null;
+  /** Open the resolved path in a real editor tab, landing the cursor at the 1-based line/column when
+   *  given. Returns whether it opened. */
+  openReference(path: string, line: number | null, column: number | null): boolean;
+}
+
 /** The engine seam: the host binds this so the pane can show the current engine + cycle it (claude⇄codex)
  *  mid-session. cycle() swaps the backend behind the same AgentSession (transcript preserved) and writes
  *  the provider setting back; it returns false when it can't (busy, or only one engine available). */
@@ -105,6 +118,25 @@ class $AgentPaneContent implements PaneContent {
   private scrollPort: AgentScrollPort | null = null;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
   private enginePort: AgentEnginePort | null = null;
+  /** The navigation seam (bound by the host) — reference resolution + open-at-line. Null until attached
+   *  (unbound: no link affordance renders and reference clicks fall through to today's behavior). */
+  private navigationPort: AgentNavigationPort | null = null;
+  /** Per reference-string resolution memo (resolved absolute path or null). Resolution is an fs
+   *  existence probe; this cache plus the projection's per-entry memo means a probe runs only when a
+   *  NEW reference string first appears — never per frame. Deliberately session-lifetime (no mtime
+   *  invalidation): a file created/deleted after first sight keeps its first verdict; recorded as the
+   *  honest cheap call in the contract. */
+  private readonly referenceResolutionCache = new Map<string, string | null>();
+  /** Identity-stable resolver handed to the projection (its per-entry cache assumes stability). */
+  private readonly resolveReferenceCached = (reference: string): string | null => {
+    const port = this.navigationPort;
+    if (!port) return null;
+    const memoized = this.referenceResolutionCache.get(reference);
+    if (memoized !== undefined) return memoized;
+    const resolved = port.resolveReference(reference);
+    this.referenceResolutionCache.set(reference, resolved);
+    return resolved;
+  };
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
   private lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
@@ -189,6 +221,13 @@ class $AgentPaneContent implements PaneContent {
   attachEnginePort(port: AgentEnginePort): void {
     this.enginePort = port;
   }
+  /** Bind the navigation seam so transcript file references render as links and open on click. Attach
+   *  BEFORE the first render (the projection's per-entry cache tracks resolver PRESENCE, not identity). */
+  attachNavigationPort(port: AgentNavigationPort): void {
+    this.navigationPort = port;
+    this.referenceResolutionCache.clear();
+    this.viewRevision.value += 1;
+  }
   /** The current engine label (for the frame dump / smoke), or '' when unbound. */
   get currentEngine(): string {
     return this.enginePort?.provider ?? '';
@@ -272,6 +311,9 @@ class $AgentPaneContent implements PaneContent {
       context.glyphLevel,
       textWidth,
       this.expandedIndices,
+      // Undefined while unbound so the projection's per-entry cache invalidates when the port attaches
+      // (it tracks resolver PRESENCE; the bound resolver itself is identity-stable).
+      this.navigationPort ? this.resolveReferenceCached : undefined,
     );
     this.lastBodyHeight = bodyHeight;
     this.lastTotalLines = lines.length;
@@ -526,14 +568,27 @@ class $AgentPaneContent implements PaneContent {
   }
 
   /** A pointer-down inside the pane at content-local (column, row): click the mode-line ENGINE segment to
-   *  cycle engines, or toggle a tool row's expand state. Called by the host for a BARE click in the
-   *  transcript region AND for any click on the inert 'other' rows (so the mode-line segment is reachable). */
+   *  cycle engines, open a FILE-REFERENCE span in a real editor tab at its line, or toggle a tool row's
+   *  expand state. Called by the host for a BARE click in the transcript region AND for any click on the
+   *  inert 'other' rows (so the mode-line segment is reachable). */
   onPointerDown(column: number, row: number): boolean {
     const engine = this.lastEngineSegment;
     if (engine && this.enginePort?.canCycle && row === engine.row && column >= engine.startColumn && column < engine.endColumn) {
       return this.cycleEngine();
     }
     const line = this.lastBodyRows[row];
+    // A reference span wins over the row's toggle (a tool summary's basename sits ON a toggleable row);
+    // clicks elsewhere on the row keep today's behavior. Same display-cell unit as the paint.
+    // invariant: File references in the transcript are clickable projections (src/modules/agent/agent.invariants.md)
+    if (line?.references && this.navigationPort) {
+      const textColumn = column - TRANSCRIPT_PAD_LEFT;
+      const clickedReference = line.references.find(
+        (reference) => textColumn >= reference.startCell && textColumn < reference.endCell,
+      );
+      if (clickedReference) {
+        return this.navigationPort.openReference(clickedReference.path, clickedReference.line, clickedReference.column);
+      }
+    }
     if (!line || !line.toggleable || line.entryIndex < 0) return false;
     if (this.expandedIndices.has(line.entryIndex)) this.expandedIndices.delete(line.entryIndex);
     else this.expandedIndices.add(line.entryIndex);

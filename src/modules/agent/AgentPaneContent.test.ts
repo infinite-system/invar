@@ -329,3 +329,78 @@ describe('AgentPaneContent — spinner gated on visibility (review B8)', () => {
     expect(pane.spinnerActive).toBe(false); // idle → torn down even while visible
   });
 });
+
+describe('AgentPaneContent — clickable file references', () => {
+  /** A fake navigation seam: resolves only `known` references and records every open call. */
+  function makeNavigatedPane(known: Record<string, string>) {
+    const made = makePane();
+    const opened: { path: string; line: number | null; column: number | null }[] = [];
+    made.pane.attachNavigationPort({
+      resolveReference: (reference) => known[reference] ?? null,
+      openReference: (path, line, column) => {
+        opened.push({ path, line, column });
+        return true;
+      },
+    });
+    return { ...made, opened };
+  }
+
+  test('a click ON an assistant-row reference span opens the file at its 1-based line', () => {
+    const { pane, backend, opened } = makeNavigatedPane({ 'src/a.ts': '/root/src/a.ts' });
+    backend.script([
+      { kind: 'text-delta', text: 'see src/a.ts:7 here' },
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    pane.render(context());
+    // Locate the reference row + span from the pane's own hit map (the last body row is the text row).
+    const bodyHeight = pane.viewportRows;
+    // Text row: "see src/a.ts:7 here" → span starts at cell 4; pointer column adds the pad-left gutter (2).
+    const clickColumn = 2 + 'see '.length + 1; // inside the span
+    expect(pane.onPointerDown(clickColumn, bodyHeight - 1)).toBe(true);
+    expect(opened).toEqual([{ path: '/root/src/a.ts', line: 7, column: null }]);
+  });
+
+  test('a click OFF the span on the same row does nothing new (returns false — not a toggle row)', () => {
+    const { pane, backend, opened } = makeNavigatedPane({ 'src/a.ts': '/root/src/a.ts' });
+    backend.script([
+      { kind: 'text-delta', text: 'see src/a.ts:7 here' },
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    pane.render(context());
+    const bodyHeight = pane.viewportRows;
+    expect(pane.onPointerDown(2 + 0, bodyHeight - 1)).toBe(false); // on "see ", before the span
+    expect(opened).toHaveLength(0);
+  });
+
+  test('a tool row: the summary basename span OPENS the real path; elsewhere on the row still TOGGLES', () => {
+    const { pane, backend, opened } = makeNavigatedPane({ '/root/src/deep/Foo.ts': '/root/src/deep/Foo.ts' });
+    backend.script([
+      { kind: 'tool-use', id: 't1', name: 'Read', input: { file_path: '/root/src/deep/Foo.ts' } },
+      { kind: 'tool-result', id: 't1', result: 'ok', isError: false },
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    const painted = paintedText(pane.render(context()));
+    expect(painted).toContain('Reading Foo.ts');
+    const bodyHeight = pane.viewportRows;
+    const toolRow = bodyHeight - 2; // tool-use row above the tool-result row
+    // The row text is "▸ ⚙ Read  Reading Foo.ts"; the basename starts after "Reading ".
+    const rowText = '▸ ⚙ Read  Reading Foo.ts';
+    const spanStart = rowText.indexOf('Foo.ts');
+    expect(pane.onPointerDown(2 + spanStart + 1, toolRow)).toBe(true);
+    expect(opened).toEqual([{ path: '/root/src/deep/Foo.ts', line: null, column: null }]);
+    expect(pane.expandedCount).toBe(0); // the reference click did NOT toggle
+    // A click on the caret/head area still toggles the row (today's behavior preserved).
+    expect(pane.onPointerDown(2 + 0, toolRow)).toBe(true);
+    expect(pane.expandedCount).toBe(1);
+  });
+
+  test('without a navigation port the same click keeps today\'s behavior (no crash, no open)', () => {
+    const { pane, backend } = makePane();
+    backend.script([
+      { kind: 'text-delta', text: 'see src/a.ts:7 here' },
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    pane.render(context());
+    expect(pane.onPointerDown(2 + 5, pane.viewportRows - 1)).toBe(false);
+  });
+});

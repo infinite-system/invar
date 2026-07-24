@@ -6,10 +6,10 @@
 // mis-position in a StyledText pane).
 //
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
-import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
+import { StyledText, fg, bg, bold, underline, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
-import type { ProjectedLine } from './AgentTranscriptProjection';
+import type { FileReferenceSpan, ProjectedLine } from './AgentTranscriptProjection';
 import type { ComposerRow } from './AgentComposer';
 import type { ThinkingSegment } from './AgentThinkingIndicator';
 import { WrapText } from '../ui/WrapText';
@@ -65,6 +65,46 @@ function pushHighlighted(
   if (after) chunks.push(paint(after));
 }
 
+/** Paint one transcript row whose text carries clickable file-reference spans: the row is segmented at
+ *  every selection/reference boundary (display cells, grapheme-safe slices) and each segment combines
+ *  the two orthogonal styles — link affordance (accent fg + underline, the same idiom the Markdown
+ *  preview and diagnostics use) and the single-row selection background. */
+function pushWithReferences(
+  chunks: TextChunk[],
+  text: string,
+  selection: SelectionRange | null,
+  references: readonly FileReferenceSpan[],
+  paint: (text: string) => TextChunk,
+  palette: Palette,
+): void {
+  const totalCells = WrapText.Class.displayWidth(text);
+  const boundarySet = new Set<number>([0, totalCells]);
+  if (selection && selection.end > selection.start) {
+    boundarySet.add(Math.max(0, Math.min(selection.start, totalCells)));
+    boundarySet.add(Math.max(0, Math.min(selection.end, totalCells)));
+  }
+  for (const reference of references) {
+    boundarySet.add(Math.max(0, Math.min(reference.startCell, totalCells)));
+    boundarySet.add(Math.max(0, Math.min(reference.endCell, totalCells)));
+  }
+  const boundaries = [...boundarySet].sort((left, right) => left - right);
+  for (let index = 0; index + 1 < boundaries.length; index += 1) {
+    const fromCell = boundaries[index]!;
+    const toCell = boundaries[index + 1]!;
+    const segment = WrapText.Class.sliceByDisplayCells(text, fromCell, toCell);
+    if (!segment) continue;
+    const inSelection = selection !== null && fromCell >= selection.start && toCell <= selection.end;
+    const inReference = references.some((reference) => fromCell >= reference.startCell && toCell <= reference.endCell);
+    let chunk: TextChunk = inReference
+      ? underline(fg(palette.accent)(segment))
+      : inSelection
+        ? fg(palette.fg)(segment)
+        : paint(segment);
+    if (inSelection) chunk = bg(palette.selection)(chunk);
+    chunks.push(chunk);
+  }
+}
+
 /** Paint pre-composed styled segments (thinking line / mode line). */
 function pushSegments(chunks: TextChunk[], segments: readonly ThinkingSegment[]): void {
   for (const segment of segments) {
@@ -81,7 +121,12 @@ function $render(context: AgentPaneRenderContext): StyledText {
   bodyRows.forEach((line, index) => {
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
     const paint = (text: string): TextChunk => (line.bold ? bold(fg(line.color)(text)) : fg(line.color)(text));
-    pushHighlighted(chunks, line.text, selectionRanges[index] ?? null, paint, palette);
+    if (line.references && line.references.length > 0) {
+      // invariant: File references in the transcript are clickable projections (src/modules/agent/agent.invariants.md)
+      pushWithReferences(chunks, line.text, selectionRanges[index] ?? null, line.references, paint, palette);
+    } else {
+      pushHighlighted(chunks, line.text, selectionRanges[index] ?? null, paint, palette);
+    }
     chunks.push(fg(palette.fg)('\n'));
   });
 
