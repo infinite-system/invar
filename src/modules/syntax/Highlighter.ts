@@ -7,6 +7,7 @@
 //   — only the visible window is tokenized, one line at a time.
 
 import { Static } from 'ivue/extras';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 
 export type Role =
   | 'keyword'
@@ -63,6 +64,26 @@ function tokenizeCode(line: string): Span[] {
   const push = (text: string, role: Role) => {
     if (text) spans.push({ text, role });
   };
+  // Doc-block CONTINUATION lines (line-local, mirroring the open-ended block-comment heuristic
+  // below): a line whose first non-whitespace is `*` is the middle/closing line of a
+  // `/** ... */` block — ` * prose`, a bare ` *`, or the closing ` */`. A `*` glued to an
+  // identifier/bracket (a generator method like `*generate()` / `*[Symbol.iterator]()`) stays
+  // code. Without this rule every middle line of a JSDoc block fell through to
+  // identifier/operator roles and rendered in the default foreground.
+  let leadingWhitespaceEnd = 0;
+  while (leadingWhitespaceEnd < length && (line[leadingWhitespaceEnd] === ' ' || line[leadingWhitespaceEnd] === '\t')) {
+    leadingWhitespaceEnd++;
+  }
+  if (line[leadingWhitespaceEnd] === '*') {
+    const following = line[leadingWhitespaceEnd + 1];
+    if (following === '/') {
+      // Closing ` */` — comment through the terminator; ordinary code may follow on the line.
+      push(line.slice(0, leadingWhitespaceEnd + 2), 'comment');
+      index = leadingWhitespaceEnd + 2;
+    } else if (following === undefined || following === ' ' || following === '\t' || following === '*') {
+      return [{ text: line, role: 'comment' }];
+    }
+  }
   while (index < length) {
     const character = line[index]!;
     // line comment
@@ -413,8 +434,43 @@ function $highlightLine(line: string, language: LangId): Span[] {
   }
 }
 
+/**
+ * Slice a logical line's span list to a GRAPHEME window [startGrapheme, endGrapheme) — the span
+ * mapping for wrap continuations and any sub-window of an already-tokenized line. Roles survive
+ * the cut: a comment span sliced mid-way stays a comment on both sides, which is exactly what a
+ * per-slice RE-tokenization loses (a wrap continuation of `// ...` has no `//` prefix to see).
+ * Grapheme-safe by construction — partial spans cut at grapheme boundaries, never inside a cluster.
+ */
+function $sliceSpans(spans: readonly Span[], startGrapheme: number, endGrapheme: number): Span[] {
+  const sliced: Span[] = [];
+  let spanStartGrapheme = 0;
+  for (const span of spans) {
+    const spanGraphemeCount = EditorCoordinates.Class.graphemeCount(span.text);
+    const spanEndGrapheme = spanStartGrapheme + spanGraphemeCount;
+    if (spanEndGrapheme <= startGrapheme) {
+      spanStartGrapheme = spanEndGrapheme;
+      continue;
+    }
+    if (spanStartGrapheme >= endGrapheme) break;
+    const sliceStartInSpan = Math.max(startGrapheme, spanStartGrapheme) - spanStartGrapheme;
+    const sliceEndInSpan = Math.min(endGrapheme, spanEndGrapheme) - spanStartGrapheme;
+    const text =
+      sliceStartInSpan === 0 && sliceEndInSpan === spanGraphemeCount
+        ? span.text
+        : span.text.slice(
+            EditorCoordinates.Class.graphemeToU16(span.text, sliceStartInSpan),
+            EditorCoordinates.Class.graphemeToU16(span.text, sliceEndInSpan),
+          );
+    if (text) sliced.push({ text, role: span.role });
+    spanStartGrapheme = spanEndGrapheme;
+  }
+  return sliced;
+}
+
 class $Highlighter {
   static highlightLine = $highlightLine;
+  /** Slice a span list to a grapheme window (roles survive the cut; grapheme-safe). */
+  static sliceSpans = $sliceSpans;
 }
 
 export namespace Highlighter {

@@ -14,7 +14,7 @@ import { StyledText, fg, bg, bold, underline, type TextChunk } from '@opentui/co
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
-import { Highlighter, type Role } from '../syntax/Highlighter';
+import { Highlighter, type Role, type Span } from '../syntax/Highlighter';
 import type { BracketCell } from '../editor/BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
@@ -106,10 +106,18 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
     }
   };
   const sourceFindEngine = context.findEngineFor(editor.document.path);
+  // Plain text (binary or no language) renders in the default foreground with no token spans.
+  const plainForeground = editor.document.binary.value || language === 'plain';
+  // `windowSpans` are the token spans covering EXACTLY windowText (already sliced/aligned to the
+  // window), or null on the plain path. Tokenization happens ONCE per line/window at the call
+  // sites; every sub-segment here is a SLICE of those spans — never a re-tokenization. Re-tokenizing
+  // a slice loses left context (a wrap continuation of `// ...` has no `//` prefix; the text after
+  // a find-match boundary inside a comment has none either) and painted such text default-white.
   const pushCodeChunks = (
     windowText: string,
     lineIndex: number,
     windowStartGrapheme = 0,
+    windowSpans: readonly Span[] | null = null,
   ): void => {
     const lineMatches = sourceFindEngine?.matches.value.filter((match) => match.line === lineIndex) ?? [];
     const lineDiagnostics = diagnosticsByLine.get(lineIndex) ?? [];
@@ -202,11 +210,11 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
         // the terminal's "red squiggly": the text stays but is underlined and recoloured to signal it.
         const diagnosticChunk = underline(fg(severityColor(diagnosticSeverity))(segmentText));
         codeChunks.push(findHighlighted ? bg(palette.cursorLine)(diagnosticChunk) : diagnosticChunk);
-      } else if (editor.document.binary.value || language === 'plain') {
+      } else if (windowSpans === null) {
         const textChunk = fg(palette.fg)(segmentText);
         codeChunks.push(findHighlighted ? bg(palette.cursorLine)(textChunk) : textChunk);
       } else {
-        for (const span of Highlighter.Class.highlightLine(segmentText, language)) {
+        for (const span of Highlighter.Class.sliceSpans(windowSpans, segmentStart, segmentEnd)) {
           const syntaxChunk = fg(roleColor(span.role, palette))(span.text);
           codeChunks.push(findHighlighted ? bg(palette.cursorLine)(syntaxChunk) : syntaxChunk);
         }
@@ -219,6 +227,12 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
     // Code-style); each row's code is the segment's grapheme-safe slice. `top` is a VISUAL-row offset
     // in wrap mode, so the window can start MID-LINE. The walk is O(window) — never materialized.
     const wrapRowsWindow = EditorWrap.Class.visualRowsFromOffset(editor.document, top, editor.wrapWidth(), height);
+    // Token spans come from the FULL logical line, computed once per line and SLICED per visual
+    // row — a continuation row inherits the roles its text has on the logical line (a wrapped
+    // `// ...` comment stays comment-coloured past the first row). Consecutive rows of the same
+    // line share the one tokenization.
+    let tokenizedLineIndex = -1;
+    let tokenizedLineSpans: Span[] = [];
     wrapRowsWindow.forEach((row, rowIndex) => {
       const isCurrentLine = row.lineIndex === currentLineIndex;
       if (row.firstOfLine) {
@@ -229,6 +243,18 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
         gutterChunks.push(fg(palette.dim)(' '.repeat(lineNumberWidth + 2)));
       }
       const lineText = editor.document.line(row.lineIndex);
+      let segmentSpans: Span[] | null = null;
+      if (!plainForeground) {
+        if (row.lineIndex !== tokenizedLineIndex) {
+          tokenizedLineSpans = Highlighter.Class.highlightLine(lineText, language);
+          tokenizedLineIndex = row.lineIndex;
+        }
+        segmentSpans = Highlighter.Class.sliceSpans(
+          tokenizedLineSpans,
+          row.segment.startGrapheme,
+          row.segment.endGrapheme,
+        );
+      }
       pushCodeChunks(
         lineText.slice(
           EditorCoordinates.Class.graphemeToU16(lineText, row.segment.startGrapheme),
@@ -236,6 +262,7 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
         ),
         row.lineIndex,
         row.segment.startGrapheme,
+        segmentSpans,
       );
       if (rowIndex < wrapRowsWindow.length - 1) {
         gutterChunks.push(fg(palette.fg)('\n'));
@@ -265,7 +292,11 @@ function $renderEditor(context: EditorPaneRenderContext): EditorPaneRender | nul
       windowStartGrapheme = startGrapheme;
       windowText = text.slice(EditorCoordinates.Class.graphemeToU16(text, startGrapheme), EditorCoordinates.Class.graphemeToU16(text, endGrapheme));
     }
-    pushCodeChunks(windowText, lineNumber, windowStartGrapheme);
+    // Tokens for the visible column window, ONCE per line (the documented column-virtualization
+    // trade-off stays: tokens start at the slice). Sub-segments (find/diagnostic/bracket
+    // boundaries) then SLICE these spans instead of re-tokenizing mid-line fragments.
+    const lineWindowSpans = plainForeground ? null : Highlighter.Class.highlightLine(windowText, language);
+    pushCodeChunks(windowText, lineNumber, windowStartGrapheme, lineWindowSpans);
     if (visibleIndex < visibleLines.length - 1) {
       gutterChunks.push(fg(palette.fg)('\n'));
       codeChunks.push(fg(palette.fg)('\n'));

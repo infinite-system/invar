@@ -1,6 +1,8 @@
 import { test, expect } from 'bun:test';
 import { Highlighter } from '../Highlighter';
 import { LanguageRegistry } from '../LanguageRegistry';
+import { EditorWrap } from '../../editor/EditorWrap';
+import { EditorCoordinates } from '../../editor/EditorCoordinates';
 
 const roles = (line: string, language: any) => Highlighter.Class.highlightLine(line, language).map((span) => span.role);
 const textOf = (line: string, language: any) => Highlighter.Class.highlightLine(line, language).map((span) => span.text).join('');
@@ -79,6 +81,77 @@ test('vue: directives pop as keywords and interpolation is highlighted — lossl
   // Plain HTML (vue off) does NOT treat v-if as a directive keyword.
   const htmlSpans = Highlighter.Class.highlightLine(line, 'html');
   expect(htmlSpans.find((span) => span.text === 'v-if')?.role).toBe('variable');
+});
+
+// --- doc-block comment classification (JSDoc middle/closing lines) ---------------------------
+
+test('doc-block middle lines (leading *) are comments, lossless', () => {
+  expect(Highlighter.Class.highlightLine(' * The answer, described.', 'typescript'))
+    .toEqual([{ text: ' * The answer, described.', role: 'comment' }]);
+  expect(Highlighter.Class.highlightLine('   *', 'typescript'))
+    .toEqual([{ text: '   *', role: 'comment' }]);
+  expect(Highlighter.Class.highlightLine(' ** double-star continuation', 'typescript'))
+    .toEqual([{ text: ' ** double-star continuation', role: 'comment' }]);
+  expect(Highlighter.Class.highlightLine('/** opener with prose', 'typescript'))
+    .toEqual([{ text: '/** opener with prose', role: 'comment' }]);
+});
+
+test('doc-block closing */ is a comment; code after it on the line still tokenizes', () => {
+  expect(Highlighter.Class.highlightLine(' */', 'typescript'))
+    .toEqual([{ text: ' */', role: 'comment' }]);
+  const spans = Highlighter.Class.highlightLine(' */ const x = 1;', 'typescript');
+  expect(spans[0]).toEqual({ text: ' */', role: 'comment' });
+  expect(spans.find((span) => span.text === 'const')?.role).toBe('keyword');
+  expect(spans.map((span) => span.text).join('')).toBe(' */ const x = 1;');
+});
+
+test('a generator method star is NOT mistaken for a doc-block line', () => {
+  const spans = Highlighter.Class.highlightLine('  *generate() {', 'typescript');
+  expect(spans.every((span) => span.role !== 'comment')).toBe(true);
+  expect(spans.find((span) => span.text === 'generate')?.role).toBe('func');
+});
+
+// --- span slicing (wrap continuations / sub-windows of a tokenized line) ---------------------
+
+test('sliceSpans keeps roles across the cut and stays lossless', () => {
+  const line = 'const s = 1; // trailing comment';
+  const spans = Highlighter.Class.highlightLine(line, 'typescript');
+  // A slice that starts INSIDE the comment stays comment-roled (a re-tokenization would not).
+  const commentStart = line.indexOf('//');
+  const tail = Highlighter.Class.sliceSpans(spans, commentStart + 5, line.length);
+  expect(tail.length).toBeGreaterThan(0);
+  expect(tail.every((span) => span.role === 'comment')).toBe(true);
+  expect(tail.map((span) => span.text).join('')).toBe(line.slice(commentStart + 5));
+  // A slice across several spans preserves each role and concatenates to the window text.
+  const middle = Highlighter.Class.sliceSpans(spans, 2, 13);
+  expect(middle.map((span) => span.text).join('')).toBe(line.slice(2, 13));
+  expect(middle[0]).toEqual({ text: 'nst', role: 'keyword' });
+  // Degenerate windows are empty.
+  expect(Highlighter.Class.sliceSpans(spans, 5, 5)).toEqual([]);
+  expect(Highlighter.Class.sliceSpans(spans, line.length, line.length + 4)).toEqual([]);
+});
+
+test('sliceSpans cuts at grapheme boundaries, never inside a cluster', () => {
+  const spans = [{ text: 'ab👍cd', role: 'string' as const }];
+  expect(Highlighter.Class.sliceSpans(spans, 1, 4)).toEqual([{ text: 'b👍c', role: 'string' }]);
+  expect(Highlighter.Class.sliceSpans(spans, 2, 3)).toEqual([{ text: '👍', role: 'string' }]);
+});
+
+test('wrap continuation rows of a long // comment slice to all-comment spans', () => {
+  const line = '// alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima';
+  const wrapWidth = 24;
+  const segments = EditorWrap.Class.wrapLine(line, wrapWidth);
+  expect(segments.length).toBeGreaterThan(2);
+  const lineSpans = Highlighter.Class.highlightLine(line, 'typescript');
+  for (const segment of segments) {
+    const segmentSpans = Highlighter.Class.sliceSpans(lineSpans, segment.startGrapheme, segment.endGrapheme);
+    const segmentText = line.slice(
+      EditorCoordinates.Class.graphemeToU16(line, segment.startGrapheme),
+      EditorCoordinates.Class.graphemeToU16(line, segment.endGrapheme),
+    );
+    expect(segmentSpans.map((span) => span.text).join('')).toBe(segmentText);
+    expect(segmentSpans.every((span) => span.role === 'comment')).toBe(true);
+  }
 });
 
 test('css: selectors, properties, colors, units, at-rules, strings — lossless', () => {
