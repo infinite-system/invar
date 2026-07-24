@@ -141,8 +141,11 @@ for a block glyph; a snapshot cell lacking the emulator color mode or SGR attrib
 ### Tmux smokes remain an independent verification ring
 
 **Invariant:** If the PTY harness is the per-gate smoke suite, then a tmux sentinel ring — one
-original per risk family — runs in every gate as the independent terminal-emulator cross-check,
-and the full tmux suite remains runnable unchanged behind `INVAR_FULL_TMUX=1`.
+original per risk family — runs in every gate as a NON-BLOCKING divergence signal (`ring_step`:
+a ring red with a green harness twin is a flake or a candidate emulator divergence, never a gate
+verdict), and the full tmux suite remains runnable unchanged behind `INVAR_FULL_TMUX=1`. The
+ring retires when the emulator conformance corpus (byte-fixtures → expected grids, in `bun
+test`) proves the oracle directly.
 
 **Scope:** Post-swap (2026-07-24, user-approved after the 42/42 port campaign): the per-gate ring
 is `smoke-wrap.sh` (editor timing), `smoke-git-log.sh` (git fixtures), `smoke-agent-pane-ux.sh`

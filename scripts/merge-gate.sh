@@ -87,6 +87,23 @@ reporting_step() {
   rm -f /tmp/merge-gate-reporting.$$.log
 }
 
+# RING DEMOTION (2026-07-24, user-approved — "kill indeterminism and time"): ring smokes are a
+# non-blocking divergence SIGNAL, not a gate verdict. A ring red with its harness twin green is a
+# tmux flake (ignore) or a candidate emulator divergence (investigate if it repeats); a ring red
+# WITH its twin red is a real defect the blocking twin already catches. The ring retires entirely
+# once the emulator conformance corpus is green in bun test.
+ring_step() {
+  local name="$1"; shift
+  echo "== merge-gate: $name (ring, non-blocking) =="
+  if "$@" >/tmp/merge-gate-ring.$$.log 2>&1; then
+    echo "  OK    $name (ring)"
+  else
+    echo "  RING-DIVERGENCE (non-blocking)  $name — compare harness twin; investigate if it repeats"
+    tail -20 /tmp/merge-gate-ring.$$.log | sed 's/^/    | /'
+  fi
+  rm -f /tmp/merge-gate-ring.$$.log
+}
+
 # SWAP (2026-07-24, user-approved): the PTY harness suite is the per-gate smoke phase. The tmux
 # originals form a 4-smoke SENTINEL RING per-gate (wrap, git-log, agent-pane-ux, terminal — one per
 # risk family) as the independent-emulator cross-check; the remaining tmux smokes run only with
@@ -145,14 +162,14 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: selection harness" bun scripts/harness/smoke-selection-harness.ts
   full_tmux_step "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
   step "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
-  step "smoke: wrap"        bash scripts/smoke-wrap.sh
+  ring_step "smoke: wrap"        bash scripts/smoke-wrap.sh
   step "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
   full_tmux_step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
   step "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
   full_tmux_step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
   # Commit-log freshness (external commits appear via the tip-SHA reconcile) + the read-only
   # branch VIEWER (cycle/menu/Esc, by-SHA drill-down, worktree/HEAD byte-identical after).
-  step "smoke: git-log"     bash scripts/smoke-git-log.sh
+  ring_step "smoke: git-log"     bash scripts/smoke-git-log.sh
   # Current-line git blame (GitLens parity): a committed line shows its author in the status bar; a
   # non-git document shows none. Scratch repo + non-git dir; async blame is cached per file.
   full_tmux_step "smoke: git-blame"   bash scripts/smoke-git-blame.sh
@@ -177,7 +194,7 @@ if [ "${FAST:-0}" != "1" ]; then
   full_tmux_step "smoke: image-preview" bash scripts/smoke-image-preview.sh
   full_tmux_step "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
   full_tmux_step "smoke: agent"       bash scripts/smoke-agent.sh
-  step "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
+  ring_step "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
   full_tmux_step "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
   full_tmux_step "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
   full_tmux_step "smoke: agent-search" bash scripts/smoke-agent-search.sh
@@ -226,7 +243,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # wave 4
   step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   # RING member (previously never gate-registered — the shelf-recorded hole, closed here):
-  step "smoke: terminal"    bash scripts/smoke-terminal.sh
+  ring_step "smoke: terminal"    bash scripts/smoke-terminal.sh
   step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
   step "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
