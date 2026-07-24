@@ -11,30 +11,19 @@ import {
   type CliRenderer,
   type TextChunk,
 } from '@opentui/core';
-import { InlineStyle, type BlockRecord } from './MarkdownParser';
+import { MarkdownParser, type BlockRecord } from './MarkdownParser';
 import { MarkdownPreview, type PreviewRow } from './MarkdownPreview';
 import type { Palette } from '../theme/ThemePalettes';
 import { SelectableText } from '../ui/SelectableText';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { FindInBuffer } from '../search/FindInBuffer';
 
-export interface MarkdownRenderableTheme {
-  readonly palette: Palette;
-}
-
-export type MarkdownRenderableOptions = Omit<BoxOptions, 'flexDirection'>;
-
-export interface MarkdownReferenceHit {
-  key: string;
-  target: string;
-}
-
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
 class $MarkdownRenderable extends BoxRenderable {
   readonly bodyRenderable: SelectableText.Model;
-  private visibleRowsSnapshot: PreviewRow[] = [];
-  private hoveredReferenceKey: string | null = null;
-  private findEngineProvider: (() => FindInBuffer.Instance | null) | null = null;
+  protected visibleRowsSnapshot: PreviewRow[] = [];
+  protected hoveredReferenceKey: string | null = null;
+  protected findEngineProvider: (() => FindInBuffer.Instance | null) | null = null;
 
   constructor(
     renderer: CliRenderer,
@@ -108,9 +97,9 @@ class $MarkdownRenderable extends BoxRenderable {
       const inlineStyle = row.block.spans[spanIndex + 2]!;
       const linkIndexPlusOne = row.block.spans[spanIndex + 3]!;
       if (blockUtf16Offset < spanStart || blockUtf16Offset >= spanEnd) continue;
-      const target = inlineStyle === InlineStyle.Link
+      const target = inlineStyle === MarkdownParser.Class.inlineStyles.link
         ? row.block.links[linkIndexPlusOne - 1]
-        : inlineStyle === InlineStyle.Code
+        : inlineStyle === MarkdownParser.Class.inlineStyles.code
           ? row.block.text.slice(spanStart, spanEnd)
           : undefined;
       if (!target) return null;
@@ -140,7 +129,7 @@ class $MarkdownRenderable extends BoxRenderable {
     super.destroySelf();
   }
 
-  private pullVisibleRows(): void {
+  protected pullVisibleRows(): void {
     const palette = this.theme.palette;
     const width = Math.max(1, this.width);
     const height = Math.max(1, this.height);
@@ -157,7 +146,7 @@ class $MarkdownRenderable extends BoxRenderable {
     this.backgroundColor = palette.bg;
   }
 
-  private appendRow(chunks: TextChunk[], row: PreviewRow, visibleRowIndex: number, palette: Palette): void {
+  protected appendRow(chunks: TextChunk[], row: PreviewRow, visibleRowIndex: number, palette: Palette): void {
     if (row.role === 'spacer') {
       chunks.push(fg(palette.fg)(''));
       return;
@@ -178,7 +167,7 @@ class $MarkdownRenderable extends BoxRenderable {
     if (row.suffix) chunks.push(this.decoratePrefix(row.suffix, row, palette));
   }
 
-  private appendInline(
+  protected appendInline(
     chunks: TextChunk[],
     block: BlockRecord,
     row: PreviewRow,
@@ -244,14 +233,14 @@ class $MarkdownRenderable extends BoxRenderable {
     }
   }
 
-  private decoratePrefix(text: string, row: PreviewRow, palette: Palette): TextChunk {
+  protected decoratePrefix(text: string, row: PreviewRow, palette: Palette): TextChunk {
     if (row.role === 'codeContent') return bg(palette.panel)(fg(palette.border)(text));
     if (row.role === 'quote') return bold(fg(palette.accent)(text));
     if (row.role === 'table') return fg(palette.border)(text);
     return fg(palette.accent)(text);
   }
 
-  private decorateText(
+  protected decorateText(
     text: string,
     block: BlockRecord,
     row: PreviewRow,
@@ -264,13 +253,16 @@ class $MarkdownRenderable extends BoxRenderable {
     const color = this.blockColor(block.kind, row, palette);
     let chunk = fg(color)(text);
 
-    if (row.role === 'codeContent' || inlineStyle === InlineStyle.Code) {
+    if (
+      row.role === 'codeContent' ||
+      inlineStyle === MarkdownParser.Class.inlineStyles.code
+    ) {
       chunk = bg(palette.panel)(fg(palette.string)(chunk));
-    } else if (inlineStyle === InlineStyle.Emphasis) {
+    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.emphasis) {
       chunk = italic(chunk);
-    } else if (inlineStyle === InlineStyle.Strong) {
+    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.strong) {
       chunk = bold(chunk);
-    } else if (inlineStyle === InlineStyle.Link) {
+    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.link) {
       chunk = underline(fg(palette.accent)(chunk));
       const target = block.links[linkIndexPlusOne - 1];
       if (target) chunk = terminalLink(target)(chunk);
@@ -283,7 +275,7 @@ class $MarkdownRenderable extends BoxRenderable {
     return chunk;
   }
 
-  private blockColor(kind: BlockRecord['kind'], row: PreviewRow, palette: Palette): string {
+  protected blockColor(kind: BlockRecord['kind'], row: PreviewRow, palette: Palette): string {
     if (kind === 'heading') return palette.accent;
     if (row.role === 'quote') return palette.dim;
     if (row.role === 'table') return palette.fg;
@@ -291,8 +283,7 @@ class $MarkdownRenderable extends BoxRenderable {
     return palette.fg;
   }
 
-
-  private referenceKey(blockIndex: number, spanStart: number, spanEnd: number, inlineStyle: number): string {
+  protected referenceKey(blockIndex: number, spanStart: number, spanEnd: number, inlineStyle: number): string {
     return `${blockIndex}:${spanStart}:${spanEnd}:${inlineStyle}`;
   }
 }
@@ -301,4 +292,15 @@ export namespace MarkdownRenderable {
   export const $Class = $MarkdownRenderable;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface MarkdownRenderableTheme {
+  readonly palette: Palette;
+}
+
+export type MarkdownRenderableOptions = Omit<BoxOptions, 'flexDirection'>;
+
+export interface MarkdownReferenceHit {
+  key: string;
+  target: string;
 }
