@@ -8,7 +8,7 @@
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import type { Palette } from '../theme/ThemePalettes';
+import { ThemePalettes, type Palette } from '../theme/ThemePalettes';
 import type { TerminalInstance } from './TerminalInstance';
 import type { TerminalCell } from './TerminalEmulator';
 
@@ -25,19 +25,18 @@ export interface TerminalPaneRenderContext {
   padRows?: number;
 }
 
-// The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
-// 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
-const ANSI_16 = [
-  '#000000', '#800000', '#008000', '#808000', '#000080', '#800080', '#008080', '#c0c0c0',
-  '#808080', '#ff0000', '#00ff00', '#ffff00', '#0000ff', '#ff00ff', '#00ffff', '#ffffff',
-];
-
 function toHex(value: number): string {
   return value.toString(16).padStart(2, '0');
 }
 
-function paletteToHex(index: number): string {
-  if (index < 16) return ANSI_16[index] ?? '#c0c0c0';
+// ANSI indices 0–15 are the 16 NAMED colors — APPEARANCE, so they come from the theme palette's
+// `terminalAnsi*` roles (Tokyo Night's own terminal set), never a table here. Indices 16–255 are
+// the xterm 6×6×6 cube + grayscale ramp — DATA the child computed (as is truecolor SGR), so they
+// pass through with the standard xterm mapping, untouched by the theme.
+// invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
+// invariant: Named ANSI colors are theme appearance; computed colors pass through as data (src/modules/terminal/terminal.invariants.md)
+function paletteToHex(index: number, palette: Palette): string {
+  if (index < 16) return ThemePalettes.Class.terminalAnsiHex(palette, index);
   if (index < 232) {
     const cubeIndex = index - 16;
     const steps = [0, 95, 135, 175, 215, 255];
@@ -54,18 +53,21 @@ function rgbToHex(value: number): string {
   return `#${toHex((value >> 16) & 0xff)}${toHex((value >> 8) & 0xff)}${toHex(value & 0xff)}`;
 }
 
-/** The cell's foreground color as a hex string, honoring RGB / palette / default. */
+/** The cell's foreground color as a hex string, honoring RGB / palette / default. The DEFAULT
+ *  foreground is the theme's `terminalAnsiWhite` role — the spec wires terminal.foreground to the
+ *  ANSI white value (#787c99 dark), one step dimmer than the editor's `fg` body text. */
 function foregroundHex(cell: TerminalCell, palette: Palette): string {
   if (cell.isForegroundRgb) return rgbToHex(cell.foreground);
-  if (cell.isForegroundPalette) return paletteToHex(cell.foreground);
-  return palette.fg;
+  if (cell.isForegroundPalette) return paletteToHex(cell.foreground, palette);
+  return palette.terminalAnsiWhite;
 }
 
-/** The cell's background color as a hex string, or null when it is the default panel background. */
-function backgroundHex(cell: TerminalCell, panelBackground: string): string | null {
+/** The cell's background color as a hex string, or null when it is the default panel background.
+ *  The default terminal background rides `panel` (the spec's terminal.background IS the panel value). */
+function backgroundHex(cell: TerminalCell, palette: Palette): string | null {
   if (cell.isBackgroundRgb) return rgbToHex(cell.background);
-  if (cell.isBackgroundPalette) return paletteToHex(cell.background);
-  return panelBackground;
+  if (cell.isBackgroundPalette) return paletteToHex(cell.background, palette);
+  return palette.panel;
 }
 
 function styleKey(cell: TerminalCell): string {
@@ -74,7 +76,7 @@ function styleKey(cell: TerminalCell): string {
 
 function chunkFor(text: string, cell: TerminalCell, palette: Palette): TextChunk {
   let foreground = foregroundHex(cell, palette);
-  let background = backgroundHex(cell, palette.panel);
+  let background = backgroundHex(cell, palette);
   if (cell.isInverse) {
     const swap = background ?? palette.panel;
     background = foreground;

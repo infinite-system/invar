@@ -215,3 +215,46 @@ on a cell that does not focus it; a caret drawn in a blurred cell.
 **Status:** provisional
 
 **Last refined:** 2026-07-23
+
+### Named ANSI colors are theme appearance; computed colors pass through as data
+
+**Invariant:** If a terminal cell names one of the 16 ANSI palette colors (SGR 30–37 / 90–97 /
+`38;5;0–15`), then the rendered hex comes from the active theme's `terminalAnsi*` roles through
+`ThemePalettes.terminalAnsiHex`, and the terminal's DEFAULT foreground/background ride
+`terminalAnsiWhite` / `panel` (the spec wires terminal.foreground to the ANSI-white value and
+terminal.background to the panel value). If the cell instead carries an xterm-256 cube/grayscale
+index (16–255) or a truecolor RGB, that value is DATA the child process computed and renders
+through the standard xterm mapping untouched — theming it would falsify the child's output.
+
+**Scope:** `TerminalPaneRenderer` (`paletteToHex`, `foregroundHex`, `backgroundHex`) and the
+`terminalAnsi*` roles + `TERMINAL_ANSI_ROLE_NAMES` + `terminalAnsiHex` in
+`src/modules/theme/ThemePalettes.ts`. The emulator is unaffected — it reports indices; only the
+index→hex resolution is themed.
+
+**Mechanism:** The renderer holds no color table: `paletteToHex(index, palette)` answers indices
+0–15 from `ThemePalettes.terminalAnsiHex(palette, index)` (the `TERMINAL_ANSI_ROLE_NAMES` array
+is the index→role mapping) and computes 16–255 from the cube/grayscale formulas; the palette the
+renderer receives is already depth-quantized by `Theme.palette`, so the roles ride the same
+truecolor → 256 → 16 ladder as every other token (role-PINNED to the standard slots at the 16
+rung — see the theme ladder record).
+
+**Generates:** `ls` / git / htop output that matches Tokyo Night instead of clashing standard
+ANSI; a light/dark theme switch that re-colors child output with zero renderer change; a visible
+themed "black" (`#363b54`) on the near-black panel where standard `#000000` was invisible; a
+16-color-terminal degrade that is exactly today's standard table.
+
+**Evidence:** `src/modules/theme/__tests__/TerminalAnsiPalette.test.ts` (index→role mapping, spec
+values, tier behavior, background-collision freedom); `scripts/smoke-terminal-ansi.sh` (a real
+shell prints SGR-colored tokens; FrameProbe asserts the THEMED hexes render at truecolor and the
+pinned distinct slots at a forced 16 tier, and the default fg is the ANSI-white role).
+
+**Impossible if true:** a hardcoded named-ANSI hex table at a drawing site (the renderer's old
+`ANSI_16`); a themed value applied to a 256-cube index or truecolor cell; SGR 31 rendering a
+color that is not the active palette's `terminalAnsiRed`; a terminal default foreground that
+ignores the theme.
+
+**Verification:** `bun test src/modules/theme/__tests__/TerminalAnsiPalette.test.ts && bash scripts/smoke-terminal-ansi.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24

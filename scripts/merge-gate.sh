@@ -144,6 +144,14 @@ if [ "${FAST:-0}" != "1" ]; then
   # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
   step "smoke: panel-split" bash scripts/smoke-panel-split.sh
+  # The integrated terminal's own smoke was never gate-registered although the terminal invariants
+  # cite it as their Verification — registered now that the themed-ANSI renderer change makes it
+  # load-bearing (real PTY round-trip, split reflow, Ctrl+Q escape hatch).
+  step "smoke: terminal"    bash scripts/smoke-terminal.sh
+  # Themed terminal ANSI colors (experiment-terminal-ansi): SGR-colored child output renders in the
+  # theme's terminalAnsi* roles at truecolor, and in the role-PINNED standard slots (distinct,
+  # visible) at a forced 16-color tier; the default terminal fg rides the ANSI-white role.
+  step "smoke: terminal-ansi" bash scripts/smoke-terminal-ansi.sh
   # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
   step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh

@@ -44,7 +44,36 @@ export interface Palette {
   error: string;
   warning: string;
   info: string;
+  /** Terminal ANSI-16 roles (spec §10): what a child process gets when it asks for SGR color 0–15.
+   *  The 16 NAMED colors are APPEARANCE — themed here, their single home — while xterm-256 indices
+   *  16–255 and truecolor SGR are DATA the child computed and pass through the renderer untouched.
+   *  Order (black→white, then brights) mirrors the ANSI index; `TERMINAL_ANSI_ROLE_NAMES` below is
+   *  the index→role mapping consumers use. */
+  terminalAnsiBlack: string;
+  terminalAnsiRed: string;
+  terminalAnsiGreen: string;
+  terminalAnsiYellow: string;
+  terminalAnsiBlue: string;
+  terminalAnsiMagenta: string;
+  terminalAnsiCyan: string;
+  terminalAnsiWhite: string;
+  terminalAnsiBrightBlack: string;
+  terminalAnsiBrightRed: string;
+  terminalAnsiBrightGreen: string;
+  terminalAnsiBrightYellow: string;
+  terminalAnsiBrightBlue: string;
+  terminalAnsiBrightMagenta: string;
+  terminalAnsiBrightCyan: string;
+  terminalAnsiBrightWhite: string;
 }
+
+/** ANSI palette index (0–15) → Palette role, in standard order: normals 0–7, brights 8–15. */
+export const TERMINAL_ANSI_ROLE_NAMES = [
+  'terminalAnsiBlack', 'terminalAnsiRed', 'terminalAnsiGreen', 'terminalAnsiYellow',
+  'terminalAnsiBlue', 'terminalAnsiMagenta', 'terminalAnsiCyan', 'terminalAnsiWhite',
+  'terminalAnsiBrightBlack', 'terminalAnsiBrightRed', 'terminalAnsiBrightGreen', 'terminalAnsiBrightYellow',
+  'terminalAnsiBrightBlue', 'terminalAnsiBrightMagenta', 'terminalAnsiBrightCyan', 'terminalAnsiBrightWhite',
+] as const satisfies ReadonlyArray<keyof Palette>;
 
 // Tokyo Night — accurate spec values (the canonical dark theme). Low contrast between adjacent
 // surfaces (bg/panel/border are all near-black blues that differ only slightly), hierarchy carried by
@@ -57,9 +86,11 @@ export interface Palette {
 // distinct from the grey hover/cursor line).
 //
 // Spec roles Invar's Palette type does NOT carry (left unmapped by design — no type restructuring):
-// the syntax sub-roles parameter/property/tag/attribute, bracket-pair rotation, the terminal ANSI-16
-// set (that lives in TerminalPaneRenderer as the emulator's standard-ANSI fallback; terminal bg/fg
-// already track panel/fg), and separate surfaceRaised/input backgrounds. `dim` is one role serving
+// the syntax sub-roles parameter/property/tag/attribute, bracket-pair rotation, and separate
+// surfaceRaised/input backgrounds. The terminal ANSI-16 set (spec §10) IS carried — the
+// `terminalAnsi*` roles below — since it is appearance; the terminal's default bg rides `panel`
+// (spec terminal.background #16161e == panel) and its default fg rides `terminalAnsiWhite`
+// (spec terminal.foreground #787c99 == ANSI white). `dim` is one role serving
 // both secondary UI text (which must stay readable -> #787C99) and inactive line numbers (spec would
 // prefer a darker #363B54); readability wins, so inactive line numbers ride a touch brighter than spec.
 export const DARK: Palette = {
@@ -75,6 +106,15 @@ export const DARK: Palette = {
   comment: '#51597d', func: '#7aa2f7', type: '#0db9d7',
   variable: '#c0caf5', operator: '#89ddff',
   error: '#db4b4b', warning: '#e0af68', info: '#0da0ba',
+  // Terminal ANSI-16 (spec §10). Brights ride the normals except brightBlack (== black, the spec's
+  // own choice) and brightWhite (#acb0d0, a step brighter than the #787c99 body text). Black is the
+  // spec's VISIBLE #363b54 — `ls`/git dark-grey output stays legible on the near-black panel.
+  terminalAnsiBlack: '#363b54', terminalAnsiRed: '#f7768e', terminalAnsiGreen: '#73daca',
+  terminalAnsiYellow: '#e0af68', terminalAnsiBlue: '#7aa2f7', terminalAnsiMagenta: '#bb9af7',
+  terminalAnsiCyan: '#7dcfff', terminalAnsiWhite: '#787c99',
+  terminalAnsiBrightBlack: '#363b54', terminalAnsiBrightRed: '#f7768e', terminalAnsiBrightGreen: '#73daca',
+  terminalAnsiBrightYellow: '#e0af68', terminalAnsiBrightBlue: '#7aa2f7', terminalAnsiBrightMagenta: '#bb9af7',
+  terminalAnsiBrightCyan: '#7dcfff', terminalAnsiBrightWhite: '#acb0d0',
 };
 
 // Tokyo Night Day — a soft grey-blue light theme (bg is never #fff so it doesn't burn the eyes),
@@ -92,6 +132,19 @@ export const LIGHT: Palette = {
   comment: '#848cb5', func: '#2e7de9', type: '#007197',
   variable: '#343b58', operator: '#0f4b6e',
   error: '#f52a65', warning: '#8c6c3e', info: '#2e7de9',
+  // Terminal ANSI-16 — Tokyo Night DAY analog, derived (recorded choices): the six chromatic slots
+  // reuse this palette's own desaturated day accents (red=error, green=string, yellow=warning,
+  // blue=accent, magenta=keyword, cyan=type) so terminal output matches the editor's ink; black is
+  // the day muted blue-grey #a1a6c5 (the light-surface analog of dark's #363b54 — "black" output is
+  // a soft grey, never harsh #000); white #6172b0 is the terminal BODY text (day analog of dark's
+  // #787c99 — a mid blue-grey readable on the #d4d6e4 panel); brightWhite is the palette's strongest
+  // ink #343b58 (contrast steps UP by getting darker on a light surface). Brights = normals otherwise.
+  terminalAnsiBlack: '#a1a6c5', terminalAnsiRed: '#f52a65', terminalAnsiGreen: '#587539',
+  terminalAnsiYellow: '#8c6c3e', terminalAnsiBlue: '#2e7de9', terminalAnsiMagenta: '#9854f1',
+  terminalAnsiCyan: '#007197', terminalAnsiWhite: '#6172b0',
+  terminalAnsiBrightBlack: '#a1a6c5', terminalAnsiBrightRed: '#f52a65', terminalAnsiBrightGreen: '#587539',
+  terminalAnsiBrightYellow: '#8c6c3e', terminalAnsiBrightBlue: '#2e7de9', terminalAnsiBrightMagenta: '#9854f1',
+  terminalAnsiBrightCyan: '#007197', terminalAnsiBrightWhite: '#343b58',
 };
 
 export const PALETTES: Record<string, Palette> = {
@@ -116,13 +169,15 @@ function to256Hex(hex: string): string {
   return rgbToHex(cube[clamp5(quantize(red))]!, cube[clamp5(quantize(green))]!, cube[clamp5(quantize(blue))]!);
 }
 
-/** Map to the nearest of the 16 ANSI colors (approx hexes). */
-const ANSI16: Array<[number, number, number]> = [
-  [0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
-  [0, 0, 128], [128, 0, 128], [0, 128, 128], [192, 192, 192],
-  [128, 128, 128], [255, 0, 0], [0, 255, 0], [255, 255, 0],
-  [0, 0, 255], [255, 0, 255], [0, 255, 255], [255, 255, 255],
-];
+/** The standard ANSI-16 palette (approx hexes), indexed 0–15. ONE table, two uses: the
+ *  nearest-color target set for generic 16-depth quantization, and the role-pinned value each
+ *  `terminalAnsi*` role degrades to at 16 depth (see `$quantizePalette`). */
+const STANDARD_ANSI_16_HEX = [
+  '#000000', '#800000', '#008000', '#808000', '#000080', '#800080', '#008080', '#c0c0c0',
+  '#808080', '#ff0000', '#00ff00', '#ffff00', '#0000ff', '#ff00ff', '#00ffff', '#ffffff',
+] as const;
+/** Map to the nearest of the 16 ANSI colors. */
+const ANSI16: Array<[number, number, number]> = STANDARD_ANSI_16_HEX.map(hexToRgb);
 function to16Hex(hex: string): string {
   const [red, green, blue] = hexToRgb(hex);
   let best = 0;
@@ -144,7 +199,14 @@ function rgbToHex(red: number, green: number, blue: number): string {
   return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
 }
 
-/** Return a palette whose colors are quantized to the terminal's depth. */
+/** Return a palette whose colors are quantized to the terminal's depth.
+ *
+ *  The `terminalAnsi*` role family is INDEXED appearance: each role's identity is an ANSI slot, so
+ *  at the 16 rung it pins to its OWN standard slot (`terminalAnsiRed` → `#800000`) instead of the
+ *  nearest-RGB match — nearest-RGB collapses Tokyo Night's mid-brightness pastels into one silver
+ *  (`#c0c0c0`) and destroys the index structure, leaving a monochrome terminal. Pinning keeps every
+ *  slot distinct and is exactly what a real 16-color terminal shows for SGR 0–15. Still inside the
+ *  ANSI-16 set, still the same keys — the ladder's completeness contract is unchanged. */
 // invariant: The palette ladder quantizes color without leaving the palette (src/modules/theme/theme.invariants.md)
 function $quantizePalette(palette: Palette, depth: ColorDepth): Palette {
   if (depth === 'truecolor') return palette;
@@ -156,11 +218,24 @@ function $quantizePalette(palette: Palette, depth: ColorDepth): Palette {
       (result[key] as string) = mapColor(value);
     }
   }
+  if (depth === '16') {
+    for (let ansiIndex = 0; ansiIndex < TERMINAL_ANSI_ROLE_NAMES.length; ansiIndex++) {
+      (result[TERMINAL_ANSI_ROLE_NAMES[ansiIndex]!] as string) = STANDARD_ANSI_16_HEX[ansiIndex]!;
+    }
+  }
   return result;
+}
+
+/** The palette's color for ANSI index 0–15 — the theme-owned answer to a child process's SGR
+ *  named-color request. Out-of-range indices fall back to the white role (the terminal body text). */
+function $terminalAnsiHex(palette: Palette, ansiIndex: number): string {
+  const roleName = TERMINAL_ANSI_ROLE_NAMES[ansiIndex];
+  return roleName ? palette[roleName] : palette.terminalAnsiWhite;
 }
 
 class $ThemePalettes {
   static quantizePalette = $quantizePalette;
+  static terminalAnsiHex = $terminalAnsiHex;
 }
 
 export namespace ThemePalettes {

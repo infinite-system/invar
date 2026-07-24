@@ -91,9 +91,13 @@ active theme (a `Palette` field or an `IconSet` / `ActionIconSet` / `CheckboxIco
 resolved through `Theme.Class`), never written as a literal hex or glyph at the drawing site —
 the `theme` module is the single source of appearance.
 
-**Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations. The
-sole home for color and glyph literals is `src/modules/theme`; consumers pull tokens, they do not
-mint them.
+**Scope:** All styled output across ui, editor, syntax, diagnostics, git decorations, and the
+terminal pane's 16 NAMED ANSI colors (the `terminalAnsi*` roles). The sole home for color and
+glyph literals is `src/modules/theme`; consumers pull tokens, they do not mint them. Excluded as
+DATA, not appearance: colors a child process computed itself — xterm-256 cube/grayscale indices
+16–255 and truecolor SGR — which the terminal renderer passes through by the standard xterm
+mapping (computed, no literal table). The renderer's former hardcoded `ANSI_16` hex table — the
+one drawing-site exception — is dead; those 16 values now live in the palette.
 
 **Mechanism:** `Theme` exposes `palette`, `icons`, `actionIcons`, `checkboxIcons`, and `icon()`
 as plain getters that re-derive from `PALETTES` and the icon `SETS` on read; because the data is
@@ -105,26 +109,30 @@ degrades icons single-cell and legible*; theme/icon-set plugin extension points;
 boundary for auditing hard-coded appearance.
 
 **Evidence:** `src/modules/theme/Theme.ts` (`palette`, `icons`, `actionIcons`, `checkboxIcons`,
-`icon` getters); the color literals live only in `ThemePalettes.ts` (`DARK`, `LIGHT`) and the
-glyph literals only in `ThemeIcons.ts` (`NERD`, `UNICODE`, `ASCII`, `ACTION_ICONS`,
-`CHECKBOX_ICONS`).
+`icon` getters); the color literals live only in `ThemePalettes.ts` (`DARK`, `LIGHT` — including
+the `terminalAnsi*` roles consumed by `TerminalPaneRenderer` through
+`ThemePalettes.terminalAnsiHex`) and the glyph literals only in `ThemeIcons.ts` (`NERD`,
+`UNICODE`, `ASCII`, `ACTION_ICONS`, `CHECKBOX_ICONS`).
 
 **Impossible if true:** A rendering component outside `src/modules/theme` naming a `#rrggbb`
-color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`.
+color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
+named-ANSI hex table at a drawing site (the terminal renderer's old `ANSI_16`).
 
-**Verification:** `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.ts | grep -v modules/theme` returns
+**Verification:** `grep -rnE "'#[0-9a-fA-F]{6}'" src --include=*.ts | grep -v modules/theme` returns
 no drawing-site literal; `bun test src/modules/theme`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### The palette ladder quantizes color without leaving the palette
 
 **Invariant:** If a palette is resolved for a terminal of a given depth, then it passes through
 `quantizePalette(base, depth)`: `truecolor` is identity, `256` maps every hex to the xterm 6×6×6
-cube, `16` maps every hex to the nearest ANSI-16 color — and the result is always a complete
-`Palette` with the same semantic-token keys, only the hex values changing.
+cube, `16` maps every hex into the ANSI-16 set — nearest-color for the semantic roles, and BY
+INDEX for the `terminalAnsi*` role family (each role pins to its own standard ANSI slot) — and
+the result is always a complete `Palette` with the same semantic-token keys, only the hex values
+changing.
 
 **Scope:** `ThemePalettes.quantizePalette` and the `Theme.palette` getter that calls it. Every
 color a consumer reads has already been quantized to the active `colorDepth`.
@@ -132,25 +140,34 @@ color a consumer reads has already been quantized to the active `colorDepth`.
 **Mechanism:** `quantizePalette` clones the base and rewrites only string fields starting with
 `#`; the token set is preserved because it copies the object and mutates values in place, so no
 key is dropped and no non-`#` field is touched. `256` and `16` map into fixed lookup tables
-(`cube`, `ANSI16`), so the emitted color is always one the terminal can render.
+(`cube`, `ANSI16`), so the emitted color is always one the terminal can render. The
+`terminalAnsi*` roles are INDEXED appearance — the role's identity is an ANSI slot — so at the
+`16` rung each pins to `STANDARD_ANSI_16_HEX[index]` instead of nearest-RGB: nearest-RGB
+collapses Tokyo Night's mid-brightness pastels into one silver (`#c0c0c0`), a monochrome
+terminal, while pinning renders exactly what a real 16-color terminal shows for SGR 0–15. The
+pinned values are still inside the ANSI-16 set, so the depth-safety claim is unchanged.
 
 **Generates:** Depth-safe rendering (a 16-color terminal never receives a truecolor hex); a
-single quantization chokepoint instead of per-consumer downsampling.
+single quantization chokepoint instead of per-consumer downsampling; a themed terminal whose
+16-tier degrade is the standard ANSI table (zero regression at that tier).
 
 **Evidence:** `src/modules/theme/ThemePalettes.ts` (`$quantizePalette`, `to256Hex`, `to16Hex`,
-`ANSI16`, `cube`); `truecolor quantization is identity`, `16-color quantization maps every color
-into the ANSI-16 set`, and `256 quantization keeps hex shape` in
-`src/modules/theme/__tests__/theme.test.ts`.
+`STANDARD_ANSI_16_HEX`, `ANSI16`, `cube`); `truecolor quantization is identity`, `16-color
+quantization maps every color into the ANSI-16 set`, and `256 quantization keeps hex shape` in
+`src/modules/theme/__tests__/theme.test.ts`; the tier tests (role pinning, 256 collision-freedom
+against the terminal background) in `src/modules/theme/__tests__/TerminalAnsiPalette.test.ts`.
 
 **Impossible if true:** A quantized palette missing a semantic key present in the source palette;
 a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex surviving into a
-`256`- or `16`-depth render.
+`256`- or `16`-depth render; a `terminalAnsi*` role that lands on a DIFFERENT slot's color at
+`16` depth (red rendering as silver).
 
-**Verification:** `bun test src/modules/theme -t "quantization"`
+**Verification:** `bun test src/modules/theme -t "quantization"` and
+`bun test src/modules/theme/__tests__/TerminalAnsiPalette.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### The glyph ladder degrades icons single-cell and legible
 
