@@ -21,7 +21,18 @@ else
   echo "CONVENTIONS WARN: bunx not found — skipping tsc (install bun so the gate can typecheck)"
 fi
 
-# 1) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
+# 1) FILE GRAMMAR: module behavior lives on the eponymous class/interface seam; types follow it;
+#    tests are colocated and complete. The AST checker owns the explicit legacy inventory while the
+#    big-bang conversion is in flight.
+bun_binary="$(command -v bun || echo "$HOME/.bun/bin/bun")"
+if ! "$bun_binary" scripts/check-file-grammar.ts >/tmp/conventions-gate-file-grammar.$$.log 2>&1; then
+  echo "CONVENTIONS FAIL: src/modules file grammar:"
+  cat /tmp/conventions-gate-file-grammar.$$.log
+  fail=1
+fi
+rm -f /tmp/conventions-gate-file-grammar.$$.log
+
+# 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding
 #    defaults/overlays need no allowlist).
@@ -32,7 +43,7 @@ if ! node scripts/check-exported-capabilities.mjs >/tmp/conventions-gate-exporte
 fi
 rm -f /tmp/conventions-gate-exported-capabilities.$$.log
 
-# 2) Naming: banned abbreviation identifiers (declarations only; word-bounded).
+# 3) Naming: banned abbreviation identifiers (declarations only; word-bounded).
 abbreviations=$(grep -rnE "\b(const|let|var) (ed|ws|gp|cl|pal|idx|opts|prev|cur|repo|msg|cmd|btn|len)\b *=" src/modules --include='*.ts' | grep -v "__tests__" || true)
 if [ -n "$abbreviations" ]; then
   echo "CONVENTIONS FAIL: abbreviated identifier declaration(s):"
@@ -40,7 +51,7 @@ if [ -n "$abbreviations" ]; then
   fail=1
 fi
 
-# 3) Keybindings: no inline chord conditionals outside the registry/defaults (key.name comparisons).
+# 4) Keybindings: no inline chord conditionals outside the registry/defaults (key.name comparisons).
 inline_chords=$(grep -rnE "key\.name === '[a-z0-9]+' && key\.(ctrl|super|option)" src/modules --include='*.ts' | grep -vE "keybindings/|__tests__" || true)
 if [ -n "$inline_chords" ]; then
   echo "CONVENTIONS FAIL: inline chord conditional(s) — bindings are registry data:"
@@ -48,7 +59,7 @@ if [ -n "$inline_chords" ]; then
   fail=1
 fi
 
-# 4) tsc piping (masks exit codes) in scripts.
+# 5) tsc piping (masks exit codes) in scripts.
 tsc_pipes=$(grep -rn "tsc --noEmit *|" scripts --include='*.sh' | grep -v "conventions-gate" || true)
 if [ -n "$tsc_pipes" ]; then
   echo "CONVENTIONS FAIL: tsc piped (exit code masked):"
@@ -56,7 +67,7 @@ if [ -n "$tsc_pipes" ]; then
   fail=1
 fi
 
-# 5) ATOMIC-BIND: a file exporting `namespace X { … Static($/Reactive($ }` MUST be named X.ts.
+# 6) ATOMIC-BIND: a file exporting `namespace X { … Static($/Reactive($ }` MUST be named X.ts.
 #    Makes convert-without-rename impossible — the incomplete conversion fails the gate.
 mismatch=""
 while IFS= read -r file; do
@@ -73,7 +84,7 @@ if [ -n "$mismatch" ]; then
   fail=1
 fi
 
-# 6) $-RAW-FORM: the old '...Implementation' backing-member suffix is banned (use $name).
+# 7) $-RAW-FORM: the old '...Implementation' backing-member suffix is banned (use $name).
 impl_suffix=$(grep -rnE "[A-Za-z0-9_]+Implementation\b" src/modules --include='*.ts' | grep -vE "\.test\.ts" || true)
 if [ -n "$impl_suffix" ]; then
   echo "CONVENTIONS FAIL: '...Implementation'-suffixed member(s) — the raw form is \$name:"
@@ -81,7 +92,7 @@ if [ -n "$impl_suffix" ]; then
   fail=1
 fi
 
-# 7) NO UNWIRED CAPABILITY: every namespace+Static/Reactive module must have a live caller outside its
+# 8) NO UNWIRED CAPABILITY: every namespace+Static/Reactive module must have a live caller outside its
 #    own file + test (the build-but-don't-wire disease — GitWatcher/DiffView). Delegated to its own
 #    script (allowlist + justification live there). This is the generator-level fix: a capability whose
 #    only reference is its isolated test now HARD-BLOCKS the gate.
@@ -92,7 +103,7 @@ if ! bash "$(dirname "$0")/check-unwired-capabilities.sh" >/tmp/conventions-gate
 fi
 rm -f /tmp/conventions-gate-unwired.$$.log
 
-# 8) SETTINGS APPLIED-EFFECT META-GATE: every Settings schema field MUST have an applied-effect drive in
+# 9) SETTINGS APPLIED-EFFECT META-GATE: every Settings schema field MUST have an applied-effect drive in
 #    smoke-settings-applied.sh (the cheap enumeration check — no app launches). A NEW setting without a
 #    driving test fails here. The full drive suite runs at the merge gate; this is its enforcing spine.
 if ! bash "$(dirname "$0")/smoke-settings-applied.sh" --meta >/tmp/conventions-gate-settings.$$.log 2>&1; then
@@ -102,7 +113,7 @@ if ! bash "$(dirname "$0")/smoke-settings-applied.sh" --meta >/tmp/conventions-g
 fi
 rm -f /tmp/conventions-gate-settings.$$.log
 
-# 9) MAP-COHERENCE: records are territory — the governance contract + the derived lattice must stay
+# 10) MAP-COHERENCE: records are territory — the governance contract + the derived lattice must stay
 #    aligned with the actual invariant records. Fails if a governed module lacks its contract (shrinking
 #    allowlist) or a lattice link/dependency-map name doesn't resolve to a real ### record. Cheap
 #    (no launches), mechanical — same tier as the unwired-capability check.
