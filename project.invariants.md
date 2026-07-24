@@ -288,17 +288,26 @@ through tracked accessors, subscribing to exactly the version refs it touches. M
 `ScreenBuffer`; hot/warm/cold/disposed tiers; lazy LSP; `evict*` paths.
 
 **Evidence:** `../ivue/docs_v2/guide/flyweight.md` + the flyweight-grid model (4.7 bytes/cell at
-20M cells, +0.3 MB after 30 viewports); the flyweight editor/syntax code lands M2.
+20M cells, +0.3 MB after 30 viewports); the flyweight editor/syntax code lands M2. 2026-07-24
+three-instrument latency investigation: full uncached keypress→byte-flush path measured 2.97 ms
+(156 production files, 120×40 viewport), +1.2 ms across the entire 07-22→07-24 feature era —
+the bound held through the heaviest landing window in the repo's history. This invariant is
+what keeps *Derived state is a plain getter unless caching is proven* affordable: uncached
+derivation is cheap exactly while every hot-path read is viewport-bounded; held tight, the
+no-computed paradigm holds indefinitely against data scale, leaving only per-feature additive
+cost, which the gate step watches.
 
 **Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold
 workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size.
 
 **Verification:** A benchmark opening a 100k-line file / 20M-cell grid asserting bytes/visible
-scale and observed-effect count O(viewport); idle CPU ~0 after activity.
+scale and observed-effect count O(viewport); idle CPU ~0 after activity. Continuous (time axis):
+the per-gate byte-flush latency step (campaign wave 1) — a spike names the commit that broke the
+bound.
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### Derived state is a plain getter unless caching is proven
 
@@ -320,16 +329,24 @@ thin computeds (logic in a method, arrow always).
 that a plain getter delivers free.
 
 **Evidence:** `../ivue/docs_v2/guide/computed-watch.md`; `scripts/ivue-smoke.ts` (the plain
-getter `double` tracks reactively). Enforced from M1.
+getter `double` tracks reactively). Enforced from M1. 2026-07-24: the paradigm's CPU cost was
+measured at the byte boundary — the entire recompute-everything tax on the hottest path (coarse
+frame effect, all renderers, all getter chains, dependency re-tracking) is ~3 ms total at
+current scale, while the memory-side saving stands; the trade is measured, not assumed. Holds
+because reads are bounded — see *Cost tracks the actively observed set*: the two invariants are
+load-bearing together.
 
 **Impossible if true:** A `computed()` in the codebase with no caching/identity justification.
 
 **Verification:** A review/lint pass counting `computed()` uses, each with a one-line
-justification; the architecture-compliance audit.
+justification; the architecture-compliance audit. Continuous (time axis): the per-gate
+byte-flush latency step — if getter accumulation ever makes recomputation expensive, a specific
+gate goes red and `computed()` is applied surgically to the profiled-hot derivation, per this
+invariant's own escape clause.
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### Imported dependencies are read late
 
