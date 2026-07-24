@@ -54,6 +54,18 @@ function $resolve(requested: AgentProvider | undefined): ResolvedProvider {
   return { engine: 'echo', binaryPath: '', fellBack: askedConcrete };
 }
 
+/** The human display label for an engine — the ONE mapping the pane title, the transcript's assistant
+ *  role rows, and the empty-transcript greeting all read (the mode line shows the raw engine id). A
+ *  hard-coded 'Claude' anywhere above this seam is the frozen-label bug this registry exists to kill:
+ *  the UI claimed Claude while codex (or the echo) was actually running. Unknown ids (a forced
+ *  INVAR_AGENT_ENGINES entry) fall back to a capitalized form so the label stays honest, never blank. */
+function $displayLabel(engine: ResolvedEngine | string): string {
+  if (engine === 'claude') return 'Claude';
+  if (engine === 'codex') return 'Codex';
+  if (engine === 'echo') return 'Echo';
+  return engine.length > 0 ? engine.charAt(0).toUpperCase() + engine.slice(1) : 'Agent';
+}
+
 /** The next engine after `current` in the available cycle, or null when there is nothing to switch to. */
 function $nextEngine(current: ResolvedEngine): ResolvedEngine | null {
   const available = $availableEngines();
@@ -66,6 +78,7 @@ function $nextEngine(current: ResolvedEngine): ResolvedEngine | null {
 class $AgentProviderRegistry {
   static availableEngines = $availableEngines;
   static resolve = $resolve;
+  static displayLabel = $displayLabel;
   static nextEngine = $nextEngine;
 }
 

@@ -7,6 +7,7 @@
 //
 // invariant: An agent session is a structured event stream, not a screen (src/modules/agent/agent.invariants.md)
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
+import type { ResolvedEngine } from './AgentProviderRegistry';
 
 /** The user's answer to a pending permission request. 'always-allow' additionally adds the tool to the
  *  backend's session-scoped auto-allow set (future calls for that tool skip the prompt). */
@@ -52,10 +53,16 @@ export type PermissionRequestStatus = 'pending' | 'allowed' | 'denied';
  *  in the transcript. */
 export type TranscriptEntry =
   | { readonly role: 'user'; readonly text: string }
-  | { readonly role: 'assistant'; text: string }
+  /** `engine` is the provider that PRODUCED this turn, stamped when the entry opens — after an engine
+   *  switch, new turns carry the new engine while history keeps the label of the engine that wrote it
+   *  (the transcript is the source of truth). Absent on entries predating the stamp: those were all
+   *  produced when only Claude ran, so projections default them to 'claude'. */
+  | { readonly role: 'assistant'; text: string; readonly engine?: ResolvedEngine }
   | { readonly role: 'tool-use'; readonly id: string; readonly name: string; readonly input: unknown }
   | { readonly role: 'tool-result'; readonly id: string; readonly result: string; readonly isError: boolean }
-  | { readonly role: 'permission-request'; readonly id: string; readonly toolName: string; readonly input: unknown; status: PermissionRequestStatus }
+  /** `engine` = the provider asking (a pending prompt is always the ACTIVE engine — swaps are refused
+   *  while a turn is busy); same historical default as assistant entries. */
+  | { readonly role: 'permission-request'; readonly id: string; readonly toolName: string; readonly input: unknown; status: PermissionRequestStatus; readonly engine?: ResolvedEngine }
   /** A session-level NOTE the pane injects (not from a backend) — e.g. an engine switch banner. Renders
    *  as a dim, centered aside; carries no agent semantics. */
   | { readonly role: 'system'; readonly text: string }

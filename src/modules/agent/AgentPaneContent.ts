@@ -22,6 +22,7 @@ import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionMode
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
 import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';
+import { AgentProviderRegistry } from './AgentProviderRegistry';
 import { AgentTranscriptProjection, type ProjectedLine } from './AgentTranscriptProjection';
 import { AgentComposer } from './AgentComposer';
 import { AgentSpinner } from './AgentSpinner';
@@ -172,7 +173,12 @@ class $AgentPaneContent implements PaneContent {
     return this.session;
   }
   get title(): string {
-    return this.session.busy ? 'Claude (working…)' : 'Claude';
+    // LIVE identity: the registry's display label for the ACTIVE engine — the engine port when bound
+    // (the same live resolution the mode-line segment reads, so the two can never disagree), else the
+    // session's own active engine. A hard-coded 'Claude' here was the frozen-label bug: the title
+    // claimed Claude regardless of the engine actually answering.
+    const label = AgentProviderRegistry.Class.displayLabel(this.enginePort?.provider ?? this.session.activeEngine);
+    return this.session.busy ? `${label} (working…)` : label;
   }
   get renderRevision(): Ref<number> {
     return this.revision;
@@ -272,6 +278,8 @@ class $AgentPaneContent implements PaneContent {
       context.glyphLevel,
       textWidth,
       this.expandedIndices,
+      // The greeting names the ACTIVE provider (same live source as the title + mode line).
+      AgentProviderRegistry.Class.displayLabel(this.enginePort?.provider ?? this.session.activeEngine),
     );
     this.lastBodyHeight = bodyHeight;
     this.lastTotalLines = lines.length;
