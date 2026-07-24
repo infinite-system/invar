@@ -230,6 +230,11 @@ real terminal, not the harness.
 2. **If blocked** → codex/fable before deferring (see above).
 3. **Only once drained** → invent + run ONE creative parity experiment on an `experiment-*`
    branch cut from latest main, gated. **NEVER merge experiments to main.**
+   **INVENTORY THROTTLE (2026-07-24):** if **2 or more** gate-green experiments already sit parked
+   awaiting the user's adoption call, SKIP invention this fire and hold — report the shelf instead.
+   The step's generator is user value, not production count: unadopted inventory only accrues
+   rebase drift and review burden, and the adoption signal (which experiments the user actually
+   wants) should steer what gets invented next. Resume inventing once the shelf drops below 2.
 4. Append lessons to `project.conductor.md` (repo root); AND when a lesson generalizes into durable
    doctrine, **refine THIS skill** (`.claude/skills/conductor/SKILL.md`) and commit it — the loop is
    explicitly allowed to improve its own method (IBR self-application), including the verbatim cron

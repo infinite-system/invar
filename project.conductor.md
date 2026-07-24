@@ -621,3 +621,11 @@ Post-goal verify→review→refine cycle, run autonomously. Lessons:
   the pre-commit hook, overriding every fixture's explicit identity. Class fix (hermetic boundary
   unsets the family + self-hermetic scratch commits) landed on main via a surgical split — proven by
   its own hook-invoked gate run. Parked at experiment/transcript-search-v1 for adoption.
+
+### Part 11 addendum — the inventory throttle (2026-07-24, 09:16)
+After three consecutive hourly fires each produced a gate-green experiment (transcript-search,
+file-references, terminal-ansi — all parked awaiting adoption), the fourth fire's honest move was
+NOT a fourth experiment. The loop's letter says "invent one"; its generator is user value. Unadopted
+inventory accrues rebase drift and review burden, and adoption feedback should steer invention.
+Encoded in the skill as the INVENTORY THROTTLE: ≥2 parked unadopted experiments → skip invention,
+report the shelf. A loop that cannot decline its own default is a metronome, not a conductor.
