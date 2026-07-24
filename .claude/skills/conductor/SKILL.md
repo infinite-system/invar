@@ -70,6 +70,25 @@ Prime by agent type:
 touching no `src/`) does not need the full prime — but when in doubt, prime. State in the spec
 which case it is, so the agent isn't needlessly loaded or dangerously under-briefed.
 
+**codex model tiers (2026-07-24).** The default dispatch is the config default (`gpt-5.6-sol`,
+`model_reasoning_effort = "high"` in `~/.codex/config.toml`) — inherit it by passing no flags.
+A second, SEPARATELY-BUDGETED weekly pool exists: **`gpt-5.3-codex-spark`** (dispatch with
+`--model gpt-5.3-codex-spark`). Route by the nature of the work, not its size:
+
+- **Spark (lighter tier) — mechanical, rulebook-driven work**: 1:1 ports/translations against a
+  template, mass convention conversions (grammar-sweep-style), scaffold/fixture generation,
+  rename/move waves. Rationale: a weaker model's failure mode is plausible-but-wrong output, and
+  mechanical work is exactly where the AST checkers + tests + driven smokes + gate refuse wrong
+  output mechanically — model quality is the second line of defense there, not the first. Using
+  Spark preserves the sol budget for judgment work.
+- **sol high (default) — anything requiring judgment**: seam-semantics changes, shared-driver /
+  shared-generator edits, adjudications, investigations/bisects, zero-behavior-change refactors
+  with subtle semantics (`this`-capture, reactivity), and any brief containing "diagnose".
+- **Calibrate empirically**: when a big mechanical campaign launches, send one wave to Spark
+  with the identical brief, judge on delivery as always, compare its gate-rejection/rework rate
+  against a sol wave, and route the remainder accordingly. If Spark's rejection rate rises,
+  demote the task class back to sol — the tier table is provisional, the gate verdict is not.
+
 ## When BLOCKED — delegate before deferring
 If a task is stuck (an agent can't crack it, the fix is ambiguous, or it's a genuinely hard
 problem), **do NOT default to escalating to the user.** Spin up a **codex or fable** subagent
