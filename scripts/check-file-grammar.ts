@@ -2,7 +2,10 @@
 
 // The file grammar makes behavior structurally reachable through the eponymous class seam:
 // imports → class/interface seam → exported types → end of file. This checker deliberately uses
-// TypeScript's source-ordered statement list rather than text patterns.
+// TypeScript's source-ordered statement list rather than text patterns. CONVERTED_MODULES is the
+// phase-2 ratchet: each conversion wave appends its modules in the same commit that converts them.
+// Listed modules fail on every violation and can never regress; unlisted modules remain report-only
+// until their wave, with their per-module violation counts printed on every run.
 // invariant: Public classes use the namespace pattern (project.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
 
@@ -42,6 +45,8 @@ export interface FileGrammarInput {
 export interface FileGrammarInspectionOptions {
   testFileExists?: (projectRelativeFileName: string) => boolean;
 }
+
+export const CONVERTED_MODULES = new Set<string>(['syntax']);
 
 const contractInterfaceFiles = new Map<string, string>([
   [
@@ -761,14 +766,41 @@ function filesForArguments(
   return [...fileNames].sort();
 }
 
-function printViolations(violations: readonly FileGrammarViolation[]): void {
+interface FileGrammarEnforcementResult {
+  enforcedViolations: FileGrammarViolation[];
+  reportedViolations: FileGrammarViolation[];
+}
+
+function enforceConvertedModules(
+  violations: readonly FileGrammarViolation[],
+): FileGrammarEnforcementResult {
+  const enforcedViolations: FileGrammarViolation[] = [];
+  const reportedViolations: FileGrammarViolation[] = [];
+  for (const violation of violations) {
+    const violationCollection = CONVERTED_MODULES.has(
+      moduleNameFor(violation.fileName),
+    )
+      ? enforcedViolations
+      : reportedViolations;
+    violationCollection.push(violation);
+  }
+  return { enforcedViolations, reportedViolations };
+}
+
+function printEnforcedViolations(
+  violations: readonly FileGrammarViolation[],
+): void {
   for (const violation of violations) {
     process.stderr.write(
       `${violation.fileName}:${violation.line}:${violation.column}: ` +
         `[${violation.rule}] ${violation.message}\n`,
     );
   }
+}
 
+function printViolationCountTable(
+  violations: readonly FileGrammarViolation[],
+): void {
   const violationCountsByModule = new Map<string, number>();
   for (const violation of violations) {
     const moduleName = moduleNameFor(violation.fileName);
@@ -777,12 +809,20 @@ function printViolations(violations: readonly FileGrammarViolation[]): void {
       (violationCountsByModule.get(moduleName) ?? 0) + 1,
     );
   }
-  process.stderr.write('\nfile-grammar violations by module:\n');
+  process.stdout.write('file-grammar violations by module:\n');
+  process.stdout.write('module\tenforcement\tviolations\n');
   for (const [moduleName, violationCount] of [
     ...violationCountsByModule,
   ].sort()) {
-    process.stderr.write(`${moduleName}\t${violationCount}\n`);
+    const enforcement = CONVERTED_MODULES.has(moduleName)
+      ? 'enforced'
+      : 'reported';
+    process.stdout.write(
+      `${moduleName}\t${enforcement}\t${violationCount}\n`,
+    );
   }
+  if (violationCountsByModule.size === 0)
+    process.stdout.write('(none)\t-\t0\n');
 }
 
 if (import.meta.main) {
@@ -795,17 +835,24 @@ if (import.meta.main) {
   const violations = inspectFileGrammar(files, {
     testFileExists: (fileName) => existsSync(resolve(projectRoot, fileName)),
   });
+  const enforcementResult = enforceConvertedModules(violations);
 
-  if (violations.length > 0) {
-    printViolations(violations);
+  printViolationCountTable(violations);
+
+  if (enforcementResult.enforcedViolations.length > 0) {
+    printEnforcedViolations(enforcementResult.enforcedViolations);
     process.stderr.write(
-      `\ncheck-file-grammar: ${violations.length} violation(s)\n`,
+      `check-file-grammar: ${enforcementResult.enforcedViolations.length} ` +
+        `enforced violation(s); ${enforcementResult.reportedViolations.length} ` +
+        'legacy violation(s) reported\n',
     );
     process.exit(1);
   }
 
   process.stdout.write(
     `check-file-grammar: PASS (${files.length} TypeScript file(s), ` +
+      `${enforcementResult.reportedViolations.length} legacy violation(s) reported, ` +
+      `${CONVERTED_MODULES.size} converted module(s) enforced, ` +
       `${colocatedTestPairExemptions.size} explicit test-pair exemption(s))\n`,
   );
 }

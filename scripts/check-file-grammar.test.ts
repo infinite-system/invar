@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import {
   inspectFileGrammar,
   type FileGrammarInput,
   type FileGrammarRule,
@@ -28,6 +36,49 @@ function expectRule(
 ): void {
   const violations = inspectFileGrammar(files);
   expect(violations.map((violation) => violation.rule)).toContain(expectedRule);
+}
+
+function runCheckerFixture(moduleName: string): {
+  exitCode: number;
+  combinedOutput: string;
+} {
+  const fixtureRoot = mkdtempSync(
+    resolve(tmpdir(), 'invar-file-grammar-ratchet-'),
+  );
+  const fixtureModuleDirectory = resolve(
+    fixtureRoot,
+    'src',
+    'modules',
+    moduleName,
+  );
+  mkdirSync(fixtureModuleDirectory, { recursive: true });
+  writeFileSync(
+    resolve(fixtureModuleDirectory, 'Example.ts'),
+    `${validClassFile('Example')}\nconst detachedData = 1;\n`,
+  );
+  writeFileSync(
+    resolve(fixtureModuleDirectory, 'Example.test.ts'),
+    `import { test } from 'bun:test';\ntest('example', () => {});\n`,
+  );
+
+  try {
+    const checkerProcess = Bun.spawnSync({
+      cmd: [
+        process.execPath,
+        resolve(import.meta.dir, 'check-file-grammar.ts'),
+      ],
+      cwd: fixtureRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    return {
+      exitCode: checkerProcess.exitCode,
+      combinedOutput:
+        checkerProcess.stdout.toString() + checkerProcess.stderr.toString(),
+    };
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 }
 
 describe('file grammar failure paths', () => {
@@ -246,4 +297,24 @@ export type AgentBackendFactory = () => AgentBackend;
     },
   ]);
   expect(violations).toEqual([]);
+});
+
+describe('converted-module enforcement ratchet', () => {
+  test('a violation in the converted syntax module fails', () => {
+    const checkerResult = runCheckerFixture('syntax');
+
+    expect(checkerResult.exitCode).toBe(1);
+    expect(checkerResult.combinedOutput).toContain('syntax\tenforced\t1');
+    expect(checkerResult.combinedOutput).toContain(
+      '[module-variable] module-level data or behavior must live on the eponymous class',
+    );
+  });
+
+  test('the same violation in an unconverted module is reported without failing', () => {
+    const checkerResult = runCheckerFixture('editor');
+
+    expect(checkerResult.exitCode).toBe(0);
+    expect(checkerResult.combinedOutput).toContain('editor\treported\t1');
+    expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
+  });
 });

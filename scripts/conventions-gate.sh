@@ -22,15 +22,13 @@ else
 fi
 
 # 1) FILE GRAMMAR: module behavior lives on the eponymous class/interface seam; types follow it;
-#    tests are colocated and complete. The AST checker owns the explicit legacy inventory while the
-#    big-bang conversion is in flight.
+#    tests are colocated and complete. The checker's converted-module set is the ratchet: listed
+#    modules block on violations, while unlisted modules print the phase-2 count map without blocking.
 bun_binary="$(command -v bun || echo "$HOME/.bun/bin/bun")"
-if ! "$bun_binary" scripts/check-file-grammar.ts >/tmp/conventions-gate-file-grammar.$$.log 2>&1; then
+if ! "$bun_binary" scripts/check-file-grammar.ts; then
   echo "CONVENTIONS FAIL: src/modules file grammar:"
-  cat /tmp/conventions-gate-file-grammar.$$.log
   fail=1
 fi
-rm -f /tmp/conventions-gate-file-grammar.$$.log
 
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
