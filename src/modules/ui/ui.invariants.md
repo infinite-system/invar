@@ -670,9 +670,9 @@ changes vertical + horizontal, git commit log vertical + horizontal, and any fut
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
-fits. `RootView.applyBarGeometry` applies the configured cross-axis cell count; horizontal bars keep
-OpenTUI's native drag geometry and repaint with half-height `▂`/`▄` glyphs so N rows carry the same
-visual ink as N vertical columns on a roughly 2:1 terminal cell.
+fits. `ScrollbarSync.applyBarGeometry` applies the configured cross-axis cell count; every bar is a
+`SolidThumbScrollBar` (both axes render plain at the settings thickness, keeping OpenTUI's native
+drag geometry).
 
 **Generates:** a bar on every overflowing axis; aligned tracks across split positions; reachable
 clipped content; grabbable thumbs; no phantom bars; equal visual thickness across axes.
@@ -689,7 +689,45 @@ same configured vertical thumb; two bars deriving placement from different math.
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
+
+### A scrollbar thumb is painted as background fill, never block glyphs
+
+**Invariant:** Every scrollbar thumb (and track) renders as BACKGROUND colour on blank cells — no
+cell of a scrollbar ever carries a block-element glyph (U+2580–U+259F) — and the painted thumb rect
+is the same rect the slider's mouse hit-test uses.
+
+**Scope:** every scrollbar in the app: the eight pane bars built by `ScrollbarSync`, both
+`ScrollableTextViewport` bars (hover card, agent transcript, markdown preview), and the two
+`DiffView` bars.
+
+**Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
+(`src/modules/ui/SolidThumbScrollBar.ts`), which repaints OpenTUI's slider cells with two `fillRect`
+calls (track, then the slider's own `getThumbRect()` in the thumb colour). Foreground block glyphs
+(`█ ▀ ▄`) are rasterized with inter-line gaps by macOS Terminal.app — a glyph-built thumb shows dark
+horizontal lines through it — while a background fill covers every pixel of the cell, so the artifact
+is impossible by construction. Painting `getThumbRect()` (not re-derived math) keeps the renderer and
+the hit-test on one geometry model. The same seam re-asserts `slider.viewPortSize` after each
+scroll-state write, healing OpenTUI's stale-max clamp (which otherwise pins the viewport at its 0.01
+floor and collapses every thumb to a half-cell).
+
+**Generates:** thumbs that render solid in every terminal (no glyph-tiling artifacts); proportional
+thumb length; drag positions that agree with the drawn thumb.
+
+**Evidence:** driven FrameProbe assertions in `scripts/smoke-scrollbars.sh`: zero block-element
+glyphs anywhere in the frame, the tree bar column all-blank with a contiguous multi-cell bg-fill
+thumb run, and the run moving on scroll. Live drag verified against the same rect (drag 6 rows moved
+scrollTop by the reported-scale prediction exactly).
+
+**Impossible if true:** a thumb showing horizontal seams in Terminal.app; a scrollbar cell holding
+`█`/`▀`/`▄`; a half-cell thumb on an overflowing pane; a drag grab-point disagreeing with the drawn
+thumb.
+
+**Verification:** `bash scripts/smoke-scrollbars.sh` (wired into merge-gate).
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
 
 ### Selection is item-anchored click-set keyboard-moved and stays
 

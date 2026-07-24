@@ -50,16 +50,42 @@ send_option_wheel_right() {
   sleep 0.8
   "$harness" settle "$session_name" 10 >/dev/null 2>&1
 }
+# Bars render as BACKGROUND FILL on blank cells (SolidThumbScrollBar — never block glyphs), so the
+# detectors read the bg lane: a horizontal bar row is an all-blank sidebar row carrying a contiguous
+# minority-bg thumb run; a vertical bar column is a sidebar column whose blank cells carry a
+# non-pane-fill bg down the track. The pane fill is derived from the frame (dominant interior bg).
 horizontal_bar_row_count() {
   python3 - "$1" <<'PY'
 import json
 import sys
+from collections import Counter
 frame = json.load(open(sys.argv[1]))
 sidebar_end = 27
+fill_counter = Counter()
+for row in frame['rows']:
+    for cell_bg in row.get('bg', [])[1:sidebar_end]:
+        if cell_bg:
+            fill_counter[cell_bg] += 1
+pane_fill = fill_counter.most_common(1)[0][0] if fill_counter else ''
 count = 0
 for row in frame['rows']:
-    text = row.get('text', '')[1:sidebar_end]
-    if sum(character in '█▌▐' for character in text) >= 8:
+    full_text = row.get('text', '')
+    if not full_text.startswith('│'):
+        continue  # only pane-interior rows (inside the sidebar box border) can hold a bar
+    text = full_text[1:sidebar_end]
+    backgrounds = row.get('bg', [])[1:sidebar_end]
+    if text.strip():
+        continue
+    longest_run = 0
+    current_run = 0
+    for cell_bg in backgrounds:
+        if cell_bg and cell_bg != pane_fill:
+            current_run += 1
+            longest_run = max(longest_run, current_run)
+        else:
+            current_run = 0
+    # A thumb run: at least 4 cells, but NOT the whole row (a full-width run is a chrome/selection row).
+    if 4 <= longest_run < len(backgrounds):
         count += 1
 print(count)
 PY
@@ -68,26 +94,108 @@ vertical_bar_column_count() {
   python3 - "$1" <<'PY'
 import json
 import sys
+from collections import Counter
 frame = json.load(open(sys.argv[1]))
 sidebar_end = 27
-horizontal_rows = set()
-for row_index, row in enumerate(frame['rows']):
-    text = row.get('text', '')[1:sidebar_end]
-    if sum(character in '█▌▐' for character in text) >= 8:
-        horizontal_rows.add(row_index)
+fill_counter = Counter()
+for row in frame['rows']:
+    for cell_bg in row.get('bg', [])[1:sidebar_end]:
+        if cell_bg:
+            fill_counter[cell_bg] += 1
+pane_fill = fill_counter.most_common(1)[0][0] if fill_counter else ''
 columns = 0
 for column in range(1, sidebar_end):
     painted_rows = 0
-    for row_index, row in enumerate(frame['rows']):
-        if row_index in horizontal_rows:
-            continue
+    for row in frame['rows']:
         text = row.get('text', '')
-        if column < len(text) and text[column] in '█▀▄▌▐':
+        if not text.startswith('│'):
+            continue
+        backgrounds = row.get('bg', [])
+        glyph = text[column] if column < len(text) else ''
+        cell_bg = backgrounds[column] if column < len(backgrounds) else ''
+        if glyph == ' ' and cell_bg and cell_bg != pane_fill:
             painted_rows += 1
-    if painted_rows >= 1:
+    # A vertical track paints most of the pane height in a non-fill bg (track + thumb colours).
+    if painted_rows >= 10:
         columns += 1
 print(columns)
 PY
+}
+# The SOLID-THUMB contract (Terminal.app glyph-tiling fix): no block-element glyph anywhere in the
+# frame, and the tree vertical bar column is all-blank with a contiguous multi-cell thumb bg run that
+# is a proper subset of the track. Prints "OK <thumb_start> <thumb_length>" or "FAIL <reason>".
+solid_thumb_check() {
+  python3 - "$1" <<'PY'
+import json
+import sys
+from collections import Counter
+frame = json.load(open(sys.argv[1]))
+sidebar_end = 27
+for row in frame['rows']:
+    for glyph in row.get('text', ''):
+        if 0x2580 <= ord(glyph) <= 0x259F:
+            print('FAIL block-element glyph U+%04X present' % ord(glyph))
+            raise SystemExit(0)
+fill_counter = Counter()
+for row in frame['rows']:
+    for cell_bg in row.get('bg', [])[1:sidebar_end]:
+        if cell_bg:
+            fill_counter[cell_bg] += 1
+pane_fill = fill_counter.most_common(1)[0][0] if fill_counter else ''
+best_column = -1
+best_painted = 0
+for column in range(1, sidebar_end):
+    painted = 0
+    for row in frame['rows']:
+        text = row.get('text', '')
+        if not text.startswith('│'):
+            continue
+        backgrounds = row.get('bg', [])
+        glyph = text[column] if column < len(text) else ''
+        cell_bg = backgrounds[column] if column < len(backgrounds) else ''
+        if glyph == ' ' and cell_bg and cell_bg != pane_fill:
+            painted += 1
+    if painted > best_painted:
+        best_painted, best_column = painted, column
+if best_column < 0 or best_painted < 10:
+    print('FAIL no vertical bar column found')
+    raise SystemExit(0)
+track_cells = []
+for row_index, row in enumerate(frame['rows']):
+    text = row.get('text', '')
+    if not text.startswith('│'):
+        continue
+    backgrounds = row.get('bg', [])
+    glyph = text[best_column] if best_column < len(text) else ''
+    cell_bg = backgrounds[best_column] if best_column < len(backgrounds) else ''
+    if glyph == ' ' and cell_bg and cell_bg != pane_fill:
+        track_cells.append((row_index, cell_bg))
+color_counter = Counter(cell_bg for _row_index, cell_bg in track_cells)
+if len(color_counter) != 2:
+    print('FAIL expected exactly track+thumb colours in the bar column, saw %d' % len(color_counter))
+    raise SystemExit(0)
+thumb_color = color_counter.most_common()[-1][0]
+thumb_rows = [row_index for row_index, cell_bg in track_cells if cell_bg == thumb_color]
+if len(thumb_rows) < 2:
+    print('FAIL thumb run is %d cell(s) — not multi-cell/proportional' % len(thumb_rows))
+    raise SystemExit(0)
+if len(thumb_rows) >= len(track_cells):
+    print('FAIL thumb fills the whole track')
+    raise SystemExit(0)
+if thumb_rows[-1] - thumb_rows[0] + 1 != len(thumb_rows):
+    print('FAIL thumb run is not contiguous')
+    raise SystemExit(0)
+print('OK %d %d' % (thumb_rows[0], len(thumb_rows)))
+PY
+}
+send_wheel_down() {
+  local session_name="$1" pointer_column="$2" pointer_row="$3" repeat_count="$4"
+  for repeat_index in $(seq 1 "$repeat_count"); do
+    tmux send-keys -t "$session_name" -l "$(printf '\033[<65;%d;%dM' "$pointer_column" "$pointer_row")"
+    sleep 0.025
+  done
+  sleep 0.8
+  "$harness" settle "$session_name" 10 >/dev/null 2>&1
 }
 
 echo "== build narrow overflowing repository fixture =="
@@ -130,6 +238,29 @@ if [ "$tree_horizontal_rows" = "$tree_vertical_columns" ]; then
 else
   fail "axis-adjusted thickness differs ($tree_horizontal_rows horizontal rows vs $tree_vertical_columns vertical columns)"
 fi
+
+echo "== solid thumb: bg fill on blank cells, no block glyphs, moves with scroll =="
+solid_thumb_before="$(solid_thumb_check "$overflow_frame")"
+case "$solid_thumb_before" in
+  OK*) pass "thumb is a contiguous multi-cell bg-fill run, zero block glyphs (start+length: ${solid_thumb_before#OK })";;
+  *) fail "solid-thumb contract: $solid_thumb_before";;
+esac
+send_wheel_down "$overflow_session" 10 10 8
+solid_thumb_after="$(solid_thumb_check "$overflow_frame")"
+case "$solid_thumb_after" in
+  OK*) pass "thumb stays solid while scrolled (start+length: ${solid_thumb_after#OK })";;
+  *) fail "solid-thumb contract after scroll: $solid_thumb_after";;
+esac
+thumb_start_before="$(echo "$solid_thumb_before" | awk '{print $2}')"
+thumb_start_after="$(echo "$solid_thumb_after" | awk '{print $2}')"
+if [ -n "$thumb_start_before" ] && [ -n "$thumb_start_after" ] && [ "$thumb_start_after" -gt "$thumb_start_before" ] 2>/dev/null; then
+  pass "wheel-down moves the bg-fill thumb down the track ($thumb_start_before -> $thumb_start_after)"
+else
+  fail "thumb did not move down on wheel-down ($thumb_start_before -> $thumb_start_after)"
+fi
+# Return the tree to the top so the clipped-tail assertions below see the original window.
+for wheel_up_index in $(seq 1 40); do tmux send-keys -t "$overflow_session" -l "$(printf '\033[<64;10;10M')"; sleep 0.02; done
+sleep 0.8; "$harness" settle "$overflow_session" 10 >/dev/null 2>&1
 if frame_contains "$overflow_frame" 'CHANGES-END-MARKER'; then fail "tree tail was not clipped before scrolling"; else pass "tree tail starts clipped"; fi
 send_option_wheel_right "$overflow_session" 10 5 30
 if frame_contains "$overflow_frame" 'CHANGES-END-MARKER'; then pass "Option-wheel reveals the tree filename tail"; else fail "Option-wheel did not reveal the tree filename tail"; fi

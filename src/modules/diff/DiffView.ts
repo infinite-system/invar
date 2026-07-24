@@ -12,7 +12,6 @@
 
 import {
   BoxRenderable,
-  ScrollBarRenderable,
   StyledText,
   TextRenderable,
   bg,
@@ -22,6 +21,7 @@ import {
   type CliRenderer,
   type Renderable,
   type ScrollBarOptions,
+  type ScrollBarRenderable,
   type TextChunk,
   type TextOptions,
 } from '@opentui/core';
@@ -37,6 +37,7 @@ import type { Palette } from '../theme/ThemePalettes';
 import { ScrollbarGeometry, type BarGeometry } from '../ui/ScrollbarGeometry';
 import { SelectableText } from '../ui/SelectableText';
 import { SelectionDragBehavior, type SelectionDragPosition } from '../ui/SelectionDragBehavior';
+import { SolidThumbScrollBar } from '../ui/SolidThumbScrollBar';
 import {
   Momentum,
   AT_REST,
@@ -337,7 +338,7 @@ class $DiffView {
   }
 
   createScrollBarRenderable(options: ScrollBarOptions): ScrollBarRenderable {
-    return new ScrollBarRenderable(this.renderer, options);
+    return new SolidThumbScrollBar.Class(this.renderer, options);
   }
 
   createFindEditor(path: string, text: string): Editor.Instance {

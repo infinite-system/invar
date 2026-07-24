@@ -9,7 +9,7 @@
 //
 // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
-import { ScrollBarRenderable, type MouseEvent, type CliRenderer } from '@opentui/core';
+import { type ScrollBarRenderable, type MouseEvent, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import {
   Momentum,
@@ -21,6 +21,7 @@ import {
 } from '../system/Momentum';
 import { ScrollGesture } from './ScrollGesture';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
+import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import { SelectionDragBehavior, type SelectionDragPosition } from './SelectionDragBehavior';
 import type { Settings } from '../settings/Settings';
 
@@ -92,7 +93,7 @@ class $ScrollableTextViewport {
     const { renderer, id } = deps;
     this.followBottomActive = deps.followBottom === true;
     const scrollbarZIndex = deps.scrollbarZIndex ?? 0;
-    this.verticalBar = new ScrollBarRenderable(renderer, {
+    this.verticalBar = new SolidThumbScrollBar.Class(renderer, {
       id: `${id}-scrollbar-v`, orientation: 'vertical', position: 'absolute', width: 1,
       showArrows: false, visible: false, zIndex: scrollbarZIndex,
       onChange: (position) => {
@@ -100,7 +101,7 @@ class $ScrollableTextViewport {
         this.setScrollTop(Math.round(position * this.verticalBarScale));
       },
     });
-    this.horizontalBar = new ScrollBarRenderable(renderer, {
+    this.horizontalBar = new SolidThumbScrollBar.Class(renderer, {
       id: `${id}-scrollbar-h`, orientation: 'horizontal', position: 'absolute', height: 1,
       showArrows: false, visible: false, zIndex: scrollbarZIndex,
       onChange: (position) => {

@@ -7,9 +7,10 @@
 // invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
 // invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
 // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
-import { ScrollBarRenderable, type BoxRenderable, type CliRenderer, type ColorInput } from '@opentui/core';
+import { type ScrollBarRenderable, type BoxRenderable, type CliRenderer, type ColorInput } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
+import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { EditorWrap } from '../editor/EditorWrap';
 import { GitPaneRenderer, type GitPanelGeometry } from './GitPaneRenderer';
@@ -63,7 +64,7 @@ class $ScrollbarSync {
       onChange: (position: number) => void,
       trackOptions?: { backgroundColor: ColorInput; foregroundColor: ColorInput },
     ): ScrollBarRenderable =>
-      new ScrollBarRenderable(renderer, {
+      new SolidThumbScrollBar.Class(renderer, {
         id,
         orientation,
         position: 'absolute',
@@ -191,7 +192,7 @@ class $ScrollbarSync {
     this.barScales.set(bar, geometry.reportedToTrueScale);
     if (process.env.TUI_DEBUG_BARS === '1')
       Logging.Class.info(
-        `bar ${bar.id}: thickness=${thickness} trackLeft=${geometry.trackLeft} -> left=${bar.left} top=${bar.top} laidX=${bar.x} laidY=${bar.y} laidW=${bar.width} laidH=${bar.height}`,
+        `bar ${bar.id}: thickness=${thickness} trackLeft=${geometry.trackLeft} -> left=${bar.left} top=${bar.top} laidX=${bar.x} laidY=${bar.y} laidW=${bar.width} laidH=${bar.height} sliderViewPort=${bar.slider.viewPortSize} sliderMax=${bar.slider.max} sliderValue=${bar.slider.value} sliderH=${bar.slider.height}`,
       );
   }
 
