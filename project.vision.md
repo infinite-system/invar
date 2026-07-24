@@ -255,6 +255,16 @@ proven to hold order at fleet velocity. The capsule model makes it installable:
   it PROMOTES them into this pair. The console is the widest membrane profile, but a profile
   still: privileged, never ungoverned. Summonable from anywhere, gone on dismiss, replayable
   from its transcript — the fleet's cockpit as furniture.
+- **The workspace-set is the agent's body too.** Workspace lifecycle becomes a membrane-governed
+  instrument: an agent working five trees SPAWNS five workspace tabs, each hosting its own
+  subagent — the fan-out that runs invisibly in /tmp worktrees today becomes inhabitable; walk
+  into any tab, watch the resident agent, talk to it. Workspace PROFILES let an agent provision
+  the room before the work (db plugin open, layout set, policy applied). And the courtesy
+  protocol makes it a co-worker rather than a daemon: presence data (§7's attention, pointed at
+  workspaces) lets the main agent observe "these three are gate-green and you never visited
+  them" and PROPOSE closing — destructive-ish ops ask, with their evidence attached, and the
+  proposal itself is a transcript event. Environment management with the same physics as code:
+  governed, evidenced, replayable.
 - **The reduction:** Invar = ivue + IBR, and the capsule is IBR's generative principle applied
   to the meta-invariant itself — the kernel (contracts, gating, driven verification,
   provenance, fleet discipline) stops being a description of how this repo was built and
