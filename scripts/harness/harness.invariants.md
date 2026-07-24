@@ -20,19 +20,22 @@ stops emitting mode 2026 are outside the marker guarantee.
 test and an explicit replacement quiescence mechanism.
 
 **Mechanism:** `SynchronizedOutputQuiescence` scans raw chunks across chunk boundaries, tracks nesting,
-and advances `completedFrameCount` only for an end marker paired with an observed begin marker.
-`PtyTestDriver.awaitQuiescence` then flushes `TerminalEmulator`, so the snapshot includes every byte
-through that completed frame.
+and advances `completedFrameCount` only for an end marker paired with an observed begin marker. It
+records the end-marker byte-arrival timestamp before the PTY callback feeds `TerminalEmulator`.
+`PtyTestDriver.awaitQuiescence` separately flushes `TerminalEmulator`, so the snapshot includes every
+byte through that completed frame.
 
-**Generates:** deterministic frame waits without settle sleeps; chunk-boundary tests for the marker
-detector; a fail-loud timeout when no completed frame arrives.
+**Generates:** deterministic frame waits without settle sleeps; byte-arrival timestamps; marker-silence
+assertions; chunk-boundary tests for the marker detector; a fail-loud timeout when no completed frame
+arrives.
 
 **Evidence:** A raw PTY capture on 2026-07-24 recorded three matched mode-2026 frame pairs;
-`scripts/harness/SynchronizedOutputQuiescence.test.ts` preserves the observed marker shape and chunk
-boundary cases.
+`scripts/harness/SynchronizedOutputQuiescence.test.ts` preserves the observed marker shape, timestamp,
+silence, and chunk-boundary cases.
 
 **Impossible if true:** `awaitQuiescence` resolving in the middle of a synchronized frame; a marker
-split across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable.
+split across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable;
+a silence assertion passing after a complete frame arrived during its interval.
 
 **Verification:** `bun test scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
@@ -66,6 +69,42 @@ input or rendering hook inside Invar.
 **Verification:** `bun scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-selection-harness.ts && bun scripts/harness/smoke-scrollbars-harness.ts`
 
 **Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Latency measurements name their observation boundary
+
+**Invariant:** If the PTY harness reports a latency, then the metric names its start and end
+observations, and a byte-arrival metric ends at the DEC 2026 end-marker timestamp captured before
+terminal emulation.
+
+**Scope:** `PtyTestDriver.sendKeysAndAwaitFrameByteArrival`,
+`scripts/harness/measure-input-byte-flush.ts`, and performance documentation derived from them.
+Settled-screen smokes still use `PtyTestDriver.awaitQuiescence`.
+
+**Mechanism:** `SynchronizedOutputQuiescence.observeByte` timestamps the matching end marker inside the
+PTY callback. The callback feeds `TerminalEmulator` only after that observation; callers use the
+recorded timestamp for byte arrival and await `TerminalEmulator.flush()` only for the separately
+named settled-snapshot boundary.
+
+**Generates:** input-write-to-byte-arrival timing; marker-arrival-to-oracle-ready timing; reports that
+cannot silently include emulator work in an application byte-flush number.
+
+**Rejected alternatives:** Time the return from `awaitQuiescence` as byte flush — the async
+continuation resumes only after synchronous emulator work and therefore crosses two boundaries.
+
+**Evidence:** `scripts/harness/SynchronizedOutputQuiescence.ts`;
+`scripts/harness/PtyTestDriver.ts`; the recorded-stream boundary test in
+`scripts/harness/SynchronizedOutputQuiescence.test.ts`; `scripts/harness/measure-input-byte-flush.ts`.
+
+**Impossible if true:** A number labeled byte-arrival latency that includes
+`TerminalEmulator.write` or `TerminalEmulator.flush`; a latency report with no named start and end
+observations.
+
+**Verification:** `bun test scripts/harness/SynchronizedOutputQuiescence.test.ts && bun
+scripts/harness/measure-input-byte-flush.ts`
+
+**Status:** established
 
 **Last refined:** 2026-07-24
 

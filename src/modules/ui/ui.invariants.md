@@ -42,6 +42,43 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 
 ## Chosen invariants
 
+### Tab bars share paint and hit geometry
+
+**Invariant:** If a horizontal tab bar paints tabs, unused width, and right controls, then one column
+walk determines both its styled chunks and hit segments, and each unused horizontal gap is one styled
+chunk regardless of terminal width.
+
+**Scope:** Horizontal workspace and buffer tab strips in `TabBarRenderer`. Vertical workspace tabs
+are outside the gap-chunk rule but still return their hit segments from the paint walk.
+
+**Components:**
+- *One geometry walk* — every returned segment uses the same column cursor that places its glyphs.
+- *One gap chunk* — unused width advances the cursor by its full width but allocates one styled chunk.
+
+**Mechanism:** `TabBarRenderer.appendHorizontalGap` emits one repeated-space chunk, then
+`renderWorkspaceTabBar` and `renderBufferTabBar` advance their existing column cursors by the same
+gap width before painting and recording right controls.
+
+**Generates:** right-pinned controls; hit targets that stay on their painted glyphs; styled-chunk cost
+that scales with visible tabs and controls instead of terminal width.
+
+**Rejected alternatives:** Emit one styled space per unused column — preserves pixels but adds
+terminal-width allocations to every repaint.
+
+**Evidence:** `src/modules/ui/TabBarRenderer.ts`; `scripts/smoke-tabs.sh` (FrameProbe locates the
+right badge, then clicks the badge and adjacent arrow); `scripts/smoke-workspace-tabs.sh` (paints and
+clicks horizontal workspace tabs).
+
+**Impossible if true:** Right controls moving left when unused width grows; a click coordinate
+resolving to a different segment than the glyph at that cell; one styled chunk allocated per unused
+terminal column.
+
+**Verification:** `bash scripts/smoke-tabs.sh && bash scripts/smoke-workspace-tabs.sh`
+
+**Status:** established
+
+**Last refined:** 2026-07-24
+
 ### The active activity item determines the sidebar content
 
 **Invariant:** If the activity bar shows an item as ACTIVE (its left accent bar `▎` is drawn), then

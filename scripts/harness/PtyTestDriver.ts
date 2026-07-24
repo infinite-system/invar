@@ -6,11 +6,15 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
+// invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessInput, type HarnessMouseEvent } from './HarnessInput';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
-import { SynchronizedOutputQuiescence } from './SynchronizedOutputQuiescence';
+import {
+  SynchronizedOutputQuiescence,
+  type CompletedSynchronizedFrame,
+} from './SynchronizedOutputQuiescence';
 
 export interface PtyTestDriverOptions {
   workspaceRoot: string;
@@ -20,6 +24,12 @@ export interface PtyTestDriverOptions {
   homeDirectory?: string;
   environment?: Record<string, string | undefined>;
   command?: string[];
+}
+
+export interface InputFrameByteArrivalMeasurement {
+  inputWrittenTimestampMilliseconds: number;
+  completedFrame: CompletedSynchronizedFrame;
+  inputToFrameByteArrivalMilliseconds: number;
 }
 
 class $PtyTestDriver {
@@ -68,6 +78,27 @@ class $PtyTestDriver {
     this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
   }
 
+  async sendKeysAndAwaitFrameByteArrival(
+    keyNames: readonly string[],
+    timeoutMilliseconds = 10_000,
+  ): Promise<InputFrameByteArrivalMeasurement> {
+    this.expectNextFrame();
+    const targetCompletedFrameCount = this.minimumCompletedFrameCount;
+    const completedFramePromise = this.quiescence.awaitCompletedFrame(
+      targetCompletedFrameCount,
+      timeoutMilliseconds,
+    );
+    const inputWrittenTimestampMilliseconds = performance.now();
+    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    const completedFrame = await completedFramePromise;
+    return {
+      inputWrittenTimestampMilliseconds,
+      completedFrame,
+      inputToFrameByteArrivalMilliseconds:
+        completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
+    };
+  }
+
   sendText(text: string): void {
     if (!text) return;
     this.expectNextFrame();
@@ -95,6 +126,10 @@ class $PtyTestDriver {
     await this.quiescence.awaitCompletedFrame(targetCompletedFrameCount, timeoutMilliseconds);
     await this.emulator.flush();
     this.minimumCompletedFrameCount = this.quiescence.completedFrameCount;
+  }
+
+  async assertNoCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
+    await this.quiescence.assertNoCompletedFrameFor(durationMilliseconds);
   }
 
   async awaitSnapshot(

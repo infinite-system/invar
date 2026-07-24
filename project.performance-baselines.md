@@ -28,7 +28,9 @@ pids this script launches, so it affects at most scheduler ambience, not any per
 | Boot-to-ready, harness-inclusive | 314–345 ms | — | info (tmux + login shell + bun resolve included) |
 | Boot IN-APP (`bootDurationMilliseconds`, performance.now at markStarted) | **175–184 ms** | <150 ms cold start | **miss by ~25–35 ms** — first bare-process measurement of this target |
 | Clean exit / orphans | **5/5, zero orphans** (7 spawned, all exited) | clean | **PASS** |
-| Input latency proxy p50 / p95 | **28 ms / 32 ms** (20/20 valid presses) | <16 ms input-to-screen | proxy ≈ one 33 ms frame period — see regression note |
+| Input send → status publication observed, p50 / p95 | **8 ms / not retained** (1 ms poll investigation) | — | status-file boundary, not terminal output |
+| Input write → DEC 2026 end-marker byte arrival, p50 | **2.973 ms** | <16 ms input-to-screen prototype target | application byte-flush boundary; below target |
+| Input write → settled harness screen oracle, p50 | **16–17 ms** | — | includes about 14 ms of post-arrival emulator/oracle work |
 
 ### Memory growth is real — document, don't hide
 
@@ -42,13 +44,34 @@ current feature set. Options (a decision for the maintainer, not this doc): rais
 match the shipped scope, or fund a diet pass (the boot delta — 106.9 MB over the bun floor — is
 the biggest single line).
 
-### Input-latency proxy regression note
+### Latency boundaries — corrected 2026-07-24
 
-The 2026-07-21 post-fix run measured p50 ≈ 5 ms (immediate one-shot frame on keypress). Today's
-p50 is back at ~one frame period (28 ms). The idle loop is still quiescent (frame delta 0), so
-this is not the old always-on-loop bug; the flush path or render scheduling has re-quantized to
-the frame cadence somewhere in the feature growth since. Worth a targeted investigation; the 16 ms
-brief target is not met by this proxy today.
+**A latency number without its named measurement boundary is meaningless.** The investigation found
+three instruments measuring three different end observations:
+
+| Boundary | 2026-07-22 endpoint `56d2772` | 2026-07-24 endpoint `271d4b3` | Meaning |
+|---|---:|---:|---|
+| Input send → status-file cursor publication observed by a 1 ms poll | **6 ms p50** | **8 ms p50** | App status projection + JSON publication + poll/read cost |
+| Input write → raw PTY DEC 2026 end-marker byte arrival | **1.769 ms p50** | **2.973 ms p50** | The application byte-flush boundary |
+| Input write → `PtyTestDriver.awaitQuiescence()` returned with a settled emulator | not retained | **16–17 ms p50** | Byte arrival plus synchronous `TerminalEmulator.write` and `flush` oracle work |
+
+The **28 ms frame-quantization narrative is retired**. That number came from the old status proxy:
+when its immediate read narrowly missed publication, the proxy slept 20 ms before looking again.
+The discontinuity amplified a roughly millisecond-scale change into a false frame-period class; it
+did not show that rendering had moved behind a 33 ms frame timer.
+
+The **16 ms real-regression narrative is also retired**. The DEC end-marker waiter resolves inside
+the PTY callback, but its awaiting continuation cannot run until the callback finishes feeding the
+frame to `TerminalEmulator`; `awaitQuiescence()` then flushes the emulator. Its 16–17 ms elapsed time
+was a valid settled-oracle duration mislabeled as application byte flush.
+
+The true residual is gradual byte-flush growth of **1.204 ms** across the 2026-07-22→2026-07-24
+feature era (1.769→2.973 ms). It is below the action threshold and has no single bisectable
+regression boundary. Watch it with `bun scripts/harness/measure-input-byte-flush.ts`, which reports
+the byte-arrival and settled-oracle boundaries separately. A controlled same-tool tab-gap check
+measured five-session median p50s of **2.562 ms before → 2.422 ms after** at the byte-arrival
+boundary. The 0.140 ms difference is within session variance; the gap change is an allocation
+cleanup, not a regression fix.
 
 ---
 
@@ -66,19 +89,18 @@ brief target is not met by this proxy today.
 > |---|---|---|---|---|
 > | Idle frame delta, final 5s untouched | **0** (12/12/12) | 142/145 (~28 fps) | 0 | **PASS** (was FAIL) — the fix |
 > | Idle CPU, final 5s window | **0.60%** | 2.6–3.6% | <2% | **PASS** |
-> | Input latency p50 / p95 | **5 ms / 7 ms** | 27–30 / 50–52 ms | <16 ms | **PASS** (was FAIL) |
+> | Status-publication observation p50 / p95 | **5 ms / 7 ms** | 27–30 / 50–52 ms | — | boundary-labeled historical proxy |
 > | RSS at rest (fixtures + 1 file) | 99.4 MB | 100.4 / 98.7 | <100 idle | borderline PASS |
 > | RSS after 60s idle, 5 MB file open | 121.4 MB | 118.8 / 128.8 | <100 idle | **FAIL** (working set of a 5 MB file; leak-flat) |
 > | RSS growth over 3 re-open cycles | +4.4 MB | −5.5 / +2.5 | flat | **PASS** (no leak trend) |
 > | Boot-to-ready, harness-inclusive | 211–219 ms | 187–222 ms | <150 ms bare | not comparable (harness path) |
 > | Clean exit / orphans | 4/5*, no orphans | 5/5 | clean | *cycle-1 miss was CPU contention from concurrent test runs, not a regression |
 >
-> **Why input latency improved so much:** the "<16 ms unachievable at targetFps:30" conclusion was
-> itself an artifact of the *always-on* loop — a keypress waited up to one 33 ms frame period for the
-> next scheduled render. With demand-driven rendering, a keypress calls `requestRender()` → an
-> immediate one-shot frame → the status flush lands in ~5 ms. The fix improved input latency AND idle
-> quiescence together. Idle quiescence is now an ENFORCED, blocking assertion (smoke-editor.sh, and a
-> non-zero exit in this script) — measured ≠ enforced.
+> **Why the historical status observation improved:** the always-on loop made publication wait for
+> its next scheduled pass, while demand-driven rendering requests an immediate one-shot frame. The
+> numbers above end at status-file observation and do not establish terminal byte arrival. Idle
+> quiescence is now an ENFORCED, blocking assertion (smoke-editor.sh, and a non-zero exit in this
+> script) — measured ≠ enforced.
 >
 > Still open: idle RSS exceeds the 100 MB target once a 5 MB file is open (~121 MB); it is working set,
 > not a leak (re-open cycles are flat). Bare-binary cold start vs <150 ms still needs a non-harness
@@ -116,15 +138,13 @@ Two full runs, 2026-07-21; numbers below give both runs as `run1 / run2` where t
 | OpenTUI + app boot delta (boot − floor) | 62.5 / 62.9 MB | — | itemization |
 | Boot-to-ready, harness-inclusive, 5 cycles | 189–222 / 187–218 ms | <150 ms cold start (bare process) | not comparable (includes tmux + login shell + first quiescent frame; 20 ms poll grain) |
 | Clean exit via Ctrl+Q, 5 cycles | 5/5 + 5/5, no orphan pids from any run | clean | **PASS** |
-| Input latency proxy p50 (keypress→status-flush cursor change) | 30 / 27 ms | <16 ms input-to-screen | proxy only — see note |
-| Input latency proxy p95 | 52 / 51 ms | — | proxy only |
+| Status-publication observation p50 (keypress→status cursor change) | 30 / 27 ms | — | 20 ms poll proxy only |
+| Status-publication observation p95 | 52 / 51 ms | — | 20 ms poll proxy only |
 
-Latency note: 20 ms poll grain + ~1–3 ms read cost, and the status flush is quantized to the
-~33 ms frame cadence — so p50 ≈ one frame period is the *expected floor for this proxy*, an upper
-bound on input-to-screen. However: with a 30 fps loop, worst-case input-to-paint is structurally
-≥ one 33 ms frame period, so the <16 ms brief target cannot be met at `targetFps: 30` regardless
-of code efficiency (bimodal samples ~27 ms vs ~50 ms = 1 vs 2 frame periods, exactly the
-quantization signature).
+Latency correction (2026-07-24): this historical status-file proxy has a 20 ms sleep discontinuity
+and cannot establish terminal byte-flush or input-to-screen latency. The old claim that its
+27–30 ms p50 proved a 33 ms frame-quantized application path is retired; see the corrected
+three-boundary taxonomy above.
 
 ## Evidence — idle quiescence FAIL (diagnosis only; no source modified)
 

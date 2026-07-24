@@ -362,9 +362,9 @@ if [ "${#lifecycle_boot_times[@]}" -gt 0 ]; then
 fi
 [ "$lifecycle_clean_exits" -eq 5 ] && echo "  PASS 5/5 clean exits" || echo "  FAIL clean exits: $lifecycle_clean_exits/5"
 
-# ---------------------------------------------------------------- 4. INPUT LATENCY PROXY
+# ---------------------------------------------------------------- 4. STATUS PUBLICATION OBSERVATION
 echo ""
-echo "== 4. INPUT LATENCY PROXY (keypress -> status-flush cursor change; 20ms poll grain) =="
+echo "== 4. STATUS PUBLICATION (input send -> status cursor observation; 20ms poll grain) =="
 LATENCY_SESSION="${RUN_TAG}lat"
 launch_session "$LATENCY_SESSION" "$ROOT/fixtures"
 if ! wait_for_ready "$LATENCY_SESSION" 25; then
@@ -414,8 +414,10 @@ else
     p95_milliseconds="$(echo "$sorted_samples" | sed -n "${p95_index}p")"
     echo "  samples (ms): $(printf '%s ' "${latency_samples[@]}")"
     echo "  p50=${p50_milliseconds}ms p95=${p95_milliseconds}ms over $valid_sample_count valid presses"
-    echo "  note: 20ms poll grain + ~1-3ms timestamp/read cost; the status flush itself is quantized to the ~33ms frame cadence,"
-    echo "        so this is an UPPER BOUND proxy for input-to-screen latency, not the render latency itself"
+    echo "  boundary: tmux send-keys start -> status-file cursor change observed by a 20ms poll"
+    echo "  note: one missed immediate read adds a 20ms sleep; this is status-publication observability,"
+    echo "        not terminal byte-flush or input-to-screen latency"
+    echo "  byte boundary tool: bun scripts/harness/measure-input-byte-flush.ts"
   else
     echo "  ERROR only $valid_sample_count/20 valid samples — too few for percentiles, latency phase INVALID"
     measurement_failures=$((measurement_failures + 1))

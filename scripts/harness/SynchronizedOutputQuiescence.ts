@@ -2,22 +2,47 @@
 // This scanner runs on raw PTY chunks before emulation and preserves partial markers across chunks.
 //
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
+// invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
 interface FrameWaiter {
   targetCompletedFrameCount: number;
+  resolve: (completedFrame: CompletedSynchronizedFrame) => void;
+  reject: (error: Error) => void;
+  timeoutHandle: ReturnType<typeof setTimeout>;
+}
+
+interface FrameSilenceWaiter {
+  startingCompletedFrameCount: number;
   resolve: () => void;
   reject: (error: Error) => void;
   timeoutHandle: ReturnType<typeof setTimeout>;
+}
+
+export interface CompletedSynchronizedFrame {
+  completedFrameCount: number;
+  byteArrivalTimestampMilliseconds: number;
+  observedByteCount: number;
 }
 
 class $SynchronizedOutputQuiescence {
   private matchedPrefixByteCount = 0;
   private synchronizedFrameDepth = 0;
   private completedFrameCountValue = 0;
+  private observedByteCountValue = 0;
+  private lastCompletedFrameValue: CompletedSynchronizedFrame | null = null;
   private readonly waiters: FrameWaiter[] = [];
+  private readonly silenceWaiters: FrameSilenceWaiter[] = [];
   private failure: Error | null = null;
+
+  constructor(
+    private readonly currentTimestampMilliseconds: () => number = () => performance.now(),
+  ) {}
 
   get completedFrameCount(): number {
     return this.completedFrameCountValue;
+  }
+
+  get lastCompletedFrame(): CompletedSynchronizedFrame | null {
+    return this.lastCompletedFrameValue;
   }
 
   get isFrameOpen(): boolean {
@@ -34,9 +59,14 @@ class $SynchronizedOutputQuiescence {
   awaitCompletedFrame(
     targetCompletedFrameCount: number,
     timeoutMilliseconds = 10_000,
-  ): Promise<void> {
+  ): Promise<CompletedSynchronizedFrame> {
     if (this.failure) return Promise.reject(this.failure);
-    if (this.completedFrameCountValue >= targetCompletedFrameCount) return Promise.resolve();
+    if (
+      this.completedFrameCountValue >= targetCompletedFrameCount
+      && this.lastCompletedFrameValue
+    ) {
+      return Promise.resolve(this.lastCompletedFrameValue);
+    }
     return new Promise((resolve, reject) => {
       const waiter: FrameWaiter = {
         targetCompletedFrameCount,
@@ -55,6 +85,23 @@ class $SynchronizedOutputQuiescence {
     });
   }
 
+  assertNoCompletedFrameFor(durationMilliseconds: number): Promise<void> {
+    if (this.failure) return Promise.reject(this.failure);
+    return new Promise((resolve, reject) => {
+      const silenceWaiter: FrameSilenceWaiter = {
+        startingCompletedFrameCount: this.completedFrameCountValue,
+        resolve,
+        reject,
+        timeoutHandle: setTimeout(() => {
+          const waiterIndex = this.silenceWaiters.indexOf(silenceWaiter);
+          if (waiterIndex >= 0) this.silenceWaiters.splice(waiterIndex, 1);
+          resolve();
+        }, durationMilliseconds),
+      };
+      this.silenceWaiters.push(silenceWaiter);
+    });
+  }
+
   fail(error: Error): void {
     if (this.failure) return;
     this.failure = error;
@@ -62,9 +109,14 @@ class $SynchronizedOutputQuiescence {
       clearTimeout(waiter.timeoutHandle);
       waiter.reject(error);
     }
+    for (const silenceWaiter of this.silenceWaiters.splice(0)) {
+      clearTimeout(silenceWaiter.timeoutHandle);
+      silenceWaiter.reject(error);
+    }
   }
 
   private observeByte(observedByte: number): void {
+    this.observedByteCountValue++;
     if (this.matchedPrefixByteCount < synchronizedOutputMarkerPrefix.length) {
       const expectedByte = synchronizedOutputMarkerPrefix[this.matchedPrefixByteCount];
       if (observedByte === expectedByte) {
@@ -84,16 +136,34 @@ class $SynchronizedOutputQuiescence {
     this.synchronizedFrameDepth--;
     if (this.synchronizedFrameDepth > 0) return;
     this.completedFrameCountValue++;
-    this.resolveSatisfiedWaiters();
+    const completedFrame: CompletedSynchronizedFrame = {
+      completedFrameCount: this.completedFrameCountValue,
+      byteArrivalTimestampMilliseconds: this.currentTimestampMilliseconds(),
+      observedByteCount: this.observedByteCountValue,
+    };
+    this.lastCompletedFrameValue = completedFrame;
+    this.rejectBrokenSilenceWaiters(completedFrame);
+    this.resolveSatisfiedWaiters(completedFrame);
   }
 
-  private resolveSatisfiedWaiters(): void {
+  private rejectBrokenSilenceWaiters(completedFrame: CompletedSynchronizedFrame): void {
+    for (const silenceWaiter of this.silenceWaiters.splice(0)) {
+      clearTimeout(silenceWaiter.timeoutHandle);
+      silenceWaiter.reject(new Error(
+        `Expected no complete synchronized frame for the requested interval, but frame `
+        + `${completedFrame.completedFrameCount} followed frame `
+        + `${silenceWaiter.startingCompletedFrameCount}`,
+      ));
+    }
+  }
+
+  private resolveSatisfiedWaiters(completedFrame: CompletedSynchronizedFrame): void {
     for (let waiterIndex = this.waiters.length - 1; waiterIndex >= 0; waiterIndex--) {
       const waiter = this.waiters[waiterIndex];
       if (!waiter || waiter.targetCompletedFrameCount > this.completedFrameCountValue) continue;
       this.waiters.splice(waiterIndex, 1);
       clearTimeout(waiter.timeoutHandle);
-      waiter.resolve();
+      waiter.resolve(completedFrame);
     }
   }
 }

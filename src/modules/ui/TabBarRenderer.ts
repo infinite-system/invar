@@ -9,6 +9,7 @@
 // renderer stays a pure Static capability — no closure capture, no state held here.
 //
 // invariant: Renderables hold no model state (src/modules/ui/ui.invariants.md)
+// invariant: Tab bars share paint and hit geometry (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';

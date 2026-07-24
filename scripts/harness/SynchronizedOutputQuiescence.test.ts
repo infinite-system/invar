@@ -18,6 +18,28 @@ describe('SynchronizedOutputQuiescence', () => {
     expect(quiescence.isFrameOpen).toBe(false);
   });
 
+  test('records byte arrival before downstream oracle work on a recorded stream', async () => {
+    let currentTimestampMilliseconds = 3;
+    const quiescence = new SynchronizedOutputQuiescence.Class(
+      () => currentTimestampMilliseconds,
+    );
+    const completedFrame = quiescence.awaitCompletedFrame(1);
+    quiescence.observe(`terminal setup${beginSynchronizedOutput}frame body`);
+    currentTimestampMilliseconds = 7;
+    quiescence.observe(endSynchronizedOutput);
+    currentTimestampMilliseconds = 21;
+    const observedFrame = await completedFrame;
+
+    expect(observedFrame).toEqual({
+      completedFrameCount: 1,
+      byteArrivalTimestampMilliseconds: 7,
+      observedByteCount: new TextEncoder().encode(
+        `terminal setup${beginSynchronizedOutput}frame body${endSynchronizedOutput}`,
+      ).length,
+    });
+    expect(quiescence.lastCompletedFrame).toEqual(observedFrame);
+  });
+
   test('recognizes markers split at every PTY chunk boundary', async () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
     const recordedFrame = `${beginSynchronizedOutput}paint${endSynchronizedOutput}`;
@@ -37,5 +59,16 @@ describe('SynchronizedOutputQuiescence', () => {
     quiescence.observe(endSynchronizedOutput);
     await quiescence.awaitCompletedFrame(1);
     expect(quiescence.completedFrameCount).toBe(1);
+  });
+
+  test('asserts marker silence and rejects when a complete frame arrives', async () => {
+    const quiescence = new SynchronizedOutputQuiescence.Class();
+    const quietInterval = quiescence.assertNoCompletedFrameFor(5);
+    quiescence.observe('ordinary terminal bytes without a frame');
+    await quietInterval;
+
+    const brokenSilence = quiescence.assertNoCompletedFrameFor(1_000);
+    quiescence.observe(`${beginSynchronizedOutput}paint${endSynchronizedOutput}`);
+    await expect(brokenSilence).rejects.toThrow('Expected no complete synchronized frame');
   });
 });
