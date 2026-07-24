@@ -204,7 +204,47 @@ and is now conversation; extensions were lawless and are now gated.
 - **The most gated tool of all:** self-modification. Replacing the running binary requires
   gate-green; nothing auto-pushes anywhere — the house rule, generalized to every user.
 
-## 9. The name of the thing
+## 9. The capsule — the harness that makes your harness
+
+*Added 2026-07-24, the day the discipline stack proved it runs beyond human consistency (the
+entropy vector flipped: twelve landings, invariants strengthened, two false narratives killed by
+the system's own instruments). The user named the consequence: Invar is a space capsule for
+software.*
+
+What is transferable about Invar was never the editor. It is the discipline stack — invariant
+records → colocated contracts → deterministic gate → governed fleet — and the stack is now
+proven to hold order at fleet velocity. The capsule model makes it installable:
+
+- **Install = clone.** Distribution is `git clone` of this repo, then `iv <folder>`. The clone
+  IS the product: binary buildable in ~163 ms, plus the law (AGENTS.md, contracts, skills, the
+  gate) that makes agent labor safe. Updates are `git pull` through your own gate. Every install
+  is a development seat (§8's collapse), and self-modification stays gate-governed.
+- **Workspaces are governance domains.** Agent sessions, terminals, AND the permission membrane
+  become workspace-scoped (today they are shared singletons — the refactor's seam is
+  `workspaceSet.active.agent…`, one hop like everything else). Each workspace carries its own
+  policy profile. The Invar-repo workspace ships with the no-push / PR-only profile — users
+  improve Invar from inside Invar, and their work reaches upstream only as a PR carrying §8's
+  immune-system evidence (contract + driving smoke + gate transcript). A user project carries
+  its own profile; a scratch repo can run open. "Cannot push, only PR" is not a special case —
+  it is one profile in the general model.
+- **The resident harness-builder.** In any non-Invar workspace, the agent's standing job is to
+  grow a custom discipline stack for THAT software: new project → interview, author the
+  invariant records and lattice, scaffold the gate; existing project → run the generator-audit
+  procedure (already encoded as a skill) to scan and surface the latent invariants, then
+  ratchet them into contracts and gate steps. Much of this already exists as written law:
+  the generator-audit skill, the invariants skill + schema checker, the conductor doctrine,
+  the meta-invariant kernel. The genuinely new intellectual work is the DRIVING LAYER:
+  verify-by-driving is domain-specific — a TUI drives through a PTY byte harness, a web app
+  through a browser driver, a library through property tests, a service through request smokes.
+  The harness-builder's core competence is choosing and wiring the driving instrument for the
+  user's domain; the lattice above it is universal.
+- **The reduction:** Invar = ivue + IBR, and the capsule is IBR's generative principle applied
+  to the meta-invariant itself — the kernel (contracts, gating, driven verification,
+  provenance, fleet discipline) stops being a description of how this repo was built and
+  becomes a generator that replicates the discipline into any codebase it is pointed at.
+  The harness that makes your harness.
+
+## 10. The name of the thing
 
 An editor hosts your attention. An IDE hosts your tools. This hosts **a governed collaboration**:
 human intent, agent labor, contract law, and mechanical verification, sharing one object graph —
