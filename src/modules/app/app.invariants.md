@@ -16,12 +16,14 @@ bounded viewport; a referenced resource stays alive)._
 then a single owned reactive effect observes it and repaints; a repaint is never conditional on a
 keypress, and no per-item render effect exists.
 
-**Scope:** The render loop in `app/Bootstrap.ts` + `App`'s owned effect scope.
+**Scope:** The render loop in `app/Bootstrap.ts`, the read-only status assembly in
+`app/AppStatusProjection.ts`, and `App`'s owned effect scope.
 
 **Mechanism:** `app.$watchEffect(...)` touches the load-bearing signals (document revision, cursor
 line/col, viewport scrollTop, workspace focus, tree selection, palette open/query/selection, theme
-selection) then calls `paint()` = `view.update()` + `publish()` + `requestRender()`. `paint()` is
-read-only over model state, so the effect never self-triggers. `viewport.setSize` (a
+selection) then calls `paint()` = `view.update()` + `AppStatusProjection.publish()` +
+`requestRender()`. `AppStatusProjection` reads narrow live ports and updates `StatusChannel`
+without mutating model state, so the effect never self-triggers. `viewport.setSize` (a
 projection→model write) is kept OUTSIDE the effect, on boot + resize only. Input handlers mutate
 model state and nothing else — the effect repaints. Realizes *Data flows one way* (the
 reactive-invalidation half).
@@ -29,11 +31,11 @@ reactive-invalidation half).
 **Generates:** async repaint for git/LSP/diagnostics without input; the single coarse effect (not
 effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling `$stopEffects()`.
 
-**Evidence:** IMPLEMENTED — `Bootstrap.ts` `app.$watchEffect(...)` + `paint()`; input handlers
-carry no render calls; `setSize` on boot/resize only. Tested headless:
-`app/__tests__/frame-effect.test.ts` (revision + cursor change re-run the effect; `$stopEffects`
-stops it). Confirmed end-to-end by the tmux smoke `scripts/smoke-editor.sh`: booting, opening a
-file, and typing bump `bufferRevision` and repaint the real terminal via the side channel (ALL-PASS).
+**Evidence:** `Bootstrap.ts` `app.$watchEffect(...)` + `paint()`;
+`AppStatusProjection.ts`; `AppStatusProjection.test.ts`; `app/__tests__/frame-effect.test.ts`
+(revision + cursor change re-run the effect; `$stopEffects` stops it). Confirmed end-to-end by
+`scripts/smoke-editor.sh`: booting, opening a file, and typing bump `bufferRevision` and repaint
+the real terminal via the side channel.
 
 **Impossible if true:** an async result (LSP diagnostic, git refresh) that changes model state but
 does not repaint until the next keystroke; a render pass that mutates model state; an
@@ -45,7 +47,7 @@ exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-24
 
 ### Owned resources release in reverse order
 

@@ -37,6 +37,11 @@ import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
 import { HandlerGuard } from './HandlerGuard';
 import { TerminalSession } from './TerminalSession';
+import {
+  AppStatusProjection,
+  type AppStatusMouseEvent,
+  type AppStatusProjectionPorts,
+} from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
 import { TerminalFactory } from '../terminal/TerminalFactory';
 import { AgentFactory } from '../agent/AgentFactory';
@@ -402,216 +407,35 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   );
 
   // Last mouse event seen (for the observability side channel — proves the mouse path is live).
-  let lastMouse: { type: string; x: number; y: number; button: number } | null = null;
-
-  // Publish model state to the observability side channel (read-only over model state).
-  const publish = (): void => {
-    const editor = workspaceSet.active.editor;
-    const diffView = view.activeDiffView();
-    const markdownSplitView = view.activeMarkdownSplitView();
-    const openInputOverlays = [
-      ...(findBar.open.value ? ['findBar'] : []),
-      ...(quickOpen.open.value ? ['quickOpen'] : []),
-      ...(commands.open.value ? ['commandPalette'] : []),
-      ...(settingsPanel.open.value ? ['settingsPanel'] : []),
-      ...(contextMenu.open.value ? ['contextMenu'] : []),
-      ...(shortcutHelp.open.value ? ['shortcutHelp'] : []),
-    ];
-    StatusChannel.Class.update({
-      mouse: lastMouse,
-      activeWorkspace: workspaceSet.active.name.value,
-      workspaces: workspaceSet.tabs().map((workspaceTab) => workspaceTab.name),
-      activeWorkspaceIndex: workspaceSet.activeWorkspaceIndex.value,
-      activeWorkspaceRoot: workspaceSet.active.root,
-      workspaceCount: workspaceSet.count,
-      liveGitWatcherCount: workspaceSet.liveGitWatcherCount,
-      workspaceLiveGitWatchers: workspaceSet.entries.value.map(
-        (workspaceEntry) => workspaceEntry.hasLiveGitWatcher,
-      ),
-      workspaceTabPosition: settings.workspaceTabPosition.value,
-      activeBuffer: editor.hasDocument.value ? editor.document.path : null,
-      // The active file's LSP size-suppression state — the authoritative channel a driven gate reads
-      // to assert a large file was NOT attached to the language server (the guard is never silent).
-      lspSizeSuppressed: workspaceSet.active.languageSizeNotice() !== null,
-      bufferRevision: editor.document.revision.value,
-      dirty: editor.document.dirty.value,
-      cursor: editor.hasDocument.value
-        ? { line: editor.cursor.line.value, col: editor.cursor.col.value }
-        : null,
-      // Flat cursor line + the first few document lines — the move-line smoke reads these to assert the
-      // lines reordered and the cursor followed (a pure-model op; no frame needed).
-      cursorLineIndex: editor.hasDocument.value ? editor.cursor.line.value : -1,
-      editorLines: editor.hasDocument.value
-        ? Array.from({ length: Math.min(editor.document.lineCount, 8) }, (_unused, index) => editor.document.line(index))
-        : [],
-      hasSelection: editor.cursor.hasSelection,
-      selection: editor.cursor.selectionRange(),
-      openBuffers: editor.hasDocument.value ? [editor.document.path] : [],
-      overlay: commands.open.value ? 'palette' : null,
-      inputOverlay: openInputOverlays[0] ?? null,
-      inputOverlayCount: openInputOverlays.length,
-      openInputOverlays,
-      findOpen: findBar.open.value,
-      findMode: findBar.mode.value,
-      findTarget: findBar.target?.identifier ?? null,
-      findQuery: findBar.engine?.query.value ?? '',
-      findMatchCount: findBar.engine?.matchCount ?? 0,
-      findCurrentMatchIndex: findBar.engine?.currentMatchIndex.value ?? -1,
-      findCaseSensitive: findBar.caseSensitive,
-      sourceFindQuery: editor.hasDocument.value
-        ? findBar.engineFor(`source:${editor.document.path}`)?.query.value ?? ''
-        : '',
-      markdownPreviewFindQuery: markdownSplitView
-        ? findBar.engineFor(markdownSplitView.previewFindTargetIdentifier())?.query.value ?? ''
-        : '',
-      quickOpenOpen: quickOpen.open.value,
-      quickOpenSelected: quickOpen.selectedIndex.value,
-      quickOpenHovered: quickOpen.hoveredIndex.value,
-      quickOpenQuery: quickOpen.query.value,
-      quickOpenMatches: quickOpen.matches.value.length,
-      quickOpenMode: quickOpen.mode.value,
-      quickOpenPathOpenable: quickOpen.workspacePathOpenable.value,
-      paletteOpen: commands.open.value,
-      paletteQuery: commands.open.value ? commands.query.value : '',
-      paletteMatches: commands.open.value ? commands.filtered.length : 0,
-      // Settings panel + voice picker (drives smoke-voice-picker): the selected row's label + displayed
-      // value, and the live agentNarrationVoice setting. (settingsOpen is already exposed below.)
-      settingsSelectedLabel: settingsPanel.open.value ? (settingsPanel.rows()[settingsPanel.selectedIndex.value]?.label ?? '') : '',
-      settingsSelectedValue: settingsPanel.open.value ? (settingsPanel.rows()[settingsPanel.selectedIndex.value]?.valueText ?? '') : '',
-      narrationVoice: settings.agentNarrationVoice.value,
-      narrationRate: settings.agentNarrationRate.value,
-      focus: workspaceSet.active.focus.value,
-      // The activity bar's active view (files/git/extensions) — the authoritative channel a driven
-      // contract reads to assert a click/chord switched the sidebar (paired with FrameProbe for the accent).
-      sidebarView: workspaceSet.active.sidebarView.value,
-      treeRows: workspaceSet.active.tree.rows.length,
-      treeSelected: workspaceSet.active.tree.selectedIndex.value,
-      treeScrollTop: workspaceSet.active.tree.scrollTop.value,
-      treeHovered: workspaceSet.active.tree.hoveredIndex.value,
-      editorScrollTop: editor.viewport.scrollTop.value,
-      editorScrollLeft: editor.viewport.scrollLeft.value,
-      wordWrap: editor.wordWrap.value,
-      showActivityBar: settings.showActivityBar.value,
-      changesScrollTop: workspaceSet.active.gitPanel.changesScrollTop.value,
-      gitChangesIndex: workspaceSet.active.gitPanel.changesIndex.value,
-      gitLogScrollTop: workspaceSet.active.gitPanel.logScrollTop.value,
-      gitLogIndex: workspaceSet.active.gitPanel.logIndex.value,
-      gitLogLoaded: workspaceSet.active.commitLog.value?.loadedCount ?? 0,
-      gitLogExpanded: workspaceSet.active.commitExpansion.value?.entries.value.length ?? 0,
-      // The read-only branch VIEWER ('' = following HEAD) and the tip SHA the log DISPLAYS —
-      // driven contracts assert external-commit freshness and branch re-sourcing through these.
-      gitLogBranch: workspaceSet.active.commitLog.value?.branch.value ?? '',
-      gitLogTipSha: workspaceSet.active.commitLog.value?.loadedTipSha ?? '',
-      gitRegion: workspaceSet.active.gitPanel.region.value,
-      gitSelectedPaths: [...workspaceSet.active.gitPanel.selectedPaths.value],
-      contextMenuOpen: contextMenu.open.value,
-      tooltipVisible: tooltip.visible.value,
-      // A diff is shown OVER the editor tabs (transient). Lets a driven contract confirm the diff
-      // pane actually mounted, so pane-independence (editor extent survives the swap) is real-verified.
-      showingDiff: workspaceSet.active.showingDiff.value,
-      diffScrollTop: diffView?.alignedRowScrollOffset.value ?? 0,
-      diffSelectionChars: diffView?.selectionCharacterCount() ?? 0,
-      diffSelection: diffView?.selectionRange() ?? null,
-      diffSplitRatio: settings.diffSplitRatio.value,
-      markdownPreviewOpen: workspaceSet.active.showingMarkdownPreview,
-      markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
-      markdownSplitRatio: settings.markdownSplitRatio.value,
-      markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
-      markdownPreviewSelectionChars: markdownSplitView?.selectionCharacterCount() ?? 0,
-      markdownHoveredReference: markdownSplitView?.hoveredReferencePath.value ?? null,
-      settingsOpen: settingsPanel.open.value,
-      settingsSelected: settingsPanel.selectedIndex.value,
-      shortcutHelpOpen: shortcutHelp.open.value,
-      shortcutHelpScrollTop: shortcutHelp.scrollTop.value,
-      shortcutHelpRowCount: shortcutHelp.open.value ? shortcutHelp.rows().length : 0,
-      sidebarWidth: settings.sidebarWidth.value,
-      // Total working-tree changes — proves the GitWatcher live-refreshes on EXTERNAL fs changes.
-      gitChangedCount: (() => {
-        const repository = workspaceSet.active.git.value;
-        if (!repository) return 0;
-        return (
-          repository.staged.value.length + repository.unstaged.value.length + repository.untracked.value.length
-        );
-      })(),
-      // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
-      // tabCount (only the active + any dirty background buffer holds a live document).
-      bufferTabCount: workspaceSet.active.buffers.count,
-      bufferLiveCount: workspaceSet.active.buffers.liveCount,
-      activeBufferIndex: workspaceSet.active.buffers.activeIndex.value,
-      pendingCloseTab: workspaceSet.active.pendingCloseTabIndex.value,
-      // Bottom panel / terminal state (drives smoke-terminal assertions without pane-scraping).
-      terminalVisible: panelHost.visible.value,
-      terminalFocused: panelHost.focused.value,
-      panelActiveContent: panelHost.activeId.value,
-      panelContentIds: panelHost.order.value,
-      terminalColumns: view.panelViewportColumns(),
-      terminalRows: view.panelViewportRows(),
-      // Split state: which cells occupy the slot, which one has the keyboard, and each cell's converged
-      // column width — the driving smoke reads this to prove 2-up render, focus routing, and re-flow.
-      panelCellIds: panelHost.resolvedCells.map((cell) => cell.content.id),
-      panelFocusedIndex: panelHost.focusedIndex.value,
-      panelCellColumns: panelHost.cellSpans(view.panelViewportColumns()).map((span) => span.columns),
-      // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
-      activeFileIsImage: workspaceSet.active.activeFileIsImage,
-      // Current-line git blame author (GitLens parity) — the driving smoke reads this to prove a tracked
-      // line shows its author and a non-git file shows none. '' when no document / not blamed.
-      // Same single query surface the status bar uses (workspace-owned bounded cache).
-      currentLineBlameAuthor: workspaceSet.active.activeLineBlame?.author ?? '',
-      // Bracket match: the matched partner cell for the cursor's bracket (line,col 0-based), or -1/-1
-      // when the cursor is not on a bracket — the driving smoke reads this alongside the frame bg.
-      matchingBracketLine: (() => {
-        const editor = workspaceSet.active.editor;
-        if (!editor.hasDocument.value || workspaceSet.active.showingDiff.value) return -1;
-        return (
-          BracketMatch.Class.findInDocument(
-            editor.document,
-            editor.cursor.line.value,
-            editor.cursor.col.value,
-            LanguageRegistry.Class.forPath(editor.document.path),
-          )?.match.line ?? -1
-        );
-      })(),
-      matchingBracketColumn: (() => {
-        const editor = workspaceSet.active.editor;
-        if (!editor.hasDocument.value || workspaceSet.active.showingDiff.value) return -1;
-        return (
-          BracketMatch.Class.findInDocument(
-            editor.document,
-            editor.cursor.line.value,
-            editor.cursor.col.value,
-            LanguageRegistry.Class.forPath(editor.document.path),
-          )?.match.column ?? -1
-        );
-      })(),
-      // Audio narration (third projection): the toggle, how many assistant turns have been spoken, and
-      // the last spoken text — the driving smoke reads these to prove it speaks completed turns when ON
-      // and NOTHING when off, all through the silent mock backend (no audio in CI).
-      narrationEnabled: settings.agentAudioNarration.value,
-      narrationSpokenCount: narration?.spokenCount.value ?? 0,
-      narrationLastSpoken: narration?.lastSpoken.value ?? '',
-      narrationBargeInCount: narration?.bargeInCount.value ?? 0,
-      // Agent pane UX view state (drives smoke-agent-pane-ux): busy shows the spinner; stuckToBottom
-      // flips false once the user scrolls up; expandedCount rises when a collapsed tool row is opened.
-      agentBusy: agentPaneContent?.agentSession.busy ?? false,
-      agentStuckToBottom: agentPaneContent?.stuckToBottom ?? true,
-      agentExpandedCount: agentPaneContent?.expandedCount ?? 0,
-      agentScrollTop: agentPaneContent?.scrollTop ?? 0,
-      // Interactive permission prompt state (drives the permission-flow smoke): the pending tool name
-      // (empty when none) — flips on when ask-mode pauses a tool, off when y/n/a resolves it.
-      agentPendingPermissionTool: agentPaneContent?.agentSession.pendingPermission?.toolName ?? '',
-      // The live engine label (drives the engine-switch smoke) — flips claude⇄codex on cycle.
-      agentEngine: agentPaneContent?.currentEngine ?? '',
-      // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
-      // engine ('Claude'/'Codex'/…, '(working…)' while busy), never a frozen 'Claude'.
-      agentTitle: agentPaneContent?.title ?? '',
-    });
+  let lastMouse: AppStatusMouseEvent | null = null;
+  const statusProjectionPorts: AppStatusProjectionPorts = {
+    workspaceSet,
+    settings,
+    commands,
+    findBar,
+    quickOpen,
+    settingsPanel,
+    contextMenu,
+    shortcutHelp,
+    tooltip,
+    panelHost,
+    view,
+    get mouse() {
+      return lastMouse;
+    },
+    get narration() {
+      return narration;
+    },
+    get agentPaneContent() {
+      return agentPaneContent;
+    },
   };
 
   // Pull current state into the renderables and request a frame. READ-ONLY over model state
   // (no ref writes), so it is safe to run inside the reactive effect with no feedback loop.
   const paint = (): void => {
     view.update();
-    publish();
+    AppStatusProjection.Class.publish(statusProjectionPorts);
     renderer.requestRender();
   };
 
