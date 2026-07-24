@@ -242,6 +242,10 @@ real terminal, not the harness.
    The step's generator is user value, not production count: unadopted inventory only accrues
    rebase drift and review burden, and the adoption signal (which experiments the user actually
    wants) should steer what gets invented next. Resume inventing once the shelf drops below 2.
+   When a feature wave has just landed and docs are reality-synced, a stronger alternative to
+   inventing is the **generator audit** — the reproducible independent-review procedure in
+   `.claude/skills/generator-audit/SKILL.md` (review-as-reduction; first run predicted the
+   provider-identity bug before the user reported it). Trigger it deliberately, not hourly.
 4. Append lessons to `project.conductor.md` (repo root); AND when a lesson generalizes into durable
    doctrine, **refine THIS skill** (`.claude/skills/conductor/SKILL.md`) and commit it — the loop is
    explicitly allowed to improve its own method (IBR self-application), including the verbatim cron
