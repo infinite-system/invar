@@ -140,13 +140,15 @@ for a block glyph; a snapshot cell lacking the emulator color mode or SGR attrib
 
 ### Tmux smokes remain an independent verification ring
 
-**Invariant:** If a behavior is ported to the PTY harness, then its original tmux smoke remains
-registered and unchanged as an independent terminal-emulator cross-check.
+**Invariant:** If the PTY harness is the per-gate smoke suite, then a tmux sentinel ring — one
+original per risk family — runs in every gate as the independent terminal-emulator cross-check,
+and the full tmux suite remains runnable unchanged behind `INVAR_FULL_TMUX=1`.
 
-**Scope:** The fourteen tmux smokes with additive harness ports in `scripts/merge-gate.sh`: editor,
-find, comment-styling, bracket-match, indent-guides, move-line, word-delete, paste, tabs,
-workspace-tabs, mode-coherence, wrap, selection, and scrollbars. Future ports follow the same rule
-until a separate decision replaces the independent ring.
+**Scope:** Post-swap (2026-07-24, user-approved after the 42/42 port campaign): the per-gate ring
+is `smoke-wrap.sh` (editor timing), `smoke-git-log.sh` (git fixtures), `smoke-agent-pane-ux.sh`
+(agent UI), and `smoke-terminal.sh` (nested PTY). The remaining tmux originals stay registered
+via `full_tmux_step` (skipped unless `INVAR_FULL_TMUX=1`; a weekly full run is doctrine — see the
+conductor skill). Originals are never edited to manufacture harness parity.
 
 **Mechanism:** The harness trusts the same `TerminalEmulator` used by the integrated terminal, so a
 shared emulator defect can fool both production and the harness. Keeping the original tmux path

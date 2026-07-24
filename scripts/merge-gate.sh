@@ -87,6 +87,20 @@ reporting_step() {
   rm -f /tmp/merge-gate-reporting.$$.log
 }
 
+# SWAP (2026-07-24, user-approved): the PTY harness suite is the per-gate smoke phase. The tmux
+# originals form a 4-smoke SENTINEL RING per-gate (wrap, git-log, agent-pane-ux, terminal — one per
+# risk family) as the independent-emulator cross-check; the remaining tmux smokes run only with
+# INVAR_FULL_TMUX=1 (weekly cron / audits). Contract: harness.invariants.md "Tmux smokes remain an
+# independent verification ring".
+full_tmux_step() {
+  if [ "${INVAR_FULL_TMUX:-0}" = "1" ]; then
+    step "$@"
+  else
+    FULL_TMUX_SKIPPED=$((FULL_TMUX_SKIPPED + 1))
+  fi
+}
+FULL_TMUX_SKIPPED=0
+
 # 1) Fast inner gate: tsc + conventions + unwired-capability + settings-applied META.
 step "conventions-gate (tsc + conventions + unwired + settings-meta)" bash scripts/conventions-gate.sh
 # 1b) The INVARIANT CONTRACT LAYER — the lattice itself. --all: every *.invariants.md is structurally
@@ -107,79 +121,80 @@ step "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.
 reporting_step "input byte flush latency (5-session median)" bun scripts/harness/input-byte-flush-gate.ts
 
 if [ "${FAST:-0}" != "1" ]; then
+  echo "smoke phase: PTY harness suite + tmux sentinel ring (INVAR_FULL_TMUX=${INVAR_FULL_TMUX:-0}; full-suite steps skipped when 0 are reported below)"
   # 4) Driving SMOKES — the real user paths.
-  step "smoke: editor"      bash scripts/smoke-editor.sh
+  full_tmux_step "smoke: editor"      bash scripts/smoke-editor.sh
   step "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).
-  step "smoke: move-line"   bash scripts/smoke-move-line.sh
+  full_tmux_step "smoke: move-line"   bash scripts/smoke-move-line.sh
   step "smoke: move-line harness" bun scripts/harness/smoke-move-line-harness.ts
-  step "smoke: indent-guides" bash scripts/smoke-indent-guides.sh
+  full_tmux_step "smoke: indent-guides" bash scripts/smoke-indent-guides.sh
   step "smoke: indent-guides harness" bun scripts/harness/smoke-indent-guides-harness.ts
   # Bracket matching: cursor on a `{` highlights it + its balanced `}` (match background via FrameProbe);
   # moving off clears it. Pure finder + real-tokenizer string/comment gate.
-  step "smoke: bracket-match" bash scripts/smoke-bracket-match.sh
+  full_tmux_step "smoke: bracket-match" bash scripts/smoke-bracket-match.sh
   step "smoke: bracket-match harness" bun scripts/harness/smoke-bracket-match-harness.ts
-  step "smoke: tabs"        bash scripts/smoke-tabs.sh
+  full_tmux_step "smoke: tabs"        bash scripts/smoke-tabs.sh
   step "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
-  step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
+  full_tmux_step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
   step "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
-  step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
-  step "smoke: selection"   bash scripts/smoke-selection.sh
+  full_tmux_step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
+  full_tmux_step "smoke: selection"   bash scripts/smoke-selection.sh
   # invariant: Tmux smokes remain an independent verification ring (scripts/harness/harness.invariants.md)
   step "smoke: selection harness" bun scripts/harness/smoke-selection-harness.ts
-  step "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
+  full_tmux_step "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
   step "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
   step "smoke: wrap"        bash scripts/smoke-wrap.sh
   step "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
-  step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
+  full_tmux_step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
   step "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
-  step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
+  full_tmux_step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
   # Commit-log freshness (external commits appear via the tip-SHA reconcile) + the read-only
   # branch VIEWER (cycle/menu/Esc, by-SHA drill-down, worktree/HEAD byte-identical after).
   step "smoke: git-log"     bash scripts/smoke-git-log.sh
   # Current-line git blame (GitLens parity): a committed line shows its author in the status bar; a
   # non-git document shows none. Scratch repo + non-git dir; async blame is cached per file.
-  step "smoke: git-blame"   bash scripts/smoke-git-blame.sh
-  step "smoke: find"        bash scripts/smoke-find.sh
+  full_tmux_step "smoke: git-blame"   bash scripts/smoke-git-blame.sh
+  full_tmux_step "smoke: find"        bash scripts/smoke-find.sh
   step "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
-  step "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
+  full_tmux_step "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
   step "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
-  step "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
-  step "smoke: word-delete" bash scripts/smoke-word-delete.sh
+  full_tmux_step "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
+  full_tmux_step "smoke: word-delete" bash scripts/smoke-word-delete.sh
   step "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
-  step "smoke: quick-open"  bash scripts/smoke-quickopen.sh
-  step "smoke: open-project" bash scripts/smoke-openproject.sh
-  step "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
-  step "smoke: gutter-diff" bash scripts/smoke-gutter-diff.sh
-  step "smoke: diff-overview" bash scripts/smoke-diff-overview.sh
-  step "smoke: markdown"     bash scripts/smoke-markdown.sh
+  full_tmux_step "smoke: quick-open"  bash scripts/smoke-quickopen.sh
+  full_tmux_step "smoke: open-project" bash scripts/smoke-openproject.sh
+  full_tmux_step "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
+  full_tmux_step "smoke: gutter-diff" bash scripts/smoke-gutter-diff.sh
+  full_tmux_step "smoke: diff-overview" bash scripts/smoke-diff-overview.sh
+  full_tmux_step "smoke: markdown"     bash scripts/smoke-markdown.sh
   # Guarded inside the script: SKIPs cleanly (exit 0) when typescript-language-server is absent.
-  step "smoke: goto-definition" bash scripts/smoke-goto-definition.sh
-  step "smoke: navigation-history" bash scripts/smoke-navigation-history.sh
-  step "smoke: hover" bash scripts/smoke-hover.sh
-  step "smoke: diagnostics" bash scripts/smoke-diagnostics.sh
-  step "smoke: image-preview" bash scripts/smoke-image-preview.sh
-  step "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
-  step "smoke: agent"       bash scripts/smoke-agent.sh
+  full_tmux_step "smoke: goto-definition" bash scripts/smoke-goto-definition.sh
+  full_tmux_step "smoke: navigation-history" bash scripts/smoke-navigation-history.sh
+  full_tmux_step "smoke: hover" bash scripts/smoke-hover.sh
+  full_tmux_step "smoke: diagnostics" bash scripts/smoke-diagnostics.sh
+  full_tmux_step "smoke: image-preview" bash scripts/smoke-image-preview.sh
+  full_tmux_step "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
+  full_tmux_step "smoke: agent"       bash scripts/smoke-agent.sh
   step "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
-  step "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
-  step "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
-  step "smoke: agent-search" bash scripts/smoke-agent-search.sh
+  full_tmux_step "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
+  full_tmux_step "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
+  full_tmux_step "smoke: agent-search" bash scripts/smoke-agent-search.sh
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
-  step "smoke: paste"       bash scripts/smoke-paste.sh
+  full_tmux_step "smoke: paste"       bash scripts/smoke-paste.sh
   step "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
-  step "smoke: audio-narration" bash scripts/smoke-audio-narration.sh
+  full_tmux_step "smoke: audio-narration" bash scripts/smoke-audio-narration.sh
   # Voice picker + mouse-editable settings: seeded voices dir → dynamic-enum picker (keyboard + mouse),
   # rate stepper, boolean toggle, Test-Voice command. No audio (mock TTS).
-  step "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
+  full_tmux_step "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
   # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
-  step "smoke: activitybar" bash scripts/smoke-activitybar.sh
-  step "smoke: panel-split" bash scripts/smoke-panel-split.sh
+  full_tmux_step "smoke: activitybar" bash scripts/smoke-activitybar.sh
+  full_tmux_step "smoke: panel-split" bash scripts/smoke-panel-split.sh
   # invariant: Shared seam changes verify every consumer (scripts/harness/harness.invariants.md)
   # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
   # the independent terminal-emulator verification ring.
@@ -207,9 +222,11 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
   # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
-  step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh
+  full_tmux_step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
   step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  # RING member (previously never gate-registered — the shelf-recorded hole, closed here):
+  step "smoke: terminal"    bash scripts/smoke-terminal.sh
   step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
   step "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
@@ -227,6 +244,10 @@ if [ "${FAST:-0}" != "1" ]; then
   fi
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
+fi
+
+if [ "${FULL_TMUX_SKIPPED:-0}" -gt 0 ]; then
+  echo "== merge-gate: $FULL_TMUX_SKIPPED full-tmux-suite smokes not run (sentinel ring only; INVAR_FULL_TMUX=1 runs them) =="
 fi
 
 echo ""
