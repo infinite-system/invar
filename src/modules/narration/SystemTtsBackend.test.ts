@@ -33,3 +33,35 @@ describe('SystemTtsBackend.enqueueBounded', () => {
     }
   });
 });
+
+// The rate setting is a SPEED MULTIPLIER (higher = faster) — the user-facing axis. Each engine maps it
+// to its own argument: piper's --length_scale stretches DURATION (so it inverts: 1/rate), espeak/say
+// take words-per-minute (so it scales up: 175×rate). Both directions are asserted so a future
+// regression cannot silently flip the axis back.
+describe('SystemTtsBackend engine-argument rate mapping (speed multiplier: higher = faster)', () => {
+  test('normal speed 1.0 maps to piper length_scale 1.0 and espeak 175 wpm', () => {
+    expect(SystemTtsBackend.Class.toLengthScale(1.0)).toBe(1.0);
+    expect(SystemTtsBackend.Class.toWordsPerMinute(1.0)).toBe(175);
+  });
+
+  test('FASTER (rate 2.0) means a LOWER piper length_scale and a HIGHER espeak wpm', () => {
+    expect(SystemTtsBackend.Class.toLengthScale(2.0)).toBe(0.5);
+    expect(SystemTtsBackend.Class.toWordsPerMinute(2.0)).toBe(350);
+    expect(SystemTtsBackend.Class.toLengthScale(2.0)).toBeLessThan(SystemTtsBackend.Class.toLengthScale(1.0));
+    expect(SystemTtsBackend.Class.toWordsPerMinute(2.0)).toBeGreaterThan(SystemTtsBackend.Class.toWordsPerMinute(1.0));
+  });
+
+  test('SLOWER (rate 0.5) means a HIGHER piper length_scale and a LOWER espeak wpm', () => {
+    expect(SystemTtsBackend.Class.toLengthScale(0.5)).toBe(2.0);
+    expect(SystemTtsBackend.Class.toWordsPerMinute(0.5)).toBe(88); // round(175 × 0.5)
+    expect(SystemTtsBackend.Class.toLengthScale(0.5)).toBeGreaterThan(SystemTtsBackend.Class.toLengthScale(1.0));
+    expect(SystemTtsBackend.Class.toWordsPerMinute(0.5)).toBeLessThan(SystemTtsBackend.Class.toWordsPerMinute(1.0));
+  });
+
+  test('extreme rates clamp to the sane band instead of exploding an engine argument', () => {
+    expect(SystemTtsBackend.Class.toLengthScale(0)).toBe(5.0); // clamped to the 0.2 speed floor
+    expect(SystemTtsBackend.Class.toLengthScale(1000)).toBe(0.1); // clamped to the 10 speed ceiling
+    expect(SystemTtsBackend.Class.toWordsPerMinute(0)).toBe(50); // wpm floor
+    expect(SystemTtsBackend.Class.toWordsPerMinute(1000)).toBe(500); // wpm ceiling
+  });
+});

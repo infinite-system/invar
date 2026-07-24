@@ -63,7 +63,7 @@ const SETTING_DESCRIPTORS: readonly SettingDescriptor[] = [
   { key: 'agentSkipPermissions', label: 'Agent bypasses permissions (off = ask interactively)', section: 'Agent', spec: { kind: 'boolean' } },
   { key: 'agentAudioNarration', label: 'Speak agent replies aloud (needs a TTS engine)', section: 'Narration', spec: { kind: 'boolean' } },
   { key: 'agentNarrationVoice', label: 'Narration voice', section: 'Narration', spec: { kind: 'dynamic-enum', resolveOptions: () => VoiceDiscovery.Class.options() } },
-  { key: 'agentNarrationRate', label: 'Narration rate (lower = faster)', section: 'Narration', spec: { kind: 'number', step: 0.1, minimum: 0.5, maximum: 2.0, decimals: 1 } },
+  { key: 'agentNarrationRate', label: 'Narration speed (higher = faster; 1.0 = normal)', section: 'Narration', spec: { kind: 'number', step: 0.1, minimum: 0.5, maximum: 3.0, decimals: 1 } },
   { key: 'sidebarWidth', label: 'Sidebar width', section: 'Layout', spec: { kind: 'number', step: 1, minimum: 16, maximum: 80, decimals: 0 } },
   { key: 'gitSplitRatio', label: 'Git changes/log split', section: 'Layout', spec: { kind: 'number', step: 0.05, minimum: 0.1, maximum: 0.9, decimals: 2 } },
   { key: 'diffSplitRatio', label: 'Diff previous/current split', section: 'Layout', spec: { kind: 'number', step: 0.05, minimum: 0.15, maximum: 0.85, decimals: 2 } },

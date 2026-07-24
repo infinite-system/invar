@@ -187,7 +187,8 @@ class $Settings {
   get agentNarrationVoice(): Ref<string> {
     return ref('');
   }
-  /** Piper `--length_scale` (lower = faster; 1.0 = normal). espeak maps it to `-s ≈ 175/rate` wpm. */
+  /** Narration SPEED MULTIPLIER (higher = faster: 1.0 = normal, 2.0 = twice as fast, 0.5 = half
+   *  speed). Engines map it: piper `--length_scale = 1/rate`; espeak/`say` `-s ≈ 175×rate` wpm. */
   get agentNarrationRate(): Ref<number> {
     return ref(1.0);
   }

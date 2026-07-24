@@ -88,8 +88,8 @@ chk "row value shows the selected voice" "$(f settingsSelectedValue)" "aaa"
 echo "== mouse: click the voice '>' arrow → next discovered voice =="
 click_widget "Narration voice" ">" && chk "mouse arrow advanced the voice (aaa -> bbb)" "$(f narrationVoice)" "bbb"
 
-echo "== mouse: click the rate '[+]' stepper → rate steps up =="
-click_widget "Narration rate" "+" && chk "mouse stepper raised the rate (1.0 -> 1.1)" "$(f narrationRate)" "1.1"
+echo "== mouse: click the speed '[+]' stepper → speed steps up (higher = faster) =="
+click_widget "Narration speed" "+" && chk "mouse stepper raised the speed (1.0 -> 1.1 = slightly faster)" "$(f narrationRate)" "1.1"
 
 echo "== mouse: click the audio-narration toggle → boolean flips =="
 before="$(f narrationEnabled)"

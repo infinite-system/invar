@@ -30,8 +30,8 @@ export interface SystemTtsOptions {
   /** A FIXED selected voice NAME (the `.onnx` basename); '' / unknown → first discovered. Used by
    *  one-shot callers (Test Voice). For live narration, prefer `voiceProvider`. */
   voice?: string;
-  /** A FIXED speech rate (piper length_scale; lower = faster; 1.0 = normal). For live narration, prefer
-   *  `rateProvider`. */
+  /** A FIXED speech rate as a SPEED MULTIPLIER (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed).
+   *  For live narration, prefer `rateProvider`. */
   rate?: number;
   /** LIVE voice: read per utterance so a settings change takes effect without recreating the backend. */
   voiceProvider?: () => string;
@@ -39,14 +39,21 @@ export interface SystemTtsOptions {
   rateProvider?: () => number;
 }
 
-/** piper `--length_scale` (lower = faster), clamped to a sane band. */
-function toLengthScale(rate: number): number {
-  return Math.max(0.1, Math.min(rate, 5));
+/** The rate setting is a SPEED MULTIPLIER (higher = faster: 1.0 normal, 2.0 twice as fast, 0.5 half
+ *  speed), clamped to a sane band before any engine mapping. */
+function clampSpeedMultiplier(rate: number): number {
+  return Math.max(0.2, Math.min(rate, 10));
 }
 
-/** espeak/`say` words-per-minute from the length_scale (≈ 175 / scale), clamped. */
+/** piper `--length_scale` from the speed multiplier: length_scale = 1 / rate (piper's scale stretches
+ *  duration, so its axis runs the OPPOSITE way — lower = faster). */
+function toLengthScale(rate: number): number {
+  return 1 / clampSpeedMultiplier(rate);
+}
+
+/** espeak/`say` words-per-minute from the speed multiplier (≈ 175 × rate), clamped. */
 function toWordsPerMinute(rate: number): number {
-  return Math.max(50, Math.min(Math.round(175 / toLengthScale(rate)), 500));
+  return Math.max(50, Math.min(Math.round(175 * clampSpeedMultiplier(rate)), 500));
 }
 
 /** Resolve piper's voice model for the selected voice: an explicit INVAR_PIPER_MODEL wins (tests), else
@@ -118,6 +125,11 @@ class $SystemTtsBackend implements TtsBackend {
   /** Resolve the piper `.onnx` path for a selected voice (selected-over-first-found). Exposed for tests
    *  and callers that need the resolved model without constructing a backend. */
   static resolvePiperModel = resolvePiperModel;
+
+  /** Engine-argument mappings from the speed-multiplier rate (higher = faster) — exposed for tests,
+   *  since this box detects no speech engine and the spawned arguments cannot be observed live. */
+  static toLengthScale = toLengthScale;
+  static toWordsPerMinute = toWordsPerMinute;
 
   /** Bounded enqueue, drop-OLDEST past `cap` — the queue policy as a pure static so it is testable
    *  without a detected engine (this box's unit runs have none). */
