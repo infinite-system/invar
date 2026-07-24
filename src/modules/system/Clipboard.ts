@@ -4,6 +4,7 @@
 import { Static } from 'ivue/extras';
 import { openSync, writeSync, closeSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { Processes } from './Processes';
 
 export interface ClipboardTool {
   copy: string[];
@@ -14,7 +15,7 @@ let detected: ClipboardTool | null | undefined = undefined;
 
 async function which(command: string): Promise<boolean> {
   try {
-    const subprocess = Bun.spawn(['which', command], { stdout: 'ignore', stderr: 'ignore' });
+    const subprocess = Processes.Class.spawn(['which', command], { stdout: 'ignore', stderr: 'ignore' });
     return (await subprocess.exited) === 0;
   } catch {
     return false;
@@ -65,7 +66,7 @@ class $Clipboard {
     const tool = await detectTool();
     if (tool) {
       try {
-        const subprocess = Bun.spawn(tool.copy, { stdin: 'pipe', stdout: 'ignore', stderr: 'ignore' });
+        const subprocess = Processes.Class.spawn(tool.copy, { stdin: 'pipe', stdout: 'ignore', stderr: 'ignore' });
         subprocess.stdin.write(text);
         await subprocess.stdin.end();
         if ((await subprocess.exited) === 0) {
@@ -105,7 +106,7 @@ class $Clipboard {
     const tool = await detectTool();
     if (!tool) return this.internalBuffer;
     try {
-      const subprocess = Bun.spawn(tool.paste, { stdout: 'pipe', stderr: 'ignore' });
+      const subprocess = Processes.Class.spawn(tool.paste, { stdout: 'pipe', stderr: 'ignore' });
       const output = await new Response(subprocess.stdout).text();
       await subprocess.exited;
       return output;

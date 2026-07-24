@@ -13,6 +13,9 @@ import type { AgentBackend } from './AgentBackend';
 import { AgentPermissions } from './AgentPermissions';
 import type { AgentEvent } from './AgentEvents';
 import { CodexStreamMapping } from './CodexStreamMapping';
+import { Processes, type SpawnedProcess } from '../system/Processes';
+
+type CodexStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;
 
 export interface CodexStreamOptions {
   /** Absolute path to the `codex` binary (resolved by the factory via Bun.which). */
@@ -28,7 +31,7 @@ export interface CodexStreamOptions {
 
 class $CodexStreamBackend implements AgentBackend {
   private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: ReturnType<typeof Bun.spawn> | null = null;
+  private child: CodexStreamProcess | null = null;
   private threadId: string | null = null;
   private sawEnd = false;
   private interrupting = false;
@@ -47,9 +50,9 @@ class $CodexStreamBackend implements AgentBackend {
     if (AgentPermissions.Class.resolveLive(this.options.skipPermissions)) args.push('--dangerously-bypass-approvals-and-sandbox');
     if (this.options.model) args.push('-m', this.options.model);
     args.push(prompt); // prompt as the final positional argument
-    let child: ReturnType<typeof Bun.spawn>;
+    let child: CodexStreamProcess;
     try {
-      child = Bun.spawn([this.options.codexPath, ...args], {
+      child = Processes.Class.spawn([this.options.codexPath, ...args], {
         cwd: this.options.cwd,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -64,7 +67,7 @@ class $CodexStreamBackend implements AgentBackend {
     void this.pump(child);
   }
 
-  private async pump(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async pump(child: CodexStreamProcess): Promise<void> {
     const drainStderr = this.drainStderr(child);
     const decoder = new TextDecoder();
     let buffer = '';
@@ -92,7 +95,7 @@ class $CodexStreamBackend implements AgentBackend {
     }
   }
 
-  private async drainStderr(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async drainStderr(child: CodexStreamProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {

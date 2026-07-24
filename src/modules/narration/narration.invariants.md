@@ -58,7 +58,7 @@ terminal's `TerminalBackend` and the agent's `AgentBackend`.
 **Mechanism:** `NarrationProjection` is constructed with a `TtsBackend` and calls only `speak`/`stop`/
 `dispose`. `TtsFactory.createBackend` picks the implementation: `INVAR_TTS_BACKEND=mock` forces the
 silent double (so the gate emits no audio), otherwise a `SystemTtsBackend` that auto-detects the engine.
-The projection has no `Bun.spawn`, no device, no engine name in its code path.
+The projection has no process launch, no device, no engine name in its code path.
 
 **Generates:** a hermetic, non-flaky narration gate (scripted transcript → asserted spoken lines through
 the mock); a real audio path that drops in behind the same three methods.
@@ -149,7 +149,7 @@ depends on an engine being present.
 
 **Mechanism:** `detectEngine()` resolves the first of espeak-ng/piper/say on PATH (or null);
 `detectPlayer()` resolves pw-play/aplay for the WAV pipe. `available` is false when no engine (or, on
-Linux, no player) is found, and `speak` early-returns in that case. Each `Bun.spawn` is wrapped so a
+Linux, no player) is found, and `speak` early-returns in that case. Each process launch is wrapped so a
 launch failure skips the utterance and continues the queue. On this box no engine is installed, so the
 backend reports `available=false` and utters nothing (`sudo apt-get install -y espeak-ng` enables it).
 

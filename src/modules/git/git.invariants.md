@@ -13,7 +13,7 @@ order different from their request order.
 
 **Scope:** Status and log subprocesses started by `GitRepository` for one working directory.
 
-**Mechanism:** `Bun.spawn` processes execute independently while later requests can start before
+**Mechanism:** Git subprocesses execute independently while later requests can start before
 earlier processes exit.
 
 **Generates:** Monotonic status and history request IDs; a stale-result guard at every async

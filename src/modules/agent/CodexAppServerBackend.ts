@@ -24,6 +24,9 @@ import { AgentPermissions } from './AgentPermissions';
 import type { AgentEvent, PermissionDecision } from './AgentEvents';
 import { CodexAppServerMapping, type ApprovalDescriptor, type MappingTurnState } from './CodexAppServerMapping';
 import { Files } from '../system/Files';
+import { Processes, type SpawnedProcess } from '../system/Processes';
+
+type CodexAppServerProcess = SpawnedProcess<'pipe', 'pipe', 'pipe'>;
 
 export interface CodexAppServerOptions {
   /** Absolute path to the `codex` binary (resolved by the factory via Bun.which). */
@@ -47,7 +50,7 @@ class $CodexAppServerBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
 
   private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: ReturnType<typeof Bun.spawn> | null = null;
+  private child: CodexAppServerProcess | null = null;
   private nextRequestId = 1;
   private readonly pendingRequests = new Map<number, PendingRequest>();
   private threadId: string | null = null;
@@ -91,7 +94,7 @@ class $CodexAppServerBackend implements AgentBackend {
   private async ensureThread(): Promise<void> {
     if (this.child && this.threadId) return;
     if (!this.child) {
-      const child = Bun.spawn([this.options.codexPath, 'app-server'], {
+      const child = Processes.Class.spawn([this.options.codexPath, 'app-server'], {
         cwd: this.options.cwd ? Files.Class.absolute(this.options.cwd) : undefined,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -137,7 +140,7 @@ class $CodexAppServerBackend implements AgentBackend {
     }
   }
 
-  /** Write one JSON-RPC line to the server's stdin. Bun.spawn's stdin is a FileSink (write + flush),
+  /** Write one JSON-RPC line to the server's stdin. The process stdin is a FileSink (write + flush),
    *  NOT a WritableStream — a getWriter() path would silently no-op every message. */
   private write(payload: unknown): void {
     const sink = this.child?.stdin as unknown as { write?: (data: string) => unknown; flush?: () => unknown } | null;
@@ -156,7 +159,7 @@ class $CodexAppServerBackend implements AgentBackend {
     return new Promise((resolve, reject) => this.pendingRequests.set(id, { resolve, reject, method }));
   }
 
-  private async pumpStdout(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async pumpStdout(child: CodexAppServerProcess): Promise<void> {
     const decoder = new TextDecoder();
     let buffer = '';
     try {
@@ -235,7 +238,7 @@ class $CodexAppServerBackend implements AgentBackend {
     });
   }
 
-  private async drainStderr(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async drainStderr(child: CodexAppServerProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {

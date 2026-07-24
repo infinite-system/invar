@@ -1,9 +1,5 @@
 import { Static } from 'ivue/extras';
-// Subprocess capability (Bun.spawn). All external-process access is confined here so the
-// argument-injection boundary (L9) has one home: callers pass an ARGV ARRAY, never a shell
-// string, so filenames/branches can never be interpreted as arguments or shell syntax.
-//
-// invariant: Language and git tools are separate failable processes (project.invariants.md)
+
 export interface RunResult {
   code: number;
   stdout: string;
@@ -11,7 +7,45 @@ export interface RunResult {
   ok: boolean;
 }
 
+export type ProcessSpawnOptions<
+  Input extends Bun.Spawn.Writable,
+  Output extends Bun.Spawn.Readable,
+  ErrorOutput extends Bun.Spawn.Readable,
+> = Omit<Bun.Spawn.SpawnOptions<Input, Output, ErrorOutput>, 'env'>;
+
+export type SpawnedProcess<
+  Input extends Bun.Spawn.Writable,
+  Output extends Bun.Spawn.Readable,
+  ErrorOutput extends Bun.Spawn.Readable,
+> = Bun.Subprocess<Input, Output, ErrorOutput>;
+
 class $Processes {
+  /**
+   * Spawn an external tool from an argument vector without a shell, under the shared hermetic
+   * environment policy. Callers own streaming, exit handling, and launch-failure containment.
+   *
+   * The interactive terminal PTY is deliberately outside this seam: OpenPtyBackend attaches all
+   * three standard streams to a slave file descriptor and must preserve the user's complete
+   * interactive environment. That is a different environment generator, not an external-tool
+   * exception to this policy.
+   *
+   * invariant: Language and git tools are separate failable processes (project.invariants.md)
+   * invariant: External tools share one launch policy (src/modules/system/system.invariants.md)
+   */
+  static spawn<
+    const Input extends Bun.Spawn.Writable = 'ignore',
+    const Output extends Bun.Spawn.Readable = 'pipe',
+    const ErrorOutput extends Bun.Spawn.Readable = 'inherit',
+  >(
+    argumentVector: string[],
+    options?: ProcessSpawnOptions<Input, Output, ErrorOutput>,
+  ): SpawnedProcess<Input, Output, ErrorOutput> {
+    return Bun.spawn(argumentVector, {
+      ...options,
+      env: this.hermeticEnvironment(),
+    });
+  }
+
   /**
    * The parent environment with every GIT_* variable removed. A subprocess run here is scoped to an
    * explicit `cwd`; an ambient GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE (set, for example, when the
@@ -29,14 +63,13 @@ class $Processes {
   }
 
   /**
-   * Run `argv` (no shell) in `cwd`, capturing output. Never throws on non-zero exit or a
+   * Run `argumentVector` (no shell) in `cwd`, capturing output. Never throws on non-zero exit or a
    * missing binary — returns a RunResult with ok=false so callers degrade gracefully.
    */
-  static async run(argv: string[], cwd?: string, input?: string): Promise<RunResult> {
+  static async run(argumentVector: string[], cwd?: string, input?: string): Promise<RunResult> {
     try {
-      const subprocess = Bun.spawn(argv, {
+      const subprocess = this.spawn(argumentVector, {
         cwd,
-        env: this.hermeticEnvironment(),
         stdin: input ? 'pipe' : 'ignore',
         stdout: 'pipe',
         stderr: 'pipe',

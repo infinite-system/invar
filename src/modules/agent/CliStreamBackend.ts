@@ -12,6 +12,9 @@ import type { AgentBackend } from './AgentBackend';
 import { AgentPermissions } from './AgentPermissions';
 import type { AgentEvent } from './AgentEvents';
 import { ClaudeStreamMapping } from './ClaudeStreamMapping';
+import { Processes, type SpawnedProcess } from '../system/Processes';
+
+type CliStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;
 
 /** Turn an auth-shaped stderr tail into a friendly, actionable hint — or null if it isn't auth-related. */
 function authHintFor(stderr: string): string | null {
@@ -38,7 +41,7 @@ export interface CliStreamOptions {
 
 class $CliStreamBackend implements AgentBackend {
   private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: ReturnType<typeof Bun.spawn> | null = null;
+  private child: CliStreamProcess | null = null;
   private sessionId: string | null = null;
   private sawResult = false;
   private interrupting = false;
@@ -58,9 +61,9 @@ class $CliStreamBackend implements AgentBackend {
     if (AgentPermissions.Class.resolveLive(this.options.skipPermissions)) args.push('--dangerously-skip-permissions');
     if (this.options.model) args.push('--model', this.options.model);
     if (this.sessionId) args.push('--resume', this.sessionId); // continue the conversation
-    let child: ReturnType<typeof Bun.spawn>;
+    let child: CliStreamProcess;
     try {
-      child = Bun.spawn([this.options.claudePath, ...args], {
+      child = Processes.Class.spawn([this.options.claudePath, ...args], {
         cwd: this.options.cwd,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -75,7 +78,7 @@ class $CliStreamBackend implements AgentBackend {
     void this.pump(child);
   }
 
-  private async pump(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async pump(child: CliStreamProcess): Promise<void> {
     const drainStderr = this.drainStderr(child); // concurrent, so a blocked stderr can't stall stdout
     const decoder = new TextDecoder();
     let buffer = '';
@@ -109,7 +112,7 @@ class $CliStreamBackend implements AgentBackend {
   }
 
   /** Drain the child's stderr into a bounded tail — never emitted verbatim unless the turn fails. */
-  private async drainStderr(child: ReturnType<typeof Bun.spawn>): Promise<void> {
+  private async drainStderr(child: CliStreamProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {

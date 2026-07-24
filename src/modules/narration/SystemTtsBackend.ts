@@ -13,6 +13,7 @@
 // invariant: A missing speech engine degrades to silence, never an error (src/modules/narration/narration.invariants.md)
 import type { TtsBackend } from './TtsBackend';
 import { VoiceDiscovery } from './VoiceDiscovery';
+import { Processes } from '../system/Processes';
 
 /** A detected engine: how to synthesize `text`, and whether it plays on its own (macOS `say`) or emits
  *  a WAV that must be piped into a separate player. */
@@ -198,22 +199,23 @@ class $SystemTtsBackend implements TtsBackend {
     }
     try {
       if (this.engine.playsDirectly) {
-        const process = Bun.spawn({ cmd: this.engine.synthCommand(text), stdout: 'ignore', stderr: 'ignore' });
+        const process = Processes.Class.spawn(this.engine.synthCommand(text), {
+          stdout: 'ignore',
+          stderr: 'ignore',
+        });
         this.player = process;
         this.synth = null;
         void process.exited.then(() => this.onUtteranceDone(process));
         return;
       }
-      const synth = Bun.spawn({
-        cmd: this.engine.synthCommand(text),
+      const synth = Processes.Class.spawn(this.engine.synthCommand(text), {
         stdin: this.engine.name === 'piper' ? new TextEncoder().encode(`${text}\n`) : 'ignore',
         stdout: 'pipe',
         stderr: 'ignore',
       });
       // aplay reads stdin as '-' and quiets with '-q'; pw-play reads stdin as '-'.
       const playerArguments = this.playerPath?.endsWith('aplay') ? ['-q', '-'] : ['-'];
-      const player = Bun.spawn({
-        cmd: [this.playerPath as string, ...playerArguments],
+      const player = Processes.Class.spawn([this.playerPath as string, ...playerArguments], {
         stdin: synth.stdout,
         stdout: 'ignore',
         stderr: 'ignore',

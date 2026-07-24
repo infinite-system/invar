@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GitCommands, type GitCommandResult } from '../GitCommands';
 import { GitRepository } from '../GitRepository';
-import { gitCleanEnv } from './gitCleanEnv';
+import { Processes } from '../../system/Processes';
 
 interface DeferredResult {
   promise: Promise<GitCommandResult>;
@@ -122,32 +122,27 @@ test('a failed status refresh degrades to error state', async () => {
   expect(repository.staged.value).toEqual([]);
 });
 
-function runGit(cwd: string, arguments_: string[]): string {
-  const result = Bun.spawnSync(['git', ...arguments_], {
-    cwd,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    env: gitCleanEnv(), // hermetic: never inherit a leaked GIT_INDEX_FILE/GIT_DIR (e.g. under the commit hook)
-  });
-  if (result.exitCode !== 0) {
-    throw new Error(new TextDecoder().decode(result.stderr));
+async function runGit(workingDirectory: string, arguments_: string[]): Promise<string> {
+  const result = await Processes.Class.run(['git', ...arguments_], workingDirectory);
+  if (!result.ok) {
+    throw new Error(result.stderr);
   }
-  return new TextDecoder().decode(result.stdout);
+  return result.stdout;
 }
 
-function createRepositoryFixture(): string {
-  const cwd = mkdtempSync(join(tmpdir(), 'invar-git-'));
-  runGit(cwd, ['init', '--quiet']);
-  runGit(cwd, ['config', 'user.name', 'Invar Test']);
-  runGit(cwd, ['config', 'user.email', 'invar@example.test']);
-  writeFileSync(join(cwd, 'tracked.txt'), 'original\n');
-  runGit(cwd, ['add', '--', 'tracked.txt']);
-  runGit(cwd, ['commit', '--quiet', '-m', 'Initial commit']);
-  return cwd;
+async function createRepositoryFixture(): Promise<string> {
+  const workingDirectory = mkdtempSync(join(tmpdir(), 'invar-git-'));
+  await runGit(workingDirectory, ['init', '--quiet']);
+  await runGit(workingDirectory, ['config', 'user.name', 'Invar Test']);
+  await runGit(workingDirectory, ['config', 'user.email', 'invar@example.test']);
+  writeFileSync(join(workingDirectory, 'tracked.txt'), 'original\n');
+  await runGit(workingDirectory, ['add', '--', 'tracked.txt']);
+  await runGit(workingDirectory, ['commit', '--quiet', '-m', 'Initial commit']);
+  return workingDirectory;
 }
 
 test('stage and unstage all transition a real git fixture', async () => {
-  const cwd = createRepositoryFixture();
+  const cwd = await createRepositoryFixture();
   try {
     writeFileSync(join(cwd, 'tracked.txt'), 'changed\n');
     writeFileSync(join(cwd, 'new file.txt'), 'new\n');

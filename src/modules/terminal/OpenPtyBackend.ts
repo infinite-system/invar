@@ -8,6 +8,7 @@
 // work) — a tier-M follow-up (a login_tty helper) closes that gap.
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
+// invariant: External tools share one launch policy (src/modules/system/system.invariants.md)
 import { dlopen, FFIType, ptr } from 'bun:ffi';
 import { createReadStream, closeSync, type ReadStream } from 'node:fs';
 import { Environment } from '../system/Environment';
@@ -73,6 +74,8 @@ class $OpenPtyBackend implements TerminalBackend {
     this.applyWindowSize(columns, rows);
 
     // Linux gets a controlling tty (job control) via setsid --ctty; elsewhere spawn the shell bare.
+    // This interactive PTY deliberately bypasses Processes.spawn: its child needs the complete user
+    // environment plus slave-file-descriptor stdio, while external tools need the hermetic policy.
     const command = process.platform === 'linux'
       ? ['setsid', '--ctty', shell, '-i']
       : [shell, '-i'];

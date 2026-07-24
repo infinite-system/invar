@@ -46,6 +46,43 @@ still executes correctly; grep asserts stateful classes are not `Static()`-wrapp
 
 **Last refined:** 2026-07-21
 
+### External tools share one launch policy
+
+**Invariant:** If production code launches an external tool, then it uses
+`Processes.spawn(argumentVector, options)` so the launch is shell-free and strips every ambient
+`GIT_*` variable.
+
+**Scope:** External tools launched by system, LSP, agent, narration, git, search, and future
+production modules. `OpenPtyBackend` is outside this scope because an interactive shell requires
+the complete user environment and slave-file-descriptor standard streams.
+
+**Mechanism:** `Processes.spawn` accepts only an argument vector, rejects an `env` option, and
+supplies `Processes.hermeticEnvironment()` after all caller options. `Processes.run` layers output
+capture over that method. `OpenPtyBackend` calls the runtime launcher directly at the documented
+PTY boundary.
+
+**Generates:** One shell-free and hermetic launch chokepoint; streaming and captured subprocesses
+inherit the same external-tool policy; the PTY keeps its distinct interactive environment
+generator.
+
+**Rejected alternatives:** Let streaming consumers call the runtime launcher directly — each
+consumer silently loses the shared environment policy.
+
+**Evidence:** `src/modules/system/Processes.ts` (`spawn`, `run`, `hermeticEnvironment`);
+`src/modules/system/Processes.test.ts`; `src/modules/terminal/OpenPtyBackend.ts` (documented
+interactive exemption).
+
+**Impossible if true:** A production external tool inherits `GIT_DIR`, `GIT_INDEX_FILE`,
+`GIT_AUTHOR_NAME`, or any other ambient `GIT_*` variable; a production module launches an external
+tool directly outside `Processes.ts`; the PTY loses the user's interactive environment.
+
+**Verification:** `bun test src/modules/system/Processes.test.ts && grep -rn "Bun[.]spawn" src/`;
+the grep reports only `Processes.ts` and the documented `OpenPtyBackend` exemption.
+
+**Status:** established
+
+**Last refined:** 2026-07-24
+
 ### File access is confined to a single root
 
 **Invariant:** If a file path is read or listed through `Files`, then it is confined to the active

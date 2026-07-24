@@ -1,4 +1,5 @@
 import type { LanguageServerCommand } from './LanguageProvider';
+import { Processes } from '../system/Processes';
 
 export interface LspWritable {
   write(data: Uint8Array): number | Promise<number>;
@@ -74,7 +75,7 @@ class $LspProcess implements LspProcessLike {
     this.stderrText = '';
     const generation = ++this.generation;
     try {
-      const child = Bun.spawn([command.command, ...command.args], {
+      const child = Processes.Class.spawn([command.command, ...command.args], {
         cwd,
         stdin: 'pipe',
         stdout: 'pipe',
