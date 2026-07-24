@@ -178,7 +178,21 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
   # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
+  step "smoke: activitybar" bash scripts/smoke-activitybar.sh
   step "smoke: panel-split" bash scripts/smoke-panel-split.sh
+  # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
+  # the independent terminal-emulator verification ring.
+  step "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
+  step "smoke: git-log harness" bun scripts/harness/smoke-git-log-harness.ts
+  step "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
+  step "smoke: gutter-diff harness" bun scripts/harness/smoke-gutter-diff-harness.ts
+  step "smoke: diff-overview harness" bun scripts/harness/smoke-diff-overview-harness.ts
+  step "smoke: tree-scroll harness" bun scripts/harness/smoke-tree-scroll-harness.ts
+  step "smoke: quick-open harness" bun scripts/harness/smoke-quickopen-harness.ts
+  step "smoke: navigation-history harness" bun scripts/harness/smoke-navigation-history-harness.ts
+  step "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
+  step "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
+  step "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
   # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
   step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh

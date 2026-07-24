@@ -81,6 +81,10 @@ class $PtyTestDriver {
     this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
   }
 
+  sendKeysWithoutFrameExpectation(...keyNames: string[]): void {
+    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+  }
+
   async sendKeysAndAwaitFrameByteArrival(
     keyNames: readonly string[],
     timeoutMilliseconds = 10_000,

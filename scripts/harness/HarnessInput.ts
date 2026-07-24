@@ -107,6 +107,12 @@ function $key(keyName: string): string {
   }
 
   if (baseKey.length === 1) {
+    if (hasAlt && !hasShift && !hasControl && (baseKey === '[' || baseKey === ']')) {
+      return `\x1b[27;3;${baseKey.charCodeAt(0)}~`;
+    }
+    if (hasShift && hasControl && !hasAlt) {
+      return `\x1b[${baseKey.toLowerCase().charCodeAt(0)};6u`;
+    }
     let sequence = hasShift ? baseKey.toUpperCase() : baseKey;
     if (hasControl && !canEncodeAsControlCharacter(sequence)) {
       const modifierParameter = 1 + Number(hasShift) + (Number(hasAlt) * 2)
