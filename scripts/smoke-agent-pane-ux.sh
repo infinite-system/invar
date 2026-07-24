@@ -106,7 +106,61 @@ submit "gamma-newest-prompt"; wait_idle
 chk "view auto-sticks to the newest turn" "$(f agentStuckToBottom)" "true"
 has "newest turn is visible at the tail" "gamma-newest-prompt"
 hasnt "the FIRST turn scrolled above the fold" "alpha-marker"
-has "vertical scrollbar thumb renders while overflowing" "█"
+# The thumb renders as BACKGROUND FILL on blank cells (SolidThumbScrollBar — never block glyphs), so a
+# text capture cannot see it: read the FrameProbe bg lane at the EXACT bar column — the transcript
+# bar occupies the column just inside the agent pane's right border (full-width rows starting with
+# '│'). A thumb = a contiguous run of >=2 blank cells there whose bg differs from that column's
+# dominant blank-cell bg (the track/panel fill), while NO block-element glyph appears anywhere in the
+# frame (the outlawed old painter).
+thumb_verdict="$(python3 - "$ROOT/artifacts/frame-$S.json" <<'PY'
+import json
+import sys
+frame = json.load(open(sys.argv[1]))
+rows = frame['rows']
+for row in rows:
+    for glyph in row.get('text', ''):
+        if 0x2580 <= ord(glyph) <= 0x259F:
+            print('GLYPH U+%04X' % ord(glyph))
+            raise SystemExit(0)
+from collections import Counter
+pane_rows = [row for row in rows if row.get('text', '').startswith('│')]
+if not pane_rows:
+    print('NO-PANE-ROWS')
+    raise SystemExit(0)
+right_border = max(row.get('text', '').rstrip().rfind('│') for row in pane_rows)
+bar_column = right_border - 1
+blank_backgrounds = []
+for row in pane_rows:
+    text = row.get('text', '')
+    backgrounds = row.get('bg', [])
+    glyph = text[bar_column] if bar_column < len(text) else ''
+    cell_bg = backgrounds[bar_column] if bar_column < len(backgrounds) else ''
+    blank_backgrounds.append(cell_bg if glyph == ' ' and cell_bg else None)
+counts = Counter(cell_bg for cell_bg in blank_backgrounds if cell_bg)
+if not counts:
+    print('NO-BLANK-CELLS column=%d' % bar_column)
+    raise SystemExit(0)
+dominant = counts.most_common(1)[0][0]
+best_run = 0
+run_length = 0
+run_bg = None
+for cell_bg in blank_backgrounds + [None]:
+    if cell_bg and cell_bg != dominant and cell_bg == run_bg:
+        run_length += 1
+    else:
+        best_run = max(best_run, run_length)
+        run_bg = cell_bg if cell_bg and cell_bg != dominant else None
+        run_length = 1 if run_bg else 0
+if best_run >= 2:
+    print('FOUND column=%d run=%d' % (bar_column, best_run))
+else:
+    print('NONE column=%d best_run=%d' % (bar_column, best_run))
+PY
+)"
+case "$thumb_verdict" in
+  FOUND*) echo "  PASS  vertical scrollbar thumb renders as bg fill while overflowing ($thumb_verdict)";;
+  *) echo "  FAIL  no bg-fill scrollbar thumb found ($thumb_verdict)"; fail=1;;
+esac
 # Momentum: a few wheel-up notches over the transcript GLIDE up (poll the low point) then decay to rest.
 wheel_y="$(row_of 'gamma-newest-prompt')"; [ -z "$wheel_y" ] && wheel_y=$(( $(f height) / 2 ))
 maxtop="$(f agentScrollTop)"
