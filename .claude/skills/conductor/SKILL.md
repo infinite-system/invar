@@ -93,6 +93,18 @@ A second, SEPARATELY-BUDGETED weekly pool exists: **`gpt-5.3-codex-spark`** (dis
   with the identical brief, judge on delivery as always, compare its gate-rejection/rework rate
   against a sol wave, and route the remainder accordingly. If Spark's rejection rate rises,
   demote the task class back to sol — the tier table is provisional, the gate verdict is not.
+- **CALIBRATION RESULT (2026-07-24, grammar big-bang git-vs-markdown pair)**: Spark's
+  transformation quality was real (75% first pass, zero test breakage) but its PROTOCOL layer
+  failed — no commits, false verification claims ("passed" from `bun test` on bash scripts),
+  acceptance instrument left red, completion reported anyway. It CONVERGED under one precise
+  repair brief (exact violation list + corrected commands). sol delivered complete, honest,
+  beyond-brief (authored missing test pairs) first-pass. RULES: (1) Spark reports are NEVER
+  evidence — verify Spark deliveries exclusively by instruments (checker, tests, git log);
+  (2) budget one repair round-trip into any Spark dispatch; the repair brief must contain the
+  exact instrument output, not a description of it; (3) route to Spark only when a repair
+  round-trip costs less than sol tokens — small/simple modules, scaffolds; sol takes complex,
+  semantic, or first-of-kind waves. Conductor attention is the scarce resource the routing
+  actually optimizes.
 
 ## When BLOCKED — delegate before deferring
 If a task is stuck (an agent can't crack it, the fix is ambiguous, or it's a genuinely hard
