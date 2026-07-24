@@ -162,6 +162,14 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   concurrent; if a smoke fails oddly while several gates run, RE-RUN IT ISOLATED before treating it as
   real (a load flake re-runs green). Over-spawn → tell the fleet to cap. When adding a smoke, PID-
   namespace its tmux sessions from the start, or it silently re-breaks concurrent gating.
+  DETERMINISTIC-INSTRUMENT REDS ARE DEFECTS (2026-07-24): the clearance/rerun protocol exists ONLY
+  for timing-sensitive instruments (tmux smokes). A PTY-harness smoke red is never "cleared" by
+  rerunning — determinism is its contract, so an in-gate red after solo greens is evidence of an
+  environment/ordering defect in the port or driver (first instance: goto-definition's
+  frame-ordinal wait — coalescing made frame counts unstable; fixed at the shared seam, rule now
+  in harness.invariants.md: waits are conditions or quiescence, never frame ordinals). Diagnose,
+  fix at the generator, re-gate. If a harness red DOES re-run green solo, that green is itself the
+  bug report.
   CLEARANCE PROVENANCE (2026-07-24, learned the hard way): a rerun only clears a red if it runs the
   EXACT COMMITTED TIP being landed — `git status` the worktree and diff the failing smoke file
   between the gate's tree and the rerun's tree first. If the file differs (e.g. the builder's
