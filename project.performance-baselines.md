@@ -221,3 +221,16 @@ bash scripts/perf-baselines.sh    # ~3.5 min; exit 0 clean · 1 idle-invariant v
                                   # 2 measurement failure · 3 target miss (see script header)
 bash scripts/smoke-editor.sh      # verified ALL-PASS after both perf runs
 ```
+
+## Gate-duration benchmark — the smoke swap (2026-07-24)
+
+| Configuration | Measured wall time |
+|---|---:|
+| Doubled suite (42 tmux + 42 harness + ring-of-0), last pre-swap gate | 11 m 55 s |
+| Post-swap (42 harness + 4-smoke tmux sentinel ring), first gate | **4 m 34 s (274 s)** |
+
+2.6× faster per gate. The post-swap red was the wrap tmux canary in the ring (classic signature,
+glyph/caret coordinate; harness twin green in the same run; cleared 2× solo per protocol) — the
+flake class the swap quarantines, demonstrating itself in the ring's first outing. Determinism
+ledger at swap time: harness ~430 runs / 0 flakes; tmux 4 flakes same-day. Per-smoke pairs and
+the latency-step history live above; full tmux suite runs weekly via INVAR_FULL_TMUX=1.
