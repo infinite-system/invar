@@ -10,6 +10,7 @@ import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
 import type { ProjectedLine } from './AgentTranscriptProjection';
+import type { TranscriptMatchHighlight } from './AgentTranscriptSearch';
 import type { ComposerRow } from './AgentComposer';
 import type { ThinkingSegment } from './AgentThinkingIndicator';
 import { WrapText } from '../ui/WrapText';
@@ -28,6 +29,10 @@ export interface AgentPaneRenderContext {
   bodyRows: readonly ProjectedLine[];
   /** Parallel to `bodyRows`: the selection span on each row (single-ROW background), or null. */
   selectionRanges: readonly (SelectionRange | null)[];
+  /** Parallel to `bodyRows`: the search-match spans on each row (display cells; empty = no matches).
+   *  The CURRENT match paints like a selection; other matches get the dim find-match background —
+   *  the same two-tier look the editor's find gives its buffer. */
+  searchHighlights: readonly (readonly TranscriptMatchHighlight[])[];
   /** The animated thinking line (segments), or null when idle. Sits above the composer frame. */
   thinking: readonly ThinkingSegment[] | null;
   /** The calm secondary "waiting on tool" note, or null. When present it sits below the thinking line
@@ -65,6 +70,54 @@ function pushHighlighted(
   if (after) chunks.push(paint(after));
 }
 
+/** Paint one transcript body row carrying BOTH a selection span and search-match spans: segment the row
+ *  at every span boundary (all DISPLAY CELLS, sliced grapheme-safe through the shared WrapText seam) and
+ *  give each segment its one single-ROW background — selection wins, then the current match (selection
+ *  colour, it IS the focus), then other matches (the editor's dim find-match background), then plain. */
+function pushSearchHighlightedRow(
+  chunks: TextChunk[],
+  text: string,
+  selection: SelectionRange | null,
+  searchHighlights: readonly TranscriptMatchHighlight[],
+  paint: (text: string) => TextChunk,
+  palette: Palette,
+): void {
+  const selectionActive = selection !== null && selection.end > selection.start;
+  if (!selectionActive && searchHighlights.length === 0) {
+    chunks.push(paint(text));
+    return;
+  }
+  const totalCells = WrapText.Class.displayWidth(text);
+  const clampCell = (cell: number): number => Math.max(0, Math.min(cell, totalCells));
+  const boundarySet = new Set<number>([0, totalCells]);
+  if (selectionActive) {
+    boundarySet.add(clampCell(selection.start));
+    boundarySet.add(clampCell(selection.end));
+  }
+  for (const highlight of searchHighlights) {
+    boundarySet.add(clampCell(highlight.startCell));
+    boundarySet.add(clampCell(highlight.endCell));
+  }
+  const boundaries = [...boundarySet].sort((first, second) => first - second);
+  for (let boundaryIndex = 0; boundaryIndex + 1 < boundaries.length; boundaryIndex += 1) {
+    const segmentStart = boundaries[boundaryIndex]!;
+    const segmentEnd = boundaries[boundaryIndex + 1]!;
+    const segmentText = WrapText.Class.sliceByDisplayCells(text, segmentStart, segmentEnd);
+    if (!segmentText) continue;
+    const covers = (spanStart: number, spanEnd: number): boolean =>
+      spanStart < segmentEnd && spanEnd > segmentStart;
+    if (selectionActive && covers(selection.start, selection.end)) {
+      chunks.push(bg(palette.selection)(fg(palette.fg)(segmentText)));
+    } else if (searchHighlights.some((highlight) => highlight.current && covers(highlight.startCell, highlight.endCell))) {
+      chunks.push(bg(palette.selection)(fg(palette.fg)(segmentText)));
+    } else if (searchHighlights.some((highlight) => covers(highlight.startCell, highlight.endCell))) {
+      chunks.push(bg(palette.cursorLine)(paint(segmentText)));
+    } else {
+      chunks.push(paint(segmentText));
+    }
+  }
+}
+
 /** Paint pre-composed styled segments (thinking line / mode line). */
 function pushSegments(chunks: TextChunk[], segments: readonly ThinkingSegment[]): void {
   for (const segment of segments) {
@@ -73,15 +126,15 @@ function pushSegments(chunks: TextChunk[], segments: readonly ThinkingSegment[])
 }
 
 function $render(context: AgentPaneRenderContext): StyledText {
-  const { palette, padLeft, bodyRows, selectionRanges, thinking, waitingNote, rule, composer, modeLine, focused } = context;
+  const { palette, padLeft, bodyRows, selectionRanges, searchHighlights, thinking, waitingNote, rule, composer, modeLine, focused } = context;
   const chunks: TextChunk[] = [];
   const leftPad = ' '.repeat(Math.max(0, padLeft));
 
-  // Transcript body (padded left), each row with its single-row selection highlight.
+  // Transcript body (padded left), each row with its single-row selection + search-match highlights.
   bodyRows.forEach((line, index) => {
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
     const paint = (text: string): TextChunk => (line.bold ? bold(fg(line.color)(text)) : fg(line.color)(text));
-    pushHighlighted(chunks, line.text, selectionRanges[index] ?? null, paint, palette);
+    pushSearchHighlightedRow(chunks, line.text, selectionRanges[index] ?? null, searchHighlights[index] ?? [], paint, palette);
     chunks.push(fg(palette.fg)('\n'));
   });
 
