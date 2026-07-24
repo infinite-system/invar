@@ -2,6 +2,37 @@ import { describe, expect, test } from 'bun:test';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessInput } from './HarnessInput';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
+import { PtyTestDriver } from './PtyTestDriver';
+
+const beginSynchronizedOutput = '\x1b[?2026h';
+const endSynchronizedOutput = '\x1b[?2026l';
+
+function recordedFrame(frameText: string): string {
+  return `${beginSynchronizedOutput}\x1b[2J\x1b[H${frameText}${endSynchronizedOutput}`;
+}
+
+function createRecordedStreamDriver(
+  frameTexts: readonly string[],
+  frameIntervalMilliseconds = 15,
+): PtyTestDriver.Model {
+  const recordedFrames = frameTexts.map((frameText) => recordedFrame(frameText));
+  const recordedStreamProgram = `
+    const recordedFrames = ${JSON.stringify(recordedFrames)};
+    await Bun.sleep(20);
+    for (const recordedFrame of recordedFrames) {
+      process.stdout.write(recordedFrame);
+      await Bun.sleep(${frameIntervalMilliseconds});
+    }
+    await Bun.sleep(1_000);
+  `;
+  return new PtyTestDriver.Class({
+    workspaceRoot: process.cwd(),
+    repositoryRoot: process.cwd(),
+    columns: 40,
+    rows: 4,
+    command: [process.execPath, '-e', recordedStreamProgram],
+  });
+}
 
 describe('HarnessInput', () => {
   test('maps named keys and modifiers to terminal bytes', () => {
@@ -73,5 +104,67 @@ describe('HarnessSnapshot', () => {
     });
     expect(snapshot.findText('X')).toEqual({ row: 0, column: 0 });
     emulator.dispose();
+  });
+});
+
+describe('PtyTestDriver.awaitGridCondition', () => {
+  test('resolves from the current grid when the condition is already satisfied', async () => {
+    const driver = createRecordedStreamDriver(['ALREADY READY']);
+    try {
+      await driver.awaitQuiescence();
+      const snapshot = await driver.awaitGridCondition(
+        'the recorded grid already contains READY',
+        (candidateSnapshot) => candidateSnapshot.findText('READY') !== null,
+        100,
+      );
+      expect(snapshot.findText('ALREADY READY')).not.toBeNull();
+    } finally {
+      driver.dispose();
+    }
+  });
+
+  test('checks each completed recorded frame until the condition is satisfied', async () => {
+    const driver = createRecordedStreamDriver(['FIRST', 'SECOND', 'THIRD READY']);
+    try {
+      const snapshot = await driver.awaitGridCondition(
+        'the recorded grid reaches THIRD READY',
+        (candidateSnapshot) => candidateSnapshot.findText('THIRD READY') !== null,
+        1_000,
+      );
+      expect(snapshot.findText('THIRD READY')).not.toBeNull();
+      expect(driver.outputSequenceCount(beginSynchronizedOutput)).toBe(3);
+    } finally {
+      driver.dispose();
+    }
+  });
+
+  test('reports the predicate and final grid region when no frame satisfies it', async () => {
+    const driver = createRecordedStreamDriver(['FIRST', 'FINAL UNSATISFIED']);
+    try {
+      let timeoutError: Error | null = null;
+      try {
+        await driver.awaitGridCondition(
+          'the recorded grid contains NEVER PRESENT',
+          (candidateSnapshot) => candidateSnapshot.findText('NEVER PRESENT') !== null,
+          120,
+          {
+            startRow: 0,
+            endRowExclusive: 2,
+            startColumn: 0,
+            endColumnExclusive: 24,
+          },
+        );
+      } catch (error) {
+        timeoutError = error instanceof Error ? error : new Error(String(error));
+      }
+      expect(timeoutError?.message).toContain(
+        'Timed out waiting for grid condition: the recorded grid contains NEVER PRESENT',
+      );
+      expect(timeoutError?.message).toContain('Final grid region rows 0-1, columns 0-23');
+      expect(timeoutError?.message).toContain('FINAL UNSATISFIED');
+      expect(timeoutError?.message).not.toContain('synchronized frame 3');
+    } finally {
+      driver.dispose();
+    }
   });
 });

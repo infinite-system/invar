@@ -7,6 +7,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessInput, type HarnessMouseEvent } from './HarnessInput';
@@ -32,6 +33,13 @@ export interface InputFrameByteArrivalMeasurement {
   inputToFrameByteArrivalMilliseconds: number;
 }
 
+export interface HarnessGridRegion {
+  startRow: number;
+  endRowExclusive: number;
+  startColumn: number;
+  endColumnExclusive: number;
+}
+
 class $PtyTestDriver {
   private readonly openPty: OpenPty.Model;
   private readonly emulator: TerminalEmulator.Model;
@@ -39,7 +47,7 @@ class $PtyTestDriver {
   private readonly child: ReturnType<typeof Bun.spawn>;
   private readonly outputDecoder = new TextDecoder();
   private observedOutput = '';
-  private minimumCompletedFrameCount = 1;
+  private frameExpectationPredecessor: CompletedSynchronizedFrame | null | undefined = null;
   private disposed = false;
 
   constructor(private readonly options: PtyTestDriverOptions) {
@@ -77,7 +85,7 @@ class $PtyTestDriver {
   }
 
   sendKeys(...keyNames: string[]): void {
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
   }
 
@@ -89,15 +97,12 @@ class $PtyTestDriver {
     keyNames: readonly string[],
     timeoutMilliseconds = 10_000,
   ): Promise<InputFrameByteArrivalMeasurement> {
-    this.expectNextFrame();
-    const targetCompletedFrameCount = this.minimumCompletedFrameCount;
-    const completedFramePromise = this.quiescence.awaitCompletedFrame(
-      targetCompletedFrameCount,
-      timeoutMilliseconds,
-    );
+    this.markFrameExpected();
+    const completedFramePromise = this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
     const inputWrittenTimestampMilliseconds = performance.now();
     this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
     const completedFrame = await completedFramePromise;
+    this.frameExpectationPredecessor = undefined;
     return {
       inputWrittenTimestampMilliseconds,
       completedFrame,
@@ -108,13 +113,13 @@ class $PtyTestDriver {
 
   sendText(text: string): void {
     if (!text) return;
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.openPty.write(text);
   }
 
   sendRawInput(inputBytes: string): void {
     if (!inputBytes) return;
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.openPty.write(inputBytes);
   }
 
@@ -124,7 +129,7 @@ class $PtyTestDriver {
   }
 
   sendMouse(event: HarnessMouseEvent): void {
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.openPty.write(HarnessInput.Class.mouse(event));
   }
 
@@ -133,21 +138,25 @@ class $PtyTestDriver {
   }
 
   sendPaste(text: string): void {
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.openPty.write(HarnessInput.Class.paste(text));
   }
 
   resize(columns: number, rows: number): void {
-    this.expectNextFrame();
+    this.markFrameExpected();
     this.emulator.resize(columns, rows);
     this.openPty.resize(columns, rows);
   }
 
   async awaitQuiescence(timeoutMilliseconds = 10_000): Promise<void> {
-    const targetCompletedFrameCount = this.minimumCompletedFrameCount;
-    await this.quiescence.awaitCompletedFrame(targetCompletedFrameCount, timeoutMilliseconds);
+    if (
+      this.frameExpectationPredecessor !== undefined
+      && this.quiescence.lastCompletedFrame === this.frameExpectationPredecessor
+    ) {
+      await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    }
     await this.emulator.flush();
-    this.minimumCompletedFrameCount = this.quiescence.completedFrameCount;
+    this.frameExpectationPredecessor = undefined;
   }
 
   async assertNoCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
@@ -180,22 +189,53 @@ class $PtyTestDriver {
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
     timeoutMilliseconds = 10_000,
   ): Promise<HarnessSnapshot.Model> {
+    return this.awaitGridCondition(
+      `the harness snapshot satisfies ${predicate.toString()}`,
+      predicate,
+      timeoutMilliseconds,
+    );
+  }
+
+  async awaitGridCondition(
+    predicateDescription: string,
+    predicate: (snapshot: HarnessSnapshot.Model) => boolean,
+    timeoutMilliseconds = 10_000,
+    diagnosticRegion?: Partial<HarnessGridRegion>,
+  ): Promise<HarnessSnapshot.Model> {
     const deadline = performance.now() + timeoutMilliseconds;
-    await this.awaitQuiescence(timeoutMilliseconds);
+    await this.emulator.flush();
     while (true) {
       const snapshot = this.snapshot();
-      if (predicate(snapshot)) return snapshot;
+      if (predicate(snapshot)) {
+        this.frameExpectationPredecessor = undefined;
+        return snapshot;
+      }
       const remainingMilliseconds = deadline - performance.now();
       if (remainingMilliseconds <= 0) {
-        throw new Error(`Timed out waiting for a matching harness snapshot\n${snapshot.text()}`);
+        this.frameExpectationPredecessor = undefined;
+        throw this.gridConditionTimeoutError(
+          predicateDescription,
+          snapshot,
+          diagnosticRegion,
+        );
       }
-      const nextCompletedFrameCount = this.quiescence.completedFrameCount + 1;
-      await this.quiescence.awaitCompletedFrame(
-        nextCompletedFrameCount,
-        remainingMilliseconds,
-      );
+      try {
+        await this.quiescence.awaitNextCompletedFrame(remainingMilliseconds);
+      } catch (error) {
+        const isCompletedFrameTimeout = error instanceof Error
+          && error.message.startsWith(
+            'Timed out waiting for the next complete synchronized frame',
+          );
+        if (!isCompletedFrameTimeout && performance.now() < deadline) throw error;
+        await this.emulator.flush();
+        this.frameExpectationPredecessor = undefined;
+        throw this.gridConditionTimeoutError(
+          predicateDescription,
+          this.snapshot(),
+          diagnosticRegion,
+        );
+      }
       await this.emulator.flush();
-      this.minimumCompletedFrameCount = this.quiescence.completedFrameCount;
     }
   }
 
@@ -246,10 +286,39 @@ class $PtyTestDriver {
     this.emulator.dispose();
   }
 
-  private expectNextFrame(): void {
-    this.minimumCompletedFrameCount = Math.max(
-      this.minimumCompletedFrameCount,
-      this.quiescence.completedFrameCount + 1,
+  private markFrameExpected(): void {
+    if (
+      this.frameExpectationPredecessor === undefined
+      || this.frameExpectationPredecessor !== this.quiescence.lastCompletedFrame
+    ) {
+      this.frameExpectationPredecessor = this.quiescence.lastCompletedFrame;
+    }
+  }
+
+  private gridConditionTimeoutError(
+    predicateDescription: string,
+    snapshot: HarnessSnapshot.Model,
+    diagnosticRegion?: Partial<HarnessGridRegion>,
+  ): Error {
+    const startRow = Math.max(0, diagnosticRegion?.startRow ?? 0);
+    const endRowExclusive = Math.min(
+      snapshot.rows,
+      diagnosticRegion?.endRowExclusive ?? snapshot.rows,
+    );
+    const startColumn = Math.max(0, diagnosticRegion?.startColumn ?? 0);
+    const endColumnExclusive = Math.min(
+      snapshot.columns,
+      diagnosticRegion?.endColumnExclusive ?? snapshot.columns,
+    );
+    const regionText = snapshot.textRows()
+      .slice(startRow, endRowExclusive)
+      .map((rowText) => rowText.slice(startColumn, endColumnExclusive))
+      .join('\n');
+    return new Error(
+      `Timed out waiting for grid condition: ${predicateDescription}\n`
+      + `Final grid region rows ${startRow}-${endRowExclusive - 1}, `
+      + `columns ${startColumn}-${endColumnExclusive - 1}:\n`
+      + regionText,
     );
   }
 

@@ -3,8 +3,8 @@
 //
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 interface FrameWaiter {
-  targetCompletedFrameCount: number;
   resolve: (completedFrame: CompletedSynchronizedFrame) => void;
   reject: (error: Error) => void;
   timeoutHandle: ReturnType<typeof setTimeout>;
@@ -56,28 +56,20 @@ class $SynchronizedOutputQuiescence {
     for (const observedByte of observedBytes) this.observeByte(observedByte);
   }
 
-  awaitCompletedFrame(
-    targetCompletedFrameCount: number,
+  awaitNextCompletedFrame(
     timeoutMilliseconds = 10_000,
   ): Promise<CompletedSynchronizedFrame> {
     if (this.failure) return Promise.reject(this.failure);
-    if (
-      this.completedFrameCountValue >= targetCompletedFrameCount
-      && this.lastCompletedFrameValue
-    ) {
-      return Promise.resolve(this.lastCompletedFrameValue);
-    }
     return new Promise((resolve, reject) => {
       const waiter: FrameWaiter = {
-        targetCompletedFrameCount,
         resolve,
         reject,
         timeoutHandle: setTimeout(() => {
           const waiterIndex = this.waiters.indexOf(waiter);
           if (waiterIndex >= 0) this.waiters.splice(waiterIndex, 1);
           reject(new Error(
-            `Timed out waiting for synchronized frame ${targetCompletedFrameCount} `
-            + `(completed ${this.completedFrameCountValue})`,
+            'Timed out waiting for the next complete synchronized frame '
+            + `(completed frames observed: ${this.completedFrameCountValue})`,
           ));
         }, timeoutMilliseconds),
       };
@@ -158,10 +150,7 @@ class $SynchronizedOutputQuiescence {
   }
 
   private resolveSatisfiedWaiters(completedFrame: CompletedSynchronizedFrame): void {
-    for (let waiterIndex = this.waiters.length - 1; waiterIndex >= 0; waiterIndex--) {
-      const waiter = this.waiters[waiterIndex];
-      if (!waiter || waiter.targetCompletedFrameCount > this.completedFrameCountValue) continue;
-      this.waiters.splice(waiterIndex, 1);
+    for (const waiter of this.waiters.splice(0)) {
       clearTimeout(waiter.timeoutHandle);
       waiter.resolve(completedFrame);
     }

@@ -7,7 +7,7 @@ const endSynchronizedOutput = '\x1b[?2026l';
 describe('SynchronizedOutputQuiescence', () => {
   test('counts only complete paired frames from a recorded output shape', async () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
-    const completedFrame = quiescence.awaitCompletedFrame(1);
+    const completedFrame = quiescence.awaitNextCompletedFrame();
     quiescence.observe(`terminal setup${endSynchronizedOutput}`);
     expect(quiescence.completedFrameCount).toBe(0);
     quiescence.observe(`${beginSynchronizedOutput}frame body`);
@@ -23,7 +23,7 @@ describe('SynchronizedOutputQuiescence', () => {
     const quiescence = new SynchronizedOutputQuiescence.Class(
       () => currentTimestampMilliseconds,
     );
-    const completedFrame = quiescence.awaitCompletedFrame(1);
+    const completedFrame = quiescence.awaitNextCompletedFrame();
     quiescence.observe(`terminal setup${beginSynchronizedOutput}frame body`);
     currentTimestampMilliseconds = 7;
     quiescence.observe(endSynchronizedOutput);
@@ -43,7 +43,7 @@ describe('SynchronizedOutputQuiescence', () => {
   test('recognizes markers split at every PTY chunk boundary', async () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
     const recordedFrame = `${beginSynchronizedOutput}paint${endSynchronizedOutput}`;
-    const completedFrame = quiescence.awaitCompletedFrame(1);
+    const completedFrame = quiescence.awaitNextCompletedFrame();
     for (const recordedByte of new TextEncoder().encode(recordedFrame)) {
       quiescence.observe(new Uint8Array([recordedByte]));
     }
@@ -53,12 +53,22 @@ describe('SynchronizedOutputQuiescence', () => {
 
   test('does not complete until a nested synchronized frame closes', async () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
+    const completedFrame = quiescence.awaitNextCompletedFrame();
     quiescence.observe(`${beginSynchronizedOutput}${beginSynchronizedOutput}`);
     quiescence.observe(endSynchronizedOutput);
     expect(quiescence.completedFrameCount).toBe(0);
     quiescence.observe(endSynchronizedOutput);
-    await quiescence.awaitCompletedFrame(1);
+    await completedFrame;
     expect(quiescence.completedFrameCount).toBe(1);
+  });
+
+  test('waits for a future completion event rather than resolving from a frame ordinal', async () => {
+    const quiescence = new SynchronizedOutputQuiescence.Class();
+    quiescence.observe(`${beginSynchronizedOutput}first${endSynchronizedOutput}`);
+    const nextCompletedFrame = quiescence.awaitNextCompletedFrame();
+    quiescence.observe(`${beginSynchronizedOutput}second${endSynchronizedOutput}`);
+
+    expect((await nextCompletedFrame).completedFrameCount).toBe(2);
   });
 
   test('asserts marker silence and rejects when a complete frame arrives', async () => {

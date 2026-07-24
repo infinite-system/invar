@@ -39,15 +39,8 @@ export async function awaitStatus(
   predicate: (status: HarnessStatus) => boolean,
   timeoutMilliseconds = 10_000,
 ): Promise<HarnessStatus> {
-  let matchingStatus: HarnessStatus | null = null;
-  await driver.awaitSnapshot(() => {
-    const status = readStatus(statusPath);
-    if (!status || !predicate(status)) return false;
-    matchingStatus = status;
-    return true;
-  }, timeoutMilliseconds);
-  if (!matchingStatus) throw new Error(`Status predicate did not resolve for ${statusPath}`);
-  return matchingStatus;
+  void driver;
+  return awaitStatusPublication(statusPath, predicate, timeoutMilliseconds);
 }
 
 export async function awaitStatusPublication(

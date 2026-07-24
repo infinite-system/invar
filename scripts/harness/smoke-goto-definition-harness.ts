@@ -89,9 +89,14 @@ try {
   driver.sendKeys('Down');
   await driver.awaitQuiescence();
   driver.sendKeys('Enter');
-  let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('const message') !== null
-      && String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/bar.ts'),
+  let snapshot = await driver.awaitGridCondition(
+    'the greetWidget use site in bar.ts is visible',
+    (candidate) => candidate.findText('const message') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    (status) => String(status.activeBuffer).endsWith('/bar.ts'),
   );
   HarnessSmoke.Class.pass('bar.ts opens through the file tree');
 
@@ -113,9 +118,20 @@ try {
     button: 'left',
     control: true,
   });
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('export function greetWidget') !== null
-      && String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/foo.ts'),
+  snapshot = await driver.awaitGridCondition(
+    'Ctrl+click shows the greetWidget declaration',
+    (candidate) => candidate.findText('export function greetWidget') !== null,
+    30_000,
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    (status) => {
+      const cursor = status.cursor as { line?: number; col?: number } | undefined;
+      return String(status.activeBuffer).endsWith('/foo.ts')
+        && cursor?.line === 0
+        && cursor.col === 16;
+    },
     30_000,
   );
   HarnessSmoke.Class.requireCondition(
@@ -138,9 +154,14 @@ try {
     row: barTabPosition.row,
     button: 'left',
   });
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('const message') !== null
-      && String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/bar.ts'),
+  snapshot = await driver.awaitGridCondition(
+    'clicking the bar.ts tab restores the greetWidget use site on the grid',
+    (candidate) => candidate.findText('const message') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    (status) => String(status.activeBuffer).endsWith('/bar.ts'),
   );
   usePosition = useSitePosition(snapshot);
   if (!usePosition) throw new Error('Use site did not return');
@@ -170,9 +191,20 @@ try {
     'plain click places the cursor without jumping',
   );
   driver.sendKeys('F12');
-  await driver.awaitSnapshot(
-    (candidate) => candidate.findText('export function greetWidget') !== null
-      && String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/foo.ts'),
+  await driver.awaitGridCondition(
+    'F12 shows the greetWidget declaration',
+    (candidate) => candidate.findText('export function greetWidget') !== null,
+    20_000,
+  );
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    (status) => {
+      const cursor = status.cursor as { line?: number; col?: number } | undefined;
+      return String(status.activeBuffer).endsWith('/foo.ts')
+        && cursor?.line === 0
+        && cursor.col === 16;
+    },
     20_000,
   );
   HarnessSmoke.Class.requireCondition(

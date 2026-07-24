@@ -64,19 +64,12 @@ async function $awaitStatus(
   predicate: (status: StatusSnapshot) => boolean,
   timeoutMilliseconds = 10_000,
 ): Promise<StatusSnapshot> {
-  let matchingStatus: StatusSnapshot | null = null;
-  await driver.awaitSnapshot(() => {
-    try {
-      const candidateStatus = $readStatus(statusPath);
-      if (!predicate(candidateStatus)) return false;
-      matchingStatus = candidateStatus;
-      return true;
-    } catch {
-      return false;
-    }
-  }, timeoutMilliseconds);
-  if (!matchingStatus) throw new Error('Matching status disappeared after snapshot wait');
-  return matchingStatus;
+  return $awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    predicate,
+    timeoutMilliseconds,
+  );
 }
 
 async function $awaitFrameSilence(
@@ -112,7 +105,9 @@ async function $awaitStatusWithoutFrame(
     }
     const remainingMilliseconds = deadline - performance.now();
     if (remainingMilliseconds <= 0) {
-      throw new Error('Timed out waiting for status without requiring a rendered frame');
+      throw new Error(
+        `Timed out waiting for status at ${statusPath} to satisfy its predicate`,
+      );
     }
     try {
       await driver.assertNoCompleteFrameEmittedFor(Math.min(50, remainingMilliseconds));
