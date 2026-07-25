@@ -372,6 +372,9 @@ class $Workspace {
   get activeHeadText() {
     return shallowRef('');
   }
+  get activeHeadDocumentPath() {
+    return shallowRef('');
+  }
   private activeHeadTextRequestToken = 0;
 
   // DiffAlignment is deliberately cached behind computed(): alignment is document-sized work, while
@@ -381,6 +384,7 @@ class $Workspace {
       const editor = this.editor;
       void editor.document.revision.value;
       if (this.showingDiff.value || !editor.hasDocument.value) return new Map();
+      if (this.activeHeadDocumentPath.value !== editor.document.path) return new Map();
       return GutterDiff.Class.statusByLine(this.activeHeadText.value, editor.document.text);
     });
   }
@@ -420,6 +424,7 @@ class $Workspace {
   // invariant: The editor gutter reflects HEAD changes (src/modules/diff/diff.invariants.md)
   async refreshActiveHeadText(): Promise<void> {
     const requestToken = ++this.activeHeadTextRequestToken;
+    this.activeHeadDocumentPath.value = '';
     const editor = this.editor;
     if (this.showingDiff.value || !editor.hasDocument.value || !editor.document.path) {
       this.activeHeadText.value = '';
@@ -433,6 +438,7 @@ class $Workspace {
     }
     const workspaceRelativePath = Files.Class.relative(this.root, documentPath);
     const headText = await this.gitFileText('HEAD', workspaceRelativePath);
+    // invariant: Async results are revision-stamped and stale results discarded (project.invariants.md)
     if (
       requestToken === this.activeHeadTextRequestToken &&
       !this.showingDiff.value &&
@@ -440,6 +446,7 @@ class $Workspace {
       this.editor.document.path === documentPath
     ) {
       this.activeHeadText.value = headText;
+      this.activeHeadDocumentPath.value = documentPath;
     }
   }
   private workingFileText(filePath: string): string {

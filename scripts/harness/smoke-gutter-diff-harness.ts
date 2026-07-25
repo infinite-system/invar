@@ -59,9 +59,11 @@ async function openTrackedFile(
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-gutter-diff-harness-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-gutter-diff-harness-home-'));
 const trackedPath = join(fixtureRoot, 'tracked.txt');
+const switchedTrackedPath = join(fixtureRoot, 'switched-modified.txt');
 await Bun.write(trackedPath, 'alpha\nbeta\ngamma\n');
+await Bun.write(switchedTrackedPath, 'before switch\nstable\n');
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
-HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'tracked.txt']);
+HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'tracked.txt', 'switched-modified.txt']);
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=gutter-diff@example.test',
@@ -71,6 +73,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'fixture',
 ]);
+await Bun.write(switchedTrackedPath, 'after switch\nstable\n');
 
 const editStatusPath = join(homeDirectory, 'edit-status.json');
 const editDriver = new PtyTestDriver.Class({
@@ -92,6 +95,29 @@ try {
   HarnessSmoke.Class.requireCondition(
     hasNoDiffMarker(cleanSnapshot),
     'clean HEAD file has no diff glyph',
+  );
+
+  HarnessSmoke.Class.clickText(editDriver, cleanSnapshot, 'switched-modified.txt');
+  await HarnessSmoke.Class.awaitStatus(
+    editDriver,
+    editStatusPath,
+    (status) => status.activeBuffer === switchedTrackedPath,
+  );
+  await editDriver.awaitGridCondition(
+    'the switched tracked file paints its marker after its HEAD refresh',
+    (snapshot) => markerHasForeground(snapshot, 'after switch', '▎', modifiedColor),
+  );
+  HarnessSmoke.Class.pass('post-switch marker appears after the active document HEAD refresh');
+
+  editDriver.sendKeys('Control+PageUp');
+  await HarnessSmoke.Class.awaitStatus(
+    editDriver,
+    editStatusPath,
+    (status) => status.activeBuffer === trackedPath,
+  );
+  await editDriver.awaitGridCondition(
+    'the original clean tracked file is visible again',
+    (snapshot) => snapshot.findText('alpha') !== null && hasNoDiffMarker(snapshot),
   );
 
   editDriver.sendKeys('End');

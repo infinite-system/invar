@@ -8,6 +8,13 @@ import { CommitLog } from '../git/CommitLog';
 import { GitRepository } from '../git/GitRepository';
 import { GitCommands, type GitCommandResult } from '../git/GitCommands';
 import type { CommitRecord } from '../git/GitParsers';
+import {
+  mkdtempSync as makeTemporaryDirectorySync,
+  rmSync as removeSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir as temporaryDirectory } from 'node:os';
+import { join } from 'node:path';
 
 class TestWorkspace extends Workspace.$Class {
   constructor(protected readonly gitCommandsClass: typeof GitCommands.Class) {
@@ -140,5 +147,59 @@ describe('diff-open ordering (newest click wins, not newest completion)', () => 
     await slowOpen;
     expect(workspace.diffRequest.value?.currentVersionPath).toBe('fast.ts'); // still the newest CLICK
     expect(workspace.diffRequest.value?.currentVersionText).toBe('fast current');
+  });
+});
+
+describe('active HEAD document identity', () => {
+  test('a switched document stays marker-free until its own HEAD text arrives', async () => {
+    const workspaceRoot = makeTemporaryDirectorySync(join(temporaryDirectory(), 'invar-head-identity-'));
+    const firstDocumentPath = join(workspaceRoot, 'first.txt');
+    const secondDocumentPath = join(workspaceRoot, 'second.txt');
+    writeFileSync(firstDocumentPath, 'first working text\n');
+    writeFileSync(secondDocumentPath, 'second working text\n');
+
+    class HeadTextGitCommands extends GitCommands.$Class {
+      static override fileAtRef(
+        workingDirectory: string,
+        gitReference: string,
+        filePath: string,
+      ): Promise<GitCommandResult> {
+        void workingDirectory;
+        void gitReference;
+        const headTextByPath = new Map([
+          ['first.txt', 'first HEAD text\n'],
+          ['second.txt', 'second HEAD text\n'],
+        ]);
+        return Promise.resolve(commandResult(0, headTextByPath.get(filePath) ?? ''));
+      }
+    }
+
+    const workspace = new TestWorkspace(HeadTextGitCommands);
+    workspace.root = workspaceRoot;
+    try {
+      workspace.openFileInTab(firstDocumentPath);
+      await workspace.refreshActiveHeadText();
+      expect(workspace.activeHeadDocumentPath.value).toBe(firstDocumentPath);
+      expect(workspace.gutterDiffByLine.value).toEqual(new Map([[0, 'modified']]));
+
+      workspace.openFileInTab(secondDocumentPath);
+      expect(workspace.activeHeadDocumentPath.value).toBe('');
+      expect(workspace.gutterDiffByLine.value).toEqual(new Map());
+
+      await workspace.refreshActiveHeadText();
+      expect(workspace.activeHeadDocumentPath.value).toBe(secondDocumentPath);
+      expect(workspace.gutterDiffByLine.value).toEqual(new Map([[0, 'modified']]));
+
+      workspace.activateTab(0);
+      expect(workspace.activeHeadDocumentPath.value).toBe('');
+      expect(workspace.gutterDiffByLine.value).toEqual(new Map());
+
+      await workspace.refreshActiveHeadText();
+      expect(workspace.activeHeadDocumentPath.value).toBe(firstDocumentPath);
+      expect(workspace.gutterDiffByLine.value).toEqual(new Map([[0, 'modified']]));
+    } finally {
+      workspace.dispose();
+      removeSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
