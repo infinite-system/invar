@@ -1,3 +1,8 @@
+import type { GraphicsTier } from '../theme/TerminalCapabilities';
+import type { DecodedImage } from './ImageDecoders';
+import type { PixelEncoder } from './ImageRenderers';
+import { ImageResample } from './ImageResample';
+
 // The pixel-preview mount: the ONE stateful piece between the pure tier encoders and the terminal.
 // It owns what is currently ON SCREEN (placement key, image id, the encoder that placed it) and the
 // emission discipline: a placement is emitted only when its key (tier, path, fitted rect, background)
@@ -10,71 +15,70 @@
 //
 // invariant: A pixel tier places and deletes graphics explicitly (src/modules/image/image.invariants.md)
 // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
-import type { GraphicsTier } from '../theme/TerminalCapabilities';
-import type { DecodedImage } from './ImageDecoders';
-import type { PixelEncoder } from './ImageRenderers';
-import { ImageResample } from './ImageResample';
-
-/** The terminal surface the mount emits through — injectable so tests capture payloads. */
-export interface PixelMountTerminal {
-  /** Write an escape payload through the renderer's serialized output path (never mid-frame). */
-  writePayload(data: string): void;
-  /** Resolves after pending frames have flushed — placements are emitted only then. */
-  afterFramesSettled(): Promise<void>;
-  /** The terminal's cell size in pixels, or null when the terminal has not reported one. */
-  cellPixelSize(): { width: number; height: number } | null;
-}
-
-/** One sync request: everything needed to decide whether and where to (re)place the active image. */
-export interface PixelMountContext {
-  tier: GraphicsTier;
-  encoder: PixelEncoder;
-  image: DecodedImage;
-  path: string;
-  /** The preview pane's cell rect (screen cells, 0-based). */
-  region: { x: number; y: number; columns: number; rows: number };
-  /** Panel background as `#rrggbb` — composited under transparency by pixel-resampling tiers. */
-  panelBackground: string;
-}
-
-// The assumed cell size when the terminal reports none: 8×16 keeps the 1:2 cell aspect the
-// half-block fit also assumes, so tier switches do not change the letterbox shape.
-const FALLBACK_CELL_PIXEL_WIDTH = 8;
-const FALLBACK_CELL_PIXEL_HEIGHT = 16;
-
-/** Parse `#rrggbb` into [red, green, blue], black on a bad string. */
-function parseHexBackground(hex: string): [number, number, number] {
-  const normalized = hex.startsWith('#') ? hex.slice(1) : hex;
-  const packed = Number.parseInt(normalized.slice(0, 6), 16);
-  if (normalized.length < 6 || Number.isNaN(packed)) return [0, 0, 0];
-  return [(packed >> 16) & 0xff, (packed >> 8) & 0xff, packed & 0xff];
-}
 
 class $PixelImageMount {
-  private placementKey = ''; // the latest REQUESTED key (dedupes sync calls)
+  // The assumed cell size when the terminal reports none: 8×16 keeps the 1:2 cell aspect the
+  // half-block fit also assumes, so tier switches do not change the letterbox shape.
+  protected static get fallbackCellPixelWidth(): number {
+    return 8;
+  }
+
+  protected static get fallbackCellPixelHeight(): number {
+    return 16;
+  }
+
+  protected placementKey = ''; // the latest REQUESTED key (dedupes sync calls)
   // EMITTED state — what is actually on screen. Written ONLY at the moment a payload writes (or a
   // clear deletes it). The pending/emitted split is load-bearing: a queued placement that never
   // reaches the terminal must never be the one clear() deletes, or the VISIBLE image is orphaned.
-  private emittedImageId = 0; // 0 = nothing on screen
-  private emittedEncoder: PixelEncoder | null = null;
-  private nextImageId = 7001; // arbitrary base clear of small ids other tools might use
-  private emitGeneration = 0;
-  private disposeSweep = ''; // the removeAll payload of any identity-tracking encoder ever placed
+  protected emittedImageId = 0; // 0 = nothing on screen
+  protected emittedEncoder: PixelEncoder | null = null;
+  protected nextImageId = 7001; // arbitrary base clear of small ids other tools might use
+  protected emitGeneration = 0;
+  protected disposeSweep = ''; // the removeAll payload of any identity-tracking encoder ever placed
 
-  constructor(private terminal: PixelMountTerminal) {}
+  constructor(protected terminal: PixelMountTerminal) {}
+
+  protected get ImageResample() {
+    return ImageResample.Class;
+  }
+
+  /** Parse `#rrggbb` into [red, green, blue], black on a bad string. */
+  protected parseHexBackground(hex: string): [number, number, number] {
+    const normalized = hex.startsWith('#') ? hex.slice(1) : hex;
+    const packed = Number.parseInt(normalized.slice(0, 6), 16);
+    if (normalized.length < 6 || Number.isNaN(packed)) return [0, 0, 0];
+    return [
+      (packed >> 16) & 0xff,
+      (packed >> 8) & 0xff,
+      packed & 0xff,
+    ];
+  }
 
   /** Reconcile the on-screen placement with the requested one. Cheap when nothing changed. */
   sync(context: PixelMountContext): void {
+    const pixelImageMountClass = this.constructor as typeof $PixelImageMount;
     const cell = this.terminal.cellPixelSize() ?? {
-      width: FALLBACK_CELL_PIXEL_WIDTH,
-      height: FALLBACK_CELL_PIXEL_HEIGHT,
+      width: pixelImageMountClass.fallbackCellPixelWidth,
+      height: pixelImageMountClass.fallbackCellPixelHeight,
     };
     const { region, image } = context;
     const boxPixelWidth = Math.max(1, region.columns) * cell.width;
     const boxPixelHeight = Math.max(1, region.rows) * cell.height;
-    const fitted = ImageResample.Class.fitWithin(image.width, image.height, boxPixelWidth, boxPixelHeight);
-    const fittedColumns = Math.max(1, Math.min(region.columns, Math.round(fitted.width / cell.width)));
-    const fittedRows = Math.max(1, Math.min(region.rows, Math.round(fitted.height / cell.height)));
+    const fitted = this.ImageResample.fitWithin(
+      image.width,
+      image.height,
+      boxPixelWidth,
+      boxPixelHeight,
+    );
+    const fittedColumns = Math.max(
+      1,
+      Math.min(region.columns, Math.round(fitted.width / cell.width)),
+    );
+    const fittedRows = Math.max(
+      1,
+      Math.min(region.rows, Math.round(fitted.height / cell.height)),
+    );
     // The fitted PIXEL dims are part of the key: a cell-size change (font zoom) can keep the same
     // cell rect while the raster a pixel tier must emit doubles — the cell-only key missed that.
     const key =
@@ -94,7 +98,7 @@ class $PixelImageMount {
       rows: fittedRows,
       pixelWidth: fitted.width,
       pixelHeight: fitted.height,
-      background: parseHexBackground(context.panelBackground),
+      background: this.parseHexBackground(context.panelBackground),
     });
     // Centre the fitted rect in the pane; CUP is 1-based. Cursor save/restore brackets the emit so
     // the placement never moves the app's real cursor.
@@ -109,7 +113,9 @@ class $PixelImageMount {
     void this.terminal.afterFramesSettled().then(() => {
       if (generation !== this.emitGeneration) return; // superseded before it reached the screen
       const removePrevious =
-        this.emittedEncoder && this.emittedImageId ? this.emittedEncoder.remove(this.emittedImageId) : '';
+        this.emittedEncoder && this.emittedImageId
+          ? this.emittedEncoder.remove(this.emittedImageId)
+          : '';
       this.terminal.writePayload(
         `${removePrevious}\x1b7\x1b[${cursorRow};${cursorColumn}H${placePayload}\x1b8`,
       );
@@ -146,4 +152,26 @@ export namespace PixelImageMount {
   export const $Class = $PixelImageMount;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+/** The terminal surface the mount emits through — injectable so tests capture payloads. */
+export interface PixelMountTerminal {
+  /** Write an escape payload through the renderer's serialized output path (never mid-frame). */
+  writePayload(data: string): void;
+  /** Resolves after pending frames have flushed — placements are emitted only then. */
+  afterFramesSettled(): Promise<void>;
+  /** The terminal's cell size in pixels, or null when the terminal has not reported one. */
+  cellPixelSize(): { width: number; height: number } | null;
+}
+
+/** One sync request: everything needed to decide whether and where to (re)place the active image. */
+export interface PixelMountContext {
+  tier: GraphicsTier;
+  encoder: PixelEncoder;
+  image: DecodedImage;
+  path: string;
+  /** The preview pane's cell rect (screen cells, 0-based). */
+  region: { x: number; y: number; columns: number; rows: number };
+  /** Panel background as `#rrggbb` — composited under transparency by pixel-resampling tiers. */
+  panelBackground: string;
 }

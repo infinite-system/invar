@@ -1,3 +1,9 @@
+import { Static } from 'ivue/extras';
+import type { GraphicsTier } from '../theme/TerminalCapabilities';
+import type { DecodedImage } from './ImageDecoders';
+import { KittyGraphics } from './KittyGraphics';
+import { SixelEncoder } from './SixelEncoder';
+
 // The image-renderer ladder: ONE registry mapping a graphics tier to the encoder that turns decoded
 // RGBA into that tier's escape payload. Every pixel tier shares the same generator — a decoded image
 // plus a screen rect in, an emit-ready payload string out — so tier support lives HERE only: the
@@ -8,11 +14,93 @@
 //
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: A pixel tier places and deletes graphics explicitly (src/modules/image/image.invariants.md)
-import { Static } from 'ivue/extras';
-import type { GraphicsTier } from '../theme/TerminalCapabilities';
-import type { DecodedImage } from './ImageDecoders';
-import { KittyGraphics } from './KittyGraphics';
-import { SixelEncoder } from './SixelEncoder';
+
+class $ImageRenderers {
+  protected static get KittyGraphics() {
+    return KittyGraphics.Class;
+  }
+
+  protected static get SixelEncoder() {
+    return SixelEncoder.Class;
+  }
+
+  protected static get $kittyEncoder(): PixelEncoder {
+    const imageRenderersClass = this;
+    const kittyEncoder: PixelEncoder = {
+      place(context) {
+        return imageRenderersClass.KittyGraphics.place({
+          image: context.image,
+          imageId: context.imageId,
+          columns: context.columns,
+          rows: context.rows,
+        });
+      },
+      remove(imageId) {
+        return imageRenderersClass.KittyGraphics.remove(imageId);
+      },
+      removeAll() {
+        return imageRenderersClass.KittyGraphics.removeAll();
+      },
+    };
+    Object.defineProperty(this, '$kittyEncoder', {
+      configurable: true,
+      value: kittyEncoder,
+    });
+    return kittyEncoder;
+  }
+
+  protected static get $sixelEncoder(): PixelEncoder {
+    const imageRenderersClass = this;
+    const sixelEncoder: PixelEncoder = {
+      place(context) {
+        return imageRenderersClass.SixelEncoder.encode({
+          image: context.image,
+          pixelWidth: context.pixelWidth,
+          pixelHeight: context.pixelHeight,
+          background: context.background,
+        });
+      },
+      remove() {
+        return '';
+      },
+      removeAll() {
+        return '';
+      },
+    };
+    Object.defineProperty(this, '$sixelEncoder', {
+      configurable: true,
+      value: sixelEncoder,
+    });
+    return sixelEncoder;
+  }
+
+  // The single source of truth for pixel tiers: tier → encoder. Half-block is DELIBERATELY absent —
+  // the null answer routes the preview through the cell renderer, the floor every terminal has.
+  protected static get $encodersByTier(): ReadonlyMap<
+    GraphicsTier,
+    PixelEncoder
+  > {
+    const encodersByTier: ReadonlyMap<GraphicsTier, PixelEncoder> = new Map([
+      ['kitty', this.$kittyEncoder],
+      ['sixel', this.$sixelEncoder],
+    ]);
+    Object.defineProperty(this, '$encodersByTier', {
+      configurable: true,
+      value: encodersByTier,
+    });
+    return encodersByTier;
+  }
+
+  /** The pixel encoder for `tier`, or null when the tier renders through cells (half-block floor). */
+  static encoderFor(tier: GraphicsTier): PixelEncoder | null {
+    return this.$encodersByTier.get(tier) ?? null;
+  }
+}
+
+export namespace ImageRenderers {
+  export const $Class = $ImageRenderers;
+  export const Class = Static($ImageRenderers);
+}
 
 /** Everything a pixel-tier encoder may need to place one image into one screen rect. The mount fills
  *  every field; each encoder reads only what its protocol uses. */
@@ -39,49 +127,4 @@ export interface PixelEncoder {
   place(context: PixelPlacementContext): string;
   remove(imageId: number): string;
   removeAll(): string;
-}
-
-class $ImageRenderers {
-  static encoderFor = $encoderFor;
-}
-
-export namespace ImageRenderers {
-  export const $Class = $ImageRenderers;
-  export const Class = Static($ImageRenderers);
-}
-
-const kittyEncoder: PixelEncoder = {
-  place: (context) =>
-    KittyGraphics.Class.place({
-      image: context.image,
-      imageId: context.imageId,
-      columns: context.columns,
-      rows: context.rows,
-    }),
-  remove: (imageId) => KittyGraphics.Class.remove(imageId),
-  removeAll: () => KittyGraphics.Class.removeAll(),
-};
-
-const sixelEncoder: PixelEncoder = {
-  place: (context) =>
-    SixelEncoder.Class.encode({
-      image: context.image,
-      pixelWidth: context.pixelWidth,
-      pixelHeight: context.pixelHeight,
-      background: context.background,
-    }),
-  remove: () => '',
-  removeAll: () => '',
-};
-
-// The single source of truth for pixel tiers: tier → encoder. Half-block is DELIBERATELY absent —
-// the null answer routes the preview through the cell renderer, the floor every terminal has.
-const encodersByTier: ReadonlyMap<GraphicsTier, PixelEncoder> = new Map([
-  ['kitty', kittyEncoder],
-  ['sixel', sixelEncoder],
-]);
-
-/** The pixel encoder for `tier`, or null when the tier renders through cells (half-block floor). */
-function $encoderFor(tier: GraphicsTier): PixelEncoder | null {
-  return encodersByTier.get(tier) ?? null;
 }
