@@ -4,11 +4,18 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+
+function statusButtonColumn(driver: PtyTestDriver.Model, label: string): number {
+  const statusBarRow = driver.snapshot().rows - 1;
+  const column = driver.snapshot().rowText(statusBarRow).lastIndexOf(label);
+  if (column < 0) throw new Error(`Status button is not visible: ${label}`);
+  return column + Math.floor(label.length / 2);
+}
 
 function runAgentUnitTests(repositoryRoot: string): void {
   const result = Bun.spawnSync([process.execPath, 'test', 'src/modules/agent/'], {
@@ -26,6 +33,9 @@ const repositoryRoot = process.cwd();
 const fixtureRoot = join(repositoryRoot, 'fixtures');
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-agent-harness-home-'));
 const statusPath = join(homeDirectory, 'status.json');
+const settingsDirectory = join(homeDirectory, '.config', 'invar');
+mkdirSync(settingsDirectory, { recursive: true });
+await Bun.write(join(settingsDirectory, 'settings.json'), '{"glyphMode":"unicode"}\n');
 
 console.log('== harness agent: deterministic backend/session tests ==');
 runAgentUnitTests(repositoryRoot);
@@ -54,16 +64,18 @@ try {
     HarnessSmoke.Class.readStatus(statusPath).terminalVisible === false,
     'agent pane is hidden at boot',
   );
+  await driver.awaitQuiescence();
   const bootStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const agentButtonColumn = statusButtonColumn(driver, ' ✦ ');
   driver.sendMouse({
     kind: 'press',
-    column: Number(bootStatus.width) - 11,
+    column: agentButtonColumn,
     row: Number(bootStatus.height) - 1,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: Number(bootStatus.width) - 11,
+    column: agentButtonColumn,
     row: Number(bootStatus.height) - 1,
     button: 'left',
   });
@@ -76,13 +88,13 @@ try {
   const openStatus = HarnessSmoke.Class.readStatus(statusPath);
   driver.sendMouse({
     kind: 'press',
-    column: Number(openStatus.width) - 11,
+    column: statusButtonColumn(driver, ' ✦ '),
     row: Number(openStatus.height) - 1,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: Number(openStatus.width) - 11,
+    column: statusButtonColumn(driver, ' ✦ '),
     row: Number(openStatus.height) - 1,
     button: 'left',
   });
@@ -108,7 +120,7 @@ try {
   );
   HarnessSmoke.Class.requireCondition(
     String(toggledStatus.panelContentIds).includes('agent'),
-    'agent is registered in the panel switcher',
+    'agent is registered in the shared panel host',
   );
   HarnessSmoke.Class.pass('empty-state hint and composer glyph render');
 

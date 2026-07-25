@@ -2,6 +2,21 @@ import { Static } from 'ivue/extras';
 
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 class $LayoutModel {
+  // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
+  protected static get defaultBottomPanelProportion(): number {
+    return 0.45;
+  }
+
+  static defaultBottomPanelRows(totalRows: number): number {
+    return Math.max(
+      3,
+      Math.round(
+        Math.max(1, Math.floor(totalRows))
+          * this.defaultBottomPanelProportion,
+      ),
+    );
+  }
+
   static resolve(options: LayoutModelOptions): LayoutSlotGeometry {
     const totalColumns = Math.max(1, Math.floor(options.totalColumns));
     const totalRows = Math.max(1, Math.floor(options.totalRows));

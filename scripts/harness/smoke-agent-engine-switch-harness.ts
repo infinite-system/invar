@@ -59,7 +59,7 @@ function createDriver(
     workspaceRoot: fixtureRoot,
     repositoryRoot,
     columns: 110,
-    rows: 34,
+    rows: 50,
     homeDirectory,
     environment: {
       TUI_STATUS_PATH: statusPath,
@@ -89,7 +89,7 @@ try {
     'the Claude pane title and engine-cycle affordance are visible',
     (candidate) => candidate.findText('engine: claude') !== null
       && candidate.findText('Ask Claude anything') !== null
-      && candidate.findText('╭─Claude') !== null
+      && candidate.findText('✦ Claude') !== null
       && candidate.findText('⇄') !== null,
   );
   let status = HarnessSmoke.Class.readStatus(firstStatusPath);
@@ -98,18 +98,11 @@ try {
     'Claude boot resolves engine and title',
   );
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText('╭─Claude') !== null
+    snapshot.findText('✦ Claude') !== null
       && snapshot.findText('⇄') !== null,
     'Claude title and engine-cycle affordance render',
   );
-  const firstPanelSlotRectangle = bottomPanelSlot(firstStatusPath);
-  const firstPanelBorderPosition = snapshot.findText('╭─Claude');
-  if (!firstPanelBorderPosition) throw new Error('Claude pane border disappeared');
-  let panelRectangle = {
-    ...firstPanelSlotRectangle,
-    left: firstPanelBorderPosition.column,
-    top: firstPanelBorderPosition.row,
-  };
+  let panelRectangle = bottomPanelSlot(firstStatusPath);
   const initialEngineSegment = snapshot.findText('engine: claude');
   if (!initialEngineSegment) throw new Error('Claude engine segment disappeared');
   HarnessSmoke.Class.requireCondition(
@@ -133,7 +126,7 @@ try {
     (candidate) => candidate.findText('switched to codex') !== null
       && candidate.findText('context ported') !== null
       && candidate.findText('engine: codex') !== null
-      && candidate.findText('╭─Codex') !== null
+      && candidate.findText('✦ Codex') !== null
       && hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
   status = HarnessSmoke.Class.readStatus(firstStatusPath);
@@ -142,7 +135,7 @@ try {
     'Ctrl+E switches the live provider identity to Codex',
   );
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText('╭─Codex') !== null
+    snapshot.findText('✦ Codex') !== null
       && hasTranscriptLabel(snapshot, panelRectangle, 'Claude'),
     'pane retitles while history retains its producing engine label',
   );
@@ -209,17 +202,10 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the fresh Codex provider paints no frozen Claude identity',
     (candidate) => candidate.findText('Ask Codex anything') !== null
-      && candidate.findText('╭─Codex') !== null
+      && candidate.findText('✦ Codex') !== null
       && candidate.findText('Ask Claude') === null,
   );
-  const secondPanelSlotRectangle = bottomPanelSlot(secondStatusPath);
-  const secondPanelBorderPosition = snapshot.findText('╭─Codex');
-  if (!secondPanelBorderPosition) throw new Error('Codex pane border disappeared');
-  panelRectangle = {
-    ...secondPanelSlotRectangle,
-    left: secondPanelBorderPosition.column,
-    top: secondPanelBorderPosition.row,
-  };
+  panelRectangle = bottomPanelSlot(secondStatusPath);
   status = HarnessSmoke.Class.readStatus(secondStatusPath);
   HarnessSmoke.Class.requireCondition(
     status.agentEngine === 'codex'

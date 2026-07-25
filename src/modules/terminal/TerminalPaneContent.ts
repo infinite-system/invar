@@ -6,7 +6,7 @@
 // generic PaneContent.
 //
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-// invariant: The panel renders exactly the active pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';

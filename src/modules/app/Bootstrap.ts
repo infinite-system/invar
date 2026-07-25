@@ -169,37 +169,21 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     shortcutHelp: () => shortcutHelp.close(),
   });
 
-  // The ONE terminal-toggle action, shared by the panel.toggleTerminal chords (Ctrl+J/Ctrl+`/F8) AND
-  // the status-bar terminal button, so both are the same action with no divergent paths. It forward-
-  // references `ensureTerminal` (declared below): the body only runs on a chord/click, long after
-  // init completes, so the binding is resolved by then.
+  // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J/Ctrl+`/F8)
+  // AND the status-bar terminal button. Opening it beside an existing agent region creates the
+  // visible split; closing it leaves the agent region intact.
   const toggleTerminal = (): void => {
     ensureTerminal();
-    // Symmetric with toggleAgent: activate + show THIS pane when hidden or showing the other pane; hide
-    // only when the terminal is already the visible one. Without the activate(), the button just toggled
-    // slot visibility and left whatever pane was active showing — so opening "terminal" while the agent
-    // was active re-showed the AGENT (the two conflated into one slot). activate() differentiates them.
-    if (panelHost.visible.value && panelHost.activeId.value === 'terminal') {
-      panelHost.hide();
-      return;
-    }
     rightDockHost.blur();
-    panelHost.activate('terminal');
-    panelHost.show();
+    panelHost.toggleContent('terminal');
   };
 
-  // The native agent (Claude) pane toggle — same bottom slot as the terminal. Show + activate when the
-  // slot is hidden or showing another pane; hide when the agent is already the visible pane (VS Code
-  // panel parity). Forward-references `ensureAgent` (declared below with ensureTerminal).
+  // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
+  // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
   const toggleAgent = (): void => {
     ensureAgent();
-    if (panelHost.visible.value && panelHost.activeId.value === 'agent') {
-      panelHost.hide();
-      return;
-    }
     rightDockHost.blur();
-    panelHost.activate('agent');
-    panelHost.show();
+    panelHost.toggleContent('agent');
   };
   const toggleRightDock = (): void => {
     // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
@@ -304,9 +288,9 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     return content;
   };
 
-  // The native agent (Claude) pane — a second PaneContent in the SAME bottom slot, registered lazily on
-  // first toggle (idle cost zero). Tier S wires the local EchoAgentBackend; CliStreamBackend swaps in
-  // later behind the one backend seam with no change here.
+  // The native agent pane — a second PaneContent with its OWN headed region in the bottom layout,
+  // registered lazily on first toggle (idle cost zero). The host still supplies the shared layout and
+  // splitter primitives, while terminal and agent identity remain separate.
   // The audio narration projection over the agent transcript (the third projection: text→pane,
   // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
   // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
@@ -339,7 +323,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
 
   const prepareTerminalForAgentCommand = (): TerminalPaneContent.Model => {
     const terminalPane = ensureTerminal();
-    if (agentRegistered) panelHost.split(['agent', 'terminal']);
+    if (agentRegistered) panelHost.split(['terminal', 'agent']);
     else panelHost.activate('terminal');
     panelHost.show();
     const terminalIndex = panelHost.resolvedCells.findIndex(
@@ -427,19 +411,20 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     rightDockHost.dispose();
   });
 
-  // Toggle the bottom panel between one cell and two side-by-side cells — the AGENT pane on the LEFT,
-  // the terminal on the RIGHT — and back. Both are ensured (lazily registered) first, then the panel
-  // splits by id; F9 toggles split↔single. Proves the split slot end to end with the two real citizens:
-  // independent sub-region render, per-cell click-to-focus, divider re-flow.
+  // F9 is the accelerator for the same visible action as opening the second status-bar content item:
+  // add the missing terminal/agent region beside the current one, or collapse a split back to the
+  // focused region.
   const togglePanelSplit = (): void => {
     ensureTerminal();
     ensureAgent();
-    if (!panelHost.visible.value) panelHost.show();
     if (panelHost.isSplit) {
       panelHost.unsplit();
       return;
     }
-    panelHost.split(['agent', 'terminal']); // agent LEFT, terminal RIGHT
+    if (!panelHost.visible.value) panelHost.show();
+    panelHost.toggleContent(
+      panelHost.activeId.value === 'agent' ? 'terminal' : 'agent',
+    );
   };
 
   // Theme + glyph mode are settings-driven (single source): the panel edits settings.theme /
@@ -821,6 +806,9 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       app.requestRender();
     },
     toggleRightDock,
+    toggleTerminal,
+    toggleAgent,
+    togglePanelSplit,
     hasHoveredMarkdownReference: () =>
       Boolean(view.activeMarkdownSplitView()?.hoveredReferencePath.value),
     openHoveredMarkdownReference: () => view.activeMarkdownSplitView()?.openHoveredReference(),

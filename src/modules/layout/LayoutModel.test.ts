@@ -26,6 +26,11 @@ function resolve(
 }
 
 describe('LayoutModel', () => {
+  test('the default bottom panel height scales across compact and tall terminals', () => {
+    expect(LayoutModel.Class.defaultBottomPanelRows(21)).toBe(9);
+    expect(LayoutModel.Class.defaultBottomPanelRows(47)).toBe(21);
+  });
+
   test('the user default keeps the sidebar full height and the panel under the editor', () => {
     const geometry = resolve();
 

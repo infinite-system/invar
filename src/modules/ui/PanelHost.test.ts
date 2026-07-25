@@ -78,6 +78,38 @@ test('switching is generic: a second content activates with zero host rewiring',
   expect(host.activeId.value).toBe('terminal');
 });
 
+test('opening a second content creates a focused side-by-side region and toggling removes it', () => {
+  const host = new PanelHost.Class();
+  const terminal = fakeContent('terminal');
+  const agent = fakeContent('agent');
+  host.register(terminal);
+  host.register(agent);
+
+  host.toggleContent('terminal');
+  expect(host.visible.value).toBe(true);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal',
+  ]);
+
+  host.toggleContent('agent');
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal',
+    'agent',
+  ]);
+  expect(host.focusedContent).toBe(agent);
+  expect(host.activeId.value).toBe('agent');
+
+  host.toggleContent('agent');
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal',
+  ]);
+  expect(host.focusedContent).toBe(terminal);
+  expect(host.activeId.value).toBe('terminal');
+
+  host.toggleContent('terminal');
+  expect(host.visible.value).toBe(false);
+});
+
 test('setViewportSize converges onto the active content', () => {
   const host = new PanelHost.Class();
   const terminal = fakeContent('terminal');
@@ -104,7 +136,7 @@ test('split puts two contents side by side with normalized shares; unsplit resto
 
   host.unsplit();
   expect(host.isSplit).toBe(false);
-  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual(['terminal']);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual(['agent']);
 });
 
 test('a focused split routes keystrokes to the FOCUSED cell; focusCell moves the target', () => {
@@ -126,6 +158,7 @@ test('a focused split routes keystrokes to the FOCUSED cell; focusCell moves the
   host.handleKey(second);
   expect(terminal.keys).toContain(second); // routing followed the focus
   expect(agent.keys).not.toContain(second);
+  expect(host.activeId.value).toBe('terminal');
 });
 
 test('splitting while focused blurs the old focused content and focuses the new focused cell', () => {

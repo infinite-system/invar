@@ -203,9 +203,9 @@ bypasses `onEvent`.
 
 ### The agent pane is a PaneContent citizen, not a special case
 
-**Invariant:** The agent session mounts as a generic `PaneContent` in the same switchable `PanelHost`
-slot the terminal uses — same `render`/`handleKey`/`caret`/`renderRevision`/`dispose` shape, zero
-host rewiring. The host treats it identically to any other pane.
+**Invariant:** The agent session mounts as a generic `PaneContent` in the same `PanelHost` slot the
+terminal uses, and when both are visible the agent owns a separate headed region with the same
+`render`/`handleKey`/`caret`/`renderRevision`/`dispose` shape and zero host rewiring.
 
 **Scope:** `AgentPaneContent`, its mount in `PanelHost`, and the Bootstrap toggle that registers it.
 
@@ -214,20 +214,22 @@ host rewiring. The host treats it identically to any other pane.
 pins to the composer; `renderRevision` fuses the session pulse with composer edits so both repaint
 through the one frame effect. Bootstrap lazily creates it on first toggle (idle cost zero).
 
-**Generates:** the agent pane composes with splits, focus, z-order, and the switcher for free; the
-same seam hosts multi-session tabs later.
+**Generates:** the agent pane composes with splits, focus, z-order, and pane-presence controls for
+free; the same seam hosts multi-session regions later.
 
 **Impossible if true:** a bespoke agent-only render/input path outside `PaneContent`; the host
-special-casing the agent pane.
+special-casing the agent pane; agent content rendering under the terminal heading.
 
-**Evidence:** `scripts/smoke-agent.sh` toggles the pane through the normal panel path, types a prompt,
-and asserts the echoed reply renders in the panel cells.
+**Evidence:** `scripts/harness/smoke-agent-harness.ts` toggles the pane through the normal panel path,
+types a prompt, and asserts the echoed reply renders; `scripts/harness/smoke-panel-split-harness.ts`
+asserts terminal and agent headings over separate regions.
 
-**Verification:** `bash scripts/smoke-agent.sh`
+**Verification:** `bun scripts/harness/smoke-agent-harness.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25
 
 ### Transcript search is a projection of the transcript
 

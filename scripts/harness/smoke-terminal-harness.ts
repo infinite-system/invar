@@ -4,7 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -16,6 +16,9 @@ function terminalSizePattern(rows: number, columns: number): RegExp {
 
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
 const statusPath = join(homeDirectory, 'status.json');
+const settingsDirectory = join(homeDirectory, '.config', 'invar');
+mkdirSync(settingsDirectory, { recursive: true });
+await Bun.write(join(settingsDirectory, 'settings.json'), '{"glyphMode":"unicode"}\n');
 
 console.log('== harness terminal: deterministic emulator and panel tests ==');
 const unitResult = Bun.spawnSync(
@@ -47,8 +50,14 @@ try {
     bootStatus.terminalVisible === false,
     'terminal is hidden at boot',
   );
+  await driver.awaitQuiescence();
   const statusBarRow = Number(bootStatus.height) - 1;
-  const terminalButtonColumn = Number(bootStatus.width) - 8;
+  const terminalButtonStart = driver.snapshot().rowText(statusBarRow).lastIndexOf(' ❯ ');
+  HarnessSmoke.Class.requireCondition(
+    terminalButtonStart >= 0,
+    'terminal status affordance is visibly present',
+  );
+  const terminalButtonColumn = terminalButtonStart + 1;
   driver.sendMouse({
     kind: 'press',
     column: terminalButtonColumn,
@@ -134,12 +143,15 @@ try {
   HarnessSmoke.Class.pass('shell output completed the nested PTY round trip');
 
   console.log('== harness terminal: divider drag resizes the nested child PTY ==');
-  const dividerRow = Number(openedStatus.height) - initialRows - 4;
-  const dividerTargetRow = dividerRow - 6;
-  const layoutSlots = openedStatus.layoutSlots as
-    | Record<string, { left: number }>
+  const splitterRegions = openedStatus.splitterRegions as
+    | Record<string, { left: number; top: number; width: number }>
     | undefined;
-  const dividerColumn = Number(layoutSlots?.bottomPanel?.left ?? 0) + 20;
+  const bottomPanelSplitter = splitterRegions?.bottomPanel;
+  if (!bottomPanelSplitter) throw new Error('Missing bottom-panel splitter region');
+  const dividerRow = bottomPanelSplitter.top;
+  const dividerTargetRow = dividerRow - 6;
+  const dividerColumn =
+    bottomPanelSplitter.left + Math.floor(bottomPanelSplitter.width / 2);
   driver.sendMouse({ kind: 'press', column: dividerColumn, row: dividerRow, button: 'left' });
   driver.sendMouse({ kind: 'move', column: dividerColumn, row: dividerTargetRow, button: 'left' });
   driver.sendMouse({ kind: 'release', column: dividerColumn, row: dividerTargetRow, button: 'left' });

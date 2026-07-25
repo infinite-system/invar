@@ -1,17 +1,16 @@
 // A pane SLOT: a generic host for a switchable AND splittable set of PaneContents. It owns
 // only WHICH contents are visible, how the visible ones share the width, which one has the keyboard,
-// and whether the slot is visible/focused — never the contents' internals. This is the same switch
-// idiom the sidebar uses for Files/Git, generalized twice: registering another PaneContent (Output,
-// Problems, a plugin) needs zero host changes, AND two-or-more contents can occupy the slot side by
-// side (agent | terminal) behind a resizable divider. One visible cell is the degenerate case — it
-// behaves EXACTLY like the old single-active switcher, so nothing regresses when nothing is split.
+// and whether the slot is visible/focused — never the contents' internals. Registering another
+// PaneContent (Output, Problems, a plugin) needs zero host changes, and two-or-more contents can
+// occupy independently headed regions side by side (terminal | agent) behind a resizable divider.
+// One visible cell is the degenerate case, so the same region model drives single and split layouts.
 //
 // The host holds NO renderable and NO OpenTUI dependency: RootView mounts the slot, pulls each visible
 // cell's `content.render(sub-region)` into its own laid-out column, routes focused keys through
 // handleKey to the FOCUSED cell, and converges each cell's sub-region through setViewportSize — so the
 // host stays a pure model, unit-testable with plain values.
 //
-// invariant: The panel renders exactly the active pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
 // invariant: A split panel renders every visible cell into its own sub-region (src/modules/terminal/terminal.invariants.md)
 // invariant: A focused split panel routes keystrokes to the focused cell (src/modules/terminal/terminal.invariants.md)
@@ -138,6 +137,11 @@ class $PanelHost {
     return this.resolvedCells.map((cell) => cell.content);
   }
 
+  isContentVisible(id: string): boolean {
+    return this.visible.value
+      && this.resolvedCells.some((cell) => cell.content.id === id);
+  }
+
   /** The content that currently owns the keyboard — the focused cell, or the single active content. */
   get focusedContent(): PaneContent | null {
     const cells = this.resolvedCells;
@@ -194,6 +198,7 @@ class $PanelHost {
       const total = shares.reduce((sum, share) => sum + Math.max(0, share), 0) || 1;
       this.layout.value = valid.map((id, index) => ({ id, ratio: Math.max(0, shares[index] ?? 0) / total }));
       if (this.focusedIndex.value >= valid.length) this.focusedIndex.value = 0;
+      this.activeId.value = valid[this.focusedIndex.value] ?? valid[0] ?? null;
     });
   }
 
@@ -211,9 +216,96 @@ class $PanelHost {
     const count = this.resolvedCells.length;
     if (count === 0) return;
     const clamped = Math.max(0, Math.min(index, count - 1));
-    if (clamped === this.focusedIndex.value) return;
+    const focusedIdentifier = this.resolvedCells[clamped]?.content.id ?? null;
+    if (
+      clamped === this.focusedIndex.value
+      && focusedIdentifier === this.activeId.value
+    ) {
+      return;
+    }
     this.retargetFocus(() => {
       this.focusedIndex.value = clamped;
+      this.activeId.value = focusedIdentifier;
+    });
+  }
+
+  /** Toggle one registered content's visible region. Opening a second content places both side by
+   *  side in registration order and focuses the newly opened region. Closing one split region leaves
+   *  the other mounted; closing the only region hides the slot. This is the one action shared by each
+   *  content's status-bar button and keyboard accelerator. */
+  // invariant: Visible panel contents own separate headed regions (src/modules/ui/ui.invariants.md)
+  toggleContent(id: string): void {
+    if (!this.contents.has(id)) return;
+    if (!this.visible.value) {
+      this.retargetFocus(() => {
+        this.layout.value = [];
+        this.activeId.value = id;
+        this.focusedIndex.value = 0;
+      });
+      this.show();
+      return;
+    }
+
+    const visibleCells = this.resolvedCells;
+    const visibleIndex = visibleCells.findIndex(
+      (cell) => cell.content.id === id,
+    );
+    if (visibleIndex < 0) {
+      const visibleIdentifiers = new Set(
+        visibleCells.map((cell) => cell.content.id),
+      );
+      visibleIdentifiers.add(id);
+      const orderedIdentifiers = this.order.value.filter((identifier) =>
+        visibleIdentifiers.has(identifier),
+      );
+      this.retargetFocus(() => {
+        this.layout.value = orderedIdentifiers.map((identifier) => ({
+          id: identifier,
+          ratio: 1 / orderedIdentifiers.length,
+        }));
+        this.focusedIndex.value = orderedIdentifiers.indexOf(id);
+        this.activeId.value = id;
+      });
+      this.focus();
+      return;
+    }
+
+    if (visibleCells.length === 1) {
+      this.hide();
+      return;
+    }
+
+    const focusedIdentifier = this.focusedContent?.id ?? this.activeId.value;
+    const remainingCells = visibleCells.filter(
+      (cell) => cell.content.id !== id,
+    );
+    const remainingTotal = remainingCells.reduce(
+      (sum, cell) => sum + cell.ratio,
+      0,
+    ) || 1;
+    const preferredIdentifier =
+      focusedIdentifier !== id
+        ? focusedIdentifier
+        : remainingCells[
+            Math.min(visibleIndex, remainingCells.length - 1)
+          ]?.content.id ?? remainingCells[0]?.content.id ?? null;
+    this.retargetFocus(() => {
+      this.activeId.value = preferredIdentifier;
+      if (remainingCells.length === 1) {
+        this.layout.value = [];
+        this.focusedIndex.value = 0;
+        return;
+      }
+      this.layout.value = remainingCells.map((cell) => ({
+        id: cell.content.id,
+        ratio: cell.ratio / remainingTotal,
+      }));
+      this.focusedIndex.value = Math.max(
+        0,
+        remainingCells.findIndex(
+          (cell) => cell.content.id === preferredIdentifier,
+        ),
+      );
     });
   }
 

@@ -32,7 +32,7 @@ export interface PaneRenderContext {
 export interface PaneContent {
   /** Stable identity used by the switcher (unique within a PanelHost). */
   readonly id: string;
-  /** Human-readable name shown on the panel's switcher tab. */
+  /** Human-readable name shown in this content region's own heading. */
   readonly title: string;
   /** Optional switcher glyph. */
   readonly icon?: string;

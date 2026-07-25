@@ -105,6 +105,69 @@ FrameProbe assertions registered in `scripts/merge-gate.sh`.
 
 **Last refined:** 2026-07-24
 
+### Visible panel contents own separate headed regions
+
+**Invariant:** If terminal and agent content are both visible in `PanelHost`, then each content owns a
+separate side-by-side region with its own heading and body, and adding or removing one content never
+relabels the other content as a tab under a shared heading.
+
+**Scope:** `PanelHost.toggleContent`, panel cells in `RootView`, the terminal and agent status
+controls, the F9 split action, and the matching command-palette actions.
+
+**Components:**
+- *Pane presence* — each status control toggles only its matching content.
+- *Per-cell heading* — each visible cell projects its own `PaneContent.icon` and `PaneContent.title`.
+- *Shared split* — `PanelHost.cellSpans` and `SplitterElement` place and resize visible cells.
+
+**Mechanism:** `PanelHost.toggleContent` adds the second registered content to the shared cell layout
+or removes only the selected content. RootView mounts one heading-and-body container per resolved
+cell, while status clicks, keybindings, and palette commands call the same Bootstrap toggles.
+
+**Generates:** A terminal region and an agent region that can coexist; one-click pane presence
+controls; F9 split acceleration; identical mouse, keyboard, and palette results.
+
+**Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/RootView.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/commands/CommandDefaults.ts`;
+`src/modules/ui/PanelHost.test.ts`; `scripts/harness/smoke-panel-split-harness.ts`.
+
+**Impossible if true:** The agent body appearing under a terminal heading; clicking Agent replacing
+the terminal body; closing Agent also closing Terminal; mouse and F9 producing different split
+layouts.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### The right dock control owns the status edge
+
+**Invariant:** If the status bar is visible, then its final controls are the hit-tested clock followed
+by the hit-tested right-dock control, with the right-dock control occupying the outermost three
+columns.
+
+**Scope:** Status-bar child order and pointer targets in `StatusBar`; other status text and controls
+retain their existing actions.
+
+**Mechanism:** `StatusBar` appends the clock immediately before `rightDockButton` after every other
+flex child. Both are real `TextRenderable` targets; the clock requests a render and the right-dock
+button invokes the shared `toggleRightDock`.
+
+**Generates:** A stable clock-then-right-dock corner; an outer-edge dock affordance; pointer access to
+both controls without changing the other status actions.
+
+**Evidence:** `src/modules/ui/StatusBar.ts`; `scripts/harness/smoke-layout-harness.ts`.
+
+**Impossible if true:** A help or settings control appearing after the clock; the clock occupying the
+outermost edge; a click on either visible corner control missing its painted target.
+
+**Verification:** `bun scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Tab bars share paint and hit geometry
 
 **Invariant:** If a horizontal tab bar paints tabs, unused width, and right controls, then one column

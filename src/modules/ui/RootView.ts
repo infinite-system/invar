@@ -436,7 +436,14 @@ function $buildRootView(
   // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
   // INTEGRATOR NOTE: this bottom-panel mount is the ONE shared RootView touch for the terminal; it is
   // independent of the activity-bar change landing in parallel (which touches the sidebar/left slot).
-  let panelHeightRows = 18; // roomier default terminal (still drag-resizable 3–40 via the divider)
+  const initialLayoutRows = Math.max(
+    1,
+    renderer.height
+      - 1
+      - (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
+  );
+  let panelHeightRows =
+    LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
   const panelBox = new BoxRenderable(renderer, {
     id: 'panel-box',
     position: 'absolute',
@@ -445,7 +452,7 @@ function $buildRootView(
     border: true,
     borderStyle: 'rounded',
     flexDirection: 'row', // visible split cells lay out left-to-right; one cell = the degenerate case
-    title: 'Terminal',
+    title: '',
     backgroundColor: readPalette().panel,
   });
   let panelMounted = false;
@@ -527,6 +534,8 @@ function $buildRootView(
   // grown on demand and re-attached in order only when the visible-cell COUNT changes (rare), so steady
   // frames just update widths and content.
   interface PanelCellView {
+    readonly container: BoxRenderable;
+    readonly heading: TextRenderable;
     readonly body: TextRenderable;
     readonly splitterElement: SplitterElement.Model | null;
   }
@@ -545,7 +554,31 @@ function $buildRootView(
   const ensurePanelCellView = (index: number): PanelCellView => {
     const existing = panelCellViews[index];
     if (existing) return existing;
-    const body = new TextRenderable(renderer, { id: `panel-cell-${index}`, content: '', wrapMode: 'none', flexShrink: 0 });
+    const container = new BoxRenderable(renderer, {
+      id: `panel-cell-region-${index}`,
+      flexDirection: 'column',
+      flexShrink: 0,
+      height: '100%',
+      minHeight: 0,
+    });
+    const heading = new TextRenderable(renderer, {
+      id: `panel-cell-heading-${index}`,
+      content: '',
+      width: '100%',
+      height: 1,
+      wrapMode: 'none',
+      selectable: false,
+    });
+    const body = new TextRenderable(renderer, {
+      id: `panel-cell-${index}`,
+      content: '',
+      wrapMode: 'none',
+      flexGrow: 1,
+      minHeight: 0,
+      width: '100%',
+    });
+    container.add(heading);
+    container.add(body);
     // The cell at this pool index whose content is the agent, else null (for scroll/selection routing).
     const agentAtCell = (): AgentPaneContent.Model | null => {
       const content = panelHost.resolvedCells[index]?.content;
@@ -555,6 +588,11 @@ function $buildRootView(
     // AGENT it also begins a drag-selection (transcript via the shared viewport engine, composer via a
     // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
     // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
+    heading.onMouseDown = () => {
+      panelHost.focus();
+      panelHost.focusCell(index);
+      renderer.requestRender();
+    };
     body.onMouseDown = (event: MouseEvent) => {
       panelHost.focus();
       panelHost.focusCell(index);
@@ -664,7 +702,12 @@ function $buildRootView(
         },
       });
     }
-    const view: PanelCellView = { body, splitterElement };
+    const view: PanelCellView = {
+      container,
+      heading,
+      body,
+      splitterElement,
+    };
     panelCellViews[index] = view;
     return view;
   };
@@ -674,13 +717,13 @@ function $buildRootView(
   const syncPanelCellMount = (count: number): void => {
     if (count === mountedPanelCellCount) return;
     for (const view of panelCellViews) {
-      panelBox.remove(view.body);
+      panelBox.remove(view.container);
       if (view.splitterElement) panelBox.remove(view.splitterElement.renderable);
     }
     for (let index = 0; index < count; index += 1) {
       const view = ensurePanelCellView(index);
       if (view.splitterElement) panelBox.add(view.splitterElement.renderable);
-      panelBox.add(view.body);
+      panelBox.add(view.container);
     }
     mountedPanelCellCount = count;
   };
@@ -713,6 +756,7 @@ function $buildRootView(
     renderer.requestRender();
   };
 
+  // invariant: Visible panel contents own separate headed regions (src/modules/ui/ui.invariants.md)
   function synchronizePanelMount(): void {
     const visible = panelHost.visible.value;
     if (visible === panelMounted) return;
@@ -735,7 +779,7 @@ function $buildRootView(
       : 0;
   const panelViewportRows = (): number =>
     panelHost.visible.value
-      ? Math.max(1, layoutSlotGeometry.bottomPanel.height - 2)
+      ? Math.max(1, layoutSlotGeometry.bottomPanel.height - 3)
       : 0;
   const panelContainsPoint = (x: number, y: number): boolean => {
     if (!panelHost.visible.value) return false;
@@ -745,7 +789,15 @@ function $buildRootView(
     const boxHeight = panelBox.height as number;
     // Include the resize divider (the row directly above the box) as panel chrome — grabbing it to
     // resize must NOT blur the terminal (else the resize deselects the shell you were driving).
-    return x >= boxX && x < boxX + boxWidth && y >= boxY - 1 && y < boxY + boxHeight;
+    return (
+      statusBar.panelControlContainsPoint(x, y)
+      || (
+        x >= boxX
+        && x < boxX + boxWidth
+        && y >= boxY - 1
+        && y < boxY + boxHeight
+      )
+    );
   };
   const rightDockViewportColumns = (): number =>
     rightDockHost.visible.value
@@ -759,12 +811,13 @@ function $buildRootView(
     if (!rightDockHost.visible.value) return false;
     const boxLeft = Number(rightDockBox.x);
     const boxTop = Number(rightDockBox.y);
-    return (
-      x >= boxLeft &&
-      x < boxLeft + Number(rightDockBox.width) &&
-      y >= boxTop &&
-      y < boxTop + Number(rightDockBox.height)
-    );
+    return statusBar.rightDockControlContainsPoint(x, y)
+      || (
+        x >= boxLeft
+        && x < boxLeft + Number(rightDockBox.width)
+        && y >= boxTop
+        && y < boxTop + Number(rightDockBox.height)
+      );
   };
 
   let layoutSlotGeometry: LayoutSlotGeometry = LayoutModel.Class.resolve({
@@ -1240,14 +1293,14 @@ function $buildRootView(
     // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
     // terminal for tier S; two = agent | terminal side by side). The host is content-agnostic — RootView
     // never names the terminal here; it iterates the host's converged cell spans and paints each.
-    // invariant: The panel renders exactly the active pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+    // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
     // invariant: A split panel renders every visible cell into its own sub-region (src/modules/terminal/terminal.invariants.md)
     if (panelHost.visible.value) {
       const panelFocused = panelHost.focused.value;
       const focusedIndex = panelHost.focusedIndex.value;
       const spans = panelHost.cellSpans(panelViewportColumns());
       syncPanelCellMount(spans.length);
-      panelBox.title = panelHost.focusedContent?.title ?? 'Panel';
+      panelBox.title = '';
       panelBox.backgroundColor = palette.panel;
       panelBox.borderColor = panelFocused ? palette.borderActive : palette.border;
       panelBox.titleColor = panelFocused ? palette.accent : palette.dim;
@@ -1259,7 +1312,9 @@ function $buildRootView(
         const view = panelCellViews[index];
         if (!view) return;
         const cellFocused = panelFocused && index === focusedIndex;
-        view.body.width = span.columns;
+        view.container.width = span.columns;
+        view.heading.content = ` ${span.content.icon ? `${span.content.icon} ` : ''}${span.content.title}`;
+        view.heading.fg = cellFocused ? palette.accent : palette.dim;
         view.body.fg = palette.fg;
         const agent = span.content instanceof AgentPaneContent.Class ? span.content : null;
         if (agent) {

@@ -161,37 +161,37 @@ of terminal behavior that needs a real shell; a second byte path around the back
 
 **Last refined:** 2026-07-23
 
-### The panel renders exactly the active pane content cells each frame
+### The panel renders exactly the visible pane content cells each frame
 
-**Invariant:** The bottom panel slot (`PanelHost`) projects ONLY `activeContent.render(region)` each
-frame; pane contents are switchable behind the `PaneContent` seam with no per-content wiring in the
-host or in RootView. Adding another content (Output, Problems, a plugin) needs zero host change — the
-host never names the terminal.
+**Invariant:** The bottom panel slot (`PanelHost`) projects every resolved visible
+`PaneContent.render(region)` into that content's own cell each frame, with no per-content wiring in
+the host or in RootView. Adding another content (Output, Problems, a plugin) needs zero host change.
 
 **Scope:** `PaneContent` (the composable-view seam), `PanelHost` (the generic slot), the panel mount +
 render in `RootView`, and `TerminalPaneContent` (the terminal's implementation of the seam).
 
-**Mechanism:** `PanelHost` holds a registry keyed by `PaneContent.id` and an `activeId`; `register` and
-`activate` switch which content is active. `RootView.update` mounts the panel box when `visible`, sets
-its title from `activeContent.title`, and fills its body from `activeContent.render({width, height,
-palette, focused})` — the same flyweight viewport-pull as the tree/git panes. RootView contains no
-`Terminal*` reference in the render path.
+**Mechanism:** `PanelHost` holds a registry keyed by `PaneContent.id`, resolves the visible cell
+layout, and keeps `activeId` aligned with the focused content. `RootView.update` mounts one generic
+heading-and-body container per resolved cell and fills its body from
+`content.render({width, height, palette, focused})`. RootView contains no terminal-specific render
+branch.
 
-**Generates:** a composable bottom panel where the terminal is the first citizen and any future
+**Generates:** a composable bottom panel where each content owns a headed region and any future
 PaneContent slots in unchanged; a stateless panel projection.
 
 **Evidence:** `src/modules/ui/PanelHost.test.ts` (registration, generic switching between two fake
 contents, focused-key routing, size convergence); `scripts/smoke-terminal.sh` (the terminal renders in
 the panel body).
 
-**Impossible if true:** RootView or PanelHost branching on a specific content type to render; a second
-content requiring host edits to appear; a panel that renders something other than its active content.
+**Impossible if true:** RootView or PanelHost branching on a specific content type to render; a
+second content requiring host edits to appear; one visible content being omitted or rendered in
+another content's region.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25
 
 ### A focused panel routes keystrokes to its active pane content
 
@@ -422,31 +422,33 @@ panel cell-pool render in `RootView` (`syncPanelCellMount`, the per-span body lo
 
 **Mechanism:** `PanelHost.cellSpans(totalColumns)` distributes the slot's inner columns across the
 resolved cells by normalized ratio, reserving one column per divider and giving the remainder to the
-last cell. `RootView.update` mounts one body per span (a divider before each body from the second on),
-sets each body's width to its span, and fills it from `span.content.render({width: span.columns, …})`.
+last cell. `RootView.update` mounts one heading-and-body container per span (a divider before each
+container from the second on), sets its width to the span, and fills its body from
+`span.content.render({width: span.columns, …})`.
 `Bootstrap`'s converge step calls `panelHost.setViewportSize`, which walks the SAME `cellSpans` and
 calls each `content.onResize(span.columns, rows)`. `moveDivider` re-flows only the two cells adjacent
 to the dragged divider, each clamped to a minimum share.
 
-**Generates:** an agent | terminal (or N-way) bottom panel where each pane is a first-class occupant of
+**Generates:** a terminal | agent (or N-way) bottom panel where each pane is a first-class occupant of
 its own region; a resizable divider that reflows both neighbours; a single-pane panel as the degenerate
 1-cell case with byte-identical behaviour.
 
 **Evidence:** `src/modules/ui/PanelHost.test.ts` (`split` layout + normalized shares, `cellSpans`
 per-cell widths reserving the divider column, `setViewportSize` resizes each cell independently,
-`moveDivider` re-flow + minimum clamp); `scripts/smoke-panel-split.sh` drives F9 to split live and
-asserts two cells render into distinct sub-widths (the left cell prints its own converged width), the
-divider drag reflows both, and un-split restores the full-width pane.
+`moveDivider` re-flow + minimum clamp); `scripts/harness/smoke-panel-split-harness.ts` clicks the
+second status control and drives F9 to produce the same terminal | agent split, asserts both headings
+and distinct sub-widths, drags the divider, and restores the full-width pane.
 
 **Impossible if true:** a split cell rendered at the full slot width while another cell overlaps it; a
 cell whose content is `onResize`d to a region different from the one it is painted into; a divider drag
 that resizes one neighbour but not the other; a split that changes the single-pane render path.
 
-**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bash scripts/smoke-panel-split.sh`
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25
 
 ### A focused split panel routes keystrokes to the focused cell
 
@@ -463,7 +465,9 @@ in `Bootstrap.keyTick`.
 **Mechanism:** `PanelHost.handleKey` delegates to `focusedContent` (the resolved cell at `focusedIndex`,
 or the single active content). `RootView` gives each cell body an `onMouseDown` that calls
 `panelHost.focus()` + `panelHost.focusCell(index)`, and anchors the caret to the focused cell body's
-laid-out screen cell. `focusCell`/`split`/`unsplit` run through `retargetFocus`, which fires
+laid-out screen cell. `focusCell` also writes `activeId`, so the compatibility
+`panelActiveContent` projection remains truthful. `focusCell`/`split`/`unsplit` run through
+`retargetFocus`, which fires
 `onBlur`/`onFocus` only when the focused content actually changes, so exactly one cell is ever focused.
 
 **Generates:** two live panes (agent | terminal) where typing drives only the one you clicked, the
@@ -471,14 +475,15 @@ caret sits in the active pane, and switching panes is a single click; no keystro
 
 **Evidence:** `src/modules/ui/PanelHost.test.ts` (a focused split routes to the focused cell; `focusCell`
 moves the routing target; splitting while focused blurs the old content and focuses the new cell);
-`scripts/smoke-panel-split.sh` types into the focused left cell (`key:z` renders), clicks the right cell
-(focus index → 1), and asserts a later key never reaches the now-blurred left cell.
+`scripts/harness/smoke-panel-split-harness.ts` types into the focused agent cell, clicks the terminal
+cell, and asserts later terminal keys never reach the now-blurred agent.
 
 **Impossible if true:** a keystroke delivered to an unfocused cell; two cells focused at once; a click
 on a cell that does not focus it; a caret drawn in a blurred cell.
 
-**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bash scripts/smoke-panel-split.sh`
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25

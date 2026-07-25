@@ -7,6 +7,7 @@
 // the renderables and hover flag are plain fields; the class is instantiated `new StatusBar.Class(deps)`.
 //
 // invariant: The shortcut sheet lists the effective bindings (src/modules/ui/ui.invariants.md)
+// invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
 import { BoxRenderable, TextRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import type { Palette } from '../theme/ThemePalettes';
@@ -79,7 +80,8 @@ class $StatusBar {
     // the status bar (the spacer's flexGrow pushes it there). Click toggles the cheat-sheet through
     // the exclusive-overlay coordinator; hover shows a tooltip with the bound open chord.
     const spacer = new BoxRenderable(renderer, { id: 'status-spacer', flexGrow: 1, height: 1 });
-    // Minute clock (HH:MM, local), left of the gear/`?` cluster at the right end. Display only.
+    // Minute clock (HH:MM, local). It is the penultimate item: the right-dock control owns the outer
+    // edge, so the stable corner order is clock then right-dock.
     this.clock = new TextRenderable(renderer, {
       id: 'status-clock',
       content: ` ${this.formatClock()} `,
@@ -132,12 +134,12 @@ class $StatusBar {
       selectable: false, // a click must only toggle the sheet, never start a text selection
     });
     this.bar.add(spacer);
-    this.bar.add(this.clock);
-    this.bar.add(this.rightDockButton);
     this.bar.add(this.agentButton);
     this.bar.add(this.terminalButton);
     this.bar.add(this.settingsButton);
     this.bar.add(this.shortcutHelpButton);
+    this.bar.add(this.clock);
+    this.bar.add(this.rightDockButton);
     // Arm the minute-boundary repaint and tear it down with the app (no leak past quit).
     this.scheduleClockTick();
     deps.app.onDispose(() => { if (this.clockTimer) clearTimeout(this.clockTimer); });
@@ -205,6 +207,11 @@ class $StatusBar {
         renderer.requestRender();
       }
       deps.tooltip.clear();
+    };
+    this.clock.onMouseDown = () => {
+      // The clock intentionally has no action yet, but owns a real hit-tested click target so the
+      // corner remains mouse-addressable when a clock action is added.
+      renderer.requestRender();
     };
     this.settingsButton.onMouseDown = () => {
       this.toggleSettings();
@@ -280,6 +287,30 @@ class $StatusBar {
     else overlayCoordinator.openExclusiveOverlay('settingsPanel', () => settingsPanel.toggle());
   }
 
+  panelControlContainsPoint(column: number, row: number): boolean {
+    return this.renderableContainsPoint(this.terminalButton, column, row)
+      || this.renderableContainsPoint(this.agentButton, column, row);
+  }
+
+  rightDockControlContainsPoint(column: number, row: number): boolean {
+    return this.renderableContainsPoint(this.rightDockButton, column, row);
+  }
+
+  protected renderableContainsPoint(
+    renderable: TextRenderable,
+    column: number,
+    row: number,
+  ): boolean {
+    const left = Number(renderable.x);
+    const top = Number(renderable.y);
+    return (
+      column >= left
+      && column < left + Number(renderable.width)
+      && row >= top
+      && row < top + Number(renderable.height)
+    );
+  }
+
   /** The ` <author> · <relative date> · <summary>` blame part for the cursor line, or '' when the
    *  document is not git-tracked / not yet blamed. Summary is truncated so the bar stays compact. */
   private currentLineBlamePart(): string {
@@ -334,17 +365,21 @@ class $StatusBar {
     // The `?` help affordance brightens on hover and while its sheet is open.
     this.shortcutHelpButton.fg =
       this.hover || this.deps.shortcutHelp.open.value ? palette.accent : palette.dim;
-    // The terminal + agent affordances: current-tier glyph, accent while HOVERED or while THAT pane is
-    // the visible one in the shared bottom slot (a live open/active indicator; now scoped by activeId so
-    // the two buttons light independently, mirroring the gear/`?` lit-while-active pattern).
-    const panelVisible = this.deps.panelHost.visible.value;
-    const activeId = this.deps.panelHost.activeId.value;
+    // The terminal + agent affordances: current-tier glyph, accent while HOVERED or while THAT
+    // independently headed region is visible. A split lights both controls.
+    const visibleContentIdentifiers = new Set(
+      this.deps.panelHost.visibleContents().map((content) => content.id),
+    );
     this.terminalButton.content = ` ${this.deps.theme.terminalIcon} `;
     this.terminalButton.fg =
-      this.terminalHover || (panelVisible && activeId === 'terminal') ? palette.accent : palette.dim;
+      this.terminalHover || visibleContentIdentifiers.has('terminal')
+        ? palette.accent
+        : palette.dim;
     this.agentButton.content = ` ${this.deps.theme.agentIcon} `;
     this.agentButton.fg =
-      this.agentHover || (panelVisible && activeId === 'agent') ? palette.accent : palette.dim;
+      this.agentHover || visibleContentIdentifiers.has('agent')
+        ? palette.accent
+        : palette.dim;
     this.rightDockButton.content = ` ${this.deps.theme.rightDockIcon} `;
     this.rightDockButton.fg =
       this.rightDockHover || this.deps.rightDockHost.visible.value

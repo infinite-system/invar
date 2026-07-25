@@ -281,7 +281,15 @@ try {
   const screenRows = Number(statusField<number>(statusPath, 'height') ?? 40);
   const layoutCanvasTop =
     screenRows - 1 - (bottomPanel.top + bottomPanel.height);
-  const panelBodyColumn = bottomPanel.left + 2;
+  const panelCellIdentifiers =
+    statusField<string[]>(statusPath, 'panelCellIds') ?? [];
+  const panelCellColumns =
+    statusField<number[]>(statusPath, 'panelCellColumns') ?? [];
+  const agentCellIndex = panelCellIdentifiers.indexOf('agent');
+  if (agentCellIndex < 0) throw new Error('Agent panel cell disappeared');
+  const panelBodyColumn = bottomPanel.left + 2 + (
+    agentCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1
+  );
   const panelBodyRow =
     layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2);
   driver.sendMouse({ kind: 'press', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
@@ -304,6 +312,10 @@ try {
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
+  driver.sendKeys('F8');
+  await driver.awaitSnapshot(
+    () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+  );
   driver.sendRawInput('\x1b[27;6;97~');
   await driver.awaitSnapshot(
     () => statusField<boolean>(statusPath, 'terminalVisible') === false,

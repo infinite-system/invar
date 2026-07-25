@@ -19,6 +19,9 @@ export interface CommandContext {
   toggleMarkdownPreview: () => void;
   toggleActivityBar: () => void;
   toggleRightDock: () => void;
+  toggleTerminal: () => void;
+  toggleAgent: () => void;
+  togglePanelSplit: () => void;
   hasHoveredMarkdownReference: () => boolean;
   openHoveredMarkdownReference: () => void;
   openShortcutHelp: () => void;
@@ -187,6 +190,24 @@ function $registerDefaultCommands(
       title: 'View: Toggle Right Dock',
       category: 'View',
       run: context.toggleRightDock,
+    },
+    {
+      id: 'panel.toggleTerminal',
+      title: 'Panel: Toggle Terminal',
+      category: 'Panel',
+      run: context.toggleTerminal,
+    },
+    {
+      id: 'panel.toggleAgent',
+      title: 'Panel: Toggle Agent',
+      category: 'Panel',
+      run: context.toggleAgent,
+    },
+    {
+      id: 'panel.toggleSplit',
+      title: 'Panel: Toggle Terminal and Agent Split',
+      category: 'Panel',
+      run: context.togglePanelSplit,
     },
     {
       id: 'markdown.togglePreview',

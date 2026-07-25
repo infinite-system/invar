@@ -101,6 +101,37 @@ geometry assertions registered in `scripts/merge-gate.sh`.
 
 **Last refined:** 2026-07-25
 
+### Default panel height scales with the viewport
+
+**Invariant:** If RootView opens the bottom panel without a user-resized height, then
+`LayoutModel.defaultBottomPanelRows` gives it 45 percent of the available layout rows, rounded to a
+whole row with a three-row minimum.
+
+**Scope:** The initial `panelHeightRows` in `RootView` and
+`LayoutModel.defaultBottomPanelRows`. User drag resizing after the panel opens is outside this
+default.
+
+**Mechanism:** The protected `LayoutModel.defaultBottomPanelProportion` owns the one 0.45 default.
+`defaultBottomPanelRows` applies that proportion to the current layout height, and RootView calls it
+only when constructing the bottom panel.
+
+**Generates:** A useful panel body on compact terminals; proportional panel height from 24 through
+50 terminal rows; one subclass seam for changing the product default.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`;
+`src/modules/layout/LayoutModel.test.ts` (`default bottom panel height scales with the viewport`);
+`scripts/harness/smoke-layout-harness.ts`.
+
+**Impossible if true:** Every viewport opening the panel at one fixed row count; a 24-row terminal
+opening a panel taller than the remaining editor; a later render resetting a user's dragged height.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts && bun
+scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### A reported size never leaves its configured bounds
 
 **Invariant:** If any code path sets the splitter size (construction seed or a drag), then the value it

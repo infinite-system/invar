@@ -87,6 +87,7 @@ export interface AppStatusProjectionPorts {
     | 'activeId'
     | 'order'
     | 'resolvedCells'
+    | 'focusedContent'
     | 'focusedIndex'
     | 'cellSpans'
   >;
@@ -301,7 +302,8 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     // Bottom panel / terminal state (drives smoke-terminal assertions without pane-scraping).
     terminalVisible: ports.panelHost.visible.value,
     terminalFocused: ports.panelHost.focused.value,
-    panelActiveContent: ports.panelHost.activeId.value,
+    panelActiveContent:
+      ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
     panelContentIds: ports.panelHost.order.value,
     terminalColumns: ports.view.panelViewportColumns(),
     terminalRows: ports.view.panelViewportRows(),

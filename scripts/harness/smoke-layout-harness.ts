@@ -7,6 +7,8 @@
 // invariant: Splitter paint and hit testing share one geometry (src/modules/ui/ui.invariants.md)
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
+// invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
+// invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -447,11 +449,19 @@ async function assertSplitterStates(
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-layout-harness-fixture-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-layout-harness-home-'));
+const compactHomeDirectory = mkdtempSync(join(tmpdir(), 'tui-layout-harness-compact-home-'));
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+const compactSettingsDirectory = join(compactHomeDirectory, '.config', 'invar');
 const statusPath = join(homeDirectory, 'status.json');
+const compactStatusPath = join(compactHomeDirectory, 'status.json');
 mkdirSync(settingsDirectory, { recursive: true });
+mkdirSync(compactSettingsDirectory, { recursive: true });
 await Bun.write(
   join(settingsDirectory, 'settings.json'),
+  '{"glyphMode":"ascii"}\n',
+);
+await Bun.write(
+  join(compactSettingsDirectory, 'settings.json'),
   '{"glyphMode":"ascii"}\n',
 );
 await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\n');
@@ -471,7 +481,7 @@ await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\nchanged\n');
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
-  rows: 60,
+  rows: 50,
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
@@ -518,6 +528,10 @@ try {
   let sidebar = layoutSlot(status, 'sidebar');
   let editorCenter = layoutSlot(status, 'editorCenter');
   let bottomPanel = layoutSlot(status, 'bottomPanel');
+  HarnessSmoke.Class.requireCondition(
+    bottomPanel.height === 21,
+    '50-row viewport gives the bottom panel 45% of its 47 layout rows',
+  );
   HarnessSmoke.Class.requireCondition(
     bottomPanel.left === editorCenter.left
       && rectangleRight(bottomPanel) === rectangleRight(editorCenter),
@@ -704,10 +718,30 @@ try {
   );
   await driver.awaitQuiescence();
   const statusBarRow = driver.snapshot().rows - 1;
-  const rightDockButtonColumn = driver.snapshot().rowText(statusBarRow).lastIndexOf(' R ');
+  const statusBarText = driver.snapshot().rowText(statusBarRow);
+  const statusEdgeMatch = statusBarText.match(/ \d{2}:\d{2}  R $/);
   HarnessSmoke.Class.requireCondition(
-    rightDockButtonColumn >= 0,
-    'right-dock status affordance is visibly present',
+    statusEdgeMatch !== null,
+    'status controls end with the clock followed by the right-dock affordance',
+  );
+  const rightDockButtonColumn = statusBarText.lastIndexOf(' R ');
+  HarnessSmoke.Class.requireCondition(
+    rightDockButtonColumn === driver.snapshot().columns - 3,
+    'right-dock status affordance owns the outermost edge',
+  );
+  const clockColumn = rightDockButtonColumn - 4;
+  clickCell(driver, clockColumn, statusBarRow);
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => {
+      const mouse = candidate.mouse as { x?: number; y?: number } | null;
+      return mouse?.x === clockColumn && mouse.y === statusBarRow;
+    },
+  );
+  HarnessSmoke.Class.requireCondition(
+    status.rightDockVisible === false,
+    'clock is hit-tested without changing right-dock visibility',
   );
   clickCell(driver, rightDockButtonColumn + 1, statusBarRow);
   status = await HarnessSmoke.Class.awaitStatus(
@@ -738,9 +772,43 @@ try {
   );
 
   driver.sendKeys('Control+q');
+
+  console.log('== harness layout: compact viewport preserves proportional panel height ==');
+  const compactDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 80,
+    rows: 24,
+    homeDirectory: compactHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: compactStatusPath,
+      COLORTERM: 'truecolor',
+    },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      compactDriver,
+      compactStatusPath,
+      (candidate) => candidate.ready === true,
+      20_000,
+    );
+    compactDriver.sendKeys('F8');
+    const compactStatus = await HarnessSmoke.Class.awaitStatus(
+      compactDriver,
+      compactStatusPath,
+      (candidate) => candidate.terminalVisible === true,
+    );
+    HarnessSmoke.Class.requireCondition(
+      layoutSlot(compactStatus, 'bottomPanel').height === 9,
+      '24-row viewport gives the bottom panel 45% of its 21 layout rows',
+    );
+    compactDriver.sendKeys('Control+q');
+  } finally {
+    await compactDriver.dispose();
+  }
   console.log('smoke-layout-harness: ALL-PASS');
 } finally {
   await driver.dispose();
   rmSync(fixtureRoot, { recursive: true, force: true });
   rmSync(homeDirectory, { recursive: true, force: true });
+  rmSync(compactHomeDirectory, { recursive: true, force: true });
 }

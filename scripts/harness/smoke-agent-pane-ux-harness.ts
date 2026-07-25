@@ -245,7 +245,7 @@ const driver = new PtyTestDriver.Class({
   workspaceRoot: join(repositoryRoot, 'fixtures'),
   repositoryRoot,
   columns: 110,
-  rows: 34,
+  rows: 50,
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
@@ -274,14 +274,11 @@ try {
     HarnessSmoke.Class.readStatus(statusPath).terminalFocused === true,
     'agent pane opens focused with framed composer chrome',
   );
-  const panelSlotRectangle = bottomPanelSlot(statusPath);
-  const panelBorderPosition = snapshot.findText('╭─Claude');
-  if (!panelBorderPosition) throw new Error('Agent pane border disappeared');
-  const panelRectangle = {
-    ...panelSlotRectangle,
-    left: panelBorderPosition.column,
-    top: panelBorderPosition.row,
-  };
+  const panelRectangle = bottomPanelSlot(statusPath);
+  HarnessSmoke.Class.requireCondition(
+    snapshot.findText('✦ Claude') !== null,
+    'agent pane owns a heading inside the shared panel border',
+  );
   const originalModeLine = snapshot.textRows().find((rowText) => rowText.includes('permissions'));
   driver.sendKeys('Shift+Tab');
   snapshot = await driver.awaitSnapshot((candidate) => {
@@ -332,6 +329,11 @@ try {
     snapshot.findText('⧗ Bash') === null,
     'waiting note disappears when the session returns to idle',
   );
+  for (let page = 0; page < 4 && firstRowContaining(snapshot, 'alpha-marker') === null; page += 1) {
+    driver.sendKeys('PageUp');
+    await driver.awaitQuiescence();
+    snapshot = driver.snapshot();
+  }
   const userTurnRow = firstRowContaining(snapshot, 'alpha-marker');
   HarnessSmoke.Class.requireCondition(userTurnRow !== null, 'user turn remains in the transcript');
   if (userTurnRow === null) throw new Error('User turn row disappeared');
@@ -486,13 +488,13 @@ try {
     snapshot.findText('alpha-marker') !== null,
     'PageUp reveals the earliest turn',
   );
-  for (let wheelEvent = 0; wheelEvent < 80; wheelEvent++) {
-    driver.sendMouse({
-      kind: 'wheel',
-      column: panelRectangle.left + 2,
-      row: panelRectangle.top + 2,
-      direction: 'down',
-    });
+  for (
+    let page = 0;
+    page < 8 && HarnessSmoke.Class.readStatus(statusPath).agentStuckToBottom !== true;
+    page += 1
+  ) {
+    driver.sendKeys('PageDown');
+    await driver.awaitQuiescence();
   }
   await HarnessSmoke.Class.awaitStatus(
     driver,
