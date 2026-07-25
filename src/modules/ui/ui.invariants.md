@@ -192,6 +192,9 @@ caret anchor, prefix-filtered items, and acceptance behavior.
 **Mechanism:** The adapter owns a separately identified `BoundedListPopup`, opens it without the
 modal backdrop or search row, and updates its cached items after one cheap prefix pass. The editor
 keeps keyboard focus; completion consumes only Up, Down, Enter, Tab, and Escape.
+`BoundedListPopup.close` advances the same `paintRevision` Ref that open and selection changes use,
+and `Bootstrap` requests a next-turn render when dismissal races the still-queued opening frame, so
+the closed state reaches both the terminal and `status.completionOpen`.
 
 **Generates:** Caret-relative downward placement with upward flipping, O(viewport) paint, wrapped
 selection with reveal, continuous editor typing, and exact text-edit acceptance.
@@ -200,7 +203,8 @@ selection with reveal, continuous editor typing, and exact text-edit acceptance.
 `src/modules/ui/RootView.ts`; `src/modules/app/Bootstrap.ts`.
 
 **Impossible if true:** A second completion-specific popup geometry implementation; a completion
-search row; an invisible modal backdrop that steals editor input; full-list work during repaint.
+search row; an invisible modal backdrop that steals editor input; full-list work during repaint;
+Escape closing the model while `status.completionOpen` remains true.
 
 **Verification:** `bun test src/modules/ui/CompletionPopup.test.ts
 src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completion-harness.ts`.

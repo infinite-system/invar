@@ -324,18 +324,20 @@ scripts/harness/smoke-panel-chrome-harness.ts`
 
 ### A focused panel routes keystrokes to its active pane content
 
-**Invariant:** When the panel is focused, every non-reserved keystroke is encoded to terminal bytes and
-delivered to `activeContent.handleKey`; reserved global chords (quit, panel toggle) still fire first so
-the user is never trapped, and an unencodable key is swallowed rather than driving the hidden editor
-beneath. When the panel is NOT focused, it consumes no keys.
+**Invariant:** When the panel is focused and no modal input overlay owns the keyboard, every
+non-reserved keystroke is encoded to terminal bytes and delivered to `activeContent.handleKey`;
+reserved global chords (quit, panel toggle) still fire first so the user is never trapped, and an
+unencodable key is swallowed rather than driving the hidden editor beneath. When the panel is not
+focused or a modal input overlay owns the keyboard, it consumes no keys.
 
 **Scope:** `TerminalKeys` (key→bytes), `TerminalPaneContent.handleKey`, `PanelHost.handleKey`, and the
 panel-input branch in `Bootstrap.keyTick`.
 
 **Mechanism:** `Bootstrap.keyTick` resolves reserved global chords first (`app.quit`,
-`panel.toggleTerminal`), then — before any editor/overlay routing — if `panelHost.visible && focused`
-it calls `panelHost.handleKey(key)` and returns. `TerminalPaneContent.handleKey` runs `TerminalKeys.encode`
-(canonical VT bytes from the PARSED key fields, not the Kitty-encoded `sequence`) and writes them via
+`panel.toggleTerminal`), then derives whether the exclusive modal overlay slot owns the keyboard.
+Only when that slot is empty and `panelHost.visible && focused` does it call
+`panelHost.handleKey(key)` and return. `TerminalPaneContent.handleKey` runs `TerminalKeys.encode`
+(canonical VT bytes from the parsed key fields, not the Kitty-encoded `sequence`) and writes them via
 `sendInput` → the backend seam. Focus follows the toggle and clicks (`panelContainsPoint`).
 
 **Generates:** a terminal that receives Ctrl+C/Ctrl+D/arrows/typing as a real terminal would, while
@@ -344,17 +346,18 @@ Ctrl+Q and the toggle always work; no keystroke both drives the shell and the ed
 **Evidence:** `src/modules/terminal/TerminalKeys.test.ts` (control-byte, arrow, named-key, printable
 encoding); `src/modules/ui/PanelHost.test.ts` (focused host routes to the active content);
 `scripts/smoke-terminal.sh` (typed `echo hello`+Enter reaches the shell and renders; Ctrl+Q from the
-focused terminal still quits).
+focused terminal still quits); `scripts/harness/smoke-overlay-dialog-harness.ts` (Settings Escape
+outranks retained terminal and agent focus).
 
 **Impossible if true:** a focused terminal where typing drives the editor; a key that both types into
 the shell and moves the editor cursor; Ctrl+Q swallowed by the focused terminal; keys consumed while
-the panel is unfocused.
+the panel is unfocused; a modal overlay key reaching the pane retained beneath it.
 
 **Verification:** `bun test src/modules/terminal/TerminalKeys.test.ts src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25
 
 ### Animated agent commands stay visible and inert
 

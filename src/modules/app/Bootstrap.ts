@@ -164,6 +164,10 @@ class $Bootstrap {
     const dismissCompletion = (): void => {
       completionRequestGeneration++;
       completionPopup.close();
+      // A completion request can open while the renderer still has that frame queued. OpenTUI
+      // coalesces another request made in the same input turn, so retry on the next turn after the
+      // popup's paint revision has republished the closed semantic state.
+      setTimeout(() => renderer.requestRender(), 0);
     };
     const tooltip = new Tooltip.Class();
     const settingsPanel = new SettingsPanel.Class(settings);
@@ -812,7 +816,7 @@ class $Bootstrap {
       void boundedListPopup.selectedIndex.value;
       void boundedListPopup.hoveredIndex.value;
       void boundedListPopup.paintRevision.value;
-      void completionPopup.paintRevision;
+      void completionPopup.paintRevision.value;
       void tooltip.visible.value;
       void tooltip.text.value;
       void tooltip.anchorX.value;

@@ -47,8 +47,8 @@ class $CompletionPopup {
     return this.popup.filteredMatches.length;
   }
 
-  get paintRevision(): number {
-    return this.popup.paintRevision.value;
+  get paintRevision() {
+    return this.popup.paintRevision;
   }
 
   get geometry() {

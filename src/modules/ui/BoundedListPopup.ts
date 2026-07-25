@@ -342,7 +342,7 @@ class $BoundedListPopup {
     this.box.visible = false;
     this.searchInput.visible = false;
     this.list.visible = false;
-    this.dependencies.renderer.requestRender();
+    this.requestPaint();
   }
 
   appendQuery(text: string): void {
