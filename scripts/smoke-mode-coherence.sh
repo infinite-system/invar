@@ -141,19 +141,19 @@ badge_row="${badge_geometry##* }"
 if [ "$badge_column" -ge 0 ] 2>/dev/null && [ "$badge_row" -ge 0 ] 2>/dev/null; then
   "$harness" click "$primary_session" "$badge_column" "$badge_row" >/dev/null
   settle "$primary_session"
-  assert_only_overlay "$primary_session" contextMenu "document.txt"
+  assert_only_overlay "$primary_session" boundedListPopup "document.txt"
   if [ "$(field "$primary_session" paletteOpen)" = "false" ]; then
-    pass "opening the context menu closed the command palette"
+    pass "opening the bounded list popup closed the command palette"
   else
-    fail "the command palette stayed open behind the context menu"
+    fail "the command palette stayed open behind the bounded list popup"
   fi
   "$harness" send "$primary_session" F1 >/dev/null
   settle "$primary_session"
   assert_only_overlay "$primary_session" commandPalette "Command Palette"
-  if [ "$(field "$primary_session" contextMenuOpen)" = "false" ]; then
-    pass "F1 switched the context-menu slot to the palette in one chord"
+  if [ "$(field "$primary_session" boundedListPopupOpen)" = "false" ]; then
+    pass "F1 switched the bounded-list-popup slot to the palette in one chord"
   else
-    fail "the context menu blocked the palette-opening chord"
+    fail "the bounded list popup blocked the palette-opening chord"
   fi
 else
   fail "could not locate the clickable buffer-count badge"

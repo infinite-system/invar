@@ -23,7 +23,7 @@ import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Theme } from '../theme/Theme';
 import type { Tooltip } from './Tooltip';
 import type { OverlayCoordinator } from './OverlayCoordinator';
-import type { ContextMenu } from './ContextMenu';
+import type { BoundedListPopup, BoundedListPopupItem } from './BoundedListPopup';
 import type { QuickOpen } from '../search/QuickOpen';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 
@@ -37,7 +37,7 @@ export interface TabBarDeps {
   theme: Theme.Instance;
   tooltip: Tooltip.Instance;
   overlayCoordinator: OverlayCoordinator.Instance;
-  contextMenu: ContextMenu.Instance;
+  boundedListPopup: BoundedListPopup.Instance;
   quickOpen: QuickOpen.Instance;
   keybindings: KeybindingRegistry.Instance;
   readPalette: () => Palette;
@@ -142,22 +142,28 @@ class $TabBar {
     this.deps.renderer.requestRender();
   }
 
-  // Clicking the count badge opens a dropdown of ALL open buffers (VS Code's overflow menu) — reusing
-  // the ContextMenu machinery (modal, keyboard-navigable, Esc to close). Selecting a row jumps to it.
+  // Clicking the count badge opens a bounded list of ALL open buffers. Selecting a row focuses it.
   private openTabDropdown(anchorColumn: number): void {
-    const { workspaceSet, overlayCoordinator, contextMenu, tabBar, renderer } = this.deps;
-    const items = workspaceSet.active.buffers.tabs().map((tab, index) => ({
-      id: String(index),
-      label: `${tab.active ? '●' : ' '} ${Files.Class.basename(tab.path)}${tab.dirty ? '  ✕' : ''}`,
-      enabled: true,
+    const { workspaceSet, overlayCoordinator, boundedListPopup, tabBar } = this.deps;
+    const items: BoundedListPopupItem[] = workspaceSet.active.buffers.tabs().map((tab, index) => ({
+      identifier: String(index),
+      label: `${Files.Class.basename(tab.path)}${tab.dirty ? ' (modified)' : ''}`,
+      searchText: tab.path,
+      selected: tab.active,
     }));
-    overlayCoordinator.openExclusiveOverlay('contextMenu', () =>
-      contextMenu.openAt(
+    overlayCoordinator.openExclusiveOverlay('boundedListPopup', () =>
+      boundedListPopup.openAt(
         items,
-        (tabBar.x as number) + anchorColumn,
-        (tabBar.y as number) + 1,
-        { width: renderer.width, height: renderer.height },
-        (itemId) => workspaceSet.active.activateTab(Number(itemId)),
+        {
+          column: (tabBar.x as number) + anchorColumn,
+          row: tabBar.y as number,
+        },
+        (item) => workspaceSet.active.activateTab(Number(item.identifier)),
+        {
+          title: 'Open Buffers',
+          selectedItemIdentifier: String(workspaceSet.active.buffers.activeIndex.value),
+          minimumWidth: 28,
+        },
       ),
     );
   }
