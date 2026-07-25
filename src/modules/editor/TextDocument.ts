@@ -13,10 +13,8 @@ class $TextDocument {
   path = '';
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
   private _lines: string[] = [''];
-  // The exact horizontal extent exists only while no-wrap mode can consume it. A single champion
-  // makes localized edits O(changed lines); shrinking/deleting that champion triggers the same
-  // cheap-bound full-document rescan used on activation.
-  protected maximumLineWidthTrackingEnabled = false;
+  // The exact horizontal extent is full-document state. A single champion makes localized edits
+  // O(changed lines); shrinking/deleting that champion triggers the same cheap-bound rescan.
   protected maximumLineWidthValue = 0;
   protected maximumLineWidthLineIndex = -1;
   private _eol: '\n' | '\r\n' = '\n';
@@ -78,12 +76,6 @@ class $TextDocument {
 
   get maximumLineWidth(): number {
     return this.maximumLineWidthValue;
-  }
-
-  setMaximumLineWidthTrackingEnabled(enabled: boolean): void {
-    if (this.maximumLineWidthTrackingEnabled === enabled) return;
-    this.maximumLineWidthTrackingEnabled = enabled;
-    this.rebuildMaximumLineWidth();
   }
 
   line(index: number): string {
@@ -174,7 +166,7 @@ class $TextDocument {
   protected rebuildMaximumLineWidth(): void {
     this.maximumLineWidthValue = 0;
     this.maximumLineWidthLineIndex = -1;
-    if (!this.maximumLineWidthTrackingEnabled || this._lines.length === 0) return;
+    if (this._lines.length === 0) return;
 
     let longestUtf16LineIndex = 0;
     for (let lineIndex = 1; lineIndex < this._lines.length; lineIndex += 1) {
@@ -219,13 +211,11 @@ class $TextDocument {
   ): void {
     const previousMaximumLineWidthLineIndex = this.maximumLineWidthLineIndex;
     const maximumLineWasDeleted =
-      this.maximumLineWidthTrackingEnabled
-      && deletedLineCount > 0
+      deletedLineCount > 0
       && previousMaximumLineWidthLineIndex >= startLineIndex
       && previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
 
-    if (!this.maximumLineWidthTrackingEnabled) return;
     if (maximumLineWasDeleted) {
       this.rebuildMaximumLineWidth();
       return;

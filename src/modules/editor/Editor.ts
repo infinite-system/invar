@@ -16,18 +16,9 @@ import { Clock } from '../system/Clock';
 import { Clipboard } from '../system/Clipboard';
 
 class $Editor extends ReadOnlyTextBuffer.$Class {
-  declare $watch: typeof import('vue').watch;
-  declare $stopEffects: () => void;
-
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
   private undo = this.createUndo();
-  protected wordWrapWatchAttached = false;
-
-  constructor() {
-    super();
-    this.synchronizeHorizontalExtentTracking();
-  }
 
   protected createViewport() { return new Viewport.Class(); }
   protected createUndo() { return new UndoStore.Class(); }
@@ -51,27 +42,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   private wordWrapSource: Ref<boolean> | null = null;
   attachWordWrap(source: Ref<boolean>): void {
     this.wordWrapSource = source;
-    this.synchronizeHorizontalExtentTracking();
-    if (this.wordWrapWatchAttached) return;
-    this.wordWrapWatchAttached = true;
-    this.$watch(
-      () => this.wordWrap.value,
-      (wordWrapEnabled) => this.synchronizeHorizontalExtentTracking(wordWrapEnabled),
-    );
   }
   get wordWrap(): Ref<boolean> {
     return this.wordWrapSource ?? this.localWordWrap;
   }
   get localWordWrap() {
     return ref(false);
-  }
-
-  // invariant: Geometry aggregates match their consumers (editor.invariants.md)
-  protected synchronizeHorizontalExtentTracking(
-    wordWrapEnabled = this.wordWrap.value,
-  ): void {
-    this.document.setMaximumLineWidthTrackingEnabled(!wordWrapEnabled);
-    if (wordWrapEnabled) this.viewport.scrollLeft.value = 0;
   }
 
   /** The display-column width visual rows wrap at (the laid-out code viewport width). */
@@ -81,7 +57,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   toggleWordWrap(): void {
     this.wordWrap.value = !this.wordWrap.value;
-    this.synchronizeHorizontalExtentTracking();
     if (!this.hasDocument.value) return;
     if (this.wordWrap.value) {
       this.viewport.scrollLeft.value = 0; // horizontal scroll is inert in wrap mode
@@ -124,7 +99,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    * conversion, so the cursor stays on screen across the toggle.
    */
   revealCursor(): void {
-    this.synchronizeHorizontalExtentTracking();
     if (!this.hasDocument.value) return;
     this.scrollLineIntoView(this.cursor.line.value);
   }
@@ -173,7 +147,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.undo.clear();
     super.dispose();
     this.hasDocument.value = false;
-    this.$stopEffects();
   }
 
   /** Open a VIRTUAL read-only diff document (git panel drill-in). */

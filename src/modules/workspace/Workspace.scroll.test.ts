@@ -139,6 +139,19 @@ describe('Workspace.tickScrollAnimations', () => {
     expect(workspace.gitPanel.changesScrollTop.value).toBe(10);
   });
 
+  test('does not consume horizontal glide while word wrap is enabled', () => {
+    const workspace = new Workspace.Class();
+    workspace.editor.document.loadFromText('x'.repeat(100));
+    workspace.editor.hasDocument.value = true;
+    workspace.editor.viewport.setSize(10, 2);
+    workspace.editor.wordWrap.value = true;
+    workspace.editor.viewport.horizontalScrollMomentum.value = { velocity: 80, residual: 0 };
+
+    workspace.tickScrollAnimations(1);
+
+    expect(workspace.editor.viewport.scrollLeft.value).toBe(0);
+  });
+
   test('precise editor, tree, and changes writers halt their injected momentum', () => {
     const workspace = new Workspace.Class();
     const injectedMomentum = { velocity: 40, residual: 0.5 };

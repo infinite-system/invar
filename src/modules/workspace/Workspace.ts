@@ -1030,7 +1030,7 @@ class $Workspace {
 
     const editorHorizontalStep = Momentum.Class.stepMomentum(editorViewport.horizontalScrollMomentum.value, dtSeconds);
     editorViewport.horizontalScrollMomentum.value = editorHorizontalStep.momentum;
-    if (editorHorizontalStep.rows !== 0) {
+    if (editorHorizontalStep.rows !== 0 && !this.editor.wordWrap.value) {
       // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
       // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
       editorViewport.scrollByColumns(
