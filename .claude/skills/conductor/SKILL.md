@@ -221,6 +221,12 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   in harness.invariants.md: waits are conditions or quiescence, never frame ordinals). Diagnose,
   fix at the generator, re-gate. If a harness red DOES re-run green solo, that green is itself the
   bug report.
+  LANDING INVARIANT SIGNAL (2026-07-25): the gate's end-of-run "encode the invariants" reminder
+  is read by NO ONE (builders bypass via SKIP_GATE; conductor sentinels grep only GATE_EXIT/FAIL)
+  — its function lives in brief requirements + this check: AT LANDING, before the ff-push, run
+  `git diff --stat <main>..<tip> -- '*.invariants.md'`. Code-diff with ZERO contract changes is a
+  two-second question, not a block: did this landing genuinely teach nothing? (Refactors with
+  zero-behavior-change contracts often legitimately answer yes; features rarely do.)
   CLEARANCE PROVENANCE (2026-07-24, learned the hard way): a rerun only clears a red if it runs the
   EXACT COMMITTED TIP being landed — `git status` the worktree and diff the failing smoke file
   between the gate's tree and the rerun's tree first. If the file differs (e.g. the builder's
