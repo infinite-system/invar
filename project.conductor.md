@@ -666,3 +666,78 @@ clothing is found by provenance of the test code, not by rerun statistics.
 - **Lone-timeout gate reds on an ambient-noise machine are a policy problem, not a diagnosis
   problem.** hover/git-log/word-delete/agent-permissions each cost a manual quiet rerun; the
   retry-once-on-timeout gate step (#40) encodes the doctrine and ends the tax.
+
+## 2026-07-25 evening — concurrency, and the doctrine the day paid for
+
+### Concurrent gates are now SUPPORTED (measured, not assumed)
+One-gate-at-a-time was never a CPU limit. Two shared-namespace collisions made it mandatory, both
+fixed in 9f6c617:
+- pre-gate hygiene killed EVERY `src/main.ts /tmp/tui-*` app, so a second gate executed a running
+  gate's in-flight smoke apps mid-wait and the victim reported timeouts indistinguishable from
+  starvation (three such reds this morning). An orphan is now defined correctly: PARENT GONE
+  (reparented to PID 1), plus an age floor for wedged leftovers.
+- the failure-log directory was one shared path wiped at gate start, so concurrent gates destroyed
+  each other's evidence. Now per-run (`$$`) with `/tmp/merge-gate-failures` as a symlink to the latest.
+
+MEASURED (two gates, identical commit, 16 cores): 6m07s and 6m04s wall — each FASTER than the
+8m03s serial baseline earlier the same day (that baseline was inflated by another project's Docker
+stack holding ~5GB and swap at 100%). Zero retries, load peak ~4.4.
+
+CEILINGS: inotify max_user_instances=128 (1 per app, hard OS cap); ~250MB RSS per app; ~1.5 load per
+serial gate; ~350MB node_modules per worktree. CPU binds first at ~12-14 CONCURRENT APPS, and what
+matters is the PRODUCT `gates x pool workers`. With the parallel pool, 2 gates x 6 workers is the
+sweet spot.
+
+PIPELINE SHAPE (the structural point): landings are inherently SERIAL — ff-only merges mean each
+branch must rebase onto the new main and re-verify, and today proved that is not ceremony (a branch
+inherited main's paint race; another broke on a behavior change; a doc union broke a section). So
+concurrency's real value is PARALLEL SPECULATIVE VERIFICATION — discover every branch's defects in
+ONE wall-clock window — followed by a fast serial landing chain.
+
+CONCURRENCY IS ALSO A HAZARD-FINDING INSTRUMENT: the two-gate run turned up a latent race that
+dozens of serial runs never did (see await-after-terminal-action below). Load-sensitive races are
+invisible on an idle machine.
+
+### New defect class: await-after-terminal-action
+A smoke that triggers an action whose intended outcome is PROCESS EXIT (Ctrl+Q, F10, quit command)
+must await the EXIT and assert on it — never a frame or grid condition. mode-coherence awaited a
+frame after a deliberate quit; the app won the race under load and the driver correctly reported
+`Invar exited before the awaited frame (exit 1)`. Not a timeout, so retry-once did not fire; solo
+3/3 green. Same family as sample-without-wait: assert on what the action actually produces.
+
+### Retry-once absorbs starvation AND masks races
+The retry step paid for itself repeatedly, but it hid a real product race for three landings. The
+signature to watch: the SAME smoke retrying or failing across UNRELATED branches means the defect is
+on MAIN. Verified by running it on plain main (1 red in 3). Root cause was a one-token reactivity
+drop. Rule: when a red names a smoke unrelated to the branch's diff, TEST MAIN before diagnosing the
+branch; land the branch that fixes main BEFORE re-gating branches that merely inherited its red.
+
+### Where syntax cannot decide, use types
+`void completionPopup.paintRevision;` (missing `.value`) registered no dependency and left a closed
+popup painted. The obvious checker rule — "void reads must end in .value" — is WRONG: a bare read is
+perfectly reactive when it invokes a getter that reads refs internally (`void findBar.caseSensitive;`
+is fine, and my syntactic census flagged it falsely). Only the STATIC TYPE distinguishes them:
+assignable to `Ref<unknown>` (which covers ComputedRef and ShallowRef by declaration) ⇒ dropped
+signal. The gate already builds a tsc program, so the audit rides it: zero runtime cost, no new idiom.
+Rejected alternative: a `track(ref)` helper — it would make the mistake a compile error but adds
+vocabulary plus ~132 calls per repaint in the hottest path.
+
+### Landing checklist (accumulated, all paid for today)
+1. CLEAN TREE before ff-merge — a builder fixed two red smokes and left them UNCOMMITTED; the gate
+   passed the worktree and the branch landed without them.
+2. `git ls-files | grep '^TASK'` must be EMPTY — briefs are dispatch inputs, never repository content.
+3. Checker verified by EXIT CODES of BOTH `--all` and `--refs`, never by grepping a summary line.
+4. Blame-ignore hashes are LANDING-TIME facts: every entry proven with `git cat-file -e` +
+   `git merge-base --is-ancestor`; rebases rewrite them and builders record them pre-rebase.
+5. Union doc conflicts by RECONSTRUCTION from the authoritative file (`git show origin/main:<path>`),
+   extracting the incoming section intact and asserting its trailers exist — never by regex-splicing
+   conflict groups (mine truncated a section to its heading and deleted six required fields).
+6. Fresh worktree ⇒ `bun install --silent && git checkout bun.lock` BEFORE any instrument; twice today
+   a full-board red was nothing but missing node_modules.
+
+### Machine hygiene is gate hygiene
+Disk hit 85MB free (SDK extractions 8GB+, 41 worktrees' node_modules, 785 harness home dirs) and swap
+sat at 100% while another project's idle Docker stack held ~5GB. Under reclaim a process stalls long
+enough to blow a frame wait — that is the timeout-class red signature. Stopping idle containers did
+more for stability than any harness change; bounding the harness's own unbounded byte retention (in
+flight) removes OUR contribution.
