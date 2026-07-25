@@ -644,3 +644,25 @@ gate's tree and the rerun's tree — `git status` the worktree first; if the fil
 proves nothing. The generator underneath: the thing you verified must be the thing you land — same
 law as "a SKIP is not a PASS" and "merge untracked files". A deterministic failure wearing a flake's
 clothing is found by provenance of the test code, not by rerun statistics.
+
+## 2026-07-25 day-shift lessons (user-driven queue, 17 landings)
+
+- **Diagnostic probes run the ENTIRE instrument.** Replacing a suspected wait and exiting there
+  "confirmed" a wrong hypothesis three times (panelux editor red was the gear click two waits
+  later). Instrument the wait in place; never truncate the run; re-derive WHICH assertion failed
+  from the error shape before theorizing WHY.
+- **Every wait names itself.** A smoke section with several awaits and one pass() cannot tell you
+  which wait died. Labeled waits + per-await pass lines are harness law (sweep #54 in flight).
+- **Blame-ignore hashes are landing-time facts.** Rebases rewrite them; builders verify them
+  honestly and the landing rebase re-stales them anyway. The conductor re-points at ff-merge time:
+  git cat-file + merge-base --is-ancestor on every entry.
+- **Geometry that becomes configurable turns every hardcoded coordinate into a live defect.**
+  Four instances in one day (clipboard (2,30), narration 120-col prompt, paste wrap-marker, gear
+  width-5). Probes discover click targets from the grid/status; never constants.
+- **Feel-tuning is a probe-contract change.** The momentum gain ramp broke smokes that GENERATE
+  activity through the tuned physics (one-notch = frame-stream assumption) and inverted a
+  settings smoke's direction assertion — which was the gate doing its job: both were real design
+  flaws (cap-coupled ramp; timing-dependent reversal). Enumerate probes that drive tuned inputs.
+- **Lone-timeout gate reds on an ambient-noise machine are a policy problem, not a diagnosis
+  problem.** hover/git-log/word-delete/agent-permissions each cost a manual quiet rerun; the
+  retry-once-on-timeout gate step (#40) encodes the doctrine and ends the tax.
