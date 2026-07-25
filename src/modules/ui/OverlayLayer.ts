@@ -916,8 +916,8 @@ class $OverlayLayer {
     // Quick-open (Ctrl+P) overlay.
     if (quickOpen.open.value) {
       const openingWorkspace = quickOpen.mode.value === 'workspacePath';
-      const quickOpenMatches = quickOpen.matches.value;
-      this.quickOpenContentRows = Math.max(1, quickOpenMatches.length);
+      this.quickOpenContentRows =
+        QuickOpenRenderer.Class.contentRowCount(quickOpen);
       const quickOpenGeometry = this.updateOverlayDialog(
         this.quickOpenBox,
         this.quickOpenCloseButton,

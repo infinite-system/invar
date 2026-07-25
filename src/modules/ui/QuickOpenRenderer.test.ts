@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'bun:test';
+import { QuickOpen } from '../search/QuickOpen';
 import { QuickOpenRenderer } from './QuickOpenRenderer';
 
 const computeWindow = QuickOpenRenderer.Class.computeWindow;
+
+describe('QuickOpenRenderer.contentRowCount', () => {
+  test('counts both open-project guidance lines when no folder matches', () => {
+    const quickOpen = new QuickOpen.Class();
+    quickOpen.showWorkspacePath();
+
+    expect(QuickOpenRenderer.Class.contentRowCount(quickOpen)).toBe(2);
+  });
+});
 
 describe('QuickOpenRenderer.computeWindow (scroll-to-selection math)', () => {
   test('a list that fits the row budget is drawn whole from the top', () => {
@@ -15,7 +25,11 @@ describe('QuickOpenRenderer.computeWindow (scroll-to-selection math)', () => {
     const total = 766; // the demo /tmp case that lost the highlight below the window
     const maxRows = 14;
     for (let selectedIndex = 0; selectedIndex < total; selectedIndex++) {
-      const { firstVisible, count } = computeWindow(selectedIndex, total, maxRows);
+      const { firstVisible, count } = computeWindow(
+        selectedIndex,
+        total,
+        maxRows,
+      );
       expect(count).toBe(maxRows);
       expect(firstVisible).toBeGreaterThanOrEqual(0);
       expect(firstVisible + count).toBeLessThanOrEqual(total);
@@ -31,7 +45,9 @@ describe('QuickOpenRenderer.computeWindow (scroll-to-selection math)', () => {
     expect(computeWindow(0, total, maxRows).firstVisible).toBe(0);
     expect(computeWindow(3, total, maxRows).firstVisible).toBe(0);
     // Selecting the last item scrolls exactly to the final page — never past it.
-    expect(computeWindow(total - 1, total, maxRows).firstVisible).toBe(total - maxRows);
+    expect(computeWindow(total - 1, total, maxRows).firstVisible).toBe(
+      total - maxRows,
+    );
   });
 
   test('a mid-list selection is centered within the window', () => {

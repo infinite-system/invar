@@ -19,7 +19,9 @@ import { HarnessSmoke } from './HarnessSmoke';
 
 const firstRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-first-'));
 const secondRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-second-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-workspace-tabs-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-workspace-tabs-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 const firstName = basename(firstRoot);
 const secondName = basename(secondRoot);
@@ -43,16 +45,25 @@ runGit(firstRoot, ['config', 'user.email', 'first@example.invalid']);
 runGit(firstRoot, ['config', 'user.name', 'First']);
 runGit(firstRoot, ['add', '.']);
 runGit(firstRoot, ['commit', '-qm', 'first']);
-await Bun.write(join(firstRoot, 'first-root-change.txt'), 'first committed\nfirst modified\n');
+await Bun.write(
+  join(firstRoot, 'first-root-change.txt'),
+  'first committed\nfirst modified\n',
+);
 
 await Bun.write(join(secondRoot, 'SECOND_TREE_ONLY.txt'), 'second tree\n');
-await Bun.write(join(secondRoot, 'second-root-change.txt'), 'second committed\n');
+await Bun.write(
+  join(secondRoot, 'second-root-change.txt'),
+  'second committed\n',
+);
 runGit(secondRoot, ['init', '-q']);
 runGit(secondRoot, ['config', 'user.email', 'second@example.invalid']);
 runGit(secondRoot, ['config', 'user.name', 'Second']);
 runGit(secondRoot, ['add', '.']);
 runGit(secondRoot, ['commit', '-qm', 'second']);
-await Bun.write(join(secondRoot, 'second-root-change.txt'), 'second committed\nsecond modified\n');
+await Bun.write(
+  join(secondRoot, 'second-root-change.txt'),
+  'second committed\nsecond modified\n',
+);
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: firstRoot,
@@ -63,7 +74,9 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness workspace tabs: add a second root through the plus picker ==');
+  console.log(
+    '== harness workspace tabs: add a second root through the plus picker ==',
+  );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText(firstName.slice(0, 17)) !== null,
     15_000,
@@ -76,15 +89,38 @@ try {
   );
   pass('booted one workspace');
   const plusColumn = Array.from(snapshot.rowText(0)).lastIndexOf('+');
-  requireCondition(plusColumn >= 0, 'workspace plus button paints on the top strip');
-  driver.sendMouse({ kind: 'press', column: plusColumn, row: 0, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: plusColumn, row: 0, button: 'left' });
+  requireCondition(
+    plusColumn >= 0,
+    'workspace plus button paints on the top strip',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: plusColumn,
+    row: 0,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: plusColumn,
+    row: 0,
+    button: 'left',
+  });
   await driver.awaitSnapshot(
     (candidate) => candidate.findText(`+ ${dirname(firstRoot)}`) !== null,
   );
   pass('project picker prefills the current root parent');
   driver.sendText(secondName);
-  await driver.awaitSnapshot((candidate) => candidate.findText(secondRoot) !== null);
+  await driver.awaitGridCondition(
+    'the project picker paints the complete typed path on its input row',
+    (candidate) => candidate.findText(`+ ${secondRoot}▏`) !== null,
+  );
+  pass('project picker paints the complete typed path');
+  await driver.awaitSnapshot((candidate) =>
+    candidate
+      .textRows()
+      .slice(4)
+      .some((rowText) => rowText.includes(secondRoot)),
+  );
   pass('fuzzy match list paints the sibling absolute path');
   driver.sendKeys('Enter');
   snapshot = await driver.awaitSnapshot(
@@ -95,12 +131,15 @@ try {
     driver,
     statusPath,
     'the second workspace is added and active',
-    (status) => status.workspaceCount === 2
-      && status.activeWorkspaceRoot === secondRoot,
+    (status) =>
+      status.workspaceCount === 2 && status.activeWorkspaceRoot === secondRoot,
   );
   pass('second workspace was added');
   pass('new workspace is active');
-  requireCondition(snapshot.findText('…') !== null, 'long project name is capped with an ellipsis');
+  requireCondition(
+    snapshot.findText('…') !== null,
+    'long project name is capped with an ellipsis',
+  );
 
   const secondNamePosition = snapshot.findText(secondName.slice(0, 17));
   requireCondition(secondNamePosition !== null, 'second workspace name paints');
@@ -109,34 +148,55 @@ try {
     (candidate) => {
       const candidateNamePosition = candidate.findText(secondName.slice(0, 17));
       if (!candidateNamePosition) return false;
-      const candidateNameForeground = markerForeground(candidate, secondName.slice(0, 17));
-      const candidateBranchCell = candidate.rowCells(candidateNamePosition.row + 1).find(
-        (cell, column) => column >= candidateNamePosition.column && cell.characters !== ' ',
+      const candidateNameForeground = markerForeground(
+        candidate,
+        secondName.slice(0, 17),
       );
+      const candidateBranchCell = candidate
+        .rowCells(candidateNamePosition.row + 1)
+        .find(
+          (cell, column) =>
+            column >= candidateNamePosition.column && cell.characters !== ' ',
+        );
       return candidateBranchCell?.foreground === candidateNameForeground;
     },
   );
-  const settledSecondNameForeground = markerForeground(snapshot, secondName.slice(0, 17));
-  const settledSecondNamePosition = snapshot.findText(secondName.slice(0, 17));
-  if (!settledSecondNamePosition) throw new Error('Second workspace name disappeared');
-  const branchRow = settledSecondNamePosition.row + 1;
-  const branchCell = snapshot.rowCells(branchRow).find(
-    (cell, column) => column >= settledSecondNamePosition.column && cell.characters !== ' ',
+  const settledSecondNameForeground = markerForeground(
+    snapshot,
+    secondName.slice(0, 17),
   );
+  const settledSecondNamePosition = snapshot.findText(secondName.slice(0, 17));
+  if (!settledSecondNamePosition)
+    throw new Error('Second workspace name disappeared');
+  const branchRow = settledSecondNamePosition.row + 1;
+  const branchCell = snapshot
+    .rowCells(branchRow)
+    .find(
+      (cell, column) =>
+        column >= settledSecondNamePosition.column && cell.characters !== ' ',
+    );
   requireCondition(
     branchCell?.foreground === settledSecondNameForeground,
     'active workspace detail foreground matches the readable name foreground',
   );
 
-  console.log('== harness workspace tabs: git panel follows the active root ==');
+  console.log(
+    '== harness workspace tabs: git panel follows the active root ==',
+  );
   driver.sendKeys('Control+g');
-  await driver.awaitSnapshot((candidate) => candidate.findText('second-root-change.txt') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('second-root-change.txt') !== null,
+  );
   pass('git panel paints the second repository change');
 
-  console.log('== harness workspace tabs: clicking first tab restores tree and git ==');
+  console.log(
+    '== harness workspace tabs: clicking first tab restores tree and git ==',
+  );
   snapshot = driver.snapshot();
   clickMarker(driver, snapshot, firstName.slice(0, 17));
-  await driver.awaitSnapshot((candidate) => candidate.findText('FIRST_TREE_ONLY.txt') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('FIRST_TREE_ONLY.txt') !== null,
+  );
   await awaitStatus(
     driver,
     statusPath,
@@ -145,21 +205,28 @@ try {
   );
   pass('click switched to the first root');
   driver.sendKeys('Control+g');
-  await driver.awaitSnapshot((candidate) => candidate.findText('first-root-change.txt') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('first-root-change.txt') !== null,
+  );
   pass('git panel returned to the first repository');
   await awaitStatus(
     driver,
     statusPath,
     'only the active workspace owns a live Git watcher',
-    (status) => status.liveGitWatcherCount === 1
-      && String(status.workspaceLiveGitWatchers) === 'true,false',
+    (status) =>
+      status.liveGitWatcherCount === 1 &&
+      String(status.workspaceLiveGitWatchers) === 'true,false',
   );
   pass('two workspaces cost one live GitWatcher');
   pass('only the active workspace owns a watcher');
 
-  console.log('== harness workspace tabs: settings reorients top to left and back ==');
+  console.log(
+    '== harness workspace tabs: settings reorients top to left and back ==',
+  );
   driver.sendKeys('Control+,');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Settings') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Settings') !== null,
+  );
   await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
@@ -167,27 +234,35 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the left-oriented workspace strip stacks the second project in the left column',
     (candidate) => {
-      const firstProjectRow = candidate.textRows().findIndex(
-        (rowText) => rowText.slice(0, 22).includes(firstName.slice(0, 17)),
-      );
+      const firstProjectRow = candidate
+        .textRows()
+        .findIndex((rowText) =>
+          rowText.slice(0, 22).includes(firstName.slice(0, 17)),
+        );
       const secondProjectPosition = candidate.findText(secondName.slice(0, 17));
-      return firstProjectRow >= 0
-        && secondProjectPosition?.row === firstProjectRow + 1
-        && secondProjectPosition.column < 22;
+      return (
+        firstProjectRow >= 0 &&
+        secondProjectPosition?.row === firstProjectRow + 1 &&
+        secondProjectPosition.column < 22
+      );
     },
   );
-  const firstProjectRow = snapshot.textRows().findIndex(
-    (rowText) => rowText.slice(0, 22).includes(firstName.slice(0, 17)),
-  );
+  const firstProjectRow = snapshot
+    .textRows()
+    .findIndex((rowText) =>
+      rowText.slice(0, 22).includes(firstName.slice(0, 17)),
+    );
   const secondVerticalPosition = snapshot.findText(secondName.slice(0, 17));
   requireCondition(
-    firstProjectRow >= 0
-      && secondVerticalPosition?.row === firstProjectRow + 1
-      && secondVerticalPosition.column < 22,
+    firstProjectRow >= 0 &&
+      secondVerticalPosition?.row === firstProjectRow + 1 &&
+      secondVerticalPosition.column < 22,
     'left-oriented strip stacks the second project in the left column',
   );
   driver.sendKeys('Control+,');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Settings') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Settings') !== null,
+  );
   await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Left');
   await driver.awaitQuiescence();
@@ -201,7 +276,9 @@ try {
     'workspace strip returns to the top row',
   );
 
-  console.log('== harness workspace tabs: Ctrl+Shift brackets cycle projects ==');
+  console.log(
+    '== harness workspace tabs: Ctrl+Shift brackets cycle projects ==',
+  );
   const cycleStatusBefore = await awaitStatus(
     driver,
     statusPath,
@@ -213,7 +290,7 @@ try {
   await awaitStatus(
     driver,
     statusPath,
-    "status condition: status.activeWorkspaceRoot !== cycleRootBefore",
+    'status condition: status.activeWorkspaceRoot !== cycleRootBefore',
     (status) => status.activeWorkspaceRoot !== cycleRootBefore,
   );
   pass('Ctrl+Shift+] cycles to the next project');
@@ -221,7 +298,7 @@ try {
   await awaitStatus(
     driver,
     statusPath,
-    "status condition: status.activeWorkspaceRoot === cycleRootBefore",
+    'status condition: status.activeWorkspaceRoot === cycleRootBefore',
     (status) => status.activeWorkspaceRoot === cycleRootBefore,
   );
   pass('Ctrl+Shift+[ cycles back to the previous project');

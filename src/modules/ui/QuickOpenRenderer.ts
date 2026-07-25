@@ -17,6 +17,12 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { QuickOpen } from '../search/QuickOpen';
 class $QuickOpenRenderer {
+  public static contentRowCount(quickOpen: QuickOpen.Instance): number {
+    return (
+      this.messageLines(quickOpen)?.length ?? quickOpen.matches.value.length
+    );
+  }
+
   public static computeWindow(
     selectedIndex: number,
     total: number,
@@ -35,7 +41,7 @@ class $QuickOpenRenderer {
     return { firstVisible, count: visibleRows };
   }
   protected static messageResult(
-    lines: string[],
+    lines: readonly string[],
     palette: Palette,
   ): QuickOpenRenderResult {
     return {
@@ -44,31 +50,33 @@ class $QuickOpenRenderer {
       firstVisible: 0,
     };
   }
-  public static render(context: QuickOpenRenderContext): QuickOpenRenderResult {
-    const { quickOpen, palette, innerWidth, maxRows } = context;
+
+  protected static messageLines(
+    quickOpen: QuickOpen.Instance,
+  ): readonly string[] | null {
     const openingWorkspace = quickOpen.mode.value === 'workspacePath';
     if (openingWorkspace && quickOpen.errorMessage.value) {
-      return this.messageResult(
-        [`  ${quickOpen.errorMessage.value}`, '  Enter opens · Esc cancels'],
-        palette,
-      );
+      return [
+        `  ${quickOpen.errorMessage.value}`,
+        '  Enter opens · Esc cancels',
+      ];
     }
+    if (quickOpen.matches.value.length > 0) return null;
+    if (openingWorkspace) {
+      return ['  Type an existing folder path', '  Enter opens · Esc cancels'];
+    }
+    return [
+      quickOpen.query.value
+        ? '  (no matching files)'
+        : '  (type to filter project files)',
+    ];
+  }
+
+  public static render(context: QuickOpenRenderContext): QuickOpenRenderResult {
+    const { quickOpen, palette, innerWidth, maxRows } = context;
+    const messageLines = this.messageLines(quickOpen);
+    if (messageLines) return this.messageResult(messageLines, palette);
     const allMatches = quickOpen.matches.value;
-    if (allMatches.length === 0) {
-      if (openingWorkspace)
-        return this.messageResult(
-          ['  Type an existing folder path', '  Enter opens · Esc cancels'],
-          palette,
-        );
-      return this.messageResult(
-        [
-          quickOpen.query.value
-            ? '  (no matching files)'
-            : '  (type to filter project files)',
-        ],
-        palette,
-      );
-    }
     const selectedIndex = quickOpen.selectedIndex.value;
     const hoveredIndex = quickOpen.hoveredIndex.value;
     // Scroll the render window to keep the selection visible: a long list windows around the selected row
