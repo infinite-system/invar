@@ -63,6 +63,17 @@ class $Momentum {
    *  threshold eats it — a wheel notch that visibly does nothing is not precision, it is a dead
    *  input. */
   static addImpulse(momentum: ScrollMomentum, deltaRows: number, options: MomentumOptions = DEFAULT_MOMENTUM): ScrollMomentum {
+    // A notch AGAINST the current glide is a precision intent — stop and turn. Under ramped gain a
+    // low-velocity reversal notch only subtracts a fraction of the impulse, so whether the sign
+    // flips would depend on how much glide remains: a timing-dependent, sometimes-dead reversal.
+    // Halting and stepping from rest makes reversal deterministic and immediate.
+    if (
+      momentum.velocity !== 0
+      && deltaRows !== 0
+      && Math.sign(deltaRows) !== Math.sign(momentum.velocity)
+    ) {
+      return $Momentum.addImpulse(AT_REST, deltaRows, options);
+    }
     const gainRampCeiling = options.impulse * $Momentum.gainRampNotchSpan;
     const gainScale = $Momentum.initialGainFraction
       + (1 - $Momentum.initialGainFraction)

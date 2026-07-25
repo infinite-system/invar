@@ -91,3 +91,13 @@ describe('scroll-momentum', () => {
     expect(Momentum.Class.isMoving(Momentum.Class.halt())).toBe(false);
   });
 });
+
+test('a reversal notch halts the glide and steps from rest in the new direction', () => {
+  // Reversal must be deterministic whatever velocity remains: stop, then a precision step back.
+  const gliding = { velocity: 22, residual: 0.4 };
+  const reversed = Momentum.Class.addImpulse(gliding, -1, NO_DECAY);
+  expect(reversed.velocity).toBeCloseTo(-3); // from-rest gain (10 * 0.3), new direction
+  const barelyGliding = { velocity: 0.5, residual: 0 };
+  const reversedLow = Momentum.Class.addImpulse(barelyGliding, -1, NO_DECAY);
+  expect(reversedLow.velocity).toBeCloseTo(-3); // same outcome at any residual velocity
+});
