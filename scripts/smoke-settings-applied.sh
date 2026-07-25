@@ -42,7 +42,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 # smoke-settings-applied-harness.ts; the projected live follow-mode status must change.
 # reducedMotion / agentTypingSpeed / terminalCleanPrompt are byte-driven by
 # smoke-terminal-stage-harness.ts (instant-vs-animated command staging and the spawned-shell prompt).
-COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio"
+COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio panelContentOrder"
 
 # ---- schema-enumeration META-GATE (cheap; the enforcing check) -------------------------------------
 meta_gate() {

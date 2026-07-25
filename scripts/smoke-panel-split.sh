@@ -19,6 +19,11 @@ BUN="$HOME/.bun/bin/bun"
 FIX="${1:-$ROOT/fixtures}"
 fail=0
 f()   { "$H" field "$S" "$1"; }
+nested() {
+  local expression="$1"
+  local status_path="$ROOT/artifacts/status-$S.json"
+  "$BUN" -e "try{const status=require('$status_path');const value=$expression;process.stdout.write(String(value??''))}catch{process.stdout.write('')}" 2>/dev/null
+}
 chk() { if [ "$2" = "$3" ]; then echo "  PASS  $1 ($2)"; else echo "  FAIL  $1: got '$2' want '$3'"; fail=1; fi; }
 gt()  { if [ "${2:-0}" -gt "${3:-0}" ] 2>/dev/null; then echo "  PASS  $1 ($3->$2)"; else echo "  FAIL  $1 ($3->$2)"; fail=1; fi; }
 
@@ -81,8 +86,11 @@ else
 fi
 
 echo "== click the RIGHT cell (terminal) → focus moves; terminal reports its OWN sub-width via stty =="
-right_click_x=$(( col0 + 6 ))
-panel_row=$(( $(f height) - 8 ))
+panel_left="$(nested 'status.layoutSlots?.bottomPanel?.left')"
+panel_list_top="$(nested 'status.panelListGeometry?.top')"
+panel_list_height="$(nested 'status.panelListGeometry?.height')"
+right_click_x=$(( panel_left + col0 + 4 ))
+panel_row=$(( panel_list_top + panel_list_height / 2 ))
 "$H" click "$S" "$right_click_x" "$panel_row" >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 chk "click moved focus to the right cell" "$(f panelFocusedIndex)" "1"
@@ -104,7 +112,7 @@ else
 fi
 
 echo "== drag the intra-panel divider: both cells re-flow =="
-divider_x=$(( col0 + 1 ))
+divider_x=$(( panel_left + col0 + 1 ))
 target_x=$(( divider_x - 18 ))   # push the divider LEFT → left cell shrinks, right cell grows
 "$H" drag "$S" "$divider_x" "$panel_row" "$target_x" "$panel_row" >/dev/null
 "$H" settle "$S" >/dev/null 2>&1

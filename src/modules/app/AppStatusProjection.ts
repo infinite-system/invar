@@ -1,24 +1,24 @@
 // Deterministic observability projection: read the live application ports and assemble the one
 // StatusChannel snapshot consumed by the driven verification harness.
-import { Static } from "ivue/extras";
-import { AgentPaneContent } from "../agent/AgentPaneContent";
-import { CommandRegistry } from "../commands/CommandRegistry";
-import { BracketMatch } from "../editor/BracketMatch";
-import { NarrationProjection } from "../narration/NarrationProjection";
-import { FindBar } from "../search/FindBar";
-import { QuickOpen } from "../search/QuickOpen";
-import { Settings } from "../settings/Settings";
-import { SettingsPanel } from "../settings/SettingsPanel";
-import { LanguageRegistry } from "../syntax/LanguageRegistry";
-import { StatusChannel, type StatusSnapshot } from "../system/StatusChannel";
-import { ContextMenu } from "../ui/ContextMenu";
-import { BoundedListPopup } from "../ui/BoundedListPopup";
-import { PanelHost } from "../ui/PanelHost";
-import type { RootView } from "../ui/RootView";
-import { ShortcutHelp } from "../ui/ShortcutHelp";
-import { Tooltip } from "../ui/Tooltip";
-import { WorkspaceSet } from "../workspace/WorkspaceSet";
-import type { TerminalPaneContent } from "../terminal/TerminalPaneContent";
+import { Static } from 'ivue/extras';
+import { AgentPaneContent } from '../agent/AgentPaneContent';
+import { CommandRegistry } from '../commands/CommandRegistry';
+import { BracketMatch } from '../editor/BracketMatch';
+import { NarrationProjection } from '../narration/NarrationProjection';
+import { FindBar } from '../search/FindBar';
+import { QuickOpen } from '../search/QuickOpen';
+import { Settings } from '../settings/Settings';
+import { SettingsPanel } from '../settings/SettingsPanel';
+import { LanguageRegistry } from '../syntax/LanguageRegistry';
+import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
+import { ContextMenu } from '../ui/ContextMenu';
+import { BoundedListPopup } from '../ui/BoundedListPopup';
+import { PanelHost } from '../ui/PanelHost';
+import type { RootView } from '../ui/RootView';
+import { ShortcutHelp } from '../ui/ShortcutHelp';
+import { Tooltip } from '../ui/Tooltip';
+import { WorkspaceSet } from '../workspace/WorkspaceSet';
+import type { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 
 class $AppStatusProjection {
   static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
@@ -32,13 +32,13 @@ class $AppStatusProjection {
     const diffView = ports.view.activeDiffView();
     const markdownSplitView = ports.view.activeMarkdownSplitView();
     const openInputOverlays = [
-      ...(ports.findBar.open.value ? ["findBar"] : []),
-      ...(ports.quickOpen.open.value ? ["quickOpen"] : []),
-      ...(ports.commands.open.value ? ["commandPalette"] : []),
-      ...(ports.settingsPanel.open.value ? ["settingsPanel"] : []),
-      ...(ports.contextMenu.open.value ? ["contextMenu"] : []),
-      ...(ports.boundedListPopup.open.value ? ["boundedListPopup"] : []),
-      ...(ports.shortcutHelp.open.value ? ["shortcutHelp"] : []),
+      ...(ports.findBar.open.value ? ['findBar'] : []),
+      ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
+      ...(ports.commands.open.value ? ['commandPalette'] : []),
+      ...(ports.settingsPanel.open.value ? ['settingsPanel'] : []),
+      ...(ports.contextMenu.open.value ? ['contextMenu'] : []),
+      ...(ports.boundedListPopup.open.value ? ['boundedListPopup'] : []),
+      ...(ports.shortcutHelp.open.value ? ['shortcutHelp'] : []),
     ];
     return {
       mouse: ports.mouse,
@@ -76,27 +76,27 @@ class $AppStatusProjection {
       hasSelection: editor.cursor.hasSelection,
       selection: editor.cursor.selectionRange(),
       openBuffers: editor.hasDocument.value ? [editor.document.path] : [],
-      overlay: ports.commands.open.value ? "palette" : null,
+      overlay: ports.commands.open.value ? 'palette' : null,
       inputOverlay: openInputOverlays[0] ?? null,
       inputOverlayCount: openInputOverlays.length,
       openInputOverlays,
       findOpen: ports.findBar.open.value,
       findMode: ports.findBar.mode.value,
       findTarget: ports.findBar.target?.identifier ?? null,
-      findQuery: ports.findBar.engine?.query.value ?? "",
+      findQuery: ports.findBar.engine?.query.value ?? '',
       findMatchCount: ports.findBar.engine?.matchCount ?? 0,
       findCurrentMatchIndex:
         ports.findBar.engine?.currentMatchIndex.value ?? -1,
       findCaseSensitive: ports.findBar.caseSensitive,
       sourceFindQuery: editor.hasDocument.value
         ? (ports.findBar.engineFor(`source:${editor.document.path}`)?.query
-            .value ?? "")
-        : "",
+            .value ?? '')
+        : '',
       markdownPreviewFindQuery: markdownSplitView
         ? (ports.findBar.engineFor(
             markdownSplitView.previewFindTargetIdentifier(),
-          )?.query.value ?? "")
-        : "",
+          )?.query.value ?? '')
+        : '',
       quickOpenOpen: ports.quickOpen.open.value,
       quickOpenSelected: ports.quickOpen.selectedIndex.value,
       quickOpenHovered: ports.quickOpen.hoveredIndex.value,
@@ -105,7 +105,7 @@ class $AppStatusProjection {
       quickOpenMode: ports.quickOpen.mode.value,
       quickOpenPathOpenable: ports.quickOpen.workspacePathOpenable.value,
       paletteOpen: ports.commands.open.value,
-      paletteQuery: ports.commands.open.value ? ports.commands.query.value : "",
+      paletteQuery: ports.commands.open.value ? ports.commands.query.value : '',
       paletteMatches: ports.commands.open.value
         ? ports.commands.filtered.length
         : 0,
@@ -113,12 +113,12 @@ class $AppStatusProjection {
       // value, and the live agentNarrationVoice setting. (settingsOpen is already exposed below.)
       settingsSelectedLabel: ports.settingsPanel.open.value
         ? (ports.settingsPanel.rows()[ports.settingsPanel.selectedIndex.value]
-            ?.label ?? "")
-        : "",
+            ?.label ?? '')
+        : '',
       settingsSelectedValue: ports.settingsPanel.open.value
         ? (ports.settingsPanel.rows()[ports.settingsPanel.selectedIndex.value]
-            ?.valueText ?? "")
-        : "",
+            ?.valueText ?? '')
+        : '',
       narrationVoice: ports.settings.agentNarrationVoice.value,
       narrationRate: ports.settings.agentNarrationRate.value,
       focus: ports.workspaceSet.active.focus.value,
@@ -145,9 +145,9 @@ class $AppStatusProjection {
       // The read-only branch VIEWER ('' = following HEAD) and the tip SHA the log DISPLAYS —
       // driven contracts assert external-commit freshness and branch re-sourcing through these.
       gitLogBranch:
-        ports.workspaceSet.active.commitLog.value?.branch.value ?? "",
+        ports.workspaceSet.active.commitLog.value?.branch.value ?? '',
       gitLogTipSha:
-        ports.workspaceSet.active.commitLog.value?.loadedTipSha ?? "",
+        ports.workspaceSet.active.commitLog.value?.loadedTipSha ?? '',
       gitRegion: ports.workspaceSet.active.gitPanel.region.value,
       gitSelectedPaths: [
         ...ports.workspaceSet.active.gitPanel.selectedPaths.value,
@@ -167,7 +167,7 @@ class $AppStatusProjection {
       diffSelection: diffView?.selectionRange() ?? null,
       diffSplitRatio: ports.settings.diffSplitRatio.value,
       markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
-      markdownPaneFocus: markdownSplitView?.focusedPane.value ?? "source",
+      markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: ports.settings.markdownSplitRatio.value,
       gitSplitRatio: ports.settings.gitSplitRatio.value,
       markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
@@ -210,6 +210,9 @@ class $AppStatusProjection {
       panelActiveContent:
         ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
       panelContentIds: ports.panelHost.order.value,
+      panelContentOrder: ports.panelHost.order.value,
+      panelListVisible: ports.panelHost.panelListVisible,
+      panelListGeometry: ports.view.panelContentsListRegion(),
       terminalColumns: ports.view.panelViewportColumns(),
       terminalRows: ports.view.panelViewportRows(),
       // Split state: which cells occupy the slot, which one has the keyboard, and each cell's converged
@@ -236,7 +239,7 @@ class $AppStatusProjection {
       // line shows its author and a non-git file shows none. '' when no document / not blamed.
       // Same single query surface the status bar uses (workspace-owned bounded cache).
       currentLineBlameAuthor:
-        ports.workspaceSet.active.activeLineBlame?.author ?? "",
+        ports.workspaceSet.active.activeLineBlame?.author ?? '',
       // Bracket match: the matched partner cell for the cursor's bracket (line,col 0-based), or -1/-1
       // when the cursor is not on a bracket — the driving smoke reads this alongside the frame bg.
       matchingBracketLine: (() => {
@@ -274,13 +277,13 @@ class $AppStatusProjection {
       // and NOTHING when off, all through the silent mock backend (no audio in CI).
       narrationEnabled: ports.settings.agentAudioNarration.value,
       narrationSpokenCount: ports.narration?.spokenCount.value ?? 0,
-      narrationLastSpoken: ports.narration?.lastSpoken.value ?? "",
+      narrationLastSpoken: ports.narration?.lastSpoken.value ?? '',
       narrationBargeInCount: ports.narration?.bargeInCount.value ?? 0,
       // Agent pane UX view state (drives smoke-agent-pane-ux): busy shows the spinner; stuckToBottom
       // flips false once the user scrolls up; expandedCount rises when a collapsed tool row is opened.
       agentBusy: ports.agentPaneContent?.agentSession.busy ?? false,
       agentTurnState:
-        ports.agentPaneContent?.agentSession.turnState?.value ?? "idle",
+        ports.agentPaneContent?.agentSession.turnState?.value ?? 'idle',
       queuedMessageCount:
         ports.agentPaneContent?.agentSession.queuedMessageCount ?? 0,
       agentStuckToBottom: ports.agentPaneContent?.stuckToBottom ?? true,
@@ -289,15 +292,15 @@ class $AppStatusProjection {
       // Interactive permission prompt state (drives the permission-flow smoke): the pending tool name
       // (empty when none) — flips on when ask-mode pauses a tool, off when y/n/a resolves it.
       agentPendingPermissionTool:
-        ports.agentPaneContent?.agentSession.pendingPermission?.toolName ?? "",
+        ports.agentPaneContent?.agentSession.pendingPermission?.toolName ?? '',
       // The live engine label (drives the engine-switch smoke) — flips claude⇄codex on cycle.
-      agentEngine: ports.agentPaneContent?.currentEngine ?? "",
+      agentEngine: ports.agentPaneContent?.currentEngine ?? '',
       // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
       // engine ('Claude'/'Codex'/…, '(working…)' while busy), never a frozen 'Claude'.
-      agentTitle: ports.agentPaneContent?.title ?? "",
+      agentTitle: ports.agentPaneContent?.title ?? '',
       agentAssistantEntryCount:
         ports.agentPaneContent?.agentSession.transcript?.filter(
-          (entry) => entry.role === "assistant",
+          (entry) => entry.role === 'assistant',
         ).length ?? 0,
       agentLastAssistantText: (() => {
         const transcript =
@@ -308,9 +311,9 @@ class $AppStatusProjection {
           entryIndex -= 1
         ) {
           const entry = transcript[entryIndex]!;
-          if (entry.role === "assistant") return entry.text;
+          if (entry.role === 'assistant') return entry.text;
         }
-        return "";
+        return '';
       })(),
       terminalFollowMode: ports.settings.agentTerminalFollowMode.value,
       terminalObservedEventCount:
@@ -326,9 +329,9 @@ class $AppStatusProjection {
           entryIndex -= 1
         ) {
           const entry = transcript[entryIndex]!;
-          if (entry.role === "tool-result") return entry.result;
+          if (entry.role === 'tool-result') return entry.result;
         }
-        return "";
+        return '';
       })(),
     };
   }
@@ -349,114 +352,116 @@ export interface AppStatusMouseEvent {
 export interface AppStatusProjectionPorts {
   readonly workspaceSet: Pick<
     InstanceType<typeof WorkspaceSet.Class>,
-    | "active"
-    | "tabs"
-    | "activeWorkspaceIndex"
-    | "count"
-    | "liveGitWatcherCount"
-    | "entries"
+    | 'active'
+    | 'tabs'
+    | 'activeWorkspaceIndex'
+    | 'count'
+    | 'liveGitWatcherCount'
+    | 'entries'
   >;
   readonly settings: Pick<
     InstanceType<typeof Settings.Class>,
-    | "workspaceTabPosition"
-    | "sidebarPosition"
-    | "panelAlignment"
-    | "leftDockVerticalSpan"
-    | "rightDockVerticalSpan"
-    | "agentNarrationVoice"
-    | "agentNarrationRate"
-    | "showActivityBar"
-    | "diffSplitRatio"
-    | "markdownSplitRatio"
-    | "gitSplitRatio"
-    | "sidebarWidth"
-    | "rightDockWidth"
-    | "agentAudioNarration"
-    | "agentTerminalFollowMode"
+    | 'workspaceTabPosition'
+    | 'sidebarPosition'
+    | 'panelAlignment'
+    | 'leftDockVerticalSpan'
+    | 'rightDockVerticalSpan'
+    | 'agentNarrationVoice'
+    | 'agentNarrationRate'
+    | 'showActivityBar'
+    | 'diffSplitRatio'
+    | 'markdownSplitRatio'
+    | 'gitSplitRatio'
+    | 'sidebarWidth'
+    | 'rightDockWidth'
+    | 'agentAudioNarration'
+    | 'agentTerminalFollowMode'
   >;
   readonly commands: Pick<
     InstanceType<typeof CommandRegistry.Class>,
-    "open" | "query" | "filtered"
+    'open' | 'query' | 'filtered'
   >;
   readonly findBar: Pick<
     InstanceType<typeof FindBar.Class>,
-    "open" | "mode" | "target" | "engine" | "caseSensitive" | "engineFor"
+    'open' | 'mode' | 'target' | 'engine' | 'caseSensitive' | 'engineFor'
   >;
   readonly quickOpen: Pick<
     InstanceType<typeof QuickOpen.Class>,
-    | "open"
-    | "selectedIndex"
-    | "hoveredIndex"
-    | "query"
-    | "matches"
-    | "mode"
-    | "workspacePathOpenable"
+    | 'open'
+    | 'selectedIndex'
+    | 'hoveredIndex'
+    | 'query'
+    | 'matches'
+    | 'mode'
+    | 'workspacePathOpenable'
   >;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,
-    "open" | "selectedIndex" | "rows"
+    'open' | 'selectedIndex' | 'rows'
   >;
-  readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, "open">;
+  readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
   readonly boundedListPopup: Pick<
     InstanceType<typeof BoundedListPopup.Class>,
-    "open" | "query" | "selectedIndex" | "filteredMatches" | "geometry"
+    'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
   >;
   readonly shortcutHelp: Pick<
     InstanceType<typeof ShortcutHelp.Class>,
-    "open" | "scrollTop" | "rows"
+    'open' | 'scrollTop' | 'rows'
   >;
-  readonly tooltip: Pick<InstanceType<typeof Tooltip.Class>, "visible">;
+  readonly tooltip: Pick<InstanceType<typeof Tooltip.Class>, 'visible'>;
   readonly panelHost: Pick<
     InstanceType<typeof PanelHost.Class>,
-    | "visible"
-    | "focused"
-    | "activeId"
-    | "order"
-    | "resolvedCells"
-    | "focusedContent"
-    | "focusedIndex"
-    | "cellSpans"
-    >;
-    readonly primaryDockHost: Pick<
-      InstanceType<typeof PanelHost.Class>,
-      "visible"
+    | 'visible'
+    | 'focused'
+    | 'activeId'
+    | 'order'
+    | 'resolvedCells'
+    | 'focusedContent'
+    | 'focusedIndex'
+    | 'cellSpans'
+    | 'panelListVisible'
+  >;
+  readonly primaryDockHost: Pick<
+    InstanceType<typeof PanelHost.Class>,
+    'visible'
   >;
   readonly rightDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
-    | "visible"
-    | "focused"
-    | "activeId"
-    | "order"
-    | "resolvedCells"
-    | "focusedContent"
+    | 'visible'
+    | 'focused'
+    | 'activeId'
+    | 'order'
+    | 'resolvedCells'
+    | 'focusedContent'
   >;
   readonly view: Pick<
     RootView,
-    | "activeDiffView"
-    | "activeMarkdownSplitView"
-    | "panelViewportColumns"
-    | "panelViewportRows"
-    | "rightDockViewportColumns"
-    | "rightDockViewportRows"
-    | "layoutGeometry"
-    | "splitterRegions"
+    | 'activeDiffView'
+    | 'activeMarkdownSplitView'
+    | 'panelViewportColumns'
+    | 'panelViewportRows'
+    | 'panelContentsListRegion'
+    | 'rightDockViewportColumns'
+    | 'rightDockViewportRows'
+    | 'layoutGeometry'
+    | 'splitterRegions'
   >;
   readonly mouse: AppStatusMouseEvent | null;
   readonly narration: Pick<
     InstanceType<typeof NarrationProjection.Class>,
-    "spokenCount" | "lastSpoken" | "bargeInCount"
+    'spokenCount' | 'lastSpoken' | 'bargeInCount'
   > | null;
   readonly agentPaneContent: Pick<
     AgentPaneContent.Model,
-    | "agentSession"
-    | "stuckToBottom"
-    | "expandedCount"
-    | "scrollTop"
-    | "currentEngine"
-    | "title"
+    | 'agentSession'
+    | 'stuckToBottom'
+    | 'expandedCount'
+    | 'scrollTop'
+    | 'currentEngine'
+    | 'title'
   > | null;
   readonly terminalPaneContent: Pick<
     TerminalPaneContent.Model,
-    "observedEventCount" | "lastObservedBoundarySource"
+    'observedEventCount' | 'lastObservedBoundarySource'
   > | null;
 }

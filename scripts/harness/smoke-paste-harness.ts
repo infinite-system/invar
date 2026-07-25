@@ -42,9 +42,10 @@ function emittedClipboardTexts(output: string): string[] {
 }
 
 async function sendChunkedPaste(text: string): Promise<void> {
-  for (
-    const inputChunk of BracketedPasteInput.Class.splitAtMarkerEdges(text, 997)
-  ) {
+  for (const inputChunk of BracketedPasteInput.Class.splitAtMarkerEdges(
+    text,
+    997,
+  )) {
     driver.sendRawInputBytesWithoutFrameExpectation(inputChunk);
     await Bun.sleep(1);
   }
@@ -70,14 +71,21 @@ function exactSizePayload(
 
 try {
   console.log('== harness paste: open a file and focus the editor ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('paste.txt') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('paste.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('Enter');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('paste fixture') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('paste fixture') !== null,
+  );
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
   pass('editor is ready for bracketed paste');
 
-  console.log('== harness paste: single-line editor paste inserts at the caret ==');
+  console.log(
+    '== harness paste: single-line editor paste inserts at the caret ==',
+  );
   const firstRevisionStatus = await awaitStatusPublication(
     statusPath,
     'the buffer revision is published before single-line paste',
@@ -85,17 +93,21 @@ try {
   );
   const firstRevision = Number(firstRevisionStatus.bufferRevision);
   driver.sendPaste('PASTEUNIQUEXYZ');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEUNIQUEXYZ') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('PASTEUNIQUEXYZ') !== null,
+  );
   await awaitStatusPublication(
     statusPath,
     'single-line paste advances the revision and dirties the document',
-    (status) => Number(status.bufferRevision) > firstRevision
-      && status.dirty === true,
+    (status) =>
+      Number(status.bufferRevision) > firstRevision && status.dirty === true,
   );
   pass('single-line paste bumped the buffer revision');
   pass('paste dirtied the document');
 
-  console.log('== harness paste: multi-line editor paste creates visible lines ==');
+  console.log(
+    '== harness paste: multi-line editor paste creates visible lines ==',
+  );
   const secondRevisionStatus = await awaitStatusPublication(
     statusPath,
     'the buffer revision is published before multi-line paste',
@@ -104,8 +116,9 @@ try {
   const secondRevision = Number(secondRevisionStatus.bufferRevision);
   driver.sendPaste('ALPHALINE\nBRAVOLINE\nCHARLIELINE');
   await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('ALPHALINE') !== null
-      && snapshot.findText('CHARLIELINE') !== null,
+    (snapshot) =>
+      snapshot.findText('ALPHALINE') !== null &&
+      snapshot.findText('CHARLIELINE') !== null,
   );
   await awaitStatusPublication(
     statusPath,
@@ -119,12 +132,15 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the terminal pane is active and focused',
-    (status) => status.terminalFocused === true
-      && status.panelActiveContent === 'terminal',
+    (status) =>
+      status.terminalFocused === true &&
+      status.panelActiveContent === 'terminal',
   );
   pass('active pane is the terminal');
   driver.sendPaste('PASTEDINTERMINAL');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINTERMINAL') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('PASTEDINTERMINAL') !== null,
+  );
   pass('terminal child echoed pasted text at its prompt');
   driver.sendKeys('Control+c');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('^C') !== null);
@@ -133,21 +149,30 @@ try {
   driver.sendText('alpha beta gamma');
   driver.sendRawInput('\x1bb');
   driver.sendText('X');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha beta Xgamma') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('alpha beta Xgamma') !== null,
+  );
   driver.sendRawInput('\x1bb');
   driver.sendRawInput('\x1bf');
   driver.sendText('Y');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha beta XgammaY') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('alpha beta XgammaY') !== null,
+  );
   driver.sendRawInput('\x1b\x7f');
   await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('alpha beta XgammaY') === null
-      && snapshot.findText('alpha beta') !== null,
+    (snapshot) =>
+      snapshot.findText('alpha beta XgammaY') === null &&
+      snapshot.findText('alpha beta') !== null,
   );
-  pass('word-left, word-right, and Alt+Backspace forward as readline meta sequences');
+  pass(
+    'word-left, word-right, and Alt+Backspace forward as readline meta sequences',
+  );
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
 
-  console.log('== harness paste: split markers and large payloads reach the terminal exactly ==');
+  console.log(
+    '== harness paste: split markers and large payloads reach the terminal exactly ==',
+  );
   const tenByteTerminalPayload = 'TEN-BYTES!';
   await sendChunkedPaste(tenByteTerminalPayload);
   await driver.awaitSnapshot(
@@ -160,16 +185,16 @@ try {
   for (const payloadByteCount of [1024, 65_536]) {
     const commandPrefix = "printf '";
     const resultMarker = `CHUNK_${payloadByteCount}_RESULT_`;
-    const commandSuffix =
-      `' | wc -c | { read count; printf '${resultMarker}%s\\n' "$count"; }`;
+    const commandSuffix = `' | wc -c | { read count; printf '${resultMarker}%s\\n' "$count"; }`;
     const command = exactSizePayload(
       payloadByteCount,
       commandPrefix,
       commandSuffix,
     );
-    const expectedPayloadByteCount = payloadByteCount
-      - Buffer.byteLength(commandPrefix)
-      - Buffer.byteLength(commandSuffix);
+    const expectedPayloadByteCount =
+      payloadByteCount -
+      Buffer.byteLength(commandPrefix) -
+      Buffer.byteLength(commandSuffix);
     await sendChunkedPaste(command);
     // Staging sequencing only: the staged echo wraps at the pane width, and whether any marker
     // straddles a row boundary is layout-configuration arithmetic, so no single-row text wait can
@@ -178,9 +203,9 @@ try {
     await driver.awaitQuiescence();
     driver.sendKeys('Enter');
     await driver.awaitSnapshot(
-      (snapshot) => (
-        snapshot.findText(`${resultMarker}${expectedPayloadByteCount}`) !== null
-      ),
+      (snapshot) =>
+        snapshot.findText(`${resultMarker}${expectedPayloadByteCount}`) !==
+        null,
       30_000,
     );
     pass(
@@ -188,13 +213,16 @@ try {
     );
   }
 
-  console.log('== harness paste: terminal selection copies through raw OSC 52 ==');
+  console.log(
+    '== harness paste: terminal selection copies through raw OSC 52 ==',
+  );
   driver.sendText('printf COPYTERMINAL');
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('COPYTERMINAL') !== null,
   );
   const terminalCopyPosition = snapshot.findText('COPYTERMINAL');
-  if (!terminalCopyPosition) throw new Error('Terminal copy target disappeared');
+  if (!terminalCopyPosition)
+    throw new Error('Terminal copy target disappeared');
   await dragBetweenCells(
     driver,
     terminalCopyPosition.column,
@@ -202,13 +230,15 @@ try {
     terminalCopyPosition.column + 11,
     terminalCopyPosition.row,
   );
-  const clipboardEmissionCountBefore = emittedClipboardTexts(driver.recordedOutput()).length;
+  const clipboardEmissionCountBefore = emittedClipboardTexts(
+    driver.recordedOutput(),
+  ).length;
   driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
   const copyDeadline = performance.now() + 5_000;
   while (
-    emittedClipboardTexts(driver.recordedOutput()).length
-      <= clipboardEmissionCountBefore
-    && performance.now() < copyDeadline
+    emittedClipboardTexts(driver.recordedOutput()).length <=
+      clipboardEmissionCountBefore &&
+    performance.now() < copyDeadline
   ) {
     await Bun.sleep(10);
   }
@@ -241,12 +271,59 @@ try {
     (status) => status.panelActiveContent === 'agent',
   );
   driver.sendPaste('PASTEDINAGENT');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('PASTEDINAGENT') !== null,
+  );
   pass('agent composer paints the pasted text');
 
-  console.log('== harness paste: split markers and large payloads route to the agent composer ==');
+  console.log(
+    '== harness paste: split markers and large payloads route to the agent composer ==',
+  );
   driver.sendRawInput('\x1b[127;5u');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') === null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('PASTEDINAGENT') === null,
+  );
+  const agentPanelLayoutStatus = await awaitStatusPublication(
+    statusPath,
+    'panel cell identifiers and columns are published before agent paste',
+    (status) =>
+      Array.isArray(status.panelCellIds) &&
+      Array.isArray(status.panelCellColumns) &&
+      typeof status.layoutSlots === 'object' &&
+      status.layoutSlots !== null,
+  );
+  const agentPanelCellIdentifiers =
+    agentPanelLayoutStatus.panelCellIds as string[];
+  const agentPanelCellColumns =
+    agentPanelLayoutStatus.panelCellColumns as number[];
+  const pasteAgentCellIndex = agentPanelCellIdentifiers.indexOf('agent');
+  const agentBottomPanel = (
+    agentPanelLayoutStatus.layoutSlots as
+      Record<string, { left: number }> | undefined
+  )?.bottomPanel;
+  if (pasteAgentCellIndex < 0 || !agentBottomPanel) {
+    throw new Error('Agent panel geometry disappeared before agent paste');
+  }
+  const pasteAgentPaneLeft =
+    agentBottomPanel.left +
+    1 +
+    (pasteAgentCellIndex === 0 ? 0 : Number(agentPanelCellColumns[0] ?? 0) + 1);
+  const pasteAgentPaneColumns = Number(
+    agentPanelCellColumns[pasteAgentCellIndex] ?? 0,
+  );
+  const agentPaneText = (
+    snapshot: ReturnType<typeof driver.snapshot>,
+  ): string =>
+    snapshot
+      .textRows()
+      .map((rowText) =>
+        rowText.slice(
+          pasteAgentPaneLeft,
+          pasteAgentPaneLeft + pasteAgentPaneColumns,
+        ),
+      )
+      .join('')
+      .replace(/\s+/g, '');
   for (const payloadByteCount of [10, 1024, 65_536]) {
     const payloadSuffix = `-END${payloadByteCount}`;
     const payload = exactSizePayload(
@@ -256,7 +333,7 @@ try {
     );
     await sendChunkedPaste(payload);
     await driver.awaitSnapshot(
-      (snapshot) => snapshot.findText(payloadSuffix) !== null,
+      (snapshot) => agentPaneText(snapshot).includes(payloadSuffix),
       30_000,
     );
     await awaitStatusPublication(
@@ -264,18 +341,53 @@ try {
       `${payloadByteCount}-byte paste remains routed to the agent composer`,
       (status) => status.panelActiveContent === 'agent',
     );
-    pass(`${payloadByteCount}-byte paste remained routed to the agent composer`);
+    pass(
+      `${payloadByteCount}-byte paste remained routed to the agent composer`,
+    );
     pass(
       `${payloadByteCount}-byte paste split across markers and payload reaches the agent composer`,
     );
     driver.sendRawInput('\x1b[127;5u');
     await driver.awaitSnapshot(
-      (snapshot) => snapshot.findText(payloadSuffix) === null,
+      (snapshot) => !agentPaneText(snapshot).includes(payloadSuffix),
       30_000,
     );
   }
 
-  console.log('== harness paste: paste survives staged and animated terminal interception ==');
+  console.log(
+    '== harness paste: paste survives staged and animated terminal interception ==',
+  );
+  const stagedPanelLayoutStatus = await awaitStatusPublication(
+    statusPath,
+    'panel cell identifiers and columns are published before staged paste',
+    (status) =>
+      Array.isArray(status.panelCellIds) &&
+      Array.isArray(status.panelCellColumns) &&
+      typeof status.layoutSlots === 'object' &&
+      status.layoutSlots !== null,
+  );
+  const stagedPanelCellIdentifiers =
+    stagedPanelLayoutStatus.panelCellIds as string[];
+  const stagedPanelCellColumns =
+    stagedPanelLayoutStatus.panelCellColumns as number[];
+  const stagedTerminalCellIndex =
+    stagedPanelCellIdentifiers.indexOf('terminal');
+  const stagedBottomPanel = (
+    stagedPanelLayoutStatus.layoutSlots as
+      Record<string, { left: number }> | undefined
+  )?.bottomPanel;
+  if (stagedTerminalCellIndex < 0 || !stagedBottomPanel) {
+    throw new Error('Terminal panel geometry disappeared before staged paste');
+  }
+  const stagedTerminalPaneLeft =
+    stagedBottomPanel.left +
+    1 +
+    (stagedTerminalCellIndex === 0
+      ? 0
+      : Number(stagedPanelCellColumns[0] ?? 0) + 1);
+  const stagedTerminalPaneColumns = Number(
+    stagedPanelCellColumns[stagedTerminalCellIndex] ?? 0,
+  );
   for (let deletion = 0; deletion < 30; deletion += 1) {
     driver.sendKeysWithoutFrameExpectation('Backspace');
   }
@@ -285,12 +397,23 @@ try {
     // The agent transcript wraps at WORD boundaries, so a multi-word phrase anchor straddles rows
     // whenever pane width shifts (the command-bar row re-wrapped it). Single tokens never split:
     // 'reject:' appears only in the staged-command notice.
-    (candidate) => candidate.findText('$ printf STAGED_PASTE') !== null
-      && candidate.findText('reject:') !== null,
+    (candidate) =>
+      candidate.findText('$ printf STAGED_PASTE') !== null &&
+      candidate.findText('reject:') !== null,
   );
   driver.sendPaste('_BURST');
-  await driver.awaitSnapshot(
-    (candidate) => candidate.findText('$ printf STAGED_PASTE_BURST') !== null,
+  await driver.awaitSnapshot((candidate) =>
+    candidate
+      .textRows()
+      .map((rowText) =>
+        rowText.slice(
+          stagedTerminalPaneLeft,
+          stagedTerminalPaneLeft + stagedTerminalPaneColumns,
+        ),
+      )
+      .join('')
+      .replace(/\s+/g, '')
+      .includes('$printfSTAGED_PASTE_BURST'),
   );
   pass('paste payload reaches readline intact while a command is staged');
   driver.sendKeys('Control+c');
@@ -299,14 +422,17 @@ try {
   const panelLayoutStatus = await awaitStatusPublication(
     statusPath,
     'panel layout geometry and cell columns are published',
-    (status) => typeof status.layoutSlots === 'object'
-      && status.layoutSlots !== null
-      && Array.isArray(status.panelCellIds)
-      && Array.isArray(status.panelCellColumns)
-      && typeof status.height === 'number',
+    (status) =>
+      typeof status.layoutSlots === 'object' &&
+      status.layoutSlots !== null &&
+      Array.isArray(status.panelCellIds) &&
+      Array.isArray(status.panelCellColumns) &&
+      typeof status.height === 'number',
   );
-  const layoutSlots = panelLayoutStatus.layoutSlots as
-    Record<string, { left: number; top: number; width: number; height: number }>;
+  const layoutSlots = panelLayoutStatus.layoutSlots as Record<
+    string,
+    { left: number; top: number; width: number; height: number }
+  >;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
   const screenRows = Number(panelLayoutStatus.height);
@@ -315,30 +441,54 @@ try {
   const panelCellIdentifiers = panelLayoutStatus.panelCellIds as string[];
   const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
   const agentCellIndex = panelCellIdentifiers.indexOf('agent');
+  const terminalCellIndex = panelCellIdentifiers.indexOf('terminal');
   if (agentCellIndex < 0) throw new Error('Agent panel cell disappeared');
-  const panelBodyColumn = bottomPanel.left + 2 + (
-    agentCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1
-  );
+  if (terminalCellIndex < 0) throw new Error('Terminal panel cell disappeared');
+  const panelBodyColumn =
+    bottomPanel.left +
+    2 +
+    (agentCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1);
+  const terminalPaneLeft =
+    bottomPanel.left +
+    1 +
+    (terminalCellIndex === 0 ? 0 : Number(panelCellColumns[0] ?? 0) + 1);
+  const terminalPaneColumns = Number(panelCellColumns[terminalCellIndex] ?? 0);
   const panelBodyRow =
     layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2);
-  driver.sendMouse({ kind: 'press', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
+  driver.sendMouse({
+    kind: 'press',
+    column: panelBodyColumn,
+    row: panelBodyRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: panelBodyColumn,
+    row: panelBodyRow,
+    button: 'left',
+  });
   await awaitStatusPublication(
     statusPath,
     'the clicked agent panel cell becomes active',
     (status) => status.panelActiveContent === 'agent',
   );
-  driver.sendText(
-    `terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`,
-  );
+  driver.sendText(`terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`);
   driver.sendKeys('Enter');
   await driver.awaitSnapshot(
-    (candidate) => candidate.findText('printf ANI') !== null
-      && candidate.findText(`ANIMATING_${'x'.repeat(100)}`) === null,
+    (candidate) =>
+      candidate.findText('printf ANI') !== null &&
+      candidate.findText(`ANIMATING_${'x'.repeat(100)}`) === null,
   );
   driver.sendPaste('PASTE_DURING_ANIMATION');
-  await driver.awaitSnapshot(
-    (candidate) => candidate.findText('PASTE_DURING_ANIMATION') !== null,
+  await driver.awaitSnapshot((candidate) =>
+    candidate
+      .textRows()
+      .map((rowText) =>
+        rowText.slice(terminalPaneLeft, terminalPaneLeft + terminalPaneColumns),
+      )
+      .join('')
+      .replace(/\s+/g, '')
+      .includes('PASTE_DURING_ANIMATION'),
   );
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');
@@ -374,7 +524,9 @@ try {
   );
   const thirdRevision = Number(thirdRevisionStatus.bufferRevision);
   driver.sendPaste('PASTEAFTERREFOCUS');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEAFTERREFOCUS') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('PASTEAFTERREFOCUS') !== null,
+  );
   await awaitStatusPublication(
     statusPath,
     'paste after refocus advances the buffer revision',

@@ -14,7 +14,11 @@ class $KeybindingRegistry {
 
   protected layers: Layer[] = [];
   protected guards = new Map<string, () => boolean>();
-  protected pendingChord: { binding: Keybinding; stepIndex: number; armedAtMs: number } | null = null;
+  protected pendingChord: {
+    binding: Keybinding;
+    stepIndex: number;
+    armedAtMs: number;
+  } | null = null;
 
   /** Bumped whenever layers change, so effective-binding hints recompute. */
   get revision() {
@@ -25,7 +29,10 @@ class $KeybindingRegistry {
   }
 
   registerLayer(name: string, bindings: Keybinding[]): void {
-    this.layers = [...this.layers.filter((layer) => layer.name !== name), { name, bindings }];
+    this.layers = [
+      ...this.layers.filter((layer) => layer.name !== name),
+      { name, bindings },
+    ];
     this.revision.value += 1;
   }
 
@@ -38,7 +45,8 @@ class $KeybindingRegistry {
     if ((pattern.ctrl ?? false) !== event.ctrl) return false;
     if ((pattern.alt ?? false) !== event.option) return false;
     if ((pattern.super ?? false) !== (event.super ?? false)) return false;
-    if (pattern.shift !== undefined && pattern.shift !== event.shift) return false;
+    if (pattern.shift !== undefined && pattern.shift !== event.shift)
+      return false;
     return true;
   }
 
@@ -49,7 +57,9 @@ class $KeybindingRegistry {
   }
 
   protected inContext(binding: Keybinding, context: string): boolean {
-    return (binding.context ?? 'global') === 'global' || binding.context === context;
+    return (
+      (binding.context ?? 'global') === 'global' || binding.context === context
+    );
   }
 
   /**
@@ -60,8 +70,10 @@ class $KeybindingRegistry {
   resolve(event: ChordEvent, context: string, nowMs: number): Resolution {
     if (this.pendingChord) {
       const { binding, stepIndex, armedAtMs } = this.pendingChord;
-      const keybindingRegistryClass = this.constructor as typeof $KeybindingRegistry;
-      const expired = nowMs - armedAtMs > keybindingRegistryClass.chordTimeoutMilliseconds;
+      const keybindingRegistryClass = this
+        .constructor as typeof $KeybindingRegistry;
+      const expired =
+        nowMs - armedAtMs > keybindingRegistryClass.chordTimeoutMilliseconds;
       const nextStep = binding.steps?.[stepIndex];
       if (!expired && nextStep && this.patternMatches(nextStep, event)) {
         if (stepIndex + 1 >= (binding.steps?.length ?? 0)) {
@@ -69,7 +81,11 @@ class $KeybindingRegistry {
           this.chordArmed.value = false;
           return { action: binding.action, chordPending: false };
         }
-        this.pendingChord = { binding, stepIndex: stepIndex + 1, armedAtMs: nowMs };
+        this.pendingChord = {
+          binding,
+          stepIndex: stepIndex + 1,
+          armedAtMs: nowMs,
+        };
         return { action: null, chordPending: true };
       }
       this.pendingChord = null; // wrong key or timeout breaks the chord; resolve this event normally
@@ -79,25 +95,44 @@ class $KeybindingRegistry {
     let matchedSingle: Keybinding | null = null;
     let matchedGuardedSingle: Keybinding | null = null;
     let matchedChordStart: Keybinding | null = null;
-    for (let layerIndex = this.layers.length - 1; layerIndex >= 0; layerIndex--) {
+    for (
+      let layerIndex = this.layers.length - 1;
+      layerIndex >= 0;
+      layerIndex--
+    ) {
       const layer = this.layers[layerIndex];
       if (!layer) continue;
       for (const binding of layer.bindings) {
         if (!this.inContext(binding, context)) continue;
-        if (binding.chord && this.patternMatches(binding.chord, event) && this.guardPasses(binding)) {
-          if (binding.when) matchedGuardedSingle = matchedGuardedSingle ?? binding;
+        if (
+          binding.chord &&
+          this.patternMatches(binding.chord, event) &&
+          this.guardPasses(binding)
+        ) {
+          if (binding.when)
+            matchedGuardedSingle = matchedGuardedSingle ?? binding;
           else matchedSingle = matchedSingle ?? binding;
-        } else if (binding.steps?.[0] && this.patternMatches(binding.steps[0], event) && this.guardPasses(binding)) {
+        } else if (
+          binding.steps?.[0] &&
+          this.patternMatches(binding.steps[0], event) &&
+          this.guardPasses(binding)
+        ) {
           matchedChordStart = matchedChordStart ?? binding;
         }
       }
       // A hit in a later layer shadows everything earlier — stop at the first layer with any match.
       if (matchedGuardedSingle || matchedSingle || matchedChordStart) break;
     }
-    if (matchedGuardedSingle) return { action: matchedGuardedSingle.action, chordPending: false };
-    if (matchedSingle) return { action: matchedSingle.action, chordPending: false };
+    if (matchedGuardedSingle)
+      return { action: matchedGuardedSingle.action, chordPending: false };
+    if (matchedSingle)
+      return { action: matchedSingle.action, chordPending: false };
     if (matchedChordStart) {
-      this.pendingChord = { binding: matchedChordStart, stepIndex: 1, armedAtMs: nowMs };
+      this.pendingChord = {
+        binding: matchedChordStart,
+        stepIndex: 1,
+        armedAtMs: nowMs,
+      };
       this.chordArmed.value = true;
       return { action: null, chordPending: true };
     }
@@ -113,12 +148,20 @@ class $KeybindingRegistry {
    * swallowing it. invariant: Reserved global chords fire from any mode (keybindings.invariants.md)
    */
   resolveReservedGlobal(event: ChordEvent): string | null {
-    for (let layerIndex = this.layers.length - 1; layerIndex >= 0; layerIndex--) {
+    for (
+      let layerIndex = this.layers.length - 1;
+      layerIndex >= 0;
+      layerIndex--
+    ) {
       const layer = this.layers[layerIndex];
       if (!layer) continue;
       for (const binding of layer.bindings) {
         if (!binding.reserved || !binding.chord) continue;
-        if (this.patternMatches(binding.chord, event) && this.guardPasses(binding)) return binding.action;
+        if (
+          this.patternMatches(binding.chord, event) &&
+          this.guardPasses(binding)
+        )
+          return binding.action;
       }
     }
     return null;
@@ -146,21 +189,25 @@ class $KeybindingRegistry {
   /** User-facing hint for the binding that is actually effective after all overlays and rebinds. */
   bindingHint(action: string, context: string): string {
     const binding = this.effectiveBindings(context).get(action);
-    const chordPatterns = binding?.steps ?? (binding?.chord ? [binding.chord] : []);
-    return chordPatterns.map((chordPattern) => {
-      const parts: string[] = [];
-      if (chordPattern.ctrl) parts.push('Ctrl');
-      if (chordPattern.alt) parts.push('Alt');
-      if (chordPattern.shift) parts.push('Shift');
-      if (chordPattern.super) parts.push('Cmd');
-      const keyLabel = chordPattern.key === 'return'
-        ? 'Enter'
-        : chordPattern.key.length === 1
-          ? chordPattern.key.toUpperCase()
-          : chordPattern.key[0]!.toUpperCase() + chordPattern.key.slice(1);
-      parts.push(keyLabel);
-      return parts.join('+');
-    }).join(' then ');
+    const chordPatterns =
+      binding?.steps ?? (binding?.chord ? [binding.chord] : []);
+    return chordPatterns
+      .map((chordPattern) => {
+        const parts: string[] = [];
+        if (chordPattern.ctrl) parts.push('Ctrl');
+        if (chordPattern.alt) parts.push('Alt');
+        if (chordPattern.shift) parts.push('Shift');
+        if (chordPattern.super) parts.push('Cmd');
+        const keyLabel =
+          chordPattern.key === 'return'
+            ? 'Enter'
+            : chordPattern.key.length === 1
+              ? chordPattern.key.toUpperCase()
+              : chordPattern.key[0]!.toUpperCase() + chordPattern.key.slice(1);
+        parts.push(keyLabel);
+        return parts.join('+');
+      })
+      .join(' then ');
   }
 
   /** Every action bound with `super` must also be reachable without it (the canonical floor).
@@ -170,7 +217,8 @@ class $KeybindingRegistry {
     const floorActions = new Set<string>();
     for (const layer of this.layers) {
       for (const binding of layer.bindings) {
-        const usesSuper = binding.chord?.super || binding.steps?.some((step) => step.super);
+        const usesSuper =
+          binding.chord?.super || binding.steps?.some((step) => step.super);
         (usesSuper ? superActions : floorActions).add(binding.action);
       }
     }
@@ -201,7 +249,21 @@ export interface Keybinding {
   /** Multi-step chord, e.g. Ctrl+X then Ctrl+C. */
   steps?: ChordPattern[];
   /** Focus context this binding applies in; 'global' applies everywhere. */
-  context?: 'global' | 'editor' | 'files' | 'git' | 'palette' | 'menu' | 'listPopup' | 'settings' | 'quickopen' | 'find' | 'help' | 'agent' | 'terminal';
+  context?:
+    | 'global'
+    | 'editor'
+    | 'files'
+    | 'git'
+    | 'palette'
+    | 'menu'
+    | 'listPopup'
+    | 'settings'
+    | 'quickopen'
+    | 'find'
+    | 'help'
+    | 'agent'
+    | 'terminal'
+    | 'panel';
   /** Named guard (host-registered predicate) that must be true for the binding to fire. */
   when?: string;
   /** A RESERVED-GLOBAL escape hatch (e.g. quit): fires from ANY mode — even while a modal/search

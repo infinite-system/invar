@@ -7,16 +7,16 @@
 // The filesystem is reached through an overridable `createFileSystem()` seam (a constructor-injected
 // `fileSystem` wins) so tests drive the whole load/merge/save cycle against an in-memory fake and
 // never touch the real `~/.config`.
-import { Reactive } from "ivue";
-import { ref, type Ref } from "vue";
-import { Files } from "../system/Files";
-import { Logging } from "../system/Logging";
-import { Environment } from "../system/Environment";
+import { Reactive } from 'ivue';
+import { ref, shallowRef, type Ref } from 'vue';
+import { Files } from '../system/Files';
+import { Logging } from '../system/Logging';
+import { Environment } from '../system/Environment';
 import type {
   DockVerticalSpan,
   PanelAlignment,
   SidebarPosition,
-} from "../layout/LayoutModel";
+} from '../layout/LayoutModel';
 
 class $Settings {
   protected static cachedSet<Value>(
@@ -32,54 +32,54 @@ class $Settings {
   }
 
   protected static get $allowedScrollModifiers(): ReadonlySet<ScrollModifier> {
-    return this.cachedSet("$allowedScrollModifiers", [
-      "alt",
-      "shift",
-      "ctrl",
-      "none",
+    return this.cachedSet('$allowedScrollModifiers', [
+      'alt',
+      'shift',
+      'ctrl',
+      'none',
     ]);
   }
 
   protected static get $allowedGlyphModes(): ReadonlySet<GlyphMode> {
-    return this.cachedSet("$allowedGlyphModes", [
-      "auto",
-      "nerd",
-      "unicode",
-      "ascii",
+    return this.cachedSet('$allowedGlyphModes', [
+      'auto',
+      'nerd',
+      'unicode',
+      'ascii',
     ]);
   }
 
   protected static get $allowedWorkspaceTabPositions(): ReadonlySet<WorkspaceTabPosition> {
-    return this.cachedSet("$allowedWorkspaceTabPositions", ["top", "left"]);
+    return this.cachedSet('$allowedWorkspaceTabPositions', ['top', 'left']);
   }
 
   protected static get $allowedSidebarPositions(): ReadonlySet<SidebarPosition> {
-    return this.cachedSet("$allowedSidebarPositions", ["left", "right"]);
+    return this.cachedSet('$allowedSidebarPositions', ['left', 'right']);
   }
 
   protected static get $allowedPanelAlignments(): ReadonlySet<PanelAlignment> {
-    return this.cachedSet("$allowedPanelAlignments", ["center", "right"]);
+    return this.cachedSet('$allowedPanelAlignments', ['center', 'right']);
   }
 
   protected static get $allowedDockVerticalSpans(): ReadonlySet<DockVerticalSpan> {
-    return this.cachedSet("$allowedDockVerticalSpans", [
-      "full-height",
-      "ends-at-panel",
+    return this.cachedSet('$allowedDockVerticalSpans', [
+      'full-height',
+      'ends-at-panel',
     ]);
   }
 
   protected static get $allowedTypeScriptServers(): ReadonlySet<TypeScriptServer> {
-    return this.cachedSet("$allowedTypeScriptServers", [
-      "tsgo",
-      "typescript-language-server",
+    return this.cachedSet('$allowedTypeScriptServers', [
+      'tsgo',
+      'typescript-language-server',
     ]);
   }
 
   protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
-    return this.cachedSet("$allowedAgentProviders", [
-      "auto",
-      "claude",
-      "codex",
+    return this.cachedSet('$allowedAgentProviders', [
+      'auto',
+      'claude',
+      'codex',
     ]);
   }
 
@@ -100,10 +100,10 @@ class $Settings {
     return ref(1);
   }
   get horizontalScrollModifier(): Ref<ScrollModifier> {
-    return ref<ScrollModifier>("alt");
+    return ref<ScrollModifier>('alt');
   }
   get fastScrollModifier(): Ref<ScrollModifier> {
-    return ref<ScrollModifier>("none");
+    return ref<ScrollModifier>('none');
   }
   get fastScrollMultiplier(): Ref<number> {
     return ref(3);
@@ -112,10 +112,10 @@ class $Settings {
     return ref(1);
   }
   get glyphMode(): Ref<GlyphMode> {
-    return ref<GlyphMode>("auto");
+    return ref<GlyphMode>('auto');
   }
   get theme(): Ref<string> {
-    return ref("dark");
+    return ref('dark');
   }
   get wordWrap(): Ref<boolean> {
     return ref(false);
@@ -130,37 +130,37 @@ class $Settings {
     return ref(false);
   }
   get workspaceTabPosition(): Ref<WorkspaceTabPosition> {
-    return ref<WorkspaceTabPosition>("top");
+    return ref<WorkspaceTabPosition>('top');
   }
   get sidebarPosition(): Ref<SidebarPosition> {
-    return ref<SidebarPosition>("left");
+    return ref<SidebarPosition>('left');
   }
   get panelAlignment(): Ref<PanelAlignment> {
-    return ref<PanelAlignment>("center");
+    return ref<PanelAlignment>('center');
   }
   get leftDockVerticalSpan(): Ref<DockVerticalSpan> {
-    return ref<DockVerticalSpan>("full-height");
+    return ref<DockVerticalSpan>('full-height');
   }
   get rightDockVerticalSpan(): Ref<DockVerticalSpan> {
-    return ref<DockVerticalSpan>("ends-at-panel");
+    return ref<DockVerticalSpan>('ends-at-panel');
   }
   get typescriptServer(): Ref<TypeScriptServer> {
-    return ref<TypeScriptServer>("tsgo");
+    return ref<TypeScriptServer>('tsgo');
   }
   get lspFileSizeLimitKb(): Ref<number> {
     return ref(2048);
   }
   get agentProvider(): Ref<AgentProvider> {
-    return ref<AgentProvider>("auto");
+    return ref<AgentProvider>('auto');
   }
   get agentSkipPermissions(): Ref<boolean> {
     return ref(true);
   }
   get agentTerminalFollowMode(): Ref<AgentTerminalFollowMode> {
-    return ref<AgentTerminalFollowMode>("off");
+    return ref<AgentTerminalFollowMode>('off');
   }
   get agentModel(): Ref<string> {
-    return ref("");
+    return ref('');
   }
   get agentTypingSpeed(): Ref<number> {
     return ref(40);
@@ -169,7 +169,7 @@ class $Settings {
     return ref(true);
   }
   get agentNarrationVoice(): Ref<string> {
-    return ref("");
+    return ref('');
   }
   /** Narration SPEED MULTIPLIER (higher = faster: 1.0 = normal, 2.0 = twice as fast, 0.5 = half
    *  speed). Engines map it: piper `--length_scale = 1/rate`; espeak/`say` `-s ≈ 175×rate` wpm. */
@@ -193,6 +193,9 @@ class $Settings {
   }
   get markdownSplitRatio(): Ref<number> {
     return ref(0.5);
+  }
+  get panelContentOrder(): Ref<string[]> {
+    return shallowRef(['agent', 'terminal']);
   }
 
   /** Every field keyed by name — the one place each name maps to its reactive cell. */
@@ -235,6 +238,7 @@ class $Settings {
       gitSplitRatio: this.gitSplitRatio,
       diffSplitRatio: this.diffSplitRatio,
       markdownSplitRatio: this.markdownSplitRatio,
+      panelContentOrder: this.panelContentOrder,
     };
   }
 
@@ -268,8 +272,8 @@ class $Settings {
       },
       homeDirectory(): string {
         return (
-          Environment.Class.env("HOME") ??
-          Environment.Class.env("USERPROFILE") ??
+          Environment.Class.env('HOME') ??
+          Environment.Class.env('USERPROFILE') ??
           Environment.Class.cwd
         );
       },
@@ -294,10 +298,10 @@ class $Settings {
     return {
       userPath:
         paths.userPath ??
-        Files.Class.join(home, ".config", "invar", "settings.json"),
+        Files.Class.join(home, '.config', 'invar', 'settings.json'),
       projectPath:
         paths.projectPath ??
-        Files.Class.join(workspaceRoot, ".invar", "settings.json"),
+        Files.Class.join(workspaceRoot, '.invar', 'settings.json'),
     };
   }
 
@@ -325,13 +329,13 @@ class $Settings {
   save(): void {
     const serialized = JSON.stringify(this.snapshot(), null, 2);
     try {
-      this.fileSystem.writeTextFile(this.userSettingsPath, serialized + "\n");
+      this.fileSystem.writeTextFile(this.userSettingsPath, serialized + '\n');
     } catch {
       // Best-effort persistence — a failed write must never crash the app.
     }
     // save() is a SYNCHRONOUS disk write and MUST be infrequent (persist-on-settle, never per drag/scroll
     // tick — that stalls the frame). This trace lets the perf smoke assert exactly one save per drag.
-    Logging.Class.info("settings-save");
+    Logging.Class.info('settings-save');
   }
 
   /** Set one field and live-apply it; type-checked per key. */
@@ -384,83 +388,84 @@ class $Settings {
       scrollAccelGain: 34,
       scrollFriction: 0.015,
       linesPerNotch: 1,
-      horizontalScrollModifier: "alt",
-      fastScrollModifier: "none",
+      horizontalScrollModifier: 'alt',
+      fastScrollModifier: 'none',
       fastScrollMultiplier: 3,
       scrollbarThickness: 1,
-      glyphMode: "auto",
-      theme: "dark",
+      glyphMode: 'auto',
+      theme: 'dark',
       wordWrap: false,
       showActivityBar: true,
       showIndentGuides: true,
       reducedMotion: false,
-      workspaceTabPosition: "top",
-      sidebarPosition: "left",
-      panelAlignment: "center",
-      leftDockVerticalSpan: "full-height",
-      rightDockVerticalSpan: "ends-at-panel",
-      typescriptServer: "tsgo",
+      workspaceTabPosition: 'top',
+      sidebarPosition: 'left',
+      panelAlignment: 'center',
+      leftDockVerticalSpan: 'full-height',
+      rightDockVerticalSpan: 'ends-at-panel',
+      typescriptServer: 'tsgo',
       lspFileSizeLimitKb: 2048,
-      agentProvider: "auto",
+      agentProvider: 'auto',
       agentSkipPermissions: true,
-      agentTerminalFollowMode: "off",
-      agentModel: "",
+      agentTerminalFollowMode: 'off',
+      agentModel: '',
       agentTypingSpeed: 40,
       terminalCleanPrompt: true,
       agentAudioNarration: false,
-      agentNarrationVoice: "",
+      agentNarrationVoice: '',
       agentNarrationRate: 1.0,
       sidebarWidth: 32,
       rightDockWidth: 28,
       gitSplitRatio: 0.5,
       diffSplitRatio: 0.5,
       markdownSplitRatio: 0.5,
+      panelContentOrder: ['agent', 'terminal'],
     };
   }
 
   /** Keep only recognized keys whose value has the right shape — corrupt entries are dropped. */
   static sanitize(parsed: unknown): Partial<SettingsValues> {
-    if (typeof parsed !== "object" || parsed === null) return {};
+    if (typeof parsed !== 'object' || parsed === null) return {};
     const record = parsed as Record<string, unknown>;
     const result: Partial<SettingsValues> = {};
     const readNumber = (key: keyof SettingsValues): void => {
       const value = record[key];
-      if (typeof value === "number" && Number.isFinite(value))
+      if (typeof value === 'number' && Number.isFinite(value))
         result[key] = value as never;
     };
     const readModifier = (key: keyof SettingsValues): void => {
       const value = record[key];
       if (
-        typeof value === "string" &&
+        typeof value === 'string' &&
         this.$allowedScrollModifiers.has(value as ScrollModifier)
       ) {
         result[key] = value as never;
       }
     };
-    readNumber("verticalFlingCeiling");
-    readNumber("scrollAccelGain");
-    readNumber("scrollFriction");
-    readNumber("linesPerNotch");
-    readModifier("horizontalScrollModifier");
-    readModifier("fastScrollModifier");
-    readNumber("fastScrollMultiplier");
-    readNumber("scrollbarThickness");
+    readNumber('verticalFlingCeiling');
+    readNumber('scrollAccelGain');
+    readNumber('scrollFriction');
+    readNumber('linesPerNotch');
+    readModifier('horizontalScrollModifier');
+    readModifier('fastScrollModifier');
+    readNumber('fastScrollMultiplier');
+    readNumber('scrollbarThickness');
     if (
-      typeof record.glyphMode === "string" &&
+      typeof record.glyphMode === 'string' &&
       this.$allowedGlyphModes.has(record.glyphMode as GlyphMode)
     ) {
       result.glyphMode = record.glyphMode as GlyphMode;
     }
-    if (typeof record.theme === "string") result.theme = record.theme;
-    if (typeof record.wordWrap === "boolean") result.wordWrap = record.wordWrap;
-    if (typeof record.showActivityBar === "boolean")
+    if (typeof record.theme === 'string') result.theme = record.theme;
+    if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
+    if (typeof record.showActivityBar === 'boolean')
       result.showActivityBar = record.showActivityBar;
-    if (typeof record.showIndentGuides === "boolean")
+    if (typeof record.showIndentGuides === 'boolean')
       result.showIndentGuides = record.showIndentGuides;
-    if (typeof record.reducedMotion === "boolean")
+    if (typeof record.reducedMotion === 'boolean')
       result.reducedMotion = record.reducedMotion;
     if (
-      typeof record.workspaceTabPosition === "string" &&
+      typeof record.workspaceTabPosition === 'string' &&
       this.$allowedWorkspaceTabPositions.has(
         record.workspaceTabPosition as WorkspaceTabPosition,
       )
@@ -469,7 +474,7 @@ class $Settings {
         record.workspaceTabPosition as WorkspaceTabPosition;
     }
     if (
-      typeof record.sidebarPosition === "string" &&
+      typeof record.sidebarPosition === 'string' &&
       this.$allowedSidebarPositions.has(
         record.sidebarPosition as SidebarPosition,
       )
@@ -477,18 +482,18 @@ class $Settings {
       result.sidebarPosition = record.sidebarPosition as SidebarPosition;
     }
     if (
-      record.panelAlignment === "justify" ||
-      record.panelAlignment === "left"
+      record.panelAlignment === 'justify' ||
+      record.panelAlignment === 'left'
     ) {
-      result.panelAlignment = "center";
+      result.panelAlignment = 'center';
     } else if (
-      typeof record.panelAlignment === "string" &&
+      typeof record.panelAlignment === 'string' &&
       this.$allowedPanelAlignments.has(record.panelAlignment as PanelAlignment)
     ) {
       result.panelAlignment = record.panelAlignment as PanelAlignment;
     }
     if (
-      typeof record.leftDockVerticalSpan === "string" &&
+      typeof record.leftDockVerticalSpan === 'string' &&
       this.$allowedDockVerticalSpans.has(
         record.leftDockVerticalSpan as DockVerticalSpan,
       )
@@ -497,7 +502,7 @@ class $Settings {
         record.leftDockVerticalSpan as DockVerticalSpan;
     }
     if (
-      typeof record.rightDockVerticalSpan === "string" &&
+      typeof record.rightDockVerticalSpan === 'string' &&
       this.$allowedDockVerticalSpans.has(
         record.rightDockVerticalSpan as DockVerticalSpan,
       )
@@ -506,7 +511,7 @@ class $Settings {
         record.rightDockVerticalSpan as DockVerticalSpan;
     }
     if (
-      typeof record.typescriptServer === "string" &&
+      typeof record.typescriptServer === 'string' &&
       this.$allowedTypeScriptServers.has(
         record.typescriptServer as TypeScriptServer,
       )
@@ -514,15 +519,15 @@ class $Settings {
       result.typescriptServer = record.typescriptServer as TypeScriptServer;
     }
     if (
-      typeof record.agentProvider === "string" &&
+      typeof record.agentProvider === 'string' &&
       this.$allowedAgentProviders.has(record.agentProvider as AgentProvider)
     ) {
       result.agentProvider = record.agentProvider as AgentProvider;
     }
-    if (typeof record.agentSkipPermissions === "boolean")
+    if (typeof record.agentSkipPermissions === 'boolean')
       result.agentSkipPermissions = record.agentSkipPermissions;
     if (
-      typeof record.agentTerminalFollowMode === "string" &&
+      typeof record.agentTerminalFollowMode === 'string' &&
       this.$allowedAgentTerminalFollowModes.has(
         record.agentTerminalFollowMode as AgentTerminalFollowMode,
       )
@@ -530,31 +535,42 @@ class $Settings {
       result.agentTerminalFollowMode =
         record.agentTerminalFollowMode as AgentTerminalFollowMode;
     }
-    if (typeof record.agentModel === "string")
+    if (typeof record.agentModel === 'string')
       result.agentModel = record.agentModel;
-    readNumber("agentTypingSpeed");
-    if (typeof record.terminalCleanPrompt === "boolean")
+    readNumber('agentTypingSpeed');
+    if (typeof record.terminalCleanPrompt === 'boolean')
       result.terminalCleanPrompt = record.terminalCleanPrompt;
-    if (typeof record.agentAudioNarration === "boolean")
+    if (typeof record.agentAudioNarration === 'boolean')
       result.agentAudioNarration = record.agentAudioNarration;
-    if (typeof record.agentNarrationVoice === "string")
+    if (typeof record.agentNarrationVoice === 'string')
       result.agentNarrationVoice = record.agentNarrationVoice;
-    readNumber("agentNarrationRate");
-    readNumber("lspFileSizeLimitKb");
-    readNumber("sidebarWidth");
-    readNumber("rightDockWidth");
-    readNumber("gitSplitRatio");
-    readNumber("diffSplitRatio");
-    readNumber("markdownSplitRatio");
+    readNumber('agentNarrationRate');
+    readNumber('lspFileSizeLimitKb');
+    readNumber('sidebarWidth');
+    readNumber('rightDockWidth');
+    readNumber('gitSplitRatio');
+    readNumber('diffSplitRatio');
+    readNumber('markdownSplitRatio');
+    if (
+      Array.isArray(record.panelContentOrder) &&
+      record.panelContentOrder.length > 0 &&
+      record.panelContentOrder.every(
+        (identifier) => typeof identifier === 'string' && identifier.length > 0,
+      )
+    ) {
+      result.panelContentOrder = [
+        ...new Set(record.panelContentOrder as string[]),
+      ];
+    }
     return result;
   }
 
   protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
-    return this.cachedSet("$allowedAgentTerminalFollowModes", [
-      "follow-all",
-      "on-error",
-      "on-request",
-      "off",
+    return this.cachedSet('$allowedAgentTerminalFollowModes', [
+      'follow-all',
+      'on-error',
+      'on-request',
+      'off',
     ]);
   }
 }
@@ -567,23 +583,23 @@ export namespace Settings {
 }
 
 /** The modifier key that re-routes wheel input, or `none` to leave it unbound. */
-export type ScrollModifier = "alt" | "shift" | "ctrl" | "none";
+export type ScrollModifier = 'alt' | 'shift' | 'ctrl' | 'none';
 
 /** How glyphs are selected for rendering: automatic detection or a forced tier. */
-export type GlyphMode = "auto" | "nerd" | "unicode" | "ascii";
+export type GlyphMode = 'auto' | 'nerd' | 'unicode' | 'ascii';
 
 /** Where the project-layer tab strip is mounted in the root frame. */
-export type WorkspaceTabPosition = "top" | "left";
+export type WorkspaceTabPosition = 'top' | 'left';
 
 /** Which TypeScript language server backs LSP. */
-export type TypeScriptServer = "tsgo" | "typescript-language-server";
+export type TypeScriptServer = 'tsgo' | 'typescript-language-server';
 
 /** Which engine backs the native agent pane. */
-export type AgentProvider = "auto" | "claude" | "codex";
+export type AgentProvider = 'auto' | 'claude' | 'codex';
 
 /** When completed terminal commands enter the native agent session. */
 export type AgentTerminalFollowMode =
-  "follow-all" | "on-error" | "on-request" | "off";
+  'follow-all' | 'on-error' | 'on-request' | 'off';
 
 /** The full set of settable values — one field per reactive getter on the store. */
 export interface SettingsValues {
@@ -622,6 +638,7 @@ export interface SettingsValues {
   gitSplitRatio: number;
   diffSplitRatio: number;
   markdownSplitRatio: number;
+  panelContentOrder: string[];
 }
 
 /** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */

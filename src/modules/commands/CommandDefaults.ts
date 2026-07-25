@@ -12,241 +12,272 @@ class $CommandDefaults {
     context: CommandContext,
   ): void {
     const getEditor = () => context.workspaceSet.active.editor;
-    const hasDocument = () => context.workspaceSet.active.editor.hasDocument.value;
+    const hasDocument = () =>
+      context.workspaceSet.active.editor.hasDocument.value;
 
     registry.registerAll([
-    {
-      id: 'workspace.openFolder',
-      title: 'Workspace: Open Folder',
-      category: 'Workspace',
-      run: context.openWorkspaceFolder,
-    },
-    {
-      id: 'workspace.close',
-      title: 'Workspace: Close Project',
-      category: 'Workspace',
-      when: () => context.workspaceSet.count > 1,
-      run: () => context.workspaceSet.closeActive(),
-    },
-    {
-      id: 'workspace.next',
-      title: 'Workspace: Next Project',
-      category: 'Workspace',
-      when: () => context.workspaceSet.count > 1,
-      run: () => context.workspaceSet.cycle(1),
-    },
-    {
-      id: 'workspace.previous',
-      title: 'Workspace: Previous Project',
-      category: 'Workspace',
-      when: () => context.workspaceSet.count > 1,
-      run: () => context.workspaceSet.cycle(-1),
-    },
-    {
-      id: 'file.save',
-      title: 'File: Save',
-      category: 'File',
-      when: hasDocument,
-      run: () => {
-        context.workspaceSet.active.saveActiveFile();
+      {
+        id: 'workspace.openFolder',
+        title: 'Workspace: Open Folder',
+        category: 'Workspace',
+        run: context.openWorkspaceFolder,
       },
-    },
-    {
-      id: 'edit.undo',
-      title: 'Edit: Undo',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().performUndo(),
-    },
-    {
-      id: 'edit.redo',
-      title: 'Edit: Redo',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().performRedo(),
-    },
-    {
-      id: 'edit.deletePreviousWord',
-      title: 'Edit: Delete Previous Word',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().deletePreviousWord(),
-    },
-    {
-      id: 'edit.moveLineUp',
-      title: 'Edit: Move Line Up',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().moveLineUp(),
-    },
-    {
-      id: 'edit.moveLineDown',
-      title: 'Edit: Move Line Down',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().moveLineDown(),
-    },
-    {
-      id: 'edit.duplicateLine',
-      title: 'Edit: Duplicate Line',
-      category: 'Edit',
-      when: hasDocument,
-      run: () => getEditor().duplicateLine(),
-    },
-    {
-      id: 'narration.testVoice',
-      title: 'Narration: Test Voice',
-      category: 'Narration',
-      run: context.testNarrationVoice,
-    },
-    {
-      id: 'view.focusFiles',
-      title: 'View: Focus File Explorer',
-      category: 'View',
-      run: () => context.workspaceSet.active.focusFiles(),
-    },
-    {
-      id: 'view.focusEditor',
-      title: 'View: Focus Editor',
-      category: 'View',
-      when: hasDocument,
-      run: () => context.workspaceSet.active.focusEditor(),
-    },
-    // Activity-bar view switchers, palette-discoverable (same single writer as the bar + its chords).
-    {
-      id: 'view.showFiles',
-      title: 'View: Show Explorer',
-      category: 'View',
-      run: () => context.workspaceSet.active.showSidebarView('files'),
-    },
-    {
-      id: 'view.showSourceControl',
-      title: 'View: Show Source Control',
-      category: 'View',
-      run: () => context.workspaceSet.active.showSidebarView('git'),
-    },
-    {
-      id: 'view.showExtensions',
-      title: 'View: Show Extensions',
-      category: 'View',
-      run: () => context.workspaceSet.active.showSidebarView('extensions'),
-    },
-    {
-      id: 'view.toggleTheme',
-      title: 'View: Toggle Light/Dark Theme',
-      category: 'View',
-      run: () => context.theme.toggleDark(),
-    },
-    {
-      id: 'view.toggleWordWrap',
-      title: 'View: Toggle Word Wrap',
-      category: 'View',
-      when: hasDocument,
-      run: () => getEditor().toggleWordWrap(),
-    },
-    {
-      id: 'view.toggleActivityBar',
-      title: 'View: Toggle Activity Bar',
-      category: 'View',
-      run: context.toggleActivityBar,
-    },
-    {
-      id: 'view.toggleRightDock',
-      title: 'View: Toggle Right Dock',
-      category: 'View',
-      run: context.toggleRightDock,
-    },
-    {
-      id: 'panel.toggleTerminal',
-      title: 'Panel: Toggle Terminal',
-      category: 'Panel',
-      run: context.toggleTerminal,
-    },
-    {
-      id: 'panel.toggleAgent',
-      title: 'Panel: Toggle Agent',
-      category: 'Panel',
-      run: context.toggleAgent,
-    },
-    {
-      id: 'panel.toggleSplit',
-      title: 'Panel: Toggle Terminal and Agent Split',
-      category: 'Panel',
-      run: context.togglePanelSplit,
-    },
-    {
-      id: 'agent.cycleTerminalFollowMode',
-      title: 'Agent: Cycle Terminal Follow Mode',
-      category: 'Agent',
-      run: context.cycleTerminalFollowMode,
-    },
-    {
-      id: 'markdown.togglePreview',
-      title: 'Markdown: Toggle Preview',
-      category: 'Markdown',
-      when: () => context.workspaceSet.active.activeFileIsMarkdown,
-      run: context.toggleMarkdownPreview,
-    },
-    {
-      id: 'markdown.openHoveredReference',
-      title: 'Markdown: Open Hovered File Reference',
-      category: 'Markdown',
-      when: context.hasHoveredMarkdownReference,
-      run: context.openHoveredMarkdownReference,
-    },
-    {
-      id: 'go.definition',
-      title: 'Go: Definition',
-      category: 'Go',
-      when: hasDocument,
-      run: () => void context.workspaceSet.active.goToDefinition(),
-    },
-    {
-      id: 'go.top',
-      title: 'Go: Top of File',
-      category: 'Go',
-      when: hasDocument,
-      run: () => getEditor().gotoTop(),
-    },
-    {
-      id: 'go.bottom',
-      title: 'Go: Bottom of File',
-      category: 'Go',
-      when: hasDocument,
-      run: () => getEditor().gotoBottom(),
-    },
-    {
-      id: 'diff.previousChange',
-      title: 'Diff: Previous Change',
-      category: 'Diff',
-      when: context.hasOpenDiff,
-      run: context.previousDiffChange,
-    },
-    {
-      id: 'diff.nextChange',
-      title: 'Diff: Next Change',
-      category: 'Diff',
-      when: context.hasOpenDiff,
-      run: context.nextDiffChange,
-    },
-    {
-      id: 'files.refresh',
-      title: 'Files: Refresh Tree',
-      category: 'Files',
-      run: () => context.workspaceSet.active.tree.refresh(),
-    },
-    {
-      id: 'help.shortcuts',
-      title: 'Help: Keyboard Shortcuts',
-      category: 'Help',
-      run: context.openShortcutHelp,
-    },
-    {
-      id: 'app.quit',
-      title: 'Application: Quit',
-      category: 'Application',
-      run: () => context.quit(),
-    },
+      {
+        id: 'workspace.close',
+        title: 'Workspace: Close Project',
+        category: 'Workspace',
+        when: () => context.workspaceSet.count > 1,
+        run: () => context.workspaceSet.closeActive(),
+      },
+      {
+        id: 'workspace.next',
+        title: 'Workspace: Next Project',
+        category: 'Workspace',
+        when: () => context.workspaceSet.count > 1,
+        run: () => context.workspaceSet.cycle(1),
+      },
+      {
+        id: 'workspace.previous',
+        title: 'Workspace: Previous Project',
+        category: 'Workspace',
+        when: () => context.workspaceSet.count > 1,
+        run: () => context.workspaceSet.cycle(-1),
+      },
+      {
+        id: 'file.save',
+        title: 'File: Save',
+        category: 'File',
+        when: hasDocument,
+        run: () => {
+          context.workspaceSet.active.saveActiveFile();
+        },
+      },
+      {
+        id: 'edit.undo',
+        title: 'Edit: Undo',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().performUndo(),
+      },
+      {
+        id: 'edit.redo',
+        title: 'Edit: Redo',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().performRedo(),
+      },
+      {
+        id: 'edit.deletePreviousWord',
+        title: 'Edit: Delete Previous Word',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().deletePreviousWord(),
+      },
+      {
+        id: 'edit.moveLineUp',
+        title: 'Edit: Move Line Up',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().moveLineUp(),
+      },
+      {
+        id: 'edit.moveLineDown',
+        title: 'Edit: Move Line Down',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().moveLineDown(),
+      },
+      {
+        id: 'edit.duplicateLine',
+        title: 'Edit: Duplicate Line',
+        category: 'Edit',
+        when: hasDocument,
+        run: () => getEditor().duplicateLine(),
+      },
+      {
+        id: 'narration.testVoice',
+        title: 'Narration: Test Voice',
+        category: 'Narration',
+        run: context.testNarrationVoice,
+      },
+      {
+        id: 'view.focusFiles',
+        title: 'View: Focus File Explorer',
+        category: 'View',
+        run: () => context.workspaceSet.active.focusFiles(),
+      },
+      {
+        id: 'view.focusEditor',
+        title: 'View: Focus Editor',
+        category: 'View',
+        when: hasDocument,
+        run: () => context.workspaceSet.active.focusEditor(),
+      },
+      // Activity-bar view switchers, palette-discoverable (same single writer as the bar + its chords).
+      {
+        id: 'view.showFiles',
+        title: 'View: Show Explorer',
+        category: 'View',
+        run: () => context.workspaceSet.active.showSidebarView('files'),
+      },
+      {
+        id: 'view.showSourceControl',
+        title: 'View: Show Source Control',
+        category: 'View',
+        run: () => context.workspaceSet.active.showSidebarView('git'),
+      },
+      {
+        id: 'view.showExtensions',
+        title: 'View: Show Extensions',
+        category: 'View',
+        run: () => context.workspaceSet.active.showSidebarView('extensions'),
+      },
+      {
+        id: 'view.toggleTheme',
+        title: 'View: Toggle Light/Dark Theme',
+        category: 'View',
+        run: () => context.theme.toggleDark(),
+      },
+      {
+        id: 'view.toggleWordWrap',
+        title: 'View: Toggle Word Wrap',
+        category: 'View',
+        when: hasDocument,
+        run: () => getEditor().toggleWordWrap(),
+      },
+      {
+        id: 'view.toggleActivityBar',
+        title: 'View: Toggle Activity Bar',
+        category: 'View',
+        run: context.toggleActivityBar,
+      },
+      {
+        id: 'view.toggleRightDock',
+        title: 'View: Toggle Right Dock',
+        category: 'View',
+        run: context.toggleRightDock,
+      },
+      {
+        id: 'panel.toggleTerminal',
+        title: 'Panel: Toggle Terminal',
+        category: 'Panel',
+        run: context.toggleTerminal,
+      },
+      {
+        id: 'panel.toggleAgent',
+        title: 'Panel: Toggle Agent',
+        category: 'Panel',
+        run: context.toggleAgent,
+      },
+      {
+        id: 'panel.toggleSplit',
+        title: 'Panel: Toggle Terminal and Agent Split',
+        category: 'Panel',
+        run: context.togglePanelSplit,
+      },
+      {
+        id: 'panel.contentsPrevious',
+        title: 'Panel: Focus Previous Content',
+        category: 'Panel',
+        run: context.focusPreviousPanelContent,
+      },
+      {
+        id: 'panel.contentsNext',
+        title: 'Panel: Focus Next Content',
+        category: 'Panel',
+        run: context.focusNextPanelContent,
+      },
+      {
+        id: 'panel.contentsMoveUp',
+        title: 'Panel: Move Content Up',
+        category: 'Panel',
+        run: context.movePanelContentUp,
+      },
+      {
+        id: 'panel.contentsMoveDown',
+        title: 'Panel: Move Content Down',
+        category: 'Panel',
+        run: context.movePanelContentDown,
+      },
+      {
+        id: 'panel.contentsClose',
+        title: 'Panel: Close Active Content',
+        category: 'Panel',
+        run: context.closeActivePanelContent,
+      },
+      {
+        id: 'agent.cycleTerminalFollowMode',
+        title: 'Agent: Cycle Terminal Follow Mode',
+        category: 'Agent',
+        run: context.cycleTerminalFollowMode,
+      },
+      {
+        id: 'markdown.togglePreview',
+        title: 'Markdown: Toggle Preview',
+        category: 'Markdown',
+        when: () => context.workspaceSet.active.activeFileIsMarkdown,
+        run: context.toggleMarkdownPreview,
+      },
+      {
+        id: 'markdown.openHoveredReference',
+        title: 'Markdown: Open Hovered File Reference',
+        category: 'Markdown',
+        when: context.hasHoveredMarkdownReference,
+        run: context.openHoveredMarkdownReference,
+      },
+      {
+        id: 'go.definition',
+        title: 'Go: Definition',
+        category: 'Go',
+        when: hasDocument,
+        run: () => void context.workspaceSet.active.goToDefinition(),
+      },
+      {
+        id: 'go.top',
+        title: 'Go: Top of File',
+        category: 'Go',
+        when: hasDocument,
+        run: () => getEditor().gotoTop(),
+      },
+      {
+        id: 'go.bottom',
+        title: 'Go: Bottom of File',
+        category: 'Go',
+        when: hasDocument,
+        run: () => getEditor().gotoBottom(),
+      },
+      {
+        id: 'diff.previousChange',
+        title: 'Diff: Previous Change',
+        category: 'Diff',
+        when: context.hasOpenDiff,
+        run: context.previousDiffChange,
+      },
+      {
+        id: 'diff.nextChange',
+        title: 'Diff: Next Change',
+        category: 'Diff',
+        when: context.hasOpenDiff,
+        run: context.nextDiffChange,
+      },
+      {
+        id: 'files.refresh',
+        title: 'Files: Refresh Tree',
+        category: 'Files',
+        run: () => context.workspaceSet.active.tree.refresh(),
+      },
+      {
+        id: 'help.shortcuts',
+        title: 'Help: Keyboard Shortcuts',
+        category: 'Help',
+        run: context.openShortcutHelp,
+      },
+      {
+        id: 'app.quit',
+        title: 'Application: Quit',
+        category: 'Application',
+        run: () => context.quit(),
+      },
     ]);
   }
 }
@@ -271,6 +302,11 @@ export interface CommandContext {
   toggleTerminal: () => void;
   toggleAgent: () => void;
   togglePanelSplit: () => void;
+  focusPreviousPanelContent: () => void;
+  focusNextPanelContent: () => void;
+  movePanelContentUp: () => void;
+  movePanelContentDown: () => void;
+  closeActivePanelContent: () => void;
   cycleTerminalFollowMode: () => void;
   hasHoveredMarkdownReference: () => boolean;
   openHoveredMarkdownReference: () => void;

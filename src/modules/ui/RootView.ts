@@ -15,68 +15,69 @@ import {
   type TextChunk,
   type CliRenderer,
   type MouseEvent,
-} from "@opentui/core";
-import { ScrollableTextViewport } from "./ScrollableTextViewport";
+} from '@opentui/core';
+import { ScrollableTextViewport } from './ScrollableTextViewport';
 import {
   AgentPaneContent,
   type AgentScrollPort,
-} from "../agent/AgentPaneContent";
-import { Static } from "ivue/extras";
-import type { WorkspaceSet } from "../workspace/WorkspaceSet";
-import type { App } from "../app/App";
-import type { Theme } from "../theme/Theme";
-import type { CommandRegistry } from "../commands/CommandRegistry";
-import type { Palette } from "../theme/ThemePalettes";
-import { Files } from "../system/Files";
-import { EditorCoordinates } from "../editor/EditorCoordinates";
-import { CommandBar } from "./CommandBar";
-import { GitPaneRenderer } from "./GitPaneRenderer";
-import { StatusBar } from "./StatusBar";
-import { TabBar } from "./TabBar";
-import { TabBarRenderer } from "./TabBarRenderer";
-import { ScrollGesture, type WheelModifiers } from "./ScrollGesture";
-import { Sidebar } from "./Sidebar";
-import { ActivityBar } from "./ActivityBar";
-import { EditorPane } from "./EditorPane";
-import { EditorContentMount } from "./EditorContentMount";
-import { ImagePreview } from "../image/ImagePreview";
-import { ImageRenderers } from "../image/ImageRenderers";
-import { PixelImageMount } from "../image/PixelImageMount";
+} from '../agent/AgentPaneContent';
+import { Static } from 'ivue/extras';
+import type { WorkspaceSet } from '../workspace/WorkspaceSet';
+import type { App } from '../app/App';
+import type { Theme } from '../theme/Theme';
+import type { CommandRegistry } from '../commands/CommandRegistry';
+import type { Palette } from '../theme/ThemePalettes';
+import { Files } from '../system/Files';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { CommandBar } from './CommandBar';
+import { GitPaneRenderer } from './GitPaneRenderer';
+import { StatusBar } from './StatusBar';
+import { TabBar } from './TabBar';
+import { TabBarRenderer } from './TabBarRenderer';
+import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
+import { Sidebar } from './Sidebar';
+import { ActivityBar } from './ActivityBar';
+import { EditorPane } from './EditorPane';
+import { EditorContentMount } from './EditorContentMount';
+import { ImagePreview } from '../image/ImagePreview';
+import { ImageRenderers } from '../image/ImageRenderers';
+import { PixelImageMount } from '../image/PixelImageMount';
 import {
   TerminalCapabilities,
   type ReportedGraphicsCapabilities,
-} from "../theme/TerminalCapabilities";
-import { shallowRef } from "vue";
-import { ScrollbarSync } from "./ScrollbarSync";
-import { OverlayLayer } from "./OverlayLayer";
-import { HoverCard } from "./HoverCard";
-import { LanguageRegistry } from "../syntax/LanguageRegistry";
-import { EditorWrap } from "../editor/EditorWrap";
-import { DiffView } from "../diff/DiffView";
-import { MarkdownSplitView } from "../markdown/MarkdownSplitView";
-import { SelectableText } from "./SelectableText";
-import { GitRows, type ChangeRow, type FileRow } from "../git/GitRows";
-import { ScrollbarGeometry } from "./ScrollbarGeometry";
-import type { ContextMenu, ContextMenuItem } from "./ContextMenu";
-import type { BoundedListPopup } from "./BoundedListPopup";
-import type { OverlayCoordinator } from "./OverlayCoordinator";
-import type { ShortcutHelp } from "./ShortcutHelp";
-import type { Tooltip } from "./Tooltip";
-import type { SettingsPanel } from "../settings/SettingsPanel";
-import type { ScrollModifier } from "../settings/Settings";
-import type { FindBar, FindBarTarget } from "../search/FindBar";
-import type { KeybindingRegistry } from "../keybindings/KeybindingRegistry";
-import type { QuickOpen } from "../search/QuickOpen";
-import { PaneSplitters } from "./PaneSplitters";
-import { SplitterElement } from "./SplitterElement";
-import { Logging } from "../system/Logging";
-import type { TabStrip } from "./TabStrip";
-import type { PanelHost } from "./PanelHost";
+} from '../theme/TerminalCapabilities';
+import { shallowRef } from 'vue';
+import { ScrollbarSync } from './ScrollbarSync';
+import { OverlayLayer } from './OverlayLayer';
+import { HoverCard } from './HoverCard';
+import { LanguageRegistry } from '../syntax/LanguageRegistry';
+import { EditorWrap } from '../editor/EditorWrap';
+import { DiffView } from '../diff/DiffView';
+import { MarkdownSplitView } from '../markdown/MarkdownSplitView';
+import { SelectableText } from './SelectableText';
+import { GitRows, type ChangeRow, type FileRow } from '../git/GitRows';
+import { ScrollbarGeometry } from './ScrollbarGeometry';
+import type { ContextMenu, ContextMenuItem } from './ContextMenu';
+import type { BoundedListPopup } from './BoundedListPopup';
+import type { OverlayCoordinator } from './OverlayCoordinator';
+import type { ShortcutHelp } from './ShortcutHelp';
+import type { Tooltip } from './Tooltip';
+import type { SettingsPanel } from '../settings/SettingsPanel';
+import type { ScrollModifier } from '../settings/Settings';
+import type { FindBar, FindBarTarget } from '../search/FindBar';
+import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+import type { QuickOpen } from '../search/QuickOpen';
+import { PaneSplitters } from './PaneSplitters';
+import { SplitterElement } from './SplitterElement';
+import { Logging } from '../system/Logging';
+import type { TabStrip } from './TabStrip';
+import type { PanelHost } from './PanelHost';
+import { PanelContentsList } from './PanelContentsList';
 import {
   LayoutModel,
   type LayoutPreset,
   type LayoutSlotGeometry,
-} from "../layout/LayoutModel";
+} from '../layout/LayoutModel';
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $RootView {
   public static buildRootView(
@@ -120,42 +121,42 @@ class $RootView {
     // it, and the layout reads it here — so changing it in Ctrl+, resizes live, and dragging persists.
     const sidebarWidth = (): number => Math.round(settings.sidebarWidth.value);
     const column = new BoxRenderable(renderer, {
-      id: "root-column",
-      flexDirection: "column",
-      width: "100%",
-      height: "100%",
+      id: 'root-column',
+      flexDirection: 'column',
+      width: '100%',
+      height: '100%',
       backgroundColor: readPalette().bg,
     });
     const mainRow = new BoxRenderable(renderer, {
-      id: "main-row",
-      flexDirection: "row",
+      id: 'main-row',
+      flexDirection: 'row',
       flexGrow: 1,
       // minHeight:0 lets the main row SHRINK below its content's natural height so the fixed-height
       // bottom panel (terminal) gets its full rows ON SCREEN instead of overflowing under the status
       // bar. Without it a flex item's min-height defaults to its content size and never yields the
       // rows a fixed sibling needs. (The *scrollable pane height is an input* invariant's shrink fix.)
       minHeight: 0,
-      width: "100%",
+      width: '100%',
     });
     const layoutCanvas = new BoxRenderable(renderer, {
-      id: "layout-canvas",
-      position: "relative",
+      id: 'layout-canvas',
+      position: 'relative',
       flexGrow: 1,
-      height: "100%",
+      height: '100%',
     });
     // The project-layer tab strip is ONE renderable + ONE TabStrip model. The setting moves that same
     // strip between the horizontal top slot and the vertical left slot; it never duplicates state.
     // The top strip is TWO rows: the project name over its worktree/branch detail.
     const workspaceTabBar = new TextRenderable(renderer, {
-      id: "workspace-tab-strip",
-      content: "",
-      width: "100%",
+      id: 'workspace-tab-strip',
+      content: '',
+      width: '100%',
       height: 2,
-      wrapMode: "none",
+      wrapMode: 'none',
     });
-    if (settings.workspaceTabPosition.value === "left") {
+    if (settings.workspaceTabPosition.value === 'left') {
       workspaceTabBar.width = 22;
-      workspaceTabBar.height = "100%";
+      workspaceTabBar.height = '100%';
     }
     const commandBar = new CommandBar.Class({
       renderer,
@@ -191,43 +192,43 @@ class $RootView {
       },
     });
     const sidebar = new BoxRenderable(renderer, {
-      id: "sidebar",
-      position: "absolute",
+      id: 'sidebar',
+      position: 'absolute',
       width: sidebarWidth(),
-      height: "100%",
+      height: '100%',
       border: true,
-      borderStyle: "rounded",
-      title: "Files",
+      borderStyle: 'rounded',
+      title: 'Files',
       backgroundColor: readPalette().panel,
     });
     const sidebarBody = new TextRenderable(renderer, {
-      id: "sidebar-body",
-      content: "",
+      id: 'sidebar-body',
+      content: '',
     });
     sidebar.add(sidebarBody);
     // The editor column stacks a 1-row TAB BAR above the bordered editor area. Wrapping (rather than
     // adding the tab bar INSIDE editorArea) leaves editorArea's border, gutter/code layout, scrollbar
     // geometry, and layout-anchored caret coords (codeBody.x/y) completely unchanged.
     const editorColumn = new BoxRenderable(renderer, {
-      id: "editor-column",
-      position: "absolute",
-      height: "100%",
-      flexDirection: "column",
+      id: 'editor-column',
+      position: 'absolute',
+      height: '100%',
+      flexDirection: 'column',
     });
     const tabBar = new TextRenderable(renderer, {
-      id: "editor-tab-bar",
-      content: "",
+      id: 'editor-tab-bar',
+      content: '',
       height: 1,
-      width: "100%",
+      width: '100%',
     });
     // The path breadcrumb row (VS Code parity): sits directly UNDER the buffer-tab strip and shows the
     // active file's `project › dir › file` path. Always 1 row (blank when no file is open) so the editor
     // never jumps as files open/close.
     const breadcrumbBar = new TextRenderable(renderer, {
-      id: "editor-breadcrumb-bar",
-      content: "",
+      id: 'editor-breadcrumb-bar',
+      content: '',
       height: 1,
-      width: "100%",
+      width: '100%',
     });
     // History nav buttons (‹ ›) live at the START of the breadcrumb bar (VS Code's Go Back / Go
     // Forward). A click walks the navigation trail; the column geometry comes from TabBarRenderer
@@ -242,21 +243,21 @@ class $RootView {
       const button = TabBarRenderer.Class.breadcrumbNavButtonAt(
         event.x - (breadcrumbBar.x as number),
       );
-      if (button === "back") workspaceSet.active.navigateBack();
-      else if (button === "forward") workspaceSet.active.navigateForward();
+      if (button === 'back') workspaceSet.active.navigateBack();
+      else if (button === 'forward') workspaceSet.active.navigateForward();
     };
     breadcrumbBar.onMouseMove = (event) => {
       if (!breadcrumbButtonsShown()) return;
       const button = TabBarRenderer.Class.breadcrumbNavButtonAt(
         event.x - (breadcrumbBar.x as number),
       );
-      if (button === "back") {
-        const hint = keybindings.bindingHint("navigation.back", "editor");
-        tooltip.point(`Go Back${hint ? ` (${hint})` : ""}`, event.x, event.y);
-      } else if (button === "forward") {
-        const hint = keybindings.bindingHint("navigation.forward", "editor");
+      if (button === 'back') {
+        const hint = keybindings.bindingHint('navigation.back', 'editor');
+        tooltip.point(`Go Back${hint ? ` (${hint})` : ''}`, event.x, event.y);
+      } else if (button === 'forward') {
+        const hint = keybindings.bindingHint('navigation.forward', 'editor');
         tooltip.point(
-          `Go Forward${hint ? ` (${hint})` : ""}`,
+          `Go Forward${hint ? ` (${hint})` : ''}`,
           event.x,
           event.y,
         );
@@ -266,24 +267,24 @@ class $RootView {
     };
     breadcrumbBar.onMouseOut = () => tooltip.clear();
     const editorArea = new BoxRenderable(renderer, {
-      id: "editor-area",
+      id: 'editor-area',
       flexGrow: 1,
-      width: "100%",
+      width: '100%',
       border: true,
-      borderStyle: "rounded",
-      flexDirection: "row",
-      title: "Editor",
+      borderStyle: 'rounded',
+      flexDirection: 'row',
+      title: 'Editor',
     });
     // Gutter (line numbers + current-line marker) and code are SEPARATE renderables so the code
     // buffer holds only code — OpenTUI's native selection then never shades the gutter on a
     // multi-line span, and code-local selection coords are pure display columns.
     const gutterBody = new TextRenderable(renderer, {
-      id: "editor-gutter",
-      content: "",
+      id: 'editor-gutter',
+      content: '',
     });
     const codeBody = new SelectableText.Class(renderer, {
-      id: "editor-code",
-      content: "",
+      id: 'editor-code',
+      content: '',
       // selectable:false — OpenTUI's OWN mouse-drag selection is a second writer of selection state
       // that the model never sees: its highlight appeared on drag, then the next paint's
       // applySelection() (reading the EMPTY model selection) wiped it — the human-QA
@@ -297,7 +298,7 @@ class $RootView {
       // lines clip; horizontal scroll covers the rest); wrap-ON feeds pre-wrapped SEGMENT rows from
       // the pure mapping layer (EditorWrap.ts), so this stays 'none' in both modes.
       // invariant: One file line is one visual row when word wrap is off (ui.invariants.md)
-      wrapMode: "none",
+      wrapMode: 'none',
     });
     editorArea.add(gutterBody);
     editorArea.add(codeBody);
@@ -308,16 +309,16 @@ class $RootView {
     // flex toggling — OpenTUI doesn't re-lay-out on a runtime flexGrow/height change). flexGrow:1 mirrors
     // editorArea, so the DiffView (height:100%) inside gets a real box. Not added until a diff opens.
     const diffContainer = new BoxRenderable(renderer, {
-      id: "diff-container",
+      id: 'diff-container',
       flexGrow: 1,
-      width: "100%",
-      flexDirection: "column",
+      width: '100%',
+      flexDirection: 'column',
     });
     const markdownContainer = new BoxRenderable(renderer, {
-      id: "markdown-container",
+      id: 'markdown-container',
       flexGrow: 1,
-      width: "100%",
-      flexDirection: "column",
+      width: '100%',
+      flexDirection: 'column',
     });
     // Draggable sidebar↔editor divider (1-cell bar). onMouseDrag fires globally while the button is
     // held (even off the bar), so a drag resizes smoothly; the model clamps to [min,max] + persists.
@@ -330,9 +331,9 @@ class $RootView {
     const sidebarDivider = paneSplitters.sidebar.renderable;
     const rightDockSplitter = new SplitterElement.Class({
       renderer,
-      identifier: "right-dock-divider",
-      orientation: "vertical",
-      reportUnit: "cells",
+      identifier: 'right-dock-divider',
+      orientation: 'vertical',
+      reportUnit: 'cells',
       initialSize: settings.rightDockWidth.value,
       minimumSize: 16,
       maximumSize: 70,
@@ -365,20 +366,20 @@ class $RootView {
     layoutCanvas.add(sidebarDivider);
     layoutCanvas.add(editorColumn);
     const rightDockBox = new BoxRenderable(renderer, {
-      id: "right-dock",
-      position: "absolute",
+      id: 'right-dock',
+      position: 'absolute',
       border: true,
-      borderStyle: "rounded",
-      flexDirection: "column",
-      title: "Right Dock",
+      borderStyle: 'rounded',
+      flexDirection: 'column',
+      title: 'Right Dock',
       visible: false,
     });
     const rightDockBody = new TextRenderable(renderer, {
-      id: "right-dock-body",
-      content: "",
-      wrapMode: "none",
-      width: "100%",
-      height: "100%",
+      id: 'right-dock-body',
+      content: '',
+      wrapMode: 'none',
+      width: '100%',
+      height: '100%',
     });
     rightDockBox.add(rightDockBody);
     rightDockBox.onMouseDown = () => {
@@ -397,9 +398,9 @@ class $RootView {
     };
     rightDockBody.onMouseScroll = (event) => {
       const direction = event.scroll?.direction;
-      if (direction !== "up" && direction !== "down") return;
+      if (direction !== 'up' && direction !== 'down') return;
       rightDockHost.activeContent?.onWheel?.(
-        (direction === "up" ? -1 : 1) * wheelStep(event),
+        (direction === 'up' ? -1 : 1) * wheelStep(event),
       );
       renderer.requestRender();
     };
@@ -438,21 +439,60 @@ class $RootView {
       renderer.height -
         1 -
         1 -
-        (settings.workspaceTabPosition.value === "top" ? 2 : 0),
+        (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
     );
     let panelHeightRows =
       LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
     const panelBox = new BoxRenderable(renderer, {
-      id: "panel-box",
-      position: "absolute",
+      id: 'panel-box',
+      position: 'absolute',
       height: panelHeightRows,
       flexShrink: 0,
       border: true,
-      borderStyle: "rounded",
-      flexDirection: "row", // visible split cells lay out left-to-right; one cell = the degenerate case
-      title: "",
+      borderStyle: 'rounded',
+      flexDirection: 'row', // visible split cells lay out left-to-right; one cell = the degenerate case
+      title: '',
       backgroundColor: readPalette().panel,
     });
+    const panelContentsList = new PanelContentsList.Class(panelHost);
+    const panelContentsListRenderable = new TextRenderable(renderer, {
+      id: 'panel-contents-list',
+      content: '',
+      width: 0,
+      height: '100%',
+      flexShrink: 0,
+      wrapMode: 'none',
+      selectable: false,
+    });
+    const capturePanelContentsListPointer = (): void => {
+      const renderableWithContext = panelContentsListRenderable as unknown as {
+        _ctx?: {
+          setCapturedRenderable?: (renderable: unknown) => void;
+        };
+      };
+      renderableWithContext._ctx?.setCapturedRenderable?.(
+        panelContentsListRenderable,
+      );
+    };
+    panelContentsListRenderable.onMouseDown = (event) => {
+      capturePanelContentsListPointer();
+      panelContentsList.pointerDown(
+        Number(event.x) - Number(panelContentsListRenderable.x),
+        Number(event.y) - Number(panelContentsListRenderable.y),
+      );
+      renderer.requestRender();
+    };
+    panelContentsListRenderable.onMouseDrag = (event) => {
+      panelContentsList.pointerDrag(
+        Number(event.y) - Number(panelContentsListRenderable.y),
+      );
+      renderer.requestRender();
+    };
+    const finishPanelContentsListDrag = (): void => {
+      panelContentsList.pointerUp();
+    };
+    panelContentsListRenderable.onMouseUp = finishPanelContentsListDrag;
+    panelContentsListRenderable.onMouseDragEnd = finishPanelContentsListDrag;
     let panelMounted = false;
     // --- Agent transcript scroll engine ------------------------------------------------------------
     // The agent pane reuses the ONE shared scroll surface (momentum + smooth glide + a vertical scrollbar)
@@ -462,7 +502,7 @@ class $RootView {
     // bar into panelBox, positions it over whichever visible cell shows the agent, and feeds the drag its
     // screen↔content mapping (the pane owns the selection MODEL).
     const agentContent = (): AgentPaneContent.Model | null => {
-      const content = panelHost.content("agent");
+      const content = panelHost.content('agent');
       return content instanceof AgentPaneContent.Class ? content : null;
     };
     // Live geometry of the cell currently showing the agent (null when the agent is not a visible cell).
@@ -476,7 +516,7 @@ class $RootView {
       renderer,
       settings,
       parent: panelBox,
-      id: "panel-agent",
+      id: 'panel-agent',
       disableHorizontal: true,
       followBottom: true,
       scrollbarZIndex: 50, // the panel adds its cell bodies AFTER this viewport; keep the bar on top
@@ -579,26 +619,26 @@ class $RootView {
       if (existing) return existing;
       const container = new BoxRenderable(renderer, {
         id: `panel-cell-region-${index}`,
-        flexDirection: "column",
+        flexDirection: 'column',
         flexShrink: 0,
-        height: "100%",
+        height: '100%',
         minHeight: 0,
       });
       const heading = new TextRenderable(renderer, {
         id: `panel-cell-heading-${index}`,
-        content: "",
-        width: "100%",
+        content: '',
+        width: '100%',
         height: 1,
-        wrapMode: "none",
+        wrapMode: 'none',
         selectable: false,
       });
       const body = new TextRenderable(renderer, {
         id: `panel-cell-${index}`,
-        content: "",
-        wrapMode: "none",
+        content: '',
+        wrapMode: 'none',
         flexGrow: 1,
         minHeight: 0,
-        width: "100%",
+        width: '100%',
       });
       container.add(heading);
       container.add(body);
@@ -624,13 +664,13 @@ class $RootView {
         const localRow = (event.y as number) - (body.y as number);
         if (agent) {
           const region = agent.regionAtRow(localRow);
-          if (region.kind === "composer") {
+          if (region.kind === 'composer') {
             composerDragging = true;
             transcriptDragging = false;
             agent.beginComposerSelection(
               agent.composerPointAt(localColumn, region.visibleRow),
             );
-          } else if (region.kind === "transcript") {
+          } else if (region.kind === 'transcript') {
             composerDragging = false;
             transcriptDragging = true;
             agentScrollViewport.beginDrag(event.x as number, event.y as number);
@@ -661,7 +701,7 @@ class $RootView {
             (event.y as number) - (body.y as number),
           );
           const visibleRow =
-            region.kind === "composer" ? region.visibleRow : agent.viewportRows; // clamp below
+            region.kind === 'composer' ? region.visibleRow : agent.viewportRows; // clamp below
           agent.extendComposerSelection(
             agent.composerPointAt(
               (event.x as number) - (body.x as number),
@@ -715,8 +755,8 @@ class $RootView {
         const content = panelHost.resolvedCells[index]?.content;
         if (!content?.onWheel) return;
         const direction = event.scroll?.direction;
-        if (direction !== "up" && direction !== "down") return;
-        content.onWheel((direction === "up" ? -1 : 1) * wheelStep(event));
+        if (direction !== 'up' && direction !== 'down') return;
+        content.onWheel((direction === 'up' ? -1 : 1) * wheelStep(event));
         renderer.requestRender();
       };
       let splitterElement: SplitterElement.Model | null = null;
@@ -725,8 +765,8 @@ class $RootView {
         splitterElement = new SplitterElement.Class({
           renderer,
           identifier: `panel-cell-divider-${dividerIndex}`,
-          orientation: "vertical",
-          reportUnit: "ratio",
+          orientation: 'vertical',
+          reportUnit: 'ratio',
           initialSize: 0.5,
           extentCells: 1,
           currentSize: () => panelBoundaryFraction(dividerIndex),
@@ -756,11 +796,13 @@ class $RootView {
         if (view.splitterElement)
           panelBox.remove(view.splitterElement.renderable);
       }
+      panelBox.remove(panelContentsListRenderable);
       for (let index = 0; index < count; index += 1) {
         const view = ensurePanelCellView(index);
         if (view.splitterElement) panelBox.add(view.splitterElement.renderable);
         panelBox.add(view.container);
       }
+      if (panelContentsList.visible) panelBox.add(panelContentsListRenderable);
       mountedPanelCellCount = count;
     };
     // Draggable panel height: a HORIZONTAL SplitterModel in cells. The grab strip sits ABOVE the panel,
@@ -768,9 +810,9 @@ class $RootView {
     // smaller Y = larger negated position = larger height). Reuses the shared splitter (min 3 rows).
     const panelSplitter = new SplitterElement.Class({
       renderer,
-      identifier: "panel-divider",
-      orientation: "horizontal",
-      reportUnit: "cells",
+      identifier: 'panel-divider',
+      orientation: 'horizontal',
+      reportUnit: 'cells',
       initialSize: panelHeightRows,
       minimumSize: 3,
       maximumSize: 40,
@@ -808,7 +850,12 @@ class $RootView {
     // layout read-back would be one frame stale when a quiet pane first opens.
     const panelViewportColumns = (): number =>
       panelHost.visible.value
-        ? Math.max(1, layoutSlotGeometry.bottomPanel.width - 2)
+        ? Math.max(
+            1,
+            layoutSlotGeometry.bottomPanel.width -
+              2 -
+              (panelContentsList.visible ? panelContentsList.width : 0),
+          )
         : 0;
     const panelViewportRows = (): number =>
       panelHost.visible.value
@@ -870,14 +917,14 @@ class $RootView {
       const fallbackColumns = Math.max(
         1,
         renderer.width -
-          (settings.workspaceTabPosition.value === "left" ? 22 : 0),
+          (settings.workspaceTabPosition.value === 'left' ? 22 : 0),
       );
       const fallbackRows = Math.max(
         1,
         renderer.height -
           1 -
           1 -
-          (settings.workspaceTabPosition.value === "top" ? 2 : 0),
+          (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
       );
       const totalColumns =
         Number(layoutCanvas.width) > 0
@@ -903,7 +950,7 @@ class $RootView {
         leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
         rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
       });
-      activityBar.bar.position = "absolute";
+      activityBar.bar.position = 'absolute';
       activityBar.bar.left = layoutSlotGeometry.activityBar.left;
       activityBar.bar.top = layoutSlotGeometry.activityBar.top;
       activityBar.bar.width = layoutSlotGeometry.activityBar.width;
@@ -946,7 +993,7 @@ class $RootView {
         panelBox.height = layoutSlotGeometry.bottomPanel.height;
       }
     };
-    if (settings.workspaceTabPosition.value === "left") {
+    if (settings.workspaceTabPosition.value === 'left') {
       mainRow.add(workspaceTabBar, 0);
     } else {
       column.add(workspaceTabBar);
@@ -1000,23 +1047,23 @@ class $RootView {
      * outside update(): render stays model -> view only, while each pane model owns its live extent.
      */
     const EMPTY_STATE = [
-      "",
-      "   Invar — a terminal code workspace",
-      "",
-      "   ↑/↓  navigate files      Enter  open / expand",
-      "   Tab  switch pane         Ctrl+P command palette",
-      "   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)",
-      "",
-    ].join("\n");
+      '',
+      '   Invar — a terminal code workspace',
+      '',
+      '   ↑/↓  navigate files      Enter  open / expand',
+      '   Tab  switch pane         Ctrl+P command palette',
+      '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
+      '',
+    ].join('\n');
     // The Extensions activity view is a placeholder for now (the pane switches, the content is a
     // coming-soon note). The bar item + its Ctrl+Shift+X chord are live; the marketplace is future work.
     const EXTENSIONS_PLACEHOLDER = [
-      "",
-      "   Extensions",
-      "",
-      "   Coming soon.",
-      "",
-    ].join("\n");
+      '',
+      '   Extensions',
+      '',
+      '   Coming soon.',
+      '',
+    ].join('\n');
     // Gutter width in cells for the current document: "NN " (line number + space) + 1 marker cell.
     const gutterWidth = () =>
       String(workspaceSet.active.editor.document.lineCount).length + 1 + 2;
@@ -1028,20 +1075,20 @@ class $RootView {
     // EditorPane controller (below) with the wrap window they read.
     // Workspace/project tabs and editor/buffer tabs are separate layers backed by the SAME TabStrip
     // capability, driven by the TabBar controller (below). The workspace strip changes orientation.
-    let workspaceTabBarMountedPosition: "top" | "left" =
+    let workspaceTabBarMountedPosition: 'top' | 'left' =
       settings.workspaceTabPosition.value;
     function synchronizeWorkspaceTabMount(): void {
       const position = settings.workspaceTabPosition.value;
       if (position === workspaceTabBarMountedPosition) return;
-      if (position === "left") {
+      if (position === 'left') {
         column.remove(workspaceTabBar);
         mainRow.add(workspaceTabBar, 0);
         workspaceTabBar.width = 22;
-        workspaceTabBar.height = "100%";
+        workspaceTabBar.height = '100%';
       } else {
         mainRow.remove(workspaceTabBar);
         column.add(workspaceTabBar, 0);
-        workspaceTabBar.width = "100%";
+        workspaceTabBar.width = '100%';
         workspaceTabBar.height = 2; // two rows: project name over worktree/branch detail
       }
       workspaceTabBarMountedPosition = position;
@@ -1169,8 +1216,8 @@ class $RootView {
       editorContentMount.sync();
       column.backgroundColor = palette.bg;
       const sidebarViewValue = workspaceSet.active.sidebarView.value;
-      const gitView = sidebarViewValue === "git";
-      const extensionsView = sidebarViewValue === "extensions";
+      const gitView = sidebarViewValue === 'git';
+      const extensionsView = sidebarViewValue === 'extensions';
       // The activity bar reflects sidebarView (active-item accent) + the git badge each frame.
       activityBar.setVisible(
         primaryDockHost.visible.value && settings.showActivityBar.value,
@@ -1182,7 +1229,7 @@ class $RootView {
       // Files/git are focusable panels (bright border when their focus owns them); extensions is a
       // display-only placeholder, so it stays dim.
       const sidebarViewFocused =
-        workspaceSet.active.focus.value === "files" || gitView;
+        workspaceSet.active.focus.value === 'files' || gitView;
       sidebar.borderColor = sidebarViewFocused
         ? palette.borderActive
         : palette.border;
@@ -1191,10 +1238,10 @@ class $RootView {
       panelSplitter.updateAppearance(palette);
       rightDockSplitter.updateAppearance(palette);
       sidebar.titleColor = sidebarViewFocused ? palette.accent : palette.dim;
-      sidebar.title = gitView ? "Git" : extensionsView ? "Extensions" : "Files";
+      sidebar.title = gitView ? 'Git' : extensionsView ? 'Extensions' : 'Files';
       editorArea.backgroundColor = palette.bg;
       const sourcePaneFocused =
-        workspaceSet.active.focus.value === "editor" &&
+        workspaceSet.active.focus.value === 'editor' &&
         !(editorContentMount.markdownSplitView?.previewFocused ?? false);
       editorArea.borderColor = sourcePaneFocused
         ? palette.borderActive
@@ -1203,16 +1250,16 @@ class $RootView {
       // (project › dir › file). Keep the border BOX (codeBody coords stay stable) but drop the redundant
       // '╭─README.md' legend. Safe: the app's find/paste source identity is the document PATH, never this
       // display title — the only thing that ever keyed off the legend text was a test probe (now fixed).
-      editorArea.title = "";
+      editorArea.title = '';
       editorArea.titleColor = sourcePaneFocused ? palette.accent : palette.dim;
       // The diff view has no editor buffer tabs — blank the buffer tab strip while a diff is showing
       // (keep its row so the diff panes don't jump when toggling in/out of a diff).
       const diffShowing = workspaceSet.active.showingDiff.value;
-      tabBar.content = diffShowing ? "" : tabBarController.renderBuffer();
+      tabBar.content = diffShowing ? '' : tabBarController.renderBuffer();
       // Breadcrumb row: the active file's path, blank during a diff or when no file is open.
       breadcrumbBar.content =
         diffShowing || !workspaceSet.active.editor.hasDocument.value
-          ? ""
+          ? ''
           : tabBarController.renderBreadcrumb();
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
@@ -1228,9 +1275,9 @@ class $RootView {
                 palette,
                 glyphLevel: theme.glyphLevel.value,
                 colorDepth: theme.colorDepth.value,
-                focused: workspaceSet.active.focus.value === "files",
+                focused: workspaceSet.active.focus.value === 'files',
               })
-            : "";
+            : '';
       sidebarBody.fg = palette.fg;
       // When the active buffer is an image, the code body shows the half-block preview (no gutter, no
       // syntax text). Non-image files are untouched — the editor render path below is unchanged.
@@ -1244,7 +1291,7 @@ class $RootView {
       if (!activeFileIsImage) pixelMount.clear();
       if (activeFileIsImage) {
         gutterBody.width = 0;
-        gutterBody.content = "";
+        gutterBody.content = '';
         const imagePath = workspaceSet.active.editor.document.path;
         const previewColumns = Math.max(1, editorViewportWidth());
         const previewRows = Math.max(1, editorViewportHeight());
@@ -1261,7 +1308,7 @@ class $RootView {
           ? imagePreview.decodedImage(imagePath)
           : null;
         if (pixelEncoder && decodedImage) {
-          codeBody.content = "";
+          codeBody.content = '';
           pixelMount.sync({
             tier: graphicsTier,
             encoder: pixelEncoder,
@@ -1291,7 +1338,7 @@ class $RootView {
         codeBody.content = rendered.code;
       } else {
         gutterBody.width = 0;
-        gutterBody.content = "";
+        gutterBody.content = '';
         codeBody.content = EMPTY_STATE;
       }
       codeBody.fg = palette.fg;
@@ -1307,7 +1354,7 @@ class $RootView {
         rightDockBox.titleColor = rightDockFocused
           ? palette.accent
           : palette.dim;
-        rightDockBox.title = rightDockContent?.title ?? "Right Dock";
+        rightDockBox.title = rightDockContent?.title ?? 'Right Dock';
         rightDockBody.fg = palette.fg;
         rightDockBody.content = rightDockContent
           ? rightDockContent.render({
@@ -1318,7 +1365,7 @@ class $RootView {
               colorDepth: theme.colorDepth.value,
               focused: rightDockFocused,
             })
-          : " Right dock\n\n No content";
+          : ' Right dock\n\n No content';
       }
       // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
       // terminal for tier S; two = agent | terminal side by side). The host is content-agnostic — RootView
@@ -1330,12 +1377,17 @@ class $RootView {
         const focusedIndex = panelHost.focusedIndex.value;
         const spans = panelHost.cellSpans(panelViewportColumns());
         syncPanelCellMount(spans.length);
-        panelBox.title = "";
+        panelBox.title = '';
         panelBox.backgroundColor = palette.panel;
         panelBox.borderColor = panelFocused
           ? palette.borderActive
           : palette.border;
         panelBox.titleColor = panelFocused ? palette.accent : palette.dim;
+        panelContentsListRenderable.visible = panelContentsList.visible;
+        panelContentsListRenderable.width = panelContentsList.visible
+          ? panelContentsList.width
+          : 0;
+        panelContentsListRenderable.content = panelContentsList.render(palette);
         const cellRows = panelViewportRows();
         const panelContentTop = (panelBox.y as number) + 1; // inside the rounded border
         const panelContentLeft = (panelBox.x as number) + 1;
@@ -1345,7 +1397,7 @@ class $RootView {
           if (!view) return;
           const cellFocused = panelFocused && index === focusedIndex;
           view.container.width = span.columns;
-          view.heading.content = ` ${span.content.icon ? `${span.content.icon} ` : ""}${span.content.title}`;
+          view.heading.content = ` ${span.content.icon ? `${span.content.icon} ` : ''}${span.content.title}`;
           view.heading.fg = cellFocused ? palette.accent : palette.dim;
           view.body.fg = palette.fg;
           const agent =
@@ -1471,7 +1523,7 @@ class $RootView {
         const caretPosition =
           editor.hasDocument.value &&
           !activeFileIsImage &&
-          workspaceSet.active.focus.value === "editor" &&
+          workspaceSet.active.focus.value === 'editor' &&
           !editorContentMount.markdownSplitView?.previewFocused &&
           !commands.open.value
             ? editorController.wrapVisualPosition(
@@ -1479,7 +1531,7 @@ class $RootView {
                 editor.cursor.col.value,
               )
             : null;
-        if (caretPosition && typeof caretPosition === "object") {
+        if (caretPosition && typeof caretPosition === 'object') {
           const caretCellX = codeBody.x + caretPosition.column;
           const caretCellY = codeBody.y + caretPosition.rowIndex;
           renderer.setCursorPosition(caretCellX + 1, caretCellY + 1, true);
@@ -1505,7 +1557,7 @@ class $RootView {
       if (
         editor.hasDocument.value &&
         !activeFileIsImage &&
-        workspaceSet.active.focus.value === "editor" &&
+        workspaceSet.active.focus.value === 'editor' &&
         !editorContentMount.markdownSplitView?.previewFocused &&
         !commands.open.value &&
         cursorLine >= scrollTop &&
@@ -1646,7 +1698,7 @@ class $RootView {
     const reportedGraphics = shallowRef<ReportedGraphicsCapabilities | null>(
       readReportedGraphics(),
     );
-    renderer.on("capabilities", () => {
+    renderer.on('capabilities', () => {
       reportedGraphics.value = readReportedGraphics();
     });
     // The emission surface: OpenTUI's writeOut routes through the native zig writer — the SAME queue
@@ -1763,6 +1815,19 @@ class $RootView {
       panelViewportColumns,
       panelViewportRows,
       panelContainsPoint,
+      panelContentsListRegion: () => ({
+        left:
+          Number(panelBox.x) +
+          Number(panelBox.width) -
+          1 -
+          (panelContentsList.visible ? panelContentsList.width : 0),
+        top: Number(panelBox.y) + 1,
+        width: panelContentsList.visible ? panelContentsList.width : 0,
+        height: panelContentsList.visible
+          ? Math.max(0, Number(panelBox.height) - 2)
+          : 0,
+        visible: panelContentsList.visible,
+      }),
       rightDockViewportColumns,
       rightDockViewportRows,
       rightDockContainsPoint,
@@ -1844,12 +1909,19 @@ export interface RootView {
   panelViewportRows(): number;
   /** True when the screen cell (x,y) falls inside the visible panel box (focus-follows-click). */
   panelContainsPoint(x: number, y: number): boolean;
+  panelContentsListRegion(): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    visible: boolean;
+  };
   rightDockViewportColumns(): number;
   rightDockViewportRows(): number;
   rightDockContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<
-    "sidebar" | "git" | "bottomPanel" | "rightDock",
+    'sidebar' | 'git' | 'bottomPanel' | 'rightDock',
     {
       left: number;
       top: number;

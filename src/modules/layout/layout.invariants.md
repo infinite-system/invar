@@ -67,6 +67,35 @@ tests assert the exact ratio.
 
 ## Chosen invariants
 
+### Split arrangement follows panel content order
+
+**Invariant:** If `PanelHost` lays out more than one open bottom-panel content, then cell spans are
+ordered by `Settings.panelContentOrder`; the default sequence places agent left and terminal right.
+
+**Scope:** The bottom-panel content axis in `PanelHost.split`, `toggleContent`, and
+`moveOpenContentTo`. Cell ratios and the panel's root-slot alignment are outside this ordering rule.
+
+**Mechanism:** `PanelHost.split` filters requested identifiers through `order`, `toggleContent` builds
+new cells from `order`, and `moveOpenContentTo` rebuilds the live `layout` after changing that same
+sequence. `Settings.defaults.panelContentOrder` is `['agent', 'terminal']`.
+
+**Generates:** One ordering rule for automatic split creation, F9 split creation, drag reorder, and
+Alt+Up or Alt+Down reorder.
+
+**Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/settings/Settings.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`.
+
+**Impossible if true:** Opening agent and terminal with default settings placing terminal left; F9
+and content-toggle creation producing different orders; a reordered contents list disagreeing with
+the cell spans.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts
+src/modules/ui/PanelContentsList.test.ts && bun scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Layout slots derive from one configuration
 
 **Invariant:** If RootView places a dock, editor center, or bottom panel edge, then that rectangle

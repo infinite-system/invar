@@ -74,6 +74,69 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Panel content order is one persisted sequence
+
+**Invariant:** If open panel content is reordered, then `Settings.panelContentOrder`,
+`PanelHost.order`, the docked contents rows, and the left-to-right split all expose that same
+sequence immediately and after restart.
+
+**Scope:** The bottom `PanelHost`, `Settings.panelContentOrder`, `PanelContentsList`, and the
+terminal-agent split. Other `PanelHost` instances are outside this persisted bottom-panel order.
+
+**Mechanism:** `Bootstrap` injects the `Settings.panelContentOrder` ref and `Settings.save` callback
+into `PanelHost`. `PanelHost.moveOpenContentTo` mutates that ref once, rebuilds `layout` from it, and
+persists; `PanelContentsList.rows` and `PanelHost.split` read the same order.
+
+**Generates:** Live drag reorder; Alt+Up and Alt+Down reorder; restart persistence; the agent-first
+default `['agent', 'terminal']`.
+
+**Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/PanelContentsList.ts`;
+`src/modules/settings/Settings.ts`; `src/modules/ui/PanelContentsList.test.ts`;
+`scripts/harness/smoke-panel-split-harness.ts`.
+
+**Impossible if true:** A list row moving without its split cell moving; a keyboard reorder and drag
+reorder producing different sequences; a second boot on the same HOME restoring the old order.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts
+src/modules/ui/PanelContentsList.test.ts src/modules/settings/Settings.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### The panel contents list mirrors open content
+
+**Invariant:** If the bottom panel has more than one open content, then its right edge shows exactly
+one docked row per open content with icon, title, activation, drag reorder, and close actions; if one
+content remains, the list is absent.
+
+**Scope:** `PanelContentsList`, its `RootView` renderable, and open cells in the bottom `PanelHost`.
+Registered but closed content and popup lists are outside this rule.
+
+**Mechanism:** `PanelContentsList.rows` projects `PanelHost.resolvedCells` directly.
+`PanelContentsList.pointerDown` and `pointerDrag` delegate activation, close, and reorder to
+`PanelHost`; panel-context keybindings delegate to the same host methods.
+
+**Generates:** VS Code-style docked panel contents rows; visible per-row close affordances; mouse and
+keyboard parity without a popup or second content registry.
+
+**Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
+content and cannot continuously mirror the open split.
+
+**Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`;
+`src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`.
+
+**Impossible if true:** The list showing with one open content; two open contents producing one or
+three rows; a close row without a keyboard close path; a drag updating only presentation.
+
+**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts && bun
+scripts/harness/smoke-panel-split-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Splitter paint and hit testing share one geometry
 
 **Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell

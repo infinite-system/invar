@@ -50,19 +50,20 @@ class $SmokeTerminalFollowHarness {
       await this.awaitStatus(
         'application is ready with the configured follow mode',
         (status) =>
-          status.ready === true
-          && status.terminalFollowMode === 'follow-all',
+          status.ready === true && status.terminalFollowMode === 'follow-all',
       );
       driver.sendKeys('F9');
       await this.awaitStatus(
         'F9 opens the terminal and agent side by side',
         (status) =>
-          Array.isArray(status.panelCellIds)
-          && status.panelCellIds.join(',') === 'terminal,agent'
-          && status.panelActiveContent === 'agent',
+          Array.isArray(status.panelCellIds) &&
+          status.panelCellIds.join(',') === 'agent,terminal' &&
+          status.panelActiveContent === 'agent',
       );
 
-      console.log('== harness terminal-follow: follow-all responds to both outcomes ==');
+      console.log(
+        '== harness terminal-follow: follow-all responds to both outcomes ==',
+      );
       await this.runTerminalCommand(
         "printf 'FOLLOW_ALL_PASS\\n'",
         true,
@@ -74,7 +75,9 @@ class $SmokeTerminalFollowHarness {
         'follow-all responds to a failing command',
       );
 
-      console.log('== harness terminal-follow: keyboard cycles through all live modes ==');
+      console.log(
+        '== harness terminal-follow: keyboard cycles through all live modes ==',
+      );
       await this.cycleModeByKeyboard(
         'on-error',
         'F6 changes the live footer mode to on-error',
@@ -107,8 +110,8 @@ class $SmokeTerminalFollowHarness {
       await this.sendAgentPrompt(
         'Summarize the terminal context now',
         (status) =>
-          String(status.agentLastAssistantText).includes('ON_REQUEST_PASS')
-          && String(status.agentLastAssistantText).includes('ON_REQUEST_FAIL'),
+          String(status.agentLastAssistantText).includes('ON_REQUEST_PASS') &&
+          String(status.agentLastAssistantText).includes('ON_REQUEST_FAIL'),
         'the subsequent user question receives both silent terminal observations',
       );
 
@@ -127,10 +130,17 @@ class $SmokeTerminalFollowHarness {
         'off delivers no failing observation to the agent',
       );
 
-      console.log('== harness terminal-follow: footer mouse and palette share the action ==');
-      await this.focusPanelCell('agent', 'agent footer is focused for pointer cycling');
+      console.log(
+        '== harness terminal-follow: footer mouse and palette share the action ==',
+      );
+      await this.focusPanelCell(
+        'agent',
+        'agent footer is focused for pointer cycling',
+      );
       await driver.awaitQuiescence();
-      HarnessSmoke.Class.pass('agent footer repaint is settled before pointer discovery');
+      HarnessSmoke.Class.pass(
+        'agent footer repaint is settled before pointer discovery',
+      );
       HarnessSmoke.Class.clickText(driver, driver.snapshot(), 'follow: off', 2);
       await this.awaitStatus(
         'clicking the discovered footer text cycles off to follow',
@@ -146,18 +156,19 @@ class $SmokeTerminalFollowHarness {
       await this.awaitStatus(
         'the palette finds the terminal-follow command',
         (status) =>
-          status.paletteOpen === true
-          && Number(status.paletteMatches) === 1,
+          status.paletteOpen === true && Number(status.paletteMatches) === 1,
       );
       driver.sendKeys('Enter');
       await this.awaitStatus(
         'the palette command runs the same cycle action',
         (status) =>
-          status.paletteOpen === false
-          && status.terminalFollowMode === 'on-error',
+          status.paletteOpen === false &&
+          status.terminalFollowMode === 'on-error',
       );
 
-      console.log('== harness terminal-follow: full scrollback read + shared redaction ==');
+      console.log(
+        '== harness terminal-follow: full scrollback read + shared redaction ==',
+      );
       await this.runTerminalCommand(
         "for number in $(seq 1 70); do printf 'scroll-%02d\\n' \"$number\"; done; printf 'API_TOKEN=fixture-token\\nNORMAL=value\\nPassword: hunter2\\n'",
         false,
@@ -168,14 +179,17 @@ class $SmokeTerminalFollowHarness {
         (status) => typeof status.terminalObservedEventCount === 'number',
       );
       const previousToolResult = String(toolBaselineStatus.agentLastToolResult);
-      await this.focusPanelCell('agent', 'agent composer is focused for the read-tool request');
+      await this.focusPanelCell(
+        'agent',
+        'agent composer is focused for the read-tool request',
+      );
       driver.sendText('terminal-tools:scrollback:55');
       driver.sendKeys('Enter');
       const toolStatus = await this.awaitStatus(
         'the echo backend completes the explicit 55-line scrollback tool call',
         (status) =>
-          typeof status.agentLastToolResult === 'string'
-          && status.agentLastToolResult !== previousToolResult,
+          typeof status.agentLastToolResult === 'string' &&
+          status.agentLastToolResult !== previousToolResult,
       );
       const toolSnapshot = JSON.parse(
         String(toolStatus.agentLastToolResult),
@@ -186,9 +200,9 @@ class $SmokeTerminalFollowHarness {
       );
       const joinedToolLines = toolSnapshot.lines.join('\n');
       HarnessSmoke.Class.requireCondition(
-        joinedToolLines.includes('[REDACTED]')
-        && !joinedToolLines.includes('fixture-token')
-        && !joinedToolLines.includes('hunter2'),
+        joinedToolLines.includes('[REDACTED]') &&
+          !joinedToolLines.includes('fixture-token') &&
+          !joinedToolLines.includes('hunter2'),
         'secret assignment and password values are redacted through the tool',
       );
       HarnessSmoke.Class.requireCondition(
@@ -208,11 +222,7 @@ class $SmokeTerminalFollowHarness {
   }
 
   protected static prepareSettings(): void {
-    const settingsDirectory = join(
-      this.homeDirectory,
-      '.config',
-      'invar',
-    );
+    const settingsDirectory = join(this.homeDirectory, '.config', 'invar');
     makeDirectorySync(settingsDirectory, { recursive: true });
     writeFileSync(
       join(settingsDirectory, 'settings.json'),
@@ -228,11 +238,7 @@ class $SmokeTerminalFollowHarness {
       join(temporaryDirectory(), 'invar-terminal-follow-heuristic-harness-'),
     );
     this.statusPath = join(this.homeDirectory, 'status.json');
-    const settingsDirectory = join(
-      this.homeDirectory,
-      '.config',
-      'invar',
-    );
+    const settingsDirectory = join(this.homeDirectory, '.config', 'invar');
     makeDirectorySync(settingsDirectory, { recursive: true });
     writeFileSync(
       join(settingsDirectory, 'settings.json'),
@@ -260,19 +266,20 @@ class $SmokeTerminalFollowHarness {
     });
     this.driver = driver;
     try {
-      console.log('== harness terminal-follow: heuristic boundary is never an error trigger ==');
+      console.log(
+        '== harness terminal-follow: heuristic boundary is never an error trigger ==',
+      );
       await this.awaitStatus(
         'plain Bash is ready without shell-integration markers',
         (status) =>
-          status.ready === true
-          && status.terminalFollowMode === 'on-error',
+          status.ready === true && status.terminalFollowMode === 'on-error',
       );
       driver.sendKeys('F9');
       await this.awaitStatus(
         'plain Bash and echo agent open side by side',
         (status) =>
-          Array.isArray(status.panelCellIds)
-          && status.panelCellIds.join(',') === 'terminal,agent',
+          Array.isArray(status.panelCellIds) &&
+          status.panelCellIds.join(',') === 'agent,terminal',
       );
       await this.runTerminalCommand(
         "printf 'HEURISTIC_FAIL\\n'; false",
@@ -302,8 +309,9 @@ class $SmokeTerminalFollowHarness {
   ): Promise<void> {
     const statusBeforeCommand = await this.awaitStatus(
       `terminal and assistant counters are published before ${label}`,
-      (status) => typeof status.terminalObservedEventCount === 'number'
-        && typeof status.agentAssistantEntryCount === 'number',
+      (status) =>
+        typeof status.terminalObservedEventCount === 'number' &&
+        typeof status.agentAssistantEntryCount === 'number',
     );
     const observedEventCount = Number(
       statusBeforeCommand.terminalObservedEventCount,
@@ -320,11 +328,9 @@ class $SmokeTerminalFollowHarness {
     const commandStatus = await this.awaitStatus(
       `the real Bash command boundary is observed for ${label}`,
       (status) =>
-        Number(status.terminalObservedEventCount) > observedEventCount
-        && (
-          !expectsAgentResponse
-          || Number(status.agentAssistantEntryCount) > assistantEntryCount
-        ),
+        Number(status.terminalObservedEventCount) > observedEventCount &&
+        (!expectsAgentResponse ||
+          Number(status.agentAssistantEntryCount) > assistantEntryCount),
     );
     if (expectsAgentResponse) {
       HarnessSmoke.Class.requireCondition(
@@ -334,10 +340,13 @@ class $SmokeTerminalFollowHarness {
       return;
     }
     await HarnessSmoke.Class.awaitFrameSilence(this.requiredDriver, 250);
-    HarnessSmoke.Class.pass(`render stream settles before silence assertion: ${label}`);
+    HarnessSmoke.Class.pass(
+      `render stream settles before silence assertion: ${label}`,
+    );
     await this.awaitStatus(
       `the assistant count remains unchanged after the silence window for ${label}`,
-      (status) => Number(status.agentAssistantEntryCount) === assistantEntryCount,
+      (status) =>
+        Number(status.agentAssistantEntryCount) === assistantEntryCount,
     );
     HarnessSmoke.Class.pass(label);
   }
@@ -375,8 +384,8 @@ class $SmokeTerminalFollowHarness {
     await this.awaitStatus(
       label,
       (status) =>
-        Number(status.agentAssistantEntryCount) > previousAssistantEntryCount
-        && predicate(status),
+        Number(status.agentAssistantEntryCount) > previousAssistantEntryCount &&
+        predicate(status),
     );
   }
 
@@ -390,17 +399,18 @@ class $SmokeTerminalFollowHarness {
         const candidateLayoutSlots = candidate.layoutSlots as
           | Record<string, { left: number; top: number; height: number }>
           | undefined;
-        return Array.isArray(candidate.panelCellIds)
-          && candidate.panelCellIds.includes(contentIdentifier)
-          && Array.isArray(candidate.panelCellColumns)
-          && candidateLayoutSlots?.bottomPanel !== undefined;
+        return (
+          Array.isArray(candidate.panelCellIds) &&
+          candidate.panelCellIds.includes(contentIdentifier) &&
+          Array.isArray(candidate.panelCellColumns) &&
+          candidateLayoutSlots?.bottomPanel !== undefined
+        );
       },
     );
     const contentIdentifiers = status.panelCellIds;
     const cellColumns = status.panelCellColumns;
     const layoutSlots = status.layoutSlots as
-      | Record<string, { left: number; top: number; height: number }>
-      | undefined;
+      Record<string, { left: number; top: number; height: number }> | undefined;
     if (!Array.isArray(contentIdentifiers) || !Array.isArray(cellColumns)) {
       throw new Error('Panel cell geometry is unavailable from status.');
     }
@@ -409,7 +419,8 @@ class $SmokeTerminalFollowHarness {
       throw new Error(`Panel cell is not visible: ${contentIdentifier}`);
     }
     const panel = layoutSlots?.bottomPanel;
-    if (!panel) throw new Error('Bottom-panel geometry is unavailable from status.');
+    if (!panel)
+      throw new Error('Bottom-panel geometry is unavailable from status.');
     let column = panel.left + 2;
     for (
       let precedingIndex = 0;
@@ -434,8 +445,8 @@ class $SmokeTerminalFollowHarness {
     await this.awaitStatus(
       label,
       (candidate) =>
-        candidate.panelActiveContent === contentIdentifier
-        && candidate.panelFocusedIndex === contentIndex,
+        candidate.panelActiveContent === contentIdentifier &&
+        candidate.panelFocusedIndex === contentIndex,
     );
   }
 
@@ -444,18 +455,20 @@ class $SmokeTerminalFollowHarness {
       'editor geometry is published before blurring the bottom panel',
       (candidate) => {
         const candidateLayoutSlots = candidate.layoutSlots as
-          | Record<string, { editorCenter?: unknown }>
-          | undefined;
+          Record<string, { editorCenter?: unknown }> | undefined;
         return candidateLayoutSlots?.editorCenter !== undefined;
       },
     );
     const layoutSlots = status.layoutSlots as
-      | Record<string, {
-          left: number;
-          top: number;
-          width: number;
-          height: number;
-        }>
+      | Record<
+          string,
+          {
+            left: number;
+            top: number;
+            width: number;
+            height: number;
+          }
+        >
       | undefined;
     const editor = layoutSlots?.editorCenter;
     if (!editor) throw new Error('Editor geometry is unavailable from status.');
