@@ -7,7 +7,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pass, requireCondition, statusField } from './HarnessSmokeSupport';
+import {
+  dragBetweenCells,
+  pass,
+  requireCondition,
+  statusField,
+} from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-paste-harness-'));
@@ -20,8 +25,18 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath },
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    INVAR_AGENT_BACKEND: 'echo',
+  },
 });
+
+function emittedClipboardTexts(output: string): string[] {
+  return Array.from(
+    output.matchAll(/\x1b]52;c;([A-Za-z0-9+/=]*)\x07/g),
+    (match) => Buffer.from(match[1] ?? '', 'base64').toString('utf8'),
+  );
+}
 
 try {
   console.log('== harness paste: open a file and focus the editor ==');
@@ -66,7 +81,70 @@ try {
   driver.sendPaste('PASTEDINTERMINAL');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINTERMINAL') !== null);
   pass('terminal child echoed pasted text at its prompt');
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+c');
+  await driver.awaitSnapshot((snapshot) => snapshot.findText('^C') !== null);
+
+  console.log('== harness paste: terminal word operations reach readline ==');
+  driver.sendText('alpha beta gamma');
+  driver.sendRawInput('\x1bb');
+  driver.sendText('X');
+  await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha beta Xgamma') !== null);
+  driver.sendRawInput('\x1bb');
+  driver.sendRawInput('\x1bf');
+  driver.sendText('Y');
+  await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha beta XgammaY') !== null);
+  driver.sendRawInput('\x1b\x7f');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('alpha beta XgammaY') === null
+      && snapshot.findText('alpha beta') !== null,
+  );
+  pass('word-left, word-right, and Alt+Backspace forward as readline meta sequences');
+  driver.sendKeys('Control+c');
+  await driver.awaitQuiescence();
+
+  console.log('== harness paste: terminal selection copies through raw OSC 52 ==');
+  driver.sendText('printf COPYTERMINAL');
+  let snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('COPYTERMINAL') !== null,
+  );
+  const terminalCopyPosition = snapshot.findText('COPYTERMINAL');
+  if (!terminalCopyPosition) throw new Error('Terminal copy target disappeared');
+  await dragBetweenCells(
+    driver,
+    terminalCopyPosition.column,
+    terminalCopyPosition.row,
+    terminalCopyPosition.column + 11,
+    terminalCopyPosition.row,
+  );
+  const clipboardEmissionCountBefore = emittedClipboardTexts(driver.recordedOutput()).length;
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+  const copyDeadline = performance.now() + 5_000;
+  while (
+    emittedClipboardTexts(driver.recordedOutput()).length
+      <= clipboardEmissionCountBefore
+    && performance.now() < copyDeadline
+  ) {
+    await Bun.sleep(10);
+  }
+  requireCondition(
+    emittedClipboardTexts(driver.recordedOutput())
+      .slice(clipboardEmissionCountBefore)
+      .some((text) => text.includes('COPYTERMINAL')),
+    'terminal selection emits the selected bytes through OSC 52',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: terminalCopyPosition.column,
+    row: terminalCopyPosition.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: terminalCopyPosition.column,
+    row: terminalCopyPosition.row,
+    button: 'left',
+  });
+  driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
 
   console.log('== harness paste: agent paste inserts into the composer ==');
@@ -77,8 +155,50 @@ try {
   driver.sendPaste('PASTEDINAGENT');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') !== null);
   pass('agent composer paints the pasted text');
-  driver.sendRawInput('\x1b[27;6;97~');
+
+  console.log('== harness paste: paste survives staged and animated terminal interception ==');
+  for (let deletion = 0; deletion < 30; deletion += 1) {
+    driver.sendKeysWithoutFrameExpectation('Backspace');
+  }
+  driver.sendText('terminal-tools:stage:printf STAGED_PASTE');
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('$ printf STAGED_PASTE') !== null
+      && candidate.findText('terminal command staged at') !== null,
+  );
+  driver.sendPaste('_BURST');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('$ printf STAGED_PASTE_BURST') !== null,
+  );
+  pass('paste payload reaches readline intact while a command is staged');
+  driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
+
+  const panelBodyRow = Number(statusField<number>(statusPath, 'height') ?? 40) - 8;
+  driver.sendMouse({ kind: 'press', column: 10, row: panelBodyRow, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: 10, row: panelBodyRow, button: 'left' });
+  await driver.awaitSnapshot(
+    () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+  );
+  driver.sendText(
+    `terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`,
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('printf ANI') !== null
+      && candidate.findText(`ANIMATING_${'x'.repeat(100)}`) === null,
+  );
+  driver.sendPaste('PASTE_DURING_ANIMATION');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('PASTE_DURING_ANIMATION') !== null,
+  );
+  pass('paste payload reaches readline intact during visible typing');
+  driver.sendKeys('Control+c');
+  await driver.awaitQuiescence();
+  driver.sendRawInput('\x1b[27;6;97~');
+  await driver.awaitSnapshot(
+    () => statusField<boolean>(statusPath, 'terminalVisible') === false,
+  );
 
   console.log('== harness paste: focus recovery re-enables bracketed paste ==');
   const pasteEnableCountBefore = driver.outputSequenceCount('\x1b[?2004h');

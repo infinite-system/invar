@@ -37,6 +37,37 @@ function thinkingWordColumn(snapshot: HarnessSnapshot.Model): number | null {
   return word ? Array.from(rowText.slice(0, rowText.indexOf(word))).length : null;
 }
 
+function emittedClipboardTexts(output: string): string[] {
+  return Array.from(
+    output.matchAll(/\x1b]52;c;([A-Za-z0-9+/=]*)\x07/g),
+    (match) => Buffer.from(match[1] ?? '', 'base64').toString('utf8'),
+  );
+}
+
+async function awaitClipboardEmission(
+  driver: PtyTestDriver.Model,
+  previousEmissionCount: number,
+  expectedMarker: string,
+): Promise<void> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const emittedTexts = emittedClipboardTexts(driver.recordedOutput());
+    if (
+      emittedTexts
+        .slice(previousEmissionCount)
+        .some((text) => text.includes(expectedMarker))
+    ) {
+      return;
+    }
+    await Bun.sleep(10);
+  }
+  const newEmissions = emittedClipboardTexts(driver.recordedOutput()).slice(previousEmissionCount);
+  throw new Error(
+    `Timed out waiting for an OSC 52 clipboard emission containing ${expectedMarker}; `
+    + `received ${JSON.stringify(newEmissions)}`,
+  );
+}
+
 function verticalScrollBarRun(snapshot: HarnessSnapshot.Model): number {
   const paneRows = snapshot.textRows()
     .map((rowText, row) => ({ rowText, row }))
@@ -223,10 +254,12 @@ try {
     snapshot.findText('  "command"') !== null,
     'click expands the full pretty-printed tool input',
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).agentExpandedCount === 1,
-    'expanded tool state is published',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.agentExpandedCount === 1,
   );
+  HarnessSmoke.Class.pass('expanded tool state is published');
   const expandedToolPosition = snapshot.findText('▾ ⚙ Bash');
   HarnessSmoke.Class.requireCondition(expandedToolPosition !== null, 'expanded tool row paints');
   if (!expandedToolPosition) throw new Error('Expanded tool row disappeared');
@@ -341,6 +374,7 @@ try {
     transcriptPosition.column + 18,
     transcriptPosition.row,
   );
+  const transcriptClipboardCount = emittedClipboardTexts(driver.recordedOutput()).length;
   driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
   const transcriptCopyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
@@ -351,6 +385,8 @@ try {
     Number(transcriptCopyStatus.lastCopyChars) >= 5,
     'Ctrl+C copies a transcript selection',
   );
+  await awaitClipboardEmission(driver, transcriptClipboardCount, 'gamma-newest');
+  HarnessSmoke.Class.pass('transcript copy emits selected bytes through raw OSC 52');
 
   driver.sendText('COPYCOMPOSER text');
   snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('COPYCOMPOSER') !== null);
@@ -360,10 +396,11 @@ try {
     driver,
     composerPosition.column,
     composerPosition.row,
-    composerPosition.column + 11,
+    composerPosition.column + 12,
     composerPosition.row,
   );
-  driver.sendRawInputWithoutFrameExpectation('\x1b[27;9;99~');
+  const composerClipboardCount = emittedClipboardTexts(driver.recordedOutput()).length;
+  driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
   const composerCopyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
@@ -371,8 +408,33 @@ try {
   );
   HarnessSmoke.Class.requireCondition(
     Number(composerCopyStatus.lastCopyChars) >= 5,
-    'Cmd+C copies a composer selection',
+    'Ctrl+C copies a composer selection',
   );
+  await awaitClipboardEmission(driver, composerClipboardCount, 'COPYCOMPOSER');
+  HarnessSmoke.Class.pass('composer copy emits selected bytes through raw OSC 52');
+
+  console.log('== harness agent pane UX: composer word operations ==');
+  for (let deletion = 0; deletion < 30; deletion++) {
+    driver.sendKeysWithoutFrameExpectation('Backspace');
+  }
+  driver.sendText('alpha beta gamma');
+  driver.sendRawInput('\x1b[1;3D');
+  driver.sendText('X');
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('alpha beta Xgamma') !== null,
+  );
+  driver.sendRawInput('\x1b[1;3D');
+  driver.sendRawInput('\x1b[1;3C');
+  driver.sendText('Y');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('alpha beta XgammaY') !== null,
+  );
+  driver.sendRawInput('\x1b\x7f');
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('alpha beta XgammaY') === null
+      && candidate.findText('alpha beta') !== null,
+  );
+  HarnessSmoke.Class.pass('word-left, word-right, and Alt+Backspace edit the composer');
 
   console.log('== harness agent pane UX: multi-line composer and idle teardown ==');
   for (let deletion = 0; deletion < 30; deletion++) {

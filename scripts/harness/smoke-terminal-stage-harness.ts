@@ -20,7 +20,12 @@ import { PtyTestDriver } from './PtyTestDriver';
 
 function rightPaneText(snapshot: HarnessSnapshot.Model, leftPaneColumns: number): string {
   return snapshot.textRows()
-    .map((rowText) => rowText.slice(leftPaneColumns + 1))
+    .map((_rowText, rowIndex) =>
+      snapshot.rowCells(rowIndex)
+        .slice(leftPaneColumns + 1)
+        .filter((cell) => cell.width > 0)
+        .map((cell) => cell.characters || ' ')
+        .join(''))
     .join('\n');
 }
 
@@ -91,6 +96,7 @@ async function driveAnimatedTerminalTools(
   const injectionPath = join(homeDirectory, 'injection-proof.txt');
   const queuedPath = join(homeDirectory, 'queued-proof.txt');
   const animatedPath = join(homeDirectory, 'animated-proof.txt');
+  const replacementPath = join(homeDirectory, 'replacement-proof.txt');
 
   try {
     await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
@@ -134,12 +140,12 @@ async function driveAnimatedTerminalTools(
     driver.sendKeys('Enter');
     snapshot = await driver.awaitSnapshot(
       (candidate) => candidate.findText('runTerminalCommand') !== null
-        && candidate.findText('Invar sanitizes the full command') !== null,
+        && candidate.findText('replaceTerminalInput') !== null,
     );
     HarnessSmoke.Class.requireCondition(
       snapshot.findText('runTerminalCommand') !== null
-        && snapshot.findText('Invar sanitizes the full command') !== null,
-      'echo backend renders both registered tool manuals in bypass mode',
+        && snapshot.findText('replaceTerminalInput') !== null,
+      'echo backend renders the registered terminal tool manuals in bypass mode',
     );
 
     console.log('== harness terminal-stage: staged command is inert until human Enter ==');
@@ -164,6 +170,103 @@ async function driveAnimatedTerminalTools(
     driver.sendKeys('Enter');
     await awaitFileContents(stagedPath, 'STAGED');
     HarnessSmoke.Class.pass('human Enter executes the staged readline buffer');
+
+    console.log('== harness terminal-stage: grapheme-safe staged typing and mid-line edit ==');
+    await focusPanelCell(driver, statusPath, 0);
+    const emojiCommand = 'echo "test — with emoji 🦊✨"';
+    driver.sendText(`terminal-tools:stage:${emojiCommand}`);
+    driver.sendKeys('Enter');
+    snapshot = await driver.awaitSnapshot(
+      (candidate) => rightPaneText(candidate, leftPaneColumns)
+        .includes('echo "test — with emoji 🦊')
+        && candidate.findText('terminal command staged') !== null,
+    );
+    driver.sendKeys('Left');
+    driver.sendText('X');
+    driver.sendKeys('Backspace');
+    driver.sendKeys('End');
+    snapshot = await driver.awaitSnapshot(
+      (candidate) => rightPaneText(candidate, leftPaneColumns)
+        .includes('echo "test — with emoji 🦊'),
+    );
+    HarnessSmoke.Class.requireCondition(
+      rightPaneText(snapshot, leftPaneColumns).includes('echo "test — with emoji 🦊'),
+      'four-byte emoji and variation-selector graphemes reach readline intact',
+    );
+    driver.sendKeys('Enter');
+    snapshot = await driver.awaitSnapshot(
+      (candidate) => rightPaneText(candidate, leftPaneColumns)
+        .split('\n')
+        .some((rowText) =>
+          rowText.includes('test — with emoji')
+          && rowText.includes('🦊')
+          && rowText.includes('✨')
+          && !rowText.includes('echo "')),
+    );
+    HarnessSmoke.Class.requireCondition(
+      rightPaneText(snapshot, leftPaneColumns)
+        .split('\n')
+        .some((rowText) =>
+          rowText.includes('test — with emoji')
+          && rowText.includes('🦊')
+          && rowText.includes('✨')
+          && !rowText.includes('echo "')),
+      'mid-line editing preserves the exact command and Enter executes byte-exact emoji output',
+    );
+
+    console.log('== harness terminal-stage: read and replace the real readline buffer ==');
+    driver.sendText('printf BROKN_COMMAND');
+    await driver.awaitSnapshot(
+      (candidate) => rightPaneText(candidate, leftPaneColumns).includes('printf BROKN_COMMAND'),
+    );
+    await focusPanelCell(driver, statusPath, 0);
+    driver.sendText('terminal-tools:read');
+    driver.sendKeys('Enter');
+    snapshot = await driver.awaitSnapshot(
+      (candidate) => candidate.findText('lines') !== null
+        && candidate.findText('readTerminalInput') !== null,
+    );
+    const readResultSummary = snapshot.findText('lines');
+    HarnessSmoke.Class.requireCondition(
+      readResultSummary !== null,
+      'readTerminalInput returns terminal scrollback through the provider tool path',
+    );
+    if (!readResultSummary) throw new Error('readTerminalInput result summary disappeared');
+    driver.sendMouse({
+      kind: 'press',
+      column: readResultSummary.column,
+      row: readResultSummary.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: readResultSummary.column,
+      row: readResultSummary.row,
+      button: 'left',
+    });
+    await driver.awaitSnapshot(
+      (candidate) => candidate.findText('Current terminal input: printf BROKN_COMMAND') !== null,
+    );
+    HarnessSmoke.Class.pass('readTerminalInput observes the real current readline buffer');
+    driver.sendText(
+      `terminal-tools:replace:printf REPLACED > ${replacementPath}`,
+    );
+    driver.sendKeys('Enter');
+    snapshot = await driver.awaitSnapshot(
+      (candidate) => rightPaneText(candidate, leftPaneColumns).includes('printf REPLACED'),
+    );
+    HarnessSmoke.Class.requireCondition(
+      !existsSync(replacementPath)
+        && !rightPaneText(snapshot, leftPaneColumns).includes('BROKN_COMMANDprintf REPLACED'),
+      'replaceTerminalInput clears the old line and stages the replacement without Enter',
+    );
+    driver.sendKeys('Enter');
+    await awaitFileContents(replacementPath, 'REPLACED');
+    await focusPanelCell(driver, statusPath, 0);
+    await driver.awaitSnapshot(
+      (candidate) => candidate.findText('replaced-then-staged') !== null,
+    );
+    HarnessSmoke.Class.pass('replacement executes only after human Enter and records the diff event');
 
     console.log('== harness terminal-stage: newline injection is stripped before the first byte ==');
     await focusPanelCell(driver, statusPath, 0);

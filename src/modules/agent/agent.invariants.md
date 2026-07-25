@@ -80,6 +80,58 @@ the renderer reads only `session.transcript`.
 
 ## Chosen invariants
 
+### Composer word edits share one seam
+
+**Invariant:** If the agent composer moves or deletes by word, then it uses the shared
+`TextEditing.wordLeft`, `TextEditing.wordRight`, and `TextEditing.deletePreviousWord` boundaries.
+
+**Scope:** Agent composer word-left, word-right, and Alt-Backspace behavior.
+
+**Mechanism:** Agent-context keybindings resolve word intents, `Bootstrap` routes those intents to
+`AgentPaneContent`, and `AgentComposer` delegates every boundary calculation to `TextEditing`.
+
+**Generates:** Composer parity with editor and search text inputs without a second word parser.
+
+**Evidence:** `src/modules/agent/AgentComposer.test.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+
+**Impossible if true:** Composer word deletion disagreeing with editor word deletion for the same
+text; Alt-Backspace being swallowed; word motion splitting a grapheme.
+
+**Verification:** `bun test src/modules/agent/AgentComposer.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Terminal tools have explicit permission tiers
+
+**Invariant:** If an agent backend registers terminal tools, then `readTerminalInput` is observation
+tier, `stageTerminalCommand` and `replaceTerminalInput` are stage tier, and
+`runTerminalCommand` exists only in bypass mode.
+
+**Scope:** `AgentTerminalTools`, `SdkStreamBackend`, `CodexAppServerBackend`, and
+`EchoAgentBackend`.
+
+**Mechanism:** One `AgentTerminalTools.definitions` registry generates both backend tool lists.
+Read, stage, and replace definitions exist in every permission mode and auto-pass the SDK permission
+gate; run is added only when live permission resolution says bypass.
+
+**Generates:** The read-fix-retype loop on Claude and Codex; one permission ladder for every backend;
+tool descriptions teach the safe flow.
+
+**Evidence:** `src/modules/agent/AgentTerminalTools.test.ts`;
+`src/modules/agent/EchoAgentBackend.test.ts`; `scripts/harness/smoke-terminal-stage-harness.ts`.
+
+**Impossible if true:** `runTerminalCommand` appearing in ask mode; observation prompting for
+execution permission; one backend missing read or replace while another exposes it.
+
+**Verification:** `bun test src/modules/agent/AgentTerminalTools.test.ts src/modules/agent/EchoAgentBackend.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
 ### Agent events cross exactly one backend seam
 
 **Invariant:** Every agent event enters the module through the single `AgentBackend` interface, and

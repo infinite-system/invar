@@ -241,6 +241,9 @@ write instead of an animated cadence but retain the same sanitize-before-write a
 - Visible typing — absent user acceleration, animated commands use plain per-character writes at the
   configured cadence, so Readline echoes each prefix immediately instead of buffering the animation
   inside one bracketed paste.
+- Grapheme-complete writes — `TextSegmentation` is the one `Intl.Segmenter` authority, and one
+  `TerminalCommandTyping.plan` supplies the same grapheme array to delay calculation, timed writes,
+  and early-Enter fast-forwarding.
 - Inert staging — the complete command is sanitized before the first write, all CR, LF, C0, C1, and
   escape-sequence bytes are removed, and stage mode never calls the submission seam.
 - Complete execution — run mode calls the submission seam only after every sanitized character is
@@ -248,8 +251,9 @@ write instead of an animated cadence but retain the same sanitize-before-write a
   complete staged buffer exactly once.
 
 **Mechanism:** `TerminalCommandController.request` sanitizes the whole command before
-`typeRequest` can write. `typeCharacter` sends one plain character per timer step;
-`completeActiveTypingImmediately` fast-forwards the sanitized remainder before an early Enter can
+`typeRequest` can write. `TerminalCommandTyping.plan` segments once through `TextSegmentation`;
+`typeCharacter` sends one complete grapheme per timer step and
+`completeActiveTypingImmediately` joins the remaining graphemes before an early Enter can
 reach Readline; `finishRequest` leaves staged input in Readline or calls `submit` once for run mode.
 A complete bracketed-paste wrapper cannot provide visible animation because Readline inserts its
 buffered payload only at the closing marker.
@@ -260,18 +264,104 @@ Enter; one explicit autonomous-submit boundary after complete run-mode typing.
 **Rejected alternatives:** Wrap the complete animation in bracketed paste — Readline buffers the
 payload and makes every intermediate typing frame invisible.
 
-**Evidence:** `src/modules/terminal/TerminalCommandController.test.ts` asserts per-character animated
+**Evidence:** `src/modules/terminal/TerminalCommandController.test.ts` asserts per-grapheme animated
 writes, sanitize-before-write, no staged Enter, final run-mode Enter, and early human Enter
-fast-forwarding the complete command; `scripts/harness/smoke-terminal-stage-harness.ts` observes an
-intermediate prefix in real Bash, proves it remains inert, then executes the complete command with
-human Enter.
+fast-forwarding the complete command; `scripts/harness/smoke-terminal-stage-harness.ts` stages and
+mid-line edits `echo "test — with emoji 🦊✨"` in real Bash, then asserts its exact output.
 
-**Impossible if true:** an animated command appearing all at once only after its final character; a
+**Impossible if true:** a surrogate pair, variation selector, combining mark, or joiner sequence
+written in separate timer steps; an animated command appearing all at once only after its final character; a
 staged command executing before human Enter; an embedded newline or escape sequence reaching
 Readline; run mode submitting a partial command.
 
 **Verification:** `bun test src/modules/terminal/TerminalCommandController.test.ts && bun
 scripts/harness/smoke-terminal-stage-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Copy reaches the host terminal
+
+**Invariant:** If the user copies selected text from the terminal pane, agent transcript, or agent
+composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so the host
+terminal receives it across cmux, SSH, or a VM boundary.
+
+**Scope:** `Clipboard.copy`, terminal-pane selection, agent-transcript selection, and agent-composer
+selection. Clipboard reads remain local-tool or in-app-buffer operations because OSC 52 is write-only.
+
+**Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
+`Clipboard.copy` seam. That seam buffers in-app, emits `OSC 52 ; c ; base64 BEL` through stdout, and
+also writes a local clipboard tool when available.
+
+**Generates:** Remote copy without `DISPLAY`; one raw-byte assertion shared by every copy surface;
+local clipboard compatibility and in-app paste remain available.
+
+**Rejected alternatives:** Shell out only to xclip or wl-copy — those tools address the remote
+machine clipboard and commonly fail across SSH or VM boundaries.
+
+**Evidence:** `src/modules/system/Clipboard.ts`; `scripts/harness/smoke-paste-harness.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+
+**Impossible if true:** A successful in-app copy status with no OSC 52 bytes crossing the app PTY;
+terminal selection sending Ctrl+C to the child instead of copying; copied Unicode being sliced by
+UTF-16 units.
+
+**Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Terminal word operations reach readline
+
+**Invariant:** If the terminal pane is focused and the user invokes word-left, word-right, or
+word-delete, then the child receives exactly `ESC b`, `ESC f`, or `ESC DEL`.
+
+**Scope:** Terminal-context keybinding data, `Bootstrap` terminal routing, and `TerminalKeys`.
+
+**Mechanism:** Terminal-context bindings resolve the intent before the pane default; the handlers
+forward the original key to `TerminalPaneContent`, and `TerminalKeys` normalizes legacy meta and
+modifier-aware option events to Readline bytes.
+
+**Generates:** Shell-native word editing without stealing editor bindings; identical behavior for
+Option-arrow and legacy ESC-b or ESC-f encodings.
+
+**Evidence:** `src/modules/terminal/TerminalKeys.test.ts`;
+`scripts/harness/smoke-paste-harness.ts`.
+
+**Impossible if true:** Alt-Left reaching Readline as a plain left arrow; Alt-Backspace being consumed
+by Invar or forwarded as plain DEL; a terminal word operation mutating the editor beneath.
+
+**Verification:** `bun test src/modules/terminal/TerminalKeys.test.ts && bun scripts/harness/smoke-paste-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
+### Terminal replacement preserves human execution
+
+**Invariant:** If an agent replaces the current terminal input, then exactly one Ctrl-U clears the
+old Readline line, the sanitized replacement follows the existing grapheme-safe staging path, and no
+Enter is sent.
+
+**Scope:** `TerminalCommandController.replaceTerminalInput`, `TerminalInstance`, and
+`replaceTerminalInput` agent tool wiring.
+
+**Mechanism:** The controller observes `currentInputLine`, writes one `0x15`, queues the replacement
+through its existing stage request until the prompt parses empty, then emits one
+`replaced-then-staged` event carrying the old and new commands.
+
+**Generates:** The read-fix-retype loop; a transcript old/new diff; human Enter remains the execution
+grant.
+
+**Evidence:** `src/modules/terminal/TerminalCommandController.test.ts`;
+`scripts/harness/smoke-terminal-stage-harness.ts`.
+
+**Impossible if true:** Replacement executing without human Enter; more than one Ctrl-U write; the
+old and new command concatenating; a replacement bypassing sanitization or grapheme segmentation.
+
+**Verification:** `bun test src/modules/terminal/TerminalCommandController.test.ts && bun scripts/harness/smoke-terminal-stage-harness.ts`
 
 **Status:** provisional
 
