@@ -10,3 +10,13 @@ test('segments emoji variation selectors and joiner sequences as complete graphe
     'e\u0301',
   ]);
 });
+
+test('segments words while retaining whitespace and punctuation boundaries', () => {
+  expect(TextSegmentation.Class.words('alpha-beta  gamma').map((segment) => segment.text)).toEqual([
+    'alpha',
+    '-',
+    'beta',
+    '  ',
+    'gamma',
+  ]);
+});

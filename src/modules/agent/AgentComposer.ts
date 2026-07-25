@@ -10,8 +10,10 @@ import { TextSelectionModel, type SelectionPoint, type SelectionSpanRange } from
 import { TextEditing } from '../editor/TextEditing';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { Clipboard } from '../system/Clipboard';
+import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 
 // invariant: Composer word edits share one seam (src/modules/agent/agent.invariants.md)
+// invariant: Agent text wraps at word boundaries (src/modules/agent/agent.invariants.md)
 /** Max visual rows the composer grows to before it scrolls internally (keeps the cursor line visible). */
 export const COMPOSER_MAX_ROWS = 5;
 /** The prompt gutter width ("❯ " on line 1, "  " on continuations) reserved on every composer row. */
@@ -36,6 +38,10 @@ export interface ComposerLayout {
 }
 
 class $AgentComposer {
+  protected static get rightPaddingColumns(): number {
+    return 2;
+  }
+
   private readonly buffer = ref('');
   private readonly selection = new TextSelectionModel.Class();
   /** The cursor as a GRAPHEME index into the buffer (0..length) — the single source of edit position. */
@@ -44,7 +50,7 @@ class $AgentComposer {
   private lastWrapWidth = 1;
   private scrollOffset = 0;
   /** Cached wrap segments for (buffer, width) — every geometry read derives from ONE segmentation. */
-  private cachedSegments: readonly import('../ui/WrapText').WrapSegment[] | null = null;
+  private cachedSegments: readonly AgentWordWrapSegment[] | null = null;
   private cachedSegmentsText = '';
   private cachedSegmentsWidth = 0;
 
@@ -178,9 +184,12 @@ class $AgentComposer {
   // (the reviewed éx caret divergence).
 
   /** The wrapped segments for the CURRENT buffer at the last layout width (cached per state). */
-  private segments(): readonly import('../ui/WrapText').WrapSegment[] {
+  private segments(): readonly AgentWordWrapSegment[] {
     if (this.cachedSegments === null || this.cachedSegmentsText !== this.buffer.value || this.cachedSegmentsWidth !== this.lastWrapWidth) {
-      this.cachedSegments = WrapText.Class.segments(this.buffer.value, Math.max(1, this.lastWrapWidth));
+      this.cachedSegments = AgentWordWrap.Class.segments(
+        this.buffer.value,
+        Math.max(1, this.lastWrapWidth),
+      );
       this.cachedSegmentsText = this.buffer.value;
       this.cachedSegmentsWidth = this.lastWrapWidth;
     }
@@ -195,17 +204,32 @@ class $AgentComposer {
   }
   /** The cursor's visual (row, DISPLAY-cell column) in the wrapped composer. */
   private caretVisual(): { line: number; column: number } {
-    return WrapText.Class.visualPositionOf(this.segments(), this.clampCursor());
+    return AgentWordWrap.Class.visualPositionOf(
+      this.segments(),
+      this.clampCursor(),
+    );
   }
   /** The grapheme index at a visual (row, DISPLAY-cell column), snapped to a cluster start. */
   private positionAt(lineIndex: number, column: number): number {
-    return Math.min(this.graphemeCount(), WrapText.Class.graphemeAtVisualPosition(this.segments(), lineIndex, column));
+    return Math.min(
+      this.graphemeCount(),
+      AgentWordWrap.Class.graphemeAtVisualPosition(
+        this.segments(),
+        lineIndex,
+        column,
+      ),
+    );
   }
 
   /** Lay the composer out for `paneWidth` columns: wrap, cap the row count, scroll to keep the CURSOR
    *  line visible, mark selection spans, and place the caret at the cursor's visual cell. */
   layout(paneWidth: number): ComposerLayout {
-    this.lastWrapWidth = Math.max(1, paneWidth - COMPOSER_GUTTER_COLUMNS);
+    this.lastWrapWidth = Math.max(
+      1,
+      paneWidth
+        - COMPOSER_GUTTER_COLUMNS
+        - (this.constructor as typeof $AgentComposer).rightPaddingColumns,
+    );
     const segments = this.segments();
 
     const totalLines = Math.max(1, segments.length);
@@ -278,7 +302,20 @@ class $AgentComposer {
     return this.selection.selectedText((line, startCell, endCell) => {
       const segment = segments[line];
       if (!segment) return null;
-      return WrapText.Class.sliceByDisplayCells(segment.text, startCell, endCell ?? Number.MAX_SAFE_INTEGER);
+      const selectedVisibleText = WrapText.Class.sliceByDisplayCells(
+        segment.text,
+        startCell,
+        endCell ?? Number.MAX_SAFE_INTEGER,
+      );
+      if (endCell !== null) return selectedVisibleText;
+      const displayedGraphemeCount = EditorCoordinates.Class.graphemeCount(
+        segment.text,
+      );
+      const sourceGraphemes = EditorCoordinates.Class.graphemes(
+        segment.sourceText,
+      );
+      return selectedVisibleText
+        + sourceGraphemes.slice(displayedGraphemeCount).join('');
     }, '');
   }
 

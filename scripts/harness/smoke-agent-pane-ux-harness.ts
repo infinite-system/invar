@@ -27,6 +27,13 @@ interface Rectangle {
   height: number;
 }
 
+interface ComposerScreenRow {
+  readonly row: number;
+  readonly contentStartColumn: number;
+  readonly rightBorderColumn: number;
+  readonly content: string;
+}
+
 function bottomPanelSlot(statusPath: string): Rectangle {
   const layoutSlots = HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
     | Record<string, Rectangle>
@@ -51,6 +58,72 @@ function thinkingWordColumn(snapshot: HarnessSnapshot.Model): number | null {
   if (!rowText) return null;
   const word = thinkingWords.find((candidate) => rowText.includes(candidate));
   return word ? Array.from(rowText.slice(0, rowText.indexOf(word))).length : null;
+}
+
+function normalizedVisibleText(text: string): string {
+  return text.trim().replace(/\s+/g, ' ');
+}
+
+function composerScreenRows(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): ComposerScreenRow[] {
+  const promptPosition = snapshot.findText('❯ ');
+  if (!promptPosition) throw new Error('Composer prompt disappeared');
+  const rows: ComposerScreenRow[] = [];
+  const contentStartColumn = promptPosition.column + 2;
+  for (
+    let row = promptPosition.row;
+    row < panelRectangle.top + panelRectangle.height;
+    row += 1
+  ) {
+    const panelRowText = snapshot.rowText(row).slice(
+      panelRectangle.left,
+      panelRectangle.left + panelRectangle.width,
+    );
+    if (row > promptPosition.row && panelRowText.includes('────────')) break;
+    const rightBorderOffset = panelRowText.lastIndexOf('│');
+    if (rightBorderOffset < 0) {
+      throw new Error(`Composer row ${row} lost its right pane border`);
+    }
+    const rightBorderColumn = panelRectangle.left + rightBorderOffset;
+    rows.push({
+      row,
+      contentStartColumn,
+      rightBorderColumn,
+      content: snapshot
+        .rowText(row)
+        .slice(contentStartColumn, rightBorderColumn)
+        .trimEnd(),
+    });
+  }
+  return rows;
+}
+
+function transcriptReplyRows(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): string[] {
+  const panelRows = snapshot.textRows().map((rowText) =>
+    rowText.slice(
+      panelRectangle.left + 1,
+      panelRectangle.left + panelRectangle.width - 1,
+    ));
+  const assistantLabelRow = panelRows.findIndex(
+    (rowText, row) =>
+      row > panelRectangle.top
+      && rowText.trim() === 'Claude',
+  );
+  if (assistantLabelRow < 0) throw new Error('Assistant transcript label disappeared');
+  const toolRow = panelRows.findIndex(
+    (rowText, row) =>
+      row > assistantLabelRow && rowText.includes('Bash'),
+  );
+  if (toolRow < 0) throw new Error('Transcript tool row disappeared');
+  return panelRows
+    .slice(assistantLabelRow + 1, toolRow)
+    .map((rowText) => rowText.trim())
+    .filter((rowText) => rowText.length > 0);
 }
 
 function emittedClipboardTexts(output: string): string[] {
@@ -144,7 +217,10 @@ async function submitTurn(
   prompt: string,
 ): Promise<void> {
   driver.sendText(prompt);
-  await driver.awaitSnapshot((snapshot) => snapshot.findText(prompt) !== null);
+  const firstPromptWord = prompt.split(/\s+/)[0] ?? prompt;
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(firstPromptWord) !== null,
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -215,10 +291,13 @@ try {
   HarnessSmoke.Class.pass('Shift+Tab changes the permission mode line');
 
   console.log('== harness agent pane UX: animated busy and waiting state ==');
+  const wordBoundaryPrompt =
+    'alpha-marker boundaryalpha boundarybravo boundarycharlie '
+    + 'boundarydelta boundaryecho boundaryfoxtrot boundarygolf';
   await submitTurn(
     driver,
     statusPath,
-    'alpha-marker tell me something with enough words to wrap nicely',
+    wordBoundaryPrompt,
   );
   snapshot = await driver.awaitSnapshot(
     (candidate) => thinkingLine(candidate) !== null
@@ -256,7 +335,13 @@ try {
   const userTurnRow = firstRowContaining(snapshot, 'alpha-marker');
   HarnessSmoke.Class.requireCondition(userTurnRow !== null, 'user turn remains in the transcript');
   if (userTurnRow === null) throw new Error('User turn row disappeared');
-  const followingRow = snapshot.rowText(userTurnRow + 1);
+  const userTurnLastRow = firstRowContaining(snapshot, 'boundarygolf');
+  HarnessSmoke.Class.requireCondition(
+    userTurnLastRow !== null,
+    'wrapped user turn keeps its final word whole',
+  );
+  if (userTurnLastRow === null) throw new Error('User turn final row disappeared');
+  const followingRow = snapshot.rowText(userTurnLastRow + 1);
   const followingPanelRow = followingRow.slice(
     panelRectangle.left,
     panelRectangle.left + panelRectangle.width,
@@ -265,6 +350,21 @@ try {
     /^│[\s█▄░]*│$/.test(followingPanelRow),
     'a blank line follows the posted user turn',
   );
+  const expectedEchoReply =
+    `You said: “${wordBoundaryPrompt}”. This is the local echo backend — `
+    + 'real Claude arrives when CliStreamBackend is wired (phase 2).';
+  const visibleReplyRows = transcriptReplyRows(snapshot, panelRectangle);
+  HarnessSmoke.Class.requireCondition(
+    normalizedVisibleText(visibleReplyRows.join(' '))
+      === normalizedVisibleText(expectedEchoReply),
+    'echo reply reconstructs from rendered rows without a split word boundary',
+  );
+  for (const promptWord of wordBoundaryPrompt.split(' ')) {
+    HarnessSmoke.Class.requireCondition(
+      visibleReplyRows.some((rowText) => rowText.includes(promptWord)),
+      `wrapped echo reply keeps ${promptWord} whole on one row`,
+    );
+  }
 
   console.log('== harness agent pane UX: collapsible tool row and wrapped reply ==');
   HarnessSmoke.Class.requireCondition(
@@ -479,21 +579,80 @@ try {
   );
   HarnessSmoke.Class.pass('word-left, word-right, and Alt+Backspace edit the composer');
 
-  console.log('== harness agent pane UX: multi-line composer and idle teardown ==');
+  console.log('== harness agent pane UX: composer word wrap, right gap, and idle teardown ==');
   for (let deletion = 0; deletion < 30; deletion++) {
     driver.sendKeysWithoutFrameExpectation('Backspace');
   }
-  driver.sendText(
-    'this is a deliberately long composer message that must wrap across multiple visual rows '
-    + 'rather than running off the right edge under the neighbor pane at the end here',
-  );
+  const composerWordBoundaryText =
+    'composeralpha composerbravo composercharlie composerdelta composerecho '
+    + 'composerfoxtrot composergolf composerhotel composerindia composerjuliet';
+  driver.sendText(composerWordBoundaryText);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('❯ this is a deliberately') !== null
-      && candidate.findText('at the end here') !== null,
+    (candidate) => candidate.findText('composerjuliet') !== null,
+  );
+  let composerRows = composerScreenRows(snapshot, panelRectangle);
+  HarnessSmoke.Class.requireCondition(
+    normalizedVisibleText(composerRows.map((row) => row.content).join(' '))
+      === composerWordBoundaryText,
+    'composer reconstructs from rendered rows without a split ordinary word',
+  );
+  for (const composerWord of composerWordBoundaryText.split(' ')) {
+    HarnessSmoke.Class.requireCondition(
+      composerRows.some((row) => row.content.includes(composerWord)),
+      `composer keeps ${composerWord} whole on one row`,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    composerRows.every(
+      (row) =>
+        snapshot.rowText(row.row).slice(
+          row.rightBorderColumn - 2,
+          row.rightBorderColumn,
+        ) === '  ',
+    ),
+    'every wrapped composer row leaves two right-edge columns blank',
+  );
+
+  for (
+    let deletion = 0;
+    deletion < composerWordBoundaryText.length;
+    deletion += 1
+  ) {
+    driver.sendKeysWithoutFrameExpectation('Backspace');
+  }
+  const hyphenatedComposerText =
+    'hyphenalpha-hyphenbravo-hyphencharlie-hyphendelta-hyphenecho-'
+    + 'hyphenfoxtrot-hyphengolf-hyphenhotel-hyphenindia-hyphenjuliet';
+  driver.sendText(hyphenatedComposerText);
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('hyphenjuliet') !== null,
+  );
+  composerRows = composerScreenRows(snapshot, panelRectangle);
+  HarnessSmoke.Class.requireCondition(
+    composerRows.map((row) => row.content).join('') === hyphenatedComposerText
+      && composerRows.length > 1
+      && composerRows
+        .slice(0, -1)
+        .every((row) => row.content.endsWith('-')),
+    'over-width hyphenated composer text wraps only after existing hyphens',
   );
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText('at the end here') !== null,
-    'long composer input wraps with its head and tail visible',
+    composerRows.every(
+      (row) =>
+        snapshot.rowText(row.row).slice(
+          row.rightBorderColumn - 2,
+          row.rightBorderColumn,
+        ) === '  ',
+    ),
+    'hyphenated composer rows retain the two-column right gap',
+  );
+  const lastComposerRow = composerRows[composerRows.length - 1];
+  if (!lastComposerRow) throw new Error('Wrapped composer rows disappeared');
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cursorRow === lastComposerRow.row
+      && snapshot.cursorColumn
+        === lastComposerRow.contentStartColumn + lastComposerRow.content.length,
+    'native caret follows the end of the hyphen-wrapped composer text',
   );
   await HarnessSmoke.Class.awaitFrameSilence(driver);
   await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);

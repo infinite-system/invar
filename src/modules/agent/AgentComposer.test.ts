@@ -18,10 +18,10 @@ describe('AgentComposer — wrap, cap, caret', () => {
     expect(model.value).toBe('hello world');
   });
 
-  test('long text WRAPS to (width − gutter) and the caret sits on the last row', () => {
+  test('long text WRAPS inside the gutter and two-column right padding', () => {
     const model = composer();
     model.insert('x'.repeat(10));
-    const layout = model.layout(7); // inner width = 7 − 2 = 5
+    const layout = model.layout(9); // inner width = 9 − gutter 2 − right padding 2 = 5
     expect(layout.rows.map((row) => row.text)).toEqual(['xxxxx', 'xxxxx']);
     expect(layout.rowCount).toBe(2);
     expect(layout.caretRow).toBe(1);
@@ -33,7 +33,7 @@ describe('AgentComposer — wrap, cap, caret', () => {
   test('growth is capped at COMPOSER_MAX_ROWS, scrolling to keep the caret (last) row visible', () => {
     const model = composer();
     model.insert('x'.repeat(100));
-    const layout = model.layout(4); // inner width 2 → 50 visual lines
+    const layout = model.layout(6); // inner width 2 → 50 visual lines
     expect(layout.rowCount).toBe(COMPOSER_MAX_ROWS);
     // The window is anchored to the bottom: the last visible row is the final (caret) line.
     expect(layout.rows[layout.rows.length - 1]?.isFirstLine).toBe(false);
@@ -68,7 +68,7 @@ describe('AgentComposer — selection + copy (no phantom newlines across wrap)',
   test('selectedText reconstructs the buffer substring across a wrap boundary', () => {
     const model = composer();
     model.insert('abcdef');
-    model.layout(5); // inner width 3 → ['abc','def']
+    model.layout(7); // inner width 3 → ['abc','def']
     // Select from line 0 col 1 to line 1 col 2 → buffer offsets 1..5 → "bcde" (NO inserted newline).
     model.beginSelection({ line: 0, column: 1 });
     model.extendSelection({ line: 1, column: 2 });
@@ -79,7 +79,7 @@ describe('AgentComposer — selection + copy (no phantom newlines across wrap)',
   test('pointAt maps a composer-local cell to (visual line, column) minus the gutter', () => {
     const model = composer();
     model.insert('abcdef');
-    model.layout(5); // 2 rows, scrollOffset 0
+    model.layout(7); // 2 rows, scrollOffset 0
     const point = model.pointAt(COMPOSER_GUTTER_COLUMNS + 1, 1); // second visible row, one past gutter
     expect(point).toEqual({ line: 1, column: 1 });
   });
@@ -176,14 +176,42 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
   test('Up/Down move between visual lines; edges report false (fall through to scroll)', () => {
     const model = composer();
     model.insert('x'.repeat(12));
-    model.layout(7); // inner width 5 → 3 visual lines: xxxxx / xxxxx / xx
+    model.layout(9); // inner width 5 → 3 visual lines: xxxxx / xxxxx / xx
     // cursor at end (index 12) → last visual line
     expect(model.moveDown()).toBe(false); // already on last line
     expect(model.moveUp()).toBe(true); // up to the middle line, same column (clamped)
-    model.layout(7);
+    model.layout(9);
     expect(model.moveUp()).toBe(true); // up to the first line
-    model.layout(7);
+    model.layout(9);
     expect(model.moveUp()).toBe(false); // first line → fall through
+  });
+
+  test('word-boundary wrapping keeps caret movement correct across rows', () => {
+    const model = typed('alpha beta gamma');
+    const layout = model.layout(14); // inner width 10 → ['alpha beta', 'gamma']
+    expect(layout.rows.map((row) => row.text)).toEqual([
+      'alpha beta',
+      'gamma',
+    ]);
+    expect(layout.caretRow).toBe(1);
+    expect(layout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 5);
+
+    expect(model.moveUp()).toBe(true);
+    expect(model.cursor).toBe(5);
+    const movedLayout = model.layout(14);
+    expect(movedLayout.caretRow).toBe(0);
+    expect(movedLayout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 5);
+
+    model.insert('X');
+    expect(model.value).toBe('alphaX beta gamma');
+  });
+
+  test('selection across a word wrap preserves the consumed separator space', () => {
+    const model = typed('alpha beta');
+    model.layout(9); // inner width 5 → ['alpha', 'beta']
+    model.beginSelection({ line: 0, column: 0 });
+    model.extendSelection({ line: 1, column: 4 });
+    expect(model.selectedText()).toBe('alpha beta');
   });
 
   test('a just-emptied composer (deleteLine) reports Up/Down as edge → false', () => {

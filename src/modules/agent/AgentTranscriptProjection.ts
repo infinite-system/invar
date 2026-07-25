@@ -14,6 +14,7 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { AgentToolSummary } from './AgentToolSummary';
 import { AgentProviderRegistry } from './AgentProviderRegistry';
 import type { TranscriptEntry } from './AgentEvents';
+import { AgentWordWrap } from './AgentWordWrap';
 
 /** One projected visual line: its text, paint colour, weight, the transcript entry it belongs to, and
  *  whether clicking it toggles that entry's collapsed/expanded state (tool rows only). */
@@ -53,9 +54,9 @@ function truncate(text: string, width: number, glyphLevel: GlyphLevel): string {
   return WrapText.Class.clipToWidth(text, width, ThemeIcons.Class.agentTranscriptIconsFor(glyphLevel).ellipsisCell);
 }
 
-/** Hard-wrap a string to `width` columns via the shared, width-exact seam. */
+/** Word-wrap a string to `width` columns via the shared agent-text seam. */
 function wrap(text: string, width: number): string[] {
-  return WrapText.Class.wrap(text, width);
+  return AgentWordWrap.Class.wrap(text, width);
 }
 
 /** The pretty (multi-line) body a tool-use entry expands to. */

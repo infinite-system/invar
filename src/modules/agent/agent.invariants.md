@@ -80,6 +80,40 @@ the renderer reads only `session.transcript`.
 
 ## Chosen invariants
 
+### Agent text wraps at word boundaries
+
+**Invariant:** If transcript or composer text exceeds its display width, then both surfaces wrap
+through `AgentWordWrap` at whitespace, use an existing hyphen only for an over-width hyphenated
+token, and hard-break an unbreakable token by whole graphemes only as the overflow fallback.
+
+**Scope:** Agent transcript bodies and the editable composer. The composer reserves two blank display
+columns at its right edge in addition to its two-column prompt gutter. Collapsed one-line tool and
+permission summaries remain clipped chrome rather than wrapped prose.
+
+**Mechanism:** `AgentWordWrap` consumes `TextSegmentation.words` and grapheme clusters while measuring
+every candidate with the existing `WrapText` display-cell authority. `AgentTranscriptProjection` and
+`AgentComposer` both call that seam; the composer retains its source grapheme ranges for caret,
+selection, and editing geometry while its protected static right-padding getter reduces the wrap
+budget by two columns.
+
+**Generates:** Whole ordinary words on rendered rows; hyphen-first fallback for over-width compounds;
+grapheme-safe hard fallback for CJK, emoji, and unbreakable tokens; matching transcript and composer
+wrap behavior; a visible two-column composer right gap.
+
+**Evidence:** `src/modules/agent/AgentWordWrap.test.ts`;
+`src/modules/agent/AgentComposer.test.ts`; `src/modules/agent/AgentTranscriptProjection.test.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+
+**Impossible if true:** An ordinary word split across two agent rows while it fits the row width; a
+hyphenated over-width word hard-split before a usable hyphen; a grapheme split into invalid text; the
+composer painting typed text in either of its two reserved right-edge columns.
+
+**Verification:** `bun test src/modules/agent/AgentWordWrap.test.ts src/modules/agent/AgentComposer.test.ts src/modules/agent/AgentTranscriptProjection.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Composer word edits share one seam
 
 **Invariant:** If the agent composer moves or deletes by word, then it uses the shared

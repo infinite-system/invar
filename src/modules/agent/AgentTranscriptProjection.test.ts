@@ -116,6 +116,26 @@ describe('AgentTranscriptProjection.project', () => {
     expect(lines.length).toBeGreaterThan(1); // it actually wrapped
   });
 
+  test('body wrapping moves ordinary words whole and uses hyphens before hard fallback', () => {
+    const plain = project(
+      [{ role: 'assistant', text: 'alpha beta gamma' }],
+      10,
+    );
+    expect(plain.slice(1).map((line) => line.text)).toEqual([
+      'alpha beta',
+      'gamma',
+    ]);
+
+    const hyphenated = project(
+      [{ role: 'assistant', text: 'state-of-the-art' }],
+      9,
+    );
+    expect(hyphenated.slice(1).map((line) => line.text)).toEqual([
+      'state-of-',
+      'the-art',
+    ]);
+  });
+
   test('a collapsed summary is truncated to width (never overflows the pane)', () => {
     const lines = project([{ role: 'tool-use', id: 't1', name: 'Bash', input: 'a'.repeat(200) }], 25);
     expect(lines).toHaveLength(1);
