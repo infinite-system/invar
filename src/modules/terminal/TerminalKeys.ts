@@ -9,59 +9,75 @@
 import { Static } from 'ivue/extras';
 import type { KeyEvent } from '@opentui/core';
 
-// CSI = ESC [ — the introducer for cursor/navigation sequences.
-const CSI = '[';
-
-/** Named keys → their canonical terminal bytes (unmodified). */
-const NAMED_KEY_BYTES: Record<string, string> = {
-  return: '\r',
-  enter: '\r',
-  tab: '\t',
-  backspace: '', // DEL — what a terminal sends for Backspace
-  escape: '',
-  space: ' ',
-  up: `${CSI}A`,
-  down: `${CSI}B`,
-  right: `${CSI}C`,
-  left: `${CSI}D`,
-  home: `${CSI}H`,
-  end: `${CSI}F`,
-  pageup: `${CSI}5~`,
-  pagedown: `${CSI}6~`,
-  delete: `${CSI}3~`,
-  insert: `${CSI}2~`,
-};
-
-function $encode(key: KeyEvent): string {
-  const name = key.name;
-  // Ctrl+<letter> → the C0 control byte (Ctrl+A = 0x01 … Ctrl+Z = 0x1a). Ctrl+C, Ctrl+D, Ctrl+Z etc.
-  // reach the child so job control and interrupts work.
-  if (key.ctrl && !key.meta && !key.option && name && name.length === 1) {
-    const code = name.toLowerCase().charCodeAt(0);
-    if (code >= 97 && code <= 122) return String.fromCharCode(code - 96);
-  }
-  // Readline word operations use Meta sequences. OpenTUI may decode a legacy ESC prefix as `meta`
-  // or a modifier-aware protocol as `option`; both must return the same bytes to the child shell.
-  if ((key.meta || key.option) && !key.ctrl) {
-    if (name === 'left' || name === 'b') return '\x1bb';
-    if (name === 'right' || name === 'f') return '\x1bf';
-    if (name === 'backspace' || name === 'delete') return '\x1b\x7f';
-  }
-  // Shift+Tab is the back-tab sequence.
-  if (name === 'tab' && key.shift) return `${CSI}Z`;
-  const named = NAMED_KEY_BYTES[name];
-  if (named) return named;
-  // A plain printable character rides its own sequence (a single byte, no modifiers).
-  const sequence = key.sequence;
-  if (sequence && sequence.length >= 1 && !key.ctrl && !key.meta && !key.option) {
-    const firstCode = sequence.charCodeAt(0);
-    if (firstCode >= 0x20 && firstCode !== 0x7f) return sequence;
-  }
-  return '';
-}
-
 class $TerminalKeys {
-  static encode = $encode;
+  // CSI = ESC [ — the introducer for cursor/navigation sequences.
+  protected static get controlSequenceIntroducer(): string {
+    return '\x1b[';
+  }
+
+  /** Named keys → their canonical terminal bytes (unmodified). */
+  protected static get $namedKeyBytes(): Readonly<Record<string, string>> {
+    const controlSequenceIntroducer = this.controlSequenceIntroducer;
+    const namedKeyBytes: Readonly<Record<string, string>> = {
+      return: '\r',
+      enter: '\r',
+      tab: '\t',
+      backspace: '\x7f', // DEL — what a terminal sends for Backspace
+      escape: '\x1b',
+      space: ' ',
+      up: `${controlSequenceIntroducer}A`,
+      down: `${controlSequenceIntroducer}B`,
+      right: `${controlSequenceIntroducer}C`,
+      left: `${controlSequenceIntroducer}D`,
+      home: `${controlSequenceIntroducer}H`,
+      end: `${controlSequenceIntroducer}F`,
+      pageup: `${controlSequenceIntroducer}5~`,
+      pagedown: `${controlSequenceIntroducer}6~`,
+      delete: `${controlSequenceIntroducer}3~`,
+      insert: `${controlSequenceIntroducer}2~`,
+    };
+    Object.defineProperty(this, '$namedKeyBytes', {
+      configurable: true,
+      value: namedKeyBytes,
+    });
+    return namedKeyBytes;
+  }
+
+  static encode(key: KeyEvent): string {
+    const name = key.name;
+    // Ctrl+<letter> → the C0 control byte (Ctrl+A = 0x01 … Ctrl+Z = 0x1a). Ctrl+C, Ctrl+D, Ctrl+Z etc.
+    // reach the child so job control and interrupts work.
+    if (key.ctrl && !key.meta && !key.option && name && name.length === 1) {
+      const code = name.toLowerCase().charCodeAt(0);
+      if (code >= 97 && code <= 122) return String.fromCharCode(code - 96);
+    }
+    // Readline word operations use Meta sequences. OpenTUI may decode a legacy ESC prefix as `meta`
+    // or a modifier-aware protocol as `option`; both must return the same bytes to the child shell.
+    if ((key.meta || key.option) && !key.ctrl) {
+      if (name === 'left' || name === 'b') return '\x1bb';
+      if (name === 'right' || name === 'f') return '\x1bf';
+      if (name === 'backspace' || name === 'delete') return '\x1b\x7f';
+    }
+    // Shift+Tab is the back-tab sequence.
+    if (name === 'tab' && key.shift) {
+      return `${this.controlSequenceIntroducer}Z`;
+    }
+    const namedKeyBytes = this.$namedKeyBytes[name];
+    if (namedKeyBytes) return namedKeyBytes;
+    // A plain printable character rides its own sequence (a single byte, no modifiers).
+    const sequence = key.sequence;
+    if (
+      sequence &&
+      sequence.length >= 1 &&
+      !key.ctrl &&
+      !key.meta &&
+      !key.option
+    ) {
+      const firstCode = sequence.charCodeAt(0);
+      if (firstCode >= 0x20 && firstCode !== 0x7f) return sequence;
+    }
+    return '';
+  }
 }
 
 export namespace TerminalKeys {

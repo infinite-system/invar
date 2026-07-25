@@ -7,8 +7,8 @@
 import type { TerminalBackend } from './TerminalBackend.interface';
 
 class $MockBackend implements TerminalBackend {
-  private dataCallback: ((bytes: Uint8Array) => void) | null = null;
-  private exitCallback: ((exitCode: number | null) => void) | null = null;
+  protected dataCallback: ((bytes: Uint8Array) => void) | null = null;
+  protected exitCallback: ((exitCode: number | null) => void) | null = null;
   /** Every string written toward the "child" — keystrokes and emulator replies, in order. */
   readonly writes: string[] = [];
   /** Every size pushed via resize(), in order. */

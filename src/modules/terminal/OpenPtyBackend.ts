@@ -17,12 +17,12 @@ import { OpenPty } from './OpenPty';
 import { TerminalRcfile, type TerminalRcfileHandle } from './TerminalRcfile';
 
 class $OpenPtyBackend implements TerminalBackend {
-  private readonly openPty: OpenPty.Model;
-  private readonly child: ReturnType<typeof Bun.spawn>;
-  private readonly promptRcfile: TerminalRcfileHandle | null;
-  private dataCallback: ((bytes: Uint8Array) => void) | null = null;
-  private exitCallback: ((exitCode: number | null) => void) | null = null;
-  private killed = false;
+  protected readonly openPty: OpenPty.Model;
+  protected readonly child: ReturnType<typeof Bun.spawn>;
+  protected readonly promptRcfile: TerminalRcfileHandle | null;
+  protected dataCallback: ((bytes: Uint8Array) => void) | null = null;
+  protected exitCallback: ((exitCode: number | null) => void) | null = null;
+  protected killed = false;
   readonly title: string;
   readonly cwd: string;
 

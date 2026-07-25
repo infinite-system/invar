@@ -9,15 +9,65 @@ import { dlopen, FFIType, ptr } from 'bun:ffi';
 import { closeSync, createReadStream, type ReadStream } from 'node:fs';
 
 class $OpenPty {
-  private readonly masterFileDescriptor: number;
-  private slaveFileDescriptorValue: number;
-  private readStream: ReadStream | null = null;
-  private closed = false;
+  protected static get terminalWindowSizeRequest(): bigint {
+    return 0x5414n;
+  }
+
+  protected static get $openPtyLibrary(): OpenPtyLibrary {
+    const openPtyLibrary = this.loadOpenPtyLibrary();
+    Object.defineProperty(this, '$openPtyLibrary', {
+      configurable: true,
+      value: openPtyLibrary,
+    });
+    return openPtyLibrary;
+  }
+
+  protected static get $terminalControlLibrary() {
+    const terminalControlLibrary = dlopen('libc.so.6', {
+      ioctl: {
+        args: [FFIType.int, FFIType.u64, FFIType.ptr],
+        returns: FFIType.int,
+      },
+      write: {
+        args: [FFIType.int, FFIType.ptr, FFIType.u64],
+        returns: FFIType.i64,
+      },
+    });
+    Object.defineProperty(this, '$terminalControlLibrary', {
+      configurable: true,
+      value: terminalControlLibrary,
+    });
+    return terminalControlLibrary;
+  }
+
+  protected static loadOpenPtyLibrary(): OpenPtyLibrary {
+    const openPtySymbol = {
+      openpty: {
+        args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
+        returns: FFIType.int,
+      },
+    } as const;
+    for (const libraryName of ['libc.so.6', 'libutil.so.1', 'libutil.so']) {
+      try {
+        const library = dlopen(libraryName, openPtySymbol);
+        return library.symbols as never;
+      } catch {
+        // Try the next platform library.
+      }
+    }
+    throw new Error('openpty not found in libc or libutil');
+  }
+
+  protected readonly masterFileDescriptor: number;
+  protected slaveFileDescriptorValue: number;
+  protected readStream: ReadStream | null = null;
+  protected closed = false;
 
   constructor(columns = 80, rows = 24) {
     const masterFileDescriptor = new Int32Array(1);
     const slaveFileDescriptor = new Int32Array(1);
-    const openResult = openPtyLibrary.openpty(
+    const openPtyClass = this.constructor as typeof $OpenPty;
+    const openResult = openPtyClass.$openPtyLibrary.openpty(
       ptr(masterFileDescriptor),
       ptr(slaveFileDescriptor),
       null,
@@ -58,9 +108,10 @@ class $OpenPty {
       : Buffer.from(data);
     if (buffer.length === 0) return;
     let writtenByteCount = 0;
+    const openPtyClass = this.constructor as typeof $OpenPty;
     while (writtenByteCount < buffer.length) {
       const writeResult = Number(
-        terminalControlLibrary.symbols.write(
+        openPtyClass.$terminalControlLibrary.symbols.write(
           this.masterFileDescriptor,
           ptr(buffer, writtenByteCount),
           BigInt(buffer.length - writtenByteCount),
@@ -83,9 +134,10 @@ class $OpenPty {
       0,
       0,
     ]);
-    terminalControlLibrary.symbols.ioctl(
+    const openPtyClass = this.constructor as typeof $OpenPty;
+    openPtyClass.$terminalControlLibrary.symbols.ioctl(
       this.masterFileDescriptor,
-      terminalWindowSizeRequest,
+      openPtyClass.terminalWindowSizeRequest,
       ptr(windowSize),
     );
   }
@@ -124,14 +176,7 @@ export namespace OpenPty {
   export type Model = InstanceType<typeof Class>;
 }
 
-const terminalWindowSizeRequest = 0x5414n;
-const openPtyLibrary = loadOpenPtyLibrary();
-const terminalControlLibrary = dlopen('libc.so.6', {
-  ioctl: { args: [FFIType.int, FFIType.u64, FFIType.ptr], returns: FFIType.int },
-  write: { args: [FFIType.int, FFIType.ptr, FFIType.u64], returns: FFIType.i64 },
-});
-
-function loadOpenPtyLibrary(): {
+interface OpenPtyLibrary {
   openpty: (
     master: unknown,
     slave: unknown,
@@ -139,20 +184,4 @@ function loadOpenPtyLibrary(): {
     terminalAttributes: unknown,
     windowSize: unknown,
   ) => number;
-} {
-  const openPtySymbol = {
-    openpty: {
-      args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
-      returns: FFIType.int,
-    },
-  } as const;
-  for (const libraryName of ['libc.so.6', 'libutil.so.1', 'libutil.so']) {
-    try {
-      const library = dlopen(libraryName, openPtySymbol);
-      return library.symbols as never;
-    } catch {
-      // Try the next platform library.
-    }
-  }
-  throw new Error('openpty not found in libc or libutil');
 }

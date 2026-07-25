@@ -44,12 +44,12 @@ class $TerminalCommandTyping {
   }
 }
 
-export interface TerminalCommandTypingPlan {
-  readonly graphemes: readonly string[];
-  readonly delays: readonly number[];
-}
-
 export namespace TerminalCommandTyping {
   export const $Class = $TerminalCommandTyping;
   export const Class = Static($Class);
+}
+
+export interface TerminalCommandTypingPlan {
+  readonly graphemes: readonly string[];
+  readonly delays: readonly number[];
 }

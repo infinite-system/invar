@@ -27,19 +27,34 @@ import type {
   TerminalCommandRequestResult,
 } from './TerminalCommandController';
 
-// The terminal pane's gutter: a 2-column left/right margin and a 1-row top/bottom margin around the
-// emulator, so the shell doesn't hug the panel border. The emulator (and thus the child PTY) sizes to
-// the VISIBLE region inside the gutter; the caret and rendered cells shift by the same margin. Kept in
-// ONE place so render(), onResize(), and caret() agree — a mismatch would put the cursor off the text.
-const TERMINAL_PAD_COLUMNS = 2;
-const TERMINAL_PAD_ROWS = 1;
-
 class $TerminalPaneContent implements PaneContent {
+  // The terminal pane's gutter: a 2-column left/right margin and a 1-row top/bottom margin around the
+  // emulator, so the shell doesn't hug the panel border. The emulator (and thus the child PTY) sizes to
+  // the VISIBLE region inside the gutter; the caret and rendered cells shift by the same margin. Kept in
+  // ONE place so render(), onResize(), and caret() agree — a mismatch would put the cursor off the text.
+  protected static get padColumns(): number {
+    return 2;
+  }
+
+  protected static get padRows(): number {
+    return 1;
+  }
+
   readonly id = 'terminal';
   readonly icon = '❯'; // ❯
   protected readonly selection = new TextSelectionModel.Class();
 
   constructor(protected readonly instance: TerminalInstance.Instance) {}
+
+  protected get terminalPadColumns(): number {
+    const terminalPaneContentClass = this.constructor as typeof $TerminalPaneContent;
+    return terminalPaneContentClass.padColumns;
+  }
+
+  protected get terminalPadRows(): number {
+    const terminalPaneContentClass = this.constructor as typeof $TerminalPaneContent;
+    return terminalPaneContentClass.padRows;
+  }
 
   get title(): string {
     return this.instance.exited.value ? `${this.instance.title} (exited)` : this.instance.title;
@@ -55,8 +70,8 @@ class $TerminalPaneContent implements PaneContent {
       palette: context.palette,
       width: context.width,
       height: context.height,
-      padColumns: TERMINAL_PAD_COLUMNS,
-      padRows: TERMINAL_PAD_ROWS,
+      padColumns: this.terminalPadColumns,
+      padRows: this.terminalPadRows,
       selectionRanges: Array.from(
         { length: this.instance.rows },
         (_unused, rowIndex) =>
@@ -165,9 +180,9 @@ class $TerminalPaneContent implements PaneContent {
     return {
       line: Math.max(
         0,
-        Math.min(this.instance.rows - 1, row - TERMINAL_PAD_ROWS),
+        Math.min(this.instance.rows - 1, row - this.terminalPadRows),
       ),
-      column: Math.max(0, column - TERMINAL_PAD_COLUMNS),
+      column: Math.max(0, column - this.terminalPadColumns),
     };
   }
 
@@ -175,8 +190,8 @@ class $TerminalPaneContent implements PaneContent {
     if (this.instance.exited.value) return null;
     // Shift by the gutter so the block cursor lands on the padded cell, not the pane origin.
     return {
-      column: this.instance.cursorColumn + TERMINAL_PAD_COLUMNS,
-      row: this.instance.cursorRow + TERMINAL_PAD_ROWS,
+      column: this.instance.cursorColumn + this.terminalPadColumns,
+      row: this.instance.cursorRow + this.terminalPadRows,
     };
   }
 
@@ -184,8 +199,8 @@ class $TerminalPaneContent implements PaneContent {
     // Size the emulator (and the child PTY) to the VISIBLE region inside the gutter, so `stty size`
     // reports the padded dimensions and no cell is drawn under the margin.
     this.instance.resize(
-      Math.max(1, columns - 2 * TERMINAL_PAD_COLUMNS),
-      Math.max(1, rows - 2 * TERMINAL_PAD_ROWS),
+      Math.max(1, columns - 2 * this.terminalPadColumns),
+      Math.max(1, rows - 2 * this.terminalPadRows),
     );
   }
 

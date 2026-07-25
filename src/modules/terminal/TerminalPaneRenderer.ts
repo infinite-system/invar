@@ -13,88 +13,82 @@ import type { SelectionSpanRange } from '../ui/TextSelectionModel';
 import type { TerminalInstance } from './TerminalInstance';
 import type { TerminalCell } from './TerminalEmulator';
 
-export interface TerminalPaneRenderContext {
-  instance: TerminalInstance.Instance;
-  palette: Palette;
-  /** Available cell rows for the terminal body (the whole pane region, gutter included). */
-  height: number;
-  /** Available cell columns for the terminal body (the whole pane region, gutter included). */
-  width: number;
-  /** Left/right gutter columns kept blank around the emulator (default 0). */
-  padColumns?: number;
-  /** Top/bottom gutter rows kept blank around the emulator (default 0). */
-  padRows?: number;
-  selectionRanges?: readonly (SelectionSpanRange | null)[];
-}
-
-// The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
-// 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
-const ANSI_16 = [
-  '#000000', '#800000', '#008000', '#808000', '#000080', '#800080', '#008080', '#c0c0c0',
-  '#808080', '#ff0000', '#00ff00', '#ffff00', '#0000ff', '#ff00ff', '#00ffff', '#ffffff',
-];
-
-function toHex(value: number): string {
-  return value.toString(16).padStart(2, '0');
-}
-
-function paletteToHex(index: number): string {
-  if (index < 16) return ANSI_16[index] ?? '#c0c0c0';
-  if (index < 232) {
-    const cubeIndex = index - 16;
-    const steps = [0, 95, 135, 175, 215, 255];
-    const red = steps[Math.floor(cubeIndex / 36) % 6] ?? 0;
-    const green = steps[Math.floor(cubeIndex / 6) % 6] ?? 0;
-    const blue = steps[cubeIndex % 6] ?? 0;
-    return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+class $TerminalPaneRenderer {
+  // The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
+  // 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
+  protected static get $ansiPalette(): readonly string[] {
+    const ansiPalette = [
+      '#000000', '#800000', '#008000', '#808000', '#000080', '#800080', '#008080', '#c0c0c0',
+      '#808080', '#ff0000', '#00ff00', '#ffff00', '#0000ff', '#ff00ff', '#00ffff', '#ffffff',
+    ];
+    Object.defineProperty(this, '$ansiPalette', {
+      configurable: true,
+      value: ansiPalette,
+    });
+    return ansiPalette;
   }
-  const gray = 8 + (index - 232) * 10;
-  return `#${toHex(gray)}${toHex(gray)}${toHex(gray)}`;
-}
 
-function rgbToHex(value: number): string {
-  return `#${toHex((value >> 16) & 0xff)}${toHex((value >> 8) & 0xff)}${toHex(value & 0xff)}`;
-}
-
-/** The cell's foreground color as a hex string, honoring RGB / palette / default. */
-function foregroundHex(cell: TerminalCell, palette: Palette): string {
-  if (cell.isForegroundRgb) return rgbToHex(cell.foreground);
-  if (cell.isForegroundPalette) return paletteToHex(cell.foreground);
-  return palette.fg;
-}
-
-/** The cell's background color as a hex string, or null when it is the default panel background. */
-function backgroundHex(cell: TerminalCell, panelBackground: string): string | null {
-  if (cell.isBackgroundRgb) return rgbToHex(cell.background);
-  if (cell.isBackgroundPalette) return paletteToHex(cell.background);
-  return panelBackground;
-}
-
-function styleKey(cell: TerminalCell, selected: boolean): string {
-  return `${cell.foreground}:${cell.background}:${cell.isForegroundRgb}:${cell.isForegroundPalette}:${cell.isBackgroundRgb}:${cell.isBackgroundPalette}:${cell.isBold}:${cell.isInverse}:${selected}`;
-}
-
-function chunkFor(
-  text: string,
-  cell: TerminalCell,
-  palette: Palette,
-  selected: boolean,
-): TextChunk {
-  let foreground = foregroundHex(cell, palette);
-  let background = backgroundHex(cell, palette.panel);
-  if (cell.isInverse) {
-    const swap = background ?? palette.panel;
-    background = foreground;
-    foreground = swap;
+  protected static toHex(value: number): string {
+    return value.toString(16).padStart(2, '0');
   }
-  if (selected) background = palette.selection;
-  let chunk = fg(foreground)(text);
-  if (cell.isBold) chunk = bold(chunk);
-  if (background && background !== palette.panel) chunk = bg(background)(chunk);
-  return chunk;
-}
 
-function $render(context: TerminalPaneRenderContext): StyledText {
+  protected static paletteToHex(index: number): string {
+    if (index < 16) return this.$ansiPalette[index] ?? '#c0c0c0';
+    if (index < 232) {
+      const cubeIndex = index - 16;
+      const steps = [0, 95, 135, 175, 215, 255];
+      const red = steps[Math.floor(cubeIndex / 36) % 6] ?? 0;
+      const green = steps[Math.floor(cubeIndex / 6) % 6] ?? 0;
+      const blue = steps[cubeIndex % 6] ?? 0;
+      return `#${this.toHex(red)}${this.toHex(green)}${this.toHex(blue)}`;
+    }
+    const gray = 8 + (index - 232) * 10;
+    return `#${this.toHex(gray)}${this.toHex(gray)}${this.toHex(gray)}`;
+  }
+
+  protected static rgbToHex(value: number): string {
+    return `#${this.toHex((value >> 16) & 0xff)}${this.toHex((value >> 8) & 0xff)}${this.toHex(value & 0xff)}`;
+  }
+
+  /** The cell's foreground color as a hex string, honoring RGB / palette / default. */
+  protected static foregroundHex(cell: TerminalCell, palette: Palette): string {
+    if (cell.isForegroundRgb) return this.rgbToHex(cell.foreground);
+    if (cell.isForegroundPalette) return this.paletteToHex(cell.foreground);
+    return palette.fg;
+  }
+
+  /** The cell's background color as a hex string, or null when it is the default panel background. */
+  protected static backgroundHex(cell: TerminalCell, panelBackground: string): string | null {
+    if (cell.isBackgroundRgb) return this.rgbToHex(cell.background);
+    if (cell.isBackgroundPalette) return this.paletteToHex(cell.background);
+    return panelBackground;
+  }
+
+  protected static styleKey(cell: TerminalCell, selected: boolean): string {
+    return `${cell.foreground}:${cell.background}:${cell.isForegroundRgb}:${cell.isForegroundPalette}:${cell.isBackgroundRgb}:${cell.isBackgroundPalette}:${cell.isBold}:${cell.isInverse}:${selected}`;
+  }
+
+  protected static chunkFor(
+    text: string,
+    cell: TerminalCell,
+    palette: Palette,
+    selected: boolean,
+  ): TextChunk {
+    let foreground = this.foregroundHex(cell, palette);
+    let background = this.backgroundHex(cell, palette.panel);
+    if (cell.isInverse) {
+      const swap = background ?? palette.panel;
+      background = foreground;
+      foreground = swap;
+    }
+    if (selected) background = palette.selection;
+    let chunk = fg(foreground)(text);
+    if (cell.isBold) chunk = bold(chunk);
+    if (background && background !== palette.panel) chunk = bg(background)(chunk);
+    return chunk;
+  }
+
+  static render(context: TerminalPaneRenderContext): StyledText {
   const { instance, palette } = context;
   const padColumns = Math.max(0, context.padColumns ?? 0);
   const padRows = Math.max(0, context.padRows ?? 0);
@@ -113,7 +107,7 @@ function $render(context: TerminalPaneRenderContext): StyledText {
     let runKey = '';
     const flushRun = () => {
       if (runCell && runText) {
-        rowChunks.push(chunkFor(runText, runCell, palette, runSelected));
+        rowChunks.push(this.chunkFor(runText, runCell, palette, runSelected));
       }
       runText = '';
       runCell = null;
@@ -133,7 +127,7 @@ function $render(context: TerminalPaneRenderContext): StyledText {
       const selected = selectionRange !== null
         && columnIndex < selectionRange.end
         && columnIndex + Math.max(1, cell.width) > selectionRange.start;
-      const key = styleKey(cell, selected);
+      const key = this.styleKey(cell, selected);
       if (runCell && key !== runKey) flushRun();
       runText += cell.characters;
       runCell = cell;
@@ -155,14 +149,25 @@ function $render(context: TerminalPaneRenderContext): StyledText {
     chunks.push(...(framedRows[rowIndex] as TextChunk[]));
     if (rowIndex < framedRows.length - 1) chunks.push(fg(palette.fg)('\n'));
   }
-  return new StyledText(chunks);
-}
-
-class $TerminalPaneRenderer {
-  static render = $render;
+    return new StyledText(chunks);
+  }
 }
 
 export namespace TerminalPaneRenderer {
   export const $Class = $TerminalPaneRenderer;
   export const Class = Static($TerminalPaneRenderer);
+}
+
+export interface TerminalPaneRenderContext {
+  instance: TerminalInstance.Instance;
+  palette: Palette;
+  /** Available cell rows for the terminal body (the whole pane region, gutter included). */
+  height: number;
+  /** Available cell columns for the terminal body (the whole pane region, gutter included). */
+  width: number;
+  /** Left/right gutter columns kept blank around the emulator (default 0). */
+  padColumns?: number;
+  /** Top/bottom gutter rows kept blank around the emulator (default 0). */
+  padRows?: number;
+  selectionRanges?: readonly (SelectionSpanRange | null)[];
 }

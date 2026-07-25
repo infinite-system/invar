@@ -13,6 +13,31 @@ import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalInstance } from './TerminalInstance';
 import { TerminalPaneContent } from './TerminalPaneContent';
 
+class $TerminalFactory {
+  /** Build the default real backend (openpty + shell). Overridable seam. */
+  static createBackend(options: TerminalCreateOptions): TerminalBackend {
+    return new OpenPtyBackend.Class(options);
+  }
+
+  /** Wire backend + emulator + instance into a ready TerminalPaneContent. */
+  static create(options: TerminalCreateOptions = {}): TerminalPaneContent.Model {
+    const columns = options.columns ?? 80;
+    const rows = options.rows ?? 24;
+    const backend = this.createBackend(options);
+    const emulator = new TerminalEmulator.Class(columns, rows);
+    const instance = new TerminalInstance.Class(backend, emulator, {
+      typingSpeed: options.typingSpeed,
+      reducedMotion: options.reducedMotion,
+    });
+    return new TerminalPaneContent.Class(instance);
+  }
+}
+
+export namespace TerminalFactory {
+  export const $Class = $TerminalFactory;
+  export const Class = Static($TerminalFactory);
+}
+
 export interface TerminalCreateOptions {
   columns?: number;
   rows?: number;
@@ -22,32 +47,4 @@ export interface TerminalCreateOptions {
   promptColor?: string;
   typingSpeed?: () => number;
   reducedMotion?: () => boolean;
-}
-
-/** Build the default real backend (openpty + shell). Overridable seam. */
-function $createBackend(options: TerminalCreateOptions): TerminalBackend {
-  return new OpenPtyBackend.Class(options);
-}
-
-/** Wire backend + emulator + instance into a ready TerminalPaneContent. */
-function $create(options: TerminalCreateOptions = {}): TerminalPaneContent.Model {
-  const columns = options.columns ?? 80;
-  const rows = options.rows ?? 24;
-  const backend = TerminalFactory.Class.createBackend(options);
-  const emulator = new TerminalEmulator.Class(columns, rows);
-  const instance = new TerminalInstance.Class(backend, emulator, {
-    typingSpeed: options.typingSpeed,
-    reducedMotion: options.reducedMotion,
-  });
-  return new TerminalPaneContent.Class(instance);
-}
-
-class $TerminalFactory {
-  static createBackend = $createBackend;
-  static create = $create;
-}
-
-export namespace TerminalFactory {
-  export const $Class = $TerminalFactory;
-  export const Class = Static($TerminalFactory);
 }
