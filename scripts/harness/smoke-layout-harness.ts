@@ -377,6 +377,11 @@ async function assertSplitterStates(
     `${splitterName} splitter uses the shared one-cell cross axis`,
   );
   const initialPoint = splitterPoint(initialRegion);
+  // Park the pointer away from the splitter before sampling the resting background: a previous
+  // drive step can leave the mouse ON this cell (hover already lit), and then "background changes
+  // on hover" never fires. Row 0 is the workspace tab strip — never a splitter cell.
+  driver.sendMouseWithoutFrameExpectation({ kind: 'move', column: 0, row: 0 });
+  await driver.awaitQuiescence();
   const restingBackground = backgroundAt(driver.snapshot(), initialPoint);
 
   driver.sendMouse({

@@ -101,10 +101,12 @@ try {
     (candidate) => candidate.findText('Git') !== null
       && candidate.cell(gitRow, 0)?.characters === '|',
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'git',
-    'clicking Source Control switched the view',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.sidebarView === 'git',
   );
+  HarnessSmoke.Class.pass('clicking Source Control switched the view');
   HarnessSmoke.Class.requireCondition(
     snapshot.cell(gitRow, 0)?.characters === '|',
     'accent moved to column 0 on the Source Control icon row',
@@ -131,10 +133,12 @@ try {
     (candidate) => candidate.findText('Coming soon') !== null
       && candidate.cell(extensionsRow, 0)?.characters === '|',
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'extensions',
-    'clicking Extensions switched the view',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.sidebarView === 'extensions',
   );
+  HarnessSmoke.Class.pass('clicking Extensions switched the view');
   HarnessSmoke.Class.requireCondition(accentCount(snapshot) === 1, 'one item remains active on Extensions');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('tree-marker.txt') === null,
@@ -147,33 +151,41 @@ try {
   console.log('== harness activitybar: Ctrl+Shift chords switch the same views ==');
   driver.sendKeys('Control+Shift+g');
   snapshot = await driver.awaitSnapshot((candidate) => candidate.cell(gitRow, 0)?.characters === '|');
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'git',
-    'Ctrl+Shift+G switched to Source Control',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.sidebarView === 'git',
   );
+  HarnessSmoke.Class.pass('Ctrl+Shift+G switched to Source Control');
   HarnessSmoke.Class.pass('chord moved the accent to Source Control');
   driver.sendKeys('Control+Shift+e');
   await driver.awaitSnapshot((candidate) => candidate.cell(filesRow, 0)?.characters === '|');
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'files',
-    'Ctrl+Shift+E switched to Explorer',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.sidebarView === 'files',
   );
+  HarnessSmoke.Class.pass('Ctrl+Shift+E switched to Explorer');
   driver.sendKeys('Control+Shift+x');
   await driver.awaitSnapshot((candidate) => candidate.findText('Coming soon') !== null);
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).sidebarView === 'extensions',
-    'Ctrl+Shift+X switched to Extensions and its content',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.sidebarView === 'extensions',
   );
+  HarnessSmoke.Class.pass('Ctrl+Shift+X switched to Extensions and its content');
 
   console.log('== harness activitybar: Ctrl+Shift+B hides and restores the bar ==');
   driver.sendKeys('Control+Shift+e');
   await driver.awaitSnapshot((candidate) => accentCount(candidate) === 1);
   driver.sendKeys('Control+Shift+b');
   await driver.awaitSnapshot((candidate) => accentCount(candidate) === 0);
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).showActivityBar === false,
-    'Ctrl+Shift+B hid the bar and flipped the setting off',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.showActivityBar === false,
   );
+  HarnessSmoke.Class.pass('Ctrl+Shift+B hid the bar and flipped the setting off');
   driver.sendKeys('Control+Shift+b');
   await driver.awaitSnapshot((candidate) => accentCount(candidate) >= 1);
   HarnessSmoke.Class.pass('Ctrl+Shift+B showed the bar again');
