@@ -283,6 +283,57 @@ is the single `setSize` edge, asserted not to run inside the frame effect.
 
 **Last refined:** 2026-07-21
 
+### Geometry aggregates match their consumers
+
+**Invariant:** If a geometry aggregate supplies a consumer, then it is computed exactly where a
+hard boundary consumes it, approximated stably where only a proportion consumes it, and not
+computed where nothing consumes it.
+
+**Scope:** Editor scroll extents and scrollbar proportions. The no-wrap horizontal clamp consumes
+the exact full-document maximum display width; word-wrap mode has no horizontal consumer. A
+scrollbar thumb may consume a stable approximation when only its proportion depends on the value.
+
+**Components:**
+- *Exact hard boundary* — `TextDocument.maximumLineWidth` is the true full-document display width
+  while no-wrap mode can clamp horizontal scroll.
+- *Stable proportional input* — a scrollbar proportion does not change when only the visible
+  window changes and content stays unchanged.
+- *Absent unused aggregate* — word-wrap mode neither computes nor incrementally maintains
+  `maximumLineWidth`.
+
+**Mechanism:** `TextDocument.rebuildMaximumLineWidth` seeds from integer UTF-16 lengths, rejects
+lines whose two-columns-per-code-unit upper bound cannot beat the champion, and exactly measures
+only surviving candidates; tab lines always survive to exact measurement. Local edits compare
+only replacements unless the champion shrinks or disappears, which reruns the same prefilter.
+`Editor.synchronizeHorizontalExtentTracking` activates this aggregate only in no-wrap mode.
+
+**Generates:** one full-document horizontal extent authority for momentum, drag auto-scroll, and
+the horizontal scrollbar; a stable thumb while vertically scrolling unchanged content; zero
+maximum-width work in word-wrap mode.
+
+**Rejected alternatives:** Recompute width from visible lines — the clamp and thumb change when
+the viewport moves although document geometry did not. Maintain maximum width while wrapping —
+there is no horizontal consumer to justify the work.
+
+**Evidence:** The 2026-07-24 scrollbar regression changed horizontal thumb length while vertical
+scroll exposed different-width lines. The 2026-07-25 `JpegDecoder.test.ts` regression stopped
+Alt-wheel at the opening viewport width before the deep widest line's true end.
+`src/modules/editor/TextDocument.ts`; `src/modules/editor/Editor.ts`;
+`src/modules/workspace/Workspace.ts`.
+
+**Impossible if true:** Alt-wheel stopping before the true end of a deep widest line; a horizontal
+thumb changing length while unchanged content scrolls vertically; a word-wrap edit measuring or
+maintaining the document maximum display width.
+
+**Verification:** `bun test src/modules/editor/__tests__/editor-core.test.ts
+src/modules/workspace/Workspace.scroll.test.ts && bun
+scripts/harness/smoke-horizontal-extent-harness.ts && bun
+scripts/harness/smoke-scrollbars-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### A structural line edit is one atomic undo step that keeps the cursor on the moved line
 
 **Invariant:** Moving the cursor's line up or down (swap with the neighbour) and duplicating it are each

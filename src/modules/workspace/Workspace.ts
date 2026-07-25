@@ -1031,11 +1031,12 @@ class $Workspace {
     const editorHorizontalStep = Momentum.Class.stepMomentum(editorViewport.horizontalScrollMomentum.value, dtSeconds);
     editorViewport.horizontalScrollMomentum.value = editorHorizontalStep.momentum;
     if (editorHorizontalStep.rows !== 0) {
-      let widestVisibleLineWidth = 0;
-      for (const line of this.editor.document.slice(editorViewport.scrollTop.value, editorViewport.height.value)) {
-        widestVisibleLineWidth = Math.max(widestVisibleLineWidth, EditorCoordinates.Class.lineWidth(line));
-      }
-      editorViewport.scrollByColumns(editorHorizontalStep.rows, widestVisibleLineWidth);
+      // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
+      // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
+      editorViewport.scrollByColumns(
+        editorHorizontalStep.rows,
+        this.editor.document.maximumLineWidth,
+      );
     }
 
     const treeStep = Momentum.Class.stepMomentum(this.tree.selectionMomentum.value, dtSeconds, this.verticalMomentum);

@@ -114,7 +114,7 @@ describe('Workspace.tickScrollAnimations', () => {
     expect(workspace.editor.viewport.verticalScrollMomentum.value.residual).toBeGreaterThan(0);
   });
 
-  test('clamps horizontal glide to visible lines and changes glide to its rendered window', () => {
+  test('clamps horizontal glide to the full document when the widest line is below the viewport', () => {
     const workspace = new Workspace.Class();
     workspace.editor.document.loadFromText(
       ['x'.repeat(15), 'x'.repeat(25), 'x'.repeat(100)].join('\n'),
@@ -135,7 +135,7 @@ describe('Workspace.tickScrollAnimations', () => {
 
     workspace.tickScrollAnimations(1);
 
-    expect(workspace.editor.viewport.scrollLeft.value).toBe(15);
+    expect(workspace.editor.viewport.scrollLeft.value).toBe(80);
     expect(workspace.gitPanel.changesScrollTop.value).toBe(10);
   });
 
