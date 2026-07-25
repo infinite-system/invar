@@ -12,61 +12,54 @@ import type { Settings } from '../settings/Settings';
 import type { Palette } from '../theme/ThemePalettes';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { SplitterElement } from './SplitterElement';
-
-export interface PaneSplittersDeps {
-  renderer: CliRenderer;
-  settings: Settings.Instance;
-  workspaceSet: WorkspaceSet.Instance;
-  sidebar: BoxRenderable;
-}
-
 class $PaneSplitters {
-  readonly sidebar: SplitterElement.Model;
-  readonly git: SplitterElement.Model;
-
-  constructor(private readonly deps: PaneSplittersDeps) {
-    this.sidebar = new SplitterElement.Class({
-      renderer: deps.renderer,
-      identifier: 'sidebar-divider',
-      orientation: 'vertical',
-      reportUnit: 'cells',
-      initialSize: deps.settings.sidebarWidth.value,
-      minimumSize: 18,
-      maximumSize: 70,
-      pointerDirection: () =>
-        deps.settings.sidebarPosition.value === 'left' ? 1 : -1,
-      currentSize: () => deps.settings.sidebarWidth.value,
-      onSizeChange: (width) => {
-        deps.settings.sidebarWidth.value = Math.round(width);
-      },
-      onDragEnd: () => deps.settings.save(),
-    });
-    this.git = new SplitterElement.Class({
-      renderer: deps.renderer,
-      identifier: 'git-split-divider',
-      orientation: 'horizontal',
-      reportUnit: 'ratio',
-      initialSize: deps.workspaceSet.active.gitSplitRatio,
-      minimumSize: 0.1,
-      maximumSize: 0.9,
-      currentSize: () => deps.workspaceSet.active.gitSplitRatio,
-      currentExtentCells: () =>
-        Math.max(1, Number(deps.sidebar.height) - 2),
-      onSizeChange: (ratio) => deps.workspaceSet.active.setGitSplit(ratio),
-      onDragEnd: () => deps.workspaceSet.active.persistGitSplit(),
-    });
-    this.git.renderable.position = 'absolute';
-    this.git.renderable.visible = false;
-  }
-
-  updateAppearance(palette: Palette): void {
-    this.sidebar.updateAppearance(palette);
-    this.git.updateAppearance(palette);
-  }
+    readonly sidebar: SplitterElement.Model;
+    readonly git: SplitterElement.Model;
+    constructor(protected readonly deps: PaneSplittersDeps) {
+        this.sidebar = new SplitterElement.Class({
+            renderer: deps.renderer,
+            identifier: 'sidebar-divider',
+            orientation: 'vertical',
+            reportUnit: 'cells',
+            initialSize: deps.settings.sidebarWidth.value,
+            minimumSize: 18,
+            maximumSize: 70,
+            pointerDirection: () => deps.settings.sidebarPosition.value === 'left' ? 1 : -1,
+            currentSize: () => deps.settings.sidebarWidth.value,
+            onSizeChange: (width) => {
+                deps.settings.sidebarWidth.value = Math.round(width);
+            },
+            onDragEnd: () => deps.settings.save(),
+        });
+        this.git = new SplitterElement.Class({
+            renderer: deps.renderer,
+            identifier: 'git-split-divider',
+            orientation: 'horizontal',
+            reportUnit: 'ratio',
+            initialSize: deps.workspaceSet.active.gitSplitRatio,
+            minimumSize: 0.1,
+            maximumSize: 0.9,
+            currentSize: () => deps.workspaceSet.active.gitSplitRatio,
+            currentExtentCells: () => Math.max(1, Number(deps.sidebar.height) - 2),
+            onSizeChange: (ratio) => deps.workspaceSet.active.setGitSplit(ratio),
+            onDragEnd: () => deps.workspaceSet.active.persistGitSplit(),
+        });
+        this.git.renderable.position = 'absolute';
+        this.git.renderable.visible = false;
+    }
+    updateAppearance(palette: Palette): void {
+        this.sidebar.updateAppearance(palette);
+        this.git.updateAppearance(palette);
+    }
 }
-
 export namespace PaneSplitters {
-  export const $Class = $PaneSplitters;
-  export let Class = Reactive($Class);
-  export type Instance = typeof Class.Instance;
+    export const $Class = $PaneSplitters;
+    export let Class = Reactive($Class);
+    export type Instance = typeof Class.Instance;
+}
+export interface PaneSplittersDeps {
+    renderer: CliRenderer;
+    settings: Settings.Instance;
+    workspaceSet: WorkspaceSet.Instance;
+    sidebar: BoxRenderable;
 }
