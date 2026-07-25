@@ -402,14 +402,22 @@ async function assertSplitterStates(
   ) => boolean,
 ): Promise<void> {
   await driver.awaitQuiescence();
+  // Park the pointer before resolving geometry. Requiring the matching mouse projection prevents
+  // an unrelated queued frame from being mistaken for the post-park boundary.
+  driver.sendMouseWithoutFrameExpectation({ kind: 'move', column: 0, row: 0 });
   const initialStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    `${splitterName} splitter geometry is published before interaction`,
+    `${splitterName} splitter geometry and parked pointer are published before interaction`,
     (status) => {
       try {
         const region = splitterRegion(status, splitterName);
-        return region.visible && region.width > 0 && region.height > 0;
+        const mouse = status.mouse as { x?: number; y?: number } | null;
+        return region.visible
+          && region.width > 0
+          && region.height > 0
+          && mouse?.x === 0
+          && mouse.y === 0;
       } catch {
         return false;
       }
@@ -425,10 +433,6 @@ async function assertSplitterStates(
     `${splitterName} splitter uses the shared one-cell cross axis`,
   );
   const initialPoint = splitterPoint(initialRegion);
-  // Park the pointer away from the splitter before sampling the resting background: a previous
-  // drive step can leave the mouse ON this cell (hover already lit), and then "background changes
-  // on hover" never fires. Row 0 is the workspace tab strip — never a splitter cell.
-  driver.sendMouseWithoutFrameExpectation({ kind: 'move', column: 0, row: 0 });
   await driver.awaitQuiescence();
   const restingBackground = backgroundAt(driver.snapshot(), initialPoint);
 
@@ -437,7 +441,8 @@ async function assertSplitterStates(
     column: initialPoint.column,
     row: initialPoint.row,
   });
-  const hoveredSnapshot = await driver.awaitSnapshot(
+  const hoveredSnapshot = await driver.awaitGridCondition(
+    `${splitterName} splitter paints its active hover background`,
     (snapshot) => backgroundAt(snapshot, initialPoint) !== restingBackground,
   );
   const activeBackground = backgroundAt(hoveredSnapshot, initialPoint);
@@ -615,6 +620,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'clicking the command-bar folder opens file quick-open',
     (candidate) =>
       candidate.quickOpenOpen === true &&
       candidate.quickOpenMode === 'files',
@@ -628,6 +634,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'escaping command-bar file quick-open closes it',
     (candidate) => candidate.quickOpenOpen === false,
   );
 
@@ -643,6 +650,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the left-dock tree click activates left-pane.txt',
     (candidate) => String(candidate.activeBuffer).endsWith('/left-pane.txt'),
   );
   await driver.awaitGridCondition(
@@ -692,6 +700,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the command-bar layout selection publishes the right-side wave-one layout',
     (candidate) =>
       candidate.sidebarPosition === 'right' &&
       candidate.panelAlignment === 'right' &&
@@ -723,6 +732,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the right-dock tree click activates right-pane.txt',
     (candidate) => String(candidate.activeBuffer).endsWith('/right-pane.txt'),
   );
   await driver.awaitGridCondition(
@@ -760,9 +770,10 @@ try {
     defaultLayoutPosition!.column + 2,
     defaultLayoutPosition!.row,
   );
-  await HarnessSmoke.Class.awaitStatus(
+  status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the default command-bar layout selection is published',
     (candidate) =>
       candidate.sidebarPosition === 'left' &&
       candidate.panelAlignment === 'center' &&
@@ -770,7 +781,6 @@ try {
       candidate.rightDockVerticalSpan === 'ends-at-panel',
   );
 
-  status = HarnessSmoke.Class.readStatus(statusPath);
   let sidebar = layoutSlot(status, 'sidebar');
   let editorCenter = layoutSlot(status, 'editorCenter');
   let bottomPanel = layoutSlot(status, 'bottomPanel');

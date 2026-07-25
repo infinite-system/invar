@@ -164,9 +164,11 @@ class $SmokeTerminalFollowHarness {
         false,
         'on-error remains silent while Bash creates more than forty retained lines',
       );
-      const previousToolResult = String(
-        HarnessSmoke.Class.readStatus(this.statusPath).agentLastToolResult,
+      const toolBaselineStatus = await this.awaitStatus(
+        'terminal observation state is published before the explicit read-tool request',
+        (status) => typeof status.terminalObservedEventCount === 'number',
       );
+      const previousToolResult = String(toolBaselineStatus.agentLastToolResult);
       await this.focusPanelCell('agent', 'agent composer is focused for the read-tool request');
       driver.sendText('terminal-tools:scrollback:55');
       driver.sendKeys('Enter');
@@ -278,9 +280,11 @@ class $SmokeTerminalFollowHarness {
         false,
         'on-error never responds to a heuristic-boundary command',
       );
-      HarnessSmoke.Class.requireCondition(
-        HarnessSmoke.Class.readStatus(this.statusPath)
-          .terminalLastObservedBoundarySource === 'heuristic',
+      await this.awaitStatus(
+        'the silent failing command is published as a heuristic-boundary observation',
+        (status) => status.terminalLastObservedBoundarySource === 'heuristic',
+      );
+      HarnessSmoke.Class.pass(
         'the silent failing command was observed specifically at a heuristic boundary',
       );
       driver.sendKeys('Control+q');
@@ -297,7 +301,11 @@ class $SmokeTerminalFollowHarness {
     expectsAgentResponse: boolean,
     label: string,
   ): Promise<void> {
-    const statusBeforeCommand = HarnessSmoke.Class.readStatus(this.statusPath);
+    const statusBeforeCommand = await this.awaitStatus(
+      `terminal and assistant counters are published before ${label}`,
+      (status) => typeof status.terminalObservedEventCount === 'number'
+        && typeof status.agentAssistantEntryCount === 'number',
+    );
     const observedEventCount = Number(
       statusBeforeCommand.terminalObservedEventCount,
     );
@@ -310,7 +318,7 @@ class $SmokeTerminalFollowHarness {
     );
     this.requiredDriver.sendText(command);
     this.requiredDriver.sendKeys('Enter');
-    await this.awaitStatus(
+    const commandStatus = await this.awaitStatus(
       `the real Bash command boundary is observed for ${label}`,
       (status) =>
         Number(status.terminalObservedEventCount) > observedEventCount
@@ -321,23 +329,18 @@ class $SmokeTerminalFollowHarness {
     );
     if (expectsAgentResponse) {
       HarnessSmoke.Class.requireCondition(
-        Number(
-          HarnessSmoke.Class.readStatus(this.statusPath)
-            .agentAssistantEntryCount,
-        ) > assistantEntryCount,
+        Number(commandStatus.agentAssistantEntryCount) > assistantEntryCount,
         label,
       );
       return;
     }
     await HarnessSmoke.Class.awaitFrameSilence(this.requiredDriver, 250);
     HarnessSmoke.Class.pass(`render stream settles before silence assertion: ${label}`);
-    HarnessSmoke.Class.requireCondition(
-      Number(
-        HarnessSmoke.Class.readStatus(this.statusPath)
-          .agentAssistantEntryCount,
-      ) === assistantEntryCount,
-      label,
+    await this.awaitStatus(
+      `the assistant count remains unchanged after the silence window for ${label}`,
+      (status) => Number(status.agentAssistantEntryCount) === assistantEntryCount,
     );
+    HarnessSmoke.Class.pass(label);
   }
 
   protected static async cycleModeByKeyboard(
@@ -360,9 +363,12 @@ class $SmokeTerminalFollowHarness {
     predicate: (status: StatusSnapshot) => boolean,
     label: string,
   ): Promise<void> {
+    const promptBaselineStatus = await this.awaitStatus(
+      `the assistant count is published before ${label}`,
+      (status) => typeof status.agentAssistantEntryCount === 'number',
+    );
     const previousAssistantEntryCount = Number(
-      HarnessSmoke.Class.readStatus(this.statusPath)
-        .agentAssistantEntryCount,
+      promptBaselineStatus.agentAssistantEntryCount,
     );
     await this.focusPanelCell('agent', `agent is focused before ${label}`);
     this.requiredDriver.sendText(prompt);
@@ -379,7 +385,18 @@ class $SmokeTerminalFollowHarness {
     contentIdentifier: 'terminal' | 'agent',
     label: string,
   ): Promise<void> {
-    const status = HarnessSmoke.Class.readStatus(this.statusPath);
+    const status = await this.awaitStatus(
+      `panel cell geometry is published before ${label}`,
+      (candidate) => {
+        const candidateLayoutSlots = candidate.layoutSlots as
+          | Record<string, { left: number; top: number; height: number }>
+          | undefined;
+        return Array.isArray(candidate.panelCellIds)
+          && candidate.panelCellIds.includes(contentIdentifier)
+          && Array.isArray(candidate.panelCellColumns)
+          && candidateLayoutSlots?.bottomPanel !== undefined;
+      },
+    );
     const contentIdentifiers = status.panelCellIds;
     const cellColumns = status.panelCellColumns;
     const layoutSlots = status.layoutSlots as
@@ -424,7 +441,15 @@ class $SmokeTerminalFollowHarness {
   }
 
   protected static async clickEditorToBlurPanel(): Promise<void> {
-    const status = HarnessSmoke.Class.readStatus(this.statusPath);
+    const status = await this.awaitStatus(
+      'editor geometry is published before blurring the bottom panel',
+      (candidate) => {
+        const candidateLayoutSlots = candidate.layoutSlots as
+          | Record<string, { editorCenter?: unknown }>
+          | undefined;
+        return candidateLayoutSlots?.editorCenter !== undefined;
+      },
+    );
     const layoutSlots = status.layoutSlots as
       | Record<string, {
           left: number;
@@ -462,6 +487,7 @@ class $SmokeTerminalFollowHarness {
     const status = await HarnessSmoke.Class.awaitStatus(
       this.requiredDriver,
       this.statusPath,
+      label,
       predicate,
       20_000,
     );

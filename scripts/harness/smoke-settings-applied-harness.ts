@@ -585,6 +585,7 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       followModeDriver.driver,
       followModeDriver.statusPath,
+      'settings opens with terminal follow mode off',
       (candidate) => candidate.settingsOpen === true
         && candidate.terminalFollowMode === 'off',
     );
@@ -596,6 +597,7 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       followModeDriver.driver,
       followModeDriver.statusPath,
+      'the terminal follow setting publishes follow-all',
       (candidate) => candidate.terminalFollowMode === 'follow-all'
         && candidate.settingsSelectedValue === 'follow-all',
     );
