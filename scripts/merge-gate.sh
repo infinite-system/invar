@@ -186,6 +186,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
   full_tmux_step "smoke: paste"       bash scripts/smoke-paste.sh
   step "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
+  step "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
   full_tmux_step "smoke: audio-narration" bash scripts/smoke-audio-narration.sh

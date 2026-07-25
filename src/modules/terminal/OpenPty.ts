@@ -4,6 +4,7 @@
 // descriptor ownership stay here.
 //
 // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
+// invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
 import { dlopen, FFIType, ptr } from 'bun:ffi';
 import { closeSync, createReadStream, type ReadStream } from 'node:fs';
 
@@ -56,11 +57,22 @@ class $OpenPty {
       ? Buffer.from(data, 'utf8')
       : Buffer.from(data);
     if (buffer.length === 0) return;
-    terminalControlLibrary.symbols.write(
-      this.masterFileDescriptor,
-      ptr(buffer),
-      BigInt(buffer.length),
-    );
+    let writtenByteCount = 0;
+    while (writtenByteCount < buffer.length) {
+      const writeResult = Number(
+        terminalControlLibrary.symbols.write(
+          this.masterFileDescriptor,
+          ptr(buffer, writtenByteCount),
+          BigInt(buffer.length - writtenByteCount),
+        ),
+      );
+      if (writeResult <= 0) {
+        throw new Error(
+          `PTY write stopped after ${writtenByteCount} of ${buffer.length} bytes`,
+        );
+      }
+      writtenByteCount += writeResult;
+    }
   }
 
   resize(columns: number, rows: number): void {

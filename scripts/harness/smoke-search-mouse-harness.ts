@@ -98,7 +98,10 @@ try {
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('Go to File') !== null
       && candidate.findText('other.txt') !== null
-      && candidate.findText('sample.txt') !== null,
+      && candidate.findText('sample.txt') !== null
+      && resultRowBackground(candidate, 'other.txt') !== null
+      && resultRowBackground(candidate, 'other.txt')
+        !== resultRowBackground(candidate, 'sample.txt'),
   );
   requireNoSelectionArrow(
     snapshot,

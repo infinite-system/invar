@@ -97,6 +97,19 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
 
   const app = new App.Class();
   app.attach(renderer);
+  // OpenTUI owns stdout and may flush frames from a native render thread. Its OSC 52 writer shares
+  // that serialization authority, so clipboard bytes can only land between complete frame writes.
+  // The higher-level copy helper is capability-gated and rejects terminals that accept OSC 52 but do
+  // not advertise it (including the user-verified host), so use the renderer's raw serialized writer.
+  // invariant: Clipboard emissions flush at frame boundaries (src/modules/system/system.invariants.md)
+  const disposeClipboardEmitter = Clipboard.Class.setOsc52Emitter(
+    (sequence) => (
+      renderer as unknown as {
+        writeOut(outputSequence: string): boolean;
+      }
+    ).writeOut(sequence),
+  );
+  app.onDispose(disposeClipboardEmitter);
 
   const theme = new Theme.Class();
   const commands = new CommandRegistry.Class();
@@ -1605,6 +1618,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // forgets it and paste/dictation dies until restart (the mode-ownership-split bug).
   // A framed paste yields NO keypresses, so OpenTUI's paste event is the ONLY delivery path.
   // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+  // invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
   // Route a paste to the same target the keyboard has: the focused panel pane (terminal PTY / agent
   // composer), else a focused single-line modal input (quick-open / find), else the editor. Mirrors
   // keyTick's dispatch order so paste lands exactly where typing would.

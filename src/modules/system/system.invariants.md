@@ -11,6 +11,40 @@ _None specific — the system layer wraps the underlying OS/tool realities named
 
 ## Chosen invariants
 
+### Clipboard emissions flush at frame boundaries
+
+**Invariant:** If Invar emits an OSC 52 clipboard sequence, then the renderer's serialized terminal
+writer emits the complete sequence between synchronized frames.
+
+**Scope:** `Clipboard.copy`, the renderer binding in `Bootstrap.boot`, and raw stdout shared with
+OpenTUI. Local clipboard tools and clipboard reads are outside this output-ordering rule.
+
+**Mechanism:** `Bootstrap.boot` binds `Clipboard.setOsc52Emitter` to the renderer's `writeOut`
+authority. `Clipboard.copy` constructs one complete `OSC 52 ; c ; base64 BEL` string and submits it
+through that binding, so no independent `process.stdout.write` can splice it into a renderer frame.
+
+**Generates:** One renderer-coordinated OSC 52 emission seam for terminal, agent transcript, and
+agent composer copy; complete canonical base64 payloads outside DEC 2026 frame markers.
+
+**Rejected alternatives:** Write directly to `process.stdout` — OpenTUI owns the same byte stream
+and may flush a native-thread frame concurrently.
+
+**Evidence:** The user's cmux host accepted a hand-run OSC 52 sequence on 2026-07-25;
+`src/modules/system/Clipboard.test.ts`; `scripts/harness/TerminalOutputAudit.test.ts`;
+`scripts/harness/smoke-clipboard-frame-boundary-harness.ts` (active and idle copy, 5/5 per surface).
+
+**Impossible if true:** OSC 52 begins inside CSI, OSC, DCS, APC, or a DEC 2026 synchronized frame;
+copy reports OSC 52 delivery when no renderer owns the output seam; terminal, transcript, and
+composer copy use different emission paths.
+
+**Verification:** `bun test src/modules/system/Clipboard.test.ts
+scripts/harness/TerminalOutputAudit.test.ts && bun
+scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-25
+
 ### Capability classes are stateless and Static wrapped
 
 **Invariant:** If a class in this layer is a capability (behavior only, no per-instance state),

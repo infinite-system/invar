@@ -1,0 +1,237 @@
+#!/usr/bin/env bun
+// Byte-level OSC 52 drive across terminal selection, agent transcript, and agent composer. Every
+// emission is decoded from the real app PTY and must begin at ground state between synchronized
+// frames, both while the renderer is active and after it has settled.
+//
+// invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
+// invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
+// invariant: Clipboard emissions flush at frame boundaries (src/modules/system/system.invariants.md)
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { HarnessSmoke } from './HarnessSmoke';
+import { dragBetweenCells } from './HarnessSmokeSupport';
+import { PtyTestDriver } from './PtyTestDriver';
+import { TerminalOutputAudit, type ClipboardEmission } from './TerminalOutputAudit';
+
+const activeCopyRunCount = 5;
+const idleCopyRunCount = 5;
+const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-clipboard-boundary-home-'));
+const statusPath = join(homeDirectory, 'status.json');
+const driver = new PtyTestDriver.Class({
+  workspaceRoot: join(process.cwd(), 'fixtures'),
+  columns: 110,
+  rows: 40,
+  homeDirectory,
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    INVAR_AGENT_BACKEND: 'echo',
+    INVAR_AGENT_ECHO_DELAY_MS: '0',
+  },
+});
+
+async function awaitClipboardEmission(
+  previousEmissionCount: number,
+  expectedText: string,
+): Promise<ClipboardEmission> {
+  const deadline = performance.now() + 5_000;
+  while (performance.now() < deadline) {
+    const clipboardEmissions = TerminalOutputAudit.Class.clipboardEmissions(
+      driver.recordedOutput(),
+    );
+    if (clipboardEmissions.length > previousEmissionCount) {
+      const clipboardEmission = clipboardEmissions[previousEmissionCount];
+      if (!clipboardEmission) throw new Error('New clipboard emission disappeared');
+      HarnessSmoke.Class.requireCondition(
+        clipboardEmission.decodedText === expectedText,
+        `OSC 52 payload decodes exactly to ${expectedText}; received `
+        + JSON.stringify(clipboardEmission.decodedText),
+      );
+      HarnessSmoke.Class.requireCondition(
+        clipboardEmission.hasValidBase64Payload,
+        'OSC 52 payload is canonical base64',
+      );
+      HarnessSmoke.Class.requireCondition(
+        clipboardEmission.synchronizedFrameDepth === 0,
+        'OSC 52 starts outside synchronized frame markers',
+      );
+      HarnessSmoke.Class.requireCondition(
+        !clipboardEmission.startedWithinControlSequence,
+        'OSC 52 starts outside every other escape sequence',
+      );
+      return clipboardEmission;
+    }
+    await Bun.sleep(5);
+  }
+  throw new Error(
+    `Timed out waiting for OSC 52 payload ${expectedText}; status=`
+    + `${JSON.stringify(HarnessSmoke.Class.readStatus(statusPath))}; outputTail=`
+    + JSON.stringify(driver.recordedOutput().slice(-800)),
+  );
+}
+
+async function copySelectionRepeatedly(
+  expectedText: string,
+  runCount: number,
+  activity: 'active' | 'idle',
+  activateRenderer?: () => void,
+): Promise<void> {
+  for (let runIndex = 0; runIndex < runCount; runIndex += 1) {
+    let followingActiveFrame:
+      | ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
+      | undefined;
+    if (activity === 'active') {
+      activateRenderer?.();
+      await driver.awaitNextCompletedFrameSnapshot();
+      followingActiveFrame = driver.awaitNextCompletedFrameSnapshot();
+    } else {
+      await HarnessSmoke.Class.awaitFrameSilence(driver);
+    }
+    const previousEmissionCount = TerminalOutputAudit.Class.clipboardEmissions(
+      driver.recordedOutput(),
+    ).length;
+    driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+    await awaitClipboardEmission(previousEmissionCount, expectedText);
+    await followingActiveFrame;
+  }
+  HarnessSmoke.Class.pass(
+    `${expectedText} copied ${runCount}/${runCount} while renderer was ${activity}`,
+  );
+}
+
+async function selectVisibleText(
+  expectedText: string,
+  composerSelection = false,
+): Promise<{ column: number; row: number }> {
+  const snapshot = await driver.awaitGridCondition(
+    `${expectedText} is visible for selection`,
+    (candidate) => candidate.findText(expectedText) !== null,
+  );
+  const position = snapshot.findText(expectedText);
+  if (!position) throw new Error(`Selection target disappeared: ${expectedText}`);
+  await dragBetweenCells(
+    driver,
+    position.column,
+    position.row,
+    position.column + expectedText.length - (composerSelection ? 0 : 1),
+    position.row,
+  );
+  return position;
+}
+
+try {
+  console.log('== clipboard boundary: active agent transcript and composer ==');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.ready === true,
+    20_000,
+  );
+  driver.sendRawInput('\x1b[27;6;97~');
+  await driver.awaitGridCondition(
+    'the agent composer is focused',
+    (snapshot) => snapshot.findText('Ask Claude') !== null,
+  );
+  for (let turnIndex = 0; turnIndex < 6; turnIndex += 1) {
+    const promptMarker = turnIndex === 5
+      ? 'ACTIVE-TRANSCRIPT'
+      : `transcript-fill-${turnIndex}`;
+    const prompt = turnIndex === 5
+      ? promptMarker
+      : `${promptMarker}-${'words '.repeat(12)}`;
+    driver.sendText(prompt);
+    await driver.awaitGridCondition(
+      `${promptMarker} is visible in the composer`,
+      (snapshot) => snapshot.findText(promptMarker) !== null,
+    );
+    driver.sendKeys('Enter');
+    await driver.awaitQuiescence();
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.agentBusy === false,
+  );
+  const transcriptPosition = await selectVisibleText('ACTIVE-TRANSCRIPT');
+  const transcriptActivity = (): void => {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: transcriptPosition.column,
+      row: transcriptPosition.row,
+      direction: 'up',
+    });
+  };
+  await copySelectionRepeatedly(
+    'ACTIVE-TRANSCRIPT',
+    activeCopyRunCount,
+    'active',
+    transcriptActivity,
+  );
+
+  driver.sendText('ACTIVE-COMPOSER');
+  await selectVisibleText('ACTIVE-COMPOSER', true);
+  const composerActivity = (): void => {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: transcriptPosition.column,
+      row: transcriptPosition.row,
+      direction: 'down',
+    });
+  };
+  await copySelectionRepeatedly(
+    'ACTIVE-COMPOSER',
+    activeCopyRunCount,
+    'active',
+    composerActivity,
+  );
+
+  console.log('== clipboard boundary: idle agent transcript and composer ==');
+  await copySelectionRepeatedly('ACTIVE-COMPOSER', idleCopyRunCount, 'idle');
+  await selectVisibleText('ACTIVE-TRANSCRIPT');
+  await copySelectionRepeatedly('ACTIVE-TRANSCRIPT', idleCopyRunCount, 'idle');
+
+  console.log('== clipboard boundary: idle terminal selection ==');
+  driver.sendKeys('F8');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.panelActiveContent === 'terminal' && status.terminalFocused === true,
+  );
+  driver.sendText('printf IDLE-TERMINAL');
+  await selectVisibleText('IDLE-TERMINAL');
+  await copySelectionRepeatedly('IDLE-TERMINAL', idleCopyRunCount, 'idle');
+
+  console.log('== clipboard boundary: active terminal selection ==');
+  driver.sendMouseWithoutFrameExpectation({ kind: 'press', column: 2, row: 30, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: 2, row: 30, button: 'left' });
+  await driver.awaitQuiescence();
+  driver.sendKeys('Control+c');
+  await driver.awaitQuiescence();
+  const activeTerminalCommand =
+    "for iteration in $(seq 1 500); do printf '\\rACTIVE-TERMINAL-%03d' \"$iteration\"; "
+    + 'sleep 0.02; done';
+  driver.sendText(activeTerminalCommand);
+  await driver.awaitGridCondition(
+    'the complete active-output command is staged at the shell prompt',
+    (snapshot) => snapshot.findText('sleep 0.02; done') !== null,
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitGridCondition(
+    'the shell loop emits its first changing terminal row',
+    (snapshot) => snapshot.findText('ACTIVE-TERMINAL-001') !== null,
+  );
+  await selectVisibleText('ACTIVE-TERMINAL');
+  await copySelectionRepeatedly('ACTIVE-TERMINAL', activeCopyRunCount, 'active');
+  driver.sendMouseWithoutFrameExpectation({ kind: 'press', column: 2, row: 30, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: 2, row: 30, button: 'left' });
+  await driver.awaitQuiescence();
+  driver.sendKeys('Control+c');
+  await driver.awaitQuiescence();
+
+  driver.sendKeys('Control+q');
+  await driver.exitCode();
+  console.log('smoke-clipboard-frame-boundary-harness: ALL-PASS');
+} finally {
+  await driver.dispose();
+  rmSync(homeDirectory, { recursive: true, force: true });
+}

@@ -184,6 +184,11 @@ class $PtyTestDriver {
     this.openPty.write(inputBytes);
   }
 
+  sendRawInputBytesWithoutFrameExpectation(inputBytes: Uint8Array): void {
+    if (inputBytes.length === 0) return;
+    this.openPty.write(inputBytes);
+  }
+
   sendMouse(event: HarnessMouseEvent): void {
     this.markFrameExpected();
     this.openPty.write(HarnessInput.Class.mouse(event));

@@ -291,27 +291,67 @@ terminal receives it across cmux, SSH, or a VM boundary.
 selection. Clipboard reads remain local-tool or in-app-buffer operations because OSC 52 is write-only.
 
 **Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
-`Clipboard.copy` seam. That seam buffers in-app, emits `OSC 52 ; c ; base64 BEL` through stdout, and
-also writes a local clipboard tool when available.
+`Clipboard.copy` seam. That seam buffers in-app, submits one complete
+`OSC 52 ; c ; base64 BEL` string through the renderer-coordinated `writeOut` binding, and also writes
+a local clipboard tool when available.
 
 **Generates:** Remote copy without `DISPLAY`; one raw-byte assertion shared by every copy surface;
-local clipboard compatibility and in-app paste remain available.
+frame-boundary emission; local clipboard compatibility and in-app paste remain available.
 
 **Rejected alternatives:** Shell out only to xclip or wl-copy — those tools address the remote
 machine clipboard and commonly fail across SSH or VM boundaries.
 
-**Evidence:** `src/modules/system/Clipboard.ts`; `scripts/harness/smoke-paste-harness.ts`;
-`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+**Evidence:** The user's cmux host accepted a hand-run OSC 52 sequence on 2026-07-25;
+`src/modules/system/Clipboard.ts`; `scripts/harness/smoke-paste-harness.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`;
+`scripts/harness/smoke-clipboard-frame-boundary-harness.ts`.
 
 **Impossible if true:** A successful in-app copy status with no OSC 52 bytes crossing the app PTY;
 terminal selection sending Ctrl+C to the child instead of copying; copied Unicode being sliced by
-UTF-16 units.
+UTF-16 units; OSC 52 beginning inside another terminal control sequence or synchronized frame.
 
-**Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+**Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun
+scripts/harness/smoke-agent-pane-ux-harness.ts && bun
+scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
+
+### Bracketed paste survives stream chunking
+
+**Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
+one complete UTF-8 payload is routed to the focused terminal child or agent composer.
+
+**Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PanelHost.handlePaste`,
+`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`. Editor and
+single-line overlay routing keeps the same dispatcher but is outside the two real-host acceptance
+paths.
+
+**Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
+until it emits one paste event. `Bootstrap` dispatches that complete text through the focused pane
+seam, and `OpenPty.write` retries partial libc writes until every terminal payload byte crosses the
+PTY.
+
+**Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
+drives; large terminal payloads that cannot truncate on a partial PTY write.
+
+**Rejected alternatives:** Send every harness paste as one write — real terminals split large
+payloads and both bracketed-paste markers across PTY chunks.
+
+**Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
+`scripts/harness/smoke-paste-harness.ts`; `src/modules/terminal/OpenPty.ts`.
+
+**Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
+insertions; a 64 KB terminal paste loses a suffix because libc accepted only a partial write; paste
+reaches the editor while a terminal or agent pane owns focus.
+
+**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
+scripts/harness/smoke-paste-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-25
 
 ### Terminal word operations reach readline
 

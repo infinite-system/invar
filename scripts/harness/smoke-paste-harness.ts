@@ -4,6 +4,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+// invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import {
   requireCondition,
   statusField,
 } from './HarnessSmokeSupport';
+import { BracketedPasteInput } from './BracketedPasteInput';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-paste-harness-'));
@@ -36,6 +38,33 @@ function emittedClipboardTexts(output: string): string[] {
     output.matchAll(/\x1b]52;c;([A-Za-z0-9+/=]*)\x07/g),
     (match) => Buffer.from(match[1] ?? '', 'base64').toString('utf8'),
   );
+}
+
+async function sendChunkedPaste(text: string): Promise<void> {
+  for (
+    const inputChunk of BracketedPasteInput.Class.splitAtMarkerEdges(text, 997)
+  ) {
+    driver.sendRawInputBytesWithoutFrameExpectation(inputChunk);
+    await Bun.sleep(1);
+  }
+}
+
+function exactSizePayload(
+  byteCount: number,
+  prefix: string,
+  suffix: string,
+): string {
+  const fixedByteCount = Buffer.byteLength(prefix) + Buffer.byteLength(suffix);
+  requireCondition(
+    fixedByteCount <= byteCount,
+    `fixed payload text fits in ${byteCount} bytes`,
+  );
+  const payload = `${prefix}${'x'.repeat(byteCount - fixedByteCount)}${suffix}`;
+  requireCondition(
+    Buffer.byteLength(payload) === byteCount,
+    `payload is exactly ${byteCount} bytes`,
+  );
+  return payload;
 }
 
 try {
@@ -102,6 +131,46 @@ try {
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
 
+  console.log('== harness paste: split markers and large payloads reach the terminal exactly ==');
+  const tenByteTerminalPayload = 'TEN-BYTES!';
+  await sendChunkedPaste(tenByteTerminalPayload);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(tenByteTerminalPayload) !== null,
+  );
+  pass('10-byte paste split across both markers reaches the terminal');
+  driver.sendKeys('Control+c');
+  await driver.awaitQuiescence();
+
+  for (const payloadByteCount of [1024, 65_536]) {
+    const commandPrefix = "printf '";
+    const resultMarker = `CHUNK_${payloadByteCount}_RESULT_`;
+    const commandSuffix =
+      `' | wc -c | { read count; printf '${resultMarker}%s\\n' "$count"; }`;
+    const command = exactSizePayload(
+      payloadByteCount,
+      commandPrefix,
+      commandSuffix,
+    );
+    const expectedPayloadByteCount = payloadByteCount
+      - Buffer.byteLength(commandPrefix)
+      - Buffer.byteLength(commandSuffix);
+    await sendChunkedPaste(command);
+    await driver.awaitSnapshot(
+      (snapshot) => snapshot.findText(resultMarker) !== null,
+      30_000,
+    );
+    driver.sendKeys('Enter');
+    await driver.awaitSnapshot(
+      (snapshot) => (
+        snapshot.findText(`${resultMarker}${expectedPayloadByteCount}`) !== null
+      ),
+      30_000,
+    );
+    pass(
+      `${payloadByteCount}-byte paste split across markers and payload reaches the terminal exactly`,
+    );
+  }
+
   console.log('== harness paste: terminal selection copies through raw OSC 52 ==');
   driver.sendText('printf COPYTERMINAL');
   let snapshot = await driver.awaitSnapshot(
@@ -155,6 +224,35 @@ try {
   driver.sendPaste('PASTEDINAGENT');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') !== null);
   pass('agent composer paints the pasted text');
+
+  console.log('== harness paste: split markers and large payloads route to the agent composer ==');
+  driver.sendRawInput('\x1b[127;5u');
+  await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') === null);
+  for (const payloadByteCount of [10, 1024, 65_536]) {
+    const payloadSuffix = `-END${payloadByteCount}`;
+    const payload = exactSizePayload(
+      payloadByteCount,
+      `C${payloadByteCount}-`,
+      payloadSuffix,
+    );
+    await sendChunkedPaste(payload);
+    await driver.awaitSnapshot(
+      (snapshot) => snapshot.findText(payloadSuffix) !== null,
+      30_000,
+    );
+    requireCondition(
+      statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+      `${payloadByteCount}-byte paste remained routed to the agent composer`,
+    );
+    pass(
+      `${payloadByteCount}-byte paste split across markers and payload reaches the agent composer`,
+    );
+    driver.sendRawInput('\x1b[127;5u');
+    await driver.awaitSnapshot(
+      (snapshot) => snapshot.findText(payloadSuffix) === null,
+      30_000,
+    );
+  }
 
   console.log('== harness paste: paste survives staged and animated terminal interception ==');
   for (let deletion = 0; deletion < 30; deletion += 1) {
