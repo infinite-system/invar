@@ -325,8 +325,22 @@ validate_smoke_classification() {
   for source_number in "${!parallel_smoke_sources[@]}"; do
     smoke_source="${parallel_smoke_sources[$source_number]}"
     [ -n "$smoke_source" ] || continue
+    # Two structural tells, deliberately NOT domain vocabulary. Naming the
+    # feature ("momentum", "glide") misses any smoke that measures time while
+    # talking about something else — smoke-terminal-stage-harness said
+    # "animation" and "reducedMotion" and slipped through the vocabulary form of
+    # this check, which is the harmful direction: a false negative loses
+    # coverage under load while still reporting green.
+    #
+    #   1. A frame-silence assertion is an absence claim, and a loaded machine
+    #      changes what it observes in BOTH directions — it passes when nothing
+    #      was rendering, and fails when an awaited repaint lands late.
+    #   2. Deriving an ELAPSED DURATION means subtracting two clock readings. A
+    #      wait deadline only ever ADDS to a clock reading and compares against
+    #      it, and is load-robust because it simply waits longer. Subtraction is
+    #      therefore the discriminator between measuring and waiting.
     if rg -q \
-      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|[Mm]omentum|glide' \
+      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)\s*-|Date\.now\(\)\s*-' \
       "$smoke_source"; then
       echo "  FAIL  parallel-safe classification: ${parallel_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
       classification_failure_count=$((classification_failure_count + 1))
@@ -470,7 +484,12 @@ if [ "${FAST:-0}" != "1" ]; then
   quiet_serial_full_tmux_smoke "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
   quiet_serial_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
-  parallel_safe_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
+  # Quiet-serial: this smoke asserts on DURATIONS, not just on rendered content.
+  # It requires the reducedMotion path to finish under 1000 ms, and requires a
+  # slow typing speed to take at least 400 ms longer than a fast one, measured
+  # across two separately launched applications. Both are measurements of the
+  # machine, so pool load can invert the margin or blow the ceiling.
+  quiet_serial_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
   quiet_serial_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
