@@ -81,6 +81,45 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Bounded list interactions live in one popup
+
+**Invariant:** If a bounded searchable list needs filtering, wrapped selection, pointer activation,
+keep-open activation, drill-forward, or backward navigation, then `BoundedListPopup` supplies that
+behavior and each consumer supplies only its items and domain action.
+
+**Scope:** Every `BoundedListPopup` adapter, including buffer selection, branch selection, layouts,
+panel creation, completion, and hierarchical pickers. Domain-specific item discovery and the action
+performed for a selected leaf remain in the adapter.
+
+**Mechanism:** `BoundedListPopupItem.keepOpenOnSelect` controls dismissal at the one activation
+chokepoint used by Enter and pointer release; `drillable` gates Right; the optional
+`navigateBackwardHandler` receives Left; and `replaceItems` atomically re-roots items, selection,
+title, viewport, and query. `BreadcrumbPicker` only maps filesystem entries into those options and
+opens a selected file.
+
+**Generates:** One modal input route; one query editor; one wrapped selection model; hierarchical
+drill navigation that any list adapter can opt into without another popup or input branch.
+
+**Rejected alternatives:** Keep a breadcrumb-specific popup open by bypassing activation dismissal —
+duplicates the popup state machine and makes keyboard, pointer, filtering, and outside dismissal
+drift.
+
+**Evidence:** `src/modules/ui/BoundedListPopup.ts`;
+`src/modules/ui/BreadcrumbPicker.ts`; `src/modules/ui/BoundedListPopup.test.ts`;
+`scripts/harness/smoke-bounded-list-popup-harness.ts`.
+
+**Impossible if true:** A hierarchical list consumer implementing its own popup, query editor,
+wrapped selection, or dismissal rules; Right and pointer activation reaching different selected
+items; a keep-open activation resetting items without resetting the requested query and viewport.
+
+**Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts
+src/modules/ui/BreadcrumbPicker.test.ts && bun
+scripts/harness/smoke-bounded-list-popup-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Panel heading controls share paint and hit geometry
 
 **Invariant:** If a bottom-panel heading paints Add, Expand/Restore, or Close controls, then one

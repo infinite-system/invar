@@ -12,6 +12,7 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextInputModel } from '../editor/TextInputModel';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import { ModalOverlayDismissal } from './ModalOverlayDismissal';
@@ -22,6 +23,7 @@ import { ScrollableTextViewport } from './ScrollableTextViewport';
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
+// invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 class $BoundedListPopup {
   protected static get defaultSearchThreshold(): number {
     return 10;
@@ -48,9 +50,11 @@ class $BoundedListPopup {
   protected readonly list: TextRenderable;
   protected readonly viewport: ScrollableTextViewport.Instance;
   protected readonly dismissal: ModalOverlayDismissal.Model;
+  protected readonly queryInput: TextInputModel.Model;
   protected currentGeometry: BoundedListPopupGeometry | null = null;
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
+  protected navigationBackwardHandler: (() => void) | null = null;
   protected searchThresholdValue = $BoundedListPopup.defaultSearchThreshold;
   protected minimumWidthValue = $BoundedListPopup.minimumBoxWidth;
   protected titleValue = '';
@@ -70,7 +74,7 @@ class $BoundedListPopup {
     return shallowRef<readonly BoundedListPopupItem[]>([]);
   }
   get query() {
-    return ref('');
+    return this.queryInput.text;
   }
   get selectedIndex() {
     return ref(-1);
@@ -102,6 +106,7 @@ class $BoundedListPopup {
   }
 
   constructor(protected readonly dependencies: BoundedListPopupDependencies) {
+    this.queryInput = this.createQueryInput();
     const { renderer } = dependencies;
     const identifier = dependencies.identifier ?? 'bounded-list-popup';
     this.box = new BoxRenderable(renderer, {
@@ -297,7 +302,8 @@ class $BoundedListPopup {
     this.minimumWidthValue =
       options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
     this.titleValue = options.title ?? '';
-    this.query.value = '';
+    this.navigationBackwardHandler = options.navigateBackwardHandler ?? null;
+    this.queryInput.clear();
     this.recomputeMatches();
     this.hoveredIndex.value = -1;
     this.searchHovered = false;
@@ -326,11 +332,12 @@ class $BoundedListPopup {
     this.open.value = false;
     this.items.value = [];
     this.filteredMatchesValue = [];
-    this.query.value = '';
+    this.queryInput.clear();
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
     this.searchHovered = false;
     this.selectionHandler = null;
+    this.navigationBackwardHandler = null;
     this.currentGeometry = null;
     this.pointerPressedFilteredIndex = -1;
     this.pointerDragged = false;
@@ -345,19 +352,21 @@ class $BoundedListPopup {
 
   appendQuery(text: string): void {
     if (!this.searchEnabled || text.length === 0) return;
-    this.query.value += text;
-    this.refilter();
+    if (this.queryInput.insert(text)) this.refilter();
   }
 
   setQuery(query: string): void {
-    this.query.value = query;
+    this.queryInput.setValue(query);
     this.refilter();
   }
 
   replaceItems(
     items: readonly BoundedListPopupItem[],
     selectedItemIdentifier?: string,
+    options: BoundedListPopupReplaceOptions = {},
   ): void {
+    if (options.resetQuery) this.queryInput.clear();
+    if (options.title !== undefined) this.titleValue = options.title;
     this.items.value = items;
     this.recomputeMatches();
     this.viewport.reset();
@@ -376,8 +385,7 @@ class $BoundedListPopup {
 
   eraseQueryCharacter(): void {
     if (!this.searchEnabled || this.query.value.length === 0) return;
-    this.query.value = this.query.value.slice(0, -1);
-    this.refilter();
+    if (this.queryInput.backspace()) this.refilter();
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -395,6 +403,15 @@ class $BoundedListPopup {
 
   runSelected(): void {
     this.runFilteredIndex(this.selectedIndex.value);
+  }
+
+  drillSelected(): void {
+    const selectedItem = this.filteredMatches[this.selectedIndex.value]?.item;
+    if (selectedItem?.drillable === true) this.runSelected();
+  }
+
+  navigateBackward(): void {
+    this.navigationBackwardHandler?.();
   }
 
   tick(deltaTimeSeconds: number): boolean {
@@ -555,6 +572,10 @@ class $BoundedListPopup {
     return geometry.firstVisible + visibleRowIndex;
   }
 
+  protected createQueryInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
+
   static nextEnabledFilteredIndex(
     matches: readonly BoundedListPopupMatch[],
     selectedIndex: number,
@@ -652,7 +673,10 @@ class $BoundedListPopup {
     if (!match || match.item.enabled === false) return;
     const selectionHandler = this.selectionHandler;
     const selectedItem = match.item;
-    this.close();
+    // Keep-open activation is popup behavior, so every hierarchical consumer gets the
+    // same keyboard, pointer, filtering, and dismissal semantics from this shared seam.
+    // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
+    if (selectedItem.keepOpenOnSelect !== true) this.close();
     selectionHandler?.(selectedItem);
   }
 
@@ -764,6 +788,8 @@ export interface BoundedListPopupItem {
   searchText?: string;
   enabled?: boolean;
   selected?: boolean;
+  drillable?: boolean;
+  keepOpenOnSelect?: boolean;
 }
 
 export interface BoundedListPopupAnchor {
@@ -778,6 +804,12 @@ export interface BoundedListPopupOpenOptions {
   selectedItemIdentifier?: string;
   searchVisible?: boolean;
   showBackdrop?: boolean;
+  navigateBackwardHandler?: () => void;
+}
+
+export interface BoundedListPopupReplaceOptions {
+  resetQuery?: boolean;
+  title?: string;
 }
 
 export interface BoundedListPopupMatch {

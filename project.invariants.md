@@ -493,33 +493,32 @@ consumers all exercise its core, differing only in peripheral flags.
 insertion, deletion, and horizontal movement come from `TextInputModel`.
 
 **Scope:** `AgentComposer`; `QuickOpen.query`; `CommandRegistry.query`; `FindInBuffer.query` and
-`replacement`; every future one-line editable field. Full document editors and terminal subprocess
-input are outside this rule.
+`replacement`; `BoundedListPopup.query`; every future one-line editable field. Full document
+editors and terminal subprocess input are outside this rule.
 
 **Mechanism:** `TextInputModel` owns the reactive string and grapheme caret and delegates word
 boundaries to `TextEditing`. Consumers retain only their surface-specific filtering, layout,
-selection, pointer, history, or navigation behavior. `scripts/ast-query.ts text-input-census`
-reports classes that still combine their own input-like state with edit or movement members.
+selection, pointer, history, or navigation behavior. `scripts/ast-query.ts text-input-census
+--require-zero` fails when a class still combines its own input-like state with edit or movement
+members.
 
 **Generates:** One editing behavior across every text field; one complete text-input keybinding
-table; caret painting at the real grapheme position; a zero-count census gate after migration.
+table; caret painting at the real grapheme position; an enforced zero-count census gate.
 
 **Rejected alternatives:** Per-surface query editing — fields drift until some lack caret movement
 or delete a different span.
 
-**Open question:** `BoundedListPopup` remains the one report-only census result until the overlays
-branch releases that file; then the census becomes an enforced zero-count check.
-
 **Evidence:** `src/modules/editor/TextInputModel.ts`;
 `src/modules/editor/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
 `src/modules/search/QuickOpen.ts`, `src/modules/commands/CommandRegistry.ts`, and
-`src/modules/search/FindInBuffer.ts`; `bun scripts/ast-query.ts text-input-census` reports only
-`BoundedListPopup`.
+`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`;
+`scripts/conventions-gate.sh`.
 
 **Impossible if true:** An adopted text field storing its own query or caret and reimplementing
 insert, backspace, delete, word deletion, or horizontal movement.
 
-**Verification:** `bun test src/modules/editor/TextInputModel.test.ts && bun scripts/ast-query.ts text-input-census`
+**Verification:** `bun test src/modules/editor/TextInputModel.test.ts && bun scripts/ast-query.ts
+text-input-census --require-zero`
 
 **Status:** provisional
 

@@ -349,6 +349,16 @@ class $KeybindingDefaults {
         context: 'listPopup',
       },
       {
+        chord: { key: 'right' },
+        action: 'listPopup.drill',
+        context: 'listPopup',
+      },
+      {
+        chord: { key: 'left' },
+        action: 'listPopup.navigateBackward',
+        context: 'listPopup',
+      },
+      {
         chord: { key: 'escape' },
         action: 'listPopup.close',
         context: 'listPopup',

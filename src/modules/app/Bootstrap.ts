@@ -1732,6 +1732,8 @@ class $Bootstrap {
       'listPopup.previous': () => boundedListPopup.moveSelection(-1),
       'listPopup.next': () => boundedListPopup.moveSelection(1),
       'listPopup.run': () => boundedListPopup.runSelected(),
+      'listPopup.drill': () => boundedListPopup.drillSelected(),
+      'listPopup.navigateBackward': () => boundedListPopup.navigateBackward(),
       'listPopup.close': () => boundedListPopup.close(),
       'listPopup.erase': () => boundedListPopup.eraseQueryCharacter(),
     };

@@ -10,6 +10,7 @@
 //   bun scripts/ast-query.ts private-members      # `private` modifiers + #private names (grammar debt)
 //   bun scripts/ast-query.ts text-input-census    # one-line input state + editing members outside TextInputModel
 // Flags: --tests (include *.test.ts)  --path <glob-root under repo, default src/modules>
+//        --require-zero (exit 1 when structural matches remain)
 import * as ts from 'typescript';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +18,7 @@ import { join } from 'node:path';
 const repositoryRoot = new URL('..', import.meta.url).pathname;
 const argumentList = process.argv.slice(2);
 const includeTests = argumentList.includes('--tests');
+const requireZeroMatches = argumentList.includes('--require-zero');
 const pathFlagIndex = argumentList.indexOf('--path');
 const searchRoot =
   pathFlagIndex >= 0 ? argumentList[pathFlagIndex + 1] : 'src/modules';
@@ -186,3 +188,4 @@ for (const relativePath of new Bun.Glob(`${searchRoot}/**/*.ts`).scanSync({
 console.log(
   `ast-query ${queryMode}${queryName ? ' ' + queryName : ''}: ${matchCount} match(es)`,
 );
+if (requireZeroMatches && matchCount > 0) process.exit(1);

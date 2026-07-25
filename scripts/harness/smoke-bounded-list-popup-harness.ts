@@ -3,7 +3,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
@@ -108,6 +108,24 @@ function popupListContains(
     if (popupRowText.includes(text)) return true;
   }
   return false;
+}
+
+function cellAttributeSignature(
+  snapshot: HarnessSnapshot.Model,
+  position: { column: number; row: number },
+): string {
+  const cell = snapshot.cell(position.row, position.column);
+  if (!cell) return 'missing';
+  return [
+    cell.foreground,
+    cell.background,
+    cell.isForegroundDefault,
+    cell.isBackgroundDefault,
+    cell.isBold,
+    cell.isDim,
+    cell.isUnderline,
+    cell.isInverse,
+  ].join(':');
 }
 
 const fixtureRoot = mkdtempSync(
@@ -465,6 +483,248 @@ try {
     (status) => status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('click outside dismisses without activating a row');
+
+  console.log(
+    '== bounded popup: breadcrumb hover, drill navigation, and file activation ==',
+  );
+  const pickerSourceDirectory = join(fixtureRoot, 'picker-source');
+  const pickerNestedDirectory = join(pickerSourceDirectory, 'picker-nested');
+  const pickerDeeperDirectory = join(pickerNestedDirectory, 'deeper');
+  mkdirSync(pickerDeeperDirectory, { recursive: true });
+  await Bun.write(
+    join(pickerSourceDirectory, 'source-peer.txt'),
+    'source peer\n',
+  );
+  await Bun.write(
+    join(pickerNestedDirectory, 'breadcrumb-active.txt'),
+    'BREADCRUMB PICKER ACTIVE CONTENT\n',
+  );
+  await Bun.write(
+    join(pickerNestedDirectory, 'breadcrumb-target.txt'),
+    'BREADCRUMB PICKER FILE CONTENT\n',
+  );
+  await Bun.write(
+    join(pickerDeeperDirectory, 'deeper-file.txt'),
+    'deeper file\n',
+  );
+
+  driver.sendKeys('Control+p');
+  await driver.awaitGridCondition(
+    'Quick Open is visible before opening the nested breadcrumb fixture',
+    (candidate) => candidate.findText('Go to File') !== null,
+  );
+  driver.sendText('breadcrumb-active');
+  await driver.awaitGridCondition(
+    'Quick Open shows the nested breadcrumb fixture file',
+    (candidate) =>
+      candidate.findText(
+        'picker-source/picker-nested/breadcrumb-active.txt',
+      ) !== null,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the nested breadcrumb fixture file becomes the active buffer',
+    (status) =>
+      String(status.activeBuffer).endsWith(
+        '/picker-source/picker-nested/breadcrumb-active.txt',
+      ),
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the nested breadcrumb fixture path and content are visible',
+    (candidate) =>
+      candidate.findText(
+        'picker-source › picker-nested › breadcrumb-active.txt',
+      ) !== null &&
+      candidate.findText('BREADCRUMB PICKER ACTIVE CONTENT') !== null,
+  );
+  const breadcrumbPathPosition = snapshot.findText(
+    'picker-source › picker-nested › breadcrumb-active.txt',
+  );
+  if (!breadcrumbPathPosition) {
+    throw new Error('Nested breadcrumb path vanished before hover');
+  }
+  const sourceSegmentPosition = {
+    column: breadcrumbPathPosition.column,
+    row: breadcrumbPathPosition.row,
+  };
+  const nestedSegmentPosition = {
+    column:
+      breadcrumbPathPosition.column + Array.from('picker-source › ').length,
+    row: breadcrumbPathPosition.row,
+  };
+  const sourceRestAttributes = cellAttributeSignature(
+    snapshot,
+    sourceSegmentPosition,
+  );
+  const nestedRestAttributes = cellAttributeSignature(
+    snapshot,
+    nestedSegmentPosition,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: sourceSegmentPosition.column,
+    row: sourceSegmentPosition.row,
+  });
+  snapshot = await driver.awaitGridCondition(
+    'the hovered source breadcrumb changes attributes while the nested control segment does not',
+    (candidate) =>
+      cellAttributeSignature(candidate, sourceSegmentPosition) !==
+        sourceRestAttributes &&
+      cellAttributeSignature(candidate, nestedSegmentPosition) ===
+        nestedRestAttributes,
+  );
+  HarnessSmoke.Class.pass(
+    'breadcrumb hover changes only the pointed segment attributes',
+  );
+
+  clickPosition(driver, sourceSegmentPosition);
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'clicking the source breadcrumb opens its bounded list popup',
+    (status) =>
+      status.boundedListPopupOpen === true && popupGeometry(status) !== null,
+  );
+  geometry = popupGeometry(popupStatus);
+  snapshot = await driver.awaitGridCondition(
+    'the source-level popup paints its directory and file entries',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'picker-nested/') &&
+      popupListContains(candidate, geometry, 'source-peer.txt'),
+  );
+  const nestedDirectoryItemPosition = geometry
+    ? popupItemPosition(snapshot, geometry, 'picker-nested/')
+    : null;
+  const sourcePeerItemPosition = geometry
+    ? popupItemPosition(snapshot, geometry, 'source-peer.txt')
+    : null;
+  HarnessSmoke.Class.requireCondition(
+    nestedDirectoryItemPosition !== null &&
+      sourcePeerItemPosition !== null &&
+      cellAttributeSignature(snapshot, nestedDirectoryItemPosition) !==
+        cellAttributeSignature(snapshot, sourcePeerItemPosition),
+    'the current child directory opens pre-selected in observed cells',
+  );
+
+  driver.sendText('picker-nest');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the source-level breadcrumb query is published',
+    (status) =>
+      status.boundedListPopupQuery === 'picker-nest' &&
+      status.boundedListPopupMatches === 1,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the source-level query filters observed popup cells',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'picker-nested/') &&
+      !popupListContains(candidate, geometry, 'source-peer.txt'),
+  );
+  HarnessSmoke.Class.pass('typing filters the current breadcrumb level');
+
+  driver.sendKeys('Enter');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Enter drills into the selected directory and resets its query',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupQuery === '' &&
+      status.boundedListPopupMatches === 3,
+  );
+  geometry = popupGeometry(popupStatus);
+  snapshot = await driver.awaitGridCondition(
+    'the drilled directory paints its real children',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'deeper/') &&
+      popupListContains(candidate, geometry, 'breadcrumb-active.txt') &&
+      popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
+  );
+  HarnessSmoke.Class.pass(
+    'Enter re-roots the shared popup without dismissing it',
+  );
+
+  driver.sendKeys('Left');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Left returns to the source directory with the child selected',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupQuery === '' &&
+      status.boundedListPopupMatches === 2,
+  );
+  geometry = popupGeometry(popupStatus);
+  snapshot = await driver.awaitGridCondition(
+    'the parent directory cells return after Left',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'picker-nested/') &&
+      popupListContains(candidate, geometry, 'source-peer.txt'),
+  );
+  HarnessSmoke.Class.pass('Left drills back out one filesystem level');
+
+  driver.sendKeys('Right');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Right drills into the reselected child directory',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupQuery === '' &&
+      status.boundedListPopupMatches === 3,
+  );
+  geometry = popupGeometry(popupStatus);
+  await driver.awaitGridCondition(
+    'the Right-drilled directory paints the target file again',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
+  );
+  HarnessSmoke.Class.pass(
+    'Right drills into the selected directory without dismissing',
+  );
+  driver.sendText('target');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the target-file query leaves one breadcrumb match',
+    (status) =>
+      status.boundedListPopupQuery === 'target' &&
+      status.boundedListPopupMatches === 1,
+  );
+  await driver.awaitGridCondition(
+    'the target file is the only observed popup row',
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'breadcrumb-target.txt') &&
+      !popupListContains(candidate, geometry, 'breadcrumb-active.txt'),
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Enter opens the selected breadcrumb file and dismisses the popup',
+    (status) =>
+      String(status.activeBuffer).endsWith(
+        '/picker-source/picker-nested/breadcrumb-target.txt',
+      ) && status.boundedListPopupOpen === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the opened breadcrumb target file content is visible in editor cells',
+    (candidate) =>
+      candidate.findText('BREADCRUMB PICKER FILE CONTENT') !== null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.findText('BREADCRUMB PICKER FILE CONTENT') !== null,
+    'selecting a breadcrumb file opens its content in the editor',
+  );
 
   console.log(
     '== bounded popup: branch adapter keyboard and mouse selection ==',

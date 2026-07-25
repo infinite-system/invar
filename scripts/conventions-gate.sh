@@ -42,12 +42,12 @@ if ! "$bun_binary" scripts/check-file-grammar.ts; then
   fail=1
 fi
 
-# 1.5) EDITABLE-TEXT CENSUS (REPORT-ONLY RATCHET): classes that still combine one-line input-ish
-#      state with their own edit/motion members. The invariant is recorded now, while the overlays
-#      branch still owns BoundedListPopup; once that final consumer adopts TextInputModel this census
-#      becomes a hard zero-count check.
-echo "CONVENTIONS REPORT: editable text fields outside TextInputModel (report-only):"
-"$bun_binary" scripts/ast-query.ts text-input-census
+# 1.5) EDITABLE-TEXT CENSUS: every one-line input now composes TextInputModel, so the structural
+#      census is an enforced zero-count ratchet.
+if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
+  echo "CONVENTIONS FAIL: editable text field outside TextInputModel"
+  fail=1
+fi
 
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
