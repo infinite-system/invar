@@ -5,7 +5,7 @@
 // invariant: A pixel tier places and deletes graphics explicitly (src/modules/image/image.invariants.md)
 import { describe, test, expect } from 'bun:test';
 import { inflateSync } from 'node:zlib';
-import { KittyGraphics, KITTY_CHUNK_LIMIT } from './KittyGraphics';
+import { KittyGraphics } from './KittyGraphics';
 import type { DecodedImage } from './ImageDecoders';
 
 /** Split a payload of concatenated APC sequences into { controls, payload } parts. */
@@ -50,7 +50,11 @@ describe('KittyGraphics', () => {
     const emitted = KittyGraphics.Class.place({ image, imageId: 7002, columns: 40, rows: 20 });
     const sequences = parseApcSequences(emitted);
     expect(sequences.length).toBeGreaterThan(2);
-    for (const sequence of sequences) expect(sequence.payload.length).toBeLessThanOrEqual(KITTY_CHUNK_LIMIT);
+    for (const sequence of sequences) {
+      expect(sequence.payload.length).toBeLessThanOrEqual(
+        KittyGraphics.Class.chunkLimit,
+      );
+    }
     // First chunk: full controls + m=1. Middle chunks: exactly m=1. Final chunk: exactly m=0.
     expect(sequences[0]!.controls).toContain('a=T');
     expect(sequences[0]!.controls).toContain('m=1');
