@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { EchoAgentBackend } from './EchoAgentBackend';
-import type { AgentEvent, PermissionDecision } from './AgentEvents';
+import type { AgentEvent, PermissionDecision } from './AgentEvents.interface';
 import type { AgentTerminalToolPort } from './AgentTerminalTools';
 
 afterEach(() => {

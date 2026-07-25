@@ -2,7 +2,7 @@ import type { KeyEvent, StyledText } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
-import type { PaneContent, PaneRenderContext } from './PaneContent';
+import type { PaneContent, PaneRenderContext } from './PaneContent.interface';
 import { TreePaneRenderer } from './TreePaneRenderer';
 
 // invariant: The file tree is a pane content citizen (src/modules/ui/ui.invariants.md)

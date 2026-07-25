@@ -9,33 +9,37 @@
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 import type { ResolvedEngine } from './AgentProviderRegistry';
 
+/** The structured event vocabulary emitted by an AgentBackend. */
+export interface AgentEvents {
+  /** The session began accepting turns. */
+  'session-start': { readonly kind: 'session-start' };
+  /** A streaming chunk of assistant text. Consecutive deltas concatenate into one assistant turn. */
+  'text-delta': { readonly kind: 'text-delta'; readonly text: string };
+  /** The assistant requested a tool call. `id` correlates with the matching `tool-result`. */
+  'tool-use': { readonly kind: 'tool-use'; readonly id: string; readonly name: string; readonly input: unknown };
+  /** A tool call finished. `id` matches the originating `tool-use`. */
+  'tool-result': { readonly kind: 'tool-result'; readonly id: string; readonly result: string; readonly isError: boolean };
+  /** The backend PAUSED a tool call awaiting the user's approval (ask-mode). `respond` resolves the
+   *  paused call exactly once; the session owns routing the user's y/n/a answer into it. */
+  'permission-request': {
+    readonly kind: 'permission-request';
+    readonly id: string;
+    readonly toolName: string;
+    readonly input: unknown;
+    readonly respond: (decision: PermissionDecision) => void;
+  };
+  /** A session-level error (transport, backend, protocol) — distinct from a tool that returned isError. */
+  error: { readonly kind: 'error'; readonly message: string };
+  /** The session finished; `reason` says how. */
+  'session-end': { readonly kind: 'session-end'; readonly reason: AgentEndReason };
+}
+
+/** A single structured event emitted by an AgentBackend, in the order the session produced it. */
+export type AgentEvent = AgentEvents[keyof AgentEvents];
+
 /** The user's answer to a pending permission request. 'always-allow' additionally adds the tool to the
  *  backend's session-scoped auto-allow set (future calls for that tool skip the prompt). */
 export type PermissionDecision = 'allow' | 'always-allow' | 'deny';
-
-/** A single structured event emitted by an AgentBackend, in the order the session produced it. */
-export type AgentEvent =
-  /** The session began accepting turns. */
-  | { readonly kind: 'session-start' }
-  /** A streaming chunk of assistant text. Consecutive deltas concatenate into one assistant turn. */
-  | { readonly kind: 'text-delta'; readonly text: string }
-  /** The assistant requested a tool call. `id` correlates with the matching `tool-result`. */
-  | { readonly kind: 'tool-use'; readonly id: string; readonly name: string; readonly input: unknown }
-  /** A tool call finished. `id` matches the originating `tool-use`. */
-  | { readonly kind: 'tool-result'; readonly id: string; readonly result: string; readonly isError: boolean }
-  /** The backend PAUSED a tool call awaiting the user's approval (ask-mode). `respond` resolves the
-   *  paused call exactly once; the session owns routing the user's y/n/a answer into it. */
-  | {
-      readonly kind: 'permission-request';
-      readonly id: string;
-      readonly toolName: string;
-      readonly input: unknown;
-      readonly respond: (decision: PermissionDecision) => void;
-    }
-  /** A session-level error (transport, backend, protocol) — distinct from a tool that returned isError. */
-  | { readonly kind: 'error'; readonly message: string }
-  /** The session finished; `reason` says how. */
-  | { readonly kind: 'session-end'; readonly reason: AgentEndReason };
 
 /** How a session ended. */
 export type AgentEndReason = 'completed' | 'interrupted' | 'error';

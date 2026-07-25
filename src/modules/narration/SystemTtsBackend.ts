@@ -11,7 +11,7 @@
 //
 // invariant: Narration audio crosses exactly one TTS backend seam (src/modules/narration/narration.invariants.md)
 // invariant: A missing speech engine degrades to silence, never an error (src/modules/narration/narration.invariants.md)
-import type { TtsBackend } from './TtsBackend';
+import type { TtsBackend } from './TtsBackend.interface';
 import { VoiceDiscovery } from './VoiceDiscovery';
 import { Processes } from '../system/Processes';
 

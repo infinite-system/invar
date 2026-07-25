@@ -8,7 +8,7 @@
 //
 // invariant: An agent session is a structured event stream, not a screen (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentEvent } from './AgentEvents.interface';
 
 /** A JSON-RPC notification (method + params) as parsed off the app-server stdout. */
 export interface AppServerNotification {

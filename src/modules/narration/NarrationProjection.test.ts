@@ -8,7 +8,7 @@ import { AgentSession } from '../agent/AgentSession';
 import { MockAgentBackend } from '../agent/MockAgentBackend';
 import { MockTtsBackend } from './MockTtsBackend';
 import { NarrationProjection } from './NarrationProjection';
-import type { AgentEvent } from '../agent/AgentEvents';
+import type { AgentEvent } from '../agent/AgentEvents.interface';
 
 function wire(enabled: boolean) {
   const backend = new MockAgentBackend.Class();

@@ -17,7 +17,7 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import type { KeyEvent } from '@opentui/core';
-import type { PaneContent } from './PaneContent';
+import type { PaneContent } from './PaneContent.interface';
 
 /** One cell of the split layout: which registered content occupies it and its share of the width. */
 export interface PanelCell {

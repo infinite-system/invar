@@ -26,9 +26,9 @@ import {
   type PermissionResult,
 } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import type { AgentBackend } from './AgentBackend';
+import type { AgentBackend } from './AgentBackend.interface';
 import { AgentPermissions } from './AgentPermissions';
-import type { AgentEvent, PermissionDecision } from './AgentEvents';
+import type { AgentEvent, PermissionDecision } from './AgentEvents.interface';
 import { ClaudeStreamMapping } from './ClaudeStreamMapping';
 import {
   AgentTerminalTools,

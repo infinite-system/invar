@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { AgentTranscriptProjection } from './AgentTranscriptProjection';
 import { DARK } from '../theme/ThemePalettes';
-import type { TranscriptEntry } from './AgentEvents';
+import type { TranscriptEntry } from './AgentEvents.interface';
 
 const project = (
   transcript: TranscriptEntry[],

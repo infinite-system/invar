@@ -1,4 +1,4 @@
-import type { LanguageServerCommand } from './LanguageProvider';
+import type { LanguageServerCommand } from './LanguageProvider.interface';
 import { Processes } from '../system/Processes';
 
 class $LspProcess implements LspProcessLike {

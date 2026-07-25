@@ -8,9 +8,9 @@
 // fixtures; only the subprocess pumping is shell-bound (verified by driving). No ANSI anywhere.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend';
+import type { AgentBackend } from './AgentBackend.interface';
 import { AgentPermissions } from './AgentPermissions';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentEvent } from './AgentEvents.interface';
 import { ClaudeStreamMapping } from './ClaudeStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 

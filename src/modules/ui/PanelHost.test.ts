@@ -2,7 +2,7 @@
 // all with plain fake PaneContents (the host is content-agnostic by construction).
 import { test, expect } from 'bun:test';
 import { PanelHost } from './PanelHost';
-import type { PaneContent } from './PaneContent';
+import type { PaneContent } from './PaneContent.interface';
 import { ref, type Ref } from 'vue';
 import type { StyledText, KeyEvent } from '@opentui/core';
 

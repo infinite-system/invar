@@ -7,7 +7,7 @@
 // implementation is interchangeable with zero change above the seam.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentEvent } from './AgentEvents';
+import type { AgentEvent } from './AgentEvents.interface';
 
 /** A source of agent events. The single boundary between AgentSession and whatever produces the
  *  structured event stream (a real `claude` subprocess, the SDK, or a scripted test double). */

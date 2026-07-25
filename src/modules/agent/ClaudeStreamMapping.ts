@@ -6,7 +6,7 @@
 //
 // invariant: An agent session is a structured event stream, not a screen (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentEvent } from './AgentEvents.interface';
 
 /** Extract plain text from a tool_result block's `content` (a string, or an array of text parts). */
 function toolResultText(content: unknown): string {

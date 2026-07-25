@@ -7,7 +7,7 @@
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';
-import type { TerminalBackend } from './TerminalBackend';
+import type { TerminalBackend } from './TerminalBackend.interface';
 import { OpenPtyBackend } from './OpenPtyBackend';
 import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalInstance } from './TerminalInstance';

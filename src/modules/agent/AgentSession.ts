@@ -10,8 +10,8 @@
 // invariant: One session is one Reactive instance (src/modules/agent/agent.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
-import type { AgentBackend } from './AgentBackend';
-import type { AgentEvent, AgentStatus, PermissionDecision, TranscriptEntry } from './AgentEvents';
+import type { AgentBackend } from './AgentBackend.interface';
+import type { AgentEvent, AgentStatus, PermissionDecision, TranscriptEntry } from './AgentEvents.interface';
 import type { ResolvedEngine } from './AgentProviderRegistry';
 import { TranscriptContextSerializer } from './TranscriptContextSerializer';
 

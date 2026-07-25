@@ -4,7 +4,7 @@
 // non-flaky — scripted ANSI in, asserted cells out — while OpenPtyBackend proves real liveness.
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
-import type { TerminalBackend } from './TerminalBackend';
+import type { TerminalBackend } from './TerminalBackend.interface';
 
 class $MockBackend implements TerminalBackend {
   private dataCallback: ((bytes: Uint8Array) => void) | null = null;

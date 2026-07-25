@@ -8,7 +8,7 @@
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import { Static } from 'ivue/extras';
-import type { TranscriptEntry } from './AgentEvents';
+import type { TranscriptEntry } from './AgentEvents.interface';
 
 /** Default preamble budget in characters — generous enough to carry real context, small enough to never
  *  dominate the new engine's window. */

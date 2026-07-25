@@ -17,7 +17,7 @@
 import { Reactive } from 'ivue';
 import { ref, watch, type Ref } from 'vue';
 import type { AgentSession } from '../agent/AgentSession';
-import type { TtsBackend } from './TtsBackend';
+import type { TtsBackend } from './TtsBackend.interface';
 import { SpeakableText } from './SpeakableText';
 
 class $NarrationProjection {

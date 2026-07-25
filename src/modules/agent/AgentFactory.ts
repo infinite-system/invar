@@ -8,7 +8,7 @@
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: One session is one Reactive instance (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
-import type { AgentBackend } from './AgentBackend';
+import type { AgentBackend } from './AgentBackend.interface';
 import { EchoAgentBackend } from './EchoAgentBackend';
 import { CliStreamBackend } from './CliStreamBackend';
 import { CodexStreamBackend } from './CodexStreamBackend';

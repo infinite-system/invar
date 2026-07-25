@@ -19,9 +19,9 @@
 // escalates EVERY command to an approval request, so prompts are more frequent there, never fewer.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend';
+import type { AgentBackend } from './AgentBackend.interface';
 import { AgentPermissions } from './AgentPermissions';
-import type { AgentEvent, PermissionDecision } from './AgentEvents';
+import type { AgentEvent, PermissionDecision } from './AgentEvents.interface';
 import { CodexAppServerMapping, type ApprovalDescriptor, type MappingTurnState } from './CodexAppServerMapping';
 import { Files } from '../system/Files';
 import { Processes, type SpawnedProcess } from '../system/Processes';

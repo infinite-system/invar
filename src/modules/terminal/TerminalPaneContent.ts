@@ -10,7 +10,7 @@
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
-import type { PaneContent, PaneRenderContext } from '../ui/PaneContent';
+import type { PaneContent, PaneRenderContext } from '../ui/PaneContent.interface';
 import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';

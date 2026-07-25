@@ -16,7 +16,7 @@ import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Tooltip } from './Tooltip';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 import type { Settings } from '../settings/Settings';
-import type { PaneContent } from './PaneContent';
+import type { PaneContent } from './PaneContent.interface';
 
 type GitActionButton = 'open' | 'discard' | 'stageToggle';
 

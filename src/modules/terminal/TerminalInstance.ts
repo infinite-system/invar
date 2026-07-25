@@ -10,7 +10,7 @@
 // invariant: Agent terminal reads are redacted (src/modules/terminal/terminal.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
-import type { TerminalBackend } from './TerminalBackend';
+import type { TerminalBackend } from './TerminalBackend.interface';
 import { TerminalEmulator } from './TerminalEmulator';
 import type { TerminalCell } from './TerminalEmulator';
 import {

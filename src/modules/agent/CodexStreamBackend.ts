@@ -9,9 +9,9 @@
 // resume) to avoid guessing the resume CLI shape before it can be verified.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend';
+import type { AgentBackend } from './AgentBackend.interface';
 import { AgentPermissions } from './AgentPermissions';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentEvent } from './AgentEvents.interface';
 import { CodexStreamMapping } from './CodexStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 

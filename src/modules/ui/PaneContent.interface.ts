@@ -14,21 +14,6 @@ import type { Ref } from 'vue';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 
-/** What a pane content is handed to render itself into a hosted pane slot. */
-export interface PaneRenderContext {
-  /** Inner cell columns available to the content. */
-  width: number;
-  /** Inner cell rows available to the content. */
-  height: number;
-  palette: Palette;
-  /** The active glyph fallback tier (nerd → unicode → ascii) — one source for every pane's icons. */
-  glyphLevel: GlyphLevel;
-  /** The active colour depth (truecolor → 256 → 16) — one source for every pane's gradient fallback. */
-  colorDepth: ColorDepth;
-  /** True while the panel owns the keyboard (content may paint focus affordances). */
-  focused: boolean;
-}
-
 /** A switchable occupant of any PanelHost-backed slot. */
 export interface PaneContent {
   /** Stable identity used by the switcher (unique within a PanelHost). */
@@ -73,4 +58,19 @@ export interface PaneContent {
   onBlur(): void;
   /** Release owned resources. */
   dispose(): void;
+}
+
+/** What a pane content is handed to render itself into a hosted pane slot. */
+export interface PaneRenderContext {
+  /** Inner cell columns available to the content. */
+  width: number;
+  /** Inner cell rows available to the content. */
+  height: number;
+  palette: Palette;
+  /** The active glyph fallback tier (nerd → unicode → ascii) — one source for every pane's icons. */
+  glyphLevel: GlyphLevel;
+  /** The active colour depth (truecolor → 256 → 16) — one source for every pane's gradient fallback. */
+  colorDepth: ColorDepth;
+  /** True while the panel owns the keyboard (content may paint focus affordances). */
+  focused: boolean;
 }

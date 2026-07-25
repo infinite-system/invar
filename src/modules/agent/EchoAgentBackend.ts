@@ -6,8 +6,8 @@
 // is the whole point of the one-seam invariant: the live app runs today, the real agent drops in later.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentBackend } from './AgentBackend.interface';
+import type { AgentEvent } from './AgentEvents.interface';
 import { AgentPermissions } from './AgentPermissions';
 import {
   AgentTerminalTools,

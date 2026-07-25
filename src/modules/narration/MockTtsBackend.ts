@@ -5,7 +5,7 @@
 // live engine. Selected in CI via INVAR_TTS_BACKEND=mock so the driving smoke never emits sound.
 //
 // invariant: Narration audio crosses exactly one TTS backend seam (src/modules/narration/narration.invariants.md)
-import type { TtsBackend } from './TtsBackend';
+import type { TtsBackend } from './TtsBackend.interface';
 
 class $MockTtsBackend implements TtsBackend {
   /** Every non-empty text handed to speak(), in order — the assertion surface. */

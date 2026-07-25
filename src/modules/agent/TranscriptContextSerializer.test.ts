@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { TranscriptContextSerializer } from './TranscriptContextSerializer';
-import type { TranscriptEntry } from './AgentEvents';
+import type { TranscriptEntry } from './AgentEvents.interface';
 
 const serialize = (transcript: TranscriptEntry[], budget?: number) =>
   TranscriptContextSerializer.Class.serialize(transcript, budget);

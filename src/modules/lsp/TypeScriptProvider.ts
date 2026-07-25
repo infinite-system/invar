@@ -3,7 +3,7 @@ import type {
   LanguageCapabilities,
   LanguageProvider,
   LanguageServerCommand,
-} from './LanguageProvider';
+} from './LanguageProvider.interface';
 
 class $TypeScriptProvider implements LanguageProvider {
   protected static get $typescriptExtensions(): ReadonlySet<string> {

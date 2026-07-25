@@ -4,8 +4,8 @@
 // events in, asserted transcript out — while CliStreamBackend proves real liveness against `claude -p`.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend';
-import type { AgentEvent } from './AgentEvents';
+import type { AgentBackend } from './AgentBackend.interface';
+import type { AgentEvent } from './AgentEvents.interface';
 
 class $MockAgentBackend implements AgentBackend {
   private eventCallback: ((event: AgentEvent) => void) | null = null;

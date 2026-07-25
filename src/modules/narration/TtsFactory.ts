@@ -6,7 +6,7 @@
 //
 // invariant: Narration audio crosses exactly one TTS backend seam (src/modules/narration/narration.invariants.md)
 import { Static } from 'ivue/extras';
-import type { TtsBackend } from './TtsBackend';
+import type { TtsBackend } from './TtsBackend.interface';
 import { MockTtsBackend } from './MockTtsBackend';
 import { SystemTtsBackend } from './SystemTtsBackend';
 

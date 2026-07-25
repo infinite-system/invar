@@ -4,7 +4,7 @@ import { AgentPaneContent, type AgentScrollPort } from './AgentPaneContent';
 import { AgentSession } from './AgentSession';
 import { MockAgentBackend } from './MockAgentBackend';
 import { DARK } from '../theme/ThemePalettes';
-import type { PaneRenderContext } from '../ui/PaneContent';
+import type { PaneRenderContext } from '../ui/PaneContent.interface';
 import { ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
 

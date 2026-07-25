@@ -15,7 +15,7 @@
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 import type { StyledText, KeyEvent } from '@opentui/core';
 import { computed, ref, watch, type Ref } from 'vue';
-import type { PaneContent, PaneRenderContext } from '../ui/PaneContent';
+import type { PaneContent, PaneRenderContext } from '../ui/PaneContent.interface';
 import type { GlyphLevel } from '../theme/TerminalCapabilities';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';

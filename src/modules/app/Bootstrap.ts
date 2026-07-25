@@ -61,7 +61,7 @@ import {
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
 import { AgentTerminalFollow } from '../agent/AgentTerminalFollow';
 import { TtsFactory } from '../narration/TtsFactory';
-import type { TtsBackend } from '../narration/TtsBackend';
+import type { TtsBackend } from '../narration/TtsBackend.interface';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 

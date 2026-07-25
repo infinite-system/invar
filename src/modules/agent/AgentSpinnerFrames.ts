@@ -7,7 +7,7 @@
 import { Static } from 'ivue/extras';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 import { ThemeIcons } from '../theme/ThemeIcons';
-import type { AgentStatus } from './AgentEvents';
+import type { AgentStatus } from './AgentEvents.interface';
 
 // The frame cycles and the ellipsis come from the theme's AgentTranscriptIconSet ladder — no
 // private glyph ladders in this module.

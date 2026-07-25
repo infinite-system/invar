@@ -13,7 +13,7 @@ import { WrapText } from '../ui/WrapText';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { AgentToolSummary } from './AgentToolSummary';
 import { AgentProviderRegistry } from './AgentProviderRegistry';
-import type { TranscriptEntry } from './AgentEvents';
+import type { TranscriptEntry } from './AgentEvents.interface';
 import { AgentWordWrap } from './AgentWordWrap';
 
 /** One projected visual line: its text, paint colour, weight, the transcript entry it belongs to, and

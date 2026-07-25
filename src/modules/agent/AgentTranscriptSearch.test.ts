@@ -8,7 +8,7 @@ import { AgentTranscriptSearch } from './AgentTranscriptSearch';
 import { TextDocument } from '../editor/TextDocument';
 import { FindInBuffer } from '../search/FindInBuffer';
 import { DARK } from '../theme/ThemePalettes';
-import type { TranscriptEntry } from './AgentEvents';
+import type { TranscriptEntry } from './AgentEvents.interface';
 
 /** Project a transcript, mirror it into a document, and run one query — the exact runtime pipeline. */
 function searchTranscript(

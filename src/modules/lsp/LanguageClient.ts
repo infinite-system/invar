@@ -8,7 +8,7 @@ import { Environment } from '../system/Environment';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { StatusChannel } from '../system/StatusChannel';
-import type { LanguageCapabilities, LanguageProvider } from './LanguageProvider';
+import type { LanguageCapabilities, LanguageProvider } from './LanguageProvider.interface';
 import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
