@@ -11,18 +11,20 @@
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
 // invariant: Stream inactivity is visible and non-destructive (src/modules/agent/agent.invariants.md)
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
-import { Reactive } from "ivue";
-import { ref } from "vue";
-import type { AgentBackend } from "./AgentBackend.interface";
+// invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
+import { Reactive } from 'ivue';
+import { ref } from 'vue';
+import type { AgentBackend } from './AgentBackend.interface';
 import type {
   AgentEvent,
   AgentStatus,
   AgentTurnState,
   PermissionDecision,
   TranscriptEntry,
-} from "./AgentEvents.interface";
-import type { ResolvedEngine } from "./AgentProviderRegistry";
-import { TranscriptContextSerializer } from "./TranscriptContextSerializer";
+} from './AgentEvents.interface';
+import type { ResolvedEngine } from './AgentProviderRegistry';
+import { AgentPromptResolver } from './AgentPromptResolver';
+import { TranscriptContextSerializer } from './TranscriptContextSerializer';
 
 class $AgentSession {
   /** The one append-only transcript. Mutated only by fold()/send()/swapBackend() here; read-only
@@ -67,7 +69,8 @@ class $AgentSession {
 
   constructor(
     protected backend: AgentBackend,
-    activeEngine: ResolvedEngine = "claude",
+    activeEngine: ResolvedEngine = 'claude',
+    protected readonly workspaceRoot: string = process.cwd(),
   ) {
     this.currentEngine = activeEngine;
     this.wireBackend();
@@ -86,12 +89,12 @@ class $AgentSession {
 
   /** The lifecycle state derived from the event stream (idle → streaming → awaiting-tool → …). */
   get status() {
-    return ref<AgentStatus>("idle");
+    return ref<AgentStatus>('idle');
   }
 
   /** User-facing turn liveness, including the watchdog-only stalled state and sticky canceled state. */
   get turnState() {
-    return ref<AgentTurnState>("idle");
+    return ref<AgentTurnState>('idle');
   }
 
   /** Read-only view of the transcript — the projection surface every UI reads. */
@@ -102,7 +105,7 @@ class $AgentSession {
   /** True while a turn is in flight (no new turn may start until it settles). */
   get busy(): boolean {
     return (
-      this.turnState.value === "running" || this.turnState.value === "stalled"
+      this.turnState.value === 'running' || this.turnState.value === 'stalled'
     );
   }
 
@@ -110,7 +113,7 @@ class $AgentSession {
   get queuedMessageCount(): number {
     let count = 0;
     for (const entry of this.entries) {
-      if (entry.role === "user" && entry.delivery === "queued") count += 1;
+      if (entry.role === 'user' && entry.delivery === 'queued') count += 1;
     }
     return count;
   }
@@ -127,7 +130,7 @@ class $AgentSession {
   } | null {
     while (this.pendingPermissionScanFrom < this.entries.length) {
       const entry = this.entries[this.pendingPermissionScanFrom]!;
-      if (entry.role === "permission-request" && entry.status === "pending") {
+      if (entry.role === 'permission-request' && entry.status === 'pending') {
         return { id: entry.id, toolName: entry.toolName, input: entry.input };
       }
       this.pendingPermissionScanFrom += 1; // settled or non-permission — never worth revisiting
@@ -148,8 +151,8 @@ class $AgentSession {
     if (!respond) return;
     this.pendingPermissionResponders.delete(id);
     for (const entry of this.entries) {
-      if (entry.role === "permission-request" && entry.id === id) {
-        entry.status = decision === "deny" ? "denied" : "allowed";
+      if (entry.role === 'permission-request' && entry.id === id) {
+        entry.status = decision === 'deny' ? 'denied' : 'allowed';
       }
     }
     this.renderRevision.value++;
@@ -170,7 +173,7 @@ class $AgentSession {
     this.assistantTurnOpen = false;
     this.wireBackend();
     this.entries.push({
-      role: "system",
+      role: 'system',
       text: `switched to ${nextEngine} — context ported`,
     });
     this.ingestContext(preamble);
@@ -184,19 +187,20 @@ class $AgentSession {
   send(prompt: string): boolean {
     const trimmed = prompt.trim();
     if (!trimmed) return this.sendQueuedMessage();
+    const turnPrompt = prompt.startsWith('/') ? prompt : trimmed;
     if (
       this.backendTurnActive ||
       this.queuedMessagesHeld ||
       this.queuedMessageCount > 0
     ) {
       this.assistantTurnOpen = false;
-      this.entries.push({ role: "user", text: trimmed, delivery: "queued" });
+      this.entries.push({ role: 'user', text: turnPrompt, delivery: 'queued' });
       this.renderRevision.value++;
       return true;
     }
     this.assistantTurnOpen = false;
-    this.entries.push({ role: "user", text: trimmed });
-    this.startBackendTurn(trimmed);
+    this.entries.push({ role: 'user', text: turnPrompt });
+    this.startBackendTurn(turnPrompt);
     return true;
   }
 
@@ -205,13 +209,13 @@ class $AgentSession {
   sendQueuedMessage(entryIndex?: number): boolean {
     const queuedEntryIndex = this.firstQueuedMessageIndex();
     if (queuedEntryIndex < 0) return false;
-    if (entryIndex !== undefined && this.entries[entryIndex]?.role !== "user") {
+    if (entryIndex !== undefined && this.entries[entryIndex]?.role !== 'user') {
       return false;
     }
     if (
       entryIndex !== undefined &&
-      this.entries[entryIndex]?.role === "user" &&
-      this.entries[entryIndex].delivery !== "queued"
+      this.entries[entryIndex]?.role === 'user' &&
+      this.entries[entryIndex].delivery !== 'queued'
     ) {
       return false;
     }
@@ -240,7 +244,7 @@ class $AgentSession {
     const trimmed = prompt.trim();
     if (!trimmed) return false;
     this.pendingExternalPrompts.push(trimmed);
-    if (this.turnState.value !== "canceled") {
+    if (this.turnState.value !== 'canceled') {
       this.dispatchPendingExternalPrompt();
     }
     return true;
@@ -249,7 +253,7 @@ class $AgentSession {
   appendSystemNote(text: string): void {
     if (!text) return;
     this.assistantTurnOpen = false;
-    this.entries.push({ role: "system", text });
+    this.entries.push({ role: 'system', text });
     this.renderRevision.value++;
   }
 
@@ -263,9 +267,9 @@ class $AgentSession {
     this.assistantTurnOpen = false;
     this.clearInactivityWatchdog();
     this.resolveDanglingPermissions();
-    this.entries.push({ role: "system", text: "canceled" });
-    this.status.value = "idle";
-    this.turnState.value = "canceled";
+    this.entries.push({ role: 'system', text: 'canceled' });
+    this.status.value = 'idle';
+    this.turnState.value = 'canceled';
     this.renderRevision.value++;
     this.backend.interrupt();
     return true;
@@ -273,75 +277,75 @@ class $AgentSession {
 
   /** Fold one backend event into the transcript + derived status. The whole state machine lives here. */
   protected fold(event: AgentEvent): void {
-    if (this.cancellationRequested && event.kind !== "session-end") return;
-    if (event.kind === "session-end") {
+    if (this.cancellationRequested && event.kind !== 'session-end') return;
+    if (event.kind === 'session-end') {
       this.completeBackendTurn(event.reason);
       return;
     }
     if (!this.backendTurnActive) this.backendTurnActive = true;
     if (this.backendTurnActive) this.recordBackendActivity();
     switch (event.kind) {
-      case "session-start":
-        this.status.value = "streaming";
+      case 'session-start':
+        this.status.value = 'streaming';
         break;
-      case "text-delta":
+      case 'text-delta':
         if (!this.assistantTurnOpen) {
           this.entries.push({
-            role: "assistant",
-            text: "",
+            role: 'assistant',
+            text: '',
             engine: this.currentEngine,
           });
           this.assistantTurnOpen = true;
         }
         {
           const last = this.entries[this.entries.length - 1];
-          if (last && last.role === "assistant") last.text += event.text;
+          if (last && last.role === 'assistant') last.text += event.text;
         }
-        this.status.value = "streaming";
+        this.status.value = 'streaming';
         break;
-      case "tool-use":
+      case 'tool-use':
         this.assistantTurnOpen = false;
         this.entries.push({
-          role: "tool-use",
+          role: 'tool-use',
           id: event.id,
           name: event.name,
           input: event.input,
         });
-        this.status.value = "awaiting-tool";
+        this.status.value = 'awaiting-tool';
         break;
-      case "tool-result":
+      case 'tool-result':
         this.assistantTurnOpen = false;
         this.entries.push({
-          role: "tool-result",
+          role: 'tool-result',
           id: event.id,
           result: event.result,
           isError: event.isError,
         });
-        this.status.value = "streaming";
+        this.status.value = 'streaming';
         break;
-      case "permission-request":
+      case 'permission-request':
         this.assistantTurnOpen = false;
         this.entries.push({
-          role: "permission-request",
+          role: 'permission-request',
           id: event.id,
           toolName: event.toolName,
           input: event.input,
-          status: "pending",
+          status: 'pending',
           engine: this.currentEngine,
         });
         this.pendingPermissionResponders.set(event.id, event.respond);
-        this.status.value = "awaiting-tool"; // the turn is paused on a gated tool
+        this.status.value = 'awaiting-tool'; // the turn is paused on a gated tool
         break;
-      case "error":
+      case 'error':
         this.assistantTurnOpen = false;
-        this.entries.push({ role: "error", text: event.message });
+        this.entries.push({ role: 'error', text: event.message });
         break;
     }
     this.renderRevision.value++;
   }
 
   protected completeBackendTurn(
-    reason: "completed" | "interrupted" | "error",
+    reason: 'completed' | 'interrupted' | 'error',
   ): void {
     if (!this.backendTurnActive) return;
     this.backendTurnActive = false;
@@ -351,8 +355,8 @@ class $AgentSession {
     const canceled = this.cancellationRequested;
     this.cancellationRequested = false;
     if (!canceled) {
-      this.status.value = reason === "error" ? "ended" : "idle";
-      this.turnState.value = "idle";
+      this.status.value = reason === 'error' ? 'ended' : 'idle';
+      this.turnState.value = 'idle';
     }
     this.renderRevision.value++;
     if (canceled) {
@@ -389,10 +393,10 @@ class $AgentSession {
     for (const [id, respond] of [...this.pendingPermissionResponders]) {
       this.pendingPermissionResponders.delete(id);
       for (const entry of this.entries) {
-        if (entry.role === "permission-request" && entry.id === id)
-          entry.status = "denied";
+        if (entry.role === 'permission-request' && entry.id === id)
+          entry.status = 'denied';
       }
-      respond("deny");
+      respond('deny');
     }
   }
 
@@ -407,13 +411,13 @@ class $AgentSession {
     const prompt = this.pendingExternalPrompts.shift();
     if (!prompt) return;
     this.assistantTurnOpen = false;
-    this.entries.push({ role: "user", text: prompt });
+    this.entries.push({ role: 'user', text: prompt });
     this.startBackendTurn(prompt);
   }
 
   protected firstQueuedMessageIndex(): number {
     return this.entries.findIndex(
-      (entry) => entry.role === "user" && entry.delivery === "queued",
+      (entry) => entry.role === 'user' && entry.delivery === 'queued',
     );
   }
 
@@ -422,7 +426,7 @@ class $AgentSession {
     const entryIndex = this.firstQueuedMessageIndex();
     if (entryIndex < 0) return false;
     const entry = this.entries[entryIndex]!;
-    if (entry.role !== "user") return false;
+    if (entry.role !== 'user') return false;
     delete entry.delivery;
     this.startBackendTurn(entry.text);
     return true;
@@ -431,15 +435,19 @@ class $AgentSession {
   protected startBackendTurn(prompt: string): void {
     this.backendTurnActive = true;
     this.cancellationRequested = false;
-    this.status.value = "streaming";
-    this.turnState.value = "running";
+    this.status.value = 'streaming';
+    this.turnState.value = 'running';
     this.armInactivityWatchdog();
     this.renderRevision.value++;
-    this.backend.send(this.promptWithPendingContext(prompt));
+    const resolvedPrompt = AgentPromptResolver.Class.resolve(
+      this.workspaceRoot,
+      prompt,
+    );
+    this.backend.send(this.promptWithPendingContext(resolvedPrompt));
   }
 
   protected recordBackendActivity(): void {
-    this.turnState.value = "running";
+    this.turnState.value = 'running';
     this.armInactivityWatchdog();
   }
 
@@ -455,7 +463,7 @@ class $AgentSession {
       ) {
         return;
       }
-      this.turnState.value = "stalled";
+      this.turnState.value = 'stalled';
       this.renderRevision.value++;
     }, agentSessionClass.streamInactivityThresholdMilliseconds);
     (

@@ -70,6 +70,7 @@ class $AgentFactory {
     const session = new AgentSession.Class(
       backend,
       AgentProviderRegistry.Class.resolve(options.provider).engine,
+      options.cwd ?? process.cwd(),
     );
     return new AgentPaneContent.Class(session, {
       identifier: options.identifier,

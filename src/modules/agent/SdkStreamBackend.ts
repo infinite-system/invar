@@ -19,26 +19,27 @@
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
+// invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
 import {
   createSdkMcpServer,
   query,
   tool,
   type Query,
   type PermissionResult,
-} from "@anthropic-ai/claude-agent-sdk";
-import { z } from "zod";
-import type { AgentBackend } from "./AgentBackend.interface";
-import { AgentPermissions } from "./AgentPermissions";
+} from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
+import type { AgentBackend } from './AgentBackend.interface';
+import { AgentPermissions } from './AgentPermissions';
 import type {
   AgentEndReason,
   AgentEvent,
   PermissionDecision,
-} from "./AgentEvents.interface";
-import { ClaudeStreamMapping } from "./ClaudeStreamMapping";
+} from './AgentEvents.interface';
+import { ClaudeStreamMapping } from './ClaudeStreamMapping';
 import {
   AgentTerminalTools,
   type AgentTerminalToolPort,
-} from "./AgentTerminalTools";
+} from './AgentTerminalTools';
 
 class $SdkStreamBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
@@ -68,8 +69,8 @@ class $SdkStreamBackend implements AgentBackend {
     const terminalToolServer =
       terminalToolDefinitions.length > 0
         ? createSdkMcpServer({
-            name: "invar-terminal",
-            version: "1.0.0",
+            name: 'invar-terminal',
+            version: '1.0.0',
             alwaysLoad: true,
             tools: terminalToolDefinitions.map((definition) =>
               tool(
@@ -77,7 +78,7 @@ class $SdkStreamBackend implements AgentBackend {
                 definition.description,
                 definition.requiresCommand
                   ? { command: z.string() }
-                  : definition.name === "readTerminalScrollback"
+                  : definition.name === 'readTerminalScrollback'
                     ? {
                         lineCount: z.number().int().positive().optional(),
                         range: z
@@ -90,7 +91,7 @@ class $SdkStreamBackend implements AgentBackend {
                     : {},
                 async (input) => ({
                   content: [
-                    { type: "text", text: await definition.invoke(input) },
+                    { type: 'text', text: await definition.invoke(input) },
                   ],
                 }),
                 { alwaysLoad: true },
@@ -104,18 +105,19 @@ class $SdkStreamBackend implements AgentBackend {
         prompt,
         options: {
           cwd: this.options.cwd,
+          settingSources: ['user', 'project'],
           model: this.options.model || undefined,
           resume: this.sessionId ?? undefined,
           ...(terminalToolServer
-            ? { mcpServers: { "invar-terminal": terminalToolServer } }
+            ? { mcpServers: { 'invar-terminal': terminalToolServer } }
             : {}),
           ...(bypass
             ? {
-                permissionMode: "bypassPermissions" as const,
+                permissionMode: 'bypassPermissions' as const,
                 allowDangerouslySkipPermissions: true,
               }
             : {
-                permissionMode: "default" as const,
+                permissionMode: 'default' as const,
                 canUseTool: (toolName, input) =>
                   this.gateToolCall(toolName, input),
               }),
@@ -123,10 +125,10 @@ class $SdkStreamBackend implements AgentBackend {
       });
     } catch (error) {
       this.emit({
-        kind: "error",
+        kind: 'error',
         message: `Failed to start the Claude SDK session: ${String(error)}`,
       });
-      this.emit({ kind: "session-end", reason: "error" });
+      this.emit({ kind: 'session-end', reason: 'error' });
       return;
     }
     this.activeQuery = turn;
@@ -139,29 +141,29 @@ class $SdkStreamBackend implements AgentBackend {
     toolName: string,
     input: Record<string, unknown>,
   ): Promise<PermissionResult> {
-    if (this.disposed) return { behavior: "deny", message: "Session closed" };
+    if (this.disposed) return { behavior: 'deny', message: 'Session closed' };
     if (AgentTerminalTools.Class.isLowPermissionToolName(toolName)) {
-      return { behavior: "allow", updatedInput: input };
+      return { behavior: 'allow', updatedInput: input };
     }
     if (this.autoAllowedTools.has(toolName))
-      return { behavior: "allow", updatedInput: input };
+      return { behavior: 'allow', updatedInput: input };
     return new Promise<PermissionResult>((resolve) => {
       this.permissionRequestCounter += 1;
       const id = `permission-${this.permissionRequestCounter}`;
       let settled = false;
       this.emit({
-        kind: "permission-request",
+        kind: 'permission-request',
         id,
         toolName,
         input,
         respond: (decision: PermissionDecision) => {
           if (settled) return; // exactly-once (the session also guards, belt and braces)
           settled = true;
-          if (decision === "always-allow") this.autoAllowedTools.add(toolName);
+          if (decision === 'always-allow') this.autoAllowedTools.add(toolName);
           resolve(
-            decision === "deny"
-              ? { behavior: "deny", message: "The user denied this tool call." }
-              : { behavior: "allow", updatedInput: input },
+            decision === 'deny'
+              ? { behavior: 'deny', message: 'The user denied this tool call.' }
+              : { behavior: 'allow', updatedInput: input },
           );
         },
       });
@@ -176,7 +178,7 @@ class $SdkStreamBackend implements AgentBackend {
         const sessionId = ClaudeStreamMapping.Class.sessionIdOf(message);
         if (sessionId) this.sessionId = sessionId; // captured for `resume` on the next turn
         for (const event of ClaudeStreamMapping.Class.mapEvent(message)) {
-          if (event.kind === "session-end") {
+          if (event.kind === 'session-end') {
             this.streamEndReason = event.reason;
             if (this.activeQuery !== turn) return;
             this.activeQuery = null;
@@ -190,17 +192,17 @@ class $SdkStreamBackend implements AgentBackend {
     } catch (error) {
       streamFailed = true;
       if (this.activeQuery === turn && !this.interrupting && !this.disposed) {
-        this.emit({ kind: "error", message: String(error) });
+        this.emit({ kind: 'error', message: String(error) });
       }
     }
     if (this.activeQuery !== turn) return;
     this.activeQuery = null;
     if (!this.disposed) {
       this.emit({
-        kind: "session-end",
+        kind: 'session-end',
         reason: this.interrupting
-          ? "interrupted"
-          : (this.streamEndReason ?? (streamFailed ? "error" : "completed")),
+          ? 'interrupted'
+          : (this.streamEndReason ?? (streamFailed ? 'error' : 'completed')),
       });
     }
   }
@@ -220,7 +222,7 @@ class $SdkStreamBackend implements AgentBackend {
       void interruptedQuery.interrupt().catch(() => {
         /* already ending — the local terminal event was still emitted exactly once */
       });
-      this.emit({ kind: "session-end", reason: "interrupted" });
+      this.emit({ kind: 'session-end', reason: 'interrupted' });
     }
   }
 

@@ -501,3 +501,41 @@ transcript/status behavior.
 **Status:** provisional
 
 **Last refined:** 2026-07-23
+
+### Agent instructions match the workspace
+
+**Invariant:** If an agent turn starts in a workspace, then its instruction environment includes
+that workspace's agent guidance and a leading project skill or command resolves to the same
+instruction body before any backend receives the turn.
+
+**Scope:** `AgentPromptResolver`, `AgentSession`, `SdkStreamBackend`, Claude CLI, and Codex turns.
+Claude loads user and project setting sources; Codex natively reads `AGENTS.md`, not
+`.claude/skills`. Resolver expansion is prompt text shared by every backend and does not imply
+native Codex skill support.
+
+**Mechanism:** `SdkStreamBackend` explicitly passes `settingSources: ["user", "project"]`.
+`AgentSession.startBackendTurn` runs `AgentPromptResolver` before the one `AgentBackend.send` seam.
+The resolver confines lookups through `Files` and tries
+`.claude/skills/<name>/SKILL.md` before `.claude/commands/<name>.md`; a miss returns the original
+prompt unchanged.
+
+**Generates:** Project `CLAUDE.md`, settings, skills, and commands in Claude SDK sessions;
+backend-independent slash expansion; skill precedence over a same-named command; honest Codex
+guidance through `AGENTS.md` plus textual expansion only.
+
+**Rejected alternatives:** Rely on provider-native slash parsing — behavior changes with the
+installed CLI or SDK version and leaves other backends inconsistent.
+
+**Evidence:** `src/modules/agent/AgentPromptResolver.test.ts`;
+`scripts/harness/smoke-agent-cancel-harness.ts`; `src/modules/agent/SdkStreamBackend.ts`.
+
+**Impossible if true:** A found project skill reaching one backend as an unresolved slash token;
+an unknown slash turn being swallowed or rewritten; a resolver lookup escaping `.claude/skills`
+or `.claude/commands`; Codex being described as natively loading Claude project skills.
+
+**Verification:** `bun test src/modules/agent/AgentPromptResolver.test.ts && bun
+scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
