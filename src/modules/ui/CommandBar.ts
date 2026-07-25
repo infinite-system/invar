@@ -6,23 +6,23 @@ import {
   type CliRenderer,
   type MouseEvent,
   type TextChunk,
-} from '@opentui/core';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+} from "@opentui/core";
+import { EditorCoordinates } from "../editor/EditorCoordinates";
 import {
   LayoutModel,
-  type LayoutConfiguration,
-} from '../layout/LayoutModel';
-import type { Settings } from '../settings/Settings';
-import { Files } from '../system/Files';
-import type { Theme } from '../theme/Theme';
-import type { WorkspaceSet } from '../workspace/WorkspaceSet';
-import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+  type LayoutPreset,
+  type LayoutPresetValues,
+} from "../layout/LayoutModel";
+import { Files } from "../system/Files";
+import type { Theme } from "../theme/Theme";
+import type { WorkspaceSet } from "../workspace/WorkspaceSet";
+import type { KeybindingRegistry } from "../keybindings/KeybindingRegistry";
 import type {
   BoundedListPopup,
   BoundedListPopupItem,
-} from './BoundedListPopup';
-import type { OverlayCoordinator } from './OverlayCoordinator';
-import type { Tooltip } from './Tooltip';
+} from "./BoundedListPopup";
+import type { OverlayCoordinator } from "./OverlayCoordinator";
+import type { Tooltip } from "./Tooltip";
 
 // invariant: Command bar paint and hit geometry are identical (src/modules/ui/ui.invariants.md)
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
@@ -35,22 +35,19 @@ class $CommandBar {
 
   constructor(protected readonly dependencies: CommandBarDependencies) {
     this.bar = new TextRenderable(dependencies.renderer, {
-      id: 'workspace-command-bar',
-      content: '',
-      width: '100%',
+      id: "workspace-command-bar",
+      content: "",
+      width: "100%",
       height: 1,
-      wrapMode: 'none',
+      wrapMode: "none",
       selectable: false,
     });
     this.wirePointerInput();
   }
 
-  static layoutGeometry(
-    width: number,
-    folderName: string,
-  ): CommandBarGeometry {
+  static layoutGeometry(width: number, folderName: string): CommandBarGeometry {
     const boundedWidth = Math.max(1, Math.floor(width));
-    const layoutsLabel = ' layouts ';
+    const layoutsLabel = " layouts ";
     const layoutsStartColumn = Math.max(
       0,
       boundedWidth - EditorCoordinates.Class.lineWidth(layoutsLabel),
@@ -63,12 +60,12 @@ class $CommandBar {
     );
     const visibleFolderName =
       EditorCoordinates.Class.displayColumnWindow(
-        folderName || '.',
+        folderName || ".",
         0,
         maximumFolderColumns,
-      ) || '.';
-    const backLabel = ' ‹ ';
-    const forwardLabel = ' › ';
+      ) || ".";
+    const backLabel = " ‹ ";
+    const forwardLabel = " › ";
     const folderLabel = ` ${visibleFolderName} `;
     const centerWidth =
       EditorCoordinates.Class.lineWidth(backLabel) +
@@ -92,19 +89,19 @@ class $CommandBar {
       forwardEndColumn + EditorCoordinates.Class.lineWidth(folderLabel);
     const segments: CommandBarSegment[] = [
       {
-        control: 'back',
+        control: "back",
         label: backLabel,
         startColumn: centerStartColumn,
         endColumn: backEndColumn,
       },
       {
-        control: 'forward',
+        control: "forward",
         label: forwardLabel,
         startColumn: backEndColumn,
         endColumn: forwardEndColumn,
       },
       {
-        control: 'folder',
+        control: "folder",
         label: folderLabel,
         startColumn: forwardEndColumn,
         endColumn: folderEndColumn,
@@ -112,7 +109,7 @@ class $CommandBar {
     ];
     if (layoutsStartColumn < boundedWidth) {
       segments.push({
-        control: 'layouts',
+        control: "layouts",
         label: EditorCoordinates.Class.displayColumnWindow(
           layoutsLabel,
           0,
@@ -133,7 +130,7 @@ class $CommandBar {
     const folderName =
       Files.Class.basename(this.dependencies.workspaceSet.active.root) ||
       this.dependencies.workspaceSet.active.root ||
-      '.';
+      ".";
     this.currentGeometry = $CommandBar.layoutGeometry(width, folderName);
     this.bar.content = this.renderGeometry(this.currentGeometry);
     this.bar.fg = this.dependencies.theme.palette.fg;
@@ -149,13 +146,11 @@ class $CommandBar {
   }
 
   protected get currentLayoutIdentifier(): string {
-    const settings = this.dependencies.settings;
-    return LayoutModel.Class.configurationIdentifier({
-      sidebarPosition: settings.sidebarPosition.value,
-      panelAlignment: settings.panelAlignment.value,
-      leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
-      rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
-    });
+    return (
+      LayoutModel.Class.matchingPresetIdentifier(
+        this.dependencies.currentLayoutValues(),
+      ) ?? ""
+    );
   }
 
   protected renderGeometry(geometry: CommandBarGeometry): StyledText {
@@ -165,14 +160,15 @@ class $CommandBar {
     for (const segment of geometry.segments) {
       if (segment.startColumn > nextColumn) {
         chunks.push(
-          fg(palette.dim)(' '.repeat(segment.startColumn - nextColumn)),
+          fg(palette.dim)(" ".repeat(segment.startColumn - nextColumn)),
         );
       }
       const isDisabled =
-        (segment.control === 'back' &&
+        (segment.control === "back" &&
           !this.dependencies.workspaceSet.active.navigationHistory.canGoBack) ||
-        (segment.control === 'forward' &&
-          !this.dependencies.workspaceSet.active.navigationHistory.canGoForward);
+        (segment.control === "forward" &&
+          !this.dependencies.workspaceSet.active.navigationHistory
+            .canGoForward);
       const controlForeground = isDisabled ? palette.dim : palette.fg;
       const controlText = fg(controlForeground)(segment.label);
       chunks.push(
@@ -183,7 +179,7 @@ class $CommandBar {
       nextColumn = segment.endColumn;
     }
     if (nextColumn < geometry.width) {
-      chunks.push(fg(palette.dim)(' '.repeat(geometry.width - nextColumn)));
+      chunks.push(fg(palette.dim)(" ".repeat(geometry.width - nextColumn)));
     }
     return new StyledText(chunks);
   }
@@ -194,17 +190,14 @@ class $CommandBar {
 
   protected hoveredControlValue: CommandBarControl | null = null;
 
-  protected runControl(
-    control: CommandBarControl,
-    event: MouseEvent,
-  ): void {
-    if (control === 'back') {
+  protected runControl(control: CommandBarControl, event: MouseEvent): void {
+    if (control === "back") {
       this.dependencies.workspaceSet.active.navigateBack();
-    } else if (control === 'forward') {
+    } else if (control === "forward") {
       this.dependencies.workspaceSet.active.navigateForward();
-    } else if (control === 'folder') {
+    } else if (control === "folder") {
       this.dependencies.overlayCoordinator.openExclusiveOverlay(
-        'quickOpen',
+        "quickOpen",
         () =>
           void this.dependencies.quickOpen.show(
             this.dependencies.workspaceSet.active.root,
@@ -217,77 +210,54 @@ class $CommandBar {
   }
 
   protected openLayoutsMenu(event: MouseEvent): void {
-    const configurations = LayoutModel.Class.configurations();
-    const items: BoundedListPopupItem[] = configurations.map(
-      (configuration) => ({
-        identifier: configuration.identifier,
-        label: configuration.label,
-        selected: configuration.identifier === this.currentLayoutIdentifier,
-      }),
-    );
+    const presets = LayoutModel.Class.presets();
+    const items: BoundedListPopupItem[] = presets.map((preset) => ({
+      identifier: preset.identifier,
+      label: preset.label,
+      selected: preset.identifier === this.currentLayoutIdentifier,
+    }));
     this.dependencies.overlayCoordinator.openExclusiveOverlay(
-      'boundedListPopup',
+      "boundedListPopup",
       () =>
         this.dependencies.boundedListPopup.openAt(
           items,
           { column: event.x, row: event.y },
           (item) => {
-            const configuration = configurations.find(
+            const preset = presets.find(
               (candidate) => candidate.identifier === item.identifier,
             );
-            if (configuration) this.applyLayoutConfiguration(configuration);
+            if (preset) this.dependencies.applyLayoutPreset(preset);
           },
           {
-            title: 'Layouts',
+            title: "Layouts",
             selectedItemIdentifier: this.currentLayoutIdentifier,
-            minimumWidth: 48,
+            minimumWidth: 24,
           },
         ),
     );
   }
 
-  protected applyLayoutConfiguration(
-    configuration: LayoutConfiguration,
-  ): void {
-    const settings = this.dependencies.settings;
-    settings.sidebarPosition.value = configuration.sidebarPosition;
-    settings.panelAlignment.value = configuration.panelAlignment;
-    settings.leftDockVerticalSpan.value =
-      configuration.leftDockVerticalSpan;
-    settings.rightDockVerticalSpan.value =
-      configuration.rightDockVerticalSpan;
-    settings.save();
-  }
-
   protected tooltipForControl(control: CommandBarControl): string {
-    if (control === 'back') {
+    if (control === "back") {
+      return this.tooltipWithBinding("Go Back", "navigation.back", "editor");
+    }
+    if (control === "forward") {
       return this.tooltipWithBinding(
-        'Go Back',
-        'navigation.back',
-        'editor',
+        "Go Forward",
+        "navigation.forward",
+        "editor",
       );
     }
-    if (control === 'forward') {
-      return this.tooltipWithBinding(
-        'Go Forward',
-        'navigation.forward',
-        'editor',
-      );
+    if (control === "folder") {
+      return this.tooltipWithBinding("Go to File", "quickopen.open", "global");
     }
-    if (control === 'folder') {
-      return this.tooltipWithBinding(
-        'Go to File',
-        'quickopen.open',
-        'global',
-      );
-    }
-    return 'Layouts';
+    return "Layouts";
   }
 
   protected tooltipWithBinding(
     label: string,
     actionIdentifier: string,
-    context: 'global' | 'editor',
+    context: "global" | "editor",
   ): string {
     const bindingHint = this.dependencies.keybindings.bindingHint(
       actionIdentifier,
@@ -318,9 +288,7 @@ class $CommandBar {
       this.dependencies.renderer.requestRender();
     };
     this.bar.onMouseDown = (event) => {
-      const control = this.controlAtColumn(
-        event.x - Number(this.bar.x),
-      );
+      const control = this.controlAtColumn(event.x - Number(this.bar.x));
       if (control) this.runControl(control, event);
     };
   }
@@ -342,15 +310,12 @@ export interface CommandBarDependencies {
   quickOpen: {
     show(root: string): Promise<void>;
   };
-  settings: Settings.Instance;
   keybindings: KeybindingRegistry.Instance;
+  currentLayoutValues(): LayoutPresetValues;
+  applyLayoutPreset(preset: LayoutPreset): void;
 }
 
-export type CommandBarControl =
-  | 'back'
-  | 'forward'
-  | 'folder'
-  | 'layouts';
+export type CommandBarControl = "back" | "forward" | "folder" | "layouts";
 
 export interface CommandBarSegment {
   control: CommandBarControl;

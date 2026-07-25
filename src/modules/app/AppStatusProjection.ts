@@ -221,6 +221,7 @@ class $AppStatusProjection {
       panelCellColumns: ports.panelHost
         .cellSpans(ports.view.panelViewportColumns())
         .map((span) => span.columns),
+      primaryDockVisible: ports.primaryDockHost.visible.value,
       rightDockVisible: ports.rightDockHost.visible.value,
       rightDockFocused: ports.rightDockHost.focused.value,
       rightDockActiveContent: ports.rightDockHost.activeId.value,
@@ -415,6 +416,10 @@ export interface AppStatusProjectionPorts {
     | "focusedContent"
     | "focusedIndex"
     | "cellSpans"
+    >;
+    readonly primaryDockHost: Pick<
+      InstanceType<typeof PanelHost.Class>,
+      "visible"
   >;
   readonly rightDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,

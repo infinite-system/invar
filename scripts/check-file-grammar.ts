@@ -10,27 +10,27 @@
 // invariant: Public classes use the namespace pattern (project.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { basename, extname, relative, resolve } from 'node:path';
-import * as typescript from 'typescript';
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { basename, extname, relative, resolve } from "node:path";
+import * as typescript from "typescript";
 
 export type FileGrammarRule =
-  | 'arrow-function-class-field'
-  | 'class-file-order'
-  | 'construction-bypass'
-  | 'contract-interface-content'
-  | 'contract-interface-file-name'
-  | 'contract-interface-order'
-  | 'eponymous-class'
-  | 'eponymous-interface'
-  | 'hash-private-field'
-  | 'missing-colocated-test'
-  | 'module-function'
-  | 'module-variable'
-  | 'namespace-manifest'
-  | 'private-modifier'
-  | 'test-colocation'
-  | 'type-before-eponymous';
+  | "arrow-function-class-field"
+  | "class-file-order"
+  | "construction-bypass"
+  | "contract-interface-content"
+  | "contract-interface-file-name"
+  | "contract-interface-order"
+  | "eponymous-class"
+  | "eponymous-interface"
+  | "hash-private-field"
+  | "missing-colocated-test"
+  | "module-function"
+  | "module-variable"
+  | "namespace-manifest"
+  | "private-modifier"
+  | "test-colocation"
+  | "type-before-eponymous";
 
 export interface FileGrammarViolation {
   fileName: string;
@@ -50,56 +50,57 @@ export interface FileGrammarInspectionOptions {
 }
 
 export const CONVERTED_MODULES = new Set<string>([
-  'agent',
-  'app',
-  'commands',
-  'diff',
-  'editor',
-  'git',
-  'image',
-  'kernel',
-  'keybindings',
-  'lsp',
-  'markdown',
-  'narration',
-  'navigation',
-  'search',
-  'settings',
-  'storage',
-  'system',
-  'syntax',
-  'terminal',
-  'theme',
-  'ui',
-  'workspace',
+  "agent",
+  "app",
+  "commands",
+  "diff",
+  "editor",
+  "git",
+  "image",
+  "kernel",
+  "keybindings",
+  "layout",
+  "lsp",
+  "markdown",
+  "narration",
+  "navigation",
+  "search",
+  "settings",
+  "storage",
+  "system",
+  "syntax",
+  "terminal",
+  "theme",
+  "ui",
+  "workspace",
 ]);
 
 function normalizeFileName(fileName: string): string {
-  return fileName.replaceAll('\\', '/').replace(/^\.\//, '');
+  return fileName.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 
 function isContractInterfaceFile(fileName: string): boolean {
-  return normalizeFileName(fileName).endsWith('.interface.ts');
+  return normalizeFileName(fileName).endsWith(".interface.ts");
 }
 
 function eponymousNameFor(fileName: string): string {
   const fileBaseName = basename(fileName, extname(fileName));
-  return fileBaseName.endsWith('.interface')
-    ? fileBaseName.slice(0, -'.interface'.length)
+  return fileBaseName.endsWith(".interface")
+    ? fileBaseName.slice(0, -".interface".length)
     : fileBaseName;
 }
 
 function moduleNameFor(fileName: string): string {
-  const pathParts = normalizeFileName(fileName).split('/');
-  return pathParts[0] === 'src' && pathParts[1] === 'modules'
-    ? (pathParts[2] ?? '(modules-root)')
-    : '(outside-modules)';
+  const pathParts = normalizeFileName(fileName).split("/");
+  return pathParts[0] === "src" && pathParts[1] === "modules"
+    ? (pathParts[2] ?? "(modules-root)")
+    : "(outside-modules)";
 }
 
 function isTestFile(fileName: string): boolean {
   return (
     /\.test\.[cm]?tsx?$/.test(fileName) ||
-    normalizeFileName(fileName).split('/').includes('__tests__')
+    normalizeFileName(fileName).split("/").includes("__tests__")
   );
 }
 
@@ -217,8 +218,8 @@ function inspectClassMembers(
         createViolation(
           sourceFile,
           node,
-          'private-modifier',
-          'class members use protected as the overrideable floor; private is forbidden',
+          "private-modifier",
+          "class members use protected as the overrideable floor; private is forbidden",
         ),
       );
     }
@@ -235,8 +236,8 @@ function inspectClassMembers(
         createViolation(
           sourceFile,
           node,
-          'hash-private-field',
-          '#private members prevent subclass extension and are forbidden',
+          "hash-private-field",
+          "#private members prevent subclass extension and are forbidden",
         ),
       );
     }
@@ -250,8 +251,8 @@ function inspectClassMembers(
         createViolation(
           sourceFile,
           node,
-          'arrow-function-class-field',
-          'class behavior must be a prototype method, not a per-instance arrow field',
+          "arrow-function-class-field",
+          "class behavior must be a prototype method, not a per-instance arrow field",
         ),
       );
     }
@@ -259,16 +260,16 @@ function inspectClassMembers(
     if (
       typescript.isNewExpression(node) &&
       ((typescript.isIdentifier(node.expression) &&
-        node.expression.text.startsWith('$')) ||
+        node.expression.text.startsWith("$")) ||
         (typescript.isPropertyAccessExpression(node.expression) &&
-          node.expression.name.text === '$Class'))
+          node.expression.name.text === "$Class"))
     ) {
       violations.push(
         createViolation(
           sourceFile,
           node,
-          'construction-bypass',
-          'construct through the live namespace Class seam, never the raw $Class form',
+          "construction-bypass",
+          "construct through the live namespace Class seam, never the raw $Class form",
         ),
       );
     }
@@ -307,7 +308,7 @@ function selectedClassTargetsRawClass(
   initializer: typescript.Expression,
   rawClassName: string,
 ): boolean {
-  const allowedRawNames = new Set([rawClassName, '$Class']);
+  const allowedRawNames = new Set([rawClassName, "$Class"]);
   const selectedExpression = unwrapExpression(initializer);
   if (typescript.isIdentifier(selectedExpression)) {
     return allowedRawNames.has(selectedExpression.text);
@@ -315,7 +316,7 @@ function selectedClassTargetsRawClass(
   if (
     !typescript.isCallExpression(selectedExpression) ||
     !typescript.isIdentifier(selectedExpression.expression) ||
-    !['Reactive', 'Static'].includes(selectedExpression.expression.text) ||
+    !["Reactive", "Static"].includes(selectedExpression.expression.text) ||
     selectedExpression.arguments.length !== 1
   ) {
     return false;
@@ -346,14 +347,14 @@ function inspectNamespaceManifest(
       createViolation(
         sourceFile,
         statement ?? sourceFile,
-        'namespace-manifest',
+        "namespace-manifest",
         `the eponymous class must be followed by export namespace ${eponymousName}`,
       ),
     ];
   }
 
   const violations: FileGrammarViolation[] = [];
-  const rawClassVariable = manifestVariable(statement.body, '$Class');
+  const rawClassVariable = manifestVariable(statement.body, "$Class");
   if (
     rawClassVariable?.declaration.initializer === undefined ||
     !hasModifier(
@@ -373,13 +374,13 @@ function inspectNamespaceManifest(
       createViolation(
         sourceFile,
         rawClassVariable?.declaration ?? statement,
-        'namespace-manifest',
+        "namespace-manifest",
         `namespace ${eponymousName} must export $Class = ${rawClassName}`,
       ),
     );
   }
 
-  const selectedClassVariable = manifestVariable(statement.body, 'Class');
+  const selectedClassVariable = manifestVariable(statement.body, "Class");
   if (
     selectedClassVariable?.declaration.initializer === undefined ||
     !hasModifier(
@@ -395,7 +396,7 @@ function inspectNamespaceManifest(
       createViolation(
         sourceFile,
         selectedClassVariable?.declaration ?? statement,
-        'namespace-manifest',
+        "namespace-manifest",
         `namespace ${eponymousName} must select ${rawClassName} through Static, Reactive, or the raw plain-class form`,
       ),
     );
@@ -407,7 +408,7 @@ function inspectNamespaceManifest(
       namespaceStatement.declarationList.declarations.every(
         (declaration) =>
           typescript.isIdentifier(declaration.name) &&
-          ['$Class', 'Class'].includes(declaration.name.text),
+          ["$Class", "Class"].includes(declaration.name.text),
       );
     if (
       !hasOnlyManifestVariables &&
@@ -418,8 +419,8 @@ function inspectNamespaceManifest(
         createViolation(
           sourceFile,
           namespaceStatement,
-          'namespace-manifest',
-          'the namespace is a construction/type manifest only; behavior belongs on the class',
+          "namespace-manifest",
+          "the namespace is a construction/type manifest only; behavior belongs on the class",
         ),
       );
     }
@@ -437,8 +438,8 @@ function inspectTopLevelBehavior(
         createViolation(
           sourceFile,
           statement,
-          'module-function',
-          'module-level behavior must be a protected class method',
+          "module-function",
+          "module-level behavior must be a protected class method",
         ),
       );
     } else if (typescript.isVariableStatement(statement)) {
@@ -446,8 +447,8 @@ function inspectTopLevelBehavior(
         createViolation(
           sourceFile,
           statement,
-          'module-variable',
-          'module-level data or behavior must live on the eponymous class',
+          "module-variable",
+          "module-level data or behavior must live on the eponymous class",
         ),
       );
     }
@@ -468,8 +469,8 @@ function inspectContractInterfaceContent(
         createViolation(
           sourceFile,
           statement,
-          'contract-interface-content',
-          '*.interface.ts files may declare interfaces and type aliases, never classes or detached functions',
+          "contract-interface-content",
+          "*.interface.ts files may declare interfaces and type aliases, never classes or detached functions",
         ),
       );
     } else if (typescript.isVariableStatement(statement)) {
@@ -477,8 +478,8 @@ function inspectContractInterfaceContent(
         createViolation(
           sourceFile,
           statement,
-          'module-variable',
-          'module-level data or behavior does not belong in a contract-interface file',
+          "module-variable",
+          "module-level data or behavior does not belong in a contract-interface file",
         ),
       );
     }
@@ -518,7 +519,7 @@ function inspectClassFileGrammar(
       violations: [
         createFileViolation(
           sourceFile,
-          'eponymous-class',
+          "eponymous-class",
           `class file must declare class $${eponymousName}`,
         ),
       ],
@@ -532,8 +533,8 @@ function inspectClassFileGrammar(
       createViolation(
         sourceFile,
         firstDeclaration,
-        'class-file-order',
-        'the eponymous class must be the first declaration after imports',
+        "class-file-order",
+        "the eponymous class must be the first declaration after imports",
       ),
     );
   }
@@ -548,8 +549,8 @@ function inspectClassFileGrammar(
       createViolation(
         sourceFile,
         statement,
-        'type-before-eponymous',
-        'types belong below the eponymous class and namespace manifest',
+        "type-before-eponymous",
+        "types belong below the eponymous class and namespace manifest",
       ),
     );
   }
@@ -585,8 +586,8 @@ function inspectClassFileGrammar(
       createViolation(
         sourceFile,
         statement,
-        'class-file-order',
-        'only exported type aliases and interfaces may follow the namespace manifest',
+        "class-file-order",
+        "only exported type aliases and interfaces may follow the namespace manifest",
       ),
     );
   }
@@ -614,7 +615,7 @@ function inspectContractInterfaceGrammar(
     return [
       createFileViolation(
         sourceFile,
-        'eponymous-interface',
+        "eponymous-interface",
         `contract-interface file must declare export interface ${eponymousName}`,
       ),
     ];
@@ -627,8 +628,8 @@ function inspectContractInterfaceGrammar(
       createViolation(
         sourceFile,
         firstDeclaration,
-        'contract-interface-order',
-        'the eponymous contract interface must be the first declaration after imports',
+        "contract-interface-order",
+        "the eponymous contract interface must be the first declaration after imports",
       ),
     );
   }
@@ -643,8 +644,8 @@ function inspectContractInterfaceGrammar(
       createViolation(
         sourceFile,
         statement,
-        'type-before-eponymous',
-        'supporting types belong below the eponymous contract interface',
+        "type-before-eponymous",
+        "supporting types belong below the eponymous contract interface",
       ),
     );
   }
@@ -667,8 +668,8 @@ function inspectContractInterfaceGrammar(
       createViolation(
         sourceFile,
         statement,
-        'contract-interface-order',
-        'only exported type aliases and interfaces may follow the eponymous contract interface',
+        "contract-interface-order",
+        "only exported type aliases and interfaces may follow the eponymous contract interface",
       ),
     );
   }
@@ -706,7 +707,7 @@ function inspectSource(file: FileGrammarInput): {
     violations.push(
       createFileViolation(
         sourceFile,
-        'contract-interface-file-name',
+        "contract-interface-file-name",
         `type-only contract file should be named ${eponymousName}.interface.ts so its shape is structurally declared`,
       ),
     );
@@ -736,14 +737,14 @@ export function inspectFileGrammar(
   const violations: FileGrammarViolation[] = [];
 
   for (const file of normalizedFiles) {
-    if (file.fileName.split('/').includes('__tests__')) {
+    if (file.fileName.split("/").includes("__tests__")) {
       violations.push({
         fileName: file.fileName,
         line: 1,
         column: 1,
-        rule: 'test-colocation',
+        rule: "test-colocation",
         message:
-          'tests and test support files must be colocated beside their source',
+          "tests and test support files must be colocated beside their source",
       });
     }
 
@@ -765,7 +766,7 @@ export function inspectFileGrammar(
         fileName: file.fileName,
         line: 1,
         column: 1,
-        rule: 'missing-colocated-test',
+        rule: "missing-colocated-test",
         message: `eponymous class requires colocated test ${basename(expectedTestFileName)}`,
       });
     }
@@ -792,7 +793,7 @@ function collectTypeScriptFiles(absolutePath: string): string[] {
     } else if (
       directoryEntry.isFile() &&
       /\.tsx?$/.test(directoryEntry.name) &&
-      !directoryEntry.name.endsWith('.d.ts')
+      !directoryEntry.name.endsWith(".d.ts")
     ) {
       fileNames.push(entryPath);
     }
@@ -804,7 +805,7 @@ function filesForArguments(
   projectRoot: string,
   arguments_: readonly string[],
 ): string[] {
-  const requestedPaths = arguments_.length > 0 ? arguments_ : ['src/modules'];
+  const requestedPaths = arguments_.length > 0 ? arguments_ : ["src/modules"];
   const fileNames = new Set<string>();
   for (const requestedPath of requestedPaths) {
     const absolutePath = resolve(projectRoot, requestedPath);
@@ -831,7 +832,7 @@ interface FileGrammarEnforcementResult {
 
 function isEnforcedViolation(violation: FileGrammarViolation): boolean {
   return (
-    violation.rule !== 'contract-interface-file-name' &&
+    violation.rule !== "contract-interface-file-name" &&
     (isContractInterfaceFile(violation.fileName) ||
       CONVERTED_MODULES.has(moduleNameFor(violation.fileName)))
   );
@@ -866,7 +867,7 @@ function printReportedSuggestions(
   violations: readonly FileGrammarViolation[],
 ): void {
   for (const violation of violations) {
-    if (violation.rule !== 'contract-interface-file-name') continue;
+    if (violation.rule !== "contract-interface-file-name") continue;
     process.stdout.write(
       `${violation.fileName}:${violation.line}:${violation.column}: ` +
         `suggestion: ${violation.message}\n`,
@@ -881,23 +882,23 @@ function printViolationCountTable(
   for (const violation of violations) {
     const moduleName = moduleNameFor(violation.fileName);
     const enforcement = isEnforcedViolation(violation)
-      ? 'enforced'
-      : 'reported';
+      ? "enforced"
+      : "reported";
     const countKey = `${moduleName}\t${enforcement}`;
     violationCountsByModuleAndEnforcement.set(
       countKey,
       (violationCountsByModuleAndEnforcement.get(countKey) ?? 0) + 1,
     );
   }
-  process.stdout.write('file-grammar violations by module:\n');
-  process.stdout.write('module\tenforcement\tviolations\n');
+  process.stdout.write("file-grammar violations by module:\n");
+  process.stdout.write("module\tenforcement\tviolations\n");
   for (const [countKey, violationCount] of [
     ...violationCountsByModuleAndEnforcement,
   ].sort()) {
     process.stdout.write(`${countKey}\t${violationCount}\n`);
   }
   if (violationCountsByModuleAndEnforcement.size === 0)
-    process.stdout.write('(none)\t-\t0\n');
+    process.stdout.write("(none)\t-\t0\n");
 }
 
 if (import.meta.main) {
@@ -905,7 +906,7 @@ if (import.meta.main) {
   const fileNames = filesForArguments(projectRoot, process.argv.slice(2));
   const files = fileNames.map((fileName) => ({
     fileName: relative(projectRoot, fileName),
-    sourceText: readFileSync(fileName, 'utf8'),
+    sourceText: readFileSync(fileName, "utf8"),
   }));
   const violations = inspectFileGrammar(files, {
     testFileExists: (fileName) => existsSync(resolve(projectRoot, fileName)),
@@ -920,7 +921,7 @@ if (import.meta.main) {
     process.stderr.write(
       `check-file-grammar: ${enforcementResult.enforcedViolations.length} ` +
         `enforced violation(s); ${enforcementResult.reportedViolations.length} ` +
-        'legacy violation(s) reported\n',
+        "legacy violation(s) reported\n",
     );
     process.exit(1);
   }
@@ -930,6 +931,6 @@ if (import.meta.main) {
       `${enforcementResult.reportedViolations.length} legacy violation(s) reported, ` +
       `${CONVERTED_MODULES.size} converted module(s) enforced, ` +
       `${files.filter((file) => isContractInterfaceFile(file.fileName)).length} ` +
-      'structural interface test-pair exemption(s))\n',
+      "structural interface test-pair exemption(s))\n",
   );
 }

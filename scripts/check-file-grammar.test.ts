@@ -1,19 +1,14 @@
-import { describe, expect, test } from 'bun:test';
-import {
-  mkdtempSync,
-  mkdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import {
   inspectFileGrammar,
   type FileGrammarInput,
   type FileGrammarRule,
-} from './check-file-grammar';
+} from "./check-file-grammar";
 
-function validClassFile(className: string, classBody = ''): string {
+function validClassFile(className: string, classBody = ""): string {
   return `
 class $${className} {
 ${classBody}
@@ -41,20 +36,20 @@ function expectRule(
 function runCheckerFixture(
   moduleName: string,
   fixture: { fileName: string; sourceText: string } = {
-    fileName: 'Example.ts',
-    sourceText: `${validClassFile('Example')}\nconst detachedData = 1;\n`,
+    fileName: "Example.ts",
+    sourceText: `${validClassFile("Example")}\nconst detachedData = 1;\n`,
   },
 ): {
   exitCode: number;
   combinedOutput: string;
 } {
   const fixtureRoot = mkdtempSync(
-    resolve(tmpdir(), 'invar-file-grammar-ratchet-'),
+    resolve(tmpdir(), "invar-file-grammar-ratchet-"),
   );
   const fixtureModuleDirectory = resolve(
     fixtureRoot,
-    'src',
-    'modules',
+    "src",
+    "modules",
     moduleName,
   );
   mkdirSync(fixtureModuleDirectory, { recursive: true });
@@ -63,7 +58,7 @@ function runCheckerFixture(
     fixture.sourceText,
   );
   writeFileSync(
-    resolve(fixtureModuleDirectory, 'Example.test.ts'),
+    resolve(fixtureModuleDirectory, "Example.test.ts"),
     `import { test } from 'bun:test';\ntest('example', () => {});\n`,
   );
 
@@ -71,11 +66,11 @@ function runCheckerFixture(
     const checkerProcess = Bun.spawnSync({
       cmd: [
         process.execPath,
-        resolve(import.meta.dir, 'check-file-grammar.ts'),
+        resolve(import.meta.dir, "check-file-grammar.ts"),
       ],
       cwd: fixtureRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: "pipe",
+      stderr: "pipe",
     });
     return {
       exitCode: checkerProcess.exitCode,
@@ -87,48 +82,48 @@ function runCheckerFixture(
   }
 }
 
-describe('file grammar failure paths', () => {
-  test('rejects a class file without its eponymous raw class', () => {
+describe("file grammar failure paths", () => {
+  test("rejects a class file without its eponymous raw class", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
+          fileName: "src/modules/example/Example.ts",
           sourceText: 'export const value = "example";',
         },
       ],
-      'eponymous-class',
+      "eponymous-class",
     );
   });
 
-  test('rejects a contract file without its eponymous interface', () => {
+  test("rejects a contract file without its eponymous interface", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/agent/AgentEvents.interface.ts',
-          sourceText: 'export type AgentEvent = { kind: string };',
+          fileName: "src/modules/agent/AgentEvents.interface.ts",
+          sourceText: "export type AgentEvent = { kind: string };",
         },
       ],
-      'eponymous-interface',
+      "eponymous-interface",
     );
   });
 
-  test('rejects declarations before the eponymous class', () => {
+  test("rejects declarations before the eponymous class", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: `enum Mode { Ready }\n${validClassFile('Example')}`,
+          fileName: "src/modules/example/Example.ts",
+          sourceText: `enum Mode { Ready }\n${validClassFile("Example")}`,
         },
       ],
-      'class-file-order',
+      "class-file-order",
     );
   });
 
-  test('rejects declarations before the eponymous contract interface', () => {
+  test("rejects declarations before the eponymous contract interface", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/lsp/LanguageProvider.interface.ts',
+          fileName: "src/modules/lsp/LanguageProvider.interface.ts",
           sourceText: `
 enum ProviderMode { Ready }
 export interface LanguageProvider {
@@ -137,50 +132,50 @@ export interface LanguageProvider {
 `,
         },
       ],
-      'contract-interface-order',
+      "contract-interface-order",
     );
   });
 
-  test('rejects supporting types above the eponymous declaration', () => {
+  test("rejects supporting types above the eponymous declaration", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: `export type Value = string;\n${validClassFile('Example')}`,
+          fileName: "src/modules/example/Example.ts",
+          sourceText: `export type Value = string;\n${validClassFile("Example")}`,
         },
       ],
-      'type-before-eponymous',
+      "type-before-eponymous",
     );
   });
 
-  test('rejects module-level function declarations', () => {
+  test("rejects module-level function declarations", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: `${validClassFile('Example')}\nfunction detachedBehavior(): void {}`,
+          fileName: "src/modules/example/Example.ts",
+          sourceText: `${validClassFile("Example")}\nfunction detachedBehavior(): void {}`,
         },
       ],
-      'module-function',
+      "module-function",
     );
   });
 
-  test('rejects module-level variable statements', () => {
+  test("rejects module-level variable statements", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: `${validClassFile('Example')}\nconst detachedData = 1;`,
+          fileName: "src/modules/example/Example.ts",
+          sourceText: `${validClassFile("Example")}\nconst detachedData = 1;`,
         },
       ],
-      'module-variable',
+      "module-variable",
     );
   });
 
-  test('rejects classes and detached functions in contract-interface files', () => {
+  test("rejects classes and detached functions in contract-interface files", () => {
     const violations = inspectFileGrammar([
       {
-        fileName: 'src/modules/example/Example.interface.ts',
+        fileName: "src/modules/example/Example.interface.ts",
         sourceText: `
 export interface Example {
   value: string;
@@ -196,52 +191,52 @@ function createExample(): Example {
 
     expect(
       violations.filter(
-        (violation) => violation.rule === 'contract-interface-content',
+        (violation) => violation.rule === "contract-interface-content",
       ),
     ).toHaveLength(2);
   });
 
-  test('rejects private modifiers', () => {
+  test("rejects private modifiers", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: validClassFile('Example', '  private hidden(): void {}'),
+          fileName: "src/modules/example/Example.ts",
+          sourceText: validClassFile("Example", "  private hidden(): void {}"),
         },
       ],
-      'private-modifier',
+      "private-modifier",
     );
   });
 
-  test('rejects hash-private members', () => {
+  test("rejects hash-private members", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: validClassFile('Example', '  #hidden = 1;'),
+          fileName: "src/modules/example/Example.ts",
+          sourceText: validClassFile("Example", "  #hidden = 1;"),
         },
       ],
-      'hash-private-field',
+      "hash-private-field",
     );
   });
 
-  test('rejects arrow-function class fields', () => {
+  test("rejects arrow-function class fields", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: validClassFile('Example', '  protected run = () => 1;'),
+          fileName: "src/modules/example/Example.ts",
+          sourceText: validClassFile("Example", "  protected run = () => 1;"),
         },
       ],
-      'arrow-function-class-field',
+      "arrow-function-class-field",
     );
   });
 
-  test('rejects a namespace manifest that bypasses the raw class', () => {
+  test("rejects a namespace manifest that bypasses the raw class", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
+          fileName: "src/modules/example/Example.ts",
           sourceText: `
 class $Example {}
 class $Replacement {}
@@ -252,71 +247,71 @@ export namespace Example {
 `,
         },
       ],
-      'namespace-manifest',
+      "namespace-manifest",
     );
   });
 
-  test('rejects raw constructor use that bypasses the selected Class seam', () => {
+  test("rejects raw constructor use that bypasses the selected Class seam", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
+          fileName: "src/modules/example/Example.ts",
           sourceText: validClassFile(
-            'Example',
-            '  protected create(): object { return new Example.$Class(); }',
+            "Example",
+            "  protected create(): object { return new Example.$Class(); }",
           ),
         },
       ],
-      'construction-bypass',
+      "construction-bypass",
     );
   });
 
-  test('rejects test files under __tests__ directories', () => {
+  test("rejects test files under __tests__ directories", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/__tests__/Example.test.ts',
+          fileName: "src/modules/example/__tests__/Example.test.ts",
           sourceText: `import { test } from 'bun:test';\ntest('example', () => {});`,
         },
       ],
-      'test-colocation',
+      "test-colocation",
     );
   });
 
-  test('rejects an eponymous class without its colocated test pair', () => {
+  test("rejects an eponymous class without its colocated test pair", () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/example/Example.ts',
-          sourceText: validClassFile('Example'),
+          fileName: "src/modules/example/Example.ts",
+          sourceText: validClassFile("Example"),
         },
       ],
-      'missing-colocated-test',
+      "missing-colocated-test",
     );
   });
 });
 
-test('accepts the complete class grammar and colocated pair', () => {
+test("accepts the complete class grammar and colocated pair", () => {
   const violations = inspectFileGrammar([
     {
-      fileName: 'src/modules/example/Example.ts',
+      fileName: "src/modules/example/Example.ts",
       sourceText: validClassFile(
-        'Example',
-        '  protected run(): number { return 1; }',
+        "Example",
+        "  protected run(): number { return 1; }",
       ),
     },
     {
-      fileName: 'src/modules/example/Example.test.ts',
+      fileName: "src/modules/example/Example.test.ts",
       sourceText: `import { test } from 'bun:test';\ntest('example', () => {});`,
     },
   ]);
   expect(violations).toEqual([]);
 });
 
-test('accepts an eponymous contract interface without a test pair', () => {
+test("accepts an eponymous contract interface without a test pair", () => {
   const violations = inspectFileGrammar([
     {
-      fileName: 'src/modules/agent/AgentBackend.interface.ts',
+      fileName: "src/modules/agent/AgentBackend.interface.ts",
       sourceText: `
 export interface AgentBackend {
   send(prompt: string): void;
@@ -329,10 +324,10 @@ export type AgentBackendFactory = () => AgentBackend;
   expect(violations).toEqual([]);
 });
 
-test('suggests the interface naming convention for a legacy type-only contract', () => {
+test("suggests the interface naming convention for a legacy type-only contract", () => {
   const violations = inspectFileGrammar([
     {
-      fileName: 'src/modules/example/Example.ts',
+      fileName: "src/modules/example/Example.ts",
       sourceText: `
 export interface Example {
   value: string;
@@ -343,34 +338,34 @@ export interface Example {
 
   expect(violations).toEqual([
     expect.objectContaining({
-      rule: 'contract-interface-file-name',
-      message: expect.stringContaining('Example.interface.ts'),
+      rule: "contract-interface-file-name",
+      message: expect.stringContaining("Example.interface.ts"),
     }),
   ]);
 });
 
-describe('converted-module enforcement ratchet', () => {
-  test('a violation in the converted syntax module fails', () => {
-    const checkerResult = runCheckerFixture('syntax');
+describe("converted-module enforcement ratchet", () => {
+  test("a violation in the converted syntax module fails", () => {
+    const checkerResult = runCheckerFixture("syntax");
 
     expect(checkerResult.exitCode).toBe(1);
-    expect(checkerResult.combinedOutput).toContain('syntax\tenforced\t1');
+    expect(checkerResult.combinedOutput).toContain("syntax\tenforced\t1");
     expect(checkerResult.combinedOutput).toContain(
-      '[module-variable] module-level data or behavior must live on the eponymous class',
+      "[module-variable] module-level data or behavior must live on the eponymous class",
     );
   });
 
-  test('the same violation in an unconverted module is reported without failing', () => {
-    const checkerResult = runCheckerFixture('layout');
+  test("the same violation in an unconverted module is reported without failing", () => {
+    const checkerResult = runCheckerFixture("diagnostics");
 
     expect(checkerResult.exitCode).toBe(0);
-    expect(checkerResult.combinedOutput).toContain('layout\treported\t1');
-    expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
+    expect(checkerResult.combinedOutput).toContain("diagnostics\treported\t1");
+    expect(checkerResult.combinedOutput).toContain("check-file-grammar: PASS");
   });
 
-  test('contract-interface shape violations are enforced in every module', () => {
-    const checkerResult = runCheckerFixture('app', {
-      fileName: 'Example.interface.ts',
+  test("contract-interface shape violations are enforced in every module", () => {
+    const checkerResult = runCheckerFixture("app", {
+      fileName: "Example.interface.ts",
       sourceText: `
 export interface Example {
   value: string;
@@ -382,15 +377,15 @@ function createExample(): Example {
     });
 
     expect(checkerResult.exitCode).toBe(1);
-    expect(checkerResult.combinedOutput).toContain('app\tenforced\t1');
+    expect(checkerResult.combinedOutput).toContain("app\tenforced\t1");
     expect(checkerResult.combinedOutput).toContain(
-      '[contract-interface-content] *.interface.ts files may declare interfaces and type aliases, never classes or detached functions',
+      "[contract-interface-content] *.interface.ts files may declare interfaces and type aliases, never classes or detached functions",
     );
   });
 
-  test('legacy contract filename suggestions remain report-only in converted modules', () => {
-    const checkerResult = runCheckerFixture('lsp', {
-      fileName: 'Example.ts',
+  test("legacy contract filename suggestions remain report-only in converted modules", () => {
+    const checkerResult = runCheckerFixture("lsp", {
+      fileName: "Example.ts",
       sourceText: `
 export interface Example {
   value: string;
@@ -399,10 +394,10 @@ export interface Example {
     });
 
     expect(checkerResult.exitCode).toBe(0);
-    expect(checkerResult.combinedOutput).toContain('lsp\treported\t1');
+    expect(checkerResult.combinedOutput).toContain("lsp\treported\t1");
     expect(checkerResult.combinedOutput).toContain(
-      'suggestion: type-only contract file should be named Example.interface.ts',
+      "suggestion: type-only contract file should be named Example.interface.ts",
     );
-    expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
+    expect(checkerResult.combinedOutput).toContain("check-file-grammar: PASS");
   });
 });

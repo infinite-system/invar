@@ -573,6 +573,7 @@ class $Bootstrap {
       shortcutHelp,
       tooltip,
       panelHost,
+      primaryDockHost,
       rightDockHost,
       view,
       get mouse() {
@@ -724,6 +725,7 @@ class $Bootstrap {
       // can emit async output (PTY bytes) that must repaint without a keypress.
       for (const content of panelHost.visibleContents())
         void content.renderRevision.value;
+      void primaryDockHost.visible.value;
       void primaryDockHost.activeId.value;
       for (const content of primaryDockHost.visibleContents()) {
         void content.renderRevision.value;

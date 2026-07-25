@@ -1042,17 +1042,19 @@ navigation history, and the `BoundedListPopup` layouts adapter.
 **Mechanism:** `CommandBar.layoutGeometry` returns the centered navigation and folder segments plus
 the right-pinned Layouts segment. `CommandBar.update` paints those segments, and
 `controlAtColumn` resolves pointer input from the stored geometry before routing to
-`Workspace.navigateBack`, `Workspace.navigateForward`, `QuickOpen.show`, or the layouts popup.
+`Workspace.navigateBack`, `Workspace.navigateForward`, `QuickOpen.show`, or the layouts popup. The
+layouts adapter reads the four named `LayoutModel.presets()` entries and applies the selected preset
+through the injected root-layout action; it does not generate or label axis permutations.
 
 **Generates:** Centered Back and Forward buttons; a clickable current-folder label; a right-edge
-Layouts button; pointer and paint positions that cannot drift apart.
+Layouts button; a bounded named-presets menu; pointer and paint positions that cannot drift apart.
 
 **Evidence:** `src/modules/ui/CommandBar.ts`; `src/modules/ui/CommandBar.test.ts`;
 `scripts/harness/smoke-layout-harness.ts`.
 
 **Impossible if true:** Clicking a painted command-bar control runs a neighboring control or does
-nothing; the Layouts button moves away from the right edge; the folder label opens a surface other
-than QuickOpen file search.
+nothing; the Layouts button moves away from the right edge; the menu exposes encoded permutations
+instead of named presets; the folder label opens a surface other than QuickOpen file search.
 
 **Verification:** `bun test src/modules/ui/CommandBar.test.ts && bun
 scripts/harness/smoke-layout-harness.ts`

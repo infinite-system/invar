@@ -15,35 +15,8 @@
 // invariant: Only a drag in progress moves the size (src/modules/layout/layout.invariants.md)
 // invariant: A split ratio stays within zero and one (src/modules/layout/layout.invariants.md)
 // invariant: The splitter model carries no renderable dependency (src/modules/layout/layout.invariants.md)
-import { Reactive } from 'ivue';
-import { ref } from 'vue';
-
-/** Which physical bar this is: a vertical bar resizes the pane to its LEFT (drag along X); a
- *  horizontal bar resizes the pane ABOVE (drag along Y). The model only ever sees the scalar
- *  position along that axis — the host projects the pointer onto the axis before calling. */
-export type SplitterOrientation = 'vertical' | 'horizontal';
-
-/** The unit the size is reported (and bounded) in: raw cells, or a [0,1] ratio of the axis extent. */
-export type SplitterReportUnit = 'cells' | 'ratio';
-
-export interface SplitterModelOptions {
-  /** Drag axis. 'vertical' → sidebar-width divider; 'horizontal' → git-split divider. */
-  orientation: SplitterOrientation;
-  /** Report unit. Defaults to 'cells' for a vertical bar and 'ratio' for a horizontal bar. */
-  mode?: SplitterReportUnit;
-  /** Starting size in the report unit (cells, or a [0,1] ratio). */
-  initialSize: number;
-  /** Lower bound in the report unit. Defaults to 0. */
-  minimumSize?: number;
-  /** Upper bound in the report unit. Defaults to Infinity for cells, 1 for ratio. */
-  maximumSize?: number;
-  /** Total cells along the drag axis — required for 'ratio' mode to convert a cell delta into a
-   *  ratio delta (one dragged cell shifts the ratio by 1/extent). Ignored in 'cells' mode. */
-  extentCells?: number;
-  /** Persist seam: called with the new size on every change (host writes it to the Settings store).
-   *  Overridable via the `onSizeChange` method instead, for subclasses. */
-  onSizeChange?: (size: number) => void;
-}
+import { Reactive } from "ivue";
+import { ref } from "vue";
 
 class $SplitterModel {
   constructor(readonly options: SplitterModelOptions) {
@@ -65,14 +38,17 @@ class $SplitterModel {
 
   /** Total cells along the drag axis, used only in ratio mode. Mutable so the host can update it on a
    *  window/pane resize; a drag reads it live through unitsPerCell. */
-  private totalExtentCells = 1;
+  protected totalExtentCells = 1;
   /** Pointer position (cells along the axis) captured at beginDrag. */
-  private dragStartPointerPosition = 0;
+  protected dragStartPointerPosition = 0;
   /** The size (report unit) captured at beginDrag — the anchor the delta is applied to. */
-  private dragStartSize = 0;
+  protected dragStartSize = 0;
 
   get mode(): SplitterReportUnit {
-    return this.options.mode ?? (this.options.orientation === 'vertical' ? 'cells' : 'ratio');
+    return (
+      this.options.mode ??
+      (this.options.orientation === "vertical" ? "cells" : "ratio")
+    );
   }
 
   get minimumSize(): number {
@@ -81,7 +57,7 @@ class $SplitterModel {
 
   get maximumSize(): number {
     if (this.options.maximumSize !== undefined) return this.options.maximumSize;
-    return this.mode === 'ratio' ? 1 : Number.POSITIVE_INFINITY;
+    return this.mode === "ratio" ? 1 : Number.POSITIVE_INFINITY;
   }
 
   /** Update the axis extent (total cells) — the host calls this when the window/pane resizes so a
@@ -92,8 +68,8 @@ class $SplitterModel {
 
   /** How much one dragged CELL moves the reported size: 1:1 in cells mode; 1/extent in ratio mode
    *  (a zero-or-negative extent yields 0 so a ratio drag with no extent simply cannot move). */
-  private get unitsPerCell(): number {
-    if (this.mode === 'cells') return 1;
+  protected get unitsPerCell(): number {
+    if (this.mode === "cells") return 1;
     return this.totalExtentCells > 0 ? 1 / this.totalExtentCells : 0;
   }
 
@@ -120,7 +96,7 @@ class $SplitterModel {
     this.dragging.value = false;
   }
 
-  private applySize(nextSize: number): void {
+  protected applySize(nextSize: number): void {
     if (nextSize === this.size.value) return;
     this.size.value = nextSize;
     this.onSizeChange(nextSize);
@@ -137,10 +113,10 @@ class $SplitterModel {
    *  bound can never report an out-of-range ratio. */
   // invariant: A reported size never leaves its configured bounds (src/modules/layout/layout.invariants.md)
   // invariant: A split ratio stays within zero and one (src/modules/layout/layout.invariants.md)
-  private clamp(size: number): number {
+  protected clamp(size: number): number {
     let lowerBound = this.minimumSize;
     let upperBound = this.maximumSize;
-    if (this.mode === 'ratio') {
+    if (this.mode === "ratio") {
       lowerBound = Math.max(0, lowerBound);
       upperBound = Math.min(1, upperBound);
     }
@@ -153,4 +129,31 @@ export namespace SplitterModel {
   export let Class = Reactive($SplitterModel);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;
+}
+
+/** Which physical bar this is: a vertical bar resizes the pane to its LEFT (drag along X); a
+ *  horizontal bar resizes the pane ABOVE (drag along Y). The model only ever sees the scalar
+ *  position along that axis — the host projects the pointer onto the axis before calling. */
+export type SplitterOrientation = "vertical" | "horizontal";
+
+/** The unit the size is reported (and bounded) in: raw cells, or a [0,1] ratio of the axis extent. */
+export type SplitterReportUnit = "cells" | "ratio";
+
+export interface SplitterModelOptions {
+  /** Drag axis. 'vertical' → sidebar-width divider; 'horizontal' → git-split divider. */
+  orientation: SplitterOrientation;
+  /** Report unit. Defaults to 'cells' for a vertical bar and 'ratio' for a horizontal bar. */
+  mode?: SplitterReportUnit;
+  /** Starting size in the report unit (cells, or a [0,1] ratio). */
+  initialSize: number;
+  /** Lower bound in the report unit. Defaults to 0. */
+  minimumSize?: number;
+  /** Upper bound in the report unit. Defaults to Infinity for cells, 1 for ratio. */
+  maximumSize?: number;
+  /** Total cells along the drag axis — required for 'ratio' mode to convert a cell delta into a
+   *  ratio delta (one dragged cell shifts the ratio by 1/extent). Ignored in 'cells' mode. */
+  extentCells?: number;
+  /** Persist seam: called with the new size on every change (host writes it to the Settings store).
+   *  Overridable via the `onSizeChange` method instead, for subclasses. */
+  onSizeChange?: (size: number) => void;
 }
