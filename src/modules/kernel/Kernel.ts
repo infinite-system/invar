@@ -1,16 +1,18 @@
+import { Logging } from '../system/Logging';
+
 // The kernel composes module implementations (via the namespace Class slots) and SEALS
 // before any application instance is constructed. In M1 there are no plugins yet, so the
 // kernel simply enforces the ordering guarantee; M7 fills in contribution composition.
-//
 // invariant: The app is built only after the kernel is sealed (project.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
-import { Logging } from '../system/Logging';
-
-export type SealHook = () => void;
-
 class $Kernel {
-  private hooks: SealHook[] = [];
-  private sealed = false;
+  protected static singleton: $Kernel | undefined;
+  protected hooks: SealHook[] = [];
+  protected sealed = false;
+
+  static get instance(): $Kernel {
+    return (this.singleton ??= new this());
+  }
 
   /** Register a composition hook to run at seal time (plugins, class replacement). */
   register(hook: SealHook): void {
@@ -43,6 +45,6 @@ class $Kernel {
 export namespace Kernel {
   export const $Class = $Kernel;
   export let Class = $Kernel;
-  // One process-wide kernel instance.
-  export const instance = new $Kernel();
 }
+
+export type SealHook = () => void;

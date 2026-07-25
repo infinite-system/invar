@@ -93,8 +93,8 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     useKittyKeyboard: {},
   });
 
-  Kernel.instance.seal();
-  Kernel.instance.assertSealed();
+  Kernel.Class.instance.seal();
+  Kernel.Class.instance.assertSealed();
 
   const app = new App.Class();
   app.attach(renderer);
