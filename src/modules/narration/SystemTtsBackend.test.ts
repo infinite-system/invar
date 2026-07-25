@@ -3,27 +3,58 @@
 // newest speech, the speech that still describes the screen. Tested through the pure static (this
 // box detects no TTS engine, so the full backend is silent by construction).
 import { describe, test, expect } from 'bun:test';
-import { SystemTtsBackend, MAX_PENDING_UTTERANCES } from './SystemTtsBackend';
+import { SystemTtsBackend } from './SystemTtsBackend';
 import { Processes } from '../system/Processes';
+
+class InspectableSystemTtsBackend extends SystemTtsBackend.$Class {
+  static get maximumPendingUtterancesForTest(): number {
+    return super.maximumPendingUtterances;
+  }
+}
 
 describe('SystemTtsBackend.enqueueBounded', () => {
   test('under the cap everything queues in order', () => {
     const queue: string[] = [];
-    for (let index = 0; index < MAX_PENDING_UTTERANCES; index++) {
-      SystemTtsBackend.Class.enqueueBounded(queue, `utterance ${index}`, MAX_PENDING_UTTERANCES);
+    for (
+      let index = 0;
+      index < InspectableSystemTtsBackend.maximumPendingUtterancesForTest;
+      index++
+    ) {
+      SystemTtsBackend.Class.enqueueBounded(
+        queue,
+        `utterance ${index}`,
+        InspectableSystemTtsBackend.maximumPendingUtterancesForTest,
+      );
     }
-    expect(queue.length).toBe(MAX_PENDING_UTTERANCES);
+    expect(queue.length).toBe(
+      InspectableSystemTtsBackend.maximumPendingUtterancesForTest,
+    );
     expect(queue[0]).toBe('utterance 0');
   });
 
   test('past the cap the OLDEST utterances drop and the newest survive', () => {
     const queue: string[] = [];
-    for (let index = 0; index < MAX_PENDING_UTTERANCES * 3; index++) {
-      SystemTtsBackend.Class.enqueueBounded(queue, `utterance ${index}`, MAX_PENDING_UTTERANCES);
+    for (
+      let index = 0;
+      index <
+      InspectableSystemTtsBackend.maximumPendingUtterancesForTest * 3;
+      index++
+    ) {
+      SystemTtsBackend.Class.enqueueBounded(
+        queue,
+        `utterance ${index}`,
+        InspectableSystemTtsBackend.maximumPendingUtterancesForTest,
+      );
     }
-    expect(queue.length).toBe(MAX_PENDING_UTTERANCES);
-    expect(queue[0]).toBe(`utterance ${MAX_PENDING_UTTERANCES * 2}`);
-    expect(queue[queue.length - 1]).toBe(`utterance ${MAX_PENDING_UTTERANCES * 3 - 1}`);
+    expect(queue.length).toBe(
+      InspectableSystemTtsBackend.maximumPendingUtterancesForTest,
+    );
+    expect(queue[0]).toBe(
+      `utterance ${InspectableSystemTtsBackend.maximumPendingUtterancesForTest * 2}`,
+    );
+    expect(queue[queue.length - 1]).toBe(
+      `utterance ${InspectableSystemTtsBackend.maximumPendingUtterancesForTest * 3 - 1}`,
+    );
   });
 
   test('the queue length is bounded at every step, not only at the end', () => {
@@ -36,7 +67,6 @@ describe('SystemTtsBackend.enqueueBounded', () => {
 });
 
 test('live playback is serial and starts the next utterance only after the active one exits', async () => {
-  const originalProcessesClass = Processes.Class;
   const startedUtterances: string[] = [];
   const completeProcesses: Array<() => void> = [];
 
@@ -58,34 +88,35 @@ test('live playback is serial and starts the next utterance only after the activ
     }
   }
 
-  Processes.Class = SerialTestProcesses as typeof Processes.Class;
-  try {
-    const backend = new SystemTtsBackend.Class({
-      enginePath: '/test/direct-speech-engine',
-    });
-    backend.speak('first utterance');
-    backend.speak('second utterance');
-    backend.speak('third utterance');
-    expect(startedUtterances).toEqual(['first utterance']);
-
-    completeProcesses.shift()?.();
-    await Promise.resolve();
-    expect(startedUtterances).toEqual([
-      'first utterance',
-      'second utterance',
-    ]);
-
-    completeProcesses.shift()?.();
-    await Promise.resolve();
-    expect(startedUtterances).toEqual([
-      'first utterance',
-      'second utterance',
-      'third utterance',
-    ]);
-    backend.dispose();
-  } finally {
-    Processes.Class = originalProcessesClass;
+  class SerialSystemTtsBackend extends SystemTtsBackend.$Class {
+    protected override get Processes() {
+      return SerialTestProcesses;
+    }
   }
+
+  const backend = new SerialSystemTtsBackend({
+    enginePath: '/test/direct-speech-engine',
+  });
+  backend.speak('first utterance');
+  backend.speak('second utterance');
+  backend.speak('third utterance');
+  expect(startedUtterances).toEqual(['first utterance']);
+
+  completeProcesses.shift()?.();
+  await Promise.resolve();
+  expect(startedUtterances).toEqual([
+    'first utterance',
+    'second utterance',
+  ]);
+
+  completeProcesses.shift()?.();
+  await Promise.resolve();
+  expect(startedUtterances).toEqual([
+    'first utterance',
+    'second utterance',
+    'third utterance',
+  ]);
+  backend.dispose();
 });
 
 // The rate setting is a SPEED MULTIPLIER (higher = faster) — the user-facing axis. Each engine maps it

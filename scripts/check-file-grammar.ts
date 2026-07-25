@@ -56,6 +56,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'image',
   'lsp',
   'markdown',
+  'narration',
   'syntax',
   'workspace',
 ]);

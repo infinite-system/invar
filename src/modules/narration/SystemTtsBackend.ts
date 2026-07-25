@@ -1,3 +1,7 @@
+import type { TtsBackend } from './TtsBackend.interface';
+import { VoiceDiscovery } from './VoiceDiscovery';
+import { Processes } from '../system/Processes';
+
 // The real TtsBackend: it auto-detects an installed speech engine and speaks through it, sequentially,
 // with barge-in. Same auto-detect+graceful-fallback discipline as the agent providers — it prefers the
 // first engine on PATH (espeak-ng, then piper, then macOS `say`) and, on Linux, pipes the synthesized
@@ -11,12 +15,288 @@
 //
 // invariant: Narration audio crosses exactly one TTS backend seam (src/modules/narration/narration.invariants.md)
 // invariant: A missing speech engine degrades to silence, never an error (src/modules/narration/narration.invariants.md)
-import type { TtsBackend } from './TtsBackend.interface';
-import { VoiceDiscovery } from './VoiceDiscovery';
-import { Processes } from '../system/Processes';
 
-/** A detected engine: how to synthesize `text`, and whether it plays on its own (macOS `say`) or emits
- *  a WAV that must be piped into a separate player. */
+class $SystemTtsBackend implements TtsBackend {
+  protected static get VoiceDiscovery() {
+    return VoiceDiscovery.Class;
+  }
+
+  /** The most pending utterances kept while one plays: enough to ride out a burst of short turns,
+   *  small enough that narration never runs minutes behind the screen. */
+  protected static get maximumPendingUtterances(): number {
+    return 8;
+  }
+
+  /** The rate setting is a SPEED MULTIPLIER (higher = faster: 1.0 normal, 2.0 twice as fast, 0.5 half
+   *  speed), clamped to a sane band before any engine mapping. */
+  protected static clampSpeedMultiplier(rate: number): number {
+    return Math.max(0.2, Math.min(rate, 10));
+  }
+
+  /** Resolve piper's voice model for the selected voice: an explicit INVAR_PIPER_MODEL wins (tests),
+   *  else the discovered voice matching `voice` (or the first-found when `voice` is empty/unknown),
+   *  across the voices dir + its `library/` subdir. Returns null when no model is found — a model-less
+   *  piper cannot synthesize, so it is skipped. */
+  static resolvePiperModel(voice: string): string | null {
+    const explicitModelPath = process.env.INVAR_PIPER_MODEL;
+    if (explicitModelPath) return explicitModelPath;
+    return this.VoiceDiscovery.resolvePath(voice);
+  }
+
+  /** piper `--length_scale` from the speed multiplier: length_scale = 1 / rate (piper's scale
+   *  stretches duration, so its axis runs the OPPOSITE way — lower = faster). */
+  static toLengthScale(rate: number): number {
+    return 1 / this.clampSpeedMultiplier(rate);
+  }
+
+  /** espeak/`say` words-per-minute from the speed multiplier (≈ 175 × rate), clamped. */
+  static toWordsPerMinute(rate: number): number {
+    return Math.max(
+      50,
+      Math.min(Math.round(175 * this.clampSpeedMultiplier(rate)), 500),
+    );
+  }
+
+  /** Resolve the best available engine, or null. Ordered by QUALITY: piper (neural — far less
+   *  robotic) is preferred when its binary AND a voice model are present; espeak-ng (formant synth)
+   *  is the always-there fallback; macOS `say` last. espeak/piper emit a WAV on stdout (piped to a
+   *  player); `say` plays directly. Detect the ENGINE once, but RESOLVE voice and rate per utterance
+   *  from the live providers so settings changes apply without recreating the backend. */
+  protected static detectEngine(
+    resolveVoice: () => string,
+    resolveRate: () => number,
+  ): DetectedEngine | null {
+    const piperPath = Bun.which('piper');
+    const detectedModelPath = piperPath
+      ? this.resolvePiperModel(resolveVoice())
+      : null;
+    if (piperPath && detectedModelPath) {
+      return {
+        name: 'piper',
+        playsDirectly: false,
+        // piper reads the utterance on stdin; the queue writes text to stdin below. Voice + rate are
+        // read LIVE here (fall back to the model found at detection if the current selection resolves
+        // to null).
+        synthCommand: () => [
+          piperPath,
+          '--model',
+          this.resolvePiperModel(resolveVoice()) ?? detectedModelPath,
+          '--length_scale',
+          String(this.toLengthScale(resolveRate())),
+          '--output_file',
+          '-',
+        ],
+      };
+    }
+    const espeakPath = Bun.which('espeak-ng') ?? Bun.which('espeak');
+    if (espeakPath) {
+      return {
+        name: 'espeak-ng',
+        playsDirectly: false,
+        synthCommand: (text) => [
+          espeakPath,
+          '-s',
+          String(this.toWordsPerMinute(resolveRate())),
+          '--stdout',
+          text,
+        ],
+      };
+    }
+    const sayPath = Bun.which('say');
+    if (sayPath) {
+      return {
+        name: 'say',
+        playsDirectly: true,
+        synthCommand: (text) => [
+          sayPath,
+          '-r',
+          String(this.toWordsPerMinute(resolveRate())),
+          text,
+        ],
+      };
+    }
+    return null;
+  }
+
+  /** The Linux player for a WAV stream on stdin, or null when the engine plays directly / none
+   *  present. Order matters: `aplay -` parses the WAV header from stdin while `pw-play -` assumes its
+   *  default sample rate, so prefer aplay and retain pw-play only as the existing last resort. */
+  protected static detectPlayer(): string | null {
+    return Bun.which('aplay') ?? Bun.which('pw-play');
+  }
+
+  /** Bounded enqueue, drop-OLDEST past `maximumLength` — the queue policy as a pure static so it is
+   *  testable without a detected engine (this box's unit runs have none). */
+  static enqueueBounded(
+    queue: string[],
+    utterance: string,
+    maximumLength: number,
+  ): void {
+    queue.push(utterance);
+    while (queue.length > maximumLength) queue.shift();
+  }
+
+  protected readonly engine: DetectedEngine | null;
+  protected readonly playerPath: string | null;
+  protected readonly utteranceQueue: string[] = [];
+  protected synthesisProcess: SpawnedProcess | null = null;
+  protected playbackProcess: SpawnedProcess | null = null;
+  protected disposed = false;
+
+  protected get Processes() {
+    return Processes.Class;
+  }
+
+  constructor(options: SystemTtsOptions = {}) {
+    const resolveVoiceName =
+      options.voiceProvider ?? ((): string => options.voice ?? '');
+    const resolveSpeechRate =
+      options.rateProvider ?? ((): number => options.rate ?? 1.0);
+    const enginePath = options.enginePath;
+    const systemTtsBackendClass = this.constructor as typeof $SystemTtsBackend;
+    this.engine = enginePath
+      ? {
+          name: 'direct-override',
+          playsDirectly: true,
+          synthCommand: (text) => [enginePath, text],
+        }
+      : systemTtsBackendClass.detectEngine(
+          resolveVoiceName,
+          resolveSpeechRate,
+        );
+    this.playerPath =
+      this.engine && !this.engine.playsDirectly
+        ? systemTtsBackendClass.detectPlayer()
+        : null;
+  }
+
+  /** True when a working engine (and, on Linux, a player) was found — otherwise narration is silent. */
+  get available(): boolean {
+    if (!this.engine) return false;
+    return this.engine.playsDirectly || this.playerPath !== null;
+  }
+
+  /** The detected engine name, or 'none' — surfaced so the UI can tell the user why it is silent. */
+  get engineName(): string {
+    return this.available ? (this.engine?.name ?? 'none') : 'none';
+  }
+
+  speak(text: string): void {
+    if (this.disposed || !this.available) return; // clean no-op when no engine
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
+    // Bounded pending speech, drop-OLDEST: turns can arrive faster than slow playback drains them,
+    // and stale narration read minutes late is noise — the newest utterances are the ones that
+    // still describe what the user sees. Barge-in (stop) remains the instant full clear.
+    const systemTtsBackendClass = this.constructor as typeof $SystemTtsBackend;
+    systemTtsBackendClass.enqueueBounded(
+      this.utteranceQueue,
+      trimmedText,
+      systemTtsBackendClass.maximumPendingUtterances,
+    );
+    if (!this.synthesisProcess && !this.playbackProcess) this.playNext();
+  }
+
+  stop(): void {
+    this.utteranceQueue.length = 0;
+    this.safeKill(this.playbackProcess);
+    this.safeKill(this.synthesisProcess);
+    this.playbackProcess = null;
+    this.synthesisProcess = null;
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    this.stop();
+  }
+
+  /** Pull the next utterance and play it; chain to the following one when it finishes. Every spawn is
+   *  guarded — a failure to launch the engine/player just skips that utterance rather than crashing. */
+  protected playNext(): void {
+    const utterance = this.utteranceQueue.shift();
+    if (utterance === undefined || !this.engine) {
+      this.synthesisProcess = null;
+      this.playbackProcess = null;
+      return;
+    }
+    try {
+      if (this.engine.playsDirectly) {
+        const spawnedProcess = this.Processes.spawn(
+          this.engine.synthCommand(utterance),
+          {
+            stdout: 'ignore',
+            stderr: 'ignore',
+          },
+        );
+        this.playbackProcess = spawnedProcess;
+        this.synthesisProcess = null;
+        void spawnedProcess.exited.then(() =>
+          this.onUtteranceDone(spawnedProcess),
+        );
+        return;
+      }
+      const synthesisProcess = this.Processes.spawn(
+        this.engine.synthCommand(utterance),
+        {
+          stdin:
+            this.engine.name === 'piper'
+              ? new TextEncoder().encode(`${utterance}\n`)
+              : 'ignore',
+          stdout: 'pipe',
+          stderr: 'ignore',
+        },
+      );
+      // aplay reads stdin as '-' and quiets with '-q'; pw-play reads stdin as '-'.
+      const playerArguments = this.playerPath?.endsWith('aplay')
+        ? ['-q', '-']
+        : ['-'];
+      const playbackProcess = this.Processes.spawn(
+        [this.playerPath as string, ...playerArguments],
+        {
+          stdin: synthesisProcess.stdout,
+          stdout: 'ignore',
+          stderr: 'ignore',
+        },
+      );
+      this.synthesisProcess = synthesisProcess;
+      this.playbackProcess = playbackProcess;
+      void playbackProcess.exited.then(() =>
+        this.onUtteranceDone(playbackProcess),
+      );
+    } catch {
+      // Engine/player failed to launch — drop this utterance and try the next so one bad spawn never
+      // wedges the queue. Narration degrades to silence, never an error.
+      this.synthesisProcess = null;
+      this.playbackProcess = null;
+      this.playNext();
+    }
+  }
+
+  protected onUtteranceDone(finishedProcess: SpawnedProcess): void {
+    // Superseded by a stop()/new utterance — ignore stale exit.
+    if (this.playbackProcess !== finishedProcess) return;
+    this.playbackProcess = null;
+    this.synthesisProcess = null;
+    if (!this.disposed) this.playNext();
+  }
+
+  protected safeKill(spawnedProcess: SpawnedProcess | null): void {
+    try {
+      spawnedProcess?.kill();
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+export namespace SystemTtsBackend {
+  export const $Class = $SystemTtsBackend;
+  export let Class = $Class;
+  export type Model = InstanceType<typeof Class>;
+}
+
+/** A detected engine: how to synthesize `text`, and whether it plays on its own (macOS `say`) or
+ *  emits a WAV that must be piped into a separate player. */
 interface DetectedEngine {
   readonly name: string;
   /** The synth command for one utterance. When `playsDirectly`, this command also plays the audio;
@@ -34,229 +314,15 @@ export interface SystemTtsOptions {
   /** A FIXED speech rate as a SPEED MULTIPLIER (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed).
    *  For live narration, prefer `rateProvider`. */
   rate?: number;
-  /** LIVE voice: read per utterance so a settings change takes effect without recreating the backend. */
+  /** LIVE voice: read per utterance so a settings change takes effect without recreating the
+   *  backend. */
   voiceProvider?: () => string;
-  /** LIVE rate: read per utterance so a settings change takes effect without recreating the backend. */
+  /** LIVE rate: read per utterance so a settings change takes effect without recreating the
+   *  backend. */
   rateProvider?: () => number;
 }
 
-/** The rate setting is a SPEED MULTIPLIER (higher = faster: 1.0 normal, 2.0 twice as fast, 0.5 half
- *  speed), clamped to a sane band before any engine mapping. */
-function clampSpeedMultiplier(rate: number): number {
-  return Math.max(0.2, Math.min(rate, 10));
-}
-
-/** piper `--length_scale` from the speed multiplier: length_scale = 1 / rate (piper's scale stretches
- *  duration, so its axis runs the OPPOSITE way — lower = faster). */
-function toLengthScale(rate: number): number {
-  return 1 / clampSpeedMultiplier(rate);
-}
-
-/** espeak/`say` words-per-minute from the speed multiplier (≈ 175 × rate), clamped. */
-function toWordsPerMinute(rate: number): number {
-  return Math.max(50, Math.min(Math.round(175 * clampSpeedMultiplier(rate)), 500));
-}
-
-/** Resolve piper's voice model for the selected voice: an explicit INVAR_PIPER_MODEL wins (tests), else
- *  the discovered voice matching `voice` (or the first-found when `voice` is empty/unknown), across the
- *  voices dir + its `library/` subdir. Returns null when no model is found — a model-less piper cannot
- *  synthesize, so it is skipped. */
-function resolvePiperModel(voice: string): string | null {
-  const explicit = process.env.INVAR_PIPER_MODEL;
-  if (explicit) return explicit;
-  return VoiceDiscovery.Class.resolvePath(voice);
-}
-
-/** Resolve the best available engine, or null. Ordered by QUALITY: piper (neural — far less robotic) is
- *  preferred when its binary AND a voice model are present; espeak-ng (formant synth) is the always-there
- *  fallback; macOS `say` last. espeak/piper emit a WAV on stdout (piped to a player); `say` plays
- *  directly. */
-// Detect the ENGINE once (which binary + whether any voice model exists), but RESOLVE the voice model
-// and rate per utterance from the live providers — so changing the voice/rate in settings takes effect
-// on the next spoken turn without recreating the backend.
-function detectEngine(resolveVoice: () => string, resolveRate: () => number): DetectedEngine | null {
-  const piper = Bun.which('piper');
-  const detectedModel = piper ? resolvePiperModel(resolveVoice()) : null;
-  if (piper && detectedModel) {
-    return {
-      name: 'piper',
-      playsDirectly: false,
-      // piper reads the utterance on stdin; the queue writes text to stdin below. Voice + rate are read
-      // LIVE here (fall back to the model found at detection if the current selection resolves to null).
-      synthCommand: () => [
-        piper,
-        '--model',
-        resolvePiperModel(resolveVoice()) ?? detectedModel,
-        '--length_scale',
-        String(toLengthScale(resolveRate())),
-        '--output_file',
-        '-',
-      ],
-    };
-  }
-  const espeak = Bun.which('espeak-ng') ?? Bun.which('espeak');
-  if (espeak) {
-    return { name: 'espeak-ng', playsDirectly: false, synthCommand: (text) => [espeak, '-s', String(toWordsPerMinute(resolveRate())), '--stdout', text] };
-  }
-  const say = Bun.which('say');
-  if (say) {
-    return { name: 'say', playsDirectly: true, synthCommand: (text) => [say, '-r', String(toWordsPerMinute(resolveRate())), text] };
-  }
-  return null;
-}
-
-/** The Linux player for a WAV stream on stdin, or null when the engine plays directly / none present.
- *  Order matters: the engine emits a WAV (RIFF header declaring the sample rate — espeak-ng is 22050 Hz),
- *  and the player must READ that header off the pipe. `aplay -` parses the WAV header from stdin and
- *  plays at the correct rate; `pw-play -` does NOT parse a header off a pipe — it assumes its default
- *  48000 Hz, playing 22050 Hz audio ~2.18× too fast (the "chipmunk" bug). So prefer aplay; pw-play is
- *  only a last resort (a pw-play-only host would still be fast-pitched — hardening that is a follow-up,
- *  e.g. play via a temp file, which every player parses correctly). */
-function detectPlayer(): string | null {
-  return Bun.which('aplay') ?? Bun.which('pw-play');
-}
-
-type Spawned = { kill(): void; readonly exited: Promise<number> };
-
-/** The most pending utterances kept while one plays: enough to ride out a burst of short turns,
- *  small enough that narration never runs minutes behind the screen. */
-export const MAX_PENDING_UTTERANCES = 8;
-
-class $SystemTtsBackend implements TtsBackend {
-  /** Resolve the piper `.onnx` path for a selected voice (selected-over-first-found). Exposed for tests
-   *  and callers that need the resolved model without constructing a backend. */
-  static resolvePiperModel = resolvePiperModel;
-
-  /** Engine-argument mappings from the speed-multiplier rate (higher = faster) — exposed for tests,
-   *  since this box detects no speech engine and the spawned arguments cannot be observed live. */
-  static toLengthScale = toLengthScale;
-  static toWordsPerMinute = toWordsPerMinute;
-
-  /** Bounded enqueue, drop-OLDEST past `cap` — the queue policy as a pure static so it is testable
-   *  without a detected engine (this box's unit runs have none). */
-  static enqueueBounded(queue: string[], utterance: string, cap: number): void {
-    queue.push(utterance);
-    while (queue.length > cap) queue.shift();
-  }
-
-  private readonly engine: DetectedEngine | null;
-  private readonly playerPath: string | null;
-  private readonly queue: string[] = [];
-  private synth: Spawned | null = null;
-  private player: Spawned | null = null;
-  private disposed = false;
-
-  constructor(options: SystemTtsOptions = {}) {
-    const resolveVoice = options.voiceProvider ?? ((): string => options.voice ?? '');
-    const resolveRate = options.rateProvider ?? ((): number => options.rate ?? 1.0);
-    const enginePath = options.enginePath;
-    this.engine = enginePath
-      ? {
-          name: 'direct-override',
-          playsDirectly: true,
-          synthCommand: (text) => [enginePath, text],
-        }
-      : detectEngine(resolveVoice, resolveRate);
-    this.playerPath = this.engine && !this.engine.playsDirectly ? detectPlayer() : null;
-  }
-
-  /** True when a working engine (and, on Linux, a player) was found — otherwise narration is silent. */
-  get available(): boolean {
-    if (!this.engine) return false;
-    return this.engine.playsDirectly || this.playerPath !== null;
-  }
-
-  /** The detected engine name, or 'none' — surfaced so the UI can tell the user why it is silent. */
-  get engineName(): string {
-    return this.available ? (this.engine?.name ?? 'none') : 'none';
-  }
-
-  speak(text: string): void {
-    if (this.disposed || !this.available) return; // clean no-op when no engine
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    // Bounded pending speech, drop-OLDEST: turns can arrive faster than slow playback drains them,
-    // and stale narration read minutes late is noise — the newest utterances are the ones that
-    // still describe what the user sees. Barge-in (stop) remains the instant full clear.
-    $SystemTtsBackend.enqueueBounded(this.queue, trimmed, MAX_PENDING_UTTERANCES);
-    if (!this.synth && !this.player) this.playNext();
-  }
-
-  stop(): void {
-    this.queue.length = 0;
-    this.safeKill(this.player);
-    this.safeKill(this.synth);
-    this.player = null;
-    this.synth = null;
-  }
-
-  dispose(): void {
-    this.disposed = true;
-    this.stop();
-  }
-
-  /** Pull the next utterance and play it; chain to the following one when it finishes. Every spawn is
-   *  guarded — a failure to launch the engine/player just skips that utterance rather than crashing. */
-  private playNext(): void {
-    const text = this.queue.shift();
-    if (text === undefined || !this.engine) {
-      this.synth = null;
-      this.player = null;
-      return;
-    }
-    try {
-      if (this.engine.playsDirectly) {
-        const process = Processes.Class.spawn(this.engine.synthCommand(text), {
-          stdout: 'ignore',
-          stderr: 'ignore',
-        });
-        this.player = process;
-        this.synth = null;
-        void process.exited.then(() => this.onUtteranceDone(process));
-        return;
-      }
-      const synth = Processes.Class.spawn(this.engine.synthCommand(text), {
-        stdin: this.engine.name === 'piper' ? new TextEncoder().encode(`${text}\n`) : 'ignore',
-        stdout: 'pipe',
-        stderr: 'ignore',
-      });
-      // aplay reads stdin as '-' and quiets with '-q'; pw-play reads stdin as '-'.
-      const playerArguments = this.playerPath?.endsWith('aplay') ? ['-q', '-'] : ['-'];
-      const player = Processes.Class.spawn([this.playerPath as string, ...playerArguments], {
-        stdin: synth.stdout,
-        stdout: 'ignore',
-        stderr: 'ignore',
-      });
-      this.synth = synth;
-      this.player = player;
-      void player.exited.then(() => this.onUtteranceDone(player));
-    } catch {
-      // Engine/player failed to launch — drop this utterance and try the next so one bad spawn never
-      // wedges the queue. Narration degrades to silence, never an error.
-      this.synth = null;
-      this.player = null;
-      this.playNext();
-    }
-  }
-
-  private onUtteranceDone(finished: Spawned): void {
-    if (this.player !== finished) return; // superseded by a stop()/new utterance — ignore stale exit
-    this.player = null;
-    this.synth = null;
-    if (!this.disposed) this.playNext();
-  }
-
-  private safeKill(process: Spawned | null): void {
-    try {
-      process?.kill();
-    } catch {
-      /* already gone */
-    }
-  }
-}
-
-export namespace SystemTtsBackend {
-  export const $Class = $SystemTtsBackend;
-  export let Class = $Class;
-  export type Model = InstanceType<typeof Class>;
-}
+type SpawnedProcess = {
+  kill(): void;
+  readonly exited: Promise<number>;
+};
