@@ -221,29 +221,35 @@ composer painting typed text in either of its two reserved right-edge columns.
 
 **Last refined:** 2026-07-25
 
-### Composer word edits share one seam
+### Composer editing uses the input model
 
-**Invariant:** If the agent composer moves or deletes by word, then it uses the shared
-`TextEditing.wordLeft`, `TextEditing.wordRight`, and `TextEditing.deletePreviousWord` boundaries.
+**Invariant:** If the agent composer edits or moves within its logical line, then its text and
+grapheme caret operations come from `TextInputModel`.
 
-**Scope:** Agent composer word-left, word-right, and Alt-Backspace behavior.
+**Scope:** Agent composer insertion, backspace, forward delete, previous-word and next-word delete,
+line delete, Left and Right movement, word movement, Home, and End. Wrapping, selection, pointer
+mapping, transcript scrolling, and send history remain `AgentComposer` responsibilities.
 
-**Mechanism:** Agent-context keybindings resolve word intents, `Bootstrap` routes those intents to
-`AgentPaneContent`, and `AgentComposer` delegates every boundary calculation to `TextEditing`.
+**Mechanism:** `AgentComposer` owns one `TextInputModel` and delegates its editing core while keeping
+its existing `AgentWordWrap` and `TextSelectionModel` composition. `TextInputModel` delegates word
+boundaries to `TextEditing`; the shared input keybinding table reaches it through
+`AgentPaneContent.applyComposerInputAction`.
 
-**Generates:** Composer parity with editor and search text inputs without a second word parser.
+**Generates:** Composer parity with every search input; grapheme-safe middle insertion and deletion;
+Alt-Delete next-word deletion without a composer-local implementation.
 
 **Evidence:** `src/modules/agent/AgentComposer.test.ts`;
+`src/modules/editor/TextInputModel.test.ts`;
 `scripts/harness/smoke-agent-pane-ux-harness.ts`.
 
-**Impossible if true:** Composer word deletion disagreeing with editor word deletion for the same
-text; Alt-Backspace being swallowed; word motion splitting a grapheme.
+**Impossible if true:** `AgentComposer` storing a second editable buffer or caret; composer word
+deletion disagreeing with the editor for the same text; movement or deletion splitting a grapheme.
 
-**Verification:** `bun test src/modules/agent/AgentComposer.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+**Verification:** `bun test src/modules/agent/AgentComposer.test.ts src/modules/editor/TextInputModel.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ### Terminal tools have explicit permission tiers
 

@@ -28,9 +28,13 @@ function searchTranscript(
     'Claude',
   );
   const document = new TextDocument.Class();
-  document.replaceAll(AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n').split('\n'));
+  document.replaceAll(
+    AgentTranscriptSearch.Class.searchableLineTexts(lines)
+      .join('\n')
+      .split('\n'),
+  );
   const engine = new FindInBuffer.Class(document);
-  engine.query.value = query;
+  engine.queryInput.setValue(query);
   engine.findAll();
   return { lines, engine };
 }
@@ -53,7 +57,12 @@ describe('AgentTranscriptSearch — the match projection over projected transcri
 
   test('collapsed tool rows match by their human SUMMARY — the hidden raw JSON is out of scope', () => {
     const transcript: TranscriptEntry[] = [
-      { role: 'tool-use', id: 'tool-1', name: 'Read', input: { file_path: '/project/Haystack.ts' } },
+      {
+        role: 'tool-use',
+        id: 'tool-1',
+        name: 'Read',
+        input: { file_path: '/project/Haystack.ts' },
+      },
     ];
     // The collapsed summary phrase contains the basename; the raw JSON key does not surface.
     const summaryHit = searchTranscript(transcript, 'Haystack.ts');
@@ -68,7 +77,10 @@ describe('AgentTranscriptSearch — the match projection over projected transcri
 
   test('highlight spans are DISPLAY CELLS: a wide (CJK) prefix shifts the span by two cells per glyph', () => {
     const lineText = '你好 needle';
-    const { lines, engine } = searchTranscript([{ role: 'assistant', text: lineText }], 'needle');
+    const { lines, engine } = searchTranscript(
+      [{ role: 'assistant', text: lineText }],
+      'needle',
+    );
     expect(engine.matchCount).toBe(1);
     const match = engine.matches.value[0]!;
     const highlights = AgentTranscriptSearch.Class.highlightsForLine(
@@ -110,24 +122,37 @@ describe('AgentTranscriptSearch — the match projection over projected transcri
   });
 
   test('rows without matches contribute no spans; a query miss yields zero matches', () => {
-    const { lines, engine } = searchTranscript([{ role: 'user', text: 'nothing here' }], 'absent');
+    const { lines, engine } = searchTranscript(
+      [{ role: 'user', text: 'nothing here' }],
+      'absent',
+    );
     expect(engine.matchCount).toBe(0);
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
       expect(
-        AgentTranscriptSearch.Class.highlightsForLine(lines[lineIndex]!.text, lineIndex, engine.matches.value, -1),
+        AgentTranscriptSearch.Class.highlightsForLine(
+          lines[lineIndex]!.text,
+          lineIndex,
+          engine.matches.value,
+          -1,
+        ),
       ).toEqual([]);
     }
   });
 
   test('searchableLineTexts is exactly the projected texts in order (the mirror can never diverge)', () => {
     const lines = AgentTranscriptProjection.Class.project(
-      [{ role: 'user', text: 'alpha' }, { role: 'assistant', text: 'beta' }],
+      [
+        { role: 'user', text: 'alpha' },
+        { role: 'assistant', text: 'beta' },
+      ],
       darkPalette,
       'unicode',
       40,
       new Set(),
       'Claude',
     );
-    expect(AgentTranscriptSearch.Class.searchableLineTexts(lines)).toEqual(lines.map((line) => line.text));
+    expect(AgentTranscriptSearch.Class.searchableLineTexts(lines)).toEqual(
+      lines.map((line) => line.text),
+    );
   });
 });

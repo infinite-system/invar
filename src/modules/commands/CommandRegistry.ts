@@ -8,19 +8,32 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from './CommandScoring';
-import { TextEditing } from '../editor/TextEditing';
+import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
 
+// invariant: Editable text fields share one input model (project.invariants.md)
 class $CommandRegistry {
   // invariant: Every action dispatches through the one registry (src/modules/commands/commands.invariants.md)
   //   — the single source of truth; both the palette and keybindings resolve actions out of this map.
   protected commands = new Map<string, Command>();
+  protected readonly queryInputModel: TextInputModel.Model;
+
+  constructor() {
+    this.queryInputModel = this.createQueryInput();
+  }
+
+  protected createQueryInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
 
   // Palette reactive state.
   get open() {
     return ref(false);
   }
+  get queryInput(): TextInputModel.Model {
+    return this.queryInputModel;
+  }
   get query() {
-    return ref('');
+    return this.queryInput.text;
   }
   get selectedIndex() {
     return ref(0);
@@ -44,7 +57,9 @@ class $CommandRegistry {
   all(): Command[] {
     // invariant: A command runs only when its guard holds (src/modules/commands/commands.invariants.md)
     //   — a guarded-off command is never listed, so it cannot be scored or selected.
-    return [...this.commands.values()].filter((command) => (command.when ? command.when() : true));
+    return [...this.commands.values()].filter((command) =>
+      command.when ? command.when() : true,
+    );
   }
 
   run(id: string): void {
@@ -65,9 +80,16 @@ class $CommandRegistry {
     // invariant: Command scoring is a pure ordering (src/modules/commands/commands.invariants.md)
     //   — the palette ranking derives entirely from fuzzyScore, with title localeCompare as the only tiebreak.
     const scored = this.all()
-      .map((command) => ({ command, score: CommandScoring.Class.fuzzyScore(query, command.title) }))
+      .map((command) => ({
+        command,
+        score: CommandScoring.Class.fuzzyScore(query, command.title),
+      }))
       .filter((entry) => entry.score >= 0)
-      .sort((left, right) => left.score - right.score || left.command.title.localeCompare(right.command.title));
+      .sort(
+        (left, right) =>
+          left.score - right.score ||
+          left.command.title.localeCompare(right.command.title),
+      );
     this.filteredRef.value = scored.map((entry) => entry.command);
     if (this.selectedIndex.value >= this.filteredRef.value.length) {
       this.selectedIndex.value = Math.max(0, this.filteredRef.value.length - 1);
@@ -76,33 +98,34 @@ class $CommandRegistry {
 
   openPalette(): void {
     this.open.value = true;
-    this.query.value = '';
+    this.queryInput.clear();
     this.selectedIndex.value = 0;
     this.recompute();
   }
 
   closePalette(): void {
     this.open.value = false;
-    this.query.value = '';
+    this.queryInput.clear();
   }
 
   setQuery(query: string): void {
-    this.query.value = query;
+    this.queryInput.setValue(query);
     this.selectedIndex.value = 0;
     this.recompute();
   }
 
   appendQuery(character: string): void {
-    this.setQuery(this.query.value + character);
+    if (!this.queryInput.insert(character)) return;
+    this.selectedIndex.value = 0;
+    this.recompute();
   }
 
-  backspaceQuery(): void {
-    this.setQuery(this.query.value.slice(0, -1));
-  }
-
-  // invariant: Word deletion uses the navigation boundary (src/modules/editor/editor.invariants.md)
-  deletePreviousQueryWord(): void {
-    this.setQuery(TextEditing.Class.deletePreviousWord(this.query.value).text);
+  applyQueryInputAction(action: TextInputAction): void {
+    const originalQuery = this.queryInput.value;
+    this.queryInput.apply(action);
+    if (this.queryInput.value === originalQuery) return;
+    this.selectedIndex.value = 0;
+    this.recompute();
   }
 
   moveSelection(delta: number): void {

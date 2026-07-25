@@ -123,7 +123,9 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
     const model = typed('ab');
     model.moveRight();
     expect(model.cursor).toBe(2); // clamped at end
-    model.moveLeft(); model.moveLeft(); model.moveLeft();
+    model.moveLeft();
+    model.moveLeft();
+    model.moveLeft();
     expect(model.cursor).toBe(0); // clamped at start
   });
 
@@ -148,7 +150,8 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
 
   test('Backspace deletes BEFORE the cursor; Delete deletes AT the cursor', () => {
     const model = typed('abcd');
-    model.moveLeft(); model.moveLeft(); // cursor between b and c (index 2)
+    model.moveLeft();
+    model.moveLeft(); // cursor between b and c (index 2)
     model.backspace(); // removes "b"
     expect(model.value).toBe('acd');
     expect(model.cursor).toBe(1);
@@ -163,6 +166,15 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
     model.deletePreviousWord(); // deletes "bar " before the cursor
     expect(model.value).toBe('foo baz');
     expect(model.cursor).toBe(4); // cursor now before "baz"
+  });
+
+  test('Alt+Delete deletes through the NEXT word boundary', () => {
+    const model = typed('foo bar baz');
+    model.moveHome();
+    model.moveWordRight();
+    model.deleteNextWord();
+    expect(model.value).toBe('foo baz');
+    expect(model.cursor).toBe(4);
   });
 
   test('Ctrl/Cmd+Backspace clears the whole line', () => {
@@ -189,10 +201,7 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
   test('word-boundary wrapping keeps caret movement correct across rows', () => {
     const model = typed('alpha beta gamma');
     const layout = model.layout(14); // inner width 10 → ['alpha beta', 'gamma']
-    expect(layout.rows.map((row) => row.text)).toEqual([
-      'alpha beta',
-      'gamma',
-    ]);
+    expect(layout.rows.map((row) => row.text)).toEqual(['alpha beta', 'gamma']);
     expect(layout.caretRow).toBe(1);
     expect(layout.caretColumn).toBe(AgentComposer.Class.gutterColumns + 5);
 

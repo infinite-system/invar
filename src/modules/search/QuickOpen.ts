@@ -1,25 +1,37 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
-import { TextEditing } from '../editor/TextEditing';
+import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { Processes } from '../system/Processes';
 
+// invariant: Editable text fields share one input model (project.invariants.md)
 class $QuickOpen {
   /** Upper bound on entries the open-project navigator classifies per listing. */
   protected static get siblingFolderEntryLimit(): number {
     return 2000;
   }
 
-  constructor(readonly options: QuickOpenOptions = {}) {}
+  protected readonly queryInputModel: TextInputModel.Model;
+
+  constructor(readonly options: QuickOpenOptions = {}) {
+    this.queryInputModel = this.createQueryInput();
+  }
+
+  protected createQueryInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
 
   get open() {
     return ref(false);
   }
 
+  get queryInput(): TextInputModel.Model {
+    return this.queryInputModel;
+  }
   get query() {
-    return ref('');
+    return this.queryInput.text;
   }
 
   get mode() {
@@ -70,7 +82,7 @@ class $QuickOpen {
       .latestEnumerationRequestIdentifier;
     this.open.value = true;
     this.mode.value = 'files';
-    this.query.value = '';
+    this.queryInput.clear();
     this.errorMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];
@@ -100,7 +112,30 @@ class $QuickOpen {
 
   /** Replace the query and synchronously rebuild the ranked candidate list. */
   setQuery(text: string): void {
-    this.query.value = text;
+    this.queryInput.setValue(text);
+    this.onQueryEdited();
+  }
+
+  insertQuery(text: string): void {
+    if (!this.queryInput.insert(text)) return;
+    this.onQueryEdited();
+  }
+
+  applyQueryInputAction(action: TextInputAction): void {
+    if (
+      action === 'moveRight' &&
+      this.mode.value === 'workspacePath' &&
+      this.queryInput.isAtEnd
+    ) {
+      this.navigateIntoSelected();
+      return;
+    }
+    const originalQuery = this.queryInput.value;
+    this.queryInput.apply(action);
+    if (this.queryInput.value !== originalQuery) this.onQueryEdited();
+  }
+
+  protected onQueryEdited(): void {
     this.errorMessage.value = '';
     // Editing the query is the TYPING gesture: the auto-highlighted first row is a listing artifact,
     // not the user's choice, so Enter must commit the typed path until they browse again.
@@ -120,7 +155,7 @@ class $QuickOpen {
     ++this.latestEnumerationRequestIdentifier;
     this.open.value = true;
     this.mode.value = 'workspacePath';
-    this.query.value = '';
+    this.queryInput.clear();
     this.errorMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];
@@ -150,11 +185,6 @@ class $QuickOpen {
 
   setError(message: string): void {
     this.errorMessage.value = message;
-  }
-
-  // invariant: Word deletion uses the navigation boundary (src/modules/editor/editor.invariants.md)
-  deletePreviousWord(): void {
-    this.setQuery(TextEditing.Class.deletePreviousWord(this.query.value).text);
   }
 
   /** Move the active match without wrapping beyond either end of the list. */
@@ -213,7 +243,7 @@ class $QuickOpen {
     ++this.latestEnumerationRequestIdentifier;
     this.open.value = false;
     this.mode.value = 'files';
-    this.query.value = '';
+    this.queryInput.clear();
     this.errorMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];

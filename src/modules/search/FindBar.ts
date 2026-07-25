@@ -5,13 +5,17 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../editor/TextDocument';
-import { TextEditing } from '../editor/TextEditing';
+import type { TextInputAction, TextInputModel } from '../editor/TextInputModel';
 import { FindInBuffer, type FindInBufferMatch } from './FindInBuffer';
 
+// invariant: Editable text fields share one input model (project.invariants.md)
 class $FindBar {
   // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
   // invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md)
-  protected readonly enginesByTargetIdentifier = new Map<string, FindInBuffer.Instance>();
+  protected readonly enginesByTargetIdentifier = new Map<
+    string,
+    FindInBuffer.Instance
+  >();
   protected readonly documentIdentifiers = new WeakMap<object, string>();
   protected nextDocumentIdentifier = 0;
 
@@ -50,12 +54,15 @@ class $FindBar {
       identifier = `document-${++this.nextDocumentIdentifier}`;
       this.documentIdentifiers.set(document as object, identifier);
     }
-    this.openForTarget({
-      identifier,
-      document,
-      replaceAllowed: true,
-      revealMatch: () => {},
-    }, mode);
+    this.openForTarget(
+      {
+        identifier,
+        document,
+        replaceAllowed: true,
+        revealMatch: () => {},
+      },
+      mode,
+    );
   }
 
   /** Bind the bar to one pane without discarding any other pane's query or matches. */
@@ -87,44 +94,36 @@ class $FindBar {
   protected get editingReplacement(): boolean {
     return this.mode.value === 'replace' && this.replaceFocused.value;
   }
+  get focusedInput(): TextInputModel.Model | null {
+    const engine = this.engine;
+    if (!engine) return null;
+    return this.editingReplacement
+      ? engine.replacementInput
+      : engine.queryInput;
+  }
 
   append(character: string): void {
     const engine = this.engine;
-    if (!engine) return;
-    if (this.editingReplacement) {
-      engine.replacement.value += character;
-    } else {
-      engine.query.value += character;
-      engine.findAll();
-    }
+    const input = this.focusedInput;
+    if (!engine || !input || !input.insert(character)) return;
+    if (!this.editingReplacement) engine.findAll();
   }
 
-  backspace(): void {
+  applyInputAction(action: TextInputAction): void {
     const engine = this.engine;
-    if (!engine) return;
-    if (this.editingReplacement) {
-      engine.replacement.value = engine.replacement.value.slice(0, -1);
-    } else {
-      engine.query.value = engine.query.value.slice(0, -1);
-      engine.findAll();
-    }
-  }
-
-  // invariant: Word deletion uses the navigation boundary (src/modules/editor/editor.invariants.md)
-  deletePreviousWord(): void {
-    const engine = this.engine;
-    if (!engine) return;
-    if (this.editingReplacement) {
-      engine.replacement.value = TextEditing.Class.deletePreviousWord(engine.replacement.value).text;
-    } else {
-      engine.query.value = TextEditing.Class.deletePreviousWord(engine.query.value).text;
+    const input = this.focusedInput;
+    if (!engine || !input) return;
+    const originalText = input.value;
+    input.apply(action);
+    if (!this.editingReplacement && input.value !== originalText) {
       engine.findAll();
     }
   }
 
   /** Tab switches which field types (replace mode only). */
   switchField(): void {
-    if (this.mode.value === 'replace') this.replaceFocused.value = !this.replaceFocused.value;
+    if (this.mode.value === 'replace')
+      this.replaceFocused.value = !this.replaceFocused.value;
   }
 
   /** True while the active engine matches case exactly — read by the renderer for the toggle state. */

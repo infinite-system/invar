@@ -14,6 +14,7 @@ import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
 import { TextSegmentation } from '../system/TextSegmentation';
 import { TextDocument } from '../editor/TextDocument';
+import type { TextInputAction } from '../editor/TextInputModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
 import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';
@@ -804,7 +805,8 @@ class $AgentPaneContent implements PaneContent {
       return this.composerHandled();
     }
     if (key.name === 'delete') {
-      this.composer.deleteForward();
+      if (key.option || key.meta) this.composer.deleteNextWord();
+      else this.composer.deleteForward();
       return this.composerHandled();
     }
     if (this.isTypedCharacter(key)) {
@@ -821,18 +823,8 @@ class $AgentPaneContent implements PaneContent {
     return true;
   }
 
-  moveComposerWordLeft(): void {
-    this.composer.moveWordLeft();
-    this.composerHandled();
-  }
-
-  moveComposerWordRight(): void {
-    this.composer.moveWordRight();
-    this.composerHandled();
-  }
-
-  deleteComposerPreviousWord(): void {
-    this.composer.deletePreviousWord();
+  applyComposerInputAction(action: TextInputAction): void {
+    this.composer.applyInputAction(action);
     this.composerHandled();
   }
 

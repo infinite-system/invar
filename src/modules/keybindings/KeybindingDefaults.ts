@@ -7,6 +7,103 @@ import type { Keybinding } from './KeybindingRegistry';
 // invariant: The canonical layer is the floor (keybindings.invariants.md)
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
 class $KeybindingDefaults {
+  protected static textInputBindings(
+    context: TextInputBindingContext,
+  ): Keybinding[] {
+    return [
+      {
+        chord: { key: 'left' },
+        action: 'textInput.moveLeft',
+        context,
+      },
+      {
+        chord: { key: 'right' },
+        action: 'textInput.moveRight',
+        context,
+      },
+      {
+        chord: { key: 'left', alt: true },
+        action: 'textInput.moveWordLeft',
+        context,
+      },
+      {
+        chord: { key: 'b', alt: true },
+        action: 'textInput.moveWordLeft',
+        context,
+      },
+      {
+        chord: { key: 'right', alt: true },
+        action: 'textInput.moveWordRight',
+        context,
+      },
+      {
+        chord: { key: 'f', alt: true },
+        action: 'textInput.moveWordRight',
+        context,
+      },
+      {
+        chord: { key: 'left', ctrl: true },
+        action: 'textInput.moveWordLeft',
+        context,
+      },
+      {
+        chord: { key: 'right', ctrl: true },
+        action: 'textInput.moveWordRight',
+        context,
+      },
+      {
+        chord: { key: 'left', super: true },
+        action: 'textInput.moveHome',
+        context,
+      },
+      {
+        chord: { key: 'right', super: true },
+        action: 'textInput.moveEnd',
+        context,
+      },
+      {
+        chord: { key: 'home' },
+        action: 'textInput.moveHome',
+        context,
+      },
+      {
+        chord: { key: 'end' },
+        action: 'textInput.moveEnd',
+        context,
+      },
+      {
+        chord: { key: 'backspace' },
+        action: 'textInput.backspace',
+        context,
+      },
+      {
+        chord: { key: 'delete' },
+        action: 'textInput.deleteForward',
+        context,
+      },
+      {
+        chord: { key: 'backspace', alt: true },
+        action: 'textInput.deletePreviousWord',
+        context,
+      },
+      {
+        chord: { key: 'delete', alt: true },
+        action: 'textInput.deleteNextWord',
+        context,
+      },
+      {
+        chord: { key: 'backspace', ctrl: true },
+        action: 'textInput.deleteLine',
+        context,
+      },
+      {
+        chord: { key: 'backspace', super: true },
+        action: 'textInput.deleteLine',
+        context,
+      },
+    ];
+  }
+
   protected static get $canonicalBindings(): Keybinding[] {
     const canonicalBindings: Keybinding[] = [
       // --- global ---
@@ -216,48 +313,11 @@ class $KeybindingDefaults {
       { chord: { key: 'return' }, action: 'palette.run', context: 'palette' },
       { chord: { key: 'up' }, action: 'palette.previous', context: 'palette' },
       { chord: { key: 'down' }, action: 'palette.next', context: 'palette' },
-      {
-        chord: { key: 'backspace' },
-        action: 'palette.erase',
-        context: 'palette',
-      },
-      {
-        chord: { key: 'backspace', alt: true },
-        action: 'palette.eraseWord',
-        context: 'palette',
-      },
-      {
-        chord: { key: 'delete', alt: true },
-        action: 'palette.eraseWord',
-        context: 'palette',
-      },
+      ...this.textInputBindings('palette'),
 
       // --- text inputs (query editing stays intent-addressed even though typed characters are residuals) ---
-      {
-        chord: { key: 'backspace', alt: true },
-        action: 'quickopen.eraseWord',
-        context: 'quickopen',
-      },
-      {
-        chord: { key: 'delete', alt: true },
-        action: 'quickopen.eraseWord',
-        context: 'quickopen',
-      },
-      {
-        chord: { key: 'right' },
-        action: 'quickopen.navigateInto',
-        context: 'quickopen',
-      },
-      {
-        chord: { key: 'backspace', alt: true },
-        action: 'find.eraseWord',
-        context: 'find',
-      },
-      {
-        chord: { key: 'delete', alt: true },
-        action: 'find.eraseWord',
-        context: 'find',
-      },
+      ...this.textInputBindings('quickopen'),
+      ...this.textInputBindings('find'),
       // Case-sensitivity toggle (VS Code's Alt+C in the find widget) — flips the engine + re-runs the query.
       {
         chord: { key: 'c', alt: true },
@@ -504,31 +564,7 @@ class $KeybindingDefaults {
         action: 'agent.cycleTerminalFollowMode',
         context: 'agent',
       },
-      {
-        chord: { key: 'left', alt: true },
-        action: 'agent.wordLeft',
-        context: 'agent',
-      },
-      {
-        chord: { key: 'b', alt: true },
-        action: 'agent.wordLeft',
-        context: 'agent',
-      },
-      {
-        chord: { key: 'right', alt: true },
-        action: 'agent.wordRight',
-        context: 'agent',
-      },
-      {
-        chord: { key: 'f', alt: true },
-        action: 'agent.wordRight',
-        context: 'agent',
-      },
-      {
-        chord: { key: 'backspace', alt: true },
-        action: 'agent.deletePreviousWord',
-        context: 'agent',
-      },
+      ...this.textInputBindings('agent'),
       // A terminal selection owns copy; without a selection the same chord falls through as SIGINT.
       {
         chord: { key: 'c', ctrl: true },
@@ -611,3 +647,6 @@ export namespace KeybindingDefaults {
   export const $Class = $KeybindingDefaults;
   export const Class = Static($KeybindingDefaults);
 }
+
+export type TextInputBindingContext =
+  'palette' | 'quickopen' | 'find' | 'agent';

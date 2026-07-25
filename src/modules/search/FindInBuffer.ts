@@ -2,18 +2,35 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../editor/TextDocument';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextInputModel } from '../editor/TextInputModel';
 
+// invariant: Editable text fields share one input model (project.invariants.md)
 class $FindInBuffer {
   protected replacementContexts: MatchReplacementContext[] = [];
+  protected readonly queryInputModel: TextInputModel.Model;
+  protected readonly replacementInputModel: TextInputModel.Model;
 
-  constructor(public readonly document: TextDocument.Instance) {}
+  constructor(public readonly document: TextDocument.Instance) {
+    this.queryInputModel = this.createTextInput();
+    this.replacementInputModel = this.createTextInput();
+  }
 
+  protected createTextInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
+
+  get queryInput(): TextInputModel.Model {
+    return this.queryInputModel;
+  }
+  get replacementInput(): TextInputModel.Model {
+    return this.replacementInputModel;
+  }
   get query() {
-    return ref('');
+    return this.queryInput.text;
   }
 
   get replacement() {
-    return ref('');
+    return this.replacementInput.text;
   }
 
   get caseSensitive() {
@@ -62,13 +79,22 @@ class $FindInBuffer {
       const lineText = this.document.line(lineIndex);
       regularExpression.lastIndex = 0;
       let regularExpressionMatch: RegExpExecArray | null;
-      while ((regularExpressionMatch = regularExpression.exec(lineText)) !== null) {
+      while (
+        (regularExpressionMatch = regularExpression.exec(lineText)) !== null
+      ) {
         const startUtf16Offset = regularExpressionMatch.index;
-        const endUtf16Offset = startUtf16Offset + regularExpressionMatch[0].length;
+        const endUtf16Offset =
+          startUtf16Offset + regularExpressionMatch[0].length;
         matches.push({
           line: lineIndex,
-          startColumn: EditorCoordinates.Class.u16ToGrapheme(lineText, startUtf16Offset),
-          endColumn: EditorCoordinates.Class.u16ToGrapheme(lineText, endUtf16Offset),
+          startColumn: EditorCoordinates.Class.u16ToGrapheme(
+            lineText,
+            startUtf16Offset,
+          ),
+          endColumn: EditorCoordinates.Class.u16ToGrapheme(
+            lineText,
+            endUtf16Offset,
+          ),
         });
         replacementContexts.push({
           matchedText: regularExpressionMatch[0],
@@ -98,7 +124,8 @@ class $FindInBuffer {
       this.currentMatchIndex.value = -1;
       return null;
     }
-    this.currentMatchIndex.value = (this.currentMatchIndex.value + 1 + this.matchCount) % this.matchCount;
+    this.currentMatchIndex.value =
+      (this.currentMatchIndex.value + 1 + this.matchCount) % this.matchCount;
     return this.currentMatch;
   }
 
@@ -107,12 +134,14 @@ class $FindInBuffer {
       this.currentMatchIndex.value = -1;
       return null;
     }
-    this.currentMatchIndex.value = (this.currentMatchIndex.value - 1 + this.matchCount) % this.matchCount;
+    this.currentMatchIndex.value =
+      (this.currentMatchIndex.value - 1 + this.matchCount) % this.matchCount;
     return this.currentMatch;
   }
 
   replaceCurrent(): boolean {
-    const replacementContext = this.replacementContexts[this.currentMatchIndex.value];
+    const replacementContext =
+      this.replacementContexts[this.currentMatchIndex.value];
     const currentMatch = this.currentMatch;
     if (currentMatch === null || replacementContext === undefined) return false;
 
@@ -123,18 +152,32 @@ class $FindInBuffer {
         { line: currentMatch.line, col: currentMatch.endColumn },
       );
     }
-    const replacementText = this.expandReplacement(this.replacement.value, replacementContext);
+    const replacementText = this.expandReplacement(
+      this.replacement.value,
+      replacementContext,
+    );
     if (replacementText.length > 0) {
       if (/\r|\n/.test(replacementText)) {
-        this.document.insertMultiline(currentMatch.line, currentMatch.startColumn, replacementText);
+        this.document.insertMultiline(
+          currentMatch.line,
+          currentMatch.startColumn,
+          replacementText,
+        );
       } else {
-        this.document.insertInline(currentMatch.line, currentMatch.startColumn, replacementText);
+        this.document.insertInline(
+          currentMatch.line,
+          currentMatch.startColumn,
+          replacementText,
+        );
       }
     }
 
     this.findAll();
     if (this.matchCount > 0) {
-      this.currentMatchIndex.value = Math.min(replacedMatchIndex, this.matchCount - 1);
+      this.currentMatchIndex.value = Math.min(
+        replacedMatchIndex,
+        this.matchCount - 1,
+      );
     }
     return true;
   }
@@ -154,14 +197,16 @@ class $FindInBuffer {
       if (match === undefined || replacementContext === undefined) continue;
       const lineText = updatedLines[match.line] ?? '';
       updatedLines[match.line] =
-        lineText.slice(0, replacementContext.startUtf16Offset)
-        + this.expandReplacement(this.replacement.value, replacementContext)
-        + lineText.slice(replacementContext.endUtf16Offset);
+        lineText.slice(0, replacementContext.startUtf16Offset) +
+        this.expandReplacement(this.replacement.value, replacementContext) +
+        lineText.slice(replacementContext.endUtf16Offset);
     }
 
     // TextDocument.replaceAll is the available batch boundary: every replacement is committed as
     // one document mutation (and therefore can be captured as one undo step by the editor caller).
-    this.document.replaceAll(updatedLines.join(this.document.eol).split(/\r?\n/));
+    this.document.replaceAll(
+      updatedLines.join(this.document.eol).split(/\r?\n/),
+    );
     this.findAll();
     return replacementCount;
   }
@@ -176,7 +221,12 @@ class $FindInBuffer {
   ): string {
     return replacement.replace(
       /\$(\$|&|`|'|<([^>]+)>|(\d{1,2}))/g,
-      (replacementToken, substitutionToken: string, capturedName: string | undefined, capturedNumberText: string | undefined) => {
+      (
+        replacementToken,
+        substitutionToken: string,
+        capturedName: string | undefined,
+        capturedNumberText: string | undefined,
+      ) => {
         if (substitutionToken === '$') return '$';
         if (substitutionToken === '&') return context.matchedText;
         if (substitutionToken === '`') return context.prefixText;
@@ -187,14 +237,23 @@ class $FindInBuffer {
         }
 
         const capturedNumber = Number(capturedNumberText);
-        if (capturedNumber > 0 && capturedNumber <= context.capturedTexts.length) {
+        if (
+          capturedNumber > 0 &&
+          capturedNumber <= context.capturedTexts.length
+        ) {
           return context.capturedTexts[capturedNumber - 1] ?? '';
         }
 
         if (capturedNumberText?.length === 2) {
           const firstCapturedNumber = Number(capturedNumberText[0]);
-          if (firstCapturedNumber > 0 && firstCapturedNumber <= context.capturedTexts.length) {
-            return (context.capturedTexts[firstCapturedNumber - 1] ?? '') + capturedNumberText[1];
+          if (
+            firstCapturedNumber > 0 &&
+            firstCapturedNumber <= context.capturedTexts.length
+          ) {
+            return (
+              (context.capturedTexts[firstCapturedNumber - 1] ?? '') +
+              capturedNumberText[1]
+            );
           }
         }
         return replacementToken;
@@ -211,7 +270,10 @@ class $FindInBuffer {
       ? `\\b(?:${querySource})\\b`
       : querySource;
     try {
-      return new RegExp(regularExpressionSource, this.caseSensitive.value ? 'g' : 'gi');
+      return new RegExp(
+        regularExpressionSource,
+        this.caseSensitive.value ? 'g' : 'gi',
+      );
     } catch {
       return null;
     }

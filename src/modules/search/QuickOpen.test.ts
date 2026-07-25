@@ -24,7 +24,7 @@ describe('QuickOpen', () => {
     });
     await quickOpen.show('/project');
     quickOpen.setQuery('foo bar');
-    quickOpen.deletePreviousWord();
+    quickOpen.applyQueryInputAction('deletePreviousWord');
     expect(quickOpen.query.value).toBe('foo ');
   });
 
@@ -291,7 +291,7 @@ test('workspace-path mode commits the HIGHLIGHTED subfolder, not the parent in t
   expect(quickOpen.activate()).not.toBe('/projects');
 });
 
-test('workspace-path Right-arrow drill-in completes the query with the highlighted folder', () => {
+test('workspace-path Right moves within input and drills only at end', () => {
   const quickOpen = new QuickOpen.Class({
     listDirectoryNames: () => ['alpha', 'beta'],
     isDirectory: () => true,
@@ -302,7 +302,13 @@ test('workspace-path Right-arrow drill-in completes the query with the highlight
     quickOpen.matches.value[quickOpen.selectedIndex.value]?.path;
   expect(selectedPath).toBeDefined();
 
-  quickOpen.navigateIntoSelected();
+  quickOpen.queryInput.moveLeft();
+  const queryBeforeRight = quickOpen.query.value;
+  quickOpen.applyQueryInputAction('moveRight');
+  expect(quickOpen.query.value).toBe(queryBeforeRight);
+  expect(quickOpen.queryInput.isAtEnd).toBe(true);
+
+  quickOpen.applyQueryInputAction('moveRight');
 
   // The input is now scoped INSIDE that folder, so typing searches within it.
   expect(quickOpen.query.value).toBe(`${selectedPath ?? ''}/`);

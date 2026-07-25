@@ -75,24 +75,26 @@ the residual DEFAULT actions of their contexts, themselves dispatched by the reg
 
 **Mechanism:** `KeybindingRegistry.resolve(keyEvent, context)` performs a pure data lookup over the
 layered binding set and returns an action id (or a pending-chord state, or null); Bootstrap maps
-action ids to handlers. Multi-step chords (Ctrl+X..Ctrl+C) are step-list DATA with a timeout, not
-bespoke state code.
+action ids to handlers. `KeybindingDefaults.textInputBindings` emits one complete chord table for
+every adopted text-input context, so a surface cannot omit one member of a movement/deletion pair.
+Multi-step chords (Ctrl+X..Ctrl+C) are step-list DATA with a timeout, not bespoke state code.
 
 **Generates:** rebindability; the palette able to LIST every binding; plugins contributing bindings
 as data; the dissolution of Bootstrap's key if/else chains.
 
-**Evidence:** to be realized by this module — `keybindings.defaults.ts` (canonical data),
-`KeybindingRegistry` (lookup), Bootstrap reduced to `resolve → dispatch`.
+**Evidence:** `src/modules/keybindings/KeybindingDefaults.ts` (canonical data and shared text-input
+table); `src/modules/keybindings/KeybindingRegistry.ts` (lookup);
+`src/modules/keybindings/KeybindingDefaults.test.ts` (all four text-input contexts have the same
+18 chord/action signatures); `src/modules/app/Bootstrap.ts` (resolve then dispatch).
 
 **Impossible if true:** a key behavior implemented outside registry dispatch; an action reachable
 only through an unlisted binding; encoding logic anywhere but the decode layer.
 
-**Verification:** grep-level — Bootstrap contains no chord conditionals, only dispatch; registry
-tests for every default binding; the checker's annotation on the dispatch site.
+**Verification:** `bun test src/modules/keybindings/KeybindingDefaults.test.ts src/modules/keybindings/KeybindingRegistry.test.ts && bash scripts/conventions-gate.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### Resolution is layered and later layers shadow earlier
 

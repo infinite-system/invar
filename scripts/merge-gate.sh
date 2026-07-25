@@ -189,6 +189,7 @@ if [ "${FAST:-0}" != "1" ]; then
   full_tmux_step "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
   full_tmux_step "smoke: word-delete" bash scripts/smoke-word-delete.sh
   step "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
+  step "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
   full_tmux_step "smoke: quick-open"  bash scripts/smoke-quickopen.sh
   full_tmux_step "smoke: open-project" bash scripts/smoke-openproject.sh
   full_tmux_step "smoke: search-mouse" bash scripts/smoke-search-mouse.sh

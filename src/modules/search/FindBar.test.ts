@@ -8,12 +8,12 @@ test('deletePreviousWord edits both find and replace fields through the shared b
   const findBar = new FindBar.Class();
   findBar.openFor(document, 'replace');
   findBar.append('foo bar');
-  findBar.deletePreviousWord();
+  findBar.applyInputAction('deletePreviousWord');
   expect(findBar.engine?.query.value).toBe('foo ');
 
   findBar.switchField();
   findBar.append('one...');
-  findBar.deletePreviousWord();
+  findBar.applyInputAction('deletePreviousWord');
   expect(findBar.engine?.replacement.value).toBe('one');
 });
 
@@ -26,21 +26,27 @@ test('pane targets retain independent queries and matches when focus changes', (
   previewDocument.loadFromText('rendered term');
   const findBar = new FindBar.Class();
 
-  findBar.openForTarget({
-    identifier: 'source-pane',
-    document: sourceDocument,
-    replaceAllowed: true,
-    revealMatch: () => {},
-  }, 'find');
+  findBar.openForTarget(
+    {
+      identifier: 'source-pane',
+      document: sourceDocument,
+      replaceAllowed: true,
+      revealMatch: () => {},
+    },
+    'find',
+  );
   findBar.append('source');
   expect(findBar.engine?.matchCount).toBe(2);
 
-  findBar.openForTarget({
-    identifier: 'preview-pane',
-    document: previewDocument,
-    replaceAllowed: false,
-    revealMatch: () => {},
-  }, 'replace');
+  findBar.openForTarget(
+    {
+      identifier: 'preview-pane',
+      document: previewDocument,
+      replaceAllowed: false,
+      revealMatch: () => {},
+    },
+    'replace',
+  );
   findBar.append('rendered');
   expect(findBar.mode.value).toBe('find');
   expect(findBar.engine?.matchCount).toBe(1);

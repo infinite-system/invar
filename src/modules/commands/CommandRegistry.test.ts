@@ -5,9 +5,27 @@ test('registry filters by query and runs the selected command', () => {
   const registry = new CommandRegistry.Class();
   let ran = '';
   registry.registerAll([
-    { id: 'a', title: 'File: Save', run: () => { ran = 'save'; } },
-    { id: 'b', title: 'Edit: Undo', run: () => { ran = 'undo'; } },
-    { id: 'c', title: 'View: Toggle Theme', run: () => { ran = 'theme'; } },
+    {
+      id: 'a',
+      title: 'File: Save',
+      run: () => {
+        ran = 'save';
+      },
+    },
+    {
+      id: 'b',
+      title: 'Edit: Undo',
+      run: () => {
+        ran = 'undo';
+      },
+    },
+    {
+      id: 'c',
+      title: 'View: Toggle Theme',
+      run: () => {
+        ran = 'theme';
+      },
+    },
   ]);
   registry.openPalette();
   expect(registry.filtered.length).toBe(3);
@@ -21,14 +39,19 @@ test('registry filters by query and runs the selected command', () => {
 test('palette word deletion uses the shared text boundary', () => {
   const registry = new CommandRegistry.Class();
   registry.setQuery('open file');
-  registry.deletePreviousQueryWord();
+  registry.applyQueryInputAction('deletePreviousWord');
   expect(registry.query.value).toBe('open ');
 });
 
 test('when() gates command availability', () => {
   const registry = new CommandRegistry.Class();
   let enabled = false;
-  registry.register({ id: 'x', title: 'Gated', when: () => enabled, run: () => {} });
+  registry.register({
+    id: 'x',
+    title: 'Gated',
+    when: () => enabled,
+    run: () => {},
+  });
   registry.openPalette();
   expect(registry.filtered.length).toBe(0);
   enabled = true;

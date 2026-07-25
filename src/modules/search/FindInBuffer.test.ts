@@ -18,16 +18,16 @@ describe('FindInBuffer matching', () => {
   test('literal, regular expression, case-sensitive, and whole-word modes count independently', () => {
     const { findInBuffer } = createFindInBuffer('Foo foo foobar\nFOO food foo');
 
-    findInBuffer.query.value = 'foo';
+    findInBuffer.queryInput.setValue('foo');
     expect(findInBuffer.findAll()).toHaveLength(6);
 
     findInBuffer.useRegex.value = true;
-    findInBuffer.query.value = 'f.o';
+    findInBuffer.queryInput.setValue('f.o');
     expect(findInBuffer.findAll()).toHaveLength(6);
 
     findInBuffer.useRegex.value = false;
     findInBuffer.caseSensitive.value = true;
-    findInBuffer.query.value = 'foo';
+    findInBuffer.queryInput.setValue('foo');
     expect(findInBuffer.findAll()).toHaveLength(4);
 
     findInBuffer.caseSensitive.value = false;
@@ -37,7 +37,7 @@ describe('FindInBuffer matching', () => {
 
   test('literal mode escapes regular-expression punctuation and reports grapheme columns', () => {
     const { findInBuffer } = createFindInBuffer('😀 a.b aXb');
-    findInBuffer.query.value = 'a.b';
+    findInBuffer.queryInput.setValue('a.b');
 
     expect(findInBuffer.findAll()).toEqual([
       { line: 0, startColumn: 2, endColumn: 5 },
@@ -49,7 +49,7 @@ describe('FindInBuffer matching', () => {
     expect(findInBuffer.findAll()).toEqual([]);
 
     findInBuffer.useRegex.value = true;
-    findInBuffer.query.value = '[';
+    findInBuffer.queryInput.setValue('[');
     expect(findInBuffer.findAll()).toEqual([]);
     expect(findInBuffer.currentMatchIndex.value).toBe(-1);
   });
@@ -58,24 +58,40 @@ describe('FindInBuffer matching', () => {
 describe('FindInBuffer navigation', () => {
   test('next and previous wrap at both ends and expose the current range', () => {
     const { findInBuffer } = createFindInBuffer('one one\none');
-    findInBuffer.query.value = 'one';
+    findInBuffer.queryInput.setValue('one');
     findInBuffer.findAll();
 
-    expect(findInBuffer.currentMatch).toEqual({ line: 0, startColumn: 0, endColumn: 3 });
+    expect(findInBuffer.currentMatch).toEqual({
+      line: 0,
+      startColumn: 0,
+      endColumn: 3,
+    });
     expect(findInBuffer.currentMatchRange).toEqual(findInBuffer.currentMatch);
-    expect(findInBuffer.previous()).toEqual({ line: 1, startColumn: 0, endColumn: 3 });
-    expect(findInBuffer.next()).toEqual({ line: 0, startColumn: 0, endColumn: 3 });
+    expect(findInBuffer.previous()).toEqual({
+      line: 1,
+      startColumn: 0,
+      endColumn: 3,
+    });
+    expect(findInBuffer.next()).toEqual({
+      line: 0,
+      startColumn: 0,
+      endColumn: 3,
+    });
     findInBuffer.next();
     findInBuffer.next();
-    expect(findInBuffer.next()).toEqual({ line: 0, startColumn: 0, endColumn: 3 });
+    expect(findInBuffer.next()).toEqual({
+      line: 0,
+      startColumn: 0,
+      endColumn: 3,
+    });
   });
 });
 
 describe('FindInBuffer replacement', () => {
   test('replaceCurrent changes only the selected occurrence and recomputes matches', () => {
     const { document, findInBuffer } = createFindInBuffer('red red red');
-    findInBuffer.query.value = 'red';
-    findInBuffer.replacement.value = 'blue';
+    findInBuffer.queryInput.setValue('red');
+    findInBuffer.replacementInput.setValue('blue');
     findInBuffer.findAll();
     findInBuffer.next();
 
@@ -90,8 +106,8 @@ describe('FindInBuffer replacement', () => {
 
   test('replaceAll applies every change through one document batch and updates matches', () => {
     const { document, findInBuffer } = createFindInBuffer('cat cat\ncat');
-    findInBuffer.query.value = 'cat';
-    findInBuffer.replacement.value = 'dog';
+    findInBuffer.queryInput.setValue('cat');
+    findInBuffer.replacementInput.setValue('dog');
     const revisionBeforeReplacement = document.revision.value;
 
     expect(findInBuffer.replaceAll()).toBe(3);
@@ -104,8 +120,8 @@ describe('FindInBuffer replacement', () => {
   test('regular-expression capture groups expand in replaceCurrent and replaceAll', () => {
     const { document, findInBuffer } = createFindInBuffer('left=12 right=7');
     findInBuffer.useRegex.value = true;
-    findInBuffer.query.value = '([a-z]+)=(\\d+)';
-    findInBuffer.replacement.value = '$1:[$2]';
+    findInBuffer.queryInput.setValue('([a-z]+)=(\\d+)');
+    findInBuffer.replacementInput.setValue('$1:[$2]');
     findInBuffer.findAll();
 
     expect(findInBuffer.replaceCurrent()).toBe(true);

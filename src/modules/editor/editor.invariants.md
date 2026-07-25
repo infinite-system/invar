@@ -170,38 +170,39 @@ inherits mutation, undo, persistence, and viewport behavior it must suppress.
 
 **Last refined:** 2026-07-24
 
-### Word deletion uses the navigation boundary
+### Word deletion uses navigation boundaries
 
-**Invariant:** If delete-previous-word runs in the editor or a text input at position P, then it
-deletes exactly the half-open range `[wordLeft(P), P]` computed by the same `TextEditing.wordLeft`
-boundary that editor word navigation uses; an active editor selection is deleted instead.
+**Invariant:** If word deletion runs at position P, then delete-previous-word removes
+`[wordLeft(P), P]` and delete-next-word removes `[P, wordRight(P)]`, using the same
+`TextEditing` boundaries as word navigation; an active editor selection is deleted instead.
 
 **Scope:** `TextEditing`, `Editor.moveWordHorizontal`, `Editor.deletePreviousWord`, and every present
-text input: command-palette query, `QuickOpen.query`, and both `FindBar` fields. A settings or
-find-in-files text field inherits this rule when one exists; the current settings panel has no text
-field and the current search view is not mounted.
+text input through `TextInputModel`: command-palette query, `QuickOpen.query`, both `FindBar` fields,
+and `AgentComposer`. A settings or find-in-files text field inherits this rule when one exists; the
+current settings panel has no text field and the current search view is not mounted.
 
-**Mechanism:** `TextEditing.deletePreviousWord` calls `TextEditing.wordLeft` and returns the deletion
-range plus edited text. Editor navigation consumes `wordLeft`; editor deletion consumes the shared
-deletion range through `TextDocument.deleteRange`; input models consume its edited text. Newlines are
-hard boundaries, so deleting at line start removes only the newline and joins the preceding line.
+**Mechanism:** `TextEditing.deletePreviousWord` calls `wordLeft`; `deleteNextWord` calls
+`wordRight`; both return the deletion range plus edited text. Editor navigation consumes the same
+boundaries; editor deletion consumes the previous-word range through `TextDocument.deleteRange`;
+`TextInputModel` consumes both edited results. Newlines are hard boundaries.
 
 **Generates:** One grapheme-safe boundary for navigation and deletion; identical word, whitespace,
 punctuation, and line-boundary behavior across editor and text inputs; one undo step per editor word
 deletion.
 
-**Evidence:** `src/modules/editor/TextEditing.ts`; `src/modules/editor/Editor.ts`;
-`src/modules/editor/TextEditing.test.ts`; `scripts/smoke-word-delete.sh`.
+**Evidence:** `src/modules/editor/TextEditing.ts`; `src/modules/editor/TextInputModel.ts`;
+`src/modules/editor/Editor.ts`; `src/modules/editor/TextEditing.test.ts`;
+`src/modules/editor/TextInputModel.test.ts`; `scripts/smoke-word-delete.sh`.
 
 **Impossible if true:** word navigation jumping to one position while word deletion starts at another;
 Alt+Delete closing a buffer; a find, replace, quick-open, or palette query deleting a different span
 than the editor for the same text and cursor position.
 
-**Verification:** `bun test src/modules/editor/TextEditing.test.ts && bash scripts/smoke-word-delete.sh`
+**Verification:** `bun test src/modules/editor/TextEditing.test.ts src/modules/editor/TextInputModel.test.ts && bash scripts/smoke-word-delete.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### Word wrap is a pure view mapping
 

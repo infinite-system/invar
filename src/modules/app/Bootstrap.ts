@@ -60,6 +60,7 @@ import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import type { TextInputAction } from '../editor/TextInputModel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
   AgentPaneContent,
@@ -824,13 +825,16 @@ class $Bootstrap {
       view.observeHoverRepaint(); // the LSP hover card projects on its reactive paint signal (async landing)
       void commands.open.value;
       void commands.query.value;
+      void commands.queryInput.caret.value;
       void quickOpen.open.value; // repaint the quick-open modal on open/query/selection/hover change
       void quickOpen.query.value;
+      void quickOpen.queryInput.caret.value;
       void quickOpen.selectedIndex.value;
       void quickOpen.hoveredIndex.value;
       void quickOpen.workspacePathOpenable.value; // repaint the path-alert glyph live as the path changes
       void findBar.open.value;
       void findBar.engine?.query.value;
+      void findBar.focusedInput?.caret.value;
       void findBar.engine?.matches.value;
       void findBar.engine?.currentMatchIndex.value; // repaint the match counter on next/prev
       void findBar.caseSensitive; // repaint the case toggle on flip
@@ -1224,6 +1228,26 @@ class $Bootstrap {
       else if (direction === 1) gitPanel.region.value = 'log'; // flow into the log
     };
 
+    const applyTextInputAction = (action: TextInputAction): void => {
+      if (findBar.open.value) {
+        findBar.applyInputAction(action);
+        revealFindMatch();
+        return;
+      }
+      if (quickOpen.open.value) {
+        quickOpen.applyQueryInputAction(action);
+        return;
+      }
+      if (commands.open.value) {
+        commands.applyQueryInputAction(action);
+        return;
+      }
+      const focusedContent = panelHost.focusedContent;
+      if (focusedContent instanceof AgentPaneContent.Class) {
+        focusedContent.applyComposerInputAction(action);
+      }
+    };
+
     // The ACTION TABLE: every binding's action id -> its handler. Handlers receive the raw KeyEvent
     // for parameters that compose (shift = extend; repeat runs = acceleration).
     const actionHandlers: Record<string, (key: KeyEvent) => void> = {
@@ -1264,17 +1288,18 @@ class $Bootstrap {
       'palette.run': () => commands.runSelected(),
       'palette.previous': () => commands.moveSelection(-1),
       'palette.next': () => commands.moveSelection(1),
-      'palette.erase': () => commands.backspaceQuery(),
-      'palette.eraseWord': () => commands.deletePreviousQueryWord(),
-      'quickopen.eraseWord': () => quickOpen.deletePreviousWord(),
-      // Shell-style path completion: Right on a highlighted subfolder writes its path into the input
-      // (the same drill-in the mouse click performs), so the listing re-roots there and the query is
-      // now scoped to that folder — the keyboard reaches the navigator through one method.
-      'quickopen.navigateInto': () => quickOpen.navigateIntoSelected(),
-      'find.eraseWord': () => {
-        findBar.deletePreviousWord();
-        revealFindMatch();
-      },
+      'textInput.moveLeft': () => applyTextInputAction('moveLeft'),
+      'textInput.moveRight': () => applyTextInputAction('moveRight'),
+      'textInput.moveWordLeft': () => applyTextInputAction('moveWordLeft'),
+      'textInput.moveWordRight': () => applyTextInputAction('moveWordRight'),
+      'textInput.moveHome': () => applyTextInputAction('moveHome'),
+      'textInput.moveEnd': () => applyTextInputAction('moveEnd'),
+      'textInput.backspace': () => applyTextInputAction('backspace'),
+      'textInput.deleteForward': () => applyTextInputAction('deleteForward'),
+      'textInput.deletePreviousWord': () =>
+        applyTextInputAction('deletePreviousWord'),
+      'textInput.deleteNextWord': () => applyTextInputAction('deleteNextWord'),
+      'textInput.deleteLine': () => applyTextInputAction('deleteLine'),
       'find.toggleCaseSensitive': () => {
         findBar.toggleCaseSensitive();
         revealFindMatch();
@@ -1639,24 +1664,6 @@ class $Bootstrap {
           StatusChannel.Class.flush();
         });
       },
-      'agent.wordLeft': () => {
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          focusedContent.moveComposerWordLeft();
-        }
-      },
-      'agent.wordRight': () => {
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          focusedContent.moveComposerWordRight();
-        }
-      },
-      'agent.deletePreviousWord': () => {
-        const focusedContent = panelHost.focusedContent;
-        if (focusedContent instanceof AgentPaneContent.Class) {
-          focusedContent.deleteComposerPreviousWord();
-        }
-      },
       'agent.cancelTurn': () => {
         const focusedContent = panelHost.focusedContent;
         if (focusedContent instanceof AgentPaneContent.Class) {
@@ -1780,7 +1787,7 @@ class $Bootstrap {
         return;
       }
       if (key.name === 'backspace') {
-        findBar.backspace();
+        findBar.applyInputAction('backspace');
         revealFindMatch();
         return;
       }
@@ -1909,7 +1916,10 @@ class $Bootstrap {
             openAgentTranscriptSearch();
             return;
           }
-          if (agentResolution.action?.startsWith('agent.')) {
+          if (
+            agentResolution.action?.startsWith('agent.') ||
+            agentResolution.action?.startsWith('textInput.')
+          ) {
             actionHandlers[agentResolution.action]?.(key);
             return;
           }
@@ -2107,11 +2117,11 @@ class $Bootstrap {
           return;
         }
         if (key.name === 'backspace') {
-          quickOpen.setQuery(quickOpen.query.value.slice(0, -1));
+          quickOpen.applyQueryInputAction('backspace');
           return;
         }
         if (isTypedCharacter(key)) {
-          quickOpen.setQuery(quickOpen.query.value + key.sequence);
+          quickOpen.insertQuery(key.sequence);
           return;
         }
         return;
@@ -2260,7 +2270,7 @@ class $Bootstrap {
         return;
       }
       if (quickOpen.open.value) {
-        quickOpen.setQuery(quickOpen.query.value + singleLine);
+        quickOpen.insertQuery(singleLine);
         return;
       }
       if (findBar.open.value) {

@@ -844,7 +844,7 @@ class $OverlayLayer {
           this.commandPaletteViewportRows,
         );
       }
-      this.commandPaletteInput.content = `> ${commands.query.value}▏`;
+      this.commandPaletteInput.content = `> ${commands.queryInput.valueBeforeCaret}▏${commands.queryInput.valueAfterCaret}`;
       this.commandPaletteInput.fg = palette.fg;
       const commandPaletteFirstVisible = this.commandPaletteViewport.scrollTop;
       this.commandPaletteFirstVisible = commandPaletteFirstVisible;
@@ -952,7 +952,9 @@ class $OverlayLayer {
       // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
       const showPathAlert =
         openingWorkspace && !quickOpen.workspacePathOpenable.value;
-      const inputPrefix = `${openingWorkspace ? '+' : theme.actionIcons.open} ${quickOpen.query.value}▏`;
+      const inputPrefix =
+        `${openingWorkspace ? '+' : theme.actionIcons.open} ` +
+        `${quickOpen.queryInput.valueBeforeCaret}▏${quickOpen.queryInput.valueAfterCaret}`;
       const inputChunks: TextChunk[] = [fg(palette.fg)(inputPrefix)];
       if (showPathAlert)
         inputChunks.push(fg(palette.warning)(`  ${theme.alertIcon}`));

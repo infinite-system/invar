@@ -169,7 +169,8 @@ an empty segment listing all. Typing re-roots the listing live; a click on a fol
 (completing the path with its name + `/` and re-listing); Enter opens the current input path.
 
 **Scope:** `QuickOpen` workspacePath mode — `showWorkspacePath`, `refilterWorkspacePath`,
-`navigateIntoSelected`, `activate` — and the `OverlayLayer` path-navigator click branch.
+`navigateIntoSelected`, `applyQueryInputAction`, `activate` — and the `OverlayLayer`
+path-navigator click branch.
 
 **Mechanism:** `refilterWorkspacePath` computes `directoryPrefix`/`filterSegment` from the last `/`,
 enumerates the prefix's subfolders (cached by directory so an intra-directory keystroke only
@@ -177,24 +178,28 @@ re-filters), scores each folder's basename with `CommandScoring.fuzzyScore`, and
 `navigateIntoSelected` sets the query to the highlighted folder + `/`, which re-runs the enumeration.
 `activate` returns the trailing-slash-stripped current path. `OverlayLayer`'s quick-open `onMouseDown`
 calls `navigateIntoSelected` in this mode (versus opening the file in files mode).
+`applyQueryInputAction('moveRight')` first advances the `TextInputModel` caret while text remains to
+its right; only Right at end-of-input calls `navigateIntoSelected`.
 
 **Generates:** VS Code-style path completion; drill-down by clicking or typing; one filesystem read per
-visited directory.
+visited directory; readline-shaped Right movement with end-of-input folder drill-in.
 
-**Evidence:** `src/modules/search/QuickOpen.ts` (`refilterWorkspacePath`, `navigateIntoSelected`);
-`src/modules/search/QuickOpen.test.ts` (re-roots on directory change, filters by segment, drills in);
+**Evidence:** `src/modules/search/QuickOpen.ts` (`refilterWorkspacePath`, `navigateIntoSelected`,
+`applyQueryInputAction`); `src/modules/search/QuickOpen.test.ts` (re-roots on directory change,
+filters by segment, Right moves within input, Right at end drills in);
 `scripts/smoke-search-mouse.sh` (types a partial path and asserts the list re-roots/filters, then clicks
 a folder and asserts the path completes and the picker stays open).
 
 **Impossible if true:** the listing not changing when the input's directory part changes; the filter
 segment matching against full paths instead of folder names; a folder click opening a workspace instead
-of drilling in; re-reading the same directory on every keystroke.
+of drilling in; Right drilling while query text remains to its right; Right at end failing to drill;
+re-reading the same directory on every keystroke.
 
 **Verification:** `bun test src/modules/search/QuickOpen.test.ts && bash scripts/smoke-search-mouse.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-25
 
 ### An un-openable open-project path is flagged live
 

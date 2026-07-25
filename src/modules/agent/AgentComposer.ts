@@ -1,12 +1,17 @@
-import { ref, type Ref } from 'vue';
+import type { Ref } from 'vue';
 import { WrapText } from '../ui/WrapText';
-import { TextSelectionModel, type SelectionPoint, type SelectionSpanRange } from '../ui/TextSelectionModel';
-import { TextEditing } from '../editor/TextEditing';
+import {
+  TextSelectionModel,
+  type SelectionPoint,
+  type SelectionSpanRange,
+} from '../ui/TextSelectionModel';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
 import { Clipboard } from '../system/Clipboard';
 import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 
-// invariant: Composer word edits share one seam (src/modules/agent/agent.invariants.md)
+// invariant: Editable text fields share one input model (project.invariants.md)
+// invariant: Composer editing uses the input model (src/modules/agent/agent.invariants.md)
 // invariant: Agent text wraps at word boundaries (src/modules/agent/agent.invariants.md)
 
 class $AgentComposer {
@@ -22,10 +27,8 @@ class $AgentComposer {
     return 2;
   }
 
-  protected readonly buffer = ref('');
+  protected readonly input: TextInputModel.Model;
   protected readonly selection = new TextSelectionModel.Class();
-  /** The cursor as a GRAPHEME index into the buffer (0..length) — the single source of edit position. */
-  protected cursorIndex = 0;
   /** Last frame's wrap width + scroll offset — the coord space for caret / pointer / selection mapping. */
   protected lastWrapWidth = 1;
   protected scrollOffset = 0;
@@ -34,29 +37,34 @@ class $AgentComposer {
   protected cachedSegmentsText = '';
   protected cachedSegmentsWidth = 0;
 
+  constructor() {
+    this.input = this.createInput();
+  }
+
+  protected createInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
+
   /** The reactive buffer text (the pane fuses its length into the render revision). */
   get text(): Ref<string> {
-    return this.buffer;
+    return this.input.text;
   }
   get value(): string {
-    return this.buffer.value;
+    return this.input.value;
   }
   get isEmpty(): boolean {
-    return this.buffer.value.length === 0;
+    return this.input.isEmpty;
   }
   /** The cursor's grapheme index (for tests / assertions). */
   get cursor(): number {
-    return this.cursorIndex;
+    return this.input.caret.value;
   }
 
-  protected graphemes(): string[] {
-    return EditorCoordinates.Class.graphemes(this.buffer.value);
-  }
   protected graphemeCount(): number {
-    return EditorCoordinates.Class.graphemeCount(this.buffer.value);
+    return this.input.graphemeCount;
   }
   protected clampCursor(): number {
-    return Math.max(0, Math.min(this.cursorIndex, this.graphemeCount()));
+    return Math.max(0, Math.min(this.input.caret.value, this.graphemeCount()));
   }
 
   // --- editing (all at the CURSOR; every edit clears the selection) ----------------------------------
@@ -64,79 +72,95 @@ class $AgentComposer {
   /** Insert typed text AT the cursor. Newlines flatten to spaces (the composer is one logical line that
    *  sends on Enter). The cursor advances past the inserted text. */
   insert(text: string): void {
-    const flattened = text.replace(/\r\n?|\n/g, ' ');
-    if (!flattened) return;
-    const graphemes = this.graphemes();
-    const inserted = EditorCoordinates.Class.graphemes(flattened);
-    const cursor = this.clampCursor();
-    this.buffer.value = [...graphemes.slice(0, cursor), ...inserted, ...graphemes.slice(cursor)].join('');
-    this.cursorIndex = cursor + inserted.length;
-    this.selection.clear();
+    if (this.input.insert(text)) this.selection.clear();
   }
   /** Delete the grapheme BEFORE the cursor (Backspace). */
   backspace(): void {
-    const cursor = this.clampCursor();
-    if (cursor === 0) return;
-    const graphemes = this.graphemes();
-    this.buffer.value = [...graphemes.slice(0, cursor - 1), ...graphemes.slice(cursor)].join('');
-    this.cursorIndex = cursor - 1;
-    this.selection.clear();
+    if (this.input.backspace()) this.selection.clear();
   }
   /** Delete the grapheme AT the cursor (Delete/forward-delete). */
   deleteForward(): void {
-    const cursor = this.clampCursor();
-    const graphemes = this.graphemes();
-    if (cursor >= graphemes.length) return;
-    this.buffer.value = [...graphemes.slice(0, cursor), ...graphemes.slice(cursor + 1)].join('');
-    this.selection.clear();
+    if (this.input.deleteForward()) this.selection.clear();
   }
   /** Delete the WORD before the cursor (Alt/Option+Backspace) — cursor-aware via the shared seam. */
   deletePreviousWord(): void {
-    const cursor = this.clampCursor();
-    if (cursor === 0) return;
-    const result = TextEditing.Class.deletePreviousWord(this.buffer.value, cursor);
-    this.buffer.value = result.text;
-    this.cursorIndex = result.start;
-    this.selection.clear();
+    if (this.input.deletePreviousWord()) this.selection.clear();
+  }
+  /** Delete through the next word boundary (Alt/Option+Delete). */
+  deleteNextWord(): void {
+    if (this.input.deleteNextWord()) this.selection.clear();
   }
   /** Clear the whole current logical line (Ctrl/Cmd+Backspace) — the composer is one logical line. */
   deleteLine(): void {
-    if (this.buffer.value.length === 0) return;
-    this.buffer.value = '';
-    this.cursorIndex = 0;
-    this.selection.clear();
+    if (this.input.deleteLine()) this.selection.clear();
   }
   /** Empty the buffer (after a send). */
   clear(): void {
-    this.buffer.value = '';
-    this.cursorIndex = 0;
+    this.input.clear();
     this.selection.clear();
+  }
+
+  applyInputAction(action: TextInputAction): void {
+    switch (action) {
+      case 'moveLeft':
+        this.moveLeft();
+        return;
+      case 'moveRight':
+        this.moveRight();
+        return;
+      case 'moveWordLeft':
+        this.moveWordLeft();
+        return;
+      case 'moveWordRight':
+        this.moveWordRight();
+        return;
+      case 'moveHome':
+        this.moveHome();
+        return;
+      case 'moveEnd':
+        this.moveEnd();
+        return;
+      case 'backspace':
+        this.backspace();
+        return;
+      case 'deleteForward':
+        this.deleteForward();
+        return;
+      case 'deletePreviousWord':
+        this.deletePreviousWord();
+        return;
+      case 'deleteNextWord':
+        this.deleteNextWord();
+        return;
+      case 'deleteLine':
+        this.deleteLine();
+    }
   }
 
   // --- cursor motion (all clear the selection) -------------------------------------------------------
 
   moveLeft(): void {
-    this.cursorIndex = Math.max(0, this.clampCursor() - 1);
+    this.input.moveLeft();
     this.selection.clear();
   }
   moveRight(): void {
-    this.cursorIndex = Math.min(this.graphemeCount(), this.clampCursor() + 1);
+    this.input.moveRight();
     this.selection.clear();
   }
   moveWordLeft(): void {
-    this.cursorIndex = TextEditing.Class.wordLeft(this.buffer.value, this.clampCursor());
+    this.input.moveWordLeft();
     this.selection.clear();
   }
   moveWordRight(): void {
-    this.cursorIndex = TextEditing.Class.wordRight(this.buffer.value, this.clampCursor());
+    this.input.moveWordRight();
     this.selection.clear();
   }
   moveHome(): void {
-    this.cursorIndex = 0;
+    this.input.moveHome();
     this.selection.clear();
   }
   moveEnd(): void {
-    this.cursorIndex = this.graphemeCount();
+    this.input.moveEnd();
     this.selection.clear();
   }
   /** Move the cursor UP one visual line at the same column. Returns false when already on the first
@@ -144,7 +168,7 @@ class $AgentComposer {
   moveUp(): boolean {
     const caret = this.caretVisual();
     if (caret.line <= 0) return false;
-    this.cursorIndex = this.positionAt(caret.line - 1, caret.column);
+    this.input.caret.value = this.positionAt(caret.line - 1, caret.column);
     this.selection.clear();
     return true;
   }
@@ -152,7 +176,7 @@ class $AgentComposer {
   moveDown(): boolean {
     const caret = this.caretVisual();
     if (caret.line >= this.numVisualLines() - 1) return false;
-    this.cursorIndex = this.positionAt(caret.line + 1, caret.column);
+    this.input.caret.value = this.positionAt(caret.line + 1, caret.column);
     this.selection.clear();
     return true;
   }
@@ -165,12 +189,16 @@ class $AgentComposer {
 
   /** The wrapped segments for the CURRENT buffer at the last layout width (cached per state). */
   protected segments(): readonly AgentWordWrapSegment[] {
-    if (this.cachedSegments === null || this.cachedSegmentsText !== this.buffer.value || this.cachedSegmentsWidth !== this.lastWrapWidth) {
+    if (
+      this.cachedSegments === null ||
+      this.cachedSegmentsText !== this.input.value ||
+      this.cachedSegmentsWidth !== this.lastWrapWidth
+    ) {
       this.cachedSegments = AgentWordWrap.Class.segments(
-        this.buffer.value,
+        this.input.value,
         Math.max(1, this.lastWrapWidth),
       );
-      this.cachedSegmentsText = this.buffer.value;
+      this.cachedSegmentsText = this.input.value;
       this.cachedSegmentsWidth = this.lastWrapWidth;
     }
     return this.cachedSegments;
@@ -207,20 +235,24 @@ class $AgentComposer {
     const agentComposerClass = this.constructor as typeof $AgentComposer;
     this.lastWrapWidth = Math.max(
       1,
-      paneWidth
-        - agentComposerClass.gutterColumns
-        - agentComposerClass.rightPaddingColumns,
+      paneWidth -
+        agentComposerClass.gutterColumns -
+        agentComposerClass.rightPaddingColumns,
     );
     const segments = this.segments();
 
     const totalLines = Math.max(1, segments.length);
-    const rowCount = Math.max(1, Math.min(totalLines, agentComposerClass.maxRows));
+    const rowCount = Math.max(
+      1,
+      Math.min(totalLines, agentComposerClass.maxRows),
+    );
     const caret = this.caretVisual();
 
     // Scroll minimally to keep the caret line visible (persisted between frames — natural scrolling).
     const maximumOffset = Math.max(0, totalLines - rowCount);
     if (caret.line < this.scrollOffset) this.scrollOffset = caret.line;
-    else if (caret.line > this.scrollOffset + rowCount - 1) this.scrollOffset = caret.line - rowCount + 1;
+    else if (caret.line > this.scrollOffset + rowCount - 1)
+      this.scrollOffset = caret.line - rowCount + 1;
     this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, maximumOffset));
 
     const rows: ComposerRow[] = [];
@@ -231,14 +263,20 @@ class $AgentComposer {
         absoluteLine,
         isFirstLine: absoluteLine === 0,
         text: segment?.text ?? '',
-        selection: this.selection.rangeForLine(absoluteLine, segment?.displayWidth ?? 0),
+        selection: this.selection.rangeForLine(
+          absoluteLine,
+          segment?.displayWidth ?? 0,
+        ),
       });
     }
 
     return {
       rows,
       rowCount,
-      caretRow: Math.max(0, Math.min(caret.line - this.scrollOffset, rowCount - 1)),
+      caretRow: Math.max(
+        0,
+        Math.min(caret.line - this.scrollOffset, rowCount - 1),
+      ),
       caretColumn: agentComposerClass.gutterColumns + caret.column,
     };
   }
@@ -274,7 +312,10 @@ class $AgentComposer {
   /** Rows the composer currently occupies (for the host's screen-region check). */
   get rowCount(): number {
     const agentComposerClass = this.constructor as typeof $AgentComposer;
-    return Math.max(1, Math.min(this.numVisualLines(), agentComposerClass.maxRows));
+    return Math.max(
+      1,
+      Math.min(this.numVisualLines(), agentComposerClass.maxRows),
+    );
   }
 
   /** The selected buffer text — through the SEAM's resolver-based reconstruction (the composer no
@@ -297,8 +338,10 @@ class $AgentComposer {
       const sourceGraphemes = EditorCoordinates.Class.graphemes(
         segment.sourceText,
       );
-      return selectedVisibleText
-        + sourceGraphemes.slice(displayedGraphemeCount).join('');
+      return (
+        selectedVisibleText +
+        sourceGraphemes.slice(displayedGraphemeCount).join('')
+      );
     }, '');
   }
 
