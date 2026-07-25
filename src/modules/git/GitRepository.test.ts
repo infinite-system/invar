@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,15 +11,18 @@ interface DeferredResult {
   resolve(result: GitCommandResult): void;
 }
 
-let previousGitCommandsClass: typeof GitCommands.Class;
+class TestGitRepository extends GitRepository.$Class {
+  constructor(
+    cwd: string,
+    protected readonly gitCommandsClass: typeof GitCommands.Class,
+  ) {
+    super(cwd);
+  }
 
-beforeEach(() => {
-  previousGitCommandsClass = GitCommands.Class;
-});
-
-afterEach(() => {
-  GitCommands.Class = previousGitCommandsClass;
-});
+  protected override get GitCommands() {
+    return this.gitCommandsClass;
+  }
+}
 
 function deferredResult(): DeferredResult {
   let resolve!: (result: GitCommandResult) => void;
@@ -49,9 +52,7 @@ test('refresh supersedes an older completion', async () => {
       return pending[requestIndex++]!.promise;
     }
   }
-  GitCommands.Class = FakeGitCommands;
-
-  const repository = new GitRepository.Class('/repo');
+  const repository = new TestGitRepository('/repo', FakeGitCommands);
   const olderRefresh = repository.refresh();
   const newerRefresh = repository.refresh();
 
@@ -84,9 +85,7 @@ test('an unchanged background refresh preserves quiescent Git refs', async () =>
       return backgroundResult.promise;
     }
   }
-  GitCommands.Class = FakeGitCommands;
-
-  const repository = new GitRepository.Class('/repo');
+  const repository = new TestGitRepository('/repo', FakeGitCommands);
   await repository.refresh();
   const stagedBeforeReconcile = repository.staged.value;
   const unstagedBeforeReconcile = repository.unstaged.value;
@@ -114,9 +113,7 @@ test('a failed status refresh degrades to error state', async () => {
       return { code: 128, stdout: '', stderr: 'fatal: not a git repository' };
     }
   }
-  GitCommands.Class = FailingGitCommands;
-
-  const repository = new GitRepository.Class('/not-a-repository');
+  const repository = new TestGitRepository('/not-a-repository', FailingGitCommands);
   await expect(repository.refresh()).resolves.toBeUndefined();
   expect(repository.error.value).toContain('not a git repository');
   expect(repository.refreshing.value).toBe(false);

@@ -84,6 +84,10 @@ export interface DiffRequest {
 }
 
 class $Workspace {
+  protected get GitCommands() {
+    return GitCommands.Class;
+  }
+
   root = '';
   // invariant: Construction goes through overridable seams (project.invariants.md)
   tree = this.createTree();
@@ -359,7 +363,7 @@ class $Workspace {
   // Full text of a file at a git ref ('HEAD', '<sha>', '<sha>^', '' = index) — empty when absent at that
   // ref (added/untracked/root-commit file = the empty diff side).
   private async gitFileText(ref: string, filePath: string): Promise<string> {
-    const result = await GitCommands.Class.fileAtRef(this.root, ref, filePath);
+    const result = await this.GitCommands.fileAtRef(this.root, ref, filePath);
     return result.code === 0 ? result.stdout : '';
   }
 
@@ -790,7 +794,7 @@ class $Workspace {
     if (viewedBranch === undefined) {
       actualTipSha = git.head.value; // fresh from the status reconcile that just landed — free
     } else {
-      const result = await GitCommands.Class.revParse(commitLog.cwd, `refs/heads/${viewedBranch}`);
+      const result = await this.GitCommands.revParse(commitLog.cwd, `refs/heads/${viewedBranch}`);
       // Recheck EVERYTHING captured before the await: a newer probe, a viewer switch (token bump),
       // a replaced log instance (workspace reopen), a changed viewed branch, or a hidden panel all
       // make this result stale — apply nothing.
@@ -822,7 +826,7 @@ class $Workspace {
   async localLogBranches(): Promise<string[]> {
     const commitLog = this.commitLog.value;
     if (!commitLog) return [];
-    const result = await GitCommands.Class.localBranches(commitLog.cwd);
+    const result = await this.GitCommands.localBranches(commitLog.cwd);
     if (result.code !== 0) return [];
     return GitParsers.Class.parseLocalBranches(result.stdout);
   }
@@ -1164,7 +1168,7 @@ class $Workspace {
     if (!pending || !git) return;
     for (const filePath of pending.paths) {
       const bucket = pending.buckets.get(filePath);
-      if (bucket) await GitCommands.Class.discard(this.root, filePath, bucket);
+      if (bucket) await this.GitCommands.discard(this.root, filePath, bucket);
     }
     this.gitPanel.clearSelectedPaths();
     await git.refresh();

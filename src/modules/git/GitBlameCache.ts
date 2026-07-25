@@ -87,10 +87,11 @@ class $GitBlameCache {
 
   protected statMemoizedMtime(documentPath: string): number {
     const nowMs = Date.now();
+    const gitBlameCacheClass = this.constructor as typeof $GitBlameCache;
     if (
       this.statMemo !== null &&
       this.statMemo.documentPath === documentPath &&
-      nowMs - this.statMemo.checkedAtMs < GitBlameCache.Class.statMemoWindowMilliseconds
+      nowMs - this.statMemo.checkedAtMs < gitBlameCacheClass.statMemoWindowMilliseconds
     ) {
       return this.statMemo.mtimeMs;
     }
@@ -114,7 +115,8 @@ class $GitBlameCache {
   protected storeBounded(documentPath: string, status: GitFileStatus): void {
     this.cache.delete(documentPath);
     this.cache.set(documentPath, status);
-    while (this.cache.size > GitBlameCache.Class.maximumBlamedFiles) {
+    const gitBlameCacheClass = this.constructor as typeof $GitBlameCache;
+    while (this.cache.size > gitBlameCacheClass.maximumBlamedFiles) {
       const coldestPath = this.cache.keys().next().value;
       if (coldestPath === undefined) {
         break;

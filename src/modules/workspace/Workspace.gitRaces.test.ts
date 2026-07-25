@@ -1,13 +1,23 @@
 // The two async-supersession races the correctness review caught (findings 11 + 12): a stale
 // branch-tip probe must never override a newly selected branch, and overlapping diff opens must
 // apply in CLICK order, not completion order. Both are driven through the real Workspace with the
-// GitCommands capability swapped for controllable fakes (the `let Class` swap seam).
-import { test, expect, describe, afterEach } from 'bun:test';
+// GitCommands capability supplied through its overridable late dependency getter.
+import { test, expect, describe } from 'bun:test';
 import { Workspace } from './Workspace';
 import { CommitLog } from '../git/CommitLog';
 import { GitRepository } from '../git/GitRepository';
 import { GitCommands, type GitCommandResult } from '../git/GitCommands';
 import type { CommitRecord } from '../git/GitParsers';
+
+class TestWorkspace extends Workspace.$Class {
+  constructor(protected readonly gitCommandsClass: typeof GitCommands.Class) {
+    super();
+  }
+
+  protected override get GitCommands() {
+    return this.gitCommandsClass;
+  }
+}
 
 function makeCommit(index: number, branch: string): CommitRecord {
   return {
@@ -24,15 +34,12 @@ function commandResult(code: number, stdout = ''): GitCommandResult {
   return { code, stdout, stderr: '' };
 }
 
-const originalGitCommandsClass = GitCommands.Class;
-afterEach(() => {
-  GitCommands.Class = originalGitCommandsClass;
-});
-
 /** A workspace wired for the branch viewer: injected commit log (fake fetch) + a repository whose
  *  head/branch refs are set directly (no subprocess), sidebar on the git view. */
-function makeViewerWorkspace(): Workspace.Instance {
-  const workspace = new Workspace.Class();
+function makeViewerWorkspace(
+  gitCommandsClass: typeof GitCommands.Class,
+) {
+  const workspace = new TestWorkspace(gitCommandsClass);
   workspace.commitLog.value = new CommitLog.Class('/repo', {
     fetch: async (skip, limit, branch) =>
       Array.from({ length: limit }, (_unused, index) => makeCommit(skip + index, branch ?? 'HEAD')),
@@ -46,17 +53,16 @@ function makeViewerWorkspace(): Workspace.Instance {
 
 describe('reconcileLogTip supersession (a stale probe never overrides the viewer)', () => {
   test('a late rev-parse FAILURE for the previously viewed branch does not force the new branch back to HEAD', async () => {
-    const workspace = makeViewerWorkspace();
     let releaseProbe: ((result: GitCommandResult) => void) | null = null;
-    GitCommands.Class = {
-      ...originalGitCommandsClass,
-      revParse: (_cwd: string, ref: string) => {
+    class FailingProbeGitCommands extends GitCommands.$Class {
+      static override revParse(_cwd: string, ref: string): Promise<GitCommandResult> {
         if (ref === 'refs/heads/branch-a') {
           return new Promise<GitCommandResult>((resolve) => (releaseProbe = resolve));
         }
         return Promise.resolve(commandResult(0, `${ref}-tip\n`));
-      },
-    } as typeof GitCommands.Class;
+      }
+    }
+    const workspace = makeViewerWorkspace(FailingProbeGitCommands);
 
     workspace.selectLogBranch('branch-a');
     const probePromise = workspace.reconcileLogTip(); // hangs awaiting rev-parse branch-a
@@ -68,17 +74,16 @@ describe('reconcileLogTip supersession (a stale probe never overrides the viewer
   });
 
   test('a late rev-parse SUCCESS for the previously viewed branch does not reset the new branch cache', async () => {
-    const workspace = makeViewerWorkspace();
     let releaseProbe: ((result: GitCommandResult) => void) | null = null;
-    GitCommands.Class = {
-      ...originalGitCommandsClass,
-      revParse: (_cwd: string, ref: string) => {
+    class SuccessfulProbeGitCommands extends GitCommands.$Class {
+      static override revParse(_cwd: string, ref: string): Promise<GitCommandResult> {
         if (ref === 'refs/heads/branch-a') {
           return new Promise<GitCommandResult>((resolve) => (releaseProbe = resolve));
         }
         return Promise.resolve(commandResult(0, `${ref}-tip\n`));
-      },
-    } as typeof GitCommands.Class;
+      }
+    }
+    const workspace = makeViewerWorkspace(SuccessfulProbeGitCommands);
 
     workspace.selectLogBranch('branch-a');
     const probePromise = workspace.reconcileLogTip();
@@ -98,13 +103,19 @@ describe('reconcileLogTip supersession (a stale probe never overrides the viewer
 
 describe('diff-open ordering (newest click wins, not newest completion)', () => {
   test('a slow older commit-file diff cannot overwrite a faster newer one', async () => {
-    const workspace = new Workspace.Class();
     const pendingByRef = new Map<string, (result: GitCommandResult) => void>();
-    GitCommands.Class = {
-      ...originalGitCommandsClass,
-      fileAtRef: (_cwd: string, ref: string, filePath: string) =>
-        new Promise<GitCommandResult>((resolve) => pendingByRef.set(`${ref}:${filePath}`, resolve)),
-    } as typeof GitCommands.Class;
+    class DeferredFileGitCommands extends GitCommands.$Class {
+      static override fileAtRef(
+        _cwd: string,
+        ref: string,
+        filePath: string,
+      ): Promise<GitCommandResult> {
+        return new Promise<GitCommandResult>((resolve) =>
+          pendingByRef.set(`${ref}:${filePath}`, resolve),
+        );
+      }
+    }
+    const workspace = new TestWorkspace(DeferredFileGitCommands);
 
     const slowOpen = workspace.openCommitFileDiff('slowsha', 'slow.ts');
     const fastOpen = workspace.openCommitFileDiff('fastsha', 'fast.ts');

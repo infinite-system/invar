@@ -49,6 +49,10 @@ class $GitRepository {
     return ref<string | null>(null);
   }
 
+  protected get GitCommands() {
+    return GitCommands.Class;
+  }
+
   protected commandError(action: string, result: GitCommandResult): string {
     const detail = result.stderr.trim() || result.stdout.trim();
     return detail || `${action} exited with code ${result.code}`;
@@ -85,7 +89,7 @@ class $GitRepository {
     }
 
     try {
-      const statusResult = await GitCommands.Class.statusPorcelainV2Branch(this.cwd);
+      const statusResult = await this.GitCommands.statusPorcelainV2Branch(this.cwd);
       if (requestId !== this.refreshRequestId) {
         return;
       }
@@ -165,7 +169,7 @@ class $GitRepository {
     const branch = options.branch ?? this.branch.value;
 
     try {
-      const historyResult = await GitCommands.Class.log({
+      const historyResult = await this.GitCommands.log({
         cwd: this.cwd,
         branch: branch && branch !== '(detached)' ? branch : undefined,
         limit,
@@ -202,13 +206,13 @@ class $GitRepository {
 
   async stage(paths: string[]): Promise<boolean> {
     return this.runOperation('git add', () =>
-      GitCommands.Class.stage(this.cwd, paths),
+      this.GitCommands.stage(this.cwd, paths),
     );
   }
 
   async unstage(paths: string[]): Promise<boolean> {
     return this.runOperation('git unstage', () =>
-      GitCommands.Class.unstage(this.cwd, paths),
+      this.GitCommands.unstage(this.cwd, paths),
     );
   }
 
@@ -278,4 +282,3 @@ export interface LoadHistoryOptions {
 export interface GitRefreshOptions {
   background?: boolean;
 }
-

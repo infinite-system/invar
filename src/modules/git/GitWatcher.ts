@@ -184,8 +184,9 @@ class $GitWatcher {
   ): string[] {
     const ignoredDirectoryNames = this.queryIgnoredNames(parentDirectory, childDirectoryNames);
     if (ignoredDirectoryNames === null) {
+      const gitWatcherClass = this.constructor as typeof $GitWatcher;
       return childDirectoryNames.filter(
-        (childName) => !this.fallbackIgnoredDirectoryNames.has(childName),
+        (childName) => !gitWatcherClass.fallbackIgnoredDirectoryNames.has(childName),
       );
     }
     return childDirectoryNames.filter(
@@ -346,4 +347,3 @@ export interface GitWatcherOptions {
    * called after dispose(). */
   onReconciled?: () => void;
 }
-

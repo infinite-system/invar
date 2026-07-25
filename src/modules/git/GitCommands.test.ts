@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test';
+import { beforeEach, expect, test } from 'bun:test';
 import { GitCommands } from './GitCommands';
 import { GitParsers } from './GitParsers';
 
@@ -7,7 +7,6 @@ interface CommandInvocation {
   commandArguments: string[];
 }
 
-let previousGitCommandsClass: typeof GitCommands.Class;
 let commandInvocations: CommandInvocation[] = [];
 
 class TestGitCommands extends GitCommands.$Class {
@@ -24,17 +23,11 @@ class TestGitCommands extends GitCommands.$Class {
 }
 
 beforeEach(() => {
-  previousGitCommandsClass = GitCommands.Class;
   commandInvocations = [];
-  GitCommands.Class = TestGitCommands;
-});
-
-afterEach(() => {
-  GitCommands.Class = previousGitCommandsClass;
 });
 
 test('statusPorcelainV2Branch assembles stable porcelain-v2 args', async () => {
-  await GitCommands.Class.statusPorcelainV2Branch('/tmp/repo');
+  await TestGitCommands.statusPorcelainV2Branch('/tmp/repo');
   expect(commandInvocations).toEqual([
     {
       workingDirectory: '/tmp/repo',
@@ -50,7 +43,7 @@ test('statusPorcelainV2Branch assembles stable porcelain-v2 args', async () => {
 });
 
 test('log clamps count, supports skip paging, and passes the branch ref', async () => {
-  await GitCommands.Class.log({ cwd: '/tmp/repo', skip: 5, branch: 'feature/log', limit: 500 });
+  await TestGitCommands.log({ cwd: '/tmp/repo', skip: 5, branch: 'feature/log', limit: 500 });
   expect(commandInvocations).toEqual([
     {
       workingDirectory: '/tmp/repo',
@@ -68,7 +61,7 @@ test('log clamps count, supports skip paging, and passes the branch ref', async 
 });
 
 test('log with cursor uses a single-page skip cursor form and omits branch', async () => {
-  await GitCommands.Class.log({ cwd: '/tmp/repo', cursor: 'cafebabe' });
+  await TestGitCommands.log({ cwd: '/tmp/repo', cursor: 'cafebabe' });
   expect(commandInvocations).toEqual([
     {
       workingDirectory: '/tmp/repo',
@@ -86,9 +79,9 @@ test('log with cursor uses a single-page skip cursor form and omits branch', asy
 });
 
 test('diffFile dispatches per bucket', async () => {
-  await GitCommands.Class.diffFile('/tmp/repo', 'foo.txt', 'staged');
-  await GitCommands.Class.diffFile('/tmp/repo', 'foo.txt', 'untracked');
-  await GitCommands.Class.diffFile('/tmp/repo', 'foo.txt', 'unstaged');
+  await TestGitCommands.diffFile('/tmp/repo', 'foo.txt', 'staged');
+  await TestGitCommands.diffFile('/tmp/repo', 'foo.txt', 'untracked');
+  await TestGitCommands.diffFile('/tmp/repo', 'foo.txt', 'unstaged');
   expect(commandInvocations).toEqual([
     {
       workingDirectory: '/tmp/repo',
@@ -121,7 +114,7 @@ test('diffFile dispatches per bucket', async () => {
 });
 
 test('stage and unstage with empty paths return without spawning', async () => {
-  await GitCommands.Class.stage('/tmp/repo', []);
-  await GitCommands.Class.unstage('/tmp/repo', []);
+  await TestGitCommands.stage('/tmp/repo', []);
+  await TestGitCommands.unstage('/tmp/repo', []);
   expect(commandInvocations).toEqual([]);
 });

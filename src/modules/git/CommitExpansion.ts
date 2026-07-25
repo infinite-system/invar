@@ -39,7 +39,8 @@ class $CommitExpansion {
   }
 
   get capacity(): number {
-    return this.options.capacity ?? this.defaultCapacity;
+    const commitExpansionClass = this.constructor as typeof $CommitExpansion;
+    return this.options.capacity ?? commitExpansionClass.defaultCapacity;
   }
 
   isExpanded(sha: string): boolean {
@@ -140,4 +141,3 @@ export interface CommitExpansionOptions {
   /** Most commits expanded (and cached) at once; expanding beyond collapses the oldest. */
   capacity?: number;
 }
-
