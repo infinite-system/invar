@@ -40,7 +40,9 @@ function createDriver(
   return new PtyTestDriver.Class({
     workspaceRoot: join(repositoryRoot, 'fixtures'),
     repositoryRoot,
-    columns: 120,
+    // 160 columns: the full-height left dock (layout model default) narrows the bottom-panel
+    // composer, and driveTurn's echo wait needs the longest prompt to fit on one rendered line.
+    columns: 160,
     rows: 40,
     homeDirectory,
     environment: {
