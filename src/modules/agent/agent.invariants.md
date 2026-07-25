@@ -222,6 +222,35 @@ composer painting typed text in either of its two reserved right-edge columns.
 **Last refined:** 2026-07-25
 
 ### Composer editing uses the input model
+
+**Invariant:** If the agent composer edits or moves within its logical line, then its text and
+grapheme caret operations come from `TextInputModel`.
+
+**Scope:** Agent composer insertion, backspace, forward delete, previous-word and next-word delete,
+line delete, Left and Right movement, word movement, Home, and End. Wrapping, selection, pointer
+mapping, transcript scrolling, and send history remain `AgentComposer` responsibilities.
+
+**Mechanism:** `AgentComposer` owns one `TextInputModel` and delegates its editing core while keeping
+its existing `AgentWordWrap` and `TextSelectionModel` composition. `TextInputModel` delegates word
+boundaries to `TextEditing`; the shared input keybinding table reaches it through
+`AgentPaneContent.applyComposerInputAction`.
+
+**Generates:** Composer parity with every search input; grapheme-safe middle insertion and deletion;
+Alt-Delete next-word deletion without a composer-local implementation.
+
+**Evidence:** `src/modules/agent/AgentComposer.test.ts`;
+`src/modules/editor/TextInputModel.test.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+
+**Impossible if true:** `AgentComposer` storing a second editable buffer or caret; composer word
+deletion disagreeing with the editor for the same text; movement or deletion splitting a grapheme.
+
+**Verification:** `bun test src/modules/agent/AgentComposer.test.ts src/modules/editor/TextInputModel.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Agent transcript scroll extent is position independent
 
 **Invariant:** For a fixed projected transcript and viewport geometry, every completed scroll frame
@@ -252,36 +281,6 @@ thumb alternates between lengths while viewport and content inputs stay fixed; v
 slicing becomes the scrollbar's content extent.
 
 **Verification:** `bun scripts/harness/smoke-scrollbars-harness.ts`
-
-**Status:** provisional
-
-**Last refined:** 2026-07-25
-
-### Composer word edits share one seam
-
-**Invariant:** If the agent composer edits or moves within its logical line, then its text and
-grapheme caret operations come from `TextInputModel`.
-
-**Scope:** Agent composer insertion, backspace, forward delete, previous-word and next-word delete,
-line delete, Left and Right movement, word movement, Home, and End. Wrapping, selection, pointer
-mapping, transcript scrolling, and send history remain `AgentComposer` responsibilities.
-
-**Mechanism:** `AgentComposer` owns one `TextInputModel` and delegates its editing core while keeping
-its existing `AgentWordWrap` and `TextSelectionModel` composition. `TextInputModel` delegates word
-boundaries to `TextEditing`; the shared input keybinding table reaches it through
-`AgentPaneContent.applyComposerInputAction`.
-
-**Generates:** Composer parity with every search input; grapheme-safe middle insertion and deletion;
-Alt-Delete next-word deletion without a composer-local implementation.
-
-**Evidence:** `src/modules/agent/AgentComposer.test.ts`;
-`src/modules/editor/TextInputModel.test.ts`;
-`scripts/harness/smoke-agent-pane-ux-harness.ts`.
-
-**Impossible if true:** `AgentComposer` storing a second editable buffer or caret; composer word
-deletion disagreeing with the editor for the same text; movement or deletion splitting a grapheme.
-
-**Verification:** `bun test src/modules/agent/AgentComposer.test.ts src/modules/editor/TextInputModel.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
 
 **Status:** provisional
 
