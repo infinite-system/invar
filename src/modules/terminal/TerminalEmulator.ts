@@ -4,43 +4,27 @@
 // parsed write pulse fires onCellsChanged (the render-coalescing signal). A hand-rolled parser would
 // have to re-implement scrollback/wrap/alt-screen, so the library is the honest choice.
 //
-// invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
 import { Terminal, type IBufferCell } from '@xterm/headless';
 
-/** One cell, flattened to what a cell-grid renderer needs — no xterm types leak past this seam. */
-export interface TerminalCell {
-  characters: string;
-  foreground: number;
-  background: number;
-  isForegroundDefault: boolean;
-  isForegroundRgb: boolean;
-  isForegroundPalette: boolean;
-  isBackgroundDefault: boolean;
-  isBackgroundRgb: boolean;
-  isBackgroundPalette: boolean;
-  isBold: boolean;
-  isDim: boolean;
-  isItalic: boolean;
-  isUnderline: boolean;
-  isBlink: boolean;
-  isInverse: boolean;
-  isInvisible: boolean;
-  isStrikethrough: boolean;
-  isOverline: boolean;
-  width: number;
-}
+// invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
+// invariant: Terminal emulator behavior is specified by byte fixtures (src/modules/terminal/terminal.invariants.md)
 
 class $TerminalEmulator {
-  private readonly terminal: Terminal;
-  private readonly reusableCell: { cell: IBufferCell | undefined } = { cell: undefined };
-  private replyCallback: ((data: string) => void) | null = null;
-  private cellsChangedCallback: (() => void) | null = null;
-  private metadataChangedCallback: (() => void) | null = null;
+  protected readonly terminal: Terminal;
+  protected readonly reusableCell: { cell: IBufferCell | undefined } = { cell: undefined };
+  protected replyCallback: ((data: string) => void) | null = null;
+  protected readonly cellsChangedCallbacks = new Set<() => void>();
+  protected metadataChangedCallback: (() => void) | null = null;
+  protected readonly lineFeedCallbacks = new Set<(event: TerminalLineFeedEvent) => void>();
+  protected readonly shellIntegrationCallbacks = new Set<
+    (event: TerminalShellIntegrationEvent) => void
+  >();
   protected terminalTitle = '';
   protected terminalCurrentWorkingDirectory = '';
   protected isSgrMouseEncodingEnabledValue = false;
   protected hasShellPromptMarkerValue = false;
   protected isShellPromptActiveValue = false;
+  protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null = null;
 
   constructor(columns: number, rows: number) {
     this.terminal = new Terminal({
@@ -50,7 +34,8 @@ class $TerminalEmulator {
       scrollback: 1000,
     });
     this.terminal.onData((data) => this.replyCallback?.(data));
-    this.terminal.onWriteParsed(() => this.cellsChangedCallback?.());
+    this.terminal.onWriteParsed(() => this.notifyCallbacks(this.cellsChangedCallbacks));
+    this.terminal.onLineFeed(() => this.observeLineFeed());
     this.terminal.onTitleChange((title) => this.observeTitle(title));
     this.terminal.parser.registerOscHandler(
       7,
@@ -87,12 +72,25 @@ class $TerminalEmulator {
   }
 
   /** A parsed-write pulse landed — the cell buffer changed; the owner requests exactly one frame. */
-  onCellsChanged(callback: () => void): void {
-    this.cellsChangedCallback = callback;
+  onCellsChanged(callback: () => void): () => void {
+    this.cellsChangedCallbacks.add(callback);
+    return () => this.cellsChangedCallbacks.delete(callback);
   }
 
   onMetadataChanged(callback: () => void): void {
     this.metadataChangedCallback = callback;
+  }
+
+  onLineFeed(callback: (event: TerminalLineFeedEvent) => void): () => void {
+    this.lineFeedCallbacks.add(callback);
+    return () => this.lineFeedCallbacks.delete(callback);
+  }
+
+  onShellIntegrationEvent(
+    callback: (event: TerminalShellIntegrationEvent) => void,
+  ): () => void {
+    this.shellIntegrationCallbacks.add(callback);
+    return () => this.shellIntegrationCallbacks.delete(callback);
   }
 
   resize(columns: number, rows: number): void {
@@ -123,6 +121,14 @@ class $TerminalEmulator {
     return this.terminalCurrentWorkingDirectory;
   }
 
+  get hasShellIntegrationMarkers(): boolean {
+    return this.hasShellPromptMarkerValue;
+  }
+
+  get lastShellIntegrationEvent(): TerminalShellIntegrationEvent | null {
+    return this.lastShellIntegrationEventValue;
+  }
+
   get isPromptIdle(): boolean {
     const inputLine = this.currentPromptInputLine();
     if (this.hasShellPromptMarkerValue) {
@@ -133,15 +139,7 @@ class $TerminalEmulator {
 
   currentPromptInputLine(): string | null {
     const active = this.terminal.buffer.active;
-    const line = active.getLine(active.baseY + active.cursorY);
-    if (!line) return null;
-    let lineText = '';
-    for (let columnIndex = 0; columnIndex < this.terminal.cols; columnIndex += 1) {
-      const cell = line.getCell(columnIndex, this.reusableCell.cell);
-      if (!cell) break;
-      this.reusableCell.cell = cell;
-      if (cell.getWidth() > 0) lineText += cell.getChars() || ' ';
-    }
+    const lineText = this.logicalLineText(active.baseY + active.cursorY).text;
     const promptIndex = lineText.lastIndexOf('$ ');
     if (promptIndex < 0) return null;
     return lineText.slice(promptIndex + 2).replace(/\s+$/, '');
@@ -257,11 +255,110 @@ class $TerminalEmulator {
   }
 
   protected observeShellIntegrationMarker(marker: string): false {
+    const markerParts = marker.split(';');
+    const markerCode = markerParts[0];
+    const kind = this.shellIntegrationKind(markerCode);
+    if (!kind) return false;
+    const semanticMarker = markerCode as TerminalShellIntegrationEvent['marker'];
     this.hasShellPromptMarkerValue = true;
-    if (marker.startsWith('A')) this.isShellPromptActiveValue = true;
-    if (marker.startsWith('C') || marker.startsWith('D')) this.isShellPromptActiveValue = false;
+    if (markerCode === 'A') this.isShellPromptActiveValue = true;
+    if (markerCode === 'C' || markerCode === 'D') this.isShellPromptActiveValue = false;
+    const event: TerminalShellIntegrationEvent = {
+      kind,
+      marker: semanticMarker,
+      exitCode: markerCode === 'D' ? this.parseExitCode(markerParts[1]) : null,
+      command: markerCode === 'C' ? this.recentPromptInputLine() : null,
+      currentWorkingDirectory: this.terminalCurrentWorkingDirectory,
+      currentLine: this.activeLineText(),
+      cursorColumn: this.terminal.buffer.active.cursorX,
+    };
+    this.lastShellIntegrationEventValue = event;
+    this.notifyCallbacks(this.shellIntegrationCallbacks, event);
     this.metadataChangedCallback?.();
     return false;
+  }
+
+  protected shellIntegrationKind(
+    markerCode: string | undefined,
+  ): TerminalShellIntegrationEventKind | null {
+    if (markerCode === 'A') return 'prompt-start';
+    if (markerCode === 'B') return 'command-start';
+    if (markerCode === 'C') return 'output-start';
+    if (markerCode === 'D') return 'command-end';
+    return null;
+  }
+
+  protected parseExitCode(exitCodeText: string | undefined): number | null {
+    if (!exitCodeText || !/^-?\d+$/.test(exitCodeText)) return null;
+    const exitCode = Number.parseInt(exitCodeText, 10);
+    return Number.isSafeInteger(exitCode) ? exitCode : null;
+  }
+
+  protected recentPromptInputLine(): string | null {
+    const active = this.terminal.buffer.active;
+    const cursorLineIndex = active.baseY + active.cursorY;
+    for (
+      let lineIndex = cursorLineIndex;
+      lineIndex >= Math.max(0, cursorLineIndex - 1);
+      lineIndex -= 1
+    ) {
+      const lineText = this.logicalLineText(lineIndex).text;
+      const promptIndex = lineText.lastIndexOf('$ ');
+      if (promptIndex >= 0) {
+        return lineText.slice(promptIndex + 2).replace(/\s+$/, '');
+      }
+    }
+    return null;
+  }
+
+  protected activeLineText(): string {
+    const active = this.terminal.buffer.active;
+    return active.getLine(active.baseY + active.cursorY)?.translateToString(true) ?? '';
+  }
+
+  protected observeLineFeed(): void {
+    const active = this.terminal.buffer.active;
+    const completedLineIndex = active.baseY + active.cursorY - 1;
+    const completedLine = this.logicalLineText(completedLineIndex);
+    const event: TerminalLineFeedEvent = {
+      line: completedLine.text,
+      isWrapped: completedLine.isWrapped,
+    };
+    this.notifyCallbacks(this.lineFeedCallbacks, event);
+  }
+
+  protected logicalLineText(endingLineIndex: number): TerminalLogicalLine {
+    const active = this.terminal.buffer.active;
+    let firstLineIndex = endingLineIndex;
+    while (firstLineIndex > 0 && active.getLine(firstLineIndex)?.isWrapped) {
+      firstLineIndex -= 1;
+    }
+    const lineSegments: string[] = [];
+    for (let lineIndex = firstLineIndex; lineIndex <= endingLineIndex; lineIndex += 1) {
+      lineSegments.push(active.getLine(lineIndex)?.translateToString(true) ?? '');
+    }
+    return {
+      text: lineSegments.join(''),
+      isWrapped: firstLineIndex !== endingLineIndex,
+    };
+  }
+
+  protected notifyCallbacks<Event>(
+    callbacks: ReadonlySet<(event: Event) => void>,
+    event: Event,
+  ): void;
+  protected notifyCallbacks(callbacks: ReadonlySet<() => void>): void;
+  protected notifyCallbacks<Event>(
+    callbacks: ReadonlySet<((event: Event) => void) | (() => void)>,
+    event?: Event,
+  ): void {
+    for (const callback of callbacks) {
+      try {
+        callback(event as Event);
+      } catch {
+        // Parsed-stream observers are one-way taps: an observer cannot break terminal parsing.
+      }
+    }
   }
 
   dispose(): void {
@@ -273,4 +370,53 @@ export namespace TerminalEmulator {
   export const $Class = $TerminalEmulator;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+/** One cell, flattened to what a cell-grid renderer needs — no xterm types leak past this seam. */
+export interface TerminalCell {
+  characters: string;
+  foreground: number;
+  background: number;
+  isForegroundDefault: boolean;
+  isForegroundRgb: boolean;
+  isForegroundPalette: boolean;
+  isBackgroundDefault: boolean;
+  isBackgroundRgb: boolean;
+  isBackgroundPalette: boolean;
+  isBold: boolean;
+  isDim: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  isBlink: boolean;
+  isInverse: boolean;
+  isInvisible: boolean;
+  isStrikethrough: boolean;
+  isOverline: boolean;
+  width: number;
+}
+
+export type TerminalShellIntegrationEventKind =
+  | 'prompt-start'
+  | 'command-start'
+  | 'output-start'
+  | 'command-end';
+
+export interface TerminalShellIntegrationEvent {
+  kind: TerminalShellIntegrationEventKind;
+  marker: 'A' | 'B' | 'C' | 'D';
+  exitCode: number | null;
+  command: string | null;
+  currentWorkingDirectory: string;
+  currentLine: string;
+  cursorColumn: number;
+}
+
+export interface TerminalLineFeedEvent {
+  line: string;
+  isWrapped: boolean;
+}
+
+interface TerminalLogicalLine {
+  text: string;
+  isWrapped: boolean;
 }

@@ -9,6 +9,9 @@ test('bash shim sources user configuration before overriding prompt and metadata
   expect(contents).toContain('\\e]7;file://');
   expect(contents).toContain('\\e]0;');
   expect(contents).toContain('\\e]133;A');
+  expect(contents).toContain('\\e]133;B');
+  expect(contents).toContain("\\e]133;C");
+  expect(contents).toContain('\\e]133;D;%s');
   expect(contents).toContain('\\e[38;2;122;162;247m');
   expect(contents).toContain('$ ');
 });
@@ -17,6 +20,10 @@ test('zsh shim sources user configuration before installing the themed prompt ho
   const contents = TerminalRcfile.Class.zshContents('#2e7de9');
   expect(contents.indexOf('source "$HOME/.zshrc"')).toBeLessThan(contents.indexOf('PROMPT='));
   expect(contents).toContain('add-zsh-hook precmd __invar_emit_prompt_metadata');
+  expect(contents).toContain('add-zsh-hook preexec __invar_emit_command_output_start');
+  expect(contents).toContain('\\e]133;B');
+  expect(contents).toContain('\\e]133;C');
+  expect(contents).toContain('\\e]133;D;%s');
   expect(contents).toContain('\\e[38;2;46;125;233m');
 });
 
