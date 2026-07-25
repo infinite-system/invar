@@ -465,6 +465,8 @@ await Bun.write(
   '{"glyphMode":"ascii"}\n',
 );
 await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\n');
+await Bun.write(join(fixtureRoot, 'left-pane.txt'), 'left pane file\n');
+await Bun.write(join(fixtureRoot, 'right-pane.txt'), 'right pane file\n');
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '.']);
 HarnessSmoke.Class.runGit(fixtureRoot, [
@@ -518,13 +520,187 @@ try {
     'right dock starts empty and hidden',
   );
 
+  console.log('== harness layout: command bar and file-tree pane in the left dock ==');
+  let commandBarSnapshot = await driver.awaitGridCondition(
+    'command bar renders the folder and right-edge layouts control',
+    (snapshot) => {
+      const layoutsPosition = snapshot.findText(' layouts ');
+      if (!layoutsPosition) return false;
+      const folderName = fixtureRoot.split('/').at(-1) ?? '';
+      return (
+        snapshot.rowText(layoutsPosition.row).includes(folderName) &&
+        layoutsPosition.column + ' layouts '.length === snapshot.columns
+      );
+    },
+  );
+  const layoutsPosition = commandBarSnapshot.findText(' layouts ');
+  HarnessSmoke.Class.requireCondition(
+    layoutsPosition !== null,
+    'layouts control is painted at the command-bar right edge',
+  );
+  const commandBarFolderName = fixtureRoot.split('/').at(-1) ?? '';
+  const folderColumn = commandBarSnapshot
+    .rowText(layoutsPosition!.row)
+    .indexOf(commandBarFolderName);
+  clickCell(driver, folderColumn, layoutsPosition!.row);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      candidate.quickOpenMode === 'files',
+  );
+  await driver.awaitGridCondition(
+    'folder click opens the existing Go to File quick-open surface',
+    (snapshot) => snapshot.findText('Go to File') !== null,
+  );
+  HarnessSmoke.Class.pass('clicking the folder name opened QuickOpen file search');
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.quickOpenOpen === false,
+  );
+
+  let treeFilePosition = await driver.awaitGridCondition(
+    'left primary dock paints the file-tree pane content',
+    (snapshot) => snapshot.findText('left-pane.txt') !== null,
+  ).then((snapshot) => snapshot.findText('left-pane.txt'));
+  HarnessSmoke.Class.requireCondition(
+    treeFilePosition !== null,
+    'left-dock tree file has a painted pointer target',
+  );
+  clickCell(driver, treeFilePosition!.column, treeFilePosition!.row);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => String(candidate.activeBuffer).endsWith('/left-pane.txt'),
+  );
+  await driver.awaitGridCondition(
+    'left-dock tree click opens the selected file',
+    (snapshot) => snapshot.findText('left pane file') !== null,
+  );
+  HarnessSmoke.Class.pass('file-tree PaneContent opened a file from the left dock');
+
   driver.sendKeys('F8');
-  status = await HarnessSmoke.Class.awaitStatus(
+  await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     (candidate) => candidate.terminalVisible === true,
   );
   await driver.awaitQuiescence();
+  commandBarSnapshot = await driver.awaitGridCondition(
+    'layouts control remains at the right edge after a tree open',
+    (snapshot) => snapshot.findText(' layouts ') !== null,
+  );
+  const layoutsButtonPosition = commandBarSnapshot.findText(' layouts ')!;
+  clickCell(
+    driver,
+    layoutsButtonPosition.column + 2,
+    layoutsButtonPosition.row,
+  );
+  await driver.awaitGridCondition(
+    'layouts button opens the bounded layouts popup',
+    (snapshot) =>
+      snapshot.findText('Layouts') !== null &&
+      snapshot.findText(
+        'Sidebar right · panel right · primary ends at panel · right full height',
+      ) !== null,
+  );
+  const targetLayoutPosition = driver.snapshot().findText(
+    'Sidebar right · panel right · primary ends at panel · right full height',
+  );
+  HarnessSmoke.Class.requireCondition(
+    targetLayoutPosition !== null,
+    'the layouts popup lists a wave-one configuration',
+  );
+  clickCell(
+    driver,
+    targetLayoutPosition!.column + 2,
+    targetLayoutPosition!.row,
+  );
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) =>
+      candidate.sidebarPosition === 'right' &&
+      candidate.panelAlignment === 'right' &&
+      candidate.leftDockVerticalSpan === 'ends-at-panel' &&
+      candidate.rightDockVerticalSpan === 'full-height',
+  );
+  await driver.awaitQuiescence();
+  assertPanelAlignmentGeometry(driver, status, 'command-bar layout selection');
+  assertDockVerticalSpanGeometry(
+    driver,
+    status,
+    'sidebar',
+    'leftDockVerticalSpan',
+    'command-bar layout selection',
+  );
+  HarnessSmoke.Class.pass(
+    'layouts popup selection live-applied exact byte-level slot edges',
+  );
+
+  treeFilePosition = await driver.awaitGridCondition(
+    'right primary dock preserves the file-tree pane content',
+    (snapshot) => snapshot.findText('right-pane.txt') !== null,
+  ).then((snapshot) => snapshot.findText('right-pane.txt'));
+  HarnessSmoke.Class.requireCondition(
+    treeFilePosition !== null,
+    'right-dock tree file has a painted pointer target',
+  );
+  clickCell(driver, treeFilePosition!.column, treeFilePosition!.row);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => String(candidate.activeBuffer).endsWith('/right-pane.txt'),
+  );
+  await driver.awaitGridCondition(
+    'right-dock tree click opens the selected file',
+    (snapshot) => snapshot.findText('right pane file') !== null,
+  );
+  HarnessSmoke.Class.pass('file-tree PaneContent opened a file from the right dock');
+
+  const restoredLayoutsPosition = driver.snapshot().findText(' layouts ');
+  HarnessSmoke.Class.requireCondition(
+    restoredLayoutsPosition !== null,
+    'layouts control remains clickable after moving the primary dock',
+  );
+  clickCell(
+    driver,
+    restoredLayoutsPosition!.column + 2,
+    restoredLayoutsPosition!.row,
+  );
+  await driver.awaitGridCondition(
+    'layouts popup reopens from the right-sidebar configuration',
+    (snapshot) =>
+      snapshot.findText(
+        'Sidebar left · panel center · primary full height · right ends at panel',
+      ) !== null,
+  );
+  const defaultLayoutPosition = driver.snapshot().findText(
+    'Sidebar left · panel center · primary full height · right ends at panel',
+  );
+  HarnessSmoke.Class.requireCondition(
+    defaultLayoutPosition !== null,
+    'default layout is present in the shared configuration list',
+  );
+  clickCell(
+    driver,
+    defaultLayoutPosition!.column + 2,
+    defaultLayoutPosition!.row,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) =>
+      candidate.sidebarPosition === 'left' &&
+      candidate.panelAlignment === 'center' &&
+      candidate.leftDockVerticalSpan === 'full-height' &&
+      candidate.rightDockVerticalSpan === 'ends-at-panel',
+  );
+
+  status = HarnessSmoke.Class.readStatus(statusPath);
   let sidebar = layoutSlot(status, 'sidebar');
   let editorCenter = layoutSlot(status, 'editorCenter');
   let bottomPanel = layoutSlot(status, 'bottomPanel');

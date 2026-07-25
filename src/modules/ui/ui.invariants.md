@@ -1030,3 +1030,66 @@ paths and asserts the shared visibility state plus emulator geometry.
 **Status:** provisional
 
 **Last refined:** 2026-07-24
+
+### Command bar paint and hit geometry are identical
+
+**Invariant:** If the workspace command bar paints Back, Forward, the current folder, or Layouts,
+then the same `CommandBarGeometry` segment that places the control receives its mouse click.
+
+**Scope:** `CommandBar`, the one-row bar below the workspace tabs, the QuickOpen file surface, the
+navigation history, and the `BoundedListPopup` layouts adapter.
+
+**Mechanism:** `CommandBar.layoutGeometry` returns the centered navigation and folder segments plus
+the right-pinned Layouts segment. `CommandBar.update` paints those segments, and
+`controlAtColumn` resolves pointer input from the stored geometry before routing to
+`Workspace.navigateBack`, `Workspace.navigateForward`, `QuickOpen.show`, or the layouts popup.
+
+**Generates:** Centered Back and Forward buttons; a clickable current-folder label; a right-edge
+Layouts button; pointer and paint positions that cannot drift apart.
+
+**Evidence:** `src/modules/ui/CommandBar.ts`; `src/modules/ui/CommandBar.test.ts`;
+`scripts/harness/smoke-layout-harness.ts`.
+
+**Impossible if true:** Clicking a painted command-bar control runs a neighboring control or does
+nothing; the Layouts button moves away from the right edge; the folder label opens a surface other
+than QuickOpen file search.
+
+**Verification:** `bun test src/modules/ui/CommandBar.test.ts && bun
+scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### The file tree is a pane content citizen
+
+**Invariant:** If the file tree occupies the primary dock, then it is registered as
+`FileTreePaneContent` in a generic `PanelHost`, and the host projects and routes it through the
+`PaneContent` interface independently of whether the primary dock is on the left or right.
+
+**Scope:** `FileTreePaneContent`, the primary-dock `PanelHost`, `Sidebar`, and the primary dock slot
+resolved by `LayoutModel`. Git and Extensions extraction into `PaneContent` is outside this wave.
+
+**Mechanism:** `Bootstrap` constructs and registers `FileTreePaneContent`. `RootView` asks the host
+for its active content and calls `PaneContent.render`, while `Sidebar` forwards file-view pointer and
+wheel events through the optional pane methods. The adapter delegates rendering to
+`TreePaneRenderer` and every mutation to the existing active workspace `FileTree` and `Workspace`
+methods.
+
+**Generates:** One file-tree pane adapter; the same expand, selection, open, navigation, badge,
+momentum, and scrollbar behavior in left and right primary-dock positions; no file-tree renderer
+call in `RootView`.
+
+**Evidence:** `src/modules/ui/FileTreePaneContent.ts`;
+`src/modules/ui/FileTreePaneContent.test.ts`; `src/modules/app/Bootstrap.ts`;
+`scripts/harness/smoke-layout-harness.ts`.
+
+**Impossible if true:** `RootView` calling `TreePaneRenderer` directly; moving the primary dock to
+the right replacing or disabling the tree; a tree click bypassing the `PaneContent` adapter.
+
+**Verification:** `bun test src/modules/ui/FileTreePaneContent.test.ts && bun
+scripts/harness/smoke-layout-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25

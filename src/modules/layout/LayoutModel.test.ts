@@ -26,6 +26,29 @@ function resolve(
 }
 
 describe('LayoutModel', () => {
+  test('enumerates every sidebar panel and dock-span configuration with stable identities', () => {
+    const configurations = LayoutModel.Class.configurations();
+
+    expect(configurations).toHaveLength(32);
+    expect(new Set(configurations.map((configuration) => configuration.identifier)).size).toBe(32);
+    expect(configurations[0]).toEqual({
+      identifier: 'left:left:full-height:full-height',
+      label: 'Sidebar left · panel left · primary full height · right full height',
+      sidebarPosition: 'left',
+      panelAlignment: 'left',
+      leftDockVerticalSpan: 'full-height',
+      rightDockVerticalSpan: 'full-height',
+    });
+    expect(
+      LayoutModel.Class.configurationIdentifier({
+        sidebarPosition: 'right',
+        panelAlignment: 'justify',
+        leftDockVerticalSpan: 'ends-at-panel',
+        rightDockVerticalSpan: 'full-height',
+      }),
+    ).toBe('right:justify:ends-at-panel:full-height');
+  });
+
   test('the default bottom panel height scales across compact and tall terminals', () => {
     expect(LayoutModel.Class.defaultBottomPanelRows(21)).toBe(9);
     expect(LayoutModel.Class.defaultBottomPanelRows(47)).toBe(21);

@@ -44,6 +44,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
+import { FileTreePaneContent } from '../ui/FileTreePaneContent';
 import { TerminalFactory } from '../terminal/TerminalFactory';
 import { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 import type { TerminalCommandEvent } from '../terminal/TerminalCommandController';
@@ -155,9 +156,20 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // The bottom panel slot: a generic, content-agnostic host. Tier S registers ONE PaneContent (the
   // terminal), lazily on first toggle so no shell spawns until the panel is opened.
   const panelHost = new PanelHost.Class();
+  const primaryDockHost = new PanelHost.Class();
   const rightDockHost = new PanelHost.Class({
     showWhenContentRegistered: true,
   });
+  primaryDockHost.register(
+    new FileTreePaneContent.Class({
+      workspaceSet,
+      icon: (name, isDirectory, expanded) =>
+        theme.icon(name, isDirectory, expanded),
+      scrollbarThicknessCells: () =>
+        Math.max(1, Math.round(settings.scrollbarThickness.value)),
+    }),
+  );
+  primaryDockHost.show();
 
   const overlayCoordinator = new OverlayCoordinator.Class({
     findBar: () => findBar.close(),
@@ -236,6 +248,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     shortcutHelp,
     overlayCoordinator,
     panelHost,
+    primaryDockHost,
     rightDockHost,
     toggleTerminal,
     toggleAgent,
@@ -408,6 +421,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     narration?.dispose();
     testVoiceBackend?.dispose();
     panelHost.dispose();
+    primaryDockHost.dispose();
     rightDockHost.dispose();
   });
 
@@ -633,6 +647,10 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     // Repaint on ANY visible cell's paint signal — a split panel has two live panes, either of which
     // can emit async output (PTY bytes) that must repaint without a keypress.
     for (const content of panelHost.visibleContents()) void content.renderRevision.value;
+    void primaryDockHost.activeId.value;
+    for (const content of primaryDockHost.visibleContents()) {
+      void content.renderRevision.value;
+    }
     void rightDockHost.visible.value;
     void rightDockHost.focused.value;
     void rightDockHost.activeId.value;

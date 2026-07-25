@@ -2,9 +2,9 @@
 // tree and the git panel. It wires the wheel/move/out/down handlers onto the sidebar renderable and
 // holds the git hit-testers (row-at-point, action-button zones, context menu, range select).
 //
-// RootView keeps constructing the sidebar renderable, rendering its content (tree/git), and owning the
-// pane geometry the hit-tests need (gitPanelGeometry, treeWindowTop, the current change rows) — those
-// are passed in as accessors so this controller reads the SAME geometry the renderer wrote.
+// RootView keeps constructing the sidebar renderable, rendering its content, and owning the pane
+// geometry the git hit-tests need (gitPanelGeometry and the current change rows). The file view
+// instead delegates through its PaneContent seam so input and paint share one component.
 import type { BoxRenderable, CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ScrollGesture } from './ScrollGesture';
@@ -16,6 +16,7 @@ import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Tooltip } from './Tooltip';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 import type { Settings } from '../settings/Settings';
+import type { PaneContent } from './PaneContent';
 
 type GitActionButton = 'open' | 'discard' | 'stageToggle';
 
@@ -30,8 +31,8 @@ export interface SidebarDeps {
   settings: Settings.Instance;
   /** The geometry the git renderer wrote this frame (hit-test source of truth). */
   gitPanelGeometry: () => GitPanelGeometry;
-  /** First visible tree row index. */
-  treeWindowTop: () => number;
+  /** The file-tree PaneContent registered in the primary dock host. */
+  treeContent: () => PaneContent | null;
   /** The current change-row model (headers + file rows), for hit-testing. */
   gitChangeRowsNow: () => ChangeRow[];
   sidebarWidth: () => number;
@@ -180,8 +181,15 @@ class $Sidebar {
           if (horizontal) workspaceSet.active.impulseGitLogHorizontalScroll((backward ? -1 : 1) * step);
           else workspaceSet.active.impulseGitLog((direction === 'up' ? -1 : 1) * step);
         }
-      } else if (horizontal) workspaceSet.active.impulseTreeHorizontalScroll((backward ? -1 : 1) * step);
-      else workspaceSet.active.impulseTreeScroll((direction === 'up' ? -1 : 1) * step);
+      } else if (horizontal) {
+        this.deps.treeContent()?.onHorizontalWheel?.(
+          (backward ? -1 : 1) * step,
+        );
+      } else {
+        this.deps.treeContent()?.onWheel?.(
+          (direction === 'up' ? -1 : 1) * step,
+        );
+      }
     };
 
     sidebar.onMouseMove = (event) => {
@@ -212,13 +220,14 @@ class $Sidebar {
         return;
       }
       tooltip.clear();
-      const rowIndex = this.deps.treeWindowTop() + (event.y - (sidebar.y + 1));
-      workspaceSet.active.tree.hoveredIndex.value =
-        rowIndex >= 0 && rowIndex < workspaceSet.active.tree.rows.length ? rowIndex : -1;
+      this.deps.treeContent()?.onPointerMove?.(
+        event.x - (sidebar.x + 1),
+        event.y - (sidebar.y + 1),
+      );
     };
 
     sidebar.onMouseOut = () => {
-      workspaceSet.active.tree.hoveredIndex.value = -1;
+      this.deps.treeContent()?.onPointerOut?.();
       workspaceSet.active.gitPanel.changesHovered.value = -1;
       workspaceSet.active.gitPanel.logHovered.value = -1;
       tooltip.clear();
@@ -277,14 +286,10 @@ class $Sidebar {
         }
         return;
       }
-      workspaceSet.active.focusFiles(); // click-to-focus
-      workspaceSet.active.haltTreeScroll();
-      const rowIndex = this.deps.treeWindowTop() + (event.y - (sidebar.y + 1)); // +1: sidebar top border
-      if (rowIndex < 0 || rowIndex >= workspaceSet.active.tree.rows.length) return;
-      // Single-click activation: one click selects AND opens the file / toggles the folder. setSelection
-      // does NOT reveal/scroll, so clicking a visible row leaves the scroll position exactly where it is.
-      workspaceSet.active.tree.setSelection(rowIndex);
-      workspaceSet.active.activate();
+      this.deps.treeContent()?.onPointerDown?.(
+        event.x - (sidebar.x + 1),
+        event.y - (sidebar.y + 1),
+      );
     };
   }
 }

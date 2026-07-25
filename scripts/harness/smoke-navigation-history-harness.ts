@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Byte-level port of navigation history: file opens, Alt-bracket replay, and breadcrumb clicks use
+// Byte-level port of navigation history: file opens, Alt-bracket replay, and command-bar clicks use
 // the real terminal path; exact locations remain semantic status assertions.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
@@ -86,40 +86,50 @@ try {
   );
   HarnessSmoke.Class.pass('Alt+] returned forward to beta.ts');
 
-  console.log('== harness navigation history: breadcrumb buttons drive the same history ==');
-  let snapshot = driver.snapshot();
-  let breadcrumbRow = -1;
+  console.log('== harness navigation history: command-bar buttons drive the same history ==');
+  let snapshot = await driver.awaitGridCondition(
+    'the workspace command bar renders the navigation and layouts controls',
+    (candidate) =>
+      candidate.findText(' layouts ') !== null &&
+      candidate.textRows().some(
+        (rowText) =>
+          rowText.includes('‹') &&
+          rowText.includes('›') &&
+          rowText.includes(' layouts '),
+      ),
+  );
+  let commandBarRow = -1;
   let backColumn = -1;
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
-    if (!rowText.includes('beta.ts') || !rowText.includes('‹')) continue;
-    breadcrumbRow = row;
+    if (!rowText.includes(' layouts ') || !rowText.includes('‹')) continue;
+    commandBarRow = row;
     backColumn = rowText.indexOf('‹');
     break;
   }
   HarnessSmoke.Class.requireCondition(
-    breadcrumbRow >= 0 && backColumn >= 0,
-    `breadcrumb buttons rendered (‹ at col ${backColumn}, row ${breadcrumbRow})`,
+    commandBarRow >= 0 && backColumn >= 0,
+    `command-bar buttons rendered (‹ at col ${backColumn}, row ${commandBarRow})`,
   );
-  driver.sendMouse({ kind: 'press', column: backColumn, row: breadcrumbRow, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: backColumn, row: breadcrumbRow, button: 'left' });
+  driver.sendMouse({ kind: 'press', column: backColumn, row: commandBarRow, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: backColumn, row: commandBarRow, button: 'left' });
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === alphaPath);
   await driver.awaitGridCondition(
     'alpha.ts content is visible after clicking the back breadcrumb',
     (candidate) => candidate.findText('alpha one') !== null,
   );
-  HarnessSmoke.Class.pass('clicking ‹ went back to alpha.ts');
+  HarnessSmoke.Class.pass('clicking command-bar ‹ went back to alpha.ts');
   snapshot = driver.snapshot();
   driver.sendMouse({
     kind: 'press',
     column: backColumn + 2,
-    row: breadcrumbRow,
+    row: commandBarRow,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
     column: backColumn + 2,
-    row: breadcrumbRow,
+    row: commandBarRow,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
@@ -127,7 +137,7 @@ try {
     'beta.ts content is visible after clicking the forward breadcrumb',
     (candidate) => candidate.findText('beta one') !== null,
   );
-  HarnessSmoke.Class.pass('clicking › went forward to beta.ts');
+  HarnessSmoke.Class.pass('clicking command-bar › went forward to beta.ts');
 
   driver.sendKeys('Control+q');
   console.log('smoke-navigation-history-harness: ALL-PASS');

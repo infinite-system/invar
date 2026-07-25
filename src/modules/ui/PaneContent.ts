@@ -5,8 +5,9 @@
 // yet (that is an incremental follow-up) — this defines the seam and proves it with one instance.
 //
 // A pane content renders its region to cells, consumes focused input, and owns a reactive paint
-// signal so async producers (a PTY, a log tail) repaint through the single frame effect. It knows
-// nothing about the host, the split, or where it is mounted.
+// signal so async producers (a PTY, a log tail) repaint through the single frame effect. The terminal,
+// agent, and file tree are citizens today; the editor, git, and Markdown panes remain incremental
+// follow-ups. A content knows nothing about the host, the split, or where it is mounted.
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
@@ -49,6 +50,12 @@ export interface PaneContent {
   /** Optional: a wheel gesture over this cell, in signed content rows (negative = toward older/up,
    *  positive = toward newer/down); magnitude is the settings-sourced step. True if it was consumed. */
   onWheel?(rowDelta: number): boolean;
+  /** Optional horizontal-wheel counterpart, in signed content columns. */
+  onHorizontalWheel?(columnDelta: number): boolean;
+  /** Optional hover projection in content-local cells. */
+  onPointerMove?(column: number, row: number): boolean;
+  /** Optional pointer-leave notification for clearing transient hover state. */
+  onPointerOut?(): void;
   /** Optional: a pointer-down inside this cell at content-local (column, row) — for click hit-testing
    *  (e.g. toggling a collapsed row). True if it was consumed (a repaint is requested for it). */
   onPointerDown?(column: number, row: number): boolean;

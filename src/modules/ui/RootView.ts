@@ -26,7 +26,7 @@ import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import { Files } from '../system/Files';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TreePaneRenderer } from './TreePaneRenderer';
+import { CommandBar } from './CommandBar';
 import { GitPaneRenderer } from './GitPaneRenderer';
 import { StatusBar } from './StatusBar';
 import { TabBar } from './TabBar';
@@ -147,6 +147,7 @@ function $buildRootView(
   shortcutHelp: ShortcutHelp.Instance,
   overlayCoordinator: OverlayCoordinator.Instance,
   panelHost: PanelHost.Instance,
+  primaryDockHost: PanelHost.Instance,
   rightDockHost: PanelHost.Instance,
   toggleTerminal: () => void,
   toggleAgent: () => void,
@@ -211,6 +212,17 @@ function $buildRootView(
     workspaceTabBar.width = 22;
     workspaceTabBar.height = '100%';
   }
+  const commandBar = new CommandBar.Class({
+    renderer,
+    workspaceSet,
+    theme,
+    tooltip,
+    overlayCoordinator,
+    boundedListPopup,
+    quickOpen,
+    settings,
+    keybindings,
+  });
 
   const sidebar = new BoxRenderable(renderer, {
     id: 'sidebar',
@@ -439,6 +451,7 @@ function $buildRootView(
   const initialLayoutRows = Math.max(
     1,
     renderer.height
+      - 1
       - 1
       - (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
   );
@@ -846,6 +859,7 @@ function $buildRootView(
       1,
       renderer.height -
         1 -
+        1 -
         (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
     );
     const totalColumns =
@@ -918,6 +932,7 @@ function $buildRootView(
   } else {
     column.add(workspaceTabBar);
   }
+  column.add(commandBar.bar);
   column.add(mainRow);
   column.add(statusBar.bar);
   root.add(column);
@@ -973,23 +988,6 @@ function $buildRootView(
    * outside update(): render stays model -> view only, while each pane model owns its live extent.
    */
 
-
-  function renderTree(): StyledText {
-    // The file-tree pane render lives in TreePaneRenderer; RootView supplies palette + geometry and
-    // the model, and mounts the result into sidebarBody. (Behaviour unchanged — same window, same
-    // selection/hover intensities.)
-    const innerWidth = sidebarWidth() - 2;
-    return TreePaneRenderer.Class.render({
-      tree: workspaceSet.active.tree,
-      filesFocused: workspaceSet.active.focus.value === 'files',
-      palette: readPalette(),
-      icon: (name, isDirectory, expanded) => theme.icon(name, isDirectory, expanded),
-      height: Math.max(1, (sidebar.height as number) - 2),
-      innerWidth,
-      viewportWidth: Math.max(1, innerWidth - scrollbarThicknessCells()),
-      windowTop: scrollbarSync.treeWindowTop(),
-    });
-  }
 
   const EMPTY_STATE = [
     '',
@@ -1185,6 +1183,7 @@ function $buildRootView(
     // The activity bar reflects sidebarView (active-item accent) + the git badge each frame.
     activityBar.setVisible(settings.showActivityBar.value);
     synchronizeLayoutGeometry();
+    commandBar.update();
     activityBar.update(palette);
     sidebar.backgroundColor = palette.panel;
     // Files/git are focusable panels (bright border when their focus owns them); extensions is a
@@ -1217,7 +1216,21 @@ function $buildRootView(
     workspaceTabBar.content = tabBarController.renderWorkspace();
     workspaceTabBar.fg = palette.fg;
 
-    sidebarBody.content = gitView ? renderGitPanel() : extensionsView ? EXTENSIONS_PLACEHOLDER : renderTree();
+    const primaryDockContent = primaryDockHost.activeContent;
+    sidebarBody.content = gitView
+      ? renderGitPanel()
+      : extensionsView
+        ? EXTENSIONS_PLACEHOLDER
+        : primaryDockContent
+          ? primaryDockContent.render({
+              width: Math.max(1, sidebarWidth() - 2),
+              height: Math.max(1, Number(sidebar.height) - 2),
+              palette,
+              glyphLevel: theme.glyphLevel.value,
+              colorDepth: theme.colorDepth.value,
+              focused: workspaceSet.active.focus.value === 'files',
+            })
+          : '';
     sidebarBody.fg = palette.fg;
     // When the active buffer is an image, the code body shows the half-block preview (no gutter, no
     // syntax text). Non-image files are untouched — the editor render path below is unchanged.
@@ -1500,7 +1513,7 @@ function $buildRootView(
     boundedListPopup,
     settings,
     gitPanelGeometry: () => gitPanelGeometry,
-    treeWindowTop: () => scrollbarSync.treeWindowTop(),
+    treeContent: () => primaryDockHost.activeContent,
     gitChangeRowsNow,
     sidebarWidth,
     scrollbarThicknessCells,
@@ -1684,8 +1697,8 @@ function $buildRootView(
     visible: boolean;
   } {
     return {
-      left: Number(renderable.x),
-      top: Number(renderable.y),
+      left: Number(renderable.screenX),
+      top: Number(renderable.screenY),
       width: Number(renderable.width),
       height: Number(renderable.height),
       visible: renderable.visible,

@@ -2,6 +2,18 @@ import { Static } from 'ivue/extras';
 
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 class $LayoutModel {
+  protected static get sidebarPositions(): readonly SidebarPosition[] {
+    return ['left', 'right'];
+  }
+
+  protected static get panelAlignments(): readonly PanelAlignment[] {
+    return ['left', 'center', 'right', 'justify'];
+  }
+
+  protected static get dockVerticalSpans(): readonly DockVerticalSpan[] {
+    return ['full-height', 'ends-at-panel'];
+  }
+
   // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
   protected static get defaultBottomPanelProportion(): number {
     return 0.45;
@@ -15,6 +27,49 @@ class $LayoutModel {
           * this.defaultBottomPanelProportion,
       ),
     );
+  }
+
+  static configurations(): readonly LayoutConfiguration[] {
+    const configurations: LayoutConfiguration[] = [];
+    for (const sidebarPosition of this.sidebarPositions) {
+      for (const panelAlignment of this.panelAlignments) {
+        for (const leftDockVerticalSpan of this.dockVerticalSpans) {
+          for (const rightDockVerticalSpan of this.dockVerticalSpans) {
+            const configuration: LayoutConfiguration = {
+              identifier: [
+                sidebarPosition,
+                panelAlignment,
+                leftDockVerticalSpan,
+                rightDockVerticalSpan,
+              ].join(':'),
+              label: [
+                `Sidebar ${sidebarPosition}`,
+                `panel ${panelAlignment}`,
+                `primary ${this.verticalSpanLabel(leftDockVerticalSpan)}`,
+                `right ${this.verticalSpanLabel(rightDockVerticalSpan)}`,
+              ].join(' · '),
+              sidebarPosition,
+              panelAlignment,
+              leftDockVerticalSpan,
+              rightDockVerticalSpan,
+            };
+            configurations.push(configuration);
+          }
+        }
+      }
+    }
+    return configurations;
+  }
+
+  static configurationIdentifier(
+    configuration: LayoutConfigurationValues,
+  ): string {
+    return [
+      configuration.sidebarPosition,
+      configuration.panelAlignment,
+      configuration.leftDockVerticalSpan,
+      configuration.rightDockVerticalSpan,
+    ].join(':');
   }
 
   static resolve(options: LayoutModelOptions): LayoutSlotGeometry {
@@ -185,6 +240,12 @@ class $LayoutModel {
       ? totalColumns
       : editorRight;
   }
+
+  protected static verticalSpanLabel(
+    verticalSpan: DockVerticalSpan,
+  ): string {
+    return verticalSpan === 'full-height' ? 'full height' : 'ends at panel';
+  }
 }
 
 export namespace LayoutModel {
@@ -197,6 +258,18 @@ export type SidebarPosition = 'left' | 'right';
 export type PanelAlignment = 'left' | 'center' | 'right' | 'justify';
 
 export type DockVerticalSpan = 'full-height' | 'ends-at-panel';
+
+export interface LayoutConfigurationValues {
+  sidebarPosition: SidebarPosition;
+  panelAlignment: PanelAlignment;
+  leftDockVerticalSpan: DockVerticalSpan;
+  rightDockVerticalSpan: DockVerticalSpan;
+}
+
+export interface LayoutConfiguration extends LayoutConfigurationValues {
+  identifier: string;
+  label: string;
+}
 
 export interface LayoutRectangle {
   left: number;
