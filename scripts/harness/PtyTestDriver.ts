@@ -36,8 +36,7 @@ export interface InputFrameByteArrivalMeasurement {
   inputToFrameByteArrivalMilliseconds: number;
 }
 
-export interface InputGridConditionByteArrivalMeasurement
-  extends InputFrameByteArrivalMeasurement {
+export interface InputGridConditionByteArrivalMeasurement extends InputFrameByteArrivalMeasurement {
   snapshot: HarnessSnapshot.Model;
 }
 
@@ -49,13 +48,20 @@ export interface HarnessGridRegion {
 }
 
 class $PtyTestDriver {
+  /** How many trailing recorded characters accompany an unexpected-exit failure. Long enough to hold
+   *  a runtime's uncaught-exception dump with its stack, short enough to stay readable in a gate log. */
+  protected static get exitEvidenceTailLength(): number {
+    return 2000;
+  }
+
   private readonly openPty: OpenPty.Model;
   private readonly emulator: TerminalEmulator.Model;
   private readonly quiescence = new SynchronizedOutputQuiescence.Class();
   private readonly child: ReturnType<typeof Bun.spawn>;
   private readonly outputDecoder = new TextDecoder();
   private observedOutput = '';
-  private frameExpectationPredecessor: CompletedSynchronizedFrame | null | undefined = null;
+  private frameExpectationPredecessor:
+    CompletedSynchronizedFrame | null | undefined = null;
   private disposalPromise: Promise<void> | null = null;
   private disposed = false;
 
@@ -72,11 +78,16 @@ class $PtyTestDriver {
       this.emulator.write(bytes);
     });
 
-    const applicationCommand = options.command
-      ?? [process.execPath, 'run', 'src/main.ts', options.workspaceRoot];
-    const childCommand = process.platform === 'linux'
-      ? ['setsid', '--ctty', ...applicationCommand]
-      : applicationCommand;
+    const applicationCommand = options.command ?? [
+      process.execPath,
+      'run',
+      'src/main.ts',
+      options.workspaceRoot,
+    ];
+    const childCommand =
+      process.platform === 'linux'
+        ? ['setsid', '--ctty', ...applicationCommand]
+        : applicationCommand;
     this.child = Bun.spawn(childCommand, {
       cwd: repositoryRoot,
       stdio: [
@@ -89,17 +100,32 @@ class $PtyTestDriver {
     this.openPty.releaseSlaveFileDescriptor();
     void this.child.exited.then((exitCode) => {
       if (this.disposed) return;
-      this.quiescence.fail(new Error(`Invar exited before the awaited frame (exit ${exitCode})`));
+      // The child's stdout AND STDERR are the PTY slave, so an uncaught exception's dump is already
+      // in the recorded bytes — the old message threw that evidence away and reported only the exit
+      // code, which is how an app crash inside a full gate run (2026-07-25) produced no diagnosable
+      // reason at all. Report the tail with it: whatever killed the app is in those bytes.
+      this.quiescence.fail(
+        new Error(
+          `Invar exited before the awaited frame (exit ${exitCode}); output tail: ` +
+            JSON.stringify(
+              this.observedOutput.slice(-$PtyTestDriver.exitEvidenceTailLength),
+            ),
+        ),
+      );
     });
   }
 
   sendKeys(...keyNames: string[]): void {
     this.markFrameExpected();
-    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    this.openPty.write(
+      keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
+    );
   }
 
   sendKeysWithoutFrameExpectation(...keyNames: string[]): void {
-    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    this.openPty.write(
+      keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
+    );
   }
 
   async sendKeysAndAwaitFrameByteArrival(
@@ -107,9 +133,12 @@ class $PtyTestDriver {
     timeoutMilliseconds = 30_000,
   ): Promise<InputFrameByteArrivalMeasurement> {
     this.markFrameExpected();
-    const completedFramePromise = this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    const completedFramePromise =
+      this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
     const inputWrittenTimestampMilliseconds = performance.now();
-    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    this.openPty.write(
+      keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
+    );
     const completedFrame = await completedFramePromise;
     this.frameExpectationPredecessor = undefined;
     return {
@@ -118,9 +147,11 @@ class $PtyTestDriver {
       completedFrame,
       completedFramesUntilCondition: 1,
       inputToFirstFrameByteArrivalMilliseconds:
-        completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
+        completedFrame.byteArrivalTimestampMilliseconds -
+        inputWrittenTimestampMilliseconds,
       inputToFrameByteArrivalMilliseconds:
-        completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
+        completedFrame.byteArrivalTimestampMilliseconds -
+        inputWrittenTimestampMilliseconds,
     };
   }
 
@@ -132,9 +163,12 @@ class $PtyTestDriver {
   ): Promise<InputGridConditionByteArrivalMeasurement> {
     this.markFrameExpected();
     const deadline = performance.now() + timeoutMilliseconds;
-    let completedFramePromise = this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    let completedFramePromise =
+      this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
     const inputWrittenTimestampMilliseconds = performance.now();
-    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    this.openPty.write(
+      keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
+    );
     let firstCompletedFrame: CompletedSynchronizedFrame | null = null;
     let completedFramesUntilCondition = 0;
     while (true) {
@@ -151,10 +185,11 @@ class $PtyTestDriver {
           completedFrame,
           completedFramesUntilCondition,
           inputToFirstFrameByteArrivalMilliseconds:
-            firstCompletedFrame.byteArrivalTimestampMilliseconds
-            - inputWrittenTimestampMilliseconds,
+            firstCompletedFrame.byteArrivalTimestampMilliseconds -
+            inputWrittenTimestampMilliseconds,
           inputToFrameByteArrivalMilliseconds:
-            completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
+            completedFrame.byteArrivalTimestampMilliseconds -
+            inputWrittenTimestampMilliseconds,
           snapshot,
         };
       }
@@ -163,7 +198,9 @@ class $PtyTestDriver {
         this.frameExpectationPredecessor = undefined;
         throw this.gridConditionTimeoutError(predicateDescription, snapshot);
       }
-      completedFramePromise = this.quiescence.awaitNextCompletedFrame(remainingMilliseconds);
+      completedFramePromise = this.quiescence.awaitNextCompletedFrame(
+        remainingMilliseconds,
+      );
     }
   }
 
@@ -211,8 +248,8 @@ class $PtyTestDriver {
 
   async awaitQuiescence(timeoutMilliseconds = 30_000): Promise<void> {
     if (
-      this.frameExpectationPredecessor !== undefined
-      && this.quiescence.lastCompletedFrame === this.frameExpectationPredecessor
+      this.frameExpectationPredecessor !== undefined &&
+      this.quiescence.lastCompletedFrame === this.frameExpectationPredecessor
     ) {
       await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
     }
@@ -222,36 +259,45 @@ class $PtyTestDriver {
 
   /** Await the next synchronized frame and snapshot the emulator immediately after its bytes parse.
    *  Diagnostic streams use this to inspect every emitted frame without identifying it by ordinal. */
-  async awaitNextCompletedFrameSnapshot(
-    timeoutMilliseconds = 10_000,
-  ): Promise<{
+  async awaitNextCompletedFrameSnapshot(timeoutMilliseconds = 10_000): Promise<{
     completedFrame: CompletedSynchronizedFrame;
     snapshot: HarnessSnapshot.Model;
   }> {
-    const completedFrame = await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    const completedFrame =
+      await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
     await this.emulator.flush();
     return { completedFrame, snapshot: this.snapshot() };
   }
 
-  async assertNoCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
+  async assertNoCompleteFrameEmittedFor(
+    durationMilliseconds: number,
+  ): Promise<void> {
     await this.quiescence.assertNoCompletedFrameFor(durationMilliseconds);
   }
 
-  async assertAtMostOneCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {
+  async assertAtMostOneCompleteFrameEmittedFor(
+    durationMilliseconds: number,
+  ): Promise<void> {
     const initialCompletedFrameCount = this.quiescence.completedFrameCount;
     const deadline = performance.now() + durationMilliseconds;
     try {
       await this.assertNoCompleteFrameEmittedFor(durationMilliseconds);
       return;
     } catch (firstFrameError) {
-      if (this.quiescence.completedFrameCount - initialCompletedFrameCount > 1) {
+      if (
+        this.quiescence.completedFrameCount - initialCompletedFrameCount >
+        1
+      ) {
         throw firstFrameError;
       }
       const remainingMilliseconds = deadline - performance.now();
       if (remainingMilliseconds > 0) {
         await this.assertNoCompleteFrameEmittedFor(remainingMilliseconds);
       }
-      if (this.quiescence.completedFrameCount - initialCompletedFrameCount > 1) {
+      if (
+        this.quiescence.completedFrameCount - initialCompletedFrameCount >
+        1
+      ) {
         throw new Error(
           `Expected at most one complete synchronized frame for ${durationMilliseconds} ms`,
         );
@@ -296,11 +342,13 @@ class $PtyTestDriver {
       try {
         await this.quiescence.awaitNextCompletedFrame(remainingMilliseconds);
       } catch (error) {
-        const isCompletedFrameTimeout = error instanceof Error
-          && error.message.startsWith(
+        const isCompletedFrameTimeout =
+          error instanceof Error &&
+          error.message.startsWith(
             'Timed out waiting for the next complete synchronized frame',
           );
-        if (!isCompletedFrameTimeout && performance.now() < deadline) throw error;
+        if (!isCompletedFrameTimeout && performance.now() < deadline)
+          throw error;
         await this.emulator.flush();
         this.frameExpectationPredecessor = undefined;
         throw this.gridConditionTimeoutError(
@@ -318,7 +366,10 @@ class $PtyTestDriver {
     for (let row = 0; row < this.emulator.rows; row++) {
       for (let column = 0; column < this.emulator.columns; column++) {
         const cell = this.emulator.cell(row, column);
-        if (!cell) throw new Error(`Emulator cell missing at row ${row}, column ${column}`);
+        if (!cell)
+          throw new Error(
+            `Emulator cell missing at row ${row}, column ${column}`,
+          );
         copiedCells.push({ ...cell, row, column });
       }
     }
@@ -336,7 +387,10 @@ class $PtyTestDriver {
     let sequenceCount = 0;
     let searchOffset = 0;
     while (searchOffset < this.observedOutput.length) {
-      const sequenceOffset = this.observedOutput.indexOf(sequence, searchOffset);
+      const sequenceOffset = this.observedOutput.indexOf(
+        sequence,
+        searchOffset,
+      );
       if (sequenceOffset < 0) break;
       sequenceCount++;
       searchOffset = sequenceOffset + sequence.length;
@@ -372,8 +426,8 @@ class $PtyTestDriver {
 
   private markFrameExpected(): void {
     if (
-      this.frameExpectationPredecessor === undefined
-      || this.frameExpectationPredecessor !== this.quiescence.lastCompletedFrame
+      this.frameExpectationPredecessor === undefined ||
+      this.frameExpectationPredecessor !== this.quiescence.lastCompletedFrame
     ) {
       this.frameExpectationPredecessor = this.quiescence.lastCompletedFrame;
     }
@@ -394,23 +448,33 @@ class $PtyTestDriver {
       snapshot.columns,
       diagnosticRegion?.endColumnExclusive ?? snapshot.columns,
     );
-    const regionText = snapshot.textRows()
+    const regionText = snapshot
+      .textRows()
       .slice(startRow, endRowExclusive)
       .map((rowText) => rowText.slice(startColumn, endColumnExclusive))
       .join('\n');
     return new Error(
-      `Timed out waiting for grid condition: ${predicateDescription}\n`
-      + `Final grid region rows ${startRow}-${endRowExclusive - 1}, `
-      + `columns ${startColumn}-${endColumnExclusive - 1}:\n`
-      + regionText,
+      `Timed out waiting for grid condition: ${predicateDescription}\n` +
+        `Final grid region rows ${startRow}-${endRowExclusive - 1}, ` +
+        `columns ${startColumn}-${endColumnExclusive - 1}:\n` +
+        regionText,
     );
   }
 
-  private childEnvironment(options: PtyTestDriverOptions): Record<string, string> {
+  private childEnvironment(
+    options: PtyTestDriverOptions,
+  ): Record<string, string> {
     const environment: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
       if (value === undefined || key.startsWith('GIT_')) continue;
-      if (['TUI_STATUS_PATH', 'TUI_FRAME_PATH', 'TUI_FRAME_DUMP', 'TUI_OBSERVE'].includes(key)) {
+      if (
+        [
+          'TUI_STATUS_PATH',
+          'TUI_FRAME_PATH',
+          'TUI_FRAME_DUMP',
+          'TUI_OBSERVE',
+        ].includes(key)
+      ) {
         continue;
       }
       environment[key] = value;
