@@ -9,14 +9,20 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
-import { TerminalOutputAudit, type ClipboardEmission } from './TerminalOutputAudit';
+import {
+  TerminalOutputAudit,
+  type ClipboardEmission,
+} from './TerminalOutputAudit';
 
 const activeCopyRunCount = 5;
 const idleCopyRunCount = 5;
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-clipboard-boundary-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-clipboard-boundary-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
@@ -41,11 +47,12 @@ async function awaitClipboardEmission(
     );
     if (clipboardEmissions.length > previousEmissionCount) {
       const clipboardEmission = clipboardEmissions[previousEmissionCount];
-      if (!clipboardEmission) throw new Error('New clipboard emission disappeared');
+      if (!clipboardEmission)
+        throw new Error('New clipboard emission disappeared');
       HarnessSmoke.Class.requireCondition(
         clipboardEmission.decodedText === expectedText,
-        `OSC 52 payload decodes exactly to ${expectedText}; received `
-        + JSON.stringify(clipboardEmission.decodedText),
+        `OSC 52 payload decodes exactly to ${expectedText}; received ` +
+          JSON.stringify(clipboardEmission.decodedText),
       );
       HarnessSmoke.Class.requireCondition(
         clipboardEmission.hasValidBase64Payload,
@@ -64,8 +71,8 @@ async function awaitClipboardEmission(
     await Bun.sleep(5);
   }
   throw new Error(
-    `Timed out waiting for OSC 52 payload ${expectedText}; outputTail=`
-    + JSON.stringify(driver.recordedOutput().slice(-800)),
+    `Timed out waiting for OSC 52 payload ${expectedText}; outputTail=` +
+      JSON.stringify(driver.recordedOutput().slice(-800)),
   );
 }
 
@@ -116,7 +123,8 @@ async function selectVisibleText(
     (candidate) => candidate.findText(expectedText) !== null,
   );
   const position = snapshot.findText(expectedText);
-  if (!position) throw new Error(`Selection target disappeared: ${expectedText}`);
+  if (!position)
+    throw new Error(`Selection target disappeared: ${expectedText}`);
   await dragBetweenCells(
     driver,
     position.column,
@@ -127,12 +135,49 @@ async function selectVisibleText(
   return position;
 }
 
+function panelCellBodyPoint(
+  status: StatusSnapshot,
+  contentIdentifier: string,
+): { column: number; row: number } {
+  const panelCellIdentifiers = Array.isArray(status.panelCellIds)
+    ? status.panelCellIds.map(String)
+    : [];
+  const panelCellColumns = Array.isArray(status.panelCellColumns)
+    ? status.panelCellColumns.map(Number)
+    : [];
+  const contentIndex = panelCellIdentifiers.indexOf(contentIdentifier);
+  const layoutSlots = status.layoutSlots as
+    | Record<
+        string,
+        { left: number; top: number; width: number; height: number }
+      >
+    | undefined;
+  const bottomPanel = layoutSlots?.bottomPanel;
+  if (
+    contentIndex < 0 ||
+    panelCellColumns.length !== panelCellIdentifiers.length ||
+    !bottomPanel
+  ) {
+    throw new Error(`Panel geometry unavailable for ${contentIdentifier}`);
+  }
+  const precedingCellColumns = panelCellColumns
+    .slice(0, contentIndex)
+    .reduce((columnTotal, cellColumnCount) => columnTotal + cellColumnCount, 0);
+  const screenRows = Number(status.height);
+  const layoutCanvasTop =
+    screenRows - 1 - (bottomPanel.top + bottomPanel.height);
+  return {
+    column: bottomPanel.left + 2 + precedingCellColumns + contentIndex,
+    row: layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2),
+  };
+}
+
 try {
   console.log('== clipboard boundary: active agent transcript and composer ==');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.ready === true",
+    'status condition: status.ready === true',
     (status) => status.ready === true,
     20_000,
   );
@@ -142,12 +187,10 @@ try {
     (snapshot) => snapshot.findText('Ask Claude') !== null,
   );
   for (let turnIndex = 0; turnIndex < 6; turnIndex += 1) {
-    const promptMarker = turnIndex === 5
-      ? 'ACTIVE-TRANSCRIPT'
-      : `transcript-fill-${turnIndex}`;
-    const prompt = turnIndex === 5
-      ? promptMarker
-      : `${promptMarker}-${'words '.repeat(12)}`;
+    const promptMarker =
+      turnIndex === 5 ? 'ACTIVE-TRANSCRIPT' : `transcript-fill-${turnIndex}`;
+    const prompt =
+      turnIndex === 5 ? promptMarker : `${promptMarker}-${'words '.repeat(12)}`;
     driver.sendText(prompt);
     await driver.awaitGridCondition(
       `${promptMarker} is visible in the composer`,
@@ -159,14 +202,17 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.agentBusy === false",
+    'status condition: status.agentBusy === false',
     (status) => status.agentBusy === false,
   );
   const transcriptPosition = await selectVisibleText('ACTIVE-TRANSCRIPT');
   // A wheel-notch TRAIN, not a lone notch: progressive impulse gain makes a from-rest notch a
   // one-row precision step (one frame), and each copy round awaits two frames. Three compounding
   // notches glide several rows — a frame stream.
-  const transcriptWheelTrain = (direction: 'up' | 'down', notchCount: number): void => {
+  const transcriptWheelTrain = (
+    direction: 'up' | 'down',
+    notchCount: number,
+  ): void => {
     for (let notch = 0; notch < notchCount; notch += 1) {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'wheel',
@@ -217,14 +263,28 @@ try {
 
   console.log('== clipboard boundary: idle terminal selection ==');
   driver.sendKeys('F8');
-  await HarnessSmoke.Class.awaitStatus(
+  const terminalLayoutStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
-    (status) => status.panelActiveContent === 'terminal' && status.terminalFocused === true,
+    "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true && status.panelCellIds.includes('terminal') && status.panelCellColumns.length === status.panelCellIds.length",
+    (status) =>
+      status.panelActiveContent === 'terminal' &&
+      status.terminalFocused === true &&
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.includes('terminal') &&
+      Array.isArray(status.panelCellColumns) &&
+      status.panelCellColumns.length === status.panelCellIds.length &&
+      typeof status.layoutSlots === 'object' &&
+      status.layoutSlots !== null,
+  );
+  const terminalCellBodyPoint = panelCellBodyPoint(
+    terminalLayoutStatus,
+    'terminal',
   );
   driver.sendText('printf IDLE-TERMINAL');
-  const idleTerminalPosition = await selectVisibleText('IDLE-TERMINAL');
+  await driver.awaitQuiescence();
+  driver.sendKeys('Enter');
+  await selectVisibleText('IDLE-TERMINAL');
   await copySelectionRepeatedly('IDLE-TERMINAL', idleCopyRunCount, 'idle');
 
   console.log('== clipboard boundary: active terminal selection ==');
@@ -232,22 +292,22 @@ try {
   // configuration, and the full-height left dock now owns the old (2, 30) cell.
   driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
-    column: idleTerminalPosition.column,
-    row: idleTerminalPosition.row,
+    column: terminalCellBodyPoint.column,
+    row: terminalCellBodyPoint.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: idleTerminalPosition.column,
-    row: idleTerminalPosition.row,
+    column: terminalCellBodyPoint.column,
+    row: terminalCellBodyPoint.row,
     button: 'left',
   });
   await driver.awaitQuiescence();
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
   const activeTerminalCommand =
-    "for iteration in $(seq 1 500); do printf '\\rACTIVE-TERMINAL-%03d' \"$iteration\"; "
-    + 'sleep 0.02; done';
+    'for iteration in $(seq 1 500); do printf \'\\rACTIVE-TERMINAL-%03d\' "$iteration"; ' +
+    'sleep 0.02; done';
   driver.sendText(activeTerminalCommand);
   // Staging sequencing only: the staged command wraps at the pane width, so no single-row text
   // wait can gate here. Quiescence proves the typed bytes flushed and the echo settled; the loop
@@ -259,9 +319,23 @@ try {
     (snapshot) => snapshot.findText('ACTIVE-TERMINAL-001') !== null,
   );
   await selectVisibleText('ACTIVE-TERMINAL');
-  await copySelectionRepeatedly('ACTIVE-TERMINAL', activeCopyRunCount, 'active');
-  driver.sendMouseWithoutFrameExpectation({ kind: 'press', column: 2, row: 30, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: 2, row: 30, button: 'left' });
+  await copySelectionRepeatedly(
+    'ACTIVE-TERMINAL',
+    activeCopyRunCount,
+    'active',
+  );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: terminalCellBodyPoint.column,
+    row: terminalCellBodyPoint.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: terminalCellBodyPoint.column,
+    row: terminalCellBodyPoint.row,
+    button: 'left',
+  });
   await driver.awaitQuiescence();
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
