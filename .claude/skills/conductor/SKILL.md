@@ -296,6 +296,16 @@ terminal-capability path defensively from the code, and flag that final verifica
 real terminal, not the harness.
 
 ## Loop shape (the hourly orchestration cron)
+0. **Verify the loops are actually armed — `CronList` first, every fire.** A cron is session-only
+   in-memory state; this file is a durable *copy of the words*, and a copy is not evidence that the
+   job exists. On 2026-07-25 the user asked whether both crons were live: the skill said yes, and
+   `CronList` returned only the hourly. The 10-minute heartbeat had died in a restart and only the
+   hourly was restored, so for an unknown span the floor under builder liveness was gone while the
+   doc claimed it was there — the failure was silent precisely because a missing heartbeat produces
+   no output. If a recorded loop below is absent from `CronList`, re-arm it from the verbatim text
+   *in this fire*, before any other work, and say so in the report. Never infer a cron is live from
+   this file, from a previous fire's report, or from the fact that fires have been arriving — the
+   hourly arriving tells you nothing about the 10-minute one.
 1. **Drain the real backlog first** — the task list (HANDOFF → the numbered UI tasks → polish
    requests → follow-ups). Ensure the fork is driving each unfinished task; nudge or take over.
    No creative experiment while any core task is unmerged.
@@ -343,12 +353,19 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui
 ### 10-minute liveness check — `3,13,23,33,43,53 * * * *` (every 10 min)
 
 ```
-Loop check (every 10 min): VERIFY — do not assume — that the currently active builder agents (whatever this session has in flight: check recent task notifications / SendMessage pins) are actually progressing. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor, /tmp/tui-demo, or any /tmp/wt-* worktree they opened) — do NOT treat raw `src/main.ts` process count or instance age as a liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on builder-specific evidence: (1) writes in the active build worktrees (/tmp/wt-*) in the last ~10 min (exclude .git and node_modules); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / GATE_EXIT / still-appending); (3) new commits on main or on the active feature branches (git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'); (4) builder jsonl mtimes under ~/.claude/projects/-home-parallels-dev-ibr/*/subagents/. If a builder is DORMANT on a red or finished gate: read the gate log, diagnose the failing step, nudge via SendMessage with the precise fix. If genuinely STALLED across a FULL cycle (no worktree writes, no gate activity, no commits): take over — diagnose, fix, gate, merge. If progressing, note it briefly. Flag over-spawn (cap builders ~2-3) and CPU contention (concurrent heavy work flakes the smoke-wrap caret canary — one gate at a time, and the conductor holds its OWN heavy work while any gate runs). Report concisely.
+Loop check (every 10 min): VERIFY — do not assume — that the currently active builder agents (whatever this session has in flight: check recent task notifications / SendMessage pins) are actually progressing. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor, /tmp/tui-demo, or any /tmp/wt-* worktree they opened) — do NOT treat raw `src/main.ts` process count or instance age as a liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on builder-specific evidence: (1) writes in the active build worktrees (/tmp/wt-*) in the last ~10 min (exclude .git and node_modules); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / GATE_EXIT / still-appending); (3) new commits on main or on the active feature branches (git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'); (4) builder jsonl mtimes under ~/.claude/projects/-home-parallels-dev-ibr/*/subagents/. If a builder is DORMANT on a red or finished gate: read the gate log, diagnose the failing step, nudge via SendMessage with the precise fix. If genuinely STALLED across a FULL cycle (no worktree writes, no gate activity, no commits): take over — diagnose, fix, gate, merge. If progressing, note it briefly. ALSO treat a GREEN gate whose branch is still unlanded as a stall — landing is the conductor's job and a finished gate that nobody merges is wasted wall-clock. Flag over-spawn (cap builders ~2-3) and CPU contention: gates MAY run concurrently (proven 2026-07-25: two gates 6m04s/6m07s vs 8m03s serial), but the conductor still holds its OWN heavy work while any gate runs, and a gate whose smoke pool runs parallel jobs must NOT overlap another gate's quiet timing tail until the machine-wide quiet lock lands. Report concisely.
 ```
 
 Refreshed 2026-07-24 after a session restart proved the doctrine: the in-memory crons died, the
 verbatim copies here restored them. This refresh generalized the stale specifics (the finished
 11-task batch, the stood-down fork id, the old baseline SHA) into evidence-based forms.
+
+Refreshed again 2026-07-25: the 10-minute heartbeat was found **absent** from `CronList` while this
+file still recorded it as live, which is what step 0 above now guards. Its verbatim text was also
+carrying a superseded rule (one gate at a time) — a stale recorded prompt is worse than none, since
+a restored cron would have re-imposed a constraint the fleet had already measured its way out of.
+Rule earned: when doctrine in this skill changes, the verbatim prompts are part of the change set,
+not a separate chore.
 
 ## Gate concurrency (superseding one-gate-at-a-time, as of 2026-07-25)
 
