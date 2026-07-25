@@ -3,23 +3,45 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-25 ~11:45 — GRAMMAR CAMPAIGN COMPLETE)
+## RESUME ANCHOR (2026-07-25 ~17:45)
 
-Main @ 8d09b31. 32 landings today, zero regressions. THE GRAMMAR BIG-BANG IS DONE: all 22 modules
-enforced by scripts/check-file-grammar.ts (1,662 violations 2026-07-24 evening → 0 enforcement
-debt; ~10 report-only stragglers outside src/modules). Every production file: class-first, no
-detached functions, protected members, constants as protected static getters, types below class,
-strict test colocation with pair-completeness, X.interface.ts contract naming, blame hygiene via
-verified landing-time hashes. ~60 new colocated test files landed with the waves.
+Main @ ab5ee84. ~30 landings today, zero regressions on main.
 
-Also complete today (all user-directed): scroll-feel pack, agent word wrap, live layout settings,
-narration pronounceability, panel UX pack, TerminalObserver waves 1+2 with follow modes +
-readTerminalScrollback, layout wave 2 (command bar + file-tree citizen), wait-discipline sweep,
-gate evidence+retry policy (absorbed 3 ambient timeouts today with logged retries).
+LANDED TODAY (user-directed unless noted): extent/hscroll fixes; layout wave 1 + wave 2 (LayoutModel,
+SplitterElement seam, right dock, command bar, file-tree as pane citizen); layout distillation round 2
+(right-dock full-height fixed, alignment reduced to center/right with migration, 4 named presets
+replacing 32 permutations); osc52 clipboard + chunked paste; GRAMMAR CAMPAIGN COMPLETE (22/22 modules
+enforced, 1,662 violations -> 0, ~60 new colocated test files); scroll-feel pack (one fling profile
+both axes, progressive gain, one-row floor, reversal halt-and-turn); agent word-boundary wrap +
+composer padding; narration pronounceability (babble classes -> spoken stand-ins); panel UX pack
+(agent's own heading, click-to-split, 45% default panel, clock+dock corner); panel chrome wave 2
+(+ dropdown creating independent instances, per-region close, expand toggle, drag limit raised);
+TerminalObserver waves 1+2 (OSC 133 events, bounded+redacted observation, follow modes footer control,
+readTerminalScrollback); X.interface.ts convention; harness wait-discipline sweep (100 samples
+converted, 388 waits labeled); overlay dialogs (resize clamp, scrollbar, OverlayCloseButton,
+Escape-priority fix); LSP autocomplete via provider-neutral contract + popup hardening; agent cancel/
+queue/liveness (the 2-hour spinner: backends completed turns on PIPE closure, now on PROCESS EXIT);
+codex experimentalApi capability (dynamicTools was failing every codex turn); project-navigator
+selection + Right-drill-in; completion paint race (one missing `.value` = main intermittently red);
+thumb-breathing (OpenTUI half-cell rounding normalized at the generator); text-input primitive
+(TextInputModel adopted by composer/quickopen/palette/find bar); terminal wheel scrolling with shared
+momentum + SGR forwarding to alternate-screen children; agent skills (settingSources + slash
+resolver); gate evidence+retry policy; GATE CONCURRENCY UNLOCK.
 
-OPEN QUEUE (scheduled): #31 getter census → scoped invalidation; #33 capsule arc; #34 plugin
-canvas (groundwork fully landed: file-tree citizen + pane primitives); #35 structure navigator;
-#40 remaining scope (parallel smoke pool); observer waves 3-4.
+IN FLIGHT: feat-gate-parallel-pool (#40 worker pool + serial quiet tail); fix-harness-retention (#74
+bounded byte retention + streaming audit); feat-click-outside-dismiss (gating now, timed).
+
+OPEN QUEUE, in the order the conductor chose: #70 modal cursor + terminal-graphics occlusion;
+#68 icon vocabulary (activity bar glyphs + panel control tooltips/hover/softer close); #66 breadcrumb
+segment picker with drill-in; #72 code-aware wrap break opportunities; #75 await-after-terminal-action
+sweep; #73 type-aware dropped-signal audit; #62 >3-args ports-object sweep; #64 follow-turn liveness
+audit; #59 prettier whole-repo reformat LAST (touches every file); then architecture: #31 scoped
+invalidation, #33 capsule arc, #34 plugin canvas, #35 structure navigator.
+
+CONCURRENCY: two gates at once is now safe and MEASURED (6m04s/6m07s vs an 8m03s serial baseline).
+Ceilings: inotify 128 instances, ~250MB per app, CPU binds at ~12-14 concurrent apps; the product
+`gates x pool workers` is what to reason about. Landings stay SERIAL by nature (ff-only + rebase +
+re-verify), so use concurrency for parallel speculative VERIFICATION, then a fast serial landing chain.
 
 
 ## PRIOR ANCHOR — 2026-07-24 NIGHT — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
