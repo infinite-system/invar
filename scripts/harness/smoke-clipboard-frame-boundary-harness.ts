@@ -81,8 +81,17 @@ async function copySelectionRepeatedly(
       | ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
       | undefined;
     if (activity === 'active') {
-      activateRenderer?.(runIndex);
+      if (activateRenderer) {
+        // Thunk-driven activity starts every round from momentum REST: a wheel train landing
+        // mid-glide of the previous round's opposite train cancels velocity (dead round), and
+        // accumulated drift walks the view into a clamp. Ambient activity (a running shell loop)
+        // must NOT rest — silence there means the activity source has ended.
+        await HarnessSmoke.Class.awaitFrameSilence(driver);
+        activateRenderer(runIndex);
+      }
+      console.log(`    · active round ${runIndex}: awaiting pre-copy frame`);
       await driver.awaitNextCompletedFrameSnapshot();
+      console.log(`    · active round ${runIndex}: pre-copy frame arrived`);
       followingActiveFrame = driver.awaitNextCompletedFrameSnapshot();
     } else {
       await HarnessSmoke.Class.awaitFrameSilence(driver);
@@ -155,11 +164,9 @@ try {
   const transcriptPosition = await selectVisibleText('ACTIVE-TRANSCRIPT');
   // A wheel-notch TRAIN, not a lone notch: progressive impulse gain makes a from-rest notch a
   // one-row precision step (one frame), and each copy round awaits two frames. Three compounding
-  // notches glide several rows (a frame stream); alternating direction per round keeps the
-  // transcript inside its scrollback for any run count.
-  const transcriptActivity = (runIndex: number): void => {
-    const direction = runIndex % 2 === 0 ? 'up' : 'down';
-    for (let notch = 0; notch < 3; notch += 1) {
+  // notches glide several rows — a frame stream.
+  const transcriptWheelTrain = (direction: 'up' | 'down', notchCount: number): void => {
+    for (let notch = 0; notch < notchCount; notch += 1) {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'wheel',
         column: transcriptPosition.column,
@@ -168,6 +175,16 @@ try {
       });
     }
   };
+  // Deterministic anchor: clamp the transcript at the TOP of its scrollback (a known state), so a
+  // round alternation of down/up trains always has room to move — no drift-into-clamp dead rounds.
+  const anchorTranscriptAtScrollbackTop = async (): Promise<void> => {
+    transcriptWheelTrain('up', 12);
+    await HarnessSmoke.Class.awaitFrameSilence(driver);
+  };
+  const transcriptActivity = (runIndex: number): void => {
+    transcriptWheelTrain(runIndex % 2 === 0 ? 'down' : 'up', 3);
+  };
+  await anchorTranscriptAtScrollbackTop();
   await copySelectionRepeatedly(
     'ACTIVE-TRANSCRIPT',
     activeCopyRunCount,
@@ -177,23 +194,23 @@ try {
 
   driver.sendText('ACTIVE-COMPOSER');
   await selectVisibleText('ACTIVE-COMPOSER', true);
-  const composerActivity = (): void => {
-    driver.sendMouseWithoutFrameExpectation({
-      kind: 'wheel',
-      column: transcriptPosition.column,
-      row: transcriptPosition.row,
-      direction: 'down',
-    });
-  };
+  // Same deterministic activity as the transcript phase: the wheel scrolls the transcript (frames)
+  // while the SELECTION lives in the composer — re-anchor first because the transcript phase's
+  // rounds moved the view.
+  await anchorTranscriptAtScrollbackTop();
   await copySelectionRepeatedly(
     'ACTIVE-COMPOSER',
     activeCopyRunCount,
     'active',
-    composerActivity,
+    transcriptActivity,
   );
 
   console.log('== clipboard boundary: idle agent transcript and composer ==');
   await copySelectionRepeatedly('ACTIVE-COMPOSER', idleCopyRunCount, 'idle');
+  // The active phases anchored the transcript at scrollback TOP; the newest message lives at the
+  // bottom — return there before selecting it.
+  transcriptWheelTrain('down', 12);
+  await HarnessSmoke.Class.awaitFrameSilence(driver);
   await selectVisibleText('ACTIVE-TRANSCRIPT');
   await copySelectionRepeatedly('ACTIVE-TRANSCRIPT', idleCopyRunCount, 'idle');
 
