@@ -363,6 +363,16 @@ step "conventions-gate (tsc + conventions + unwired + settings-meta)" bash scrip
 #     hard-blocking now: a broken/misnamed invariant reference fails the gate.
 step "invariant contracts --all (structure)" node .claude/skills/invariants/scripts/check_invariants.mjs --all
 step "invariant contracts --refs (annotations resolve)" node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs
+# 1c) The COVERAGE RATCHET. Every other check above answers "does the suite pass?" — none answers
+#     "is the suite still as strong as it was?". An agent pushed toward a green gate has one cheap move
+#     available (delete the failing assertion) and until now nothing detected it: the invariant checker
+#     only catches a deleted smoke that some Verify line cites, so an UNCITED assertion inside a kept
+#     file could be removed with every gate step still green. That is not hypothetical — it happened
+#     here on 2026-07-25, and only a sentence in a commit message distinguished it from cheating.
+#     This step does not forbid removal; it forbids SILENT removal. Any drop in assertion or wait
+#     counts against the merge base must be declared in coverage-deltas.md, which turns a deletion into
+#     a reviewable diff instead of an invisible one.
+step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverage-ratchet.ts
 # 2) Unit tests.
 step "unit tests (bun test)" bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
