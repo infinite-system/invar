@@ -210,6 +210,9 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
   step "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
   step "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
+  # Shared splitter paint/drag states plus live slot configuration and the right-dock command/mouse
+  # affordance. Kept additive to the pane-specific smokes above.
+  step "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
   step "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
   step "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts

@@ -51,6 +51,12 @@ const coveredSettingNames = new Set([
   'agentNarrationVoice',
   'agentNarrationRate',
   'sidebarWidth',
+  // Live mouse edits plus slot-edge assertions live in smoke-layout-harness.ts.
+  'rightDockWidth',
+  'sidebarPosition',
+  'panelAlignment',
+  'leftDockVerticalSpan',
+  'rightDockVerticalSpan',
   'gitSplitRatio',
   'diffSplitRatio',
   'markdownSplitRatio',

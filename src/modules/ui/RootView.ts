@@ -66,6 +66,7 @@ import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
+import { LayoutModel, type LayoutSlotGeometry } from '../layout/LayoutModel';
 
 // roleColor moved to EditorPaneRenderer with the editor render that used it.
 
@@ -110,6 +111,14 @@ export interface RootView {
   panelViewportRows(): number;
   /** True when the screen cell (x,y) falls inside the visible panel box (focus-follows-click). */
   panelContainsPoint(x: number, y: number): boolean;
+  rightDockViewportColumns(): number;
+  rightDockViewportRows(): number;
+  rightDockContainsPoint(x: number, y: number): boolean;
+  layoutGeometry(): LayoutSlotGeometry;
+  splitterRegions(): Record<
+    'sidebar' | 'git' | 'bottomPanel' | 'rightDock',
+    { left: number; top: number; width: number; height: number; visible: boolean }
+  >;
   dispose(): void;
 }
 
@@ -138,8 +147,10 @@ function $buildRootView(
   shortcutHelp: ShortcutHelp.Instance,
   overlayCoordinator: OverlayCoordinator.Instance,
   panelHost: PanelHost.Instance,
+  rightDockHost: PanelHost.Instance,
   toggleTerminal: () => void,
   toggleAgent: () => void,
+  toggleRightDock: () => void,
   activateQuickOpen: () => void,
   revealFindMatch: () => void,
 ): RootView {
@@ -179,6 +190,12 @@ function $buildRootView(
     minHeight: 0,
     width: '100%',
   });
+  const layoutCanvas = new BoxRenderable(renderer, {
+    id: 'layout-canvas',
+    position: 'relative',
+    flexGrow: 1,
+    height: '100%',
+  });
 
   // The project-layer tab strip is ONE renderable + ONE TabStrip model. The setting moves that same
   // strip between the horizontal top slot and the vertical left slot; it never duplicates state.
@@ -197,6 +214,7 @@ function $buildRootView(
 
   const sidebar = new BoxRenderable(renderer, {
     id: 'sidebar',
+    position: 'absolute',
     width: sidebarWidth(),
     height: '100%',
     border: true,
@@ -212,7 +230,7 @@ function $buildRootView(
   // geometry, and layout-anchored caret coords (codeBody.x/y) completely unchanged.
   const editorColumn = new BoxRenderable(renderer, {
     id: 'editor-column',
-    flexGrow: 1,
+    position: 'absolute',
     height: '100%',
     flexDirection: 'column',
   });
@@ -309,6 +327,25 @@ function $buildRootView(
     sidebar,
   });
   const sidebarDivider = paneSplitters.sidebar.renderable;
+  const rightDockSplitter = new SplitterElement.Class({
+    renderer,
+    identifier: 'right-dock-divider',
+    orientation: 'vertical',
+    reportUnit: 'cells',
+    initialSize: settings.rightDockWidth.value,
+    minimumSize: 16,
+    maximumSize: 70,
+    pointerDirection: -1,
+    currentSize: () => settings.rightDockWidth.value,
+    onDragStart: () => {
+      rightDockHost.focus();
+      panelHost.blur();
+    },
+    onSizeChange: (width) => {
+      settings.rightDockWidth.value = Math.round(width);
+    },
+    onDragEnd: () => settings.save(),
+  });
   // OpenTUI fires BOTH drag-end AND up on release, so guard the persist with an active-drag flag —
   // otherwise the release saves twice (still a per-drag write, but the invariant is exactly one).
 
@@ -324,10 +361,52 @@ function $buildRootView(
     keybindings,
   });
 
-  mainRow.add(activityBar.bar);
-  mainRow.add(sidebar);
-  mainRow.add(sidebarDivider);
-  mainRow.add(editorColumn);
+  layoutCanvas.add(activityBar.bar);
+  layoutCanvas.add(sidebar);
+  layoutCanvas.add(sidebarDivider);
+  layoutCanvas.add(editorColumn);
+  const rightDockBox = new BoxRenderable(renderer, {
+    id: 'right-dock',
+    position: 'absolute',
+    border: true,
+    borderStyle: 'rounded',
+    flexDirection: 'column',
+    title: 'Right Dock',
+    visible: false,
+  });
+  const rightDockBody = new TextRenderable(renderer, {
+    id: 'right-dock-body',
+    content: '',
+    wrapMode: 'none',
+    width: '100%',
+    height: '100%',
+  });
+  rightDockBox.add(rightDockBody);
+  rightDockBox.onMouseDown = () => {
+    panelHost.blur();
+    rightDockHost.focus();
+    renderer.requestRender();
+  };
+  rightDockBody.onMouseDown = (event: MouseEvent) => {
+    panelHost.blur();
+    rightDockHost.focus();
+    rightDockHost.activeContent?.onPointerDown?.(
+      Number(event.x) - Number(rightDockBody.x),
+      Number(event.y) - Number(rightDockBody.y),
+    );
+    renderer.requestRender();
+  };
+  rightDockBody.onMouseScroll = (event) => {
+    const direction = event.scroll?.direction;
+    if (direction !== 'up' && direction !== 'down') return;
+    rightDockHost.activeContent?.onWheel?.(
+      (direction === 'up' ? -1 : 1) * wheelStep(event),
+    );
+    renderer.requestRender();
+  };
+  layoutCanvas.add(rightDockSplitter.renderable);
+  layoutCanvas.add(rightDockBox);
+  mainRow.add(layoutCanvas);
 
   // The status bar is a self-contained pane controller: it owns its renderables (bar/text/`?` button),
   // the button's hover state, and its handlers. RootView mounts statusBar.bar and calls update().
@@ -342,8 +421,10 @@ function $buildRootView(
     theme,
     settingsPanel,
     panelHost,
+    rightDockHost,
     toggleTerminal,
     toggleAgent,
+    toggleRightDock,
   });
 
   // --- bottom panel slot (the composable PanelHost region) --------------------------------------
@@ -356,15 +437,9 @@ function $buildRootView(
   // INTEGRATOR NOTE: this bottom-panel mount is the ONE shared RootView touch for the terminal; it is
   // independent of the activity-bar change landing in parallel (which touches the sidebar/left slot).
   let panelHeightRows = 18; // roomier default terminal (still drag-resizable 3–40 via the divider)
-  const panelStack = new BoxRenderable(renderer, {
-    id: 'panel-stack',
-    flexDirection: 'column',
-    flexShrink: 0, // keep the panel's full height on screen; the main row (flexGrow) yields instead
-    width: '100%',
-  });
   const panelBox = new BoxRenderable(renderer, {
     id: 'panel-box',
-    width: '100%',
+    position: 'absolute',
     height: panelHeightRows,
     flexShrink: 0,
     border: true,
@@ -626,7 +701,6 @@ function $buildRootView(
     onDragStart: () => panelHost.focus(),
     onSizeChange: (height) => {
       panelHeightRows = Math.round(height);
-      panelBox.height = panelHeightRows;
       renderer.requestRender();
     },
   });
@@ -634,6 +708,7 @@ function $buildRootView(
   // Clicking the panel focuses it (focus-follows-click). Blur-on-outside is handled in Bootstrap's
   // global mouse handler via panelContainsPoint.
   panelBox.onMouseDown = () => {
+    rightDockHost.blur();
     panelHost.focus();
     renderer.requestRender();
   };
@@ -642,11 +717,11 @@ function $buildRootView(
     const visible = panelHost.visible.value;
     if (visible === panelMounted) return;
     if (visible) {
-      panelStack.add(panelDividerRenderable);
-      panelStack.add(panelBox);
+      layoutCanvas.add(panelDividerRenderable);
+      layoutCanvas.add(panelBox);
     } else {
-      panelStack.remove(panelDividerRenderable);
-      panelStack.remove(panelBox);
+      layoutCanvas.remove(panelDividerRenderable);
+      layoutCanvas.remove(panelBox);
     }
     panelMounted = visible;
   }
@@ -667,6 +742,118 @@ function $buildRootView(
     // resize must NOT blur the terminal (else the resize deselects the shell you were driving).
     return x >= boxX && x < boxX + boxWidth && y >= boxY - 1 && y < boxY + boxHeight;
   };
+  const rightDockViewportColumns = (): number =>
+    rightDockHost.visible.value
+      ? Math.max(1, Number(rightDockBox.width) - 2)
+      : 0;
+  const rightDockViewportRows = (): number =>
+    rightDockHost.visible.value
+      ? Math.max(1, Number(rightDockBox.height) - 2)
+      : 0;
+  const rightDockContainsPoint = (x: number, y: number): boolean => {
+    if (!rightDockHost.visible.value) return false;
+    const boxLeft = Number(rightDockBox.x);
+    const boxTop = Number(rightDockBox.y);
+    return (
+      x >= boxLeft &&
+      x < boxLeft + Number(rightDockBox.width) &&
+      y >= boxTop &&
+      y < boxTop + Number(rightDockBox.height)
+    );
+  };
+
+  let layoutSlotGeometry: LayoutSlotGeometry = LayoutModel.Class.resolve({
+    totalColumns: 1,
+    totalRows: 1,
+    activityBarVisible: settings.showActivityBar.value,
+    activityBarColumns: 4,
+    sidebarColumns: sidebarWidth(),
+    sidebarPosition: settings.sidebarPosition.value,
+    rightDockVisible: rightDockHost.visible.value,
+    rightDockColumns: settings.rightDockWidth.value,
+    bottomPanelVisible: panelHost.visible.value,
+    bottomPanelRows: panelHeightRows,
+    panelAlignment: settings.panelAlignment.value,
+    leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
+    rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
+  });
+
+  const synchronizeLayoutGeometry = (): void => {
+    const fallbackColumns = Math.max(
+      1,
+      renderer.width -
+        (settings.workspaceTabPosition.value === 'left' ? 22 : 0),
+    );
+    const fallbackRows = Math.max(
+      1,
+      renderer.height -
+        1 -
+        (settings.workspaceTabPosition.value === 'top' ? 2 : 0),
+    );
+    const totalColumns =
+      Number(layoutCanvas.width) > 0
+        ? Number(layoutCanvas.width)
+        : fallbackColumns;
+    const totalRows =
+      Number(layoutCanvas.height) > 0
+        ? Number(layoutCanvas.height)
+        : fallbackRows;
+    layoutSlotGeometry = LayoutModel.Class.resolve({
+      totalColumns,
+      totalRows,
+      activityBarVisible: settings.showActivityBar.value,
+      activityBarColumns: 4,
+      sidebarColumns: sidebarWidth(),
+      sidebarPosition: settings.sidebarPosition.value,
+      rightDockVisible: rightDockHost.visible.value,
+      rightDockColumns: settings.rightDockWidth.value,
+      bottomPanelVisible: panelHost.visible.value,
+      bottomPanelRows: panelHeightRows,
+      panelAlignment: settings.panelAlignment.value,
+      leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
+      rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
+    });
+    activityBar.bar.position = 'absolute';
+    activityBar.bar.left = layoutSlotGeometry.activityBar.left;
+    activityBar.bar.top = layoutSlotGeometry.activityBar.top;
+    activityBar.bar.width = layoutSlotGeometry.activityBar.width;
+    activityBar.bar.height = layoutSlotGeometry.activityBar.height;
+    sidebar.left = layoutSlotGeometry.sidebar.left;
+    sidebar.top = layoutSlotGeometry.sidebar.top;
+    sidebar.width = layoutSlotGeometry.sidebar.width;
+    sidebar.height = layoutSlotGeometry.sidebar.height;
+    paneSplitters.sidebar.setGeometry({
+      left: layoutSlotGeometry.sidebarSplitter.left,
+      top: layoutSlotGeometry.sidebarSplitter.top,
+      length: layoutSlotGeometry.sidebarSplitter.height,
+    });
+    editorColumn.left = layoutSlotGeometry.editorCenter.left;
+    editorColumn.top = layoutSlotGeometry.editorCenter.top;
+    editorColumn.width = layoutSlotGeometry.editorCenter.width;
+    editorColumn.height = layoutSlotGeometry.editorCenter.height;
+    rightDockSplitter.setGeometry({
+      left: layoutSlotGeometry.rightDockSplitter.left,
+      top: layoutSlotGeometry.rightDockSplitter.top,
+      length: layoutSlotGeometry.rightDockSplitter.height,
+      visible: rightDockHost.visible.value,
+    });
+    rightDockBox.visible = rightDockHost.visible.value;
+    rightDockBox.left = layoutSlotGeometry.rightDock.left;
+    rightDockBox.top = layoutSlotGeometry.rightDock.top;
+    rightDockBox.width = layoutSlotGeometry.rightDock.width;
+    rightDockBox.height = layoutSlotGeometry.rightDock.height;
+    if (panelHost.visible.value) {
+      panelSplitter.setGeometry({
+        left: layoutSlotGeometry.bottomPanelSplitter.left,
+        top: layoutSlotGeometry.bottomPanelSplitter.top,
+        length: layoutSlotGeometry.bottomPanelSplitter.width,
+      });
+      panelBox.left = layoutSlotGeometry.bottomPanel.left;
+      panelBox.top = layoutSlotGeometry.bottomPanel.top;
+      panelBox.width = layoutSlotGeometry.bottomPanel.width;
+      panelBox.height = layoutSlotGeometry.bottomPanel.height;
+    }
+  };
 
   if (settings.workspaceTabPosition.value === 'left') {
     mainRow.add(workspaceTabBar, 0);
@@ -674,7 +861,6 @@ function $buildRootView(
     column.add(workspaceTabBar);
   }
   column.add(mainRow);
-  column.add(panelStack); // between the main row and the status bar
   column.add(statusBar.bar);
   root.add(column);
 
@@ -940,8 +1126,8 @@ function $buildRootView(
     const extensionsView = sidebarViewValue === 'extensions';
     // The activity bar reflects sidebarView (active-item accent) + the git badge each frame.
     activityBar.setVisible(settings.showActivityBar.value);
+    synchronizeLayoutGeometry();
     activityBar.update(palette);
-    sidebar.width = sidebarWidth(); // live width from the draggable splitter (persisted to settings)
     sidebar.backgroundColor = palette.panel;
     // Files/git are focusable panels (bright border when their focus owns them); extensions is a
     // display-only placeholder, so it stays dim.
@@ -950,6 +1136,7 @@ function $buildRootView(
     // Divider: brighten while hovered or dragging so it reads as a grab handle.
     paneSplitters.updateAppearance(palette);
     panelSplitter.updateAppearance(palette);
+    rightDockSplitter.updateAppearance(palette);
     sidebar.titleColor = sidebarViewFocused ? palette.accent : palette.dim;
     sidebar.title = gitView ? 'Git' : extensionsView ? 'Extensions' : 'Files';
     editorArea.backgroundColor = palette.bg;
@@ -1022,6 +1209,29 @@ function $buildRootView(
     codeBody.fg = palette.fg;
     codeBody.selectionBg = palette.selection;
     editorController.applySelection(); // after content is set, so selection maps onto the current buffer
+    if (rightDockHost.visible.value) {
+      const rightDockFocused = rightDockHost.focused.value;
+      const rightDockContent = rightDockHost.activeContent;
+      rightDockBox.backgroundColor = palette.panel;
+      rightDockBox.borderColor = rightDockFocused
+        ? palette.borderActive
+        : palette.border;
+      rightDockBox.titleColor = rightDockFocused
+        ? palette.accent
+        : palette.dim;
+      rightDockBox.title = rightDockContent?.title ?? 'Right Dock';
+      rightDockBody.fg = palette.fg;
+      rightDockBody.content = rightDockContent
+        ? rightDockContent.render({
+            width: rightDockViewportColumns(),
+            height: rightDockViewportRows(),
+            palette,
+            glyphLevel: theme.glyphLevel.value,
+            colorDepth: theme.colorDepth.value,
+            focused: rightDockFocused,
+          })
+        : ' Right dock\n\n No content';
+    }
     // Bottom panel slot: pull EACH visible cell's PaneContent into its own body (one body = the
     // terminal for tier S; two = agent | terminal side by side). The host is content-agnostic — RootView
     // never names the terminal here; it iterates the host's converged cell spans and paints each.
@@ -1036,7 +1246,6 @@ function $buildRootView(
       panelBox.backgroundColor = palette.panel;
       panelBox.borderColor = panelFocused ? palette.borderActive : palette.border;
       panelBox.titleColor = panelFocused ? palette.accent : palette.dim;
-      panelBox.height = panelHeightRows;
       const cellRows = panelViewportRows();
       const panelContentTop = (panelBox.y as number) + 1; // inside the rounded border
       const panelContentLeft = (panelBox.x as number) + 1;
@@ -1092,6 +1301,20 @@ function $buildRootView(
     hoverCard.update(palette);
 
     scrollbarSync.syncScrollbars();
+
+    if (rightDockHost.visible.value && rightDockHost.focused.value) {
+      const caret = rightDockHost.focusedContent?.caret?.() ?? null;
+      if (caret) {
+        renderer.setCursorPosition(
+          rightDockBody.x + caret.column + 1,
+          rightDockBody.y + caret.row + 1,
+          true,
+        );
+      } else {
+        renderer.setCursorPosition(0, 0, false);
+      }
+      return;
+    }
 
     // Native terminal caret in the focused panel: a real block caret at the emulator's cursor cell,
     // anchored to the FOCUSED cell body's laid-out screen cell (+1 for the 1-based ANSI cursor). This
@@ -1372,6 +1595,16 @@ function $buildRootView(
     panelViewportColumns,
     panelViewportRows,
     panelContainsPoint,
+    rightDockViewportColumns,
+    rightDockViewportRows,
+    rightDockContainsPoint,
+    layoutGeometry: () => layoutSlotGeometry,
+    splitterRegions: () => ({
+      sidebar: renderableRegion(paneSplitters.sidebar.renderable),
+      git: renderableRegion(paneSplitters.git.renderable),
+      bottomPanel: renderableRegion(panelSplitter.renderable),
+      rightDock: renderableRegion(rightDockSplitter.renderable),
+    }),
     dispose() {
       try {
         editorContentMount.dispose();
@@ -1382,6 +1615,22 @@ function $buildRootView(
       }
     },
   };
+
+  function renderableRegion(renderable: BoxRenderable): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    visible: boolean;
+  } {
+    return {
+      left: Number(renderable.x),
+      top: Number(renderable.y),
+      width: Number(renderable.width),
+      height: Number(renderable.height),
+      visible: renderable.visible,
+    };
+  }
 }
 
 // invariant: Construction goes through overridable seams (project.invariants.md)

@@ -136,9 +136,13 @@ try {
   console.log('== harness terminal: divider drag resizes the nested child PTY ==');
   const dividerRow = Number(openedStatus.height) - initialRows - 4;
   const dividerTargetRow = dividerRow - 6;
-  driver.sendMouse({ kind: 'press', column: 20, row: dividerRow, button: 'left' });
-  driver.sendMouse({ kind: 'move', column: 20, row: dividerTargetRow, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: 20, row: dividerTargetRow, button: 'left' });
+  const layoutSlots = openedStatus.layoutSlots as
+    | Record<string, { left: number }>
+    | undefined;
+  const dividerColumn = Number(layoutSlots?.bottomPanel?.left ?? 0) + 20;
+  driver.sendMouse({ kind: 'press', column: dividerColumn, row: dividerRow, button: 'left' });
+  driver.sendMouse({ kind: 'move', column: dividerColumn, row: dividerTargetRow, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: dividerColumn, row: dividerTargetRow, button: 'left' });
   const resizedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

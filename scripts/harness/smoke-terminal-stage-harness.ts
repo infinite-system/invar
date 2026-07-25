@@ -48,6 +48,19 @@ async function awaitFileContents(path: string, expected: string): Promise<void> 
   throw new Error(`Timed out waiting for ${path} to contain ${expected}`);
 }
 
+async function openAgentPane(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
+  driver.sendRawInput('\x1b[27;6;97~');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.panelActiveContent === 'agent'
+      && status.terminalFocused === true,
+  );
+}
+
 async function focusPanelCell(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -56,9 +69,13 @@ async function focusPanelCell(
   const status = HarnessSmoke.Class.readStatus(statusPath);
   const cellColumns = (status.panelCellColumns as number[]) ?? [];
   const panelRow = Number(status.height) - 8;
+  const layoutSlots = status.layoutSlots as
+    | Record<string, { left: number }>
+    | undefined;
+  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
   const column = cellIndex === 0
-    ? 10
-    : Number(cellColumns[0] ?? 0) + 6;
+    ? panelLeft + 10
+    : panelLeft + Number(cellColumns[0] ?? 0) + 6;
   driver.sendMouse({ kind: 'press', column, row: panelRow, button: 'left' });
   driver.sendMouse({ kind: 'release', column, row: panelRow, button: 'left' });
   return HarnessSmoke.Class.awaitStatus(
@@ -134,8 +151,7 @@ async function driveAnimatedTerminalTools(
     );
 
     console.log('== harness terminal-stage: echo backend lists provider tools ==');
-    driver.sendRawInput('\x1b[27;6;97~');
-    await driver.awaitSnapshot((candidate) => candidate.findText('Ask Claude') !== null);
+    await openAgentPane(driver, statusPath);
     driver.sendText('terminal-tools:list');
     driver.sendKeys('Enter');
     snapshot = await driver.awaitSnapshot(
@@ -365,8 +381,7 @@ async function driveReducedMotion(
   });
   try {
     await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
-    driver.sendRawInput('\x1b[27;6;97~');
-    await driver.awaitSnapshot((candidate) => candidate.findText('Ask Claude') !== null);
+    await openAgentPane(driver, statusPath);
     const command = `printf INSTANT > ${reducedMotionPath} # ${'x'.repeat(120)}`;
     const startedMilliseconds = performance.now();
     driver.sendText(`terminal-tools:run:${command}`);
@@ -412,8 +427,7 @@ async function measureAgentTypingDuration(
   });
   try {
     await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
-    driver.sendRawInput('\x1b[27;6;97~');
-    await driver.awaitSnapshot((candidate) => candidate.findText('Ask Claude') !== null);
+    await openAgentPane(driver, statusPath);
     const command = `printf ${label.toUpperCase()} > ${executedCommandPath} # ${'x'.repeat(60)}`;
     const startedMilliseconds = performance.now();
     driver.sendText(`terminal-tools:run:${command}`);

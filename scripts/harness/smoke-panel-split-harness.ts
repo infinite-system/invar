@@ -101,7 +101,11 @@ try {
 
   console.log('== harness panel-split: click focuses terminal and stty sees its sub-width ==');
   const panelRow = Number(openedStatus.height) - 8;
-  const rightClickColumn = initialLeftColumns + 6;
+  const layoutSlots = openedStatus.layoutSlots as
+    | Record<string, { left: number }>
+    | undefined;
+  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0);
+  const rightClickColumn = panelLeft + initialLeftColumns + 6;
   driver.sendMouse({
     kind: 'press',
     column: rightClickColumn,
@@ -138,7 +142,7 @@ try {
   );
 
   console.log('== harness panel-split: divider drag reflows both cells ==');
-  const dividerColumn = initialLeftColumns + 1;
+  const dividerColumn = panelLeft + initialLeftColumns + 1;
   const targetColumn = dividerColumn - 18;
   driver.sendMouse({ kind: 'press', column: dividerColumn, row: panelRow, button: 'left' });
   driver.sendMouse({

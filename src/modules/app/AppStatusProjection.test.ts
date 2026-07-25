@@ -80,6 +80,7 @@ describe('AppStatusProjection', () => {
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
+    const rightDockHost = new PanelHost.Class();
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
@@ -95,11 +96,30 @@ describe('AppStatusProjection', () => {
       shortcutHelp,
       tooltip,
       panelHost,
+      rightDockHost,
       view: {
         activeDiffView: () => null,
         activeMarkdownSplitView: () => null,
         panelViewportColumns: () => 80,
         panelViewportRows: () => 24,
+        rightDockViewportColumns: () => 28,
+        rightDockViewportRows: () => 24,
+        layoutGeometry: () => ({
+          activityBar: { left: 0, top: 0, width: 4, height: 40 },
+          sidebar: { left: 4, top: 0, width: 32, height: 40 },
+          sidebarSplitter: { left: 36, top: 0, width: 1, height: 40 },
+          editorCenter: { left: 37, top: 0, width: 55, height: 40 },
+          rightDockSplitter: { left: 92, top: 0, width: 1, height: 40 },
+          rightDock: { left: 93, top: 0, width: 27, height: 40 },
+          bottomPanelSplitter: { left: 37, top: 21, width: 55, height: 1 },
+          bottomPanel: { left: 37, top: 22, width: 55, height: 18 },
+        }),
+        splitterRegions: () => ({
+          sidebar: { left: 36, top: 0, width: 1, height: 40, visible: true },
+          git: { left: 4, top: 15, width: 32, height: 1, visible: false },
+          bottomPanel: { left: 37, top: 21, width: 55, height: 1, visible: false },
+          rightDock: { left: 92, top: 0, width: 1, height: 40, visible: false },
+        }),
       },
       get mouse() {
         return mouse;
@@ -144,5 +164,6 @@ describe('AppStatusProjection', () => {
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
 
     panelHost.dispose();
+    rightDockHost.dispose();
   });
 });

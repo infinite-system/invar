@@ -35,6 +35,13 @@ test('icon fallback ladder: nerd has glyphs, ascii uses markers', () => {
   expect(ThemeIcons.Class.iconFor(ascii, 'sub', true, true)).toBe('-');
 });
 
+test('right dock affordance has one cell at every glyph tier', () => {
+  expect(ThemeIcons.Class.rightDockIconFor('ascii')).toBe('R');
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    expect([...ThemeIcons.Class.rightDockIconFor(level)].length).toBe(1);
+  }
+});
+
 test('unicode icon set resolves known extension and falls back for unknown', () => {
   const unicodeSet = ThemeIcons.Class.iconSetFor('unicode');
   expect(ThemeIcons.Class.iconFor(unicodeSet, 'main.ts', false)).toBe('◆');

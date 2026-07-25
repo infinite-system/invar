@@ -34,12 +34,18 @@ export interface AppStatusProjectionPorts {
   readonly settings: Pick<
     InstanceType<typeof Settings.Class>,
     | 'workspaceTabPosition'
+    | 'sidebarPosition'
+    | 'panelAlignment'
+    | 'leftDockVerticalSpan'
+    | 'rightDockVerticalSpan'
     | 'agentNarrationVoice'
     | 'agentNarrationRate'
     | 'showActivityBar'
     | 'diffSplitRatio'
     | 'markdownSplitRatio'
+    | 'gitSplitRatio'
     | 'sidebarWidth'
+    | 'rightDockWidth'
     | 'agentAudioNarration'
   >;
   readonly commands: Pick<
@@ -84,9 +90,25 @@ export interface AppStatusProjectionPorts {
     | 'focusedIndex'
     | 'cellSpans'
   >;
+  readonly rightDockHost: Pick<
+    InstanceType<typeof PanelHost.Class>,
+    | 'visible'
+    | 'focused'
+    | 'activeId'
+    | 'order'
+    | 'resolvedCells'
+    | 'focusedContent'
+  >;
   readonly view: Pick<
     RootView,
-    'activeDiffView' | 'activeMarkdownSplitView' | 'panelViewportColumns' | 'panelViewportRows'
+    | 'activeDiffView'
+    | 'activeMarkdownSplitView'
+    | 'panelViewportColumns'
+    | 'panelViewportRows'
+    | 'rightDockViewportColumns'
+    | 'rightDockViewportRows'
+    | 'layoutGeometry'
+    | 'splitterRegions'
   >;
   readonly mouse: AppStatusMouseEvent | null;
   readonly narration: Pick<
@@ -245,6 +267,7 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
     markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
     markdownSplitRatio: ports.settings.markdownSplitRatio.value,
+    gitSplitRatio: ports.settings.gitSplitRatio.value,
     markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
     markdownPreviewSelectionChars: markdownSplitView?.selectionCharacterCount() ?? 0,
     markdownHoveredReference: markdownSplitView?.hoveredReferencePath.value ?? null,
@@ -254,6 +277,11 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     shortcutHelpScrollTop: ports.shortcutHelp.scrollTop.value,
     shortcutHelpRowCount: ports.shortcutHelp.open.value ? ports.shortcutHelp.rows().length : 0,
     sidebarWidth: ports.settings.sidebarWidth.value,
+    sidebarPosition: ports.settings.sidebarPosition.value,
+    panelAlignment: ports.settings.panelAlignment.value,
+    leftDockVerticalSpan: ports.settings.leftDockVerticalSpan.value,
+    rightDockVerticalSpan: ports.settings.rightDockVerticalSpan.value,
+    rightDockWidth: ports.settings.rightDockWidth.value,
     // Total working-tree changes — proves the GitWatcher live-refreshes on EXTERNAL fs changes.
     gitChangedCount: (() => {
       const repository = ports.workspaceSet.active.git.value;
@@ -284,6 +312,14 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     panelCellColumns: ports.panelHost
       .cellSpans(ports.view.panelViewportColumns())
       .map((span) => span.columns),
+    rightDockVisible: ports.rightDockHost.visible.value,
+    rightDockFocused: ports.rightDockHost.focused.value,
+    rightDockActiveContent: ports.rightDockHost.activeId.value,
+    rightDockContentIds: ports.rightDockHost.order.value,
+    rightDockColumns: ports.view.rightDockViewportColumns(),
+    rightDockRows: ports.view.rightDockViewportRows(),
+    layoutSlots: ports.view.layoutGeometry(),
+    splitterRegions: ports.view.splitterRegions(),
     // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
     activeFileIsImage: ports.workspaceSet.active.activeFileIsImage,
     // Current-line git blame author (GitLens parity) — the driving smoke reads this to prove a tracked

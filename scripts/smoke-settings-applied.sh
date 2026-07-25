@@ -36,9 +36,11 @@ export PATH="$HOME/.bun/bin:$PATH"
 # agentNarrationVoice / agentNarrationRate change how the piper/espeak SUBPROCESS is spawned (voice model
 # + length_scale/wpm), driven in scripts/smoke-voice-picker.sh (the picker dynamic-enum + a mouse edit) —
 # covered here for the schema meta-gate.
+# The layout-model settings (sidebarPosition, panelAlignment, both dock spans, and rightDockWidth)
+# are mouse/byte-driven by smoke-layout-harness.ts against live slot edges and divider resize.
 # reducedMotion / agentTypingSpeed / terminalCleanPrompt are byte-driven by
 # smoke-terminal-stage-harness.ts (instant-vs-animated command staging and the spawned-shell prompt).
-COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth gitSplitRatio diffSplitRatio markdownSplitRatio"
+COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio"
 
 # ---- schema-enumeration META-GATE (cheap; the enforcing check) -------------------------------------
 meta_gate() {

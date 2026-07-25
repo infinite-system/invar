@@ -13,7 +13,7 @@ import type { Ref } from 'vue';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 
-/** What a pane content is handed to render itself into the panel slot. */
+/** What a pane content is handed to render itself into a hosted pane slot. */
 export interface PaneRenderContext {
   /** Inner cell columns available to the content. */
   width: number;
@@ -28,7 +28,7 @@ export interface PaneRenderContext {
   focused: boolean;
 }
 
-/** A switchable occupant of the bottom panel slot. */
+/** A switchable occupant of any PanelHost-backed slot. */
 export interface PaneContent {
   /** Stable identity used by the switcher (unique within a PanelHost). */
   readonly id: string;

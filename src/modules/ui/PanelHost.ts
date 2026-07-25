@@ -1,4 +1,4 @@
-// The bottom panel SLOT: a generic host for a switchable AND splittable set of PaneContents. It owns
+// A pane SLOT: a generic host for a switchable AND splittable set of PaneContents. It owns
 // only WHICH contents are visible, how the visible ones share the width, which one has the keyboard,
 // and whether the slot is visible/focused — never the contents' internals. This is the same switch
 // idiom the sidebar uses for Files/Git, generalized twice: registering another PaneContent (Output,
@@ -43,6 +43,8 @@ export interface PanelCellSpan {
 const MINIMUM_CELL_RATIO = 0.12;
 
 class $PanelHost {
+  constructor(readonly options: PanelHostOptions = {}) {}
+
   /** The registry, keyed by content id. Non-reactive — `order`/`layout` drive what shows. */
   private readonly contents = new Map<string, PaneContent>();
 
@@ -90,6 +92,9 @@ class $PanelHost {
     this.contents.set(content.id, content);
     this.order.value = [...this.order.value, content.id];
     if (this.activeId.value === null) this.activeId.value = content.id;
+    // Registration may land asynchronously (for example, a plugin becoming ready). Reveal the
+    // dock-style host without stealing keyboard focus from the pane the user is actively driving.
+    if (this.options.showWhenContentRegistered) this.visible.value = true;
   }
 
   /** Whether a content id is registered. */
@@ -315,4 +320,8 @@ export namespace PanelHost {
   export const $Class = $PanelHost;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface PanelHostOptions {
+  showWhenContentRegistered?: boolean;
 }

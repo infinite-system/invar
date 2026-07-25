@@ -142,6 +142,9 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // The bottom panel slot: a generic, content-agnostic host. Tier S registers ONE PaneContent (the
   // terminal), lazily on first toggle so no shell spawns until the panel is opened.
   const panelHost = new PanelHost.Class();
+  const rightDockHost = new PanelHost.Class({
+    showWhenContentRegistered: true,
+  });
 
   const overlayCoordinator = new OverlayCoordinator.Class({
     findBar: () => findBar.close(),
@@ -167,6 +170,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       panelHost.hide();
       return;
     }
+    rightDockHost.blur();
     panelHost.activate('terminal');
     panelHost.show();
   };
@@ -180,8 +184,14 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       panelHost.hide();
       return;
     }
+    rightDockHost.blur();
     panelHost.activate('agent');
     panelHost.show();
+  };
+  const toggleRightDock = (): void => {
+    // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
+    rightDockHost.toggle();
+    if (rightDockHost.visible.value) panelHost.blur();
   };
 
   // Reveal through the bound pane target: source, Markdown preview, and each diff side keep their own
@@ -229,8 +239,10 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     shortcutHelp,
     overlayCoordinator,
     panelHost,
+    rightDockHost,
     toggleTerminal,
     toggleAgent,
+    toggleRightDock,
     activateQuickOpenSelection,
     revealFindMatch,
   );
@@ -399,6 +411,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     narration?.dispose();
     testVoiceBackend?.dispose();
     panelHost.dispose();
+    rightDockHost.dispose();
   });
 
   // Toggle the bottom panel between one cell and two side-by-side cells — the AGENT pane on the LEFT,
@@ -478,6 +491,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     shortcutHelp,
     tooltip,
     panelHost,
+    rightDockHost,
     view,
     get mouse() {
       return lastMouse;
@@ -621,6 +635,13 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     // Repaint on ANY visible cell's paint signal — a split panel has two live panes, either of which
     // can emit async output (PTY bytes) that must repaint without a keypress.
     for (const content of panelHost.visibleContents()) void content.renderRevision.value;
+    void rightDockHost.visible.value;
+    void rightDockHost.focused.value;
+    void rightDockHost.activeId.value;
+    void rightDockHost.order.value;
+    for (const content of rightDockHost.visibleContents()) {
+      void content.renderRevision.value;
+    }
     HandlerGuard.Class.run('paint', paint, () => renderer.requestRender());
   });
 
@@ -646,6 +667,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // width across cells) re-fires setViewportSize — otherwise a cell's child (a real terminal) keeps its
   // pre-split full width because the panel's outer width never changed.
   let lastPanelLayoutKey = '';
+  let lastRightDockLayoutKey = '';
   const syncAnimationLiveness = (animating: boolean): void => {
     if (animating && !liveAnimationHeld) {
       renderer.requestLive();
@@ -711,6 +733,20 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
         renderer.requestRender();
       }
     }
+    if (rightDockHost.visible.value) {
+      const rightDockColumns = view.rightDockViewportColumns();
+      const rightDockRows = view.rightDockViewportRows();
+      const layoutKey = `${rightDockColumns}:${rightDockRows}:${rightDockHost.activeId.value ?? ''}`;
+      if (
+        rightDockColumns > 0 &&
+        rightDockRows > 0 &&
+        layoutKey !== lastRightDockLayoutKey
+      ) {
+        lastRightDockLayoutKey = layoutKey;
+        rightDockHost.setViewportSize(rightDockColumns, rightDockRows);
+        renderer.requestRender();
+      }
+    }
     StatusChannel.Class.settle(frame);
     // Exact per-cell visual snapshot for tests (env-gated; no-op otherwise).
     FrameProbe.Class.dump(renderer, framePath);
@@ -771,6 +807,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       settings.showActivityBar.value = !settings.showActivityBar.value;
       app.requestRender();
     },
+    toggleRightDock,
     hasHoveredMarkdownReference: () =>
       Boolean(view.activeMarkdownSplitView()?.hoveredReferencePath.value),
     openHoveredMarkdownReference: () => view.activeMarkdownSplitView()?.openHoveredReference(),
@@ -946,6 +983,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       settings.showActivityBar.value = !settings.showActivityBar.value;
       app.requestRender();
     },
+    'view.toggleRightDock': toggleRightDock,
     'git.up': () => {
       normalizeChangesIndex();
       if (workspaceSet.active.gitPanel.region.value === 'changes') moveChanges(-1);
@@ -1379,6 +1417,10 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       panelHost.handleKey(key);
       return;
     }
+    if (rightDockHost.visible.value && rightDockHost.focused.value) {
+      rightDockHost.handleKey(key);
+      return;
+    }
 
     // Context menu is MODAL: keys resolve ONLY in the 'menu' context (bindings are registry
     // data); anything that is not a menu action closes the menu and is CONSUMED — no keystroke
@@ -1572,6 +1614,10 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       panelHost.handlePaste(text);
       return; // a focused panel owns paste even if its pane has no sink — never leak to the editor
     }
+    if (rightDockHost.visible.value && rightDockHost.focused.value) {
+      rightDockHost.handlePaste(text);
+      return;
+    }
     const singleLine = text.replace(/[\r\n]+/g, ' ');
     if (boundedListPopup.open.value) {
       if (boundedListPopup.searchEnabled) boundedListPopup.appendQuery(singleLine);
@@ -1601,6 +1647,13 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       // clicked away from.
       if (event.type === 'down' && panelHost.focused.value && !view.panelContainsPoint(event.x, event.y)) {
         panelHost.blur();
+      }
+      if (
+        event.type === 'down' &&
+        rightDockHost.focused.value &&
+        !view.rightDockContainsPoint(event.x, event.y)
+      ) {
+        rightDockHost.blur();
       }
       if (event.type === 'down') tooltip.clear(); // any click hides the tooltip, wherever it lands
       // A click hides the hover card UNLESS it lands ON the card (engaged): a down on the card begins a

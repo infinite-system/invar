@@ -35,12 +35,14 @@ export interface StatusBarDeps {
   settingsPanel: SettingsPanel.Instance;
   /** The bottom panel; the terminal button reads its `visible` state to light up when open. */
   panelHost: PanelHost.Instance;
+  rightDockHost: PanelHost.Instance;
   /** Lazy-inits the terminal + toggles the bottom panel — the SAME closure the panel.toggleTerminal
    *  keybinding runs, so the button and the chord are one action (no divergent toggle paths). */
   toggleTerminal: () => void;
   /** Lazy-inits the agent pane + shows/activates it in the bottom panel — the SAME closure the
    *  panel.toggleAgent keybinding runs, so the button and the chord are one action. */
   toggleAgent: () => void;
+  toggleRightDock: () => void;
 }
 
 class $StatusBar {
@@ -51,11 +53,13 @@ class $StatusBar {
   private readonly settingsButton: TextRenderable;
   private readonly terminalButton: TextRenderable;
   private readonly agentButton: TextRenderable;
+  private readonly rightDockButton: TextRenderable;
   private readonly clock: TextRenderable;
   private hover = false;
   private settingsHover = false;
   private terminalHover = false;
   private agentHover = false;
+  private rightDockHover = false;
   // The clock's single re-armed minute-boundary timer (NOT a per-second interval): the only periodic
   // wake at rest, once/min, so it forces the demand-driven loop to repaint the new minute without
   // turning idle into a busy loop.
@@ -103,6 +107,13 @@ class $StatusBar {
       height: 1,
       selectable: false,
     });
+    this.rightDockButton = new TextRenderable(renderer, {
+      id: 'status-right-dock-button',
+      content: ` ${deps.theme.rightDockIcon} `,
+      width: 3,
+      height: 1,
+      selectable: false,
+    });
     // Settings (gear) affordance: a hit-tested single-cell glyph pinned to the right end, LEFT of the
     // `?` button. Click toggles the settings panel through the exclusive-overlay coordinator (the same
     // way `?` toggles the cheat-sheet); hover shows a tooltip with the bound open chord.
@@ -122,6 +133,7 @@ class $StatusBar {
     });
     this.bar.add(spacer);
     this.bar.add(this.clock);
+    this.bar.add(this.rightDockButton);
     this.bar.add(this.agentButton);
     this.bar.add(this.terminalButton);
     this.bar.add(this.settingsButton);
@@ -163,6 +175,33 @@ class $StatusBar {
     this.agentButton.onMouseOut = () => {
       if (this.agentHover) {
         this.agentHover = false;
+        renderer.requestRender();
+      }
+      deps.tooltip.clear();
+    };
+    this.rightDockButton.onMouseDown = () => {
+      // invariant: Right dock command and mouse affordance share one toggle (ui.invariants.md)
+      deps.toggleRightDock();
+      renderer.requestRender();
+    };
+    this.rightDockButton.onMouseMove = (event) => {
+      if (!this.rightDockHover) {
+        this.rightDockHover = true;
+        renderer.requestRender();
+      }
+      const openChordHint = deps.keybindings.bindingHint(
+        'view.toggleRightDock',
+        'global',
+      );
+      deps.tooltip.point(
+        `Right dock${openChordHint ? ` (${openChordHint})` : ''}`,
+        event.x,
+        event.y,
+      );
+    };
+    this.rightDockButton.onMouseOut = () => {
+      if (this.rightDockHover) {
+        this.rightDockHover = false;
         renderer.requestRender();
       }
       deps.tooltip.clear();
@@ -306,6 +345,11 @@ class $StatusBar {
     this.agentButton.content = ` ${this.deps.theme.agentIcon} `;
     this.agentButton.fg =
       this.agentHover || (panelVisible && activeId === 'agent') ? palette.accent : palette.dim;
+    this.rightDockButton.content = ` ${this.deps.theme.rightDockIcon} `;
+    this.rightDockButton.fg =
+      this.rightDockHover || this.deps.rightDockHost.visible.value
+        ? palette.accent
+        : palette.dim;
     // The gear affordance mirrors it: current-tier glyph, brightening on hover / while settings is open.
     this.settingsButton.content = ` ${this.deps.theme.settingsIcon} `;
     this.settingsButton.fg =

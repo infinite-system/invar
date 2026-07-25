@@ -18,6 +18,7 @@ export interface CommandContext {
   previousDiffChange: () => void;
   toggleMarkdownPreview: () => void;
   toggleActivityBar: () => void;
+  toggleRightDock: () => void;
   hasHoveredMarkdownReference: () => boolean;
   openHoveredMarkdownReference: () => void;
   openShortcutHelp: () => void;
@@ -180,6 +181,12 @@ function $registerDefaultCommands(
       title: 'View: Toggle Activity Bar',
       category: 'View',
       run: context.toggleActivityBar,
+    },
+    {
+      id: 'view.toggleRightDock',
+      title: 'View: Toggle Right Dock',
+      category: 'View',
+      run: context.toggleRightDock,
     },
     {
       id: 'markdown.togglePreview',

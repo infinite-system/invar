@@ -938,3 +938,32 @@ adjust/clamp path.
 **Status:** provisional
 
 **Last refined:** 2026-07-23
+
+### Right dock command and mouse affordance share one toggle
+
+**Invariant:** If the right dock can be shown or hidden through a command, then the status-bar
+affordance performs that same toggle and visibly reflects the resulting state; mouse and keyboard
+never mutate separate visibility flags.
+
+**Scope:** The empty-by-default right-dock slot, `view.toggleRightDock`, and the right-dock button in
+`StatusBar`.
+
+**Mechanism:** Bootstrap owns one `toggleRightDock` closure over the right dock's `PanelHost` and
+injects it into both the command registry and `StatusBar`. The button calls that closure and paints
+with the accent role while hovered or while the dock is visible.
+
+**Generates:** A future `PaneContent` registration reveals the same host; clicking the status button
+or invoking the command opens and closes the same resizable dock.
+
+**Evidence:** `src/modules/app/Bootstrap.ts`; `src/modules/commands/CommandDefaults.ts`;
+`src/modules/ui/StatusBar.ts`; `scripts/harness/smoke-layout-harness.ts`.
+
+**Impossible if true:** the button and command disagreeing about whether the right dock is visible,
+or a button that changes appearance without changing the hosted slot.
+
+**Verification:** `bun scripts/harness/smoke-layout-harness.ts` drives both command and pointer
+paths and asserts the shared visibility state plus emulator geometry.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24

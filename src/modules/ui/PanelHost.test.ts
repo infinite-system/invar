@@ -33,6 +33,14 @@ test('the first registered content becomes active', () => {
   expect(host.order.value).toEqual(['terminal']);
 });
 
+test('a dock-style host reveals itself when content is registered', () => {
+  const host = new PanelHost.Class({ showWhenContentRegistered: true });
+  host.register(fakeContent('navigator'));
+  expect(host.visible.value).toBe(true);
+  expect(host.focused.value).toBe(false);
+  expect(host.activeId.value).toBe('navigator');
+});
+
 test('toggle shows+focuses then hides+blurs', () => {
   const host = new PanelHost.Class();
   const terminal = fakeContent('terminal');
