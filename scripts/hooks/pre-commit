@@ -8,6 +8,17 @@
 # Install: bash scripts/install-hooks.sh  (symlinks .git/hooks/pre-commit → this file).
 set -uo pipefail
 
+# FORMAT FIRST, always (even under SKIP_GATE): staged TypeScript is prettier-formatted and
+# re-staged, so every commit lands uniform (80-char width, 2-space indent) regardless of which
+# builder or human wrote it. Scope matches .prettierignore.
+export PATH="$HOME/.bun/bin:$PATH"
+staged_typescript_files="$(git diff --cached --name-only --diff-filter=ACMR -- '*.ts' | grep -vE '^(dist/|node_modules/)' || true)"
+if [ -n "$staged_typescript_files" ]; then
+  echo "$staged_typescript_files" | xargs bunx prettier --write --log-level warn
+  echo "$staged_typescript_files" | xargs git add
+  echo "pre-commit: prettier formatted $(echo "$staged_typescript_files" | wc -l) staged file(s)." >&2
+fi
+
 if [ "${SKIP_GATE:-0}" = "1" ]; then
   echo "pre-commit: SKIP_GATE=1 — skipping the full merge-gate (bypass acknowledged)." >&2
   exit 0

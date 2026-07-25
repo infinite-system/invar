@@ -1,0 +1,9 @@
+# Formatting scope is TypeScript sources and scripts only. Markdown (invariants files, briefs)
+# stays hand-formatted: the invariant checker anchors on exact heading/citation shapes. Fixtures
+# are recorded byte streams. dist is build output.
+*.md
+dist/
+node_modules/
+src/modules/terminal/fixtures/
+.perf-history/
+artifacts/
