@@ -48,15 +48,39 @@ if [ "$reaped_orphan_instances" -gt 0 ]; then
 fi
 echo "merge-gate: starting with $(pgrep -cf 'src/main\.ts /tmp/tui-' 2>/dev/null || echo 0) test app instance(s) live"
 fail=0
+# Failing steps keep their FULL output here — tail-25 destroyed the failing condition three times
+# on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
+failure_log_directory="/tmp/merge-gate-failures"
+rm -rf "$failure_log_directory"
+mkdir -p "$failure_log_directory"
 step() {
   local name="$1"; shift
   echo "== merge-gate: $name =="
   if "$@" >/tmp/merge-gate-step.$$.log 2>&1; then
     echo "  OK    $name"
-  else
-    echo "  FAIL  $name"; tail -25 /tmp/merge-gate-step.$$.log | sed 's/^/    | /'
-    fail=1
+    rm -f /tmp/merge-gate-step.$$.log
+    return
   fi
+  local failure_slug
+  failure_slug="$(echo "$name" | tr -cs 'a-zA-Z0-9' '-')"
+  # RETRY-ONCE FOR TIMEOUT REDS: a wait-timeout under ambient load (user instances, LSP starts,
+  # shared git object store) is the starvation class the quiet-machine doctrine reruns by hand.
+  # Only 'Timed out' failures retry, exactly once, after a settle pause; any other failure — and a
+  # second timeout — is a defect and blocks. Both attempts' full logs are preserved.
+  if grep -q 'Timed out' /tmp/merge-gate-step.$$.log; then
+    cp /tmp/merge-gate-step.$$.log "$failure_log_directory/$failure_slug.attempt1.log"
+    echo "  RETRY $name — timeout-class failure; one quiet retry (attempt 1 log preserved)"
+    sleep 10
+    if "$@" >/tmp/merge-gate-step.$$.log 2>&1; then
+      echo "  OK    $name (clean on retry; first attempt was starvation-class)"
+      rm -f /tmp/merge-gate-step.$$.log
+      return
+    fi
+  fi
+  cp /tmp/merge-gate-step.$$.log "$failure_log_directory/$failure_slug.log"
+  echo "  FAIL  $name (full log: $failure_log_directory/$failure_slug.log)"
+  tail -25 /tmp/merge-gate-step.$$.log | sed 's/^/    | /'
+  fail=1
   rm -f /tmp/merge-gate-step.$$.log
 }
 # A SOFT step: it RUNS and REPORTS (so a regression surfaces in the gate), but a non-zero exit does
