@@ -741,3 +741,32 @@ sat at 100% while another project's idle Docker stack held ~5GB. Under reclaim a
 enough to blow a frame wait — that is the timeout-class red signature. Stopping idle containers did
 more for stability than any harness change; bounding the harness's own unbounded byte retention (in
 flight) removes OUR contribution.
+
+## 2026-07-25 19:30 — three doctrine corrections from the gate-pool landing
+**A green gate cannot testify about a change to the gate.** A builder delivered a 466-line
+`merge-gate.sh` rewrite (parallel pool + quiet tail). A pool that silently drops a smoke still reports
+ALL-PASS, so review means coverage-preservation SET diffing against the previous script: extract the
+harness-smoke filenames and the step labels from both and compare. Result 53/53 and 111/111 identical.
+That check is now mandatory for any change to gate, harness, or checker scripts.
+
+**Classify by structure, never by domain vocabulary.** The pool's own guard decided parallel-safety by
+grepping feature words (`Momentum|glide`). `smoke-terminal-stage-harness` says "animation" and
+"reducedMotion" while asserting `elapsedMilliseconds < 1000` and `slowDuration > fastDuration + 400`
+across two separately launched apps — it slipped through and would have flaked under the pool's own
+load. The replacement tell is structural: a wait deadline ADDS to a clock reading and compares (robust,
+it just waits longer), a measurement SUBTRACTS two readings. Same error shape as the `.value` lint the
+user rejected earlier; when a check infers a semantic property from names, find the structural form.
+
+**Prefer wait-until over a duration window, and state coverage deltas out loud.** `smoke-git-blame` used
+`assertNoCompleteFrameEmittedFor(600)`, which was unsound rather than flaky: GitWatcher's 5 s reconcile
+floor legitimately repaints after the fixture's untracked file appears, so ~12% of windows contained a
+CORRECT repaint (reproduced 1-in-3 solo). No wall-clock window separates churn from convergence. The
+claim was rewritten as state ("a document outside version control publishes no blame author however
+often git reconciles"), and the dropped no-churn claim was named explicitly in the commit with its
+restore path — a removed assertion that nobody records is indistinguishable from coverage that never
+existed.
+
+Also: a liveness probe that can only fail toward "dead" needs a positive control. `find -newermt` used
+wrongly reported two healthy builders as having written nothing; `-mmin` showed 576 and 588 touched
+files. The 10-minute heartbeat greps worktree writes exactly this way, so a bad probe there invites a
+takeover of work that is fine.
