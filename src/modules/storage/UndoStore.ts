@@ -1,25 +1,19 @@
 // Undo/redo as a bounded stack of document snapshots with time+kind coalescing, so a run of
 // typed characters collapses into one undo step. Snapshot-based (correct and simple); a
 // piece-table delta store is the performance refinement (see KNOWN_LIMITATIONS.md).
-//
 // invariant: Cost tracks the actively observed set (project.invariants.md)
-//   — the stack is bounded (MAX_DEPTH); the oldest states are evicted, not retained forever.
-
-export type EditKind = 'insert' | 'delete' | 'newline' | 'paste' | 'other';
-
-export interface UndoState {
-  lines: string[];
-  cursor: { line: number; col: number };
-  kind: EditKind;
-  at: number;
-}
-
-const MAX_DEPTH = 500;
-const COALESCE_MS = 400;
-
+//   — the stack is bounded; the oldest states are evicted, not retained forever.
 class $UndoStore {
-  private undoStack: UndoState[] = [];
-  private redoStack: UndoState[] = [];
+  protected static get maximumDepth(): number {
+    return 500;
+  }
+
+  protected static get coalesceMilliseconds(): number {
+    return 400;
+  }
+
+  protected undoStack: UndoState[] = [];
+  protected redoStack: UndoState[] = [];
 
   clear(): void {
     this.undoStack = [];
@@ -48,14 +42,20 @@ class $UndoStore {
       previous &&
       previous.kind === state.kind &&
       (state.kind === 'insert' || state.kind === 'delete') &&
-      now - previous.at < COALESCE_MS
+      now - previous.at <
+        (this.constructor as typeof $UndoStore).coalesceMilliseconds
     ) {
       // Keep the earlier pre-edit state; just refresh its timestamp so the run keeps coalescing.
       previous.at = now;
       return;
     }
     this.undoStack.push(state);
-    if (this.undoStack.length > MAX_DEPTH) this.undoStack.shift();
+    if (
+      this.undoStack.length >
+      (this.constructor as typeof $UndoStore).maximumDepth
+    ) {
+      this.undoStack.shift();
+    }
   }
 
   /** Pop an undo state; caller must pass the CURRENT state to push onto redo. */
@@ -79,4 +79,13 @@ export namespace UndoStore {
   export const $Class = $UndoStore;
   export let Class = $UndoStore;
   export type Instance = InstanceType<typeof $UndoStore>;
+}
+
+export type EditKind = 'insert' | 'delete' | 'newline' | 'paste' | 'other';
+
+export interface UndoState {
+  lines: string[];
+  cursor: { line: number; col: number };
+  kind: EditKind;
+  at: number;
 }
