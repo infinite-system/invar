@@ -9,8 +9,7 @@
 // invariant: A cursor position resolves to three distinct coordinates (editor.invariants.md)
 
 import { Static } from 'ivue/extras';
-
-const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+import { TextSegmentation } from '../system/TextSegmentation';
 
 // Memoized segmentation, keyed by line CONTENT (content-keyed = revision-proof: an edited line is a
 // new string; identical lines share an entry). Repeated coordinate lookups during a selection drag
@@ -41,8 +40,10 @@ function memoized<Value>(cache: Map<string, Value>, line: string, compute: () =>
 function $graphemeBoundaries(line: string): number[] {
   return memoized(boundariesMemo, line, () => {
     const boundaries: number[] = [0];
-    for (const segment of segmenter.segment(line)) {
-      boundaries.push(segment.index + segment.segment.length);
+    let utf16Offset = 0;
+    for (const grapheme of TextSegmentation.Class.graphemes(line)) {
+      utf16Offset += grapheme.length;
+      boundaries.push(utf16Offset);
     }
     return boundaries;
   });
@@ -50,11 +51,11 @@ function $graphemeBoundaries(line: string): number[] {
 
 /** The grapheme cluster strings of a line, in order. */
 function $graphemes(line: string): string[] {
-  return memoized(clustersMemo, line, () => {
-    const clusters: string[] = [];
-    for (const segment of segmenter.segment(line)) clusters.push(segment.segment);
-    return clusters;
-  });
+  return memoized(
+    clustersMemo,
+    line,
+    () => TextSegmentation.Class.graphemes(line),
+  );
 }
 
 /** Number of user-perceived characters (grapheme clusters) in a line. */

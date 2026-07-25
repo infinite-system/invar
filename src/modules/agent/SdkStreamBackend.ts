@@ -78,7 +78,7 @@ class $SdkStreamBackend implements AgentBackend {
             tool(
               definition.name,
               definition.description,
-              { command: z.string() },
+              definition.requiresCommand ? { command: z.string() } : {},
               async (input) => ({
                 content: [{ type: 'text', text: await definition.invoke(input) }],
               }),
@@ -116,7 +116,7 @@ class $SdkStreamBackend implements AgentBackend {
    *  Auto-allowed tools (a previous 'always-allow') resolve immediately with no prompt. */
   private readonly gateToolCall = async (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> => {
     if (this.disposed) return { behavior: 'deny', message: 'Session closed' };
-    if (AgentTerminalTools.Class.isStageToolName(toolName)) {
+    if (AgentTerminalTools.Class.isLowPermissionToolName(toolName)) {
       return { behavior: 'allow', updatedInput: input };
     }
     if (this.autoAllowedTools.has(toolName)) return { behavior: 'allow', updatedInput: input };

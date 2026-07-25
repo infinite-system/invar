@@ -147,6 +147,26 @@ class $TerminalEmulator {
     return lineText.slice(promptIndex + 2).replace(/\s+$/, '');
   }
 
+  visibleLineText(row: number): string {
+    const active = this.terminal.buffer.active;
+    return active.getLine(active.baseY + row)?.translateToString(true) ?? '';
+  }
+
+  recentTextLines(maximumLineCount = 40): string[] {
+    const active = this.terminal.buffer.active;
+    const safeMaximumLineCount = Math.max(0, maximumLineCount);
+    const firstLineIndex = Math.max(0, active.length - safeMaximumLineCount);
+    const lines: string[] = [];
+    for (
+      let lineIndex = firstLineIndex;
+      lineIndex < active.length;
+      lineIndex += 1
+    ) {
+      lines.push(active.getLine(lineIndex)?.translateToString(true) ?? '');
+    }
+    return lines;
+  }
+
   markPromptSubmitted(): void {
     this.isShellPromptActiveValue = false;
   }

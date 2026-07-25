@@ -131,3 +131,36 @@ test('human Enter during visible staging completes and executes the full sanitiz
     command: 'printf complete > proof.txt',
   });
 });
+
+test('typing writes each grapheme whole and fast-forward never slices a cluster', async () => {
+  const fixture = controllerFixture();
+  const completion = fixture.controller.stageTerminalCommand('🦊✨👩‍💻e\u0301');
+  expect(fixture.writes).toEqual(['🦊']);
+
+  const enterConsumed = fixture.controller.handleUserInput('\r');
+  if (!enterConsumed) fixture.writes.push('\r');
+
+  await completion;
+  expect(fixture.writes).toEqual(['🦊', '✨👩‍💻e\u0301', '\r']);
+});
+
+test('replacement writes one Ctrl+U then stages through the existing sanitized path', async () => {
+  const fixture = controllerFixture({ idle: false, reducedMotion: true });
+  fixture.setInputLine('printf brokn');
+  const completion = fixture.controller.replaceTerminalInput('printf fixed\n');
+  fixture.setInputLine('');
+  fixture.setIdle(true);
+  fixture.controller.notifyTerminalChanged();
+
+  expect(await completion).toEqual({
+    state: 'queued',
+    command: 'printf fixed',
+  });
+  expect(fixture.writes).toEqual(['\x15', 'printf fixed']);
+  expect(fixture.events.at(-1)).toEqual({
+    kind: 'replaced-then-staged',
+    replacedCommand: 'printf brokn',
+    command: 'printf fixed',
+    currentWorkingDirectory: '/workspace',
+  });
+});

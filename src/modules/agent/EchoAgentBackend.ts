@@ -148,9 +148,34 @@ class $EchoAgentBackend implements AgentBackend {
       this.emit({ kind: 'session-end', reason: 'completed' });
       return;
     }
-    const match = /^terminal-tools:(stage|run):(.*)$/s.exec(prompt);
+    if (prompt === 'terminal-tools:read') {
+      const definition = definitions.find(
+        (candidate) => candidate.name === 'readTerminalInput',
+      );
+      const toolIdentifier = `echo-terminal-tool-${Date.now()}`;
+      this.emit({
+        kind: 'tool-use',
+        id: toolIdentifier,
+        name: 'readTerminalInput',
+        input: {},
+      });
+      const result = definition
+        ? await definition.invoke({})
+        : 'readTerminalInput is unavailable.';
+      this.emit({
+        kind: 'tool-result',
+        id: toolIdentifier,
+        result,
+        isError: !definition,
+      });
+      this.emit({ kind: 'session-end', reason: 'completed' });
+      return;
+    }
+    const match = /^terminal-tools:(stage|replace|run):(.*)$/s.exec(prompt);
     const toolName = match?.[1] === 'run'
       ? 'runTerminalCommand'
+      : match?.[1] === 'replace'
+        ? 'replaceTerminalInput'
       : match?.[1] === 'stage'
         ? 'stageTerminalCommand'
         : null;

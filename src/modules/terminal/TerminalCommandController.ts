@@ -3,12 +3,14 @@ import { TerminalCommandTyping } from './TerminalCommandTyping';
 
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: Animated agent commands stay visible and inert (src/modules/terminal/terminal.invariants.md)
+// invariant: Terminal replacement preserves human execution (src/modules/terminal/terminal.invariants.md)
 class $TerminalCommandController {
   protected readonly pendingRequests: TerminalCommandRequest[] = [];
   protected activeRequest: TerminalCommandRequest | null = null;
   protected activeTimer: unknown = null;
   protected activeResolve: ((outcome: TerminalCommandTypingOutcome) => void) | null = null;
   protected typedCharacterCount = 0;
+  protected activeGraphemes: readonly string[] = [];
   protected stagedCommand: string | null = null;
   protected eventCallback: ((event: TerminalCommandEvent) => void) | null = null;
   protected disposed = false;
@@ -25,6 +27,12 @@ class $TerminalCommandController {
 
   async runTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
     return this.request('run', command);
+  }
+
+  async replaceTerminalInput(command: string): Promise<TerminalCommandRequestResult> {
+    const replacedCommand = this.options.currentInputLine() ?? '';
+    this.options.write('\x15');
+    return this.request('stage', command, replacedCommand);
   }
 
   notifyTerminalChanged(): void {
@@ -56,6 +64,7 @@ class $TerminalCommandController {
       this.cancelActiveTimer();
       this.activeRequest = null;
       this.typedCharacterCount = 0;
+      this.activeGraphemes = [];
       this.resolveActiveTyping('aborted');
       this.emit({ kind: 'aborted', command: interruptedCommand });
       if (bytes === '\x03') {
@@ -95,6 +104,7 @@ class $TerminalCommandController {
     this.pendingRequests.length = 0;
     this.activeRequest = null;
     this.typedCharacterCount = 0;
+    this.activeGraphemes = [];
     this.resolveActiveTyping('aborted');
     this.eventCallback = null;
   }
@@ -102,10 +112,11 @@ class $TerminalCommandController {
   protected async request(
     execution: TerminalCommandExecution,
     command: string,
+    replacedCommand?: string,
   ): Promise<TerminalCommandRequestResult> {
     const sanitizedCommand = TerminalCommandSanitizer.Class.sanitize(command);
     if (!sanitizedCommand) return { state: 'rejected-empty', command: sanitizedCommand };
-    const request = { execution, command: sanitizedCommand };
+    const request = { execution, command: sanitizedCommand, replacedCommand };
     if (this.activeRequest || !this.options.isPromptIdle()) {
       this.pendingRequests.push(request);
       this.emit({
@@ -135,22 +146,27 @@ class $TerminalCommandController {
     this.typedCharacterCount = 0;
     const reducedMotion = this.options.reducedMotion();
     const typingSpeed = this.options.typingSpeed();
-    const delays = reducedMotion
-      ? []
-      : TerminalCommandTyping.Class.delays(request.command, typingSpeed, this.options.random);
+    const typingPlan = TerminalCommandTyping.Class.plan(
+      request.command,
+      typingSpeed,
+      this.options.random,
+    );
+    this.activeGraphemes = typingPlan.graphemes;
     if (reducedMotion) {
       this.options.write(request.command);
+      this.typedCharacterCount = this.activeGraphemes.length;
       this.finishRequest();
       return Promise.resolve('completed');
     }
     return new Promise((resolve) => {
       this.activeResolve = resolve;
-      this.typeCharacter(0, delays);
+      this.typeCharacter(0, typingPlan.graphemes, typingPlan.delays);
     });
   }
 
   protected typeCharacter(
     characterIndex: number,
+    graphemes: readonly string[],
     delays: readonly number[],
   ): void {
     const request = this.activeRequest;
@@ -158,18 +174,18 @@ class $TerminalCommandController {
       this.resolveActiveTyping('aborted');
       return;
     }
-    const character = request.command[characterIndex];
-    if (character === undefined) {
+    const grapheme = graphemes[characterIndex];
+    if (grapheme === undefined) {
       this.finishRequest();
       return;
     }
-    this.options.write(character);
+    this.options.write(grapheme);
     this.typedCharacterCount = characterIndex + 1;
     const delayMilliseconds = delays[characterIndex] ?? 0;
     this.activeTimer = this.options.scheduler.setTimeout(
       () => {
         this.activeTimer = null;
-        this.typeCharacter(characterIndex + 1, delays);
+        this.typeCharacter(characterIndex + 1, graphemes, delays);
       },
       delayMilliseconds,
     );
@@ -189,6 +205,14 @@ class $TerminalCommandController {
         command: request.command,
         currentWorkingDirectory,
       });
+    } else if (request.replacedCommand !== undefined) {
+      this.stagedCommand = request.command;
+      this.emit({
+        kind: 'replaced-then-staged',
+        replacedCommand: request.replacedCommand,
+        command: request.command,
+        currentWorkingDirectory,
+      });
     } else {
       this.stagedCommand = request.command;
       this.emit({
@@ -197,6 +221,7 @@ class $TerminalCommandController {
         currentWorkingDirectory,
       });
     }
+    this.activeGraphemes = [];
     this.resolveActiveTyping('completed');
   }
 
@@ -204,9 +229,11 @@ class $TerminalCommandController {
     const request = this.activeRequest;
     if (!request) return;
     this.cancelActiveTimer();
-    const remainingCommand = request.command.slice(this.typedCharacterCount);
+    const remainingCommand = this.activeGraphemes
+      .slice(this.typedCharacterCount)
+      .join('');
     if (remainingCommand) this.options.write(remainingCommand);
-    this.typedCharacterCount = request.command.length;
+    this.typedCharacterCount = this.activeGraphemes.length;
     this.finishRequest();
   }
 
@@ -243,6 +270,12 @@ export type TerminalCommandEvent =
       currentWorkingDirectory: string;
     }
   | { kind: 'staged'; command: string; currentWorkingDirectory: string }
+  | {
+      kind: 'replaced-then-staged';
+      replacedCommand: string;
+      command: string;
+      currentWorkingDirectory: string;
+    }
   | { kind: 'user-executed'; command: string }
   | { kind: 'user-edited-then-executed'; command: string; executedCommand: string }
   | { kind: 'agent-executed'; command: string; currentWorkingDirectory: string }
@@ -274,6 +307,7 @@ export interface TerminalCommandControllerOptions {
 type TerminalCommandRequest = {
   execution: TerminalCommandExecution;
   command: string;
+  replacedCommand?: string;
 };
 
 type TerminalCommandTypingOutcome = 'completed' | 'aborted';

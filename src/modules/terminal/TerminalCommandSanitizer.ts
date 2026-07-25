@@ -2,7 +2,7 @@ import { Static } from 'ivue/extras';
 
 class $TerminalCommandSanitizer {
   protected static get terminalControlSequencePattern(): RegExp {
-    return /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|.)/g;
+    return /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[\u0000-\u007f])/g;
   }
 
   protected static get controlCharacterPattern(): RegExp {

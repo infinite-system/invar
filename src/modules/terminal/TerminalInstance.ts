@@ -115,6 +115,17 @@ class $TerminalInstance {
     return this.terminalCommandController.runTerminalCommand(command);
   }
 
+  replaceTerminalInput(command: string): Promise<TerminalCommandRequestResult> {
+    return this.terminalCommandController.replaceTerminalInput(command);
+  }
+
+  readTerminalInput(): TerminalInputSnapshot {
+    return {
+      currentInputLine: this.emulator.currentPromptInputLine(),
+      recentOutputLines: this.emulator.recentTextLines(40),
+    };
+  }
+
   onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
     this.terminalCommandController.onEvent(callback);
   }
@@ -150,6 +161,10 @@ class $TerminalInstance {
   /** Pull one visible cell for the renderer (viewport-pull; no per-cell state held here). */
   cell(row: number, column: number): TerminalCell | null {
     return this.emulator.cell(row, column);
+  }
+
+  visibleLineText(row: number): string {
+    return this.emulator.visibleLineText(row);
   }
 
   dispose(): void {
@@ -188,4 +203,9 @@ export namespace TerminalInstance {
 export interface TerminalInstanceCommandOptions {
   typingSpeed?: () => number;
   reducedMotion?: () => boolean;
+}
+
+export interface TerminalInputSnapshot {
+  currentInputLine: string | null;
+  recentOutputLines: readonly string[];
 }

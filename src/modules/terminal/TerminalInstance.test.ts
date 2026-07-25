@@ -68,6 +68,17 @@ test('viewport reads follow the scrollback base — latest lines show, not the t
   expect(rowText(instance, 0)).toBe('L5'); // top visible line, NOT 'L0' (top of scrollback)
 });
 
+test('readTerminalInput observes the prompt line and bounded recent emulator text', async () => {
+  const { backend, instance } = makeInstance(30, 5);
+  backend.feed('old output\r\nnew output\r\n$ printf brokn');
+  await instance.flush();
+  const snapshot = instance.readTerminalInput();
+  expect(snapshot.currentInputLine).toBe('printf brokn');
+  expect(snapshot.recentOutputLines.join('\n')).toContain('old output');
+  expect(snapshot.recentOutputLines.join('\n')).toContain('$ printf brokn');
+  expect(snapshot.recentOutputLines.length).toBeLessThanOrEqual(40);
+});
+
 test('emulator replies (device reports) return to the child through the backend seam', async () => {
   const { backend, instance } = makeInstance();
   // ESC[6n = Device Status Report (cursor position) → the emulator replies with ESC[row;colR.

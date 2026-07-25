@@ -61,7 +61,12 @@ describe('EchoAgentBackend — env-gated permission flow (the hermetic ask-mode 
 
 test('terminal tool listing follows the live permission ladder', () => {
   const terminalTools: AgentTerminalToolPort = {
+    readTerminalInput: () => ({
+      currentInputLine: 'printf brokn',
+      recentOutputLines: ['recent output'],
+    }),
     stageTerminalCommand: async (command) => ({ state: 'staged', command }),
+    replaceTerminalInput: async (command) => ({ state: 'staged', command }),
     runTerminalCommand: async (command) => ({ state: 'executed', command }),
   };
   const askMode = drive(

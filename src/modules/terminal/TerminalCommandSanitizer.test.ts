@@ -18,3 +18,9 @@ test('removes embedded terminal escape sequences and remaining control bytes', (
     ),
   ).toBe('printf redend');
 });
+
+test('an escape before a grapheme never leaves a broken surrogate or joiner sequence', () => {
+  expect(
+    TerminalCommandSanitizer.Class.sanitize('printf \x1b🦊✨👩‍💻'),
+  ).toBe('printf 🦊✨👩‍💻');
+});
