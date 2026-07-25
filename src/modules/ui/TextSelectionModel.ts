@@ -8,29 +8,11 @@
 // the architecture review named; the seam now carries exactly what is truly shared.
 //
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
-import { Static } from 'ivue/extras';
-
-/** A point in a surface's flat visual-line space: line index + DISPLAY-CELL column. */
-export interface SelectionPoint {
-  line: number;
-  column: number;
-}
-
-/** The [start, end) columns of one line covered by the selection. */
-export interface SelectionSpanRange {
-  start: number;
-  end: number;
-}
-
-/** Order two points (start ≤ end) by line then column. */
-function orderPoints(anchor: SelectionPoint, focus: SelectionPoint): [SelectionPoint, SelectionPoint] {
-  const anchorFirst = anchor.line < focus.line || (anchor.line === focus.line && anchor.column <= focus.column);
-  return anchorFirst ? [anchor, focus] : [focus, anchor];
-}
+import { TextSelectionGeometry } from './TextSelectionGeometry';
 
 class $TextSelectionModel {
-  private anchor: SelectionPoint | null = null;
-  private focus: SelectionPoint | null = null;
+  protected anchor: SelectionPoint | null = null;
+  protected focus: SelectionPoint | null = null;
 
   /** Start a selection (anchor === focus until a drag extends it). */
   begin(point: SelectionPoint): void {
@@ -62,7 +44,7 @@ class $TextSelectionModel {
   /** The span ordered start ≤ end, or null when there is no anchor/focus. */
   normalized(): [SelectionPoint, SelectionPoint] | null {
     if (!this.anchor || !this.focus) return null;
-    return orderPoints(this.anchor, this.focus);
+    return TextSelectionGeometry.Class.orderPoints(this.anchor, this.focus);
   }
 
   /** True when a NON-EMPTY span is selected. */
@@ -114,11 +96,14 @@ export namespace TextSelectionModel {
   export type Model = InstanceType<typeof Class>;
 }
 
-/** A tiny stateless helper namespace so a surface can wrap+highlight without importing the class. */
-class $TextSelectionGeometry {
-  static orderPoints = orderPoints;
+/** A point in a surface's flat visual-line space: line index + DISPLAY-CELL column. */
+export interface SelectionPoint {
+  line: number;
+  column: number;
 }
-export namespace TextSelectionGeometry {
-  export const $Class = $TextSelectionGeometry;
-  export const Class = Static($TextSelectionGeometry);
+
+/** The [start, end) columns of one line covered by the selection. */
+export interface SelectionSpanRange {
+  start: number;
+  end: number;
 }
