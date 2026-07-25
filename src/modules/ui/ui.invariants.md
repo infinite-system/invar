@@ -53,8 +53,11 @@ scrollbar rectangle, and screen-row-to-item mapping for both painting and hit-te
 **Mechanism:** `BoundedListPopup.layoutGeometry` produces the geometry stored for the current paint.
 The list renderer slices from its `firstVisible` and `listRows`; the vertical-only
 `ScrollableTextViewport` receives the same list rectangle; and pointer selection calls
-`filterIndexAtRow` with that stored geometry. Consumer adapters provide item labels, selection, and
-actions but never calculate popup rows.
+`filterIndexAtRow` with that stored geometry. `nextEnabledFilteredIndex` wraps through the current
+filtered matches and `revealSelectedIndex` moves that same window. The optional search row owns an
+independent rest-muted and hover-lit palette state, while the modal popup remains the query-input
+owner across list-row hover repaints. Consumer adapters provide item labels, selection, and actions
+but never calculate popup rows or query focus.
 
 **Generates:** window-edge clamping and upward opening; a bounded visible window over arbitrarily
 large lists; wheel momentum and a solid vertical thumb; pointer and keyboard selection that agree
@@ -64,8 +67,8 @@ with the row on screen.
 `src/modules/ui/BoundedListPopup.test.ts`; `scripts/harness/smoke-bounded-list-popup-harness.ts`.
 
 **Impossible if true:** a painted row selecting a different item; a popup or scrollbar extending
-through the terminal bottom edge; a consumer reimplementing placement, visible-window, or row-hit
-math.
+through the terminal bottom edge; a consumer reimplementing placement, visible-window, row-hit, or
+wrap math; list hover diverting typed query characters to the editor.
 
 **Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts && bun
 scripts/harness/smoke-bounded-list-popup-harness.ts`

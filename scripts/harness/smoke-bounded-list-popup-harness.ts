@@ -18,6 +18,7 @@ interface PopupGeometryStatus {
   boxHeight: number;
   bottomRow: number;
   opensUpward: boolean;
+  searchRow: number | null;
   listLeft: number;
   listTop: number;
   listColumns: number;
@@ -38,8 +39,9 @@ function badgePosition(
     const cells = Array.from(snapshot.rowText(row));
     const slashColumn = cells.findIndex(
       (cell, column) =>
-        cell === '/'
-        && cells.slice(column + 1, column + 1 + totalText.length).join('') === totalText,
+        cell === '/' &&
+        cells.slice(column + 1, column + 1 + totalText.length).join('') ===
+          totalText,
     );
     if (slashColumn < 0) continue;
     let startColumn = slashColumn;
@@ -108,7 +110,9 @@ function popupListContains(
   return false;
 }
 
-const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-bounded-list-popup-harness-'));
+const fixtureRoot = mkdtempSync(
+  join(tmpdir(), 'tui-bounded-list-popup-harness-'),
+);
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-bounded-list-popup-harness-home-'),
 );
@@ -134,10 +138,10 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   'popup fixture root',
 ]);
 for (let branchNumber = 1; branchNumber <= 30; branchNumber++) {
-  HarnessSmoke.Class.runGit(
-    fixtureRoot,
-    ['branch', `branch-${String(branchNumber).padStart(3, '0')}`],
-  );
+  HarnessSmoke.Class.runGit(fixtureRoot, [
+    'branch',
+    `branch-${String(branchNumber).padStart(3, '0')}`,
+  ]);
 }
 
 const driver = new PtyTestDriver.Class({
@@ -159,8 +163,9 @@ try {
       driver,
       statusPath,
       'the buffer count and focus are published before opening another fixture buffer',
-      (status) => typeof status.bufferTabCount === 'number'
-        && typeof status.focus === 'string',
+      (status) =>
+        typeof status.bufferTabCount === 'number' &&
+        typeof status.focus === 'string',
     );
     const previousBufferCount = Number(openingStatus.bufferTabCount);
     if (previousBufferCount >= 100) break;
@@ -177,7 +182,7 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: Number(status.bufferTabCount) > previousBufferCount",
+      'status condition: Number(status.bufferTabCount) > previousBufferCount',
       (status) => Number(status.bufferTabCount) > previousBufferCount,
     );
   }
@@ -192,7 +197,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.activeBufferIndex === 0",
+    'status condition: status.activeBufferIndex === 0',
     (status) => status.activeBufferIndex === 0,
   );
 
@@ -201,15 +206,18 @@ try {
     (candidate) => badgePosition(candidate, 100) !== null,
   );
   const badge = badgePosition(snapshot, 100);
-  HarnessSmoke.Class.requireCondition(badge !== null, '100-buffer badge is visible');
+  HarnessSmoke.Class.requireCondition(
+    badge !== null,
+    '100-buffer badge is visible',
+  );
   if (!badge) throw new Error('Buffer badge vanished');
   clickPosition(driver, badge);
   let popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null",
-    (status) => status.boundedListPopupOpen === true
-      && popupGeometry(status) !== null,
+    'status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null',
+    (status) =>
+      status.boundedListPopupOpen === true && popupGeometry(status) !== null,
   );
   let geometry = popupGeometry(popupStatus);
   HarnessSmoke.Class.requireCondition(
@@ -217,14 +225,112 @@ try {
     'popup bottom row stays strictly above the terminal bottom row',
   );
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('⌕') !== null
-      && candidate.findText('file-001.txt') !== null,
+    (candidate) =>
+      candidate.findText('⌕') !== null &&
+      candidate.findText('file-001.txt') !== null,
   );
-  HarnessSmoke.Class.pass('large-list search paints the themed unicode search glyph');
+  HarnessSmoke.Class.pass(
+    'large-list search paints the themed unicode search glyph',
+  );
 
-  console.log('== bounded popup: wheel reaches the tail through the shared viewport ==');
+  console.log('== bounded popup: search hover and pointer-sweep focus ==');
+  if (!geometry || geometry.searchRow === null) {
+    throw new Error('Popup search geometry vanished');
+  }
+  const searchCellColumn = geometry.listLeft;
+  const searchCellRow = geometry.searchRow;
+  const searchRestBackground = snapshot.cell(
+    searchCellRow,
+    searchCellColumn,
+  )?.background;
+  driver.sendMouse({
+    kind: 'move',
+    column: searchCellColumn,
+    row: searchCellRow,
+  });
+  snapshot = await driver.awaitGridCondition(
+    'the search row background changes on hover',
+    (candidate) =>
+      candidate.cell(searchCellRow, searchCellColumn)?.background !==
+      searchRestBackground,
+  );
+  HarnessSmoke.Class.pass('search row is rest-muted and hover-lit');
+
+  const sweptQuery = 'file-0';
+  for (
+    let queryCharacterIndex = 0;
+    queryCharacterIndex < sweptQuery.length;
+    queryCharacterIndex += 1
+  ) {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'move',
+      column: geometry.listLeft + 2,
+      row:
+        geometry.listTop +
+        (queryCharacterIndex % Math.max(1, geometry.listRows)),
+    });
+    driver.sendText(sweptQuery[queryCharacterIndex] ?? '');
+    const expectedQuery = sweptQuery.slice(0, queryCharacterIndex + 1);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `the popup query contains ${expectedQuery} after a list-row sweep`,
+      (status) => status.boundedListPopupQuery === expectedQuery,
+    );
+  }
+  HarnessSmoke.Class.pass(
+    'every character lands while the pointer sweeps list rows',
+  );
+
+  console.log('== bounded popup: filtered navigation wraps and reveals ==');
+  driver.sendKeys('Up');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Up from the filtered first item wraps to the filtered last item',
+    (status) =>
+      status.boundedListPopupSelected ===
+        Number(status.boundedListPopupMatches) - 1 &&
+      (popupGeometry(status)?.firstVisible ?? 0) > 0,
+  );
+  geometry = popupGeometry(popupStatus);
+  HarnessSmoke.Class.requireCondition(
+    geometry !== null && geometry.firstVisible > 0,
+    'upward wrap reveals the filtered tail',
+  );
+  driver.sendKeys('Down');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Down from the filtered last item wraps to the filtered first item',
+    (status) =>
+      status.boundedListPopupSelected === 0 &&
+      popupGeometry(status)?.firstVisible === 0,
+  );
+  geometry = popupGeometry(popupStatus);
+  HarnessSmoke.Class.pass(
+    'both wrap directions follow the active filtered window',
+  );
+  for (
+    let queryCharacterIndex = 0;
+    queryCharacterIndex < sweptQuery.length;
+    queryCharacterIndex += 1
+  ) {
+    driver.sendKeys('Backspace');
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the popup query clears before full-list scrolling',
+    (status) => status.boundedListPopupQuery === '',
+  );
+
+  console.log(
+    '== bounded popup: wheel reaches the tail through the shared viewport ==',
+  );
   if (!geometry) throw new Error('Popup geometry vanished');
-  const popupWheelColumn = geometry.listLeft + Math.max(0, geometry.listColumns - 2);
+  const popupWheelColumn =
+    geometry.listLeft + Math.max(0, geometry.listColumns - 2);
   const popupWheelRow = geometry.listTop + Math.floor(geometry.listRows / 2);
   let tailVisible = false;
   for (let wheelNumber = 0; wheelNumber < 80; wheelNumber++) {
@@ -248,7 +354,7 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: (popupGeometry(status)?.firstVisible ?? 0) > 0",
+    'status condition: (popupGeometry(status)?.firstVisible ?? 0) > 0',
     (status) => (popupGeometry(status)?.firstVisible ?? 0) > 0,
   );
   geometry = popupGeometry(popupStatus);
@@ -263,39 +369,46 @@ try {
     driver,
     statusPath,
     "status condition: status.boundedListPopupQuery === 'file-073'",
-    (status) => status.boundedListPopupQuery === 'file-073'
-      && status.boundedListPopupMatches === 1,
+    (status) =>
+      status.boundedListPopupQuery === 'file-073' &&
+      status.boundedListPopupMatches === 1,
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('⌕ file-073') !== null
-      && geometry !== null
-      && popupListContains(candidate, geometry, 'file-073.txt')
-      && !popupListContains(candidate, geometry, 'file-072.txt'),
+    (candidate) =>
+      candidate.findText('⌕ file-073') !== null &&
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'file-073.txt') &&
+      !popupListContains(candidate, geometry, 'file-072.txt'),
   );
-  HarnessSmoke.Class.pass('the shared fuzzy scorer reduces the grid to one live match');
+  HarnessSmoke.Class.pass(
+    'the shared fuzzy scorer reduces the grid to one live match',
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.activeBufferIndex === 72 && status.boundedListPopupOpen === false",
-    (status) => status.activeBufferIndex === 72
-      && status.boundedListPopupOpen === false,
+    'status condition: status.activeBufferIndex === 72 && status.boundedListPopupOpen === false',
+    (status) =>
+      status.activeBufferIndex === 72 && status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('keyboard Enter focuses the filtered buffer');
 
-  console.log('== bounded popup: buffer mouse selection and outside dismissal ==');
+  console.log(
+    '== bounded popup: buffer mouse selection and outside dismissal ==',
+  );
   snapshot = await driver.awaitGridCondition(
     'the buffer badge remains available',
     (candidate) => badgePosition(candidate, 100) !== null,
   );
   const mouseSelectionBadge = badgePosition(snapshot, 100);
-  if (!mouseSelectionBadge) throw new Error('Buffer badge vanished before mouse selection');
+  if (!mouseSelectionBadge)
+    throw new Error('Buffer badge vanished before mouse selection');
   clickPosition(driver, mouseSelectionBadge);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === true",
+    'status condition: status.boundedListPopupOpen === true',
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('file-025');
@@ -307,22 +420,26 @@ try {
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => geometry !== null
-      && popupListContains(candidate, geometry, 'file-025.txt')
-      && !popupListContains(candidate, geometry, 'file-024.txt'),
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'file-025.txt') &&
+      !popupListContains(candidate, geometry, 'file-024.txt'),
   );
   const bufferItem = geometry
     ? popupItemPosition(snapshot, geometry, 'file-025.txt')
     : null;
-  HarnessSmoke.Class.requireCondition(bufferItem !== null, 'filtered buffer row is visible');
+  HarnessSmoke.Class.requireCondition(
+    bufferItem !== null,
+    'filtered buffer row is visible',
+  );
   if (!bufferItem) throw new Error('Filtered buffer row vanished');
   clickPosition(driver, bufferItem);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.activeBufferIndex === 24 && status.boundedListPopupOpen === false",
-    (status) => status.activeBufferIndex === 24
-      && status.boundedListPopupOpen === false,
+    'status condition: status.activeBufferIndex === 24 && status.boundedListPopupOpen === false',
+    (status) =>
+      status.activeBufferIndex === 24 && status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('mouse click focuses the filtered buffer');
 
@@ -331,24 +448,27 @@ try {
     (candidate) => badgePosition(candidate, 100) !== null,
   );
   const dismissalBadge = badgePosition(snapshot, 100);
-  if (!dismissalBadge) throw new Error('Buffer badge vanished before outside dismissal');
+  if (!dismissalBadge)
+    throw new Error('Buffer badge vanished before outside dismissal');
   clickPosition(driver, dismissalBadge);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === true",
+    'status condition: status.boundedListPopupOpen === true',
     (status) => status.boundedListPopupOpen === true,
   );
   clickPosition(driver, { column: 0, row: 39 });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === false",
+    'status condition: status.boundedListPopupOpen === false',
     (status) => status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('click outside dismisses without activating a row');
 
-  console.log('== bounded popup: branch adapter keyboard and mouse selection ==');
+  console.log(
+    '== bounded popup: branch adapter keyboard and mouse selection ==',
+  );
   driver.sendKeys('Control+g');
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('history: main') !== null,
@@ -357,9 +477,9 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null",
-    (status) => status.boundedListPopupOpen === true
-      && popupGeometry(status) !== null,
+    'status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null',
+    (status) =>
+      status.boundedListPopupOpen === true && popupGeometry(status) !== null,
   );
   geometry = popupGeometry(popupStatus);
   HarnessSmoke.Class.requireCondition(
@@ -375,18 +495,20 @@ try {
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('⌕ branch-011') !== null
-      && geometry !== null
-      && popupListContains(candidate, geometry, 'branch-011')
-      && !popupListContains(candidate, geometry, 'branch-010'),
+    (candidate) =>
+      candidate.findText('⌕ branch-011') !== null &&
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'branch-011') &&
+      !popupListContains(candidate, geometry, 'branch-010'),
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: status.gitLogBranch === 'branch-011' && status.boundedListPopupOpen === false",
-    (status) => status.gitLogBranch === 'branch-011'
-      && status.boundedListPopupOpen === false,
+    (status) =>
+      status.gitLogBranch === 'branch-011' &&
+      status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('keyboard search and Enter select the viewed branch');
 
@@ -404,7 +526,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.boundedListPopupOpen === true",
+    'status condition: status.boundedListPopupOpen === true',
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('branch-007');
@@ -416,26 +538,32 @@ try {
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => geometry !== null
-      && popupListContains(candidate, geometry, 'branch-007')
-      && !popupListContains(candidate, geometry, 'branch-006'),
+    (candidate) =>
+      geometry !== null &&
+      popupListContains(candidate, geometry, 'branch-007') &&
+      !popupListContains(candidate, geometry, 'branch-006'),
   );
   const branchItem = geometry
     ? popupItemPosition(snapshot, geometry, 'branch-007')
     : null;
-  HarnessSmoke.Class.requireCondition(branchItem !== null, 'filtered branch row is visible');
+  HarnessSmoke.Class.requireCondition(
+    branchItem !== null,
+    'filtered branch row is visible',
+  );
   if (!branchItem) throw new Error('Filtered branch row vanished');
   clickPosition(driver, branchItem);
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: status.gitLogBranch === 'branch-007' && status.boundedListPopupOpen === false",
-    (status) => status.gitLogBranch === 'branch-007'
-      && status.boundedListPopupOpen === false,
+    (status) =>
+      status.gitLogBranch === 'branch-007' &&
+      status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('mouse click selects the viewed branch');
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.runGit(fixtureRoot, ['branch', '--show-current']) === 'main',
+    HarnessSmoke.Class.runGit(fixtureRoot, ['branch', '--show-current']) ===
+      'main',
     'branch popup remains a read-only history viewer',
   );
 

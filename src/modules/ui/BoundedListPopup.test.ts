@@ -55,9 +55,7 @@ describe('BoundedListPopup', () => {
     expect(geometry.listTop + geometry.listRows).toBe(
       geometry.boxTop + geometry.boxHeight - 1,
     );
-    expect(geometry.listColumns).toBe(
-      geometry.boxWidth - 2 - 2,
-    );
+    expect(geometry.listColumns).toBe(geometry.boxWidth - 2 - 2);
   });
 
   test('never crosses the safe screen edge even when the screen is tiny', () => {
@@ -96,5 +94,48 @@ describe('BoundedListPopup', () => {
       CommandScoring.Class.fuzzyScore('feat', 'feature/wide-change'),
       CommandScoring.Class.fuzzyScore('feat', 'feat'),
     ]);
+  });
+
+  test('wraps navigation across enabled items in both directions', () => {
+    const matches = BoundedListPopup.$Class.filterItems(
+      [
+        { identifier: 'first', label: 'first' },
+        { identifier: 'disabled', label: 'disabled', enabled: false },
+        { identifier: 'last', label: 'last' },
+      ],
+      '',
+    );
+
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 2, 1),
+    ).toBe(0);
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 0, -1),
+    ).toBe(2);
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, -1, -1),
+    ).toBe(2);
+  });
+
+  test('wraps within the active filtered set', () => {
+    const matches = BoundedListPopup.$Class.filterItems(
+      [
+        { identifier: 'alpha', label: 'alpha' },
+        { identifier: 'beta', label: 'beta' },
+        { identifier: 'alphabet', label: 'alphabet' },
+      ],
+      'alpha',
+    );
+
+    expect(matches.map((match) => match.item.identifier)).toEqual([
+      'alpha',
+      'alphabet',
+    ]);
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 0, -1),
+    ).toBe(1);
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 1, 1),
+    ).toBe(0);
   });
 });

@@ -47,13 +47,15 @@ class $BoundedListPopup {
   protected readonly list: TextRenderable;
   protected readonly viewport: ScrollableTextViewport.Instance;
   protected currentGeometry: BoundedListPopupGeometry | null = null;
-  protected selectionHandler: ((item: BoundedListPopupItem) => void) | null = null;
+  protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
+    null;
   protected searchThresholdValue = $BoundedListPopup.defaultSearchThreshold;
   protected minimumWidthValue = $BoundedListPopup.minimumBoxWidth;
   protected titleValue = '';
   protected anchorValue: BoundedListPopupAnchor = { column: 0, row: 0 };
   protected pointerPressedFilteredIndex = -1;
   protected pointerDragged = false;
+  protected searchHovered = false;
 
   get open() {
     return ref(false);
@@ -76,6 +78,10 @@ class $BoundedListPopup {
 
   get searchEnabled(): boolean {
     return this.items.value.length > this.searchThresholdValue;
+  }
+
+  get acceptsQueryInput(): boolean {
+    return this.open.value && this.searchEnabled;
   }
 
   get filteredMatches(): readonly BoundedListPopupMatch[] {
@@ -197,32 +203,21 @@ class $BoundedListPopup {
       screenHeight - $BoundedListPopup.reservedBottomRows,
     );
     const downwardTop = Math.max(0, Math.floor(input.anchor.row) + 1);
-    const downwardCapacity = Math.max(
-      0,
-      safeBottomExclusive - downwardTop,
-    );
+    const downwardCapacity = Math.max(0, safeBottomExclusive - downwardTop);
     const upwardCapacity = Math.max(
       0,
       Math.min(Math.floor(input.anchor.row), safeBottomExclusive),
     );
     const opensUpward =
       naturalHeight > downwardCapacity && upwardCapacity > downwardCapacity;
-    const availableHeight = opensUpward
-      ? upwardCapacity
-      : downwardCapacity;
-    const boxHeight = Math.min(
-      naturalHeight,
-      Math.max(1, availableHeight),
-    );
+    const availableHeight = opensUpward ? upwardCapacity : downwardCapacity;
+    const boxHeight = Math.min(naturalHeight, Math.max(1, availableHeight));
     const unclampedTop = opensUpward
       ? Math.floor(input.anchor.row) - boxHeight
       : downwardTop;
     const boxTop = Math.max(
       0,
-      Math.min(
-        unclampedTop,
-        Math.max(0, safeBottomExclusive - boxHeight),
-      ),
+      Math.min(unclampedTop, Math.max(0, safeBottomExclusive - boxHeight)),
     );
     const requestedWidth = Math.max(
       $BoundedListPopup.minimumBoxWidth,
@@ -296,6 +291,7 @@ class $BoundedListPopup {
     this.titleValue = options.title ?? '';
     this.query.value = '';
     this.hoveredIndex.value = -1;
+    this.searchHovered = false;
     this.viewport.reset();
     const selectedItemIdentifier =
       options.selectedItemIdentifier ??
@@ -323,6 +319,7 @@ class $BoundedListPopup {
     this.query.value = '';
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
+    this.searchHovered = false;
     this.selectionHandler = null;
     this.currentGeometry = null;
     this.pointerPressedFilteredIndex = -1;
@@ -350,18 +347,15 @@ class $BoundedListPopup {
 
   moveSelection(direction: 1 | -1): void {
     const matches = this.filteredMatches;
-    for (
-      let filteredIndex = this.selectedIndex.value + direction;
-      filteredIndex >= 0 && filteredIndex < matches.length;
-      filteredIndex += direction
-    ) {
-      if (matches[filteredIndex]?.item.enabled !== false) {
-        this.selectedIndex.value = filteredIndex;
-        this.revealSelectedIndex();
-        this.requestPaint();
-        return;
-      }
-    }
+    const filteredIndex = $BoundedListPopup.nextEnabledFilteredIndex(
+      matches,
+      this.selectedIndex.value,
+      direction,
+    );
+    if (filteredIndex < 0) return;
+    this.selectedIndex.value = filteredIndex;
+    this.revealSelectedIndex();
+    this.requestPaint();
   }
 
   runSelected(): void {
@@ -384,18 +378,17 @@ class $BoundedListPopup {
       1,
       Math.round(this.dependencies.settings.scrollbarThickness.value),
     );
-    const desiredBoxWidth =
-      Math.max(
-        this.minimumWidthValue,
-        EditorCoordinates.Class.lineWidth(this.titleValue) + 4,
-        this.maximumItemWidth(
-          this.items.value.map((item, sourceIndex) => ({
-            item,
-            sourceIndex,
-            score: 0,
-          })),
-        ) + $BoundedListPopup.horizontalFrameColumns,
-      );
+    const desiredBoxWidth = Math.max(
+      this.minimumWidthValue,
+      EditorCoordinates.Class.lineWidth(this.titleValue) + 4,
+      this.maximumItemWidth(
+        this.items.value.map((item, sourceIndex) => ({
+          item,
+          sourceIndex,
+          score: 0,
+        })),
+      ) + $BoundedListPopup.horizontalFrameColumns,
+    );
     this.currentGeometry = $BoundedListPopup.layoutGeometry({
       screenWidth: this.dependencies.renderer.width,
       screenHeight: this.dependencies.renderer.height,
@@ -423,15 +416,21 @@ class $BoundedListPopup {
       geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
     if (this.searchEnabled) {
       const searchText = ` ${this.dependencies.theme.findIcons.search} ${this.query.value}`;
+      const searchBackground = this.searchHovered
+        ? palette.accent
+        : palette.border;
+      const searchForeground = this.searchHovered ? palette.panel : palette.dim;
       this.searchInput.content = new StyledText([
-        fg(palette.accent)(
-          EditorCoordinates.Class.padToDisplayWidth(
-            EditorCoordinates.Class.displayColumnWindow(
-              searchText,
-              0,
+        bg(searchBackground)(
+          fg(searchForeground)(
+            EditorCoordinates.Class.padToDisplayWidth(
+              EditorCoordinates.Class.displayColumnWindow(
+                searchText,
+                0,
+                geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+              ),
               geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
             ),
-            geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
           ),
         ),
       ]);
@@ -446,16 +445,18 @@ class $BoundedListPopup {
     );
     const chunks: TextChunk[] = [];
     if (visibleMatches.length === 0) {
-      chunks.push(fg(palette.dim)(
-        EditorCoordinates.Class.padToDisplayWidth(
-          EditorCoordinates.Class.displayColumnWindow(
-            ' (no matches)',
-            0,
+      chunks.push(
+        fg(palette.dim)(
+          EditorCoordinates.Class.padToDisplayWidth(
+            EditorCoordinates.Class.displayColumnWindow(
+              ' (no matches)',
+              0,
+              geometry.listColumns,
+            ),
             geometry.listColumns,
           ),
-          geometry.listColumns,
         ),
-      ));
+      );
     } else {
       visibleMatches.forEach((match, visibleRowIndex) => {
         const filteredIndex = geometry.firstVisible + visibleRowIndex;
@@ -510,13 +511,30 @@ class $BoundedListPopup {
     screenRow: number,
   ): number {
     const visibleRowIndex = screenRow - geometry.listTop;
-    if (
-      visibleRowIndex < 0 ||
-      visibleRowIndex >= geometry.visibleItemCount
-    ) {
+    if (visibleRowIndex < 0 || visibleRowIndex >= geometry.visibleItemCount) {
       return -1;
     }
     return geometry.firstVisible + visibleRowIndex;
+  }
+
+  static nextEnabledFilteredIndex(
+    matches: readonly BoundedListPopupMatch[],
+    selectedIndex: number,
+    direction: 1 | -1,
+  ): number {
+    if (matches.length === 0) return -1;
+    const navigationOrigin =
+      selectedIndex >= 0 ? selectedIndex : direction === 1 ? -1 : 0;
+    for (let step = 1; step <= matches.length; step += 1) {
+      const filteredIndex =
+        (((navigationOrigin + direction * step) % matches.length) +
+          matches.length) %
+        matches.length;
+      if (matches[filteredIndex]?.item.enabled !== false) {
+        return filteredIndex;
+      }
+    }
+    return -1;
   }
 
   protected maximumItemWidth(
@@ -595,9 +613,7 @@ class $BoundedListPopup {
       geometry,
       screenRow,
     );
-    return filteredIndex >= 0
-      ? { line: filteredIndex, column: 0 }
-      : null;
+    return filteredIndex >= 0 ? { line: filteredIndex, column: 0 } : null;
   }
 
   protected wirePointerInput(): void {
@@ -607,6 +623,16 @@ class $BoundedListPopup {
     this.box.onMouseScroll = handleWheel;
     this.searchInput.onMouseScroll = handleWheel;
     this.list.onMouseScroll = handleWheel;
+    this.searchInput.onMouseMove = () => {
+      if (this.searchHovered) return;
+      this.searchHovered = true;
+      this.requestPaint();
+    };
+    this.searchInput.onMouseOut = () => {
+      if (!this.searchHovered) return;
+      this.searchHovered = false;
+      this.requestPaint();
+    };
     this.list.onMouseMove = (event: MouseEvent) => {
       const geometry = this.currentGeometry;
       if (!geometry) return;
@@ -632,8 +658,10 @@ class $BoundedListPopup {
     this.list.onMouseDown = (event: MouseEvent) => {
       const geometry = this.currentGeometry;
       if (!geometry) return;
-      this.pointerPressedFilteredIndex =
-        $BoundedListPopup.filterIndexAtRow(geometry, event.y);
+      this.pointerPressedFilteredIndex = $BoundedListPopup.filterIndexAtRow(
+        geometry,
+        event.y,
+      );
       this.pointerDragged = false;
       this.viewport.beginDrag(event.x, event.y);
     };
