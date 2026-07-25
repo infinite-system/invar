@@ -34,13 +34,28 @@ unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE GIT_COMMITTER_NAME GIT_CO
 # flake a git/settings smoke (the panel reads a stale/failed watch). Reap orphaned TEST instances so the
 # gate starts from ZERO — a `bun … src/main.ts` on a `/tmp/tui-*` fixture — NEVER the user's live demo
 # (/tmp/tui-demo) or any instance on a real (non-/tmp) project.
+# CONCURRENCY-SAFE ORPHAN DEFINITION: an orphan is a process whose PARENT IS GONE (reparented to
+# PID 1) — not merely "an app on a /tmp fixture". The old rule killed EVERY such app, so a second
+# gate starting beside a running one executed its smokes' apps mid-wait and produced reds that
+# looked exactly like starvation (three of them on 2026-07-25 before the cause was found). A
+# concurrently-running gate's apps have a LIVE parent (their smoke process), so they are now
+# untouched, and genuine leftovers — whose parent died without its cleanup trap firing — are still
+# reaped so the inotify-instance budget starts clean. The age floor is belt-and-braces: a smoke app
+# lives seconds to a couple of minutes, so anything older than the floor with a live parent is a
+# wedged leftover worth reaping too.
+orphan_age_floor_seconds=600
 reaped_orphan_instances=0
 for orphan_pid in $(pgrep -f 'src/main\.ts /tmp/tui-' 2>/dev/null || true); do
   orphan_cmdline="$(tr '\0' ' ' < "/proc/$orphan_pid/cmdline" 2>/dev/null || true)"
   case "$orphan_cmdline" in
     *"/tmp/tui-demo"*) continue ;;                         # never touch the user's live demo
-    *) kill -9 "$orphan_pid" 2>/dev/null && reaped_orphan_instances=$((reaped_orphan_instances + 1)) ;;
   esac
+  orphan_parent_pid="$(ps -o ppid= -p "$orphan_pid" 2>/dev/null | tr -d ' ')"
+  orphan_age_seconds="$(ps -o etimes= -p "$orphan_pid" 2>/dev/null | tr -d ' ')"
+  [ -n "$orphan_age_seconds" ] || orphan_age_seconds=0
+  if [ "${orphan_parent_pid:-1}" = "1" ] || [ "$orphan_age_seconds" -gt "$orphan_age_floor_seconds" ]; then
+    kill -9 "$orphan_pid" 2>/dev/null && reaped_orphan_instances=$((reaped_orphan_instances + 1))
+  fi
 done
 if [ "$reaped_orphan_instances" -gt 0 ]; then
   echo "merge-gate: reaped $reaped_orphan_instances orphaned app instance(s) before start (inotify hygiene)"
@@ -50,9 +65,14 @@ echo "merge-gate: starting with $(pgrep -cf 'src/main\.ts /tmp/tui-' 2>/dev/null
 fail=0
 # Failing steps keep their FULL output here — tail-25 destroyed the failing condition three times
 # on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
-failure_log_directory="/tmp/merge-gate-failures"
+# PER-RUN failure directory: two concurrent gates sharing one path would wipe each other's evidence
+# at start (the rm -rf below), which is the one thing this directory exists to prevent. The stable
+# symlink /tmp/merge-gate-failures always points at the most recent run, so the habit of reading that
+# path still works for a single-gate workflow.
+failure_log_directory="/tmp/merge-gate-failures.$$"
 rm -rf "$failure_log_directory"
 mkdir -p "$failure_log_directory"
+ln -sfn "$failure_log_directory" /tmp/merge-gate-failures
 step() {
   local name="$1"; shift
   echo "== merge-gate: $name =="
