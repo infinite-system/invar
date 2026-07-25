@@ -59,9 +59,7 @@ test('staging sanitizes the full payload and never writes a newline', async () =
   const completion = fixture.controller.stageTerminalCommand('printf one\nprintf two');
   fixture.scheduler.runAll();
   await completion;
-  expect(fixture.writes.join('')).toBe(
-    '\x1b[200~printf oneprintf two\x1b[201~',
-  );
+  expect(fixture.writes).toEqual(Array.from('printf oneprintf two'));
   expect(fixture.writes.join('')).not.toContain('\r');
   expect(fixture.events.at(-1)).toEqual({
     kind: 'staged',
@@ -70,14 +68,12 @@ test('staging sanitizes the full payload and never writes a newline', async () =
   });
 });
 
-test('run emits Enter only after the complete bracketed paste', async () => {
+test('run writes each visible character before emitting Enter', async () => {
   const fixture = controllerFixture();
   const completion = fixture.controller.runTerminalCommand('printf visible');
   fixture.scheduler.runAll();
   await completion;
-  expect(fixture.writes.join('')).toBe(
-    '\x1b[200~printf visible\x1b[201~\r',
-  );
+  expect(fixture.writes).toEqual([...Array.from('printf visible'), '\r']);
   expect(fixture.events.at(-1)?.kind).toBe('agent-executed');
 });
 
@@ -91,9 +87,7 @@ test('a busy prompt queues and drains only after an idle notification', async ()
   expect(fixture.events[0]?.kind).toBe('pending');
   fixture.setIdle(true);
   fixture.controller.notifyTerminalChanged();
-  expect(fixture.writes.join('')).toBe(
-    '\x1b[200~printf queued\x1b[201~',
-  );
+  expect(fixture.writes).toEqual(['printf queued']);
 });
 
 test('user execution records an edit diff and Ctrl+C aborts animated run before Enter', async () => {
@@ -117,4 +111,23 @@ test('user execution records an edit diff and Ctrl+C aborts animated run before 
   });
   expect(animatedFixture.writes.join('')).not.toContain('\r');
   expect(animatedFixture.events.at(-1)?.kind).toBe('aborted');
+});
+
+test('human Enter during visible staging completes and executes the full sanitized command', async () => {
+  const fixture = controllerFixture();
+  const completion = fixture.controller.stageTerminalCommand('printf complete > proof.txt');
+  expect(fixture.writes).toEqual(['p']);
+
+  const enterConsumed = fixture.controller.handleUserInput('\r');
+  if (!enterConsumed) fixture.writes.push('\r');
+
+  expect(await completion).toEqual({
+    state: 'staged',
+    command: 'printf complete > proof.txt',
+  });
+  expect(fixture.writes.join('')).toBe('printf complete > proof.txt\r');
+  expect(fixture.events.at(-1)).toEqual({
+    kind: 'user-executed',
+    command: 'printf complete > proof.txt',
+  });
 });

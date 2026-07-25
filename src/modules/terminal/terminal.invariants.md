@@ -227,6 +227,56 @@ the panel is unfocused.
 
 **Last refined:** 2026-07-23
 
+### Animated agent commands stay visible and inert
+
+**Invariant:** If Invar animates an agent command into an idle terminal prompt, then every sanitized
+character becomes plain terminal input, staging emits no submission byte on its own, and any run or
+human-Enter submission occurs only after the complete sanitized command has been written.
+
+**Scope:** `TerminalCommandSanitizer`, `TerminalCommandController`, and the real Bash terminal path
+driven by `scripts/harness/smoke-terminal-stage-harness.ts`. Reduced-motion commands use one plain
+write instead of an animated cadence but retain the same sanitize-before-write and submission rules.
+
+**Components:**
+- Visible typing — absent user acceleration, animated commands use plain per-character writes at the
+  configured cadence, so Readline echoes each prefix immediately instead of buffering the animation
+  inside one bracketed paste.
+- Inert staging — the complete command is sanitized before the first write, all CR, LF, C0, C1, and
+  escape-sequence bytes are removed, and stage mode never calls the submission seam.
+- Complete execution — run mode calls the submission seam only after every sanitized character is
+  written; human Enter during animation first writes the sanitized remainder, then submits the
+  complete staged buffer exactly once.
+
+**Mechanism:** `TerminalCommandController.request` sanitizes the whole command before
+`typeRequest` can write. `typeCharacter` sends one plain character per timer step;
+`completeActiveTypingImmediately` fast-forwards the sanitized remainder before an early Enter can
+reach Readline; `finishRequest` leaves staged input in Readline or calls `submit` once for run mode.
+A complete bracketed-paste wrapper cannot provide visible animation because Readline inserts its
+buffered payload only at the closing marker.
+
+**Generates:** visible human-cadence agent typing; reviewable commands that remain inert until human
+Enter; one explicit autonomous-submit boundary after complete run-mode typing.
+
+**Rejected alternatives:** Wrap the complete animation in bracketed paste — Readline buffers the
+payload and makes every intermediate typing frame invisible.
+
+**Evidence:** `src/modules/terminal/TerminalCommandController.test.ts` asserts per-character animated
+writes, sanitize-before-write, no staged Enter, final run-mode Enter, and early human Enter
+fast-forwarding the complete command; `scripts/harness/smoke-terminal-stage-harness.ts` observes an
+intermediate prefix in real Bash, proves it remains inert, then executes the complete command with
+human Enter.
+
+**Impossible if true:** an animated command appearing all at once only after its final character; a
+staged command executing before human Enter; an embedded newline or escape sequence reaching
+Readline; run mode submitting a partial command.
+
+**Verification:** `bun test src/modules/terminal/TerminalCommandController.test.ts && bun
+scripts/harness/smoke-terminal-stage-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
 ### A split panel renders every visible cell into its own sub-region
 
 **Invariant:** When the panel holds two or more visible cells, the slot is partitioned left-to-right by

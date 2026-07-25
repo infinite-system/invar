@@ -2,11 +2,13 @@ import { TerminalCommandSanitizer } from './TerminalCommandSanitizer';
 import { TerminalCommandTyping } from './TerminalCommandTyping';
 
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
+// invariant: Animated agent commands stay visible and inert (src/modules/terminal/terminal.invariants.md)
 class $TerminalCommandController {
   protected readonly pendingRequests: TerminalCommandRequest[] = [];
   protected activeRequest: TerminalCommandRequest | null = null;
   protected activeTimer: unknown = null;
   protected activeResolve: ((outcome: TerminalCommandTypingOutcome) => void) | null = null;
+  protected typedCharacterCount = 0;
   protected stagedCommand: string | null = null;
   protected eventCallback: ((event: TerminalCommandEvent) => void) | null = null;
   protected disposed = false;
@@ -34,11 +36,26 @@ class $TerminalCommandController {
   }
 
   handleUserInput(bytes: string): boolean {
+    if (
+      this.activeRequest
+      && (bytes === '\r' || bytes === '\n')
+    ) {
+      const activeExecution = this.activeRequest.execution;
+      const activeCommand = this.activeRequest.command;
+      this.completeActiveTypingImmediately();
+      // Run mode already submitted through its authorized tool boundary. Stage mode now has a
+      // complete staged buffer, so record the human grant and forward its Enter exactly once.
+      if (activeExecution === 'run') return true;
+      this.stagedCommand = null;
+      this.emit({ kind: 'user-executed', command: activeCommand });
+      return false;
+    }
+
     if (this.activeRequest) {
       const interruptedCommand = this.activeRequest.command;
       this.cancelActiveTimer();
-      this.options.write('\x1b[201~');
       this.activeRequest = null;
+      this.typedCharacterCount = 0;
       this.resolveActiveTyping('aborted');
       this.emit({ kind: 'aborted', command: interruptedCommand });
       if (bytes === '\x03') {
@@ -77,6 +94,7 @@ class $TerminalCommandController {
     this.cancelActiveTimer();
     this.pendingRequests.length = 0;
     this.activeRequest = null;
+    this.typedCharacterCount = 0;
     this.resolveActiveTyping('aborted');
     this.eventCallback = null;
   }
@@ -105,15 +123,21 @@ class $TerminalCommandController {
     return { state: execution === 'stage' ? 'staged' : 'executed', command: sanitizedCommand };
   }
 
+  // Typed bytes are written PLAIN, not bracketed-paste-wrapped: bash readline buffers a bracketed
+  // paste and inserts it only at the closing marker, which makes animated typing invisible.
+  // Inertness does not depend on the wrapper — the sanitizer strips CR/LF and all control/escape
+  // bytes from the full payload before the first byte is written, so the payload cannot inject its
+  // own submission. Plain echo also exposes prefixes before animation completes; an early human
+  // Enter therefore fast-forwards the sanitized remainder before the one Enter reaches the PTY.
   protected typeRequest(request: TerminalCommandRequest): Promise<TerminalCommandTypingOutcome> {
     if (this.disposed) return Promise.resolve('aborted');
     this.activeRequest = request;
+    this.typedCharacterCount = 0;
     const reducedMotion = this.options.reducedMotion();
     const typingSpeed = this.options.typingSpeed();
     const delays = reducedMotion
       ? []
       : TerminalCommandTyping.Class.delays(request.command, typingSpeed, this.options.random);
-    this.options.write('\x1b[200~');
     if (reducedMotion) {
       this.options.write(request.command);
       this.finishRequest();
@@ -140,6 +164,7 @@ class $TerminalCommandController {
       return;
     }
     this.options.write(character);
+    this.typedCharacterCount = characterIndex + 1;
     const delayMilliseconds = delays[characterIndex] ?? 0;
     this.activeTimer = this.options.scheduler.setTimeout(
       () => {
@@ -154,8 +179,8 @@ class $TerminalCommandController {
     const request = this.activeRequest;
     if (!request) return;
     this.cancelActiveTimer();
-    this.options.write('\x1b[201~');
     this.activeRequest = null;
+    this.typedCharacterCount = 0;
     const currentWorkingDirectory = this.options.currentWorkingDirectory();
     if (request.execution === 'run') {
       this.options.submit();
@@ -173,6 +198,16 @@ class $TerminalCommandController {
       });
     }
     this.resolveActiveTyping('completed');
+  }
+
+  protected completeActiveTypingImmediately(): void {
+    const request = this.activeRequest;
+    if (!request) return;
+    this.cancelActiveTimer();
+    const remainingCommand = request.command.slice(this.typedCharacterCount);
+    if (remainingCommand) this.options.write(remainingCommand);
+    this.typedCharacterCount = request.command.length;
+    this.finishRequest();
   }
 
   protected cancelActiveTimer(): void {
