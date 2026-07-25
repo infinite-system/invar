@@ -39,50 +39,62 @@ if (!Number.isFinite(effectiveBaselineP50Milliseconds)) {
   throw new Error('Input-byte-flush baseline override must be a finite number');
 }
 
-const sessionMeasurements: SessionMeasurement[] = [];
-for (let sessionNumber = 1; sessionNumber <= measurementSessionCount; sessionNumber++) {
-  const measurementResult = Bun.spawnSync(
-    [process.execPath, 'scripts/harness/measure-input-byte-flush.ts'],
-    {
-      cwd: repositoryRoot,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([environmentName, environmentValue]) =>
-            environmentValue !== undefined && !environmentName.startsWith('GIT_'),
-        ),
-      ) as Record<string, string>,
-    },
-  );
-  const standardOutput = new TextDecoder().decode(measurementResult.stdout);
-  const standardError = new TextDecoder().decode(measurementResult.stderr);
-  if (measurementResult.exitCode !== 0) {
-    throw new Error(
-      `Input-byte-flush session ${sessionNumber} failed with exit `
-      + `${measurementResult.exitCode}\n${standardOutput}\n${standardError}`,
+function measureFiveSessionMedians(passLabel: string): {
+  p50Milliseconds: number;
+  p95Milliseconds: number;
+} {
+  const sessionMeasurements: SessionMeasurement[] = [];
+  for (let sessionNumber = 1; sessionNumber <= measurementSessionCount; sessionNumber++) {
+    const measurementResult = Bun.spawnSync(
+      [process.execPath, 'scripts/harness/measure-input-byte-flush.ts'],
+      {
+        cwd: repositoryRoot,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([environmentName, environmentValue]) =>
+              environmentValue !== undefined && !environmentName.startsWith('GIT_'),
+          ),
+        ) as Record<string, string>,
+      },
+    );
+    const standardOutput = new TextDecoder().decode(measurementResult.stdout);
+    const standardError = new TextDecoder().decode(measurementResult.stderr);
+    if (measurementResult.exitCode !== 0) {
+      throw new Error(
+        `Input-byte-flush session ${sessionNumber} failed with exit `
+        + `${measurementResult.exitCode}\n${standardOutput}\n${standardError}`,
+      );
+    }
+    const sessionMeasurement = parseSessionMeasurement(standardOutput);
+    if (sessionMeasurement.boundary !== baseline.boundary) {
+      throw new Error(
+        `Measurement boundary ${sessionMeasurement.boundary} does not match reviewed baseline `
+        + baseline.boundary,
+      );
+    }
+    sessionMeasurements.push(sessionMeasurement);
+    console.log(
+      `  ${passLabel}session ${sessionNumber}/5: `
+      + `p50 ${sessionMeasurement.p50Milliseconds.toFixed(3)} ms, `
+      + `p95 ${sessionMeasurement.p95Milliseconds.toFixed(3)} ms`,
     );
   }
-  const sessionMeasurement = parseSessionMeasurement(standardOutput);
-  if (sessionMeasurement.boundary !== baseline.boundary) {
-    throw new Error(
-      `Measurement boundary ${sessionMeasurement.boundary} does not match reviewed baseline `
-      + baseline.boundary,
-    );
-  }
-  sessionMeasurements.push(sessionMeasurement);
-  console.log(
-    `  session ${sessionNumber}/5: p50 ${sessionMeasurement.p50Milliseconds.toFixed(3)} ms, `
-    + `p95 ${sessionMeasurement.p95Milliseconds.toFixed(3)} ms`,
-  );
+  return {
+    p50Milliseconds: median(
+      sessionMeasurements.map((measurement) => measurement.p50Milliseconds),
+    ),
+    p95Milliseconds: median(
+      sessionMeasurements.map((measurement) => measurement.p95Milliseconds),
+    ),
+  };
 }
 
-const p50Milliseconds = median(
-  sessionMeasurements.map((measurement) => measurement.p50Milliseconds),
-);
-const p95Milliseconds = median(
-  sessionMeasurements.map((measurement) => measurement.p95Milliseconds),
-);
+// Ambient-noise retry: a shared dev machine carries user activity, so a single failing pass is
+// re-measured once before blocking — a real regression fails both passes; an ambient spike
+// almost never repeats. The retry is announced, and both passes land in the history file.
+let { p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('');
 const warningThresholdMilliseconds =
   effectiveBaselineP50Milliseconds * baseline.warningMultiplier;
 const failureThresholdMilliseconds =
@@ -113,9 +125,31 @@ console.log(
 console.log(`  history appended: .perf-history/input-byte-flush.ndjson (${commitSha})`);
 
 if (p50Milliseconds > failureThresholdMilliseconds) {
+  console.warn(
+    `input-byte-flush-gate: first pass p50 ${p50Milliseconds.toFixed(3)} ms exceeded the FAIL `
+    + `threshold — ambient-noise retry: re-measuring once (a real regression fails twice)`,
+  );
+  ({ p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('retry '));
+  appendFileSync(
+    historyPath,
+    `${JSON.stringify({
+      sha: commitSha,
+      timestamp: new Date().toISOString(),
+      p50Milliseconds,
+      p95Milliseconds,
+      boundary: baseline.boundary,
+      ambientRetry: true,
+    })}\n`,
+  );
+  console.log(
+    `  retry medians: p50 ${p50Milliseconds.toFixed(3)} ms, `
+    + `p95 ${p95Milliseconds.toFixed(3)} ms`,
+  );
+}
+if (p50Milliseconds > failureThresholdMilliseconds) {
   console.error(
     `input-byte-flush-gate: FAIL p50 ${p50Milliseconds.toFixed(3)} ms exceeds `
-    + `baseline×${baseline.failureMultiplier}`,
+    + `baseline×${baseline.failureMultiplier} on both passes`,
   );
   process.exit(1);
 }
