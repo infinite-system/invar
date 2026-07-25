@@ -262,8 +262,11 @@ try {
   driver.sendText('terminal-tools:stage:printf STAGED_PASTE');
   driver.sendKeys('Enter');
   await driver.awaitSnapshot(
+    // The agent transcript wraps at WORD boundaries, so a multi-word phrase anchor straddles rows
+    // whenever pane width shifts (the command-bar row re-wrapped it). Single tokens never split:
+    // 'reject:' appears only in the staged-command notice.
     (candidate) => candidate.findText('$ printf STAGED_PASTE') !== null
-      && candidate.findText('terminal command staged at') !== null,
+      && candidate.findText('reject:') !== null,
   );
   driver.sendPaste('_BURST');
   await driver.awaitSnapshot(
