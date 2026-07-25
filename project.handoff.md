@@ -3,7 +3,37 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR — 2026-07-24 PM (CURRENT) — FIX-TRACKS + REVIEW EXTRACTIONS + HARNESS LANDED
+## RESUME ANCHOR — 2026-07-24 NIGHT (CURRENT) — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
+
+**Ground-truth against git first — anchors lag. `origin/main` was `de85916` at this writing.**
+
+**State: the verification stack reached its final architecture today.** PTY harness = the gate
+(42/42 ports, swap landed, benchmark 11m55s→~3min); emulator conformance corpus (161 tests) proves
+the oracle in bun test; tmux ring RETIRED (full suite behind INVAR_FULL_TMUX=1, weekly audit);
+per-gate byte-flush latency step (baseline p50 2.97ms, WARN 1.3× FAIL 2×). The waiting saga closed
+FOUR defect classes, each swept suite-wide + contracted in harness.invariants.md: frame-ordinal
+waits, bare next-frame waits, sample-without-wait asserts, tight wait budgets (30s defaults;
+absence windows caller-specified). Doctrine hardened: quiet-machine SURVIVES the harness era
+(absence windows + timeouts are time-coupled); deterministic reds are DEFECTS (never flake-cleared;
+solo-green after gate-red is itself the bug report); clearance provenance; Spark calibration
+(reports never evidence; one repair round-trip budgeted; conductor attention is the routed
+resource). GRAMMAR BIG-BANG: FILE GRAMMAR is law (conventions doc; MANIFEST-ON-TOP superseded);
+AST checker + ratchet landed (check-file-grammar.ts, CONVERTED_MODULES enforced, rest reported as
+countdown from ~1,529); syntax pilot converted; waves git (Spark, repaired) + markdown (sol) built,
+IN THE LANDING CHAIN tonight: timeouts-fix → wave B → wave A → terminal UX pack. TERMINAL UX PACK
+BUILT (staged execution + runTerminalCommand w/ permission ladder + agent-facing tool manuals both
+engines + themed prompt + live header cwd + animated typing; sanitizer strips ALL control/escape
+bytes, inert by construction) — lands tonight, user waiting to try it. STAGED: switchlag+thumb
+investigation (/tmp/wt-switchlag TASK.md: file-switch latency matrix incl. large TS + worktree
+tabs; switch-frame byte audit; scrollbar thumb-length oscillation = suspected stale-max race).
+User bugs fixed today: 5 morning + hscroll comments + narration inline-code + scrollbar gaps.
+Ledger: #31 census→scoped-invalidation (post-big-bang), #33 capsule arc (workspace membranes →
+message bus → console → clone-install → harness-builder; §9 vision), #34 plugin-canvas (Workspace
+stops knowing Git; + separate pane wraps note), #35 structure navigator, #39 investigation.
+Fleet: codex-only (sol default; Spark = mechanical small modules w/ instrument-verified delivery).
+Full day ledger: ~30 landings, zero regressions on main.
+
+## PRIOR ANCHOR — 2026-07-24 PM — FIX-TRACKS + REVIEW EXTRACTIONS + HARNESS LANDED
 
 **Ground-truth against git first — anchors lag. `origin/main` was `271d4b3` at this writing.**
 
