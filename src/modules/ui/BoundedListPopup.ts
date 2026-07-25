@@ -602,8 +602,11 @@ class $BoundedListPopup {
 
   protected wirePointerInput(): void {
     this.backdrop.onMouseDown = () => this.close();
-    this.box.onMouseScroll = (event: MouseEvent) =>
+    const handleWheel = (event: MouseEvent): void =>
       this.viewport.handleWheel(event);
+    this.box.onMouseScroll = handleWheel;
+    this.searchInput.onMouseScroll = handleWheel;
+    this.list.onMouseScroll = handleWheel;
     this.list.onMouseMove = (event: MouseEvent) => {
       const geometry = this.currentGeometry;
       if (!geometry) return;
