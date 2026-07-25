@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { DiffAlignment } from './DiffAlignment';
 import { GutterDiff } from './GutterDiff';
 
 describe('GutterDiff', () => {
@@ -40,6 +41,23 @@ describe('GutterDiff', () => {
   test('a deletion at end of file marks the last buffer line', () => {
     expect(GutterDiff.Class.statusByLine('one\ntwo\nremoved', 'one\ntwo')).toEqual(
       new Map([[1, 'deleted']]),
+    );
+  });
+
+  test('alignment remains an overridable late-bound dependency', () => {
+    class SingleLineDiffAlignment extends DiffAlignment.$Class {
+      static override splitLines(_text: string): string[] {
+        return ['replacement'];
+      }
+    }
+    class TestGutterDiff extends GutterDiff.$Class {
+      protected static override get DiffAlignment() {
+        return SingleLineDiffAlignment;
+      }
+    }
+
+    expect(TestGutterDiff.statusByLine('', 'one\ntwo')).toEqual(
+      new Map([[0, 'added']]),
     );
   });
 });
