@@ -51,6 +51,7 @@ export interface FileGrammarInspectionOptions {
 
 export const CONVERTED_MODULES = new Set<string>([
   'agent',
+  'app',
   'commands',
   'diff',
   'editor',
@@ -65,7 +66,9 @@ export const CONVERTED_MODULES = new Set<string>([
   'search',
   'settings',
   'storage',
+  'system',
   'syntax',
+  'terminal',
   'theme',
   'ui',
   'workspace',

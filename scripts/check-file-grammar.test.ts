@@ -361,10 +361,10 @@ describe('converted-module enforcement ratchet', () => {
   });
 
   test('the same violation in an unconverted module is reported without failing', () => {
-    const checkerResult = runCheckerFixture('app');
+    const checkerResult = runCheckerFixture('layout');
 
     expect(checkerResult.exitCode).toBe(0);
-    expect(checkerResult.combinedOutput).toContain('app\treported\t1');
+    expect(checkerResult.combinedOutput).toContain('layout\treported\t1');
     expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
   });
 
