@@ -38,9 +38,11 @@ export PATH="$HOME/.bun/bin:$PATH"
 # covered here for the schema meta-gate.
 # The layout-model settings (sidebarPosition, panelAlignment, both dock spans, and rightDockWidth)
 # are mouse/byte-driven by smoke-layout-harness.ts against live slot edges and divider resize.
+# agentTerminalFollowMode is driven through the live Ctrl+, settings row by
+# smoke-settings-applied-harness.ts; the projected live follow-mode status must change.
 # reducedMotion / agentTypingSpeed / terminalCleanPrompt are byte-driven by
 # smoke-terminal-stage-harness.ts (instant-vs-animated command staging and the spawned-shell prompt).
-COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio"
+COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio"
 
 # ---- schema-enumeration META-GATE (cheap; the enforcing check) -------------------------------------
 meta_gate() {

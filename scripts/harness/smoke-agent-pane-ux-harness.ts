@@ -264,11 +264,16 @@ try {
   );
   driver.sendRawInput('\x1b[27;6;97~');
   let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('──────────') !== null
-      && candidate.findText('bypass permissions') !== null
-      && candidate.findText('shift+tab') !== null
-      && candidate.findText('❯') !== null
-      && candidate.findText('  Ask Claude') !== null,
+    (candidate) => {
+      const followPosition = candidate.findText('follow: off');
+      if (!followPosition) return false;
+      const discoveredFooterRow = candidate.rowText(followPosition.row);
+      return candidate.findText('──────────') !== null
+        && discoveredFooterRow.includes('engine: claude')
+        && discoveredFooterRow.includes('bypass permissions')
+        && candidate.findText('❯') !== null
+        && candidate.findText('  Ask Claude') !== null;
+    },
   );
   HarnessSmoke.Class.requireCondition(
     HarnessSmoke.Class.readStatus(statusPath).terminalFocused === true,
@@ -278,6 +283,9 @@ try {
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('✦ Claude') !== null,
     'agent pane owns a heading inside the shared panel border',
+  );
+  HarnessSmoke.Class.pass(
+    'the discovered footer row contains engine, follow mode, and permission segments',
   );
   const originalModeLine = snapshot.textRows().find((rowText) => rowText.includes('permissions'));
   driver.sendKeys('Shift+Tab');

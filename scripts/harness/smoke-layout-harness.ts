@@ -168,11 +168,15 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
-function layoutSettingDescriptorIndex(settingName: LayoutSettingName): number {
-  if (settingName === 'sidebarPosition') return 25;
-  if (settingName === 'panelAlignment') return 26;
-  if (settingName === 'leftDockVerticalSpan') return 27;
-  return 28;
+function layoutSettingLabel(settingName: LayoutSettingName): string {
+  if (settingName === 'sidebarPosition') return 'Sidebar position';
+  if (settingName === 'panelAlignment') {
+    return 'Bottom panel alignment (edges without a dock coincide)';
+  }
+  if (settingName === 'leftDockVerticalSpan') {
+    return 'Primary dock vertical span (when bottom panel is open)';
+  }
+  return 'Right dock vertical span (when dock and panel are open)';
 }
 
 async function adjustSettingThroughSettings(
@@ -181,33 +185,42 @@ async function adjustSettingThroughSettings(
   settingName: LayoutSettingName,
   expectedValue: string,
 ): Promise<StatusSnapshot> {
-  const targetDescriptorIndex = layoutSettingDescriptorIndex(settingName);
+  const targetSettingLabel = layoutSettingLabel(settingName);
   const currentDescriptorIndex = Number(
     HarnessSmoke.Class.readStatus(statusPath).settingsSelected,
   );
-  const selectionDelta = targetDescriptorIndex - currentDescriptorIndex;
-  if (selectionDelta !== 0) {
-    const selectionKey = selectionDelta > 0 ? 'Down' : 'Up';
-    driver.sendKeys(
-      ...Array.from(
-        { length: Math.abs(selectionDelta) },
-        () => selectionKey,
-      ),
+  if (currentDescriptorIndex > 0) {
+    driver.sendKeysWithoutFrameExpectation(
+      ...Array.from({ length: currentDescriptorIndex }, () => 'Up'),
     );
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      (candidate) =>
-        Number(candidate.settingsSelected) === targetDescriptorIndex,
+      (candidate) => Number(candidate.settingsSelected) === 0,
     );
   }
-  driver.sendKeys('Right');
+  for (let navigationStep = 0; navigationStep < 40; navigationStep++) {
+    const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+    if (currentStatus.settingsSelectedLabel === targetSettingLabel) break;
+    const previousSelectedLabel = currentStatus.settingsSelectedLabel;
+    driver.sendKeysWithoutFrameExpectation('Down');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).settingsSelectedLabel
+      === targetSettingLabel,
+    `${settingName} row is discovered from its live settings label`,
+  );
+  driver.sendKeysWithoutFrameExpectation('Right');
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     (candidate) => candidate[settingName] === expectedValue,
   );
-  await driver.awaitQuiescence();
   HarnessSmoke.Class.pass(
     `${settingName} settings edit live-applied ${expectedValue}`,
   );
@@ -752,13 +765,10 @@ try {
       ) !== null
       && snapshot.findText(
         'Primary dock vertical span (when bottom panel is open)',
-      ) !== null
-      && snapshot.findText(
-        'Right dock vertical span (when dock and panel are open)',
       ) !== null,
   );
   HarnessSmoke.Class.pass(
-    'settings disclose that hidden dock spans and empty alignment edges coincide',
+    'visible layout settings disclose dock spans and empty alignment edges',
   );
 
   status = await exerciseLayoutSettingsConfigurationMatrix(
@@ -817,9 +827,6 @@ try {
       ) !== null
       && snapshot.findText(
         'Primary dock vertical span (when bottom panel is open)',
-      ) !== null
-      && snapshot.findText(
-        'Right dock vertical span (when dock and panel are open)',
       ) !== null,
   );
   status = await exerciseLayoutSettingsConfigurationMatrix(

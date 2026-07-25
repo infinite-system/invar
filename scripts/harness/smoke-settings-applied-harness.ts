@@ -45,6 +45,7 @@ const coveredSettingNames = new Set([
   'agentProvider',
   'agentSkipPermissions',
   'agentModel',
+  'agentTerminalFollowMode',
   'agentTypingSpeed',
   'terminalCleanPrompt',
   'agentAudioNarration',
@@ -121,6 +122,32 @@ async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
     }
   }
   throw new Error('FAIL fixture file did not open');
+}
+
+async function selectSettingByVisibleLabel(
+  launchedDriver: LaunchedDriver,
+  settingLabel: string,
+): Promise<void> {
+  for (let navigationStep = 0; navigationStep < 40; navigationStep++) {
+    const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
+    if (status.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = status.settingsSelectedLabel;
+    launchedDriver.driver.sendKeys('Down');
+    await HarnessSmoke.Class.awaitStatus(
+      launchedDriver.driver,
+      launchedDriver.statusPath,
+      (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(launchedDriver.statusPath).settingsSelectedLabel
+      === settingLabel,
+    `${settingLabel} is discovered by its live settings label`,
+  );
+  await launchedDriver.driver.awaitGridCondition(
+    `${settingLabel} is the visibly selected settings row`,
+    (snapshot) => snapshot.findText(`› ${settingLabel}`) !== null,
+  );
 }
 
 async function settleMomentum(launchedDriver: LaunchedDriver): Promise<void> {
@@ -496,6 +523,43 @@ try {
     `showIndentGuides paints then removes guide cells (${guideCells}/${noGuideCells})`,
   );
   await setSetting('showIndentGuides', true);
+
+  console.log('== harness settings: terminal follow mode live-applies through Ctrl+, ==');
+  await setSetting('agentTerminalFollowMode', 'off');
+  const followModeDriver = await launchDriver('terminal-follow-mode', treeFixture);
+  try {
+    followModeDriver.driver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      followModeDriver.driver,
+      followModeDriver.statusPath,
+      (candidate) => candidate.settingsOpen === true
+        && candidate.terminalFollowMode === 'off',
+    );
+    await selectSettingByVisibleLabel(
+      followModeDriver,
+      'Agent terminal follow mode',
+    );
+    followModeDriver.driver.sendKeys('Right');
+    await HarnessSmoke.Class.awaitStatus(
+      followModeDriver.driver,
+      followModeDriver.statusPath,
+      (candidate) => candidate.terminalFollowMode === 'follow-all'
+        && candidate.settingsSelectedValue === 'follow-all',
+    );
+    await followModeDriver.driver.awaitGridCondition(
+      'the live settings row visibly changes terminal follow mode to follow-all',
+      (snapshot) => {
+        const settingPosition = snapshot.findText('Agent terminal follow mode');
+        return settingPosition !== null
+          && snapshot.rowText(settingPosition.row).includes('follow-all');
+      },
+    );
+    HarnessSmoke.Class.pass(
+      'agentTerminalFollowMode changes through the real settings path and flips live status',
+    );
+  } finally {
+    await followModeDriver.driver.dispose();
+  }
 
   console.log('== harness settings: Git split ratio moves the commit-log region ==');
   async function gitCommitRow(label: string, ratio: number): Promise<number> {

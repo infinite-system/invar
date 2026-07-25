@@ -42,7 +42,7 @@ chk "agent pane open + focused" "$(f terminalFocused)" "true"
 echo "== framed composer chrome: rules, mode line, transcript padding =="
 has "top+bottom horizontal rules frame the composer" "──────────"
 has "permission mode line renders" "bypass permissions"
-has "mode line hint renders" "shift+tab"
+has "terminal follow mode segment renders" "follow: off"
 has "composer prompt glyph renders" "❯"
 has "transcript text is padded (2-col left gutter before the hint)" "  Ask Claude"
 
