@@ -1,28 +1,21 @@
-// A lazily-expanded file tree. Children are read only when a directory is expanded, and the
-// flattened visible list is a plain getter over the expansion state — no reactive node per
-// file, and unexpanded subtrees cost nothing.
-//
-// invariant: Cost tracks the actively observed set (project.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Files, type DirEntry } from '../system/Files';
 import { AT_REST, type ScrollMomentum } from '../system/Momentum';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
-export interface TreeRow {
-  name: string;
-  path: string;
-  isDir: boolean;
-  depth: number;
-  expanded: boolean;
-}
+// A lazily-expanded file tree. Children are read only when a directory is expanded, and the
+// flattened visible list is a plain getter over the expansion state — no reactive node per
+// file, and unexpanded subtrees cost nothing.
+//
+// invariant: Cost tracks the actively observed set (project.invariants.md)
 
 class $FileTree {
   root = '';
   // expansion state keyed by absolute path; cheap Set, not a node graph.
-  private expanded = new Set<string>();
+  protected expanded = new Set<string>();
   // cache of directory listings so re-flatten does not re-stat the disk each render.
-  private listings = new Map<string, DirEntry[]>();
+  protected listings = new Map<string, DirEntry[]>();
 
   get version() {
     return ref(0);
@@ -58,7 +51,7 @@ class $FileTree {
     return ref(1);
   }
   // shallowRef holding the last flattened rows (recomputed on structural change only).
-  private get rowsRef() {
+  protected get rowsRef() {
     return shallowRef<TreeRow[]>([]);
   }
 
@@ -72,7 +65,7 @@ class $FileTree {
     this.selectedIndex.value = 0;
   }
 
-  private list(directory: string): DirEntry[] {
+  protected list(directory: string): DirEntry[] {
     let listing = this.listings.get(directory);
     if (!listing) {
       listing = Files.Class.list(directory);
@@ -83,7 +76,7 @@ class $FileTree {
 
   /** Flatten expanded directories into visible rows (depth-first, dirs first). */
   // invariant: The file tree costs only what is expanded and visible (workspace.invariants.md)
-  private flatten(): TreeRow[] {
+  protected flatten(): TreeRow[] {
     const rows: TreeRow[] = [];
     const walk = (directory: string, depth: number): void => {
       for (const entry of this.list(directory)) {
@@ -96,7 +89,7 @@ class $FileTree {
     return rows;
   }
 
-  private recompute(): void {
+  protected recompute(): void {
     this.rowsRef.value = this.flatten();
     this.clampHorizontalScroll();
     this.version.value++;
@@ -151,7 +144,7 @@ class $FileTree {
   }
 
   /** Bring the selection into view with the MINIMUM scroll (only when it is off-screen). */
-  private revealSelection(): void {
+  protected revealSelection(): void {
     const height = this.viewportHeight.value;
     const index = this.selectedIndex.value;
     if (index < this.scrollTop.value) this.scrollTop.value = index;
@@ -207,4 +200,12 @@ export namespace FileTree {
   export const $Class = $FileTree;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface TreeRow {
+  name: string;
+  path: string;
+  isDir: boolean;
+  depth: number;
+  expanded: boolean;
 }

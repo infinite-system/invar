@@ -1,3 +1,6 @@
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
+
 // The set of open editor buffers behind the editor tab bar (item 10a). Opening a file ADDS or
 // FOCUSES a buffer — it never replaces. This is the EDITOR-layer buffer set; project/workspace tabs
 // are a separate layer (see "Workspace and file navigation are separate layers"). It owns the
@@ -7,46 +10,13 @@
 //
 // invariant: N open tabs do not cost N live documents (workspace.invariants.md)
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
-import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
-
-/** The minimal live-buffer surface the set drives — an Editor in production, a fake in tests. */
-export interface LiveBuffer {
-  openFile(path: string): void;
-  readonly dirty: boolean;
-  /** Capture the resumable position so a clean buffer can be dehydrated and later rehydrated. */
-  snapshotPosition(): BufferPosition;
-  restorePosition(position: BufferPosition): void;
-}
-
-export interface BufferPosition {
-  cursorLine: number;
-  cursorColumn: number;
-  scrollTop: number;
-  scrollLeft: number;
-}
-
-export interface OpenBufferSetSeams {
-  /** Create a live buffer with `path` already open (production: a fresh Editor.openFile). */
-  createBuffer: (path: string) => LiveBuffer;
-  /** Fully dispose a live buffer's owned resources (document/undo/syntax). */
-  disposeBuffer: (buffer: LiveBuffer) => void;
-}
-
-interface BufferEntry {
-  path: string;
-  /** The live buffer, or null when this entry is dehydrated (clean + not active). */
-  buffer: LiveBuffer | null;
-  /** Last known position — the rehydration source; kept fresh while live. */
-  position: BufferPosition;
-  /** Sticky dirty flag: a dirty buffer is NEVER dehydrated (its edits must survive). */
-  dirty: boolean;
-}
-
-const ORIGIN: BufferPosition = { cursorLine: 0, cursorColumn: 0, scrollTop: 0, scrollLeft: 0 };
 
 class $OpenBufferSet {
-  constructor(private readonly seams: OpenBufferSetSeams) {}
+  protected static get origin(): BufferPosition {
+    return { cursorLine: 0, cursorColumn: 0, scrollTop: 0, scrollLeft: 0 };
+  }
+
+  constructor(protected readonly seams: OpenBufferSetSeams) {}
 
   // Ordered open buffers (identity replaced on structural change so observers re-run).
   get entries() {
@@ -88,7 +58,13 @@ class $OpenBufferSet {
       this.activate(existing);
       return existing;
     }
-    const entry: BufferEntry = { path, buffer: null, position: { ...ORIGIN }, dirty: false };
+    const openBufferSetClass = this.constructor as typeof $OpenBufferSet;
+    const entry: BufferEntry = {
+      path,
+      buffer: null,
+      position: { ...openBufferSetClass.origin },
+      dirty: false,
+    };
     this.entries.value = [...this.entries.value, entry];
     this.activate(this.entries.value.length - 1);
     return this.activeIndex.value;
@@ -152,7 +128,7 @@ class $OpenBufferSet {
     this.hydrate(this.activeIndex.value);
   }
 
-  private hydrate(index: number): void {
+  protected hydrate(index: number): void {
     const entry = this.entries.value[index];
     if (!entry || entry.buffer) return;
     const buffer = this.seams.createBuffer(entry.path);
@@ -161,7 +137,7 @@ class $OpenBufferSet {
     this.entries.value = [...this.entries.value]; // notify
   }
 
-  private dehydrateIfClean(index: number): void {
+  protected dehydrateIfClean(index: number): void {
     const entry = this.entries.value[index];
     if (!entry || !entry.buffer) return;
     entry.position = entry.buffer.snapshotPosition();
@@ -177,4 +153,37 @@ export namespace OpenBufferSet {
   export const $Class = $OpenBufferSet;
   export let Class = Reactive($OpenBufferSet);
   export type Instance = typeof Class.Instance;
+}
+
+/** The minimal live-buffer surface the set drives — an Editor in production, a fake in tests. */
+export interface LiveBuffer {
+  openFile(path: string): void;
+  readonly dirty: boolean;
+  /** Capture the resumable position so a clean buffer can be dehydrated and later rehydrated. */
+  snapshotPosition(): BufferPosition;
+  restorePosition(position: BufferPosition): void;
+}
+
+export interface BufferPosition {
+  cursorLine: number;
+  cursorColumn: number;
+  scrollTop: number;
+  scrollLeft: number;
+}
+
+export interface OpenBufferSetSeams {
+  /** Create a live buffer with `path` already open (production: a fresh Editor.openFile). */
+  createBuffer: (path: string) => LiveBuffer;
+  /** Fully dispose a live buffer's owned resources (document/undo/syntax). */
+  disposeBuffer: (buffer: LiveBuffer) => void;
+}
+
+interface BufferEntry {
+  path: string;
+  /** The live buffer, or null when this entry is dehydrated (clean + not active). */
+  buffer: LiveBuffer | null;
+  /** Last known position — the rehydration source; kept fresh while live. */
+  position: BufferPosition;
+  /** Sticky dirty flag: a dirty buffer is NEVER dehydrated (its edits must survive). */
+  dirty: boolean;
 }

@@ -1,18 +1,21 @@
-// Reactive VIEW state for the git sidebar — which view is showing, the selection/scroll within it,
-// and the split between the changes/commit-box region and the commit-log region. Pure view state:
-// the git DATA lives in GitRepository (status) and CommitLog (history). Drill-down is a small stack:
-// changes → a commit's files → a file's diff, with `back()` unwinding it.
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { AT_REST, type ScrollMomentum } from '../system/Momentum';
 
-/** Which region of the git panel has keyboard focus. */
-export type GitRegion = 'changes' | 'commit' | 'log';
-
-const MIN_SPLIT = 0.15;
-const MAX_SPLIT = 0.85;
+// Reactive VIEW state for the git sidebar — which view is showing, the selection/scroll within it,
+// and the split between the changes/commit-box region and the commit-log region. Pure view state:
+// the git DATA lives in GitRepository (status) and CommitLog (history). Drill-down is a small stack:
+// changes → a commit's files → a file's diff, with `back()` unwinding it.
 
 class $GitPanel {
+  protected static get minimumSplit(): number {
+    return 0.15;
+  }
+
+  protected static get maximumSplit(): number {
+    return 0.85;
+  }
+
   get region() {
     return ref<GitRegion>('changes');
   }
@@ -113,7 +116,11 @@ class $GitPanel {
 
   /** Clamp and set the top/bottom split ratio (from a divider drag). */
   setSplit(ratio: number): void {
-    this.splitRatio.value = Math.max(MIN_SPLIT, Math.min(MAX_SPLIT, ratio));
+    const gitPanelClass = this.constructor as typeof $GitPanel;
+    this.splitRatio.value = Math.max(
+      gitPanelClass.minimumSplit,
+      Math.min(gitPanelClass.maximumSplit, ratio),
+    );
   }
 
   setVerticalViewportHeights(changesViewportHeight: number, logViewportHeight: number): void {
@@ -134,7 +141,7 @@ class $GitPanel {
     this.revealChangesSelection();
   }
 
-  private revealChangesSelection(): void {
+  protected revealChangesSelection(): void {
     const selectedIndex = this.changesIndex.value;
     const viewportHeight = this.changesViewportHeight.value;
     if (selectedIndex < this.changesScrollTop.value) {
@@ -158,7 +165,7 @@ class $GitPanel {
     this.revealLogSelection();
   }
 
-  private revealLogSelection(): void {
+  protected revealLogSelection(): void {
     const selectedIndex = this.logIndex.value;
     const viewportHeight = this.logViewportHeight.value;
     if (selectedIndex < this.logScrollTop.value) {
@@ -214,3 +221,6 @@ export namespace GitPanel {
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
+/** Which region of the git panel has keyboard focus. */
+export type GitRegion = 'changes' | 'commit' | 'log';

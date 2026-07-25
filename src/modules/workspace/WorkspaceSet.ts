@@ -3,24 +3,12 @@ import { ref, shallowRef } from 'vue';
 import { Workspace } from './Workspace';
 import type { Settings } from '../settings/Settings';
 
-export interface WorkspaceSetOptions {
-  createWorkspace?: () => Workspace.Instance;
-}
-
-export interface WorkspaceTab {
-  root: string;
-  name: string;
-  /** Second tab line: the linked-worktree name when the root is one, else the checked-out branch. */
-  detail: string;
-  active: boolean;
-}
-
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 class $WorkspaceSet {
   constructor(
-    private readonly settings: Settings.Instance,
-    private readonly options: WorkspaceSetOptions = {},
+    protected readonly settings: Settings.Instance,
+    protected readonly options: WorkspaceSetOptions = {},
   ) {}
 
   get entries() {
@@ -136,4 +124,16 @@ export namespace WorkspaceSet {
   export const $Class = $WorkspaceSet;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface WorkspaceSetOptions {
+  createWorkspace?: () => Workspace.Instance;
+}
+
+export interface WorkspaceTab {
+  root: string;
+  name: string;
+  /** Second tab line: the linked-worktree name when the root is one, else the checked-out branch. */
+  detail: string;
+  active: boolean;
 }
