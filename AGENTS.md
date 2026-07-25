@@ -7,7 +7,15 @@ framework and conventions before writing code.
 > auto-loads AGENTS.md; neither reads the other's file) — THIS file is the single canonical law;
 > never add rules to CLAUDE.md.
 > Structural code search: prefer `bun scripts/ast-query.ts` (parse-don't-grep) for any question
-> about code structure — see `.claude/skills/ast-query/SKILL.md`. grep stays for prose/logs.** They live as skills in this repo — read them,
+> about code structure — see `.claude/skills/ast-query/SKILL.md`. grep stays for prose/logs.
+
+## Skills index (ALL agents — codex does not auto-see `.claude/skills/`; this list is your map)
+- **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
+- **`.claude/skills/ivue/`** — the reactive substrate + namespace pattern. Load before touching `src/modules/**`.
+- **`.claude/skills/invariants/`** — the contract layer + checker (`node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`). Load when adding/altering behavior in a contract-governed module; run the checker before every READY.
+- **`.claude/skills/ast-query/SKILL.md`** — parse-don't-grep structural search (`bun scripts/ast-query.ts`). Use for ANY code-structure question (call sites, constructions, censuses).
+- **`.claude/skills/generator-audit/SKILL.md`** — the independent review-as-reduction procedure. Use when asked to review/audit the codebase or a module.
+- **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).** They live as skills in this repo — read them,
 don't work from a second-hand summary:
 
 >  **`.claude/skills/ibr/IBR.md`** — the Invariant-Based Reasoning framework that governs this
