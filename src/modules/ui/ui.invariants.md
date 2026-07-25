@@ -74,6 +74,37 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Splitter paint and hit testing share one geometry
+
+**Invariant:** If a pane boundary is resizable, then one `SplitterElement` owns its one-cell
+cross-axis geometry, pointer hit target, hover state, drag capture, and palette state; the cell that
+paints is the cell that receives the pointer.
+
+**Scope:** Every pane splitter in `RootView`, `DiffView`, and `MarkdownSplitView`, including the
+sidebar, bottom panel, git regions, split panel cells, diff panes, markdown preview, and right dock.
+
+**Mechanism:** `SplitterElement` owns one `BoxRenderable` and one `SplitterModel`. Its geometry setter
+writes the renderable rectangle that OpenTUI both paints and stamps into the hit grid; its shared
+pointer lifecycle captures that same renderable, tracks hover plus drag, and resolves appearance
+through `palette.border` at rest and `palette.accent` while hovered or dragged.
+
+**Generates:** One-cell splitter hit zones; rest-muted, hover-lit, drag-lit behavior; one future
+splitter wire-up instead of another geometry and pointer implementation.
+
+**Evidence:** `src/modules/ui/SplitterElement.ts`; `src/modules/ui/SplitterElement.test.ts`;
+splitter consumers construct `SplitterElement` rather than binding pointer handlers themselves.
+
+**Impossible if true:** A painted divider whose pointer target occupies different cells; a pane
+splitter with a private hover or drag state machine; a divider that stays accent-colored at rest or
+loses its highlight while a captured drag continues.
+
+**Verification:** `bun test src/modules/ui/SplitterElement.test.ts` plus the splitter-state
+FrameProbe assertions registered in `scripts/merge-gate.sh`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
 ### Tab bars share paint and hit geometry
 
 **Invariant:** If a horizontal tab bar paints tabs, unused width, and right controls, then one column

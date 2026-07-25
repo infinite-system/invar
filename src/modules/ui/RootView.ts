@@ -62,7 +62,7 @@ import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { QuickOpen } from '../search/QuickOpen';
 import { PaneSplitters } from './PaneSplitters';
-import { SplitterModel } from '../layout/SplitterModel';
+import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
@@ -302,13 +302,13 @@ function $buildRootView(
 
   // Draggable sidebar↔editor divider (1-cell bar). onMouseDrag fires globally while the button is
   // held (even off the bar), so a drag resizes smoothly; the model clamps to [min,max] + persists.
-  const sidebarDivider = new BoxRenderable(renderer, {
-    id: 'sidebar-divider',
-    width: 1,
-    height: '100%',
-    flexShrink: 0, // keep the 1-cell grab column (flex must not squeeze it to zero)
-    backgroundColor: readPalette().border, // a visible bg also puts it in the mouse hit grid
+  const paneSplitters = new PaneSplitters.Class({
+    renderer,
+    settings,
+    workspaceSet,
+    sidebar,
   });
+  const sidebarDivider = paneSplitters.sidebar.renderable;
   // OpenTUI fires BOTH drag-end AND up on release, so guard the persist with an active-drag flag —
   // otherwise the release saves twice (still a per-drag write, but the invariant is exactly one).
 
@@ -361,13 +361,6 @@ function $buildRootView(
     flexDirection: 'column',
     flexShrink: 0, // keep the panel's full height on screen; the main row (flexGrow) yields instead
     width: '100%',
-  });
-  const panelDivider = new BoxRenderable(renderer, {
-    id: 'panel-divider',
-    width: '100%',
-    height: 1,
-    flexShrink: 0,
-    backgroundColor: readPalette().border,
   });
   const panelBox = new BoxRenderable(renderer, {
     id: 'panel-box',
@@ -460,8 +453,7 @@ function $buildRootView(
   // frames just update widths and content.
   interface PanelCellView {
     readonly body: TextRenderable;
-    readonly dividerBox: BoxRenderable | null; // the divider that PRECEDES this body (null for cell 0)
-    readonly splitter: SplitterModel.Instance | null;
+    readonly splitterElement: SplitterElement.Model | null;
   }
   const panelCellViews: PanelCellView[] = [];
   let mountedPanelCellCount = -1;
@@ -578,51 +570,26 @@ function $buildRootView(
       content.onWheel((direction === 'up' ? -1 : 1) * wheelStep(event));
       renderer.requestRender();
     };
-    let dividerBox: BoxRenderable | null = null;
-    let splitter: SplitterModel.Instance | null = null;
+    let splitterElement: SplitterElement.Model | null = null;
     if (index >= 1) {
       const dividerIndex = index - 1;
-      dividerBox = new BoxRenderable(renderer, {
-        id: `panel-cell-divider-${dividerIndex}`,
-        width: 1,
-        flexShrink: 0,
-        backgroundColor: readPalette().border,
-      });
-      splitter = new SplitterModel.Class({
+      splitterElement = new SplitterElement.Class({
+        renderer,
+        identifier: `panel-cell-divider-${dividerIndex}`,
         orientation: 'vertical',
-        mode: 'ratio',
+        reportUnit: 'ratio',
         initialSize: 0.5,
         extentCells: 1,
+        currentSize: () => panelBoundaryFraction(dividerIndex),
+        currentExtentCells: () => Math.max(1, panelViewportColumns()),
+        onDragStart: () => panelHost.focus(),
         onSizeChange: (fraction) => {
           panelHost.moveDivider(dividerIndex, fraction);
           renderer.requestRender();
         },
       });
-      let dragging = false;
-      dividerBox.onMouseDown = (event) => {
-        (dividerBox as unknown as { _ctx?: { setCapturedRenderable?: (renderable: unknown) => void } })._ctx?.setCapturedRenderable?.(dividerBox);
-        panelHost.focus();
-        splitter!.setExtentCells(Math.max(1, panelViewportColumns()));
-        splitter!.size.value = panelBoundaryFraction(dividerIndex); // anchor at the current boundary
-        splitter!.beginDrag(event.x);
-        dragging = true;
-        renderer.requestRender();
-      };
-      dividerBox.onMouseDrag = (event) => {
-        if (!dragging) return;
-        splitter!.dragTo(event.x);
-        renderer.requestRender();
-      };
-      const endCellDrag = (): void => {
-        if (!dragging) return;
-        dragging = false;
-        splitter!.endDrag();
-        renderer.requestRender();
-      };
-      dividerBox.onMouseUp = endCellDrag;
-      dividerBox.onMouseDragEnd = endCellDrag;
     }
-    const view: PanelCellView = { body, dividerBox, splitter };
+    const view: PanelCellView = { body, splitterElement };
     panelCellViews[index] = view;
     return view;
   };
@@ -633,11 +600,11 @@ function $buildRootView(
     if (count === mountedPanelCellCount) return;
     for (const view of panelCellViews) {
       panelBox.remove(view.body);
-      if (view.dividerBox) panelBox.remove(view.dividerBox);
+      if (view.splitterElement) panelBox.remove(view.splitterElement.renderable);
     }
     for (let index = 0; index < count; index += 1) {
       const view = ensurePanelCellView(index);
-      if (view.dividerBox) panelBox.add(view.dividerBox);
+      if (view.splitterElement) panelBox.add(view.splitterElement.renderable);
       panelBox.add(view.body);
     }
     mountedPanelCellCount = count;
@@ -646,39 +613,24 @@ function $buildRootView(
   // Draggable panel height: a HORIZONTAL SplitterModel in cells. The grab strip sits ABOVE the panel,
   // so dragging UP must GROW the panel — the pointer Y is negated before it reaches the model (up =
   // smaller Y = larger negated position = larger height). Reuses the shared splitter (min 3 rows).
-  const panelSplitter = new SplitterModel.Class({
+  const panelSplitter = new SplitterElement.Class({
+    renderer,
+    identifier: 'panel-divider',
     orientation: 'horizontal',
-    mode: 'cells',
+    reportUnit: 'cells',
     initialSize: panelHeightRows,
     minimumSize: 3,
     maximumSize: 40,
+    pointerDirection: -1,
+    currentSize: () => panelHeightRows,
+    onDragStart: () => panelHost.focus(),
     onSizeChange: (height) => {
       panelHeightRows = Math.round(height);
       panelBox.height = panelHeightRows;
       renderer.requestRender();
     },
   });
-  let panelDragActive = false;
-  panelDivider.onMouseDown = (event) => {
-    (panelDivider as unknown as { _ctx?: { setCapturedRenderable?: (renderable: unknown) => void } })._ctx?.setCapturedRenderable?.(panelDivider);
-    panelHost.focus(); // grabbing the panel's resize handle focuses the panel (VS Code parity)
-    panelSplitter.size.value = panelHeightRows;
-    panelSplitter.beginDrag(-event.y);
-    panelDragActive = true;
-    renderer.requestRender();
-  };
-  panelDivider.onMouseDrag = (event) => {
-    panelSplitter.dragTo(-event.y);
-    renderer.requestRender();
-  };
-  const endPanelDrag = (): void => {
-    if (!panelDragActive) return;
-    panelDragActive = false;
-    panelSplitter.endDrag();
-    renderer.requestRender();
-  };
-  panelDivider.onMouseUp = endPanelDrag;
-  panelDivider.onMouseDragEnd = endPanelDrag;
+  const panelDividerRenderable = panelSplitter.renderable;
   // Clicking the panel focuses it (focus-follows-click). Blur-on-outside is handled in Bootstrap's
   // global mouse handler via panelContainsPoint.
   panelBox.onMouseDown = () => {
@@ -690,10 +642,10 @@ function $buildRootView(
     const visible = panelHost.visible.value;
     if (visible === panelMounted) return;
     if (visible) {
-      panelStack.add(panelDivider);
+      panelStack.add(panelDividerRenderable);
       panelStack.add(panelBox);
     } else {
-      panelStack.remove(panelDivider);
+      panelStack.remove(panelDividerRenderable);
       panelStack.remove(panelBox);
     }
     panelMounted = visible;
@@ -744,14 +696,8 @@ function $buildRootView(
   // settings panel writes (single source). Capture-on-mousedown (captureDragTarget) so this thin strip
   // survives the drag exactly like the sidebar divider; the ratio is the pointer's row within the
   // sidebar body, so it tracks the cursor directly.
-  const gitSplitDivider = new BoxRenderable(renderer, {
-    id: 'git-split-divider',
-    position: 'absolute',
-    height: 1,
-    backgroundColor: readPalette().border,
-    visible: false,
-  });
-  sidebar.add(gitSplitDivider);
+  const gitSplitDivider = paneSplitters.git;
+  sidebar.add(gitSplitDivider.renderable);
 
   // Interior height of a bordered box = box height - 2 (top+bottom border).
   // invariant: A scrollable pane height is an input not an output (ui.invariants.md)
@@ -1002,8 +948,8 @@ function $buildRootView(
     const sidebarViewFocused = workspaceSet.active.focus.value === 'files' || gitView;
     sidebar.borderColor = sidebarViewFocused ? palette.borderActive : palette.border;
     // Divider: brighten while hovered or dragging so it reads as a grab handle.
-    sidebarDivider.backgroundColor =
-      paneSplitters.sidebarDividerActive() ? palette.accent : palette.border;
+    paneSplitters.updateAppearance(palette);
+    panelSplitter.updateAppearance(palette);
     sidebar.titleColor = sidebarViewFocused ? palette.accent : palette.dim;
     sidebar.title = gitView ? 'Git' : extensionsView ? 'Extensions' : 'Files';
     editorArea.backgroundColor = palette.bg;
@@ -1091,7 +1037,6 @@ function $buildRootView(
       panelBox.borderColor = panelFocused ? palette.borderActive : palette.border;
       panelBox.titleColor = panelFocused ? palette.accent : palette.dim;
       panelBox.height = panelHeightRows;
-      panelDivider.backgroundColor = panelFocused ? palette.accent : palette.border;
       const cellRows = panelViewportRows();
       const panelContentTop = (panelBox.y as number) + 1; // inside the rounded border
       const panelContentLeft = (panelBox.x as number) + 1;
@@ -1133,7 +1078,7 @@ function $buildRootView(
         } else {
           view.body.content = span.content.render({ width: span.columns, height: cellRows, palette, glyphLevel: theme.glyphLevel.value, colorDepth: theme.colorDepth.value, focused: cellFocused });
         }
-        if (view.dividerBox) view.dividerBox.backgroundColor = panelFocused ? palette.borderActive : palette.border;
+        view.splitterElement?.updateAppearance(palette);
       });
       if (!agentVisible) { agentScrollViewport.hideBars(); agentCellGeometry = null; }
       agentContent()?.setPaneVisible(agentVisible); // spinner gate: busy AND on-screen
@@ -1364,16 +1309,6 @@ function $buildRootView(
   // frame loop calls syncPaneViewportGeometry().
   // The overlay layer constructs + drives every modal/floating overlay (palette, find, quick-open,
   // confirm, settings, shortcut sheet, context menu, tooltip). update() calls overlayLayer.update().
-  // The pane-splitter controller wires the two draggable dividers (sidebar width + git split ratio).
-  const paneSplitters = new PaneSplitters.Class({
-    renderer,
-    settings,
-    workspaceSet,
-    sidebar,
-    sidebarDivider,
-    gitSplitDivider,
-  });
-
   const overlayLayer = new OverlayLayer.Class({
     renderer,
     commands,

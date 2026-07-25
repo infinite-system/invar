@@ -16,6 +16,7 @@ import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import { Momentum, AT_REST, VERTICAL_MOMENTUM, type ScrollMomentum } from '../system/Momentum';
 import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
+import { SplitterElement } from '../ui/SplitterElement';
 import { MarkdownPreview } from './MarkdownPreview';
 import type { MarkdownSource } from './MarkdownDocument';
 import { MarkdownRenderable, type MarkdownReferenceHit } from './MarkdownRenderable';
@@ -27,10 +28,9 @@ class $MarkdownSplitView {
   protected readonly previewPaneRenderable: BoxRenderable;
   protected readonly dividerRenderable: BoxRenderable;
   protected readonly paneSplitter: SplitterModel.Instance;
+  protected readonly splitterElement: SplitterElement.Model;
   protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
   protected readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
-  protected dividerHovered = false;
-  protected dividerDragActive = false;
   protected lastLaidOutWidth = -1;
   protected renderedPreviewText = '';
 
@@ -72,17 +72,13 @@ class $MarkdownSplitView {
       overflow: 'hidden',
       flexShrink: 0,
     });
-    this.dividerRenderable = new BoxRenderable(renderer, {
-      id: 'markdown-preview-divider',
-      width: 1,
-      height: '100%',
-      flexShrink: 0,
-    });
+    this.splitterElement = this.createSplitterElement();
+    this.dividerRenderable = this.splitterElement.renderable;
     this.preview = this.createPreview();
     this.previewRenderable = this.createPreviewRenderable();
     this.previewPaneRenderable.add(this.previewRenderable);
     this.previewTextBuffer = this.createPreviewTextBuffer();
-    this.paneSplitter = this.createPaneSplitter();
+    this.paneSplitter = this.splitterElement.model;
     this.previewSelectionDragBehavior = this.createSelectionDragBehavior();
 
     this.rootRenderable.add(options.sourceRenderable);
@@ -91,7 +87,6 @@ class $MarkdownSplitView {
     this.rootRenderable.add(this.dividerRenderable);
     this.rootRenderable.add(this.previewPaneRenderable);
     options.parentRenderable.add(this.rootRenderable);
-    this.bindDividerEvents();
     this.bindPreviewEvents();
     this.previewRenderable.attachFindEngineProvider(
       () => options.findBar.engineFor(this.previewFindTargetIdentifier()),
@@ -114,15 +109,23 @@ class $MarkdownSplitView {
     return textBuffer;
   }
 
-  protected createPaneSplitter(): SplitterModel.Instance {
-    return new SplitterModel.Class({
+  protected createSplitterElement(): SplitterElement.Model {
+    return new SplitterElement.Class({
+      renderer: this.renderer,
+      identifier: 'markdown-preview-divider',
       orientation: 'vertical',
-      mode: 'ratio',
+      reportUnit: 'ratio',
       initialSize: this.options.settings.markdownSplitRatio.value,
       minimumSize: 0.2,
       maximumSize: 0.8,
+      currentSize: () => this.options.settings.markdownSplitRatio.value,
+      currentExtentCells: () => this.paneExtentWidth(),
       onSizeChange: (ratio) => {
         this.options.settings.markdownSplitRatio.value = ratio;
+        this.update();
+      },
+      onDragEnd: () => {
+        this.options.settings.save();
         this.update();
       },
     });
@@ -214,8 +217,7 @@ class $MarkdownSplitView {
       ? palette.borderActive
       : palette.border;
     this.previewPaneRenderable.titleColor = this.previewFocused ? palette.accent : palette.dim;
-    this.dividerRenderable.backgroundColor =
-      this.paneSplitter.dragging.value || this.dividerHovered ? palette.accent : palette.border;
+    this.splitterElement.updateAppearance(palette);
     this.previewRenderable.setHoveredReferenceKey(this.hoveredReferenceKey.value);
     this.previewRenderable.refresh();
     this.synchronizeRenderedPreviewDocument();
@@ -387,38 +389,6 @@ class $MarkdownSplitView {
     if (!hit) return null;
     const path = this.options.resolveReference(hit.target);
     return path ? { hit, path } : null;
-  }
-
-  protected bindDividerEvents(): void {
-    this.dividerRenderable.onMouseDown = (event) => {
-      this.captureDragTarget(this.dividerRenderable);
-      this.paneSplitter.size.value = this.options.settings.markdownSplitRatio.value;
-      this.paneSplitter.setExtentCells(this.paneExtentWidth());
-      this.paneSplitter.beginDrag(event.x);
-      this.dividerDragActive = true;
-      this.update();
-    };
-    this.dividerRenderable.onMouseDrag = (event) => {
-      this.paneSplitter.dragTo(event.x);
-      this.update();
-    };
-    const endDividerDrag = (): void => {
-      if (!this.dividerDragActive) return;
-      this.dividerDragActive = false;
-      this.paneSplitter.endDrag();
-      this.options.settings.save();
-      this.update();
-    };
-    this.dividerRenderable.onMouseUp = endDividerDrag;
-    this.dividerRenderable.onMouseDragEnd = endDividerDrag;
-    this.dividerRenderable.onMouseMove = () => {
-      this.dividerHovered = true;
-      this.renderer.requestRender();
-    };
-    this.dividerRenderable.onMouseOut = () => {
-      this.dividerHovered = false;
-      this.renderer.requestRender();
-    };
   }
 
   protected paneExtentWidth(): number {

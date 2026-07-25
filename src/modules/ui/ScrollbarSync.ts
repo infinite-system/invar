@@ -17,6 +17,7 @@ import { Logging } from '../system/Logging';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Theme } from '../theme/Theme';
 import type { Tooltip } from './Tooltip';
+import type { SplitterElement } from './SplitterElement';
 
 export interface ScrollbarSyncDeps {
   renderer: CliRenderer;
@@ -27,7 +28,7 @@ export interface ScrollbarSyncDeps {
   codeBody: { x: number; y: number; width: number | string };
   sidebar: BoxRenderable;
   // The eight bars + the split divider (constructed by RootView; mutated here each frame).
-  gitSplitDivider: BoxRenderable;
+  gitSplitDivider: SplitterElement.Model;
   tooltip: Tooltip.Instance;
   // Geometry accessors owned elsewhere.
   editorViewportHeight: () => number;
@@ -357,12 +358,13 @@ class $ScrollbarSync {
     });
 
     if (gitVisible) {
-      gitSplitDivider.visible = true;
-      gitSplitDivider.top = Math.max(1, geometry.dividerRow - 1);
-      gitSplitDivider.left = 0;
-      gitSplitDivider.width = sidebarInnerWidth;
+      gitSplitDivider.setGeometry({
+        left: 0,
+        top: Math.max(1, geometry.dividerRow - 1),
+        length: sidebarInnerWidth,
+      });
     } else {
-      gitSplitDivider.visible = false;
+      gitSplitDivider.renderable.visible = false;
     }
   }
 }

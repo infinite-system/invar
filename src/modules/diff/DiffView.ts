@@ -30,6 +30,7 @@ import { ref, shallowRef } from 'vue';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
+import { SplitterElement } from '../ui/SplitterElement';
 import { Highlighter, type LangId, type Role } from '../syntax/Highlighter';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Theme } from '../theme/Theme';
@@ -160,6 +161,7 @@ class $DiffView {
   private readonly currentPaneRenderables: DiffPaneRenderables;
   private readonly paneDividerRenderable: BoxRenderable;
   private readonly paneSplitter: SplitterModel.Instance;
+  private readonly paneSplitterElement: SplitterElement.Model;
   private readonly overviewRulerRenderable: TextRenderable;
   private readonly verticalScrollbarRenderable: ScrollBarRenderable;
   private readonly horizontalScrollbarRenderable: ScrollBarRenderable;
@@ -171,8 +173,6 @@ class $DiffView {
   private isApplyingScrollbarGeometry = false;
   private verticalReportedToTrueScale = 1;
   private horizontalReportedToTrueScale = 1;
-  private paneDividerHovered = false;
-  private paneDividerDragActive = false;
   private activeSelectionSide: 'previous' | 'current' | null = null;
   private activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
   private readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
@@ -252,23 +252,27 @@ class $DiffView {
     });
     this.previousPaneRenderables = this.createPaneRenderables('previous');
     this.currentPaneRenderables = this.createPaneRenderables('current');
-    this.paneSplitter = new SplitterModel.Class({
+    this.paneSplitterElement = new SplitterElement.Class({
+      renderer,
+      identifier: 'diff-pane-divider',
       orientation: 'vertical',
-      mode: 'ratio',
+      reportUnit: 'ratio',
       initialSize: 0.5,
       minimumSize: 0.15,
       maximumSize: 0.85,
+      currentSize: () => this.paneSplitRatio(),
+      currentExtentCells: () => this.paneExtentWidth(),
       onSizeChange: (ratio) => {
         if (this.settingsSource) this.settingsSource.diffSplitRatio.value = ratio;
         this.update();
       },
+      onDragEnd: () => {
+        this.settingsSource?.save();
+        this.update();
+      },
     });
-    this.paneDividerRenderable = this.createBoxRenderable({
-      id: 'diff-pane-divider',
-      width: 1,
-      height: '100%',
-      flexShrink: 0,
-    });
+    this.paneSplitter = this.paneSplitterElement.model;
+    this.paneDividerRenderable = this.paneSplitterElement.renderable;
     this.overviewRulerRenderable = this.createTextRenderable({
       id: 'diff-overview-ruler',
       content: '',
@@ -297,20 +301,6 @@ class $DiffView {
     this.headerRenderable.onMouseDown = (event) => this.onHeaderMouseDown(event.x);
     this.bodyRenderable.onMouseScroll = (event) =>
       this.onBodyMouseScroll(event.scroll?.direction, event.modifiers.alt || event.modifiers.shift);
-    this.paneDividerRenderable.onMouseDown = (event) => this.beginPaneDividerDrag(event.x);
-    this.paneDividerRenderable.onMouseDrag = (event) => this.continuePaneDividerDrag(event.x);
-    this.paneDividerRenderable.onMouseUp = () => this.endPaneDividerDrag();
-    this.paneDividerRenderable.onMouseDragEnd = () => this.endPaneDividerDrag();
-    this.paneDividerRenderable.onMouseMove = () => {
-      if (this.paneDividerHovered) return;
-      this.paneDividerHovered = true;
-      this.update();
-    };
-    this.paneDividerRenderable.onMouseOut = () => {
-      if (!this.paneDividerHovered) return;
-      this.paneDividerHovered = false;
-      this.update();
-    };
     this.previousSelectionDragBehavior = this.createSelectionDragBehavior('previous');
     this.currentSelectionDragBehavior = this.createSelectionDragBehavior('current');
     this.bindPaneSelectionEvents('previous');
@@ -526,8 +516,7 @@ class $DiffView {
     this.rootRenderable.backgroundColor = palette.bg;
     this.headerRenderable.bg = palette.statusBg;
     this.bodyRenderable.backgroundColor = palette.bg;
-    this.paneDividerRenderable.backgroundColor =
-      this.paneSplitter.dragging.value || this.paneDividerHovered ? palette.accent : palette.border;
+    this.paneSplitterElement.updateAppearance(palette);
     this.previousPaneRenderables.title.bg = palette.panel;
     this.currentPaneRenderables.title.bg = palette.panel;
     // invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md)
@@ -854,35 +843,6 @@ class $DiffView {
     this.previousPaneRenderables.pane.width = previousPaneWidth;
     this.currentPaneRenderables.pane.width = Math.max(1, this.paneExtentWidth() - previousPaneWidth);
     this.paneSplitter.setExtentCells(this.paneExtentWidth());
-  }
-
-  private captureDragTarget(target: object): void {
-    const renderableWithContext = target as {
-      _ctx?: { setCapturedRenderable?: (renderable: unknown) => void };
-    };
-    renderableWithContext._ctx?.setCapturedRenderable?.(target);
-  }
-
-  private beginPaneDividerDrag(screenColumn: number): void {
-    this.captureDragTarget(this.paneDividerRenderable);
-    this.paneSplitter.size.value = this.paneSplitRatio();
-    this.paneSplitter.setExtentCells(this.paneExtentWidth());
-    this.paneSplitter.beginDrag(screenColumn);
-    this.paneDividerDragActive = true;
-    this.update();
-  }
-
-  private continuePaneDividerDrag(screenColumn: number): void {
-    this.paneSplitter.dragTo(screenColumn);
-    this.update();
-  }
-
-  private endPaneDividerDrag(): void {
-    if (!this.paneDividerDragActive) return;
-    this.paneDividerDragActive = false;
-    this.paneSplitter.endDrag();
-    this.settingsSource?.save();
-    this.update();
   }
 
   // --- editor-parity selection and drag autoscroll ---
