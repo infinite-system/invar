@@ -2,7 +2,7 @@
 // on a new navigation after going back, same-line duplicate collapse, the cap dropping oldest, and
 // the empty / at-end no-ops. Plain values only — no editor, no LSP.
 import { test, expect, describe } from 'bun:test';
-import { NavigationHistory, type Location } from '../NavigationHistory';
+import { NavigationHistory, type Location } from './NavigationHistory';
 
 const at = (documentPath: string, line: number, column = 0): Location => ({
   documentPath,

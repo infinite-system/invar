@@ -1,23 +1,17 @@
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
+
 // Browser-style navigation history (VS Code "Go Back / Go Forward"): an ordered list of visited
 // locations plus a cursor into it. Recording a NEW location truncates any forward history and
 // appends; back()/forward() walk the cursor without recording. Pure model — plain values in, plain
 // values out — so it is unit-testable with no editor, no LSP, and no terminal.
-//
 // invariant: Programmatic history navigation does not record new history (navigation.invariants.md)
-import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
-
-/** One visited location: a document and the cursor's 0-based grapheme position within it. */
-export interface Location {
-  documentPath: string;
-  line: number;
-  column: number;
-}
-
-/** The largest number of entries retained; recording past it drops the oldest (bounded memory). */
-const MAXIMUM_ENTRY_COUNT = 100;
-
 class $NavigationHistory {
+  /** The largest number of entries retained; recording past it drops the oldest. */
+  protected static get maximumEntryCount(): number {
+    return 100;
+  }
+
   // The ordered list of visited locations, oldest first. shallowRef because it is replaced
   // wholesale on every mutation (never mutated in place), so one signal covers the whole list.
   get entries() {
@@ -75,7 +69,10 @@ class $NavigationHistory {
     // A genuinely new location: drop any forward history, then append and make it current.
     const retainedEntries = this.entries.value.slice(0, this.currentIndex.value + 1);
     retainedEntries.push(location);
-    while (retainedEntries.length > MAXIMUM_ENTRY_COUNT) retainedEntries.shift();
+    const navigationHistoryClass = this.constructor as typeof $NavigationHistory;
+    while (retainedEntries.length > navigationHistoryClass.maximumEntryCount) {
+      retainedEntries.shift();
+    }
     this.entries.value = retainedEntries;
     this.currentIndex.value = retainedEntries.length - 1;
   }
@@ -106,4 +103,11 @@ export namespace NavigationHistory {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+/** One visited location: a document and the cursor's 0-based grapheme position within it. */
+export interface Location {
+  documentPath: string;
+  line: number;
+  column: number;
 }
