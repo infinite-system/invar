@@ -5,7 +5,6 @@
 import { describe, test, expect } from 'bun:test';
 import { encode as encodeJpeg } from 'jpeg-js';
 import { ImageDecoders, type DecodedImage } from './ImageDecoders';
-import { JpegDecoder } from './JpegDecoder';
 
 describe('ImageDecoders', () => {
   test('supports exactly the registered raster extensions, case-insensitively', () => {
@@ -45,20 +44,25 @@ describe('ImageDecoders', () => {
 
   test('REGRESSION (review arch 11): the registry dereferences .Class at CALL time — a swap is honored', () => {
     // The registry must store delegating closures, never module-init snapshots of X.Class.decode:
-    // swapping the decoder Class slot after import must change what the registry decodes with.
-    const originalJpegClass = JpegDecoder.Class;
+    // overriding the late decoder getter must change what the registry decodes with.
     class $FakeJpegDecoder {
-      static decode = (): DecodedImage => ({ width: 1, height: 1, rgba: new Uint8Array([9, 9, 9, 255]) });
+      static decode(): DecodedImage {
+        return {
+          width: 1,
+          height: 1,
+          rgba: new Uint8Array([9, 9, 9, 255]),
+        };
+      }
     }
-    try {
-      JpegDecoder.Class = $FakeJpegDecoder;
-      const decoder = ImageDecoders.Class.decoderFor('.jpg');
-      const image = decoder!(new Uint8Array([0, 1, 2]));
-      expect(image.width).toBe(1);
-      expect(Array.from(image.rgba)).toEqual([9, 9, 9, 255]);
-    } finally {
-      JpegDecoder.Class = originalJpegClass;
+    class TestImageDecoders extends ImageDecoders.$Class {
+      protected static override get JpegDecoder() {
+        return $FakeJpegDecoder;
+      }
     }
+    const decoder = TestImageDecoders.decoderFor('.jpg');
+    const image = decoder!(new Uint8Array([0, 1, 2]));
+    expect(image.width).toBe(1);
+    expect(Array.from(image.rgba)).toEqual([9, 9, 9, 255]);
   });
 
   test('the .png decoder rejects JPEG bytes and vice versa (honest per-format instances)', () => {
