@@ -57,7 +57,7 @@ if echo "$badge_text" | grep -q "/${tabs}"; then echo "  PASS  count badge shows
 
 echo "== clicking the count badge opens the all-buffers dropdown; a row activates that tab =="
 "$H" click "$S" "$badge_start" "$badge_row" >/dev/null; sleep 0.3; "$H" settle "$S" >/dev/null 2>&1
-if [ "$(f contextMenuOpen)" = "true" ]; then echo "  PASS  badge click opened the dropdown"; else echo "  FAIL  badge click did not open the dropdown"; fail=1; fi
+if [ "$(f boundedListPopupOpen)" = "true" ]; then echo "  PASS  badge click opened the dropdown"; else echo "  FAIL  badge click did not open the dropdown"; fail=1; fi
 "$H" send "$S" Escape >/dev/null; sleep 0.2; "$H" settle "$S" >/dev/null 2>&1
 
 echo "== the » arrow PANS the strip to reveal later tabs WITHOUT changing the active tab =="

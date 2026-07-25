@@ -10,6 +10,7 @@ const overlayNames: readonly ExclusiveOverlayName[] = [
   'commandPalette',
   'settingsPanel',
   'contextMenu',
+  'boundedListPopup',
   'shortcutHelp',
 ];
 
@@ -25,6 +26,7 @@ describe('OverlayCoordinator', () => {
       commandPalette: closeOverlay('commandPalette'),
       settingsPanel: closeOverlay('settingsPanel'),
       contextMenu: closeOverlay('contextMenu'),
+      boundedListPopup: closeOverlay('boundedListPopup'),
       shortcutHelp: closeOverlay('shortcutHelp'),
     };
     const coordinator = new OverlayCoordinator.Class(closeActions);
@@ -58,6 +60,7 @@ describe('OverlayCoordinator', () => {
       commandPalette: () => {},
       settingsPanel: () => {},
       contextMenu: () => {},
+      boundedListPopup: () => {},
       shortcutHelp: () => {},
     });
 

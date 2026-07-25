@@ -12,6 +12,7 @@ import { SettingsPanel } from '../settings/SettingsPanel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
+import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { PanelHost } from '../ui/PanelHost';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
@@ -64,6 +65,10 @@ export interface AppStatusProjectionPorts {
     'open' | 'selectedIndex' | 'rows'
   >;
   readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
+  readonly boundedListPopup: Pick<
+    InstanceType<typeof BoundedListPopup.Class>,
+    'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
+  >;
   readonly shortcutHelp: Pick<
     InstanceType<typeof ShortcutHelp.Class>,
     'open' | 'scrollTop' | 'rows'
@@ -125,6 +130,7 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     ...(ports.commands.open.value ? ['commandPalette'] : []),
     ...(ports.settingsPanel.open.value ? ['settingsPanel'] : []),
     ...(ports.contextMenu.open.value ? ['contextMenu'] : []),
+    ...(ports.boundedListPopup.open.value ? ['boundedListPopup'] : []),
     ...(ports.shortcutHelp.open.value ? ['shortcutHelp'] : []),
   ];
   return {
@@ -223,6 +229,11 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     gitRegion: ports.workspaceSet.active.gitPanel.region.value,
     gitSelectedPaths: [...ports.workspaceSet.active.gitPanel.selectedPaths.value],
     contextMenuOpen: ports.contextMenu.open.value,
+    boundedListPopupOpen: ports.boundedListPopup.open.value,
+    boundedListPopupQuery: ports.boundedListPopup.query.value,
+    boundedListPopupSelected: ports.boundedListPopup.selectedIndex.value,
+    boundedListPopupMatches: ports.boundedListPopup.filteredMatches.length,
+    boundedListPopupGeometry: ports.boundedListPopup.geometry,
     tooltipVisible: ports.tooltip.visible.value,
     // A diff is shown OVER the editor tabs (transient). Lets a driven contract confirm the diff
     // pane actually mounted, so pane-independence (editor extent survives the swap) is real-verified.

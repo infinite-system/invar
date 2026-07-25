@@ -9,6 +9,7 @@ export type ExclusiveOverlayName =
   | 'commandPalette'
   | 'settingsPanel'
   | 'contextMenu'
+  | 'boundedListPopup'
   | 'shortcutHelp';
 
 export type ExclusiveOverlayCloseActions = Readonly<Record<ExclusiveOverlayName, () => void>>;
@@ -19,6 +20,7 @@ const exclusiveOverlayNames: readonly ExclusiveOverlayName[] = [
   'commandPalette',
   'settingsPanel',
   'contextMenu',
+  'boundedListPopup',
   'shortcutHelp',
 ];
 

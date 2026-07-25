@@ -136,6 +136,7 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: bracket-match harness" bun scripts/harness/smoke-bracket-match-harness.ts
   full_tmux_step "smoke: tabs"        bash scripts/smoke-tabs.sh
   step "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
+  step "smoke: bounded list popup harness" bun scripts/harness/smoke-bounded-list-popup-harness.ts
   full_tmux_step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
   step "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
   full_tmux_step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh

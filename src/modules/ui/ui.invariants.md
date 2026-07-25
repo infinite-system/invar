@@ -42,6 +42,38 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 
 ## Chosen invariants
 
+### Bounded list popups share paint and hit geometry
+
+**Invariant:** If a bounded list popup is drawn and accepts pointer input, then one
+`BoundedListPopupGeometry` determines its box bounds, optional search row, visible list window,
+scrollbar rectangle, and screen-row-to-item mapping for both painting and hit-testing.
+
+**Scope:** `BoundedListPopup` and its buffer-count and Git-log branch-selector adapters.
+
+**Mechanism:** `BoundedListPopup.layoutGeometry` produces the geometry stored for the current paint.
+The list renderer slices from its `firstVisible` and `listRows`; the vertical-only
+`ScrollableTextViewport` receives the same list rectangle; and pointer selection calls
+`filterIndexAtRow` with that stored geometry. Consumer adapters provide item labels, selection, and
+actions but never calculate popup rows.
+
+**Generates:** window-edge clamping and upward opening; a bounded visible window over arbitrarily
+large lists; wheel momentum and a solid vertical thumb; pointer and keyboard selection that agree
+with the row on screen.
+
+**Evidence:** `src/modules/ui/BoundedListPopup.ts`;
+`src/modules/ui/BoundedListPopup.test.ts`; `scripts/harness/smoke-bounded-list-popup-harness.ts`.
+
+**Impossible if true:** a painted row selecting a different item; a popup or scrollbar extending
+through the terminal bottom edge; a consumer reimplementing placement, visible-window, or row-hit
+math.
+
+**Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts && bun
+scripts/harness/smoke-bounded-list-popup-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Tab bars share paint and hit geometry
 
 **Invariant:** If a horizontal tab bar paints tabs, unused width, and right controls, then one column

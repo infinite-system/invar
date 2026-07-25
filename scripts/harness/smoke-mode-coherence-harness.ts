@@ -135,18 +135,18 @@ try {
     row: badgePosition.row,
     button: 'left',
   });
-  await assertOnlyOverlay(driver, statusPath, 'contextMenu', 'document.txt');
+  await assertOnlyOverlay(driver, statusPath, 'boundedListPopup', 'document.txt');
   requireEqual(
     statusField<boolean>(statusPath, 'paletteOpen'),
     false,
-    'context menu closed the command palette',
+    'bounded list popup closed the command palette',
   );
   driver.sendKeys('F1');
   await assertOnlyOverlay(driver, statusPath, 'commandPalette', 'Command Palette');
   requireEqual(
-    statusField<boolean>(statusPath, 'contextMenuOpen'),
+    statusField<boolean>(statusPath, 'boundedListPopupOpen'),
     false,
-    'F1 switched the context-menu slot to the palette',
+    'F1 switched the bounded-list-popup slot to the palette',
   );
   await driver.dispose();
 

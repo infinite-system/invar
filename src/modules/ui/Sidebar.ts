@@ -11,6 +11,7 @@ import { ScrollGesture } from './ScrollGesture';
 import type { GitPanelGeometry } from './GitPaneRenderer';
 import type { ChangeRow, FileRow } from '../git/GitRows';
 import type { ContextMenu, ContextMenuItem } from './ContextMenu';
+import type { BoundedListPopup, BoundedListPopupItem } from './BoundedListPopup';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Tooltip } from './Tooltip';
 import type { OverlayCoordinator } from './OverlayCoordinator';
@@ -25,6 +26,7 @@ export interface SidebarDeps {
   tooltip: Tooltip.Instance;
   overlayCoordinator: OverlayCoordinator.Instance;
   contextMenu: ContextMenu.Instance;
+  boundedListPopup: BoundedListPopup.Instance;
   settings: Settings.Instance;
   /** The geometry the git renderer wrote this frame (hit-test source of truth). */
   gitPanelGeometry: () => GitPanelGeometry;
@@ -112,32 +114,31 @@ class $Sidebar {
     );
   }
 
-  // Click on the log's `history: <branch>` header: a modal branch menu (same ContextMenu machinery
-  // as the changes right-click / tab-overflow dropdown — keyboard-navigable, Esc closes). The
-  // VIEWED branch carries ●, the CHECKED-OUT branch ✓. Selecting re-sources the log VIEW only —
+  // Click on the log's `history: <branch>` header: a bounded, searchable branch list. The
+  // viewed and checked-out branches are described in text. Selecting re-sources the log VIEW only —
   // never a `git switch` (read-only viewer); picking the checked-out branch returns to HEAD-follow.
   // invariant: The log branch viewer is read-only (src/modules/git/git.invariants.md)
   private openLogBranchMenu(pointerX: number, pointerY: number): void {
-    const { workspaceSet, overlayCoordinator, contextMenu, renderer } = this.deps;
+    const { workspaceSet, overlayCoordinator, boundedListPopup } = this.deps;
     const activeWorkspace = workspaceSet.active;
     void activeWorkspace.localLogBranches().then((branchNames) => {
       if (branchNames.length === 0) return;
       const checkedOutBranch = activeWorkspace.git.value?.branch.value ?? '';
       const viewedBranch = activeWorkspace.commitLog.value?.branch.value ?? checkedOutBranch;
-      const items: ContextMenuItem[] = branchNames.map((branchName) => ({
-        id: `git.viewLogBranch:${branchName}`,
-        label: `${branchName === viewedBranch ? '●' : ' '} ${branchName}${branchName === checkedOutBranch ? ' ✓' : ''}`,
-        enabled: true,
+      const items: BoundedListPopupItem[] = branchNames.map((branchName) => ({
+        identifier: branchName,
+        label: `${branchName}${branchName === checkedOutBranch ? ' (checked out)' : ''}`,
+        selected: branchName === viewedBranch,
       }));
-      overlayCoordinator.openExclusiveOverlay('contextMenu', () =>
-        contextMenu.openAt(
+      overlayCoordinator.openExclusiveOverlay('boundedListPopup', () =>
+        boundedListPopup.openAt(
           items,
-          pointerX,
-          pointerY,
-          { width: renderer.width, height: renderer.height },
-          (itemIdentifier) => {
-            const selectedBranch = itemIdentifier.slice('git.viewLogBranch:'.length);
-            activeWorkspace.selectLogBranch(selectedBranch);
+          { column: pointerX, row: pointerY },
+          (item) => activeWorkspace.selectLogBranch(item.identifier),
+          {
+            title: 'View Branch History',
+            selectedItemIdentifier: viewedBranch,
+            minimumWidth: 30,
           },
         ),
       );

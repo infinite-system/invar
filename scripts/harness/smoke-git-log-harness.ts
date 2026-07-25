@@ -163,8 +163,8 @@ try {
   console.log('== harness git-log: branch menu is mouse-driven ==');
   HarnessSmoke.Class.clickText(driver, snapshot, 'history: main', 7);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('main ✓') !== null
-      && HarnessSmoke.Class.readStatus(statusPath).contextMenuOpen === true,
+    (candidate) => candidate.findText('main (checked out)') !== null
+      && HarnessSmoke.Class.readStatus(statusPath).boundedListPopupOpen === true,
   );
   HarnessSmoke.Class.pass('header click opened the branch menu');
   HarnessSmoke.Class.pass('menu marks the checked-out branch');
