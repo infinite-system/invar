@@ -71,12 +71,21 @@ function clickPosition(
 
 function popupItemPosition(
   snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
   itemText: string,
 ): { column: number; row: number } | null {
-  for (let row = 0; row < snapshot.rows; row++) {
-    const rowText = snapshot.rowText(row);
-    const column = rowText.indexOf(itemText);
-    if (column >= 0 && !rowText.includes('history:')) return { column, row };
+  for (
+    let row = geometry.listTop;
+    row < geometry.listTop + geometry.listRows;
+    row++
+  ) {
+    const popupRowText = Array.from(snapshot.rowText(row))
+      .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+      .join('');
+    const relativeColumn = popupRowText.indexOf(itemText);
+    if (relativeColumn >= 0) {
+      return { column: geometry.listLeft + relativeColumn, row };
+    }
   }
   return null;
 }
@@ -236,6 +245,12 @@ try {
 
   console.log('== bounded popup: live filter and keyboard selection ==');
   driver.sendText('file-073');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.boundedListPopupQuery === 'file-073',
+  );
+  geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('⌕ file-073') !== null
       && geometry !== null
@@ -269,12 +284,20 @@ try {
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('file-025');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.boundedListPopupQuery === 'file-025',
+  );
+  geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) => geometry !== null
       && popupListContains(candidate, geometry, 'file-025.txt')
       && !popupListContains(candidate, geometry, 'file-024.txt'),
   );
-  const bufferItem = popupItemPosition(snapshot, 'file-025.txt');
+  const bufferItem = geometry
+    ? popupItemPosition(snapshot, geometry, 'file-025.txt')
+    : null;
   HarnessSmoke.Class.requireCondition(bufferItem !== null, 'filtered buffer row is visible');
   if (!bufferItem) throw new Error('Filtered buffer row vanished');
   clickPosition(driver, bufferItem);
@@ -324,6 +347,12 @@ try {
     'low branch-selector anchor opens the popup upward',
   );
   driver.sendText('branch-011');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.boundedListPopupQuery === 'branch-011',
+  );
+  geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('⌕ branch-011') !== null
       && geometry !== null
@@ -355,12 +384,20 @@ try {
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('branch-007');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.boundedListPopupQuery === 'branch-007',
+  );
+  geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) => geometry !== null
       && popupListContains(candidate, geometry, 'branch-007')
       && !popupListContains(candidate, geometry, 'branch-006'),
   );
-  const branchItem = popupItemPosition(snapshot, 'branch-007');
+  const branchItem = geometry
+    ? popupItemPosition(snapshot, geometry, 'branch-007')
+    : null;
   HarnessSmoke.Class.requireCondition(branchItem !== null, 'filtered branch row is visible');
   if (!branchItem) throw new Error('Filtered branch row vanished');
   clickPosition(driver, branchItem);
