@@ -21,6 +21,18 @@ else
   echo "CONVENTIONS WARN: bunx not found — skipping tsc (install bun so the gate can typecheck)"
 fi
 
+# 0.5) SKILLS INDEX COMPLETENESS: every skill in .claude/skills/ must be named in AGENTS.md's
+#      skills index — codex-lineage agents cannot auto-discover the skills directory, so an
+#      unindexed skill is invisible to half the fleet. Forgetting is made impossible, not
+#      discouraged (ATOMIC-BIND doctrine).
+for skill_directory in .claude/skills/*/; do
+  skill_name="$(basename "$skill_directory")"
+  if ! grep -q "skills/${skill_name}" AGENTS.md; then
+    echo "CONVENTIONS FAIL: skill '.claude/skills/${skill_name}' is not mentioned in AGENTS.md's skills index — add a when-to-use line."
+    fail=1
+  fi
+done
+
 # 1) FILE GRAMMAR: module behavior lives on the eponymous class/interface seam; types follow it;
 #    tests are colocated and complete. The checker's converted-module set is the ratchet: listed
 #    modules block on violations, while unlisted modules print the phase-2 count map without blocking.
