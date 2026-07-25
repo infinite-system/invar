@@ -68,16 +68,18 @@ describe('LayoutModel', () => {
     },
   );
 
-  test('a full-height dock keeps its columns when alignment would otherwise span beneath it', () => {
+  test('panel alignment owns its horizontal edges independently of dock spans', () => {
     const geometry = resolve({
       panelAlignment: 'justify',
       rightDockVerticalSpan: 'full-height',
     });
 
-    expect(geometry.bottomPanel.left).toBe(geometry.editorCenter.left);
+    expect(geometry.bottomPanel.left).toBe(0);
     expect(
       geometry.bottomPanel.left + geometry.bottomPanel.width,
-    ).toBe(geometry.editorCenter.left + geometry.editorCenter.width);
+    ).toBe(120);
+    expect(geometry.sidebar.height).toBe(39);
+    expect(geometry.rightDock.height).toBe(39);
   });
 
   test('an ends-at-panel dock stops at the panel splitter while a hidden panel restores full height', () => {
@@ -89,5 +91,65 @@ describe('LayoutModel', () => {
     );
     expect(hiddenGeometry.rightDock.height).toBe(39);
     expect(hiddenGeometry.editorCenter.height).toBe(39);
+  });
+
+  test('every alignment and span resolves exact slot edges for both sidebar sides and dock visibility states', () => {
+    const sidebarPositions = ['left', 'right'] as const;
+    const dockVerticalSpans = ['full-height', 'ends-at-panel'] as const;
+    const panelAlignments = ['left', 'center', 'right', 'justify'] as const;
+
+    for (const sidebarPosition of sidebarPositions) {
+      for (const rightDockVisible of [false, true]) {
+        for (const leftDockVerticalSpan of dockVerticalSpans) {
+          for (const rightDockVerticalSpan of dockVerticalSpans) {
+            for (const panelAlignment of panelAlignments) {
+              const geometry = resolve({
+                sidebarPosition,
+                rightDockVisible,
+                leftDockVerticalSpan,
+                rightDockVerticalSpan,
+                panelAlignment,
+              });
+              const editorRight =
+                geometry.editorCenter.left + geometry.editorCenter.width;
+              const expectedPanelLeft =
+                panelAlignment === 'left' || panelAlignment === 'justify'
+                  ? 0
+                  : geometry.editorCenter.left;
+              const expectedPanelRight =
+                panelAlignment === 'right' || panelAlignment === 'justify'
+                  ? 120
+                  : editorRight;
+              const expectedPrimaryDockBottom =
+                leftDockVerticalSpan === 'full-height'
+                  ? 39
+                  : geometry.bottomPanelSplitter.top;
+              const expectedRightDockBottom = !rightDockVisible
+                ? 0
+                : rightDockVerticalSpan === 'full-height'
+                  ? 39
+                  : geometry.bottomPanelSplitter.top;
+
+              expect(geometry.bottomPanel.left).toBe(expectedPanelLeft);
+              expect(
+                geometry.bottomPanel.left + geometry.bottomPanel.width,
+              ).toBe(expectedPanelRight);
+              expect(geometry.sidebar.height).toBe(
+                expectedPrimaryDockBottom,
+              );
+              expect(geometry.rightDock.height).toBe(
+                expectedRightDockBottom,
+              );
+              if (!rightDockVisible) {
+                expect(geometry.rightDock.left).toBe(
+                  geometry.rightDockSplitter.left,
+                );
+                expect(geometry.rightDock.width).toBe(0);
+              }
+            }
+          }
+        }
+      }
+    }
   });
 });

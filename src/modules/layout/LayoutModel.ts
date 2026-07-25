@@ -67,44 +67,24 @@ class $LayoutModel {
       panelSplitterTop,
       totalRows,
     );
-    const rightDockRows = this.dockRows(
-      options.rightDockVerticalSpan,
-      options.bottomPanelVisible,
-      panelSplitterTop,
-      totalRows,
-    );
+    const rightDockRows = options.rightDockVisible
+      ? this.dockRows(
+          options.rightDockVerticalSpan,
+          options.bottomPanelVisible,
+          panelSplitterTop,
+          totalRows,
+        )
+      : 0;
 
-    let panelLeft = this.panelLeft(
+    const panelLeft = this.panelLeft(
       options.panelAlignment,
       editorLeft,
     );
-    let panelRight = this.panelRight(
+    const panelRight = this.panelRight(
       options.panelAlignment,
       editorRight,
       totalColumns,
     );
-    if (
-      options.leftDockVerticalSpan === 'full-height'
-      && this.alignmentIncludesPrimaryDock(
-        options.panelAlignment,
-        options.sidebarPosition,
-      )
-    ) {
-      if (options.sidebarPosition === 'left') {
-        panelLeft = Math.max(panelLeft, editorLeft);
-      } else {
-        panelRight = Math.min(panelRight, editorRight);
-      }
-    }
-    if (
-      options.rightDockVisible
-      && options.rightDockVerticalSpan === 'full-height'
-      && this.alignmentIncludesRightDock(options.panelAlignment)
-    ) {
-      panelRight = Math.min(panelRight, rightDockSplitterLeft);
-    }
-    panelLeft = Math.max(0, Math.min(panelLeft, totalColumns - 1));
-    panelRight = Math.max(panelLeft + 1, Math.min(panelRight, totalColumns));
 
     return {
       activityBar: {
@@ -138,7 +118,9 @@ class $LayoutModel {
         height: rightDockRows,
       },
       rightDock: {
-        left: rightDockLeft,
+        left: options.rightDockVisible
+          ? rightDockLeft
+          : rightDockSplitterLeft,
         top: 0,
         width: rightDockColumns,
         height: rightDockRows,
@@ -187,22 +169,6 @@ class $LayoutModel {
     return alignment === 'right' || alignment === 'justify'
       ? totalColumns
       : editorRight;
-  }
-
-  protected static alignmentIncludesPrimaryDock(
-    alignment: PanelAlignment,
-    sidebarPosition: SidebarPosition,
-  ): boolean {
-    if (alignment === 'justify') return true;
-    return sidebarPosition === 'left'
-      ? alignment === 'left'
-      : alignment === 'right';
-  }
-
-  protected static alignmentIncludesRightDock(
-    alignment: PanelAlignment,
-  ): boolean {
-    return alignment === 'right' || alignment === 'justify';
   }
 }
 

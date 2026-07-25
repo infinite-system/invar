@@ -77,9 +77,10 @@ re-derives an edge from a sibling renderable.
 `RootView`, across sidebar position, panel alignment, and each dock vertical-span setting.
 
 **Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
-four layout settings, then emits every slot rectangle in one coordinate space. RootView applies those
-rectangles directly; a full-height dock retains its columns while an ends-at-panel dock yields them
-below the panel splitter.
+four layout settings, then emits every slot rectangle in one coordinate space. Panel alignment alone
+selects its horizontal edges: left edge to editor right, editor only, editor left to right edge, or
+the full width. Each visible dock independently resolves to the viewport bottom or the panel splitter;
+a hidden right dock resolves to a zero-area slot. RootView applies those rectangles directly.
 
 **Generates:** Live sidebar-side changes; left, center, right, and justify panel alignment; independent
 full-height or ends-at-panel docks; a reserved right-dock slot that future PaneContent citizens can
@@ -89,15 +90,16 @@ occupy without new root math.
 `src/modules/ui/RootView.ts`.
 
 **Impossible if true:** RootView positioning one slot by reading another slot's laid-out edge; a
-configuration change requiring a second panel or dock formula; a full-height dock being shortened by
-opening the bottom panel.
+configuration change requiring a second panel or dock formula; panel alignment being clipped to a
+different horizontal range by either dock span; a visible full-height dock slot stopping at the panel
+splitter; a hidden right dock retaining a nonzero slot.
 
 **Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration
 geometry assertions registered in `scripts/merge-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ### A reported size never leaves its configured bounds
 

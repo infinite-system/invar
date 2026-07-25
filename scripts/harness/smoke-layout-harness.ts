@@ -27,6 +27,11 @@ interface SplitterRegion extends Rectangle {
 }
 
 type SplitterName = 'sidebar' | 'git' | 'bottomPanel' | 'rightDock';
+type LayoutSettingName =
+  | 'sidebarPosition'
+  | 'panelAlignment'
+  | 'leftDockVerticalSpan'
+  | 'rightDockVerticalSpan';
 
 function layoutSlot(status: StatusSnapshot, slotName: string): Rectangle {
   const layoutSlots = status.layoutSlots as Record<string, Rectangle> | undefined;
@@ -55,6 +60,87 @@ function rectangleBottom(rectangle: Rectangle): number {
   return rectangle.top + rectangle.height;
 }
 
+function layoutTopRow(
+  snapshot: HarnessSnapshot.Model,
+  bottomPanel: Rectangle,
+): number {
+  return snapshot.rows - 1 - rectangleBottom(bottomPanel);
+}
+
+function assertPanelAlignmentGeometry(
+  driver: PtyTestDriver.Model,
+  status: StatusSnapshot,
+  context: string,
+): void {
+  const panelAlignment = String(status.panelAlignment);
+  const editorCenter = layoutSlot(status, 'editorCenter');
+  const bottomPanel = layoutSlot(status, 'bottomPanel');
+  const expectedLeft =
+    panelAlignment === 'left' || panelAlignment === 'justify'
+      ? 0
+      : editorCenter.left;
+  const expectedRight =
+    panelAlignment === 'right' || panelAlignment === 'justify'
+      ? Number(status.width)
+      : rectangleRight(editorCenter);
+  HarnessSmoke.Class.requireCondition(
+    bottomPanel.left === expectedLeft
+      && rectangleRight(bottomPanel) === expectedRight,
+    `${context}: ${panelAlignment} alignment resolves exact slot edges ${expectedLeft}-${expectedRight}`,
+  );
+
+  const snapshot = driver.snapshot();
+  const panelTopRow = layoutTopRow(snapshot, bottomPanel) + bottomPanel.top;
+  const leftCorner = snapshot.cell(panelTopRow, bottomPanel.left);
+  const rightCorner = snapshot.cell(panelTopRow, rectangleRight(bottomPanel) - 1);
+  HarnessSmoke.Class.requireCondition(
+    leftCorner !== null
+      && rightCorner !== null
+      && leftCorner.characters.trim().length > 0
+      && rightCorner.characters.trim().length > 0,
+    `${context}: ${panelAlignment} slot edges are painted in the emulator frame`,
+  );
+}
+
+function assertDockVerticalSpanGeometry(
+  driver: PtyTestDriver.Model,
+  status: StatusSnapshot,
+  slotName: 'sidebar' | 'rightDock',
+  settingName: 'leftDockVerticalSpan' | 'rightDockVerticalSpan',
+  context: string,
+): void {
+  const dock = layoutSlot(status, slotName);
+  const bottomPanel = layoutSlot(status, 'bottomPanel');
+  const bottomPanelSplitter = layoutSlot(status, 'bottomPanelSplitter');
+  const verticalSpan = String(status[settingName]);
+  if (slotName === 'rightDock' && status.rightDockVisible !== true) {
+    HarnessSmoke.Class.requireCondition(
+      dock.width === 0 && dock.height === 0,
+      `${context}: hidden right dock has a zero-area slot for ${verticalSpan}`,
+    );
+    return;
+  }
+
+  const expectedBottom =
+    verticalSpan === 'full-height'
+      ? rectangleBottom(bottomPanel)
+      : bottomPanelSplitter.top;
+  HarnessSmoke.Class.requireCondition(
+    rectangleBottom(dock) === expectedBottom,
+    `${context}: ${slotName} ${verticalSpan} resolves bottom edge ${expectedBottom}`,
+  );
+
+  const snapshot = driver.snapshot();
+  const dockBottomRow =
+    layoutTopRow(snapshot, bottomPanel) + rectangleBottom(dock) - 1;
+  const dockBottomCorner = snapshot.cell(dockBottomRow, dock.left);
+  HarnessSmoke.Class.requireCondition(
+    dockBottomCorner !== null
+      && dockBottomCorner.characters.trim().length > 0,
+    `${context}: ${slotName} ${verticalSpan} bottom edge is painted in the emulator frame`,
+  );
+}
+
 function splitterPoint(region: SplitterRegion): { column: number; row: number } {
   return {
     column: region.left + Math.floor(Math.max(0, region.width - 1) / 2),
@@ -80,33 +166,175 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
-function settingsWidgetPosition(
-  snapshot: HarnessSnapshot.Model,
-  label: string,
-): { column: number; row: number } {
-  const labelPosition = snapshot.findText(label);
-  if (!labelPosition) throw new Error(`Settings row is not visible: ${label}`);
-  const widgetColumn = snapshot.rowText(labelPosition.row).lastIndexOf('>');
-  if (widgetColumn < 0) throw new Error(`Settings increment arrow is not visible: ${label}`);
-  return { column: widgetColumn, row: labelPosition.row };
+function layoutSettingDescriptorIndex(settingName: LayoutSettingName): number {
+  if (settingName === 'sidebarPosition') return 25;
+  if (settingName === 'panelAlignment') return 26;
+  if (settingName === 'leftDockVerticalSpan') return 27;
+  return 28;
 }
 
-async function clickSettingIncrement(
+async function adjustSettingThroughSettings(
   driver: PtyTestDriver.Model,
   statusPath: string,
-  label: string,
-  settingName: string,
+  settingName: LayoutSettingName,
   expectedValue: string,
 ): Promise<StatusSnapshot> {
-  const position = settingsWidgetPosition(driver.snapshot(), label);
-  clickCell(driver, position.column, position.row);
+  const targetDescriptorIndex = layoutSettingDescriptorIndex(settingName);
+  const currentDescriptorIndex = Number(
+    HarnessSmoke.Class.readStatus(statusPath).settingsSelected,
+  );
+  const selectionDelta = targetDescriptorIndex - currentDescriptorIndex;
+  if (selectionDelta !== 0) {
+    const selectionKey = selectionDelta > 0 ? 'Down' : 'Up';
+    driver.sendKeys(
+      ...Array.from(
+        { length: Math.abs(selectionDelta) },
+        () => selectionKey,
+      ),
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      (candidate) =>
+        Number(candidate.settingsSelected) === targetDescriptorIndex,
+    );
+  }
+  driver.sendKeys('Right');
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     (candidate) => candidate[settingName] === expectedValue,
   );
   await driver.awaitQuiescence();
-  HarnessSmoke.Class.pass(`${label} mouse edit live-applied ${expectedValue}`);
+  HarnessSmoke.Class.pass(
+    `${settingName} settings edit live-applied ${expectedValue}`,
+  );
+  return status;
+}
+
+async function closeSettingsForLayoutFrame(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.settingsOpen === false,
+  );
+  await driver.awaitQuiescence();
+}
+
+async function reopenSettingsAfterLayoutFrame(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.settingsOpen === true,
+  );
+  await driver.awaitQuiescence();
+}
+
+async function cyclePanelAlignments(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  context: string,
+): Promise<StatusSnapshot> {
+  const alignmentCycle = ['left', 'center', 'right', 'justify'] as const;
+  let status = HarnessSmoke.Class.readStatus(statusPath);
+  for (
+    let panelAlignmentCount = 0;
+    panelAlignmentCount < alignmentCycle.length;
+    panelAlignmentCount++
+  ) {
+    const currentAlignmentIndex = alignmentCycle.indexOf(
+      status.panelAlignment as (typeof alignmentCycle)[number],
+    );
+    const expectedAlignment =
+      alignmentCycle[(currentAlignmentIndex + 1) % alignmentCycle.length]!;
+    status = await adjustSettingThroughSettings(
+      driver,
+      statusPath,
+      'panelAlignment',
+      expectedAlignment,
+    );
+    await closeSettingsForLayoutFrame(driver, statusPath);
+    assertPanelAlignmentGeometry(driver, status, context);
+    await reopenSettingsAfterLayoutFrame(driver, statusPath);
+  }
+  return status;
+}
+
+async function changeDockVerticalSpan(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  slotName: 'sidebar' | 'rightDock',
+  settingName: 'leftDockVerticalSpan' | 'rightDockVerticalSpan',
+  context: string,
+): Promise<StatusSnapshot> {
+  const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const expectedSpan =
+    currentStatus[settingName] === 'full-height'
+      ? 'ends-at-panel'
+      : 'full-height';
+  const status = await adjustSettingThroughSettings(
+    driver,
+    statusPath,
+    settingName,
+    expectedSpan,
+  );
+  await closeSettingsForLayoutFrame(driver, statusPath);
+  assertDockVerticalSpanGeometry(
+    driver,
+    status,
+    slotName,
+    settingName,
+    context,
+  );
+  await reopenSettingsAfterLayoutFrame(driver, statusPath);
+  return status;
+}
+
+async function exerciseLayoutSettingsConfigurationMatrix(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  context: string,
+): Promise<StatusSnapshot> {
+  let status = await cyclePanelAlignments(driver, statusPath, context);
+  status = await changeDockVerticalSpan(
+    driver,
+    statusPath,
+    'sidebar',
+    'leftDockVerticalSpan',
+    context,
+  );
+  status = await cyclePanelAlignments(driver, statusPath, context);
+  status = await changeDockVerticalSpan(
+    driver,
+    statusPath,
+    'rightDock',
+    'rightDockVerticalSpan',
+    context,
+  );
+  status = await cyclePanelAlignments(driver, statusPath, context);
+  status = await changeDockVerticalSpan(
+    driver,
+    statusPath,
+    'sidebar',
+    'leftDockVerticalSpan',
+    context,
+  );
+  status = await cyclePanelAlignments(driver, statusPath, context);
+  status = await changeDockVerticalSpan(
+    driver,
+    statusPath,
+    'rightDock',
+    'rightDockVerticalSpan',
+    context,
+  );
   return status;
 }
 
@@ -314,22 +542,39 @@ try {
     (before, after) => after.top < before.top,
   );
 
-  console.log('== harness layout: settings mouse edits reconfigure live slot edges ==');
-  driver.sendKeys('F8');
-  await HarnessSmoke.Class.awaitStatus(
+  console.log('== harness layout: settings UI edits reconfigure live slot edges ==');
+  clickCell(
     driver,
-    statusPath,
-    (candidate) => candidate.terminalVisible === false,
+    layoutSlot(HarnessSmoke.Class.readStatus(statusPath), 'sidebar').left + 2,
+    4,
   );
+  await driver.awaitQuiescence();
   driver.sendKeys('Control+,');
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('Sidebar position') !== null
-      && snapshot.findText('Right dock vertical span') !== null,
+      && snapshot.findText(
+        'Bottom panel alignment (edges without a dock coincide)',
+      ) !== null
+      && snapshot.findText(
+        'Primary dock vertical span (when bottom panel is open)',
+      ) !== null
+      && snapshot.findText(
+        'Right dock vertical span (when dock and panel are open)',
+      ) !== null,
   );
-  status = await clickSettingIncrement(
+  HarnessSmoke.Class.pass(
+    'settings disclose that hidden dock spans and empty alignment edges coincide',
+  );
+
+  status = await exerciseLayoutSettingsConfigurationMatrix(
     driver,
     statusPath,
-    'Sidebar position',
+    'left sidebar with right dock hidden',
+  );
+
+  status = await adjustSettingThroughSettings(
+    driver,
+    statusPath,
     'sidebarPosition',
     'right',
   );
@@ -339,69 +584,82 @@ try {
     sidebar.left >= rectangleRight(editorCenter),
     'right sidebar configuration places the primary dock after the editor',
   );
-
-  status = await clickSettingIncrement(
+  status = await exerciseLayoutSettingsConfigurationMatrix(
     driver,
     statusPath,
-    'Left dock vertical span',
-    'leftDockVerticalSpan',
-    'ends-at-panel',
+    'right sidebar with right dock hidden',
   );
-  status = await clickSettingIncrement(
+  status = await adjustSettingThroughSettings(
     driver,
     statusPath,
-    'Panel alignment',
-    'panelAlignment',
-    'right',
-  );
-  bottomPanel = layoutSlot(status, 'bottomPanel');
-  HarnessSmoke.Class.requireCondition(
-    rectangleRight(bottomPanel) === 120,
-    'right alignment reaches the viewport right edge when the primary dock ends at the panel',
-  );
-  status = await clickSettingIncrement(
-    driver,
-    statusPath,
-    'Panel alignment',
-    'panelAlignment',
-    'justify',
-  );
-  bottomPanel = layoutSlot(status, 'bottomPanel');
-  HarnessSmoke.Class.requireCondition(
-    bottomPanel.left === 0 && rectangleRight(bottomPanel) === 120,
-    'justify alignment spans the full viewport when both docks can end at the panel',
-  );
-  status = await clickSettingIncrement(
-    driver,
-    statusPath,
-    'Panel alignment',
-    'panelAlignment',
+    'sidebarPosition',
     'left',
-  );
-  bottomPanel = layoutSlot(status, 'bottomPanel');
-  editorCenter = layoutSlot(status, 'editorCenter');
-  HarnessSmoke.Class.requireCondition(
-    bottomPanel.left === 0 && rectangleRight(bottomPanel) === rectangleRight(editorCenter),
-    'left alignment ends at the editor right edge',
-  );
-  status = await clickSettingIncrement(
-    driver,
-    statusPath,
-    'Panel alignment',
-    'panelAlignment',
-    'center',
-  );
-  bottomPanel = layoutSlot(status, 'bottomPanel');
-  HarnessSmoke.Class.requireCondition(
-    bottomPanel.left === editorCenter.left
-      && rectangleRight(bottomPanel) === rectangleRight(editorCenter),
-    'cycling panel alignment returns to the editor-centered slot',
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     (candidate) => candidate.settingsOpen === false,
+  );
+
+  await invokeCommand(driver, 'View: Toggle Right Dock');
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.rightDockVisible === true,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(status.rightDockColumns) > 0,
+    'command opened a real right-dock viewport before visible-dock settings checks',
+  );
+  clickCell(driver, layoutSlot(status, 'sidebar').left + 2, 4);
+  await driver.awaitQuiescence();
+  driver.sendKeys('Control+,');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Sidebar position') !== null
+      && snapshot.findText(
+        'Bottom panel alignment (edges without a dock coincide)',
+      ) !== null
+      && snapshot.findText(
+        'Primary dock vertical span (when bottom panel is open)',
+      ) !== null
+      && snapshot.findText(
+        'Right dock vertical span (when dock and panel are open)',
+      ) !== null,
+  );
+  status = await exerciseLayoutSettingsConfigurationMatrix(
+    driver,
+    statusPath,
+    'left sidebar with right dock visible',
+  );
+  status = await adjustSettingThroughSettings(
+    driver,
+    statusPath,
+    'sidebarPosition',
+    'right',
+  );
+  status = await exerciseLayoutSettingsConfigurationMatrix(
+    driver,
+    statusPath,
+    'right sidebar with right dock visible',
+  );
+  status = await adjustSettingThroughSettings(
+    driver,
+    statusPath,
+    'sidebarPosition',
+    'left',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.settingsOpen === false,
+  );
+  await invokeCommand(driver, 'View: Toggle Right Dock');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (candidate) => candidate.rightDockVisible === false,
   );
 
   console.log('== harness layout: git splitter shares rest, hover, and captured-drag paint ==');
@@ -454,13 +712,7 @@ try {
   );
   HarnessSmoke.Class.pass('clicking the status affordance opened the command-owned host');
 
-  driver.sendKeys('F8');
-  status = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    (candidate) => candidate.terminalVisible === true,
-  );
-  HarnessSmoke.Class.pass('bottom panel opened without hiding the right dock');
+  HarnessSmoke.Class.pass('bottom panel stayed open while the right dock toggled');
   const rightDock = layoutSlot(status, 'rightDock');
   const bottomPanelSplitter = layoutSlot(status, 'bottomPanelSplitter');
   HarnessSmoke.Class.requireCondition(
