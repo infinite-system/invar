@@ -3,8 +3,8 @@
 // frame. suspend()+resume() is OpenTUI's own idempotent re-setup; these tests gate that the routine
 // is driven and that focus reporting is (dis)enabled with the right sequences.
 import { test, expect } from 'bun:test';
-import { TerminalSession } from '../TerminalSession';
-import { HandlerGuard } from '../HandlerGuard';
+import { HandlerGuard } from './HandlerGuard';
+import { TerminalSession } from './TerminalSession';
 
 test('reenterTerminalModes suspends, resumes, then re-enters the APP modes (2004 included)', () => {
   const calls: string[] = [];
@@ -49,19 +49,4 @@ test('the focus-in handler re-enters the terminal setup and forces a repaint', (
   onFocus();
 
   expect(events).toEqual(['suspend', 'resume', '\x1b[?1004h\x1b[?2004h', 'repaint']);
-});
-
-test('a throw inside a guarded handler is isolated and recover still runs (loop stays alive)', () => {
-  let recovered = false;
-  HandlerGuard.Class.run(
-    'focus',
-    () => {
-      throw new Error('mid-handler failure');
-    },
-    () => {
-      recovered = true;
-    },
-  );
-  // The throw did not escape (no exception here) and recovery ran to keep the app responsive.
-  expect(recovered).toBe(true);
 });

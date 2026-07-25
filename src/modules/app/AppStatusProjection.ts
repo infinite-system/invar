@@ -20,137 +20,15 @@ import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 
-export interface AppStatusMouseEvent {
-  readonly type: string;
-  readonly x: number;
-  readonly y: number;
-  readonly button: number;
-}
-
-export interface AppStatusProjectionPorts {
-  readonly workspaceSet: Pick<
-    InstanceType<typeof WorkspaceSet.Class>,
-    'active' | 'tabs' | 'activeWorkspaceIndex' | 'count' | 'liveGitWatcherCount' | 'entries'
-  >;
-  readonly settings: Pick<
-    InstanceType<typeof Settings.Class>,
-    | 'workspaceTabPosition'
-    | 'sidebarPosition'
-    | 'panelAlignment'
-    | 'leftDockVerticalSpan'
-    | 'rightDockVerticalSpan'
-    | 'agentNarrationVoice'
-    | 'agentNarrationRate'
-    | 'showActivityBar'
-    | 'diffSplitRatio'
-    | 'markdownSplitRatio'
-    | 'gitSplitRatio'
-    | 'sidebarWidth'
-    | 'rightDockWidth'
-    | 'agentAudioNarration'
-    | 'agentTerminalFollowMode'
-  >;
-  readonly commands: Pick<
-    InstanceType<typeof CommandRegistry.Class>,
-    'open' | 'query' | 'filtered'
-  >;
-  readonly findBar: Pick<
-    InstanceType<typeof FindBar.Class>,
-    'open' | 'mode' | 'target' | 'engine' | 'caseSensitive' | 'engineFor'
-  >;
-  readonly quickOpen: Pick<
-    InstanceType<typeof QuickOpen.Class>,
-    | 'open'
-    | 'selectedIndex'
-    | 'hoveredIndex'
-    | 'query'
-    | 'matches'
-    | 'mode'
-    | 'workspacePathOpenable'
-  >;
-  readonly settingsPanel: Pick<
-    InstanceType<typeof SettingsPanel.Class>,
-    'open' | 'selectedIndex' | 'rows'
-  >;
-  readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
-  readonly boundedListPopup: Pick<
-    InstanceType<typeof BoundedListPopup.Class>,
-    'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
-  >;
-  readonly shortcutHelp: Pick<
-    InstanceType<typeof ShortcutHelp.Class>,
-    'open' | 'scrollTop' | 'rows'
-  >;
-  readonly tooltip: Pick<InstanceType<typeof Tooltip.Class>, 'visible'>;
-  readonly panelHost: Pick<
-    InstanceType<typeof PanelHost.Class>,
-    | 'visible'
-    | 'focused'
-    | 'activeId'
-    | 'order'
-    | 'resolvedCells'
-    | 'focusedContent'
-    | 'focusedIndex'
-    | 'cellSpans'
-  >;
-  readonly rightDockHost: Pick<
-    InstanceType<typeof PanelHost.Class>,
-    | 'visible'
-    | 'focused'
-    | 'activeId'
-    | 'order'
-    | 'resolvedCells'
-    | 'focusedContent'
-  >;
-  readonly view: Pick<
-    RootView,
-    | 'activeDiffView'
-    | 'activeMarkdownSplitView'
-    | 'panelViewportColumns'
-    | 'panelViewportRows'
-    | 'rightDockViewportColumns'
-    | 'rightDockViewportRows'
-    | 'layoutGeometry'
-    | 'splitterRegions'
-  >;
-  readonly mouse: AppStatusMouseEvent | null;
-  readonly narration: Pick<
-    InstanceType<typeof NarrationProjection.Class>,
-    'spokenCount' | 'lastSpoken' | 'bargeInCount'
-  > | null;
-  readonly agentPaneContent: Pick<
-    AgentPaneContent.Model,
-    | 'agentSession'
-    | 'stuckToBottom'
-    | 'expandedCount'
-    | 'scrollTop'
-    | 'currentEngine'
-    | 'title'
-  > | null;
-  readonly terminalPaneContent: Pick<
-    TerminalPaneContent.Model,
-    'observedEventCount' | 'lastObservedBoundarySource'
-  > | null;
-}
-
 class $AppStatusProjection {
-  static snapshot = $snapshot;
-  static publish = $publish;
-}
+  static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
+    const snapshot = this.snapshot(ports);
+    StatusChannel.Class.update(snapshot);
+    return snapshot;
+  }
 
-export namespace AppStatusProjection {
-  export const $Class = $AppStatusProjection;
-  export const Class = Static($AppStatusProjection);
-}
-
-function $publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
-  const snapshot = $snapshot(ports);
-  StatusChannel.Class.update(snapshot);
-  return snapshot;
-}
-
-function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
-  const editor = ports.workspaceSet.active.editor;
+  static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
+    const editor = ports.workspaceSet.active.editor;
   const diffView = ports.view.activeDiffView();
   const markdownSplitView = ports.view.activeMarkdownSplitView();
   const openInputOverlays = [
@@ -414,5 +292,124 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
       }
       return '';
     })(),
-  };
+    };
+  }
+}
+
+export namespace AppStatusProjection {
+  export const $Class = $AppStatusProjection;
+  export const Class = Static($AppStatusProjection);
+}
+
+export interface AppStatusMouseEvent {
+  readonly type: string;
+  readonly x: number;
+  readonly y: number;
+  readonly button: number;
+}
+
+export interface AppStatusProjectionPorts {
+  readonly workspaceSet: Pick<
+    InstanceType<typeof WorkspaceSet.Class>,
+    'active' | 'tabs' | 'activeWorkspaceIndex' | 'count' | 'liveGitWatcherCount' | 'entries'
+  >;
+  readonly settings: Pick<
+    InstanceType<typeof Settings.Class>,
+    | 'workspaceTabPosition'
+    | 'sidebarPosition'
+    | 'panelAlignment'
+    | 'leftDockVerticalSpan'
+    | 'rightDockVerticalSpan'
+    | 'agentNarrationVoice'
+    | 'agentNarrationRate'
+    | 'showActivityBar'
+    | 'diffSplitRatio'
+    | 'markdownSplitRatio'
+    | 'gitSplitRatio'
+    | 'sidebarWidth'
+    | 'rightDockWidth'
+    | 'agentAudioNarration'
+    | 'agentTerminalFollowMode'
+  >;
+  readonly commands: Pick<
+    InstanceType<typeof CommandRegistry.Class>,
+    'open' | 'query' | 'filtered'
+  >;
+  readonly findBar: Pick<
+    InstanceType<typeof FindBar.Class>,
+    'open' | 'mode' | 'target' | 'engine' | 'caseSensitive' | 'engineFor'
+  >;
+  readonly quickOpen: Pick<
+    InstanceType<typeof QuickOpen.Class>,
+    | 'open'
+    | 'selectedIndex'
+    | 'hoveredIndex'
+    | 'query'
+    | 'matches'
+    | 'mode'
+    | 'workspacePathOpenable'
+  >;
+  readonly settingsPanel: Pick<
+    InstanceType<typeof SettingsPanel.Class>,
+    'open' | 'selectedIndex' | 'rows'
+  >;
+  readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
+  readonly boundedListPopup: Pick<
+    InstanceType<typeof BoundedListPopup.Class>,
+    'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
+  >;
+  readonly shortcutHelp: Pick<
+    InstanceType<typeof ShortcutHelp.Class>,
+    'open' | 'scrollTop' | 'rows'
+  >;
+  readonly tooltip: Pick<InstanceType<typeof Tooltip.Class>, 'visible'>;
+  readonly panelHost: Pick<
+    InstanceType<typeof PanelHost.Class>,
+    | 'visible'
+    | 'focused'
+    | 'activeId'
+    | 'order'
+    | 'resolvedCells'
+    | 'focusedContent'
+    | 'focusedIndex'
+    | 'cellSpans'
+  >;
+  readonly rightDockHost: Pick<
+    InstanceType<typeof PanelHost.Class>,
+    | 'visible'
+    | 'focused'
+    | 'activeId'
+    | 'order'
+    | 'resolvedCells'
+    | 'focusedContent'
+  >;
+  readonly view: Pick<
+    RootView,
+    | 'activeDiffView'
+    | 'activeMarkdownSplitView'
+    | 'panelViewportColumns'
+    | 'panelViewportRows'
+    | 'rightDockViewportColumns'
+    | 'rightDockViewportRows'
+    | 'layoutGeometry'
+    | 'splitterRegions'
+  >;
+  readonly mouse: AppStatusMouseEvent | null;
+  readonly narration: Pick<
+    InstanceType<typeof NarrationProjection.Class>,
+    'spokenCount' | 'lastSpoken' | 'bargeInCount'
+  > | null;
+  readonly agentPaneContent: Pick<
+    AgentPaneContent.Model,
+    | 'agentSession'
+    | 'stuckToBottom'
+    | 'expandedCount'
+    | 'scrollTop'
+    | 'currentEngine'
+    | 'title'
+  > | null;
+  readonly terminalPaneContent: Pick<
+    TerminalPaneContent.Model,
+    'observedEventCount' | 'lastObservedBoundarySource'
+  > | null;
 }

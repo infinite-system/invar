@@ -4,6 +4,7 @@
 // invariant: The app is built only after the kernel is sealed (project.invariants.md)
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Rendering is one coarse frame effect (app.invariants.md)
+// invariant: Construction goes through overridable seams (project.invariants.md)
 import { createCliRenderer, type CliRenderer, type KeyEvent } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { App } from './App';
@@ -64,23 +65,8 @@ import type { TtsBackend } from '../narration/TtsBackend.interface';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 
-export interface BootOptions {
-  root?: string;
-  onQuit?: () => void;
-}
-
-export interface BootedApp {
-  app: App.Instance;
-  workspace: Workspace.Instance;
-  workspaceSet: WorkspaceSet.Instance;
-  theme: Theme.Instance;
-  renderer: CliRenderer;
-  view: RootView;
-  render(): Promise<void>;
-  shutdown(): Promise<void>;
-}
-
-async function $boot(options: BootOptions = {}): Promise<BootedApp> {
+class $Bootstrap {
+  static async boot(options: BootOptions = {}): Promise<BootedApp> {
   Logging.Class.info('Boot start');
 
   const renderer = await createCliRenderer({
@@ -1796,14 +1782,26 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     render,
     shutdown,
   };
-}
-
-// invariant: Construction goes through overridable seams (project.invariants.md)
-class $Bootstrap {
-  static boot = $boot;
+  }
 }
 
 export namespace Bootstrap {
   export const $Class = $Bootstrap;
   export const Class = Static($Bootstrap);
+}
+
+export interface BootOptions {
+  root?: string;
+  onQuit?: () => void;
+}
+
+export interface BootedApp {
+  app: App.Instance;
+  workspace: Workspace.Instance;
+  workspaceSet: WorkspaceSet.Instance;
+  theme: Theme.Instance;
+  renderer: CliRenderer;
+  view: RootView;
+  render(): Promise<void>;
+  shutdown(): Promise<void>;
 }

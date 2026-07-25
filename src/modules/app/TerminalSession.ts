@@ -24,12 +24,6 @@
 // invariant: The render loop never wedges (project.invariants.md)
 import { Static } from 'ivue/extras';
 
-/** The minimal terminal-control surface the re-assert needs (a CliRenderer satisfies it). */
-export interface TerminalControl {
-  suspend(): void;
-  resume(): void;
-}
-
 class $TerminalSession {
   /** DECSET 1004 focus reporting: the terminal emits \e[I on focus-in, \e[O on focus-out. */
   static readonly FOCUS_REPORTING_ON = '\x1b[?1004h';
@@ -71,4 +65,10 @@ class $TerminalSession {
 export namespace TerminalSession {
   export const $Class = $TerminalSession;
   export let Class = Static($TerminalSession);
+}
+
+/** The minimal terminal-control surface the re-assert needs (a CliRenderer satisfies it). */
+export interface TerminalControl {
+  suspend(): void;
+  resume(): void;
 }

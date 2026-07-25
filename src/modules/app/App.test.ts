@@ -2,8 +2,8 @@
 // changes (so async producers can repaint without a keypress), and stops on $stopEffects.
 // Exercises the app invariant "Rendering is one coarse frame effect".
 import { test, expect } from 'bun:test';
-import { App } from '../App';
-import { Editor } from '../../editor/Editor';
+import { App } from './App';
+import { Editor } from '../editor/Editor';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 10));
 

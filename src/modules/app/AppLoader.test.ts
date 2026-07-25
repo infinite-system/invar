@@ -4,7 +4,7 @@
 // and the exit is observable without dying.
 // invariant: Construction goes through overridable seams (project.invariants.md)
 import { afterEach, expect, test } from 'bun:test';
-import { AppLoader } from '../AppLoader';
+import { AppLoader } from './AppLoader';
 
 const originalClass = AppLoader.Class;
 

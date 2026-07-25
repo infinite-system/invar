@@ -13,8 +13,8 @@ import { Logging } from '../system/Logging';
 class $App {
   // The renderer is a plain owned resource, never reactive — App owns its lifetime.
   renderer: CliRenderer | null = null;
-  private disposers: Array<() => void> = [];
-  private started = false;
+  protected disposers: Array<() => void> = [];
+  protected started = false;
 
   // Reactive UI state.
   get title() {
@@ -32,7 +32,7 @@ class $App {
   get copyNotice() {
     return ref('');
   }
-  private quitChordArmedAtMs = 0;
+  protected quitChordArmedAtMs = 0;
 
   armQuitChord(nowMs: number): void {
     this.quitChordArmed.value = true;
