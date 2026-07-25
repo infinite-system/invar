@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { AgentComposer, COMPOSER_MAX_ROWS, COMPOSER_GUTTER_COLUMNS } from './AgentComposer';
+import { AgentComposer } from './AgentComposer';
 
 const composer = () => new AgentComposer.Class();
 
@@ -9,7 +9,7 @@ describe('AgentComposer — wrap, cap, caret', () => {
     expect(layout.rowCount).toBe(1);
     expect(layout.rows[0]?.isFirstLine).toBe(true);
     expect(layout.caretRow).toBe(0);
-    expect(layout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS); // "❯ " then the caret
+    expect(layout.caretColumn).toBe(AgentComposer.Class.gutterColumns); // "❯ " then the caret
   });
 
   test('insert appends at the end and flattens newlines to spaces', () => {
@@ -25,7 +25,7 @@ describe('AgentComposer — wrap, cap, caret', () => {
     expect(layout.rows.map((row) => row.text)).toEqual(['xxxxx', 'xxxxx']);
     expect(layout.rowCount).toBe(2);
     expect(layout.caretRow).toBe(1);
-    expect(layout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 5);
+    expect(layout.caretColumn).toBe(AgentComposer.Class.gutterColumns + 5);
     expect(layout.rows[0]?.isFirstLine).toBe(true);
     expect(layout.rows[1]?.isFirstLine).toBe(false);
   });
@@ -34,10 +34,10 @@ describe('AgentComposer — wrap, cap, caret', () => {
     const model = composer();
     model.insert('x'.repeat(100));
     const layout = model.layout(6); // inner width 2 → 50 visual lines
-    expect(layout.rowCount).toBe(COMPOSER_MAX_ROWS);
+    expect(layout.rowCount).toBe(AgentComposer.Class.maxRows);
     // The window is anchored to the bottom: the last visible row is the final (caret) line.
     expect(layout.rows[layout.rows.length - 1]?.isFirstLine).toBe(false);
-    expect(layout.caretRow).toBe(COMPOSER_MAX_ROWS - 1);
+    expect(layout.caretRow).toBe(AgentComposer.Class.maxRows - 1);
   });
 });
 
@@ -80,7 +80,7 @@ describe('AgentComposer — selection + copy (no phantom newlines across wrap)',
     const model = composer();
     model.insert('abcdef');
     model.layout(7); // 2 rows, scrollOffset 0
-    const point = model.pointAt(COMPOSER_GUTTER_COLUMNS + 1, 1); // second visible row, one past gutter
+    const point = model.pointAt(AgentComposer.Class.gutterColumns + 1, 1); // second visible row, one past gutter
     expect(point).toEqual({ line: 1, column: 1 });
   });
 
@@ -116,7 +116,7 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
     for (let index = 0; index < 5; index += 1) model.moveLeft(); // cursor at index 6
     const layout = model.layout(40); // one visual line
     expect(layout.caretRow).toBe(0);
-    expect(layout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 6);
+    expect(layout.caretColumn).toBe(AgentComposer.Class.gutterColumns + 6);
   });
 
   test('Left/Right clamp at the ends', () => {
@@ -194,13 +194,13 @@ describe('AgentComposer — movable cursor + mid-text editing', () => {
       'gamma',
     ]);
     expect(layout.caretRow).toBe(1);
-    expect(layout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 5);
+    expect(layout.caretColumn).toBe(AgentComposer.Class.gutterColumns + 5);
 
     expect(model.moveUp()).toBe(true);
     expect(model.cursor).toBe(5);
     const movedLayout = model.layout(14);
     expect(movedLayout.caretRow).toBe(0);
-    expect(movedLayout.caretColumn).toBe(COMPOSER_GUTTER_COLUMNS + 5);
+    expect(movedLayout.caretColumn).toBe(AgentComposer.Class.gutterColumns + 5);
 
     model.insert('X');
     expect(model.value).toBe('alphaX beta gamma');

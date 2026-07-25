@@ -1,11 +1,3 @@
-// The agent pane renderer: paints the whole pane into ONE StyledText from already-laid-out inputs —
-// the tail-anchored transcript body (padded left/right, its selection highlighted per row), the animated
-// thinking line while busy, then the framed composer (blank · rule · wrapped composer · rule · mode
-// line). Stateless Static capability: it holds no transcript and no scroll/selection state (those live in
-// AgentPaneContent), so it can never drift. Per-cell/per-row fg + single-row bg only (multi-line bg spans
-// mis-position in a StyledText pane).
-//
-// invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
@@ -15,43 +7,10 @@ import type { ComposerRow } from './AgentComposer';
 import type { ThinkingSegment } from './AgentThinkingIndicator';
 import { WrapText } from '../ui/WrapText';
 
-/** The [start, end) column span of a body row that is selection-highlighted. */
-export interface SelectionRange {
-  readonly start: number;
-  readonly end: number;
-}
+// invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 
-export interface AgentPaneRenderContext {
-  palette: Palette;
-  /** Left padding (columns of blank gutter) before each transcript row. */
-  padLeft: number;
-  /** The transcript body rows, TOP-padded to exactly the body height (blank lines lead a short log). */
-  bodyRows: readonly ProjectedLine[];
-  /** Parallel to `bodyRows`: the selection span on each row (single-ROW background), or null. */
-  selectionRanges: readonly (SelectionRange | null)[];
-  /** Parallel to `bodyRows`: the search-match spans on each row (display cells; empty = no matches).
-   *  The CURRENT match paints like a selection; other matches get the dim find-match background —
-   *  the same two-tier look the editor's find gives its buffer. */
-  searchHighlights: readonly (readonly TranscriptMatchHighlight[])[];
-  /** The animated thinking line (segments), or null when idle. Sits above the composer frame. */
-  thinking: readonly ThinkingSegment[] | null;
-  /** The calm secondary "waiting on tool" note, or null. When present it sits below the thinking line
-   *  after a blank-line gap (the airy two-line layout). */
-  waitingNote: readonly ThinkingSegment[] | null;
-  /** The horizontal rule string (already sized to width) framing the composer top and bottom. */
-  rule: string;
-  /** The composer's laid-out rows (1..cap), wrapped + cap-scrolled, each with its own selection span. */
-  composer: readonly ComposerRow[];
-  /** The mode line segments (permission mode + dim hint), painted under the bottom rule. */
-  modeLine: readonly ThinkingSegment[];
-  /** True while the pane owns the keyboard (draws the composer prompt brighter). */
-  focused: boolean;
-}
-
-/** Split text into [before][selected(bg)][after], the selected span given a single-ROW background.
- *  Ranges are DISPLAY CELLS; the split is grapheme-safe through the shared WrapText slicer (a UTF-16
- *  slice here corrupted é/emoji highlights — the reviewed encoding bug). */
-function pushHighlighted(
+class $AgentPaneRenderer {
+  protected static pushHighlighted(
   chunks: TextChunk[],
   text: string,
   selection: SelectionRange | null,
@@ -74,14 +33,14 @@ function pushHighlighted(
  *  at every span boundary (all DISPLAY CELLS, sliced grapheme-safe through the shared WrapText seam) and
  *  give each segment its one single-ROW background — selection wins, then the current match (selection
  *  colour, it IS the focus), then other matches (the editor's dim find-match background), then plain. */
-function pushSearchHighlightedRow(
-  chunks: TextChunk[],
-  text: string,
-  selection: SelectionRange | null,
-  searchHighlights: readonly TranscriptMatchHighlight[],
-  paint: (text: string) => TextChunk,
-  palette: Palette,
-): void {
+  protected static pushSearchHighlightedRow(
+    chunks: TextChunk[],
+    text: string,
+    selection: SelectionRange | null,
+    searchHighlights: readonly TranscriptMatchHighlight[],
+    paint: (text: string) => TextChunk,
+    palette: Palette,
+  ): void {
   const selectionActive = selection !== null && selection.end > selection.start;
   if (!selectionActive && searchHighlights.length === 0) {
     chunks.push(paint(text));
@@ -116,16 +75,23 @@ function pushSearchHighlightedRow(
       chunks.push(paint(segmentText));
     }
   }
-}
+  }
 
 /** Paint pre-composed styled segments (thinking line / mode line). */
-function pushSegments(chunks: TextChunk[], segments: readonly ThinkingSegment[]): void {
-  for (const segment of segments) {
-    chunks.push(segment.bold ? bold(fg(segment.color)(segment.text)) : fg(segment.color)(segment.text));
+  protected static pushSegments(
+    chunks: TextChunk[],
+    segments: readonly ThinkingSegment[],
+  ): void {
+    for (const segment of segments) {
+      chunks.push(
+        segment.bold
+          ? bold(fg(segment.color)(segment.text))
+          : fg(segment.color)(segment.text),
+      );
+    }
   }
-}
 
-function $render(context: AgentPaneRenderContext): StyledText {
+  static render(context: AgentPaneRenderContext): StyledText {
   const { palette, padLeft, bodyRows, selectionRanges, searchHighlights, thinking, waitingNote, rule, composer, modeLine, focused } = context;
   const chunks: TextChunk[] = [];
   const leftPad = ' '.repeat(Math.max(0, padLeft));
@@ -134,7 +100,7 @@ function $render(context: AgentPaneRenderContext): StyledText {
   bodyRows.forEach((line, index) => {
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
     const paint = (text: string): TextChunk => (line.bold ? bold(fg(line.color)(text)) : fg(line.color)(text));
-    pushSearchHighlightedRow(chunks, line.text, selectionRanges[index] ?? null, searchHighlights[index] ?? [], paint, palette);
+    this.pushSearchHighlightedRow(chunks, line.text, selectionRanges[index] ?? null, searchHighlights[index] ?? [], paint, palette);
     chunks.push(fg(palette.fg)('\n'));
   });
 
@@ -148,14 +114,14 @@ function $render(context: AgentPaneRenderContext): StyledText {
   if (thinking) {
     chunks.push(fg(palette.fg)('\n')); // blank ABOVE the thinking line
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
-    pushSegments(chunks, thinking);
+    this.pushSegments(chunks, thinking);
     chunks.push(fg(palette.fg)('\n'));
   }
   // The calm secondary waiting-note, after a blank-line gap (airy Claude spacing).
   if (waitingNote) {
     chunks.push(fg(palette.fg)('\n'));
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
-    pushSegments(chunks, waitingNote);
+    this.pushSegments(chunks, waitingNote);
     chunks.push(fg(palette.fg)('\n'));
   }
 
@@ -169,24 +135,40 @@ function $render(context: AgentPaneRenderContext): StyledText {
   composer.forEach((row) => {
     if (leftPad) chunks.push(fg(palette.fg)(leftPad));
     chunks.push(fg(promptColor)(row.isFirstLine ? '❯ ' : '  '));
-    pushHighlighted(chunks, row.text, row.selection, (text) => fg(palette.fg)(text), palette);
+    this.pushHighlighted(chunks, row.text, row.selection, (text) => fg(palette.fg)(text), palette);
     chunks.push(fg(palette.fg)('\n'));
   });
 
   if (leftPad) chunks.push(fg(palette.fg)(leftPad));
   chunks.push(fg(promptColor)(rule));
   chunks.push(fg(palette.fg)('\n'));
-  pushSegments(chunks, modeLine);
+  this.pushSegments(chunks, modeLine);
   chunks.push(fg(palette.fg)('\n')); // trailing newline → a blank bottom-pad row at the very bottom
 
-  return new StyledText(chunks);
-}
-
-class $AgentPaneRenderer {
-  static render = $render;
+    return new StyledText(chunks);
+  }
 }
 
 export namespace AgentPaneRenderer {
   export const $Class = $AgentPaneRenderer;
   export const Class = Static($AgentPaneRenderer);
+}
+
+export interface SelectionRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+export interface AgentPaneRenderContext {
+  palette: Palette;
+  padLeft: number;
+  bodyRows: readonly ProjectedLine[];
+  selectionRanges: readonly (SelectionRange | null)[];
+  searchHighlights: readonly (readonly TranscriptMatchHighlight[])[];
+  thinking: readonly ThinkingSegment[] | null;
+  waitingNote: readonly ThinkingSegment[] | null;
+  rule: string;
+  composer: readonly ComposerRow[];
+  modeLine: readonly ThinkingSegment[];
+  focused: boolean;
 }

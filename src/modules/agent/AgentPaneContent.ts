@@ -1,18 +1,3 @@
-// The agent session as a PaneContent — the adapter that makes an AgentSession a first-class occupant of
-// the composable PanelHost. It owns the pane's VIEW state (the multi-line COMPOSER, the per-entry expand
-// set, the transcript text selection, the spinner animator); the session below owns the transcript
-// (single source of truth). None of this view state is a parallel history.
-//
-// TWO TEXT SURFACES, ONE SEAM: the transcript (read-only) and the composer (editable) both wrap through
-// the shared WrapText, select through the shared TextSelectionModel, and highlight per-row. They differ
-// only in SCROLL: the transcript delegates to the shared ScrollableTextViewport engine (momentum +
-// vertical scrollbar + tail-anchor) via an injected AgentScrollPort; the composer keeps its caret line
-// visible within a small row cap. LAYOUT (top→bottom): transcript body (flexes) · spinner (while busy) ·
-// composer (1..cap rows). render() reads port.scrollTop to window the transcript; the host maps screen
-// cells to each surface's selection through this pane's region helpers.
-//
-// invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
-// invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 import type { StyledText, KeyEvent } from '@opentui/core';
 import { computed, ref, watch, type Ref } from 'vue';
 import type { PaneContent, PaneRenderContext } from '../ui/PaneContent.interface';
@@ -35,116 +20,88 @@ import { AgentThinkingIndicator, type ThinkingSegment } from './AgentThinkingInd
 import type { AgentSession } from './AgentSession';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
 
-/** Transcript gutter: blank columns of breathing room on the left and right of the canvas (airier). */
-const TRANSCRIPT_PAD_LEFT = 2;
-const TRANSCRIPT_PAD_RIGHT = 2;
-/** Fixed chrome rows around the composer: 2 blank spacers above the frame + top rule + bottom rule +
- *  mode line + 1 blank bottom pad (breathing room above and below the composer canvas). */
-const COMPOSER_CHROME_ROWS = 6;
-/** How long each pending tool is shown before the waiting-note cycles to the next one. */
-const WAITING_CYCLE_MILLISECONDS = 1500;
-
-/** The FindBar target identifier the transcript wires in under (one retained engine per identifier —
- *  the transcript's query/matches survive focus moving to another searchable pane, like every target). */
-export const AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER = 'agent-transcript';
-
-/** The scroll seam the transcript drives: the host binds this to a ScrollableTextViewport so the pane
- *  stays a pure model (no renderer dependency) while gaining momentum + smooth glide + a real scrollbar. */
-export interface AgentScrollPort {
-  /** The current first-visible content line (top of the window). */
-  readonly scrollTop: number;
-  /** True while tail-anchored to the newest content (drives the pane's stuck-to-bottom UX + smoke). */
-  readonly stuckToBottom: boolean;
-  /** Scroll by whole content rows (negative = up/older). Halts momentum then clamps (engine-owned). */
-  scrollRowsBy(deltaRows: number): void;
-  /** Re-anchor to the newest content (used when a new turn is sent). */
-  scrollToBottom(): void;
-}
-
-/** The engine seam: the host binds this so the pane can show the current engine + cycle it (claude⇄codex)
- *  mid-session. cycle() swaps the backend behind the same AgentSession (transcript preserved) and writes
- *  the provider setting back; it returns false when it can't (busy, or only one engine available). */
-export interface AgentEnginePort {
-  /** The current provider label ('claude' | 'codex'), shown in the mode line. */
-  readonly provider: string;
-  /** True when there are ≥2 engines to switch between (else the segment is a passive label). */
-  readonly canCycle: boolean;
-  /** Switch to the next available engine; false if it could not (busy / nothing to switch to). */
-  cycle(): boolean;
-}
-
-/** The host-owned transcript-search action seam. The pane paints and hit-tests the affordance, while
- *  the host remains the one owner of overlay coordination. Keyboard and mouse both call `open()`. */
-export interface AgentTranscriptSearchPort {
-  readonly findBar: FindBar.Instance;
-  open(): void;
-}
-
-export interface AgentTerminalFollowPort {
-  readonly mode: Ref<AgentTerminalFollowMode>;
-  label(): string;
-  cycle(): AgentTerminalFollowMode;
-}
-
-/** Which surface a pane-local row belongs to (for pointer/selection routing). */
-export type AgentPaneRegion =
-  | { readonly kind: 'transcript'; readonly localRow: number }
-  | { readonly kind: 'composer'; readonly visibleRow: number }
-  | { readonly kind: 'other' };
-
-/** A printable single character (no modifier, code ≥ 32, not DEL) — same test the editor input uses. */
-function isTypedCharacter(key: KeyEvent): boolean {
-  if (key.ctrl || key.meta || key.option) return false;
-  const sequence = key.sequence;
-  if (!sequence || TextSegmentation.Class.graphemes(sequence).length !== 1) {
-    return false;
-  }
-  const codePoint = sequence.codePointAt(0);
-  return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
-}
+// invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
+// invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 
 class $AgentPaneContent implements PaneContent {
+  static get transcriptFindTargetIdentifier(): string {
+    return 'agent-transcript';
+  }
+
+  protected static get transcriptPadLeft(): number {
+    return 2;
+  }
+
+  protected static get transcriptPadRight(): number {
+    return 2;
+  }
+
+  protected static get composerChromeRows(): number {
+    return 6;
+  }
+
+  protected static get waitingCycleMilliseconds(): number {
+    return 1500;
+  }
+
+  protected get agentPaneContentClass(): typeof $AgentPaneContent {
+    return this.constructor as typeof $AgentPaneContent;
+  }
+
+  protected isTypedCharacter(key: KeyEvent): boolean {
+    if (key.ctrl || key.meta || key.option) return false;
+    const sequence = key.sequence;
+    if (
+      !sequence ||
+      TextSegmentation.Class.graphemes(sequence).length !== 1
+    ) {
+      return false;
+    }
+    const codePoint = sequence.codePointAt(0);
+    return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
+  }
+
   readonly id = 'agent';
   readonly icon = '✦';
 
   /** The editable, wrapping, cap-scrolled composer (the second text surface). */
-  private readonly composer = new AgentComposer.Class();
+  protected readonly composer = new AgentComposer.Class();
   /** Fuses the session pulse, composer edits, the spinner frame, and view-state changes. */
-  private readonly revision: Ref<number>;
+  protected readonly revision: Ref<number>;
   /** Bumped on scroll/collapse/selection changes (which carry no session/composer change) so they repaint. */
-  private readonly viewRevision = ref(0);
+  protected readonly viewRevision = ref(0);
   /** The spinner animator — ticks only while the session is busy (idle quiescence at rest). */
-  private readonly spinner = new AgentSpinner.Class();
+  protected readonly spinner = new AgentSpinner.Class();
   /** Stops the status→spinner watcher on dispose. */
-  private readonly stopStatusWatch: () => void;
+  protected readonly stopStatusWatch: () => void;
   /** True while the pane is actually painted (host-reported) — gates the spinner timer. */
-  private readonly paneVisible = ref(false);
+  protected readonly paneVisible = ref(false);
 
   /** Transcript indices the user has expanded (tool rows). Default (absent) = collapsed. View state. */
-  private readonly expandedIndices = new Set<number>();
+  protected readonly expandedIndices = new Set<number>();
   /** The transcript text selection (read-only surface; shares the model with the composer's own). */
-  private readonly transcriptSelection = new TextSelectionModel.Class();
+  protected readonly transcriptSelection = new TextSelectionModel.Class();
   /** Per pending-tool start times (tool-use id → ms), for the waiting-note's per-call elapsed. */
-  private readonly toolStartMilliseconds = new Map<string, number>();
+  protected readonly toolStartMilliseconds = new Map<string, number>();
 
   /** The shared scroll engine (bound by the host). Null until attached — then render tail-anchors. */
-  private scrollPort: AgentScrollPort | null = null;
+  protected scrollPort: AgentScrollPort | null = null;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
-  private enginePort: AgentEnginePort | null = null;
+  protected enginePort: AgentEnginePort | null = null;
   /** The user-owned terminal-follow setting and cycle action, bound by the host. */
   protected terminalFollowPort: AgentTerminalFollowPort | null = null;
   /** Host-owned shared FindBar + open action. The pane owns neither overlay coordination nor a second
    *  query model; it only projects the affordance and invokes the same action Ctrl+F invokes. */
-  private transcriptSearchPort: AgentTranscriptSearchPort | null = null;
+  protected transcriptSearchPort: AgentTranscriptSearchPort | null = null;
   /** The search MIRROR document: a plain-text projection of the SAME projected lines the pane paints,
    *  refreshed inside render() whenever the projected text changes. It is a projection, not a second
    *  history — it can be rebuilt from the transcript at any time and holds nothing of its own. */
   // invariant: Transcript search is a projection of the transcript (src/modules/agent/agent.invariants.md)
-  private readonly transcriptSearchDocument = new TextDocument.Class();
+  protected readonly transcriptSearchDocument = new TextDocument.Class();
   /** The mirror's last synchronized text (identity compare gates replaceAll + findAll re-runs). */
-  private lastTranscriptSearchText: string | null = null;
+  protected lastTranscriptSearchText: string | null = null;
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
-  private lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
+  protected lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The terminal-follow segment's click region, produced by the same layout that paints it. */
   protected lastTerminalFollowSegment: {
     row: number;
@@ -152,30 +109,30 @@ class $AgentPaneContent implements PaneContent {
     endColumn: number;
   } | null = null;
   /** The mode-line search button's click region, resolved by the same layout that paints the glyph. */
-  private lastSearchSegment: { row: number; startColumn: number; endColumn: number } | null = null;
+  protected lastSearchSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
-  private permissionMode: Ref<boolean> | null = null;
+  protected permissionMode: Ref<boolean> | null = null;
 
   /** Last render's geometry, so keys clamp scroll, the host reads the viewport extent, and pointer rows
    *  route to the right surface. */
-  private lastBodyHeight = 1;
-  private lastSpinnerRows = 0;
-  private lastComposerRows = 1;
+  protected lastBodyHeight = 1;
+  protected lastSpinnerRows = 0;
+  protected lastComposerRows = 1;
   /** Pane-local row where the composer's first visible line sits (below body + spinner + blank + rule). */
-  private lastComposerStart = 3;
-  private lastTotalLines = 0;
-  private lastFirstLine = 0;
-  private lastHeight = 1;
-  private lastWidth = 0;
+  protected lastComposerStart = 3;
+  protected lastTotalLines = 0;
+  protected lastFirstLine = 0;
+  protected lastHeight = 1;
+  protected lastWidth = 0;
   /** The transcript body rows painted last frame (top-padded) — the hit map for onPointerDown. */
-  private lastBodyRows: readonly ProjectedLine[] = [];
+  protected lastBodyRows: readonly ProjectedLine[] = [];
   /** The FULL projected transcript lines last frame — the source for reconstructing selected text. */
-  private lastProjectedLines: readonly ProjectedLine[] = [];
+  protected lastProjectedLines: readonly ProjectedLine[] = [];
   /** The composer caret cell (viewport-local) resolved last frame. */
-  private lastCaret = { column: 2, row: 0 };
-  private lastGlyphLevel: GlyphLevel = 'unicode';
+  protected lastCaret = { column: 2, row: 0 };
+  protected lastGlyphLevel: GlyphLevel = 'unicode';
 
-  constructor(private readonly session: AgentSession.Instance) {
+  constructor(protected readonly session: AgentSession.Instance) {
     // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
     // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
     // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
@@ -195,7 +152,9 @@ class $AgentPaneContent implements PaneContent {
       // computed, which then finds and subscribes the fresh engine.
       void this.transcriptSearchPort?.findBar.open.value;
       const transcriptSearchEngine =
-        this.transcriptSearchPort?.findBar.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER);
+        this.transcriptSearchPort?.findBar.engineFor(
+          this.agentPaneContentClass.transcriptFindTargetIdentifier,
+        );
       void transcriptSearchEngine?.query.value;
       void transcriptSearchEngine?.matches.value;
       void transcriptSearchEngine?.currentMatchIndex.value;
@@ -265,7 +224,7 @@ class $AgentPaneContent implements PaneContent {
    *  the target declines, the markdown preview's exact shape) plus the pane's own reveal writer. */
   findTarget(): FindBarTarget {
     return {
-      identifier: AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER,
+      identifier: this.agentPaneContentClass.transcriptFindTargetIdentifier,
       document: this.transcriptSearchDocument,
       replaceAllowed: false,
       revealMatch: (match) => this.revealTranscriptMatch(match),
@@ -274,13 +233,17 @@ class $AgentPaneContent implements PaneContent {
 
   /** The transcript search engine once the bar has been opened for the transcript at least once (the
    *  FindBar retains one engine per target identifier), else null — zero cost before first use. */
-  private transcriptSearchEngine(): FindInBuffer.Instance | null {
-    return this.transcriptSearchPort?.findBar.engineFor(AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) ?? null;
+  protected transcriptSearchEngine(): FindInBuffer.Instance | null {
+    return (
+      this.transcriptSearchPort?.findBar.engineFor(
+        this.agentPaneContentClass.transcriptFindTargetIdentifier,
+      ) ?? null
+    );
   }
 
   /** Scroll the transcript viewport so the revealed match's line sits mid-body (the pane's one scroll
    *  writer for a search jump — adopt-and-stop like every other scroll authority). */
-  private revealTranscriptMatch(match: FindInBufferMatch): void {
+  protected revealTranscriptMatch(match: FindInBufferMatch): void {
     const scrollPort = this.scrollPort;
     if (!scrollPort) return;
     const targetTop = Math.max(0, match.line - Math.floor(this.lastBodyHeight / 2));
@@ -292,12 +255,14 @@ class $AgentPaneContent implements PaneContent {
    *  changed. Runs only while the engine exists AND is live (bar open on the transcript, or a retained
    *  non-empty query keeping highlights fresh) — idle sessions and never-searched panes pay nothing.
    *  Returns the engine when its matches should paint. */
-  private synchronizeTranscriptSearch(lines: readonly ProjectedLine[]): FindInBuffer.Instance | null {
+  protected synchronizeTranscriptSearch(lines: readonly ProjectedLine[]): FindInBuffer.Instance | null {
     const findBar = this.transcriptSearchPort?.findBar;
     const engine = this.transcriptSearchEngine();
     if (!findBar || !engine) return null;
     const barOpenOnTranscript =
-      findBar.open.value && findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER;
+      findBar.open.value &&
+      findBar.target?.identifier ===
+        this.agentPaneContentClass.transcriptFindTargetIdentifier;
     if (!barOpenOnTranscript && engine.query.value.length === 0) return null;
     const searchableText = AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n');
     if (searchableText !== this.lastTranscriptSearchText) {
@@ -312,7 +277,7 @@ class $AgentPaneContent implements PaneContent {
     return this.enginePort?.provider ?? '';
   }
   /** Cycle to the next engine (click or Ctrl+E); reveals the switch note. Returns whether it switched. */
-  private cycleEngine(): boolean {
+  protected cycleEngine(): boolean {
     if (!this.enginePort?.cycle()) return false;
     this.transcriptSelection.clear();
     this.scrollPort?.scrollToBottom(); // reveal the "switched to X" system note
@@ -374,16 +339,29 @@ class $AgentPaneContent implements PaneContent {
     // Layout top→bottom: transcript body (flex, padded L/R) · thinking · [blank · note] · blank · blank ·
     // rule · composer (1..cap) · rule · mode line · blank(bottom pad). Chrome takes fixed rows; body flexes.
     // The composer is indented by the same left gutter, so it wraps to width − padLeft.
-    const composerLayout = this.composer.layout(context.width - TRANSCRIPT_PAD_LEFT);
+    const composerLayout = this.composer.layout(
+      context.width - this.agentPaneContentClass.transcriptPadLeft,
+    );
     const composerRows = composerLayout.rowCount;
-    const bodyHeight = Math.max(1, context.height - COMPOSER_CHROME_ROWS - composerRows - indicatorRows);
+    const bodyHeight = Math.max(
+      1,
+      context.height -
+        this.agentPaneContentClass.composerChromeRows -
+        composerRows -
+        indicatorRows,
+    );
     this.lastSpinnerRows = indicatorRows;
     this.lastComposerRows = composerRows;
     this.lastComposerStart = bodyHeight + indicatorRows + 3; // below body + indicator + 2 blanks + top rule
 
     // The transcript text wraps inside its L/R padding (the scrollbar column is already reserved by the
     // host via context.width).
-    const textWidth = Math.max(1, context.width - TRANSCRIPT_PAD_LEFT - TRANSCRIPT_PAD_RIGHT);
+    const textWidth = Math.max(
+      1,
+      context.width -
+        this.agentPaneContentClass.transcriptPadLeft -
+        this.agentPaneContentClass.transcriptPadRight,
+    );
     const lines = AgentTranscriptProjection.Class.project(
       this.session.transcript,
       context.palette,
@@ -440,19 +418,26 @@ class $AgentPaneContent implements PaneContent {
     });
 
     // The rule is inset by the L/R gutter too (side margins → airier canvas).
-    const ruleWidth = Math.max(1, context.width - TRANSCRIPT_PAD_LEFT - TRANSCRIPT_PAD_RIGHT);
+    const ruleWidth = Math.max(
+      1,
+      context.width -
+        this.agentPaneContentClass.transcriptPadLeft -
+        this.agentPaneContentClass.transcriptPadRight,
+    );
     const rule = ThemeIcons.Class.agentTranscriptIconsFor(context.glyphLevel).rule.repeat(ruleWidth);
 
     // The composer caret sits on its last visible row inside the frame, shifted right by the left gutter.
     this.lastCaret = {
-      column: TRANSCRIPT_PAD_LEFT + composerLayout.caretColumn,
+      column:
+        this.agentPaneContentClass.transcriptPadLeft +
+        composerLayout.caretColumn,
       row: this.lastComposerStart + composerLayout.caretRow,
     };
 
     const modeLineRow = this.lastComposerStart + composerLayout.rowCount + 1; // below composer + bottom rule
     return AgentPaneRenderer.Class.render({
       palette: context.palette,
-      padLeft: TRANSCRIPT_PAD_LEFT,
+      padLeft: this.agentPaneContentClass.transcriptPadLeft,
       bodyRows,
       selectionRanges,
       searchHighlights,
@@ -468,7 +453,7 @@ class $AgentPaneContent implements PaneContent {
   /** The mode line: ENGINE, TERMINAL FOLLOW, SEARCH, then PERMISSION.
    *  The layout records button cell ranges while emitting their segments, so paint and hit-test share
    *  one geometry source. */
-  private modeLineSegments(context: PaneRenderContext, modeLineRow: number): ThinkingSegment[] {
+  protected modeLineSegments(context: PaneRenderContext, modeLineRow: number): ThinkingSegment[] {
     const bypass = this.permissionMode?.value ?? false;
     const arrow = context.glyphLevel === 'ascii' ? '>>' : '⏵⏵';
     const askSupported = this.session.permissionPromptsSupported;
@@ -478,8 +463,8 @@ class $AgentPaneContent implements PaneContent {
         ? '? ask permissions'
         : 'bypass permissions off (prompts unavailable on this backend)';
 
-    const segments: ThinkingSegment[] = [{ text: ' '.repeat(TRANSCRIPT_PAD_LEFT), color: context.palette.dim, bold: false }];
-    let modeLineColumn = TRANSCRIPT_PAD_LEFT;
+    const segments: ThinkingSegment[] = [{ text: ' '.repeat(this.agentPaneContentClass.transcriptPadLeft), color: context.palette.dim, bold: false }];
+    let modeLineColumn = this.agentPaneContentClass.transcriptPadLeft;
     // Engine segment (only when bound). The cycle affordance shows when >1 engine is switchable.
     this.lastEngineSegment = null;
     if (this.enginePort) {
@@ -532,7 +517,8 @@ class $AgentPaneContent implements PaneContent {
       this.lastSearchSegment = { row: modeLineRow, startColumn, endColumn };
       const searchIsOpen =
         this.transcriptSearchPort.findBar.open.value &&
-        this.transcriptSearchPort.findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER;
+        this.transcriptSearchPort.findBar.target?.identifier ===
+          this.agentPaneContentClass.transcriptFindTargetIdentifier;
       segments.push({
         text: searchButtonText,
         color: searchIsOpen ? context.palette.accent : context.palette.info,
@@ -556,7 +542,7 @@ class $AgentPaneContent implements PaneContent {
 
   /** Pending tool calls = tool-use entries with no matching tool-result yet, in emission order.
    *  Derived PURELY from the transcript (real session state) — no invented flags. */
-  private pendingTools(): { id: string; name: string }[] {
+  protected pendingTools(): { id: string; name: string }[] {
     const pending = new Map<string, string>();
     for (const entry of this.session.transcript) {
       if (entry.role === 'tool-use') pending.set(entry.id, entry.name);
@@ -567,7 +553,7 @@ class $AgentPaneContent implements PaneContent {
 
   /** Compose the calm waiting-note: CYCLE through the pending tools (~1.5s each), each with its own
    *  elapsed time (tracked from when its tool-use first appeared), with a gentle pulse on switch. */
-  private composeWaitingNote(context: PaneRenderContext): ThinkingSegment[] | null {
+  protected composeWaitingNote(context: PaneRenderContext): ThinkingSegment[] | null {
     const pending = this.pendingTools();
     const now = this.spinner.nowMilliseconds();
     // Track per-tool start times; add newcomers, prune resolved ones (so elapsed is per-call, honest).
@@ -576,12 +562,16 @@ class $AgentPaneContent implements PaneContent {
     for (const tool of pending) if (!this.toolStartMilliseconds.has(tool.id)) this.toolStartMilliseconds.set(tool.id, now);
     if (pending.length === 0) return null;
 
-    const cycleIndex = Math.floor(now / WAITING_CYCLE_MILLISECONDS) % pending.length;
+    const cycleIndex =
+      Math.floor(now / this.agentPaneContentClass.waitingCycleMilliseconds) %
+      pending.length;
     const active = pending[cycleIndex]!;
     const startMilliseconds = this.toolStartMilliseconds.get(active.id) ?? now;
     const elapsedSeconds = Math.max(0, Math.floor((now - startMilliseconds) / 1000));
     // Pulse for the first ~300ms of each cycle window (the switch moment), only when there is >1 to cycle.
-    const highlight = pending.length > 1 && now % WAITING_CYCLE_MILLISECONDS < 300;
+    const highlight =
+      pending.length > 1 &&
+      now % this.agentPaneContentClass.waitingCycleMilliseconds < 300;
     return AgentThinkingIndicator.Class.composeWaitingNote({
       toolName: active.name,
       elapsedSeconds,
@@ -701,7 +691,7 @@ class $AgentPaneContent implements PaneContent {
       this.composer.deleteForward();
       return this.composerHandled();
     }
-    if (isTypedCharacter(key)) {
+    if (this.isTypedCharacter(key)) {
       this.composer.insert(key.sequence);
       return this.composerHandled();
     }
@@ -710,7 +700,7 @@ class $AgentPaneContent implements PaneContent {
 
   /** A composer edit/motion happened: bump the paint signal (a cursor-only move changes no observed ref,
    *  so the caret would not repaint otherwise) and report the key handled. */
-  private composerHandled(): boolean {
+  protected composerHandled(): boolean {
     this.viewRevision.value += 1;
     return true;
   }
@@ -783,7 +773,7 @@ class $AgentPaneContent implements PaneContent {
   }
 
   /** Map a transcript-region local row to an absolute projected-line index (clamped). */
-  private transcriptLineAtRow(localRow: number): number {
+  protected transcriptLineAtRow(localRow: number): number {
     const visibleCount = Math.min(this.lastBodyHeight, Math.max(0, this.lastTotalLines - this.lastFirstLine));
     const padCount = Math.max(0, this.lastBodyHeight - visibleCount);
     const absolute = this.lastFirstLine + (localRow - padCount);
@@ -793,7 +783,13 @@ class $AgentPaneContent implements PaneContent {
   // Transcript selection (driven by the ScrollableTextViewport drag through the host). The transcript
   // text is inset by TRANSCRIPT_PAD_LEFT, so the pointer column subtracts that gutter.
   transcriptPointAt(localColumn: number, localRow: number): SelectionPoint {
-    return { line: this.transcriptLineAtRow(localRow), column: Math.max(0, localColumn - TRANSCRIPT_PAD_LEFT) };
+    return {
+      line: this.transcriptLineAtRow(localRow),
+      column: Math.max(
+        0,
+        localColumn - this.agentPaneContentClass.transcriptPadLeft,
+      ),
+    };
   }
   beginTranscriptSelection(point: SelectionPoint): void {
     this.composer.clearSelection();
@@ -816,7 +812,10 @@ class $AgentPaneContent implements PaneContent {
   // Composer selection (a small manual drag through the host — no momentum/edge-autoscroll). The composer
   // is inset by the left gutter too, so the pointer column subtracts it before mapping into composer space.
   composerPointAt(localColumn: number, visibleRow: number): SelectionPoint {
-    return this.composer.pointAt(localColumn - TRANSCRIPT_PAD_LEFT, visibleRow);
+    return this.composer.pointAt(
+      localColumn - this.agentPaneContentClass.transcriptPadLeft,
+      visibleRow,
+    );
   }
   beginComposerSelection(point: SelectionPoint): void {
     this.transcriptSelection.clear();
@@ -891,3 +890,32 @@ export namespace AgentPaneContent {
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
+export interface AgentScrollPort {
+  readonly scrollTop: number;
+  readonly stuckToBottom: boolean;
+  scrollRowsBy(deltaRows: number): void;
+  scrollToBottom(): void;
+}
+
+export interface AgentEnginePort {
+  readonly provider: string;
+  readonly canCycle: boolean;
+  cycle(): boolean;
+}
+
+export interface AgentTranscriptSearchPort {
+  readonly findBar: FindBar.Instance;
+  open(): void;
+}
+
+export interface AgentTerminalFollowPort {
+  readonly mode: Ref<AgentTerminalFollowMode>;
+  label(): string;
+  cycle(): AgentTerminalFollowMode;
+}
+
+export type AgentPaneRegion =
+  | { readonly kind: 'transcript'; readonly localRow: number }
+  | { readonly kind: 'composer'; readonly visibleRow: number }
+  | { readonly kind: 'other' };

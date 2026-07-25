@@ -1,9 +1,3 @@
-// The agent COMPOSER: the editable input line, the second instance of the shared text surface (the
-// transcript is the first). It WRAPS its buffer to the pane width (never overflowing horizontally under a
-// neighbour pane), GROWS up to a small cap, then SCROLLS internally to keep the CURSOR line visible. It
-// owns a real CURSOR (a grapheme index into the text) with full mid-text editing — insert/delete at the
-// cursor, char/word/line motion — reusing the shared TextEditing word boundaries and TextSelectionModel +
-// WrapText seams, so nothing is re-implemented. Enter (handled by the pane) sends the whole buffer.
 import { ref, type Ref } from 'vue';
 import { WrapText } from '../ui/WrapText';
 import { TextSelectionModel, type SelectionPoint, type SelectionSpanRange } from '../ui/TextSelectionModel';
@@ -14,45 +8,31 @@ import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 
 // invariant: Composer word edits share one seam (src/modules/agent/agent.invariants.md)
 // invariant: Agent text wraps at word boundaries (src/modules/agent/agent.invariants.md)
-/** Max visual rows the composer grows to before it scrolls internally (keeps the cursor line visible). */
-export const COMPOSER_MAX_ROWS = 5;
-/** The prompt gutter width ("❯ " on line 1, "  " on continuations) reserved on every composer row. */
-export const COMPOSER_GUTTER_COLUMNS = 2;
-
-/** One laid-out composer row: its absolute visual-line index, gutter prefix, text, and selection span. */
-export interface ComposerRow {
-  readonly absoluteLine: number;
-  readonly isFirstLine: boolean;
-  readonly text: string;
-  readonly selection: SelectionSpanRange | null;
-}
-
-/** The composer's laid-out geometry for one frame (rows to paint + where the caret sits). */
-export interface ComposerLayout {
-  readonly rows: ComposerRow[];
-  /** Visible row count (1..COMPOSER_MAX_ROWS) — how many bottom rows the composer occupies. */
-  readonly rowCount: number;
-  /** Caret cell, relative to the composer's first visible row: row within [0, rowCount), display column. */
-  readonly caretRow: number;
-  readonly caretColumn: number;
-}
 
 class $AgentComposer {
+  static get maxRows(): number {
+    return 5;
+  }
+
+  static get gutterColumns(): number {
+    return 2;
+  }
+
   protected static get rightPaddingColumns(): number {
     return 2;
   }
 
-  private readonly buffer = ref('');
-  private readonly selection = new TextSelectionModel.Class();
+  protected readonly buffer = ref('');
+  protected readonly selection = new TextSelectionModel.Class();
   /** The cursor as a GRAPHEME index into the buffer (0..length) — the single source of edit position. */
-  private cursorIndex = 0;
+  protected cursorIndex = 0;
   /** Last frame's wrap width + scroll offset — the coord space for caret / pointer / selection mapping. */
-  private lastWrapWidth = 1;
-  private scrollOffset = 0;
+  protected lastWrapWidth = 1;
+  protected scrollOffset = 0;
   /** Cached wrap segments for (buffer, width) — every geometry read derives from ONE segmentation. */
-  private cachedSegments: readonly AgentWordWrapSegment[] | null = null;
-  private cachedSegmentsText = '';
-  private cachedSegmentsWidth = 0;
+  protected cachedSegments: readonly AgentWordWrapSegment[] | null = null;
+  protected cachedSegmentsText = '';
+  protected cachedSegmentsWidth = 0;
 
   /** The reactive buffer text (the pane fuses its length into the render revision). */
   get text(): Ref<string> {
@@ -69,13 +49,13 @@ class $AgentComposer {
     return this.cursorIndex;
   }
 
-  private graphemes(): string[] {
+  protected graphemes(): string[] {
     return EditorCoordinates.Class.graphemes(this.buffer.value);
   }
-  private graphemeCount(): number {
+  protected graphemeCount(): number {
     return EditorCoordinates.Class.graphemeCount(this.buffer.value);
   }
-  private clampCursor(): number {
+  protected clampCursor(): number {
     return Math.max(0, Math.min(this.cursorIndex, this.graphemeCount()));
   }
 
@@ -184,7 +164,7 @@ class $AgentComposer {
   // (the reviewed éx caret divergence).
 
   /** The wrapped segments for the CURRENT buffer at the last layout width (cached per state). */
-  private segments(): readonly AgentWordWrapSegment[] {
+  protected segments(): readonly AgentWordWrapSegment[] {
     if (this.cachedSegments === null || this.cachedSegmentsText !== this.buffer.value || this.cachedSegmentsWidth !== this.lastWrapWidth) {
       this.cachedSegments = AgentWordWrap.Class.segments(
         this.buffer.value,
@@ -195,22 +175,22 @@ class $AgentComposer {
     }
     return this.cachedSegments;
   }
-  private numVisualLines(): number {
+  protected numVisualLines(): number {
     return Math.max(1, this.segments().length);
   }
   /** DISPLAY-cell width of a visual row. */
-  private visualLineLength(lineIndex: number): number {
+  protected visualLineLength(lineIndex: number): number {
     return this.segments()[lineIndex]?.displayWidth ?? 0;
   }
   /** The cursor's visual (row, DISPLAY-cell column) in the wrapped composer. */
-  private caretVisual(): { line: number; column: number } {
+  protected caretVisual(): { line: number; column: number } {
     return AgentWordWrap.Class.visualPositionOf(
       this.segments(),
       this.clampCursor(),
     );
   }
   /** The grapheme index at a visual (row, DISPLAY-cell column), snapped to a cluster start. */
-  private positionAt(lineIndex: number, column: number): number {
+  protected positionAt(lineIndex: number, column: number): number {
     return Math.min(
       this.graphemeCount(),
       AgentWordWrap.Class.graphemeAtVisualPosition(
@@ -224,16 +204,17 @@ class $AgentComposer {
   /** Lay the composer out for `paneWidth` columns: wrap, cap the row count, scroll to keep the CURSOR
    *  line visible, mark selection spans, and place the caret at the cursor's visual cell. */
   layout(paneWidth: number): ComposerLayout {
+    const agentComposerClass = this.constructor as typeof $AgentComposer;
     this.lastWrapWidth = Math.max(
       1,
       paneWidth
-        - COMPOSER_GUTTER_COLUMNS
-        - (this.constructor as typeof $AgentComposer).rightPaddingColumns,
+        - agentComposerClass.gutterColumns
+        - agentComposerClass.rightPaddingColumns,
     );
     const segments = this.segments();
 
     const totalLines = Math.max(1, segments.length);
-    const rowCount = Math.max(1, Math.min(totalLines, COMPOSER_MAX_ROWS));
+    const rowCount = Math.max(1, Math.min(totalLines, agentComposerClass.maxRows));
     const caret = this.caretVisual();
 
     // Scroll minimally to keep the caret line visible (persisted between frames — natural scrolling).
@@ -258,7 +239,7 @@ class $AgentComposer {
       rows,
       rowCount,
       caretRow: Math.max(0, Math.min(caret.line - this.scrollOffset, rowCount - 1)),
-      caretColumn: COMPOSER_GUTTER_COLUMNS + caret.column,
+      caretColumn: agentComposerClass.gutterColumns + caret.column,
     };
   }
 
@@ -267,8 +248,9 @@ class $AgentComposer {
   /** Map a composer-local cell (column already pane-relative, row within the visible composer rows) to a
    *  selection point in the composer's full visual-line space. */
   pointAt(localColumn: number, visibleRow: number): SelectionPoint {
+    const agentComposerClass = this.constructor as typeof $AgentComposer;
     const line = this.scrollOffset + Math.max(0, visibleRow);
-    const column = Math.max(0, localColumn - COMPOSER_GUTTER_COLUMNS);
+    const column = Math.max(0, localColumn - agentComposerClass.gutterColumns);
     return { line, column };
   }
   beginSelection(point: SelectionPoint): void {
@@ -291,7 +273,8 @@ class $AgentComposer {
   }
   /** Rows the composer currently occupies (for the host's screen-region check). */
   get rowCount(): number {
-    return Math.max(1, Math.min(this.numVisualLines(), COMPOSER_MAX_ROWS));
+    const agentComposerClass = this.constructor as typeof $AgentComposer;
+    return Math.max(1, Math.min(this.numVisualLines(), agentComposerClass.maxRows));
   }
 
   /** The selected buffer text — through the SEAM's resolver-based reconstruction (the composer no
@@ -332,4 +315,18 @@ export namespace AgentComposer {
   export const $Class = $AgentComposer;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface ComposerRow {
+  readonly absoluteLine: number;
+  readonly isFirstLine: boolean;
+  readonly text: string;
+  readonly selection: SelectionSpanRange | null;
+}
+
+export interface ComposerLayout {
+  readonly rows: ComposerRow[];
+  readonly rowCount: number;
+  readonly caretRow: number;
+  readonly caretColumn: number;
 }

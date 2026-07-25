@@ -54,7 +54,6 @@ import { BracketMatch } from '../editor/BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
   AgentPaneContent,
-  AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER,
   type AgentEnginePort,
   type AgentTranscriptSearchPort,
 } from '../agent/AgentPaneContent';
@@ -1427,7 +1426,11 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       // uses; Esc closes it and keys fall back to the composer. Everything else goes to the pane.
       const focusedContent = panelHost.focusedContent;
       if (focusedContent?.id === 'agent' && agentPaneContent) {
-        if (findBar.open.value && findBar.target?.identifier === AGENT_TRANSCRIPT_FIND_TARGET_IDENTIFIER) {
+        if (
+          findBar.open.value &&
+          findBar.target?.identifier ===
+            AgentPaneContent.Class.transcriptFindTargetIdentifier
+        ) {
           handleFindBarKey(key);
           return;
         }
