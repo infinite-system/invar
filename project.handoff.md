@@ -3,24 +3,30 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-25 ~04:55)
+## RESUME ANCHOR (2026-07-25 ~09:05 — directed backlog DRAINED)
 
-Main @ 1816297. Landed today (user-driven day queue): extent fix, layout wave 1 (LayoutModel +
-SplitterElement + right dock), osc52 clipboard/paste hardening, editor+diff grammar waves (6
-modules enforced), scroll-feel pack (one fling profile both axes + progressive impulse gain with
-one-row floor), agent word-boundary wrap (#52), layout-settings visibility fix (#49), narration
-pronounceability pass (#47).
+Main @ 8aa0eff. 26 landings today, zero regressions. Everything the user asked for this session is
+on main: scroll-feel pack (axis-uniform fling + progressive gain + one-row floor + deterministic
+reversal), agent word-boundary wrap + composer padding, live layout settings, narration
+pronounceability, panel UX pack (agent's own heading, click-to-split, 45% panel, clock+dock
+corner), TerminalObserver waves 1+2 (OSC 133 events, bounded+redacted observation, follow modes
+footer control F6/palette/Settings, readTerminalScrollback with lineCount/range), layout wave 2
+(command bar + file-tree pane citizen), X.interface.ts convention (enumerated list deleted),
+harness wait-discipline sweep (100 samples converted, 388 waits labeled, 2 new contracts), gate
+evidence+retry policy (/tmp/merge-gate-failures + retry-once on timeout-class reds).
 
-IN FLIGHT: observer wave 1 (/tmp/wt-observer, TerminalObserver per tmp/terminal-observation-design.md
-+ TASK2.md read-more-than-40-lines addendum); panel UX pack (/tmp/wt-panelux, #48 agent pane
-separation + #51 taller default panel, click-to-split, status-bar corner: time then right-dock
-control outermost).
+Grammar campaign: 7 modules enforced (syntax git markdown lsp editor diff image); ~1,017
+violations remain report-only; next waves per staged briefs: workspace, narration, small-tail,
+agent; ui LAST.
 
-NEXT QUEUE: #53 terminal-follow modes (observer wave 2: follow / on-error / on-request / off,
-footer control); #44 interface-rename (after observer w1); #43 wave 2 (file-tree citizen + command
-bar; brief staged in scratchpad wavebriefs); grammar waves image/workspace/narration then agent,
-ui LAST; #40 gate rework (preserve failing step logs — evidence-destruction proven costly; +
-word-delete gate-context timeout logged twice, never solo-reproduced); #31, #33, #34, #35.
+OPEN QUEUE (scheduled, not user-blocking): #31 getter census → scoped invalidation; #32 sweep
+close-out; #33 capsule arc; #34 plugin canvas (Workspace stops knowing Git — file-tree citizen
+landed, groundwork done); #35 structure navigator; #40 remaining scope (parallel smoke pool,
+labeled awaitStatusPublication landed via #54); observer waves 3-4 (wake delivery, rate policy,
+MCP exposure per tmp/terminal-observation-design.md).
+
+Word-delete gate-context timeout dossier (#40 metadata): 2 occurrences, never reproduced, now
+covered by gate retry-once.
 
 
 ## PRIOR ANCHOR — 2026-07-24 NIGHT — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
