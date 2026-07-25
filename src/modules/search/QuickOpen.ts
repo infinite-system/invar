@@ -44,6 +44,11 @@ class $QuickOpen {
     return ref(-1);
   }
 
+  /** Which gesture the user is making in the path navigator: BROWSING (they moved the highlight with
+   *  arrows or a click) or TYPING (any query edit clears it). Not reactive — no renderable reads it;
+   *  it only disambiguates what Enter commits, since the listing always auto-highlights row 0. */
+  protected selectionMovedByUser = false;
+
   // True when the CURRENT open-project input path is an existing directory (what Enter would open).
   // Recomputed live on every keystroke in the path navigator; the input paints a warning glyph when
   // false so an un-openable path is obvious at a glance. Always true outside the path navigator.
@@ -61,7 +66,8 @@ class $QuickOpen {
 
   /** Open quick-open and replace its candidates with the project files reported by ripgrep. */
   async show(projectRoot: string): Promise<void> {
-    const enumerationRequestIdentifier = ++this.latestEnumerationRequestIdentifier;
+    const enumerationRequestIdentifier = ++this
+      .latestEnumerationRequestIdentifier;
     this.open.value = true;
     this.mode.value = 'files';
     this.query.value = '';
@@ -81,7 +87,8 @@ class $QuickOpen {
 
     // invariant: An async result can outlive the state it described (project.invariants.md)
     if (
-      enumerationRequestIdentifier !== this.latestEnumerationRequestIdentifier ||
+      enumerationRequestIdentifier !==
+        this.latestEnumerationRequestIdentifier ||
       !this.open.value
     ) {
       return;
@@ -95,6 +102,9 @@ class $QuickOpen {
   setQuery(text: string): void {
     this.query.value = text;
     this.errorMessage.value = '';
+    // Editing the query is the TYPING gesture: the auto-highlighted first row is a listing artifact,
+    // not the user's choice, so Enter must commit the typed path until they browse again.
+    this.selectionMovedByUser = false;
     this.refilter();
   }
 
@@ -119,10 +129,13 @@ class $QuickOpen {
     this.workspacePathOpenable.value = true;
     this.workspaceDirectory = null;
     this.workspaceSubfolders = [];
+    this.selectionMovedByUser = false;
 
     if (workspaceRoot === undefined) return;
 
-    const parentDirectory = Files.Class.dirname(Files.Class.absolute(workspaceRoot));
+    const parentDirectory = Files.Class.dirname(
+      Files.Class.absolute(workspaceRoot),
+    );
     this.setQuery(`${parentDirectory}/`);
   }
 
@@ -156,7 +169,9 @@ class $QuickOpen {
     // the FIRST ('starts from the top') and past the first wraps to the last — so you never dead-end
     // beyond the visible list. A -1 (no) selection + Down lands on 0. The euclidean modulo keeps the
     // index in [0, total) for any delta sign.
-    this.selectedIndex.value = ((this.selectedIndex.value + delta) % total + total) % total;
+    this.selectedIndex.value =
+      (((this.selectedIndex.value + delta) % total) + total) % total;
+    this.selectionMovedByUser = true; // arrowing is the BROWSING gesture — Enter commits this row
   }
 
   /** Click-set the active match to a pointed row (mouse selection); ignored when the row has no match. */
@@ -164,19 +179,30 @@ class $QuickOpen {
   setSelectedIndex(index: number): void {
     if (index < 0 || index >= this.matches.value.length) return;
     this.selectedIndex.value = index;
+    this.selectionMovedByUser = true; // a click-set row is the user's choice, same as arrowing
   }
 
   /** Point the transient hover highlight at a row; an out-of-range row (or -1) clears it. */
   setHoveredIndex(index: number): void {
-    this.hoveredIndex.value = index >= 0 && index < this.matches.value.length ? index : -1;
+    this.hoveredIndex.value =
+      index >= 0 && index < this.matches.value.length ? index : -1;
   }
 
   /** Return the path to open. The caller owns opening the file/folder and closing quick-open. In
-   *  files mode this is the selected file; in the path-navigator this is the CURRENT input path (the
-   *  folder you have navigated to), trailing slash stripped — folders are drilled into, not opened, by
-   *  a click, so Enter commits wherever the input currently points. */
+   *  files mode this is the selected file. In the path-navigator the target depends on which gesture
+   *  the user is making, because the listing ALWAYS auto-highlights its first row: while BROWSING
+   *  (arrow keys or a click moved the highlight) the highlighted subfolder commits — arrowing down and
+   *  pressing Enter must open the row you are looking at, not the parent the input still names (the
+   *  reported defect). While TYPING (any query edit resets the gesture) the input path commits
+   *  verbatim, so a fully typed path still opens exactly what was typed. */
   activate(): string | null {
     if (this.mode.value === 'workspacePath') {
+      const browsedFolderPath = this.selectionMovedByUser
+        ? this.matches.value[this.selectedIndex.value]?.path
+        : undefined;
+      if (browsedFolderPath !== undefined) {
+        return this.stripTrailingSlash(browsedFolderPath);
+      }
       const workspacePath = this.stripTrailingSlash(this.query.value.trim());
       return workspacePath.length > 0 ? workspacePath : null;
     }
@@ -194,16 +220,24 @@ class $QuickOpen {
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
     this.workspacePathOpenable.value = true;
+    this.selectionMovedByUser = false;
   }
 
-  protected async enumerateProjectFiles(projectRoot: string): Promise<readonly string[]> {
+  protected async enumerateProjectFiles(
+    projectRoot: string,
+  ): Promise<readonly string[]> {
     if (this.options.enumerateProjectFiles) {
       return this.options.enumerateProjectFiles(projectRoot);
     }
 
-    const ripgrepResult = await Processes.Class.run(['rg', '--files'], projectRoot);
+    const ripgrepResult = await Processes.Class.run(
+      ['rg', '--files'],
+      projectRoot,
+    );
     if (ripgrepResult.ok) {
-      return ripgrepResult.stdout.split('\n').filter((filePath) => filePath.length > 0);
+      return ripgrepResult.stdout
+        .split('\n')
+        .filter((filePath) => filePath.length > 0);
     }
     // Fallback when ripgrep is not installed: git's tracked + untracked-non-ignored files (the same
     // .gitignore-respecting set rg --files gives). Keeps go-to-file working on a machine without rg.
@@ -212,7 +246,9 @@ class $QuickOpen {
       projectRoot,
     );
     if (gitResult.ok) {
-      return gitResult.stdout.split('\n').filter((filePath) => filePath.length > 0);
+      return gitResult.stdout
+        .split('\n')
+        .filter((filePath) => filePath.length > 0);
     }
     return [];
   }
@@ -226,7 +262,9 @@ class $QuickOpen {
    * The fully-injected `enumerateSiblingFolders` seam bypasses this (navigator-logic tests); the default
    * builds on the `listDirectoryNames` + `isDirectory` seams so the cap + guard stay unit-testable.
    */
-  protected enumerateSiblingFolders(parentDirectory: string): readonly string[] {
+  protected enumerateSiblingFolders(
+    parentDirectory: string,
+  ): readonly string[] {
     if (this.options.enumerateSiblingFolders) {
       return this.options.enumerateSiblingFolders(parentDirectory);
     }
@@ -258,7 +296,8 @@ class $QuickOpen {
   }
 
   protected listDirectoryNames(directory: string): readonly string[] {
-    if (this.options.listDirectoryNames) return this.options.listDirectoryNames(directory);
+    if (this.options.listDirectoryNames)
+      return this.options.listDirectoryNames(directory);
     return Files.Class.listNames(directory);
   }
 
@@ -284,7 +323,11 @@ class $QuickOpen {
     scoredMatches.sort(
       (firstMatch, secondMatch) =>
         firstMatch.score - secondMatch.score ||
-        (firstMatch.path < secondMatch.path ? -1 : firstMatch.path > secondMatch.path ? 1 : 0),
+        (firstMatch.path < secondMatch.path
+          ? -1
+          : firstMatch.path > secondMatch.path
+            ? 1
+            : 0),
     );
     this.matches.value = scoredMatches;
     this.selectedIndex.value = scoredMatches.length > 0 ? 0 : -1;
@@ -300,33 +343,45 @@ class $QuickOpen {
   protected refilterWorkspacePath(): void {
     const query = this.query.value;
     const lastSlashIndex = query.lastIndexOf('/');
-    const directoryPrefix = lastSlashIndex >= 0 ? query.slice(0, lastSlashIndex + 1) : '';
-    const filterSegment = lastSlashIndex >= 0 ? query.slice(lastSlashIndex + 1) : query;
+    const directoryPrefix =
+      lastSlashIndex >= 0 ? query.slice(0, lastSlashIndex + 1) : '';
+    const filterSegment =
+      lastSlashIndex >= 0 ? query.slice(lastSlashIndex + 1) : query;
 
     // Live validity for the alert affordance: the path Enter would open is an existing directory.
     // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
     const candidatePath = this.stripTrailingSlash(query.trim());
-    this.workspacePathOpenable.value = candidatePath.length > 0 && this.isDirectory(candidatePath);
+    this.workspacePathOpenable.value =
+      candidatePath.length > 0 && this.isDirectory(candidatePath);
 
     if (directoryPrefix !== this.workspaceDirectory) {
       this.workspaceDirectory = directoryPrefix;
       this.workspaceSubfolders =
         directoryPrefix.length === 0
           ? []
-          : this.enumerateSiblingFolders(this.directoryForListing(directoryPrefix));
+          : this.enumerateSiblingFolders(
+              this.directoryForListing(directoryPrefix),
+            );
     }
 
     const scoredFolders: QuickOpenMatch[] = [];
     for (const folderPath of this.workspaceSubfolders) {
       const folderName = Files.Class.basename(folderPath);
-      const score = filterSegment.length === 0 ? 0 : CommandScoring.Class.fuzzyScore(filterSegment, folderName);
+      const score =
+        filterSegment.length === 0
+          ? 0
+          : CommandScoring.Class.fuzzyScore(filterSegment, folderName);
       if (score >= 0) scoredFolders.push({ path: folderPath, score });
     }
 
     scoredFolders.sort(
       (firstFolder, secondFolder) =>
         firstFolder.score - secondFolder.score ||
-        (firstFolder.path < secondFolder.path ? -1 : firstFolder.path > secondFolder.path ? 1 : 0),
+        (firstFolder.path < secondFolder.path
+          ? -1
+          : firstFolder.path > secondFolder.path
+            ? 1
+            : 0),
     );
     this.matches.value = scoredFolders;
     this.selectedIndex.value = scoredFolders.length > 0 ? 0 : -1;
@@ -335,7 +390,9 @@ class $QuickOpen {
   /** Directory to enumerate for a `dir/` prefix, keeping root `/` intact. */
   protected directoryForListing(directoryPrefix: string): string {
     if (directoryPrefix === '/') return '/';
-    return directoryPrefix.endsWith('/') ? directoryPrefix.slice(0, -1) : directoryPrefix;
+    return directoryPrefix.endsWith('/')
+      ? directoryPrefix.slice(0, -1)
+      : directoryPrefix;
   }
 
   /** Strip one trailing slash for opening a path, keeping root `/` intact. */
@@ -356,8 +413,12 @@ export interface QuickOpenMatch {
   score: number;
 }
 
-export type ProjectFileEnumerator = (projectRoot: string) => Promise<readonly string[]>;
-export type SiblingFolderEnumerator = (parentDirectory: string) => readonly string[];
+export type ProjectFileEnumerator = (
+  projectRoot: string,
+) => Promise<readonly string[]>;
+export type SiblingFolderEnumerator = (
+  parentDirectory: string,
+) => readonly string[];
 export type DirectoryNameLister = (directory: string) => readonly string[];
 export type DirectoryPredicate = (path: string) => boolean;
 

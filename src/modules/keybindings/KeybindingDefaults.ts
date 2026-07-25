@@ -244,6 +244,11 @@ class $KeybindingDefaults {
         context: 'quickopen',
       },
       {
+        chord: { key: 'right' },
+        action: 'quickopen.navigateInto',
+        context: 'quickopen',
+      },
+      {
         chord: { key: 'backspace', alt: true },
         action: 'find.eraseWord',
         context: 'find',

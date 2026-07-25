@@ -19,7 +19,9 @@ function fixedProjectFileEnumerator(
 
 describe('QuickOpen', () => {
   test('deletePreviousWord edits the query through the shared text boundary', async () => {
-    const quickOpen = new QuickOpen.Class({ enumerateProjectFiles: async () => ['foo bar.ts'] });
+    const quickOpen = new QuickOpen.Class({
+      enumerateProjectFiles: async () => ['foo bar.ts'],
+    });
     await quickOpen.show('/project');
     quickOpen.setQuery('foo bar');
     quickOpen.deletePreviousWord();
@@ -58,7 +60,9 @@ describe('QuickOpen', () => {
       'src/save.ts',
       'src/show-a-value-everywhere.ts',
     ]);
-    expect(quickOpen.matches.value[0]!.score).toBeLessThan(quickOpen.matches.value[1]!.score);
+    expect(quickOpen.matches.value[0]!.score).toBeLessThan(
+      quickOpen.matches.value[1]!.score,
+    );
     expect(quickOpen.selectedIndex.value).toBe(0);
   });
 
@@ -126,7 +130,9 @@ describe('QuickOpen', () => {
 
     // Typing a segment filters the SAME directory's subfolders by that segment (fuzzy) — no re-read.
     quickOpen.setQuery('/projects/gm');
-    expect(quickOpen.matches.value.map((match) => match.path)).toEqual(['/projects/gamma']);
+    expect(quickOpen.matches.value.map((match) => match.path)).toEqual([
+      '/projects/gamma',
+    ]);
     expect(enumeratedDirectories).toEqual(['/projects']);
 
     // A click/keyboard drill navigates INTO the highlighted folder: the path completes and re-lists.
@@ -143,8 +149,10 @@ describe('QuickOpen', () => {
     const quickOpen = new QuickOpen.Class({
       enumerateSiblingFolders: (directory) => {
         enumeratedDirectories.push(directory);
-        if (directory === '/home/user') return ['/home/user/dev', '/home/user/desktop', '/home/user/music'];
-        if (directory === '/home/user/dev') return ['/home/user/dev/invar', '/home/user/dev/ibr'];
+        if (directory === '/home/user')
+          return ['/home/user/dev', '/home/user/desktop', '/home/user/music'];
+        if (directory === '/home/user/dev')
+          return ['/home/user/dev/invar', '/home/user/dev/ibr'];
         return [];
       },
     });
@@ -154,12 +162,18 @@ describe('QuickOpen', () => {
 
     // Filter /home/user by "de" → desktop + dev (equal fuzzy score, alphabetical tiebreak), not music.
     quickOpen.setQuery('/home/user/de');
-    expect(quickOpen.matches.value.map((match) => match.path)).toEqual(['/home/user/desktop', '/home/user/dev']);
+    expect(quickOpen.matches.value.map((match) => match.path)).toEqual([
+      '/home/user/desktop',
+      '/home/user/dev',
+    ]);
 
     // Extend to a new directory → the listing re-roots to /home/user/dev's contents.
     quickOpen.setQuery('/home/user/dev/');
     expect(enumeratedDirectories).toEqual(['/home/user', '/home/user/dev']);
-    expect(quickOpen.matches.value.map((match) => match.path)).toEqual(['/home/user/dev/ibr', '/home/user/dev/invar']);
+    expect(quickOpen.matches.value.map((match) => match.path)).toEqual([
+      '/home/user/dev/ibr',
+      '/home/user/dev/invar',
+    ]);
   });
 
   test('workspace-path mode returns the typed path when it matches no sibling folder', () => {
@@ -196,7 +210,10 @@ describe('QuickOpen', () => {
     // picker. The hardened default reads names via the listDirectoryNames seam, caps them, then
     // classifies each; the cap bounds how many entries get classified.
     const classifiedPaths: string[] = [];
-    const entryNames = Array.from({ length: 5000 }, (_unused, index) => `entry-${index}`);
+    const entryNames = Array.from(
+      { length: 5000 },
+      (_unused, index) => `entry-${index}`,
+    );
     const quickOpen = new QuickOpen.Class({
       listDirectoryNames: () => entryNames,
       isDirectory: (path) => {
@@ -209,7 +226,9 @@ describe('QuickOpen', () => {
 
     // Only the first 2000 entries are classified and listed — never the full 5000. (isDirectory is also
     // used once for the live openable-check on the parent path itself, so count only the entry classifications.)
-    const classifiedEntries = classifiedPaths.filter((path) => path.includes('/entry-'));
+    const classifiedEntries = classifiedPaths.filter((path) =>
+      path.includes('/entry-'),
+    );
     expect(classifiedEntries.length).toBe(2000);
     expect(quickOpen.matches.value.length).toBe(2000);
   });
@@ -220,7 +239,8 @@ describe('QuickOpen', () => {
     const quickOpen = new QuickOpen.Class({
       listDirectoryNames: () => ['good-alpha', 'broken-symlink', 'good-beta'],
       isDirectory: (path) => {
-        if (path.endsWith('broken-symlink')) throw new Error('ELOOP: broken symlink');
+        if (path.endsWith('broken-symlink'))
+          throw new Error('ELOOP: broken symlink');
         return true;
       },
     });
@@ -251,4 +271,39 @@ describe('QuickOpen', () => {
     expect(quickOpen.selectedIndex.value).toBe(-1);
     expect(quickOpen.activate()).toBeNull();
   });
+});
+
+test('workspace-path mode commits the HIGHLIGHTED subfolder, not the parent in the input', () => {
+  // The reported defect: arrowing down a listing and committing opened the folder the INPUT still
+  // named (the parent) instead of the highlighted row. Selection wins whenever one exists.
+  const quickOpen = new QuickOpen.Class({
+    listDirectoryNames: () => ['alpha', 'beta'],
+    isDirectory: () => true,
+  });
+  quickOpen.showWorkspacePath('/projects/current'); // parent = /projects, lists alpha + beta
+
+  expect(quickOpen.activate()).toBe('/projects'); // no selection yet: the input path commits
+  quickOpen.moveSelection(1);
+  const selectedPath =
+    quickOpen.matches.value[quickOpen.selectedIndex.value]?.path;
+  expect(selectedPath).toBeDefined();
+  expect(quickOpen.activate()).toBe(selectedPath ?? '');
+  expect(quickOpen.activate()).not.toBe('/projects');
+});
+
+test('workspace-path Right-arrow drill-in completes the query with the highlighted folder', () => {
+  const quickOpen = new QuickOpen.Class({
+    listDirectoryNames: () => ['alpha', 'beta'],
+    isDirectory: () => true,
+  });
+  quickOpen.showWorkspacePath('/projects/current');
+  quickOpen.moveSelection(1);
+  const selectedPath =
+    quickOpen.matches.value[quickOpen.selectedIndex.value]?.path;
+  expect(selectedPath).toBeDefined();
+
+  quickOpen.navigateIntoSelected();
+
+  // The input is now scoped INSIDE that folder, so typing searches within it.
+  expect(quickOpen.query.value).toBe(`${selectedPath ?? ''}/`);
 });

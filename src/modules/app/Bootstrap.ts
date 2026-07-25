@@ -1262,6 +1262,10 @@ class $Bootstrap {
       'palette.erase': () => commands.backspaceQuery(),
       'palette.eraseWord': () => commands.deletePreviousQueryWord(),
       'quickopen.eraseWord': () => quickOpen.deletePreviousWord(),
+      // Shell-style path completion: Right on a highlighted subfolder writes its path into the input
+      // (the same drill-in the mouse click performs), so the listing re-roots there and the query is
+      // now scoped to that folder — the keyboard reaches the navigator through one method.
+      'quickopen.navigateInto': () => quickOpen.navigateIntoSelected(),
       'find.eraseWord': () => {
         findBar.deletePreviousWord();
         revealFindMatch();
