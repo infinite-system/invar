@@ -525,7 +525,7 @@ class $Workspace {
       (entry.buffer as Editor.Instance | null)?.attachWordWrap(settings.wordWrap);
     }
   }
-  private get verticalMomentum(): MomentumOptions {
+  private get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
     if (!settings) return VERTICAL_MOMENTUM;
     return {
@@ -920,35 +920,36 @@ class $Workspace {
     });
   }
 
-  /** A wheel notch: add a momentum impulse (the frame loop then glides the log). VERTICAL regimes use
-   *  the higher-ceiling profile (item E) so a hard fling covers ground fast; horizontal stays default. */
+  /** A wheel notch: add a momentum impulse (the frame loop then glides the log). Every scroll regime,
+   *  both axes, uses the one settings-tuned fling profile so no axis feels slower than another. */
   impulseGitLog(deltaRows: number): void {
-    this.gitPanel.logMomentum.value = Momentum.Class.addImpulse(this.gitPanel.logMomentum.value, deltaRows, this.verticalMomentum);
+    this.gitPanel.logMomentum.value = Momentum.Class.addImpulse(this.gitPanel.logMomentum.value, deltaRows, this.flingMomentum);
   }
 
   impulseEditorVerticalScroll(deltaRows: number): void {
     const viewport = this.editor.viewport;
-    viewport.verticalScrollMomentum.value = Momentum.Class.addImpulse(viewport.verticalScrollMomentum.value, deltaRows, this.verticalMomentum);
+    viewport.verticalScrollMomentum.value = Momentum.Class.addImpulse(viewport.verticalScrollMomentum.value, deltaRows, this.flingMomentum);
   }
 
   impulseEditorHorizontalScroll(deltaColumns: number): void {
     const viewport = this.editor.viewport;
-    viewport.horizontalScrollMomentum.value = Momentum.Class.addImpulse(viewport.horizontalScrollMomentum.value, deltaColumns);
+    viewport.horizontalScrollMomentum.value = Momentum.Class.addImpulse(viewport.horizontalScrollMomentum.value, deltaColumns, this.flingMomentum);
   }
 
   impulseTreeScroll(deltaRows: number): void {
-    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(this.tree.selectionMomentum.value, deltaRows, this.verticalMomentum);
+    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(this.tree.selectionMomentum.value, deltaRows, this.flingMomentum);
   }
 
   impulseTreeHorizontalScroll(deltaColumns: number): void {
     this.tree.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
       this.tree.horizontalScrollMomentum.value,
       deltaColumns,
+      this.flingMomentum,
     );
   }
 
   impulseGitChangesScroll(deltaRows: number): void {
-    this.gitPanel.changesMomentum.value = Momentum.Class.addImpulse(this.gitPanel.changesMomentum.value, deltaRows, this.verticalMomentum);
+    this.gitPanel.changesMomentum.value = Momentum.Class.addImpulse(this.gitPanel.changesMomentum.value, deltaRows, this.flingMomentum);
   }
 
   impulseGitChangesHorizontalScroll(deltaColumns: number): void {
@@ -1011,12 +1012,12 @@ class $Workspace {
     const gitPanel = this.gitPanel;
     const editorViewport = this.editor.viewport;
 
-    // Vertical regimes step with the higher-ceiling profile (item E); horizontal keeps the default.
-    const gitLogStep = Momentum.Class.stepMomentum(gitPanel.logMomentum.value, dtSeconds, this.verticalMomentum);
+    // Every regime, both axes, steps with the one settings-tuned fling profile.
+    const gitLogStep = Momentum.Class.stepMomentum(gitPanel.logMomentum.value, dtSeconds, this.flingMomentum);
     gitPanel.logMomentum.value = gitLogStep.momentum;
     if (gitLogStep.rows !== 0) this.scrollGitLog(gitLogStep.rows);
 
-    const editorVerticalStep = Momentum.Class.stepMomentum(editorViewport.verticalScrollMomentum.value, dtSeconds, this.verticalMomentum);
+    const editorVerticalStep = Momentum.Class.stepMomentum(editorViewport.verticalScrollMomentum.value, dtSeconds, this.flingMomentum);
     editorViewport.verticalScrollMomentum.value = editorVerticalStep.momentum;
     if (editorVerticalStep.rows !== 0) {
       // In wrap mode scrollTop is a VISUAL-row offset, so the momentum glide clamps to the wrapped
@@ -1028,7 +1029,7 @@ class $Workspace {
       editorViewport.scrollBy(editorVerticalStep.rows, totalRows);
     }
 
-    const editorHorizontalStep = Momentum.Class.stepMomentum(editorViewport.horizontalScrollMomentum.value, dtSeconds);
+    const editorHorizontalStep = Momentum.Class.stepMomentum(editorViewport.horizontalScrollMomentum.value, dtSeconds, this.flingMomentum);
     editorViewport.horizontalScrollMomentum.value = editorHorizontalStep.momentum;
     if (editorHorizontalStep.rows !== 0 && !this.editor.wordWrap.value) {
       // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
@@ -1039,17 +1040,17 @@ class $Workspace {
       );
     }
 
-    const treeStep = Momentum.Class.stepMomentum(this.tree.selectionMomentum.value, dtSeconds, this.verticalMomentum);
+    const treeStep = Momentum.Class.stepMomentum(this.tree.selectionMomentum.value, dtSeconds, this.flingMomentum);
     this.tree.selectionMomentum.value = treeStep.momentum;
     // Wheel scrolls the tree WINDOW (independent offset), not the selection — so the list scrolls as
     // one uniform surface and the selection highlight travels with its row (git-changes behaviour).
     if (treeStep.rows !== 0) this.tree.scrollBy(treeStep.rows);
 
-    const treeHorizontalStep = Momentum.Class.stepMomentum(this.tree.horizontalScrollMomentum.value, dtSeconds);
+    const treeHorizontalStep = Momentum.Class.stepMomentum(this.tree.horizontalScrollMomentum.value, dtSeconds, this.flingMomentum);
     this.tree.horizontalScrollMomentum.value = treeHorizontalStep.momentum;
     if (treeHorizontalStep.rows !== 0) this.tree.scrollByColumns(treeHorizontalStep.rows);
 
-    const changesStep = Momentum.Class.stepMomentum(gitPanel.changesMomentum.value, dtSeconds, this.verticalMomentum);
+    const changesStep = Momentum.Class.stepMomentum(gitPanel.changesMomentum.value, dtSeconds, this.flingMomentum);
     gitPanel.changesMomentum.value = changesStep.momentum;
     if (changesStep.rows !== 0) {
       const git = this.git.value;

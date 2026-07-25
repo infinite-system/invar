@@ -10,13 +10,20 @@ describe('scroll-momentum', () => {
     expect(Momentum.Class.isMoving(AT_REST)).toBe(false);
   });
 
-  test('an impulse sets velocity in the wheel direction and accumulates', () => {
-    let momentum = Momentum.Class.addImpulse(AT_REST, 1, NO_DECAY); // +1 notch
-    expect(momentum.velocity).toBe(10);
+  test('an impulse sets velocity in the wheel direction and accumulates progressively', () => {
+    // Gain ramps from 30% at rest to 100% at 40% of the cap (here 0.4 * 100 = 40 rows/sec):
+    // the first notch is a precision step; persistence buys speed.
+    let momentum = Momentum.Class.addImpulse(AT_REST, 1, NO_DECAY); // +1 notch from rest
+    expect(momentum.velocity).toBeCloseTo(3); // 10 * 0.3 — small first step
     momentum = Momentum.Class.addImpulse(momentum, 1, NO_DECAY); // same direction accumulates
-    expect(momentum.velocity).toBe(20);
-    momentum = Momentum.Class.addImpulse(momentum, -3, NO_DECAY); // opposite reverses
-    expect(momentum.velocity).toBe(-10);
+    expect(momentum.velocity).toBeCloseTo(6.525); // gain already ramping: 0.3 + 0.7 * (3/40)
+    expect(momentum.velocity).toBeGreaterThan(2 * 3); // compounding beats linear
+  });
+
+  test('impulse gain reaches full strength at the ramp ceiling', () => {
+    const cruising = { velocity: 40, residual: 0 }; // at 40% of max the ramp saturates
+    const momentum = Momentum.Class.addImpulse(cruising, 1, NO_DECAY);
+    expect(momentum.velocity).toBeCloseTo(50); // full 10-per-notch gain
   });
 
   test('velocity is capped', () => {

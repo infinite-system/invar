@@ -43,9 +43,28 @@ export const VERTICAL_MOMENTUM: MomentumOptions = {
 export const AT_REST: ScrollMomentum = { velocity: 0, residual: 0 };
 
 class $Momentum {
-  /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate. */
+  /** Fraction of the impulse gain a notch lands with when the regime is AT REST. A lone notch is a
+   *  precision move — it must travel a couple of rows, not a fling's opening jump. */
+  protected static get initialGainFraction(): number {
+    return 0.3;
+  }
+
+  /** The |velocity|, as a fraction of the cap, at which impulse gain reaches full strength. Below it
+   *  the gain ramps linearly from `initialGainFraction`, so persistence — not the first notch —
+   *  buys speed. */
+  protected static get gainRampCeilingFraction(): number {
+    return 0.4;
+  }
+
+  /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.
+   *  Gain is PROGRESSIVE: a notch from rest lands small (precise single-step feel) and a sustained
+   *  notch train compounds toward the cap, so fluidity is preserved while first steps stay small. */
   static addImpulse(momentum: ScrollMomentum, deltaRows: number, options: MomentumOptions = DEFAULT_MOMENTUM): ScrollMomentum {
-    const velocity = momentum.velocity + deltaRows * options.impulse;
+    const gainRampCeiling = options.max * $Momentum.gainRampCeilingFraction;
+    const gainScale = $Momentum.initialGainFraction
+      + (1 - $Momentum.initialGainFraction)
+        * Math.min(1, Math.abs(momentum.velocity) / gainRampCeiling);
+    const velocity = momentum.velocity + deltaRows * options.impulse * gainScale;
     return { velocity: Math.max(-options.max, Math.min(options.max, velocity)), residual: momentum.residual };
   }
 

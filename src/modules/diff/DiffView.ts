@@ -235,17 +235,17 @@ class $DiffView {
     return ref(0);
   }
 
-  // Live scroll physics: like Workspace, the vertical momentum reads its ceiling/gain/friction from the
-  // Settings store when attached, so the diff pane's fling obeys the same Ctrl+, tuning as the editor
-  // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Horizontal stays
-  // DEFAULT_MOMENTUM (a short-throw axis, not user-tuned).
+  // Live scroll physics: like Workspace, the fling profile reads its ceiling/gain/friction from the
+  // Settings store when attached, so the diff pane obeys the same Ctrl+, tuning as the editor
+  // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Both axes use
+  // the one profile: a horizontal axis on a slower curve reads as lag next to the vertical fling.
   protected settingsSource: Settings.Instance | null = null;
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
     this.paneSplitter.size.value = settings.diffSplitRatio.value;
     this.update();
   }
-  protected get verticalMomentum(): MomentumOptions {
+  protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
     if (!settings) return VERTICAL_MOMENTUM;
     return {
@@ -447,7 +447,7 @@ class $DiffView {
     this.verticalScrollMomentum.value = this.Momentum.addImpulse(
       this.verticalScrollMomentum.value,
       deltaRows,
-      this.verticalMomentum,
+      this.flingMomentum,
     );
   }
 
@@ -455,7 +455,7 @@ class $DiffView {
     this.horizontalScrollMomentum.value = this.Momentum.addImpulse(
       this.horizontalScrollMomentum.value,
       deltaColumns,
-      DEFAULT_MOMENTUM,
+      this.flingMomentum,
     );
   }
 
@@ -463,12 +463,12 @@ class $DiffView {
     const verticalStep = this.Momentum.stepMomentum(
       this.verticalScrollMomentum.value,
       deltaTimeSeconds,
-      this.verticalMomentum,
+      this.flingMomentum,
     );
     const horizontalStep = this.Momentum.stepMomentum(
       this.horizontalScrollMomentum.value,
       deltaTimeSeconds,
-      DEFAULT_MOMENTUM,
+      this.flingMomentum,
     );
     this.verticalScrollMomentum.value = verticalStep.momentum;
     this.horizontalScrollMomentum.value = horizontalStep.momentum;
