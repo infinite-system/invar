@@ -1,12 +1,3 @@
-// The construction seam for a live agent PaneContent: it wires a default AgentBackend (the local
-// EchoAgentBackend for Tier S) into an AgentSession, then wraps that as an AgentPaneContent. Overridable
-// (Static, `super`-capable) so a test or an alternate host can swap the backend — a MockAgentBackend for
-// a deterministic pane, CliStreamBackend for the real subscription-billed agent — without the caller
-// knowing which backend it got. Bootstrap calls this LAZILY on first toggle, so no session spins up
-// until the panel is actually opened (idle cost is exactly zero when the agent pane is never used).
-//
-// invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-// invariant: One session is one Reactive instance (src/modules/agent/agent.invariants.md)
 import { Static } from 'ivue/extras';
 import type { AgentBackend } from './AgentBackend.interface';
 import { EchoAgentBackend } from './EchoAgentBackend';
@@ -19,6 +10,75 @@ import { AgentSession } from './AgentSession';
 import { AgentPaneContent } from './AgentPaneContent';
 import type { AgentProvider } from '../settings/Settings';
 import type { AgentTerminalToolPort } from './AgentTerminalTools';
+
+// invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
+// invariant: One session is one Reactive instance (src/modules/agent/agent.invariants.md)
+
+class $AgentFactory {
+  /** Pick the backend by provider setting + CLI availability. Claude now rides the SDK backend
+   *  (SdkStreamBackend — interactive permission prompts in ask-mode, bypass resolved live per turn). */
+  static createBackend(options: AgentCreateOptions): AgentBackend {
+    if (process.env.INVAR_AGENT_BACKEND === 'echo') {
+      return new EchoAgentBackend.Class({
+        terminalTools: options.terminalTools,
+        skipPermissions: options.skipPermissions,
+      });
+    }
+    const resolved = AgentProviderRegistry.Class.resolve(options.provider);
+    const skipPermissions = options.skipPermissions ?? true;
+    const model = options.model || undefined;
+    if (resolved.engine === 'claude') {
+      return process.env.INVAR_AGENT_BACKEND === 'cli'
+        ? new CliStreamBackend.Class({
+            claudePath: resolved.binaryPath,
+            cwd: options.cwd,
+            skipPermissions,
+            model,
+          })
+        : new SdkStreamBackend.Class({
+            cwd: options.cwd,
+            skipPermissions,
+            model,
+            terminalTools: options.terminalTools,
+          });
+    }
+    if (resolved.engine === 'codex') {
+      return process.env.INVAR_AGENT_BACKEND === 'cli'
+        ? new CodexStreamBackend.Class({
+            codexPath: resolved.binaryPath,
+            cwd: options.cwd,
+            skipPermissions,
+            model,
+          })
+        : new CodexAppServerBackend.Class({
+            codexPath: resolved.binaryPath,
+            cwd: options.cwd,
+            skipPermissions,
+            model,
+            terminalTools: options.terminalTools,
+          });
+    }
+    return new EchoAgentBackend.Class({
+      terminalTools: options.terminalTools,
+      skipPermissions: options.skipPermissions,
+    });
+  }
+
+  /** Wire backend + session into a ready AgentPaneContent. */
+  static create(options: AgentCreateOptions = {}): AgentPaneContent.Model {
+    const backend = options.backend ?? this.createBackend(options);
+    const session = new AgentSession.Class(
+      backend,
+      AgentProviderRegistry.Class.resolve(options.provider).engine,
+    );
+    return new AgentPaneContent.Class(session);
+  }
+}
+
+export namespace AgentFactory {
+  export const $Class = $AgentFactory;
+  export const Class = Static($AgentFactory);
+}
 
 export interface AgentCreateOptions {
   /** Inject a specific backend (tests pass a MockAgentBackend; a host may pass any implementation). */
@@ -34,72 +94,4 @@ export interface AgentCreateOptions {
   model?: string;
   /** Visible integrated-terminal tools exposed to the model through each provider's native tool path. */
   terminalTools?: AgentTerminalToolPort;
-}
-
-/** Pick the backend by provider setting + CLI availability. Claude now rides the SDK backend
- *  (SdkStreamBackend — interactive permission prompts in ask-mode, bypass resolved live per turn); the
- *  legacy CLI pipe stays as an escape hatch via `INVAR_AGENT_BACKEND=cli`. `auto` (or a requested CLI
- *  that's missing) prefers Claude, then Codex, then the local echo. `INVAR_AGENT_BACKEND=echo` forces
- *  the echo (keeps the driving smoke hermetic — no subprocess, no billing). Overridable Static seam. */
-function $createBackend(options: AgentCreateOptions): AgentBackend {
-  if (process.env.INVAR_AGENT_BACKEND === 'echo') {
-    return new EchoAgentBackend.Class({
-      terminalTools: options.terminalTools,
-      skipPermissions: options.skipPermissions,
-    });
-  }
-  // ONE authority: the registry resolves provider → engine (env forces, availability, fallback). The
-  // label and cycling read the SAME resolution, so the UI can never claim an engine the factory didn't
-  // build (the reviewed dual-authority bug).
-  const resolved = AgentProviderRegistry.Class.resolve(options.provider);
-  const skipPermissions = options.skipPermissions ?? true;
-  const model = options.model || undefined;
-  if (resolved.engine === 'claude') {
-    return process.env.INVAR_AGENT_BACKEND === 'cli'
-      ? new CliStreamBackend.Class({ claudePath: resolved.binaryPath, cwd: options.cwd, skipPermissions, model })
-      : new SdkStreamBackend.Class({
-          cwd: options.cwd,
-          skipPermissions,
-          model,
-          terminalTools: options.terminalTools,
-        });
-  }
-  if (resolved.engine === 'codex') {
-    // Codex rides the app-server backend (permission-prompt parity: pause/approve over JSON-RPC); the
-    // exec pipe stays as the same `cli` escape hatch claude has.
-    return process.env.INVAR_AGENT_BACKEND === 'cli'
-      ? new CodexStreamBackend.Class({ codexPath: resolved.binaryPath, cwd: options.cwd, skipPermissions, model })
-      : new CodexAppServerBackend.Class({
-          codexPath: resolved.binaryPath,
-          cwd: options.cwd,
-          skipPermissions,
-          model,
-          terminalTools: options.terminalTools,
-        });
-  }
-  return new EchoAgentBackend.Class({
-    terminalTools: options.terminalTools,
-    skipPermissions: options.skipPermissions,
-  });
-}
-
-/** Wire backend + session into a ready AgentPaneContent. The session is told the registry's RESOLVED
- *  engine — the same resolution the mode line and cycling read — so the pane's identity surfaces
- *  (title, assistant row labels, greeting) can never claim an engine the resolution didn't pick. Under
- *  the hermetic INVAR_AGENT_BACKEND=echo force the echo IMPERSONATES the resolved engine by design
- *  (the driving smokes prove claude⇄codex identity mechanics without a real subprocess). */
-function $create(options: AgentCreateOptions = {}): AgentPaneContent.Model {
-  const backend = options.backend ?? AgentFactory.Class.createBackend(options);
-  const session = new AgentSession.Class(backend, AgentProviderRegistry.Class.resolve(options.provider).engine);
-  return new AgentPaneContent.Class(session);
-}
-
-class $AgentFactory {
-  static createBackend = $createBackend;
-  static create = $create;
-}
-
-export namespace AgentFactory {
-  export const $Class = $AgentFactory;
-  export const Class = Static($AgentFactory);
 }
