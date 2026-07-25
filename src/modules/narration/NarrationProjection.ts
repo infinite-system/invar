@@ -23,14 +23,14 @@ import { SpeakableText } from './SpeakableText';
 class $NarrationProjection {
   /** How many transcript entries have been CONSIDERED (spoken or deliberately skipped). Only finalized
    *  entries advance it, so the still-open trailing turn is revisited until it completes. */
-  private consideredThrough = 0;
+  protected consideredThrough = 0;
 
-  private stopWatch: (() => void) | null = null;
+  protected stopWatch: (() => void) | null = null;
 
   constructor(
-    private readonly session: AgentSession.Instance,
-    private readonly enabled: Ref<boolean>,
-    private readonly tts: TtsBackend,
+    protected readonly session: AgentSession.Instance,
+    protected readonly enabled: Ref<boolean>,
+    protected readonly tts: TtsBackend,
   ) {
     // The session bumps renderRevision on every folded event; that is the one signal to re-examine the
     // transcript for a newly completed turn.
@@ -59,7 +59,11 @@ class $NarrationProjection {
     return ref(0);
   }
 
-  private onTranscriptChanged(): void {
+  protected get SpeakableText() {
+    return SpeakableText.Class;
+  }
+
+  protected onTranscriptChanged(): void {
     const entries = this.session.transcript;
     // Disabled: silently advance past everything so re-enabling starts from the NEXT turn, never the
     // backlog. (Opt-in presence — same class as a reducedMotion toggle.)
@@ -74,7 +78,7 @@ class $NarrationProjection {
       if (entry && entry.role === 'assistant') {
         // Speak the PROSE, not the markdown: strip syntax + simplify paths so piper doesn't spell out
         // backticks/paths letter-by-letter (the "bebebe" babble).
-        const speechPreparation = SpeakableText.Class.prepareForSpeech(
+        const speechPreparation = this.SpeakableText.prepareForSpeech(
           entry.text,
         );
         if (speechPreparation.usedOriginalFallback) {
@@ -95,7 +99,7 @@ class $NarrationProjection {
    *  a successor (a later event closed it), or it is the last entry AND the session has settled
    *  (idle/ended), which is the turn boundary. A trailing entry while still streaming/awaiting-tool is
    *  NOT finalized, so nothing is spoken mid-token. */
-  private isFinalized(index: number, length: number): boolean {
+  protected isFinalized(index: number, length: number): boolean {
     if (index < length - 1) return true;
     const status = this.session.status.value;
     return status === 'idle' || status === 'ended';
