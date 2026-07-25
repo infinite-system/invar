@@ -285,39 +285,40 @@ is the single `setSize` edge, asserted not to run inside the frame effect.
 
 ### Geometry aggregates match their consumers
 
-**Invariant:** If a geometry aggregate supplies a consumer, then it is computed exactly where a
-hard boundary consumes it, approximated stably where only a proportion consumes it, and not
-computed where nothing consumes it.
+**Invariant:** If a geometry aggregate supplies a consumer, then it is computed exactly at that
+consumer boundary and not computed where nothing consumes it.
 
 **Scope:** Editor scroll extents and scrollbar proportions. The no-wrap horizontal clamp consumes
 the exact full-document maximum display width. The wrap vertical clamp consumes the exact visual-row
-extent. Only a pure thumb proportion may consume a stable approximation, and never instead of an
-exact clamp computed for the same axis.
+extent. The vertical thumb consumes that same exact total together with the exact layout viewport;
+only its final projection onto whole terminal cells is quantized.
 
 **Components:**
 - *Exact hard boundaries* — `TextDocument.maximumLineWidth` is the true full-document display
   width for the no-wrap horizontal clamp, and `EditorWrap.totalVisualRows` is the true visual-row
   count for the wrap vertical clamp.
-- *Stable proportional input* — only a pure thumb ratio may use an approximation, and that ratio
-  does not change when only the visible window changes and content stays unchanged.
+- *Exact proportional inputs* — a vertical thumb ratio uses the exact layout viewport rows and the
+  exact logical or wrapped total rows. Its whole-cell length is quantized from that
+  position-independent ratio, never from independently rounded moving endpoints.
 - *Absent unused aggregate* — an aggregate with no consumer in its owning surface is not
   computed or incrementally maintained.
 
 **Mechanism:** `TextDocument.rebuildMaximumLineWidth` seeds from integer UTF-16 lengths, rejects
 lines whose two-columns-per-code-unit upper bound cannot beat the champion, and exactly measures
-only surviving candidates; tab lines always survive to exact measurement. Local edits compare
-only replacements unless the champion shrinks or disappears, which reruns the same prefilter. The
-no-wrap horizontal consumers read that exact width. Wrap vertical consumers independently read
-`EditorWrap.totalVisualRows`; a thumb-ratio approximation cannot replace that exact clamp.
+only surviving candidates; tab lines always survive to exact measurement. Local edits compare only
+replacements unless the champion shrinks or disappears, which reruns the same prefilter. The no-wrap
+horizontal consumers read that exact width. `ScrollbarSync` supplies the vertical bar with
+`TextDocument.lineCount` or `EditorWrap.totalVisualRows` and the live layout viewport; the solid
+thumb rasterizer derives one whole-cell length from those constant inputs and moves only its start.
 
 **Generates:** one full-document horizontal extent authority for momentum, drag auto-scroll, and
 the horizontal scrollbar; one exact wrap visual-row extent for momentum, paging, and the vertical
 scrollbar; a stable thumb while vertically scrolling unchanged content.
 
 **Rejected alternatives:** Recompute width from visible lines — the clamp and thumb change when
-the viewport moves although document geometry did not. Use logical-line count for the wrap clamp
-because a vertical thumb ratio may be approximate — this strands lower visual rows by replacing an
-exact boundary with a ratio-only approximation.
+the viewport moves although document geometry did not. Use logical-line count for the wrap clamp —
+this strands lower visual rows. Independently round both moving thumb endpoints — their parity can
+change a whole-cell extent even though viewport and total rows are constant.
 
 **Evidence:** The 2026-07-24 scrollbar regression changed horizontal thumb length while vertical
 scroll exposed different-width lines. The 2026-07-25 `JpegDecoder.test.ts` regression stopped
@@ -327,8 +328,9 @@ Alt-wheel at the opening viewport width before the deep widest line's true end.
 the `wrap-scroll` behavioral contract.
 
 **Impossible if true:** Alt-wheel stopping before the true end of a deep widest line; a horizontal
-thumb changing length while unchanged content scrolls vertically; wrap-mode vertical scrolling
-stopping at logical-line extent before the true last visual row.
+or vertical thumb changing length while unchanged content scrolls; viewport rows or total rows
+changing merely because scrollTop changed; wrap-mode vertical scrolling stopping at logical-line
+extent before the true last visual row.
 
 **Verification:** `bun test src/modules/editor/__tests__/editor-core.test.ts
 src/modules/workspace/Workspace.scroll.test.ts && bun

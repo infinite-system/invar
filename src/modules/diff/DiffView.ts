@@ -25,13 +25,17 @@ import type { Theme } from '../theme/Theme';
 import type { Palette } from '../theme/ThemePalettes';
 import { ScrollbarGeometry, type BarGeometry } from '../ui/ScrollbarGeometry';
 import { SelectableText } from '../ui/SelectableText';
-import { SelectionDragBehavior, type SelectionDragPosition } from '../ui/SelectionDragBehavior';
+import {
+  SelectionDragBehavior,
+  type SelectionDragPosition,
+} from '../ui/SelectionDragBehavior';
 import { SolidThumbScrollBar } from '../ui/SolidThumbScrollBar';
 import {
   Momentum,
   type ScrollMomentum,
   type MomentumOptions,
 } from '../system/Momentum';
+import { Logging } from '../system/Logging';
 import type { Settings } from '../settings/Settings';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
@@ -170,17 +174,25 @@ class $DiffView {
     const normalizedTrackHeight = Math.max(0, Math.floor(trackHeight));
     const totalAlignedRows = alignment.alignedRows.length;
     if (normalizedTrackHeight === 0 || totalAlignedRows === 0) return [];
-    return Array.from({ length: normalizedTrackHeight }, (_unused, trackRowIndex) => {
-      const bandStartAlignedRow = trackRowIndex / normalizedTrackHeight * totalAlignedRows;
-      const bandEndAlignedRow = (trackRowIndex + 1) / normalizedTrackHeight * totalAlignedRows;
-      const overlappingChangeBlock = alignment.changeBlocks.find(
-        (changeBlock) =>
-          changeBlock.startAlignedRowIndex < bandEndAlignedRow &&
-          changeBlock.endAlignedRowIndexExclusive > bandStartAlignedRow,
-      );
-      if (!overlappingChangeBlock) return null;
-      return alignment.alignedRows[overlappingChangeBlock.startAlignedRowIndex]?.kind ?? null;
-    });
+    return Array.from(
+      { length: normalizedTrackHeight },
+      (_unused, trackRowIndex) => {
+        const bandStartAlignedRow =
+          (trackRowIndex / normalizedTrackHeight) * totalAlignedRows;
+        const bandEndAlignedRow =
+          ((trackRowIndex + 1) / normalizedTrackHeight) * totalAlignedRows;
+        const overlappingChangeBlock = alignment.changeBlocks.find(
+          (changeBlock) =>
+            changeBlock.startAlignedRowIndex < bandEndAlignedRow &&
+            changeBlock.endAlignedRowIndexExclusive > bandStartAlignedRow,
+        );
+        if (!overlappingChangeBlock) return null;
+        return (
+          alignment.alignedRows[overlappingChangeBlock.startAlignedRowIndex]
+            ?.kind ?? null
+        );
+      },
+    );
   }
 
   readonly alignment: DiffAlignmentResult;
@@ -281,7 +293,12 @@ class $DiffView {
       height: '100%',
       flexDirection: 'column',
     });
-    this.headerRenderable = this.createTextRenderable({ id: 'diff-toolbar', height: 1, width: '100%', content: '' });
+    this.headerRenderable = this.createTextRenderable({
+      id: 'diff-toolbar',
+      height: 1,
+      width: '100%',
+      content: '',
+    });
     this.bodyRenderable = this.createBoxRenderable({
       id: 'diff-body',
       flexGrow: 1,
@@ -302,7 +319,8 @@ class $DiffView {
       currentSize: () => this.paneSplitRatio(),
       currentExtentCells: () => this.paneExtentWidth(),
       onSizeChange: (ratio) => {
-        if (this.settingsSource) this.settingsSource.diffSplitRatio.value = ratio;
+        if (this.settingsSource)
+          this.settingsSource.diffSplitRatio.value = ratio;
         this.update();
       },
       onDragEnd: () => {
@@ -326,7 +344,8 @@ class $DiffView {
       position: 'absolute',
       width: 1,
       showArrows: false,
-      onChange: (reportedPosition) => this.onVerticalScrollbarChanged(reportedPosition),
+      onChange: (reportedPosition) =>
+        this.onVerticalScrollbarChanged(reportedPosition),
     });
     this.horizontalScrollbarRenderable = this.createScrollBarRenderable({
       id: 'diff-scrollbar-horizontal',
@@ -334,14 +353,21 @@ class $DiffView {
       position: 'absolute',
       height: 1,
       showArrows: false,
-      onChange: (reportedPosition) => this.onHorizontalScrollbarChanged(reportedPosition),
+      onChange: (reportedPosition) =>
+        this.onHorizontalScrollbarChanged(reportedPosition),
     });
 
-    this.headerRenderable.onMouseDown = (event) => this.onHeaderMouseDown(event.x);
+    this.headerRenderable.onMouseDown = (event) =>
+      this.onHeaderMouseDown(event.x);
     this.bodyRenderable.onMouseScroll = (event) =>
-      this.onBodyMouseScroll(event.scroll?.direction, event.modifiers.alt || event.modifiers.shift);
-    this.previousSelectionDragBehavior = this.createSelectionDragBehavior('previous');
-    this.currentSelectionDragBehavior = this.createSelectionDragBehavior('current');
+      this.onBodyMouseScroll(
+        event.scroll?.direction,
+        event.modifiers.alt || event.modifiers.shift,
+      );
+    this.previousSelectionDragBehavior =
+      this.createSelectionDragBehavior('previous');
+    this.currentSelectionDragBehavior =
+      this.createSelectionDragBehavior('current');
     this.bindPaneSelectionEvents('previous');
     this.bindPaneSelectionEvents('current');
     this.rootRenderable.add(this.headerRenderable);
@@ -370,7 +396,10 @@ class $DiffView {
     return new this.SolidThumbScrollBar(this.renderer, options);
   }
 
-  createReadOnlyTextBuffer(path: string, text: string): ReadOnlyTextBuffer.Model {
+  createReadOnlyTextBuffer(
+    path: string,
+    text: string,
+  ): ReadOnlyTextBuffer.Model {
     const textBuffer = new this.ReadOnlyTextBuffer();
     textBuffer.openText(path, text);
     return textBuffer;
@@ -385,10 +414,10 @@ class $DiffView {
   findTarget(): FindBarTarget {
     // invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md)
     const side = this.focusedFindSide;
-    const textBuffer = side === 'previous' ? this.previousTextBuffer : this.currentTextBuffer;
-    return textBuffer.findTarget(
-      this.findTargetIdentifier(side),
-      (match) => this.revealFindMatch(side, match),
+    const textBuffer =
+      side === 'previous' ? this.previousTextBuffer : this.currentTextBuffer;
+    return textBuffer.findTarget(this.findTargetIdentifier(side), (match) =>
+      this.revealFindMatch(side, match),
     );
   }
 
@@ -401,7 +430,12 @@ class $DiffView {
       overflow: 'hidden',
       flexShrink: 0,
     });
-    const title = this.createTextRenderable({ id: `diff-${side}-title`, width: '100%', height: 1, content: '' });
+    const title = this.createTextRenderable({
+      id: `diff-${side}-title`,
+      width: '100%',
+      height: 1,
+      content: '',
+    });
     const content = this.createBoxRenderable({
       id: `diff-${side}-content`,
       width: '100%',
@@ -432,10 +466,15 @@ class $DiffView {
 
   // --- shared synchronized-scroll substrate ---
 
-  setSharedScrollCoordinate(alignedRowIndex: number, displayColumnIndex: number): void {
+  setSharedScrollCoordinate(
+    alignedRowIndex: number,
+    displayColumnIndex: number,
+  ): void {
     this.haltScrollMomentum();
-    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(alignedRowIndex);
-    this.horizontalScrollOffset.value = this.clampHorizontalOffset(displayColumnIndex);
+    this.alignedRowScrollOffset.value =
+      this.clampAlignedRowOffset(alignedRowIndex);
+    this.horizontalScrollOffset.value =
+      this.clampHorizontalOffset(displayColumnIndex);
     this.synchronizeActiveChangeBlockNumber();
     this.update();
   }
@@ -483,7 +522,12 @@ class $DiffView {
     const selectionAutoscrolling =
       this.previousSelectionDragBehavior.tick(deltaTimeSeconds) ||
       this.currentSelectionDragBehavior.tick(deltaTimeSeconds);
-    if (verticalStep.rows !== 0 || horizontalStep.rows !== 0 || selectionAutoscrolling) this.update();
+    if (
+      verticalStep.rows !== 0 ||
+      horizontalStep.rows !== 0 ||
+      selectionAutoscrolling
+    )
+      this.update();
     return (
       this.Momentum.isMoving(verticalStep.momentum) ||
       this.Momentum.isMoving(horizontalStep.momentum) ||
@@ -493,14 +537,18 @@ class $DiffView {
 
   moveByKeyboardAlignedRows(deltaRows: number): void {
     this.verticalScrollMomentum.value = this.Momentum.halt();
-    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(this.alignedRowScrollOffset.value + deltaRows);
+    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(
+      this.alignedRowScrollOffset.value + deltaRows,
+    );
     this.synchronizeActiveChangeBlockNumber();
     this.update();
   }
 
   moveByKeyboardColumns(deltaColumns: number): void {
     this.horizontalScrollMomentum.value = this.Momentum.halt();
-    this.horizontalScrollOffset.value = this.clampHorizontalOffset(this.horizontalScrollOffset.value + deltaColumns);
+    this.horizontalScrollOffset.value = this.clampHorizontalOffset(
+      this.horizontalScrollOffset.value + deltaColumns,
+    );
     this.update();
   }
 
@@ -520,13 +568,17 @@ class $DiffView {
   }
 
   jumpToNextChange(): void {
-    const nextAlignedRowIndex = this.DiffAlignment.nextChangeBlockStart(
-      this.alignment.changeBlocks,
-      this.alignedRowScrollOffset.value,
-    ) ?? this.alignment.changeBlocks[0]?.startAlignedRowIndex ?? null;
+    const nextAlignedRowIndex =
+      this.DiffAlignment.nextChangeBlockStart(
+        this.alignment.changeBlocks,
+        this.alignedRowScrollOffset.value,
+      ) ??
+      this.alignment.changeBlocks[0]?.startAlignedRowIndex ??
+      null;
     if (nextAlignedRowIndex === null) return;
     this.verticalScrollMomentum.value = this.Momentum.halt();
-    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(nextAlignedRowIndex);
+    this.alignedRowScrollOffset.value =
+      this.clampAlignedRowOffset(nextAlignedRowIndex);
     this.activeChangeBlockNumber.value =
       this.changeBlockNumberAt(nextAlignedRowIndex) ?? 0;
     this.update();
@@ -540,12 +592,17 @@ class $DiffView {
   jumpToPreviousChange(): void {
     const previousAlignedRowIndex =
       this.DiffAlignment.previousChangeBlockStart(
-      this.alignment.changeBlocks,
-      this.alignedRowScrollOffset.value,
-    ) ?? this.alignment.changeBlocks[this.alignment.changeBlocks.length - 1]?.startAlignedRowIndex ?? null;
+        this.alignment.changeBlocks,
+        this.alignedRowScrollOffset.value,
+      ) ??
+      this.alignment.changeBlocks[this.alignment.changeBlocks.length - 1]
+        ?.startAlignedRowIndex ??
+      null;
     if (previousAlignedRowIndex === null) return;
     this.verticalScrollMomentum.value = this.Momentum.halt();
-    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(previousAlignedRowIndex);
+    this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(
+      previousAlignedRowIndex,
+    );
     this.activeChangeBlockNumber.value =
       this.changeBlockNumberAt(previousAlignedRowIndex) ?? 0;
     this.update();
@@ -569,10 +626,14 @@ class $DiffView {
     this.currentPaneRenderables.title.bg = palette.panel;
     // invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md)
     this.previousPaneRenderables.title.content = new StyledText([
-      fg(palette.dim)(` Base (HEAD) — ${this.options.previousVersionPath ?? 'previous version'}`),
+      fg(palette.dim)(
+        ` Base (HEAD) — ${this.options.previousVersionPath ?? 'previous version'}`,
+      ),
     ]);
     this.currentPaneRenderables.title.content = new StyledText([
-      fg(palette.accent)(` Current (working) — ${this.options.currentVersionPath ?? 'current version'}`),
+      fg(palette.accent)(
+        ` Current (working) — ${this.options.currentVersionPath ?? 'current version'}`,
+      ),
     ]);
     this.headerRenderable.content = this.renderHeader(palette);
 
@@ -603,10 +664,18 @@ class $DiffView {
     const changeCounter = `${this.activeChangeBlockNumber.value} of ${this.alignment.changeBlocks.length} changes`;
     const headerSegments: HeaderSegment[] = [];
     let nextColumn = 0;
-    const appendSegment = (kind: HeaderSegment['kind'], label: string, color: string): TextChunk => {
+    const appendSegment = (
+      kind: HeaderSegment['kind'],
+      label: string,
+      color: string,
+    ): TextChunk => {
       const startColumn = nextColumn;
       nextColumn += label.length;
-      headerSegments.push({ kind, startColumn, endColumnExclusive: nextColumn });
+      headerSegments.push({
+        kind,
+        startColumn,
+        endColumnExclusive: nextColumn,
+      });
       return fg(color)(label);
     };
     const chunks: TextChunk[] = [
@@ -615,13 +684,29 @@ class $DiffView {
       fg(palette.fg)(` ${changeCounter}`),
     ];
     nextColumn += ` ${changeCounter}`.length;
-    const headerWidth = Math.max(1, Number(this.headerRenderable.width) || Number(this.bodyRenderable.width) || 80);
-    const laidOutCurrentPaneStart = Number(this.currentPaneRenderables.pane.x) - Number(this.bodyRenderable.x);
+    const headerWidth = Math.max(
+      1,
+      Number(this.headerRenderable.width) ||
+        Number(this.bodyRenderable.width) ||
+        80,
+    );
+    const laidOutCurrentPaneStart =
+      Number(this.currentPaneRenderables.pane.x) -
+      Number(this.bodyRenderable.x);
     const ratioCurrentPaneStart = this.previousPaneWidth() + 1;
-    const currentPaneStart = laidOutCurrentPaneStart > 0 ? laidOutCurrentPaneStart : ratioCurrentPaneStart;
-    const openSegmentStart = Math.max(nextColumn, currentPaneStart, headerWidth - openLabel.length - 2);
+    const currentPaneStart =
+      laidOutCurrentPaneStart > 0
+        ? laidOutCurrentPaneStart
+        : ratioCurrentPaneStart;
+    const openSegmentStart = Math.max(
+      nextColumn,
+      currentPaneStart,
+      headerWidth - openLabel.length - 2,
+    );
     if (openSegmentStart > nextColumn) {
-      chunks.push(fg(palette.statusBg)(' '.repeat(openSegmentStart - nextColumn)));
+      chunks.push(
+        fg(palette.statusBg)(' '.repeat(openSegmentStart - nextColumn)),
+      );
       nextColumn = openSegmentStart;
     }
     chunks.push(appendSegment('openFull', openLabel, palette.accent));
@@ -643,13 +728,13 @@ class $DiffView {
     const codeChunks: TextChunk[] = [];
 
     visibleAlignedRows.forEach((alignedRow, visibleAlignedRowIndex) => {
-      const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
+      const lineNumber =
+        side === 'previous'
+          ? alignedRow.leftLineNumber
+          : alignedRow.rightLineNumber;
       const isFillerRow = lineNumber === null;
       // Marker = bright accent for the gutter line-number tint; background = the muted row fill.
-      const rowMarkerColor = this.changedRowColor(
-        alignedRow.kind,
-        palette,
-      );
+      const rowMarkerColor = this.changedRowColor(alignedRow.kind, palette);
       const rowBackgroundColor = this.changedRowBackground(
         alignedRow.kind,
         palette,
@@ -657,10 +742,16 @@ class $DiffView {
       const gutterText = isFillerRow
         ? ' '.repeat(gutterWidth)
         : `${String(lineNumber).padStart(gutterWidth - 1, ' ')} `;
-      const gutterChunk = fg(isFillerRow ? palette.dim : rowMarkerColor ?? palette.dim)(gutterText);
+      const gutterChunk = fg(
+        isFillerRow ? palette.dim : (rowMarkerColor ?? palette.dim),
+      )(gutterText);
       gutterChunks.push(
         isFillerRow
-          ? dim(rowBackgroundColor ? bg(rowBackgroundColor)(gutterChunk) : gutterChunk)
+          ? dim(
+              rowBackgroundColor
+                ? bg(rowBackgroundColor)(gutterChunk)
+                : gutterChunk,
+            )
           : rowBackgroundColor
             ? bg(rowBackgroundColor)(gutterChunk)
             : gutterChunk,
@@ -676,18 +767,29 @@ class $DiffView {
           : alignedRow.kind === 'deleted'
             ? '-'
             : alignedRow.kind === 'modified'
-              ? side === 'previous' ? '-' : '+'
+              ? side === 'previous'
+                ? '-'
+                : '+'
               : ' ';
       const prefixChunk = fg(rowMarkerColor ?? palette.dim)(diffPrefix);
-      codeChunks.push(rowBackgroundColor ? bg(rowBackgroundColor)(prefixChunk) : prefixChunk);
+      codeChunks.push(
+        rowBackgroundColor ? bg(rowBackgroundColor)(prefixChunk) : prefixChunk,
+      );
       const codeContentWidth = Math.max(1, codeViewportWidth - 1);
 
       if (isFillerRow) {
         const fillerChunk = dim(fg(palette.dim)(' '.repeat(codeContentWidth)));
-        codeChunks.push(rowBackgroundColor ? bg(rowBackgroundColor)(fillerChunk) : fillerChunk);
+        codeChunks.push(
+          rowBackgroundColor
+            ? bg(rowBackgroundColor)(fillerChunk)
+            : fillerChunk,
+        );
       } else {
         const sourceLine = this.lineForSide(side, lineNumber);
-        const visibleLineWindow = this.sliceLineWindowDetails(sourceLine, codeContentWidth);
+        const visibleLineWindow = this.sliceLineWindowDetails(
+          sourceLine,
+          codeContentWidth,
+        );
         const visibleLine = visibleLineWindow.text;
         const lineChunks = this.highlightLine(
           visibleLine,
@@ -705,7 +807,11 @@ class $DiffView {
         );
         if (remainingColumns > 0) {
           const paddingChunk = fg(palette.fg)(' '.repeat(remainingColumns));
-          codeChunks.push(rowBackgroundColor ? bg(rowBackgroundColor)(paddingChunk) : paddingChunk);
+          codeChunks.push(
+            rowBackgroundColor
+              ? bg(rowBackgroundColor)(paddingChunk)
+              : paddingChunk,
+          );
         }
       }
 
@@ -714,7 +820,10 @@ class $DiffView {
         codeChunks.push(fg(palette.fg)('\n'));
       }
     });
-    return { gutter: new StyledText(gutterChunks), code: new StyledText(codeChunks) };
+    return {
+      gutter: new StyledText(gutterChunks),
+      code: new StyledText(codeChunks),
+    };
   }
 
   highlightLine(
@@ -728,20 +837,47 @@ class $DiffView {
   ): TextChunk[] {
     // This is the same viewport-local LanguageRegistry + Highlighter seam used by the editor. A
     // future Tree-sitter provider upgrades LanguageRegistry without a second diff rendering path.
-    const findEngine = side ? this.findBarSource?.engineFor(this.findTargetIdentifier(side)) : null;
-    const lineMatches = lineIndex === undefined
-      ? []
-      : findEngine?.matches.value.filter((match) => match.line === lineIndex) ?? [];
+    const findEngine = side
+      ? this.findBarSource?.engineFor(this.findTargetIdentifier(side))
+      : null;
+    const lineMatches =
+      lineIndex === undefined
+        ? []
+        : (findEngine?.matches.value.filter(
+            (match) => match.line === lineIndex,
+          ) ?? []);
     const visibleGraphemeCount =
       this.EditorCoordinates.graphemeCount(visibleLine);
     const boundaries = new Set<number>([0, visibleGraphemeCount]);
     for (const match of lineMatches) {
-      boundaries.add(Math.max(0, Math.min(visibleGraphemeCount, match.startColumn - visibleStartGrapheme)));
-      boundaries.add(Math.max(0, Math.min(visibleGraphemeCount, match.endColumn - visibleStartGrapheme)));
+      boundaries.add(
+        Math.max(
+          0,
+          Math.min(
+            visibleGraphemeCount,
+            match.startColumn - visibleStartGrapheme,
+          ),
+        ),
+      );
+      boundaries.add(
+        Math.max(
+          0,
+          Math.min(
+            visibleGraphemeCount,
+            match.endColumn - visibleStartGrapheme,
+          ),
+        ),
+      );
     }
-    const orderedBoundaries = [...boundaries].sort((first, second) => first - second);
+    const orderedBoundaries = [...boundaries].sort(
+      (first, second) => first - second,
+    );
     const chunks: TextChunk[] = [];
-    for (let boundaryIndex = 0; boundaryIndex < orderedBoundaries.length - 1; boundaryIndex += 1) {
+    for (
+      let boundaryIndex = 0;
+      boundaryIndex < orderedBoundaries.length - 1;
+      boundaryIndex += 1
+    ) {
       const segmentStart = orderedBoundaries[boundaryIndex]!;
       const segmentEnd = orderedBoundaries[boundaryIndex + 1]!;
       if (segmentEnd <= segmentStart) continue;
@@ -762,7 +898,8 @@ class $DiffView {
           this.syntaxRoleColor(highlightedSpan.role, palette),
         )(highlightedSpan.text);
         if (findHighlighted) syntaxChunk = bg(palette.cursorLine)(syntaxChunk);
-        else if (rowBackgroundColor) syntaxChunk = bg(rowBackgroundColor)(syntaxChunk);
+        else if (rowBackgroundColor)
+          syntaxChunk = bg(rowBackgroundColor)(syntaxChunk);
         chunks.push(syntaxChunk);
       }
     }
@@ -778,19 +915,19 @@ class $DiffView {
     codeViewportWidth: number,
   ): { text: string; startGrapheme: number } {
     const horizontalScrollOffset = this.horizontalScrollOffset.value;
-    if (horizontalScrollOffset === 0 && sourceLine.length <= codeViewportWidth) {
+    if (
+      horizontalScrollOffset === 0 &&
+      sourceLine.length <= codeViewportWidth
+    ) {
       return { text: sourceLine, startGrapheme: 0 };
     }
-    let startGraphemeIndex =
-      this.EditorCoordinates.graphemeAtDisplayColumn(
-        sourceLine,
-        horizontalScrollOffset,
-      );
+    let startGraphemeIndex = this.EditorCoordinates.graphemeAtDisplayColumn(
+      sourceLine,
+      horizontalScrollOffset,
+    );
     if (
-      this.EditorCoordinates.displayColumn(
-        sourceLine,
-        startGraphemeIndex,
-      ) < horizontalScrollOffset
+      this.EditorCoordinates.displayColumn(sourceLine, startGraphemeIndex) <
+      horizontalScrollOffset
     ) {
       startGraphemeIndex++;
     }
@@ -801,14 +938,8 @@ class $DiffView {
       ) + 1;
     return {
       text: sourceLine.slice(
-        this.EditorCoordinates.graphemeToU16(
-          sourceLine,
-          startGraphemeIndex,
-        ),
-        this.EditorCoordinates.graphemeToU16(
-          sourceLine,
-          endGraphemeIndex,
-        ),
+        this.EditorCoordinates.graphemeToU16(sourceLine, startGraphemeIndex),
+        this.EditorCoordinates.graphemeToU16(sourceLine, endGraphemeIndex),
       ),
       startGrapheme: startGraphemeIndex,
     };
@@ -818,11 +949,24 @@ class $DiffView {
     const bodyWidth = Math.max(1, Number(this.bodyRenderable.width) || 1);
     const bodyHeight = Math.max(1, Number(this.bodyRenderable.height) || 1);
     const region = { top: 0, left: 0, width: bodyWidth, height: bodyHeight };
-    const verticalGeometry = this.ScrollbarGeometry.scrollbarGeometry('vertical', region, {
+    const verticalScrollState = {
       scrollSize: this.alignment.alignedRows.length,
       viewportSize: this.viewportAlignedRowCount(),
       scrollPosition: this.alignedRowScrollOffset.value,
-    });
+    };
+    const verticalGeometry = this.ScrollbarGeometry.scrollbarGeometry(
+      'vertical',
+      region,
+      verticalScrollState,
+    );
+    if (process.env.TUI_DEBUG_BARS === '1') {
+      Logging.Class.info(
+        `bar ${this.verticalScrollbarRenderable.id}: ` +
+          `scrollSize=${verticalScrollState.scrollSize} ` +
+          `viewportSize=${verticalScrollState.viewportSize} ` +
+          `scrollPosition=${verticalScrollState.scrollPosition}`,
+      );
+    }
     this.applyScrollbarGeometry(
       this.verticalScrollbarRenderable,
       'vertical',
@@ -854,7 +998,10 @@ class $DiffView {
     }
     this.overviewRulerRenderable.visible = true;
     this.overviewRulerRenderable.top = verticalGeometry.trackTop;
-    this.overviewRulerRenderable.left = Math.max(0, verticalGeometry.trackLeft - 1);
+    this.overviewRulerRenderable.left = Math.max(
+      0,
+      verticalGeometry.trackLeft - 1,
+    );
     this.overviewRulerRenderable.height = verticalGeometry.trackLength;
     const diffViewClass = this.constructor as typeof $DiffView;
     const overviewKinds = diffViewClass.overviewKinds(
@@ -864,8 +1011,11 @@ class $DiffView {
     const overviewChunks: TextChunk[] = [];
     overviewKinds.forEach((kind, trackRowIndex) => {
       const color = kind ? this.changedRowColor(kind, palette) : null;
-      overviewChunks.push(bg(color ?? palette.panel)(fg(color ?? palette.panel)(' ')));
-      if (trackRowIndex < overviewKinds.length - 1) overviewChunks.push(fg(palette.panel)('\n'));
+      overviewChunks.push(
+        bg(color ?? palette.panel)(fg(color ?? palette.panel)(' ')),
+      );
+      if (trackRowIndex < overviewKinds.length - 1)
+        overviewChunks.push(fg(palette.panel)('\n'));
     });
     this.overviewRulerRenderable.content = new StyledText(overviewChunks);
   }
@@ -886,7 +1036,8 @@ class $DiffView {
     scrollbarRenderable.visible = true;
     scrollbarRenderable.top = geometry.trackTop;
     scrollbarRenderable.left = geometry.trackLeft;
-    if (orientation === 'vertical') scrollbarRenderable.height = geometry.trackLength;
+    if (orientation === 'vertical')
+      scrollbarRenderable.height = geometry.trackLength;
     else scrollbarRenderable.width = geometry.trackLength;
     this.isApplyingScrollbarGeometry = true;
     try {
@@ -896,7 +1047,8 @@ class $DiffView {
     } finally {
       this.isApplyingScrollbarGeometry = false;
     }
-    if (orientation === 'vertical') this.verticalReportedToTrueScale = geometry.reportedToTrueScale;
+    if (orientation === 'vertical')
+      this.verticalReportedToTrueScale = geometry.reportedToTrueScale;
     else this.horizontalReportedToTrueScale = geometry.reportedToTrueScale;
   }
 
@@ -914,33 +1066,43 @@ class $DiffView {
     const measuredBodyWidth = Number(this.bodyRenderable.width) || 0;
     const parentHost = this.options.parentRenderable ?? this.renderer.root;
     const extentWidth =
-      measuredBodyWidth || Number(parentHost.width) || Number(this.renderer.width) || 80;
+      measuredBodyWidth ||
+      Number(parentHost.width) ||
+      Number(this.renderer.width) ||
+      80;
     return Math.max(2, extentWidth - 3);
   }
 
   protected paneSplitRatio(): number {
-    const ratio = this.settingsSource?.diffSplitRatio.value ?? this.paneSplitter.size.value;
+    const ratio =
+      this.settingsSource?.diffSplitRatio.value ?? this.paneSplitter.size.value;
     return Math.max(0.15, Math.min(0.85, ratio));
   }
 
   protected previousPaneWidth(): number {
-    return Math.max(1, Math.round(this.paneExtentWidth() * this.paneSplitRatio()));
+    return Math.max(
+      1,
+      Math.round(this.paneExtentWidth() * this.paneSplitRatio()),
+    );
   }
 
   protected synchronizePaneSplitGeometry(): void {
     // invariant: The diff pane split stays draggable and persistent (src/modules/diff/diff.invariants.md)
     const previousPaneWidth = this.previousPaneWidth();
     this.previousPaneRenderables.pane.width = previousPaneWidth;
-    this.currentPaneRenderables.pane.width = Math.max(1, this.paneExtentWidth() - previousPaneWidth);
+    this.currentPaneRenderables.pane.width = Math.max(
+      1,
+      this.paneExtentWidth() - previousPaneWidth,
+    );
     this.paneSplitter.setExtentCells(this.paneExtentWidth());
   }
 
   // --- editor-parity selection and drag autoscroll ---
 
-  protected paneRenderables(
-    side: 'previous' | 'current',
-  ): DiffPaneRenderables {
-    return side === 'previous' ? this.previousPaneRenderables : this.currentPaneRenderables;
+  protected paneRenderables(side: 'previous' | 'current'): DiffPaneRenderables {
+    return side === 'previous'
+      ? this.previousPaneRenderables
+      : this.currentPaneRenderables;
   }
 
   protected createSelectionDragBehavior(
@@ -952,12 +1114,15 @@ class $DiffView {
         const codeRenderable = this.paneRenderables(side).code;
         return {
           leftColumn: codeRenderable.x,
-          rightColumn: codeRenderable.x + Math.max(1, this.codeViewportWidth(side)) - 1,
+          rightColumn:
+            codeRenderable.x + Math.max(1, this.codeViewportWidth(side)) - 1,
           topRow: codeRenderable.y,
-          bottomRow: codeRenderable.y + Math.max(1, this.viewportAlignedRowCount()) - 1,
+          bottomRow:
+            codeRenderable.y + Math.max(1, this.viewportAlignedRowCount()) - 1,
         };
       },
-      positionAtCell: (screenColumn, screenRow) => this.selectionPositionAtCell(side, screenColumn, screenRow),
+      positionAtCell: (screenColumn, screenRow) =>
+        this.selectionPositionAtCell(side, screenColumn, screenRow),
       horizontalScrollPosition: () => this.horizontalScrollOffset.value,
       horizontalScrollingEnabled: () => true,
       lineGraphemeCount: (lineIndex) =>
@@ -970,7 +1135,8 @@ class $DiffView {
         this.activateSelection(side, position, pointerDisplayColumn);
       },
       extendSelection: (position, pointerDisplayColumn) => {
-        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer) return;
+        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer)
+          return;
         this.activeSelectionBuffer.cursor.set(
           position.line,
           position.column,
@@ -980,7 +1146,8 @@ class $DiffView {
         this.update();
       },
       finishSelection: () => {
-        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer) return;
+        if (this.activeSelectionSide !== side || !this.activeSelectionBuffer)
+          return;
         if (!this.activeSelectionBuffer.cursor.hasSelection) {
           this.activeSelectionBuffer.cursor.clearSelection();
         }
@@ -1004,11 +1171,14 @@ class $DiffView {
 
   protected bindPaneSelectionEvents(side: 'previous' | 'current'): void {
     const codeRenderable = this.paneRenderables(side).code;
-    const selectionDragBehavior = side === 'previous'
-      ? this.previousSelectionDragBehavior
-      : this.currentSelectionDragBehavior;
-    codeRenderable.onMouseDown = (event) => selectionDragBehavior.begin(event.x, event.y);
-    codeRenderable.onMouseDrag = (event) => selectionDragBehavior.drag(event.x, event.y);
+    const selectionDragBehavior =
+      side === 'previous'
+        ? this.previousSelectionDragBehavior
+        : this.currentSelectionDragBehavior;
+    codeRenderable.onMouseDown = (event) =>
+      selectionDragBehavior.begin(event.x, event.y);
+    codeRenderable.onMouseDrag = (event) =>
+      selectionDragBehavior.drag(event.x, event.y);
     codeRenderable.onMouseUp = () => selectionDragBehavior.end();
     codeRenderable.onMouseDragEnd = () => selectionDragBehavior.end();
   }
@@ -1021,7 +1191,10 @@ class $DiffView {
     const codeRenderable = this.paneRenderables(side).code;
     const visibleRowIndex = Math.max(
       0,
-      Math.min(screenRow - codeRenderable.y, this.viewportAlignedRowCount() - 1),
+      Math.min(
+        screenRow - codeRenderable.y,
+        this.viewportAlignedRowCount() - 1,
+      ),
     );
     const alignedRowIndex = Math.max(
       0,
@@ -1036,7 +1209,8 @@ class $DiffView {
     // The first code cell is the unified-diff prefix (+/-/space), so the code content starts one cell
     // right of the renderable — subtract that prefix column when mapping the pointer to a source column.
     const displayColumn =
-      this.horizontalScrollOffset.value + Math.max(0, screenColumn - codeRenderable.x - 1);
+      this.horizontalScrollOffset.value +
+      Math.max(0, screenColumn - codeRenderable.x - 1);
     return {
       line: lineNumber - 1,
       column: this.EditorCoordinates.graphemeAtDisplayColumn(
@@ -1053,11 +1227,17 @@ class $DiffView {
     const lineNumberAt = (candidateAlignedRowIndex: number): number | null => {
       const alignedRow = this.alignment.alignedRows[candidateAlignedRowIndex];
       if (!alignedRow) return null;
-      return side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
+      return side === 'previous'
+        ? alignedRow.leftLineNumber
+        : alignedRow.rightLineNumber;
     };
     const directLineNumber = lineNumberAt(alignedRowIndex);
     if (directLineNumber !== null) return directLineNumber;
-    for (let distance = 1; distance < this.alignment.alignedRows.length; distance += 1) {
+    for (
+      let distance = 1;
+      distance < this.alignment.alignedRows.length;
+      distance += 1
+    ) {
       const precedingLineNumber = lineNumberAt(alignedRowIndex - distance);
       if (precedingLineNumber !== null) return precedingLineNumber;
       const followingLineNumber = lineNumberAt(alignedRowIndex + distance);
@@ -1098,14 +1278,25 @@ class $DiffView {
     match: FindInBufferMatch,
   ): void {
     this.focusedFindSide = side;
-    const matchingAlignedRowIndex = this.alignment.alignedRows.findIndex((alignedRow) => {
-      const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
-      return lineNumber === match.line + 1;
-    });
+    const matchingAlignedRowIndex = this.alignment.alignedRows.findIndex(
+      (alignedRow) => {
+        const lineNumber =
+          side === 'previous'
+            ? alignedRow.leftLineNumber
+            : alignedRow.rightLineNumber;
+        return lineNumber === match.line + 1;
+      },
+    );
     if (matchingAlignedRowIndex >= 0) {
-      this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(matchingAlignedRowIndex);
+      this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(
+        matchingAlignedRowIndex,
+      );
     }
-    this.activateSelection(side, { line: match.line, column: match.endColumn }, match.endColumn);
+    this.activateSelection(
+      side,
+      { line: match.line, column: match.endColumn },
+      match.endColumn,
+    );
     if (this.activeSelectionBuffer) {
       this.activeSelectionBuffer.cursor.anchor.value = {
         line: match.line,
@@ -1129,7 +1320,11 @@ class $DiffView {
     void this.selectionRevision.value;
     const range = this.activeSelectionBuffer?.cursor.selectionRange();
     if (!range || !this.activeSelectionSide) return null;
-    return { side: this.activeSelectionSide, start: range.start, end: range.end };
+    return {
+      side: this.activeSelectionSide,
+      start: range.start,
+      end: range.end,
+    };
   }
 
   async copySelection(): Promise<number> {
@@ -1143,9 +1338,11 @@ class $DiffView {
       codeRenderable.clearSelectionRange();
       return;
     }
-    const inclusiveEndLine = selectionRange.end.col === 0 && selectionRange.end.line > selectionRange.start.line
-      ? selectionRange.end.line - 1
-      : selectionRange.end.line;
+    const inclusiveEndLine =
+      selectionRange.end.col === 0 &&
+      selectionRange.end.line > selectionRange.start.line
+        ? selectionRange.end.line - 1
+        : selectionRange.end.line;
     const visibleAlignedRows = this.alignment.alignedRows.slice(
       this.alignedRowScrollOffset.value,
       this.alignedRowScrollOffset.value + this.viewportAlignedRowCount(),
@@ -1153,7 +1350,10 @@ class $DiffView {
     const selectedVisibleRows = visibleAlignedRows
       .map((alignedRow, visibleRowIndex) => ({
         visibleRowIndex,
-        lineNumber: side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber,
+        lineNumber:
+          side === 'previous'
+            ? alignedRow.leftLineNumber
+            : alignedRow.rightLineNumber,
       }))
       .filter(
         (entry): entry is { visibleRowIndex: number; lineNumber: number } =>
@@ -1162,7 +1362,8 @@ class $DiffView {
           entry.lineNumber - 1 <= inclusiveEndLine,
       );
     const firstSelectedVisibleRow = selectedVisibleRows[0];
-    const lastSelectedVisibleRow = selectedVisibleRows[selectedVisibleRows.length - 1];
+    const lastSelectedVisibleRow =
+      selectedVisibleRows[selectedVisibleRows.length - 1];
     if (!firstSelectedVisibleRow || !lastSelectedVisibleRow) {
       codeRenderable.clearSelectionRange();
       return;
@@ -1170,25 +1371,35 @@ class $DiffView {
     const viewportWidth = this.codeViewportWidth(side);
     const firstLineIndex = firstSelectedVisibleRow.lineNumber - 1;
     const lastLineIndex = lastSelectedVisibleRow.lineNumber - 1;
-    const startDisplayColumn = firstLineIndex === selectionRange.start.line
-      ? this.EditorCoordinates.displayColumn(
-          this.lineForSide(side, firstSelectedVisibleRow.lineNumber),
-          selectionRange.start.col,
-        ) - this.horizontalScrollOffset.value
-      : 0;
-    const endDisplayColumn = lastLineIndex === selectionRange.end.line
-      ? this.EditorCoordinates.displayColumn(
-          this.lineForSide(side, lastSelectedVisibleRow.lineNumber),
-          selectionRange.end.col,
-        ) - this.horizontalScrollOffset.value
-      : viewportWidth;
+    const startDisplayColumn =
+      firstLineIndex === selectionRange.start.line
+        ? this.EditorCoordinates.displayColumn(
+            this.lineForSide(side, firstSelectedVisibleRow.lineNumber),
+            selectionRange.start.col,
+          ) - this.horizontalScrollOffset.value
+        : 0;
+    const endDisplayColumn =
+      lastLineIndex === selectionRange.end.line
+        ? this.EditorCoordinates.displayColumn(
+            this.lineForSide(side, lastSelectedVisibleRow.lineNumber),
+            selectionRange.end.col,
+          ) - this.horizontalScrollOffset.value
+        : viewportWidth;
     // Shift the highlight right by the unified-diff prefix column so it lands over the code, not the
     // +/- marker (mirrors the -1 the pointer hit-test applies).
     const diffPrefixColumns = 1;
     codeRenderable.setSelectionRange(
-      diffPrefixColumns + Math.max(0, Math.min(startDisplayColumn, viewportWidth - diffPrefixColumns)),
+      diffPrefixColumns +
+        Math.max(
+          0,
+          Math.min(startDisplayColumn, viewportWidth - diffPrefixColumns),
+        ),
       firstSelectedVisibleRow.visibleRowIndex,
-      diffPrefixColumns + Math.max(0, Math.min(endDisplayColumn, viewportWidth - diffPrefixColumns)),
+      diffPrefixColumns +
+        Math.max(
+          0,
+          Math.min(endDisplayColumn, viewportWidth - diffPrefixColumns),
+        ),
       lastSelectedVisibleRow.visibleRowIndex,
     );
   }
@@ -1198,20 +1409,28 @@ class $DiffView {
   onHeaderMouseDown(screenColumn: number): void {
     const localColumn = screenColumn - this.headerRenderable.x;
     const headerSegment = this.headerSegments.find(
-      (segment) => localColumn >= segment.startColumn && localColumn < segment.endColumnExclusive,
+      (segment) =>
+        localColumn >= segment.startColumn &&
+        localColumn < segment.endColumnExclusive,
     );
     if (headerSegment?.kind === 'openFull') this.openFull();
     else if (headerSegment?.kind === 'nextChange') this.jumpToNextChange();
-    else if (headerSegment?.kind === 'previousChange') this.jumpToPreviousChange();
+    else if (headerSegment?.kind === 'previousChange')
+      this.jumpToPreviousChange();
   }
 
   onBodyMouseScroll(
     direction: 'up' | 'down' | 'left' | 'right' | undefined,
     isHorizontalModifierPressed: boolean,
   ): void {
-    const isHorizontalDirection = direction === 'left' || direction === 'right' || isHorizontalModifierPressed;
+    const isHorizontalDirection =
+      direction === 'left' ||
+      direction === 'right' ||
+      isHorizontalModifierPressed;
     if (isHorizontalDirection) {
-      this.impulseHorizontalScroll(direction === 'left' || direction === 'up' ? -1 : 1);
+      this.impulseHorizontalScroll(
+        direction === 'left' || direction === 'up' ? -1 : 1,
+      );
     } else {
       this.impulseVerticalScroll(direction === 'up' ? -1 : 1);
     }
@@ -1239,35 +1458,50 @@ class $DiffView {
   // --- derived geometry and data ---
 
   viewportAlignedRowCount(): number {
-    const bodyHeight = Number(this.bodyRenderable.height) || Number(this.rootRenderable.height) - 1;
+    const bodyHeight =
+      Number(this.bodyRenderable.height) ||
+      Number(this.rootRenderable.height) - 1;
     return Math.max(1, bodyHeight - 2);
   }
 
   codeViewportWidth(side: 'previous' | 'current'): number {
     const laidOutCodeWidth = Number(this.paneRenderables(side).code.width) || 0;
     if (laidOutCodeWidth > 1) return Math.max(1, laidOutCodeWidth - 1);
-    const fallbackPaneWidth = side === 'previous'
-      ? this.previousPaneWidth()
-      : this.paneExtentWidth() - this.previousPaneWidth();
+    const fallbackPaneWidth =
+      side === 'previous'
+        ? this.previousPaneWidth()
+        : this.paneExtentWidth() - this.previousPaneWidth();
     return Math.max(1, fallbackPaneWidth - this.gutterWidth(side));
   }
 
   sharedCodeViewportWidth(): number {
-    return Math.min(this.codeViewportWidth('previous'), this.codeViewportWidth('current'));
+    return Math.min(
+      this.codeViewportWidth('previous'),
+      this.codeViewportWidth('current'),
+    );
   }
 
   gutterWidth(side: 'previous' | 'current'): number {
-    const lineCount = side === 'previous' ? this.previousVersionLines.length : this.currentVersionLines.length;
+    const lineCount =
+      side === 'previous'
+        ? this.previousVersionLines.length
+        : this.currentVersionLines.length;
     return Math.max(2, String(Math.max(1, lineCount)).length + 1);
   }
 
   lineForSide(side: 'previous' | 'current', lineNumber: number): string {
-    const lines = side === 'previous' ? this.previousVersionLines : this.currentVersionLines;
+    const lines =
+      side === 'previous'
+        ? this.previousVersionLines
+        : this.currentVersionLines;
     return lines[lineNumber - 1] ?? '';
   }
 
   languageForSide(side: 'previous' | 'current'): LangId {
-    const path = side === 'previous' ? this.options.previousVersionPath : this.options.currentVersionPath;
+    const path =
+      side === 'previous'
+        ? this.options.previousVersionPath
+        : this.options.currentVersionPath;
     return this.LanguageRegistry.forPath(path ?? 'diff.txt');
   }
 
@@ -1287,13 +1521,17 @@ class $DiffView {
     return widestLineWidth;
   }
 
-  lineWidthForAlignedRow(alignedRow: AlignedRow, side: 'previous' | 'current'): number {
-    const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
+  lineWidthForAlignedRow(
+    alignedRow: AlignedRow,
+    side: 'previous' | 'current',
+  ): number {
+    const lineNumber =
+      side === 'previous'
+        ? alignedRow.leftLineNumber
+        : alignedRow.rightLineNumber;
     return lineNumber === null
       ? 0
-      : this.EditorCoordinates.lineWidth(
-          this.lineForSide(side, lineNumber),
-        );
+      : this.EditorCoordinates.lineWidth(this.lineForSide(side, lineNumber));
   }
 
   clampAlignedRowOffset(alignedRowIndex: number): number {
@@ -1301,12 +1539,21 @@ class $DiffView {
       0,
       this.alignment.alignedRows.length - this.viewportAlignedRowCount(),
     );
-    return Math.max(0, Math.min(Math.round(alignedRowIndex), maximumAlignedRowOffset));
+    return Math.max(
+      0,
+      Math.min(Math.round(alignedRowIndex), maximumAlignedRowOffset),
+    );
   }
 
   clampHorizontalOffset(displayColumnIndex: number): number {
-    const maximumHorizontalOffset = Math.max(0, this.widestVisibleLineWidth() - this.sharedCodeViewportWidth());
-    return Math.max(0, Math.min(Math.round(displayColumnIndex), maximumHorizontalOffset));
+    const maximumHorizontalOffset = Math.max(
+      0,
+      this.widestVisibleLineWidth() - this.sharedCodeViewportWidth(),
+    );
+    return Math.max(
+      0,
+      Math.min(Math.round(displayColumnIndex), maximumHorizontalOffset),
+    );
   }
 
   synchronizeActiveChangeBlockNumber(): void {
@@ -1315,7 +1562,8 @@ class $DiffView {
       return;
     }
     const alignedRowIndex = this.alignedRowScrollOffset.value;
-    const containingChangeBlockNumber = this.changeBlockNumberAt(alignedRowIndex);
+    const containingChangeBlockNumber =
+      this.changeBlockNumberAt(alignedRowIndex);
     if (containingChangeBlockNumber !== null) {
       this.activeChangeBlockNumber.value = containingChangeBlockNumber;
       return;
@@ -1324,7 +1572,9 @@ class $DiffView {
       (changeBlock) => changeBlock.startAlignedRowIndex > alignedRowIndex,
     );
     this.activeChangeBlockNumber.value =
-      followingChangeBlockIndex >= 0 ? followingChangeBlockIndex + 1 : this.alignment.changeBlocks.length;
+      followingChangeBlockIndex >= 0
+        ? followingChangeBlockIndex + 1
+        : this.alignment.changeBlocks.length;
   }
 
   changeBlockNumberAt(alignedRowIndex: number): number | null {
@@ -1333,7 +1583,9 @@ class $DiffView {
         alignedRowIndex >= changeBlock.startAlignedRowIndex &&
         alignedRowIndex < changeBlock.endAlignedRowIndexExclusive,
     );
-    return containingChangeBlockIndex < 0 ? null : containingChangeBlockIndex + 1;
+    return containingChangeBlockIndex < 0
+      ? null
+      : containingChangeBlockIndex + 1;
   }
 
   dispose(): void {
@@ -1341,7 +1593,9 @@ class $DiffView {
       this.activeSelectionBuffer = null;
       this.previousTextBuffer.dispose();
       this.currentTextBuffer.dispose();
-      (this.options.parentRenderable ?? this.renderer.root).remove(this.rootRenderable);
+      (this.options.parentRenderable ?? this.renderer.root).remove(
+        this.rootRenderable,
+      );
       this.rootRenderable.destroyRecursively();
     } catch {
       // Disposal is idempotent from the caller's perspective.

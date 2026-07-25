@@ -4,7 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -15,7 +15,9 @@ interface VerticalScrollBarProof {
   column: number;
   thumbBackground: number;
   thumbStartRow: number;
+  thumbEndRow: number;
   thumbLength: number;
+  trackStartRow: number;
   trackLength: number;
 }
 
@@ -25,11 +27,21 @@ interface HorizontalScrollBarProof {
   trackLength: number;
 }
 
+interface VerticalThumbFrame {
+  thumbLength: number;
+  viewportRows?: number;
+  totalRows?: number;
+  scrollTop?: number;
+}
+
 function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
 
-function requireCondition(condition: unknown, label: string): asserts condition {
+function requireCondition(
+  condition: unknown,
+  label: string,
+): asserts condition {
   if (!condition) throw new Error(`FAIL ${label}`);
   pass(label);
 }
@@ -40,7 +52,9 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
     stdout: 'ignore',
     stderr: 'pipe',
     env: Object.fromEntries(
-      Object.entries(process.env).filter(([key, value]) => value !== undefined && !key.startsWith('GIT_')),
+      Object.entries(process.env).filter(
+        ([key, value]) => value !== undefined && !key.startsWith('GIT_'),
+      ),
     ) as Record<string, string>,
   });
   if (result.exitCode !== 0) {
@@ -50,13 +64,18 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
   }
 }
 
-function dominantSidebarBackground(snapshot: HarnessSnapshot.Model): number | null {
+function dominantSidebarBackground(
+  snapshot: HarnessSnapshot.Model,
+): number | null {
   const backgroundCounts = new Map<number, number>();
   for (let row = 0; row < snapshot.rows; row++) {
     for (let column = 1; column < Math.min(27, snapshot.columns); column++) {
       const cell = snapshot.cell(row, column);
       if (!cell?.isBackgroundRgb) continue;
-      backgroundCounts.set(cell.background, (backgroundCounts.get(cell.background) ?? 0) + 1);
+      backgroundCounts.set(
+        cell.background,
+        (backgroundCounts.get(cell.background) ?? 0) + 1,
+      );
     }
   }
   let dominantBackground: number | null = null;
@@ -69,7 +88,9 @@ function dominantSidebarBackground(snapshot: HarnessSnapshot.Model): number | nu
   return dominantBackground;
 }
 
-function verticalScrollBarProof(snapshot: HarnessSnapshot.Model): VerticalScrollBarProof | null {
+function verticalScrollBarProof(
+  snapshot: HarnessSnapshot.Model,
+): VerticalScrollBarProof | null {
   const paneBackground = dominantSidebarBackground(snapshot);
   if (paneBackground === null) return null;
   let bestColumn = -1;
@@ -80,9 +101,9 @@ function verticalScrollBarProof(snapshot: HarnessSnapshot.Model): VerticalScroll
       if (!snapshot.rowText(row).startsWith('│')) continue;
       const cell = snapshot.cell(row, column);
       if (
-        cell?.characters === ' '
-        && cell.isBackgroundRgb
-        && cell.background !== paneBackground
+        cell?.characters === ' ' &&
+        cell.isBackgroundRgb &&
+        cell.background !== paneBackground
       ) {
         paintedRows.push({ row, background: cell.background });
       }
@@ -110,13 +131,14 @@ function verticalScrollBarProof(snapshot: HarnessSnapshot.Model): VerticalScroll
   const thumbRows = bestPaintedRows
     .filter((paintedCell) => paintedCell.background === thumbBackground)
     .map((paintedCell) => paintedCell.row);
-  if (thumbRows.length < 2 || thumbRows.length >= bestPaintedRows.length) return null;
+  if (thumbRows.length < 2 || thumbRows.length >= bestPaintedRows.length)
+    return null;
   const thumbStartRow = thumbRows[0];
   const thumbEndRow = thumbRows.at(-1);
   if (
-    thumbStartRow === undefined
-    || thumbEndRow === undefined
-    || thumbEndRow - thumbStartRow + 1 !== thumbRows.length
+    thumbStartRow === undefined ||
+    thumbEndRow === undefined ||
+    thumbEndRow - thumbStartRow + 1 !== thumbRows.length
   ) {
     return null;
   }
@@ -124,7 +146,213 @@ function verticalScrollBarProof(snapshot: HarnessSnapshot.Model): VerticalScroll
     column: bestColumn,
     thumbBackground,
     thumbStartRow,
+    thumbEndRow,
     thumbLength: thumbRows.length,
+    trackStartRow: bestPaintedRows[0]?.row ?? 0,
+    trackLength: bestPaintedRows.length,
+  };
+}
+
+function dominantEditorBackground(
+  snapshot: HarnessSnapshot.Model,
+): number | null {
+  const backgroundCounts = new Map<number, number>();
+  const editorStartColumn = Math.min(30, snapshot.columns - 2);
+  for (let row = 4; row < snapshot.rows - 3; row++) {
+    for (
+      let column = editorStartColumn;
+      column < snapshot.columns - 1;
+      column++
+    ) {
+      const cell = snapshot.cell(row, column);
+      if (!cell?.isBackgroundRgb) continue;
+      backgroundCounts.set(
+        cell.background,
+        (backgroundCounts.get(cell.background) ?? 0) + 1,
+      );
+    }
+  }
+  return (
+    [...backgroundCounts.entries()].sort(
+      (firstBackground, secondBackground) =>
+        secondBackground[1] - firstBackground[1],
+    )[0]?.[0] ?? null
+  );
+}
+
+function verticalEditorScrollBarProof(
+  snapshot: HarnessSnapshot.Model,
+  startRow = 4,
+  endRowExclusive = snapshot.rows - 3,
+): VerticalScrollBarProof | null {
+  const editorBackground = dominantEditorBackground(snapshot);
+  if (editorBackground === null) return null;
+  const editorStartColumn = Math.min(30, snapshot.columns - 2);
+  let bestColumn = -1;
+  let bestPaintedRows: Array<{
+    row: number;
+    background: number;
+    characters: string;
+  }> = [];
+  for (let column = editorStartColumn; column < snapshot.columns; column++) {
+    const paintedRows: Array<{
+      row: number;
+      background: number;
+      characters: string;
+    }> = [];
+    for (let row = startRow; row < endRowExclusive; row++) {
+      const cell = snapshot.cell(row, column);
+      if (cell?.isBackgroundRgb && cell.background !== editorBackground) {
+        paintedRows.push({
+          row,
+          background: cell.background,
+          characters: cell.characters,
+        });
+      }
+    }
+    if (paintedRows.length > bestPaintedRows.length) {
+      bestColumn = column;
+      bestPaintedRows = paintedRows;
+    }
+  }
+  if (bestColumn < 0 || bestPaintedRows.length < 10) return null;
+
+  const blockThumbRows = bestPaintedRows.filter((paintedCell) => {
+    const codePoint = paintedCell.characters.codePointAt(0);
+    return (
+      codePoint !== undefined && codePoint >= 0x2580 && codePoint <= 0x259f
+    );
+  });
+  if (blockThumbRows.length > 0) {
+    const thumbStartRow = blockThumbRows[0]?.row;
+    const thumbEndRow = blockThumbRows.at(-1)?.row;
+    if (thumbStartRow === undefined || thumbEndRow === undefined) return null;
+    const thumbLength = blockThumbRows.reduce(
+      (length, paintedCell) =>
+        length +
+        (paintedCell.characters === '█'
+          ? 1
+          : paintedCell.characters === '▀' || paintedCell.characters === '▄'
+            ? 0.5
+            : 0),
+      0,
+    );
+    if (thumbLength <= 0) return null;
+    return {
+      column: bestColumn,
+      thumbBackground: blockThumbRows[0]?.background ?? 0,
+      thumbStartRow,
+      thumbEndRow,
+      thumbLength,
+      trackStartRow: bestPaintedRows[0]?.row ?? 0,
+      trackLength: bestPaintedRows.length,
+    };
+  }
+
+  const colorCounts = new Map<number, number>();
+  for (const paintedCell of bestPaintedRows) {
+    colorCounts.set(
+      paintedCell.background,
+      (colorCounts.get(paintedCell.background) ?? 0) + 1,
+    );
+  }
+  if (colorCounts.size !== 2) return null;
+  const thumbBackground = [...colorCounts.entries()].sort(
+    (firstColor, secondColor) => firstColor[1] - secondColor[1],
+  )[0]?.[0];
+  if (thumbBackground === undefined) return null;
+  const thumbRows = bestPaintedRows
+    .filter((paintedCell) => paintedCell.background === thumbBackground)
+    .map((paintedCell) => paintedCell.row);
+  const thumbStartRow = thumbRows[0];
+  const thumbEndRow = thumbRows.at(-1);
+  if (
+    thumbStartRow === undefined ||
+    thumbEndRow === undefined ||
+    thumbRows.length < 2 ||
+    thumbRows.length >= bestPaintedRows.length ||
+    thumbEndRow - thumbStartRow + 1 !== thumbRows.length
+  ) {
+    return null;
+  }
+  return {
+    column: bestColumn,
+    thumbBackground,
+    thumbStartRow,
+    thumbEndRow,
+    thumbLength: thumbRows.length,
+    trackStartRow: bestPaintedRows[0]?.row ?? 0,
+    trackLength: bestPaintedRows.length,
+  };
+}
+
+function verticalDiffScrollBarProof(
+  snapshot: HarnessSnapshot.Model,
+): VerticalScrollBarProof | null {
+  const startRow = 1;
+  const endRowExclusive = snapshot.rows - 2;
+  const rightEdgeBackground = snapshot.cell(
+    startRow,
+    snapshot.columns - 1,
+  )?.background;
+  if (rightEdgeBackground === undefined) return null;
+  let bestColumn = -1;
+  let bestPaintedRows: Array<{ row: number; background: number }> = [];
+  for (
+    let column = Math.max(0, snapshot.columns - 5);
+    column < snapshot.columns;
+    column++
+  ) {
+    const paintedRows: Array<{ row: number; background: number }> = [];
+    for (let row = startRow; row < endRowExclusive; row++) {
+      const cell = snapshot.cell(row, column);
+      if (
+        cell?.characters === ' ' &&
+        cell.isBackgroundRgb &&
+        cell.background !== rightEdgeBackground
+      ) {
+        paintedRows.push({ row, background: cell.background });
+      }
+    }
+    if (paintedRows.length >= bestPaintedRows.length) {
+      bestColumn = column;
+      bestPaintedRows = paintedRows;
+    }
+  }
+  if (bestColumn < 0 || bestPaintedRows.length < 10) return null;
+  const colorCounts = new Map<number, number>();
+  for (const paintedCell of bestPaintedRows) {
+    colorCounts.set(
+      paintedCell.background,
+      (colorCounts.get(paintedCell.background) ?? 0) + 1,
+    );
+  }
+  if (colorCounts.size !== 2) return null;
+  const thumbBackground = [...colorCounts.entries()].sort(
+    (firstColor, secondColor) => firstColor[1] - secondColor[1],
+  )[0]?.[0];
+  if (thumbBackground === undefined) return null;
+  const thumbRows = bestPaintedRows
+    .filter((paintedCell) => paintedCell.background === thumbBackground)
+    .map((paintedCell) => paintedCell.row);
+  const thumbStartRow = thumbRows[0];
+  const thumbEndRow = thumbRows.at(-1);
+  if (
+    thumbStartRow === undefined ||
+    thumbEndRow === undefined ||
+    thumbRows.length < 2 ||
+    thumbRows.length >= bestPaintedRows.length ||
+    thumbEndRow - thumbStartRow + 1 !== thumbRows.length
+  ) {
+    return null;
+  }
+  return {
+    column: bestColumn,
+    thumbBackground,
+    thumbStartRow,
+    thumbEndRow,
+    thumbLength: thumbRows.length,
+    trackStartRow: bestPaintedRows[0]?.row ?? 0,
     trackLength: bestPaintedRows.length,
   };
 }
@@ -135,19 +363,26 @@ function horizontalScrollBarRowCount(snapshot: HarnessSnapshot.Model): number {
   let barRowCount = 0;
   for (let row = 0; row < snapshot.rows; row++) {
     if (!snapshot.rowText(row).startsWith('│')) continue;
-    const sidebarCells = snapshot.rowCells(row).slice(1, Math.min(27, snapshot.columns));
-    if (sidebarCells.some((cell) => cell.characters.trim().length > 0)) continue;
+    const sidebarCells = snapshot
+      .rowCells(row)
+      .slice(1, Math.min(27, snapshot.columns));
+    if (sidebarCells.some((cell) => cell.characters.trim().length > 0))
+      continue;
     let longestBackgroundRun = 0;
     let currentBackgroundRun = 0;
     for (const cell of sidebarCells) {
       if (cell.isBackgroundRgb && cell.background !== paneBackground) {
         currentBackgroundRun++;
-        longestBackgroundRun = Math.max(longestBackgroundRun, currentBackgroundRun);
+        longestBackgroundRun = Math.max(
+          longestBackgroundRun,
+          currentBackgroundRun,
+        );
       } else {
         currentBackgroundRun = 0;
       }
     }
-    if (longestBackgroundRun >= 4 && longestBackgroundRun < sidebarCells.length) barRowCount++;
+    if (longestBackgroundRun >= 4 && longestBackgroundRun < sidebarCells.length)
+      barRowCount++;
   }
   return barRowCount;
 }
@@ -156,15 +391,15 @@ function horizontalEditorScrollBarProof(
   snapshot: HarnessSnapshot.Model,
 ): HorizontalScrollBarProof | null {
   const editorStartColumn = Math.min(30, snapshot.columns - 2);
-  const editorEndColumnExclusive = Math.max(editorStartColumn, snapshot.columns - 2);
+  const editorEndColumnExclusive = Math.max(
+    editorStartColumn,
+    snapshot.columns - 2,
+  );
   const editorBackgroundCounts = new Map<number, number>();
   for (let row = 4; row < snapshot.rows - 3; row++) {
-    for (
-      const cell of snapshot.rowCells(row).slice(
-        editorStartColumn,
-        editorEndColumnExclusive,
-      )
-    ) {
+    for (const cell of snapshot
+      .rowCells(row)
+      .slice(editorStartColumn, editorEndColumnExclusive)) {
       if (!cell.isBackgroundRgb) continue;
       editorBackgroundCounts.set(
         cell.background,
@@ -173,21 +408,22 @@ function horizontalEditorScrollBarProof(
     }
   }
   const editorBackground = [...editorBackgroundCounts.entries()].sort(
-    (firstBackground, secondBackground) => secondBackground[1] - firstBackground[1],
+    (firstBackground, secondBackground) =>
+      secondBackground[1] - firstBackground[1],
   )[0]?.[0];
   if (editorBackground === undefined) return null;
 
-  const barCells = snapshot.rowCells(snapshot.rows - 3).slice(
-    editorStartColumn,
-    editorEndColumnExclusive,
-  );
+  const barCells = snapshot
+    .rowCells(snapshot.rows - 3)
+    .slice(editorStartColumn, editorEndColumnExclusive);
   let longestThumbStartColumn = -1;
   let longestThumbLength = 0;
   let currentThumbStartColumn = -1;
   let currentThumbLength = 0;
   let currentThumbBackground: number | null = null;
   for (const cell of barCells) {
-    const isThumbCell = cell.isBackgroundRgb && cell.background !== editorBackground;
+    const isThumbCell =
+      cell.isBackgroundRgb && cell.background !== editorBackground;
     if (isThumbCell && cell.background === currentThumbBackground) {
       currentThumbLength++;
     } else if (isThumbCell) {
@@ -224,6 +460,267 @@ function sendRepeatedWheel(
   }
 }
 
+function latestVerticalScrollInputs(
+  repositoryRoot: string,
+  scrollbarIdentifier: string,
+): Omit<VerticalThumbFrame, 'thumbLength'> | null {
+  let logText: string;
+  try {
+    logText = readFileSync(
+      join(repositoryRoot, 'artifacts', 'tui.log'),
+      'utf8',
+    );
+  } catch {
+    return null;
+  }
+  const matchingLines = logText
+    .split('\n')
+    .filter((line) => line.includes(`bar ${scrollbarIdentifier}:`));
+  const latestLine = matchingLines.at(-1);
+  if (!latestLine) return null;
+  const match =
+    /scrollSize=(?<totalRows>-?\d+(?:\.\d+)?) viewportSize=(?<viewportRows>-?\d+(?:\.\d+)?) scrollPosition=(?<scrollTop>-?\d+(?:\.\d+)?)/.exec(
+      latestLine,
+    );
+  if (!match?.groups) return null;
+  return {
+    totalRows: Number(match.groups.totalRows),
+    viewportRows: Number(match.groups.viewportRows),
+    scrollTop: Number(match.groups.scrollTop),
+  };
+}
+
+async function collectVerticalThumbFrames(
+  driver: PtyTestDriver.Model,
+  repositoryRoot: string,
+  scrollbarIdentifier: string,
+  modeLabel: string,
+  diagnosticsRequired: boolean,
+  scrollBarProof: (
+    snapshot: HarnessSnapshot.Model,
+  ) => VerticalScrollBarProof | null = verticalEditorScrollBarProof,
+): Promise<VerticalThumbFrame[]> {
+  const thumbFrames: VerticalThumbFrame[] = [];
+  let reachedBottom = false;
+  for (let wheelBurst = 1; wheelBurst <= 40 && !reachedBottom; wheelBurst++) {
+    let nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+    sendRepeatedWheel(driver, 'down', 12, 80, 10);
+    for (let frameNumber = 1; frameNumber <= 300; frameNumber++) {
+      let scrollFrame: Awaited<typeof nextScrollFrame>;
+      try {
+        scrollFrame = await nextScrollFrame;
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith(
+            'Timed out waiting for the next complete synchronized frame',
+          )
+        ) {
+          break;
+        }
+        throw error;
+      }
+      const frameProof = scrollBarProof(scrollFrame.snapshot);
+      if (!frameProof) {
+        const snapshot = scrollFrame.snapshot;
+        for (
+          let column = Math.max(0, snapshot.columns - 3);
+          column < snapshot.columns;
+          column++
+        ) {
+          const cells = [];
+          for (let row = 1; row < snapshot.rows - 1; row++) {
+            const cell = snapshot.cell(row, column);
+            cells.push(
+              `${row}:${cell?.characters === ' ' ? '_' : (cell?.characters ?? '?')}@` +
+                `${cell?.isBackgroundRgb ? cell.background.toString(16) : 'none'}`,
+            );
+          }
+          console.log(
+            `  DIAG  ${modeLabel} column ${column}: ${cells.join(' ')}`,
+          );
+        }
+        throw new Error(
+          `FAIL ${modeLabel} vertical thumb remains present in every scroll frame`,
+        );
+      }
+      const scrollInputs = latestVerticalScrollInputs(
+        repositoryRoot,
+        scrollbarIdentifier,
+      );
+      if (diagnosticsRequired && !scrollInputs) {
+        throw new Error(
+          `FAIL ${modeLabel} frame records viewportRows, totalRows, and scrollTop`,
+        );
+      }
+      thumbFrames.push({
+        thumbLength: frameProof.thumbLength,
+        ...scrollInputs,
+      });
+      reachedBottom =
+        frameProof.thumbEndRow >=
+        frameProof.trackStartRow + frameProof.trackLength - 1;
+      if (frameNumber < 300) {
+        nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(150);
+      }
+    }
+  }
+  requireCondition(
+    reachedBottom,
+    `${modeLabel} wheel drive reaches the document bottom`,
+  );
+  requireCondition(
+    thumbFrames.length > 10,
+    `${modeLabel} wheel drive observes ${thumbFrames.length} complete scroll frames`,
+  );
+  return thumbFrames;
+}
+
+function proveStableVerticalThumbInputsAndExtent(
+  thumbFrames: VerticalThumbFrame[],
+  modeLabel: string,
+  diagnosticsRequired: boolean,
+): void {
+  const distinctThumbLengths = [
+    ...new Set(thumbFrames.map((frame) => frame.thumbLength)),
+  ];
+  if (diagnosticsRequired) {
+    const distinctViewportRows = [
+      ...new Set(thumbFrames.map((frame) => frame.viewportRows)),
+    ];
+    const distinctTotalRows = [
+      ...new Set(thumbFrames.map((frame) => frame.totalRows)),
+    ];
+    const distinctScrollTops = [
+      ...new Set(thumbFrames.map((frame) => frame.scrollTop)),
+    ];
+    requireCondition(
+      distinctViewportRows.length === 1,
+      `${modeLabel} viewportRows stays exact and constant (${distinctViewportRows[0]})`,
+    );
+    requireCondition(
+      distinctTotalRows.length === 1,
+      `${modeLabel} totalRows stays exact and constant (${distinctTotalRows[0]})`,
+    );
+    requireCondition(
+      distinctScrollTops.length > 10,
+      `${modeLabel} scrollTop moves through ${distinctScrollTops.length} observed positions`,
+    );
+  }
+  requireCondition(
+    distinctThumbLengths.length === 1,
+    `${modeLabel} vertical thumb length is byte-identical through the document ` +
+      `(extent ${distinctThumbLengths.join(',')} across ${thumbFrames.length} frames)`,
+  );
+}
+
+async function proveVerticalEditorThumbStability(
+  fixtureRoot: string,
+  homeDirectory: string,
+  wordWrapEnabled: boolean,
+): Promise<void> {
+  const modeLabel = wordWrapEnabled ? 'wrap-on' : 'wrap-off';
+  const repositoryRoot =
+    process.env.INVAR_PROBE_REPOSITORY_ROOT ?? process.cwd();
+  const diagnosticsRequired =
+    process.env.INVAR_PROBE_REPOSITORY_ROOT === undefined;
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    repositoryRoot,
+    columns: 120,
+    rows: 28,
+    homeDirectory,
+    environment: { TUI_DEBUG_BARS: '1' },
+  });
+  try {
+    await driver.awaitGridCondition(
+      `the ${modeLabel} probe fixture is ready`,
+      (candidate) => candidate.findText('horizontal-thumb-stabi') !== null,
+    );
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      `the ${modeLabel} probe opens Go to File`,
+      (candidate) => candidate.findText('Go to File') !== null,
+    );
+    driver.sendText('horizontal-thumb-stability');
+    await driver.awaitQuiescence();
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      `the ${modeLabel} probe opens the mixed-width tall file`,
+      (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
+    );
+    if (wordWrapEnabled) {
+      driver.sendKeys('Alt+z');
+      await driver.awaitQuiescence();
+    }
+    requireCondition(
+      verticalEditorScrollBarProof(driver.snapshot()) !== null,
+      `editor vertical thumb is present with ${modeLabel}`,
+    );
+    const thumbFrames = await collectVerticalThumbFrames(
+      driver,
+      repositoryRoot,
+      'editor-scrollbar-v',
+      modeLabel,
+      diagnosticsRequired,
+    );
+    proveStableVerticalThumbInputsAndExtent(
+      thumbFrames,
+      modeLabel,
+      diagnosticsRequired,
+    );
+    driver.sendKeys('Control+q');
+  } finally {
+    await driver.dispose();
+  }
+}
+
+async function proveVerticalDiffThumbStability(
+  fixtureRoot: string,
+  homeDirectory: string,
+): Promise<void> {
+  const repositoryRoot = process.cwd();
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    repositoryRoot,
+    columns: 120,
+    rows: 28,
+    homeDirectory,
+    environment: { TUI_DEBUG_BARS: '1' },
+  });
+  try {
+    await driver.awaitGridCondition(
+      'the diff probe fixture is ready',
+      (candidate) => candidate.findText('000-DIFF-BREATHING') !== null,
+    );
+    driver.sendKeys('Control+g');
+    await driver.awaitGridCondition(
+      'the diff probe opens the Git changes pane',
+      (candidate) => candidate.findText('VERY-LONG-COMM') !== null,
+    );
+    driver.sendKeys('o');
+    await driver.awaitGridCondition(
+      'the changed tall file opens in the side-by-side diff view',
+      (candidate) =>
+        candidate.findText('Base (HEAD)') !== null &&
+        candidate.findText('Current (working)') !== null,
+    );
+    const thumbFrames = await collectVerticalThumbFrames(
+      driver,
+      repositoryRoot,
+      'diff-scrollbar-vertical',
+      'diff',
+      true,
+      verticalDiffScrollBarProof,
+    );
+    pass('diff vertical thumb is present in the wheel-produced frames');
+    proveStableVerticalThumbInputsAndExtent(thumbFrames, 'diff', true);
+    driver.sendKeys('Control+q');
+  } finally {
+    await driver.dispose();
+  }
+}
+
 async function sendWheelUntil(
   driver: PtyTestDriver.Model,
   predicate: (snapshot: HarnessSnapshot.Model) => boolean,
@@ -239,7 +736,9 @@ async function sendWheelUntil(
     const snapshot = driver.snapshot();
     if (predicate(snapshot)) return snapshot;
   }
-  throw new Error(`Wheel condition did not become visible after ${maximumRepeatCount} events`);
+  throw new Error(
+    `Wheel condition did not become visible after ${maximumRepeatCount} events`,
+  );
 }
 
 async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
@@ -260,13 +759,14 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   const widthOscillationLines = ['// HORIZONTAL-THUMB-STABILITY'];
   for (let lineNumber = 1; lineNumber <= 500; lineNumber++) {
     const blockNumber = Math.floor((lineNumber - 1) / 50) % 3;
-    const targetWidth = lineNumber === 400
-      ? 140
-      : blockNumber === 0
-        ? 42
-        : blockNumber === 1
-          ? 68
-          : 54;
+    const targetWidth =
+      lineNumber === 400
+        ? 140
+        : blockNumber === 0
+          ? 42
+          : blockNumber === 1
+            ? 68
+            : 54;
     const prefix = `const stableLine${String(lineNumber).padStart(3, '0')} = '`;
     const suffix = lineNumber === 400 ? "DEEP-WIDEST-END-MARKER';" : "';";
     widthOscillationLines.push(
@@ -277,6 +777,15 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
     join(fixtureRoot, 'horizontal-thumb-stability.ts'),
     `${widthOscillationLines.join('\n')}\n`,
   );
+  const diffBreathingLines = Array.from(
+    { length: 500 },
+    (_unused, lineIndex) =>
+      `diff breathing line ${String(lineIndex + 1).padStart(3, '0')} original`,
+  );
+  await Bun.write(
+    join(fixtureRoot, '000-DIFF-BREATHING.txt'),
+    `${diffBreathingLines.join('\n')}\n`,
+  );
   for (let fileNumber = 1; fileNumber <= 50; fileNumber++) {
     await Bun.write(
       join(fixtureRoot, `short-${String(fileNumber).padStart(2, '0')}.txt`),
@@ -285,19 +794,35 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   }
   runGit(fixtureRoot, ['init', '-q']);
   runGit(fixtureRoot, ['config', 'user.name', 'scrollbar-harness']);
-  runGit(fixtureRoot, ['config', 'user.email', 'scrollbar-harness@example.test']);
-  runGit(fixtureRoot, ['add', '.gitignore', 'base.txt', 'horizontal-thumb-stability.ts', ...Array.from(
-    { length: 50 },
-    (_unused, fileIndex) => `short-${String(fileIndex + 1).padStart(2, '0')}.txt`,
-  )]);
+  runGit(fixtureRoot, [
+    'config',
+    'user.email',
+    'scrollbar-harness@example.test',
+  ]);
+  runGit(fixtureRoot, [
+    'add',
+    '.gitignore',
+    'base.txt',
+    '000-DIFF-BREATHING.txt',
+    'horizontal-thumb-stability.ts',
+    ...Array.from(
+      { length: 50 },
+      (_unused, fileIndex) =>
+        `short-${String(fileIndex + 1).padStart(2, '0')}.txt`,
+    ),
+  ]);
   runGit(fixtureRoot, ['commit', '-qm', 'base']);
   for (let commitNumber = 1; commitNumber <= 22; commitNumber++) {
     const basePath = join(fixtureRoot, 'base.txt');
-    await Bun.write(basePath, `${await Bun.file(basePath).text()}${commitNumber}\n`);
+    await Bun.write(
+      basePath,
+      `${await Bun.file(basePath).text()}${commitNumber}\n`,
+    );
     runGit(fixtureRoot, ['add', 'base.txt']);
     runGit(fixtureRoot, ['commit', '-qm', `short-${commitNumber}`]);
   }
-  const longFileName = '000-VERY-LONG-CHANGES-FILENAME-THAT-ENDS-WITH-CHANGES-END-MARKER.txt';
+  const longFileName =
+    '000-VERY-LONG-CHANGES-FILENAME-THAT-ENDS-WITH-CHANGES-END-MARKER.txt';
   await Bun.write(join(fixtureRoot, longFileName), 'one\n');
   runGit(fixtureRoot, ['add', longFileName]);
   runGit(fixtureRoot, [
@@ -306,6 +831,15 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
     'VERY-LONG-COMMIT-SUBJECT-THAT-ENDS-WITH-LOG-END-MARKER',
   ]);
   await Bun.write(join(fixtureRoot, longFileName), 'one\ntwo\n');
+  const changedDiffBreathingLines = [...diffBreathingLines];
+  for (const changedLineIndex of [4, 249, 489]) {
+    changedDiffBreathingLines[changedLineIndex] =
+      `${changedDiffBreathingLines[changedLineIndex]} modified`;
+  }
+  await Bun.write(
+    join(fixtureRoot, '000-DIFF-BREATHING.txt'),
+    `${changedDiffBreathingLines.join('\n')}\n`,
+  );
 }
 
 async function buildFitsFixture(fixtureRoot: string): Promise<void> {
@@ -323,17 +857,71 @@ async function buildFitsFixture(fixtureRoot: string): Promise<void> {
   await Bun.write(join(fixtureRoot, 'a.txt'), 'one\n');
   runGit(fixtureRoot, ['init', '-q']);
   runGit(fixtureRoot, ['config', 'user.name', 'scrollbar-harness']);
-  runGit(fixtureRoot, ['config', 'user.email', 'scrollbar-harness@example.test']);
+  runGit(fixtureRoot, [
+    'config',
+    'user.email',
+    'scrollbar-harness@example.test',
+  ]);
   runGit(fixtureRoot, ['add', '.gitignore', 'a.txt']);
   runGit(fixtureRoot, ['commit', '-qm', 'fit']);
   await Bun.write(join(fixtureRoot, 'a.txt'), 'one\ntwo\n');
 }
 
-const overflowFixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scrollbars-harness-overflow-'));
-const fitsFixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scrollbars-harness-fits-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-scrollbars-harness-home-'));
+const overflowFixtureRoot = mkdtempSync(
+  join(tmpdir(), 'tui-scrollbars-harness-overflow-'),
+);
+const fitsFixtureRoot = mkdtempSync(
+  join(tmpdir(), 'tui-scrollbars-harness-fits-'),
+);
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-scrollbars-harness-home-'),
+);
 await buildOverflowFixture(overflowFixtureRoot);
 await buildFitsFixture(fitsFixtureRoot);
+
+const probeTarget = process.env.INVAR_SCROLLBAR_PROBE_TARGET ?? 'all';
+if (
+  probeTarget !== 'diff' &&
+  process.env.INVAR_SCROLLBAR_PROBE_WRAP_MODE !== 'on'
+) {
+  console.log(
+    '== harness scrollbars: editor vertical thumb does not breathe with wrap off ==',
+  );
+  await proveVerticalEditorThumbStability(
+    overflowFixtureRoot,
+    homeDirectory,
+    false,
+  );
+}
+if (
+  probeTarget !== 'diff' &&
+  process.env.INVAR_SCROLLBAR_PROBE_WRAP_MODE !== 'off'
+) {
+  console.log(
+    '== harness scrollbars: editor vertical thumb does not breathe with wrap on ==',
+  );
+  await proveVerticalEditorThumbStability(
+    overflowFixtureRoot,
+    homeDirectory,
+    true,
+  );
+}
+if (
+  probeTarget !== 'editor' &&
+  process.env.INVAR_PROBE_REPOSITORY_ROOT === undefined
+) {
+  console.log(
+    '== harness scrollbars: diff vertical thumb inputs and extent stay stable ==',
+  );
+  await proveVerticalDiffThumbStability(overflowFixtureRoot, homeDirectory);
+}
+if (process.env.INVAR_SCROLLBAR_BREATHING_PROBE_ONLY === '1') {
+  await HarnessSmoke.Class.removeTemporaryDirectory(overflowFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(fitsFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  console.log('smoke-scrollbars-harness breathing probe: ALL-PASS');
+  process.exit(0);
+}
 
 const overflowDriver = new PtyTestDriver.Class({
   workspaceRoot: overflowFixtureRoot,
@@ -344,7 +932,9 @@ const overflowDriver = new PtyTestDriver.Class({
 
 let fitsDriver: PtyTestDriver.Model | null = null;
 try {
-  console.log('== harness scrollbars: prove the vertical thumb from cell backgrounds ==');
+  console.log(
+    '== harness scrollbars: prove the vertical thumb from cell backgrounds ==',
+  );
   let snapshot = await overflowDriver.awaitSnapshot(
     (candidate) => verticalScrollBarProof(candidate) !== null,
     15_000,
@@ -352,8 +942,8 @@ try {
   const initialThumb = verticalScrollBarProof(snapshot);
   requireCondition(initialThumb !== null, 'vertical scrollbar is present');
   requireCondition(
-    initialThumb.thumbLength >= 2
-      && initialThumb.thumbLength < initialThumb.trackLength,
+    initialThumb.thumbLength >= 2 &&
+      initialThumb.thumbLength < initialThumb.trackLength,
     `thumb is a proportional multi-cell run (${initialThumb.thumbLength}/${initialThumb.trackLength})`,
   );
   for (
@@ -363,32 +953,42 @@ try {
   ) {
     const thumbCell = snapshot.cell(thumbRow, initialThumb.column);
     requireCondition(
-      thumbCell?.characters === ' '
-        && thumbCell.isBackgroundRgb
-        && thumbCell.background === initialThumb.thumbBackground,
+      thumbCell?.characters === ' ' &&
+        thumbCell.isBackgroundRgb &&
+        thumbCell.background === initialThumb.thumbBackground,
       `thumb cell ${thumbRow} is blank with RGB background ${initialThumb.thumbBackground.toString(16)}`,
     );
   }
   pass(
-    `contiguous BG-color thumb run starts at row ${initialThumb.thumbStartRow}, `
-    + `column ${initialThumb.column}`,
+    `contiguous BG-color thumb run starts at row ${initialThumb.thumbStartRow}, ` +
+      `column ${initialThumb.column}`,
   );
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 1,
     'overflowing tree paints one horizontal background bar row',
   );
 
-  console.log('== harness scrollbars: thumb length stays stable through every scroll frame ==');
+  console.log(
+    '== harness scrollbars: thumb length stays stable through every scroll frame ==',
+  );
   overflowDriver.sendKeys('Control+p');
-  await overflowDriver.awaitSnapshot((candidate) => candidate.findText('Go to File') !== null);
+  await overflowDriver.awaitGridCondition(
+    'the Go to File popup is visible',
+    (candidate) => candidate.findText('Go to File') !== null,
+  );
   overflowDriver.sendText('horizontal-thumb-stability');
   await overflowDriver.awaitQuiescence();
   overflowDriver.sendKeys('Enter');
-  snapshot = await overflowDriver.awaitSnapshot(
+  snapshot = await overflowDriver.awaitGridCondition(
+    'the mixed-width stability fixture is open in the editor',
     (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
   );
+
   const initialHorizontalThumb = horizontalEditorScrollBarProof(snapshot);
-  requireCondition(initialHorizontalThumb !== null, 'editor horizontal thumb is present');
+  requireCondition(
+    initialHorizontalThumb !== null,
+    'editor horizontal thumb is present',
+  );
   const horizontalThumbLengths: number[] = [];
   let nextScrollFrame = overflowDriver.awaitNextCompletedFrameSnapshot(2_000);
   sendRepeatedWheel(overflowDriver, 'down', 25, 40, 10);
@@ -398,8 +998,10 @@ try {
       scrollFrame = await nextScrollFrame;
     } catch (error) {
       if (
-        error instanceof Error
-        && error.message.startsWith('Timed out waiting for the next complete synchronized frame')
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
       ) {
         break;
       }
@@ -422,17 +1024,21 @@ try {
   );
   requireCondition(
     distinctHorizontalThumbLengths.length === 1,
-    `horizontal thumb length is stable while content size is unchanged `
-      + `(${horizontalThumbLengths.join(',')})`,
+    `horizontal thumb length is stable while content size is unchanged ` +
+      `(${horizontalThumbLengths.join(',')})`,
   );
 
-  console.log('== harness scrollbars: the deep widest line is reachable at the stable extent ==');
+  console.log(
+    '== harness scrollbars: the deep widest line is reachable at the stable extent ==',
+  );
   snapshot = await sendWheelUntil(
     overflowDriver,
     (candidate) => {
       const proof = horizontalEditorScrollBarProof(candidate);
-      return proof !== null
-        && proof.thumbStartColumn + proof.thumbLength >= candidate.columns - 2;
+      return (
+        proof !== null &&
+        proof.thumbStartColumn + proof.thumbLength >= candidate.columns - 2
+      );
     },
     'right',
     80,
@@ -472,11 +1078,14 @@ try {
   });
   const movedThumb = verticalScrollBarProof(snapshot);
   requireCondition(
-    movedThumb !== null && movedThumb.thumbStartRow > initialThumb.thumbStartRow,
+    movedThumb !== null &&
+      movedThumb.thumbStartRow > initialThumb.thumbStartRow,
     `wheel moves the same BG thumb down (${initialThumb.thumbStartRow} to ${movedThumb?.thumbStartRow})`,
   );
 
-  console.log('== harness scrollbars: horizontal bars reveal clipped content independently ==');
+  console.log(
+    '== harness scrollbars: horizontal bars reveal clipped content independently ==',
+  );
   sendRepeatedWheel(overflowDriver, 'up', 40, 9, 9);
   await overflowDriver.awaitSnapshot((candidate) => {
     const proof = verticalScrollBarProof(candidate);
@@ -486,9 +1095,11 @@ try {
     'the tree filename tail is clipped at the leftmost horizontal offset',
     (candidate) => {
       const proof = verticalScrollBarProof(candidate);
-      return proof !== null
-        && proof.thumbStartRow === initialThumb.thumbStartRow
-        && candidate.findText('CHANGES-END-MARKER') === null;
+      return (
+        proof !== null &&
+        proof.thumbStartRow === initialThumb.thumbStartRow &&
+        candidate.findText('CHANGES-END-MARKER') === null
+      );
     },
   );
   requireCondition(
@@ -512,8 +1123,14 @@ try {
     15_000,
   );
   pass('changes and log panes loaded as independent horizontal viewports');
-  requireCondition(snapshot.findText('END-MARKER.txt') === null, 'changes tail starts clipped');
-  requireCondition(snapshot.findText('LOG-END-MARKER') === null, 'log tail starts clipped');
+  requireCondition(
+    snapshot.findText('END-MARKER.txt') === null,
+    'changes tail starts clipped',
+  );
+  requireCondition(
+    snapshot.findText('LOG-END-MARKER') === null,
+    'log tail starts clipped',
+  );
   snapshot = await sendWheelUntil(
     overflowDriver,
     (candidate) => candidate.findText('END-MARKER.txt') !== null,
@@ -538,20 +1155,26 @@ try {
   );
   pass('log horizontal bar reveals its own clipped subject tail');
 
-  console.log('== harness scrollbars: fitting panes paint no horizontal bar ==');
+  console.log(
+    '== harness scrollbars: fitting panes paint no horizontal bar ==',
+  );
   fitsDriver = new PtyTestDriver.Class({
     workspaceRoot: fitsFixtureRoot,
     columns: 54,
     rows: 28,
     homeDirectory,
   });
-  snapshot = await fitsDriver.awaitSnapshot((candidate) => candidate.findText('a.txt') !== null);
+  snapshot = await fitsDriver.awaitSnapshot(
+    (candidate) => candidate.findText('a.txt') !== null,
+  );
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 0,
     'fitting tree paints no horizontal bar',
   );
   fitsDriver.sendKeys('Control+g');
-  snapshot = await fitsDriver.awaitSnapshot((candidate) => candidate.findText('fit') !== null);
+  snapshot = await fitsDriver.awaitSnapshot(
+    (candidate) => candidate.findText('fit') !== null,
+  );
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 0,
     'fitting git panes paint no horizontal bars',
