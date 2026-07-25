@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
 // invariant: Overlay dialogs stay inside the terminal (src/modules/ui/ui.invariants.md)
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 // invariant: Modal outside presses dismiss and consume (src/modules/ui/ui.invariants.md)
@@ -55,6 +56,92 @@ interface BoundedPopupGeometry {
   listTop: number;
   listColumns: number;
   listRows: number;
+}
+
+type CursorVisibility = 'hidden' | 'shown' | 'unobserved';
+
+function cursorVisibilityFromOutput(output: string): CursorVisibility {
+  const showSequenceOffset = output.lastIndexOf('\x1b[?25h');
+  const hideSequenceOffset = output.lastIndexOf('\x1b[?25l');
+  if (showSequenceOffset < 0 && hideSequenceOffset < 0) return 'unobserved';
+  return showSequenceOffset > hideSequenceOffset ? 'shown' : 'hidden';
+}
+
+async function clickStatusMarker(
+  driver: PtyTestDriver.Model,
+  marker: string,
+): Promise<void> {
+  const snapshot = await driver.awaitGridCondition(
+    `status control ${marker.trim()} is visible`,
+    (candidate) => candidate.rowText(candidate.rows - 1).includes(marker),
+  );
+  const statusRow = snapshot.rows - 1;
+  const markerColumn = snapshot.rowText(statusRow).indexOf(marker);
+  requireCondition(
+    markerColumn >= 0,
+    `status control ${marker.trim()} is visible`,
+  );
+  clickCell(driver, markerColumn, statusRow);
+}
+
+async function openSettingsByMouse(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<HarnessStatus> {
+  const snapshot = await driver.awaitGridCondition(
+    'the settings gear is visible',
+    (candidate) => candidate.findText('⚙') !== null,
+  );
+  const gearPosition = markerPosition(snapshot, '⚙');
+  clickCell(driver, gearPosition.column, gearPosition.row);
+  return await awaitStatusPublication(
+    statusPath,
+    'Settings is open',
+    (status) => status.settingsOpen === true,
+  );
+}
+
+async function focusPanelBeforeOpeningDialog(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  expectedContentIdentifier: string,
+): Promise<void> {
+  // Focus the panel BEFORE the dialog opens. This used to click the panel while
+  // Settings was already open, which stopped working the moment outside-press
+  // dismissal landed: that click is now a dismissal gesture, so the wait for
+  // "still open AND panel focused" could never be satisfied. Retained focus
+  // beneath a modal is what the occlusion rule is about, and this is how a user
+  // actually reaches it — working in the terminal, then opening Settings over it.
+  const status = await awaitStatusPublication(
+    statusPath,
+    `the ${expectedContentIdentifier} panel geometry is available`,
+    (candidate) => {
+      const layoutSlots = candidate.layoutSlots as
+        Record<string, DialogBounds> | undefined;
+      return (
+        candidate.panelActiveContent === expectedContentIdentifier &&
+        layoutSlots?.bottomPanel !== undefined
+      );
+    },
+  );
+  const bottomPanel = (status.layoutSlots as Record<string, DialogBounds>)
+    .bottomPanel;
+  requireCondition(
+    bottomPanel !== undefined,
+    `${expectedContentIdentifier} bottom-panel bounds are published`,
+  );
+  clickCell(
+    driver,
+    bottomPanel.left + bottomPanel.width - 2,
+    bottomPanel.top + 2,
+  );
+  await awaitStatusPublication(
+    statusPath,
+    `${expectedContentIdentifier} is focused before the dialog opens`,
+    (candidate) =>
+      candidate.terminalFocused === true &&
+      candidate.panelActiveContent === expectedContentIdentifier,
+  );
 }
 
 function dialogBounds(
@@ -320,6 +407,7 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
+  retainFullOutput: true,
   environment: { TUI_STATUS_PATH: statusPath },
 });
 
@@ -463,7 +551,7 @@ try {
   console.log(
     '== harness overlays: shortcut dialog clamps, scrolls, and closes by mouse ==',
   );
-  driver.sendKeys('Shift+F1');
+  await clickStatusMarker(driver, '?');
   status = await awaitStatusPublication(
     statusPath,
     'shortcut help opens in the resized terminal',
@@ -554,7 +642,95 @@ try {
   );
   await closeSettingsWithEscape(driver, statusPath, 'editor');
 
-  driver.sendKeys('Shift+F1');
+  await clickStatusMarker(driver, ' ❯ ');
+  await awaitStatusPublication(
+    statusPath,
+    'the terminal panel is visible',
+    (candidate) =>
+      candidate.terminalVisible === true &&
+      candidate.terminalFocused === true &&
+      candidate.panelActiveContent === 'terminal',
+  );
+  await driver.awaitQuiescence();
+  requireCondition(
+    cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
+    'cursor byte probe observes the focused terminal cursor without an overlay',
+  );
+  await focusPanelBeforeOpeningDialog(driver, statusPath, 'terminal');
+  await openSettingsByMouse(driver, statusPath);
+  await driver.awaitGridCondition(
+    'Settings is painted above retained terminal focus',
+    (candidate) => candidate.findText('Settings') !== null,
+  );
+  requireCondition(
+    cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
+    'cursor visibility bytes leave the hardware cursor hidden while Settings owns the screen',
+  );
+  await closeSettingsWithEscape(driver, statusPath, 'terminal region');
+  await driver.awaitGridCondition(
+    'Settings is absent after Escape restores terminal focus',
+    (candidate) => candidate.findText('Settings') === null,
+  );
+  requireCondition(
+    cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
+    'cursor visibility bytes restore the focused terminal cursor after Settings closes',
+  );
+  await clickStatusMarker(driver, '?');
+  await awaitStatusPublication(
+    statusPath,
+    'Keyboard Shortcuts opens above retained terminal focus',
+    (candidate) => candidate.shortcutHelpOpen === true,
+  );
+  await driver.awaitGridCondition(
+    'Keyboard Shortcuts is painted above retained terminal focus',
+    (candidate) => candidate.findText('Keyboard Shortcuts') !== null,
+  );
+  requireCondition(
+    cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
+    'cursor visibility bytes leave the hardware cursor hidden under Keyboard Shortcuts',
+  );
+  clickCell(driver, 0, 5);
+  await awaitStatusPublication(
+    statusPath,
+    'clicking the shortcut backdrop closes the overlay',
+    (candidate) => candidate.shortcutHelpOpen === false,
+  );
+  await driver.awaitGridCondition(
+    'Keyboard Shortcuts is absent after backdrop dismissal',
+    (candidate) => candidate.findText('Keyboard Shortcuts') === null,
+  );
+  requireCondition(
+    cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
+    'cursor visibility bytes restore the focused terminal cursor after backdrop dismissal',
+  );
+
+  await clickStatusMarker(driver, ' ❯ ');
+  await awaitStatusPublication(
+    statusPath,
+    'the terminal panel closes before the agent-only case',
+    (candidate) => candidate.terminalVisible === false,
+  );
+  await clickStatusMarker(driver, ' ✦ ');
+  await awaitStatusPublication(
+    statusPath,
+    'the agent-only panel is visible',
+    (candidate) =>
+      candidate.terminalVisible === true &&
+      candidate.panelActiveContent === 'agent',
+  );
+  await focusPanelBeforeOpeningDialog(driver, statusPath, 'agent');
+  await openSettingsByMouse(driver, statusPath);
+  await closeSettingsWithEscape(driver, statusPath, 'agent region');
+
+  console.log(
+    '== harness overlays: Escape closes from contents-list and popup focus ==',
+  );
+  await clickStatusMarker(driver, ' ❯ ');
+  // Open by MOUSE here, not Shift+F1. At this point the terminal panel holds focus,
+  // and a focused terminal forwards keystrokes to the child shell — so the binding
+  // never reaches the application. The status control is focus-independent, and this
+  // same helper already proves the path earlier in this smoke.
+  await clickStatusMarker(driver, '?');
   status = await awaitStatusPublication(
     statusPath,
     'Keyboard Shortcuts reopens with published bounds',

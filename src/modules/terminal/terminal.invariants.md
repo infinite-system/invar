@@ -334,11 +334,12 @@ focused or a modal input overlay owns the keyboard, it consumes no keys.
 panel-input branch in `Bootstrap.keyTick`.
 
 **Mechanism:** `Bootstrap.keyTick` resolves reserved global chords first (`app.quit`,
-`panel.toggleTerminal`), then derives whether the exclusive modal overlay slot owns the keyboard.
-Only when that slot is empty and `panelHost.visible && focused` does it call
-`panelHost.handleKey(key)` and return. `TerminalPaneContent.handleKey` runs `TerminalKeys.encode`
-(canonical VT bytes from the parsed key fields, not the Kitty-encoded `sequence`) and writes them via
-`sendInput` → the backend seam. Focus follows the toggle and clicks (`panelContainsPoint`).
+`panel.toggleTerminal`), then reads `RootView.modalOverlayOwnsScreen`, which delegates to the
+overlay layer's one modal-focus derivation. Only when that slot is empty and
+`panelHost.visible && focused` does it call `panelHost.handleKey(key)` and return.
+`TerminalPaneContent.handleKey` runs `TerminalKeys.encode` (canonical VT bytes from the parsed key
+fields, not the Kitty-encoded `sequence`) and writes them via `sendInput` → the backend seam. Focus
+follows the toggle and clicks (`panelContainsPoint`).
 
 **Generates:** a terminal that receives Ctrl+C/Ctrl+D/arrows/typing as a real terminal would, while
 Ctrl+Q and the toggle always work; no keystroke both drives the shell and the editor.

@@ -64,9 +64,9 @@ inspects PNG or JPEG structure instead of the decoded RGBA.
 is emitted through the renderer's serialized writer only when its placement key (tier, path,
 fitted rect, background) changes — never per frame — and only after pending frames settle (the
 blanked cells land first); every placement that has identity is deleted when replaced, when the
-buffer stops being the previewed image, and in a delete-all sweep on app dispose, so no image can
-outlive the app onto the user's shell; and the cells under the graphics render blank so frame
-repaints never fight the image.
+buffer stops being the previewed image, while modal focus owns the screen, and in a delete-all
+sweep on app dispose, so no image can outlive the app onto the user's shell or paint above a
+modal; and the cells under the graphics render blank so frame repaints never fight the image.
 
 **Scope:** `PixelImageMount` (the only stateful piece: key, generation, placed id), the tier
 encoders behind `ImageRenderers` (`KittyGraphics` — placement identity, explicit delete;
@@ -84,7 +84,8 @@ WRITE TIME from the emitted id, and the new id is committed only when its payloa
 cancels in-flight places; `dispose()` clears then emits the encoder's removeAll sweep. Kitty payloads are ≤4096-byte base64 chunks with q=2 (the
 terminal never answers into the input parser) and C=1 + cursor save/restore (the cursor never
 moves). RootView blanks `codeBody` under any pixel tier and clears the mount on every non-image
-frame.
+frame. It also reads `OverlayLayer.modalOverlayOwnsScreen`, clears the mount while modal focus
+owns the screen, and resumes `sync()` from the latest fitted rectangle when modal focus returns.
 
 **Generates:** flicker-free tier rendering above an unchanged half-block floor; a quit that
 leaves the user's shell clean; per-frame cost of a string-key compare; encoders that stay pure
@@ -94,12 +95,14 @@ leaves the user's shell clean; per-frame cost of a string-key compare; encoders 
 emission, delete-before-replace, generation cancellation, clear/dispose sweeps, letterbox
 centring); `src/modules/image/KittyGraphics.test.ts` (chunk ceiling, m= flags, round-trip,
 delete commands); `src/modules/image/SixelEncoder.test.ts` (golden DCS outputs, palette scale,
-band clipping, transparency compositing).
+band clipping, transparency compositing); `scripts/harness/smoke-pixel-preview-harness.ts`
+(modal withdrawal, resize while hidden, and restoration through three close paths).
 
 **Impossible if true:** a graphics payload emitted on a frame whose placement key did not change;
 a kitty placement surviving buffer switch or app quit; a placement emitted before the frame that
 blanks its cells; two encoders disagreeing about who owns screen state (any stateful encoder); a
-base64 chunk over 4096 bytes.
+base64 chunk over 4096 bytes; a pixel placement remaining visible while modal focus owns the
+screen or failing to return on the first settled frame after modal close.
 
 **Verification:** `bun test src/modules/image/PixelImageMount.test.ts src/modules/image/KittyGraphics.test.ts src/modules/image/SixelEncoder.test.ts`
 

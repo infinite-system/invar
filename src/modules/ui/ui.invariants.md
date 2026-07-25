@@ -461,6 +461,43 @@ src/modules/keybindings/__tests__/registry.test.ts && bash scripts/smoke-mode-co
 
 **Last refined:** 2026-07-22
 
+### Modal focus withdraws host terminal projections
+
+**Invariant:** If a modal overlay owns the screen, then every host-terminal projection outside
+the cell grid is withdrawn until the overlay closes.
+
+**Scope:** The hardware cursor and pixel-protocol image placements projected by `RootView`;
+input-capturing overlays in `OverlayLayer`, destructive confirmation dialogs, and
+`BoundedListPopup`. The cell-grid render, display-only `Tooltip`, and non-modal
+`CompletionPopup` are outside this rule.
+
+**Mechanism:** `OverlayLayer.modalOverlayOwnsScreen` is the one late-read derivation of modal
+focus from the existing overlay-model refs. `RootView.update` reads it once per frame, clears
+`PixelImageMount` instead of synchronizing a placement, and hides the hardware cursor before
+any retained pane focus can project its caret. `PixelImageMount.clear` resets the placement
+key, so the first frame after close restores the current image geometry, including geometry
+changed by a resize while the overlay was open.
+
+**Generates:** One occlusion rule for every modal and every host-terminal projection; hidden
+hardware cursors under painted overlay carets; immediate graphics withdrawal and
+resize-correct restoration for Escape, close-control, and backdrop dismissal.
+
+**Evidence:** `src/modules/ui/OverlayLayer.ts`; `src/modules/ui/RootView.ts`;
+`scripts/harness/smoke-overlay-dialog-harness.ts` (real terminal pane and cursor-visibility
+bytes); `scripts/harness/smoke-pixel-preview-harness.ts` (real PNG, kitty placement/remove
+bytes, live resize, and three dismissal paths).
+
+**Impossible if true:** A hardware cursor blinking over Settings or Keyboard Shortcuts; a
+kitty image remaining above a modal; closing a modal requiring scroll or file switching to
+restore the image; a resize while a modal is open restoring the old placement geometry.
+
+**Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts && bun
+scripts/harness/smoke-pixel-preview-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Overlay dialogs stay inside the terminal
 
 **Invariant:** If an overlay dialog is visible, then its left, top, width, height, content viewport,

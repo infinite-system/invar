@@ -1841,14 +1841,7 @@ class $Bootstrap {
       // the overlay is open. The previous order routed Escape into a focused terminal/agent first:
       // Settings remained open even though OpenTUI had decoded and delivered the bare Escape correctly.
       // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
-      const exclusiveInputOverlayOwnsKeyboard =
-        contextMenu.open.value ||
-        boundedListPopup.open.value ||
-        shortcutHelp.open.value ||
-        settingsPanel.open.value ||
-        commands.open.value ||
-        quickOpen.open.value ||
-        findBar.open.value;
+      const modalOverlayOwnsScreen = view.modalOverlayOwnsScreen();
 
       // A focused bottom panel (the terminal) owns the keyboard: every non-reserved key is encoded to
       // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
@@ -1856,7 +1849,7 @@ class $Bootstrap {
       // unencodable key is swallowed so it never drives the hidden editor beneath.
       // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
       if (
-        !exclusiveInputOverlayOwnsKeyboard &&
+        !modalOverlayOwnsScreen &&
         panelHost.visible.value &&
         panelHost.focused.value
       ) {
@@ -1956,7 +1949,7 @@ class $Bootstrap {
         return;
       }
       if (
-        !exclusiveInputOverlayOwnsKeyboard &&
+        !modalOverlayOwnsScreen &&
         rightDockHost.visible.value &&
         rightDockHost.focused.value
       ) {

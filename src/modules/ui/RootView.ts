@@ -1333,6 +1333,7 @@ class $RootView {
     }
     function update(): void {
       const palette = readPalette();
+      const modalOverlayOwnsScreen = overlayLayer.modalOverlayOwnsScreen;
       synchronizeWorkspaceTabMount();
       synchronizePanelMount();
       editorContentMount.sync();
@@ -1431,19 +1432,24 @@ class $RootView {
           : null;
         if (pixelEncoder && decodedImage) {
           codeBody.content = '';
-          pixelMount.sync({
-            tier: graphicsTier,
-            encoder: pixelEncoder,
-            image: decodedImage,
-            path: imagePath,
-            region: {
-              x: codeBody.x,
-              y: codeBody.y,
-              columns: previewColumns,
-              rows: previewRows,
-            },
-            panelBackground: palette.panel,
-          });
+          // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
+          if (modalOverlayOwnsScreen) {
+            pixelMount.clear();
+          } else {
+            pixelMount.sync({
+              tier: graphicsTier,
+              encoder: pixelEncoder,
+              image: decodedImage,
+              path: imagePath,
+              region: {
+                x: codeBody.x,
+                y: codeBody.y,
+                columns: previewColumns,
+                rows: previewRows,
+              },
+              panelBackground: palette.panel,
+            });
+          }
         } else {
           pixelMount.clear();
           codeBody.content = imagePreview.render(
@@ -1683,6 +1689,11 @@ class $RootView {
       overlayLayer.update(palette);
       hoverCard.update(palette);
       scrollbarSync.syncScrollbars();
+      // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
+      if (modalOverlayOwnsScreen) {
+        renderer.setCursorPosition(0, 0, false);
+        return;
+      }
       if (rightDockHost.visible.value && rightDockHost.focused.value) {
         const caret = rightDockHost.focusedContent?.caret?.() ?? null;
         if (caret) {
@@ -1967,6 +1978,7 @@ class $RootView {
       findBar,
       quickOpen,
       contextMenu,
+      boundedListPopup,
       settingsPanel,
       shortcutHelp,
       tooltip,
@@ -2017,6 +2029,7 @@ class $RootView {
       tickOverlayScroll: (dtSeconds: number) => overlayLayer.tick(dtSeconds),
       overlayDialogBounds: () => overlayLayer.dialogBounds(),
       overlayScrollPositions: () => overlayLayer.scrollPositions(),
+      modalOverlayOwnsScreen: () => overlayLayer.modalOverlayOwnsScreen,
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickPanelScroll(dtSeconds: number): boolean {
         let moving = agentScrollViewport.tick(dtSeconds);
@@ -2120,6 +2133,8 @@ export interface RootView {
   >;
   /** Scroll offsets owned by each overlay's shared viewport. */
   overlayScrollPositions(): Record<string, number>;
+  /** True while a modal overlay owns the screen above host-terminal projections. */
+  modalOverlayOwnsScreen(): boolean;
   /** Frame-tick hook: advance the LSP hover-card dwell; true while counting or a request is in flight. */
   tickHover(dtSeconds: number): boolean;
   /** Frame-tick hook: advance the agent transcript's scroll-momentum glide + drag edge-autoscroll; true

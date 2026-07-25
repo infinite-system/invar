@@ -48,6 +48,7 @@ import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { FindBar } from '../search/FindBar';
 import type { QuickOpen } from '../search/QuickOpen';
 import type { ContextMenu } from './ContextMenu';
+import type { BoundedListPopup } from './BoundedListPopup';
 import type {
   SettingsPanel,
   SettingsPanelRow,
@@ -59,6 +60,21 @@ import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 class $OverlayLayer {
   get paintRevision() {
     return ref(0);
+  }
+  // invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
+  get modalOverlayOwnsScreen(): boolean {
+    return (
+      this.dependencies.commands.open.value ||
+      this.dependencies.findBar.open.value ||
+      this.dependencies.quickOpen.open.value ||
+      this.dependencies.contextMenu.open.value ||
+      this.dependencies.boundedListPopup.open.value ||
+      this.dependencies.settingsPanel.open.value ||
+      this.dependencies.shortcutHelp.open.value ||
+      this.dependencies.workspaceSet.active.gitPanel.confirmDiscard.value !==
+        null ||
+      this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
+    );
   }
   protected readonly commandPalette: BoxRenderable;
   protected readonly commandPaletteInput: TextRenderable;
@@ -125,8 +141,8 @@ class $OverlayLayer {
   // The model index of the first row the quick-open list currently draws (its scroll window's top), so a
   // pointer hit-test maps a visible row back to the match it draws. 0 whenever the list is unscrolled.
   protected quickOpenFirstVisible = 0;
-  constructor(protected readonly deps: OverlayLayerDeps) {
-    const { renderer, shortcutHelp, contextMenu, quickOpen } = deps;
+  constructor(protected readonly dependencies: OverlayLayerDependencies) {
+    const { renderer, shortcutHelp, contextMenu, quickOpen } = dependencies;
     const root = renderer.root;
     // Command palette — added last so it renders on top; shown only when open.
     this.commandPalette = new BoxRenderable(renderer, {
@@ -157,7 +173,7 @@ class $OverlayLayer {
       'palette',
       99,
       101,
-      () => deps.commands.closePalette(),
+      () => dependencies.commands.closePalette(),
     );
     this.commandPaletteViewport = this.createOverlayViewport(
       'palette',
@@ -195,7 +211,7 @@ class $OverlayLayer {
     this.findBarCloseButton = this.createCloseButton(
       'find-bar-close',
       101,
-      () => deps.findBar.close(),
+      () => dependencies.findBar.close(),
     );
     // Quick-open (Ctrl+P): centered modal — query input + fuzzy-ranked project-file list.
     this.quickOpenBox = new BoxRenderable(renderer, {
@@ -226,7 +242,7 @@ class $OverlayLayer {
       'quick-open',
       99,
       101,
-      () => deps.quickOpen.close(),
+      () => dependencies.quickOpen.close(),
     );
     this.quickOpenViewport = this.createOverlayViewport(
       'quick-open',
@@ -289,7 +305,7 @@ class $OverlayLayer {
       'settings-panel',
       121,
       123,
-      () => deps.settingsPanel.close(),
+      () => dependencies.settingsPanel.close(),
     );
     this.settingsViewport = this.createOverlayViewport(
       'settings-panel',
@@ -329,7 +345,7 @@ class $OverlayLayer {
       'shortcut-help',
       118,
       121,
-      () => deps.shortcutHelp.close(),
+      () => dependencies.shortcutHelp.close(),
     );
     this.shortcutHelpViewport = this.createOverlayViewport(
       'shortcut-help',
@@ -341,7 +357,7 @@ class $OverlayLayer {
         viewportColumns: 1,
       }),
       () => {
-        this.deps.shortcutHelp.scrollTop.value =
+        this.dependencies.shortcutHelp.scrollTop.value =
           this.shortcutHelpViewport.scrollTop;
         this.requestPaint();
       },
@@ -366,7 +382,7 @@ class $OverlayLayer {
       'context-menu',
       125,
       131,
-      () => deps.contextMenu.close(),
+      () => dependencies.contextMenu.close(),
     );
     this.contextMenuViewport = this.createOverlayViewport(
       'context-menu',
@@ -412,16 +428,16 @@ class $OverlayLayer {
       // (completes the path + re-lists); Enter opens the current path (activateQuickOpen).
       if (quickOpen.mode.value === 'workspacePath')
         quickOpen.navigateIntoSelected();
-      else this.deps.activateQuickOpen();
+      else this.dependencies.activateQuickOpen();
     };
     this.commandPaletteList.onMouseDown = (event) => {
       const visibleRow = event.y - this.commandPaletteList.y;
       if (visibleRow < 0 || visibleRow >= this.commandPaletteRowCount) return;
       const commandIndex = this.commandPaletteFirstVisible + visibleRow;
-      this.deps.commands.moveSelection(
-        commandIndex - this.deps.commands.selectedIndex.value,
+      this.dependencies.commands.moveSelection(
+        commandIndex - this.dependencies.commands.selectedIndex.value,
       );
-      this.deps.commands.runSelected();
+      this.dependencies.commands.runSelected();
     };
     // Find bar action buttons: hit-test the pointer against the zones the renderer drew this frame.
     // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
@@ -450,10 +466,10 @@ class $OverlayLayer {
           localColumn < candidate.endColumn,
       );
       if (!zone) return;
-      this.deps.settingsPanel.select(zone.index);
-      if (zone.action === 'dec') this.deps.settingsPanel.adjust(-1);
-      else if (zone.action === 'inc') this.deps.settingsPanel.adjust(1);
-      this.deps.renderer.requestRender();
+      this.dependencies.settingsPanel.select(zone.index);
+      if (zone.action === 'dec') this.dependencies.settingsPanel.adjust(-1);
+      else if (zone.action === 'inc') this.dependencies.settingsPanel.adjust(1);
+      this.dependencies.renderer.requestRender();
     };
     this.commandPalette.onMouseScroll = (event: MouseEvent) =>
       this.commandPaletteViewport.handleWheel(event);
@@ -496,7 +512,7 @@ class $OverlayLayer {
     close: () => void,
   ): OverlayCloseButton.Model {
     return new OverlayCloseButton.Class({
-      renderer: this.deps.renderer,
+      renderer: this.dependencies.renderer,
       identifier,
       zIndex,
       close,
@@ -509,7 +525,7 @@ class $OverlayLayer {
     dismiss: () => void,
   ): ModalOverlayDismissal.Model {
     return new ModalOverlayDismissal.Class({
-      renderer: this.deps.renderer,
+      renderer: this.dependencies.renderer,
       identifier,
       backdropZIndex,
       closeButtonZIndex,
@@ -518,7 +534,7 @@ class $OverlayLayer {
   }
   protected requestPaint(): void {
     this.paintRevision.value += 1;
-    this.deps.renderer.requestRender();
+    this.dependencies.renderer.requestRender();
   }
   protected createOverlayViewport(
     identifier: string,
@@ -527,16 +543,16 @@ class $OverlayLayer {
     onScroll: () => void,
   ): ScrollableTextViewport.Instance {
     return new ScrollableTextViewport.Class({
-      renderer: this.deps.renderer,
-      settings: this.deps.settingsPanel.settings,
+      renderer: this.dependencies.renderer,
+      settings: this.dependencies.settingsPanel.settings,
       parent,
       id: identifier,
       disableHorizontal: true,
       scrollbarZIndex: 2,
       extent,
       colors: () => ({
-        track: this.deps.theme.palette.panel,
-        thumb: this.deps.theme.palette.dim,
+        track: this.dependencies.theme.palette.panel,
+        thumb: this.dependencies.theme.palette.dim,
       }),
       onScroll,
       selection: {
@@ -560,8 +576,8 @@ class $OverlayLayer {
     input: OverlayDialogLayoutInput,
   ): OverlayDialogGeometryResult {
     const geometry = OverlayDialogGeometry.Class.layout({
-      screenWidth: this.deps.renderer.width,
-      screenHeight: this.deps.renderer.height,
+      screenWidth: this.dependencies.renderer.width,
+      screenHeight: this.dependencies.renderer.height,
       desiredLeft: input.desiredLeft,
       desiredTop: input.desiredTop,
       desiredWidth: input.desiredWidth,
@@ -598,10 +614,10 @@ class $OverlayLayer {
     viewport?.hideBars();
   }
   protected cancelConfirmation(): void {
-    if (this.deps.workspaceSet.active.gitPanel.confirmDiscard.value)
-      this.deps.workspaceSet.active.cancelDiscard();
-    if (this.deps.workspaceSet.active.pendingCloseTabIndex.value >= 0)
-      this.deps.workspaceSet.active.cancelCloseTab();
+    if (this.dependencies.workspaceSet.active.gitPanel.confirmDiscard.value)
+      this.dependencies.workspaceSet.active.cancelDiscard();
+    if (this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0)
+      this.dependencies.workspaceSet.active.cancelCloseTab();
   }
   protected revealViewportRow(
     viewport: ScrollableTextViewport.Instance,
@@ -705,13 +721,13 @@ class $OverlayLayer {
         })),
       );
       if (visibleRowIndex < visibleLines.length - 1)
-        chunks.push(fg(this.deps.theme.palette.fg)('\n'));
+        chunks.push(fg(this.dependencies.theme.palette.fg)('\n'));
     });
     return { text: new StyledText(chunks), zones };
   }
   /** Dispatch a find-bar button click to the same FindBar action its keyboard chord runs. */
   protected runFindButton(action: FindBarButtonAction): void {
-    const { findBar, revealFindMatch } = this.deps;
+    const { findBar, revealFindMatch } = this.dependencies;
     switch (action) {
       case 'previous':
         findBar.previous();
@@ -739,14 +755,17 @@ class $OverlayLayer {
     }
   }
   protected shortcutHelpBoxHeight(): number {
-    return Math.max(6, this.deps.renderer.height - 3);
+    return Math.max(6, this.dependencies.renderer.height - 3);
   }
   /** Visible binding rows in the cheat-sheet (interior minus its fixed instruction line). */
   shortcutHelpViewportRows(): number {
     const geometry = OverlayDialogGeometry.Class.layout({
-      screenWidth: this.deps.renderer.width,
-      screenHeight: this.deps.renderer.height,
-      desiredWidth: Math.max(1, Math.floor(this.deps.renderer.width * 0.7)),
+      screenWidth: this.dependencies.renderer.width,
+      screenHeight: this.dependencies.renderer.height,
+      desiredWidth: Math.max(
+        1,
+        Math.floor(this.dependencies.renderer.width * 0.7),
+      ),
       desiredHeight: this.shortcutHelpBoxHeight(),
       desiredTop: 1,
     });
@@ -754,7 +773,7 @@ class $OverlayLayer {
   }
   scrollShortcutHelpBy(rowDelta: number): void {
     this.shortcutHelpViewport.scrollRowsBy(rowDelta);
-    this.deps.shortcutHelp.scrollTop.value =
+    this.dependencies.shortcutHelp.scrollTop.value =
       this.shortcutHelpViewport.scrollTop;
   }
   dialogBounds(): Record<string, OverlayDialogBounds | null> {
@@ -779,15 +798,15 @@ class $OverlayLayer {
   }
   tick(deltaSeconds: number): boolean {
     let animating = false;
-    if (this.deps.commands.open.value)
+    if (this.dependencies.commands.open.value)
       animating = this.commandPaletteViewport.tick(deltaSeconds) || animating;
-    if (this.deps.quickOpen.open.value)
+    if (this.dependencies.quickOpen.open.value)
       animating = this.quickOpenViewport.tick(deltaSeconds) || animating;
-    if (this.deps.settingsPanel.open.value)
+    if (this.dependencies.settingsPanel.open.value)
       animating = this.settingsViewport.tick(deltaSeconds) || animating;
-    if (this.deps.shortcutHelp.open.value)
+    if (this.dependencies.shortcutHelp.open.value)
       animating = this.shortcutHelpViewport.tick(deltaSeconds) || animating;
-    if (this.deps.contextMenu.open.value)
+    if (this.dependencies.contextMenu.open.value)
       animating = this.contextMenuViewport.tick(deltaSeconds) || animating;
     return animating;
   }
@@ -804,7 +823,7 @@ class $OverlayLayer {
       tooltip,
       theme,
       renderer,
-    } = this.deps;
+    } = this.dependencies;
     // Palette overlay.
     const open = commands.open.value;
     if (open) {
@@ -1319,12 +1338,13 @@ export interface OverlayDialogBounds {
   width: number;
   height: number;
 }
-export interface OverlayLayerDeps {
+export interface OverlayLayerDependencies {
   renderer: CliRenderer;
   commands: CommandRegistry.Instance;
   findBar: FindBar.Instance;
   quickOpen: QuickOpen.Instance;
   contextMenu: ContextMenu.Instance;
+  boundedListPopup: BoundedListPopup.Instance;
   settingsPanel: SettingsPanel.Instance;
   shortcutHelp: ShortcutHelp.Instance;
   tooltip: Tooltip.Instance;

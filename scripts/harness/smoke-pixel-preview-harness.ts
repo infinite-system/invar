@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Modal focus withdraws host terminal projections (src/modules/ui/ui.invariants.md)
 import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -50,6 +51,22 @@ async function awaitImageStatus(
       String(status.activeBuffer).endsWith('/picture.png'),
     15_000,
   );
+}
+
+async function awaitOutputSequenceCountAbove(
+  driver: PtyTestDriver.Model,
+  sequence: string,
+  previousCount: number,
+  description: string,
+  timeoutMilliseconds = 10_000,
+): Promise<number> {
+  const deadline = performance.now() + timeoutMilliseconds;
+  while (performance.now() < deadline) {
+    const currentCount = driver.outputSequenceCount(sequence);
+    if (currentCount > previousCount) return currentCount;
+    await Bun.sleep(10);
+  }
+  throw new Error(`Timed out waiting for ${description}`);
 }
 
 const pngPath = '/tmp/ivue-cart-dark.png';
@@ -137,6 +154,218 @@ async function driveKittyTier(): Promise<void> {
     HarnessSmoke.Class.requireCondition(
       halfBlockCount(kittyProjectionSnapshot) === 0,
       'kitty projection leaves the underlying cells blank',
+    );
+
+    console.log(
+      '== harness pixel-preview: modal withdraws and restores kitty placement ==',
+    );
+    const placementCountWithoutOverlay =
+      driver.outputSequenceCount('\x1b_Ga=T');
+    const removalCountWithoutOverlay =
+      driver.outputSequenceCount('\x1b_Ga=d,d=I');
+    HarnessSmoke.Class.requireCondition(
+      placementCountWithoutOverlay > 0,
+      'graphics byte probe observes a kitty placement without an overlay',
+    );
+    driver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.settingsOpen === true',
+      (status) => status.settingsOpen === true,
+    );
+    await driver.awaitGridCondition(
+      'Settings is painted over the pixel preview',
+      (candidate) => candidate.findText('Settings') !== null,
+    );
+    const removalCountWhileSettingsOpen = await awaitOutputSequenceCountAbove(
+      driver,
+      '\x1b_Ga=d,d=I',
+      removalCountWithoutOverlay,
+      'the kitty placement removal after Settings opens',
+    );
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') === placementCountWithoutOverlay,
+      'no kitty placement is emitted while Settings owns the screen',
+    );
+    driver.resize(96, 30);
+    await driver.awaitGridCondition(
+      'Settings remains painted after resize',
+      (candidate) => candidate.findText('Settings') !== null,
+    );
+    await Bun.sleep(100);
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') === placementCountWithoutOverlay,
+      'resize while Settings is open does not restore the kitty placement',
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.settingsOpen === false',
+      (status) => status.settingsOpen === false,
+    );
+    await driver.awaitGridCondition(
+      'Settings is absent before the kitty placement returns',
+      (candidate) => candidate.findText('Settings') === null,
+    );
+    const placementCountAfterSettingsClose =
+      await awaitOutputSequenceCountAbove(
+        driver,
+        '\x1b_Ga=T',
+        placementCountWithoutOverlay,
+        'the kitty placement restoration after Settings closes',
+      );
+    HarnessSmoke.Class.requireCondition(
+      removalCountWhileSettingsOpen > removalCountWithoutOverlay &&
+        placementCountAfterSettingsClose > placementCountWithoutOverlay,
+      'Settings withdraws the kitty placement and Escape restores it',
+    );
+
+    const placementCountBeforeCloseButton =
+      driver.outputSequenceCount('\x1b_Ga=T');
+    const removalCountBeforeCloseButton =
+      driver.outputSequenceCount('\x1b_Ga=d,d=I');
+    driver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.settingsOpen === true',
+      (status) => status.settingsOpen === true,
+    );
+    const settingsSnapshot = await driver.awaitGridCondition(
+      'Settings exposes its close control over the pixel preview',
+      (candidate) =>
+        candidate.findText('Settings') !== null &&
+        candidate.findText('✕') !== null,
+    );
+    await awaitOutputSequenceCountAbove(
+      driver,
+      '\x1b_Ga=d,d=I',
+      removalCountBeforeCloseButton,
+      'the kitty placement removal before close-control dismissal',
+    );
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') ===
+        placementCountBeforeCloseButton,
+      'the kitty placement stays absent before close-control dismissal',
+    );
+    const settingsTitlePosition = settingsSnapshot.findText('Settings');
+    if (!settingsTitlePosition)
+      throw new Error('FAIL Settings title disappeared before close');
+    const settingsCloseColumn = settingsSnapshot
+      .rowText(settingsTitlePosition.row)
+      .indexOf('✕', settingsTitlePosition.column + 'Settings'.length);
+    HarnessSmoke.Class.requireCondition(
+      settingsCloseColumn >= 0,
+      'Settings close control is discovered from painted cells',
+    );
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: settingsCloseColumn,
+      row: settingsTitlePosition.row,
+      button: 'left',
+    });
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: settingsCloseColumn,
+      row: settingsTitlePosition.row,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.settingsOpen === false',
+      (status) => status.settingsOpen === false,
+    );
+    await awaitOutputSequenceCountAbove(
+      driver,
+      '\x1b_Ga=T',
+      placementCountBeforeCloseButton,
+      'the kitty placement restoration after close-control dismissal',
+    );
+    HarnessSmoke.Class.pass(
+      'Settings close control restores the withdrawn kitty placement',
+    );
+
+    const placementCountBeforeBackdrop =
+      driver.outputSequenceCount('\x1b_Ga=T');
+    const removalCountBeforeBackdrop =
+      driver.outputSequenceCount('\x1b_Ga=d,d=I');
+    const shortcutButtonSnapshot = await driver.awaitGridCondition(
+      'the shortcut-help status control is visible over the pixel preview',
+      (candidate) => candidate.rowText(candidate.rows - 1).includes('?'),
+    );
+    const shortcutButtonRow = shortcutButtonSnapshot.rows - 1;
+    const shortcutButtonColumn = shortcutButtonSnapshot
+      .rowText(shortcutButtonRow)
+      .lastIndexOf('?');
+    HarnessSmoke.Class.requireCondition(
+      shortcutButtonColumn >= 0,
+      'shortcut-help status control is discovered from painted cells',
+    );
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: shortcutButtonColumn,
+      row: shortcutButtonRow,
+      button: 'left',
+    });
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: shortcutButtonColumn,
+      row: shortcutButtonRow,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.shortcutHelpOpen === true',
+      (status) => status.shortcutHelpOpen === true,
+    );
+    await driver.awaitGridCondition(
+      'Keyboard Shortcuts is painted over the pixel preview',
+      (candidate) => candidate.findText('Keyboard Shortcuts') !== null,
+    );
+    await awaitOutputSequenceCountAbove(
+      driver,
+      '\x1b_Ga=d,d=I',
+      removalCountBeforeBackdrop,
+      'the kitty placement removal before backdrop dismissal',
+    );
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') === placementCountBeforeBackdrop,
+      'the kitty placement stays absent before backdrop dismissal',
+    );
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: 0,
+      row: 5,
+      button: 'left',
+    });
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: 0,
+      row: 5,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.shortcutHelpOpen === false',
+      (status) => status.shortcutHelpOpen === false,
+    );
+    await driver.awaitGridCondition(
+      'Keyboard Shortcuts is absent before the kitty placement returns',
+      (candidate) => candidate.findText('Keyboard Shortcuts') === null,
+    );
+    await awaitOutputSequenceCountAbove(
+      driver,
+      '\x1b_Ga=T',
+      placementCountBeforeBackdrop,
+      'the kitty placement restoration after backdrop dismissal',
+    );
+    HarnessSmoke.Class.pass(
+      'shortcut backdrop dismissal restores the withdrawn kitty placement',
     );
 
     await openThroughQuickOpen(driver, 'sample');
