@@ -155,10 +155,11 @@ try {
       - Buffer.byteLength(commandPrefix)
       - Buffer.byteLength(commandSuffix);
     await sendChunkedPaste(command);
-    await driver.awaitSnapshot(
-      (snapshot) => snapshot.findText(resultMarker) !== null,
-      30_000,
-    );
+    // Staging sequencing only: the staged echo wraps at the pane width, and whether any marker
+    // straddles a row boundary is layout-configuration arithmetic, so no single-row text wait can
+    // gate here. Quiescence proves the paste bytes flushed and the echo settled; byte-exactness is
+    // proven by the wc -c result below, which prints at pane column 0 and cannot straddle.
+    await driver.awaitQuiescence();
     driver.sendKeys('Enter');
     await driver.awaitSnapshot(
       (snapshot) => (

@@ -198,12 +198,24 @@ try {
     (status) => status.panelActiveContent === 'terminal' && status.terminalFocused === true,
   );
   driver.sendText('printf IDLE-TERMINAL');
-  await selectVisibleText('IDLE-TERMINAL');
+  const idleTerminalPosition = await selectVisibleText('IDLE-TERMINAL');
   await copySelectionRepeatedly('IDLE-TERMINAL', idleCopyRunCount, 'idle');
 
   console.log('== clipboard boundary: active terminal selection ==');
-  driver.sendMouseWithoutFrameExpectation({ kind: 'press', column: 2, row: 30, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: 2, row: 30, button: 'left' });
+  // Deselect by clicking the DISCOVERED terminal cell: fixed coordinates encode one layout
+  // configuration, and the full-height left dock now owns the old (2, 30) cell.
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: idleTerminalPosition.column,
+    row: idleTerminalPosition.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: idleTerminalPosition.column,
+    row: idleTerminalPosition.row,
+    button: 'left',
+  });
   await driver.awaitQuiescence();
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
@@ -211,10 +223,10 @@ try {
     "for iteration in $(seq 1 500); do printf '\\rACTIVE-TERMINAL-%03d' \"$iteration\"; "
     + 'sleep 0.02; done';
   driver.sendText(activeTerminalCommand);
-  await driver.awaitGridCondition(
-    'the complete active-output command is staged at the shell prompt',
-    (snapshot) => snapshot.findText('sleep 0.02; done') !== null,
-  );
+  // Staging sequencing only: the staged command wraps at the pane width, so no single-row text
+  // wait can gate here. Quiescence proves the typed bytes flushed and the echo settled; the loop
+  // output assertion below prints at pane column 0 and cannot straddle a row boundary.
+  await driver.awaitQuiescence();
   driver.sendKeys('Enter');
   await driver.awaitGridCondition(
     'the shell loop emits its first changing terminal row',

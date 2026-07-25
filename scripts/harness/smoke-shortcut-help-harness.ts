@@ -148,11 +148,16 @@ try {
 
   console.log('== harness shortcut-help: Escape closes and Shift+F1 reopens ==');
   driver.sendKeys('Escape');
+  // Waits on rendered cells and the semantic status projection separately: the status file is
+  // written asynchronously after the frame, so sampling it once after the grid wait races, and a
+  // grid-frame-driven predicate would never observe a status flip that arrives without a frame.
   await driver.awaitSnapshot((candidate) => candidate.findText('Keyboard Shortcuts') === null);
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).shortcutHelpOpen === false,
-    'Escape closes the sheet in state and cells',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => status.shortcutHelpOpen === false,
   );
+  HarnessSmoke.Class.pass('Escape closes the sheet in state and cells');
   await openWithShiftF1(driver, statusPath);
   await assertSheetStatus(driver, statusPath, 'Shift+F1');
 
