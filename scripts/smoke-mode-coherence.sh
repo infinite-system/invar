@@ -129,9 +129,10 @@ else
   fail "FindBar did not remain open in replace mode"
 fi
 
-echo "== context menu occupies the same slot and switches to the palette in one chord =="
+echo "== bounded popup occupies the same slot and switches to the palette in one chord =="
 # The Find bar covers the count badge at the top-right. Switch to the centered palette first; its
-# box starts lower, leaving the real clickable badge visible. Clicking it must replace the palette.
+# box starts lower, leaving the real badge visible. The palette is modal, so the first click dismisses
+# it and is consumed; the second click on the now-uncovered badge opens the bounded list popup.
 "$harness" send "$primary_session" F1 >/dev/null
 settle "$primary_session"
 buffer_tab_count="$(field "$primary_session" bufferTabCount)"
@@ -141,11 +142,20 @@ badge_row="${badge_geometry##* }"
 if [ "$badge_column" -ge 0 ] 2>/dev/null && [ "$badge_row" -ge 0 ] 2>/dev/null; then
   "$harness" click "$primary_session" "$badge_column" "$badge_row" >/dev/null
   settle "$primary_session"
+  if [ "$(field "$primary_session" inputOverlayCount)" = "0" ] \
+    && [ "$(field "$primary_session" paletteOpen)" = "false" ] \
+    && [ "$(field "$primary_session" boundedListPopupOpen)" = "false" ]; then
+    pass "palette outside dismissal consumed the buffer-count press"
+  else
+    fail "palette outside dismissal leaked into the buffer-count control (open=$(field "$primary_session" openInputOverlays))"
+  fi
+  "$harness" click "$primary_session" "$badge_column" "$badge_row" >/dev/null
+  settle "$primary_session"
   assert_only_overlay "$primary_session" boundedListPopup "document.txt"
   if [ "$(field "$primary_session" paletteOpen)" = "false" ]; then
-    pass "opening the bounded list popup closed the command palette"
+    pass "bounded list popup opened with the command palette still closed"
   else
-    fail "the command palette stayed open behind the bounded list popup"
+    fail "the command palette reopened behind the bounded list popup"
   fi
   "$harness" send "$primary_session" F1 >/dev/null
   settle "$primary_session"
