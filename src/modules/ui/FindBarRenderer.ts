@@ -17,81 +17,68 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { FindIconSet } from '../theme/ThemeIcons';
 import type { FindBar } from '../search/FindBar';
-
+class $FindBarRenderer {
+    public static render(context: FindBarRenderContext): FindBarRenderResult {
+        const { findBar, palette, findIcons } = context;
+        const engine = findBar.engine;
+        const replaceMode = findBar.mode.value === 'replace';
+        const queryFocused = !(replaceMode && findBar.replaceFocused.value);
+        const matchCount = engine ? engine.matchCount : 0;
+        const position = engine && engine.currentMatchIndex.value >= 0 ? engine.currentMatchIndex.value + 1 : 0;
+        const counter = matchCount > 0 ? `${position} of ${matchCount}` : engine && engine.query.value ? 'no results' : '';
+        const chunks: TextChunk[] = [];
+        chunks.push(fg(palette.fg)(`${findIcons.search} ${engine?.query.value ?? ''}${queryFocused ? '▏' : ''}   `));
+        chunks.push(fg(palette.dim)(`${counter}\n`));
+        if (replaceMode) {
+            chunks.push(fg(palette.fg)(`⇄ ${engine?.replacement.value ?? ''}${queryFocused ? '' : '▏'}\n`));
+        }
+        // Button row: one geometry source drives both the chunks and the hit-zones. Each button is its glyph
+        // (single-cell, from the theme ladder) or the `Aa` case label, flanked by spaces, then a 1-cell gap.
+        const buttonRow = replaceMode ? 2 : 1;
+        const buttons: FindBarButtonZone[] = [];
+        let column = 0;
+        const pushButton = (action: FindBarButtonAction, label: string, color: string, active: boolean): void => {
+            const cellLabel = ` ${label} `;
+            const startColumn = column;
+            const painted = active ? bg(palette.selection)(fg(palette.accent)(cellLabel)) : fg(color)(cellLabel);
+            chunks.push(painted);
+            column += EditorCoordinates.Class.lineWidth(cellLabel);
+            buttons.push({ action, row: buttonRow, startColumn, endColumn: column });
+            chunks.push(fg(palette.fg)(' '));
+            column += 1;
+        };
+        pushButton('previous', findIcons.previous, palette.fg, false);
+        pushButton('next', findIcons.next, palette.fg, false);
+        pushButton('toggleCase', 'Aa', palette.fg, findBar.caseSensitive);
+        if (replaceMode) {
+            pushButton('replace', findIcons.replace, palette.fg, false);
+            pushButton('replaceAll', findIcons.replaceAll, palette.fg, false);
+        }
+        if (findBar.target?.replaceAllowed) {
+            pushButton('toggleMode', findIcons.toggleMode, palette.accent, false);
+        }
+        chunks.push(fg(palette.dim)('  esc'));
+        return { text: new StyledText(chunks), buttons };
+    }
+}
+export namespace FindBarRenderer {
+    export const $Class = $FindBarRenderer;
+    export const Class = Static($FindBarRenderer);
+}
 export type FindBarButtonAction = 'previous' | 'next' | 'toggleCase' | 'replace' | 'replaceAll' | 'toggleMode';
-
 /** A drawn button's hit-rect in the bar body's own coordinates (row 0 = the bar's first content line). */
 export interface FindBarButtonZone {
-  action: FindBarButtonAction;
-  row: number;
-  startColumn: number;
-  endColumn: number;
+    action: FindBarButtonAction;
+    row: number;
+    startColumn: number;
+    endColumn: number;
 }
-
 export interface FindBarRenderResult {
-  text: StyledText;
-  buttons: FindBarButtonZone[];
+    text: StyledText;
+    buttons: FindBarButtonZone[];
 }
-
 export interface FindBarRenderContext {
-  findBar: FindBar.Instance;
-  palette: Palette;
-  findIcons: FindIconSet;
-}
-
-
-function $renderFindBar(context: FindBarRenderContext): FindBarRenderResult {
-  const { findBar, palette, findIcons } = context;
-  const engine = findBar.engine;
-  const replaceMode = findBar.mode.value === 'replace';
-  const queryFocused = !(replaceMode && findBar.replaceFocused.value);
-  const matchCount = engine ? engine.matchCount : 0;
-  const position = engine && engine.currentMatchIndex.value >= 0 ? engine.currentMatchIndex.value + 1 : 0;
-  const counter = matchCount > 0 ? `${position} of ${matchCount}` : engine && engine.query.value ? 'no results' : '';
-
-  const chunks: TextChunk[] = [];
-  chunks.push(fg(palette.fg)(`${findIcons.search} ${engine?.query.value ?? ''}${queryFocused ? '▏' : ''}   `));
-  chunks.push(fg(palette.dim)(`${counter}\n`));
-  if (replaceMode) {
-    chunks.push(fg(palette.fg)(`⇄ ${engine?.replacement.value ?? ''}${queryFocused ? '' : '▏'}\n`));
-  }
-
-  // Button row: one geometry source drives both the chunks and the hit-zones. Each button is its glyph
-  // (single-cell, from the theme ladder) or the `Aa` case label, flanked by spaces, then a 1-cell gap.
-  const buttonRow = replaceMode ? 2 : 1;
-  const buttons: FindBarButtonZone[] = [];
-  let column = 0;
-  const pushButton = (action: FindBarButtonAction, label: string, color: string, active: boolean): void => {
-    const cellLabel = ` ${label} `;
-    const startColumn = column;
-    const painted = active ? bg(palette.selection)(fg(palette.accent)(cellLabel)) : fg(color)(cellLabel);
-    chunks.push(painted);
-    column += EditorCoordinates.Class.lineWidth(cellLabel);
-    buttons.push({ action, row: buttonRow, startColumn, endColumn: column });
-    chunks.push(fg(palette.fg)(' '));
-    column += 1;
-  };
-
-  pushButton('previous', findIcons.previous, palette.fg, false);
-  pushButton('next', findIcons.next, palette.fg, false);
-  pushButton('toggleCase', 'Aa', palette.fg, findBar.caseSensitive);
-  if (replaceMode) {
-    pushButton('replace', findIcons.replace, palette.fg, false);
-    pushButton('replaceAll', findIcons.replaceAll, palette.fg, false);
-  }
-  if (findBar.target?.replaceAllowed) {
-    pushButton('toggleMode', findIcons.toggleMode, palette.accent, false);
-  }
-  chunks.push(fg(palette.dim)('  esc'));
-
-  return { text: new StyledText(chunks), buttons };
-}
-
-class $FindBarRenderer {
-  static render = $renderFindBar;
-}
-
-export namespace FindBarRenderer {
-  export const $Class = $FindBarRenderer;
-  export const Class = Static($FindBarRenderer);
+    findBar: FindBar.Instance;
+    palette: Palette;
+    findIcons: FindIconSet;
 }
