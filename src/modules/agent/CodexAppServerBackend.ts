@@ -20,20 +20,20 @@
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from "./AgentBackend.interface";
-import { AgentPermissions } from "./AgentPermissions";
-import type { AgentEvent, PermissionDecision } from "./AgentEvents.interface";
+import type { AgentBackend } from './AgentBackend.interface';
+import { AgentPermissions } from './AgentPermissions';
+import type { AgentEvent, PermissionDecision } from './AgentEvents.interface';
 import {
   CodexAppServerMapping,
   type ApprovalDescriptor,
   type MappingTurnState,
-} from "./CodexAppServerMapping";
-import { Files } from "../system/Files";
-import { Processes, type SpawnedProcess } from "../system/Processes";
+} from './CodexAppServerMapping';
+import { Files } from '../system/Files';
+import { Processes, type SpawnedProcess } from '../system/Processes';
 import {
   AgentTerminalTools,
   type AgentTerminalToolPort,
-} from "./AgentTerminalTools";
+} from './AgentTerminalTools';
 
 class $CodexAppServerBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
@@ -49,7 +49,7 @@ class $CodexAppServerBackend implements AgentBackend {
   protected interrupting = false;
   protected disposed = false;
   protected permissionRequestCounter = 0;
-  protected stderrTail = "";
+  protected stderrTail = '';
 
   constructor(protected readonly options: CodexAppServerOptions) {}
 
@@ -59,8 +59,8 @@ class $CodexAppServerBackend implements AgentBackend {
     this.interrupting = false;
     this.turnState = CodexAppServerMapping.Class.createTurnState();
     void this.runTurn(prompt).catch((error) => {
-      this.emit({ kind: "error", message: String(error) });
-      this.emit({ kind: "session-end", reason: "error" });
+      this.emit({ kind: 'error', message: String(error) });
+      this.emit({ kind: 'session-end', reason: 'error' });
       this.turnInFlight = false;
     });
   }
@@ -71,14 +71,14 @@ class $CodexAppServerBackend implements AgentBackend {
       this.options.skipPermissions,
     );
     await this.ensureThread(bypass);
-    await this.request("turn/start", {
+    await this.request('turn/start', {
       threadId: this.threadId,
-      input: [{ type: "text", text: prompt }],
-      approvalPolicy: bypass ? "never" : "on-request",
+      input: [{ type: 'text', text: prompt }],
+      approvalPolicy: bypass ? 'never' : 'on-request',
       // SandboxPolicy is a TYPE-tagged union in the v2 dialect ({type: 'dangerFullAccess'|'workspaceWrite'}).
       sandboxPolicy: bypass
-        ? { type: "dangerFullAccess" }
-        : { type: "workspaceWrite" },
+        ? { type: 'dangerFullAccess' }
+        : { type: 'workspaceWrite' },
     });
     // The turn's events (deltas, items, completion) now arrive as notifications; session-end is
     // emitted by the mapping when turn/completed lands. Nothing further to await here.
@@ -89,15 +89,15 @@ class $CodexAppServerBackend implements AgentBackend {
     if (this.child && this.threadId) return;
     if (!this.child) {
       const child = Processes.Class.spawn(
-        [this.options.codexPath, "app-server"],
+        [this.options.codexPath, 'app-server'],
         {
           cwd: this.options.cwd
             ? Files.Class.absolute(this.options.cwd)
             : undefined,
           detached: true,
-          stdout: "pipe",
-          stderr: "pipe",
-          stdin: "pipe",
+          stdout: 'pipe',
+          stderr: 'pipe',
+          stdin: 'pipe',
         },
       );
       this.child = child;
@@ -119,25 +119,29 @@ class $CodexAppServerBackend implements AgentBackend {
         if (this.turnInFlight) {
           if (!this.interrupting) {
             this.emit({
-              kind: "error",
+              kind: 'error',
               message:
                 this.stderrTail.trim().slice(-400) ||
                 `codex app-server exited (${exitCode})`,
             });
           }
           this.emit({
-            kind: "session-end",
-            reason: this.interrupting ? "interrupted" : "error",
+            kind: 'session-end',
+            reason: this.interrupting ? 'interrupted' : 'error',
           });
           this.turnInFlight = false;
         }
       });
-      await this.request("initialize", {
-        clientInfo: { name: "invar", title: "Invar", version: "0.1.0" },
+      await this.request('initialize', {
+        clientInfo: { name: 'invar', title: 'Invar', version: '0.1.0' },
+        // codex-cli >= 0.145.0 gates thread/start.dynamicTools behind this capability (probed
+        // 2026-07-25 against 0.145.0: identical thread/start is rejected -32600 without it and
+        // succeeds with it). Declaring it is inert for older servers.
+        capabilities: { experimentalApi: true },
       });
     }
     if (!this.threadId) {
-      const started = (await this.request("thread/start", {
+      const started = (await this.request('thread/start', {
         // ABSOLUTE path always: the app-server resolves a relative cwd against ITS OWN process cwd,
         // not ours — a workspace opened as '.' would silently anchor the thread elsewhere.
         ...(this.options.cwd
@@ -150,7 +154,7 @@ class $CodexAppServerBackend implements AgentBackend {
                 bypassPermissions,
                 this.options.terminalTools,
               ).map((definition) => ({
-                type: "function",
+                type: 'function',
                 name: definition.name,
                 description: definition.description,
                 inputSchema: definition.inputSchema,
@@ -161,7 +165,7 @@ class $CodexAppServerBackend implements AgentBackend {
       })) as { thread?: { id?: string } };
       this.threadId = started?.thread?.id ?? null;
       if (!this.threadId)
-        throw new Error("codex app-server returned no thread id");
+        throw new Error('codex app-server returned no thread id');
     }
   }
 
@@ -172,9 +176,9 @@ class $CodexAppServerBackend implements AgentBackend {
       write?: (data: string) => unknown;
       flush?: () => unknown;
     } | null;
-    if (!sink || typeof sink.write !== "function") return;
+    if (!sink || typeof sink.write !== 'function') return;
     try {
-      sink.write(JSON.stringify(payload) + "\n");
+      sink.write(JSON.stringify(payload) + '\n');
       sink.flush?.();
     } catch {
       /* the exit handler surfaces a dead server */
@@ -183,7 +187,7 @@ class $CodexAppServerBackend implements AgentBackend {
 
   protected request(method: string, params: unknown): Promise<unknown> {
     const id = this.nextRequestId++;
-    this.write({ jsonrpc: "2.0", id, method, params });
+    this.write({ jsonrpc: '2.0', id, method, params });
     return new Promise((resolve, reject) =>
       this.pendingRequests.set(id, { resolve, reject, method }),
     );
@@ -191,12 +195,12 @@ class $CodexAppServerBackend implements AgentBackend {
 
   protected async pumpStdout(child: CodexAppServerProcess): Promise<void> {
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buffer = '';
     try {
       for await (const chunk of child.stdout as AsyncIterable<Uint8Array>) {
         buffer += decoder.decode(chunk, { stream: true });
         let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
           this.consumeLine(buffer.slice(0, newlineIndex));
           buffer = buffer.slice(newlineIndex + 1);
         }
@@ -234,8 +238,8 @@ class $CodexAppServerBackend implements AgentBackend {
     // answer: an unanswered request leaves the server hanging to its timeout (the reviewed
     // permissions-request hang); unknown methods get a proper JSON-RPC method-not-found error, which the
     // server handles like any refused capability.
-    if (id !== undefined && typeof message.method === "string") {
-      if (message.method === "item/tool/call") {
+    if (id !== undefined && typeof message.method === 'string') {
+      if (message.method === 'item/tool/call') {
         void this.respondToDynamicToolCall(
           id as number | string,
           message.params,
@@ -249,7 +253,7 @@ class $CodexAppServerBackend implements AgentBackend {
       if (approval) this.emitPermissionRequest(id as number | string, approval);
       else
         this.write({
-          jsonrpc: "2.0",
+          jsonrpc: '2.0',
           id,
           error: {
             code: -32601,
@@ -259,12 +263,12 @@ class $CodexAppServerBackend implements AgentBackend {
       return;
     }
     // A notification — map through the pure seam.
-    if (typeof message.method === "string") {
+    if (typeof message.method === 'string') {
       for (const event of CodexAppServerMapping.Class.mapNotification(
         { method: message.method, params: message.params },
         this.turnState,
       )) {
-        if (event.kind === "session-end") this.turnInFlight = false;
+        if (event.kind === 'session-end') this.turnInFlight = false;
         this.emit(event);
       }
     }
@@ -280,7 +284,7 @@ class $CodexAppServerBackend implements AgentBackend {
     this.permissionRequestCounter += 1;
     let settled = false;
     this.emit({
-      kind: "permission-request",
+      kind: 'permission-request',
       id: `codex-permission-${this.permissionRequestCounter}`,
       toolName: approval.toolName,
       input: approval.input,
@@ -288,7 +292,7 @@ class $CodexAppServerBackend implements AgentBackend {
         if (settled || this.disposed) return;
         settled = true;
         this.write({
-          jsonrpc: "2.0",
+          jsonrpc: '2.0',
           id: rpcId,
           result: approval.respondWith(decision),
         });
@@ -315,10 +319,10 @@ class $CodexAppServerBackend implements AgentBackend {
     parameters: unknown,
   ): Promise<void> {
     const record =
-      typeof parameters === "object" && parameters !== null
+      typeof parameters === 'object' && parameters !== null
         ? (parameters as Record<string, unknown>)
         : {};
-    const toolName = typeof record.tool === "string" ? record.tool : "";
+    const toolName = typeof record.tool === 'string' ? record.tool : '';
     const terminalTools = this.options.terminalTools;
     const definition = terminalTools
       ? AgentTerminalTools.Class.definitionFor(
@@ -329,13 +333,13 @@ class $CodexAppServerBackend implements AgentBackend {
       : null;
     if (!definition) {
       this.write({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: rpcId,
         result: {
           contentItems: [
             {
-              type: "inputText",
-              text: `${toolName || "The requested tool"} is unavailable in the current permission mode.`,
+              type: 'inputText',
+              text: `${toolName || 'The requested tool'} is unavailable in the current permission mode.`,
             },
           ],
           success: false,
@@ -346,19 +350,19 @@ class $CodexAppServerBackend implements AgentBackend {
     try {
       const result = await definition.invoke(record.arguments);
       this.write({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: rpcId,
         result: {
-          contentItems: [{ type: "inputText", text: result }],
+          contentItems: [{ type: 'inputText', text: result }],
           success: true,
         },
       });
     } catch (error) {
       this.write({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: rpcId,
         result: {
-          contentItems: [{ type: "inputText", text: String(error) }],
+          contentItems: [{ type: 'inputText', text: String(error) }],
           success: false,
         },
       });
@@ -377,7 +381,7 @@ class $CodexAppServerBackend implements AgentBackend {
     if (this.child) this.terminateChild(this.child);
     else {
       this.turnInFlight = false;
-      this.emit({ kind: "session-end", reason: "interrupted" });
+      this.emit({ kind: 'session-end', reason: 'interrupted' });
     }
   }
 
@@ -390,9 +394,9 @@ class $CodexAppServerBackend implements AgentBackend {
   }
 
   protected terminateChild(child: CodexAppServerProcess): void {
-    if (process.platform !== "win32" && child.pid) {
+    if (process.platform !== 'win32' && child.pid) {
       try {
-        process.kill(-child.pid, "SIGTERM");
+        process.kill(-child.pid, 'SIGTERM');
         return;
       } catch {
         /* the child may already have exited; the direct handle is the fallback */
@@ -426,4 +430,4 @@ interface PendingRequest {
   method: string;
 }
 
-type CodexAppServerProcess = SpawnedProcess<"pipe", "pipe", "pipe">;
+type CodexAppServerProcess = SpawnedProcess<'pipe', 'pipe', 'pipe'>;
