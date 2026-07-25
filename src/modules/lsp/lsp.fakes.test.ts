@@ -16,17 +16,17 @@ import type {
 export type ServerResponder = (params: unknown) => unknown;
 
 export class FakeLspProcess implements LspProcessLike {
-  private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
-  private _stdout: ReadableStream<Uint8Array> | null = null;
-  private _stdin: LspWritable | null = null;
-  private readonly decoder = new JsonRpc.Class();
-  private readonly encoder = new JsonRpc.Class();
-  private exitResolve!: (code: number) => void;
-  private readonly _exited: Promise<number>;
-  private _running = false;
-  private readonly _pid: number;
-  private readonly seen = new Set<string>();
-  private readonly waiters = new Map<string, Array<() => void>>();
+  protected controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  protected _stdout: ReadableStream<Uint8Array> | null = null;
+  protected _stdin: LspWritable | null = null;
+  protected readonly decoder = new JsonRpc.Class();
+  protected readonly encoder = new JsonRpc.Class();
+  protected exitResolve!: (code: number) => void;
+  protected readonly _exited: Promise<number>;
+  protected _running = false;
+  protected readonly _pid: number;
+  protected readonly seen = new Set<string>();
+  protected readonly waiters = new Map<string, Array<() => void>>();
 
   startCalled = false;
   disposed = false;
@@ -116,7 +116,7 @@ export class FakeLspProcess implements LspProcessLike {
     });
   }
 
-  private handleClient(data: Uint8Array): void {
+  protected handleClient(data: Uint8Array): void {
     for (const message of this.decoder.push(data)) {
       this.received.push(message);
       const method = 'method' in message ? message.method : null;
@@ -135,7 +135,7 @@ export class FakeLspProcess implements LspProcessLike {
     }
   }
 
-  private markSeen(method: string): void {
+  protected markSeen(method: string): void {
     this.seen.add(method);
     const list = this.waiters.get(method);
     if (list) {
@@ -144,7 +144,7 @@ export class FakeLspProcess implements LspProcessLike {
     }
   }
 
-  private enqueue(message: JsonRpcMessage): void {
+  protected enqueue(message: JsonRpcMessage): void {
     if (!this.controller) return;
     this.controller.enqueue(this.encoder.encode(message));
   }

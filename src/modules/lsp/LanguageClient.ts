@@ -13,132 +13,59 @@ import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
 
-export type TextDocumentModel = InstanceType<typeof TextDocument.Class>;
-export type LanguageClientStatus =
-  | 'idle'
-  | 'starting'
-  | 'ready'
-  | 'unavailable'
-  | 'error'
-  | 'disposed';
-
-export interface TextPosition {
-  line: number;
-  column: number;
-}
-
-export interface TextRange {
-  start: TextPosition;
-  end: TextPosition;
-}
-
-export interface LanguageLocation {
-  uri: string;
-  range: TextRange;
-}
-
-export interface LanguageHover {
-  contents: string;
-  range: TextRange | null;
-}
-
-export interface LanguageDiagnostic {
-  source: string;
-  severity: 1 | 2 | 3 | 4;
-  message: string;
-  code: string | number | null;
-  range: TextRange;
-  version: number;
-}
-
-export interface LanguageClientOptions {
-  rootPath?: string;
-  providers?: readonly LanguageProvider[];
-  processFactory?: () => LspProcessLike;
-  transportFactory?: (process: LspProcessLike) => LspTransport.Model;
-  maxDiagnosticsPerDocument?: number;
-  maxReferencesPerRequest?: number;
-  /** Late-read of the `typescriptServer` setting, threaded to the default TypeScript provider so the
-   *  chosen server (or 'auto') is honoured when a document activates. */
-  preferredTypeScriptServer?: () => string;
-  /** Late-read of the `lspFileSizeLimitKb` setting (KB; default 2048 = 2 MB). A document whose text exceeds this budget is
-   *  NEVER attached to the server (no `didOpen`/`didChange`), so the server can't balloon on a huge
-   *  file and crash the app. `0` (or any non-positive) means "no limit — always attach". Read late so a
-   *  live settings change is honoured on the next open/sync. */
-  fileSizeLimitKb?: () => number;
-}
-
-interface OpenDocument {
-  document: TextDocumentModel;
-  uri: string;
-  languageId: string;
-  opened: boolean;
-  lastSentVersion: number | null;
-  sending: Promise<void>;
-}
-
-interface DiagnosticBatch {
-  version: number;
-  items: readonly LanguageDiagnostic[];
-}
-
-interface LspPosition {
-  line: number;
-  character: number;
-}
-
-interface LspRange {
-  start: LspPosition;
-  end: LspPosition;
-}
-
-const NO_CAPABILITIES: LanguageCapabilities = {
-  diagnostics: false,
-  definition: false,
-  hover: false,
-  references: false,
-};
-
-/** Pull-diagnostics debounce windows. A freshly opened document pulls almost immediately (off the
- *  sync microtask); rapid typing coalesces to one pull ~350ms after the last keystroke. */
-const DIAGNOSTIC_PULL_OPEN_DELAY_MILLISECONDS = 50;
-const DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS = 350;
-
-interface DocumentDiagnosticReport {
-  kind: 'full' | 'unchanged';
-  resultId: string | null;
-  items: readonly unknown[];
-}
-
 class $LanguageClient {
-  private readonly rootPath: string;
-  private readonly providers: readonly LanguageProvider[];
-  private readonly processFactory: (() => LspProcessLike) | null;
-  private readonly transportFactory:
+  protected static get $noCapabilities(): LanguageCapabilities {
+    const noCapabilities: LanguageCapabilities = Object.freeze({
+      diagnostics: false,
+      definition: false,
+      hover: false,
+      references: false,
+    });
+    Object.defineProperty(this, '$noCapabilities', {
+      configurable: true,
+      value: noCapabilities,
+    });
+    return noCapabilities;
+  }
+
+  /** Pull-diagnostics debounce windows. A freshly opened document pulls almost immediately (off the
+   *  sync microtask); rapid typing coalesces to one pull ~350ms after the last keystroke. */
+  protected static get diagnosticPullOpenDelayMilliseconds(): number {
+    return 50;
+  }
+
+  protected static get diagnosticPullChangeDelayMilliseconds(): number {
+    return 350;
+  }
+
+  protected readonly rootPath: string;
+  protected readonly providers: readonly LanguageProvider[];
+  protected readonly processFactory: (() => LspProcessLike) | null;
+  protected readonly transportFactory:
     | ((process: LspProcessLike) => LspTransport.Model)
     | null;
-  private readonly maxDiagnosticsPerDocument: number;
-  private readonly maxReferencesPerRequest: number;
-  private readonly preferredTypeScriptServer: (() => string) | undefined;
-  private readonly fileSizeLimitKb: (() => number) | undefined;
+  protected readonly maxDiagnosticsPerDocument: number;
+  protected readonly maxReferencesPerRequest: number;
+  protected readonly preferredTypeScriptServer: (() => string) | undefined;
+  protected readonly fileSizeLimitKb: (() => number) | undefined;
   /** URIs of documents currently suppressed for exceeding the size budget — the set the size notice
    *  reads to prove the suppression is never a silent no-op. */
-  private readonly sizeSuppressedUris = new Set<string>();
-  private readonly documents = new Map<string, OpenDocument>();
-  private readonly diagnosticBatches = new Map<string, DiagnosticBatch>();
+  protected readonly sizeSuppressedUris = new Set<string>();
+  protected readonly documents = new Map<string, OpenDocument>();
+  protected readonly diagnosticBatches = new Map<string, DiagnosticBatch>();
   /** Last `resultId` per URI for pull diagnostics — echoed back as `previousResultId` so the server
    *  may answer with an `unchanged` report instead of recomputing. */
-  private readonly diagnosticResultIds = new Map<string, string>();
+  protected readonly diagnosticResultIds = new Map<string, string>();
   /** Per-URI debounce timers for pull diagnostics — the active pull scheduled for each document. */
-  private readonly diagnosticPullTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private process: LspProcessLike | null = null;
-  private transport: LspTransport.Model | null = null;
-  private provider: LanguageProvider | null = null;
-  private serverCapabilities: Record<string, unknown> = {};
-  private startPromise: Promise<boolean> | null = null;
-  private activationGeneration = 0;
-  private disposed = false;
-  private publishedPid: number | null = null;
+  protected readonly diagnosticPullTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  protected process: LspProcessLike | null = null;
+  protected transport: LspTransport.Model | null = null;
+  protected provider: LanguageProvider | null = null;
+  protected serverCapabilities: Record<string, unknown> = {};
+  protected startPromise: Promise<boolean> | null = null;
+  protected activationGeneration = 0;
+  protected disposed = false;
+  protected publishedPid: number | null = null;
 
   constructor(options: LanguageClientOptions = {}) {
     this.rootPath = options.rootPath ?? this.defaultRootPath();
@@ -150,6 +77,26 @@ class $LanguageClient {
     this.transportFactory = options.transportFactory ?? null;
     this.maxDiagnosticsPerDocument = Math.max(1, options.maxDiagnosticsPerDocument ?? 10_000);
     this.maxReferencesPerRequest = Math.max(1, options.maxReferencesPerRequest ?? 5_000);
+  }
+
+  protected get EditorCoordinates() {
+    return EditorCoordinates.Class;
+  }
+
+  protected get Environment() {
+    return Environment.Class;
+  }
+
+  protected get Files() {
+    return Files.Class;
+  }
+
+  protected get Logging() {
+    return Logging.Class;
+  }
+
+  protected get StatusChannel() {
+    return StatusChannel.Class;
   }
 
   get status() {
@@ -181,7 +128,7 @@ class $LanguageClient {
   }
 
   protected defaultRootPath(): string {
-    return Environment.Class.cwd;
+    return this.Environment.cwd;
   }
 
   protected createProviders(): readonly LanguageProvider[] {
@@ -206,21 +153,21 @@ class $LanguageClient {
   }
 
   /** The current size budget in KB (`0` = no limit). Read late so a live settings change applies. */
-  private currentFileSizeLimitKb(): number {
+  protected currentFileSizeLimitKb(): number {
     const limit = this.fileSizeLimitKb?.() ?? 0;
     return Number.isFinite(limit) && limit > 0 ? limit : 0;
   }
 
   /** True when `document`'s text is larger than the configured budget (and a budget is set). Uses
    *  `text.length / 1024` — the same cheap measure the server would otherwise ingest whole. */
-  private documentExceedsSizeLimit(document: TextDocumentModel): boolean {
+  protected documentExceedsSizeLimit(document: TextDocumentModel): boolean {
     const limit = this.currentFileSizeLimitKb();
     return limit > 0 && document.text.length / 1024 > limit;
   }
 
   /** Recompute `document`'s suppression against the current budget, updating the tracked set and
    *  bumping the reactive signal on a change. Returns whether it is now suppressed. */
-  private refreshSizeSuppression(document: TextDocumentModel): boolean {
+  protected refreshSizeSuppression(document: TextDocumentModel): boolean {
     const uri = this.uriFor(document.path);
     const exceeds = this.documentExceedsSizeLimit(document);
     const wasSuppressed = this.sizeSuppressedUris.has(uri);
@@ -428,7 +375,7 @@ class $LanguageClient {
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
   }
 
-  private rememberDocument(document: TextDocumentModel): OpenDocument {
+  protected rememberDocument(document: TextDocumentModel): OpenDocument {
     const uri = this.uriFor(document.path);
     const existing = this.documents.get(uri);
     if (existing && existing.document === document) return existing;
@@ -444,7 +391,7 @@ class $LanguageClient {
     return state;
   }
 
-  private ensureStarted(path: string): Promise<boolean> {
+  protected ensureStarted(path: string): Promise<boolean> {
     if (this.disposed) return Promise.resolve(false);
     if (this.isReady && this.transport?.running) return Promise.resolve(true);
     if (this.startPromise) return this.startPromise;
@@ -463,7 +410,7 @@ class $LanguageClient {
    *
    * invariant: Server failures remain contained (src/modules/lsp/lsp.invariants.md)
    */
-  private async activate(path: string, generation: number): Promise<boolean> {
+  protected async activate(path: string, generation: number): Promise<boolean> {
     try {
       const selection = await this.resolveProvider(path);
       if (!selection || !this.isCurrent(generation)) {
@@ -501,7 +448,7 @@ class $LanguageClient {
         workspaceFolders: [
           {
             uri: pathToFileURL(resolvePath(this.rootPath)).href,
-            name: Files.Class.basename(this.rootPath) || this.rootPath,
+            name: this.Files.basename(this.rootPath) || this.rootPath,
           },
         ],
         capabilities: {
@@ -547,7 +494,7 @@ class $LanguageClient {
     }
   }
 
-  private async resolveProvider(path: string): Promise<{
+  protected async resolveProvider(path: string): Promise<{
     provider: LanguageProvider;
     command: Awaited<ReturnType<LanguageProvider['resolve']>> & {};
   } | null> {
@@ -563,12 +510,12 @@ class $LanguageClient {
     return null;
   }
 
-  private synchronize(state: OpenDocument): Promise<void> {
+  protected synchronize(state: OpenDocument): Promise<void> {
     state.sending = state.sending.then(() => this.sendLatestDocument(state));
     return state.sending;
   }
 
-  private async sendLatestDocument(state: OpenDocument): Promise<void> {
+  protected async sendLatestDocument(state: OpenDocument): Promise<void> {
     const transport = this.transport;
     if (!transport?.running || !this.provider?.supportsPath(state.document.path)) return;
     // The single choke point where a document's text actually reaches the server. Never send a
@@ -589,7 +536,11 @@ class $LanguageClient {
       });
       state.opened = true;
       state.lastSentVersion = version;
-      this.scheduleDiagnosticPull(state, DIAGNOSTIC_PULL_OPEN_DELAY_MILLISECONDS);
+      const languageClientClass = this.constructor as typeof $LanguageClient;
+      this.scheduleDiagnosticPull(
+        state,
+        languageClientClass.diagnosticPullOpenDelayMilliseconds,
+      );
       return;
     }
     await transport.notify('textDocument/didChange', {
@@ -597,10 +548,14 @@ class $LanguageClient {
       contentChanges: [{ text: state.document.text }],
     });
     state.lastSentVersion = version;
-    this.scheduleDiagnosticPull(state, DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS);
+    const languageClientClass = this.constructor as typeof $LanguageClient;
+    this.scheduleDiagnosticPull(
+      state,
+      languageClientClass.diagnosticPullChangeDelayMilliseconds,
+    );
   }
 
-  private async transportFor(
+  protected async transportFor(
     document: TextDocumentModel,
     requestRevision: number,
   ): Promise<LspTransport.Model | null> {
@@ -618,11 +573,11 @@ class $LanguageClient {
     return this.transport?.running ? this.transport : null;
   }
 
-  private handleNotification(method: string, params: unknown): void {
+  protected handleNotification(method: string, params: unknown): void {
     if (method === 'textDocument/publishDiagnostics') this.applyDiagnostics(params);
   }
 
-  private handleServerRequest(method: string, params: unknown): unknown {
+  protected handleServerRequest(method: string, params: unknown): unknown {
     if (method === 'workspace/configuration') {
       const items = this.objectValue(params)?.items;
       return Array.isArray(items) ? items.map(() => null) : [];
@@ -631,7 +586,7 @@ class $LanguageClient {
       return [
         {
           uri: pathToFileURL(resolvePath(this.rootPath)).href,
-          name: Files.Class.basename(this.rootPath) || this.rootPath,
+          name: this.Files.basename(this.rootPath) || this.rootPath,
         },
       ];
     }
@@ -653,7 +608,7 @@ class $LanguageClient {
    *
    * invariant: Diagnostic updates match current revisions (src/modules/lsp/lsp.invariants.md)
    */
-  private applyDiagnostics(params: unknown): void {
+  protected applyDiagnostics(params: unknown): void {
     const value = this.objectValue(params);
     const uri = typeof value?.uri === 'string' ? value.uri : null;
     if (!uri || !Array.isArray(value?.diagnostics)) return;
@@ -678,7 +633,7 @@ class $LanguageClient {
    * invariant: Diagnostics reach the store by push or pull (src/modules/lsp/lsp.invariants.md)
    * invariant: Server failures remain contained (src/modules/lsp/lsp.invariants.md)
    */
-  private async pullDiagnostics(state: OpenDocument): Promise<void> {
+  protected async pullDiagnostics(state: OpenDocument): Promise<void> {
     const transport = this.transport;
     if (!transport?.running || !this.serverPullsDiagnostics) return;
     if (!state.opened || !this.provider?.supportsPath(state.document.path)) return;
@@ -704,7 +659,7 @@ class $LanguageClient {
   /** Parse a `DocumentDiagnosticReport`. A `full` report REPLACES the stored batch (so a report
    *  that no longer lists a prior error clears it); an `unchanged` report keeps the current batch
    *  and only refreshes the `resultId`. */
-  private ingestDiagnosticReport(uri: string, version: number, report: unknown): void {
+  protected ingestDiagnosticReport(uri: string, version: number, report: unknown): void {
     const parsed = this.parseDiagnosticReport(report);
     if (!parsed) return;
     if (parsed.resultId) this.diagnosticResultIds.set(uri, parsed.resultId);
@@ -713,7 +668,7 @@ class $LanguageClient {
     this.storeDiagnostics(uri, version, parsed.items);
   }
 
-  private parseDiagnosticReport(report: unknown): DocumentDiagnosticReport | null {
+  protected parseDiagnosticReport(report: unknown): DocumentDiagnosticReport | null {
     const value = this.objectValue(report);
     if (!value) return null;
     const kind = value.kind === 'unchanged' ? 'unchanged' : 'full';
@@ -731,7 +686,7 @@ class $LanguageClient {
    * invariant: Diagnostic storage stays compact and bounded (src/modules/lsp/lsp.invariants.md)
    * invariant: Diagnostics reach the store by push or pull (src/modules/lsp/lsp.invariants.md)
    */
-  private storeDiagnostics(uri: string, version: number, rawDiagnostics: readonly unknown[]): void {
+  protected storeDiagnostics(uri: string, version: number, rawDiagnostics: readonly unknown[]): void {
     const state = this.documents.get(uri);
     if (!state || !state.opened) return;
     if (state.document.revision.value !== version || state.lastSentVersion !== version) return;
@@ -747,13 +702,13 @@ class $LanguageClient {
 
   /** True when the server advertised a pull-model `diagnosticProvider` on initialize (tsgo does;
    *  typescript-language-server does not — it pushes). Only then is `textDocument/diagnostic` sent. */
-  private get serverPullsDiagnostics(): boolean {
+  protected get serverPullsDiagnostics(): boolean {
     return Boolean(this.serverCapabilities.diagnosticProvider);
   }
 
   /** Debounce a pull for `state`, collapsing rapid edits into one `textDocument/diagnostic`. No-op
    *  for push-model servers, so the debounce/timer machinery never runs under typescript-language-server. */
-  private scheduleDiagnosticPull(state: OpenDocument, delayMilliseconds: number): void {
+  protected scheduleDiagnosticPull(state: OpenDocument, delayMilliseconds: number): void {
     if (this.disposed || !this.serverPullsDiagnostics) return;
     const existing = this.diagnosticPullTimers.get(state.uri);
     if (existing) clearTimeout(existing);
@@ -764,7 +719,7 @@ class $LanguageClient {
     this.diagnosticPullTimers.set(state.uri, timer);
   }
 
-  private cancelDiagnosticPull(uri: string): void {
+  protected cancelDiagnosticPull(uri: string): void {
     const timer = this.diagnosticPullTimers.get(uri);
     if (timer) {
       clearTimeout(timer);
@@ -773,14 +728,20 @@ class $LanguageClient {
   }
 
   /** Re-pull every open, supported document — the response to `workspace/diagnostic/refresh`. */
-  private refreshAllPulledDiagnostics(): void {
+  protected refreshAllPulledDiagnostics(): void {
     if (!this.serverPullsDiagnostics) return;
+    const languageClientClass = this.constructor as typeof $LanguageClient;
     for (const state of this.documents.values()) {
-      if (state.opened) this.scheduleDiagnosticPull(state, DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS);
+      if (state.opened) {
+        this.scheduleDiagnosticPull(
+          state,
+          languageClientClass.diagnosticPullChangeDelayMilliseconds,
+        );
+      }
     }
   }
 
-  private parseDiagnostic(value: unknown, uri: string, version: number): LanguageDiagnostic | null {
+  protected parseDiagnostic(value: unknown, uri: string, version: number): LanguageDiagnostic | null {
     const candidate = this.objectValue(value);
     const range = this.parseRange(candidate?.range, uri);
     if (!range || typeof candidate?.message !== 'string') return null;
@@ -798,7 +759,7 @@ class $LanguageClient {
     };
   }
 
-  private parseLocations(value: unknown): LanguageLocation[] {
+  protected parseLocations(value: unknown): LanguageLocation[] {
     const candidates = Array.isArray(value) ? value : value ? [value] : [];
     const locations: LanguageLocation[] = [];
     for (const candidateValue of candidates) {
@@ -815,7 +776,7 @@ class $LanguageClient {
     return locations;
   }
 
-  private parseHover(value: unknown, uri: string): LanguageHover | null {
+  protected parseHover(value: unknown, uri: string): LanguageHover | null {
     const candidate = this.objectValue(value);
     if (!candidate || !('contents' in candidate)) return null;
     const contents = this.hoverText(candidate.contents);
@@ -826,7 +787,7 @@ class $LanguageClient {
     };
   }
 
-  private hoverText(value: unknown): string {
+  protected hoverText(value: unknown): string {
     if (typeof value === 'string') return value;
     if (Array.isArray(value)) return value.map((item) => this.hoverText(item)).filter(Boolean).join('\n\n');
     const candidate = this.objectValue(value);
@@ -837,7 +798,7 @@ class $LanguageClient {
     return '';
   }
 
-  private parseRange(value: unknown, uri: string): TextRange | null {
+  protected parseRange(value: unknown, uri: string): TextRange | null {
     const candidate = this.objectValue(value);
     const start = this.parseLspPosition(candidate?.start);
     const end = this.parseLspPosition(candidate?.end);
@@ -848,7 +809,7 @@ class $LanguageClient {
     };
   }
 
-  private parseLspPosition(value: unknown): LspPosition | null {
+  protected parseLspPosition(value: unknown): LspPosition | null {
     const candidate = this.objectValue(value);
     if (typeof candidate?.line !== 'number' || typeof candidate?.character !== 'number') return null;
     return {
@@ -858,41 +819,50 @@ class $LanguageClient {
   }
 
   /** invariant: LSP positions cross through UTF-16 (src/modules/lsp/lsp.invariants.md) */
-  private toLspPosition(document: TextDocumentModel, position: TextPosition): LspPosition {
+  protected toLspPosition(document: TextDocumentModel, position: TextPosition): LspPosition {
     const line = Math.max(0, Math.min(Math.trunc(position.line), document.lineCount - 1));
     const text = document.line(line);
     const graphemeColumn = Math.max(0, Math.trunc(position.column));
-    return { line, character: EditorCoordinates.Class.graphemeToU16(text, graphemeColumn) };
+    return {
+      line,
+      character: this.EditorCoordinates.graphemeToU16(
+        text,
+        graphemeColumn,
+      ),
+    };
   }
 
-  private fromLspPosition(uri: string, position: LspPosition): TextPosition {
+  protected fromLspPosition(uri: string, position: LspPosition): TextPosition {
     const lineText = this.lineForUri(uri, position.line);
     const utf16Column = Math.max(0, Math.min(position.character, lineText.length));
     return {
       line: position.line,
-      column: EditorCoordinates.Class.u16ToGrapheme(lineText, utf16Column),
+      column: this.EditorCoordinates.u16ToGrapheme(
+        lineText,
+        utf16Column,
+      ),
     };
   }
 
-  private lineForUri(uri: string, line: number): string {
+  protected lineForUri(uri: string, line: number): string {
     const open = this.documents.get(uri);
     if (open) return open.document.line(line);
     try {
       const path = fileURLToPath(uri);
-      if (!Files.Class.exists(path)) return '';
-      return Files.Class.read(path).split(/\r?\n/)[line] ?? '';
+      if (!this.Files.exists(path)) return '';
+      return this.Files.read(path).split(/\r?\n/)[line] ?? '';
     } catch {
       return '';
     }
   }
 
-  private supports(capability: keyof LanguageCapabilities): boolean {
+  protected supports(capability: keyof LanguageCapabilities): boolean {
     if (this.provider) return this.provider.capabilities[capability];
     return this.providers.some((provider) => provider.capabilities[capability]);
   }
 
-  private languageIdFor(path: string): string {
-    switch (Files.Class.extname(path).toLowerCase()) {
+  protected languageIdFor(path: string): string {
+    switch (this.Files.extname(path).toLowerCase()) {
       case '.tsx':
         return 'typescriptreact';
       case '.jsx':
@@ -906,11 +876,11 @@ class $LanguageClient {
     }
   }
 
-  private uriFor(path: string): string {
+  protected uriFor(path: string): string {
     return pathToFileURL(resolvePath(path)).href;
   }
 
-  private handleTransportClose(
+  protected handleTransportClose(
     transport: LspTransport.Model,
     process: LspProcessLike,
     reason: Error,
@@ -924,20 +894,20 @@ class $LanguageClient {
     this.status.value = 'error';
     this.error.value = reason.message;
     this.activeProviderId.value = null;
-    Logging.Class.error(`LSP failed: ${reason.message}`);
+    this.Logging.error(`LSP failed: ${reason.message}`);
     this.publishStatus();
   }
 
-  private containFailure(reason: unknown): void {
+  protected containFailure(reason: unknown): void {
     if (this.disposed) return;
     const error = reason instanceof Error ? reason : new Error(String(reason));
     this.status.value = 'error';
     this.error.value = error.message;
-    Logging.Class.error(`LSP failed: ${error.message}`);
+    this.Logging.error(`LSP failed: ${error.message}`);
     this.publishStatus();
   }
 
-  private setUnavailable(message: string): void {
+  protected setUnavailable(message: string): void {
     this.startPromise = null;
     this.status.value = 'unavailable';
     this.error.value = message;
@@ -945,18 +915,18 @@ class $LanguageClient {
     this.publishStatus();
   }
 
-  private bumpDiagnostics(): void {
+  protected bumpDiagnostics(): void {
     this.diagnosticsRevision.value++;
     this.publishStatus();
   }
 
-  private publishStatus(): void {
-    const snapshot = StatusChannel.Class.snapshot;
+  protected publishStatus(): void {
+    const snapshot = this.StatusChannel.snapshot;
     const pids = snapshot.subprocessPids.filter((pid) => pid !== this.publishedPid);
     const currentPid = this.process?.pid ?? null;
     if (currentPid !== null && !pids.includes(currentPid)) pids.push(currentPid);
     this.publishedPid = currentPid;
-    StatusChannel.Class.update({
+    this.StatusChannel.update({
       lspStatus: this.status.value,
       lspProvider: this.activeProviderId.value,
       diagnosticsCount: this.diagnosticCount,
@@ -964,17 +934,17 @@ class $LanguageClient {
     });
   }
 
-  private isCurrent(generation: number): boolean {
+  protected isCurrent(generation: number): boolean {
     return !this.disposed && generation === this.activationGeneration;
   }
 
-  private objectValue(value: unknown): Record<string, unknown> | null {
+  protected objectValue(value: unknown): Record<string, unknown> | null {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : null;
   }
 
-  private async withTimeout<Result>(promise: Promise<Result>, milliseconds: number): Promise<Result> {
+  protected async withTimeout<Result>(promise: Promise<Result>, milliseconds: number): Promise<Result> {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const timeout = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => reject(new Error('LSP shutdown timed out')), milliseconds);
@@ -992,4 +962,89 @@ export namespace LanguageClient {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+export type TextDocumentModel = InstanceType<typeof TextDocument.Class>;
+export type LanguageClientStatus =
+  | 'idle'
+  | 'starting'
+  | 'ready'
+  | 'unavailable'
+  | 'error'
+  | 'disposed';
+
+export interface TextPosition {
+  line: number;
+  column: number;
+}
+
+export interface TextRange {
+  start: TextPosition;
+  end: TextPosition;
+}
+
+export interface LanguageLocation {
+  uri: string;
+  range: TextRange;
+}
+
+export interface LanguageHover {
+  contents: string;
+  range: TextRange | null;
+}
+
+export interface LanguageDiagnostic {
+  source: string;
+  severity: 1 | 2 | 3 | 4;
+  message: string;
+  code: string | number | null;
+  range: TextRange;
+  version: number;
+}
+
+export interface LanguageClientOptions {
+  rootPath?: string;
+  providers?: readonly LanguageProvider[];
+  processFactory?: () => LspProcessLike;
+  transportFactory?: (process: LspProcessLike) => LspTransport.Model;
+  maxDiagnosticsPerDocument?: number;
+  maxReferencesPerRequest?: number;
+  /** Late-read of the `typescriptServer` setting, threaded to the default TypeScript provider so the
+   *  chosen server (or 'auto') is honoured when a document activates. */
+  preferredTypeScriptServer?: () => string;
+  /** Late-read of the `lspFileSizeLimitKb` setting (KB; default 2048 = 2 MB). A document whose text exceeds this budget is
+   *  NEVER attached to the server (no `didOpen`/`didChange`), so the server can't balloon on a huge
+   *  file and crash the app. `0` (or any non-positive) means "no limit — always attach". Read late so a
+   *  live settings change is honoured on the next open/sync. */
+  fileSizeLimitKb?: () => number;
+}
+
+interface OpenDocument {
+  document: TextDocumentModel;
+  uri: string;
+  languageId: string;
+  opened: boolean;
+  lastSentVersion: number | null;
+  sending: Promise<void>;
+}
+
+interface DiagnosticBatch {
+  version: number;
+  items: readonly LanguageDiagnostic[];
+}
+
+interface LspPosition {
+  line: number;
+  character: number;
+}
+
+interface LspRange {
+  start: LspPosition;
+  end: LspPosition;
+}
+
+interface DocumentDiagnosticReport {
+  kind: 'full' | 'unchanged';
+  resultId: string | null;
+  items: readonly unknown[];
 }
