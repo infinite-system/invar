@@ -489,14 +489,17 @@ async function assertSplitterStates(
   const settledSplitterStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    `${splitterName} splitter publishes its settled geometry after release`,
+    `${splitterName} splitter publishes its settled geometry and parked pointer after release`,
     (status) => {
       try {
-        return changed(
-          initialRegion,
-          splitterRegion(status, splitterName),
-          status,
-        );
+        const mouse = status.mouse as { x?: number; y?: number } | null;
+        return mouse?.x === 1
+          && mouse.y === 1
+          && changed(
+            initialRegion,
+            splitterRegion(status, splitterName),
+            status,
+          );
       } catch {
         return false;
       }
@@ -505,7 +508,8 @@ async function assertSplitterStates(
   const settledSplitterPoint = splitterPoint(
     splitterRegion(settledSplitterStatus, splitterName),
   );
-  await driver.awaitSnapshot(
+  await driver.awaitGridCondition(
+    `${splitterName} splitter paints its muted rest background after release`,
     (snapshot) => backgroundAt(snapshot, settledSplitterPoint) === restingBackground,
   );
   HarnessSmoke.Class.pass(`${splitterName} splitter returns to its muted rest role`);
