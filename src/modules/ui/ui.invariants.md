@@ -538,6 +538,42 @@ scripts/smoke-voice-picker.sh`
 
 **Last refined:** 2026-07-25
 
+### Modal outside presses dismiss and consume
+
+**Invariant:** If a modal overlay is open and a pointer press starts outside its current rectangle,
+then that press dismisses the overlay through its existing close or cancel model method and is
+consumed without changing the pane beneath it; a press or drag that starts inside remains owned by
+the overlay.
+
+**Scope:** Settings, Keyboard Shortcuts, Command Palette, Quick Open, destructive confirmations,
+context menus, and every `BoundedListPopup` opened with its modal backdrop, including the buffer,
+branch, layouts, and panel-add adapters. The in-editor Find bar and the completion popup are
+non-modal and outside this rule.
+
+**Mechanism:** `ModalOverlayDismissal` places one full-screen hit backdrop immediately below the
+dialog and its shared `OverlayCloseButton` immediately above it. The dialog wins hit-testing for
+inside presses, while only an outside press reaches the backdrop; OpenTUI keeps an inside-started
+drag captured by its original target. The backdrop and close button receive the same close or cancel
+callback that Escape invokes.
+
+**Generates:** One dismissal projection for modal dialogs and bounded popups; one-click dismissal
+without cursor, focus, pane, or button changes beneath it; scrollbar drags that may leave a dialog
+without closing it.
+
+**Evidence:** `src/modules/ui/ModalOverlayDismissal.ts`; `src/modules/ui/OverlayLayer.ts`;
+`src/modules/ui/BoundedListPopup.ts`; `scripts/harness/smoke-overlay-dialog-harness.ts`.
+
+**Impossible if true:** One press both dismissing a modal and moving the editor cursor or pane focus;
+an outside press leaving a listed modal open; an inside scrollbar drag closing the modal after the
+pointer crosses its rectangle; the non-modal completion popup gaining a modal backdrop.
+
+**Verification:** `bun test src/modules/ui/ModalOverlayDismissal.test.ts
+src/modules/ui/BoundedListPopup.test.ts && bun scripts/harness/smoke-overlay-dialog-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### The shortcut sheet lists the effective bindings
 
 **Invariant:** If the shortcut cheat-sheet shows a chord for an action, then that chord is the

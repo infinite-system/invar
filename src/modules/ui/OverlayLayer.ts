@@ -38,6 +38,7 @@ import {
   type OverlayDialogGeometryResult,
 } from './OverlayDialogGeometry';
 import { OverlayCloseButton } from './OverlayCloseButton';
+import { ModalOverlayDismissal } from './ModalOverlayDismissal';
 import {
   ScrollableTextViewport,
   type ViewportExtent,
@@ -62,28 +63,26 @@ class $OverlayLayer {
   protected readonly commandPalette: BoxRenderable;
   protected readonly commandPaletteInput: TextRenderable;
   protected readonly commandPaletteList: TextRenderable;
-  protected readonly commandPaletteCloseButton: OverlayCloseButton.Model;
+  protected readonly commandPaletteDismissal: ModalOverlayDismissal.Model;
   protected readonly findBarBox: BoxRenderable;
   protected readonly findBarText: TextRenderable;
   protected readonly findBarCloseButton: OverlayCloseButton.Model;
   protected readonly quickOpenBox: BoxRenderable;
   protected readonly quickOpenInput: TextRenderable;
   protected readonly quickOpenList: TextRenderable;
-  protected readonly quickOpenCloseButton: OverlayCloseButton.Model;
+  protected readonly quickOpenDismissal: ModalOverlayDismissal.Model;
   protected readonly confirmBox: BoxRenderable;
   protected readonly confirmText: TextRenderable;
-  protected readonly confirmCloseButton: OverlayCloseButton.Model;
+  protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
   protected readonly settingsBox: BoxRenderable;
   protected readonly settingsText: TextRenderable;
-  protected readonly settingsCloseButton: OverlayCloseButton.Model;
-  protected readonly shortcutHelpBackdrop: BoxRenderable;
+  protected readonly settingsDismissal: ModalOverlayDismissal.Model;
   protected readonly shortcutHelpBox: BoxRenderable;
   protected readonly shortcutHelpText: TextRenderable;
-  protected readonly shortcutHelpCloseButton: OverlayCloseButton.Model;
-  protected readonly contextMenuBackdrop: BoxRenderable;
+  protected readonly shortcutHelpDismissal: ModalOverlayDismissal.Model;
   protected readonly contextMenuBox: BoxRenderable;
   protected readonly contextMenuList: TextRenderable;
-  protected readonly contextMenuCloseButton: OverlayCloseButton.Model;
+  protected readonly contextMenuDismissal: ModalOverlayDismissal.Model;
   protected readonly tooltipText: HitTransparentText.Model;
   protected readonly commandPaletteViewport: ScrollableTextViewport.Instance;
   protected readonly quickOpenViewport: ScrollableTextViewport.Instance;
@@ -154,8 +153,9 @@ class $OverlayLayer {
     this.commandPalette.add(this.commandPaletteInput);
     this.commandPalette.add(this.commandPaletteList);
     root.add(this.commandPalette);
-    this.commandPaletteCloseButton = this.createCloseButton(
-      'palette-close',
+    this.commandPaletteDismissal = this.createModalDismissal(
+      'palette',
+      99,
       101,
       () => deps.commands.closePalette(),
     );
@@ -222,8 +222,9 @@ class $OverlayLayer {
     this.quickOpenBox.add(this.quickOpenInput);
     this.quickOpenBox.add(this.quickOpenList);
     root.add(this.quickOpenBox);
-    this.quickOpenCloseButton = this.createCloseButton(
-      'quick-open-close',
+    this.quickOpenDismissal = this.createModalDismissal(
+      'quick-open',
+      99,
       101,
       () => deps.quickOpen.close(),
     );
@@ -259,8 +260,9 @@ class $OverlayLayer {
     });
     this.confirmBox.add(this.confirmText);
     root.add(this.confirmBox);
-    this.confirmCloseButton = this.createCloseButton(
-      'confirm-discard-close',
+    this.confirmationDismissal = this.createModalDismissal(
+      'confirm-discard',
+      119,
       121,
       () => this.cancelConfirmation(),
     );
@@ -283,8 +285,9 @@ class $OverlayLayer {
     });
     this.settingsBox.add(this.settingsText);
     root.add(this.settingsBox);
-    this.settingsCloseButton = this.createCloseButton(
-      'settings-panel-close',
+    this.settingsDismissal = this.createModalDismissal(
+      'settings-panel',
+      121,
       123,
       () => deps.settingsPanel.close(),
     );
@@ -301,17 +304,7 @@ class $OverlayLayer {
         this.requestPaint();
       },
     );
-    // Shortcut cheat-sheet (Shift+F1 / status-bar `?`) + invisible modal backdrop.
-    this.shortcutHelpBackdrop = new BoxRenderable(renderer, {
-      id: 'shortcut-help-backdrop',
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-      visible: false,
-      zIndex: 118,
-    });
+    // Shortcut cheat-sheet (Shift+F1 / status-bar `?`) + modal dismissal projection.
     this.shortcutHelpBox = new BoxRenderable(renderer, {
       id: 'shortcut-help',
       position: 'absolute',
@@ -331,11 +324,10 @@ class $OverlayLayer {
       selectable: false,
     });
     this.shortcutHelpBox.add(this.shortcutHelpText);
-    root.add(this.shortcutHelpBackdrop);
     root.add(this.shortcutHelpBox);
-    this.shortcutHelpBackdrop.onMouseDown = () => shortcutHelp.close();
-    this.shortcutHelpCloseButton = this.createCloseButton(
-      'shortcut-help-close',
+    this.shortcutHelpDismissal = this.createModalDismissal(
+      'shortcut-help',
+      118,
       121,
       () => deps.shortcutHelp.close(),
     );
@@ -354,17 +346,7 @@ class $OverlayLayer {
         this.requestPaint();
       },
     );
-    // Context-menu modal layer (menu box + invisible full-screen backdrop beneath it).
-    this.contextMenuBackdrop = new BoxRenderable(renderer, {
-      id: 'context-menu-backdrop',
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-      visible: false,
-      zIndex: 125,
-    });
+    // Context-menu modal layer (menu box + shared dismissal projection beneath it).
     this.contextMenuBox = new BoxRenderable(renderer, {
       id: 'context-menu',
       position: 'absolute',
@@ -379,11 +361,10 @@ class $OverlayLayer {
       selectable: false,
     });
     this.contextMenuBox.add(this.contextMenuList);
-    root.add(this.contextMenuBackdrop);
     root.add(this.contextMenuBox);
-    this.contextMenuBackdrop.onMouseDown = () => contextMenu.close();
-    this.contextMenuCloseButton = this.createCloseButton(
-      'context-menu-close',
+    this.contextMenuDismissal = this.createModalDismissal(
+      'context-menu',
+      125,
       131,
       () => deps.contextMenu.close(),
     );
@@ -521,6 +502,20 @@ class $OverlayLayer {
       close,
     });
   }
+  protected createModalDismissal(
+    identifier: string,
+    backdropZIndex: number,
+    closeButtonZIndex: number,
+    dismiss: () => void,
+  ): ModalOverlayDismissal.Model {
+    return new ModalOverlayDismissal.Class({
+      renderer: this.deps.renderer,
+      identifier,
+      backdropZIndex,
+      closeButtonZIndex,
+      dismiss,
+    });
+  }
   protected requestPaint(): void {
     this.paintRevision.value += 1;
     this.deps.renderer.requestRender();
@@ -560,7 +555,7 @@ class $OverlayLayer {
   }
   protected updateOverlayDialog(
     box: BoxRenderable,
-    closeButton: OverlayCloseButton.Model,
+    dismissalControl: OverlayDialogDismissalControl,
     palette: Palette,
     input: OverlayDialogLayoutInput,
   ): OverlayDialogGeometryResult {
@@ -582,7 +577,7 @@ class $OverlayLayer {
     box.backgroundColor = palette.panel;
     box.borderColor = input.borderColor ?? palette.borderActive;
     box.titleColor = input.titleColor ?? palette.accent;
-    closeButton.show({
+    dismissalControl.show({
       left: geometry.left,
       top: geometry.top,
       width: geometry.width,
@@ -594,12 +589,12 @@ class $OverlayLayer {
   protected hideOverlayDialog(
     dialogName: OverlayDialogName,
     box: BoxRenderable,
-    closeButton: OverlayCloseButton.Model,
+    dismissalControl: OverlayDialogDismissalControl,
     viewport?: ScrollableTextViewport.Instance,
   ): void {
     this.dialogBoundsByName.delete(dialogName);
     box.visible = false;
-    closeButton.hide();
+    dismissalControl.hide();
     viewport?.hideBars();
   }
   protected cancelConfirmation(): void {
@@ -817,7 +812,7 @@ class $OverlayLayer {
       this.commandPaletteContentRows = Math.max(1, filteredCommands.length);
       const commandPaletteGeometry = this.updateOverlayDialog(
         this.commandPalette,
-        this.commandPaletteCloseButton,
+        this.commandPaletteDismissal,
         palette,
         {
           dialogName: 'commandPalette',
@@ -873,7 +868,7 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'commandPalette',
         this.commandPalette,
-        this.commandPaletteCloseButton,
+        this.commandPaletteDismissal,
         this.commandPaletteViewport,
       );
       this.previousCommandPaletteSelectedIndex = -1;
@@ -920,7 +915,7 @@ class $OverlayLayer {
         QuickOpenRenderer.Class.contentRowCount(quickOpen);
       const quickOpenGeometry = this.updateOverlayDialog(
         this.quickOpenBox,
-        this.quickOpenCloseButton,
+        this.quickOpenDismissal,
         palette,
         {
           dialogName: 'quickOpen',
@@ -982,7 +977,7 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'quickOpen',
         this.quickOpenBox,
-        this.quickOpenCloseButton,
+        this.quickOpenDismissal,
         this.quickOpenViewport,
       );
       this.quickOpenRowCount = 0;
@@ -996,7 +991,7 @@ class $OverlayLayer {
     if (pendingDiscard) {
       this.updateOverlayDialog(
         this.confirmBox,
-        this.confirmCloseButton,
+        this.confirmationDismissal,
         palette,
         {
           dialogName: 'confirmation',
@@ -1018,7 +1013,7 @@ class $OverlayLayer {
         workspaceSet.active.buffers.tabs()[pendingCloseTabIndex]?.path ?? '';
       this.updateOverlayDialog(
         this.confirmBox,
-        this.confirmCloseButton,
+        this.confirmationDismissal,
         palette,
         {
           dialogName: 'confirmation',
@@ -1036,7 +1031,7 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'confirmation',
         this.confirmBox,
-        this.confirmCloseButton,
+        this.confirmationDismissal,
       );
     }
     // Settings panel overlay — sectioned, with a clickable widget per row (steppers / toggle / arrows).
@@ -1046,7 +1041,7 @@ class $OverlayLayer {
       this.settingsContentRows = settingsLines.length;
       const settingsGeometry = this.updateOverlayDialog(
         this.settingsBox,
-        this.settingsCloseButton,
+        this.settingsDismissal,
         palette,
         {
           dialogName: 'settingsPanel',
@@ -1090,7 +1085,7 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'settingsPanel',
         this.settingsBox,
-        this.settingsCloseButton,
+        this.settingsDismissal,
         this.settingsViewport,
       );
       this.settingsWidgetZones = [];
@@ -1098,13 +1093,12 @@ class $OverlayLayer {
     }
     this.previousSettingsOpen = settingsPanel.open.value;
     // Shortcut cheat-sheet overlay.
-    this.shortcutHelpBackdrop.visible = shortcutHelp.open.value;
     if (shortcutHelp.open.value) {
       const sheetRows = shortcutHelp.rows();
       this.shortcutHelpContentRows = sheetRows.length;
       const shortcutHelpGeometry = this.updateOverlayDialog(
         this.shortcutHelpBox,
-        this.shortcutHelpCloseButton,
+        this.shortcutHelpDismissal,
         palette,
         {
           dialogName: 'shortcutHelp',
@@ -1168,19 +1162,18 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'shortcutHelp',
         this.shortcutHelpBox,
-        this.shortcutHelpCloseButton,
+        this.shortcutHelpDismissal,
         this.shortcutHelpViewport,
       );
     }
     this.previousShortcutHelpOpen = shortcutHelp.open.value;
     // Context menu overlay (+ modal backdrop).
     const menuOpen = contextMenu.open.value;
-    this.contextMenuBackdrop.visible = menuOpen;
     if (menuOpen) {
       this.contextMenuContentRows = Math.max(1, contextMenu.items.value.length);
       const contextMenuGeometry = this.updateOverlayDialog(
         this.contextMenuBox,
-        this.contextMenuCloseButton,
+        this.contextMenuDismissal,
         palette,
         {
           dialogName: 'contextMenu',
@@ -1235,7 +1228,7 @@ class $OverlayLayer {
       this.hideOverlayDialog(
         'contextMenu',
         this.contextMenuBox,
-        this.contextMenuCloseButton,
+        this.contextMenuDismissal,
         this.contextMenuViewport,
       );
       this.previousContextMenuSelectedIndex = -1;
@@ -1301,6 +1294,16 @@ interface OverlayDialogLayoutInput {
   desiredTop?: number;
   borderColor?: string;
   titleColor?: string;
+}
+interface OverlayDialogDismissalControl {
+  show(geometry: {
+    left: number;
+    top: number;
+    width: number;
+    backgroundColor: string;
+    foregroundColor: string;
+  }): void;
+  hide(): void;
 }
 type OverlayDialogName =
   | 'commandPalette'

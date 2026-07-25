@@ -14,7 +14,7 @@ import { CommandScoring } from '../commands/CommandScoring';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
-import { OverlayCloseButton } from './OverlayCloseButton';
+import { ModalOverlayDismissal } from './ModalOverlayDismissal';
 import { ScrollableTextViewport } from './ScrollableTextViewport';
 
 // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
@@ -43,12 +43,11 @@ class $BoundedListPopup {
     return 1;
   }
 
-  protected readonly backdrop: BoxRenderable;
   protected readonly box: BoxRenderable;
   protected readonly searchInput: TextRenderable;
   protected readonly list: TextRenderable;
   protected readonly viewport: ScrollableTextViewport.Instance;
-  protected readonly closeButton: OverlayCloseButton.Model;
+  protected readonly dismissal: ModalOverlayDismissal.Model;
   protected currentGeometry: BoundedListPopupGeometry | null = null;
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
@@ -105,16 +104,6 @@ class $BoundedListPopup {
   constructor(protected readonly dependencies: BoundedListPopupDependencies) {
     const { renderer } = dependencies;
     const identifier = dependencies.identifier ?? 'bounded-list-popup';
-    this.backdrop = new BoxRenderable(renderer, {
-      id: `${identifier}-backdrop`,
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-      visible: false,
-      zIndex: 125,
-    });
     this.box = new BoxRenderable(renderer, {
       id: identifier,
       position: 'absolute',
@@ -175,13 +164,13 @@ class $BoundedListPopup {
         finish: () => this.requestPaint(),
       },
     });
-    this.closeButton = new OverlayCloseButton.Class({
+    this.dismissal = new ModalOverlayDismissal.Class({
       renderer,
-      identifier: `${identifier}-close`,
-      zIndex: 131,
-      close: () => this.close(),
+      identifier,
+      backdropZIndex: 125,
+      closeButtonZIndex: 131,
+      dismiss: () => this.close(),
     });
-    renderer.root.add(this.backdrop);
     renderer.root.add(this.box);
     this.wirePointerInput();
   }
@@ -347,8 +336,7 @@ class $BoundedListPopup {
     this.pointerDragged = false;
     this.viewport.reset();
     this.viewport.hideBars();
-    this.closeButton.hide();
-    this.backdrop.visible = false;
+    this.dismissal.hide();
     this.box.visible = false;
     this.searchInput.visible = false;
     this.list.visible = false;
@@ -415,10 +403,9 @@ class $BoundedListPopup {
 
   update(): void {
     if (!this.open.value) {
-      this.backdrop.visible = false;
+      this.dismissal.hide();
       this.box.visible = false;
       this.viewport.hideBars();
-      this.closeButton.hide();
       return;
     }
     const matches = this.filteredMatches;
@@ -443,7 +430,6 @@ class $BoundedListPopup {
     });
     const geometry = this.currentGeometry;
     const palette = this.dependencies.theme.palette;
-    this.backdrop.visible = this.backdropVisibleValue;
     this.box.visible = true;
     this.box.left = geometry.boxLeft;
     this.box.top = geometry.boxTop;
@@ -454,7 +440,7 @@ class $BoundedListPopup {
     this.box.borderColor = palette.borderActive;
     this.box.titleColor = palette.accent;
     if (this.backdropVisibleValue) {
-      this.closeButton.show({
+      this.dismissal.show({
         left: geometry.boxLeft,
         top: geometry.boxTop,
         width: geometry.boxWidth,
@@ -462,7 +448,7 @@ class $BoundedListPopup {
         foregroundColor: palette.accent,
       });
     } else {
-      this.closeButton.hide();
+      this.dismissal.hide();
     }
     this.searchInput.visible = this.searchEnabled;
     this.searchInput.width =
@@ -550,11 +536,9 @@ class $BoundedListPopup {
   dispose(): void {
     this.close();
     try {
-      this.dependencies.renderer.root.remove(this.backdrop);
       this.dependencies.renderer.root.remove(this.box);
-      this.backdrop.destroyRecursively();
       this.box.destroyRecursively();
-      this.closeButton.dispose();
+      this.dismissal.dispose();
     } catch {
       // Render teardown is best-effort after the app's effects have stopped.
     }
@@ -686,7 +670,6 @@ class $BoundedListPopup {
   }
 
   protected wirePointerInput(): void {
-    this.backdrop.onMouseDown = () => this.close();
     const handleWheel = (event: MouseEvent): void =>
       this.viewport.handleWheel(event);
     this.box.onMouseScroll = handleWheel;

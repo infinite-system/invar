@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
-// Driven overlay contract: live resize clamps every dialog, shared viewport scrolling reaches overflow,
-// discovered close controls work, and Escape outranks every retained content focus.
+// Driven overlay contract: dialog geometry stays bounded, every modal outside press closes through the
+// model without reaching the pane beneath, inside actions remain live, and captured drags may leave.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Overlay dialogs stay inside the terminal (src/modules/ui/ui.invariants.md)
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
+// invariant: Modal outside presses dismiss and consume (src/modules/ui/ui.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -27,6 +28,35 @@ interface DialogBounds {
   height: number;
 }
 
+interface UnderlyingInteractionState {
+  cursor: unknown;
+  focus: unknown;
+  activeBuffer: unknown;
+  activeBufferIndex: unknown;
+  activeWorkspaceIndex: unknown;
+  bufferRevision: unknown;
+  dirty: unknown;
+  terminalVisible: unknown;
+  terminalFocused: unknown;
+  panelActiveContent: unknown;
+  panelFocusedIndex: unknown;
+  primaryDockVisible: unknown;
+  sidebarView: unknown;
+  rightDockVisible: unknown;
+  rightDockFocused: unknown;
+}
+
+interface BoundedPopupGeometry {
+  boxLeft: number;
+  boxTop: number;
+  boxWidth: number;
+  boxHeight: number;
+  listLeft: number;
+  listTop: number;
+  listColumns: number;
+  listRows: number;
+}
+
 function dialogBounds(
   status: HarnessStatus,
   dialogName: string,
@@ -40,6 +70,156 @@ function scrollPosition(status: HarnessStatus, dialogName: string): number {
   const positions = status.overlayScrollPositions as
     Record<string, number> | undefined;
   return Number(positions?.[dialogName] ?? 0);
+}
+
+function boundedPopupBounds(status: HarnessStatus): DialogBounds | null {
+  const geometry = status.boundedListPopupGeometry as
+    BoundedPopupGeometry | null | undefined;
+  return geometry
+    ? {
+        left: geometry.boxLeft,
+        top: geometry.boxTop,
+        width: geometry.boxWidth,
+        height: geometry.boxHeight,
+      }
+    : null;
+}
+
+function boundedPopupItemPositionOrNull(
+  snapshot: HarnessSnapshot.Model,
+  status: HarnessStatus,
+  itemText: string,
+): { column: number; row: number } | null {
+  const geometry = status.boundedListPopupGeometry as
+    BoundedPopupGeometry | null | undefined;
+  if (!geometry) return null;
+  for (
+    let row = geometry.listTop;
+    row < geometry.listTop + geometry.listRows;
+    row++
+  ) {
+    const rowText = Array.from(snapshot.rowText(row))
+      .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+      .join('');
+    const relativeColumn = rowText.indexOf(itemText);
+    if (relativeColumn >= 0) {
+      return { column: geometry.listLeft + relativeColumn, row };
+    }
+  }
+  return null;
+}
+
+function boundedPopupItemPosition(
+  snapshot: HarnessSnapshot.Model,
+  status: HarnessStatus,
+  itemText: string,
+): { column: number; row: number } {
+  const position = boundedPopupItemPositionOrNull(snapshot, status, itemText);
+  if (position) return position;
+  throw new Error(`${itemText} is not visible inside the bounded popup`);
+}
+
+function underlyingInteractionState(
+  status: HarnessStatus,
+): UnderlyingInteractionState {
+  return {
+    cursor: status.cursor,
+    focus: status.focus,
+    activeBuffer: status.activeBuffer,
+    activeBufferIndex: status.activeBufferIndex,
+    activeWorkspaceIndex: status.activeWorkspaceIndex,
+    bufferRevision: status.bufferRevision,
+    dirty: status.dirty,
+    terminalVisible: status.terminalVisible,
+    terminalFocused: status.terminalFocused,
+    panelActiveContent: status.panelActiveContent,
+    panelFocusedIndex: status.panelFocusedIndex,
+    primaryDockVisible: status.primaryDockVisible,
+    sidebarView: status.sidebarView,
+    rightDockVisible: status.rightDockVisible,
+    rightDockFocused: status.rightDockFocused,
+  };
+}
+
+function cellIsInside(
+  bounds: DialogBounds,
+  column: number,
+  row: number,
+): boolean {
+  return (
+    column >= bounds.left &&
+    column < bounds.left + bounds.width &&
+    row >= bounds.top &&
+    row < bounds.top + bounds.height
+  );
+}
+
+function discoveredOutsideActionPosition(
+  snapshot: HarnessSnapshot.Model,
+  bounds: DialogBounds,
+  label: string,
+): { column: number; row: number } {
+  for (const marker of [' ❯ ', ' ✦ ']) {
+    const position = snapshot.findText(marker);
+    if (position && !cellIsInside(bounds, position.column, position.row)) {
+      return position;
+    }
+  }
+  const rightDockStatusPosition = {
+    column: snapshot.columns - 2,
+    row: snapshot.rows - 1,
+  };
+  if (
+    !cellIsInside(
+      bounds,
+      rightDockStatusPosition.column,
+      rightDockStatusPosition.row,
+    )
+  ) {
+    return rightDockStatusPosition;
+  }
+  throw new Error(
+    `${label} has no discovered outside status action in the current frame`,
+  );
+}
+
+async function dismissOutsideAndRequireConsumed(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  label: string,
+  openStatus: HarnessStatus,
+  bounds: DialogBounds | null,
+  closed: (status: HarnessStatus) => boolean,
+): Promise<{ column: number; row: number }> {
+  requireCondition(
+    bounds !== null,
+    `${label} publishes bounds before dismissal`,
+  );
+  const snapshot = await driver.awaitGridCondition(
+    `${label} paints its single-token close anchor before outside dismissal`,
+    (candidate) => candidate.findText('✕') !== null,
+  );
+  const outsidePosition = discoveredOutsideActionPosition(
+    snapshot,
+    bounds,
+    label,
+  );
+  const underlyingBefore = underlyingInteractionState(openStatus);
+  clickCell(driver, outsidePosition.column, outsidePosition.row);
+  const closedStatus = await awaitStatusPublication(
+    statusPath,
+    `${label} closes after its discovered outside press`,
+    closed,
+  );
+  requireCondition(
+    JSON.stringify(underlyingInteractionState(closedStatus)) ===
+      JSON.stringify(underlyingBefore),
+    `${label} outside dismissal leaves cursor focus and active panes unchanged`,
+  );
+  pass(
+    `${label} consumes its outside press before the underlying status action`,
+  );
+  return outsidePosition;
 }
 
 function requireBoundsInside(
@@ -99,40 +279,6 @@ function clickCell(
   });
 }
 
-async function clickStatusMarker(
-  driver: PtyTestDriver.Model,
-  marker: string,
-): Promise<void> {
-  const snapshot = await driver.awaitGridCondition(
-    `status control ${marker.trim()} is visible`,
-    (candidate) => candidate.rowText(candidate.rows - 1).includes(marker),
-  );
-  const statusRow = snapshot.rows - 1;
-  const markerColumn = snapshot.rowText(statusRow).indexOf(marker);
-  requireCondition(
-    markerColumn >= 0,
-    `status control ${marker.trim()} is visible`,
-  );
-  clickCell(driver, markerColumn, statusRow);
-}
-
-async function openSettingsByMouse(
-  driver: PtyTestDriver.Model,
-  statusPath: string,
-): Promise<HarnessStatus> {
-  const snapshot = await driver.awaitGridCondition(
-    'the settings gear is visible',
-    (candidate) => candidate.findText('⚙') !== null,
-  );
-  const gearPosition = markerPosition(snapshot, '⚙');
-  clickCell(driver, gearPosition.column, gearPosition.row);
-  return await awaitStatusPublication(
-    statusPath,
-    'Settings is open',
-    (status) => status.settingsOpen === true,
-  );
-}
-
 async function closeSettingsWithEscape(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -147,50 +293,28 @@ async function closeSettingsWithEscape(
   pass(`bare Escape closes Settings from ${focusLabel} focus`);
 }
 
-async function focusPanelOutsideDialog(
-  driver: PtyTestDriver.Model,
-  statusPath: string,
-  expectedContentIdentifier: string,
-): Promise<void> {
-  const status = await awaitStatusPublication(
-    statusPath,
-    `the ${expectedContentIdentifier} panel geometry is available`,
-    (candidate) => {
-      const layoutSlots = candidate.layoutSlots as
-        Record<string, DialogBounds> | undefined;
-      return (
-        candidate.panelActiveContent === expectedContentIdentifier &&
-        layoutSlots?.bottomPanel !== undefined
-      );
-    },
-  );
-  const bottomPanel = (status.layoutSlots as Record<string, DialogBounds>)
-    .bottomPanel;
-  requireCondition(
-    bottomPanel !== undefined,
-    `${expectedContentIdentifier} bottom-panel bounds are published`,
-  );
-  clickCell(
-    driver,
-    bottomPanel.left + bottomPanel.width - 2,
-    bottomPanel.top + 2,
-  );
-  await awaitStatusPublication(
-    statusPath,
-    `${expectedContentIdentifier} is focused beneath Settings`,
-    (candidate) =>
-      candidate.settingsOpen === true &&
-      candidate.terminalFocused === true &&
-      candidate.panelActiveContent === expectedContentIdentifier,
-  );
-}
-
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-overlay-dialog-harness-'));
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-overlay-dialog-harness-home-'),
 );
 const statusPath = join(homeDirectory, 'status.json');
 await Bun.write(join(fixtureRoot, 'document.txt'), 'alpha\nbeta\ngamma\n');
+await Bun.write(join(fixtureRoot, 'other.txt'), 'other\n');
+HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
+HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+HarnessSmoke.Class.runGit(fixtureRoot, [
+  '-c',
+  'user.email=overlay@example.test',
+  '-c',
+  'user.name=overlay',
+  'commit',
+  '-q',
+  '-m',
+  'overlay fixture',
+]);
+for (const branchName of ['branch-alpha', 'branch-beta']) {
+  HarnessSmoke.Class.runGit(fixtureRoot, ['branch', branchName]);
+}
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
@@ -203,11 +327,17 @@ try {
   console.log(
     '== harness overlays: live resize clamps Settings and shared thumb scrolls ==',
   );
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('document.txt') !== null,
+  let snapshot = await driver.awaitGridCondition(
+    'the single-token document.txt fixture anchor is visible',
+    (candidate) => candidate.findText('document.txt') !== null,
     15_000,
   );
-  driver.sendKeys('Enter');
+  const initialDocumentPosition = markerPosition(snapshot, 'document.txt');
+  clickCell(
+    driver,
+    initialDocumentPosition.column,
+    initialDocumentPosition.row,
+  );
   await awaitStatusPublication(
     statusPath,
     'the fixture document is active',
@@ -234,7 +364,7 @@ try {
   );
   let settingsBounds = dialogBounds(status, 'settingsPanel');
   requireBoundsInside(settingsBounds, 54, 12, 'Settings');
-  let snapshot = await driver.awaitGridCondition(
+  snapshot = await driver.awaitGridCondition(
     'Settings title and close control remain visible after resize',
     (candidate) =>
       candidate.findText('Settings') !== null &&
@@ -278,6 +408,34 @@ try {
     scrollAfterThumb > 0,
     'Settings thumb drag scrolls overflow',
   );
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: scrollbarColumn,
+    row: scrollbarTopRow,
+    button: 'left',
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: Math.max(0, settingsBounds.left - 1),
+    row: scrollbarTopRow + 2,
+    button: 'left',
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'release',
+    column: Math.max(0, settingsBounds.left - 1),
+    row: scrollbarTopRow + 2,
+    button: 'left',
+  });
+  status = await awaitStatusPublication(
+    statusPath,
+    'Settings remains open after its captured thumb drag leaves the dialog',
+    (candidate) => candidate.settingsOpen === true,
+  );
+  requireCondition(
+    status.settingsOpen === true,
+    'Settings remains open when its captured thumb drag leaves the dialog',
+  );
+  pass('an inside-started Settings scrollbar drag may leave without dismissal');
   driver.sendMouse({
     kind: 'wheel',
     column: settingsBounds.left + 2,
@@ -342,130 +500,471 @@ try {
   );
   pass('Keyboard Shortcuts top-edge close control closes through its model');
 
-  console.log(
-    '== harness overlays: Escape outranks retained editor and terminal focus ==',
-  );
+  console.log('== harness overlays: modal outside presses are consumed ==');
   driver.resize(100, 32);
   await driver.awaitQuiescence();
   driver.sendKeys('Control+,');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Settings opens with published bounds for outside dismissal',
+    (candidate) =>
+      candidate.settingsOpen === true &&
+      dialogBounds(candidate, 'settingsPanel') !== null,
+  );
+  const settingsOutsidePosition = await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Settings',
+    status,
+    dialogBounds(status, 'settingsPanel'),
+    (candidate) => candidate.settingsOpen === false,
+  );
+  const underlyingStateBeforeNextPress = underlyingInteractionState(status);
+  clickCell(
+    driver,
+    settingsOutsidePosition.column,
+    settingsOutsidePosition.row,
+  );
   await awaitStatusPublication(
     statusPath,
-    'Settings opens from editor focus',
+    'the first post-dismissal press reaches the underlying status action',
+    (candidate) =>
+      JSON.stringify(underlyingInteractionState(candidate)) !==
+      JSON.stringify(underlyingStateBeforeNextPress),
+  );
+  clickCell(
+    driver,
+    settingsOutsidePosition.column,
+    settingsOutsidePosition.row,
+  );
+  await awaitStatusPublication(
+    statusPath,
+    'the underlying status action returns to its pre-probe visibility',
+    (candidate) =>
+      JSON.stringify(underlyingInteractionState(candidate)) ===
+      JSON.stringify(underlyingStateBeforeNextPress),
+  );
+  pass('the press after outside dismissal behaves normally');
+
+  driver.sendKeys('Control+,');
+  await awaitStatusPublication(
+    statusPath,
+    'Settings reopens for its Escape path',
     (candidate) => candidate.settingsOpen === true,
   );
   await closeSettingsWithEscape(driver, statusPath, 'editor');
 
-  await clickStatusMarker(driver, ' ❯ ');
-  await awaitStatusPublication(
-    statusPath,
-    'the terminal panel is visible',
-    (candidate) =>
-      candidate.terminalVisible === true &&
-      candidate.panelActiveContent === 'terminal',
-  );
-  await openSettingsByMouse(driver, statusPath);
-  await focusPanelOutsideDialog(driver, statusPath, 'terminal');
-  await closeSettingsWithEscape(driver, statusPath, 'terminal region');
-
-  await clickStatusMarker(driver, ' ❯ ');
-  await awaitStatusPublication(
-    statusPath,
-    'the terminal panel closes before the agent-only case',
-    (candidate) => candidate.terminalVisible === false,
-  );
-  await clickStatusMarker(driver, ' ✦ ');
-  await awaitStatusPublication(
-    statusPath,
-    'the agent-only panel is visible',
-    (candidate) =>
-      candidate.terminalVisible === true &&
-      candidate.panelActiveContent === 'agent',
-  );
-  await openSettingsByMouse(driver, statusPath);
-  await focusPanelOutsideDialog(driver, statusPath, 'agent');
-  await closeSettingsWithEscape(driver, statusPath, 'agent region');
-
-  console.log(
-    '== harness overlays: Escape closes from contents-list and popup focus ==',
-  );
-  await clickStatusMarker(driver, ' ❯ ');
+  driver.sendKeys('Shift+F1');
   status = await awaitStatusPublication(
     statusPath,
-    'both panel contents and the docked contents list are visible',
+    'Keyboard Shortcuts reopens with published bounds',
     (candidate) =>
-      candidate.panelListVisible === true &&
-      Array.isArray(candidate.panelCellIds) &&
-      candidate.panelCellIds.length === 2,
+      candidate.shortcutHelpOpen === true &&
+      dialogBounds(candidate, 'shortcutHelp') !== null,
   );
-  await openSettingsByMouse(driver, statusPath);
-  const panelListGeometry = status.panelListGeometry as DialogBounds & {
-    visible: boolean;
-  };
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Keyboard Shortcuts',
+    status,
+    dialogBounds(status, 'shortcutHelp'),
+    (candidate) => candidate.shortcutHelpOpen === false,
+  );
+
+  driver.sendKeys('F1');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Command Palette opens with published bounds',
+    (candidate) =>
+      candidate.paletteOpen === true &&
+      dialogBounds(candidate, 'commandPalette') !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Command Palette',
+    status,
+    dialogBounds(status, 'commandPalette'),
+    (candidate) => candidate.paletteOpen === false,
+  );
+  driver.sendKeys('F1');
+  await awaitStatusPublication(
+    statusPath,
+    'Command Palette reopens for an interior command click',
+    (candidate) => candidate.paletteOpen === true,
+  );
+  driver.sendText('Keyboard Shortcuts');
+  snapshot = await driver.awaitGridCondition(
+    'the single-token Help anchor identifies the interior palette row',
+    (candidate) => candidate.findText('Help:') !== null,
+  );
+  const shortcutCommandPosition = markerPosition(snapshot, 'Help:');
   clickCell(
     driver,
-    panelListGeometry.left + panelListGeometry.width - 2,
-    panelListGeometry.top + 1,
+    shortcutCommandPosition.column,
+    shortcutCommandPosition.row,
   );
   await awaitStatusPublication(
     statusPath,
-    'the contents list retains panel focus beneath Settings',
+    'the interior palette row opens Keyboard Shortcuts',
     (candidate) =>
-      candidate.settingsOpen === true && candidate.terminalFocused === true,
+      candidate.paletteOpen === false && candidate.shortcutHelpOpen === true,
   );
-  await closeSettingsWithEscape(driver, statusPath, 'contents list');
+  driver.sendKeys('Escape');
+  await awaitStatusPublication(
+    statusPath,
+    'Keyboard Shortcuts closes after the interior palette action',
+    (candidate) => candidate.shortcutHelpOpen === false,
+  );
+  pass('Command Palette retains its interior row action');
 
-  snapshot = driver.snapshot();
+  driver.sendKeys('Control+p');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Quick Open file search opens with published bounds',
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      candidate.quickOpenMode === 'files' &&
+      dialogBounds(candidate, 'quickOpen') !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Quick Open file search',
+    status,
+    dialogBounds(status, 'quickOpen'),
+    (candidate) => candidate.quickOpenOpen === false,
+  );
+  driver.sendKeys('Control+p');
+  await awaitStatusPublication(
+    statusPath,
+    'Quick Open reopens for an interior file click',
+    (candidate) => candidate.quickOpenOpen === true,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token other.txt anchor identifies a Quick Open result',
+    (candidate) => candidate.findText('other.txt') !== null,
+  );
+  const otherFilePosition = markerPosition(snapshot, 'other.txt');
+  clickCell(driver, otherFilePosition.column, otherFilePosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'the interior Quick Open result activates other.txt',
+    (candidate) =>
+      candidate.quickOpenOpen === false &&
+      String(candidate.activeBuffer).endsWith('/other.txt'),
+  );
+  pass('Quick Open retains its interior file action');
+
+  driver.sendKeys('Control+Shift+o');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Open Project search opens with published bounds',
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      candidate.quickOpenMode === 'workspacePath' &&
+      dialogBounds(candidate, 'quickOpen') !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Open Project search',
+    status,
+    dialogBounds(status, 'quickOpen'),
+    (candidate) => candidate.quickOpenOpen === false,
+  );
+
+  driver.sendText('x');
+  await awaitStatusPublication(
+    statusPath,
+    'other.txt is dirty before confirmation coverage',
+    (candidate) => candidate.dirty === true,
+  );
+  driver.sendKeys('Control+w');
+  status = await awaitStatusPublication(
+    statusPath,
+    'the dirty-tab confirmation opens with published bounds',
+    (candidate) =>
+      Number(candidate.pendingCloseTab) >= 0 &&
+      dialogBounds(candidate, 'confirmation') !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Destructive confirmation',
+    status,
+    dialogBounds(status, 'confirmation'),
+    (candidate) => Number(candidate.pendingCloseTab) < 0,
+  );
+  driver.sendKeys('Control+w');
+  status = await awaitStatusPublication(
+    statusPath,
+    'the dirty-tab confirmation reopens for its interior cancel action',
+    (candidate) =>
+      Number(candidate.pendingCloseTab) >= 0 &&
+      dialogBounds(candidate, 'confirmation') !== null,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the confirmation paints its single-token close anchor',
+    (candidate) => candidate.findText('✕') !== null,
+  );
+  const confirmationClosePosition = discoveredClosePosition(
+    snapshot,
+    'Confirm',
+  );
+  clickCell(
+    driver,
+    confirmationClosePosition.column,
+    confirmationClosePosition.row,
+  );
+  await awaitStatusPublication(
+    statusPath,
+    'the interior confirmation close control cancels without closing the file',
+    (candidate) =>
+      Number(candidate.pendingCloseTab) < 0 &&
+      String(candidate.activeBuffer).endsWith('/other.txt') &&
+      candidate.dirty === true,
+  );
+  pass('confirmation retains its interior cancel action');
+
+  console.log(
+    '== harness overlays: every bounded-popup adapter dismisses outside ==',
+  );
   const tabCountStatus = await awaitStatusPublication(
     statusPath,
-    'the buffer tab count is published',
-    (candidate) => typeof candidate.bufferTabCount === 'number',
+    'two open buffers publish a badge for the buffer adapter',
+    (candidate) => Number(candidate.bufferTabCount) >= 2,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the buffer-count badge is visible before opening its adapter',
+    (candidate) =>
+      candidate.findText(`/${String(tabCountStatus.bufferTabCount)}`) !== null,
   );
   const bufferBadge = `/${String(tabCountStatus.bufferTabCount)}`;
   const badgePosition = markerPosition(snapshot, bufferBadge);
   clickCell(driver, badgePosition.column, badgePosition.row);
-  await awaitStatusPublication(
+  status = await awaitStatusPublication(
     statusPath,
-    'the bounded popup is open for its discovered close probe',
-    (candidate) => candidate.boundedListPopupOpen === true,
-  );
-  snapshot = await driver.awaitGridCondition(
-    'the bounded popup title and close control are visible',
+    'the buffer adapter opens with published bounds',
     (candidate) =>
-      candidate.findText('Open Buffers') !== null &&
-      candidate.findText('✕') !== null,
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
   );
-  const boundedPopupClosePosition = discoveredClosePosition(
-    snapshot,
-    'Open Buffers',
-  );
-  clickCell(
+  await dismissOutsideAndRequireConsumed(
     driver,
-    boundedPopupClosePosition.column,
-    boundedPopupClosePosition.row,
-  );
-  await awaitStatusPublication(
     statusPath,
-    'the bounded popup closes through its shared close control',
+    'Open Buffers adapter',
+    status,
+    boundedPopupBounds(status),
     (candidate) => candidate.boundedListPopupOpen === false,
   );
-  pass('bounded popup uses the shared discovered top-edge close control');
-
-  snapshot = driver.snapshot();
+  snapshot = await driver.awaitGridCondition(
+    'the buffer-count badge remains visible for an interior row action',
+    (candidate) => candidate.findText(bufferBadge) !== null,
+  );
   const reopenedBadgePosition = markerPosition(snapshot, bufferBadge);
   clickCell(driver, reopenedBadgePosition.column, reopenedBadgePosition.row);
+  status = await awaitStatusPublication(
+    statusPath,
+    'the buffer adapter reopens for its interior item action',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token document.txt anchor identifies an interior buffer row',
+    (candidate) =>
+      boundedPopupItemPositionOrNull(candidate, status, 'document.txt') !==
+      null,
+  );
+  const documentBufferPosition = boundedPopupItemPosition(
+    snapshot,
+    status,
+    'document.txt',
+  );
+  clickCell(driver, documentBufferPosition.column, documentBufferPosition.row);
   await awaitStatusPublication(
     statusPath,
-    'the bounded popup reopens above retained content focus',
-    (candidate) => candidate.boundedListPopupOpen === true,
+    'the interior buffer row activates document.txt',
+    (candidate) =>
+      candidate.boundedListPopupOpen === false &&
+      String(candidate.activeBuffer).endsWith('/document.txt'),
   );
+  pass('Open Buffers retains its interior item action');
+
+  snapshot = await driver.awaitGridCondition(
+    'the single-token layouts anchor identifies the command-bar adapter',
+    (candidate) => candidate.findText('layouts') !== null,
+  );
+  const layoutsPosition = markerPosition(snapshot, 'layouts');
+  clickCell(driver, layoutsPosition.column, layoutsPosition.row);
+  status = await awaitStatusPublication(
+    statusPath,
+    'the layouts adapter opens with published bounds',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Layouts adapter',
+    status,
+    boundedPopupBounds(status),
+    (candidate) => candidate.boundedListPopupOpen === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token layouts anchor remains available for an interior action',
+    (candidate) => candidate.findText('layouts') !== null,
+  );
+  const reopenedLayoutsPosition = markerPosition(snapshot, 'layouts');
+  clickCell(
+    driver,
+    reopenedLayoutsPosition.column,
+    reopenedLayoutsPosition.row,
+  );
+  status = await awaitStatusPublication(
+    statusPath,
+    'the layouts adapter reopens for its interior preset action',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token Focus anchor identifies an interior layout row',
+    (candidate) =>
+      boundedPopupItemPositionOrNull(candidate, status, 'Focus') !== null,
+  );
+  const focusPresetPosition = boundedPopupItemPosition(
+    snapshot,
+    status,
+    'Focus',
+  );
+  clickCell(driver, focusPresetPosition.column, focusPresetPosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'the interior Focus preset applies and closes the layouts adapter',
+    (candidate) =>
+      candidate.boundedListPopupOpen === false &&
+      candidate.primaryDockVisible === false &&
+      candidate.rightDockVisible === false &&
+      candidate.terminalVisible === false,
+  );
+  pass('Layouts retains its interior preset action');
+
+  snapshot = await driver.awaitGridCondition(
+    'the single-token layouts anchor remains visible in Focus layout',
+    (candidate) => candidate.findText('layouts') !== null,
+  );
+  const focusLayoutsPosition = markerPosition(snapshot, 'layouts');
+  clickCell(driver, focusLayoutsPosition.column, focusLayoutsPosition.row);
+  status = await awaitStatusPublication(
+    statusPath,
+    'the layouts adapter opens to restore the Default preset',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token Default anchor identifies the restoring layout row',
+    (candidate) =>
+      boundedPopupItemPositionOrNull(candidate, status, 'Default') !== null,
+  );
+  const defaultPresetPosition = boundedPopupItemPosition(
+    snapshot,
+    status,
+    'Default',
+  );
+  clickCell(driver, defaultPresetPosition.column, defaultPresetPosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'the Default preset restores the primary dock for branch coverage',
+    (candidate) =>
+      candidate.boundedListPopupOpen === false &&
+      candidate.primaryDockVisible === true,
+  );
+
+  snapshot = await driver.awaitGridCondition(
+    'the single-token Source Control glyph is visible before branch coverage',
+    (candidate) =>
+      candidate.findText('⎇') !== null || candidate.findText('G') !== null,
+  );
+  const sourceControlPosition =
+    snapshot.findText('⎇') ?? markerPosition(snapshot, 'G');
+  clickCell(driver, sourceControlPosition.column, sourceControlPosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'the discovered Source Control control opens the Git sidebar',
+    (candidate) => candidate.sidebarView === 'git',
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token history anchor identifies the branch adapter control',
+    (candidate) => candidate.findText('history:') !== null,
+  );
+  const historyPosition = markerPosition(snapshot, 'history:');
+  clickCell(
+    driver,
+    historyPosition.column + 'history:'.length,
+    historyPosition.row,
+  );
+  status = await awaitStatusPublication(
+    statusPath,
+    'the branch adapter opens with published bounds',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  await dismissOutsideAndRequireConsumed(
+    driver,
+    statusPath,
+    'Branch selector adapter',
+    status,
+    boundedPopupBounds(status),
+    (candidate) => candidate.boundedListPopupOpen === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token history anchor remains available for an interior branch action',
+    (candidate) => candidate.findText('history:') !== null,
+  );
+  const reopenedHistoryPosition = markerPosition(snapshot, 'history:');
+  clickCell(
+    driver,
+    reopenedHistoryPosition.column + 'history:'.length,
+    reopenedHistoryPosition.row,
+  );
+  status = await awaitStatusPublication(
+    statusPath,
+    'the branch adapter reopens for its interior branch action',
+    (candidate) =>
+      candidate.boundedListPopupOpen === true &&
+      boundedPopupBounds(candidate) !== null,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single-token branch-alpha anchor identifies an interior branch row',
+    (candidate) =>
+      boundedPopupItemPositionOrNull(candidate, status, 'branch-alpha') !==
+      null,
+  );
+  const branchPosition = boundedPopupItemPosition(
+    snapshot,
+    status,
+    'branch-alpha',
+  );
+  clickCell(driver, branchPosition.column, branchPosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'the interior branch row changes the viewed history branch',
+    (candidate) =>
+      candidate.boundedListPopupOpen === false &&
+      candidate.gitLogBranch === 'branch-alpha',
+  );
+  pass('Branch selector retains its interior branch action');
+
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
-    'Escape closes the bounded popup',
-    (candidate) => candidate.boundedListPopupOpen === false,
-  );
-  pass(
-    'bare Escape closes the popup before retained pane content can consume it',
+    'Escape returns the history viewer to the current branch',
+    (candidate) => candidate.gitLogBranch === '',
   );
 
   console.log('smoke-overlay-dialog-harness: ALL-PASS');
