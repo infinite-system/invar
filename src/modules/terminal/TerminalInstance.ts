@@ -7,6 +7,7 @@
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
+// invariant: Agent terminal reads are redacted (src/modules/terminal/terminal.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { TerminalBackend } from './TerminalBackend';
@@ -18,9 +19,18 @@ import {
   type TerminalCommandRequestResult,
 } from './TerminalCommandController';
 import { TerminalHeader } from './TerminalHeader';
+import {
+  TerminalObserver,
+  type TerminalObservationEvent,
+} from './TerminalObserver';
+import type {
+  TerminalScrollbackRequest,
+  TerminalScrollbackSnapshot,
+} from './TerminalEmulator';
 
 class $TerminalInstance {
   protected readonly terminalCommandController: TerminalCommandController.Model;
+  protected readonly terminalObserver: TerminalObserver.Model;
   protected userInputAwaitingParse = false;
   protected lastKnownIdentity = '';
   protected lastKnownWorkingDirectory = '';
@@ -47,6 +57,7 @@ class $TerminalInstance {
         clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
       },
     });
+    this.terminalObserver = this.createTerminalObserver();
     // PTY → emulator; emulator replies → PTY; parsed pulse → one repaint; child exit → repaint.
     this.backend.onData((bytes) => this.emulator.write(bytes));
     this.emulator.onReply((data) => this.backend.write(data));
@@ -121,9 +132,35 @@ class $TerminalInstance {
 
   readTerminalInput(): TerminalInputSnapshot {
     return {
-      currentInputLine: this.emulator.currentPromptInputLine(),
-      recentOutputLines: this.emulator.recentTextLines(40),
+      currentInputLine: this.redactedCurrentInputLine(),
+      recentOutputLines: this.terminalObserver.redactTextLines(
+        this.emulator.recentTextLines(),
+      ),
     };
+  }
+
+  readTerminalScrollback(
+    request: TerminalScrollbackRequest = {},
+  ): TerminalScrollbackSnapshot {
+    const snapshot = this.emulator.scrollbackText(request);
+    return {
+      ...snapshot,
+      lines: this.terminalObserver.redactTextLines(snapshot.lines),
+    };
+  }
+
+  onTerminalObservation(
+    callback: (event: TerminalObservationEvent) => void,
+  ): () => void {
+    return this.terminalObserver.onObservation(callback);
+  }
+
+  get observedEventCount(): number {
+    return this.terminalObserver.eventCount;
+  }
+
+  get lastObservedBoundarySource(): 'osc133' | 'heuristic' | null {
+    return this.terminalObserver.snapshot(1)[0]?.boundarySource ?? null;
   }
 
   onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
@@ -169,8 +206,20 @@ class $TerminalInstance {
 
   dispose(): void {
     this.terminalCommandController.dispose();
+    this.terminalObserver.dispose();
     this.backend.kill();
     this.emulator.dispose();
+  }
+
+  protected createTerminalObserver(): TerminalObserver.Model {
+    return new TerminalObserver.Class(this.emulator);
+  }
+
+  protected redactedCurrentInputLine(): string | null {
+    const currentInputLine = this.emulator.currentPromptInputLine();
+    return currentInputLine === null
+      ? null
+      : this.terminalObserver.redactTextLine(currentInputLine);
   }
 
   protected submitAgentCommand(): void {

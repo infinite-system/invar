@@ -22,6 +22,9 @@ class $TerminalObserver {
   protected readonly stopCellsChangedObservation: () => void;
   protected readonly stopLineFeedObservation: () => void;
   protected readonly stopShellIntegrationObservation: () => void;
+  protected readonly observationCallbacks = new Set<
+    (event: TerminalObservationEvent) => void
+  >();
   protected activeCommand: TerminalObservedCommand | null = null;
   protected pendingHeuristicCommand = '';
   protected pendingHeuristicCurrentWorkingDirectory = '';
@@ -105,12 +108,26 @@ class $TerminalObserver {
       .map((entry) => entry.event);
   }
 
+  onObservation(callback: (event: TerminalObservationEvent) => void): () => void {
+    this.observationCallbacks.add(callback);
+    return () => this.observationCallbacks.delete(callback);
+  }
+
+  redactTextLine(line: string): string {
+    return this.redactLine(line);
+  }
+
+  redactTextLines(lines: readonly string[]): readonly string[] {
+    return lines.map((line) => this.redactLine(line));
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.stopCellsChangedObservation();
     this.stopLineFeedObservation();
     this.stopShellIntegrationObservation();
+    this.observationCallbacks.clear();
     this.activeCommand = null;
   }
 
@@ -307,6 +324,13 @@ class $TerminalObserver {
       this.bufferedByteCountValue -= evictedEntry.byteLength;
     }
     this.revisionValue.value += 1;
+    for (const callback of this.observationCallbacks) {
+      try {
+        callback(event);
+      } catch {
+        // An observation consumer cannot interrupt terminal parsing or other consumers.
+      }
+    }
   }
 
   protected redactLine(line: string): string {

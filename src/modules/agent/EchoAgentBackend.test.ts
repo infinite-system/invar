@@ -65,6 +65,15 @@ test('terminal tool listing follows the live permission ladder', () => {
       currentInputLine: 'printf brokn',
       recentOutputLines: ['recent output'],
     }),
+    readTerminalScrollback: (request) => ({
+      lines: Array.from(
+        { length: request.lineCount ?? 40 },
+        (_unusedValue, lineIndex) => `line-${lineIndex + 1}`,
+      ),
+      totalLines: 80,
+      startLine: 1,
+      endLine: request.lineCount ?? 40,
+    }),
     stageTerminalCommand: async (command) => ({ state: 'staged', command }),
     replaceTerminalInput: async (command) => ({ state: 'staged', command }),
     runTerminalCommand: async (command) => ({ state: 'executed', command }),

@@ -4,7 +4,11 @@ import { Static } from 'ivue/extras';
 // invariant: Terminal tools have explicit permission tiers (src/modules/agent/agent.invariants.md)
 class $AgentTerminalTools {
   static get readTerminalInputDescription(): string {
-    return "Read the user's current terminal command and about 40 recent terminal output lines without changing anything. Use this before fixing a command; when a correction is needed, call replaceTerminalInput with the complete replacement.";
+    return "Read the user's current terminal command and the default 40 newest retained terminal lines without changing anything. Secret redaction is heuristic, so do not treat it as a guarantee. Use this before fixing a command; when a correction is needed, call replaceTerminalInput with the complete replacement.";
+  }
+
+  static get readTerminalScrollbackDescription(): string {
+    return "Read retained terminal scrollback without changing anything. With no arguments, returns the default 40 newest lines. Set lineCount to return exactly that many newest lines when retained, or range.startLine/range.endLine for a 1-based inclusive slice where line 1 is the oldest retained line. The maximum is the emulator's full retained scrollback (currently up to 1000 scrollback lines plus the visible grid). Every result path uses Invar's password-prompt and secret-assignment redactor, but redaction is heuristic and must not be treated as a guarantee.";
   }
 
   static get stageTerminalCommandDescription(): string {
@@ -25,6 +29,7 @@ class $AgentTerminalTools {
   ): AgentTerminalToolDefinition[] {
     const definitions: AgentTerminalToolDefinition[] = [
       this.readDefinition(terminal),
+      this.scrollbackDefinition(terminal),
       this.commandDefinition(
         'stageTerminalCommand',
         this.stageTerminalCommandDescription,
@@ -65,6 +70,7 @@ class $AgentTerminalTools {
   static isLowPermissionToolName(name: string): boolean {
     return [
       'readTerminalInput',
+      'readTerminalScrollback',
       'stageTerminalCommand',
       'replaceTerminalInput',
     ].some((toolName) => name === toolName || name.endsWith(`__${toolName}`));
@@ -93,8 +99,95 @@ class $AgentTerminalTools {
     };
   }
 
+  protected static scrollbackDefinition(
+    terminal: AgentTerminalToolPort,
+  ): AgentTerminalToolDefinition {
+    return {
+      name: 'readTerminalScrollback',
+      description: this.readTerminalScrollbackDescription,
+      inputSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          lineCount: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Newest retained line count. Omit for the protected default of 40.',
+          },
+          range: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['startLine', 'endLine'],
+            properties: {
+              startLine: {
+                type: 'integer',
+                minimum: 1,
+                description: 'First retained line to return, 1-based from the oldest line.',
+              },
+              endLine: {
+                type: 'integer',
+                minimum: 1,
+                description: 'Last retained line to return, inclusive.',
+              },
+            },
+          },
+        },
+      },
+      requiresCommand: false,
+      invoke: async (input) => {
+        const request = this.scrollbackRequest(input);
+        if (typeof request === 'string') return request;
+        return JSON.stringify(terminal.readTerminalScrollback(request));
+      },
+    };
+  }
+
+  protected static scrollbackRequest(
+    input: unknown,
+  ): AgentTerminalScrollbackRequest | string {
+    if (typeof input !== 'object' || input === null) {
+      return 'The scrollback arguments must be an object.';
+    }
+    const record = input as Record<string, unknown>;
+    if (record.lineCount !== undefined && record.range !== undefined) {
+      return 'Choose either lineCount or range, not both.';
+    }
+    if (
+      record.lineCount !== undefined
+      && (!Number.isInteger(record.lineCount) || Number(record.lineCount) < 1)
+    ) {
+      return 'lineCount must be a positive integer.';
+    }
+    if (record.range !== undefined) {
+      if (typeof record.range !== 'object' || record.range === null) {
+        return 'range must contain positive integer startLine and endLine values.';
+      }
+      const range = record.range as Record<string, unknown>;
+      if (
+        !Number.isInteger(range.startLine)
+        || !Number.isInteger(range.endLine)
+        || Number(range.startLine) < 1
+        || Number(range.endLine) < Number(range.startLine)
+      ) {
+        return 'range must use positive 1-based lines with endLine at or after startLine.';
+      }
+      return {
+        range: {
+          startLine: Number(range.startLine),
+          endLine: Number(range.endLine),
+        },
+      };
+    }
+    return record.lineCount === undefined
+      ? {}
+      : { lineCount: Number(record.lineCount) };
+  }
+
   protected static commandDefinition(
-    name: Exclude<AgentTerminalToolName, 'readTerminalInput'>,
+    name: Exclude<
+      AgentTerminalToolName,
+      'readTerminalInput' | 'readTerminalScrollback'
+    >,
     description: string,
     invokeCommand: (command: string) => Promise<AgentTerminalCommandResult>,
   ): AgentTerminalToolDefinition {
@@ -150,6 +243,7 @@ export namespace AgentTerminalTools {
 
 export type AgentTerminalToolName =
   | 'readTerminalInput'
+  | 'readTerminalScrollback'
   | 'stageTerminalCommand'
   | 'replaceTerminalInput'
   | 'runTerminalCommand';
@@ -161,6 +255,9 @@ export interface AgentTerminalCommandResult {
 
 export interface AgentTerminalToolPort {
   readTerminalInput(): AgentTerminalInputSnapshot;
+  readTerminalScrollback(
+    request: AgentTerminalScrollbackRequest,
+  ): AgentTerminalScrollbackSnapshot;
   stageTerminalCommand(command: string): Promise<AgentTerminalCommandResult>;
   replaceTerminalInput(command: string): Promise<AgentTerminalCommandResult>;
   runTerminalCommand(command: string): Promise<AgentTerminalCommandResult>;
@@ -169,6 +266,21 @@ export interface AgentTerminalToolPort {
 export interface AgentTerminalInputSnapshot {
   currentInputLine: string | null;
   recentOutputLines: readonly string[];
+}
+
+export interface AgentTerminalScrollbackRequest {
+  readonly lineCount?: number;
+  readonly range?: {
+    readonly startLine: number;
+    readonly endLine: number;
+  };
+}
+
+export interface AgentTerminalScrollbackSnapshot {
+  readonly lines: readonly string[];
+  readonly totalLines: number;
+  readonly startLine: number;
+  readonly endLine: number;
 }
 
 export interface AgentTerminalToolDefinition {

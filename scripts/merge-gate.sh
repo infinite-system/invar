@@ -231,6 +231,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # wave 4
   step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   step "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
+  step "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
   full_tmux_step "smoke: terminal"    bash scripts/smoke-terminal.sh
   step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts

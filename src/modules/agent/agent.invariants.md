@@ -141,15 +141,16 @@ text; Alt-Backspace being swallowed; word motion splitting a grapheme.
 ### Terminal tools have explicit permission tiers
 
 **Invariant:** If an agent backend registers terminal tools, then `readTerminalInput` is observation
-tier, `stageTerminalCommand` and `replaceTerminalInput` are stage tier, and
+tier, `readTerminalScrollback` is observation tier, `stageTerminalCommand` and
+`replaceTerminalInput` are stage tier, and
 `runTerminalCommand` exists only in bypass mode.
 
 **Scope:** `AgentTerminalTools`, `SdkStreamBackend`, `CodexAppServerBackend`, and
 `EchoAgentBackend`.
 
 **Mechanism:** One `AgentTerminalTools.definitions` registry generates both backend tool lists.
-Read, stage, and replace definitions exist in every permission mode and auto-pass the SDK permission
-gate; run is added only when live permission resolution says bypass.
+Both read definitions, stage, and replace exist in every permission mode and auto-pass the SDK
+permission gate; run is added only when live permission resolution says bypass.
 
 **Generates:** The read-fix-retype loop on Claude and Codex; one permission ladder for every backend;
 tool descriptions teach the safe flow.
@@ -157,14 +158,55 @@ tool descriptions teach the safe flow.
 **Evidence:** `src/modules/agent/AgentTerminalTools.test.ts`;
 `src/modules/agent/EchoAgentBackend.test.ts`; `scripts/harness/smoke-terminal-stage-harness.ts`.
 
-**Impossible if true:** `runTerminalCommand` appearing in ask mode; observation prompting for
-execution permission; one backend missing read or replace while another exposes it.
+**Impossible if true:** `runTerminalCommand` appearing in ask mode; either read prompting for
+execution permission; one backend missing scrollback read or replace while another exposes it.
 
 **Verification:** `bun test src/modules/agent/AgentTerminalTools.test.ts src/modules/agent/EchoAgentBackend.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
+
+### Terminal follow obeys the live user mode
+
+**Invariant:** If a terminal command completion reaches `AgentTerminalFollow`, then the follow mode
+read at that command boundary alone determines delivery: `follow-all` requests a response,
+`on-error` requests one only for a known nonzero exit, `on-request` adds silent context, and `off`
+delivers nothing.
+
+**Scope:** `AgentTerminalFollow`, `AgentSession` external context and response methods, the agent
+footer control, `agentTerminalFollowMode` setting, `agent.cycleTerminalFollowMode` command and
+keybinding, and the status projection. Terminal event construction and redaction remain governed by
+`terminal.invariants.md`.
+
+**Components:**
+- Live boundary read — mode changes affect the next completed command without rebuilding the session.
+- Known failure — `on-error` requires `exitCode !== 0 && exitCode !== null`, so heuristic boundaries
+  never trigger it.
+- One mode cell — footer clicks, F6, the command palette, Settings, delivery, and status all read or
+  mutate `Settings.agentTerminalFollowMode`.
+
+**Mechanism:** `AgentTerminalFollow` subscribes once to the terminal observation port and reads the
+mode ref inside each event callback. It calls `AgentSession.requestExternalResponse` for response
+modes and `AgentSession.ingestContext` for `on-request`; the footer port and every command path cycle
+the same setting ref.
+
+**Generates:** Activity-paced agent turns; silent on-request context; a visible footer indicator;
+mouse, keybinding, palette, and Settings parity; follow mode and event-count probe fields.
+
+**Evidence:** `src/modules/agent/AgentTerminalFollow.ts`;
+`src/modules/agent/AgentTerminalFollow.test.ts`; `src/modules/agent/AgentPaneContent.test.ts`;
+`scripts/harness/smoke-terminal-follow-harness.ts`.
+
+**Impossible if true:** `on-error` responding to exit code zero or null; `on-request` starting an
+agent turn; `off` adding context or transcript entries; footer, Settings, and status reporting
+different modes.
+
+**Verification:** `bun test src/modules/agent/AgentTerminalFollow.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-terminal-follow-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
 
 ### Agent events cross exactly one backend seam
 

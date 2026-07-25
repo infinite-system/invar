@@ -18,6 +18,7 @@ import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
+import type { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 
 export interface AppStatusMouseEvent {
   readonly type: string;
@@ -47,6 +48,7 @@ export interface AppStatusProjectionPorts {
     | 'sidebarWidth'
     | 'rightDockWidth'
     | 'agentAudioNarration'
+    | 'agentTerminalFollowMode'
   >;
   readonly commands: Pick<
     InstanceType<typeof CommandRegistry.Class>,
@@ -124,6 +126,10 @@ export interface AppStatusProjectionPorts {
     | 'scrollTop'
     | 'currentEngine'
     | 'title'
+  > | null;
+  readonly terminalPaneContent: Pick<
+    TerminalPaneContent.Model,
+    'observedEventCount' | 'lastObservedBoundarySource'
   > | null;
 }
 
@@ -374,5 +380,39 @@ function $snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
     // engine ('Claude'/'Codex'/…, '(working…)' while busy), never a frozen 'Claude'.
     agentTitle: ports.agentPaneContent?.title ?? '',
+    agentAssistantEntryCount:
+      ports.agentPaneContent?.agentSession.transcript?.filter(
+        (entry) => entry.role === 'assistant',
+      ).length ?? 0,
+    agentLastAssistantText: (() => {
+      const transcript =
+        ports.agentPaneContent?.agentSession.transcript ?? [];
+      for (
+        let entryIndex = transcript.length - 1;
+        entryIndex >= 0;
+        entryIndex -= 1
+      ) {
+        const entry = transcript[entryIndex]!;
+        if (entry.role === 'assistant') return entry.text;
+      }
+      return '';
+    })(),
+    terminalFollowMode: ports.settings.agentTerminalFollowMode.value,
+    terminalObservedEventCount:
+      ports.terminalPaneContent?.observedEventCount ?? 0,
+    terminalLastObservedBoundarySource:
+      ports.terminalPaneContent?.lastObservedBoundarySource ?? null,
+    agentLastToolResult: (() => {
+      const transcript = ports.agentPaneContent?.agentSession.transcript ?? [];
+      for (
+        let entryIndex = transcript.length - 1;
+        entryIndex >= 0;
+        entryIndex -= 1
+      ) {
+        const entry = transcript[entryIndex]!;
+        if (entry.role === 'tool-result') return entry.result;
+      }
+      return '';
+    })(),
   };
 }

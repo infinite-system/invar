@@ -40,6 +40,13 @@ export type TypeScriptServer = 'tsgo' | 'typescript-language-server';
  *  own CLI dialect. When neither CLI resolves, the pane falls back to the local echo backend. */
 export type AgentProvider = 'auto' | 'claude' | 'codex';
 
+/** When completed terminal commands enter the native agent session. */
+export type AgentTerminalFollowMode =
+  | 'follow-all'
+  | 'on-error'
+  | 'on-request'
+  | 'off';
+
 /** The full set of settable values — one field per reactive getter on the store. */
 export interface SettingsValues {
   // Scroll physics.
@@ -70,6 +77,7 @@ export interface SettingsValues {
   // AI agent pane (provider-neutral).
   agentProvider: AgentProvider;
   agentSkipPermissions: boolean;
+  agentTerminalFollowMode: AgentTerminalFollowMode;
   agentModel: string;
   agentTypingSpeed: number;
   terminalCleanPrompt: boolean;
@@ -223,6 +231,9 @@ class $Settings {
   get agentSkipPermissions(): Ref<boolean> {
     return ref(true);
   }
+  get agentTerminalFollowMode(): Ref<AgentTerminalFollowMode> {
+    return ref<AgentTerminalFollowMode>('off');
+  }
   get agentModel(): Ref<string> {
     return ref('');
   }
@@ -285,6 +296,7 @@ class $Settings {
       lspFileSizeLimitKb: this.lspFileSizeLimitKb,
       agentProvider: this.agentProvider,
       agentSkipPermissions: this.agentSkipPermissions,
+      agentTerminalFollowMode: this.agentTerminalFollowMode,
       agentModel: this.agentModel,
       agentTypingSpeed: this.agentTypingSpeed,
       terminalCleanPrompt: this.terminalCleanPrompt,
@@ -445,6 +457,7 @@ class $Settings {
       lspFileSizeLimitKb: 2048,
       agentProvider: 'auto',
       agentSkipPermissions: true,
+      agentTerminalFollowMode: 'off',
       agentModel: '',
       agentTypingSpeed: 40,
       terminalCleanPrompt: true,
@@ -539,6 +552,15 @@ class $Settings {
       result.agentProvider = record.agentProvider as AgentProvider;
     }
     if (typeof record.agentSkipPermissions === 'boolean') result.agentSkipPermissions = record.agentSkipPermissions;
+    if (
+      typeof record.agentTerminalFollowMode === 'string'
+      && $Settings.allowedAgentTerminalFollowModes.has(
+        record.agentTerminalFollowMode as AgentTerminalFollowMode,
+      )
+    ) {
+      result.agentTerminalFollowMode =
+        record.agentTerminalFollowMode as AgentTerminalFollowMode;
+    }
     if (typeof record.agentModel === 'string') result.agentModel = record.agentModel;
     readNumber('agentTypingSpeed');
     if (typeof record.terminalCleanPrompt === 'boolean') result.terminalCleanPrompt = record.terminalCleanPrompt;
@@ -552,6 +574,15 @@ class $Settings {
     readNumber('diffSplitRatio');
     readNumber('markdownSplitRatio');
     return result;
+  }
+
+  protected static get allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
+    return new Set<AgentTerminalFollowMode>([
+      'follow-all',
+      'on-error',
+      'on-request',
+      'off',
+    ]);
   }
 }
 

@@ -59,6 +59,7 @@ import {
   type AgentTranscriptSearchPort,
 } from '../agent/AgentPaneContent';
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
+import { AgentTerminalFollow } from '../agent/AgentTerminalFollow';
 import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend';
 import { NarrationProjection } from '../narration/NarrationProjection';
@@ -262,6 +263,38 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   let terminalPaneContent: TerminalPaneContent.Model | null = null;
   let agentRegistered = false;
   let agentPaneContent: AgentPaneContent.Model | null = null;
+  let terminalFollowController: AgentTerminalFollow.Model | null = null;
+  const cycleTerminalFollowMode = (): void => {
+    settings.agentTerminalFollowMode.value = AgentTerminalFollow.Class.nextMode(
+      settings.agentTerminalFollowMode.value,
+    );
+    settings.save();
+  };
+  const terminalFollowPort = {
+    mode: settings.agentTerminalFollowMode,
+    label: () => AgentTerminalFollow.Class.labelFor(
+      settings.agentTerminalFollowMode.value,
+    ),
+    cycle: () => {
+      cycleTerminalFollowMode();
+      return settings.agentTerminalFollowMode.value;
+    },
+  };
+  const connectTerminalFollow = (): void => {
+    if (
+      terminalFollowController
+      || !terminalPaneContent
+      || !agentPaneContent
+    ) {
+      return;
+    }
+    terminalFollowController = new AgentTerminalFollow.Class(
+      agentPaneContent.agentSession,
+      terminalPaneContent,
+      settings.agentTerminalFollowMode,
+      () => settings.save(),
+    );
+  };
   const terminalCommandEventText = (event: TerminalCommandEvent): string => {
     switch (event.kind) {
       case 'pending':
@@ -298,6 +331,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPaneContent?.agentSession.appendSystemNote(terminalCommandEventText(event));
     });
     panelHost.register(content);
+    connectTerminalFollow();
     return content;
   };
 
@@ -347,6 +381,8 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   };
   const terminalToolPort: AgentTerminalToolPort = {
     readTerminalInput: () => ensureTerminal().readTerminalInput(),
+    readTerminalScrollback: (request) =>
+      ensureTerminal().readTerminalScrollback(request),
     stageTerminalCommand: (command) =>
       prepareTerminalForAgentCommand().stageTerminalCommand(command),
     replaceTerminalInput: (command) =>
@@ -404,6 +440,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       agentPaneContent = agentPane;
       agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
       agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
+      agentPane.attachTerminalFollowPort(terminalFollowPort);
       agentPane.attachTranscriptSearchPort(agentTranscriptSearchPort); // icon + Ctrl+F share ONE action
       narration = new NarrationProjection.Class(
         agentPane.agentSession,
@@ -415,11 +452,13 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
           rateProvider: () => settings.agentNarrationRate.value,
         }),
       );
+      connectTerminalFollow();
     }
   };
   app.onDispose(() => {
     narration?.dispose();
     testVoiceBackend?.dispose();
+    terminalFollowController?.dispose();
     panelHost.dispose();
     primaryDockHost.dispose();
     rightDockHost.dispose();
@@ -513,6 +552,9 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     },
     get agentPaneContent() {
       return agentPaneContent;
+    },
+    get terminalPaneContent() {
+      return terminalPaneContent;
     },
   };
 
@@ -827,6 +869,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     toggleTerminal,
     toggleAgent,
     togglePanelSplit,
+    cycleTerminalFollowMode,
     hasHoveredMarkdownReference: () =>
       Boolean(view.activeMarkdownSplitView()?.hoveredReferencePath.value),
     openHoveredMarkdownReference: () => view.activeMarkdownSplitView()?.openHoveredReference(),
@@ -1221,6 +1264,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     'agent.wordRight': () => agentPaneContent?.moveComposerWordRight(),
     'agent.deletePreviousWord': () =>
       agentPaneContent?.deleteComposerPreviousWord(),
+    'agent.cycleTerminalFollowMode': cycleTerminalFollowMode,
     'terminal.copy': () => {
       const pane = terminalPaneContent;
       if (!pane) return;

@@ -58,6 +58,7 @@ describe('Settings', () => {
     expect(settings.diffSplitRatio.value).toBe(0.5);
     expect(settings.markdownSplitRatio.value).toBe(0.5);
     expect(settings.gitSplitRatio.value).toBe(0.5);
+    expect(settings.agentTerminalFollowMode.value).toBe('off');
   });
 
   test('load with no files keeps every default', () => {
@@ -106,6 +107,7 @@ describe('Settings', () => {
         sidebarPosition: 'middle',
         panelAlignment: 'stretch',
         leftDockVerticalSpan: 'sometimes',
+        agentTerminalFollowMode: 'sometimes',
         unknownKey: 99, // unknown, ignored
       }),
     });
@@ -117,6 +119,7 @@ describe('Settings', () => {
     expect(settings.sidebarPosition.value).toBe('left');
     expect(settings.panelAlignment.value).toBe('center');
     expect(settings.leftDockVerticalSpan.value).toBe('full-height');
+    expect(settings.agentTerminalFollowMode.value).toBe('off');
   });
 
   test('set() + save() round-trips through the filesystem', () => {
@@ -126,6 +129,7 @@ describe('Settings', () => {
     settings.set('sidebarWidth', 48);
     settings.set('diffSplitRatio', 0.65);
     settings.set('markdownSplitRatio', 0.6);
+    settings.set('agentTerminalFollowMode', 'on-request');
     settings.save();
 
     // The user file now holds the new values.
@@ -135,6 +139,7 @@ describe('Settings', () => {
     expect(JSON.parse(written as string).sidebarWidth).toBe(48);
     expect(JSON.parse(written as string).diffSplitRatio).toBe(0.65);
     expect(JSON.parse(written as string).markdownSplitRatio).toBe(0.6);
+    expect(JSON.parse(written as string).agentTerminalFollowMode).toBe('on-request');
 
     // A fresh store loading the same fake fs reads them back.
     const reloaded = new Settings.Class({
@@ -149,6 +154,7 @@ describe('Settings', () => {
     expect(reloaded.sidebarWidth.value).toBe(48);
     expect(reloaded.diffSplitRatio.value).toBe(0.65);
     expect(reloaded.markdownSplitRatio.value).toBe(0.6);
+    expect(reloaded.agentTerminalFollowMode.value).toBe('on-request');
   });
 
   test('a reactive read re-runs when set() changes the value (live-apply)', () => {

@@ -18,6 +18,11 @@ import { TerminalPaneRenderer } from './TerminalPaneRenderer';
 import { TerminalKeys } from './TerminalKeys';
 import type { TerminalInstance } from './TerminalInstance';
 import type {
+  TerminalScrollbackRequest,
+  TerminalScrollbackSnapshot,
+} from './TerminalEmulator';
+import type { TerminalObservationEvent } from './TerminalObserver';
+import type {
   TerminalCommandEvent,
   TerminalCommandRequestResult,
 } from './TerminalCommandController';
@@ -95,6 +100,26 @@ class $TerminalPaneContent implements PaneContent {
     recentOutputLines: readonly string[];
   } {
     return this.instance.readTerminalInput();
+  }
+
+  readTerminalScrollback(
+    request: TerminalScrollbackRequest = {},
+  ): TerminalScrollbackSnapshot {
+    return this.instance.readTerminalScrollback(request);
+  }
+
+  onTerminalObservation(
+    callback: (event: TerminalObservationEvent) => void,
+  ): () => void {
+    return this.instance.onTerminalObservation(callback);
+  }
+
+  get observedEventCount(): number {
+    return this.instance.observedEventCount;
+  }
+
+  get lastObservedBoundarySource(): 'osc133' | 'heuristic' | null {
+    return this.instance.lastObservedBoundarySource;
   }
 
   onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {

@@ -84,6 +84,10 @@ describe('AppStatusProjection', () => {
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
+    let terminalPaneContent: {
+      observedEventCount: number;
+      lastObservedBoundarySource: 'osc133' | 'heuristic' | null;
+    } | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
       settings,
@@ -130,12 +134,20 @@ describe('AppStatusProjection', () => {
       get agentPaneContent() {
         return agentPaneContent;
       },
+      get terminalPaneContent() {
+        return terminalPaneContent;
+      },
     };
 
     const initialSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(initialSnapshot.mouse).toBeNull();
     expect(initialSnapshot.agentTitle).toBe('');
     expect(initialSnapshot.agentEngine).toBe('');
+    expect(initialSnapshot.agentAssistantEntryCount).toBe(0);
+    expect(initialSnapshot.agentLastAssistantText).toBe('');
+    expect(initialSnapshot.terminalFollowMode).toBe('off');
+    expect(initialSnapshot.terminalObservedEventCount).toBe(0);
+    expect(initialSnapshot.terminalLastObservedBoundarySource).toBeNull();
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
     narration = {
@@ -154,6 +166,10 @@ describe('AppStatusProjection', () => {
       currentEngine: 'codex',
       title: 'Codex (working…)',
     } as unknown as AgentPaneContent.Model;
+    terminalPaneContent = {
+      observedEventCount: 7,
+      lastObservedBoundarySource: 'heuristic',
+    };
 
     const publishedSnapshot = AppStatusProjection.Class.publish(ports);
     expect(publishedSnapshot.mouse).toEqual(mouse);
@@ -161,6 +177,10 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.agentPendingPermissionTool).toBe('Write');
     expect(publishedSnapshot.agentEngine).toBe('codex');
     expect(publishedSnapshot.agentTitle).toBe('Codex (working…)');
+    expect(publishedSnapshot.agentAssistantEntryCount).toBe(0);
+    expect(publishedSnapshot.agentLastAssistantText).toBe('');
+    expect(publishedSnapshot.terminalObservedEventCount).toBe(7);
+    expect(publishedSnapshot.terminalLastObservedBoundarySource).toBe('heuristic');
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
 
     panelHost.dispose();

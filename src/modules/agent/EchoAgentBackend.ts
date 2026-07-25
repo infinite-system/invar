@@ -171,6 +171,42 @@ class $EchoAgentBackend implements AgentBackend {
       this.emit({ kind: 'session-end', reason: 'completed' });
       return;
     }
+    const scrollbackMatch = /^terminal-tools:scrollback(?::(\d+)|:range:(\d+):(\d+))?$/.exec(
+      prompt,
+    );
+    if (scrollbackMatch) {
+      const definition = definitions.find(
+        (candidate) => candidate.name === 'readTerminalScrollback',
+      );
+      const toolIdentifier = `echo-terminal-tool-${Date.now()}`;
+      const input = scrollbackMatch[1]
+        ? { lineCount: Number(scrollbackMatch[1]) }
+        : scrollbackMatch[2] && scrollbackMatch[3]
+          ? {
+              range: {
+                startLine: Number(scrollbackMatch[2]),
+                endLine: Number(scrollbackMatch[3]),
+              },
+            }
+          : {};
+      this.emit({
+        kind: 'tool-use',
+        id: toolIdentifier,
+        name: 'readTerminalScrollback',
+        input,
+      });
+      const result = definition
+        ? await definition.invoke(input)
+        : 'readTerminalScrollback is unavailable.';
+      this.emit({
+        kind: 'tool-result',
+        id: toolIdentifier,
+        result,
+        isError: !definition,
+      });
+      this.emit({ kind: 'session-end', reason: 'completed' });
+      return;
+    }
     const match = /^terminal-tools:(stage|replace|run):(.*)$/s.exec(prompt);
     const toolName = match?.[1] === 'run'
       ? 'runTerminalCommand'

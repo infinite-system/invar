@@ -94,6 +94,12 @@ describe('SettingsPanel', () => {
     panel.selectedIndex.value = indexOfKey(panel, 'leftDockVerticalSpan');
     panel.adjust(1);
     expect(settings.leftDockVerticalSpan.value).toBe('ends-at-panel');
+
+    panel.selectedIndex.value = indexOfKey(panel, 'agentTerminalFollowMode');
+    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('off');
+    panel.adjust(1);
+    expect(settings.agentTerminalFollowMode.value).toBe('follow-all');
+    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('follow-all');
   });
 
   test('rows() reflects the current values and the selection', () => {

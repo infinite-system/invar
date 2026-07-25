@@ -215,6 +215,7 @@ export const canonicalBindings: Keybinding[] = [
   { chord: { key: 'c', ctrl: true }, action: 'editor.copy', context: 'editor' },
   // Copy the agent pane's transcript/composer selection (the focused agent pane owns Ctrl+C).
   { chord: { key: 'c', ctrl: true }, action: 'agent.copy', context: 'agent' },
+  { chord: { key: 'f6' }, action: 'agent.cycleTerminalFollowMode', context: 'agent' },
   { chord: { key: 'left', alt: true }, action: 'agent.wordLeft', context: 'agent' },
   { chord: { key: 'b', alt: true }, action: 'agent.wordLeft', context: 'agent' },
   { chord: { key: 'right', alt: true }, action: 'agent.wordRight', context: 'agent' },

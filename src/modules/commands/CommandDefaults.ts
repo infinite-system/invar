@@ -22,6 +22,7 @@ export interface CommandContext {
   toggleTerminal: () => void;
   toggleAgent: () => void;
   togglePanelSplit: () => void;
+  cycleTerminalFollowMode: () => void;
   hasHoveredMarkdownReference: () => boolean;
   openHoveredMarkdownReference: () => void;
   openShortcutHelp: () => void;
@@ -208,6 +209,12 @@ function $registerDefaultCommands(
       title: 'Panel: Toggle Terminal and Agent Split',
       category: 'Panel',
       run: context.togglePanelSplit,
+    },
+    {
+      id: 'agent.cycleTerminalFollowMode',
+      title: 'Agent: Cycle Terminal Follow Mode',
+      category: 'Agent',
+      run: context.cycleTerminalFollowMode,
     },
     {
       id: 'markdown.togglePreview',

@@ -154,6 +154,38 @@ contains a password prompt or secret-shaped assignment value.
 
 **Last refined:** 2026-07-25
 
+### Agent terminal reads are redacted
+
+**Invariant:** If terminal text reaches an agent through `readTerminalInput` or
+`readTerminalScrollback`, then every returned line and current input value has passed through the
+same `TerminalObserver` redactor before crossing the agent tool port.
+
+**Scope:** `TerminalInstance.readTerminalInput`, `TerminalInstance.readTerminalScrollback`,
+`TerminalObserver.redactTextLine`, and the `AgentTerminalTools` read definitions. Direct terminal
+rendering for the user is outside this rule.
+
+**Mechanism:** `TerminalInstance` owns one `TerminalObserver` for its emulator and applies that
+observer's redaction methods to both read paths. `TerminalEmulator.scrollbackText` can select the
+default newest 40 lines, an explicit newest count, or a 1-based inclusive range over all retained
+lines, but only the redacted `TerminalInstance` projection reaches the agent port.
+
+**Generates:** One redaction authority for event delivery and pull reads; explicit reads beyond the
+default bound; no direct emulator-text path in `AgentTerminalTools`.
+
+**Evidence:** `src/modules/terminal/TerminalInstance.ts`;
+`src/modules/terminal/TerminalInstance.test.ts` `scrollback reads reach beyond the default and redact
+every agent read path`; `src/modules/agent/AgentTerminalTools.test.ts`.
+
+**Impossible if true:** A password-prompt line or secret-shaped assignment value returned by either
+agent read tool; `readTerminalScrollback` returning fewer than an available requested line count; an
+agent tool reading `TerminalEmulator` directly.
+
+**Verification:** `bun test src/modules/terminal/TerminalInstance.test.ts src/modules/agent/AgentTerminalTools.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### One openpty allocator serves both PTY roles
 
 **Invariant:** If Invar or its byte-level test harness needs a pseudo-terminal, then both allocate,

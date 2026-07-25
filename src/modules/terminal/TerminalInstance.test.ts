@@ -79,6 +79,39 @@ test('readTerminalInput observes the prompt line and bounded recent emulator tex
   expect(snapshot.recentOutputLines.length).toBeLessThanOrEqual(40);
 });
 
+test('scrollback reads reach beyond the default and redact every agent read path', async () => {
+  const { backend, instance } = makeInstance(50, 5);
+  const ordinaryLines = Array.from(
+    { length: 70 },
+    (_unusedValue, lineIndex) => `line-${lineIndex + 1}`,
+  );
+  backend.feed([
+    ...ordinaryLines,
+    'API_TOKEN=fixture-token',
+    'NORMAL=value',
+    'Password: hunter2',
+    '$ CLIENT_SECRET=typed-secret',
+  ].join('\r\n'));
+  await instance.flush();
+
+  const counted = instance.readTerminalScrollback({ lineCount: 55 });
+  expect(counted.lines).toHaveLength(55);
+  expect(counted.endLine - counted.startLine + 1).toBe(55);
+  const ranged = instance.readTerminalScrollback({
+    range: { startLine: counted.startLine, endLine: counted.startLine + 4 },
+  });
+  expect(ranged.lines).toHaveLength(5);
+
+  const serializedScrollback = JSON.stringify(counted);
+  expect(serializedScrollback).not.toContain('fixture-token');
+  expect(serializedScrollback).not.toContain('hunter2');
+  expect(serializedScrollback).toContain('API_TOKEN=[REDACTED]');
+  expect(serializedScrollback).toContain('NORMAL=value');
+  const input = instance.readTerminalInput();
+  expect(input.currentInputLine).toBe('CLIENT_SECRET=[REDACTED]');
+  expect(JSON.stringify(input)).not.toContain('typed-secret');
+});
+
 test('emulator replies (device reports) return to the child through the backend seam', async () => {
   const { backend, instance } = makeInstance();
   // ESC[6n = Device Status Report (cursor position) → the emulator replies with ESC[row;colR.

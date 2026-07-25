@@ -70,6 +70,7 @@ const SETTING_DESCRIPTORS: readonly SettingDescriptor[] = [
   { key: 'lspFileSizeLimitKb', label: 'LSP file size limit (KB, 0 = no limit)', section: 'Language', spec: { kind: 'number', step: 512, minimum: 0, maximum: 51200, decimals: 0 } },
   { key: 'agentProvider', label: 'Agent engine', section: 'Agent', spec: { kind: 'enum', options: AGENT_PROVIDER_OPTIONS } },
   { key: 'agentSkipPermissions', label: 'Agent bypasses permissions (off = ask interactively)', section: 'Agent', spec: { kind: 'boolean' } },
+  { key: 'agentTerminalFollowMode', label: 'Agent terminal follow mode', section: 'Agent', spec: { kind: 'enum', options: ['follow-all', 'on-error', 'on-request', 'off'] } },
   { key: 'agentTypingSpeed', label: 'Agent terminal typing speed (higher = faster)', section: 'Agent', spec: { kind: 'number', step: 10, minimum: 10, maximum: 240, decimals: 0 } },
   { key: 'terminalCleanPrompt', label: 'Terminal clean themed prompt', section: 'Terminal', spec: { kind: 'boolean' } },
   { key: 'agentAudioNarration', label: 'Speak agent replies aloud (needs a TTS engine)', section: 'Narration', spec: { kind: 'boolean' } },

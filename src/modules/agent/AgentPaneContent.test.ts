@@ -5,6 +5,8 @@ import { AgentSession } from './AgentSession';
 import { MockAgentBackend } from './MockAgentBackend';
 import { DARK } from '../theme/ThemePalettes';
 import type { PaneRenderContext } from '../ui/PaneContent';
+import { ref } from 'vue';
+import type { AgentTerminalFollowMode } from '../settings/Settings';
 
 /** A fake scroll engine — records the scroll commands the pane issues, without any renderer. */
 class FakePort implements AgentScrollPort {
@@ -274,6 +276,31 @@ describe('AgentPaneContent — engine switcher', () => {
     const before = enginePort.cycles;
     pane.onPointerDown(3, context().height - 2);
     expect(enginePort.cycles).toBe(before); // click ignored when not cyclable
+  });
+});
+
+describe('AgentPaneContent — terminal follow footer control', () => {
+  test('the live mode paints next to the engine and its painted target cycles the shared port', () => {
+    const { pane } = makePane();
+    pane.attachEnginePort(new FakeEnginePort());
+    const mode = ref<AgentTerminalFollowMode>('follow-all');
+    let cycleCount = 0;
+    pane.attachTerminalFollowPort({
+      mode,
+      label: () => mode.value === 'follow-all' ? 'follow' : mode.value,
+      cycle: () => {
+        cycleCount += 1;
+        mode.value = 'on-error';
+        return mode.value;
+      },
+    });
+    const painted = paintedText(pane.render(context()));
+    expect(painted).toContain('engine: claude');
+    expect(painted).toContain('follow: follow');
+    const modeRow = context().height - 2;
+    expect(pane.onPointerDown(25, modeRow)).toBe(true);
+    expect(cycleCount).toBe(1);
+    expect(paintedText(pane.render(context()))).toContain('follow: on-error');
   });
 });
 

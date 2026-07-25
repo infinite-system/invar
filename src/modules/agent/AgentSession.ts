@@ -18,27 +18,29 @@ import { TranscriptContextSerializer } from './TranscriptContextSerializer';
 class $AgentSession {
   /** The one append-only transcript. Mutated only by fold()/send()/swapBackend() here; read-only
    *  everywhere else. */
-  private readonly entries: TranscriptEntry[] = [];
+  protected readonly entries: TranscriptEntry[] = [];
   /** True while the trailing assistant entry is still accumulating text-deltas. */
-  private assistantTurnOpen = false;
+  protected assistantTurnOpen = false;
   /** Live respond callbacks for pending permission requests, keyed by request id. The transcript entry
    *  is pure data; the callable lives HERE (the session is the one router of the user's decision). */
-  private readonly pendingPermissionResponders = new Map<string, (decision: PermissionDecision) => void>();
+  protected readonly pendingPermissionResponders = new Map<string, (decision: PermissionDecision) => void>();
   /** A bounded context preamble to prepend to the NEXT prompt after an engine swap, so the new engine
    *  inherits the conversation. Consumed (cleared) on the first send after the swap. */
-  private pendingContextPreamble: string | null = null;
+  protected pendingContextPreamble: string | null = null;
+  /** External prompts waiting for the current turn to settle. Each is delivered as its own turn. */
+  protected readonly pendingExternalPrompts: string[] = [];
   /** Everything before this transcript index is known settled (non-permission, or resolved) — the
    *  pendingPermission getter never re-walks it. Monotonic; valid because the transcript is append-only
    *  and a pointer entry only flips pending→resolved. */
-  private pendingPermissionScanFrom = 0;
+  protected pendingPermissionScanFrom = 0;
 
   /** The engine currently answering — the registry's RESOLVED engine, passed by the factory at
    *  construction and updated on every swap. Stamped onto each assistant/permission entry as it opens,
    *  so the transcript records who PRODUCED each turn (history keeps its label across switches).
    *  Defaults to 'claude' (the only engine that existed before the stamp) for direct construction. */
-  private currentEngine: ResolvedEngine;
+  protected currentEngine: ResolvedEngine;
 
-  constructor(private backend: AgentBackend, activeEngine: ResolvedEngine = 'claude') {
+  constructor(protected backend: AgentBackend, activeEngine: ResolvedEngine = 'claude') {
     this.currentEngine = activeEngine;
     this.backend.onEvent((event) => this.fold(event));
   }
@@ -120,7 +122,7 @@ class $AgentSession {
     this.assistantTurnOpen = false;
     this.backend.onEvent((event) => this.fold(event));
     this.entries.push({ role: 'system', text: `switched to ${nextEngine} — context ported` });
-    this.pendingContextPreamble = preamble || null;
+    this.ingestContext(preamble);
     this.renderRevision.value++;
     return true;
   }
@@ -136,9 +138,27 @@ class $AgentSession {
     this.entries.push({ role: 'user', text: trimmed });
     this.status.value = 'streaming';
     this.renderRevision.value++;
-    const toBackend = this.pendingContextPreamble ? `${this.pendingContextPreamble}\n\n${trimmed}` : trimmed;
-    this.pendingContextPreamble = null;
-    this.backend.send(toBackend);
+    this.backend.send(this.promptWithPendingContext(trimmed));
+    return true;
+  }
+
+  ingestContext(text: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const combined = this.pendingContextPreamble
+      ? `${this.pendingContextPreamble}\n\n${trimmed}`
+      : trimmed;
+    const agentSessionClass = this.constructor as typeof $AgentSession;
+    this.pendingContextPreamble = combined.slice(
+      -agentSessionClass.maximumPendingContextCharacters,
+    );
+  }
+
+  requestExternalResponse(prompt: string): boolean {
+    const trimmed = prompt.trim();
+    if (!trimmed) return false;
+    this.pendingExternalPrompts.push(trimmed);
+    this.dispatchPendingExternalPrompt();
     return true;
   }
 
@@ -155,7 +175,7 @@ class $AgentSession {
   }
 
   /** Fold one backend event into the transcript + derived status. The whole state machine lives here. */
-  private fold(event: AgentEvent): void {
+  protected fold(event: AgentEvent): void {
     switch (event.kind) {
       case 'session-start':
         this.status.value = 'streaming';
@@ -198,11 +218,12 @@ class $AgentSession {
         break;
     }
     this.renderRevision.value++;
+    if (event.kind === 'session-end') this.dispatchPendingExternalPrompt();
   }
 
   /** Deny-resolve any permission request still pending when the turn ends (interrupt/error/crash) so no
    *  paused backend promise leaks and no prompt renders against a dead turn. */
-  private resolveDanglingPermissions(): void {
+  protected resolveDanglingPermissions(): void {
     for (const [id, respond] of [...this.pendingPermissionResponders]) {
       this.pendingPermissionResponders.delete(id);
       for (const entry of this.entries) {
@@ -210,6 +231,29 @@ class $AgentSession {
       }
       respond('deny');
     }
+  }
+
+  protected dispatchPendingExternalPrompt(): void {
+    if (this.busy) return;
+    const prompt = this.pendingExternalPrompts.shift();
+    if (!prompt) return;
+    this.assistantTurnOpen = false;
+    this.entries.push({ role: 'user', text: prompt });
+    this.status.value = 'streaming';
+    this.renderRevision.value++;
+    this.backend.send(this.promptWithPendingContext(prompt));
+  }
+
+  protected promptWithPendingContext(prompt: string): string {
+    const promptWithContext = this.pendingContextPreamble
+      ? `${this.pendingContextPreamble}\n\n${prompt}`
+      : prompt;
+    this.pendingContextPreamble = null;
+    return promptWithContext;
+  }
+
+  protected static get maximumPendingContextCharacters(): number {
+    return 32 * 1024;
   }
 
   dispose(): void {

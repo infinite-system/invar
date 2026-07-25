@@ -33,6 +33,7 @@ import { AgentComposer } from './AgentComposer';
 import { AgentSpinner } from './AgentSpinner';
 import { AgentThinkingIndicator, type ThinkingSegment } from './AgentThinkingIndicator';
 import type { AgentSession } from './AgentSession';
+import type { AgentTerminalFollowMode } from '../settings/Settings';
 
 /** Transcript gutter: blank columns of breathing room on the left and right of the canvas (airier). */
 const TRANSCRIPT_PAD_LEFT = 2;
@@ -77,6 +78,12 @@ export interface AgentEnginePort {
 export interface AgentTranscriptSearchPort {
   readonly findBar: FindBar.Instance;
   open(): void;
+}
+
+export interface AgentTerminalFollowPort {
+  readonly mode: Ref<AgentTerminalFollowMode>;
+  label(): string;
+  cycle(): AgentTerminalFollowMode;
 }
 
 /** Which surface a pane-local row belongs to (for pointer/selection routing). */
@@ -124,6 +131,8 @@ class $AgentPaneContent implements PaneContent {
   private scrollPort: AgentScrollPort | null = null;
   /** The engine seam (bound by the host) — current provider + cycle. Null until attached. */
   private enginePort: AgentEnginePort | null = null;
+  /** The user-owned terminal-follow setting and cycle action, bound by the host. */
+  protected terminalFollowPort: AgentTerminalFollowPort | null = null;
   /** Host-owned shared FindBar + open action. The pane owns neither overlay coordination nor a second
    *  query model; it only projects the affordance and invokes the same action Ctrl+F invokes. */
   private transcriptSearchPort: AgentTranscriptSearchPort | null = null;
@@ -136,6 +145,12 @@ class $AgentPaneContent implements PaneContent {
   private lastTranscriptSearchText: string | null = null;
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
   private lastEngineSegment: { row: number; startColumn: number; endColumn: number } | null = null;
+  /** The terminal-follow segment's click region, produced by the same layout that paints it. */
+  protected lastTerminalFollowSegment: {
+    row: number;
+    startColumn: number;
+    endColumn: number;
+  } | null = null;
   /** The mode-line search button's click region, resolved by the same layout that paints the glyph. */
   private lastSearchSegment: { row: number; startColumn: number; endColumn: number } | null = null;
   /** The permission-mode setting (bound by the host) — drives the mode line + Shift+Tab toggle. */
@@ -173,6 +188,7 @@ class $AgentPaneContent implements PaneContent {
       void this.spinner.running.value;
       void this.viewRevision.value;
       void this.permissionMode?.value;
+      void this.terminalFollowPort?.mode.value;
       // Transcript-search state repaints through the SAME fuse: the bar opening (which creates the
       // engine), the live query, the matches, and the cycled current match all change what the body
       // rows paint. Before the engine exists only `open` is subscribed — its flip re-runs this
@@ -234,6 +250,10 @@ class $AgentPaneContent implements PaneContent {
   /** Bind the engine seam so the mode line shows the engine + click/Ctrl+E cycle it. */
   attachEnginePort(port: AgentEnginePort): void {
     this.enginePort = port;
+  }
+  /** Bind the terminal-follow mode so footer clicks project and mutate the same live setting. */
+  attachTerminalFollowPort(port: AgentTerminalFollowPort): void {
+    this.terminalFollowPort = port;
   }
   /** Bind the shared FindBar and the host-owned open action so Ctrl+F and the mode-line icon reach the
    *  same overlay-coordinated path (count, cycling, case toggle — one search vocabulary). */
@@ -445,7 +465,7 @@ class $AgentPaneContent implements PaneContent {
     });
   }
 
-  /** The mode line: ENGINE (click / Ctrl+E), SEARCH (click / Ctrl+F), then PERMISSION (Shift+Tab).
+  /** The mode line: ENGINE, TERMINAL FOLLOW, SEARCH, then PERMISSION.
    *  The layout records button cell ranges while emitting their segments, so paint and hit-test share
    *  one geometry source. */
   private modeLineSegments(context: PaneRenderContext, modeLineRow: number): ThinkingSegment[] {
@@ -470,6 +490,32 @@ class $AgentPaneContent implements PaneContent {
       const endColumn = startColumn + WrapText.Class.displayWidth(engineText);
       this.lastEngineSegment = { row: modeLineRow, startColumn, endColumn };
       segments.push({ text: engineText, color: cyclable ? context.palette.accent : context.palette.dim, bold: cyclable });
+      modeLineColumn = endColumn;
+      const separatorText = '  ·  ';
+      segments.push({ text: separatorText, color: context.palette.dim, bold: false });
+      modeLineColumn += WrapText.Class.displayWidth(separatorText);
+    }
+
+    this.lastTerminalFollowSegment = null;
+    if (this.terminalFollowPort) {
+      const followMode = this.terminalFollowPort.mode.value;
+      const followText = `follow: ${this.terminalFollowPort.label()}`;
+      const startColumn = modeLineColumn;
+      const endColumn = startColumn + WrapText.Class.displayWidth(followText);
+      this.lastTerminalFollowSegment = {
+        row: modeLineRow,
+        startColumn,
+        endColumn,
+      };
+      segments.push({
+        text: followText,
+        color: followMode === 'off'
+          ? context.palette.dim
+          : followMode === 'on-request'
+            ? context.palette.info
+            : context.palette.accent,
+        bold: followMode !== 'off',
+      });
       modeLineColumn = endColumn;
       const separatorText = '  ·  ';
       segments.push({ text: separatorText, color: context.palette.dim, bold: false });
@@ -690,6 +736,18 @@ class $AgentPaneContent implements PaneContent {
     const engine = this.lastEngineSegment;
     if (engine && this.enginePort?.canCycle && row === engine.row && column >= engine.startColumn && column < engine.endColumn) {
       return this.cycleEngine();
+    }
+    const terminalFollow = this.lastTerminalFollowSegment;
+    if (
+      terminalFollow
+      && this.terminalFollowPort
+      && row === terminalFollow.row
+      && column >= terminalFollow.startColumn
+      && column < terminalFollow.endColumn
+    ) {
+      this.terminalFollowPort.cycle();
+      this.viewRevision.value += 1;
+      return true;
     }
     const search = this.lastSearchSegment;
     if (

@@ -150,19 +150,50 @@ class $TerminalEmulator {
     return active.getLine(active.baseY + row)?.translateToString(true) ?? '';
   }
 
-  recentTextLines(maximumLineCount = 40): string[] {
+  recentTextLines(maximumLineCount?: number): readonly string[] {
+    return this.scrollbackText(
+      maximumLineCount === undefined ? {} : { lineCount: maximumLineCount },
+    ).lines;
+  }
+
+  scrollbackText(request: TerminalScrollbackRequest = {}): TerminalScrollbackSnapshot {
     const active = this.terminal.buffer.active;
-    const safeMaximumLineCount = Math.max(0, maximumLineCount);
-    const firstLineIndex = Math.max(0, active.length - safeMaximumLineCount);
+    const terminalEmulatorClass = this.constructor as typeof $TerminalEmulator;
+    const totalLines = active.length;
+    let firstLineIndex: number;
+    let endLineIndex: number;
+    if (request.range) {
+      firstLineIndex = Math.max(
+        0,
+        Math.min(totalLines, Math.floor(request.range.startLine) - 1),
+      );
+      endLineIndex = Math.max(
+        firstLineIndex,
+        Math.min(totalLines, Math.floor(request.range.endLine)),
+      );
+    } else {
+      const requestedLineCount = request.lineCount
+        ?? terminalEmulatorClass.defaultScrollbackLineCount;
+      const safeLineCount = Number.isFinite(requestedLineCount)
+        ? Math.max(0, Math.floor(requestedLineCount))
+        : terminalEmulatorClass.defaultScrollbackLineCount;
+      firstLineIndex = Math.max(0, totalLines - safeLineCount);
+      endLineIndex = totalLines;
+    }
     const lines: string[] = [];
     for (
       let lineIndex = firstLineIndex;
-      lineIndex < active.length;
+      lineIndex < endLineIndex;
       lineIndex += 1
     ) {
       lines.push(active.getLine(lineIndex)?.translateToString(true) ?? '');
     }
-    return lines;
+    return {
+      lines,
+      totalLines,
+      startLine: lines.length > 0 ? firstLineIndex + 1 : 0,
+      endLine: lines.length > 0 ? endLineIndex : 0,
+    };
   }
 
   markPromptSubmitted(): void {
@@ -241,6 +272,10 @@ class $TerminalEmulator {
       this.isSgrMouseEncodingEnabledValue = isEnabled;
     }
     return false;
+  }
+
+  protected static get defaultScrollbackLineCount(): number {
+    return 40;
   }
 
   protected observeTitle(title: string): void {
@@ -393,6 +428,21 @@ export interface TerminalCell {
   isStrikethrough: boolean;
   isOverline: boolean;
   width: number;
+}
+
+export interface TerminalScrollbackRequest {
+  readonly lineCount?: number;
+  readonly range?: {
+    readonly startLine: number;
+    readonly endLine: number;
+  };
+}
+
+export interface TerminalScrollbackSnapshot {
+  readonly lines: readonly string[];
+  readonly totalLines: number;
+  readonly startLine: number;
+  readonly endLine: number;
 }
 
 export type TerminalShellIntegrationEventKind =

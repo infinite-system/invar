@@ -78,7 +78,17 @@ class $SdkStreamBackend implements AgentBackend {
             tool(
               definition.name,
               definition.description,
-              definition.requiresCommand ? { command: z.string() } : {},
+              definition.requiresCommand
+                ? { command: z.string() }
+                : definition.name === 'readTerminalScrollback'
+                  ? {
+                      lineCount: z.number().int().positive().optional(),
+                      range: z.object({
+                        startLine: z.number().int().positive(),
+                        endLine: z.number().int().positive(),
+                      }).optional(),
+                    }
+                  : {},
               async (input) => ({
                 content: [{ type: 'text', text: await definition.invoke(input) }],
               }),
