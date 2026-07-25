@@ -60,9 +60,12 @@ try {
   driver.sendText('world');
   await driver.awaitSnapshot((candidate) => candidate.findText('hello world') !== null);
   driver.sendRawInput('\x1b[3;3~');
+  // Status publication and frame completion are separate authorities (harness.invariants.md):
+  // wait on BOTH the rendered text and the semantic cursor before asserting either.
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('hello ') !== null
-      && candidate.findText('world') === null,
+      && candidate.findText('world') === null
+      && statusField<{ col?: number }>(statusPath, 'cursor')?.col === 6,
   );
   requireCondition(
     statusField<string>(statusPath, 'activeBuffer') === activeBufferBefore,
@@ -74,8 +77,11 @@ try {
   );
   await driver.assertNoCompleteFrameEmittedFor(300);
   driver.sendRawInputWithoutFrameExpectation('\x1b\x7f');
+  // Wait on the RENDERED cursor too — the status file can publish before the repaint lands.
   snapshot = await driver.awaitSnapshot(
-    () => statusField<{ col?: number }>(statusPath, 'cursor')?.col === 0,
+    (candidate) => statusField<{ col?: number }>(statusPath, 'cursor')?.col === 0
+      && candidate.cursorColumn === helloPosition.column
+      && candidate.cursorRow === helloPosition.row,
   );
   requireCondition(
     snapshot.cursorColumn === helloPosition.column
