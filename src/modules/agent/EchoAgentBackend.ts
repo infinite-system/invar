@@ -19,12 +19,12 @@ class $EchoAgentBackend implements AgentBackend {
    *  UI loop is drivable hermetically — no SDK, no billing. */
   readonly supportsPermissionPrompts = true;
 
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private disposed = false;
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected disposed = false;
   /** Pending delayed-completion timer (only armed in the demo/driving path). */
-  private pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  protected pendingTimer: ReturnType<typeof setTimeout> | null = null;
   /** Session-scoped auto-allow (mirrors the SDK backend's 'always-allow' semantics for the smoke). */
-  private readonly autoAllowedTools = new Set<string>();
+  protected readonly autoAllowedTools = new Set<string>();
 
   constructor(protected readonly options: EchoAgentOptions = {}) {}
 
@@ -115,14 +115,14 @@ class $EchoAgentBackend implements AgentBackend {
     this.eventCallback = null;
   }
 
-  private clearPendingTimer(): void {
+  protected clearPendingTimer(): void {
     if (this.pendingTimer !== null) {
       clearTimeout(this.pendingTimer);
       this.pendingTimer = null;
     }
   }
 
-  private emit(event: AgentEvent): void {
+  protected emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
 

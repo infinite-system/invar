@@ -15,30 +15,16 @@ import type { AgentEvent } from './AgentEvents.interface';
 import { CodexStreamMapping } from './CodexStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 
-type CodexStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;
-
-export interface CodexStreamOptions {
-  /** Absolute path to the `codex` binary (resolved by the factory via Bun.which). */
-  codexPath: string;
-  /** Working directory for the agent (the workspace root). */
-  cwd?: string;
-  /** Run without approval prompts / sandbox (`--dangerously-bypass-approvals-and-sandbox`). A GETTER
-   *  (not a snapshot) so a live Shift+Tab toggle is honored on the next turn — resolved at send time. */
-  skipPermissions?: boolean | (() => boolean);
-  /** Model override (`-m`); empty/undefined uses codex's default. */
-  model?: string;
-}
-
 class $CodexStreamBackend implements AgentBackend {
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: CodexStreamProcess | null = null;
-  private threadId: string | null = null;
-  private sawEnd = false;
-  private interrupting = false;
-  private disposed = false;
-  private stderrTail = '';
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected child: CodexStreamProcess | null = null;
+  protected threadId: string | null = null;
+  protected sawEnd = false;
+  protected interrupting = false;
+  protected disposed = false;
+  protected stderrTail = '';
 
-  constructor(private readonly options: CodexStreamOptions) {}
+  constructor(protected readonly options: CodexStreamOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.child) return;
@@ -67,7 +53,7 @@ class $CodexStreamBackend implements AgentBackend {
     void this.pump(child);
   }
 
-  private async pump(child: CodexStreamProcess): Promise<void> {
+  protected async pump(child: CodexStreamProcess): Promise<void> {
     const drainStderr = this.drainStderr(child);
     const decoder = new TextDecoder();
     let buffer = '';
@@ -95,7 +81,7 @@ class $CodexStreamBackend implements AgentBackend {
     }
   }
 
-  private async drainStderr(child: CodexStreamProcess): Promise<void> {
+  protected async drainStderr(child: CodexStreamProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {
@@ -107,7 +93,7 @@ class $CodexStreamBackend implements AgentBackend {
     }
   }
 
-  private consumeLine(line: string): void {
+  protected consumeLine(line: string): void {
     const trimmed = line.trim();
     if (!trimmed) return;
     let raw: unknown;
@@ -142,7 +128,7 @@ class $CodexStreamBackend implements AgentBackend {
     this.eventCallback = null;
   }
 
-  private emit(event: AgentEvent): void {
+  protected emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
 }
@@ -152,3 +138,12 @@ export namespace CodexStreamBackend {
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
+export interface CodexStreamOptions {
+  codexPath: string;
+  cwd?: string;
+  skipPermissions?: boolean | (() => boolean);
+  model?: string;
+}
+
+type CodexStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;

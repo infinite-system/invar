@@ -14,42 +14,29 @@ import type { AgentEvent } from './AgentEvents.interface';
 import { ClaudeStreamMapping } from './ClaudeStreamMapping';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 
-type CliStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;
-
-/** Turn an auth-shaped stderr tail into a friendly, actionable hint — or null if it isn't auth-related. */
-function authHintFor(stderr: string): string | null {
-  const lower = stderr.toLowerCase();
-  if (/not logged in|unauthenticated|no api key|authentication|login|oauth|credential|invalid.*key|401|unauthorized/.test(lower)) {
-    return 'Claude is not authenticated. Run `claude login` in a terminal (or set ANTHROPIC_API_KEY), then send again.';
-  }
-  return null;
-}
-
-export interface CliStreamOptions {
-  /** Absolute path to the `claude` binary (resolved by the factory via Bun.which). */
-  claudePath: string;
-  /** Working directory for the agent (the workspace root), so Claude operates in the user's project. */
-  cwd?: string;
-  /** Run without permission prompts (`--dangerously-skip-permissions`) — headless `-p` cannot surface
-   *  approval prompts, so tools are denied unless this is on. Provider-neutral `agentSkipPermissions`.
-   *  A GETTER (not a snapshot) so a live Shift+Tab toggle takes effect on the NEXT turn — each `send()`
-   *  spawns a fresh `claude`, so it re-reads the current setting rather than the value at agent creation. */
-  skipPermissions?: boolean | (() => boolean);
-  /** Model override (`--model`); empty/undefined uses Claude's default. */
-  model?: string;
-}
-
 class $CliStreamBackend implements AgentBackend {
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: CliStreamProcess | null = null;
-  private sessionId: string | null = null;
-  private sawResult = false;
-  private interrupting = false;
-  private disposed = false;
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected child: CliStreamProcess | null = null;
+  protected sessionId: string | null = null;
+  protected sawResult = false;
+  protected interrupting = false;
+  protected disposed = false;
   /** Tail of the child's stderr, so a non-zero exit can surface a useful reason (e.g. not logged in). */
-  private stderrTail = '';
+  protected stderrTail = '';
 
-  constructor(private readonly options: CliStreamOptions) {}
+  constructor(protected readonly options: CliStreamOptions) {}
+
+  protected authHintFor(stderr: string): string | null {
+    const lower = stderr.toLowerCase();
+    if (
+      /not logged in|unauthenticated|no api key|authentication|login|oauth|credential|invalid.*key|401|unauthorized/.test(
+        lower,
+      )
+    ) {
+      return 'Claude is not authenticated. Run `claude login` in a terminal (or set ANTHROPIC_API_KEY), then send again.';
+    }
+    return null;
+  }
 
   send(prompt: string): void {
     if (this.disposed || this.child) return; // one turn at a time (AgentSession also guards this)
@@ -78,7 +65,7 @@ class $CliStreamBackend implements AgentBackend {
     void this.pump(child);
   }
 
-  private async pump(child: CliStreamProcess): Promise<void> {
+  protected async pump(child: CliStreamProcess): Promise<void> {
     const drainStderr = this.drainStderr(child); // concurrent, so a blocked stderr can't stall stdout
     const decoder = new TextDecoder();
     let buffer = '';
@@ -104,7 +91,7 @@ class $CliStreamBackend implements AgentBackend {
     if (!this.sawResult && !this.disposed) {
       const interrupted = this.interrupting;
       if (!interrupted && exitCode !== 0) {
-        const hint = authHintFor(this.stderrTail);
+        const hint = this.authHintFor(this.stderrTail);
         this.emit({ kind: 'error', message: hint ?? (this.stderrTail.trim().slice(-400) || 'claude exited with an error') });
       }
       this.emit({ kind: 'session-end', reason: interrupted ? 'interrupted' : exitCode === 0 ? 'completed' : 'error' });
@@ -112,7 +99,7 @@ class $CliStreamBackend implements AgentBackend {
   }
 
   /** Drain the child's stderr into a bounded tail — never emitted verbatim unless the turn fails. */
-  private async drainStderr(child: CliStreamProcess): Promise<void> {
+  protected async drainStderr(child: CliStreamProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {
@@ -124,7 +111,7 @@ class $CliStreamBackend implements AgentBackend {
     }
   }
 
-  private consumeLine(line: string): void {
+  protected consumeLine(line: string): void {
     const trimmed = line.trim();
     if (!trimmed) return;
     let raw: unknown;
@@ -159,7 +146,7 @@ class $CliStreamBackend implements AgentBackend {
     this.eventCallback = null;
   }
 
-  private emit(event: AgentEvent): void {
+  protected emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
 }
@@ -169,3 +156,12 @@ export namespace CliStreamBackend {
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
+export interface CliStreamOptions {
+  claudePath: string;
+  cwd?: string;
+  skipPermissions?: boolean | (() => boolean);
+  model?: string;
+}
+
+type CliStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;

@@ -8,7 +8,7 @@ import type { AgentBackend } from './AgentBackend.interface';
 import type { AgentEvent } from './AgentEvents.interface';
 
 class $MockAgentBackend implements AgentBackend {
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
   /** Every prompt submitted via send(), in order. */
   readonly sent: string[] = [];
   interrupted = false;

@@ -30,43 +30,23 @@ import {
   type AgentTerminalToolPort,
 } from './AgentTerminalTools';
 
-type CodexAppServerProcess = SpawnedProcess<'pipe', 'pipe', 'pipe'>;
-
-export interface CodexAppServerOptions {
-  /** Absolute path to the `codex` binary (resolved by the factory via Bun.which). */
-  codexPath: string;
-  /** Working directory for the agent (the workspace root). */
-  cwd?: string;
-  /** Permission mode, resolved LIVE at each send(): true = bypass, false = ask (approval prompts). */
-  skipPermissions?: boolean | (() => boolean);
-  /** Model override; empty/undefined uses codex's default. */
-  model?: string;
-  terminalTools?: AgentTerminalToolPort;
-}
-
-/** One in-flight JSON-RPC request awaiting its response. */
-interface PendingRequest {
-  resolve: (result: unknown) => void;
-  reject: (error: Error) => void;
-  method: string;
-}
-
 class $CodexAppServerBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
 
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private child: CodexAppServerProcess | null = null;
-  private nextRequestId = 1;
-  private readonly pendingRequests = new Map<number, PendingRequest>();
-  private threadId: string | null = null;
-  private turnState: MappingTurnState = CodexAppServerMapping.Class.createTurnState();
-  private turnInFlight = false;
-  private interrupting = false;
-  private disposed = false;
-  private permissionRequestCounter = 0;
-  private stderrTail = '';
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected child: CodexAppServerProcess | null = null;
+  protected nextRequestId = 1;
+  protected readonly pendingRequests = new Map<number, PendingRequest>();
+  protected threadId: string | null = null;
+  protected turnState: MappingTurnState =
+    CodexAppServerMapping.Class.createTurnState();
+  protected turnInFlight = false;
+  protected interrupting = false;
+  protected disposed = false;
+  protected permissionRequestCounter = 0;
+  protected stderrTail = '';
 
-  constructor(private readonly options: CodexAppServerOptions) {}
+  constructor(protected readonly options: CodexAppServerOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.turnInFlight) return; // one turn at a time (AgentSession also guards)
@@ -80,7 +60,7 @@ class $CodexAppServerBackend implements AgentBackend {
     });
   }
 
-  private async runTurn(prompt: string): Promise<void> {
+  protected async runTurn(prompt: string): Promise<void> {
     // Mode resolves LIVE per turn — a Shift+Tab toggle since the last turn applies here.
     const bypass = AgentPermissions.Class.resolveLive(this.options.skipPermissions);
     await this.ensureThread(bypass);
@@ -96,7 +76,7 @@ class $CodexAppServerBackend implements AgentBackend {
   }
 
   /** Spawn the app-server + initialize + start the one thread (first turn only). */
-  private async ensureThread(bypassPermissions: boolean): Promise<void> {
+  protected async ensureThread(bypassPermissions: boolean): Promise<void> {
     if (this.child && this.threadId) return;
     if (!this.child) {
       const child = Processes.Class.spawn([this.options.codexPath, 'app-server'], {
@@ -161,7 +141,7 @@ class $CodexAppServerBackend implements AgentBackend {
 
   /** Write one JSON-RPC line to the server's stdin. The process stdin is a FileSink (write + flush),
    *  NOT a WritableStream — a getWriter() path would silently no-op every message. */
-  private write(payload: unknown): void {
+  protected write(payload: unknown): void {
     const sink = this.child?.stdin as unknown as { write?: (data: string) => unknown; flush?: () => unknown } | null;
     if (!sink || typeof sink.write !== 'function') return;
     try {
@@ -172,13 +152,13 @@ class $CodexAppServerBackend implements AgentBackend {
     }
   }
 
-  private request(method: string, params: unknown): Promise<unknown> {
+  protected request(method: string, params: unknown): Promise<unknown> {
     const id = this.nextRequestId++;
     this.write({ jsonrpc: '2.0', id, method, params });
     return new Promise((resolve, reject) => this.pendingRequests.set(id, { resolve, reject, method }));
   }
 
-  private async pumpStdout(child: CodexAppServerProcess): Promise<void> {
+  protected async pumpStdout(child: CodexAppServerProcess): Promise<void> {
     const decoder = new TextDecoder();
     let buffer = '';
     try {
@@ -196,7 +176,7 @@ class $CodexAppServerBackend implements AgentBackend {
     }
   }
 
-  private consumeLine(line: string): void {
+  protected consumeLine(line: string): void {
     const trimmed = line.trim();
     if (!trimmed) return;
     let message: Record<string, unknown>;
@@ -245,7 +225,10 @@ class $CodexAppServerBackend implements AgentBackend {
   /** Surface a paused approval as the provider-neutral 'permission-request'; route the user's decision
    *  back through the approval's METHOD-SPECIFIC response builder (a decision enum for command/patch
    *  approvals, a granted profile for permission requests). Exactly-once (the session also guards). */
-  private emitPermissionRequest(rpcId: number | string, approval: ApprovalDescriptor): void {
+  protected emitPermissionRequest(
+    rpcId: number | string,
+    approval: ApprovalDescriptor,
+  ): void {
     this.permissionRequestCounter += 1;
     let settled = false;
     this.emit({
@@ -261,7 +244,7 @@ class $CodexAppServerBackend implements AgentBackend {
     });
   }
 
-  private async drainStderr(child: CodexAppServerProcess): Promise<void> {
+  protected async drainStderr(child: CodexAppServerProcess): Promise<void> {
     if (!child.stderr) return;
     const decoder = new TextDecoder();
     try {
@@ -346,7 +329,7 @@ class $CodexAppServerBackend implements AgentBackend {
     this.pendingRequests.clear();
   }
 
-  private emit(event: AgentEvent): void {
+  protected emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
 }
@@ -356,3 +339,19 @@ export namespace CodexAppServerBackend {
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
+export interface CodexAppServerOptions {
+  codexPath: string;
+  cwd?: string;
+  skipPermissions?: boolean | (() => boolean);
+  model?: string;
+  terminalTools?: AgentTerminalToolPort;
+}
+
+interface PendingRequest {
+  resolve: (result: unknown) => void;
+  reject: (error: Error) => void;
+  method: string;
+}
+
+type CodexAppServerProcess = SpawnedProcess<'pipe', 'pipe', 'pipe'>;

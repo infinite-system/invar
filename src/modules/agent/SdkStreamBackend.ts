@@ -35,31 +35,20 @@ import {
   type AgentTerminalToolPort,
 } from './AgentTerminalTools';
 
-export interface SdkStreamOptions {
-  /** Working directory for the agent (the workspace root), so Claude operates in the user's project. */
-  cwd?: string;
-  /** Permission mode, resolved LIVE at each send(): true = bypass (no gating), false = ask (canUseTool
-   *  prompts). A GETTER honors a Shift+Tab toggle on the next turn. */
-  skipPermissions?: boolean | (() => boolean);
-  /** Model override; empty/undefined uses Claude's default. */
-  model?: string;
-  terminalTools?: AgentTerminalToolPort;
-}
-
 class $SdkStreamBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
 
-  private eventCallback: ((event: AgentEvent) => void) | null = null;
-  private activeQuery: Query | null = null;
-  private sessionId: string | null = null;
-  private sawResult = false;
-  private interrupting = false;
-  private disposed = false;
+  protected eventCallback: ((event: AgentEvent) => void) | null = null;
+  protected activeQuery: Query | null = null;
+  protected sessionId: string | null = null;
+  protected sawResult = false;
+  protected interrupting = false;
+  protected disposed = false;
   /** Session-scoped auto-allow: tools the user answered 'always-allow' for — future calls skip the prompt. */
-  private readonly autoAllowedTools = new Set<string>();
-  private permissionRequestCounter = 0;
+  protected readonly autoAllowedTools = new Set<string>();
+  protected permissionRequestCounter = 0;
 
-  constructor(private readonly options: SdkStreamOptions) {}
+  constructor(protected readonly options: SdkStreamOptions) {}
 
   send(prompt: string): void {
     if (this.disposed || this.activeQuery) return; // one turn at a time (AgentSession also guards this)
@@ -110,7 +99,11 @@ class $SdkStreamBackend implements AgentBackend {
             : {}),
           ...(bypass
             ? { permissionMode: 'bypassPermissions' as const, allowDangerouslySkipPermissions: true }
-            : { permissionMode: 'default' as const, canUseTool: this.gateToolCall }),
+            : {
+                permissionMode: 'default' as const,
+                canUseTool: (toolName, input) =>
+                  this.gateToolCall(toolName, input),
+              }),
         },
       });
     } catch (error) {
@@ -124,7 +117,10 @@ class $SdkStreamBackend implements AgentBackend {
 
   /** The SDK's canUseTool: pause the gated call as a 'permission-request' event until respond() answers.
    *  Auto-allowed tools (a previous 'always-allow') resolve immediately with no prompt. */
-  private readonly gateToolCall = async (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> => {
+  protected async gateToolCall(
+    toolName: string,
+    input: Record<string, unknown>,
+  ): Promise<PermissionResult> {
     if (this.disposed) return { behavior: 'deny', message: 'Session closed' };
     if (AgentTerminalTools.Class.isLowPermissionToolName(toolName)) {
       return { behavior: 'allow', updatedInput: input };
@@ -151,9 +147,9 @@ class $SdkStreamBackend implements AgentBackend {
         },
       });
     });
-  };
+  }
 
-  private async pump(turn: Query): Promise<void> {
+  protected async pump(turn: Query): Promise<void> {
     let streamFailed = false;
     try {
       for await (const message of turn) {
@@ -202,7 +198,7 @@ class $SdkStreamBackend implements AgentBackend {
     this.eventCallback = null;
   }
 
-  private emit(event: AgentEvent): void {
+  protected emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
 }
@@ -211,4 +207,11 @@ export namespace SdkStreamBackend {
   export const $Class = $SdkStreamBackend;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface SdkStreamOptions {
+  cwd?: string;
+  skipPermissions?: boolean | (() => boolean);
+  model?: string;
+  terminalTools?: AgentTerminalToolPort;
 }
