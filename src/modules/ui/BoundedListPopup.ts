@@ -14,10 +14,12 @@ import { CommandScoring } from '../commands/CommandScoring';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
+import { OverlayCloseButton } from './OverlayCloseButton';
 import { ScrollableTextViewport } from './ScrollableTextViewport';
 
 // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
+// invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 class $BoundedListPopup {
@@ -46,6 +48,7 @@ class $BoundedListPopup {
   protected readonly searchInput: TextRenderable;
   protected readonly list: TextRenderable;
   protected readonly viewport: ScrollableTextViewport.Instance;
+  protected readonly closeButton: OverlayCloseButton.Model;
   protected currentGeometry: BoundedListPopupGeometry | null = null;
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
@@ -171,6 +174,12 @@ class $BoundedListPopup {
         extend: (position) => this.selectFilteredIndex(position.line),
         finish: () => this.requestPaint(),
       },
+    });
+    this.closeButton = new OverlayCloseButton.Class({
+      renderer,
+      identifier: `${identifier}-close`,
+      zIndex: 131,
+      close: () => this.close(),
     });
     renderer.root.add(this.backdrop);
     renderer.root.add(this.box);
@@ -338,6 +347,7 @@ class $BoundedListPopup {
     this.pointerDragged = false;
     this.viewport.reset();
     this.viewport.hideBars();
+    this.closeButton.hide();
     this.backdrop.visible = false;
     this.box.visible = false;
     this.searchInput.visible = false;
@@ -408,6 +418,7 @@ class $BoundedListPopup {
       this.backdrop.visible = false;
       this.box.visible = false;
       this.viewport.hideBars();
+      this.closeButton.hide();
       return;
     }
     const matches = this.filteredMatches;
@@ -442,6 +453,17 @@ class $BoundedListPopup {
     this.box.backgroundColor = palette.panel;
     this.box.borderColor = palette.borderActive;
     this.box.titleColor = palette.accent;
+    if (this.backdropVisibleValue) {
+      this.closeButton.show({
+        left: geometry.boxLeft,
+        top: geometry.boxTop,
+        width: geometry.boxWidth,
+        backgroundColor: palette.panel,
+        foregroundColor: palette.accent,
+      });
+    } else {
+      this.closeButton.hide();
+    }
     this.searchInput.visible = this.searchEnabled;
     this.searchInput.width =
       geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
@@ -532,6 +554,7 @@ class $BoundedListPopup {
       this.dependencies.renderer.root.remove(this.box);
       this.backdrop.destroyRecursively();
       this.box.destroyRecursively();
+      this.closeButton.dispose();
     } catch {
       // Render teardown is best-effort after the app's effects have stopped.
     }

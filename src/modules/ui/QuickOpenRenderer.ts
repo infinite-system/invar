@@ -17,66 +17,122 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
 import type { QuickOpen } from '../search/QuickOpen';
 class $QuickOpenRenderer {
-    public static computeWindow(selectedIndex: number, total: number, maxRows: number): QuickOpenWindow {
-        const visibleRows = Math.max(1, maxRows);
-        if (total <= visibleRows)
-            return { firstVisible: 0, count: total };
-        const anchorIndex = selectedIndex < 0 ? 0 : Math.min(selectedIndex, total - 1);
-        const halfWindow = Math.floor((visibleRows - 1) / 2);
-        const lastPossibleFirst = total - visibleRows;
-        const firstVisible = Math.max(0, Math.min(anchorIndex - halfWindow, lastPossibleFirst));
-        return { firstVisible, count: visibleRows };
+  public static computeWindow(
+    selectedIndex: number,
+    total: number,
+    maxRows: number,
+  ): QuickOpenWindow {
+    const visibleRows = Math.max(1, maxRows);
+    if (total <= visibleRows) return { firstVisible: 0, count: total };
+    const anchorIndex =
+      selectedIndex < 0 ? 0 : Math.min(selectedIndex, total - 1);
+    const halfWindow = Math.floor((visibleRows - 1) / 2);
+    const lastPossibleFirst = total - visibleRows;
+    const firstVisible = Math.max(
+      0,
+      Math.min(anchorIndex - halfWindow, lastPossibleFirst),
+    );
+    return { firstVisible, count: visibleRows };
+  }
+  protected static messageResult(
+    lines: string[],
+    palette: Palette,
+  ): QuickOpenRenderResult {
+    return {
+      text: new StyledText([fg(palette.dim)(lines.join('\n'))]),
+      rowCount: 0,
+      firstVisible: 0,
+    };
+  }
+  public static render(context: QuickOpenRenderContext): QuickOpenRenderResult {
+    const { quickOpen, palette, innerWidth, maxRows } = context;
+    const openingWorkspace = quickOpen.mode.value === 'workspacePath';
+    if (openingWorkspace && quickOpen.errorMessage.value) {
+      return this.messageResult(
+        [`  ${quickOpen.errorMessage.value}`, '  Enter opens · Esc cancels'],
+        palette,
+      );
     }
-    protected static messageResult(lines: string[], palette: Palette): QuickOpenRenderResult {
-        return { text: new StyledText([fg(palette.dim)(lines.join('\n'))]), rowCount: 0, firstVisible: 0 };
+    const allMatches = quickOpen.matches.value;
+    if (allMatches.length === 0) {
+      if (openingWorkspace)
+        return this.messageResult(
+          ['  Type an existing folder path', '  Enter opens · Esc cancels'],
+          palette,
+        );
+      return this.messageResult(
+        [
+          quickOpen.query.value
+            ? '  (no matching files)'
+            : '  (type to filter project files)',
+        ],
+        palette,
+      );
     }
-    public static render(context: QuickOpenRenderContext): QuickOpenRenderResult {
-        const { quickOpen, palette, innerWidth, maxRows } = context;
-        const openingWorkspace = quickOpen.mode.value === 'workspacePath';
-        if (openingWorkspace && quickOpen.errorMessage.value) {
-            return this.messageResult([`  ${quickOpen.errorMessage.value}`, '  Enter opens · Esc cancels'], palette);
-        }
-        const allMatches = quickOpen.matches.value;
-        if (allMatches.length === 0) {
-            if (openingWorkspace)
-                return this.messageResult(['  Type an existing folder path', '  Enter opens · Esc cancels'], palette);
-            return this.messageResult([quickOpen.query.value ? '  (no matching files)' : '  (type to filter project files)'], palette);
-        }
-        const selectedIndex = quickOpen.selectedIndex.value;
-        const hoveredIndex = quickOpen.hoveredIndex.value;
-        // Scroll the render window to keep the selection visible: a long list windows around the selected row
-        // instead of always slicing from the top (which would let the selection vanish below the window).
-        // invariant: The selected quick-open row is always visible (src/modules/search/search.invariants.md)
-        const { firstVisible, count } = this.computeWindow(selectedIndex, allMatches.length, maxRows);
-        const windowedMatches = allMatches.slice(firstVisible, firstVisible + count);
-        const chunks: TextChunk[] = [];
-        windowedMatches.forEach((match, rowIndex) => {
-            const modelIndex = firstVisible + rowIndex;
-            const selected = modelIndex === selectedIndex;
-            const hovered = modelIndex === hoveredIndex;
-            // No selection arrow — the row background is the selection signal (the '›' marker was noise). Two
-            // intensities: selection (stronger, quick-open owns the keyboard while open) over hover (subtle).
-            const rowBackground = selected ? palette.selection : hovered ? palette.cursorLine : null;
-            const label = EditorCoordinates.Class.padToDisplayWidth(` ${match.path}`, innerWidth);
-            const styled = fg(selected ? palette.accent : palette.fg)(label);
-            chunks.push(rowBackground ? bg(rowBackground)(styled) : styled);
-            if (rowIndex < windowedMatches.length - 1)
-                chunks.push(fg(palette.fg)('\n'));
-        });
-        return { text: new StyledText(chunks), rowCount: windowedMatches.length, firstVisible };
-    }
+    const selectedIndex = quickOpen.selectedIndex.value;
+    const hoveredIndex = quickOpen.hoveredIndex.value;
+    // Scroll the render window to keep the selection visible: a long list windows around the selected row
+    // instead of always slicing from the top (which would let the selection vanish below the window).
+    // invariant: The selected quick-open row is always visible (src/modules/search/search.invariants.md)
+    const computedWindow = this.computeWindow(
+      selectedIndex,
+      allMatches.length,
+      maxRows,
+    );
+    const maximumFirstVisible = Math.max(
+      0,
+      allMatches.length - computedWindow.count,
+    );
+    const firstVisible =
+      context.firstVisible === undefined
+        ? computedWindow.firstVisible
+        : Math.max(0, Math.min(context.firstVisible, maximumFirstVisible));
+    const count = computedWindow.count;
+    const windowedMatches = allMatches.slice(
+      firstVisible,
+      firstVisible + count,
+    );
+    const chunks: TextChunk[] = [];
+    windowedMatches.forEach((match, rowIndex) => {
+      const modelIndex = firstVisible + rowIndex;
+      const selected = modelIndex === selectedIndex;
+      const hovered = modelIndex === hoveredIndex;
+      // No selection arrow — the row background is the selection signal (the '›' marker was noise). Two
+      // intensities: selection (stronger, quick-open owns the keyboard while open) over hover (subtle).
+      const rowBackground = selected
+        ? palette.selection
+        : hovered
+          ? palette.cursorLine
+          : null;
+      const label = EditorCoordinates.Class.padToDisplayWidth(
+        ` ${match.path}`,
+        innerWidth,
+      );
+      const styled = fg(selected ? palette.accent : palette.fg)(label);
+      chunks.push(rowBackground ? bg(rowBackground)(styled) : styled);
+      if (rowIndex < windowedMatches.length - 1)
+        chunks.push(fg(palette.fg)('\n'));
+    });
+    return {
+      text: new StyledText(chunks),
+      rowCount: windowedMatches.length,
+      firstVisible,
+    };
+  }
 }
 export namespace QuickOpenRenderer {
-    export const $Class = $QuickOpenRenderer;
-    export const Class = Static($QuickOpenRenderer);
+  export const $Class = $QuickOpenRenderer;
+  export const Class = Static($QuickOpenRenderer);
 }
 export interface QuickOpenRenderContext {
-    quickOpen: QuickOpen.Instance;
-    palette: Palette;
-    /** List inner width — rows pad to this so the row highlight spans the full width (VS Code-style). */
-    innerWidth: number;
-    /** Maximum result rows the modal shows (the render window). */
-    maxRows: number;
+  quickOpen: QuickOpen.Instance;
+  palette: Palette;
+  /** List inner width — rows pad to this so the row highlight spans the full width (VS Code-style). */
+  innerWidth: number;
+  /** Maximum result rows the modal shows (the render window). */
+  maxRows: number;
+  /** Optional shared-scroll-surface window. When absent, selection-centered legacy placement applies. */
+  firstVisible?: number;
 }
 /**
  * The rendered list plus how many hit-testable match rows it drew (0 for the message/empty states) and
@@ -84,12 +140,12 @@ export interface QuickOpenRenderContext {
  * `firstVisible + rowIndex`, so a hit-test on a scrolled list resolves to the right match.
  */
 export interface QuickOpenRenderResult {
-    text: StyledText;
-    rowCount: number;
-    firstVisible: number;
+  text: StyledText;
+  rowCount: number;
+  firstVisible: number;
 }
 /** The scroll window a render draws: the top model index and how many rows fit. */
 export interface QuickOpenWindow {
-    firstVisible: number;
-    count: number;
+  firstVisible: number;
+  count: number;
 }

@@ -936,6 +936,7 @@ class $Bootstrap {
       animating = view.tickPanelScroll(deltaTimeSeconds) || animating;
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
       animating = completionPopup.tick(deltaTimeSeconds) || animating;
+      animating = view.tickOverlayScroll(deltaTimeSeconds) || animating;
       syncAnimationLiveness(animating);
       // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
       // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
@@ -1297,20 +1298,12 @@ class $Bootstrap {
           );
       },
       'help.close': () => shortcutHelp.close(),
-      'help.up': () =>
-        shortcutHelp.scrollBy(-1, view.shortcutHelpViewportRows()),
-      'help.down': () =>
-        shortcutHelp.scrollBy(1, view.shortcutHelpViewportRows()),
+      'help.up': () => view.scrollShortcutHelpBy(-1),
+      'help.down': () => view.scrollShortcutHelpBy(1),
       'help.pageUp': () =>
-        shortcutHelp.scrollBy(
-          -view.shortcutHelpViewportRows(),
-          view.shortcutHelpViewportRows(),
-        ),
+        view.scrollShortcutHelpBy(-view.shortcutHelpViewportRows()),
       'help.pageDown': () =>
-        shortcutHelp.scrollBy(
-          view.shortcutHelpViewportRows(),
-          view.shortcutHelpViewportRows(),
-        ),
+        view.scrollShortcutHelpBy(view.shortcutHelpViewportRows()),
       'settings.up': () => settingsPanel.moveSelection(-1),
       'settings.down': () => settingsPanel.moveSelection(1),
       'settings.increase': () => settingsPanel.adjust(1),
@@ -1836,12 +1829,30 @@ class $Bootstrap {
         return;
       }
 
+      // The exclusive overlay slot owns EVERY key before focused pane content. Pane focus is retained
+      // beneath the overlay so closing returns naturally, but it cannot outrank the modal owner while
+      // the overlay is open. The previous order routed Escape into a focused terminal/agent first:
+      // Settings remained open even though OpenTUI had decoded and delivered the bare Escape correctly.
+      // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
+      const exclusiveInputOverlayOwnsKeyboard =
+        contextMenu.open.value ||
+        boundedListPopup.open.value ||
+        shortcutHelp.open.value ||
+        settingsPanel.open.value ||
+        commands.open.value ||
+        quickOpen.open.value ||
+        findBar.open.value;
+
       // A focused bottom panel (the terminal) owns the keyboard: every non-reserved key is encoded to
       // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
       // toggle) already fired above, so Ctrl+Q / F10 still quit and the toggle still hides the panel; an
       // unencodable key is swallowed so it never drives the hidden editor beneath.
       // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
-      if (panelHost.visible.value && panelHost.focused.value) {
+      if (
+        !exclusiveInputOverlayOwnsKeyboard &&
+        panelHost.visible.value &&
+        panelHost.focused.value
+      ) {
         const panelResolution = keybindings.resolve(
           {
             name: key.name,
@@ -1934,7 +1945,11 @@ class $Bootstrap {
         panelHost.handleKey(key);
         return;
       }
-      if (rightDockHost.visible.value && rightDockHost.focused.value) {
+      if (
+        !exclusiveInputOverlayOwnsKeyboard &&
+        rightDockHost.visible.value &&
+        rightDockHost.focused.value
+      ) {
         rightDockHost.handleKey(key);
         return;
       }

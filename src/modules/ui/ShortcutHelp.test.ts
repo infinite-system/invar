@@ -12,7 +12,10 @@ function buildSheet(): {
   sheet: InstanceType<typeof ShortcutHelp.Class>;
 } {
   const keybindings = new KeybindingRegistry.Class();
-  keybindings.registerLayer('canonical', KeybindingDefaults.Class.canonicalBindings);
+  keybindings.registerLayer(
+    'canonical',
+    KeybindingDefaults.Class.canonicalBindings,
+  );
   const commands = new CommandRegistry.Class();
   commands.register({
     id: 'help.shortcuts',
@@ -30,8 +33,14 @@ function buildSheet(): {
   return { keybindings, sheet };
 }
 
-function bindingRowFor(rows: ShortcutHelpRow[], actionIdentifier: string): ShortcutHelpRow | undefined {
-  return rows.find((row) => row.kind === 'binding' && row.actionIdentifier === actionIdentifier);
+function bindingRowFor(
+  rows: ShortcutHelpRow[],
+  actionIdentifier: string,
+): ShortcutHelpRow | undefined {
+  return rows.find(
+    (row) =>
+      row.kind === 'binding' && row.actionIdentifier === actionIdentifier,
+  );
 }
 
 describe('ShortcutHelp', () => {
@@ -55,7 +64,9 @@ describe('ShortcutHelp', () => {
   test('rows are grouped under category header rows', () => {
     const { sheet } = buildSheet();
     const rows = sheet.rows();
-    const categoryLabels = rows.filter((row) => row.kind === 'category').map((row) => row.label);
+    const categoryLabels = rows
+      .filter((row) => row.kind === 'category')
+      .map((row) => row.label);
     expect(categoryLabels).toContain('Editor');
     expect(categoryLabels).toContain('Help');
     expect(categoryLabels).toEqual([...categoryLabels].sort());
@@ -65,30 +76,25 @@ describe('ShortcutHelp', () => {
 
   test('a rebind in a later layer re-labels the sheet (rebinding-proof, not a constant)', () => {
     const { keybindings, sheet } = buildSheet();
-    expect(bindingRowFor(sheet.rows(), 'quickopen.open')?.chordLabel).toBe('Ctrl+P');
+    expect(bindingRowFor(sheet.rows(), 'quickopen.open')?.chordLabel).toBe(
+      'Ctrl+P',
+    );
     keybindings.registerLayer('user', [
       { chord: { key: 'o', ctrl: true }, action: 'quickopen.open' },
     ]);
     const reboundRows = sheet.rows();
-    expect(bindingRowFor(reboundRows, 'quickopen.open')?.chordLabel).toBe('Ctrl+O');
+    expect(bindingRowFor(reboundRows, 'quickopen.open')?.chordLabel).toBe(
+      'Ctrl+O',
+    );
     const chordLabels = reboundRows
       .filter((row) => row.actionIdentifier === 'quickopen.open')
       .map((row) => row.chordLabel);
     expect(chordLabels).not.toContain('Ctrl+P');
   });
 
-  test('scrollBy clamps to the row window at both ends', () => {
-    const { sheet } = buildSheet();
-    const rowCount = sheet.rows().length;
-    sheet.scrollBy(10_000, 10);
-    expect(sheet.scrollTop.value).toBe(Math.max(0, rowCount - 10));
-    sheet.scrollBy(-10_000, 10);
-    expect(sheet.scrollTop.value).toBe(0);
-  });
-
   test('show resets scroll and open/close toggle the modal flag', () => {
     const { sheet } = buildSheet();
-    sheet.scrollBy(5, 3);
+    sheet.scrollTop.value = 5;
     sheet.show();
     expect(sheet.open.value).toBe(true);
     expect(sheet.scrollTop.value).toBe(0);

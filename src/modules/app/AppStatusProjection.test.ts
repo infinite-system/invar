@@ -126,6 +126,8 @@ describe('AppStatusProjection', () => {
         }),
         rightDockViewportColumns: () => 28,
         rightDockViewportRows: () => 24,
+        overlayDialogBounds: () => ({}),
+        overlayScrollPositions: () => ({}),
         layoutGeometry: () => ({
           activityBar: { left: 0, top: 0, width: 4, height: 40 },
           sidebar: { left: 4, top: 0, width: 32, height: 40 },

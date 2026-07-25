@@ -265,6 +265,7 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   step "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   step "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
+  step "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   step "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
   # 6) Perf baselines — SOFT: memory/CPU/latency are measured + REPORTED so a regression surfaces in
   #    the gate (it was previously unwired = a perf regression could ship). Non-blocking: the numbers

@@ -1886,6 +1886,11 @@ class $RootView {
       activeMarkdownSplitView: () => editorContentMount.markdownSplitView,
       findTarget,
       shortcutHelpViewportRows: () => overlayLayer.shortcutHelpViewportRows(),
+      scrollShortcutHelpBy: (rowDelta: number) =>
+        overlayLayer.scrollShortcutHelpBy(rowDelta),
+      tickOverlayScroll: (dtSeconds: number) => overlayLayer.tick(dtSeconds),
+      overlayDialogBounds: () => overlayLayer.dialogBounds(),
+      overlayScrollPositions: () => overlayLayer.scrollPositions(),
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickPanelScroll: (dtSeconds: number) =>
         agentScrollViewport.tick(dtSeconds),
@@ -1973,6 +1978,17 @@ export interface RootView {
   findTarget(): FindBarTarget | null;
   /** Rows the shortcut cheat-sheet can show at once (scroll actions clamp against this). */
   shortcutHelpViewportRows(): number;
+  /** Route shortcut-sheet keyboard scrolling through the same viewport that owns wheel and thumb drag. */
+  scrollShortcutHelpBy(rowDelta: number): void;
+  /** Frame-tick hook for every modal overlay's shared scrollbar momentum. */
+  tickOverlayScroll(dtSeconds: number): boolean;
+  /** Live numeric bounds for semantic resize assertions; null means the dialog is hidden. */
+  overlayDialogBounds(): Record<
+    string,
+    { left: number; top: number; width: number; height: number } | null
+  >;
+  /** Scroll offsets owned by each overlay's shared viewport. */
+  overlayScrollPositions(): Record<string, number>;
   /** Frame-tick hook: advance the LSP hover-card dwell; true while counting or a request is in flight. */
   tickHover(dtSeconds: number): boolean;
   /** Frame-tick hook: advance the agent transcript's scroll-momentum glide + drag edge-autoscroll; true

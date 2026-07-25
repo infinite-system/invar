@@ -81,6 +81,8 @@ class $AppStatusProjection {
       inputOverlay: openInputOverlays[0] ?? null,
       inputOverlayCount: openInputOverlays.length,
       openInputOverlays,
+      overlayDialogBounds: ports.view.overlayDialogBounds(),
+      overlayScrollPositions: ports.view.overlayScrollPositions(),
       findOpen: ports.findBar.open.value,
       findMode: ports.findBar.mode.value,
       findTarget: ports.findBar.target?.identifier ?? null,
@@ -463,6 +465,8 @@ export interface AppStatusProjectionPorts {
     | 'rightDockViewportRows'
     | 'layoutGeometry'
     | 'splitterRegions'
+    | 'overlayDialogBounds'
+    | 'overlayScrollPositions'
   >;
   readonly mouse: AppStatusMouseEvent | null;
   readonly narration: Pick<

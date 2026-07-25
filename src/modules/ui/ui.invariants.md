@@ -461,6 +461,83 @@ src/modules/keybindings/__tests__/registry.test.ts && bash scripts/smoke-mode-co
 
 **Last refined:** 2026-07-22
 
+### Overlay dialogs stay inside the terminal
+
+**Invariant:** If an overlay dialog is visible, then its left, top, width, height, content viewport,
+scrollbar, and close control all fit inside the terminal's current rows and columns, including after
+a live resize.
+
+**Scope:** The command palette, Find and Replace, Quick Open, destructive confirmation, Settings,
+Keyboard Shortcuts, and context menu dialogs in `OverlayLayer`. `BoundedListPopup` has its own
+stricter anchored geometry record; completion is non-modal.
+
+**Mechanism:** `OverlayDialogGeometry.layout` clamps one numeric rectangle to the live
+`renderer.width` and `renderer.height`. `OverlayLayer.updateOverlayDialog` applies that rectangle to
+the box and its top-edge close control every frame. Content that exceeds the rectangle is windowed
+through `ScrollableTextViewport`, which derives its `SolidThumbScrollBar` from the same interior
+rectangle.
+
+**Generates:** Resize-safe dialogs; bounded paint; shared wheel momentum, keyboard reveal, and thumb
+drag; a close target that never leaves the canvas.
+
+**Evidence:** `src/modules/ui/OverlayDialogGeometry.ts`;
+`src/modules/ui/OverlayDialogGeometry.test.ts`; `src/modules/ui/OverlayLayer.ts`;
+`scripts/harness/smoke-overlay-dialog-harness.ts`.
+
+**Impossible if true:** Resizing while Settings or Keyboard Shortcuts is open leaves any dialog edge,
+scrollbar, or close control outside the terminal; overflowing rows paint through the bottom instead of
+scrolling.
+
+**Verification:** `bun test src/modules/ui/OverlayDialogGeometry.test.ts
+src/modules/ui/ScrollableTextViewport.test.ts && bun
+scripts/harness/smoke-overlay-dialog-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Overlay keyboard actions have visible mouse paths
+
+**Invariant:** If an overlay exposes an action through a keyboard binding, then it exposes a visible
+mouse path to the same model action; raw text entry is input, not a bound action. The mouse is the
+reliability floor when terminal keyboard delivery is missing or delayed.
+
+**Scope:** Overlay close, scrolling, list selection and activation, Find controls, and Settings edits
+in `OverlayLayer`, plus the modal popup adapters it coordinates.
+
+**Components:**
+- *Close parity* — each dialog paints a top-edge `✕` that calls the same close or cancel model method
+  as Escape.
+- *Scroll parity* — every overflowing dialog uses `ScrollableTextViewport`, so arrow or page movement,
+  wheel input, and `SolidThumbScrollBar` thumb drag share one offset.
+- *Action parity* — settings widgets, Find buttons, palette rows, Quick Open rows, and context-menu rows
+  call the same adjust, navigate, run, or select methods as their keyboard actions.
+
+**Mechanism:** `OverlayCloseButton` owns the glyph, top-edge placement, pointer handler, and teardown
+for every close control. `OverlayLayer.updateOverlayDialog` and `BoundedListPopup.update` lay that
+shared control out from the same numeric rectangle as the dialog and route it to the existing model
+close method. Each overflowing dialog composes `ScrollableTextViewport` instead of implementing
+dialog-specific scroll math.
+
+**Generates:** Mouse-only overlay operation; one visible close idiom; pointer and keyboard actions
+that cannot diverge into separate state.
+
+**Evidence:** `src/modules/ui/OverlayCloseButton.ts`; `src/modules/ui/OverlayLayer.ts`;
+`src/modules/ui/BoundedListPopup.ts`;
+`scripts/harness/smoke-overlay-dialog-harness.ts`; `scripts/smoke-find.sh`;
+`scripts/smoke-search-mouse.sh`; `scripts/smoke-voice-picker.sh`.
+
+**Impossible if true:** An overlay action works only by keyboard; a visible `✕` fails to close; wheel
+and keyboard reveal different row windows; a pointer edit bypasses the keyboard model method.
+
+**Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts && bash
+scripts/smoke-find.sh && bash scripts/smoke-search-mouse.sh && bash
+scripts/smoke-voice-picker.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### The shortcut sheet lists the effective bindings
 
 **Invariant:** If the shortcut cheat-sheet shows a chord for an action, then that chord is the
