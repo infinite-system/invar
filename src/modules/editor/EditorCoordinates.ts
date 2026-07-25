@@ -20,6 +20,7 @@ const MEMO_CAP = 512;
 const boundariesMemo = new Map<string, number[]>();
 const clustersMemo = new Map<string, string[]>();
 const displayPrefixMemo = new Map<string, number[]>();
+const lineWidthMemo = new Map<string, number>();
 
 function memoized<Value>(cache: Map<string, Value>, line: string, compute: () => Value): Value {
   const cached = cache.get(line);
@@ -159,8 +160,25 @@ function $displayColumn(line: string, graphemeIndex: number, tabWidth = 4): numb
 
 /** Total display width of a whole line. O(1) after the line's prefix is built once. */
 function $lineWidth(line: string, tabWidth = 4): number {
-  const prefix = $displayColumnPrefix(line, tabWidth);
-  return prefix[prefix.length - 1] ?? 0;
+  const compute = (): number => {
+    // Source files overwhelmingly contain printable ASCII. Width-only consumers (notably the
+    // document-wide horizontal extent built on load) do not need an Intl.Segmenter allocation for
+    // those lines; tabs are the only ASCII character whose width depends on the current column.
+    let asciiColumn = 0;
+    for (let utf16Offset = 0; utf16Offset < line.length; utf16Offset++) {
+      const codeUnit = line.charCodeAt(utf16Offset);
+      if (codeUnit === 0x09) {
+        asciiColumn += tabWidth - (asciiColumn % tabWidth);
+      } else if (codeUnit >= 0x20 && codeUnit <= 0x7e) {
+        asciiColumn++;
+      } else {
+        const prefix = $displayColumnPrefix(line, tabWidth);
+        return prefix[prefix.length - 1] ?? 0;
+      }
+    }
+    return asciiColumn;
+  };
+  return tabWidth === 4 ? memoized(lineWidthMemo, line, compute) : compute();
 }
 
 /**

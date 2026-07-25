@@ -32,6 +32,23 @@ test('TextDocument mutation marks dirty and bumps revision', () => {
   expect(document.dirty.value).toBe(false);
 });
 
+test('TextDocument maintains the full-document display width through localized edits', () => {
+  const document = new TextDocument.Class();
+  document.loadFromText('short\n中\twide\nmedium');
+  expect(document.maximumLineWidth).toBe(8);
+
+  document.setLine(1, 'x');
+  expect(document.maximumLineWidth).toBe(6);
+  document.insertLine(1, 'longest line');
+  expect(document.maximumLineWidth).toBe(12);
+  document.removeLine(1);
+  expect(document.maximumLineWidth).toBe(6);
+  document.replaceAll(['tiny', 'a much wider replacement']);
+  expect(document.maximumLineWidth).toBe(24);
+  document.restore(['restored']);
+  expect(document.maximumLineWidth).toBe(8);
+});
+
 test('Viewport keeps a target line within the window', () => {
   const viewport = new Viewport.Class();
   viewport.setSize(80, 10);

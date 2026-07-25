@@ -29,8 +29,16 @@ export interface PtyTestDriverOptions {
 
 export interface InputFrameByteArrivalMeasurement {
   inputWrittenTimestampMilliseconds: number;
+  firstCompletedFrame: CompletedSynchronizedFrame;
   completedFrame: CompletedSynchronizedFrame;
+  completedFramesUntilCondition: number;
+  inputToFirstFrameByteArrivalMilliseconds: number;
   inputToFrameByteArrivalMilliseconds: number;
+}
+
+export interface InputGridConditionByteArrivalMeasurement
+  extends InputFrameByteArrivalMeasurement {
+  snapshot: HarnessSnapshot.Model;
 }
 
 export interface HarnessGridRegion {
@@ -106,10 +114,57 @@ class $PtyTestDriver {
     this.frameExpectationPredecessor = undefined;
     return {
       inputWrittenTimestampMilliseconds,
+      firstCompletedFrame: completedFrame,
       completedFrame,
+      completedFramesUntilCondition: 1,
+      inputToFirstFrameByteArrivalMilliseconds:
+        completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
       inputToFrameByteArrivalMilliseconds:
         completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
     };
+  }
+
+  async sendKeysAndAwaitGridConditionByteArrival(
+    keyNames: readonly string[],
+    predicateDescription: string,
+    predicate: (snapshot: HarnessSnapshot.Model) => boolean,
+    timeoutMilliseconds = 10_000,
+  ): Promise<InputGridConditionByteArrivalMeasurement> {
+    this.markFrameExpected();
+    const deadline = performance.now() + timeoutMilliseconds;
+    let completedFramePromise = this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    const inputWrittenTimestampMilliseconds = performance.now();
+    this.openPty.write(keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''));
+    let firstCompletedFrame: CompletedSynchronizedFrame | null = null;
+    let completedFramesUntilCondition = 0;
+    while (true) {
+      const completedFrame = await completedFramePromise;
+      firstCompletedFrame ??= completedFrame;
+      completedFramesUntilCondition++;
+      await this.emulator.flush();
+      const snapshot = this.snapshot();
+      if (predicate(snapshot)) {
+        this.frameExpectationPredecessor = undefined;
+        return {
+          inputWrittenTimestampMilliseconds,
+          firstCompletedFrame,
+          completedFrame,
+          completedFramesUntilCondition,
+          inputToFirstFrameByteArrivalMilliseconds:
+            firstCompletedFrame.byteArrivalTimestampMilliseconds
+            - inputWrittenTimestampMilliseconds,
+          inputToFrameByteArrivalMilliseconds:
+            completedFrame.byteArrivalTimestampMilliseconds - inputWrittenTimestampMilliseconds,
+          snapshot,
+        };
+      }
+      const remainingMilliseconds = deadline - performance.now();
+      if (remainingMilliseconds <= 0) {
+        this.frameExpectationPredecessor = undefined;
+        throw this.gridConditionTimeoutError(predicateDescription, snapshot);
+      }
+      completedFramePromise = this.quiescence.awaitNextCompletedFrame(remainingMilliseconds);
+    }
   }
 
   sendText(text: string): void {
@@ -158,6 +213,19 @@ class $PtyTestDriver {
     }
     await this.emulator.flush();
     this.frameExpectationPredecessor = undefined;
+  }
+
+  /** Await the next synchronized frame and snapshot the emulator immediately after its bytes parse.
+   *  Diagnostic streams use this to inspect every emitted frame without identifying it by ordinal. */
+  async awaitNextCompletedFrameSnapshot(
+    timeoutMilliseconds = 10_000,
+  ): Promise<{
+    completedFrame: CompletedSynchronizedFrame;
+    snapshot: HarnessSnapshot.Model;
+  }> {
+    const completedFrame = await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    await this.emulator.flush();
+    return { completedFrame, snapshot: this.snapshot() };
   }
 
   async assertNoCompleteFrameEmittedFor(durationMilliseconds: number): Promise<void> {

@@ -169,6 +169,43 @@ describe('PtyTestDriver.awaitGridCondition', () => {
   });
 });
 
+describe('PtyTestDriver.awaitNextCompletedFrameSnapshot', () => {
+  test('returns the emulator grid paired with each future synchronized frame', async () => {
+    const driver = createRecordedStreamDriver(['FIRST FRAME', 'SECOND FRAME'], 60);
+    try {
+      const firstFrame = await driver.awaitNextCompletedFrameSnapshot();
+      expect(firstFrame.completedFrame.completedFrameCount).toBe(1);
+      expect(firstFrame.snapshot.findText('FIRST FRAME')).not.toBeNull();
+
+      const secondFrame = await driver.awaitNextCompletedFrameSnapshot();
+      expect(secondFrame.completedFrame.completedFrameCount).toBe(2);
+      expect(secondFrame.snapshot.findText('SECOND FRAME')).not.toBeNull();
+    } finally {
+      await driver.dispose();
+    }
+  });
+});
+
+describe('PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival', () => {
+  test('timestamps the completed frame that first satisfies the requested grid condition', async () => {
+    const driver = createRecordedStreamDriver(['FIRST FRAME', 'SECOND FRAME', 'TARGET FRAME'], 30);
+    try {
+      const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+        ['Right'],
+        'the recorded grid contains TARGET FRAME',
+        (snapshot) => snapshot.findText('TARGET FRAME') !== null,
+      );
+      expect(measurement.completedFrame.completedFrameCount).toBe(3);
+      expect(measurement.completedFramesUntilCondition).toBe(3);
+      expect(measurement.firstCompletedFrame.completedFrameCount).toBe(1);
+      expect(measurement.snapshot.findText('TARGET FRAME')).not.toBeNull();
+      expect(measurement.inputToFrameByteArrivalMilliseconds).toBeGreaterThan(40);
+    } finally {
+      await driver.dispose();
+    }
+  });
+});
+
 describe('PtyTestDriver.dispose', () => {
   test('does not resolve until the child process exits', async () => {
     const recordedStreamProgram = `

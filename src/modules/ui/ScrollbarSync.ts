@@ -11,7 +11,6 @@ import { type ScrollBarRenderable, type BoxRenderable, type CliRenderer, type Co
 import { Reactive } from 'ivue';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { EditorWrap } from '../editor/EditorWrap';
 import { GitPaneRenderer, type GitPanelGeometry } from './GitPaneRenderer';
 import { Logging } from '../system/Logging';
@@ -282,15 +281,10 @@ class $ScrollbarSync {
       viewportSize: viewportHeight,
       scrollPosition: editor.viewport.scrollTop.value,
     });
-    let widestVisibleLineWidth = 0;
-    if (editorVisible && !editor.wordWrap.value) {
-      const firstVisibleLine = editor.viewport.scrollTop.value;
-      for (const line of editor.document.slice(firstVisibleLine, viewportHeight)) {
-        widestVisibleLineWidth = Math.max(widestVisibleLineWidth, EditorCoordinates.Class.lineWidth(line));
-      }
-    }
     this.applyBarGeometry(this.editorHorizontalBar, 'horizontal', editorRegion, {
-      scrollSize: widestVisibleLineWidth,
+      scrollSize: editorVisible && !editor.wordWrap.value
+        ? editor.document.maximumLineWidth
+        : 0,
       viewportSize: viewportWidth,
       scrollPosition: editor.viewport.scrollLeft.value,
     });

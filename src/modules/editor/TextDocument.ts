@@ -13,6 +13,12 @@ class $TextDocument {
   path = '';
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
   private _lines: string[] = [''];
+  // Horizontal extent is full-document state, not a viewport observation. The parallel width array
+  // and frequency table keep ordinary localized edits O(changed lines), with a distinct-width scan
+  // only when the sole widest line shrinks or disappears.
+  protected lineWidths: number[] = [0];
+  protected lineWidthCounts = new Map<number, number>([[0, 1]]);
+  protected maximumLineWidthValue = 0;
   private _eol: '\n' | '\r\n' = '\n';
   // Signature of the content as it was last SAVED/LOADED (the clean baseline). Lets undo/redo clear
   // the dirty flag when the buffer returns to exactly the on-disk content, instead of staying dirty
@@ -35,6 +41,7 @@ class $TextDocument {
     this.path = path;
     if (Files.Class.looksBinary(path)) {
       this._lines = ['(binary file not shown)'];
+      this.rebuildLineWidths();
       this._eol = '\n';
       this.binary.value = true;
       this.dirty.value = false;
@@ -46,6 +53,7 @@ class $TextDocument {
     this._eol = text.includes('\r\n') ? '\r\n' : '\n';
     this._lines = text.split(/\r?\n/);
     if (this._lines.length === 0) this._lines = [''];
+    this.rebuildLineWidths();
     this.binary.value = false;
     this.dirty.value = false;
     this.captureSavedBaseline();
@@ -57,6 +65,7 @@ class $TextDocument {
     this._eol = text.includes('\r\n') ? '\r\n' : '\n';
     this._lines = text.split(/\r?\n/);
     if (this._lines.length === 0) this._lines = [''];
+    this.rebuildLineWidths();
     this.binary.value = false;
     this.dirty.value = false;
     this.captureSavedBaseline();
@@ -65,6 +74,10 @@ class $TextDocument {
 
   get lineCount(): number {
     return this._lines.length;
+  }
+
+  get maximumLineWidth(): number {
+    return this.maximumLineWidthValue;
   }
 
   line(index: number): string {
@@ -92,19 +105,20 @@ class $TextDocument {
   // --- mutation surface (used from M3) ---
   replaceAll(lines: string[]): void {
     this._lines = lines.length ? lines : [''];
+    this.rebuildLineWidths();
     this.dirty.value = true;
     this.revision.value++;
   }
 
   setLine(index: number, text: string): void {
     if (index < 0 || index >= this._lines.length) return;
-    this._lines[index] = text;
+    this.replaceLineRange(index, 1, [text]);
     this.dirty.value = true;
     this.revision.value++;
   }
 
   insertLine(index: number, text: string): void {
-    this._lines.splice(Math.max(0, Math.min(index, this._lines.length)), 0, text);
+    this.replaceLineRange(Math.max(0, Math.min(index, this._lines.length)), 0, [text]);
     this.dirty.value = true;
     this.revision.value++;
   }
@@ -112,8 +126,9 @@ class $TextDocument {
   removeLine(index: number): void {
     if (this._lines.length <= 1) {
       this._lines = [''];
+      this.rebuildLineWidths();
     } else if (index >= 0 && index < this._lines.length) {
-      this._lines.splice(index, 1);
+      this.replaceLineRange(index, 1, []);
     }
     this.dirty.value = true;
     this.revision.value++;
@@ -149,6 +164,57 @@ class $TextDocument {
     return `${this._lines.length}:${(hash >>> 0).toString(36)}`;
   }
 
+  protected rebuildLineWidths(): void {
+    this.lineWidths = this._lines.map((line) => EditorCoordinates.Class.lineWidth(line));
+    this.lineWidthCounts = new Map<number, number>();
+    this.maximumLineWidthValue = 0;
+    for (const lineWidth of this.lineWidths) {
+      this.lineWidthCounts.set(lineWidth, (this.lineWidthCounts.get(lineWidth) ?? 0) + 1);
+      this.maximumLineWidthValue = Math.max(this.maximumLineWidthValue, lineWidth);
+    }
+  }
+
+  protected replaceLineRange(
+    startLineIndex: number,
+    deletedLineCount: number,
+    replacementLines: readonly string[],
+  ): void {
+    const previousMaximumLineWidth = this.maximumLineWidthValue;
+    const deletedLineWidths = this.lineWidths.slice(
+      startLineIndex,
+      startLineIndex + deletedLineCount,
+    );
+    for (const deletedLineWidth of deletedLineWidths) {
+      const remainingCount = (this.lineWidthCounts.get(deletedLineWidth) ?? 1) - 1;
+      if (remainingCount > 0) this.lineWidthCounts.set(deletedLineWidth, remainingCount);
+      else this.lineWidthCounts.delete(deletedLineWidth);
+    }
+    const replacementLineWidths = replacementLines.map(
+      (line) => EditorCoordinates.Class.lineWidth(line),
+    );
+    this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
+    this.lineWidths.splice(startLineIndex, deletedLineCount, ...replacementLineWidths);
+    for (const replacementLineWidth of replacementLineWidths) {
+      this.lineWidthCounts.set(
+        replacementLineWidth,
+        (this.lineWidthCounts.get(replacementLineWidth) ?? 0) + 1,
+      );
+      this.maximumLineWidthValue = Math.max(
+        this.maximumLineWidthValue,
+        replacementLineWidth,
+      );
+    }
+    if (
+      this.maximumLineWidthValue === previousMaximumLineWidth
+      && !this.lineWidthCounts.has(previousMaximumLineWidth)
+    ) {
+      this.maximumLineWidthValue = 0;
+      for (const lineWidth of this.lineWidthCounts.keys()) {
+        this.maximumLineWidthValue = Math.max(this.maximumLineWidthValue, lineWidth);
+      }
+    }
+  }
+
   // --- character-level editing (used from M3) ---
 
   /** Insert `text` (no newlines) at line/grapheme-col. Returns the new grapheme col. */
@@ -156,7 +222,11 @@ class $TextDocument {
     const currentLine = this.line(line);
     const graphemeColumn = EditorCoordinates.Class.clampCol(currentLine, column);
     const utf16Offset = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
-    this._lines[line] = currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset);
+    this.replaceLineRange(
+      line,
+      1,
+      [currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset)],
+    );
     this.dirty.value = true;
     this.revision.value++;
     return graphemeColumn + EditorCoordinates.Class.graphemeCount(text);
@@ -168,8 +238,7 @@ class $TextDocument {
     const utf16Offset = EditorCoordinates.Class.graphemeToU16(currentLine, EditorCoordinates.Class.clampCol(currentLine, column));
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
-    this._lines[line] = before;
-    this._lines.splice(line + 1, 0, after);
+    this.replaceLineRange(line, 1, [before, after]);
     this.dirty.value = true;
     this.revision.value++;
     return { line: line + 1, col: 0 };
@@ -182,7 +251,7 @@ class $TextDocument {
       const graphemeColumn = EditorCoordinates.Class.clampCol(currentLine, column);
       const start = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn - 1);
       const end = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
-      this._lines[line] = currentLine.slice(0, start) + currentLine.slice(end);
+      this.replaceLineRange(line, 1, [currentLine.slice(0, start) + currentLine.slice(end)]);
       this.dirty.value = true;
       this.revision.value++;
       return { line, col: graphemeColumn - 1 };
@@ -190,8 +259,7 @@ class $TextDocument {
     if (line > 0) {
       const previousLine = this.line(line - 1);
       const newColumn = EditorCoordinates.Class.graphemeCount(previousLine);
-      this._lines[line - 1] = previousLine + currentLine;
-      this._lines.splice(line, 1);
+      this.replaceLineRange(line - 1, 2, [previousLine + currentLine]);
       this.dirty.value = true;
       this.revision.value++;
       return { line: line - 1, col: newColumn };
@@ -206,12 +274,11 @@ class $TextDocument {
     if (graphemeColumn < EditorCoordinates.Class.graphemeCount(currentLine)) {
       const start = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
       const end = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn + 1);
-      this._lines[line] = currentLine.slice(0, start) + currentLine.slice(end);
+      this.replaceLineRange(line, 1, [currentLine.slice(0, start) + currentLine.slice(end)]);
       this.dirty.value = true;
       this.revision.value++;
     } else if (line < this._lines.length - 1) {
-      this._lines[line] = currentLine + this.line(line + 1);
-      this._lines.splice(line + 1, 1);
+      this.replaceLineRange(line, 2, [currentLine + this.line(line + 1)]);
       this.dirty.value = true;
       this.revision.value++;
     }
@@ -241,15 +308,17 @@ class $TextDocument {
   ): { line: number; col: number } {
     if (start.line === end.line) {
       const currentLine = this.line(start.line);
-      this._lines[start.line] =
-        currentLine.slice(0, EditorCoordinates.Class.graphemeToU16(currentLine, start.col)) + currentLine.slice(EditorCoordinates.Class.graphemeToU16(currentLine, end.col));
+      this.replaceLineRange(start.line, 1, [
+        currentLine.slice(0, EditorCoordinates.Class.graphemeToU16(currentLine, start.col))
+          + currentLine.slice(EditorCoordinates.Class.graphemeToU16(currentLine, end.col)),
+      ]);
     } else {
       const head = this.line(start.line).slice(
         0,
         EditorCoordinates.Class.graphemeToU16(this.line(start.line), start.col),
       );
       const tail = this.line(end.line).slice(EditorCoordinates.Class.graphemeToU16(this.line(end.line), end.col));
-      this._lines.splice(start.line, end.line - start.line + 1, head + tail);
+      this.replaceLineRange(start.line, end.line - start.line + 1, [head + tail]);
     }
     this.dirty.value = true;
     this.revision.value++;
@@ -269,7 +338,7 @@ class $TextDocument {
     const firstPart = parts[0] ?? '';
     const lastPart = parts[parts.length - 1] ?? '';
     const middle = parts.slice(1, -1);
-    this._lines.splice(line, 1, before + firstPart, ...middle, lastPart + after);
+    this.replaceLineRange(line, 1, [before + firstPart, ...middle, lastPart + after]);
     this.dirty.value = true;
     this.revision.value++;
     return { line: line + parts.length - 1, col: EditorCoordinates.Class.graphemeCount(lastPart) };
@@ -283,6 +352,7 @@ class $TextDocument {
   /** Restore from a snapshot without marking dirty state itself (caller sets it). */
   restore(lines: string[]): void {
     this._lines = lines.length ? lines.slice() : [''];
+    this.rebuildLineWidths();
     this.revision.value++;
   }
 }

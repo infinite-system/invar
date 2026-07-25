@@ -272,12 +272,10 @@ class $EditorPane {
         if (!workspaceSet.active.editor.cursor.hasSelection) workspaceSet.active.editor.cursor.clearSelection();
       },
       scrollColumns: (columnDelta) => {
-        const topLineIndex = workspaceSet.active.editor.viewport.scrollTop.value;
-        let widestVisibleLineWidth = 0;
-        for (const line of workspaceSet.active.editor.document.slice(topLineIndex, editorViewportHeight())) {
-          widestVisibleLineWidth = Math.max(widestVisibleLineWidth, EditorCoordinates.Class.lineWidth(line));
-        }
-        workspaceSet.active.editor.viewport.scrollByColumns(columnDelta, widestVisibleLineWidth);
+        workspaceSet.active.editor.viewport.scrollByColumns(
+          columnDelta,
+          workspaceSet.active.editor.document.maximumLineWidth,
+        );
       },
       scrollRows: (delta) => this.scrollEditorVertically(delta),
       haltCompetingScroll: () => workspaceSet.active.editor.viewport.haltScrollMomentum(),

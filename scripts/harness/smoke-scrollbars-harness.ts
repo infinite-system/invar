@@ -18,6 +18,12 @@ interface VerticalScrollBarProof {
   trackLength: number;
 }
 
+interface HorizontalScrollBarProof {
+  thumbLength: number;
+  thumbStartColumn: number;
+  trackLength: number;
+}
+
 function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
@@ -145,6 +151,65 @@ function horizontalScrollBarRowCount(snapshot: HarnessSnapshot.Model): number {
   return barRowCount;
 }
 
+function horizontalEditorScrollBarProof(
+  snapshot: HarnessSnapshot.Model,
+): HorizontalScrollBarProof | null {
+  const editorStartColumn = Math.min(30, snapshot.columns - 2);
+  const editorEndColumnExclusive = Math.max(editorStartColumn, snapshot.columns - 2);
+  const editorBackgroundCounts = new Map<number, number>();
+  for (let row = 4; row < snapshot.rows - 3; row++) {
+    for (
+      const cell of snapshot.rowCells(row).slice(
+        editorStartColumn,
+        editorEndColumnExclusive,
+      )
+    ) {
+      if (!cell.isBackgroundRgb) continue;
+      editorBackgroundCounts.set(
+        cell.background,
+        (editorBackgroundCounts.get(cell.background) ?? 0) + 1,
+      );
+    }
+  }
+  const editorBackground = [...editorBackgroundCounts.entries()].sort(
+    (firstBackground, secondBackground) => secondBackground[1] - firstBackground[1],
+  )[0]?.[0];
+  if (editorBackground === undefined) return null;
+
+  const barCells = snapshot.rowCells(snapshot.rows - 3).slice(
+    editorStartColumn,
+    editorEndColumnExclusive,
+  );
+  let longestThumbStartColumn = -1;
+  let longestThumbLength = 0;
+  let currentThumbStartColumn = -1;
+  let currentThumbLength = 0;
+  let currentThumbBackground: number | null = null;
+  for (const cell of barCells) {
+    const isThumbCell = cell.isBackgroundRgb && cell.background !== editorBackground;
+    if (isThumbCell && cell.background === currentThumbBackground) {
+      currentThumbLength++;
+    } else if (isThumbCell) {
+      currentThumbStartColumn = cell.column;
+      currentThumbLength = 1;
+      currentThumbBackground = cell.background;
+    } else {
+      currentThumbLength = 0;
+      currentThumbBackground = null;
+    }
+    if (currentThumbLength > longestThumbLength) {
+      longestThumbStartColumn = currentThumbStartColumn;
+      longestThumbLength = currentThumbLength;
+    }
+  }
+  if (longestThumbLength < 2) return null;
+  return {
+    thumbLength: longestThumbLength,
+    thumbStartColumn: longestThumbStartColumn,
+    trackLength: barCells.length,
+  };
+}
+
 function sendRepeatedWheel(
   driver: PtyTestDriver.Model,
   direction: 'up' | 'down' | 'left' | 'right',
@@ -191,6 +256,19 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   );
   await Bun.write(join(fixtureRoot, '.gitignore'), '.invar/\n');
   await Bun.write(join(fixtureRoot, 'base.txt'), 'base\n');
+  const widthOscillationLines = ['// HORIZONTAL-THUMB-STABILITY'];
+  for (let lineNumber = 1; lineNumber <= 180; lineNumber++) {
+    const blockNumber = Math.floor((lineNumber - 1) / 45) % 3;
+    const targetWidth = blockNumber === 0 ? 42 : blockNumber === 1 ? 118 : 68;
+    const prefix = `const stableLine${String(lineNumber).padStart(3, '0')} = '`;
+    widthOscillationLines.push(
+      `${prefix}${'x'.repeat(Math.max(1, targetWidth - prefix.length - 2))}';`,
+    );
+  }
+  await Bun.write(
+    join(fixtureRoot, 'horizontal-thumb-stability.ts'),
+    `${widthOscillationLines.join('\n')}\n`,
+  );
   for (let fileNumber = 1; fileNumber <= 50; fileNumber++) {
     await Bun.write(
       join(fixtureRoot, `short-${String(fileNumber).padStart(2, '0')}.txt`),
@@ -200,7 +278,7 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   runGit(fixtureRoot, ['init', '-q']);
   runGit(fixtureRoot, ['config', 'user.name', 'scrollbar-harness']);
   runGit(fixtureRoot, ['config', 'user.email', 'scrollbar-harness@example.test']);
-  runGit(fixtureRoot, ['add', '.gitignore', 'base.txt', ...Array.from(
+  runGit(fixtureRoot, ['add', '.gitignore', 'base.txt', 'horizontal-thumb-stability.ts', ...Array.from(
     { length: 50 },
     (_unused, fileIndex) => `short-${String(fileIndex + 1).padStart(2, '0')}.txt`,
   )]);
@@ -290,6 +368,54 @@ try {
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 1,
     'overflowing tree paints one horizontal background bar row',
+  );
+
+  console.log('== harness scrollbars: thumb length stays stable through every scroll frame ==');
+  overflowDriver.sendKeys('Control+p');
+  await overflowDriver.awaitSnapshot((candidate) => candidate.findText('Go to File') !== null);
+  overflowDriver.sendText('horizontal-thumb-stability');
+  await overflowDriver.awaitQuiescence();
+  overflowDriver.sendKeys('Enter');
+  snapshot = await overflowDriver.awaitSnapshot(
+    (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
+  );
+  const initialHorizontalThumb = horizontalEditorScrollBarProof(snapshot);
+  requireCondition(initialHorizontalThumb !== null, 'editor horizontal thumb is present');
+  const horizontalThumbLengths: number[] = [];
+  let nextScrollFrame = overflowDriver.awaitNextCompletedFrameSnapshot(2_000);
+  sendRepeatedWheel(overflowDriver, 'down', 25, 40, 10);
+  for (let frameNumber = 1; frameNumber <= 300; frameNumber++) {
+    let scrollFrame: Awaited<typeof nextScrollFrame>;
+    try {
+      scrollFrame = await nextScrollFrame;
+    } catch (error) {
+      if (
+        error instanceof Error
+        && error.message.startsWith('Timed out waiting for the next complete synchronized frame')
+      ) {
+        break;
+      }
+      throw error;
+    }
+    const frameProof = horizontalEditorScrollBarProof(scrollFrame.snapshot);
+    requireCondition(
+      frameProof !== null,
+      `editor horizontal thumb remains present in scroll frame ${frameNumber}`,
+    );
+    horizontalThumbLengths.push(frameProof.thumbLength);
+    if (frameNumber < 300) {
+      nextScrollFrame = overflowDriver.awaitNextCompletedFrameSnapshot(150);
+    }
+  }
+  const distinctHorizontalThumbLengths = [...new Set(horizontalThumbLengths)];
+  requireCondition(
+    horizontalThumbLengths.length > 2,
+    `wheel burst emitted ${horizontalThumbLengths.length - 1} observed scroll frames`,
+  );
+  requireCondition(
+    distinctHorizontalThumbLengths.length === 1,
+    `horizontal thumb length is stable while content size is unchanged `
+      + `(${horizontalThumbLengths.join(',')})`,
   );
 
   sendRepeatedWheel(overflowDriver, 'down', 8, 9, 9);
