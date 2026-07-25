@@ -3,30 +3,23 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-25 ~09:05 — directed backlog DRAINED)
+## RESUME ANCHOR (2026-07-25 ~11:45 — GRAMMAR CAMPAIGN COMPLETE)
 
-Main @ 8aa0eff. 26 landings today, zero regressions. Everything the user asked for this session is
-on main: scroll-feel pack (axis-uniform fling + progressive gain + one-row floor + deterministic
-reversal), agent word-boundary wrap + composer padding, live layout settings, narration
-pronounceability, panel UX pack (agent's own heading, click-to-split, 45% panel, clock+dock
-corner), TerminalObserver waves 1+2 (OSC 133 events, bounded+redacted observation, follow modes
-footer control F6/palette/Settings, readTerminalScrollback with lineCount/range), layout wave 2
-(command bar + file-tree pane citizen), X.interface.ts convention (enumerated list deleted),
-harness wait-discipline sweep (100 samples converted, 388 waits labeled, 2 new contracts), gate
-evidence+retry policy (/tmp/merge-gate-failures + retry-once on timeout-class reds).
+Main @ 8d09b31. 32 landings today, zero regressions. THE GRAMMAR BIG-BANG IS DONE: all 22 modules
+enforced by scripts/check-file-grammar.ts (1,662 violations 2026-07-24 evening → 0 enforcement
+debt; ~10 report-only stragglers outside src/modules). Every production file: class-first, no
+detached functions, protected members, constants as protected static getters, types below class,
+strict test colocation with pair-completeness, X.interface.ts contract naming, blame hygiene via
+verified landing-time hashes. ~60 new colocated test files landed with the waves.
 
-Grammar campaign: 7 modules enforced (syntax git markdown lsp editor diff image); ~1,017
-violations remain report-only; next waves per staged briefs: workspace, narration, small-tail,
-agent; ui LAST.
+Also complete today (all user-directed): scroll-feel pack, agent word wrap, live layout settings,
+narration pronounceability, panel UX pack, TerminalObserver waves 1+2 with follow modes +
+readTerminalScrollback, layout wave 2 (command bar + file-tree citizen), wait-discipline sweep,
+gate evidence+retry policy (absorbed 3 ambient timeouts today with logged retries).
 
-OPEN QUEUE (scheduled, not user-blocking): #31 getter census → scoped invalidation; #32 sweep
-close-out; #33 capsule arc; #34 plugin canvas (Workspace stops knowing Git — file-tree citizen
-landed, groundwork done); #35 structure navigator; #40 remaining scope (parallel smoke pool,
-labeled awaitStatusPublication landed via #54); observer waves 3-4 (wake delivery, rate policy,
-MCP exposure per tmp/terminal-observation-design.md).
-
-Word-delete gate-context timeout dossier (#40 metadata): 2 occurrences, never reproduced, now
-covered by gate retry-once.
+OPEN QUEUE (scheduled): #31 getter census → scoped invalidation; #33 capsule arc; #34 plugin
+canvas (groundwork fully landed: file-tree citizen + pane primitives); #35 structure navigator;
+#40 remaining scope (parallel smoke pool); observer waves 3-4.
 
 
 ## PRIOR ANCHOR — 2026-07-24 NIGHT — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
