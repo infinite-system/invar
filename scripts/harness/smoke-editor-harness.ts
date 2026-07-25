@@ -372,18 +372,24 @@ try {
     statusPath,
     (status) => status.overlay === null,
   );
-  const terminalWidth = statusField<number>(statusPath, 'width') ?? 120;
-  const terminalHeight = statusField<number>(statusPath, 'height') ?? 40;
+  // Click the gear WHERE IT RENDERS: fixed offsets from the right edge encode one status-bar
+  // control order, and the corner order is now a product decision (clock, then right-dock
+  // outermost). Discovery by glyph survives any reordering.
+  const gearSnapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('⚙') !== null,
+  );
+  const gearPosition = gearSnapshot.findText('⚙');
+  if (!gearPosition) throw new Error('status-bar gear glyph disappeared');
   driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
-    column: terminalWidth - 5,
-    row: terminalHeight - 1,
+    column: gearPosition.column,
+    row: gearPosition.row,
     button: 'left',
   });
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
-    column: terminalWidth - 5,
-    row: terminalHeight - 1,
+    column: gearPosition.column,
+    row: gearPosition.row,
     button: 'left',
   });
   await awaitStatusPublication(
