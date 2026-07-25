@@ -3,12 +3,12 @@
 // revision — they used to walk every line per RootView update), edits must resync only the delta,
 // and every answer must equal the naive full walk.
 import { test, expect, describe } from 'bun:test';
-import { EditorWrap } from '../EditorWrap';
+import { EditorWrap } from './EditorWrap';
 
 class IndexProbeDocument {
   lineReads = 0;
   readonly revision = { value: 0 };
-  constructor(private readonly lines: string[]) {}
+  constructor(protected readonly lines: string[]) {}
   get lineCount(): number {
     return this.lines.length;
   }

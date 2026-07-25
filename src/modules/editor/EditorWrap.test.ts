@@ -1,7 +1,11 @@
 // Word-wrap mapping layer: the pure logical↔visual projection (editor.wrap.ts) plus the editor's
 // wrap MODE behavior. Covers the editor invariant "Word wrap is a pure view mapping".
 import { test, expect } from 'bun:test';
-import { EditorWrap, type WrapSegment, type WrappableDocument } from '../EditorWrap';
+import {
+  EditorWrap,
+  type WrapSegment,
+  type WrappableDocument,
+} from './EditorWrap';
 
 const {
   wrapLine,
@@ -11,9 +15,9 @@ const {
   moveByVisualRows,
   scrollTopToRevealCursor,
 } = EditorWrap.Class;
-import { EditorCoordinates } from '../EditorCoordinates';
-import { TextDocument } from '../TextDocument';
-import { Editor } from '../Editor';
+import { EditorCoordinates } from './EditorCoordinates';
+import { TextDocument } from './TextDocument';
+import { Editor } from './Editor';
 
 function documentFromLines(lines: string[]): WrappableDocument {
   return { lineCount: lines.length, line: (index: number) => lines[index] ?? '' };
