@@ -25,6 +25,10 @@ import type { AgentEvent, PermissionDecision } from './AgentEvents';
 import { CodexAppServerMapping, type ApprovalDescriptor, type MappingTurnState } from './CodexAppServerMapping';
 import { Files } from '../system/Files';
 import { Processes, type SpawnedProcess } from '../system/Processes';
+import {
+  AgentTerminalTools,
+  type AgentTerminalToolPort,
+} from './AgentTerminalTools';
 
 type CodexAppServerProcess = SpawnedProcess<'pipe', 'pipe', 'pipe'>;
 
@@ -37,6 +41,7 @@ export interface CodexAppServerOptions {
   skipPermissions?: boolean | (() => boolean);
   /** Model override; empty/undefined uses codex's default. */
   model?: string;
+  terminalTools?: AgentTerminalToolPort;
 }
 
 /** One in-flight JSON-RPC request awaiting its response. */
@@ -76,9 +81,9 @@ class $CodexAppServerBackend implements AgentBackend {
   }
 
   private async runTurn(prompt: string): Promise<void> {
-    await this.ensureThread();
     // Mode resolves LIVE per turn — a Shift+Tab toggle since the last turn applies here.
     const bypass = AgentPermissions.Class.resolveLive(this.options.skipPermissions);
+    await this.ensureThread(bypass);
     await this.request('turn/start', {
       threadId: this.threadId,
       input: [{ type: 'text', text: prompt }],
@@ -91,7 +96,7 @@ class $CodexAppServerBackend implements AgentBackend {
   }
 
   /** Spawn the app-server + initialize + start the one thread (first turn only). */
-  private async ensureThread(): Promise<void> {
+  private async ensureThread(bypassPermissions: boolean): Promise<void> {
     if (this.child && this.threadId) return;
     if (!this.child) {
       const child = Processes.Class.spawn([this.options.codexPath, 'app-server'], {
@@ -134,6 +139,20 @@ class $CodexAppServerBackend implements AgentBackend {
         // not ours — a workspace opened as '.' would silently anchor the thread elsewhere.
         ...(this.options.cwd ? { cwd: Files.Class.absolute(this.options.cwd) } : {}),
         ...(this.options.model ? { model: this.options.model } : {}),
+        ...(this.options.terminalTools
+          ? {
+              dynamicTools: AgentTerminalTools.Class.definitions(
+                bypassPermissions,
+                this.options.terminalTools,
+              ).map((definition) => ({
+                type: 'function',
+                name: definition.name,
+                description: definition.description,
+                inputSchema: definition.inputSchema,
+                deferLoading: false,
+              })),
+            }
+          : {}),
       })) as { thread?: { id?: string } };
       this.threadId = started?.thread?.id ?? null;
       if (!this.threadId) throw new Error('codex app-server returned no thread id');
@@ -202,6 +221,10 @@ class $CodexAppServerBackend implements AgentBackend {
     // permissions-request hang); unknown methods get a proper JSON-RPC method-not-found error, which the
     // server handles like any refused capability.
     if (id !== undefined && typeof message.method === 'string') {
+      if (message.method === 'item/tool/call') {
+        void this.respondToDynamicToolCall(id as number | string, message.params);
+        return;
+      }
       const approval = CodexAppServerMapping.Class.approvalOf(message.method, message.params);
       if (approval) this.emitPermissionRequest(id as number | string, approval);
       else this.write({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not supported by this client: ${message.method}` } });
@@ -247,6 +270,58 @@ class $CodexAppServerBackend implements AgentBackend {
       }
     } catch {
       /* stderr closed — ignore */
+    }
+  }
+
+  protected async respondToDynamicToolCall(
+    rpcId: number | string,
+    parameters: unknown,
+  ): Promise<void> {
+    const record = typeof parameters === 'object' && parameters !== null
+      ? parameters as Record<string, unknown>
+      : {};
+    const toolName = typeof record.tool === 'string' ? record.tool : '';
+    const terminalTools = this.options.terminalTools;
+    const definition = terminalTools
+      ? AgentTerminalTools.Class.definitionFor(
+          toolName,
+          AgentPermissions.Class.resolveLive(this.options.skipPermissions),
+          terminalTools,
+        )
+      : null;
+    if (!definition) {
+      this.write({
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: {
+          contentItems: [{
+            type: 'inputText',
+            text: `${toolName || 'The requested tool'} is unavailable in the current permission mode.`,
+          }],
+          success: false,
+        },
+      });
+      return;
+    }
+    try {
+      const result = await definition.invoke(record.arguments);
+      this.write({
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: {
+          contentItems: [{ type: 'inputText', text: result }],
+          success: true,
+        },
+      });
+    } catch (error) {
+      this.write({
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: {
+          contentItems: [{ type: 'inputText', text: String(error) }],
+          success: false,
+        },
+      });
     }
   }
 

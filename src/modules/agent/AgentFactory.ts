@@ -18,6 +18,7 @@ import { CodexAppServerBackend } from './CodexAppServerBackend';
 import { AgentSession } from './AgentSession';
 import { AgentPaneContent } from './AgentPaneContent';
 import type { AgentProvider } from '../settings/Settings';
+import type { AgentTerminalToolPort } from './AgentTerminalTools';
 
 export interface AgentCreateOptions {
   /** Inject a specific backend (tests pass a MockAgentBackend; a host may pass any implementation). */
@@ -31,6 +32,8 @@ export interface AgentCreateOptions {
   skipPermissions?: boolean | (() => boolean);
   /** Model override; empty uses the provider default. */
   model?: string;
+  /** Visible integrated-terminal tools exposed to the model through each provider's native tool path. */
+  terminalTools?: AgentTerminalToolPort;
 }
 
 /** Pick the backend by provider setting + CLI availability. Claude now rides the SDK backend
@@ -39,7 +42,12 @@ export interface AgentCreateOptions {
  *  that's missing) prefers Claude, then Codex, then the local echo. `INVAR_AGENT_BACKEND=echo` forces
  *  the echo (keeps the driving smoke hermetic — no subprocess, no billing). Overridable Static seam. */
 function $createBackend(options: AgentCreateOptions): AgentBackend {
-  if (process.env.INVAR_AGENT_BACKEND === 'echo') return new EchoAgentBackend.Class();
+  if (process.env.INVAR_AGENT_BACKEND === 'echo') {
+    return new EchoAgentBackend.Class({
+      terminalTools: options.terminalTools,
+      skipPermissions: options.skipPermissions,
+    });
+  }
   // ONE authority: the registry resolves provider → engine (env forces, availability, fallback). The
   // label and cycling read the SAME resolution, so the UI can never claim an engine the factory didn't
   // build (the reviewed dual-authority bug).
@@ -49,16 +57,30 @@ function $createBackend(options: AgentCreateOptions): AgentBackend {
   if (resolved.engine === 'claude') {
     return process.env.INVAR_AGENT_BACKEND === 'cli'
       ? new CliStreamBackend.Class({ claudePath: resolved.binaryPath, cwd: options.cwd, skipPermissions, model })
-      : new SdkStreamBackend.Class({ cwd: options.cwd, skipPermissions, model });
+      : new SdkStreamBackend.Class({
+          cwd: options.cwd,
+          skipPermissions,
+          model,
+          terminalTools: options.terminalTools,
+        });
   }
   if (resolved.engine === 'codex') {
     // Codex rides the app-server backend (permission-prompt parity: pause/approve over JSON-RPC); the
     // exec pipe stays as the same `cli` escape hatch claude has.
     return process.env.INVAR_AGENT_BACKEND === 'cli'
       ? new CodexStreamBackend.Class({ codexPath: resolved.binaryPath, cwd: options.cwd, skipPermissions, model })
-      : new CodexAppServerBackend.Class({ codexPath: resolved.binaryPath, cwd: options.cwd, skipPermissions, model });
+      : new CodexAppServerBackend.Class({
+          codexPath: resolved.binaryPath,
+          cwd: options.cwd,
+          skipPermissions,
+          model,
+          terminalTools: options.terminalTools,
+        });
   }
-  return new EchoAgentBackend.Class();
+  return new EchoAgentBackend.Class({
+    terminalTools: options.terminalTools,
+    skipPermissions: options.skipPermissions,
+  });
 }
 
 /** Wire backend + session into a ready AgentPaneContent. The session is told the registry's RESOLVED

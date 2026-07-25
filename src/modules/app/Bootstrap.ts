@@ -44,7 +44,10 @@ import {
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
 import { TerminalFactory } from '../terminal/TerminalFactory';
+import { TerminalPaneContent } from '../terminal/TerminalPaneContent';
+import type { TerminalCommandEvent } from '../terminal/TerminalCommandController';
 import { AgentFactory } from '../agent/AgentFactory';
+import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
@@ -230,29 +233,55 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
 
   // Lazily create + register the terminal PaneContent on first toggle (idle cost is zero until then).
   // The initial cols×rows seed from the laid-out panel region; the frame loop converges the true size.
-  let terminalRegistered = false;
-  const ensureTerminal = (): void => {
-    if (terminalRegistered) return;
-    terminalRegistered = true;
+  let terminalPaneContent: TerminalPaneContent.Model | null = null;
+  let agentRegistered = false;
+  let agentPaneContent: AgentPaneContent.Model | null = null;
+  const terminalCommandEventText = (event: TerminalCommandEvent): string => {
+    switch (event.kind) {
+      case 'pending':
+        return `terminal command pending at ${event.currentWorkingDirectory || 'unknown cwd'} — waiting for an idle prompt: ${event.command}`;
+      case 'staged':
+        return `terminal command staged at ${event.currentWorkingDirectory || 'unknown cwd'} — edit it, press Enter to execute, or Ctrl+C to reject: ${event.command}`;
+      case 'user-executed':
+        return `terminal command user-executed: ${event.command}`;
+      case 'user-edited-then-executed':
+        return `terminal command user-edited-then-executed\n- ${event.command}\n+ ${event.executedCommand}`;
+      case 'agent-executed':
+        return `terminal command agent-executed at ${event.currentWorkingDirectory || 'unknown cwd'}: ${event.command}`;
+      case 'aborted':
+        return `terminal command staging aborted by user input before execution: ${event.command}`;
+      case 'rejected':
+        return `terminal command rejected with Ctrl+C: ${event.command}`;
+    }
+  };
+  const ensureTerminal = (): TerminalPaneContent.Model => {
+    if (terminalPaneContent) return terminalPaneContent;
     const content = TerminalFactory.Class.create({
       columns: view.panelViewportColumns() || 80,
       rows: view.panelViewportRows() || 24,
       cwd: workspaceSet.active.root,
+      cleanPrompt: settings.terminalCleanPrompt.value,
+      promptColor: theme.palette.terminalPrompt,
+      typingSpeed: () => settings.agentTypingSpeed.value,
+      reducedMotion: () => settings.reducedMotion.value,
+    });
+    terminalPaneContent = content;
+    content.onTerminalCommandEvent((event) => {
+      agentPaneContent?.agentSession.appendSystemNote(terminalCommandEventText(event));
     });
     panelHost.register(content);
+    return content;
   };
 
   // The native agent (Claude) pane — a second PaneContent in the SAME bottom slot, registered lazily on
   // first toggle (idle cost zero). Tier S wires the local EchoAgentBackend; CliStreamBackend swaps in
   // later behind the one backend seam with no change here.
-  let agentRegistered = false;
   // The audio narration projection over the agent transcript (the third projection: text→pane,
   // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
   // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
   let narration: NarrationProjection.Instance | null = null;
   // The agent pane instance once ensured — the frame dump reads its view state (scroll/collapse) so the
   // driving smoke asserts the UX without pane-scraping. Null until the pane is first toggled.
-  let agentPaneContent: AgentPaneContent.Model | null = null;
   // ONE transcript-search action, shared by Ctrl+F and the pane's clickable search icon. Overlay
   // exclusivity stays host-owned; the pane only invokes this port.
   const openAgentTranscriptSearch = (): void => {
@@ -277,6 +306,24 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     testVoiceBackend.speak('Narration voice test — the quick brown fox jumps over the lazy dog.');
   };
 
+  const prepareTerminalForAgentCommand = (): TerminalPaneContent.Model => {
+    const terminalPane = ensureTerminal();
+    if (agentRegistered) panelHost.split(['agent', 'terminal']);
+    else panelHost.activate('terminal');
+    panelHost.show();
+    const terminalIndex = panelHost.resolvedCells.findIndex(
+      (cell) => cell.content.id === 'terminal',
+    );
+    if (terminalIndex >= 0) panelHost.focusCell(terminalIndex);
+    return terminalPane;
+  };
+  const terminalToolPort: AgentTerminalToolPort = {
+    stageTerminalCommand: (command) =>
+      prepareTerminalForAgentCommand().stageTerminalCommand(command),
+    runTerminalCommand: (command) =>
+      prepareTerminalForAgentCommand().runTerminalCommand(command),
+  };
+
   // --- Live engine switcher (claude ⇄ codex) --------------------------------------------------------
   // ONE provider authority: label, availability, cycling, and construction all read the SAME
   // AgentProviderRegistry resolution, so the mode line can never claim an engine the factory didn't
@@ -294,6 +341,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       provider: next === 'echo' ? 'auto' : next,
       skipPermissions: () => settings.agentSkipPermissions.value,
       model: settings.agentModel.value,
+      terminalTools: terminalToolPort,
     });
     if (agentPaneContent.agentSession.swapBackend(nextBackend, next)) {
       if (next !== 'echo') settings.agentProvider.value = next;
@@ -318,6 +366,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       provider: settings.agentProvider.value,
       skipPermissions: () => settings.agentSkipPermissions.value, // LIVE getter — Shift+Tab toggle applies next turn
       model: settings.agentModel.value,
+      terminalTools: terminalToolPort,
     });
     panelHost.register(agentPane);
     if (agentPane instanceof AgentPaneContent.Class) {

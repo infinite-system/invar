@@ -142,6 +142,13 @@ class $AgentSession {
     return true;
   }
 
+  appendSystemNote(text: string): void {
+    if (!text) return;
+    this.assistantTurnOpen = false;
+    this.entries.push({ role: 'system', text });
+    this.renderRevision.value++;
+  }
+
   /** Request the in-flight turn stop. */
   interrupt(): void {
     if (this.busy) this.backend.interrupt();

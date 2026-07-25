@@ -18,6 +18,10 @@ export interface TerminalCreateOptions {
   rows?: number;
   shell?: string;
   cwd?: string;
+  cleanPrompt?: boolean;
+  promptColor?: string;
+  typingSpeed?: () => number;
+  reducedMotion?: () => boolean;
 }
 
 /** Build the default real backend (openpty + shell). Overridable seam. */
@@ -31,7 +35,10 @@ function $create(options: TerminalCreateOptions = {}): TerminalPaneContent.Model
   const rows = options.rows ?? 24;
   const backend = TerminalFactory.Class.createBackend(options);
   const emulator = new TerminalEmulator.Class(columns, rows);
-  const instance = new TerminalInstance.Class(backend, emulator);
+  const instance = new TerminalInstance.Class(backend, emulator, {
+    typingSpeed: options.typingSpeed,
+    reducedMotion: options.reducedMotion,
+  });
   return new TerminalPaneContent.Class(instance);
 }
 

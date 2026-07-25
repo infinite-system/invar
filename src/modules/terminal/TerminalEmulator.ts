@@ -35,9 +35,12 @@ class $TerminalEmulator {
   private readonly reusableCell: { cell: IBufferCell | undefined } = { cell: undefined };
   private replyCallback: ((data: string) => void) | null = null;
   private cellsChangedCallback: (() => void) | null = null;
+  private metadataChangedCallback: (() => void) | null = null;
   protected terminalTitle = '';
   protected terminalCurrentWorkingDirectory = '';
   protected isSgrMouseEncodingEnabledValue = false;
+  protected hasShellPromptMarkerValue = false;
+  protected isShellPromptActiveValue = false;
 
   constructor(columns: number, rows: number) {
     this.terminal = new Terminal({
@@ -52,6 +55,10 @@ class $TerminalEmulator {
     this.terminal.parser.registerOscHandler(
       7,
       (currentWorkingDirectory) => this.observeCurrentWorkingDirectory(currentWorkingDirectory),
+    );
+    this.terminal.parser.registerOscHandler(
+      133,
+      (marker) => this.observeShellIntegrationMarker(marker),
     );
     this.terminal.parser.registerCsiHandler(
       { prefix: '?', final: 'h' },
@@ -84,6 +91,10 @@ class $TerminalEmulator {
     this.cellsChangedCallback = callback;
   }
 
+  onMetadataChanged(callback: () => void): void {
+    this.metadataChangedCallback = callback;
+  }
+
   resize(columns: number, rows: number): void {
     this.terminal.resize(Math.max(1, columns), Math.max(1, rows));
   }
@@ -110,6 +121,34 @@ class $TerminalEmulator {
 
   get currentWorkingDirectory(): string {
     return this.terminalCurrentWorkingDirectory;
+  }
+
+  get isPromptIdle(): boolean {
+    const inputLine = this.currentPromptInputLine();
+    if (this.hasShellPromptMarkerValue) {
+      return this.isShellPromptActiveValue && inputLine === '';
+    }
+    return inputLine === '';
+  }
+
+  currentPromptInputLine(): string | null {
+    const active = this.terminal.buffer.active;
+    const line = active.getLine(active.baseY + active.cursorY);
+    if (!line) return null;
+    let lineText = '';
+    for (let columnIndex = 0; columnIndex < this.terminal.cols; columnIndex += 1) {
+      const cell = line.getCell(columnIndex, this.reusableCell.cell);
+      if (!cell) break;
+      this.reusableCell.cell = cell;
+      if (cell.getWidth() > 0) lineText += cell.getChars() || ' ';
+    }
+    const promptIndex = lineText.lastIndexOf('$ ');
+    if (promptIndex < 0) return null;
+    return lineText.slice(promptIndex + 2).replace(/\s+$/, '');
+  }
+
+  markPromptSubmitted(): void {
+    this.isShellPromptActiveValue = false;
   }
 
   get isBracketedPasteEnabled(): boolean {
@@ -188,10 +227,20 @@ class $TerminalEmulator {
 
   protected observeTitle(title: string): void {
     this.terminalTitle = title;
+    this.metadataChangedCallback?.();
   }
 
   protected observeCurrentWorkingDirectory(currentWorkingDirectory: string): false {
     this.terminalCurrentWorkingDirectory = currentWorkingDirectory;
+    this.metadataChangedCallback?.();
+    return false;
+  }
+
+  protected observeShellIntegrationMarker(marker: string): false {
+    this.hasShellPromptMarkerValue = true;
+    if (marker.startsWith('A')) this.isShellPromptActiveValue = true;
+    if (marker.startsWith('C') || marker.startsWith('D')) this.isShellPromptActiveValue = false;
+    this.metadataChangedCallback?.();
     return false;
   }
 

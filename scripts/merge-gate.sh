@@ -219,11 +219,12 @@ if [ "${FAST:-0}" != "1" ]; then
   step "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
   step "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
   step "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
-  # 5) The REAL settings applied-effect drives (all 16 fields, not just the --meta enumeration).
+  # 5) The REAL settings applied-effect drives (every schema field, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
-  full_tmux_step "settings applied-effect (all 16 driven)" bash scripts/smoke-settings-applied.sh
+  full_tmux_step "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
   step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  step "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
   full_tmux_step "smoke: terminal"    bash scripts/smoke-terminal.sh
   step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts

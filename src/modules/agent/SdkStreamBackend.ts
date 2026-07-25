@@ -18,11 +18,22 @@
 // this backend never passes them.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import { query, type Query, type PermissionResult } from '@anthropic-ai/claude-agent-sdk';
+import {
+  createSdkMcpServer,
+  query,
+  tool,
+  type Query,
+  type PermissionResult,
+} from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
 import type { AgentBackend } from './AgentBackend';
 import { AgentPermissions } from './AgentPermissions';
 import type { AgentEvent, PermissionDecision } from './AgentEvents';
 import { ClaudeStreamMapping } from './ClaudeStreamMapping';
+import {
+  AgentTerminalTools,
+  type AgentTerminalToolPort,
+} from './AgentTerminalTools';
 
 export interface SdkStreamOptions {
   /** Working directory for the agent (the workspace root), so Claude operates in the user's project. */
@@ -32,6 +43,7 @@ export interface SdkStreamOptions {
   skipPermissions?: boolean | (() => boolean);
   /** Model override; empty/undefined uses Claude's default. */
   model?: string;
+  terminalTools?: AgentTerminalToolPort;
 }
 
 class $SdkStreamBackend implements AgentBackend {
@@ -54,6 +66,27 @@ class $SdkStreamBackend implements AgentBackend {
     this.sawResult = false;
     this.interrupting = false;
     const bypass = AgentPermissions.Class.resolveLive(this.options.skipPermissions);
+    const terminalToolDefinitions = this.options.terminalTools
+      ? AgentTerminalTools.Class.definitions(bypass, this.options.terminalTools)
+      : [];
+    const terminalToolServer = terminalToolDefinitions.length > 0
+      ? createSdkMcpServer({
+          name: 'invar-terminal',
+          version: '1.0.0',
+          alwaysLoad: true,
+          tools: terminalToolDefinitions.map((definition) =>
+            tool(
+              definition.name,
+              definition.description,
+              { command: z.string() },
+              async (input) => ({
+                content: [{ type: 'text', text: await definition.invoke(input) }],
+              }),
+              { alwaysLoad: true },
+            ),
+          ),
+        })
+      : null;
     let turn: Query;
     try {
       turn = query({
@@ -62,6 +95,9 @@ class $SdkStreamBackend implements AgentBackend {
           cwd: this.options.cwd,
           model: this.options.model || undefined,
           resume: this.sessionId ?? undefined,
+          ...(terminalToolServer
+            ? { mcpServers: { 'invar-terminal': terminalToolServer } }
+            : {}),
           ...(bypass
             ? { permissionMode: 'bypassPermissions' as const, allowDangerouslySkipPermissions: true }
             : { permissionMode: 'default' as const, canUseTool: this.gateToolCall }),
@@ -80,6 +116,9 @@ class $SdkStreamBackend implements AgentBackend {
    *  Auto-allowed tools (a previous 'always-allow') resolve immediately with no prompt. */
   private readonly gateToolCall = async (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> => {
     if (this.disposed) return { behavior: 'deny', message: 'Session closed' };
+    if (AgentTerminalTools.Class.isStageToolName(toolName)) {
+      return { behavior: 'allow', updatedInput: input };
+    }
     if (this.autoAllowedTools.has(toolName)) return { behavior: 'allow', updatedInput: input };
     return new Promise<PermissionResult>((resolve) => {
       this.permissionRequestCounter += 1;

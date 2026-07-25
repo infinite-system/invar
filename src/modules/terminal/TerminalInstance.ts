@@ -12,16 +12,53 @@ import { ref } from 'vue';
 import type { TerminalBackend } from './TerminalBackend';
 import { TerminalEmulator } from './TerminalEmulator';
 import type { TerminalCell } from './TerminalEmulator';
+import {
+  TerminalCommandController,
+  type TerminalCommandEvent,
+  type TerminalCommandRequestResult,
+} from './TerminalCommandController';
+import { TerminalHeader } from './TerminalHeader';
 
 class $TerminalInstance {
+  protected readonly terminalCommandController: TerminalCommandController.Model;
+  protected userInputAwaitingParse = false;
+  protected lastKnownIdentity = '';
+  protected lastKnownWorkingDirectory = '';
+  protected plainTitleFallback = '';
+
   constructor(
-    private readonly backend: TerminalBackend,
-    private readonly emulator: TerminalEmulator.Model,
+    protected readonly backend: TerminalBackend,
+    protected readonly emulator: TerminalEmulator.Model,
+    commandOptions: TerminalInstanceCommandOptions = {},
   ) {
+    this.plainTitleFallback = this.backend.title ?? 'Terminal';
+    this.lastKnownWorkingDirectory = this.backend.cwd ?? '';
+    this.terminalCommandController = new TerminalCommandController.Class({
+      write: (data) => this.sendInput(data),
+      submit: () => this.submitAgentCommand(),
+      isPromptIdle: () => !this.userInputAwaitingParse && this.emulator.isPromptIdle,
+      currentInputLine: () => this.emulator.currentPromptInputLine(),
+      currentWorkingDirectory: () => this.currentWorkingDirectory,
+      typingSpeed: commandOptions.typingSpeed ?? (() => 40),
+      reducedMotion: commandOptions.reducedMotion ?? (() => false),
+      random: Math.random,
+      scheduler: {
+        setTimeout: (callback, milliseconds) => setTimeout(callback, milliseconds),
+        clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      },
+    });
     // PTY → emulator; emulator replies → PTY; parsed pulse → one repaint; child exit → repaint.
     this.backend.onData((bytes) => this.emulator.write(bytes));
     this.emulator.onReply((data) => this.backend.write(data));
-    this.emulator.onCellsChanged(() => { this.renderRevision.value++; });
+    this.emulator.onCellsChanged(() => {
+      this.userInputAwaitingParse = false;
+      this.renderRevision.value++;
+      this.terminalCommandController.notifyTerminalChanged();
+    });
+    this.emulator.onMetadataChanged(() => {
+      this.updateHeaderMetadata();
+      this.renderRevision.value++;
+    });
     this.backend.onExit((exitCode) => {
       this.exited.value = true;
       this.exitCode.value = exitCode;
@@ -44,13 +81,42 @@ class $TerminalInstance {
   }
 
   get title(): string {
-    return this.backend.title ?? 'Terminal';
+    if (this.lastKnownIdentity && this.lastKnownWorkingDirectory) {
+      return `${this.lastKnownIdentity}:${this.lastKnownWorkingDirectory}`;
+    }
+    return this.plainTitleFallback;
+  }
+
+  get currentWorkingDirectory(): string {
+    return this.lastKnownWorkingDirectory || this.backend.cwd || '';
   }
 
   /** Send raw bytes to the child (already-encoded keystrokes, or pasted text). No-op once exited. */
   sendInput(bytes: string): void {
     if (this.exited.value || !bytes) return;
     this.backend.write(bytes);
+  }
+
+  sendUserInput(bytes: string): void {
+    if (this.exited.value || !bytes) return;
+    if (this.terminalCommandController.handleUserInput(bytes)) return;
+    this.userInputAwaitingParse = true;
+    if (bytes === '\r' || bytes === '\n' || bytes === '\x03') {
+      this.emulator.markPromptSubmitted();
+    }
+    this.backend.write(bytes);
+  }
+
+  stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+    return this.terminalCommandController.stageTerminalCommand(command);
+  }
+
+  runTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+    return this.terminalCommandController.runTerminalCommand(command);
+  }
+
+  onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
+    this.terminalCommandController.onEvent(callback);
   }
 
   /** Resize BOTH the emulator grid and the child's tty in lockstep. */
@@ -87,8 +153,28 @@ class $TerminalInstance {
   }
 
   dispose(): void {
+    this.terminalCommandController.dispose();
     this.backend.kill();
     this.emulator.dispose();
+  }
+
+  protected submitAgentCommand(): void {
+    this.emulator.markPromptSubmitted();
+    this.backend.write('\r');
+  }
+
+  protected updateHeaderMetadata(): void {
+    const titleIdentityAndPath = TerminalHeader.Class.identityAndPath(this.emulator.title);
+    if (titleIdentityAndPath) {
+      this.lastKnownIdentity = titleIdentityAndPath.identity;
+      this.lastKnownWorkingDirectory = titleIdentityAndPath.path;
+      return;
+    }
+    if (this.emulator.title) this.plainTitleFallback = this.emulator.title;
+    const workingDirectory = TerminalHeader.Class.workingDirectory(
+      this.emulator.currentWorkingDirectory,
+    );
+    if (workingDirectory) this.lastKnownWorkingDirectory = workingDirectory.path;
   }
 }
 
@@ -97,4 +183,9 @@ export namespace TerminalInstance {
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface TerminalInstanceCommandOptions {
+  typingSpeed?: () => number;
+  reducedMotion?: () => boolean;
 }

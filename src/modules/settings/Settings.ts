@@ -53,6 +53,7 @@ export interface SettingsValues {
   wordWrap: boolean;
   showActivityBar: boolean;
   showIndentGuides: boolean;
+  reducedMotion: boolean;
   workspaceTabPosition: WorkspaceTabPosition;
   // Language intelligence.
   typescriptServer: TypeScriptServer;
@@ -61,6 +62,8 @@ export interface SettingsValues {
   agentProvider: AgentProvider;
   agentSkipPermissions: boolean;
   agentModel: string;
+  agentTypingSpeed: number;
+  terminalCleanPrompt: boolean;
   agentAudioNarration: boolean;
   agentNarrationVoice: string;
   agentNarrationRate: number;
@@ -166,6 +169,9 @@ class $Settings {
   get showIndentGuides(): Ref<boolean> {
     return ref(true);
   }
+  get reducedMotion(): Ref<boolean> {
+    return ref(false);
+  }
   get workspaceTabPosition(): Ref<WorkspaceTabPosition> {
     return ref<WorkspaceTabPosition>('top');
   }
@@ -183,6 +189,12 @@ class $Settings {
   }
   get agentModel(): Ref<string> {
     return ref('');
+  }
+  get agentTypingSpeed(): Ref<number> {
+    return ref(40);
+  }
+  get terminalCleanPrompt(): Ref<boolean> {
+    return ref(true);
   }
   get agentNarrationVoice(): Ref<string> {
     return ref('');
@@ -224,12 +236,15 @@ class $Settings {
       wordWrap: this.wordWrap,
       showActivityBar: this.showActivityBar,
       showIndentGuides: this.showIndentGuides,
+      reducedMotion: this.reducedMotion,
       workspaceTabPosition: this.workspaceTabPosition,
       typescriptServer: this.typescriptServer,
       lspFileSizeLimitKb: this.lspFileSizeLimitKb,
       agentProvider: this.agentProvider,
       agentSkipPermissions: this.agentSkipPermissions,
       agentModel: this.agentModel,
+      agentTypingSpeed: this.agentTypingSpeed,
+      terminalCleanPrompt: this.terminalCleanPrompt,
       agentAudioNarration: this.agentAudioNarration,
       agentNarrationVoice: this.agentNarrationVoice,
       agentNarrationRate: this.agentNarrationRate,
@@ -376,12 +391,15 @@ class $Settings {
       wordWrap: false,
       showActivityBar: true,
       showIndentGuides: true,
+      reducedMotion: false,
       workspaceTabPosition: 'top',
       typescriptServer: 'tsgo',
       lspFileSizeLimitKb: 2048,
       agentProvider: 'auto',
       agentSkipPermissions: true,
       agentModel: '',
+      agentTypingSpeed: 40,
+      terminalCleanPrompt: true,
       agentAudioNarration: false,
       agentNarrationVoice: '',
       agentNarrationRate: 1.0,
@@ -422,6 +440,7 @@ class $Settings {
     if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
     if (typeof record.showActivityBar === 'boolean') result.showActivityBar = record.showActivityBar;
     if (typeof record.showIndentGuides === 'boolean') result.showIndentGuides = record.showIndentGuides;
+    if (typeof record.reducedMotion === 'boolean') result.reducedMotion = record.reducedMotion;
     if (
       typeof record.workspaceTabPosition === 'string' &&
       ALLOWED_WORKSPACE_TAB_POSITIONS.has(record.workspaceTabPosition as WorkspaceTabPosition)
@@ -442,6 +461,8 @@ class $Settings {
     }
     if (typeof record.agentSkipPermissions === 'boolean') result.agentSkipPermissions = record.agentSkipPermissions;
     if (typeof record.agentModel === 'string') result.agentModel = record.agentModel;
+    readNumber('agentTypingSpeed');
+    if (typeof record.terminalCleanPrompt === 'boolean') result.terminalCleanPrompt = record.terminalCleanPrompt;
     if (typeof record.agentAudioNarration === 'boolean') result.agentAudioNarration = record.agentAudioNarration;
     if (typeof record.agentNarrationVoice === 'string') result.agentNarrationVoice = record.agentNarrationVoice;
     readNumber('agentNarrationRate');

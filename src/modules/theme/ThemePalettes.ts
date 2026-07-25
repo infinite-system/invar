@@ -13,6 +13,8 @@ export interface Palette {
   fg: string;
   dim: string;
   accent: string;
+  /** Integrated-shell prompt foreground. Kept separate so prompt styling never mints a color. */
+  terminalPrompt: string;
   selection: string;
   /** A softer blue selection background for MULTI-selected rows (git range-select) — reads as "selected"
    *  and keeps the row text legible, distinct from the subtle grey hover/cursor-line. */
@@ -67,6 +69,7 @@ export const DARK: Palette = {
   bg: '#1a1b26', panel: '#16161e', statusBg: '#16161e',
   border: '#101014', borderActive: '#7aa2f7',
   fg: '#a9b1d6', dim: '#787c99', accent: '#7aa2f7',
+  terminalPrompt: '#7aa2f7',
   selection: '#2b2f41', selectionMuted: '#283457', cursorLine: '#1e202e',
   indentGuide: '#292e42',
   added: '#41a6b5', modified: '#6183bb', deleted: '#db4b4b',
@@ -84,6 +87,7 @@ export const LIGHT: Palette = {
   bg: '#e1e2e7', panel: '#d4d6e4', statusBg: '#c4c8da',
   border: '#b6bad0', borderActive: '#2e7de9',
   fg: '#343b58', dim: '#848cb5', accent: '#2e7de9',
+  terminalPrompt: '#2e7de9',
   selection: '#b7c1e3', selectionMuted: '#a3b6e8', cursorLine: '#d6d8e6',
   indentGuide: '#c8cbe0',
   added: '#587539', modified: '#8c6c3e', deleted: '#f52a65',

@@ -8,6 +8,11 @@
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 import type { AgentBackend } from './AgentBackend';
 import type { AgentEvent } from './AgentEvents';
+import { AgentPermissions } from './AgentPermissions';
+import {
+  AgentTerminalTools,
+  type AgentTerminalToolPort,
+} from './AgentTerminalTools';
 
 class $EchoAgentBackend implements AgentBackend {
   /** The echo can PAUSE a scripted tool behind a permission prompt (env-gated), so the whole ask-mode
@@ -21,8 +26,14 @@ class $EchoAgentBackend implements AgentBackend {
   /** Session-scoped auto-allow (mirrors the SDK backend's 'always-allow' semantics for the smoke). */
   private readonly autoAllowedTools = new Set<string>();
 
+  constructor(protected readonly options: EchoAgentOptions = {}) {}
+
   send(prompt: string): void {
     if (this.disposed) return;
+    if (prompt.startsWith('terminal-tools:')) {
+      void this.handleTerminalToolPrompt(prompt);
+      return;
+    }
     const reply = `You said: “${prompt}”. This is the local echo backend — real Claude arrives when CliStreamBackend is wired (phase 2).`;
     // Stream the reply as word-sized deltas so the pane shows real incremental accumulation.
     for (const word of reply.split(' ')) this.emit({ kind: 'text-delta', text: `${word} ` });
@@ -114,10 +125,75 @@ class $EchoAgentBackend implements AgentBackend {
   private emit(event: AgentEvent): void {
     if (!this.disposed) this.eventCallback?.(event);
   }
+
+  protected async handleTerminalToolPrompt(prompt: string): Promise<void> {
+    const terminalTools = this.options.terminalTools;
+    if (!terminalTools) {
+      this.emit({ kind: 'error', message: 'No integrated terminal tool port is attached.' });
+      this.emit({ kind: 'session-end', reason: 'error' });
+      return;
+    }
+    const bypassPermissions = AgentPermissions.Class.resolveLive(this.options.skipPermissions);
+    const definitions = AgentTerminalTools.Class.definitions(
+      bypassPermissions,
+      terminalTools,
+    );
+    if (prompt === 'terminal-tools:list') {
+      this.emit({
+        kind: 'text-delta',
+        text: definitions
+          .map((definition) => `${definition.name}: ${definition.description}`)
+          .join('\n'),
+      });
+      this.emit({ kind: 'session-end', reason: 'completed' });
+      return;
+    }
+    const match = /^terminal-tools:(stage|run):(.*)$/s.exec(prompt);
+    const toolName = match?.[1] === 'run'
+      ? 'runTerminalCommand'
+      : match?.[1] === 'stage'
+        ? 'stageTerminalCommand'
+        : null;
+    const definition = toolName
+      ? definitions.find((candidate) => candidate.name === toolName)
+      : null;
+    const toolIdentifier = `echo-terminal-tool-${Date.now()}`;
+    this.emit({
+      kind: 'tool-use',
+      id: toolIdentifier,
+      name: toolName ?? 'unknownTerminalTool',
+      input: { command: match?.[2] ?? '' },
+    });
+    if (!definition) {
+      this.emit({
+        kind: 'tool-result',
+        id: toolIdentifier,
+        result: `${toolName ?? 'The requested tool'} is unavailable in the current permission mode.`,
+        isError: true,
+      });
+      this.emit({ kind: 'session-end', reason: 'completed' });
+      return;
+    }
+    const encodedCommand = match?.[2] ?? '';
+    const command = encodedCommand.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    const result = await definition.invoke({ command });
+    this.emit({
+      kind: 'tool-result',
+      id: toolIdentifier,
+      result,
+      isError: false,
+    });
+    this.emit({ kind: 'session-end', reason: 'completed' });
+  }
 }
 
 export namespace EchoAgentBackend {
   export const $Class = $EchoAgentBackend;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface EchoAgentOptions {
+  terminalTools?: AgentTerminalToolPort;
+  skipPermissions?: boolean | (() => boolean);
 }

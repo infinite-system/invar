@@ -14,17 +14,26 @@ import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
 import type { TerminalBackend } from './TerminalBackend';
 import { OpenPty } from './OpenPty';
+import { TerminalRcfile, type TerminalRcfileHandle } from './TerminalRcfile';
 
 class $OpenPtyBackend implements TerminalBackend {
   private readonly openPty: OpenPty.Model;
   private readonly child: ReturnType<typeof Bun.spawn>;
+  private readonly promptRcfile: TerminalRcfileHandle | null;
   private dataCallback: ((bytes: Uint8Array) => void) | null = null;
   private exitCallback: ((exitCode: number | null) => void) | null = null;
   private killed = false;
   readonly title: string;
   readonly cwd: string;
 
-  constructor(options: { columns?: number; rows?: number; shell?: string; cwd?: string } = {}) {
+  constructor(options: {
+    columns?: number;
+    rows?: number;
+    shell?: string;
+    cwd?: string;
+    cleanPrompt?: boolean;
+    promptColor?: string;
+  } = {}) {
     const columns = options.columns ?? 80;
     const rows = options.rows ?? 24;
     const shell = options.shell ?? Environment.Class.env('SHELL') ?? 'bash';
@@ -37,9 +46,13 @@ class $OpenPtyBackend implements TerminalBackend {
     // Linux gets a controlling tty (job control) via setsid --ctty; elsewhere spawn the shell bare.
     // This interactive PTY deliberately bypasses Processes.spawn: its child needs the complete user
     // environment plus slave-file-descriptor stdio, while external tools need the hermetic policy.
+    this.promptRcfile = options.cleanPrompt === false
+      ? null
+      : TerminalRcfile.Class.create(shell, options.promptColor ?? '');
+    const shellCommand = this.promptRcfile?.command ?? [shell, '-i'];
     const command = process.platform === 'linux'
-      ? ['setsid', '--ctty', shell, '-i']
-      : [shell, '-i'];
+      ? ['setsid', '--ctty', ...shellCommand]
+      : shellCommand;
     this.child = Bun.spawn(command, {
       cwd: this.cwd,
       stdio: [
@@ -47,11 +60,16 @@ class $OpenPtyBackend implements TerminalBackend {
         this.openPty.slaveFileDescriptor,
         this.openPty.slaveFileDescriptor,
       ],
-      env: { ...process.env, TERM: 'xterm-256color' },
+      env: {
+        ...process.env,
+        ...this.promptRcfile?.environment,
+        TERM: 'xterm-256color',
+      },
     });
     this.openPty.releaseSlaveFileDescriptor();
 
     void this.child.exited.then((exitCode) => {
+      this.promptRcfile?.dispose();
       if (!this.killed) this.exitCallback?.(exitCode ?? null);
     });
   }
@@ -79,6 +97,7 @@ class $OpenPtyBackend implements TerminalBackend {
     this.killed = true;
     try { this.child.kill(); } catch { /* already exited */ }
     this.openPty.close();
+    this.promptRcfile?.dispose();
     Logging.Class.info('OpenPtyBackend killed');
   }
 }

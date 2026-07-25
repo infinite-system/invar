@@ -14,6 +14,10 @@ import type { PaneContent, PaneRenderContext } from '../ui/PaneContent';
 import { TerminalPaneRenderer } from './TerminalPaneRenderer';
 import { TerminalKeys } from './TerminalKeys';
 import type { TerminalInstance } from './TerminalInstance';
+import type {
+  TerminalCommandEvent,
+  TerminalCommandRequestResult,
+} from './TerminalCommandController';
 
 // The terminal pane's gutter: a 2-column left/right margin and a 1-row top/bottom margin around the
 // emulator, so the shell doesn't hug the panel border. The emulator (and thus the child PTY) sizes to
@@ -26,7 +30,7 @@ class $TerminalPaneContent implements PaneContent {
   readonly id = 'terminal';
   readonly icon = '❯'; // ❯
 
-  constructor(private readonly instance: TerminalInstance.Instance) {}
+  constructor(protected readonly instance: TerminalInstance.Instance) {}
 
   get title(): string {
     return this.instance.exited.value ? `${this.instance.title} (exited)` : this.instance.title;
@@ -50,7 +54,7 @@ class $TerminalPaneContent implements PaneContent {
   handleKey(key: KeyEvent): boolean {
     const bytes = TerminalKeys.Class.encode(key);
     if (!bytes) return false;
-    this.instance.sendInput(bytes);
+    this.instance.sendUserInput(bytes);
     return true;
   }
 
@@ -58,8 +62,20 @@ class $TerminalPaneContent implements PaneContent {
    *  bytes as if the user had typed the pasted/dictated text. */
   handlePaste(text: string): boolean {
     if (!text) return false;
-    this.instance.sendInput(text);
+    this.instance.sendUserInput(text);
     return true;
+  }
+
+  stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+    return this.instance.stageTerminalCommand(command);
+  }
+
+  runTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+    return this.instance.runTerminalCommand(command);
+  }
+
+  onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
+    this.instance.onTerminalCommandEvent(callback);
   }
 
   caret(): { column: number; row: number } | null {

@@ -12,6 +12,7 @@
         "jpeg-js": "^0.4.4",
         "vue": "3.6.0-rc.1",
         "web-tree-sitter": "^0.26.11",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@types/bun": "latest",

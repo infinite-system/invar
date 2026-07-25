@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { EchoAgentBackend } from './EchoAgentBackend';
 import type { AgentEvent, PermissionDecision } from './AgentEvents';
+import type { AgentTerminalToolPort } from './AgentTerminalTools';
 
 afterEach(() => {
   delete process.env.INVAR_AGENT_ECHO_PERMISSION;
@@ -56,4 +57,32 @@ describe('EchoAgentBackend — env-gated permission flow (the hermetic ask-mode 
     expect(events.some((event) => event.kind === 'permission-request')).toBe(false);
     expect(events.at(-1)).toMatchObject({ kind: 'session-end', reason: 'completed' });
   });
+});
+
+test('terminal tool listing follows the live permission ladder', () => {
+  const terminalTools: AgentTerminalToolPort = {
+    stageTerminalCommand: async (command) => ({ state: 'staged', command }),
+    runTerminalCommand: async (command) => ({ state: 'executed', command }),
+  };
+  const askMode = drive(
+    'terminal-tools:list',
+    new EchoAgentBackend.Class({ terminalTools, skipPermissions: false }),
+  );
+  const askModeText = askMode.events
+    .filter((event) => event.kind === 'text-delta')
+    .map((event) => event.text)
+    .join('');
+  expect(askModeText).toContain('stageTerminalCommand');
+  expect(askModeText).not.toContain('runTerminalCommand');
+
+  const bypassMode = drive(
+    'terminal-tools:list',
+    new EchoAgentBackend.Class({ terminalTools, skipPermissions: true }),
+  );
+  const bypassModeText = bypassMode.events
+    .filter((event) => event.kind === 'text-delta')
+    .map((event) => event.text)
+    .join('');
+  expect(bypassModeText).toContain('stageTerminalCommand');
+  expect(bypassModeText).toContain('runTerminalCommand');
 });

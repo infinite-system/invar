@@ -10,8 +10,11 @@ import {
   statSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
+  rmSync,
 } from 'node:fs';
 import { join, resolve, relative, basename, extname, dirname, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 
 export interface DirEntry {
   name: string;
@@ -111,6 +114,14 @@ class $Files {
   static write(path: string, content: string): void {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content, 'utf8');
+  }
+
+  static createTemporaryDirectory(prefix: string): string {
+    return mkdtempSync(join(tmpdir(), prefix));
+  }
+
+  static removeDirectory(path: string): void {
+    rmSync(path, { recursive: true, force: true });
   }
 
   /**
