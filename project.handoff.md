@@ -3,7 +3,35 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR — 2026-07-24 NIGHT (CURRENT) — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
+## RESUME ANCHOR — 2026-07-25 OVERNIGHT (CURRENT) — USER ASLEEP, STANDING GOAL: DRAIN THE LEDGER
+
+**Ground-truth against git first. `origin/main` was `f11d070` at this writing. User's parting goal
+(~02:00): "knock all those things out of the park" — full autonomy on the open ledger.**
+
+LANDED TODAY+TONIGHT (~55 landings, main never red): all user bugs (5 morning + hscroll + narration
+inline-code + garble/placeholder-leak f11d070 + scrollbar gaps + thumb oscillation + gutter-diff
+stale-head 7b66859 = tabs 108→11ms + popup bounds 5cabfc5); terminal UX pack + visible typing +
+input-correctness pack 53ab6a1 (grapheme typing, OSC 52 copy, word ops, fix-my-command — USER
+CONFIRMED WORKING in cmux; Terminal.app = no OSC 52, host limitation, document); harness era
+complete (swap, corpus, ring retired, budgets+retry, gate ~3min); grammar: 4 modules enforced
+(syntax git markdown lsp), 1,273 left; BoundedListPopup; conventions: FILE GRAMMAR law,
+CLAUDE.md→AGENTS.md redirect + skills index + gate check, ast-query tool+skill.
+
+IN FLIGHT: extent fix gate take-2 (fix-horizontal-extent-init — JpegDecoder clamp + consumer-scoped
+aggregate invariant; wrap leaked via constructor early-ref-read, reverted byte-identical); layout
+wave 1 delivered+reconciled (feat-layout-model-wave1 tip 052db6a — splitter seam, layout model,
+right dock; 2 real first-paint breaks fixed) AWAITING GATE; osc52 builder running
+(fix-osc52-frame-boundary — frame-boundary clipboard emission + chunked-paste cases).
+
+OVERNIGHT ORDER: land extent → gate+land layout → osc52 lands → #46 TerminalObserver waves 1-4
+(tmp/terminal-observation-design.md IS the spec) after osc52 (same module) → grammar TWO-WIDE
+(editor+diff, image+workspace, narration+small-tail, agent solo, ui LAST after layout chrome) →
+#44 interface-rename (small) → #43 wave 2 (file-tree citizen + command bar) after layout lands.
+Ledger: #31 census, #33 capsule, #34 plugin-canvas (enriched thesis), #35 navigator, #40 parallel
+pool (evidence mounting: 3 timeout-reruns at ≥3 builders). Gate discipline tonight: ≤1 builder
+during gates preferred; timeout-red under churn → rerun once (starvation rarely repeats).
+
+## PRIOR ANCHOR — 2026-07-24 NIGHT — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
 
 **Ground-truth against git first — anchors lag. `origin/main` was `de85916` at this writing.**
 
