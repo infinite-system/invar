@@ -1,3 +1,8 @@
+import { Static } from 'ivue/extras';
+import type { TtsBackend } from './TtsBackend.interface';
+import { MockTtsBackend } from './MockTtsBackend';
+import { SystemTtsBackend } from './SystemTtsBackend';
+
 // The construction seam for the narration's TTS backend. Auto-detect + graceful fallback, exactly like
 // AgentFactory picks an agent backend: INVAR_TTS_BACKEND=mock forces the silent MockTtsBackend (keeps
 // the driving smoke hermetic — no audio in CI), otherwise a SystemTtsBackend is built and IT decides
@@ -5,13 +10,40 @@
 // or alternate host can inject any TtsBackend without the caller knowing which it got.
 //
 // invariant: Narration audio crosses exactly one TTS backend seam (src/modules/narration/narration.invariants.md)
-import { Static } from 'ivue/extras';
-import type { TtsBackend } from './TtsBackend.interface';
-import { MockTtsBackend } from './MockTtsBackend';
-import { SystemTtsBackend } from './SystemTtsBackend';
+
+class $TtsFactory {
+  protected static get MockTtsBackend() {
+    return MockTtsBackend.Class;
+  }
+
+  protected static get SystemTtsBackend() {
+    return SystemTtsBackend.Class;
+  }
+
+  /** Pick the TTS backend. `INVAR_TTS_BACKEND=mock` → the silent recording double (CI/tests).
+   *  Otherwise the real SystemTtsBackend, which auto-detects an engine and resolves the voice + rate
+   *  per utterance (live) and no-ops when no engine is installed. */
+  static createBackend(options: TtsCreateOptions = {}): TtsBackend {
+    if (process.env.INVAR_TTS_BACKEND === 'mock') {
+      return new this.MockTtsBackend();
+    }
+    return new this.SystemTtsBackend({
+      voice: options.voice,
+      rate: options.rate,
+      voiceProvider: options.voiceProvider,
+      rateProvider: options.rateProvider,
+    });
+  }
+}
+
+export namespace TtsFactory {
+  export const $Class = $TtsFactory;
+  export const Class = Static($TtsFactory);
+}
 
 export interface TtsCreateOptions {
-  /** A FIXED voice NAME (`agentNarrationVoice`) for a one-shot caller (Test Voice). Ignored by the mock. */
+  /** A FIXED voice NAME (`agentNarrationVoice`) for a one-shot caller (Test Voice). Ignored by the
+   *  mock. */
   voice?: string;
   /** A FIXED rate (`agentNarrationRate`). Ignored by the mock. */
   rate?: number;
@@ -19,26 +51,4 @@ export interface TtsCreateOptions {
   voiceProvider?: () => string;
   /** LIVE rate — read per utterance so a settings change applies to ongoing narration. */
   rateProvider?: () => number;
-}
-
-/** Pick the TTS backend. `INVAR_TTS_BACKEND=mock` → the silent recording double (CI/tests). Otherwise
- *  the real SystemTtsBackend, which auto-detects an engine and resolves the voice + rate per utterance
- *  (live) and no-ops when no engine is installed. */
-function $createBackend(options: TtsCreateOptions = {}): TtsBackend {
-  if (process.env.INVAR_TTS_BACKEND === 'mock') return new MockTtsBackend.Class();
-  return new SystemTtsBackend.Class({
-    voice: options.voice,
-    rate: options.rate,
-    voiceProvider: options.voiceProvider,
-    rateProvider: options.rateProvider,
-  });
-}
-
-class $TtsFactory {
-  static createBackend = $createBackend;
-}
-
-export namespace TtsFactory {
-  export const $Class = $TtsFactory;
-  export const Class = Static($TtsFactory);
 }
