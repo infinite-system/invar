@@ -92,7 +92,7 @@ try {
     'the greetWidget use site in bar.ts is visible',
     (candidate) => candidate.findText('const message') !== null,
   );
-  const plainClickStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
     "status condition: String(status.activeBuffer).endsWith('/bar.ts')",
@@ -159,7 +159,7 @@ try {
     'clicking the bar.ts tab restores the greetWidget use site on the grid',
     (candidate) => candidate.findText('const message') !== null,
   );
-  const functionKeyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
     "status condition: String(status.activeBuffer).endsWith('/bar.ts')",
@@ -179,7 +179,7 @@ try {
     row: usePosition.row,
     button: 'left',
   });
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const plainClickStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
     "status condition: { const cursor = status.cursor as { line?: number } | undefined; return String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2; }",
@@ -200,7 +200,7 @@ try {
     (candidate) => candidate.findText('export function greetWidget') !== null,
     20_000,
   );
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const functionKeyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
     "status condition: { const cursor = status.cursor as { line?: number; col?: number } | undefined; return String(status.activeBuffer).endsWith('/foo.ts') && cursor?.line === 0 && cursor.col === 16; }",
