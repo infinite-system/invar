@@ -1,145 +1,183 @@
-import { Static } from 'ivue/extras';
-
 class $TerminalOutputAudit {
+  private readonly clipboardEmissionRecords: ClipboardEmission[] = [];
+  private parserState: TerminalOutputParserState = 'ground';
+  private controlSequence = '';
+  private controlSequenceStartOffset = -1;
+  private controlSequenceStartedWithinAnother = false;
+  private synchronizedFrameDepth = 0;
+  private consumedOutputLength = 0;
+  private controlStringEscapePending = false;
+  private controlStringEscapeOffset = -1;
+
   static clipboardEmissions(output: string): ClipboardEmission[] {
-    const clipboardEmissions: ClipboardEmission[] = [];
-    let parserState: TerminalOutputParserState = 'ground';
-    let controlSequenceStartOffset = -1;
-    let controlSequenceStartedWithinAnother = false;
-    let synchronizedFrameDepth = 0;
-
-    for (let characterOffset = 0; characterOffset < output.length; characterOffset += 1) {
-      const character = output[characterOffset] ?? '';
-
-      if (parserState === 'ground') {
-        if (character === '\x1b') {
-          parserState = 'escape';
-          controlSequenceStartOffset = characterOffset;
-          controlSequenceStartedWithinAnother = false;
-        }
-        continue;
-      }
-
-      if (parserState === 'escape') {
-        if (character === '[') {
-          parserState = 'csi';
-          continue;
-        }
-        if (character === ']') {
-          parserState = 'osc';
-          continue;
-        }
-        if (['P', '_', '^', 'X'].includes(character)) {
-          parserState = 'control-string';
-          continue;
-        }
-        parserState = 'ground';
-        continue;
-      }
-
-      if (parserState === 'csi') {
-        if (character === '\x1b') {
-          parserState = 'escape';
-          controlSequenceStartOffset = characterOffset;
-          controlSequenceStartedWithinAnother = true;
-          continue;
-        }
-        const characterCode = character.charCodeAt(0);
-        if (characterCode < 0x40 || characterCode > 0x7e) continue;
-        const controlSequence = output.slice(controlSequenceStartOffset, characterOffset + 1);
-        if (controlSequence === '\x1b[?2026h') synchronizedFrameDepth += 1;
-        if (controlSequence === '\x1b[?2026l') {
-          synchronizedFrameDepth = Math.max(0, synchronizedFrameDepth - 1);
-        }
-        parserState = 'ground';
-        continue;
-      }
-
-      if (parserState === 'control-string') {
-        if (character === '\x07') {
-          parserState = 'ground';
-          continue;
-        }
-        if (character === '\x1b') {
-          const followingCharacter = output[characterOffset + 1];
-          if (followingCharacter === '\\') {
-            parserState = 'ground';
-            characterOffset += 1;
-          } else {
-            parserState = 'escape';
-            controlSequenceStartOffset = characterOffset;
-            controlSequenceStartedWithinAnother = true;
-          }
-        }
-        continue;
-      }
-
-      if (character === '\x07') {
-        this.appendClipboardEmission(
-          clipboardEmissions,
-          output,
-          controlSequenceStartOffset,
-          characterOffset + 1,
-          synchronizedFrameDepth,
-          controlSequenceStartedWithinAnother,
-        );
-        parserState = 'ground';
-        continue;
-      }
-      if (character !== '\x1b') continue;
-      const followingCharacter = output[characterOffset + 1];
-      if (followingCharacter === '\\') {
-        this.appendClipboardEmission(
-          clipboardEmissions,
-          output,
-          controlSequenceStartOffset,
-          characterOffset + 2,
-          synchronizedFrameDepth,
-          controlSequenceStartedWithinAnother,
-        );
-        parserState = 'ground';
-        characterOffset += 1;
-      } else {
-        parserState = 'escape';
-        controlSequenceStartOffset = characterOffset;
-        controlSequenceStartedWithinAnother = true;
-      }
-    }
-
-    return clipboardEmissions;
+    const terminalOutputAudit = new this();
+    terminalOutputAudit.consume(output);
+    return [...terminalOutputAudit.emissions];
   }
 
-  protected static appendClipboardEmission(
-    clipboardEmissions: ClipboardEmission[],
-    output: string,
+  get emissions(): readonly ClipboardEmission[] {
+    return this.clipboardEmissionRecords;
+  }
+
+  consume(chunk: string): void {
+    for (
+      let characterOffset = 0;
+      characterOffset < chunk.length;
+      characterOffset += 1
+    ) {
+      this.consumeCharacter(
+        chunk[characterOffset] ?? '',
+        this.consumedOutputLength + characterOffset,
+      );
+    }
+    this.consumedOutputLength += chunk.length;
+  }
+
+  protected consumeCharacter(character: string, absoluteOffset: number): void {
+    if (this.parserState === 'ground') {
+      if (character === '\x1b')
+        this.beginControlSequence(absoluteOffset, false);
+      return;
+    }
+
+    if (this.parserState === 'escape') {
+      this.consumeEscapeFollower(character);
+      return;
+    }
+
+    if (this.parserState === 'csi') {
+      if (character === '\x1b') {
+        this.beginControlSequence(absoluteOffset, true);
+        return;
+      }
+      this.controlSequence += character;
+      const characterCode = character.charCodeAt(0);
+      if (characterCode < 0x40 || characterCode > 0x7e) return;
+      if (this.controlSequence === '\x1b[?2026h')
+        this.synchronizedFrameDepth += 1;
+      if (this.controlSequence === '\x1b[?2026l') {
+        this.synchronizedFrameDepth = Math.max(
+          0,
+          this.synchronizedFrameDepth - 1,
+        );
+      }
+      this.finishControlSequence();
+      return;
+    }
+
+    if (this.controlStringEscapePending) {
+      this.consumeControlStringEscapeFollower(character, absoluteOffset);
+      return;
+    }
+
+    if (character === '\x07') {
+      if (this.parserState === 'osc') {
+        this.controlSequence += character;
+        this.appendClipboardEmission(absoluteOffset + 1);
+      }
+      this.finishControlSequence();
+      return;
+    }
+
+    if (character === '\x1b') {
+      if (this.parserState === 'osc') this.controlSequence += character;
+      this.controlStringEscapePending = true;
+      this.controlStringEscapeOffset = absoluteOffset;
+      return;
+    }
+
+    if (this.parserState === 'osc') this.controlSequence += character;
+  }
+
+  protected beginControlSequence(
     startOffset: number,
-    endOffset: number,
-    synchronizedFrameDepth: number,
     startedWithinControlSequence: boolean,
   ): void {
-    const sequence = output.slice(startOffset, endOffset);
-    const terminatorLength = sequence.endsWith('\x07') ? 1 : 2;
-    const content = sequence.slice(2, sequence.length - terminatorLength);
+    this.parserState = 'escape';
+    this.controlSequence = '\x1b';
+    this.controlSequenceStartOffset = startOffset;
+    this.controlSequenceStartedWithinAnother = startedWithinControlSequence;
+    this.controlStringEscapePending = false;
+    this.controlStringEscapeOffset = -1;
+  }
+
+  protected consumeEscapeFollower(character: string): void {
+    this.controlSequence += character;
+    if (character === '[') {
+      this.parserState = 'csi';
+      return;
+    }
+    if (character === ']') {
+      this.parserState = 'osc';
+      return;
+    }
+    if (['P', '_', '^', 'X'].includes(character)) {
+      this.parserState = 'control-string';
+      return;
+    }
+    this.finishControlSequence();
+  }
+
+  protected consumeControlStringEscapeFollower(
+    character: string,
+    absoluteOffset: number,
+  ): void {
+    this.controlStringEscapePending = false;
+    if (character === '\\') {
+      if (this.parserState === 'osc') {
+        this.controlSequence += character;
+        this.appendClipboardEmission(absoluteOffset + 1);
+      }
+      this.finishControlSequence();
+      return;
+    }
+
+    this.controlSequence = '\x1b';
+    this.controlSequenceStartOffset = this.controlStringEscapeOffset;
+    this.controlSequenceStartedWithinAnother = true;
+    this.controlStringEscapeOffset = -1;
+    this.parserState = 'escape';
+    this.consumeEscapeFollower(character);
+  }
+
+  protected appendClipboardEmission(endOffset: number): void {
+    const terminatorLength = this.controlSequence.endsWith('\x07') ? 1 : 2;
+    const content = this.controlSequence.slice(
+      2,
+      this.controlSequence.length - terminatorLength,
+    );
     if (!content.startsWith('52;c;')) return;
     const base64Payload = content.slice('52;c;'.length);
     const decodedText = Buffer.from(base64Payload, 'base64').toString('utf8');
-    const normalizedBase64Payload = Buffer.from(decodedText, 'utf8').toString('base64');
-    clipboardEmissions.push({
-      startOffset,
+    const normalizedBase64Payload = Buffer.from(decodedText, 'utf8').toString(
+      'base64',
+    );
+    this.clipboardEmissionRecords.push({
+      startOffset: this.controlSequenceStartOffset,
       endOffset,
-      sequence,
+      sequence: this.controlSequence,
       base64Payload,
       decodedText,
       hasValidBase64Payload: normalizedBase64Payload === base64Payload,
-      synchronizedFrameDepth,
-      startedWithinControlSequence,
+      synchronizedFrameDepth: this.synchronizedFrameDepth,
+      startedWithinControlSequence: this.controlSequenceStartedWithinAnother,
     });
+  }
+
+  protected finishControlSequence(): void {
+    this.parserState = 'ground';
+    this.controlSequence = '';
+    this.controlSequenceStartOffset = -1;
+    this.controlSequenceStartedWithinAnother = false;
+    this.controlStringEscapePending = false;
+    this.controlStringEscapeOffset = -1;
   }
 }
 
 export namespace TerminalOutputAudit {
   export const $Class = $TerminalOutputAudit;
-  export const Class = Static($Class);
+  export let Class = $Class;
+  export type Model = InstanceType<typeof Class>;
 }
 
 export interface ClipboardEmission {
@@ -154,8 +192,4 @@ export interface ClipboardEmission {
 }
 
 export type TerminalOutputParserState =
-  | 'ground'
-  | 'escape'
-  | 'csi'
-  | 'osc'
-  | 'control-string';
+  'ground' | 'escape' | 'csi' | 'osc' | 'control-string';

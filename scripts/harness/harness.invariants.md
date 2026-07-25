@@ -138,6 +138,44 @@ for a block glyph; a snapshot cell lacking the emulator color mode or SGR attrib
 
 **Last refined:** 2026-07-24
 
+### Harness output history stays bounded
+
+**Invariant:** If `PtyTestDriver` retains application output, then its default history stays bounded
+while clipboard emissions and registered output-sequence counts accumulate across the full stream.
+
+**Scope:** `PtyTestDriver` output retention, `TerminalOutputAudit`, and harness consumers of
+`clipboardEmissions` or `outputSequenceCount`. Fixture recorders that explicitly set
+`retainFullOutput: true` are outside the default retention bound.
+
+**Components:**
+- *Retained bytes stay bounded* — `recordedOutput()` returns at most the latest 4 MB by default.
+- *Derived facts survive trimming* — clipboard emissions and registered sequence counts accumulate
+  as chunks arrive instead of being re-derived from retained history.
+
+**Mechanism:** `PtyTestDriver` head-trims `observedOutput` after each decoded PTY chunk while one
+stateful `TerminalOutputAudit` consumes that chunk and registered counters scan it with
+cross-chunk carry. A first sequence query after overflow throws instead of returning a partial count.
+
+**Generates:** bounded default harness retention; absolute clipboard-emission offsets; split-sequence
+counting; explicit full-stream retention for fixture recorders; loud late-registration failures.
+
+**Rejected alternatives:** Re-scan the retained tail for derived facts — trimming silently loses
+earlier clipboard emissions and sequence matches.
+
+**Evidence:** `scripts/harness/PtyTestDriver.ts`; `scripts/harness/TerminalOutputAudit.ts`;
+`scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/TerminalOutputAudit.test.ts`.
+
+**Impossible if true:** A default driver retaining more than 4 MB of output; a registered sequence
+count decreasing after trimming; a clipboard emission disappearing from the audit after trimming; a
+first sequence query after overflow returning a partial count.
+
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
+scripts/harness/TerminalOutputAudit.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### The conformance corpus replaces the tmux ring
 
 **Invariant:** If the PTY harness uses `TerminalEmulator` as its screen oracle, then the blocking

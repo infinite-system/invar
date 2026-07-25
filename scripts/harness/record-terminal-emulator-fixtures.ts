@@ -5,11 +5,7 @@
 // Run from the repository root:
 //   bun scripts/harness/record-terminal-emulator-fixtures.ts
 import { Buffer } from 'node:buffer';
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Static } from 'ivue/extras';
@@ -19,18 +15,16 @@ import { PtyTestDriver } from './PtyTestDriver';
 
 class $TerminalEmulatorFixtureRecorder {
   protected static get fixtureDirectory(): string {
-    return join(
-      process.cwd(),
-      'src',
-      'modules',
-      'terminal',
-      'fixtures',
-    );
+    return join(process.cwd(), 'src', 'modules', 'terminal', 'fixtures');
   }
 
   static async record(): Promise<void> {
-    const darkHomeDirectory = mkdtempSync(join(tmpdir(), 'invar-emulator-dark-'));
-    const lightHomeDirectory = mkdtempSync(join(tmpdir(), 'invar-emulator-light-'));
+    const darkHomeDirectory = mkdtempSync(
+      join(tmpdir(), 'invar-emulator-dark-'),
+    );
+    const lightHomeDirectory = mkdtempSync(
+      join(tmpdir(), 'invar-emulator-light-'),
+    );
     mkdirSync(this.fixtureDirectory, { recursive: true });
     try {
       await this.recordDarkFixtures(darkHomeDirectory);
@@ -39,10 +33,14 @@ class $TerminalEmulatorFixtureRecorder {
       rmSync(darkHomeDirectory, { recursive: true, force: true });
       rmSync(lightHomeDirectory, { recursive: true, force: true });
     }
-    console.log(`recorded TerminalEmulator fixtures in ${this.fixtureDirectory}`);
+    console.log(
+      `recorded TerminalEmulator fixtures in ${this.fixtureDirectory}`,
+    );
   }
 
-  protected static async recordDarkFixtures(homeDirectory: string): Promise<void> {
+  protected static async recordDarkFixtures(
+    homeDirectory: string,
+  ): Promise<void> {
     const statusPath = join(homeDirectory, 'status.json');
     const driver = await this.launch(homeDirectory, statusPath);
     try {
@@ -55,7 +53,9 @@ class $TerminalEmulatorFixtureRecorder {
 
       const outputLengthBeforeKeypress = bootOutput.length;
       driver.sendKeys('F1');
-      await driver.awaitSnapshot((snapshot) => snapshot.findText('Command Palette') !== null);
+      await driver.awaitSnapshot(
+        (snapshot) => snapshot.findText('Command Palette') !== null,
+      );
       await driver.awaitQuiescence();
       await this.writeFixture(
         'terminal-emulator-recorded-keypress-diff',
@@ -67,7 +67,9 @@ class $TerminalEmulatorFixtureRecorder {
     }
   }
 
-  protected static async recordLightFixture(homeDirectory: string): Promise<void> {
+  protected static async recordLightFixture(
+    homeDirectory: string,
+  ): Promise<void> {
     const settingsDirectory = join(homeDirectory, '.config', 'invar');
     mkdirSync(settingsDirectory, { recursive: true });
     await Bun.write(
@@ -96,12 +98,13 @@ class $TerminalEmulatorFixtureRecorder {
       columns: 80,
       rows: 24,
       homeDirectory,
+      retainFullOutput: true,
       environment: { TUI_STATUS_PATH: statusPath },
     });
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.ready === true",
+      'status condition: status.ready === true',
       (status) => status.ready === true,
       15_000,
     );

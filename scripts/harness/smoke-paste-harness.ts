@@ -33,12 +33,12 @@ const driver = new PtyTestDriver.Class({
     INVAR_AGENT_BACKEND: 'echo',
   },
 });
+driver.outputSequenceCount('\x1b[?2004h');
 
-function emittedClipboardTexts(output: string): string[] {
-  return Array.from(
-    output.matchAll(/\x1b]52;c;([A-Za-z0-9+/=]*)\x07/g),
-    (match) => Buffer.from(match[1] ?? '', 'base64').toString('utf8'),
-  );
+function emittedClipboardTexts(): string[] {
+  return driver
+    .clipboardEmissions()
+    .map((clipboardEmission) => clipboardEmission.decodedText);
 }
 
 async function sendChunkedPaste(text: string): Promise<void> {
@@ -230,20 +230,17 @@ try {
     terminalCopyPosition.column + 11,
     terminalCopyPosition.row,
   );
-  const clipboardEmissionCountBefore = emittedClipboardTexts(
-    driver.recordedOutput(),
-  ).length;
+  const clipboardEmissionCountBefore = emittedClipboardTexts().length;
   driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
   const copyDeadline = performance.now() + 5_000;
   while (
-    emittedClipboardTexts(driver.recordedOutput()).length <=
-      clipboardEmissionCountBefore &&
+    emittedClipboardTexts().length <= clipboardEmissionCountBefore &&
     performance.now() < copyDeadline
   ) {
     await Bun.sleep(10);
   }
   requireCondition(
-    emittedClipboardTexts(driver.recordedOutput())
+    emittedClipboardTexts()
       .slice(clipboardEmissionCountBefore)
       .some((text) => text.includes('COPYTERMINAL')),
     'terminal selection emits the selected bytes through OSC 52',

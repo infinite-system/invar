@@ -15,7 +15,9 @@ function createRecordedStreamDriver(
   frameTexts: readonly string[],
   frameIntervalMilliseconds = 15,
 ): PtyTestDriver.Model {
-  const recordedFrames = frameTexts.map((frameText) => recordedFrame(frameText));
+  const recordedFrames = frameTexts.map((frameText) =>
+    recordedFrame(frameText),
+  );
   const recordedStreamProgram = `
     const recordedFrames = ${JSON.stringify(recordedFrames)};
     await Bun.sleep(20);
@@ -34,6 +36,36 @@ function createRecordedStreamDriver(
   });
 }
 
+class TinyOutputPtyTestDriver extends PtyTestDriver.$Class {
+  protected static override get retainedOutputLengthLimit(): number {
+    return 32;
+  }
+}
+
+function createTinyOutputDriver(
+  outputChunks: readonly string[],
+  retainFullOutput = false,
+): InstanceType<typeof TinyOutputPtyTestDriver> {
+  const recordedStreamProgram = `
+    const outputChunks = ${JSON.stringify(outputChunks)};
+    await Bun.sleep(80);
+    for (const outputChunk of outputChunks) {
+      process.stdout.write(outputChunk);
+      await Bun.sleep(10);
+    }
+    process.stdout.write(${JSON.stringify(recordedFrame('TINY DONE'))});
+    await Bun.sleep(1_000);
+  `;
+  return new TinyOutputPtyTestDriver({
+    workspaceRoot: process.cwd(),
+    repositoryRoot: process.cwd(),
+    columns: 40,
+    rows: 4,
+    retainFullOutput,
+    command: [process.execPath, '-e', recordedStreamProgram],
+  });
+}
+
 describe('HarnessInput', () => {
   test('maps named keys and modifiers to terminal bytes', () => {
     expect(HarnessInput.Class.key('Enter')).toBe('\r');
@@ -48,20 +80,26 @@ describe('HarnessInput', () => {
   });
 
   test('maps mouse gestures and bracketed paste to protocol frames', () => {
-    expect(HarnessInput.Class.mouse({
-      kind: 'press',
-      column: 9,
-      row: 4,
-      button: 'left',
-    })).toBe('\x1b[<0;10;5M');
-    expect(HarnessInput.Class.mouse({
-      kind: 'wheel',
-      column: 9,
-      row: 4,
-      direction: 'right',
-      alt: true,
-    })).toBe('\x1b[<75;10;5M');
-    expect(HarnessInput.Class.paste('two\nlines')).toBe('\x1b[200~two\nlines\x1b[201~');
+    expect(
+      HarnessInput.Class.mouse({
+        kind: 'press',
+        column: 9,
+        row: 4,
+        button: 'left',
+      }),
+    ).toBe('\x1b[<0;10;5M');
+    expect(
+      HarnessInput.Class.mouse({
+        kind: 'wheel',
+        column: 9,
+        row: 4,
+        direction: 'right',
+        alt: true,
+      }),
+    ).toBe('\x1b[<75;10;5M');
+    expect(HarnessInput.Class.paste('two\nlines')).toBe(
+      '\x1b[200~two\nlines\x1b[201~',
+    );
   });
 });
 
@@ -124,11 +162,16 @@ describe('PtyTestDriver.awaitGridCondition', () => {
   });
 
   test('checks each completed recorded frame until the condition is satisfied', async () => {
-    const driver = createRecordedStreamDriver(['FIRST', 'SECOND', 'THIRD READY']);
+    const driver = createRecordedStreamDriver([
+      'FIRST',
+      'SECOND',
+      'THIRD READY',
+    ]);
     try {
       const snapshot = await driver.awaitGridCondition(
         'the recorded grid reaches THIRD READY',
-        (candidateSnapshot) => candidateSnapshot.findText('THIRD READY') !== null,
+        (candidateSnapshot) =>
+          candidateSnapshot.findText('THIRD READY') !== null,
         1_000,
       );
       expect(snapshot.findText('THIRD READY')).not.toBeNull();
@@ -145,7 +188,8 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       try {
         await driver.awaitGridCondition(
           'the recorded grid contains NEVER PRESENT',
-          (candidateSnapshot) => candidateSnapshot.findText('NEVER PRESENT') !== null,
+          (candidateSnapshot) =>
+            candidateSnapshot.findText('NEVER PRESENT') !== null,
           120,
           {
             startRow: 0,
@@ -155,12 +199,15 @@ describe('PtyTestDriver.awaitGridCondition', () => {
           },
         );
       } catch (error) {
-        timeoutError = error instanceof Error ? error : new Error(String(error));
+        timeoutError =
+          error instanceof Error ? error : new Error(String(error));
       }
       expect(timeoutError?.message).toContain(
         'Timed out waiting for grid condition: the recorded grid contains NEVER PRESENT',
       );
-      expect(timeoutError?.message).toContain('Final grid region rows 0-1, columns 0-23');
+      expect(timeoutError?.message).toContain(
+        'Final grid region rows 0-1, columns 0-23',
+      );
       expect(timeoutError?.message).toContain('FINAL UNSATISFIED');
       expect(timeoutError?.message).not.toContain('synchronized frame 3');
     } finally {
@@ -171,7 +218,10 @@ describe('PtyTestDriver.awaitGridCondition', () => {
 
 describe('PtyTestDriver.awaitNextCompletedFrameSnapshot', () => {
   test('returns the emulator grid paired with each future synchronized frame', async () => {
-    const driver = createRecordedStreamDriver(['FIRST FRAME', 'SECOND FRAME'], 60);
+    const driver = createRecordedStreamDriver(
+      ['FIRST FRAME', 'SECOND FRAME'],
+      60,
+    );
     try {
       const firstFrame = await driver.awaitNextCompletedFrameSnapshot();
       expect(firstFrame.completedFrame.completedFrameCount).toBe(1);
@@ -188,7 +238,10 @@ describe('PtyTestDriver.awaitNextCompletedFrameSnapshot', () => {
 
 describe('PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival', () => {
   test('timestamps the completed frame that first satisfies the requested grid condition', async () => {
-    const driver = createRecordedStreamDriver(['FIRST FRAME', 'SECOND FRAME', 'TARGET FRAME'], 30);
+    const driver = createRecordedStreamDriver(
+      ['FIRST FRAME', 'SECOND FRAME', 'TARGET FRAME'],
+      30,
+    );
     try {
       const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
         ['Right'],
@@ -199,7 +252,9 @@ describe('PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival', () => {
       expect(measurement.completedFramesUntilCondition).toBe(3);
       expect(measurement.firstCompletedFrame.completedFrameCount).toBe(1);
       expect(measurement.snapshot.findText('TARGET FRAME')).not.toBeNull();
-      expect(measurement.inputToFrameByteArrivalMilliseconds).toBeGreaterThan(40);
+      expect(measurement.inputToFrameByteArrivalMilliseconds).toBeGreaterThan(
+        40,
+      );
     } finally {
       await driver.dispose();
     }
@@ -235,5 +290,66 @@ describe('PtyTestDriver.dispose', () => {
     expect(resolvedBeforeChildExit).toBeFalse();
     await disposalPromise;
     expect(await driver.exitCode()).toBe(0);
+  });
+});
+
+describe('PtyTestDriver output retention', () => {
+  test('retains a bounded tail while streaming clipboard emissions with absolute offsets', async () => {
+    const prefix = 'x'.repeat(80);
+    const clipboardSequence = `\x1b]52;c;${Buffer.from('tail-independent').toString('base64')}\x07`;
+    const driver = createTinyOutputDriver([
+      prefix,
+      clipboardSequence.slice(0, 5),
+      clipboardSequence.slice(5),
+    ]);
+    try {
+      await driver.awaitGridCondition(
+        'the tiny-output fixture reaches TINY DONE',
+        (snapshot) => snapshot.findText('TINY DONE') !== null,
+      );
+      expect(driver.recordedOutput().length).toBe(32);
+      expect(driver.recordedOutput()).toContain('TINY DONE');
+      expect(driver.clipboardEmissions()).toEqual([
+        expect.objectContaining({
+          startOffset: prefix.length,
+          endOffset: prefix.length + clipboardSequence.length,
+          decodedText: 'tail-independent',
+        }),
+      ]);
+      expect(() =>
+        driver.outputSequenceCount('not registered before overflow'),
+      ).toThrow('query the sequence before the buffer overflows');
+    } finally {
+      await driver.dispose();
+    }
+  });
+
+  test('counts registered sequences incrementally across chunks without overlap', async () => {
+    const driver = createTinyOutputDriver(['aaa', 'a']);
+    try {
+      expect(driver.outputSequenceCount('aaa')).toBe(0);
+      await driver.awaitGridCondition(
+        'the incremental-count fixture reaches TINY DONE',
+        (snapshot) => snapshot.findText('TINY DONE') !== null,
+      );
+      expect(driver.outputSequenceCount('aaa')).toBe(1);
+    } finally {
+      await driver.dispose();
+    }
+  });
+
+  test('retains the full output stream only when explicitly requested', async () => {
+    const prefix = 'full-output-'.repeat(8);
+    const driver = createTinyOutputDriver([prefix], true);
+    try {
+      await driver.awaitGridCondition(
+        'the full-output fixture reaches TINY DONE',
+        (snapshot) => snapshot.findText('TINY DONE') !== null,
+      );
+      expect(driver.recordedOutput().length).toBeGreaterThan(32);
+      expect(driver.recordedOutput()).toStartWith(prefix);
+    } finally {
+      await driver.dispose();
+    }
   });
 });

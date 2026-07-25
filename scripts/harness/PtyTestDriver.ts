@@ -8,10 +8,15 @@
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessInput, type HarnessMouseEvent } from './HarnessInput';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
+import {
+  TerminalOutputAudit,
+  type ClipboardEmission,
+} from './TerminalOutputAudit';
 import {
   SynchronizedOutputQuiescence,
   type CompletedSynchronizedFrame,
@@ -25,6 +30,7 @@ export interface PtyTestDriverOptions {
   homeDirectory?: string;
   environment?: Record<string, string | undefined>;
   command?: string[];
+  retainFullOutput?: boolean;
 }
 
 export interface InputFrameByteArrivalMeasurement {
@@ -54,12 +60,27 @@ class $PtyTestDriver {
     return 2000;
   }
 
+  protected static get retainedOutputLengthLimit(): number {
+    return 4 * 1024 * 1024;
+  }
+
   private readonly openPty: OpenPty.Model;
   private readonly emulator: TerminalEmulator.Model;
   private readonly quiescence = new SynchronizedOutputQuiescence.Class();
+  private readonly terminalOutputAudit = new TerminalOutputAudit.Class();
   private readonly child: ReturnType<typeof Bun.spawn>;
   private readonly outputDecoder = new TextDecoder();
+  private readonly outputSequenceCounters = new Map<
+    string,
+    {
+      count: number;
+      carriedOutput: string;
+      nextEligibleMatchOffset: number;
+    }
+  >();
   private observedOutput = '';
+  private discardedOutputLength = 0;
+  private outputOverflowed = false;
   private frameExpectationPredecessor:
     CompletedSynchronizedFrame | null | undefined = null;
   private disposalPromise: Promise<void> | null = null;
@@ -73,7 +94,7 @@ class $PtyTestDriver {
     this.emulator = new TerminalEmulator.Class(columns, rows);
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
-      this.observedOutput += this.outputDecoder.decode(bytes, { stream: true });
+      this.recordOutput(this.outputDecoder.decode(bytes, { stream: true }));
       this.quiescence.observe(bytes);
       this.emulator.write(bytes);
     });
@@ -101,9 +122,9 @@ class $PtyTestDriver {
     void this.child.exited.then((exitCode) => {
       if (this.disposed) return;
       // The child's stdout AND STDERR are the PTY slave, so an uncaught exception's dump is already
-      // in the recorded bytes — the old message threw that evidence away and reported only the exit
+      // in the RETAINED tail — the old message threw that evidence away and reported only the exit
       // code, which is how an app crash inside a full gate run (2026-07-25) produced no diagnosable
-      // reason at all. Report the tail with it: whatever killed the app is in those bytes.
+      // reason at all. The bounded tail is exactly what a crash report needs: the last bytes.
       this.quiescence.fail(
         new Error(
           `Invar exited before the awaited frame (exit ${exitCode}); output tail: ` +
@@ -384,8 +405,19 @@ class $PtyTestDriver {
 
   outputSequenceCount(sequence: string): number {
     if (!sequence) return 0;
+    const registeredCounter = this.outputSequenceCounters.get(sequence);
+    if (registeredCounter) return registeredCounter.count;
+    if (this.outputOverflowed) {
+      throw new Error(
+        `Cannot count output sequence ${JSON.stringify(sequence)} after the retained output ` +
+          'buffer overflowed; query the sequence before the buffer overflows so its count can ' +
+          'be accumulated incrementally.',
+      );
+    }
+
     let sequenceCount = 0;
     let searchOffset = 0;
+    let nextEligibleMatchOffset = 0;
     while (searchOffset < this.observedOutput.length) {
       const sequenceOffset = this.observedOutput.indexOf(
         sequence,
@@ -393,11 +425,25 @@ class $PtyTestDriver {
       );
       if (sequenceOffset < 0) break;
       sequenceCount++;
-      searchOffset = sequenceOffset + sequence.length;
+      nextEligibleMatchOffset = sequenceOffset + sequence.length;
+      searchOffset = nextEligibleMatchOffset;
     }
+    this.outputSequenceCounters.set(sequence, {
+      count: sequenceCount,
+      carriedOutput:
+        sequence.length > 1
+          ? this.observedOutput.slice(-(sequence.length - 1))
+          : '',
+      nextEligibleMatchOffset,
+    });
     return sequenceCount;
   }
 
+  clipboardEmissions(): readonly ClipboardEmission[] {
+    return this.terminalOutputAudit.emissions;
+  }
+
+  /** Returns the retained output tail, or the full stream when retainFullOutput is enabled. */
   recordedOutput(): string {
     return this.observedOutput;
   }
@@ -422,6 +468,51 @@ class $PtyTestDriver {
     await this.child.exited;
     this.openPty.close();
     this.emulator.dispose();
+  }
+
+  private recordOutput(outputChunk: string): void {
+    if (!outputChunk) return;
+    this.terminalOutputAudit.consume(outputChunk);
+    this.updateOutputSequenceCounters(outputChunk);
+    this.observedOutput += outputChunk;
+    if (this.options.retainFullOutput) return;
+
+    const ptyTestDriverClass = this.constructor as typeof $PtyTestDriver;
+    const excessOutputLength =
+      this.observedOutput.length - ptyTestDriverClass.retainedOutputLengthLimit;
+    if (excessOutputLength <= 0) return;
+    this.observedOutput = this.observedOutput.slice(excessOutputLength);
+    this.discardedOutputLength += excessOutputLength;
+    this.outputOverflowed = true;
+  }
+
+  private updateOutputSequenceCounters(outputChunk: string): void {
+    const outputLengthBeforeChunk =
+      this.discardedOutputLength + this.observedOutput.length;
+    for (const [sequence, outputSequenceCounter] of this
+      .outputSequenceCounters) {
+      const searchableOutput =
+        outputSequenceCounter.carriedOutput + outputChunk;
+      const searchableOutputStartOffset =
+        outputLengthBeforeChunk - outputSequenceCounter.carriedOutput.length;
+      let searchOffset = Math.max(
+        0,
+        outputSequenceCounter.nextEligibleMatchOffset -
+          searchableOutputStartOffset,
+      );
+      while (searchOffset < searchableOutput.length) {
+        const sequenceOffset = searchableOutput.indexOf(sequence, searchOffset);
+        if (sequenceOffset < 0) break;
+        outputSequenceCounter.count++;
+        outputSequenceCounter.nextEligibleMatchOffset =
+          searchableOutputStartOffset + sequenceOffset + sequence.length;
+        searchOffset = sequenceOffset + sequence.length;
+      }
+      outputSequenceCounter.carriedOutput =
+        sequence.length > 1
+          ? searchableOutput.slice(-(sequence.length - 1))
+          : '';
+    }
   }
 
   private markFrameExpected(): void {

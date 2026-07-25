@@ -12,10 +12,14 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function halfBlockCount(snapshot: HarnessSnapshot.Model): number {
-  return snapshot.textRows().reduce(
-    (count, rowText) => count + Array.from(rowText).filter((character) => character === '▀').length,
-    0,
-  );
+  return snapshot
+    .textRows()
+    .reduce(
+      (count, rowText) =>
+        count +
+        Array.from(rowText).filter((character) => character === '▀').length,
+      0,
+    );
 }
 
 async function openThroughQuickOpen(
@@ -23,10 +27,12 @@ async function openThroughQuickOpen(
   query: string,
 ): Promise<void> {
   driver.sendKeys('Control+p');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Go to File') !== null);
-  driver.sendText(query);
   await driver.awaitSnapshot(
-    (snapshot) => snapshot.textRows().some((rowText) => rowText.includes(query)),
+    (snapshot) => snapshot.findText('Go to File') !== null,
+  );
+  driver.sendText(query);
+  await driver.awaitSnapshot((snapshot) =>
+    snapshot.textRows().some((rowText) => rowText.includes(query)),
   );
   driver.sendKeys('Enter');
 }
@@ -39,16 +45,22 @@ async function awaitImageStatus(
     driver,
     statusPath,
     "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/picture.png')",
-    (status) => status.activeFileIsImage === true
-      && String(status.activeBuffer).endsWith('/picture.png'),
+    (status) =>
+      status.activeFileIsImage === true &&
+      String(status.activeBuffer).endsWith('/picture.png'),
     15_000,
   );
 }
 
 const pngPath = '/tmp/ivue-cart-dark.png';
-HarnessSmoke.Class.requireCondition(await Bun.file(pngPath).exists(), `PNG fixture exists at ${pngPath}`);
+HarnessSmoke.Class.requireCondition(
+  await Bun.file(pngPath).exists(),
+  `PNG fixture exists at ${pngPath}`,
+);
 
-console.log('== harness pixel-preview: encoders, mount, and tier precedence unit layer ==');
+console.log(
+  '== harness pixel-preview: encoders, mount, and tier precedence unit layer ==',
+);
 const unitResult = Bun.spawnSync(
   [
     process.execPath,
@@ -58,16 +70,24 @@ const unitResult = Bun.spawnSync(
   ],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
-HarnessSmoke.Class.requireCondition(unitResult.exitCode === 0, 'image and graphics-tier unit tests');
+HarnessSmoke.Class.requireCondition(
+  unitResult.exitCode === 0,
+  'image and graphics-tier unit tests',
+);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-pixel-preview-harness-'));
 copyFileSync(pngPath, join(fixtureRoot, 'picture.png'));
 await Bun.write(join(fixtureRoot, 'sample.ts'), 'export const answer = 42;\n');
-await Bun.write(join(fixtureRoot, 'data.bin'), new Uint8Array([66, 73, 78, 0, 0, 1, 2, 3]));
+await Bun.write(
+  join(fixtureRoot, 'data.bin'),
+  new Uint8Array([66, 73, 78, 0, 0, 1, 2, 3]),
+);
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 async function driveKittyTier(): Promise<void> {
-  const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-pixel-kitty-harness-home-'));
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-pixel-kitty-harness-home-'),
+  );
   const statusPath = join(homeDirectory, 'status.json');
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
@@ -80,11 +100,19 @@ async function driveKittyTier(): Promise<void> {
       TUI_GRAPHICS_TIER: 'kitty',
     },
   });
+  for (const outputSequence of [
+    '\x1b_Ga=T',
+    'i=70',
+    '\x1b_Ga=d,d=I',
+    '\x1b_Ga=d,d=A',
+  ]) {
+    driver.outputSequenceCount(outputSequence);
+  }
   try {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.ready === true",
+      'status condition: status.ready === true',
       (status) => status.ready === true,
       15_000,
     );
@@ -93,13 +121,13 @@ async function driveKittyTier(): Promise<void> {
     await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
       statusPath,
-      "status condition: status.activeFileIsImage === true",
+      'status condition: status.activeFileIsImage === true',
       (status) => status.activeFileIsImage === true,
     );
     await Bun.sleep(250);
     HarnessSmoke.Class.requireCondition(
-      driver.outputSequenceCount('\x1b_Ga=T') > 0
-        && driver.outputSequenceCount('i=70') > 0,
+      driver.outputSequenceCount('\x1b_Ga=T') > 0 &&
+        driver.outputSequenceCount('i=70') > 0,
       'kitty transmit APC and image id reached the raw PTY stream',
     );
     const kittyProjectionSnapshot = await driver.awaitGridCondition(
@@ -116,8 +144,9 @@ async function driveKittyTier(): Promise<void> {
       driver,
       statusPath,
       "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/sample.ts')",
-      (status) => status.activeFileIsImage === false
-        && String(status.activeBuffer).endsWith('/sample.ts'),
+      (status) =>
+        status.activeFileIsImage === false &&
+        String(status.activeBuffer).endsWith('/sample.ts'),
     );
     await Bun.sleep(100);
     HarnessSmoke.Class.requireCondition(
@@ -127,7 +156,10 @@ async function driveKittyTier(): Promise<void> {
     await openThroughQuickOpen(driver, 'picture');
     await awaitImageStatus(driver, statusPath);
     driver.sendKeys('Control+q');
-    HarnessSmoke.Class.requireCondition(await driver.exitCode() === 0, 'kitty session quits cleanly');
+    HarnessSmoke.Class.requireCondition(
+      (await driver.exitCode()) === 0,
+      'kitty session quits cleanly',
+    );
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1b_Ga=d,d=A') > 0,
       'kitty delete-all sweep is emitted on quit',
@@ -139,7 +171,9 @@ async function driveKittyTier(): Promise<void> {
 }
 
 async function driveSixelTier(): Promise<void> {
-  const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-pixel-sixel-harness-home-'));
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-pixel-sixel-harness-home-'),
+  );
   const statusPath = join(homeDirectory, 'status.json');
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
@@ -152,11 +186,12 @@ async function driveSixelTier(): Promise<void> {
       TUI_GRAPHICS_TIER: 'sixel',
     },
   });
+  driver.outputSequenceCount('\x1bP0;1;0q"1;1;');
   try {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.ready === true",
+      'status condition: status.ready === true',
       (status) => status.ready === true,
       15_000,
     );
@@ -176,7 +211,10 @@ async function driveSixelTier(): Promise<void> {
       'sixel projection leaves the underlying cells blank',
     );
     driver.sendKeys('Control+q');
-    HarnessSmoke.Class.requireCondition(await driver.exitCode() === 0, 'sixel session quits cleanly');
+    HarnessSmoke.Class.requireCondition(
+      (await driver.exitCode()) === 0,
+      'sixel session quits cleanly',
+    );
   } finally {
     driver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
@@ -184,7 +222,9 @@ async function driveSixelTier(): Promise<void> {
 }
 
 async function driveHalfBlockFloor(): Promise<void> {
-  const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-pixel-floor-harness-home-'));
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-pixel-floor-harness-home-'),
+  );
   const statusPath = join(homeDirectory, 'status.json');
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
@@ -197,22 +237,29 @@ async function driveHalfBlockFloor(): Promise<void> {
       TUI_GRAPHICS_TIER: 'halfblock',
     },
   });
+  for (const outputSequence of ['\x1b_Ga=T', '\x1b_Ga=d', '\x1bP0;1;0q']) {
+    driver.outputSequenceCount(outputSequence);
+  }
   try {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.ready === true",
+      'status condition: status.ready === true',
       (status) => status.ready === true,
       15_000,
     );
     await openThroughQuickOpen(driver, 'picture');
     await awaitImageStatus(driver, statusPath);
-    const snapshot = await driver.awaitSnapshot((candidate) => halfBlockCount(candidate) > 500);
-    HarnessSmoke.Class.pass(`half-block floor paints ${halfBlockCount(snapshot)} glyph cells`);
+    const snapshot = await driver.awaitSnapshot(
+      (candidate) => halfBlockCount(candidate) > 500,
+    );
+    HarnessSmoke.Class.pass(
+      `half-block floor paints ${halfBlockCount(snapshot)} glyph cells`,
+    );
     HarnessSmoke.Class.requireCondition(
-      driver.outputSequenceCount('\x1b_Ga=T') === 0
-        && driver.outputSequenceCount('\x1b_Ga=d') === 0
-        && driver.outputSequenceCount('\x1bP0;1;0q') === 0,
+      driver.outputSequenceCount('\x1b_Ga=T') === 0 &&
+        driver.outputSequenceCount('\x1b_Ga=d') === 0 &&
+        driver.outputSequenceCount('\x1bP0;1;0q') === 0,
       'half-block tier emits no graphics placement escape',
     );
     await openThroughQuickOpen(driver, 'data');
@@ -220,10 +267,13 @@ async function driveHalfBlockFloor(): Promise<void> {
       driver,
       statusPath,
       "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/data.bin')",
-      (status) => status.activeFileIsImage === false
-        && String(status.activeBuffer).endsWith('/data.bin'),
+      (status) =>
+        status.activeFileIsImage === false &&
+        String(status.activeBuffer).endsWith('/data.bin'),
     );
-    await driver.awaitSnapshot((candidate) => candidate.findText('(binary file not shown)') !== null);
+    await driver.awaitSnapshot(
+      (candidate) => candidate.findText('(binary file not shown)') !== null,
+    );
     HarnessSmoke.Class.pass('non-image binary still uses the binary guard');
     driver.sendKeys('Control+q');
   } finally {

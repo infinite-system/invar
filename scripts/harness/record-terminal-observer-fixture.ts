@@ -34,6 +34,7 @@ class $TerminalObserverFixtureRecorder {
       columns: 120,
       rows: 24,
       homeDirectory,
+      retainFullOutput: true,
       environment: {
         USER: 'fixture-user',
         HOSTNAME: 'fixture-host',
@@ -43,16 +44,18 @@ class $TerminalObserverFixtureRecorder {
     try {
       await this.awaitOutput(
         driver,
-        (output) => output.includes('\x1b]133;A\x07')
-          && output.includes('\x1b]133;B\x07'),
+        (output) =>
+          output.includes('\x1b]133;A\x07') &&
+          output.includes('\x1b]133;B\x07'),
       );
       driver.sendRawInputWithoutFrameExpectation(
         "printf 'alpha\\n'; false; (exit 7)\r",
       );
       await this.awaitOutput(
         driver,
-        (output) => output.includes('\x1b]133;D;7\x07')
-          && output.split('\x1b]133;B\x07').length >= 3,
+        (output) =>
+          output.includes('\x1b]133;D;7\x07') &&
+          output.split('\x1b]133;B\x07').length >= 3,
       );
       await Bun.write(
         this.fixturePath,

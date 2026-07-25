@@ -13,10 +13,7 @@ import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
-import {
-  TerminalOutputAudit,
-  type ClipboardEmission,
-} from './TerminalOutputAudit';
+import type { ClipboardEmission } from './TerminalOutputAudit';
 
 const activeCopyRunCount = 5;
 const idleCopyRunCount = 5;
@@ -42,9 +39,7 @@ async function awaitClipboardEmission(
 ): Promise<ClipboardEmission> {
   const deadline = performance.now() + 5_000;
   while (performance.now() < deadline) {
-    const clipboardEmissions = TerminalOutputAudit.Class.clipboardEmissions(
-      driver.recordedOutput(),
-    );
+    const clipboardEmissions = driver.clipboardEmissions();
     if (clipboardEmissions.length > previousEmissionCount) {
       const clipboardEmission = clipboardEmissions[previousEmissionCount];
       if (!clipboardEmission)
@@ -102,9 +97,7 @@ async function copySelectionRepeatedly(
     } else {
       await HarnessSmoke.Class.awaitFrameSilence(driver);
     }
-    const previousEmissionCount = TerminalOutputAudit.Class.clipboardEmissions(
-      driver.recordedOutput(),
-    ).length;
+    const previousEmissionCount = driver.clipboardEmissions().length;
     driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
     await awaitClipboardEmission(previousEmissionCount, expectedText);
     await followingActiveFrame;
