@@ -51,7 +51,7 @@ class $Viewport {
     this.scrollTop.value = Math.max(0, Math.min(this.scrollTop.value + delta, maxScrollTop));
   }
 
-  /** Horizontal wheel/scrollbar: move the column window, clamped to the visible content width. */
+  /** Horizontal wheel/scrollbar: move the column window, clamped to the full content width. */
   scrollByColumns(delta: number, contentWidth: number): void {
     const maxScrollLeft = Math.max(0, contentWidth - this.width.value);
     this.scrollLeft.value = Math.max(0, Math.min(this.scrollLeft.value + delta, maxScrollLeft));

@@ -124,6 +124,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # 4) Driving SMOKES — the real user paths.
   full_tmux_step "smoke: editor"      bash scripts/smoke-editor.sh
   step "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
+  step "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).
   full_tmux_step "smoke: move-line"   bash scripts/smoke-move-line.sh

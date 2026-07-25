@@ -13,12 +13,12 @@ class $TextDocument {
   path = '';
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
   private _lines: string[] = [''];
-  // Horizontal extent is full-document state, not a viewport observation. The parallel width array
-  // and frequency table keep ordinary localized edits O(changed lines), with a distinct-width scan
-  // only when the sole widest line shrinks or disappears.
-  protected lineWidths: number[] = [0];
-  protected lineWidthCounts = new Map<number, number>([[0, 1]]);
+  // The exact horizontal extent exists only while no-wrap mode can consume it. A single champion
+  // makes localized edits O(changed lines); shrinking/deleting that champion triggers the same
+  // cheap-bound full-document rescan used on activation.
+  protected maximumLineWidthTrackingEnabled = false;
   protected maximumLineWidthValue = 0;
+  protected maximumLineWidthLineIndex = -1;
   private _eol: '\n' | '\r\n' = '\n';
   // Signature of the content as it was last SAVED/LOADED (the clean baseline). Lets undo/redo clear
   // the dirty flag when the buffer returns to exactly the on-disk content, instead of staying dirty
@@ -41,7 +41,7 @@ class $TextDocument {
     this.path = path;
     if (Files.Class.looksBinary(path)) {
       this._lines = ['(binary file not shown)'];
-      this.rebuildLineWidths();
+      this.rebuildMaximumLineWidth();
       this._eol = '\n';
       this.binary.value = true;
       this.dirty.value = false;
@@ -53,7 +53,7 @@ class $TextDocument {
     this._eol = text.includes('\r\n') ? '\r\n' : '\n';
     this._lines = text.split(/\r?\n/);
     if (this._lines.length === 0) this._lines = [''];
-    this.rebuildLineWidths();
+    this.rebuildMaximumLineWidth();
     this.binary.value = false;
     this.dirty.value = false;
     this.captureSavedBaseline();
@@ -65,7 +65,7 @@ class $TextDocument {
     this._eol = text.includes('\r\n') ? '\r\n' : '\n';
     this._lines = text.split(/\r?\n/);
     if (this._lines.length === 0) this._lines = [''];
-    this.rebuildLineWidths();
+    this.rebuildMaximumLineWidth();
     this.binary.value = false;
     this.dirty.value = false;
     this.captureSavedBaseline();
@@ -78,6 +78,12 @@ class $TextDocument {
 
   get maximumLineWidth(): number {
     return this.maximumLineWidthValue;
+  }
+
+  setMaximumLineWidthTrackingEnabled(enabled: boolean): void {
+    if (this.maximumLineWidthTrackingEnabled === enabled) return;
+    this.maximumLineWidthTrackingEnabled = enabled;
+    this.rebuildMaximumLineWidth();
   }
 
   line(index: number): string {
@@ -105,7 +111,7 @@ class $TextDocument {
   // --- mutation surface (used from M3) ---
   replaceAll(lines: string[]): void {
     this._lines = lines.length ? lines : [''];
-    this.rebuildLineWidths();
+    this.rebuildMaximumLineWidth();
     this.dirty.value = true;
     this.revision.value++;
   }
@@ -126,7 +132,7 @@ class $TextDocument {
   removeLine(index: number): void {
     if (this._lines.length <= 1) {
       this._lines = [''];
-      this.rebuildLineWidths();
+      this.rebuildMaximumLineWidth();
     } else if (index >= 0 && index < this._lines.length) {
       this.replaceLineRange(index, 1, []);
     }
@@ -164,14 +170,46 @@ class $TextDocument {
     return `${this._lines.length}:${(hash >>> 0).toString(36)}`;
   }
 
-  protected rebuildLineWidths(): void {
-    this.lineWidths = this._lines.map((line) => EditorCoordinates.Class.lineWidth(line));
-    this.lineWidthCounts = new Map<number, number>();
+  // invariant: Geometry aggregates match their consumers (editor.invariants.md)
+  protected rebuildMaximumLineWidth(): void {
     this.maximumLineWidthValue = 0;
-    for (const lineWidth of this.lineWidths) {
-      this.lineWidthCounts.set(lineWidth, (this.lineWidthCounts.get(lineWidth) ?? 0) + 1);
-      this.maximumLineWidthValue = Math.max(this.maximumLineWidthValue, lineWidth);
+    this.maximumLineWidthLineIndex = -1;
+    if (!this.maximumLineWidthTrackingEnabled || this._lines.length === 0) return;
+
+    let longestUtf16LineIndex = 0;
+    for (let lineIndex = 1; lineIndex < this._lines.length; lineIndex += 1) {
+      if (
+        (this._lines[lineIndex]?.length ?? 0)
+        > (this._lines[longestUtf16LineIndex]?.length ?? 0)
+      ) {
+        longestUtf16LineIndex = lineIndex;
+      }
     }
+    this.maximumLineWidthValue = this.measureLineDisplayWidth(
+      this._lines[longestUtf16LineIndex] ?? '',
+    );
+    this.maximumLineWidthLineIndex = longestUtf16LineIndex;
+
+    for (let lineIndex = 0; lineIndex < this._lines.length; lineIndex += 1) {
+      if (lineIndex === longestUtf16LineIndex) continue;
+      const line = this._lines[lineIndex] ?? '';
+      if (this.lineDisplayWidthUpperBound(line) <= this.maximumLineWidthValue) continue;
+      const lineWidth = this.measureLineDisplayWidth(line);
+      if (lineWidth > this.maximumLineWidthValue) {
+        this.maximumLineWidthValue = lineWidth;
+        this.maximumLineWidthLineIndex = lineIndex;
+      }
+    }
+  }
+
+  protected lineDisplayWidthUpperBound(line: string): number {
+    // Every non-tab UTF-16 code unit occupies at most two terminal columns. Tabs can expand to four
+    // columns, so they deliberately survive the cheap bound and take the exact path.
+    return line.includes('\t') ? Number.POSITIVE_INFINITY : line.length * 2;
+  }
+
+  protected measureLineDisplayWidth(line: string): number {
+    return EditorCoordinates.Class.lineWidth(line);
   }
 
   protected replaceLineRange(
@@ -179,38 +217,38 @@ class $TextDocument {
     deletedLineCount: number,
     replacementLines: readonly string[],
   ): void {
-    const previousMaximumLineWidth = this.maximumLineWidthValue;
-    const deletedLineWidths = this.lineWidths.slice(
-      startLineIndex,
-      startLineIndex + deletedLineCount,
-    );
-    for (const deletedLineWidth of deletedLineWidths) {
-      const remainingCount = (this.lineWidthCounts.get(deletedLineWidth) ?? 1) - 1;
-      if (remainingCount > 0) this.lineWidthCounts.set(deletedLineWidth, remainingCount);
-      else this.lineWidthCounts.delete(deletedLineWidth);
-    }
-    const replacementLineWidths = replacementLines.map(
-      (line) => EditorCoordinates.Class.lineWidth(line),
-    );
+    const previousMaximumLineWidthLineIndex = this.maximumLineWidthLineIndex;
+    const maximumLineWasDeleted =
+      this.maximumLineWidthTrackingEnabled
+      && deletedLineCount > 0
+      && previousMaximumLineWidthLineIndex >= startLineIndex
+      && previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
-    this.lineWidths.splice(startLineIndex, deletedLineCount, ...replacementLineWidths);
-    for (const replacementLineWidth of replacementLineWidths) {
-      this.lineWidthCounts.set(
-        replacementLineWidth,
-        (this.lineWidthCounts.get(replacementLineWidth) ?? 0) + 1,
-      );
-      this.maximumLineWidthValue = Math.max(
-        this.maximumLineWidthValue,
-        replacementLineWidth,
-      );
+
+    if (!this.maximumLineWidthTrackingEnabled) return;
+    if (maximumLineWasDeleted) {
+      this.rebuildMaximumLineWidth();
+      return;
     }
-    if (
-      this.maximumLineWidthValue === previousMaximumLineWidth
-      && !this.lineWidthCounts.has(previousMaximumLineWidth)
+    if (startLineIndex <= previousMaximumLineWidthLineIndex) {
+      this.maximumLineWidthLineIndex += replacementLines.length - deletedLineCount;
+    }
+    for (
+      let replacementLineOffset = 0;
+      replacementLineOffset < replacementLines.length;
+      replacementLineOffset += 1
     ) {
-      this.maximumLineWidthValue = 0;
-      for (const lineWidth of this.lineWidthCounts.keys()) {
-        this.maximumLineWidthValue = Math.max(this.maximumLineWidthValue, lineWidth);
+      const replacementLine = replacementLines[replacementLineOffset] ?? '';
+      if (
+        this.lineDisplayWidthUpperBound(replacementLine)
+        <= this.maximumLineWidthValue
+      ) {
+        continue;
+      }
+      const replacementLineWidth = this.measureLineDisplayWidth(replacementLine);
+      if (replacementLineWidth > this.maximumLineWidthValue) {
+        this.maximumLineWidthValue = replacementLineWidth;
+        this.maximumLineWidthLineIndex = startLineIndex + replacementLineOffset;
       }
     }
   }
@@ -352,7 +390,7 @@ class $TextDocument {
   /** Restore from a snapshot without marking dirty state itself (caller sets it). */
   restore(lines: string[]): void {
     this._lines = lines.length ? lines.slice() : [''];
-    this.rebuildLineWidths();
+    this.rebuildMaximumLineWidth();
     this.revision.value++;
   }
 }

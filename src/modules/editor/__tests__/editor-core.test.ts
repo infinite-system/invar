@@ -3,6 +3,15 @@ import { TextDocument } from '../TextDocument';
 import { Viewport } from '../Viewport';
 import { Editor } from '../Editor';
 
+class CountingTextDocument extends TextDocument.$Class {
+  measurementCount = 0;
+
+  protected override measureLineDisplayWidth(line: string): number {
+    this.measurementCount += 1;
+    return super.measureLineDisplayWidth(line);
+  }
+}
+
 test('TextDocument splits text into lines and stamps a revision', () => {
   const document = new TextDocument.Class();
   const revisionBefore = document.revision.value;
@@ -34,6 +43,7 @@ test('TextDocument mutation marks dirty and bumps revision', () => {
 
 test('TextDocument maintains the full-document display width through localized edits', () => {
   const document = new TextDocument.Class();
+  document.setMaximumLineWidthTrackingEnabled(true);
   document.loadFromText('short\n中\twide\nmedium');
   expect(document.maximumLineWidth).toBe(8);
 
@@ -47,6 +57,47 @@ test('TextDocument maintains the full-document display width through localized e
   expect(document.maximumLineWidth).toBe(24);
   document.restore(['restored']);
   expect(document.maximumLineWidth).toBe(8);
+});
+
+test('TextDocument measures only viable width candidates and does no width work while disabled', () => {
+  const document = new CountingTextDocument();
+  const lines = Array.from(
+    { length: 500 },
+    (_unused, lineIndex) => lineIndex === 399
+      ? '中'.repeat(60)
+      : lineIndex === 0
+        ? 'x'.repeat(100)
+        : `short line ${lineIndex}`,
+  );
+  document.loadFromText(lines.join('\n'));
+  expect(document.measurementCount).toBe(0);
+  expect(document.maximumLineWidth).toBe(0);
+
+  document.setMaximumLineWidthTrackingEnabled(true);
+  expect(document.maximumLineWidth).toBe(120);
+  expect(document.measurementCount).toBe(2);
+
+  document.setMaximumLineWidthTrackingEnabled(false);
+  document.setLine(399, '界'.repeat(80));
+  expect(document.maximumLineWidth).toBe(0);
+  expect(document.measurementCount).toBe(2);
+
+  document.setMaximumLineWidthTrackingEnabled(true);
+  expect(document.maximumLineWidth).toBe(160);
+  expect(document.measurementCount).toBe(4);
+});
+
+test('Editor gates the exact horizontal extent with word-wrap mode', () => {
+  const editor = new Editor.Class();
+  editor.document.loadFromText(`short\n${'x'.repeat(80)}`);
+  expect(editor.document.maximumLineWidth).toBe(80);
+
+  editor.toggleWordWrap();
+  editor.document.setLine(1, 'x'.repeat(120));
+  expect(editor.document.maximumLineWidth).toBe(0);
+
+  editor.toggleWordWrap();
+  expect(editor.document.maximumLineWidth).toBe(120);
 });
 
 test('Viewport keeps a target line within the window', () => {

@@ -257,12 +257,19 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   await Bun.write(join(fixtureRoot, '.gitignore'), '.invar/\n');
   await Bun.write(join(fixtureRoot, 'base.txt'), 'base\n');
   const widthOscillationLines = ['// HORIZONTAL-THUMB-STABILITY'];
-  for (let lineNumber = 1; lineNumber <= 180; lineNumber++) {
-    const blockNumber = Math.floor((lineNumber - 1) / 45) % 3;
-    const targetWidth = blockNumber === 0 ? 42 : blockNumber === 1 ? 118 : 68;
+  for (let lineNumber = 1; lineNumber <= 500; lineNumber++) {
+    const blockNumber = Math.floor((lineNumber - 1) / 50) % 3;
+    const targetWidth = lineNumber === 400
+      ? 140
+      : blockNumber === 0
+        ? 42
+        : blockNumber === 1
+          ? 68
+          : 54;
     const prefix = `const stableLine${String(lineNumber).padStart(3, '0')} = '`;
+    const suffix = lineNumber === 400 ? "DEEP-WIDEST-END-MARKER';" : "';";
     widthOscillationLines.push(
-      `${prefix}${'x'.repeat(Math.max(1, targetWidth - prefix.length - 2))}';`,
+      `${prefix}${'x'.repeat(Math.max(1, targetWidth - prefix.length - suffix.length))}${suffix}`,
     );
   }
   await Bun.write(
@@ -329,7 +336,7 @@ await buildFitsFixture(fitsFixtureRoot);
 
 const overflowDriver = new PtyTestDriver.Class({
   workspaceRoot: overflowFixtureRoot,
-  columns: 54,
+  columns: 120,
   rows: 28,
   homeDirectory,
 });
@@ -416,6 +423,45 @@ try {
     distinctHorizontalThumbLengths.length === 1,
     `horizontal thumb length is stable while content size is unchanged `
       + `(${horizontalThumbLengths.join(',')})`,
+  );
+
+  console.log('== harness scrollbars: the deep widest line is reachable at the stable extent ==');
+  snapshot = await sendWheelUntil(
+    overflowDriver,
+    (candidate) => {
+      const proof = horizontalEditorScrollBarProof(candidate);
+      return proof !== null
+        && proof.thumbStartColumn + proof.thumbLength >= candidate.columns - 2;
+    },
+    'right',
+    80,
+    80,
+    10,
+    true,
+  );
+  const maximumHorizontalThumb = horizontalEditorScrollBarProof(snapshot);
+  requireCondition(
+    maximumHorizontalThumb !== null,
+    'editor horizontal thumb reaches its right extreme before the deep line is visible',
+  );
+  let deepWidestLineReached = false;
+  for (let wheelEvent = 1; wheelEvent <= 180; wheelEvent++) {
+    overflowDriver.sendMouse({
+      kind: 'wheel',
+      column: 80,
+      row: 10,
+      direction: 'down',
+    });
+    await overflowDriver.awaitQuiescence();
+    snapshot = overflowDriver.snapshot();
+    if (snapshot.findText('DEEP-WIDEST-END-MARKER') !== null) {
+      deepWidestLineReached = true;
+      break;
+    }
+  }
+  requireCondition(
+    deepWidestLineReached,
+    'the line-400 widest tail is visible at the unchanged full-document horizontal extent',
   );
 
   sendRepeatedWheel(overflowDriver, 'down', 8, 9, 9);
