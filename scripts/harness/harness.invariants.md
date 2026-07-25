@@ -399,3 +399,37 @@ require every exit status to be zero.
 **Status:** established
 
 **Last refined:** 2026-07-24
+
+### Timing-sensitive gate jobs run in a quiet serial tail
+
+**Invariant:** If a registered gate job measures latency, performance, frame absence, or momentum
+timing, then it runs alone after the parallel-safe smoke pool has fully drained.
+
+**Scope:** `scripts/merge-gate.sh`, `scripts/behavioral-contracts.sh`,
+`scripts/perf-baselines.sh`, `scripts/harness/input-byte-flush-gate.ts`, every registered smoke
+source containing `assertNoCompleteFrameEmittedFor` or `awaitFrameSilence`, and every registered
+smoke with a momentum or glide assertion.
+
+**Mechanism:** `parallel_safe_smoke` and `quiet_serial_smoke` form the explicit registry.
+`run_parallel_smoke_pool` waits for every worker process before `run_quiet_serial_smokes`, the
+input-byte-flush gate, and performance baselines begin.
+
+**Generates:** A bounded worker pool for timing-insensitive smokes; a fully drained phase boundary;
+serial absence, momentum, latency, and performance observations.
+
+**Rejected alternatives:** Run absence assertions under shared load — a violating frame can arrive
+after the observation window and make the assertion false-green.
+
+**Evidence:** `scripts/merge-gate.sh`; `rg -l
+"assertNoCompleteFrameEmittedFor|awaitFrameSilence|[Mm]omentum|glide"
+scripts/behavioral-contracts.sh scripts/harness/smoke-*-harness.ts scripts/smoke-*.sh`.
+
+**Impossible if true:** A parallel worker remaining live while a quiet-tail job starts; two
+quiet-tail jobs overlapping; a smoke containing either absence-window method running in the
+parallel-safe pool.
+
+**Verification:** `bash -n scripts/merge-gate.sh && bash scripts/merge-gate.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25

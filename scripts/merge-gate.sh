@@ -14,6 +14,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
 export PATH="$HOME/.bun/bin:$PATH"
+gate_started_seconds="$(date +%s)"
 # Hermetic git for the WHOLE gate. When invoked from the pre-commit hook, git exports
 # GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE / … into the environment; any `git` a test, smoke, or
 # fixture spawns would then operate on the PARENT repo instead of its own temp fixture — a
@@ -61,7 +62,8 @@ if [ "$reaped_orphan_instances" -gt 0 ]; then
   echo "merge-gate: reaped $reaped_orphan_instances orphaned app instance(s) before start (inotify hygiene)"
   sleep 0.5  # let the kernel release their inotify instances before the gate launches fresh ones
 fi
-echo "merge-gate: starting with $(pgrep -cf 'src/main\.ts /tmp/tui-' 2>/dev/null || echo 0) test app instance(s) live"
+live_test_app_instance_count="$(pgrep -cf 'src/main\.ts /tmp/tui-' 2>/dev/null || true)"
+echo "merge-gate: starting with ${live_test_app_instance_count:-0} test app instance(s) live"
 fail=0
 # Failing steps keep their FULL output here — tail-25 destroyed the failing condition three times
 # on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
@@ -75,10 +77,11 @@ mkdir -p "$failure_log_directory"
 ln -sfn "$failure_log_directory" /tmp/merge-gate-failures
 step() {
   local name="$1"; shift
+  local step_log="/tmp/merge-gate-step.$$.serial.log"
   echo "== merge-gate: $name =="
-  if "$@" >/tmp/merge-gate-step.$$.log 2>&1; then
+  if "$@" >"$step_log" 2>&1; then
     echo "  OK    $name"
-    rm -f /tmp/merge-gate-step.$$.log
+    rm -f "$step_log"
     return
   fi
   local failure_slug
@@ -87,21 +90,21 @@ step() {
   # shared git object store) is the starvation class the quiet-machine doctrine reruns by hand.
   # Only 'Timed out' failures retry, exactly once, after a settle pause; any other failure — and a
   # second timeout — is a defect and blocks. Both attempts' full logs are preserved.
-  if grep -q 'Timed out' /tmp/merge-gate-step.$$.log; then
-    cp /tmp/merge-gate-step.$$.log "$failure_log_directory/$failure_slug.attempt1.log"
+  if grep -q 'Timed out' "$step_log"; then
+    cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
     echo "  RETRY $name — timeout-class failure; one quiet retry (attempt 1 log preserved)"
     sleep 10
-    if "$@" >/tmp/merge-gate-step.$$.log 2>&1; then
+    if "$@" >"$step_log" 2>&1; then
       echo "  OK    $name (clean on retry; first attempt was starvation-class)"
-      rm -f /tmp/merge-gate-step.$$.log
+      rm -f "$step_log"
       return
     fi
   fi
-  cp /tmp/merge-gate-step.$$.log "$failure_log_directory/$failure_slug.log"
+  cp "$step_log" "$failure_log_directory/$failure_slug.log"
   echo "  FAIL  $name (full log: $failure_log_directory/$failure_slug.log)"
-  tail -25 /tmp/merge-gate-step.$$.log | sed 's/^/    | /'
+  tail -25 "$step_log" | sed 's/^/    | /'
   fail=1
-  rm -f /tmp/merge-gate-step.$$.log
+  rm -f "$step_log"
 }
 # A SOFT step: it RUNS and REPORTS (so a regression surfaces in the gate), but a non-zero exit does
 # NOT block the commit. Use only where the numbers are informational and the load-bearing invariant is
@@ -135,14 +138,206 @@ reporting_step() {
 # TerminalEmulator conformance corpus directly specifies its screen oracle in bun test. All tmux
 # originals run only with INVAR_FULL_TMUX=1 (weekly cron / audits).
 # Contract: harness.invariants.md "The conformance corpus replaces the tmux ring".
-full_tmux_step() {
+FULL_TMUX_SKIPPED=0
+gate_worker_count="${INVAR_GATE_WORKERS:-6}"
+case "$gate_worker_count" in
+  ''|*[!0-9]*|0)
+    echo "merge-gate: INVAR_GATE_WORKERS must be a positive integer (received '$gate_worker_count')" >&2
+    exit 2
+    ;;
+esac
+
+declare -a parallel_smoke_names=()
+declare -a parallel_smoke_commands=()
+declare -a parallel_smoke_sources=()
+declare -a quiet_smoke_names=()
+declare -a quiet_smoke_commands=()
+declare -a quiet_smoke_sources=()
+declare -a retried_smoke_names=()
+declare -a retried_smoke_counts=()
+
+quoted_command() {
+  local command_text=""
+  local command_argument
+  local quoted_argument
+  for command_argument in "$@"; do
+    printf -v quoted_argument '%q' "$command_argument"
+    if [ -n "$command_text" ]; then command_text+=" "; fi
+    command_text+="$quoted_argument"
+  done
+  printf '%s' "$command_text"
+}
+
+registered_smoke_source() {
+  local command_argument
+  local smoke_source=""
+  for command_argument in "$@"; do
+    if [ -f "$command_argument" ]; then smoke_source="$command_argument"; fi
+  done
+  printf '%s' "$smoke_source"
+}
+
+parallel_safe_smoke() {
+  local smoke_name="$1"; shift
+  parallel_smoke_names+=("$smoke_name")
+  parallel_smoke_commands+=("$(quoted_command "$@")")
+  parallel_smoke_sources+=("$(registered_smoke_source "$@")")
+}
+
+quiet_serial_smoke() {
+  local smoke_name="$1"; shift
+  quiet_smoke_names+=("$smoke_name")
+  quiet_smoke_commands+=("$(quoted_command "$@")")
+  quiet_smoke_sources+=("$(registered_smoke_source "$@")")
+}
+
+parallel_safe_full_tmux_smoke() {
   if [ "${INVAR_FULL_TMUX:-0}" = "1" ]; then
-    step "$@"
+    parallel_safe_smoke "$@"
   else
     FULL_TMUX_SKIPPED=$((FULL_TMUX_SKIPPED + 1))
   fi
 }
-FULL_TMUX_SKIPPED=0
+
+quiet_serial_full_tmux_smoke() {
+  if [ "${INVAR_FULL_TMUX:-0}" = "1" ]; then
+    quiet_serial_smoke "$@"
+  else
+    FULL_TMUX_SKIPPED=$((FULL_TMUX_SKIPPED + 1))
+  fi
+}
+
+execute_registered_smoke_job() {
+  local phase_name="$1"
+  local job_number="$2"
+  local smoke_name="$3"
+  local smoke_command="$4"
+  local step_log="/tmp/merge-gate-step.$$.${phase_name}.${job_number}.log"
+  local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
+  local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
+  local retry_count_file="/tmp/merge-gate-retries.$$.${phase_name}.${job_number}"
+  local failure_slug
+  failure_slug="$(echo "$smoke_name" | tr -cs 'a-zA-Z0-9' '-')"
+
+  : >"$summary_log"
+  echo 0 >"$retry_count_file"
+  echo "== merge-gate: $smoke_name ==" >>"$summary_log"
+  if bash -c "$smoke_command" >"$step_log" 2>&1; then
+    echo "  OK    $smoke_name" >>"$summary_log"
+    echo 0 >"$result_file"
+    rm -f "$step_log"
+    return
+  fi
+
+  if grep -q 'Timed out' "$step_log"; then
+    cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
+    echo 1 >"$retry_count_file"
+    echo "  RETRY $smoke_name — timeout-class failure; one quiet retry (attempt 1 log preserved)" >>"$summary_log"
+    sleep 10
+    if bash -c "$smoke_command" >"$step_log" 2>&1; then
+      echo "  OK    $smoke_name (clean on retry; first attempt was starvation-class)" >>"$summary_log"
+      echo 0 >"$result_file"
+      rm -f "$step_log"
+      return
+    fi
+  fi
+
+  cp "$step_log" "$failure_log_directory/$failure_slug.log"
+  echo "  FAIL  $smoke_name (full log: $failure_log_directory/$failure_slug.log)" >>"$summary_log"
+  tail -25 "$step_log" | sed 's/^/    | /' >>"$summary_log"
+  echo 1 >"$result_file"
+  rm -f "$step_log"
+}
+
+collect_registered_smoke_job() {
+  local phase_name="$1"
+  local job_number="$2"
+  local smoke_name="$3"
+  local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
+  local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
+  local retry_count_file="/tmp/merge-gate-retries.$$.${phase_name}.${job_number}"
+  local job_result=1
+  local retry_count=0
+
+  if [ -f "$summary_log" ]; then
+    sed -n '1,$p' "$summary_log"
+  else
+    echo "== merge-gate: $smoke_name =="
+    echo "  FAIL  $smoke_name (worker produced no summary)"
+  fi
+  if [ -f "$result_file" ]; then job_result="$(cat "$result_file")"; fi
+  if [ -f "$retry_count_file" ]; then retry_count="$(cat "$retry_count_file")"; fi
+  if [ "$job_result" -ne 0 ]; then fail=1; fi
+  if [ "$retry_count" -gt 0 ]; then
+    retried_smoke_names+=("$smoke_name")
+    retried_smoke_counts+=("$retry_count")
+  fi
+  rm -f "$summary_log" "$result_file" "$retry_count_file"
+}
+
+run_parallel_smoke_pool() {
+  local job_number
+  local running_job_count
+  declare -a worker_process_ids=()
+
+  for job_number in "${!parallel_smoke_names[@]}"; do
+    while true; do
+      running_job_count="$(jobs -pr | wc -l | tr -d ' ')"
+      if [ "$running_job_count" -lt "$gate_worker_count" ]; then break; fi
+      wait -n || true
+    done
+    execute_registered_smoke_job \
+      "parallel" \
+      "$job_number" \
+      "${parallel_smoke_names[$job_number]}" \
+      "${parallel_smoke_commands[$job_number]}" &
+    worker_process_ids+=("$!")
+  done
+  for worker_process_id in "${worker_process_ids[@]}"; do
+    wait "$worker_process_id" || true
+  done
+  for job_number in "${!parallel_smoke_names[@]}"; do
+    collect_registered_smoke_job "parallel" "$job_number" "${parallel_smoke_names[$job_number]}"
+  done
+}
+
+run_quiet_serial_smokes() {
+  local job_number
+  for job_number in "${!quiet_smoke_names[@]}"; do
+    execute_registered_smoke_job \
+      "quiet" \
+      "$job_number" \
+      "${quiet_smoke_names[$job_number]}" \
+      "${quiet_smoke_commands[$job_number]}"
+    collect_registered_smoke_job "quiet" "$job_number" "${quiet_smoke_names[$job_number]}"
+  done
+}
+
+format_duration() {
+  local duration_seconds="$1"
+  printf '%dm%02ds' "$((duration_seconds / 60))" "$((duration_seconds % 60))"
+}
+
+validate_smoke_classification() {
+  local source_number
+  local smoke_source
+  local classification_failure_count=0
+  for source_number in "${!parallel_smoke_sources[@]}"; do
+    smoke_source="${parallel_smoke_sources[$source_number]}"
+    [ -n "$smoke_source" ] || continue
+    if rg -q \
+      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|[Mm]omentum|glide' \
+      "$smoke_source"; then
+      echo "  FAIL  parallel-safe classification: ${parallel_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
+      classification_failure_count=$((classification_failure_count + 1))
+    fi
+  done
+  if [ "$classification_failure_count" -eq 0 ]; then
+    echo "  OK    every registered timing-sensitive smoke is tagged quiet-serial"
+    return 0
+  fi
+  return 1
+}
 
 # 1) Fast inner gate: tsc + conventions + unwired-capability + settings-applied META.
 step "conventions-gate (tsc + conventions + unwired + settings-meta)" bash scripts/conventions-gate.sh
@@ -157,154 +352,181 @@ step "invariant contracts --refs (annotations resolve)" node .claude/skills/inva
 # 2) Unit tests.
 step "unit tests (bun test)" bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
-step "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
-# This latency check is deliberately outside SKIP_PERF and FAST. It names the raw-byte boundary,
-# records every result, and blocks only at the reviewed baseline's failure multiplier.
-# invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
-reporting_step "input byte flush latency (5-session median)" bun scripts/harness/input-byte-flush-gate.ts
+# They register in the quiet tail because their momentum and absence windows are timing-sensitive.
+quiet_serial_smoke "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
 
 if [ "${FAST:-0}" != "1" ]; then
   echo "smoke phase: PTY harness suite (INVAR_FULL_TMUX=${INVAR_FULL_TMUX:-0}; tmux audit steps skipped when 0 are reported below)"
   # 4) Driving SMOKES — the real user paths.
-  full_tmux_step "smoke: editor"      bash scripts/smoke-editor.sh
-  step "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
-  step "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
+  quiet_serial_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
+  quiet_serial_smoke "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).
-  full_tmux_step "smoke: move-line"   bash scripts/smoke-move-line.sh
-  step "smoke: move-line harness" bun scripts/harness/smoke-move-line-harness.ts
-  full_tmux_step "smoke: indent-guides" bash scripts/smoke-indent-guides.sh
-  step "smoke: indent-guides harness" bun scripts/harness/smoke-indent-guides-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: move-line"   bash scripts/smoke-move-line.sh
+  parallel_safe_smoke "smoke: move-line harness" bun scripts/harness/smoke-move-line-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: indent-guides" bash scripts/smoke-indent-guides.sh
+  parallel_safe_smoke "smoke: indent-guides harness" bun scripts/harness/smoke-indent-guides-harness.ts
   # Bracket matching: cursor on a `{` highlights it + its balanced `}` (match background via FrameProbe);
   # moving off clears it. Pure finder + real-tokenizer string/comment gate.
-  full_tmux_step "smoke: bracket-match" bash scripts/smoke-bracket-match.sh
-  step "smoke: bracket-match harness" bun scripts/harness/smoke-bracket-match-harness.ts
-  full_tmux_step "smoke: tabs"        bash scripts/smoke-tabs.sh
-  step "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
-  step "smoke: bounded list popup harness" bun scripts/harness/smoke-bounded-list-popup-harness.ts
-  step "smoke: completion harness" bun scripts/harness/smoke-completion-harness.ts
-  full_tmux_step "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
-  step "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
-  full_tmux_step "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
-  full_tmux_step "smoke: selection"   bash scripts/smoke-selection.sh
+  parallel_safe_full_tmux_smoke "smoke: bracket-match" bash scripts/smoke-bracket-match.sh
+  parallel_safe_smoke "smoke: bracket-match harness" bun scripts/harness/smoke-bracket-match-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: tabs"        bash scripts/smoke-tabs.sh
+  parallel_safe_smoke "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
+  parallel_safe_smoke "smoke: bounded list popup harness" bun scripts/harness/smoke-bounded-list-popup-harness.ts
+  parallel_safe_smoke "smoke: completion harness" bun scripts/harness/smoke-completion-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
+  parallel_safe_smoke "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: tree-scroll" bash scripts/smoke-tree-scroll.sh
+  parallel_safe_full_tmux_smoke "smoke: selection"   bash scripts/smoke-selection.sh
   # invariant: The conformance corpus replaces the tmux ring (scripts/harness/harness.invariants.md)
-  step "smoke: selection harness" bun scripts/harness/smoke-selection-harness.ts
-  full_tmux_step "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
-  step "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
-  full_tmux_step "smoke: wrap"        bash scripts/smoke-wrap.sh
-  step "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
-  full_tmux_step "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
-  step "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
-  full_tmux_step "smoke: git-watch"   bash scripts/smoke-git-watch.sh
+  parallel_safe_smoke "smoke: selection harness" bun scripts/harness/smoke-selection-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: scrollbars"  bash scripts/smoke-scrollbars.sh
+  parallel_safe_smoke "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: wrap"        bash scripts/smoke-wrap.sh
+  parallel_safe_smoke "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
+  parallel_safe_smoke "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: git-watch"   bash scripts/smoke-git-watch.sh
   # Commit-log freshness (external commits appear via the tip-SHA reconcile) + the read-only
   # branch VIEWER (cycle/menu/Esc, by-SHA drill-down, worktree/HEAD byte-identical after).
-  full_tmux_step "smoke: git-log"     bash scripts/smoke-git-log.sh
+  parallel_safe_full_tmux_smoke "smoke: git-log"     bash scripts/smoke-git-log.sh
   # Current-line git blame (GitLens parity): a committed line shows its author in the status bar; a
   # non-git document shows none. Scratch repo + non-git dir; async blame is cached per file.
-  full_tmux_step "smoke: git-blame"   bash scripts/smoke-git-blame.sh
-  full_tmux_step "smoke: find"        bash scripts/smoke-find.sh
-  step "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
-  full_tmux_step "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
-  step "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
-  full_tmux_step "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
-  full_tmux_step "smoke: word-delete" bash scripts/smoke-word-delete.sh
-  step "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
-  step "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
-  full_tmux_step "smoke: quick-open"  bash scripts/smoke-quickopen.sh
-  full_tmux_step "smoke: open-project" bash scripts/smoke-openproject.sh
-  full_tmux_step "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
-  full_tmux_step "smoke: gutter-diff" bash scripts/smoke-gutter-diff.sh
-  full_tmux_step "smoke: diff-overview" bash scripts/smoke-diff-overview.sh
-  full_tmux_step "smoke: markdown"     bash scripts/smoke-markdown.sh
+  parallel_safe_full_tmux_smoke "smoke: git-blame"   bash scripts/smoke-git-blame.sh
+  parallel_safe_full_tmux_smoke "smoke: find"        bash scripts/smoke-find.sh
+  quiet_serial_smoke "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
+  parallel_safe_smoke "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
+  parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
+  quiet_serial_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
+  parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: quick-open"  bash scripts/smoke-quickopen.sh
+  parallel_safe_full_tmux_smoke "smoke: open-project" bash scripts/smoke-openproject.sh
+  parallel_safe_full_tmux_smoke "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
+  parallel_safe_full_tmux_smoke "smoke: gutter-diff" bash scripts/smoke-gutter-diff.sh
+  parallel_safe_full_tmux_smoke "smoke: diff-overview" bash scripts/smoke-diff-overview.sh
+  parallel_safe_full_tmux_smoke "smoke: markdown"     bash scripts/smoke-markdown.sh
   # Guarded inside the script: SKIPs cleanly (exit 0) when typescript-language-server is absent.
-  full_tmux_step "smoke: goto-definition" bash scripts/smoke-goto-definition.sh
-  full_tmux_step "smoke: navigation-history" bash scripts/smoke-navigation-history.sh
-  full_tmux_step "smoke: hover" bash scripts/smoke-hover.sh
-  full_tmux_step "smoke: diagnostics" bash scripts/smoke-diagnostics.sh
-  full_tmux_step "smoke: image-preview" bash scripts/smoke-image-preview.sh
-  full_tmux_step "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
-  full_tmux_step "smoke: agent"       bash scripts/smoke-agent.sh
-  full_tmux_step "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
-  full_tmux_step "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
-  full_tmux_step "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
-  full_tmux_step "smoke: agent-search" bash scripts/smoke-agent-search.sh
+  parallel_safe_full_tmux_smoke "smoke: goto-definition" bash scripts/smoke-goto-definition.sh
+  parallel_safe_full_tmux_smoke "smoke: navigation-history" bash scripts/smoke-navigation-history.sh
+  parallel_safe_full_tmux_smoke "smoke: hover" bash scripts/smoke-hover.sh
+  parallel_safe_full_tmux_smoke "smoke: diagnostics" bash scripts/smoke-diagnostics.sh
+  parallel_safe_full_tmux_smoke "smoke: image-preview" bash scripts/smoke-image-preview.sh
+  parallel_safe_full_tmux_smoke "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
+  parallel_safe_full_tmux_smoke "smoke: agent"       bash scripts/smoke-agent.sh
+  quiet_serial_full_tmux_smoke "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
+  parallel_safe_full_tmux_smoke "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
+  parallel_safe_full_tmux_smoke "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
+  parallel_safe_full_tmux_smoke "smoke: agent-search" bash scripts/smoke-agent-search.sh
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
-  full_tmux_step "smoke: paste"       bash scripts/smoke-paste.sh
-  step "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
-  step "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: paste"       bash scripts/smoke-paste.sh
+  parallel_safe_smoke "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
+  quiet_serial_smoke "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
-  full_tmux_step "smoke: audio-narration" bash scripts/smoke-audio-narration.sh
+  parallel_safe_full_tmux_smoke "smoke: audio-narration" bash scripts/smoke-audio-narration.sh
   # Voice picker + mouse-editable settings: seeded voices dir → dynamic-enum picker (keyboard + mouse),
   # rate stepper, boolean toggle, Test-Voice command. No audio (mock TTS).
-  full_tmux_step "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
+  parallel_safe_full_tmux_smoke "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
   # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
-  full_tmux_step "smoke: activitybar" bash scripts/smoke-activitybar.sh
-  full_tmux_step "smoke: panel-split" bash scripts/smoke-panel-split.sh
+  parallel_safe_full_tmux_smoke "smoke: activitybar" bash scripts/smoke-activitybar.sh
+  parallel_safe_full_tmux_smoke "smoke: panel-split" bash scripts/smoke-panel-split.sh
   # invariant: Shared seam changes verify every consumer (scripts/harness/harness.invariants.md)
   # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
   # the independent terminal-emulator verification ring.
-  step "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
-  step "smoke: git-log harness" bun scripts/harness/smoke-git-log-harness.ts
-  step "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
-  step "smoke: gutter-diff harness" bun scripts/harness/smoke-gutter-diff-harness.ts
-  step "smoke: diff-overview harness" bun scripts/harness/smoke-diff-overview-harness.ts
-  step "smoke: tree-scroll harness" bun scripts/harness/smoke-tree-scroll-harness.ts
-  step "smoke: quick-open harness" bun scripts/harness/smoke-quickopen-harness.ts
-  step "smoke: navigation-history harness" bun scripts/harness/smoke-navigation-history-harness.ts
-  step "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
-  step "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
-  step "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
-  step "smoke: panel-chrome harness" bun scripts/harness/smoke-panel-chrome-harness.ts
+  quiet_serial_smoke "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
+  parallel_safe_smoke "smoke: git-log harness" bun scripts/harness/smoke-git-log-harness.ts
+  quiet_serial_smoke "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
+  parallel_safe_smoke "smoke: gutter-diff harness" bun scripts/harness/smoke-gutter-diff-harness.ts
+  parallel_safe_smoke "smoke: diff-overview harness" bun scripts/harness/smoke-diff-overview-harness.ts
+  quiet_serial_smoke "smoke: tree-scroll harness" bun scripts/harness/smoke-tree-scroll-harness.ts
+  parallel_safe_smoke "smoke: quick-open harness" bun scripts/harness/smoke-quickopen-harness.ts
+  parallel_safe_smoke "smoke: navigation-history harness" bun scripts/harness/smoke-navigation-history-harness.ts
+  parallel_safe_smoke "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
+  parallel_safe_smoke "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
+  parallel_safe_smoke "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
+  quiet_serial_smoke "smoke: panel-chrome harness" bun scripts/harness/smoke-panel-chrome-harness.ts
   # Shared splitter paint/drag states plus live slot configuration and the right-dock command/mouse
   # affordance. Kept additive to the pane-specific smokes above.
-  step "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
+  parallel_safe_smoke "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
-  step "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
-  step "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
-  step "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
-  step "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
-  step "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
-  step "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
-  step "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
-  step "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
-  step "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
-  step "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
-  step "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
+  quiet_serial_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
+  quiet_serial_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
+  parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
+  quiet_serial_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
+  quiet_serial_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
+  quiet_serial_smoke "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
+  quiet_serial_smoke "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
+  parallel_safe_smoke "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
+  parallel_safe_smoke "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
+  parallel_safe_smoke "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
+  quiet_serial_smoke "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
   # 5) The REAL settings applied-effect drives (every schema field, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
-  full_tmux_step "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
+  quiet_serial_full_tmux_smoke "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
-  step "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
-  step "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
-  step "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
-  full_tmux_step "smoke: terminal"    bash scripts/smoke-terminal.sh
-  step "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
-  step "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
-  step "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
-  step "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
-  step "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
-  step "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
-  step "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
-  # 6) Perf baselines — SOFT: memory/CPU/latency are measured + REPORTED so a regression surfaces in
-  #    the gate (it was previously unwired = a perf regression could ship). Non-blocking: the numbers
-  #    are informational and the load-bearing idle-quiescence invariant is hard-gated above. Slow
-  #    (idle-hold + lifecycle) — SKIP_PERF=1 to skip for fast local iteration.
-  if [ "${SKIP_PERF:-0}" != "1" ]; then
-    soft_step "perf-baselines (memory/CPU/latency)" bash scripts/perf-baselines.sh
-  else
-    echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
-  fi
+  quiet_serial_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  parallel_safe_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
+  quiet_serial_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
+  parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
+  parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
+  parallel_safe_smoke "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
+  quiet_serial_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
+  quiet_serial_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
+  parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
+  parallel_safe_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
+  parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
 fi
+
+echo "== merge-gate: smoke timing classification =="
+if ! validate_smoke_classification; then fail=1; fi
+
+parallel_phase_started_seconds="$(date +%s)"
+echo "== merge-gate: parallel-safe smoke pool (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers) =="
+run_parallel_smoke_pool
+parallel_phase_elapsed_seconds="$(( $(date +%s) - parallel_phase_started_seconds ))"
+echo "merge-gate timing: parallel-safe phase $(format_duration "$parallel_phase_elapsed_seconds") (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers)"
+
+# invariant: Timing-sensitive gate jobs run in a quiet serial tail (scripts/harness/harness.invariants.md)
+quiet_phase_started_seconds="$(date +%s)"
+echo "== merge-gate: quiet-serial tail (${#quiet_smoke_names[@]} registered jobs) =="
+run_quiet_serial_smokes
+# This latency check is deliberately outside SKIP_PERF and FAST. It names the raw-byte boundary,
+# records every result, and blocks only at the reviewed baseline's failure multiplier.
+# invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
+reporting_step "input byte flush latency (5-session median)" bun scripts/harness/input-byte-flush-gate.ts
+# 6) Perf baselines — SOFT: memory/CPU/latency are measured + REPORTED so a regression surfaces in
+#    the gate (it was previously unwired = a perf regression could ship). Non-blocking: the numbers
+#    are informational and the load-bearing idle-quiescence invariant is hard-gated above. Slow
+#    (idle-hold + lifecycle) — SKIP_PERF=1 to skip for fast local iteration.
+if [ "${FAST:-0}" != "1" ] && [ "${SKIP_PERF:-0}" != "1" ]; then
+  soft_step "perf-baselines (memory/CPU/latency)" bash scripts/perf-baselines.sh
+elif [ "${FAST:-0}" != "1" ]; then
+  echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
+fi
+quiet_phase_elapsed_seconds="$(( $(date +%s) - quiet_phase_started_seconds ))"
+echo "merge-gate timing: quiet-serial phase $(format_duration "$quiet_phase_elapsed_seconds")"
 
 if [ "${FULL_TMUX_SKIPPED:-0}" -gt 0 ]; then
   echo "== merge-gate: $FULL_TMUX_SKIPPED tmux audit smokes not run (INVAR_FULL_TMUX=1 runs them) =="
 fi
 
+echo ""
+if [ "${#retried_smoke_names[@]}" -eq 0 ]; then
+  echo "RETRY TALLY: no smokes retried"
+else
+  for retry_number in "${!retried_smoke_names[@]}"; do
+    echo "RETRY TALLY: ${retried_smoke_names[$retry_number]} = ${retried_smoke_counts[$retry_number]}"
+  done
+fi
+gate_elapsed_seconds="$(( $(date +%s) - gate_started_seconds ))"
+echo "merge-gate timing: total $(format_duration "$gate_elapsed_seconds")"
 echo ""
 if [ "$fail" = 0 ]; then
   echo "merge-gate: ALL-PASS"
