@@ -7,15 +7,94 @@ import { Static } from 'ivue/extras';
 // for genuinely visual assertions (layout, squiggles, theme).
 import { writeFileSync, renameSync, mkdirSync } from 'node:fs';
 
-// Per-INSTANCE side channel: two app instances sharing a cwd must never clobber each other's
-// observability (a polluted channel produces false verdicts — the FrameProbe-stride lesson).
-// The harness sets TUI_STATUS_PATH per session; a bare manual run keeps the default.
-const STATUS_PATH = process.env.TUI_STATUS_PATH || 'artifacts/status.json';
-// Observability profile: per-frame disk writes are HARNESS infrastructure (TUI_OBSERVE=1, set by
-// the harness). Default = lean: in-memory state only, no per-frame I/O for real use.
-const OBSERVE = process.env.TUI_OBSERVE === '1' || Boolean(process.env.TUI_STATUS_PATH);
-const TEMP_PATH = `${STATUS_PATH}.tmp`;
-let prepared = false;
+class $StatusChannel {
+  protected static prepared = false;
+
+  /** Per-instance side channel: harness sessions never clobber each other's observability. */
+  protected static get statusPath(): string {
+    return process.env.TUI_STATUS_PATH || 'artifacts/status.json';
+  }
+
+  /** Per-frame disk writes are harness infrastructure; normal runs retain in-memory state only. */
+  protected static get observingEnabled(): boolean {
+    return process.env.TUI_OBSERVE === '1' || Boolean(process.env.TUI_STATUS_PATH);
+  }
+
+  protected static get temporaryPath(): string {
+    return `${this.statusPath}.tmp`;
+  }
+
+  protected static get $state(): StatusSnapshot {
+    const state: StatusSnapshot = {
+      ready: false,
+      frame: 0,
+      renderQuiescent: false,
+      width: 0,
+      height: 0,
+      activeWorkspace: null,
+      workspaces: [],
+      activeBuffer: null,
+      bufferRevision: 0,
+      dirty: false,
+      cursor: null,
+      openBuffers: [],
+      diagnosticsCount: 0,
+      subprocessPids: [],
+      lifecycleTier: 'boot',
+      overlay: null,
+    };
+    Object.defineProperty(this, '$state', {
+      configurable: true,
+      value: state,
+    });
+    return state;
+  }
+
+  static get path(): string {
+    return this.statusPath;
+  }
+
+  static get snapshot(): StatusSnapshot {
+    return this.$state;
+  }
+
+  /** Merge a partial update into the live snapshot (does not write). */
+  static update(patch: Partial<StatusSnapshot>): void {
+    Object.assign(this.$state, patch);
+  }
+
+  /** Atomically flush the current snapshot to disk (write-temp + rename). */
+  static flush(): void {
+    if (!this.observingEnabled) return;
+    if (!this.prepared) {
+      try {
+        mkdirSync('artifacts', { recursive: true });
+      } catch {
+        /* ignore */
+      }
+      this.prepared = true;
+    }
+    try {
+      writeFileSync(this.temporaryPath, JSON.stringify(this.$state, null, 2));
+      renameSync(this.temporaryPath, this.statusPath);
+    } catch {
+      /* never crash the app over observability */
+    }
+  }
+
+  /** Mark the frame settled and flush — called after a render quiesces. */
+  static settle(frame: number): void {
+    if (!this.observingEnabled) return;
+    this.$state.frame = frame;
+    this.$state.renderQuiescent = true;
+    this.flush();
+  }
+}
+
+export namespace StatusChannel {
+  export const $Class = $StatusChannel;
+  export let Class = Static($StatusChannel);
+}
 
 export interface StatusSnapshot {
   ready: boolean;
@@ -35,70 +114,4 @@ export interface StatusSnapshot {
   lifecycleTier: string;
   overlay: string | null;
   [key: string]: unknown;
-}
-
-const state: StatusSnapshot = {
-  ready: false,
-  frame: 0,
-  renderQuiescent: false,
-  width: 0,
-  height: 0,
-  activeWorkspace: null,
-  workspaces: [],
-  activeBuffer: null,
-  bufferRevision: 0,
-  dirty: false,
-  cursor: null,
-  openBuffers: [],
-  diagnosticsCount: 0,
-  subprocessPids: [],
-  lifecycleTier: 'boot',
-  overlay: null,
-};
-
-class $StatusChannel {
-  static get path(): string {
-    return STATUS_PATH;
-  }
-
-  static get snapshot(): StatusSnapshot {
-    return state;
-  }
-
-  /** Merge a partial update into the live snapshot (does not write). */
-  static update(patch: Partial<StatusSnapshot>): void {
-    Object.assign(state, patch);
-  }
-
-  /** Atomically flush the current snapshot to disk (write-temp + rename). */
-  static flush(): void {
-    if (!OBSERVE) return;
-    if (!prepared) {
-      try {
-        mkdirSync('artifacts', { recursive: true });
-      } catch {
-        /* ignore */
-      }
-      prepared = true;
-    }
-    try {
-      writeFileSync(TEMP_PATH, JSON.stringify(state, null, 2));
-      renameSync(TEMP_PATH, STATUS_PATH);
-    } catch {
-      /* never crash the app over observability */
-    }
-  }
-
-  /** Mark the frame settled and flush — called after a render quiesces. */
-  static settle(frame: number): void {
-    if (!OBSERVE) return;
-    state.frame = frame;
-    state.renderQuiescent = true;
-    this.flush();
-  }
-}
-
-export namespace StatusChannel {
-  export const $Class = $StatusChannel;
-  export let Class = Static($StatusChannel);
 }

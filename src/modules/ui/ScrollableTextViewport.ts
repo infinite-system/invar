@@ -11,7 +11,7 @@
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import { type ScrollBarRenderable, type MouseEvent, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { Momentum, DEFAULT_MOMENTUM, VERTICAL_MOMENTUM, AT_REST, type ScrollMomentum, type MomentumOptions, } from '../system/Momentum';
+import { Momentum, type ScrollMomentum, type MomentumOptions } from '../system/Momentum';
 import { ScrollGesture } from './ScrollGesture';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
@@ -20,8 +20,8 @@ import type { Settings } from '../settings/Settings';
 class $ScrollableTextViewport {
     protected scrollTopValue = 0;
     protected scrollLeftValue = 0;
-    protected verticalMomentum: ScrollMomentum = AT_REST;
-    protected horizontalMomentum: ScrollMomentum = AT_REST;
+    protected verticalMomentum: ScrollMomentum = Momentum.Class.atRest;
+    protected horizontalMomentum: ScrollMomentum = Momentum.Class.atRest;
     protected readonly verticalBar: ScrollBarRenderable;
     protected readonly horizontalBar: ScrollBarRenderable;
     protected readonly drag: SelectionDragBehavior.Model;
@@ -98,7 +98,7 @@ class $ScrollableTextViewport {
             impulse: settings.scrollAccelGain.value,
             max: settings.verticalFlingCeiling.value,
             decayPerSec: settings.scrollFriction.value,
-            stopVelocity: VERTICAL_MOMENTUM.stopVelocity,
+            stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
         };
     }
     /** A wheel over the surface: routed through the SAME settings-sourced gesture as every pane —
@@ -113,7 +113,7 @@ class $ScrollableTextViewport {
             (direction === 'left' || direction === 'right' || modifierHorizontal);
         if (horizontal && this.maximumScrollLeft() > 0) {
             const backward = direction === 'left' || direction === 'up';
-            this.horizontalMomentum = Momentum.Class.addImpulse(this.horizontalMomentum, (backward ? -1 : 1) * step, DEFAULT_MOMENTUM);
+            this.horizontalMomentum = Momentum.Class.addImpulse(this.horizontalMomentum, (backward ? -1 : 1) * step, Momentum.Class.defaultOptions);
         }
         else if (!horizontal) {
             // An upward wheel releases the tail-anchor IMMEDIATELY (before any momentum step), so
@@ -134,7 +134,7 @@ class $ScrollableTextViewport {
             this.setScrollTop(this.scrollTopValue + vertical.rows);
         if (Momentum.Class.isMoving(this.verticalMomentum))
             keepAlive = true;
-        const horizontal = Momentum.Class.stepMomentum(this.horizontalMomentum, deltaSeconds, DEFAULT_MOMENTUM);
+        const horizontal = Momentum.Class.stepMomentum(this.horizontalMomentum, deltaSeconds, Momentum.Class.defaultOptions);
         this.horizontalMomentum = horizontal.momentum;
         if (horizontal.rows !== 0)
             this.setScrollLeft(this.scrollLeftValue + horizontal.rows);

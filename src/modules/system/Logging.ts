@@ -4,26 +4,29 @@ import { Static } from 'ivue/extras';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const LOG_PATH = 'artifacts/tui.log';
-let prepared = false;
-
 class $Logging {
+  protected static prepared = false;
+
+  protected static get logPath(): string {
+    return 'artifacts/tui.log';
+  }
+
   static get path(): string {
-    return LOG_PATH;
+    return this.logPath;
   }
 
   static write(level: string, message: string): void {
-    if (!prepared) {
+    if (!this.prepared) {
       try {
-        mkdirSync(dirname(LOG_PATH), { recursive: true });
+        mkdirSync(dirname(this.logPath), { recursive: true });
       } catch {
         /* ignore */
       }
-      prepared = true;
+      this.prepared = true;
     }
     const line = `${new Date().toISOString()} [${level}] ${message}\n`;
     try {
-      appendFileSync(LOG_PATH, line);
+      appendFileSync(this.logPath, line);
     } catch {
       /* logging must never crash the app */
     }

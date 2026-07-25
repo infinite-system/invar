@@ -16,12 +16,6 @@ import {
 import { join, resolve, relative, basename, extname, dirname, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
-export interface DirEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-}
-
 class $Files {
   static exists(path: string): boolean {
     return existsSync(path);
@@ -155,4 +149,10 @@ class $Files {
 export namespace Files {
   export const $Class = $Files;
   export let Class = Static($Files);
+}
+
+export interface DirEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
 }

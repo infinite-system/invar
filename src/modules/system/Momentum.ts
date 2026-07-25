@@ -11,38 +11,59 @@
 // each caller holds in its own reactive cell.
 import { Static } from 'ivue/extras';
 
-export interface ScrollMomentum {
-  velocity: number; // rows per second (sign = direction); 0 = at rest
-  residual: number; // fractional rows carried between frames [0,1)
-}
-
-export interface MomentumOptions {
-  impulse: number; // velocity (rows/sec) added per unit of wheel delta
-  max: number; // velocity cap (rows/sec)
-  decayPerSec: number; // velocity multiplier applied per second (0..1); lower = shorter glide
-  stopVelocity: number; // halt (and discard residual) once |velocity| drops below this
-}
-
-export const DEFAULT_MOMENTUM: MomentumOptions = {
-  impulse: 22,
-  max: 80,
-  decayPerSec: 0.015,
-  stopVelocity: 3,
-};
-
-// Vertical axis wants a HIGHER fast-scroll ceiling than horizontal: a hard fling should cover a long
-// file/tree quickly. Same decay curve + stop threshold (so a gentle wheel is still precise and the
-// One-Writer halt behaviour is unchanged) — only the top speed and per-notch gain are raised.
-export const VERTICAL_MOMENTUM: MomentumOptions = {
-  impulse: 34,
-  max: 220,
-  decayPerSec: 0.015,
-  stopVelocity: 3,
-};
-
-export const AT_REST: ScrollMomentum = { velocity: 0, residual: 0 };
-
 class $Momentum {
+  protected static get $defaultOptions(): MomentumOptions {
+    const defaultOptions: MomentumOptions = {
+      impulse: 22,
+      max: 80,
+      decayPerSec: 0.015,
+      stopVelocity: 3,
+    };
+    Object.defineProperty(this, '$defaultOptions', {
+      configurable: true,
+      value: defaultOptions,
+    });
+    return defaultOptions;
+  }
+
+  // Vertical axis wants a HIGHER fast-scroll ceiling than horizontal: a hard fling should cover a long
+  // file/tree quickly. Same decay curve + stop threshold (so a gentle wheel is still precise and the
+  // One-Writer halt behaviour is unchanged) — only the top speed and per-notch gain are raised.
+  protected static get $verticalOptions(): MomentumOptions {
+    const verticalOptions: MomentumOptions = {
+      impulse: 34,
+      max: 220,
+      decayPerSec: 0.015,
+      stopVelocity: 3,
+    };
+    Object.defineProperty(this, '$verticalOptions', {
+      configurable: true,
+      value: verticalOptions,
+    });
+    return verticalOptions;
+  }
+
+  protected static get $atRest(): ScrollMomentum {
+    const atRest: ScrollMomentum = { velocity: 0, residual: 0 };
+    Object.defineProperty(this, '$atRest', {
+      configurable: true,
+      value: atRest,
+    });
+    return atRest;
+  }
+
+  static get defaultOptions(): MomentumOptions {
+    return this.$defaultOptions;
+  }
+
+  static get verticalOptions(): MomentumOptions {
+    return this.$verticalOptions;
+  }
+
+  static get atRest(): ScrollMomentum {
+    return this.$atRest;
+  }
+
   /** Fraction of the impulse gain a notch lands with when the regime is AT REST. A lone notch is a
    *  precision move — it must travel a row or two, not a fling's opening jump. */
   protected static get initialGainFraction(): number {
@@ -62,7 +83,11 @@ class $Momentum {
    *  A from-rest notch is floored at the velocity that glides ONE full row before the halt
    *  threshold eats it — a wheel notch that visibly does nothing is not precision, it is a dead
    *  input. */
-  static addImpulse(momentum: ScrollMomentum, deltaRows: number, options: MomentumOptions = DEFAULT_MOMENTUM): ScrollMomentum {
+  static addImpulse(
+    momentum: ScrollMomentum,
+    deltaRows: number,
+    options: MomentumOptions = this.defaultOptions,
+  ): ScrollMomentum {
     // A notch AGAINST the current glide is a precision intent — stop and turn. Under ramped gain a
     // low-velocity reversal notch only subtracts a fraction of the impulse, so whether the sign
     // flips would depend on how much glide remains: a timing-dependent, sometimes-dead reversal.
@@ -72,11 +97,11 @@ class $Momentum {
       && deltaRows !== 0
       && Math.sign(deltaRows) !== Math.sign(momentum.velocity)
     ) {
-      return $Momentum.addImpulse(AT_REST, deltaRows, options);
+      return this.addImpulse(this.atRest, deltaRows, options);
     }
-    const gainRampCeiling = options.impulse * $Momentum.gainRampNotchSpan;
-    const gainScale = $Momentum.initialGainFraction
-      + (1 - $Momentum.initialGainFraction)
+    const gainRampCeiling = options.impulse * this.gainRampNotchSpan;
+    const gainScale = this.initialGainFraction
+      + (1 - this.initialGainFraction)
         * Math.min(1, Math.abs(momentum.velocity) / gainRampCeiling);
     let velocity = momentum.velocity + deltaRows * options.impulse * gainScale;
     if (momentum.velocity === 0 && deltaRows !== 0) {
@@ -99,7 +124,7 @@ class $Momentum {
   static stepMomentum(
     momentum: ScrollMomentum,
     dtSec: number,
-    options: MomentumOptions = DEFAULT_MOMENTUM,
+    options: MomentumOptions = this.defaultOptions,
   ): { momentum: ScrollMomentum; rows: number } {
     if (momentum.velocity === 0 || dtSec <= 0) return { momentum, rows: 0 };
     const advanced = momentum.residual + momentum.velocity * dtSec;
@@ -115,7 +140,7 @@ class $Momentum {
 
   /** Immediately halt (adopt-and-stop for a programmatic jump — One-Writer-Per-Regime). */
   static halt(): ScrollMomentum {
-    return AT_REST;
+    return this.atRest;
   }
 
   static isMoving(momentum: ScrollMomentum): boolean {
@@ -126,4 +151,16 @@ class $Momentum {
 export namespace Momentum {
   export const $Class = $Momentum;
   export const Class = Static($Momentum);
+}
+
+export interface ScrollMomentum {
+  velocity: number; // rows per second (sign = direction); 0 = at rest
+  residual: number; // fractional rows carried between frames [0,1)
+}
+
+export interface MomentumOptions {
+  impulse: number; // velocity (rows/sec) added per unit of wheel delta
+  max: number; // velocity cap (rows/sec)
+  decayPerSec: number; // velocity multiplier applied per second (0..1); lower = shorter glide
+  stopVelocity: number; // halt (and discard residual) once |velocity| drops below this
 }

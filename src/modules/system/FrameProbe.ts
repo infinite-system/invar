@@ -7,39 +7,6 @@
 import { writeFileSync } from 'node:fs';
 import { Static } from 'ivue/extras';
 
-export interface FrameRow {
-  y: number;
-  text: string;
-  // Per cell: `"r,g,b,a"`. OpenTUI stores fg/bg as FOUR Uint16 lanes per cell (RGBA), not one —
-  // so a per-cell colour is 4 lanes joined. Equality/diff on these strings is what visual
-  // assertions need (a stable per-cell key), without decoding to a real colour.
-  bg: string[];
-  fg: string[];
-  attrs: number[];
-}
-
-export interface FrameDump {
-  width: number;
-  height: number;
-  rows: FrameRow[];
-}
-
-/** Minimal shape we read off `renderer.currentRenderBuffer` — kept structural to avoid a hard dep. */
-interface CellBuffers {
-  char: { length: number; [i: number]: number };
-  fg: { [i: number]: number };
-  bg: { [i: number]: number };
-  attributes: { [i: number]: number };
-}
-interface BufferLike {
-  width: number;
-  height: number;
-  buffers: CellBuffers;
-}
-interface RendererLike {
-  currentRenderBuffer: BufferLike;
-}
-
 class $FrameProbe {
   /** Whether frame dumping is enabled (env-gated so production runs pay nothing). */
   static get enabled(): boolean {
@@ -86,4 +53,39 @@ class $FrameProbe {
 export namespace FrameProbe {
   export const $Class = $FrameProbe;
   export const Class = Static($FrameProbe);
+}
+
+export interface FrameRow {
+  y: number;
+  text: string;
+  // Per cell: `"r,g,b,a"`. OpenTUI stores fg/bg as FOUR Uint16 lanes per cell (RGBA), not one —
+  // so a per-cell colour is 4 lanes joined. Equality/diff on these strings is what visual
+  // assertions need (a stable per-cell key), without decoding to a real colour.
+  bg: string[];
+  fg: string[];
+  attrs: number[];
+}
+
+export interface FrameDump {
+  width: number;
+  height: number;
+  rows: FrameRow[];
+}
+
+/** Minimal shape we read off `renderer.currentRenderBuffer` — kept structural to avoid a hard dep. */
+interface CellBuffers {
+  char: { length: number; [index: number]: number };
+  fg: { [index: number]: number };
+  bg: { [index: number]: number };
+  attributes: { [index: number]: number };
+}
+
+interface BufferLike {
+  width: number;
+  height: number;
+  buffers: CellBuffers;
+}
+
+interface RendererLike {
+  currentRenderBuffer: BufferLike;
 }

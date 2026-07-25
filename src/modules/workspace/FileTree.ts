@@ -1,7 +1,7 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Files, type DirEntry } from '../system/Files';
-import { AT_REST, type ScrollMomentum } from '../system/Momentum';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
 // A lazily-expanded file tree. Children are read only when a directory is expanded, and the
@@ -30,10 +30,10 @@ class $FileTree {
     return ref(-1);
   }
   get selectionMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   // INDEPENDENT scroll offset (first visible row), like the git-changes list — NOT derived from the
   // selection. Wheel scrolls this; selection moves independently; clicking a visible row leaves it

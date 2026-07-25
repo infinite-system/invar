@@ -1,19 +1,34 @@
 import { test, expect, describe } from 'bun:test';
-import { Momentum, AT_REST, type MomentumOptions } from './Momentum';
+import { Momentum, type MomentumOptions, type ScrollMomentum } from './Momentum';
 
 // No-decay options: isolate the crossing-regularity property from the decay curve.
 const NO_DECAY: MomentumOptions = { impulse: 10, max: 100, decayPerSec: 1, stopVelocity: 0.0001 };
 
 describe('scroll-momentum', () => {
+  test('the tuned default and vertical physics values remain exact', () => {
+    expect(Momentum.Class.defaultOptions).toEqual({
+      impulse: 22,
+      max: 80,
+      decayPerSec: 0.015,
+      stopVelocity: 3,
+    });
+    expect(Momentum.Class.verticalOptions).toEqual({
+      impulse: 34,
+      max: 220,
+      decayPerSec: 0.015,
+      stopVelocity: 3,
+    });
+  });
+
   test('at rest emits no rows', () => {
-    expect(Momentum.Class.stepMomentum(AT_REST, 1 / 30).rows).toBe(0);
-    expect(Momentum.Class.isMoving(AT_REST)).toBe(false);
+    expect(Momentum.Class.stepMomentum(Momentum.Class.atRest, 1 / 30).rows).toBe(0);
+    expect(Momentum.Class.isMoving(Momentum.Class.atRest)).toBe(false);
   });
 
   test('an impulse sets velocity in the wheel direction and accumulates progressively', () => {
     // Gain ramps from 30% at rest to 100% at three notches' worth of velocity (3 * impulse 10 = 30
     // rows/sec): the first notch is a precision step; persistence buys speed.
-    let momentum = Momentum.Class.addImpulse(AT_REST, 1, NO_DECAY); // +1 notch from rest
+    let momentum = Momentum.Class.addImpulse(Momentum.Class.atRest, 1, NO_DECAY); // +1 notch from rest
     expect(momentum.velocity).toBeCloseTo(3); // 10 * 0.3 — small first step
     momentum = Momentum.Class.addImpulse(momentum, 1, NO_DECAY); // same direction accumulates
     expect(momentum.velocity).toBeCloseTo(6.7); // gain already ramping: 0.3 + 0.7 * (3/30)
@@ -33,7 +48,7 @@ describe('scroll-momentum', () => {
     // Real decay profile: scaled first-notch velocity (30% of 22 = 6.6) would halt below one row;
     // the from-rest floor must lift it to a full row-crossing.
     const realistic = { impulse: 22, max: 80, decayPerSec: 0.015, stopVelocity: 3 };
-    let momentum = Momentum.Class.addImpulse(AT_REST, 1, realistic);
+    let momentum = Momentum.Class.addImpulse(Momentum.Class.atRest, 1, realistic);
     let totalRows = 0;
     for (let frame = 0; frame < 300 && Momentum.Class.isMoving(momentum); frame++) {
       const step = Momentum.Class.stepMomentum(momentum, 1 / 60, realistic);
@@ -45,13 +60,13 @@ describe('scroll-momentum', () => {
   });
 
   test('velocity is capped', () => {
-    const momentum = Momentum.Class.addImpulse(AT_REST, 100, NO_DECAY);
+    const momentum = Momentum.Class.addImpulse(Momentum.Class.atRest, 100, NO_DECAY);
     expect(momentum.velocity).toBe(100); // max
   });
 
   test('CROSSING REGULARITY: constant velocity crosses rows at a constant frame interval', () => {
     // velocity 15 rows/s, dt = 1/30 s → 0.5 rows/frame → exactly one row every 2 frames, forever.
-    let momentum: typeof AT_REST = { velocity: 15, residual: 0 };
+    let momentum: ScrollMomentum = { velocity: 15, residual: 0 };
     const crossFrames: number[] = [];
     for (let frame = 1; frame <= 12; frame++) {
       const result = Momentum.Class.stepMomentum(momentum, 1 / 30, NO_DECAY);
@@ -63,7 +78,7 @@ describe('scroll-momentum', () => {
   });
 
   test('total rows moved equals velocity*time (no rows lost or gained)', () => {
-    let momentum: typeof AT_REST = { velocity: 30, residual: 0 };
+    let momentum: ScrollMomentum = { velocity: 30, residual: 0 };
     let total = 0;
     for (let index = 0; index < 30; index++) {
       const result = Momentum.Class.stepMomentum(momentum, 1 / 30, NO_DECAY); // 1s total
@@ -74,7 +89,7 @@ describe('scroll-momentum', () => {
   });
 
   test('decay glides to a halt with no slow sub-row tail', () => {
-    let momentum = Momentum.Class.addImpulse(AT_REST, 3); // real decay defaults
+    let momentum = Momentum.Class.addImpulse(Momentum.Class.atRest, 3); // real decay defaults
     let frames = 0;
     while (Momentum.Class.isMoving(momentum) && frames < 1000) {
       momentum = Momentum.Class.stepMomentum(momentum, 1 / 30).momentum;
@@ -86,7 +101,7 @@ describe('scroll-momentum', () => {
   });
 
   test('Momentum.Class.halt() immediately stops (adopt-and-stop for a programmatic jump)', () => {
-    const moving = Momentum.Class.addImpulse(AT_REST, 5);
+    const moving = Momentum.Class.addImpulse(Momentum.Class.atRest, 5);
     expect(Momentum.Class.isMoving(moving)).toBe(true);
     expect(Momentum.Class.isMoving(Momentum.Class.halt())).toBe(false);
   });

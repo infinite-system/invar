@@ -1,24 +1,5 @@
 import { Static } from 'ivue/extras';
 
-export interface RunResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-  ok: boolean;
-}
-
-export type ProcessSpawnOptions<
-  Input extends Bun.Spawn.Writable,
-  Output extends Bun.Spawn.Readable,
-  ErrorOutput extends Bun.Spawn.Readable,
-> = Omit<Bun.Spawn.SpawnOptions<Input, Output, ErrorOutput>, 'env'>;
-
-export type SpawnedProcess<
-  Input extends Bun.Spawn.Writable,
-  Output extends Bun.Spawn.Readable,
-  ErrorOutput extends Bun.Spawn.Readable,
-> = Bun.Subprocess<Input, Output, ErrorOutput>;
-
 class $Processes {
   /**
    * Spawn an external tool from an argument vector without a shell, under the shared hermetic
@@ -53,7 +34,7 @@ class $Processes {
    * operate on the parent repo instead of the one at `cwd` — a hermeticity break. No subprocess the
    * app runs (git, ripgrep, language servers) wants the ambient git context, so strip it once here.
    */
-  private static hermeticEnvironment(): Record<string, string> {
+  protected static hermeticEnvironment(): Record<string, string> {
     const environment: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
       if (value === undefined || key.startsWith('GIT_')) continue;
@@ -94,3 +75,22 @@ export namespace Processes {
   export const $Class = $Processes;
   export let Class = Static($Processes);
 }
+
+export interface RunResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+  ok: boolean;
+}
+
+export type ProcessSpawnOptions<
+  Input extends Bun.Spawn.Writable,
+  Output extends Bun.Spawn.Readable,
+  ErrorOutput extends Bun.Spawn.Readable,
+> = Omit<Bun.Spawn.SpawnOptions<Input, Output, ErrorOutput>, 'env'>;
+
+export type SpawnedProcess<
+  Input extends Bun.Spawn.Writable,
+  Output extends Bun.Spawn.Readable,
+  ErrorOutput extends Bun.Spawn.Readable,
+> = Bun.Subprocess<Input, Output, ErrorOutput>;

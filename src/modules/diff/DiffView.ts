@@ -29,9 +29,6 @@ import { SelectionDragBehavior, type SelectionDragPosition } from '../ui/Selecti
 import { SolidThumbScrollBar } from '../ui/SolidThumbScrollBar';
 import {
   Momentum,
-  AT_REST,
-  DEFAULT_MOMENTUM,
-  VERTICAL_MOMENTUM,
   type ScrollMomentum,
   type MomentumOptions,
 } from '../system/Momentum';
@@ -223,10 +220,10 @@ class $DiffView {
     return ref(0);
   }
   get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(this.Momentum.atRest);
   }
   get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(this.Momentum.atRest);
   }
   get activeChangeBlockNumber() {
     return ref(this.alignment.changeBlocks.length > 0 ? 1 : 0);
@@ -247,12 +244,12 @@ class $DiffView {
   }
   protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
-    if (!settings) return VERTICAL_MOMENTUM;
+    if (!settings) return this.Momentum.verticalOptions;
     return {
       impulse: settings.scrollAccelGain.value,
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
-      stopVelocity: VERTICAL_MOMENTUM.stopVelocity,
+      stopVelocity: this.Momentum.verticalOptions.stopVelocity,
     };
   }
   constructor(

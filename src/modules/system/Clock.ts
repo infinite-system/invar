@@ -1,16 +1,17 @@
 import { Static } from 'ivue/extras';
 // Time capability. Isolated so tests can inject deterministic time and undo-coalescing is
 // reproducible. Static.
-let override: (() => number) | null = null;
 
 class $Clock {
+  protected static timeSourceOverride: (() => number) | null = null;
+
   static now(): number {
-    return override ? override() : Date.now();
+    return this.timeSourceOverride ? this.timeSourceOverride() : Date.now();
   }
 
   /** Test hook: force `now()` to return a fixed/scripted value. */
   static freeze(timeSource: (() => number) | null): void {
-    override = timeSource;
+    this.timeSourceOverride = timeSource;
   }
 }
 

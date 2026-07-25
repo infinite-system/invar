@@ -14,7 +14,7 @@ import type { BlameLine } from '../git/GitBlame';
 import { CommitLog } from '../git/CommitLog';
 import { CommitExpansion } from '../git/CommitExpansion';
 import { GitPanel } from './GitPanel';
-import { Momentum, VERTICAL_MOMENTUM, type MomentumOptions } from '../system/Momentum';
+import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
 import { GitRows } from '../git/GitRows';
 import { GitLogRows, type CommitLogRow } from '../git/GitLogRows';
@@ -501,12 +501,12 @@ class $Workspace {
   }
   protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
-    if (!settings) return VERTICAL_MOMENTUM;
+    if (!settings) return Momentum.Class.verticalOptions;
     return {
       impulse: settings.scrollAccelGain.value,
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
-      stopVelocity: VERTICAL_MOMENTUM.stopVelocity,
+      stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
     };
   }
   // SINGLE SOURCE of the git changes/log split: settings.gitSplitRatio when settings are attached

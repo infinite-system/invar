@@ -1,6 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { AT_REST, type ScrollMomentum } from '../system/Momentum';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
 
 // Reactive VIEW state for the git sidebar — which view is showing, the selection/scroll within it,
 // and the split between the changes/commit-box region and the commit-log region. Pure view state:
@@ -45,10 +45,10 @@ class $GitPanel {
     return ref(0);
   }
   get changesMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   get changesHorizontalMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   get changesHovered() {
     return ref(-1);
@@ -89,7 +89,7 @@ class $GitPanel {
   }
   // Momentum state for the commit-log wheel glide (see ui/scroll-momentum).
   get logMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   get logViewportHeight() {
     return ref(1);
@@ -104,7 +104,7 @@ class $GitPanel {
     return ref(0);
   }
   get logHorizontalMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
   /** Fraction of the sidebar height given to the top (changes+commit) region. */
   get splitRatio() {

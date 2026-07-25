@@ -14,7 +14,7 @@ import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
-import { Momentum, AT_REST, VERTICAL_MOMENTUM, type ScrollMomentum } from '../system/Momentum';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 import { SplitterElement } from '../ui/SplitterElement';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -47,7 +47,7 @@ class $MarkdownSplitView {
     return ref(0);
   }
   get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(AT_REST);
+    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
   }
 
   constructor(
@@ -229,7 +229,7 @@ class $MarkdownSplitView {
     const momentumStep = Momentum.Class.stepMomentum(
       this.verticalScrollMomentum.value,
       deltaTimeSeconds,
-      VERTICAL_MOMENTUM,
+      Momentum.Class.verticalOptions,
     );
     this.verticalScrollMomentum.value = momentumStep.momentum;
     if (momentumStep.rows !== 0) {
@@ -357,7 +357,7 @@ class $MarkdownSplitView {
       this.verticalScrollMomentum.value = Momentum.Class.addImpulse(
         this.verticalScrollMomentum.value,
         rowImpulse,
-        VERTICAL_MOMENTUM,
+        Momentum.Class.verticalOptions,
       );
     };
     previewBody.onMouseMove = (event) => {
