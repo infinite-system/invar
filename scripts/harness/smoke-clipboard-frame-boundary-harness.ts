@@ -74,14 +74,14 @@ async function copySelectionRepeatedly(
   expectedText: string,
   runCount: number,
   activity: 'active' | 'idle',
-  activateRenderer?: () => void,
+  activateRenderer?: (runIndex: number) => void,
 ): Promise<void> {
   for (let runIndex = 0; runIndex < runCount; runIndex += 1) {
     let followingActiveFrame:
       | ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
       | undefined;
     if (activity === 'active') {
-      activateRenderer?.();
+      activateRenderer?.(runIndex);
       await driver.awaitNextCompletedFrameSnapshot();
       followingActiveFrame = driver.awaitNextCompletedFrameSnapshot();
     } else {
@@ -153,13 +153,20 @@ try {
     (status) => status.agentBusy === false,
   );
   const transcriptPosition = await selectVisibleText('ACTIVE-TRANSCRIPT');
-  const transcriptActivity = (): void => {
-    driver.sendMouseWithoutFrameExpectation({
-      kind: 'wheel',
-      column: transcriptPosition.column,
-      row: transcriptPosition.row,
-      direction: 'up',
-    });
+  // A wheel-notch TRAIN, not a lone notch: progressive impulse gain makes a from-rest notch a
+  // one-row precision step (one frame), and each copy round awaits two frames. Three compounding
+  // notches glide several rows (a frame stream); alternating direction per round keeps the
+  // transcript inside its scrollback for any run count.
+  const transcriptActivity = (runIndex: number): void => {
+    const direction = runIndex % 2 === 0 ? 'up' : 'down';
+    for (let notch = 0; notch < 3; notch += 1) {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'wheel',
+        column: transcriptPosition.column,
+        row: transcriptPosition.row,
+        direction,
+      });
+    }
   };
   await copySelectionRepeatedly(
     'ACTIVE-TRANSCRIPT',

@@ -44,27 +44,38 @@ export const AT_REST: ScrollMomentum = { velocity: 0, residual: 0 };
 
 class $Momentum {
   /** Fraction of the impulse gain a notch lands with when the regime is AT REST. A lone notch is a
-   *  precision move — it must travel a couple of rows, not a fling's opening jump. */
+   *  precision move — it must travel a row or two, not a fling's opening jump. */
   protected static get initialGainFraction(): number {
     return 0.3;
   }
 
-  /** The |velocity|, as a fraction of the cap, at which impulse gain reaches full strength. Below it
-   *  the gain ramps linearly from `initialGainFraction`, so persistence — not the first notch —
-   *  buys speed. */
-  protected static get gainRampCeilingFraction(): number {
-    return 0.4;
+  /** How many notches' worth of velocity saturate the gain ramp. Scaling the ramp by the profile's
+   *  own impulse keeps acceleration identical across profiles — a raised velocity CAP must make
+   *  flings go farther, never make the ramp longer. */
+  protected static get gainRampNotchSpan(): number {
+    return 3;
   }
 
   /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.
    *  Gain is PROGRESSIVE: a notch from rest lands small (precise single-step feel) and a sustained
-   *  notch train compounds toward the cap, so fluidity is preserved while first steps stay small. */
+   *  notch train compounds toward the cap, so fluidity is preserved while first steps stay small.
+   *  A from-rest notch is floored at the velocity that glides ONE full row before the halt
+   *  threshold eats it — a wheel notch that visibly does nothing is not precision, it is a dead
+   *  input. */
   static addImpulse(momentum: ScrollMomentum, deltaRows: number, options: MomentumOptions = DEFAULT_MOMENTUM): ScrollMomentum {
-    const gainRampCeiling = options.max * $Momentum.gainRampCeilingFraction;
+    const gainRampCeiling = options.impulse * $Momentum.gainRampNotchSpan;
     const gainScale = $Momentum.initialGainFraction
       + (1 - $Momentum.initialGainFraction)
         * Math.min(1, Math.abs(momentum.velocity) / gainRampCeiling);
-    const velocity = momentum.velocity + deltaRows * options.impulse * gainScale;
+    let velocity = momentum.velocity + deltaRows * options.impulse * gainScale;
+    if (momentum.velocity === 0 && deltaRows !== 0) {
+      // Distance to halt from v0 is (v0 - stopVelocity) / -ln(decayPerSec); require >= 1 row.
+      const decayRatePerSecond = -Math.log(options.decayPerSec);
+      const singleRowVelocity = options.stopVelocity + decayRatePerSecond;
+      if (Math.abs(velocity) < singleRowVelocity) {
+        velocity = Math.sign(deltaRows) * singleRowVelocity;
+      }
+    }
     return { velocity: Math.max(-options.max, Math.min(options.max, velocity)), residual: momentum.residual };
   }
 
