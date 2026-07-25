@@ -24,3 +24,29 @@ bun test src/modules/terminal/TerminalEmulatorConformance.test.ts
 Review the expected-grid diff before committing it. A changed recording is
 evidence that OpenTUI's emitted dialect or the visible frame changed; it is not
 an automatic baseline update.
+
+## Shimmed Bash OSC 133 fixture
+
+`terminal-observer-recorded-bash.base64` was captured on 2026-07-25 through
+`PtyTestDriver` at 120×24 on branch `feat-terminal-observer-wave1`, based on
+`origin/main` `bcad359`. The driver launched `/bin/bash` with the real
+`TerminalRcfile` shim, an empty temporary home, `USER=fixture-user`,
+`HOSTNAME=fixture-host`, and working directory
+`/tmp/invar-terminal-observer-fixture`. It typed:
+
+```sh
+printf 'alpha\n'; false; (exit 7)
+```
+
+The fixture records the startup prompt plus the command's A/B/C/D marker
+lifecycle and exit code 7. Its expected file is hand-reviewed parser state; the
+same byte stream drives `TerminalObserver.test.ts` process-free.
+
+Re-record only after a quiet-machine check confirms no merge gate or other
+builder is running:
+
+```sh
+bun scripts/harness/record-terminal-observer-fixture.ts
+bun test src/modules/terminal/TerminalEmulatorConformance.test.ts \
+  src/modules/terminal/TerminalObserver.test.ts
+```
