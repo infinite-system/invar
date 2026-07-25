@@ -67,6 +67,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'storage',
   'syntax',
   'theme',
+  'ui',
   'workspace',
 ]);
 
