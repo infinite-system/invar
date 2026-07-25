@@ -21,6 +21,7 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
+import { TextSegmentation } from '../system/TextSegmentation';
 import { TextDocument } from '../editor/TextDocument';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
@@ -88,9 +89,11 @@ export type AgentPaneRegion =
 function isTypedCharacter(key: KeyEvent): boolean {
   if (key.ctrl || key.meta || key.option) return false;
   const sequence = key.sequence;
-  if (!sequence || sequence.length !== 1) return false;
-  const code = sequence.charCodeAt(0);
-  return code >= 32 && code !== 127;
+  if (!sequence || TextSegmentation.Class.graphemes(sequence).length !== 1) {
+    return false;
+  }
+  const codePoint = sequence.codePointAt(0);
+  return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
 }
 
 class $AgentPaneContent implements PaneContent {
@@ -664,6 +667,21 @@ class $AgentPaneContent implements PaneContent {
   private composerHandled(): boolean {
     this.viewRevision.value += 1;
     return true;
+  }
+
+  moveComposerWordLeft(): void {
+    this.composer.moveWordLeft();
+    this.composerHandled();
+  }
+
+  moveComposerWordRight(): void {
+    this.composer.moveWordRight();
+    this.composerHandled();
+  }
+
+  deleteComposerPreviousWord(): void {
+    this.composer.deletePreviousWord();
+    this.composerHandled();
   }
 
   /** A pointer-down inside the pane at content-local (column, row): run a mode-line action or toggle a

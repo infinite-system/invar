@@ -207,6 +207,26 @@ export const canonicalBindings: Keybinding[] = [
   { chord: { key: 'c', ctrl: true }, action: 'editor.copy', context: 'editor' },
   // Copy the agent pane's transcript/composer selection (the focused agent pane owns Ctrl+C).
   { chord: { key: 'c', ctrl: true }, action: 'agent.copy', context: 'agent' },
+  { chord: { key: 'left', alt: true }, action: 'agent.wordLeft', context: 'agent' },
+  { chord: { key: 'b', alt: true }, action: 'agent.wordLeft', context: 'agent' },
+  { chord: { key: 'right', alt: true }, action: 'agent.wordRight', context: 'agent' },
+  { chord: { key: 'f', alt: true }, action: 'agent.wordRight', context: 'agent' },
+  {
+    chord: { key: 'backspace', alt: true },
+    action: 'agent.deletePreviousWord',
+    context: 'agent',
+  },
+  // A terminal selection owns copy; without a selection the same chord falls through as SIGINT.
+  { chord: { key: 'c', ctrl: true }, action: 'terminal.copy', context: 'terminal' },
+  { chord: { key: 'left', alt: true }, action: 'terminal.wordLeft', context: 'terminal' },
+  { chord: { key: 'b', alt: true }, action: 'terminal.wordLeft', context: 'terminal' },
+  { chord: { key: 'right', alt: true }, action: 'terminal.wordRight', context: 'terminal' },
+  { chord: { key: 'f', alt: true }, action: 'terminal.wordRight', context: 'terminal' },
+  {
+    chord: { key: 'backspace', alt: true },
+    action: 'terminal.deletePreviousWord',
+    context: 'terminal',
+  },
   // Guarded: with a selection Ctrl+X cuts (outranks starting the quit chord); without, the
   // global quit chord starts.
   { chord: { key: 'x', ctrl: true }, action: 'editor.cut', context: 'editor', when: 'editorHasSelection' },

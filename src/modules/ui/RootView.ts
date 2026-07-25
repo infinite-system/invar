@@ -515,7 +515,15 @@ function $buildRootView(
     };
     body.onMouseDrag = (event: MouseEvent) => {
       const agent = agentAtCell();
-      if (!agent) return;
+      if (!agent) {
+        const content = panelHost.resolvedCells[index]?.content;
+        content?.onPointerDrag?.(
+          (event.x as number) - (body.x as number),
+          (event.y as number) - (body.y as number),
+        );
+        renderer.requestRender();
+        return;
+      }
       if (composerDragging) {
         const region = agent.regionAtRow((event.y as number) - (body.y as number));
         const visibleRow = region.kind === 'composer' ? region.visibleRow : agent.viewportRows; // clamp below
@@ -529,7 +537,15 @@ function $buildRootView(
     };
     const endAgentDrag = (event: MouseEvent): void => {
       const agent = agentAtCell();
-      if (!agent) return;
+      if (!agent) {
+        const content = panelHost.resolvedCells[index]?.content;
+        content?.onPointerUp?.(
+          (event.x as number) - (body.x as number),
+          (event.y as number) - (body.y as number),
+        );
+        renderer.requestRender();
+        return;
+      }
       if (composerDragging) {
         composerDragging = false;
         agent.finishComposerSelection();

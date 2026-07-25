@@ -242,6 +242,8 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
         return `terminal command pending at ${event.currentWorkingDirectory || 'unknown cwd'} — waiting for an idle prompt: ${event.command}`;
       case 'staged':
         return `terminal command staged at ${event.currentWorkingDirectory || 'unknown cwd'} — edit it, press Enter to execute, or Ctrl+C to reject: ${event.command}`;
+      case 'replaced-then-staged':
+        return `terminal command replaced-then-staged at ${event.currentWorkingDirectory || 'unknown cwd'}\n- ${event.replacedCommand}\n+ ${event.command}`;
       case 'user-executed':
         return `terminal command user-executed: ${event.command}`;
       case 'user-edited-then-executed':
@@ -318,8 +320,11 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     return terminalPane;
   };
   const terminalToolPort: AgentTerminalToolPort = {
+    readTerminalInput: () => ensureTerminal().readTerminalInput(),
     stageTerminalCommand: (command) =>
       prepareTerminalForAgentCommand().stageTerminalCommand(command),
+    replaceTerminalInput: (command) =>
+      prepareTerminalForAgentCommand().replaceTerminalInput(command),
     runTerminalCommand: (command) =>
       prepareTerminalForAgentCommand().runTerminalCommand(command),
   };
@@ -1141,6 +1146,29 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
         StatusChannel.Class.flush();
       });
     },
+    'agent.wordLeft': () => agentPaneContent?.moveComposerWordLeft(),
+    'agent.wordRight': () => agentPaneContent?.moveComposerWordRight(),
+    'agent.deletePreviousWord': () =>
+      agentPaneContent?.deleteComposerPreviousWord(),
+    'terminal.copy': () => {
+      const pane = terminalPaneContent;
+      if (!pane) return;
+      void pane.copySelection().then((copiedCharacters) => {
+        if (copiedCharacters > 0) {
+          app.copyNotice.value =
+            `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
+        }
+        StatusChannel.Class.update({
+          lastCopyChars: copiedCharacters,
+          lastCopyHash: Clipboard.Class.lastCopiedTextHash,
+          clipboardBackend: Clipboard.Class.lastBackend,
+        });
+        StatusChannel.Class.flush();
+      });
+    },
+    'terminal.wordLeft': (key) => panelHost.handleKey(key),
+    'terminal.wordRight': (key) => panelHost.handleKey(key),
+    'terminal.deletePreviousWord': (key) => panelHost.handleKey(key),
     'editor.cut': () => {
       if (!view.activeMarkdownSplitView()?.previewFocused) void workspaceSet.active.editor.cutSelection();
     },
@@ -1294,6 +1322,38 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
         }
         if (agentResolution.action === 'find.open' || agentResolution.action === 'find.replace') {
           openAgentTranscriptSearch();
+          return;
+        }
+        if (agentResolution.action?.startsWith('agent.')) {
+          actionHandlers[agentResolution.action]?.(key);
+          return;
+        }
+      }
+      if (focusedContent?.id === 'terminal' && terminalPaneContent) {
+        const terminalResolution = keybindings.resolve(
+          {
+            name: key.name,
+            ctrl: key.ctrl,
+            shift: key.shift,
+            option: key.option || key.meta,
+            super: key.super,
+          },
+          'terminal',
+          Date.now(),
+        );
+        if (
+          terminalResolution.action === 'terminal.copy'
+          && terminalPaneContent.hasSelection()
+        ) {
+          actionHandlers['terminal.copy']?.(key);
+          return;
+        }
+        if (terminalResolution.action?.startsWith('terminal.word')) {
+          actionHandlers[terminalResolution.action]?.(key);
+          return;
+        }
+        if (terminalResolution.action === 'terminal.deletePreviousWord') {
+          actionHandlers[terminalResolution.action]?.(key);
           return;
         }
       }

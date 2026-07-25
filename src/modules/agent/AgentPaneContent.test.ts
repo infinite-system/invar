@@ -110,6 +110,12 @@ describe('AgentPaneContent — scroll delegates to the injected engine', () => {
 });
 
 describe('AgentPaneContent — multi-line composer', () => {
+  test('one astral grapheme is accepted as one typed character', () => {
+    const { pane } = makePane();
+    pane.handleKey({ name: '🦊', sequence: '🦊' } as never);
+    expect(paintedText(pane.render(context()))).toContain('🦊');
+  });
+
   test('a long composer input WRAPS and GROWS the composer, shrinking the transcript body', () => {
     const { pane } = makePane();
     const emptyBodyRows = (() => { pane.render(context()); return pane.viewportRows; })();

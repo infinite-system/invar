@@ -11,6 +11,9 @@ import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
 import type { PaneContent, PaneRenderContext } from '../ui/PaneContent';
+import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';
+import { WrapText } from '../ui/WrapText';
+import { Clipboard } from '../system/Clipboard';
 import { TerminalPaneRenderer } from './TerminalPaneRenderer';
 import { TerminalKeys } from './TerminalKeys';
 import type { TerminalInstance } from './TerminalInstance';
@@ -29,6 +32,7 @@ const TERMINAL_PAD_ROWS = 1;
 class $TerminalPaneContent implements PaneContent {
   readonly id = 'terminal';
   readonly icon = '❯'; // ❯
+  protected readonly selection = new TextSelectionModel.Class();
 
   constructor(protected readonly instance: TerminalInstance.Instance) {}
 
@@ -48,6 +52,14 @@ class $TerminalPaneContent implements PaneContent {
       height: context.height,
       padColumns: TERMINAL_PAD_COLUMNS,
       padRows: TERMINAL_PAD_ROWS,
+      selectionRanges: Array.from(
+        { length: this.instance.rows },
+        (_unused, rowIndex) =>
+          this.selection.rangeForLine(
+            rowIndex,
+            WrapText.Class.displayWidth(this.instance.visibleLineText(rowIndex)),
+          ),
+      ),
     });
   }
 
@@ -74,8 +86,64 @@ class $TerminalPaneContent implements PaneContent {
     return this.instance.runTerminalCommand(command);
   }
 
+  replaceTerminalInput(command: string): Promise<TerminalCommandRequestResult> {
+    return this.instance.replaceTerminalInput(command);
+  }
+
+  readTerminalInput(): {
+    currentInputLine: string | null;
+    recentOutputLines: readonly string[];
+  } {
+    return this.instance.readTerminalInput();
+  }
+
   onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
     this.instance.onTerminalCommandEvent(callback);
+  }
+
+  onPointerDown(column: number, row: number): boolean {
+    this.selection.begin(this.selectionPoint(column, row));
+    this.instance.renderRevision.value += 1;
+    return true;
+  }
+
+  onPointerDrag(column: number, row: number): boolean {
+    const point = this.selectionPoint(column, row);
+    this.selection.extend({ line: point.line, column: point.column + 1 });
+    this.instance.renderRevision.value += 1;
+    return true;
+  }
+
+  onPointerUp(): boolean {
+    this.selection.finish();
+    this.instance.renderRevision.value += 1;
+    return true;
+  }
+
+  hasSelection(): boolean {
+    return this.selection.hasSelection();
+  }
+
+  async copySelection(): Promise<number> {
+    const text = this.selection.selectedText((line, startCell, endCell) =>
+      WrapText.Class.sliceByDisplayCells(
+        this.instance.visibleLineText(line),
+        startCell,
+        endCell ?? Number.MAX_SAFE_INTEGER,
+      ), '\n');
+    if (!text) return 0;
+    await Clipboard.Class.copy(text);
+    return text.length;
+  }
+
+  protected selectionPoint(column: number, row: number): SelectionPoint {
+    return {
+      line: Math.max(
+        0,
+        Math.min(this.instance.rows - 1, row - TERMINAL_PAD_ROWS),
+      ),
+      column: Math.max(0, column - TERMINAL_PAD_COLUMNS),
+    };
   }
 
   caret(): { column: number; row: number } | null {

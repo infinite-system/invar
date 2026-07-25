@@ -1,11 +1,11 @@
-// OS clipboard capability with a platform fallback ladder: copy/paste via wl-copy·wl-paste (Wayland)
-// / xclip / xsel / pbcopy·pbpaste (macOS); OSC 52 terminal escape as the copy fallback (works over
-// SSH, write-only). Stateless behavior → a Static capability. Detection is cached at module scope.
+// Clipboard capability with a remote-first copy path: OSC 52 is emitted through the app's stdout so
+// the terminal outside SSH/VM/cmux owns the user's clipboard. Local system tools remain a best-effort
+// companion/fallback and the internal buffer preserves in-app paste.
 import { Static } from 'ivue/extras';
-import { openSync, writeSync, closeSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { Processes } from './Processes';
 
+// invariant: Copy reaches the host terminal (src/modules/terminal/terminal.invariants.md)
 export interface ClipboardTool {
   copy: string[];
   paste: string[];
@@ -59,10 +59,19 @@ class $Clipboard {
   // no clipboard tool and a write-only OSC 52 (this VM: no xclip/xsel/wl-copy, no DISPLAY).
   private static internalBuffer = '';
 
-  /** Copy text: system tool if present, else OSC 52 (tmux-passthrough aware); always buffers in-app. */
+  /** Copy text to the host terminal with OSC 52, plus a local system tool when one is available. */
   static async copy(text: string): Promise<boolean> {
     this.internalBuffer = text;
     this.lastCopiedTextHash = createHash('sha256').update(text, 'utf8').digest('hex');
+    let emittedOsc52 = false;
+    try {
+      const base64 = Buffer.from(text, 'utf-8').toString('base64');
+      process.stdout.write(`\x1b]52;c;${base64}\x07`);
+      emittedOsc52 = true;
+      this.lastBackend = 'osc52';
+    } catch {
+      /* a local tool below remains available */
+    }
     const tool = await detectTool();
     if (tool) {
       try {
@@ -70,35 +79,19 @@ class $Clipboard {
         subprocess.stdin.write(text);
         await subprocess.stdin.end();
         if ((await subprocess.exited) === 0) {
-          this.lastBackend = tool.copy[0] ?? 'tool';
+          const toolName = tool.copy[0] ?? 'tool';
+          this.lastBackend = emittedOsc52 ? `osc52+${toolName}` : toolName;
           return true;
         }
       } catch {
-        /* fall through to OSC 52 */
+        /* OSC 52 may already have delivered remotely */
       }
     }
-    try {
-      const base64 = Buffer.from(text, 'utf-8').toString('base64');
-      // PLAIN OSC 52, even inside tmux: with set-clipboard on/external tmux itself intercepts it,
-      // stores a tmux paste buffer, AND forwards to the outer terminal. (A Ptmux passthrough
-      // wrapper would BYPASS tmux's handling and is dropped by default on tmux >= 3.3.)
-      // Written to /dev/tty, NOT process.stdout — the TUI renderer owns/filters stdout and the
-      // escape never reached the pty through it (verified: bare-shell OSC 52 lands in the tmux
-      // buffer; the same escape via stdout under the renderer does not).
-      const sequence = `\x1b]52;c;${base64}\x07`;
-      try {
-        const tty = openSync('/dev/tty', 'w');
-        writeSync(tty, sequence);
-        closeSync(tty);
-      } catch {
-        process.stdout.write(sequence); // no controlling tty (tests) — best effort
-      }
-      this.lastBackend = 'osc52';
-      return true;
-    } catch {
+    if (!emittedOsc52) {
       this.lastBackend = null;
       return false;
     }
+    return true;
   }
 
   /** Read the clipboard: system tool if present, else the in-app buffer (OSC 52 is write-only). */

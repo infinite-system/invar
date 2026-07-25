@@ -5,6 +5,7 @@
 // control-byte and arrow cases.
 //
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+// invariant: Terminal word operations reach readline (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';
 import type { KeyEvent } from '@opentui/core';
 
@@ -38,6 +39,13 @@ function $encode(key: KeyEvent): string {
   if (key.ctrl && !key.meta && !key.option && name && name.length === 1) {
     const code = name.toLowerCase().charCodeAt(0);
     if (code >= 97 && code <= 122) return String.fromCharCode(code - 96);
+  }
+  // Readline word operations use Meta sequences. OpenTUI may decode a legacy ESC prefix as `meta`
+  // or a modifier-aware protocol as `option`; both must return the same bytes to the child shell.
+  if ((key.meta || key.option) && !key.ctrl) {
+    if (name === 'left' || name === 'b') return '\x1bb';
+    if (name === 'right' || name === 'f') return '\x1bf';
+    if (name === 'backspace' || name === 'delete') return '\x1b\x7f';
   }
   // Shift+Tab is the back-tab sequence.
   if (name === 'tab' && key.shift) return `${CSI}Z`;

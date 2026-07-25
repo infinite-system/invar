@@ -44,3 +44,9 @@ test('Shift+Tab encodes the back-tab sequence', () => {
 test('an unmapped modified key yields no bytes (not consumed)', () => {
   expect(TerminalKeys.Class.encode(key({ name: 'f5' }))).toBe('');
 });
+
+test('word operations forward canonical readline meta sequences', () => {
+  expect(TerminalKeys.Class.encode(key({ name: 'left', option: true }))).toBe('\x1bb');
+  expect(TerminalKeys.Class.encode(key({ name: 'right', meta: true }))).toBe('\x1bf');
+  expect(TerminalKeys.Class.encode(key({ name: 'backspace', meta: true }))).toBe('\x1b\x7f');
+});

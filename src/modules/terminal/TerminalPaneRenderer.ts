@@ -9,6 +9,7 @@
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import type { Palette } from '../theme/ThemePalettes';
+import type { SelectionSpanRange } from '../ui/TextSelectionModel';
 import type { TerminalInstance } from './TerminalInstance';
 import type { TerminalCell } from './TerminalEmulator';
 
@@ -23,6 +24,7 @@ export interface TerminalPaneRenderContext {
   padColumns?: number;
   /** Top/bottom gutter rows kept blank around the emulator (default 0). */
   padRows?: number;
+  selectionRanges?: readonly (SelectionSpanRange | null)[];
 }
 
 // The 16 standard ANSI palette colors (0–15) as hex. 256-color indices 16–255 are computed from the
@@ -68,11 +70,16 @@ function backgroundHex(cell: TerminalCell, panelBackground: string): string | nu
   return panelBackground;
 }
 
-function styleKey(cell: TerminalCell): string {
-  return `${cell.foreground}:${cell.background}:${cell.isForegroundRgb}:${cell.isForegroundPalette}:${cell.isBackgroundRgb}:${cell.isBackgroundPalette}:${cell.isBold}:${cell.isInverse}`;
+function styleKey(cell: TerminalCell, selected: boolean): string {
+  return `${cell.foreground}:${cell.background}:${cell.isForegroundRgb}:${cell.isForegroundPalette}:${cell.isBackgroundRgb}:${cell.isBackgroundPalette}:${cell.isBold}:${cell.isInverse}:${selected}`;
 }
 
-function chunkFor(text: string, cell: TerminalCell, palette: Palette): TextChunk {
+function chunkFor(
+  text: string,
+  cell: TerminalCell,
+  palette: Palette,
+  selected: boolean,
+): TextChunk {
   let foreground = foregroundHex(cell, palette);
   let background = backgroundHex(cell, palette.panel);
   if (cell.isInverse) {
@@ -80,6 +87,7 @@ function chunkFor(text: string, cell: TerminalCell, palette: Palette): TextChunk
     background = foreground;
     foreground = swap;
   }
+  if (selected) background = palette.selection;
   let chunk = fg(foreground)(text);
   if (cell.isBold) chunk = bold(chunk);
   if (background && background !== palette.panel) chunk = bg(background)(chunk);
@@ -101,12 +109,16 @@ function $render(context: TerminalPaneRenderContext): StyledText {
     if (leadingGutter) rowChunks.push(fg(palette.fg)(leadingGutter));
     let runText = '';
     let runCell: TerminalCell | null = null;
+    let runSelected = false;
     let runKey = '';
     const flushRun = () => {
-      if (runCell && runText) rowChunks.push(chunkFor(runText, runCell, palette));
+      if (runCell && runText) {
+        rowChunks.push(chunkFor(runText, runCell, palette, runSelected));
+      }
       runText = '';
       runCell = null;
       runKey = '';
+      runSelected = false;
     };
     let columnIndex = 0;
     while (columnIndex < columns) {
@@ -117,11 +129,16 @@ function $render(context: TerminalPaneRenderContext): StyledText {
         isBold: false, isDim: false, isItalic: false, isUnderline: false, isBlink: false,
         isInverse: false, isInvisible: false, isStrikethrough: false, isOverline: false, width: 1,
       };
-      const key = styleKey(cell);
+      const selectionRange = context.selectionRanges?.[rowIndex] ?? null;
+      const selected = selectionRange !== null
+        && columnIndex < selectionRange.end
+        && columnIndex + Math.max(1, cell.width) > selectionRange.start;
+      const key = styleKey(cell, selected);
       if (runCell && key !== runKey) flushRun();
       runText += cell.characters;
       runCell = cell;
       runKey = key;
+      runSelected = selected;
       // A wide (2-cell) glyph occupies the next column with a 0-width spacer xterm returns as ''.
       columnIndex += Math.max(1, cell.width);
     }

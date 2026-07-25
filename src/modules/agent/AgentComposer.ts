@@ -11,6 +11,7 @@ import { TextEditing } from '../editor/TextEditing';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { Clipboard } from '../system/Clipboard';
 
+// invariant: Composer word edits share one seam (src/modules/agent/agent.invariants.md)
 /** Max visual rows the composer grows to before it scrolls internally (keeps the cursor line visible). */
 export const COMPOSER_MAX_ROWS = 5;
 /** The prompt gutter width ("❯ " on line 1, "  " on continuations) reserved on every composer row. */

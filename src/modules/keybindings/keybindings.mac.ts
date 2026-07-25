@@ -33,6 +33,7 @@ export const macOverlayBindings: Keybinding[] = [
   // Ctrl forms remain the floor).
   { chord: { key: 'c', super: true }, action: 'editor.copy', context: 'editor' },
   { chord: { key: 'c', super: true }, action: 'agent.copy', context: 'agent' },
+  { chord: { key: 'c', super: true }, action: 'terminal.copy', context: 'terminal' },
   { chord: { key: 'v', super: true }, action: 'editor.paste', context: 'editor' },
   { chord: { key: 'x', super: true }, action: 'editor.cut', context: 'editor', when: 'editorHasSelection' },
   { chord: { key: 'a', super: true }, action: 'editor.selectAll', context: 'editor' },
