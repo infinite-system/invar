@@ -17,60 +17,54 @@
 // the per-frame re-assert free.
 //
 // invariant: A scrollbar thumb is painted as background fill, never block glyphs (src/modules/ui/ui.invariants.md)
-import {
-  ScrollBarRenderable,
-  type ScrollBarOptions,
-  type OptimizedBuffer,
-  type RenderContext,
-} from '@opentui/core';
-
+import { ScrollBarRenderable, type ScrollBarOptions, type OptimizedBuffer, type RenderContext, } from '@opentui/core';
+class $SolidThumbScrollBar extends ScrollBarRenderable {
+    constructor(context: RenderContext, options: ScrollBarOptions) {
+        super(context, options);
+        const slider = this.slider;
+        const paintSurface = slider as unknown as SliderPaintSurface;
+        // Instance-level override shadows the prototype's glyph painter (render() dispatches through
+        // `this.renderSelf`). Track first, thumb over it — both as background fill on blank cells.
+        paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
+            buffer.fillRect(slider.x, slider.y, slider.width, slider.height, slider.backgroundColor);
+            const thumbRect = paintSurface.getThumbRect();
+            buffer.fillRect(thumbRect.x, thumbRect.y, thumbRect.width, thumbRect.height, slider.foregroundColor);
+        };
+    }
+    /** Re-assert the slider's viewport AFTER the scroll state settled — the slider clamps viewPortSize
+     *  against max-min at assignment time, and the base class assigns it before max is updated. */
+    protected reassertSliderViewport(): void {
+        this.slider.viewPortSize = Math.max(1, super.viewportSize);
+    }
+    override get scrollSize(): number {
+        return super.scrollSize;
+    }
+    override set scrollSize(value: number) {
+        super.scrollSize = value;
+        this.reassertSliderViewport();
+    }
+    override get viewportSize(): number {
+        return super.viewportSize;
+    }
+    override set viewportSize(value: number) {
+        super.viewportSize = value;
+        this.reassertSliderViewport();
+    }
+}
+export namespace SolidThumbScrollBar {
+    export const $Class = $SolidThumbScrollBar;
+    export let Class = $Class;
+    export type Model = InstanceType<typeof Class>;
+}
 /** The slider internals this subclass repaints through: TypeScript-private in OpenTUI's declaration
  *  but plain methods at runtime. getThumbRect is the hit-test's own geometry — reusing it (instead of
  *  re-deriving the rect) is what keeps renderer and hit-test on ONE model. */
 interface SliderPaintSurface {
-  getThumbRect(): { x: number; y: number; width: number; height: number };
-  renderSelf(buffer: OptimizedBuffer): void;
-}
-
-class $SolidThumbScrollBar extends ScrollBarRenderable {
-  constructor(context: RenderContext, options: ScrollBarOptions) {
-    super(context, options);
-    const slider = this.slider;
-    const paintSurface = slider as unknown as SliderPaintSurface;
-    // Instance-level override shadows the prototype's glyph painter (render() dispatches through
-    // `this.renderSelf`). Track first, thumb over it — both as background fill on blank cells.
-    paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
-      buffer.fillRect(slider.x, slider.y, slider.width, slider.height, slider.backgroundColor);
-      const thumbRect = paintSurface.getThumbRect();
-      buffer.fillRect(thumbRect.x, thumbRect.y, thumbRect.width, thumbRect.height, slider.foregroundColor);
+    getThumbRect(): {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
     };
-  }
-
-  /** Re-assert the slider's viewport AFTER the scroll state settled — the slider clamps viewPortSize
-   *  against max-min at assignment time, and the base class assigns it before max is updated. */
-  private reassertSliderViewport(): void {
-    this.slider.viewPortSize = Math.max(1, super.viewportSize);
-  }
-
-  override get scrollSize(): number {
-    return super.scrollSize;
-  }
-  override set scrollSize(value: number) {
-    super.scrollSize = value;
-    this.reassertSliderViewport();
-  }
-
-  override get viewportSize(): number {
-    return super.viewportSize;
-  }
-  override set viewportSize(value: number) {
-    super.viewportSize = value;
-    this.reassertSliderViewport();
-  }
-}
-
-export namespace SolidThumbScrollBar {
-  export const $Class = $SolidThumbScrollBar;
-  export let Class = $Class;
-  export type Model = InstanceType<typeof Class>;
+    renderSelf(buffer: OptimizedBuffer): void;
 }
