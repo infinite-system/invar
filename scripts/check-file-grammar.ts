@@ -50,6 +50,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'diff',
   'editor',
   'git',
+  'image',
   'lsp',
   'markdown',
   'syntax',
