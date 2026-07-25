@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { JsonRpc, type JsonRpcMessage, type JsonRpcResponse } from '../JsonRpc';
+import { JsonRpc, type JsonRpcMessage, type JsonRpcResponse } from './JsonRpc';
 
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 

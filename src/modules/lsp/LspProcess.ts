@@ -1,45 +1,19 @@
 import type { LanguageServerCommand } from './LanguageProvider';
 import { Processes } from '../system/Processes';
 
-export interface LspWritable {
-  write(data: Uint8Array): number | Promise<number>;
-  flush?(): unknown;
-  end?(): unknown;
-}
-
-export interface LspProcessLike {
-  readonly stdin: LspWritable | null;
-  readonly stdout: ReadableStream<Uint8Array> | null;
-  readonly exited: Promise<number>;
-  readonly pid: number | null;
-  readonly running: boolean;
-  readonly error: string | null;
-  start(command: LanguageServerCommand, cwd: string): boolean;
-  dispose(): void;
-}
-
-interface SpawnedLspProcess {
-  stdin: {
-    write(data: Uint8Array): number | Promise<number>;
-    flush(): unknown;
-    end(): unknown;
-  };
-  stdout: ReadableStream<Uint8Array>;
-  stderr: ReadableStream<Uint8Array>;
-  exited: Promise<number>;
-  pid: number;
-  kill(signal?: number | NodeJS.Signals): void;
-}
-
 class $LspProcess implements LspProcessLike {
-  private child: SpawnedLspProcess | null = null;
-  private input: LspWritable | null = null;
-  private output: ReadableStream<Uint8Array> | null = null;
-  private exitPromise: Promise<number> = Promise.resolve(-1);
-  private processError: string | null = null;
-  private isRunning = false;
-  private generation = 0;
-  private stderrText = '';
+  protected child: SpawnedLspProcess | null = null;
+  protected input: LspWritable | null = null;
+  protected output: ReadableStream<Uint8Array> | null = null;
+  protected exitPromise: Promise<number> = Promise.resolve(-1);
+  protected processError: string | null = null;
+  protected isRunning = false;
+  protected generation = 0;
+  protected stderrText = '';
+
+  protected get Processes() {
+    return Processes.Class;
+  }
 
   get stdin(): LspWritable | null {
     return this.input;
@@ -75,7 +49,7 @@ class $LspProcess implements LspProcessLike {
     this.stderrText = '';
     const generation = ++this.generation;
     try {
-      const child = Processes.Class.spawn([command.command, ...command.args], {
+      const child = this.Processes.spawn([command.command, ...command.args], {
         cwd,
         stdin: 'pipe',
         stdout: 'pipe',
@@ -126,7 +100,7 @@ class $LspProcess implements LspProcessLike {
     }
   }
 
-  private onExit(generation: number, code: number): number {
+  protected onExit(generation: number, code: number): number {
     if (generation !== this.generation) return code;
     this.isRunning = false;
     if (code !== 0) {
@@ -136,7 +110,7 @@ class $LspProcess implements LspProcessLike {
     return code;
   }
 
-  private onExitError(generation: number, reason: unknown): number {
+  protected onExitError(generation: number, reason: unknown): number {
     if (generation === this.generation) {
       this.isRunning = false;
       this.processError = String(reason);
@@ -144,7 +118,10 @@ class $LspProcess implements LspProcessLike {
     return -1;
   }
 
-  private async readStderr(stream: ReadableStream<Uint8Array>, generation: number): Promise<void> {
+  protected async readStderr(
+    stream: ReadableStream<Uint8Array>,
+    generation: number,
+  ): Promise<void> {
     try {
       const reader = stream.getReader();
       const decoder = new TextDecoder();
@@ -166,4 +143,34 @@ export namespace LspProcess {
   export const $Class = $LspProcess;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface LspWritable {
+  write(data: Uint8Array): number | Promise<number>;
+  flush?(): unknown;
+  end?(): unknown;
+}
+
+export interface LspProcessLike {
+  readonly stdin: LspWritable | null;
+  readonly stdout: ReadableStream<Uint8Array> | null;
+  readonly exited: Promise<number>;
+  readonly pid: number | null;
+  readonly running: boolean;
+  readonly error: string | null;
+  start(command: LanguageServerCommand, cwd: string): boolean;
+  dispose(): void;
+}
+
+interface SpawnedLspProcess {
+  stdin: {
+    write(data: Uint8Array): number | Promise<number>;
+    flush(): unknown;
+    end(): unknown;
+  };
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+  exited: Promise<number>;
+  pid: number;
+  kill(signal?: number | NodeJS.Signals): void;
 }

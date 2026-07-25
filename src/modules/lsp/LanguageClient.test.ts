@@ -1,8 +1,8 @@
 import { test, expect } from 'bun:test';
-import { LanguageClient } from '../LanguageClient';
-import { TextDocument } from '../../editor/TextDocument';
-import { StatusChannel } from '../../system/StatusChannel';
-import { FakeLspProcess, FakeProvider, flush } from './fakes';
+import { LanguageClient } from './LanguageClient';
+import { TextDocument } from '../editor/TextDocument';
+import { StatusChannel } from '../system/StatusChannel';
+import { FakeLspProcess, FakeProvider, flush } from './lsp.fakes.test';
 
 const ROOT = '/tmp/fake-lsp-root';
 

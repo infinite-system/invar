@@ -5,13 +5,13 @@
 // Client->server bytes are decoded with a `JsonRpc` instance; requests are auto-answered
 // (initialize + shutdown, plus a scriptable responder map). Tests drive the server->client
 // direction directly via `pushNotification` / `pushDiagnostics`.
-import { JsonRpc, type JsonRpcMessage } from '../JsonRpc';
-import type { LanguageServerCommand } from '../LanguageProvider';
-import type { LspProcessLike, LspWritable } from '../LspProcess';
+import { JsonRpc, type JsonRpcMessage } from './JsonRpc';
+import type { LanguageServerCommand } from './LanguageProvider';
+import type { LspProcessLike, LspWritable } from './LspProcess';
 import type {
   LanguageCapabilities,
   LanguageProvider,
-} from '../LanguageProvider';
+} from './LanguageProvider';
 
 export type ServerResponder = (params: unknown) => unknown;
 

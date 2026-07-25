@@ -1,9 +1,9 @@
 import { test, expect } from 'bun:test';
 import { resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { LanguageClient } from '../LanguageClient';
-import { TextDocument } from '../../editor/TextDocument';
-import { FakeLspProcess, FakeProvider, flush } from './fakes';
+import { LanguageClient } from './LanguageClient';
+import { TextDocument } from '../editor/TextDocument';
+import { FakeLspProcess, FakeProvider, flush } from './lsp.fakes.test';
 
 const ROOT = '/tmp/fake-lsp-diag';
 

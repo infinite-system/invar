@@ -9,7 +9,11 @@ import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import { Reactive } from 'ivue';
 import { Workspace } from './Workspace';
 import { LanguageClient } from '../lsp/LanguageClient';
-import { FakeLspProcess, FakeProvider, flush } from '../lsp/__tests__/fakes';
+import {
+  FakeLspProcess,
+  FakeProvider,
+  flush,
+} from '../lsp/lsp.fakes.test';
 import {
   mkdtempSync as makeTemporaryDirectorySync,
   rmSync as removeSync,

@@ -9,24 +9,20 @@ import {
 import type { ReadableStreamDefaultReader } from 'node:stream/web';
 import type { LspProcessLike } from './LspProcess';
 
-export type LspNotificationHandler = (method: string, params: unknown) => void | Promise<void>;
-export type LspRequestHandler = (method: string, params: unknown) => unknown | Promise<unknown>;
-export type LspCloseHandler = (reason: Error) => void;
-
 class $LspTransport {
-  private readonly rpc: JsonRpc.Model;
+  protected readonly rpc: JsonRpc.Model;
   // The `node:stream/web` default reader is exactly what `ReadableStream#getReader()` yields
   // under Bun's lib types. The bare global `ReadableStreamDefaultReader` is a different type
   // that demands `readMany` (a Bun web-stream method the DOM reader lacks); pinning to the
   // node type removes that mismatch. The pump only calls read/cancel/releaseLock.
-  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  private notificationHandler: LspNotificationHandler | null = null;
-  private requestHandler: LspRequestHandler | null = null;
-  private closeHandler: LspCloseHandler | null = null;
-  private active = false;
-  private closeReason: Error | null = null;
+  protected reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  protected notificationHandler: LspNotificationHandler | null = null;
+  protected requestHandler: LspRequestHandler | null = null;
+  protected closeHandler: LspCloseHandler | null = null;
+  protected active = false;
+  protected closeReason: Error | null = null;
 
-  constructor(private readonly process: LspProcessLike) {
+  constructor(protected readonly process: LspProcessLike) {
     this.rpc = this.createJsonRpc();
   }
 
@@ -101,7 +97,7 @@ class $LspTransport {
     this.closeHandler = null;
   }
 
-  private async send(message: JsonRpcMessage): Promise<void> {
+  protected async send(message: JsonRpcMessage): Promise<void> {
     if (!this.active) throw this.closeReason ?? new Error('LSP transport is not running');
     const input = this.process.stdin;
     if (!input) throw new Error('Language server stdin is unavailable');
@@ -115,7 +111,7 @@ class $LspTransport {
     }
   }
 
-  private async pump(): Promise<void> {
+  protected async pump(): Promise<void> {
     const reader = this.reader;
     if (!reader) return;
     try {
@@ -139,7 +135,7 @@ class $LspTransport {
     }
   }
 
-  private dispatch(message: JsonRpcMessage): void {
+  protected dispatch(message: JsonRpcMessage): void {
     if (!('method' in message)) return;
     if ('id' in message) {
       void this.dispatchRequest(message.id, message.method, message.params);
@@ -154,7 +150,11 @@ class $LspTransport {
     }
   }
 
-  private async dispatchRequest(id: JsonRpcId, method: string, params: unknown): Promise<void> {
+  protected async dispatchRequest(
+    id: JsonRpcId,
+    method: string,
+    params: unknown,
+  ): Promise<void> {
     if (!this.requestHandler) {
       await this.respond(id, null, { code: -32601, message: `Method not found: ${method}` });
       return;
@@ -167,7 +167,7 @@ class $LspTransport {
     }
   }
 
-  private close(reason: Error): void {
+  protected close(reason: Error): void {
     if (!this.active && this.closeReason) return;
     this.active = false;
     this.closeReason = reason;
@@ -175,7 +175,7 @@ class $LspTransport {
     this.closeHandler?.(reason);
   }
 
-  private toError(reason: unknown): Error {
+  protected toError(reason: unknown): Error {
     return reason instanceof Error ? reason : new Error(String(reason));
   }
 }
@@ -185,3 +185,13 @@ export namespace LspTransport {
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
+export type LspNotificationHandler = (
+  method: string,
+  params: unknown,
+) => void | Promise<void>;
+export type LspRequestHandler = (
+  method: string,
+  params: unknown,
+) => unknown | Promise<unknown>;
+export type LspCloseHandler = (reason: Error) => void;

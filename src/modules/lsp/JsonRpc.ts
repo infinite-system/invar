@@ -1,58 +1,19 @@
-export type JsonRpcId = number | string;
-
-export interface JsonRpcRequest {
-  jsonrpc: '2.0';
-  id: JsonRpcId;
-  method: string;
-  params?: unknown;
-}
-
-export interface JsonRpcNotification {
-  jsonrpc: '2.0';
-  method: string;
-  params?: unknown;
-}
-
-export interface JsonRpcError {
-  code: number;
-  message: string;
-  data?: unknown;
-}
-
-export interface JsonRpcResponse {
-  jsonrpc: '2.0';
-  id: JsonRpcId | null;
-  result?: unknown;
-  error?: JsonRpcError;
-}
-
-export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcResponse;
-
-export interface PendingJsonRpcRequest<Result = unknown> {
-  id: JsonRpcId;
-  message: JsonRpcRequest;
-  response: Promise<Result>;
-}
-
-export interface JsonRpcOptions {
-  maxHeaderBytes?: number;
-  maxMessageBytes?: number;
-}
-
-interface PendingResponse {
-  resolve(value: unknown): void;
-  reject(reason: Error): void;
-}
-
-const HEADER_END = new Uint8Array([13, 10, 13, 10]);
-
 class $JsonRpc {
-  private bytes = new Uint8Array(0);
-  private bodyLength: number | null = null;
-  private requestId = 0;
-  private readonly pending = new Map<JsonRpcId, PendingResponse>();
-  private readonly maxHeaderBytes: number;
-  private readonly maxMessageBytes: number;
+  protected static get $headerEnd(): Uint8Array {
+    const headerEnd = new Uint8Array([13, 10, 13, 10]);
+    Object.defineProperty(this, '$headerEnd', {
+      configurable: true,
+      value: headerEnd,
+    });
+    return headerEnd;
+  }
+
+  protected bytes = new Uint8Array(0);
+  protected bodyLength: number | null = null;
+  protected requestId = 0;
+  protected readonly pending = new Map<JsonRpcId, PendingResponse>();
+  protected readonly maxHeaderBytes: number;
+  protected readonly maxMessageBytes: number;
 
   constructor(options: JsonRpcOptions = {}) {
     this.maxHeaderBytes = options.maxHeaderBytes ?? 8 * 1024;
@@ -122,7 +83,10 @@ class $JsonRpc {
         }
         const headerBytes = this.bytes.slice(0, headerEnd);
         this.bodyLength = this.parseContentLength(headerBytes);
-        this.bytes = this.bytes.slice(headerEnd + HEADER_END.byteLength);
+        const jsonRpcClass = this.constructor as typeof $JsonRpc;
+        this.bytes = this.bytes.slice(
+          headerEnd + jsonRpcClass.$headerEnd.byteLength,
+        );
       }
 
       if (this.bytes.byteLength < this.bodyLength) break;
@@ -140,7 +104,7 @@ class $JsonRpc {
     return messages;
   }
 
-  private append(chunk: Uint8Array): void {
+  protected append(chunk: Uint8Array): void {
     if (chunk.byteLength === 0) return;
     if (this.bytes.byteLength === 0) {
       this.bytes = chunk.slice();
@@ -152,12 +116,18 @@ class $JsonRpc {
     this.bytes = joined;
   }
 
-  private findHeaderEnd(): number {
-    const lastStart = this.bytes.byteLength - HEADER_END.byteLength;
+  protected findHeaderEnd(): number {
+    const jsonRpcClass = this.constructor as typeof $JsonRpc;
+    const headerEnd = jsonRpcClass.$headerEnd;
+    const lastStart = this.bytes.byteLength - headerEnd.byteLength;
     for (let offset = 0; offset <= lastStart; offset++) {
       let matches = true;
-      for (let headerOffset = 0; headerOffset < HEADER_END.byteLength; headerOffset++) {
-        if (this.bytes[offset + headerOffset] !== HEADER_END[headerOffset]) {
+      for (
+        let headerOffset = 0;
+        headerOffset < headerEnd.byteLength;
+        headerOffset++
+      ) {
+        if (this.bytes[offset + headerOffset] !== headerEnd[headerOffset]) {
           matches = false;
           break;
         }
@@ -167,7 +137,7 @@ class $JsonRpc {
     return -1;
   }
 
-  private parseContentLength(headerBytes: Uint8Array): number {
+  protected parseContentLength(headerBytes: Uint8Array): number {
     // LSP headers are ASCII; UTF-8 decodes them identically. (Bun's TextDecoder type
     // rejects the 'ascii' label.)
     const header = new TextDecoder().decode(headerBytes);
@@ -189,7 +159,7 @@ class $JsonRpc {
     return length;
   }
 
-  private isMessage(value: unknown): value is JsonRpcMessage {
+  protected isMessage(value: unknown): value is JsonRpcMessage {
     if (!value || typeof value !== 'object') return false;
     const candidate = value as Record<string, unknown>;
     if (candidate.jsonrpc !== '2.0') return false;
@@ -197,7 +167,7 @@ class $JsonRpc {
     return 'id' in candidate && ('result' in candidate || 'error' in candidate);
   }
 
-  private correlate(message: JsonRpcMessage): void {
+  protected correlate(message: JsonRpcMessage): void {
     if ('method' in message || message.id === null) return;
     const pending = this.pending.get(message.id);
     if (!pending) return;
@@ -216,4 +186,53 @@ export namespace JsonRpc {
   export const $Class = $JsonRpc;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export type JsonRpcId = number | string;
+
+export interface JsonRpcRequest {
+  jsonrpc: '2.0';
+  id: JsonRpcId;
+  method: string;
+  params?: unknown;
+}
+
+export interface JsonRpcNotification {
+  jsonrpc: '2.0';
+  method: string;
+  params?: unknown;
+}
+
+export interface JsonRpcError {
+  code: number;
+  message: string;
+  data?: unknown;
+}
+
+export interface JsonRpcResponse {
+  jsonrpc: '2.0';
+  id: JsonRpcId | null;
+  result?: unknown;
+  error?: JsonRpcError;
+}
+
+export type JsonRpcMessage =
+  | JsonRpcRequest
+  | JsonRpcNotification
+  | JsonRpcResponse;
+
+export interface PendingJsonRpcRequest<Result = unknown> {
+  id: JsonRpcId;
+  message: JsonRpcRequest;
+  response: Promise<Result>;
+}
+
+export interface JsonRpcOptions {
+  maxHeaderBytes?: number;
+  maxMessageBytes?: number;
+}
+
+interface PendingResponse {
+  resolve(value: unknown): void;
+  reject(reason: Error): void;
 }
