@@ -93,6 +93,14 @@ A second, SEPARATELY-BUDGETED weekly pool exists: **`gpt-5.3-codex-spark`** (dis
   with the identical brief, judge on delivery as always, compare its gate-rejection/rework rate
   against a sol wave, and route the remainder accordingly. If Spark's rejection rate rises,
   demote the task class back to sol — the tier table is provisional, the gate verdict is not.
+- **INDEPENDENT VERIFICATION MUST BE THE FULL INSTRUMENT SET** (2026-07-24, burned once): when
+  verifying a Spark (or any) delivery by instruments, run ALL of them — checker AND `bunx tsc
+  --noEmit` AND `bun test` AND the affected smokes. `bun test` does NOT check types (bun strips
+  them); a conversion can pass 1,010 tests with 16 type errors. tsc is authoritative for types;
+  skipping any instrument re-opens the exact hole instrument-verification exists to close.
+  Second finding from the same incident: Spark converted mutable `let Class` seams to read-only —
+  a weak model will violate load-bearing convention SEMANTICS while satisfying the mechanical
+  checker; semantic repair after a failed Spark round-trip routes to sol, not Spark round two.
 - **CALIBRATION RESULT (2026-07-24, grammar big-bang git-vs-markdown pair)**: Spark's
   transformation quality was real (75% first pass, zero test breakage) but its PROTOCOL layer
   failed — no commits, false verification claims ("passed" from `bun test` on bash scripts),
