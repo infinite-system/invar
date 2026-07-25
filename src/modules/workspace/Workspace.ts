@@ -1,7 +1,3 @@
-// A workspace: one project root with its file tree, an editor, and which pane has focus.
-// WorkspaceSet layers project tabs and flyweight activation over this per-root core.
-//
-// invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 import { Reactive } from 'ivue';
 import { computed, ref, shallowRef } from 'vue';
 import { spawnSync } from 'node:child_process';
@@ -38,52 +34,30 @@ import {
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath } from 'node:path';
 
-/** The project name for a root: the basename of the parent of the git COMMON dir — shared by the
- *  main checkout and every linked worktree of the same repository. `--git-common-dir` resolves to
- *  `<checkout>/.git` for the main checkout and to `<project>/.git` for a worktree, so its parent is
- *  the project root in both cases. Returns '' when the root is not a git repository (caller falls
- *  back to the folder name). One synchronous git call, in open() only — never a hot path. */
-function projectNameForRoot(absoluteRoot: string): string {
-  const result = spawnSync(
-    'git',
-    ['-C', absoluteRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
-    { encoding: 'utf8', timeout: 2000 },
-  );
-  if (result.status !== 0) return '';
-  const commonDir = result.stdout.trim();
-  return commonDir ? Files.Class.basename(Files.Class.dirname(commonDir)) : '';
-}
-
-export type Focus = 'files' | 'editor' | 'git';
-
-/** Which panel the activity bar shows in the sidebar for this workspace. 'extensions' is a
- *  placeholder view for now. Persisted per workspace (it is model state on the Workspace). */
-export type SidebarView = 'files' | 'git' | 'extensions';
-
-/** One diagnostic's span on a single line: grapheme columns [startColumn, endColumn) and its severity
- *  (1 = error, 2 = warning, 3 = info, 4 = hint). A multi-line diagnostic yields one mark per line. */
-export interface DiagnosticLineMark {
-  startColumn: number;
-  endColumn: number;
-  severity: 1 | 2 | 3 | 4;
-}
-
-/** A diagnostic surfaced in the hover card: its severity and message text. */
-export interface HoverDiagnostic {
-  severity: 1 | 2 | 3 | 4;
-  message: string;
-}
-
-/** The two full-text SIDES of a side-by-side diff shown by the DiffView (token forces a rebuild). */
-export interface DiffRequest {
-  token: number;
-  previousVersionText: string;
-  currentVersionText: string;
-  previousVersionPath: string;
-  currentVersionPath: string;
-}
+// A workspace: one project root with its file tree, an editor, and which pane has focus.
+// WorkspaceSet layers project tabs and flyweight activation over this per-root core.
+//
+// invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 
 class $Workspace {
+  /** The project name for a root: the basename of the parent of the git COMMON dir — shared by the
+   *  main checkout and every linked worktree of the same repository. `--git-common-dir` resolves to
+   *  `<checkout>/.git` for the main checkout and to `<project>/.git` for a worktree, so its parent is
+   *  the project root in both cases. Returns '' when the root is not a git repository (caller falls
+   *  back to the folder name). One synchronous git call, in open() only — never a hot path. */
+  protected static projectNameForRoot(absoluteRoot: string): string {
+    const result = spawnSync(
+      'git',
+      ['-C', absoluteRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+      { encoding: 'utf8', timeout: 2000 },
+    );
+    if (result.status !== 0) return '';
+    const commonDirectory = result.stdout.trim();
+    return commonDirectory
+      ? Files.Class.basename(Files.Class.dirname(commonDirectory))
+      : '';
+  }
+
   protected get GitCommands() {
     return GitCommands.Class;
   }
@@ -147,7 +121,7 @@ class $Workspace {
   // --- language intelligence (one client per workspace root) --------------------------------
   // The client is created lazily on the first buffer open; the LSP subprocess itself starts only
   // when a SUPPORTED document opens or a semantic request runs (activation follows demand).
-  private languageClientInstance: LanguageClient.Model | null = null;
+  protected languageClientInstance: LanguageClient.Model | null = null;
   protected createLanguageClient(): LanguageClient.Model {
     // Late-read the TypeScript-server choice so a settings change (or an attach that lands after this
     // client is created) is honoured when a document activates the server.
@@ -160,7 +134,7 @@ class $Workspace {
       fileSizeLimitKb: () => this.settingsSource?.lspFileSizeLimitKb.value ?? 0,
     });
   }
-  private ensureLanguageClient(): LanguageClient.Model {
+  protected ensureLanguageClient(): LanguageClient.Model {
     if (!this.languageClientInstance) this.languageClientInstance = this.createLanguageClient();
     return this.languageClientInstance;
   }
@@ -222,7 +196,7 @@ class $Workspace {
    *  open in the server (and to the original declaration when it is — both observed against
    *  typescript-language-server). One re-request from the import specifier reaches the original
    *  declaration, matching VS Code. */
-  private async rehopThroughImportSpecifier(
+  protected async rehopThroughImportSpecifier(
     client: LanguageClient.Model,
     document: TextDocumentModel,
     location: LanguageLocation,
@@ -283,7 +257,7 @@ class $Workspace {
   }
 
   /** Open the located file through the existing tab path and reveal the declaration. */
-  private jumpToLocation(location: LanguageLocation): boolean {
+  protected jumpToLocation(location: LanguageLocation): boolean {
     let targetPath: string;
     try {
       targetPath = fileURLToPath(location.uri);
@@ -355,14 +329,14 @@ class $Workspace {
   get diffRequest() {
     return shallowRef<DiffRequest | null>(null);
   }
-  private diffRequestToken = 0;
+  protected diffRequestToken = 0;
   // Newest-click-wins token for the ASYNC diff-open entry points (openChangeAtRow /
   // openCommitFileDiff): allocated before their awaits, verified before openDiffView, so
   // completion order can never override click order.
-  private diffOpenRequestToken = 0;
+  protected diffOpenRequestToken = 0;
   // Full text of a file at a git ref ('HEAD', '<sha>', '<sha>^', '' = index) — empty when absent at that
   // ref (added/untracked/root-commit file = the empty diff side).
-  private async gitFileText(ref: string, filePath: string): Promise<string> {
+  protected async gitFileText(ref: string, filePath: string): Promise<string> {
     const result = await this.GitCommands.fileAtRef(this.root, ref, filePath);
     return result.code === 0 ? result.stdout : '';
   }
@@ -375,7 +349,7 @@ class $Workspace {
   get activeHeadDocumentPath() {
     return shallowRef('');
   }
-  private activeHeadTextRequestToken = 0;
+  protected activeHeadTextRequestToken = 0;
 
   // DiffAlignment is deliberately cached behind computed(): alignment is document-sized work, while
   // cursor and selection repaints are frequent and must reuse the same map until HEAD/text changes.
@@ -449,7 +423,7 @@ class $Workspace {
       this.activeHeadDocumentPath.value = documentPath;
     }
   }
-  private workingFileText(filePath: string): string {
+  protected workingFileText(filePath: string): string {
     const absolute = Files.Class.join(this.root, filePath);
     // Git lists an untracked DIRECTORY (e.g. node_modules/, including a symlink-to-dir — statSync
     // follows symlinks) as a single entry that GitRows classifies as kind:'file'. Reading it as a file
@@ -463,7 +437,7 @@ class $Workspace {
       return '';
     }
   }
-  private openDiffView(request: Omit<DiffRequest, 'token'>): void {
+  protected openDiffView(request: Omit<DiffRequest, 'token'>): void {
     this.diffRequest.value = { token: ++this.diffRequestToken, ...request };
     this.showingDiff.value = true; // the DiffView shows OVER the tabs (transient view)
     this.focus.value = 'editor'; // keyboard to the diff; sidebarView stays 'git'
@@ -489,11 +463,11 @@ class $Workspace {
       onReconciled: () => void this.reconcileLogTip(),
     });
   }
-  private gitWatcher: GitWatcher.Model | null = null;
+  protected gitWatcher: GitWatcher.Model | null = null;
   // The workspace-owned current-line blame cache (bounded LRU; see GitBlameCache). Created in
   // open(), dropped on suspend/dispose, recreated on resume — blame memory follows the live
   // workspace, never the process lifetime.
-  private blameCacheInstance: GitBlameCache.Model | null = null;
+  protected blameCacheInstance: GitBlameCache.Model | null = null;
   protected createGitBlameCache(root: string) { return new GitBlameCache.Class(root); }
 
   /** The blame for the ACTIVE editor's cursor line, or null (no document / not blamed yet / not
@@ -514,7 +488,7 @@ class $Workspace {
   // Optional live settings source: when attached, the vertical scroll-momentum profile reads its
   // ceiling / gain / friction from the reactive Settings store so the settings panel LIVE-APPLIES
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default.
-  private settingsSource: Settings.Instance | null = null;
+  protected settingsSource: Settings.Instance | null = null;
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
     // Retro-attach the global wordWrap source to editors already built (field-init diff/empty editors +
@@ -525,7 +499,7 @@ class $Workspace {
       (entry.buffer as Editor.Instance | null)?.attachWordWrap(settings.wordWrap);
     }
   }
-  private get flingMomentum(): MomentumOptions {
+  protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
     if (!settings) return VERTICAL_MOMENTUM;
     return {
@@ -607,7 +581,11 @@ class $Workspace {
     // worktree tab reads as the same project (its branch on line 2 tells them apart). The project root
     // is the parent of the git COMMON dir: for the main checkout that is `<root>/.git` -> <root>; for a
     // linked worktree it is `<project>/.git` -> <project>. Falls back to the folder name off-repo.
-    this.name.value = projectNameForRoot(absoluteRoot) || Files.Class.basename(absoluteRoot) || absoluteRoot;
+    const workspaceClass = this.constructor as typeof $Workspace;
+    this.name.value =
+      workspaceClass.projectNameForRoot(absoluteRoot) ||
+      Files.Class.basename(absoluteRoot) ||
+      absoluteRoot;
     // A linked git worktree keeps `.git` as a pointer FILE ("gitdir: …"), never a directory — the
     // main checkout's `.git` is a directory. The worktree's own name is its root folder name.
     const gitPointerPath = Files.Class.join(absoluteRoot, '.git');
@@ -738,7 +716,7 @@ class $Workspace {
   // git.log-rows.ts and is shared with the renderer/hit-tester.
   // invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
 
-  private expandedEntries() {
+  protected expandedEntries() {
     return this.commitExpansion.value?.entries.value ?? [];
   }
 
@@ -788,7 +766,7 @@ class $Workspace {
   // Stale-supersession token for the tip probe: a new probe OR a branch-viewer switch invalidates
   // any probe still awaiting its rev-parse, so a late result can never reset the newly viewed
   // branch's cache or force the viewer back to HEAD (the viewed ref moved on while it slept).
-  private logTipProbeToken = 0;
+  protected logTipProbeToken = 0;
 
   async reconcileLogTip(): Promise<void> {
     if (this.sidebarView.value !== 'git') return;
@@ -1133,7 +1111,7 @@ class $Workspace {
   }
 
   /** The file rows for the current multi-selection (empty when none). */
-  private selectedFileRows(): Array<{ path: string; bucket: 'staged' | 'unstaged' | 'untracked' }> {
+  protected selectedFileRows(): Array<{ path: string; bucket: 'staged' | 'unstaged' | 'untracked' }> {
     const git = this.git.value;
     if (!git) return [];
     const selected = this.gitPanel.selectedPaths.value;
@@ -1209,10 +1187,10 @@ class $Workspace {
   // openFileInTab of a go-to-definition jump (which records its own source + destination
   // explicitly). It is a plain field — an internal control flag, not observable view state.
   // invariant: Programmatic history navigation does not record new history (src/modules/navigation/navigation.invariants.md)
-  private suppressLocationRecording = false;
+  protected suppressLocationRecording = false;
 
   /** Run `action` with location recording suppressed (history restore / an already-recorded jump). */
-  private withSuppressedLocationRecording(action: () => void): void {
+  protected withSuppressedLocationRecording(action: () => void): void {
     const previouslySuppressed = this.suppressLocationRecording;
     this.suppressLocationRecording = true;
     try {
@@ -1236,7 +1214,7 @@ class $Workspace {
 
   /** Open a recorded location and land the cursor on it — the shared back/forward restore path.
    *  Suppresses recording so replaying history never mutates it. */
-  private restoreNavigationLocation(location: Location): void {
+  protected restoreNavigationLocation(location: Location): void {
     this.withSuppressedLocationRecording(() => {
       this.openFileInTab(location.documentPath);
       this.focus.value = 'editor';
@@ -1387,4 +1365,33 @@ export namespace Workspace {
   export const $Class = $Workspace;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export type Focus = 'files' | 'editor' | 'git';
+
+/** Which panel the activity bar shows in the sidebar for this workspace. 'extensions' is a
+ *  placeholder view for now. Persisted per workspace (it is model state on the Workspace). */
+export type SidebarView = 'files' | 'git' | 'extensions';
+
+/** One diagnostic's span on a single line: grapheme columns [startColumn, endColumn) and its severity
+ *  (1 = error, 2 = warning, 3 = info, 4 = hint). A multi-line diagnostic yields one mark per line. */
+export interface DiagnosticLineMark {
+  startColumn: number;
+  endColumn: number;
+  severity: 1 | 2 | 3 | 4;
+}
+
+/** A diagnostic surfaced in the hover card: its severity and message text. */
+export interface HoverDiagnostic {
+  severity: 1 | 2 | 3 | 4;
+  message: string;
+}
+
+/** The two full-text SIDES of a side-by-side diff shown by the DiffView (token forces a rebuild). */
+export interface DiffRequest {
+  token: number;
+  previousVersionText: string;
+  currentVersionText: string;
+  previousVersionPath: string;
+  currentVersionPath: string;
 }

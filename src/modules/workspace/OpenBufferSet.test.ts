@@ -5,7 +5,12 @@ import { OpenBufferSet, type LiveBuffer, type BufferPosition } from './OpenBuffe
 class FakeBuffer implements LiveBuffer {
   disposed = false;
   dirty = false;
-  private position: BufferPosition = { cursorLine: 0, cursorColumn: 0, scrollTop: 0, scrollLeft: 0 };
+  protected position: BufferPosition = {
+    cursorLine: 0,
+    cursorColumn: 0,
+    scrollTop: 0,
+    scrollLeft: 0,
+  };
   constructor(readonly path: string) {}
   openFile(): void {}
   snapshotPosition(): BufferPosition {

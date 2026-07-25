@@ -138,7 +138,7 @@ actively observed set*.
 across tab switches.
 
 **Evidence:** `src/modules/workspace/OpenBufferSet.ts` (flyweight + dispose discipline; the active
-+ dirty-background live set); `Workspace.tabs.test.ts` (flyweight keeps live docs < tab count).
++ dirty-background live set); `Workspace.test.ts` (flyweight keeps live docs < tab count).
 
 **Impossible if true:** every open tab holding a live document + undo stack regardless of activity;
 a clean background tab consuming a full buffer; a dirty background tab losing its unsaved edits on
