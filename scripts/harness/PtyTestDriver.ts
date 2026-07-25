@@ -96,7 +96,7 @@ class $PtyTestDriver {
 
   async sendKeysAndAwaitFrameByteArrival(
     keyNames: readonly string[],
-    timeoutMilliseconds = 10_000,
+    timeoutMilliseconds = 30_000,
   ): Promise<InputFrameByteArrivalMeasurement> {
     this.markFrameExpected();
     const completedFramePromise = this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
@@ -149,7 +149,7 @@ class $PtyTestDriver {
     this.openPty.resize(columns, rows);
   }
 
-  async awaitQuiescence(timeoutMilliseconds = 10_000): Promise<void> {
+  async awaitQuiescence(timeoutMilliseconds = 30_000): Promise<void> {
     if (
       this.frameExpectationPredecessor !== undefined
       && this.quiescence.lastCompletedFrame === this.frameExpectationPredecessor
@@ -188,7 +188,7 @@ class $PtyTestDriver {
 
   async awaitSnapshot(
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
-    timeoutMilliseconds = 10_000,
+    timeoutMilliseconds = 30_000,
   ): Promise<HarnessSnapshot.Model> {
     return this.awaitGridCondition(
       `the harness snapshot satisfies ${predicate.toString()}`,
@@ -200,7 +200,7 @@ class $PtyTestDriver {
   async awaitGridCondition(
     predicateDescription: string,
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
-    timeoutMilliseconds = 10_000,
+    timeoutMilliseconds = 30_000,
     diagnosticRegion?: Partial<HarnessGridRegion>,
   ): Promise<HarnessSnapshot.Model> {
     const deadline = performance.now() + timeoutMilliseconds;

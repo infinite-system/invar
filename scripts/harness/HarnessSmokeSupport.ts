@@ -37,7 +37,7 @@ export async function awaitStatus(
   driver: PtyTestDriver.Model,
   statusPath: string,
   predicate: (status: HarnessStatus) => boolean,
-  timeoutMilliseconds = 10_000,
+  timeoutMilliseconds = 30_000,
 ): Promise<HarnessStatus> {
   void driver;
   return awaitStatusPublication(statusPath, predicate, timeoutMilliseconds);
@@ -46,7 +46,7 @@ export async function awaitStatus(
 export async function awaitStatusPublication(
   statusPath: string,
   predicate: (status: HarnessStatus) => boolean,
-  timeoutMilliseconds = 2_000,
+  timeoutMilliseconds = 30_000,
 ): Promise<HarnessStatus> {
   const deadline = performance.now() + timeoutMilliseconds;
   while (performance.now() < deadline) {

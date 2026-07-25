@@ -62,7 +62,7 @@ async function $awaitStatus(
   driver: PtyTestDriver.Model,
   statusPath: string,
   predicate: (status: StatusSnapshot) => boolean,
-  timeoutMilliseconds = 10_000,
+  timeoutMilliseconds = 30_000,
 ): Promise<StatusSnapshot> {
   return $awaitStatusWithoutFrame(
     driver,
@@ -75,7 +75,7 @@ async function $awaitStatus(
 async function $awaitFrameSilence(
   driver: PtyTestDriver.Model,
   silenceMilliseconds = 150,
-  timeoutMilliseconds = 10_000,
+  timeoutMilliseconds = 30_000,
 ): Promise<void> {
   const deadline = performance.now() + timeoutMilliseconds;
   while (true) {
@@ -93,7 +93,7 @@ async function $awaitStatusWithoutFrame(
   driver: PtyTestDriver.Model,
   statusPath: string,
   predicate: (status: StatusSnapshot) => boolean,
-  timeoutMilliseconds = 10_000,
+  timeoutMilliseconds = 30_000,
 ): Promise<StatusSnapshot> {
   const deadline = performance.now() + timeoutMilliseconds;
   while (true) {

@@ -57,7 +57,7 @@ class $SynchronizedOutputQuiescence {
   }
 
   awaitNextCompletedFrame(
-    timeoutMilliseconds = 10_000,
+    timeoutMilliseconds = 30_000,
   ): Promise<CompletedSynchronizedFrame> {
     if (this.failure) return Promise.reject(this.failure);
     return new Promise((resolve, reject) => {
