@@ -1,12 +1,12 @@
+import { Reactive } from "ivue";
+import { ref, shallowRef } from "vue";
+import { Momentum, AT_REST, type ScrollMomentum } from "../system/Momentum";
+
 // Scroll/viewport state. The editor renders only the lines this window exposes — memory
 // and render cost track the visible set, not the file size.
 //
 // invariant: The terminal shows a bounded viewport (project.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
-import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
-import { Momentum, AT_REST, type ScrollMomentum } from '../system/Momentum';
-
 class $Viewport {
   get scrollTop() {
     return ref(0);
@@ -42,19 +42,26 @@ class $Viewport {
       this.scrollTop.value = line - viewportHeight + 1;
     }
     const maxScrollTop = Math.max(0, totalLines - viewportHeight);
-    if (this.scrollTop.value > maxScrollTop) this.scrollTop.value = maxScrollTop;
+    if (this.scrollTop.value > maxScrollTop)
+      this.scrollTop.value = maxScrollTop;
     if (this.scrollTop.value < 0) this.scrollTop.value = 0;
   }
 
   scrollBy(delta: number, totalLines: number): void {
     const maxScrollTop = Math.max(0, totalLines - this.height.value);
-    this.scrollTop.value = Math.max(0, Math.min(this.scrollTop.value + delta, maxScrollTop));
+    this.scrollTop.value = Math.max(
+      0,
+      Math.min(this.scrollTop.value + delta, maxScrollTop),
+    );
   }
 
   /** Horizontal wheel/scrollbar: move the column window, clamped to the full content width. */
   scrollByColumns(delta: number, contentWidth: number): void {
     const maxScrollLeft = Math.max(0, contentWidth - this.width.value);
-    this.scrollLeft.value = Math.max(0, Math.min(this.scrollLeft.value + delta, maxScrollLeft));
+    this.scrollLeft.value = Math.max(
+      0,
+      Math.min(this.scrollLeft.value + delta, maxScrollLeft),
+    );
   }
 
   /** Precise cursor movement or a scrollbar drag adopts both axes and stops wheel glide. */

@@ -1,15 +1,10 @@
+import { Reactive } from "ivue";
+import { ref, shallowRef } from "vue";
+
 // Cursor position (line/col, 0-based; col = grapheme index) plus a goal column for vertical
 // movement and an optional selection anchor.
 // invariant: A cursor position resolves to three distinct coordinates (editor.invariants.md)
 //   — line/col are grapheme positions; display-column mapping is the view's job.
-import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
-
-export interface Position {
-  line: number;
-  col: number;
-}
-
 class $Cursor {
   get line() {
     return ref(0);
@@ -53,18 +48,30 @@ class $Cursor {
 
   get hasSelection(): boolean {
     const anchorPosition = this.anchor.value;
-    return anchorPosition !== null && (anchorPosition.line !== this.line.value || anchorPosition.col !== this.col.value);
+    return (
+      anchorPosition !== null &&
+      (anchorPosition.line !== this.line.value ||
+        anchorPosition.col !== this.col.value)
+    );
   }
 
   /** Normalized selection {start <= end}, or null if there is no non-empty selection. */
   selectionRange(): { start: Position; end: Position } | null {
     const anchorPosition = this.anchor.value;
     if (!anchorPosition) return null;
-    const cursorPosition: Position = { line: this.line.value, col: this.col.value };
-    if (anchorPosition.line === cursorPosition.line && anchorPosition.col === cursorPosition.col) return null;
+    const cursorPosition: Position = {
+      line: this.line.value,
+      col: this.col.value,
+    };
+    if (
+      anchorPosition.line === cursorPosition.line &&
+      anchorPosition.col === cursorPosition.col
+    )
+      return null;
     const anchorFirst =
       anchorPosition.line < cursorPosition.line ||
-      (anchorPosition.line === cursorPosition.line && anchorPosition.col < cursorPosition.col);
+      (anchorPosition.line === cursorPosition.line &&
+        anchorPosition.col < cursorPosition.col);
     return anchorFirst
       ? { start: anchorPosition, end: cursorPosition }
       : { start: cursorPosition, end: anchorPosition };
@@ -76,4 +83,9 @@ export namespace Cursor {
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface Position {
+  line: number;
+  col: number;
 }

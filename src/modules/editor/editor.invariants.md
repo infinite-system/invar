@@ -127,7 +127,7 @@ selection highlight in `RootView`.
 **Evidence:** `Cursor.ts` `anchor` + `selectionRange()`; `ReadOnlyTextBuffer.ts`
 `selectionText`/`copySelection`/`selectAll`; `Editor.ts` selection-aware
 `insertText`/`insertNewline`/`backspace`/`deleteChar` and `cutSelection`/`pasteClipboard`;
-`ReadOnlyTextBuffer.test.ts`; `editor/__tests__/selection.test.ts`; `scripts/smoke-editor.sh`.
+`ReadOnlyTextBuffer.test.ts`; `EditorSelection.test.ts`; `scripts/smoke-editor.sh`.
 
 **Impossible if true:** typing over a selection that leaves the selected text in place; a copy
 that returns text split mid-grapheme; a paste that inserts without removing the selection.
@@ -191,13 +191,13 @@ punctuation, and line-boundary behavior across editor and text inputs; one undo 
 deletion.
 
 **Evidence:** `src/modules/editor/TextEditing.ts`; `src/modules/editor/Editor.ts`;
-`src/modules/editor/__tests__/TextEditing.test.ts`; `scripts/smoke-word-delete.sh`.
+`src/modules/editor/TextEditing.test.ts`; `scripts/smoke-word-delete.sh`.
 
 **Impossible if true:** word navigation jumping to one position while word deletion starts at another;
 Alt+Delete closing a buffer; a find, replace, quick-open, or palette query deleting a different span
 than the editor for the same text and cursor position.
 
-**Verification:** `bun test src/modules/editor/__tests__/TextEditing.test.ts && bash scripts/smoke-word-delete.sh`
+**Verification:** `bun test src/modules/editor/TextEditing.test.ts && bash scripts/smoke-word-delete.sh`
 
 **Status:** provisional
 
@@ -228,10 +228,10 @@ X-scroll guarded off). Stands on *A cursor position resolves to three distinct c
 
 **Generates:** the wrap render branch (continuation rows with blank gutters); a caret cell correct
 against tmux's own cursor in wrap mode; wrapped-row selection mapping; visual-row vertical
-movement and paging; the wrap test matrix (`__tests__/wrap.test.ts`).
+movement and paging; the wrap test matrix (`EditorWrap.test.ts`).
 
 **Evidence:** `editor.wrap.ts` computes only descriptors (no document writes — the module imports
-no mutation surface); `wrap.test.ts` asserts toggling wrap twice leaves `revision`, `text`, and
+no mutation surface); `EditorWrap.test.ts` asserts toggling wrap twice leaves `revision`, `text`, and
 `dirty` untouched; `RootView` wrap branches all read through `wrapRowsWindow` +
 `wrapVisualPosition` (one mapping, no second wrap computation path).
 
@@ -244,7 +244,7 @@ slice, while the mapping expands tabs on the logical line's continuous column ax
 crosses a wrap boundary can render a different width than the mapping assumes (same class of edge
 as the wrap-off column-virtualization slice; revisit if human QA hits it).
 
-**Verification:** `wrap.test.ts` (segment partition/width/cluster-safety properties, CJK/emoji/tab
+**Verification:** `EditorWrap.test.ts` (segment partition/width/cluster-safety properties, CJK/emoji/tab
 boundaries, exact-width lines, 500-char unbroken runs, O(height) reveal walk, mode toggling purity)
 + the live tmux pass: wrapped long line occupies multiple rows with the gutter number only on the
 first, caret cell == tmux `#{cursor_x},#{cursor_y}` mid-wrapped-line, toggle OFF restores the
@@ -359,7 +359,7 @@ adjacent insert/delete run.
 **Generates:** VS Code-style Move Line Up/Down + Duplicate Line where one Ctrl+Z undoes the whole move;
 the cursor tracking the line so repeated moves walk it up/down; edges that simply stop.
 
-**Evidence:** `src/modules/editor/Editor.moveLine.test.ts` (move up/down reorders the lines and the cursor
+**Evidence:** `src/modules/editor/EditorMoveLine.test.ts` (move up/down reorders the lines and the cursor
 follows; edge no-op leaves the doc and undo stack untouched; duplicate inserts the copy below with the
 cursor on it; a single `performUndo` reverts each op exactly); `scripts/smoke-move-line.sh` drives the
 commands in the real app and asserts the document reordered + cursor followed + one undo restored.
@@ -368,7 +368,7 @@ commands in the real app and asserts the document reordered + cursor followed + 
 old line index; a top/bottom-edge move that records an empty undo step or wraps around; a line edit that
 touches a renderable.
 
-**Verification:** `bun test src/modules/editor/Editor.moveLine.test.ts && bash scripts/smoke-move-line.sh`
+**Verification:** `bun test src/modules/editor/EditorMoveLine.test.ts && bash scripts/smoke-move-line.sh`
 
 **Status:** provisional
 

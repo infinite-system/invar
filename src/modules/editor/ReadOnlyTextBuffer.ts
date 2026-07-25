@@ -1,3 +1,10 @@
+import type { FindBarTarget } from "../search/FindBar";
+import type { FindInBufferMatch } from "../search/FindInBuffer";
+import { Clipboard } from "../system/Clipboard";
+import { Cursor } from "./Cursor";
+import { EditorCoordinates } from "./EditorCoordinates";
+import { TextDocument } from "./TextDocument";
+
 // The shared model for text surfaces whose generator is document reading, cursor selection,
 // clipboard copy, and find-target exposure. Editing, undo, persistence, and viewport behavior live
 // above this seam in Editor.
@@ -5,13 +12,6 @@
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: Read-only text behavior excludes editing (src/modules/editor/editor.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (src/modules/editor/editor.invariants.md)
-import type { FindBarTarget } from '../search/FindBar';
-import type { FindInBufferMatch } from '../search/FindInBuffer';
-import { Clipboard } from '../system/Clipboard';
-import { Cursor } from './Cursor';
-import { EditorCoordinates } from './EditorCoordinates';
-import { TextDocument } from './TextDocument';
-
 class $ReadOnlyTextBuffer {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   readonly document = this.createDocument();
@@ -32,7 +32,7 @@ class $ReadOnlyTextBuffer {
   }
 
   replaceText(text: string): void {
-    this.document.replaceAll(text.split('\n'));
+    this.document.replaceAll(text.split("\n"));
     this.cursor.clearSelection();
   }
 
@@ -48,7 +48,7 @@ class $ReadOnlyTextBuffer {
     const selectionRange = this.cursor.selectionRange();
     return selectionRange
       ? this.document.sliceRange(selectionRange.start, selectionRange.end)
-      : '';
+      : "";
   }
 
   selectAll(): void {
@@ -120,7 +120,7 @@ class $ReadOnlyTextBuffer {
   }
 
   dispose(): void {
-    this.document.loadFromText('', '');
+    this.document.loadFromText("", "");
     this.cursor.set(0, 0);
     this.cursor.clearSelection();
   }

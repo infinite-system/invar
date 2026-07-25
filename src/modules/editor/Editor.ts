@@ -1,27 +1,31 @@
+import { Reactive } from "ivue";
+import { ref, type Ref } from "vue";
+import { Viewport } from "./Viewport";
+import { EditorCoordinates } from "./EditorCoordinates";
+import { TextEditing } from "./TextEditing";
+import { EditorWrap } from "./EditorWrap";
+import { ReadOnlyTextBuffer } from "./ReadOnlyTextBuffer";
+import { UndoStore, type EditKind } from "../storage/UndoStore";
+import { Files } from "../system/Files";
+import { Clock } from "../system/Clock";
+import { Clipboard } from "../system/Clipboard";
+
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
 //
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
-import { Reactive } from 'ivue';
-import { ref, type Ref } from 'vue';
-import { Viewport } from './Viewport';
-import { EditorCoordinates } from './EditorCoordinates';
-import { TextEditing } from './TextEditing';
-import { EditorWrap } from './EditorWrap';
-import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
-import { UndoStore, type EditKind } from '../storage/UndoStore';
-import { Files } from '../system/Files';
-import { Clock } from '../system/Clock';
-import { Clipboard } from '../system/Clipboard';
-
 class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
-  private undo = this.createUndo();
+  protected undo = this.createUndo();
 
-  protected createViewport() { return new Viewport.Class(); }
-  protected createUndo() { return new UndoStore.Class(); }
+  protected createViewport() {
+    return new Viewport.Class();
+  }
+  protected createUndo() {
+    return new UndoStore.Class();
+  }
 
   get hasDocument() {
     return ref(false);
@@ -39,7 +43,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // (attached via attachWordWrap), so the setting is the single source — the settings panel AND the
   // toggle command drive the identical ref, and switching tabs never desyncs the mode. Falls back to a
   // local ref only before a source is attached (bare unit tests).
-  private wordWrapSource: Ref<boolean> | null = null;
+  protected wordWrapSource: Ref<boolean> | null = null;
   attachWordWrap(source: Ref<boolean>): void {
     this.wordWrapSource = source;
   }
@@ -72,22 +76,37 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // the scrollbar reads visual extent), so the reveal is the plain min/max on the cursor's ABSOLUTE
   // visual row = (first visual row of its line) + (its segment within the line). This is what makes the
   // scroll reach the true last visual row: no logical-line quantization.
-  private revealCursorWrapped(): void {
+  protected revealCursorWrapped(): void {
     const width = this.wrapWidth();
-    const segments = EditorWrap.Class.wrapLine(this.document.line(this.cursor.line.value), width);
-    const segmentIndex = EditorWrap.Class.segmentIndexForCursor(segments, this.cursor.col.value);
-    const cursorVisualRow = EditorWrap.Class.firstVisualRowOfLine(this.document, this.cursor.line.value, width) + segmentIndex;
+    const segments = EditorWrap.Class.wrapLine(
+      this.document.line(this.cursor.line.value),
+      width,
+    );
+    const segmentIndex = EditorWrap.Class.segmentIndexForCursor(
+      segments,
+      this.cursor.col.value,
+    );
+    const cursorVisualRow =
+      EditorWrap.Class.firstVisualRowOfLine(
+        this.document,
+        this.cursor.line.value,
+        width,
+      ) + segmentIndex;
     const height = this.viewport.height.value;
     const top = this.viewport.scrollTop.value;
-    const maximumTop = Math.max(0, EditorWrap.Class.totalVisualRows(this.document, width) - height);
+    const maximumTop = Math.max(
+      0,
+      EditorWrap.Class.totalVisualRows(this.document, width) - height,
+    );
     let next = top;
     if (cursorVisualRow < top) next = cursorVisualRow;
-    else if (cursorVisualRow >= top + height) next = cursorVisualRow - height + 1;
+    else if (cursorVisualRow >= top + height)
+      next = cursorVisualRow - height + 1;
     this.viewport.scrollTop.value = Math.max(0, Math.min(next, maximumTop));
   }
 
   /** Mode-aware vertical reveal: wrapped visual-row walk when wrap is on, logical otherwise. */
-  private scrollLineIntoView(line: number): void {
+  protected scrollLineIntoView(line: number): void {
     if (this.wordWrap.value) this.revealCursorWrapped();
     else this.viewport.scrollToLine(line, this.document.lineCount);
   }
@@ -124,7 +143,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   /** Capture the resumable cursor + scroll position so this buffer can be dehydrated. */
-  snapshotPosition(): { cursorLine: number; cursorColumn: number; scrollTop: number; scrollLeft: number } {
+  snapshotPosition(): {
+    cursorLine: number;
+    cursorColumn: number;
+    scrollTop: number;
+    scrollLeft: number;
+  } {
     return {
       cursorLine: this.cursor.line.value,
       cursorColumn: this.cursor.col.value,
@@ -134,7 +158,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   /** Restore a snapshot after rehydration (the file was just reloaded into a fresh document). */
-  restorePosition(position: { cursorLine: number; cursorColumn: number; scrollTop: number; scrollLeft: number }): void {
+  restorePosition(position: {
+    cursorLine: number;
+    cursorColumn: number;
+    scrollTop: number;
+    scrollLeft: number;
+  }): void {
     if (!this.hasDocument.value) return;
     this.placeCursor(position.cursorLine, position.cursorColumn);
     this.viewport.scrollTop.value = position.scrollTop;
@@ -166,7 +195,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   deleteToLineStart(): void {
     if (!this.hasDocument.value) return;
     if (this.hasSelection) {
-      this.captureBefore('delete');
+      this.captureBefore("delete");
       this.removeSelection();
       this.scrollLineIntoView(this.cursor.line.value);
       return;
@@ -174,14 +203,14 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const line = this.cursor.line.value;
     const column = this.cursor.col.value;
     if (column === 0) return; // already at line start — nothing to the left on this line
-    this.captureBefore('delete');
+    this.captureBefore("delete");
     this.document.deleteRange({ line, col: 0 }, { line, col: column });
     this.placeCursor(line, 0);
     this.scrollLineIntoView(line);
   }
 
   /** Delete the active selection (no undo capture — caller captures). Returns whether it removed. */
-  private removeSelection(): boolean {
+  protected removeSelection(): boolean {
     const range = this.cursor.selectionRange();
     if (!range) return false;
     const position = this.document.deleteRange(range.start, range.end);
@@ -198,11 +227,19 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   override placeCursor(line: number, column: number): void {
     this.viewport.haltScrollMomentum(); // precise cursor move adopts authority, stops wheel glide
     const lineText = this.document.line(line);
-    const absoluteDisplayColumn = EditorCoordinates.Class.displayColumn(lineText, column);
+    const absoluteDisplayColumn = EditorCoordinates.Class.displayColumn(
+      lineText,
+      column,
+    );
     if (this.wordWrap.value) {
       const segments = EditorWrap.Class.wrapLine(lineText, this.wrapWidth());
-      const segment = segments[EditorWrap.Class.segmentIndexForCursor(segments, column)];
-      this.cursor.set(line, column, absoluteDisplayColumn - (segment?.startDisplayColumn ?? 0));
+      const segment =
+        segments[EditorWrap.Class.segmentIndexForCursor(segments, column)];
+      this.cursor.set(
+        line,
+        column,
+        absoluteDisplayColumn - (segment?.startDisplayColumn ?? 0),
+      );
       this.revealCursorWrapped();
       return;
     }
@@ -211,7 +248,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   /** Set/extend the anchor for a movement (extend) or drop the selection (plain move). */
-  private beginMove(extend: boolean): void {
+  protected beginMove(extend: boolean): void {
     if (extend) {
       if (!this.cursor.anchor.value) this.cursor.setAnchorHere();
     } else {
@@ -221,7 +258,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   // --- editing --------------------------------------------------------------
 
-  private captureBefore(kind: EditKind): void {
+  protected captureBefore(kind: EditKind): void {
     this.undo.record(
       {
         lines: this.document.snapshot(),
@@ -235,21 +272,28 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   insertText(text: string): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore('insert');
+    this.captureBefore("insert");
     this.removeSelection();
-    const column = this.document.insertInline(this.cursor.line.value, this.cursor.col.value, text);
+    const column = this.document.insertInline(
+      this.cursor.line.value,
+      this.cursor.col.value,
+      text,
+    );
     this.placeCursor(this.cursor.line.value, column);
     this.scrollLineIntoView(this.cursor.line.value);
   }
 
   insertNewline(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore('newline');
+    this.captureBefore("newline");
     this.removeSelection();
     // Auto-indent: copy leading whitespace of the current line.
     const currentLine = this.document.line(this.cursor.line.value);
-    const indent = currentLine.match(/^\s*/)?.[0] ?? '';
-    const position = this.document.splitLine(this.cursor.line.value, this.cursor.col.value);
+    const indent = currentLine.match(/^\s*/)?.[0] ?? "";
+    const position = this.document.splitLine(
+      this.cursor.line.value,
+      this.cursor.col.value,
+    );
     if (indent) {
       const column = this.document.insertInline(position.line, 0, indent);
       this.placeCursor(position.line, column);
@@ -261,19 +305,22 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   backspace(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore('delete');
+    this.captureBefore("delete");
     if (this.removeSelection()) {
       this.scrollLineIntoView(this.cursor.line.value);
       return;
     }
-    const position = this.document.deleteBackward(this.cursor.line.value, this.cursor.col.value);
+    const position = this.document.deleteBackward(
+      this.cursor.line.value,
+      this.cursor.col.value,
+    );
     this.placeCursor(position.line, position.col);
     this.scrollLineIntoView(position.line);
   }
 
   deleteChar(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore('delete');
+    this.captureBefore("delete");
     if (this.removeSelection()) return;
     this.document.deleteForward(this.cursor.line.value, this.cursor.col.value);
   }
@@ -282,7 +329,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   deletePreviousWord(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
     if (this.hasSelection) {
-      this.captureBefore('delete');
+      this.captureBefore("delete");
       this.removeSelection();
       this.scrollLineIntoView(this.cursor.line.value);
       return;
@@ -296,11 +343,11 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       return;
     }
 
-    this.captureBefore('delete');
-    this.document.deleteRange(
-      deletionStart,
-      { line: this.cursor.line.value, col: this.cursor.col.value },
-    );
+    this.captureBefore("delete");
+    this.document.deleteRange(deletionStart, {
+      line: this.cursor.line.value,
+      col: this.cursor.col.value,
+    });
     this.placeCursor(deletionStart.line, deletionStart.col);
     this.scrollLineIntoView(deletionStart.line);
   }
@@ -318,12 +365,15 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const line = this.cursor.line.value;
     if (line <= 0) return; // top edge: nothing above to swap with
-    this.captureBefore('other');
+    this.captureBefore("other");
     const above = this.document.line(line - 1);
     const moved = this.document.line(line);
     this.document.setLine(line - 1, moved);
     this.document.setLine(line, above);
-    this.placeCursor(line - 1, EditorCoordinates.Class.clampCol(moved, this.cursor.col.value));
+    this.placeCursor(
+      line - 1,
+      EditorCoordinates.Class.clampCol(moved, this.cursor.col.value),
+    );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line - 1);
   }
@@ -333,12 +383,15 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const line = this.cursor.line.value;
     if (line >= this.document.lineCount - 1) return; // bottom edge: nothing below to swap with
-    this.captureBefore('other');
+    this.captureBefore("other");
     const below = this.document.line(line + 1);
     const moved = this.document.line(line);
     this.document.setLine(line + 1, moved);
     this.document.setLine(line, below);
-    this.placeCursor(line + 1, EditorCoordinates.Class.clampCol(moved, this.cursor.col.value));
+    this.placeCursor(
+      line + 1,
+      EditorCoordinates.Class.clampCol(moved, this.cursor.col.value),
+    );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line + 1);
   }
@@ -346,11 +399,14 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Copy the cursor's line and insert the copy directly below; the cursor follows onto the copy. */
   duplicateLine(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore('other');
+    this.captureBefore("other");
     const line = this.cursor.line.value;
     const text = this.document.line(line);
     this.document.insertLine(line + 1, text);
-    this.placeCursor(line + 1, EditorCoordinates.Class.clampCol(text, this.cursor.col.value));
+    this.placeCursor(
+      line + 1,
+      EditorCoordinates.Class.clampCol(text, this.cursor.col.value),
+    );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line + 1);
   }
@@ -362,7 +418,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const text = this.selectionText();
     if (!text) return;
     await Clipboard.Class.copy(text);
-    this.captureBefore('delete');
+    this.captureBefore("delete");
     this.removeSelection();
     this.scrollLineIntoView(this.cursor.line.value);
   }
@@ -376,9 +432,13 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    *  under undo. */
   pasteText(text: string): void {
     if (this.readOnly.value || !this.hasDocument.value || !text) return;
-    this.captureBefore('paste');
+    this.captureBefore("paste");
     this.removeSelection();
-    const position = this.document.insertMultiline(this.cursor.line.value, this.cursor.col.value, text);
+    const position = this.document.insertMultiline(
+      this.cursor.line.value,
+      this.cursor.col.value,
+      text,
+    );
     this.placeCursor(position.line, position.col);
     this.scrollLineIntoView(position.line);
   }
@@ -389,7 +449,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: 'other' as EditKind,
+      kind: "other" as EditKind,
       at: Clock.Class.now(),
     };
     const target = this.undo.undo(current);
@@ -407,7 +467,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: 'other' as EditKind,
+      kind: "other" as EditKind,
       at: Clock.Class.now(),
     };
     const target = this.undo.redo(current);
@@ -429,15 +489,19 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   get title(): string {
-    if (!this.hasDocument.value) return 'Editor';
-    const name = this.document.path ? Files.Class.basename(this.document.path) : 'untitled';
+    if (!this.hasDocument.value) return "Editor";
+    const name = this.document.path
+      ? Files.Class.basename(this.document.path)
+      : "untitled";
     return this.document.dirty.value ? `${name} ●` : name;
   }
 
   // --- movement (extend = shift-select) -------------------------------------
 
-  private currentLineLength(): number {
-    return EditorCoordinates.Class.graphemeCount(this.document.line(this.cursor.line.value));
+  protected currentLineLength(): number {
+    return EditorCoordinates.Class.graphemeCount(
+      this.document.line(this.cursor.line.value),
+    );
   }
 
   moveVertical(delta: number, extend = false): void {
@@ -459,9 +523,17 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const target = this.cursor.line.value + delta;
     const maxLine = this.document.lineCount - 1;
     const clamped = Math.max(0, Math.min(target, maxLine));
-    const landingColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(this.document.line(clamped), this.cursor.goalColumn.value);
+    const landingColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+      this.document.line(clamped),
+      this.cursor.goalColumn.value,
+    );
     this.cursor.moveToLineKeepingGoal(clamped, landingColumn);
-    this.viewport.scrollToColumn(EditorCoordinates.Class.displayColumn(this.document.line(clamped), landingColumn));
+    this.viewport.scrollToColumn(
+      EditorCoordinates.Class.displayColumn(
+        this.document.line(clamped),
+        landingColumn,
+      ),
+    );
     this.scrollLineIntoView(clamped);
   }
 
@@ -472,7 +544,9 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (column < 0) {
       if (line > 0) {
         line -= 1;
-        column = EditorCoordinates.Class.graphemeCount(this.document.line(line));
+        column = EditorCoordinates.Class.graphemeCount(
+          this.document.line(line),
+        );
       } else {
         column = 0;
       }
@@ -499,10 +573,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       return;
     }
 
-    const isWordCharacter = (cluster: string): boolean => /[\p{L}\p{N}_]/u.test(cluster);
+    const isWordCharacter = (cluster: string): boolean =>
+      /[\p{L}\p{N}_]/u.test(cluster);
     let line = this.cursor.line.value;
     let column = this.cursor.col.value;
-    const clusters = () => EditorCoordinates.Class.graphemes(this.document.line(line));
+    const clusters = () =>
+      EditorCoordinates.Class.graphemes(this.document.line(line));
     let lineClusters = clusters();
     if (column >= lineClusters.length) {
       if (line >= this.document.lineCount - 1) return;
@@ -510,9 +586,17 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       column = 0;
       lineClusters = clusters();
     } else {
-      while (column < lineClusters.length && isWordCharacter(lineClusters[column] ?? '')) column += 1;
+      while (
+        column < lineClusters.length &&
+        isWordCharacter(lineClusters[column] ?? "")
+      )
+        column += 1;
     }
-    while (column < lineClusters.length && !isWordCharacter(lineClusters[column] ?? '')) column += 1;
+    while (
+      column < lineClusters.length &&
+      !isWordCharacter(lineClusters[column] ?? "")
+    )
+      column += 1;
     this.placeCursor(line, column);
     this.scrollLineIntoView(line);
   }
@@ -522,7 +606,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    * window includes only the preceding line and current prefix: enough to represent the newline
    * boundary without materializing the document, so cost is independent of document length.
    */
-  private previousWordPosition(useDeletionRange: boolean): { line: number; col: number } {
+  protected previousWordPosition(useDeletionRange: boolean): {
+    line: number;
+    col: number;
+  } {
     const currentLineIndex = this.cursor.line.value;
     const currentLineText = this.document.line(currentLineIndex);
     const currentPrefixEndUtf16Offset = EditorCoordinates.Class.graphemeToU16(
@@ -530,13 +617,16 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       this.cursor.col.value,
     );
     const currentPrefix = currentLineText.slice(0, currentPrefixEndUtf16Offset);
-    const previousLineText = currentLineIndex > 0 ? this.document.line(currentLineIndex - 1) : '';
-    const currentLineStart = currentLineIndex > 0
-      ? EditorCoordinates.Class.graphemeCount(previousLineText) + 1
-      : 0;
-    const localText = currentLineIndex > 0
-      ? `${previousLineText}\n${currentPrefix}`
-      : currentPrefix;
+    const previousLineText =
+      currentLineIndex > 0 ? this.document.line(currentLineIndex - 1) : "";
+    const currentLineStart =
+      currentLineIndex > 0
+        ? EditorCoordinates.Class.graphemeCount(previousLineText) + 1
+        : 0;
+    const localText =
+      currentLineIndex > 0
+        ? `${previousLineText}\n${currentPrefix}`
+        : currentPrefix;
     const localCursor = EditorCoordinates.Class.graphemeCount(localText);
     const localStart = useDeletionRange
       ? TextEditing.Class.deletePreviousWord(localText, localCursor).start
@@ -559,7 +649,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (!this.hasDocument.value) return;
     this.beginMove(extend);
     const lastLine = this.document.lineCount - 1;
-    this.placeCursor(lastLine, EditorCoordinates.Class.graphemeCount(this.document.line(lastLine)));
+    this.placeCursor(
+      lastLine,
+      EditorCoordinates.Class.graphemeCount(this.document.line(lastLine)),
+    );
     this.scrollLineIntoView(lastLine);
   }
 

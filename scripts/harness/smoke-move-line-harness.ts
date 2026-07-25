@@ -39,7 +39,7 @@ async function runCommand(
 }
 
 const unitResult = Bun.spawnSync(
-  [process.execPath, 'test', 'src/modules/editor/__tests__/moveLine.test.ts'],
+  [process.execPath, 'test', 'src/modules/editor/EditorMoveLine.test.ts'],
   { stdout: 'pipe', stderr: 'pipe' },
 );
 requireCondition(unitResult.exitCode === 0, 'move-line unit tests pass');

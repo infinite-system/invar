@@ -28,7 +28,7 @@ printf 'one\ntwo\nthree' > "$FIX/sample.ts"
 trap '"$H" kill "$S" >/dev/null 2>&1; rm -rf "$FIX"' EXIT INT TERM
 
 echo "== A) deterministic unit tests (doc mutation + cursor + one-step undo) =="
-if "$BUN" test src/modules/editor/__tests__/moveLine.test.ts >/tmp/moveline-unit-$$.log 2>&1; then
+if "$BUN" test src/modules/editor/EditorMoveLine.test.ts >/tmp/moveline-unit-$$.log 2>&1; then
   echo "  PASS  move-line unit tests (move up/down, edge no-op, duplicate, cursor follows, undo reverts in one step)"
 else
   echo "  FAIL  move-line unit tests"; tail -25 /tmp/moveline-unit-$$.log; fail=1
