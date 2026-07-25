@@ -25,6 +25,18 @@ const statusPath = join(homeDirectory, 'status.json');
 const firstName = basename(firstRoot);
 const secondName = basename(secondRoot);
 
+async function selectVisibleSetting(label: string): Promise<void> {
+  const settingsSnapshot = await driver.awaitGridCondition(
+    `${label} is visible in the settings panel`,
+    (candidate) => candidate.findText(label) !== null,
+  );
+  clickMarker(driver, settingsSnapshot, label);
+  await driver.awaitGridCondition(
+    `${label} is the visibly selected settings row`,
+    (candidate) => candidate.findText(`› ${label}`) !== null,
+  );
+}
+
 await Bun.write(join(firstRoot, 'FIRST_TREE_ONLY.txt'), 'first tree\n');
 await Bun.write(join(firstRoot, 'first-root-change.txt'), 'first committed\n');
 runGit(firstRoot, ['init', '-q']);
@@ -138,10 +150,7 @@ try {
   console.log('== harness workspace tabs: settings reorients top to left and back ==');
   driver.sendKeys('Control+,');
   await driver.awaitSnapshot((candidate) => candidate.findText('Settings') !== null);
-  for (let settingRow = 1; settingRow <= 12; settingRow++) {
-    driver.sendKeys('Down');
-    await driver.awaitQuiescence();
-  }
+  await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
   driver.sendKeys('Escape');
@@ -159,6 +168,7 @@ try {
   );
   driver.sendKeys('Control+,');
   await driver.awaitSnapshot((candidate) => candidate.findText('Settings') !== null);
+  await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Left');
   await driver.awaitQuiescence();
   driver.sendKeys('Escape');

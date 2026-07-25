@@ -30,6 +30,20 @@ frame_text() {
 frame_coordinate() {
   "$BUN" -e 'const frame=JSON.parse(require("fs").readFileSync(process.argv[1]));const target=process.argv[2];for(let rowIndex=0;rowIndex<frame.rows.length;rowIndex+=1){const columnIndex=frame.rows[rowIndex].text.indexOf(target);if(columnIndex>=0){console.log(columnIndex+" "+rowIndex);process.exit(0)}}process.exit(1);' "$FRAME_PATH" "$1"
 }
+select_visible_setting() {
+  local setting_label="$1" setting_coordinate setting_column setting_row
+  "$HARNESS" settle "$SESSION_NAME" >/dev/null 2>&1
+  if ! setting_coordinate="$(frame_coordinate "$setting_label")"; then
+    echo "  FAIL  settings row '$setting_label' is not visible"
+    FAILURES=1
+    return 1
+  fi
+  setting_column="${setting_coordinate%% *}"
+  setting_row="${setting_coordinate##* }"
+  "$HARNESS" click "$SESSION_NAME" "$setting_column" "$setting_row" >/dev/null
+  "$HARNESS" settle "$SESSION_NAME" >/dev/null 2>&1
+  check_equal "$(field settingsSelectedLabel)" "$setting_label" "selected settings row by visible label"
+}
 check_equal() {
   if [ "$1" = "$2" ]; then
     echo "  PASS  $3 ($1)"
@@ -155,9 +169,7 @@ SECOND_TOP_COORDINATE="$(frame_coordinate "${SECOND_NAME:0:17}")"
 SECOND_TOP_ROW="${SECOND_TOP_COORDINATE##* }"
 check_equal "$SECOND_TOP_ROW" "0" "horizontal strip paints both projects on the top row"
 "$HARNESS" send "$SESSION_NAME" C-, >/dev/null
-# 12 Downs to reach the 'Workspace tabs' (workspaceTabPosition) row: the boolean 'Indent guides' row
-# sits above it (after 'Word wrap'), so the panel is one row taller than before indent guides.
-for _settingRow in $(seq 1 12); do "$HARNESS" send "$SESSION_NAME" Down >/dev/null; done
+select_visible_setting "Workspace tabs"
 "$HARNESS" send "$SESSION_NAME" Right >/dev/null
 "$HARNESS" send "$SESSION_NAME" Escape >/dev/null
 sleep 0.8
@@ -175,6 +187,7 @@ else
 fi
 
 "$HARNESS" send "$SESSION_NAME" C-, >/dev/null
+select_visible_setting "Workspace tabs"
 "$HARNESS" send "$SESSION_NAME" Left >/dev/null
 "$HARNESS" send "$SESSION_NAME" Escape >/dev/null
 sleep 0.8
