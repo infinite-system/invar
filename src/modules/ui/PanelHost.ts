@@ -40,6 +40,10 @@ class $PanelHost {
   get focused() {
     return ref(false);
   }
+  /** Expanded replaces only the editor-center and bottom-panel vertical slots; dock slots stay put. */
+  get expanded() {
+    return ref(false);
+  }
   /** The active content's id, or null when nothing is registered. This is the SINGLE-pane switcher's
    *  selection; it is the degenerate layout used whenever no split is set. */
   get activeId() {
@@ -65,7 +69,7 @@ class $PanelHost {
   }
   /** The docked contents list is useful only when there is a choice to make. */
   get panelListVisible(): boolean {
-    return this.visible.value && this.resolvedCells.length > 1;
+    return this.visible.value && this.orderedContents.length > 1;
   }
   /** Register a content. The first one registered becomes active. Idempotent per id. */
   register(content: PaneContent): void {
@@ -89,6 +93,22 @@ class $PanelHost {
    *  it to be the active/visible cell. */
   content(id: string): PaneContent | null {
     return this.contents.get(id) ?? null;
+  }
+  /** First registered instance of a shared content kind, in persisted panel order. */
+  contentOfKind(kind: string): PaneContent | null {
+    return (
+      this.orderedContents.find(
+        (content) => (content.kind ?? content.id) === kind,
+      ) ?? null
+    );
+  }
+  /** The currently visible instance of a shared content kind. */
+  visibleContentOfKind(kind: string): PaneContent | null {
+    return (
+      this.resolvedCells.find(
+        (cell) => (cell.content.kind ?? cell.content.id) === kind,
+      )?.content ?? null
+    );
   }
   /** The active content, or null. */
   get activeContent(): PaneContent | null {
@@ -206,12 +226,60 @@ class $PanelHost {
   }
   /** Focus/activate an open content selected from the docked contents list. */
   activateOpenContent(id: string): void {
-    const visibleIndex = this.resolvedCells.findIndex(
+    this.showContent(id);
+  }
+  /** Select one open instance for visibility. An instance replaces the visible instance of its own
+   *  kind; a previously absent kind joins the split. This keeps multiple sessions open while at most
+   *  one instance per shared renderer/controller kind is projected at once. */
+  showContent(id: string): void {
+    const content = this.contents.get(id);
+    if (!content) return;
+    const visibleCells = this.resolvedCells;
+    if (!this.visible.value || visibleCells.length === 0) {
+      this.retargetFocus(() => {
+        this.layout.value = [];
+        this.activeId.value = id;
+        this.focusedIndex.value = 0;
+      });
+      this.show();
+      return;
+    }
+    const visibleIndex = visibleCells.findIndex(
       (cell) => cell.content.id === id,
     );
-    if (visibleIndex < 0) return;
+    if (visibleIndex >= 0) {
+      this.focus();
+      this.focusCell(visibleIndex);
+      return;
+    }
+    const contentKind = content.kind ?? content.id;
+    const sameKindIndex = visibleCells.findIndex(
+      (cell) => (cell.content.kind ?? cell.content.id) === contentKind,
+    );
+    if (sameKindIndex >= 0) {
+      this.retargetFocus(() => {
+        if (visibleCells.length === 1) {
+          this.layout.value = [];
+        } else {
+          this.layout.value = visibleCells.map((cell, index) => ({
+            id: index === sameKindIndex ? id : cell.content.id,
+            ratio: cell.ratio,
+          }));
+        }
+        this.focusedIndex.value = sameKindIndex;
+        this.activeId.value = id;
+      });
+      this.focus();
+      return;
+    }
+    const visibleIdentifiers = visibleCells.map((cell) => cell.content.id);
+    visibleIdentifiers.push(id);
+    this.split(visibleIdentifiers);
+    const addedIndex = this.resolvedCells.findIndex(
+      (cell) => cell.content.id === id,
+    );
+    if (addedIndex >= 0) this.focusCell(addedIndex);
     this.focus();
-    this.focusCell(visibleIndex);
   }
   /** Move an open content one row in the user order and immediately reflow the live split. */
   moveOpenContent(id: string, direction: -1 | 1): void {
@@ -267,7 +335,60 @@ class $PanelHost {
   }
   /** Close affordance shared by the dock-list mouse row and keyboard command. */
   closeOpenContent(id: string): void {
-    if (this.isContentVisible(id)) this.toggleContent(id);
+    this.removeContent(id);
+  }
+  /** Close one owned session: remove it from visibility and the contents list, release its resources,
+   *  and select a surviving open instance when it was the final visible cell. */
+  removeContent(id: string): void {
+    const content = this.contents.get(id);
+    if (!content) return;
+    const remainingVisibleIdentifiers = this.resolvedCells
+      .map((cell) => cell.content.id)
+      .filter((identifier) => identifier !== id);
+    const remainingOrder = this.order.value.filter(
+      (identifier) => identifier !== id,
+    );
+    this.retargetFocus(() => {
+      this.contents.delete(id);
+      this.order.value = remainingOrder;
+      const remainingVisibleCells = remainingVisibleIdentifiers
+        .map((identifier) => this.contents.get(identifier))
+        .filter(
+          (candidate): candidate is PaneContent => candidate !== undefined,
+        );
+      if (remainingVisibleCells.length === 0) {
+        const fallback = this.orderedContents[0] ?? null;
+        this.layout.value = [];
+        this.activeId.value = fallback?.id ?? null;
+        this.focusedIndex.value = 0;
+      } else if (remainingVisibleCells.length === 1) {
+        this.layout.value = [];
+        this.activeId.value = remainingVisibleCells[0]?.id ?? null;
+        this.focusedIndex.value = 0;
+      } else {
+        const ratio = 1 / remainingVisibleCells.length;
+        this.layout.value = remainingVisibleCells.map((remainingContent) => ({
+          id: remainingContent.id,
+          ratio,
+        }));
+        this.focusedIndex.value = Math.min(
+          this.focusedIndex.value,
+          remainingVisibleCells.length - 1,
+        );
+        this.activeId.value =
+          remainingVisibleCells[this.focusedIndex.value]?.id ??
+          remainingVisibleCells[0]?.id ??
+          null;
+      }
+    });
+    if (this.contents.size === 0) {
+      this.visible.value = false;
+      this.focused.value = false;
+      this.expanded.value = false;
+    }
+    content.dispose();
+    this.options.onContentRemoved?.(content);
+    this.options.persistContentOrder?.();
   }
   /** Collapse any split back to the single active content. */
   unsplit(): void {
@@ -433,12 +554,17 @@ class $PanelHost {
   /** Hide the slot AND release focus. */
   hide(): void {
     this.visible.value = false;
+    this.expanded.value = false;
     this.blur();
   }
   /** Show+focus when hidden, hide+blur when visible. */
   toggle(): void {
     if (this.visible.value) this.hide();
     else this.show();
+  }
+  toggleExpanded(): void {
+    if (!this.visible.value) return;
+    this.expanded.value = !this.expanded.value;
   }
   focus(): void {
     if (this.focused.value) return;
@@ -465,12 +591,16 @@ class $PanelHost {
       span.content.onResize(span.columns, rows);
   }
   dispose(): void {
-    for (const content of this.contents.values()) content.dispose();
+    for (const content of this.contents.values()) {
+      content.dispose();
+      this.options.onContentRemoved?.(content);
+    }
     this.contents.clear();
     if (!this.options.contentOrder) this.order.value = [];
     this.activeId.value = null;
     this.layout.value = [];
     this.focusedIndex.value = 0;
+    this.expanded.value = false;
   }
 }
 export namespace PanelHost {
@@ -498,4 +628,5 @@ export interface PanelHostOptions {
   showWhenContentRegistered?: boolean;
   contentOrder?: Ref<string[]>;
   persistContentOrder?: () => void;
+  onContentRemoved?: (content: PaneContent) => void;
 }

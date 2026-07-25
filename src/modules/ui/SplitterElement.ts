@@ -36,13 +36,9 @@ class $SplitterElement {
     return new BoxRenderable(this.options.renderer, {
       id: this.options.identifier,
       width:
-        this.options.orientation === 'vertical'
-          ? crossAxisCellCount
-          : '100%',
+        this.options.orientation === 'vertical' ? crossAxisCellCount : '100%',
       height:
-        this.options.orientation === 'horizontal'
-          ? crossAxisCellCount
-          : '100%',
+        this.options.orientation === 'horizontal' ? crossAxisCellCount : '100%',
       flexShrink: 0,
     });
   }
@@ -158,7 +154,7 @@ export interface SplitterElementOptions {
   reportUnit: 'cells' | 'ratio';
   initialSize: number;
   minimumSize?: number;
-  maximumSize?: number;
+  maximumSize?: number | (() => number);
   extentCells?: number;
   pointerDirection?: 1 | -1 | (() => 1 | -1);
   currentSize?: () => number;

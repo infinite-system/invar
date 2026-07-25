@@ -71,7 +71,10 @@ class $AgentFactory {
       backend,
       AgentProviderRegistry.Class.resolve(options.provider).engine,
     );
-    return new AgentPaneContent.Class(session);
+    return new AgentPaneContent.Class(session, {
+      identifier: options.identifier,
+      label: options.label,
+    });
   }
 }
 
@@ -81,6 +84,8 @@ export namespace AgentFactory {
 }
 
 export interface AgentCreateOptions {
+  identifier?: string;
+  label?: string;
   /** Inject a specific backend (tests pass a MockAgentBackend; a host may pass any implementation). */
   backend?: AgentBackend;
   /** The workspace root — the cwd the real agent CLI runs in, so it operates in the user's project. */

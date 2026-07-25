@@ -50,7 +50,9 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
+import { PanelAddPopup, type PanelContentKind } from '../ui/PanelAddPopup';
 import { FileTreePaneContent } from '../ui/FileTreePaneContent';
+import type { PaneContent } from '../ui/PaneContent.interface';
 import { TerminalFactory } from '../terminal/TerminalFactory';
 import { TerminalPaneContent } from '../terminal/TerminalPaneContent';
 import type { TerminalCommandEvent } from '../terminal/TerminalCommandController';
@@ -171,9 +173,11 @@ class $Bootstrap {
     // The bottom panel slot: a generic, content-agnostic host. Tier S registers ONE PaneContent (the
     // terminal), lazily on first toggle so no shell spawns until the panel is opened.
     // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
+    let handlePanelContentRemoved: (content: PaneContent) => void = () => {};
     const panelHost = new PanelHost.Class({
       contentOrder: settings.panelContentOrder,
       persistContentOrder: () => settings.save(),
+      onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class({
@@ -200,22 +204,25 @@ class $Bootstrap {
       completionPopup: dismissCompletion,
       shortcutHelp: () => shortcutHelp.close(),
     });
+    let panelAddPopup: PanelAddPopup.Instance | null = null;
 
     // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J/Ctrl+`/F8)
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
-      ensureTerminal();
       rightDockHost.blur();
-      panelHost.toggleContent('terminal');
+      const visibleTerminal = panelHost.visibleContentOfKind('terminal');
+      if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
+      else panelHost.showContent(ensureTerminal().id);
     };
 
     // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
-      ensureAgent();
       rightDockHost.blur();
-      panelHost.toggleContent('agent');
+      const visibleAgent = panelHost.visibleContentOfKind('agent');
+      if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
+      else panelHost.showContent(ensureAgent().id);
     };
     const toggleRightDock = (): void => {
       // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
@@ -275,6 +282,7 @@ class $Bootstrap {
       rightDockHost,
       toggleTerminal,
       toggleAgent,
+      (anchor) => panelAddPopup?.show(anchor),
       toggleRightDock,
       activateQuickOpenSelection,
       revealFindMatch,
@@ -282,9 +290,24 @@ class $Bootstrap {
 
     // Lazily create + register the terminal PaneContent on first toggle (idle cost is zero until then).
     // The initial cols×rows seed from the laid-out panel region; the frame loop converges the true size.
+    const terminalPaneContents = new Map<string, TerminalPaneContent.Model>();
+    const agentPaneContents = new Map<string, AgentPaneContent.Model>();
+    let terminalInstanceCount = 0;
+    let agentInstanceCount = 0;
     let terminalPaneContent: TerminalPaneContent.Model | null = null;
-    let agentRegistered = false;
     let agentPaneContent: AgentPaneContent.Model | null = null;
+    const currentTerminalPane = (): TerminalPaneContent.Model | null => {
+      const visibleContent = panelHost.visibleContentOfKind('terminal');
+      return visibleContent instanceof TerminalPaneContent.Class
+        ? visibleContent
+        : terminalPaneContent;
+    };
+    const currentAgentPane = (): AgentPaneContent.Model | null => {
+      const visibleContent = panelHost.visibleContentOfKind('agent');
+      return visibleContent instanceof AgentPaneContent.Class
+        ? visibleContent
+        : agentPaneContent;
+    };
     let terminalFollowController: AgentTerminalFollow.Model | null = null;
     const cycleTerminalFollowMode = (): void => {
       settings.agentTerminalFollowMode.value =
@@ -339,9 +362,21 @@ class $Bootstrap {
           return `terminal command rejected with Ctrl+C: ${event.command}`;
       }
     };
-    const ensureTerminal = (): TerminalPaneContent.Model => {
-      if (terminalPaneContent) return terminalPaneContent;
+    const createTerminal = (
+      additionalInstance = false,
+    ): TerminalPaneContent.Model => {
+      const instanceNumber =
+        additionalInstance || terminalPaneContents.size > 0
+          ? terminalInstanceCount + 1
+          : 1;
+      terminalInstanceCount = Math.max(terminalInstanceCount, instanceNumber);
+      const identifier =
+        instanceNumber === 1 ? 'terminal' : `terminal-${instanceNumber}`;
+      const label =
+        instanceNumber === 1 ? 'Terminal' : `Terminal ${instanceNumber}`;
       const content = TerminalFactory.Class.create({
+        identifier,
+        label,
         columns: view.panelViewportColumns() || 80,
         rows: view.panelViewportRows() || 24,
         cwd: workspaceSet.active.root,
@@ -350,9 +385,10 @@ class $Bootstrap {
         typingSpeed: () => settings.agentTypingSpeed.value,
         reducedMotion: () => settings.reducedMotion.value,
       });
-      terminalPaneContent = content;
+      terminalPaneContents.set(content.id, content);
+      terminalPaneContent ??= content;
       content.onTerminalCommandEvent((event) => {
-        agentPaneContent?.agentSession.appendSystemNote(
+        currentAgentPane()?.agentSession.appendSystemNote(
           terminalCommandEventText(event),
         );
       });
@@ -360,6 +396,8 @@ class $Bootstrap {
       connectTerminalFollow();
       return content;
     };
+    const ensureTerminal = (): TerminalPaneContent.Model =>
+      terminalPaneContent ?? createTerminal();
 
     // The native agent pane — a second PaneContent with its OWN headed region in the bottom layout,
     // registered lazily on first toggle (idle cost zero). The host still supplies the shared layout and
@@ -368,13 +406,24 @@ class $Bootstrap {
     // visual→decorations, audio→speech). Created alongside the agent pane so it subscribes to the SAME
     // AgentSession; null until the agent pane is ensured. Barge-in + dispose route through it.
     let narration: NarrationProjection.Instance | null = null;
+    const narrationsByAgentIdentifier = new Map<
+      string,
+      NarrationProjection.Instance
+    >();
+    const currentNarration = (): NarrationProjection.Instance | null => {
+      const agentPane = currentAgentPane();
+      return agentPane
+        ? (narrationsByAgentIdentifier.get(agentPane.id) ?? narration)
+        : narration;
+    };
     // The agent pane instance once ensured — the frame dump reads its view state (scroll/collapse) so the
     // driving smoke asserts the UX without pane-scraping. Null until the pane is first toggled.
     // ONE transcript-search action, shared by Ctrl+F and the pane's clickable search icon. Overlay
     // exclusivity stays host-owned; the pane only invokes this port.
     const openAgentTranscriptSearch = (): void => {
-      if (!agentPaneContent) return;
-      const transcriptFindTarget = agentPaneContent.findTarget();
+      const targetAgent = currentAgentPane();
+      if (!targetAgent) return;
+      const transcriptFindTarget = targetAgent.findTarget();
       overlayCoordinator.openExclusiveOverlay('findBar', () =>
         findBar.openForTarget(transcriptFindTarget, 'find'),
       );
@@ -400,20 +449,21 @@ class $Bootstrap {
     };
 
     const prepareTerminalForAgentCommand = (): TerminalPaneContent.Model => {
-      const terminalPane = ensureTerminal();
-      if (agentRegistered) panelHost.split(['agent', 'terminal']);
-      else panelHost.activate('terminal');
-      panelHost.show();
+      const terminalPane = currentTerminalPane() ?? ensureTerminal();
+      panelHost.showContent(terminalPane.id);
       const terminalIndex = panelHost.resolvedCells.findIndex(
-        (cell) => cell.content.id === 'terminal',
+        (cell) => cell.content.id === terminalPane.id,
       );
       if (terminalIndex >= 0) panelHost.focusCell(terminalIndex);
       return terminalPane;
     };
     const terminalToolPort: AgentTerminalToolPort = {
-      readTerminalInput: () => ensureTerminal().readTerminalInput(),
+      readTerminalInput: () =>
+        (currentTerminalPane() ?? ensureTerminal()).readTerminalInput(),
       readTerminalScrollback: (request) =>
-        ensureTerminal().readTerminalScrollback(request),
+        (currentTerminalPane() ?? ensureTerminal()).readTerminalScrollback(
+          request,
+        ),
       stageTerminalCommand: (command) =>
         prepareTerminalForAgentCommand().stageTerminalCommand(command),
       replaceTerminalInput: (command) =>
@@ -427,14 +477,9 @@ class $Bootstrap {
     // AgentProviderRegistry resolution, so the mode line can never claim an engine the factory didn't
     // build (the reviewed dual-authority bug: configured codex with codex missing labeled "codex" while
     // claude silently ran; with neither installed it labeled "claude" while the echo ran).
-    const currentEngine = (): string =>
-      AgentProviderRegistry.Class.resolve(settings.agentProvider.value).engine;
     // Swap the backend behind the SAME AgentSession (transcript preserved), then write the setting back.
-    const cycleEngine = (): boolean => {
-      if (!agentPaneContent) return false;
-      const current = AgentProviderRegistry.Class.resolve(
-        settings.agentProvider.value,
-      ).engine;
+    const cycleEngine = (pane: AgentPaneContent.Model): boolean => {
+      const current = pane.agentSession.activeEngine;
       const next = AgentProviderRegistry.Class.nextEngine(current);
       if (!next) return false;
       const nextBackend = AgentFactory.Class.createBackend({
@@ -444,7 +489,7 @@ class $Bootstrap {
         model: settings.agentModel.value,
         terminalTools: terminalToolPort,
       });
-      if (agentPaneContent.agentSession.swapBackend(nextBackend, next)) {
+      if (pane.agentSession.swapBackend(nextBackend, next)) {
         if (next !== 'echo') settings.agentProvider.value = next;
         settings.save(); // persist the write-back (a bare ref write live-applies but does not persist)
         return true;
@@ -452,21 +497,22 @@ class $Bootstrap {
       nextBackend.dispose(); // swap refused (busy) — don't leak the backend we built
       return false;
     };
-    const enginePort: AgentEnginePort = {
-      get provider() {
-        return currentEngine();
-      },
-      get canCycle() {
-        return AgentProviderRegistry.Class.availableEngines().length >= 2;
-      },
-      cycle: cycleEngine,
-    };
 
-    const ensureAgent = (): void => {
-      if (agentRegistered) return;
-      agentRegistered = true;
+    const createAgent = (
+      additionalInstance = false,
+    ): AgentPaneContent.Model => {
+      const instanceNumber =
+        additionalInstance || agentPaneContents.size > 0
+          ? agentInstanceCount + 1
+          : 1;
+      agentInstanceCount = Math.max(agentInstanceCount, instanceNumber);
+      const identifier =
+        instanceNumber === 1 ? 'agent' : `agent-${instanceNumber}`;
+      const label = instanceNumber === 1 ? 'Agent' : `Agent ${instanceNumber}`;
       // Real Claude (when `claude` is on PATH) runs in the workspace root so it operates in the project.
       const agentPane = AgentFactory.Class.create({
+        identifier,
+        label,
         cwd: workspaceSet.active.root,
         provider: settings.agentProvider.value,
         skipPermissions: () => settings.agentSkipPermissions.value, // LIVE getter — Shift+Tab toggle applies next turn
@@ -475,12 +521,22 @@ class $Bootstrap {
       });
       panelHost.register(agentPane);
       if (agentPane instanceof AgentPaneContent.Class) {
-        agentPaneContent = agentPane;
+        agentPaneContents.set(agentPane.id, agentPane);
+        agentPaneContent ??= agentPane;
         agentPane.attachPermissionMode(settings.agentSkipPermissions); // mode line + Shift+Tab toggle
+        const enginePort: AgentEnginePort = {
+          get provider() {
+            return agentPane.agentSession.activeEngine;
+          },
+          get canCycle() {
+            return AgentProviderRegistry.Class.availableEngines().length >= 2;
+          },
+          cycle: () => cycleEngine(agentPane),
+        };
         agentPane.attachEnginePort(enginePort); // mode-line engine segment + click/Ctrl+E cycle
         agentPane.attachTerminalFollowPort(terminalFollowPort);
         agentPane.attachTranscriptSearchPort(agentTranscriptSearchPort); // icon + Ctrl+F share ONE action
-        narration = new NarrationProjection.Class(
+        const agentNarration = new NarrationProjection.Class(
           agentPane.agentSession,
           settings.agentAudioNarration,
           // LIVE voice + rate: read per utterance so changing them in settings applies to ongoing narration
@@ -490,13 +546,47 @@ class $Bootstrap {
             rateProvider: () => settings.agentNarrationRate.value,
           }),
         );
+        narrationsByAgentIdentifier.set(agentPane.id, agentNarration);
+        narration ??= agentNarration;
         connectTerminalFollow();
       }
+      return agentPane;
     };
+    const ensureAgent = (): AgentPaneContent.Model =>
+      agentPaneContent ?? createAgent();
+    handlePanelContentRemoved = (content): void => {
+      if (content instanceof TerminalPaneContent.Class) {
+        terminalPaneContents.delete(content.id);
+        terminalPaneContent =
+          terminalPaneContents.values().next().value ?? null;
+      }
+      if (content instanceof AgentPaneContent.Class) {
+        agentPaneContents.delete(content.id);
+        const removedNarration = narrationsByAgentIdentifier.get(content.id);
+        removedNarration?.dispose();
+        narrationsByAgentIdentifier.delete(content.id);
+        agentPaneContent = agentPaneContents.values().next().value ?? null;
+        narration = narrationsByAgentIdentifier.values().next().value ?? null;
+      }
+      terminalFollowController?.dispose();
+      terminalFollowController = null;
+      connectTerminalFollow();
+    };
+    const addPanelContent = (kind: PanelContentKind): void => {
+      rightDockHost.blur();
+      const content =
+        kind === 'terminal' ? createTerminal(true) : createAgent(true);
+      panelHost.showContent(content.id);
+    };
+    panelAddPopup = new PanelAddPopup.Class({
+      popup: boundedListPopup,
+      overlayCoordinator,
+      addContent: addPanelContent,
+    });
     app.onDispose(() => {
-      narration?.dispose();
       testVoiceBackend?.dispose();
       terminalFollowController?.dispose();
+      terminalFollowController = null;
       panelHost.dispose();
       primaryDockHost.dispose();
       rightDockHost.dispose();
@@ -506,16 +596,14 @@ class $Bootstrap {
     // add the missing terminal/agent region beside the current one, or collapse a split back to the
     // focused region.
     const togglePanelSplit = (): void => {
-      ensureTerminal();
-      ensureAgent();
+      const terminal = ensureTerminal();
+      const agent = ensureAgent();
       if (panelHost.isSplit) {
         panelHost.unsplit();
         return;
       }
       if (!panelHost.visible.value) panelHost.show();
-      panelHost.toggleContent(
-        panelHost.activeId.value === 'agent' ? 'terminal' : 'agent',
-      );
+      panelHost.split([agent.id, terminal.id]);
     };
     const focusPanelContent = (direction: -1 | 1): void => {
       const contentCount = panelHost.resolvedCells.length;
@@ -614,13 +702,13 @@ class $Bootstrap {
         return lastMouse;
       },
       get narration() {
-        return narration;
+        return currentNarration();
       },
       get agentPaneContent() {
-        return agentPaneContent;
+        return currentAgentPane();
       },
       get terminalPaneContent() {
-        return terminalPaneContent;
+        return currentTerminalPane();
       },
     };
 
@@ -753,6 +841,7 @@ class $Bootstrap {
       // demand-driven loop stays at rest).
       void panelHost.visible.value;
       void panelHost.focused.value;
+      void panelHost.expanded.value;
       void panelHost.activeId.value;
       void panelHost.order.value;
       void panelHost.layout.value;
@@ -1531,7 +1620,11 @@ class $Bootstrap {
       // The focused agent pane owns Ctrl+C / Cmd+C: copy its transcript OR composer selection (whichever is
       // set) to the clipboard, publishing the same character-count proof channel as editor.copy.
       'agent.copy': () => {
-        const pane = agentPaneContent;
+        const focusedContent = panelHost.focusedContent;
+        const pane =
+          focusedContent instanceof AgentPaneContent.Class
+            ? focusedContent
+            : currentAgentPane();
         if (!pane) return;
         void pane.copySelection().then((copiedCharacters) => {
           if (copiedCharacters > 0) {
@@ -1545,16 +1638,37 @@ class $Bootstrap {
           StatusChannel.Class.flush();
         });
       },
-      'agent.wordLeft': () => agentPaneContent?.moveComposerWordLeft(),
-      'agent.wordRight': () => agentPaneContent?.moveComposerWordRight(),
-      'agent.deletePreviousWord': () =>
-        agentPaneContent?.deleteComposerPreviousWord(),
+      'agent.wordLeft': () => {
+        const focusedContent = panelHost.focusedContent;
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          focusedContent.moveComposerWordLeft();
+        }
+      },
+      'agent.wordRight': () => {
+        const focusedContent = panelHost.focusedContent;
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          focusedContent.moveComposerWordRight();
+        }
+      },
+      'agent.deletePreviousWord': () => {
+        const focusedContent = panelHost.focusedContent;
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          focusedContent.deleteComposerPreviousWord();
+        }
+      },
       'agent.cancelTurn': () => {
-        agentPaneContent?.cancelTurn();
+        const focusedContent = panelHost.focusedContent;
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          focusedContent.cancelTurn();
+        }
       },
       'agent.cycleTerminalFollowMode': cycleTerminalFollowMode,
       'terminal.copy': () => {
-        const pane = terminalPaneContent;
+        const focusedContent = panelHost.focusedContent;
+        const pane =
+          focusedContent instanceof TerminalPaneContent.Class
+            ? focusedContent
+            : currentTerminalPane();
         if (!pane) return;
         void pane.copySelection().then((copiedCharacters) => {
           if (copiedCharacters > 0) {
@@ -1679,7 +1793,7 @@ class $Bootstrap {
 
     const keyTick = (key: KeyEvent): void => {
       tooltip.clear(); // any keypress hides the tooltip (display-only affordance)
-      if (key.name === 'escape') narration?.bargeIn(); // Escape is the EXPLICIT "stop narration"; ordinary typing/paste/navigation lets it play on, so you can read/compose/work while listening (barge-in should be intentional, not a side effect of every keystroke)
+      if (key.name === 'escape') currentNarration()?.bargeIn(); // Escape is the EXPLICIT "stop narration"; ordinary typing/paste/navigation lets it play on, so you can read/compose/work while listening (barge-in should be intentional, not a side effect of every keystroke)
       // Escape always closes the hover card; any other key closes it too UNLESS the pointer is engaged
       // with it (over the card / dragging a selection) — so a sticky card lets Ctrl+C copy its selection.
       if (key.name === 'escape') view.dismissHover();
@@ -1742,7 +1856,7 @@ class $Bootstrap {
         // on the transcript, it owns the keyboard through the SAME shared handler the 'find' context
         // uses; Esc closes it and keys fall back to the composer. Everything else goes to the pane.
         const focusedContent = panelHost.focusedContent;
-        if (focusedContent?.id === 'agent' && agentPaneContent) {
+        if (focusedContent instanceof AgentPaneContent.Class) {
           if (
             findBar.open.value &&
             findBar.target?.identifier ===
@@ -1764,7 +1878,7 @@ class $Bootstrap {
           );
           if (
             agentResolution.action === 'agent.copy' &&
-            agentPaneContent.hasSelection()
+            focusedContent.hasSelection()
           ) {
             actionHandlers['agent.copy']?.(key);
             return;
@@ -1781,7 +1895,7 @@ class $Bootstrap {
             return;
           }
         }
-        if (focusedContent?.id === 'terminal' && terminalPaneContent) {
+        if (focusedContent instanceof TerminalPaneContent.Class) {
           const terminalResolution = keybindings.resolve(
             {
               name: key.name,
@@ -1795,7 +1909,7 @@ class $Bootstrap {
           );
           if (
             terminalResolution.action === 'terminal.copy' &&
-            terminalPaneContent.hasSelection()
+            focusedContent.hasSelection()
           ) {
             actionHandlers['terminal.copy']?.(key);
             return;

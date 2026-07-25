@@ -353,8 +353,8 @@ try {
     'focused cell index reset',
   );
   HarnessSmoke.Class.requireCondition(
-    restoredStatus.panelListVisible === false,
-    'contents list is hidden with one open content',
+    restoredStatus.panelListVisible === true,
+    'contents list stays visible while another open session is hidden',
   );
   HarnessSmoke.Class.requireCondition(
     (cellColumns(restoredStatus)[0] ?? 0) > resizedLeftColumns,

@@ -20,7 +20,9 @@ class $TerminalFactory {
   }
 
   /** Wire backend + emulator + instance into a ready TerminalPaneContent. */
-  static create(options: TerminalCreateOptions = {}): TerminalPaneContent.Model {
+  static create(
+    options: TerminalCreateOptions = {},
+  ): TerminalPaneContent.Model {
     const columns = options.columns ?? 80;
     const rows = options.rows ?? 24;
     const backend = this.createBackend(options);
@@ -29,7 +31,10 @@ class $TerminalFactory {
       typingSpeed: options.typingSpeed,
       reducedMotion: options.reducedMotion,
     });
-    return new TerminalPaneContent.Class(instance);
+    return new TerminalPaneContent.Class(instance, {
+      identifier: options.identifier,
+      label: options.label,
+    });
   }
 }
 
@@ -39,6 +44,8 @@ export namespace TerminalFactory {
 }
 
 export interface TerminalCreateOptions {
+  identifier?: string;
+  label?: string;
   columns?: number;
   rows?: number;
   shell?: string;

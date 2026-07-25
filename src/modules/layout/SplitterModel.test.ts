@@ -150,3 +150,19 @@ describe('SplitterModel — ratio mode (git-split divider)', () => {
     expect(splitter.size.value).toBeCloseTo(0.7, 10);
   });
 });
+
+test('a live maximum is re-read when a new drag begins', () => {
+  let maximumSize = 40;
+  const { splitter } = makeSplitter({
+    initialSize: 30,
+    maximumSize: () => maximumSize,
+  });
+  splitter.beginDrag(0);
+  splitter.dragTo(100);
+  expect(splitter.size.value).toBe(40);
+  splitter.endDrag();
+  maximumSize = 70;
+  splitter.beginDrag(0);
+  splitter.dragTo(100);
+  expect(splitter.size.value).toBe(70);
+});

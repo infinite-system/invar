@@ -6,21 +6,43 @@ import type { PaneContent } from './PaneContent.interface';
 import { ref, type Ref } from 'vue';
 import type { StyledText, KeyEvent } from '@opentui/core';
 
-function fakeContent(id: string): PaneContent & { keys: KeyEvent[]; focused: boolean; resizes: Array<[number, number]> } {
+function fakeContent(
+  id: string,
+  kind = id,
+): PaneContent & {
+  keys: KeyEvent[];
+  focused: boolean;
+  disposed: boolean;
+  resizes: Array<[number, number]>;
+} {
   const revision: Ref<number> = ref(0);
   return {
     id,
+    kind,
+    instanceLabel: id,
     title: id,
     renderRevision: revision,
     keys: [],
     focused: false,
+    disposed: false,
     resizes: [],
     render: () => ({}) as StyledText,
-    handleKey(key: KeyEvent) { this.keys.push(key); return true; },
-    onResize(columns: number, rows: number) { this.resizes.push([columns, rows]); },
-    onFocus() { this.focused = true; },
-    onBlur() { this.focused = false; },
-    dispose() {},
+    handleKey(key: KeyEvent) {
+      this.keys.push(key);
+      return true;
+    },
+    onResize(columns: number, rows: number) {
+      this.resizes.push([columns, rows]);
+    },
+    onFocus() {
+      this.focused = true;
+    },
+    onBlur() {
+      this.focused = false;
+    },
+    dispose() {
+      this.disposed = true;
+    },
   };
 }
 
@@ -205,4 +227,62 @@ test('moveDivider re-flows both adjacent cells and never collapses one below the
 
   host.moveDivider(0, 0.0); // try to collapse the left cell to nothing
   expect(host.resolvedCells[0]!.ratio).toBeGreaterThan(0); // clamped to the minimum, never zero
+});
+
+test('selecting another instance replaces only the visible instance of the same kind', () => {
+  const host = new PanelHost.Class();
+  const terminal = fakeContent('terminal', 'terminal');
+  const terminalTwo = fakeContent('terminal-2', 'terminal');
+  const agent = fakeContent('agent', 'agent');
+  host.register(terminal);
+  host.register(terminalTwo);
+  host.register(agent);
+  host.split(['agent', 'terminal']);
+  host.show();
+
+  host.showContent('terminal-2');
+
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'agent',
+    'terminal-2',
+  ]);
+  expect(host.focusedContent).toBe(terminalTwo);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'terminal',
+    'terminal-2',
+    'agent',
+  ]);
+});
+
+test('closing an instance disposes it and selects a surviving open session', () => {
+  const removed: string[] = [];
+  const host = new PanelHost.Class({
+    onContentRemoved: (content) => removed.push(content.id),
+  });
+  const terminal = fakeContent('terminal', 'terminal');
+  const terminalTwo = fakeContent('terminal-2', 'terminal');
+  host.register(terminal);
+  host.register(terminalTwo);
+  host.showContent('terminal-2');
+
+  host.removeContent('terminal-2');
+
+  expect(terminalTwo.disposed).toBe(true);
+  expect(removed).toEqual(['terminal-2']);
+  expect(host.orderedContents).toEqual([terminal]);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal',
+  ]);
+});
+
+test('expanded state toggles only while visible and resets when the panel hides', () => {
+  const host = new PanelHost.Class();
+  host.register(fakeContent('terminal'));
+  host.toggleExpanded();
+  expect(host.expanded.value).toBe(false);
+  host.show();
+  host.toggleExpanded();
+  expect(host.expanded.value).toBe(true);
+  host.hide();
+  expect(host.expanded.value).toBe(false);
 });

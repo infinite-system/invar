@@ -25,11 +25,12 @@ class $PanelContentsList {
 
   get rows(): PanelContentsListRow[] {
     const focusedIdentifier = this.panelHost.focusedContent?.id;
-    return this.panelHost.resolvedCells.map((cell) => ({
-      identifier: cell.content.id,
-      icon: cell.content.icon ?? ' ',
-      title: cell.content.title,
-      active: cell.content.id === focusedIdentifier,
+    return this.panelHost.orderedContents.map((content) => ({
+      identifier: content.id,
+      icon: content.icon ?? ' ',
+      title: content.instanceLabel ?? content.title,
+      visible: this.panelHost.isContentVisible(content.id),
+      active: content.id === focusedIdentifier,
     }));
   }
 
@@ -66,7 +67,11 @@ class $PanelContentsList {
         Math.max(0, titleColumns - WrapText.Class.displayWidth(clippedTitle)),
       );
       const rowText = `${prefix}${clippedTitle}${padding} x`;
-      const color = row.active ? palette.accent : palette.fg;
+      const color = row.active
+        ? palette.accent
+        : row.visible
+          ? palette.fg
+          : palette.dim;
       chunks.push(
         row.active
           ? bg(palette.selection)(fg(color)(rowText))
@@ -112,5 +117,6 @@ export interface PanelContentsListRow {
   readonly identifier: string;
   readonly icon: string;
   readonly title: string;
+  readonly visible: boolean;
   readonly active: boolean;
 }

@@ -1,39 +1,39 @@
-import type { StyledText, KeyEvent } from "@opentui/core";
-import { computed, ref, watch, type Ref } from "vue";
+import type { StyledText, KeyEvent } from '@opentui/core';
+import { computed, ref, watch, type Ref } from 'vue';
 import type {
   PaneContent,
   PaneRenderContext,
-} from "../ui/PaneContent.interface";
-import type { GlyphLevel } from "../theme/TerminalCapabilities";
-import { ThemeIcons } from "../theme/ThemeIcons";
+} from '../ui/PaneContent.interface';
+import type { GlyphLevel } from '../theme/TerminalCapabilities';
+import { ThemeIcons } from '../theme/ThemeIcons';
 import {
   TextSelectionModel,
   type SelectionPoint,
-} from "../ui/TextSelectionModel";
-import { WrapText } from "../ui/WrapText";
-import { Clipboard } from "../system/Clipboard";
-import { TextSegmentation } from "../system/TextSegmentation";
-import { TextDocument } from "../editor/TextDocument";
-import type { FindBar, FindBarTarget } from "../search/FindBar";
-import type { FindInBuffer, FindInBufferMatch } from "../search/FindInBuffer";
-import { AgentPaneRenderer, type SelectionRange } from "./AgentPaneRenderer";
-import { AgentProviderRegistry } from "./AgentProviderRegistry";
+} from '../ui/TextSelectionModel';
+import { WrapText } from '../ui/WrapText';
+import { Clipboard } from '../system/Clipboard';
+import { TextSegmentation } from '../system/TextSegmentation';
+import { TextDocument } from '../editor/TextDocument';
+import type { FindBar, FindBarTarget } from '../search/FindBar';
+import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
+import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';
+import { AgentProviderRegistry } from './AgentProviderRegistry';
 import {
   AgentTranscriptSearch,
   type TranscriptMatchHighlight,
-} from "./AgentTranscriptSearch";
+} from './AgentTranscriptSearch';
 import {
   AgentTranscriptProjection,
   type ProjectedLine,
-} from "./AgentTranscriptProjection";
-import { AgentComposer } from "./AgentComposer";
-import { AgentSpinner } from "./AgentSpinner";
+} from './AgentTranscriptProjection';
+import { AgentComposer } from './AgentComposer';
+import { AgentSpinner } from './AgentSpinner';
 import {
   AgentThinkingIndicator,
   type ThinkingSegment,
-} from "./AgentThinkingIndicator";
-import type { AgentSession } from "./AgentSession";
-import type { AgentTerminalFollowMode } from "../settings/Settings";
+} from './AgentThinkingIndicator';
+import type { AgentSession } from './AgentSession';
+import type { AgentTerminalFollowMode } from '../settings/Settings';
 
 // invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
@@ -43,7 +43,7 @@ import type { AgentTerminalFollowMode } from "../settings/Settings";
 
 class $AgentPaneContent implements PaneContent {
   static get transcriptFindTargetIdentifier(): string {
-    return "agent-transcript";
+    return 'agent-transcript';
   }
 
   protected static get transcriptPadLeft(): number {
@@ -76,8 +76,10 @@ class $AgentPaneContent implements PaneContent {
     return codePoint !== undefined && codePoint >= 32 && codePoint !== 127;
   }
 
-  readonly id = "agent";
-  readonly icon = "✦";
+  readonly id: string;
+  readonly kind = 'agent';
+  readonly instanceLabel: string;
+  readonly icon = '✦';
 
   /** The editable, wrapping, cap-scrolled composer (the second text surface). */
   protected readonly composer = new AgentComposer.Class();
@@ -153,9 +155,14 @@ class $AgentPaneContent implements PaneContent {
   protected lastProjectedLines: readonly ProjectedLine[] = [];
   /** The composer caret cell (viewport-local) resolved last frame. */
   protected lastCaret = { column: 2, row: 0 };
-  protected lastGlyphLevel: GlyphLevel = "unicode";
+  protected lastGlyphLevel: GlyphLevel = 'unicode';
 
-  constructor(protected readonly session: AgentSession.Instance) {
+  constructor(
+    protected readonly session: AgentSession.Instance,
+    identity: AgentPaneIdentity = {},
+  ) {
+    this.id = identity.identifier ?? 'agent';
+    this.instanceLabel = identity.label ?? 'Agent';
     // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
     // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
     // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
@@ -193,7 +200,7 @@ class $AgentPaneContent implements PaneContent {
         if (shouldSpin) this.spinner.start();
         else this.spinner.stop();
       },
-      { immediate: true, flush: "sync" }, // a timer gate must arm/disarm exactly on the flip
+      { immediate: true, flush: 'sync' }, // a timer gate must arm/disarm exactly on the flip
     );
   }
 
@@ -297,17 +304,17 @@ class $AgentPaneContent implements PaneContent {
         this.agentPaneContentClass.transcriptFindTargetIdentifier;
     if (!barOpenOnTranscript && engine.query.value.length === 0) return null;
     const searchableText =
-      AgentTranscriptSearch.Class.searchableLineTexts(lines).join("\n");
+      AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n');
     if (searchableText !== this.lastTranscriptSearchText) {
       this.lastTranscriptSearchText = searchableText;
-      this.transcriptSearchDocument.replaceAll(searchableText.split("\n"));
+      this.transcriptSearchDocument.replaceAll(searchableText.split('\n'));
       engine.findAll();
     }
     return engine;
   }
   /** The current engine label (for the frame dump / smoke), or '' when unbound. */
   get currentEngine(): string {
-    return this.enginePort?.provider ?? "";
+    return this.enginePort?.provider ?? '';
   }
   /** Cycle to the next engine (click or Ctrl+E); reveals the switch note. Returns whether it switched. */
   protected cycleEngine(): boolean {
@@ -419,7 +426,7 @@ class $AgentPaneContent implements PaneContent {
     const bodyRows: ProjectedLine[] = [];
     for (let blank = 0; blank < padCount; blank += 1)
       bodyRows.push({
-        text: "",
+        text: '',
         color: context.palette.fg,
         bold: false,
         entryIndex: -1,
@@ -500,17 +507,17 @@ class $AgentPaneContent implements PaneContent {
     modeLineRow: number,
   ): ThinkingSegment[] {
     const bypass = this.permissionMode?.value ?? false;
-    const arrow = context.glyphLevel === "ascii" ? ">>" : "⏵⏵";
+    const arrow = context.glyphLevel === 'ascii' ? '>>' : '⏵⏵';
     const askSupported = this.session.permissionPromptsSupported;
     const permissionText = bypass
       ? `${arrow} bypass permissions on`
       : askSupported
-        ? "? ask permissions"
-        : "bypass permissions off (prompts unavailable on this backend)";
+        ? '? ask permissions'
+        : 'bypass permissions off (prompts unavailable on this backend)';
 
     const segments: ThinkingSegment[] = [
       {
-        text: " ".repeat(this.agentPaneContentClass.transcriptPadLeft),
+        text: ' '.repeat(this.agentPaneContentClass.transcriptPadLeft),
         color: context.palette.dim,
         bold: false,
       },
@@ -521,10 +528,10 @@ class $AgentPaneContent implements PaneContent {
     if (this.enginePort) {
       const cyclable = this.enginePort.canCycle;
       const cycleGlyph = cyclable
-        ? context.glyphLevel === "ascii"
-          ? " <->"
-          : " ⇄"
-        : "";
+        ? context.glyphLevel === 'ascii'
+          ? ' <->'
+          : ' ⇄'
+        : '';
       const engineText = `engine: ${this.enginePort.provider}${cycleGlyph}`;
       const startColumn = modeLineColumn;
       const endColumn = startColumn + WrapText.Class.displayWidth(engineText);
@@ -535,7 +542,7 @@ class $AgentPaneContent implements PaneContent {
         bold: cyclable,
       });
       modeLineColumn = endColumn;
-      const separatorText = "  ·  ";
+      const separatorText = '  ·  ';
       segments.push({
         text: separatorText,
         color: context.palette.dim,
@@ -558,15 +565,15 @@ class $AgentPaneContent implements PaneContent {
       segments.push({
         text: followText,
         color:
-          followMode === "off"
+          followMode === 'off'
             ? context.palette.dim
-            : followMode === "on-request"
+            : followMode === 'on-request'
               ? context.palette.info
               : context.palette.accent,
-        bold: followMode !== "off",
+        bold: followMode !== 'off',
       });
       modeLineColumn = endColumn;
-      const separatorText = "  ·  ";
+      const separatorText = '  ·  ';
       segments.push({
         text: separatorText,
         color: context.palette.dim,
@@ -594,7 +601,7 @@ class $AgentPaneContent implements PaneContent {
         bold: true,
       });
       modeLineColumn = endColumn;
-      const separatorText = "  ·  ";
+      const separatorText = '  ·  ';
       segments.push({
         text: separatorText,
         color: context.palette.dim,
@@ -613,8 +620,8 @@ class $AgentPaneContent implements PaneContent {
       bold: bypass,
     });
     const hint = this.enginePort?.canCycle
-      ? "  (shift+tab · ctrl+e)"
-      : "  (shift+tab to cycle)";
+      ? '  (shift+tab · ctrl+e)'
+      : '  (shift+tab to cycle)';
     segments.push({ text: hint, color: context.palette.dim, bold: false });
     return segments;
   }
@@ -624,8 +631,8 @@ class $AgentPaneContent implements PaneContent {
   protected pendingTools(): { id: string; name: string }[] {
     const pending = new Map<string, string>();
     for (const entry of this.session.transcript) {
-      if (entry.role === "tool-use") pending.set(entry.id, entry.name);
-      else if (entry.role === "tool-result") pending.delete(entry.id);
+      if (entry.role === 'tool-use') pending.set(entry.id, entry.name);
+      else if (entry.role === 'tool-result') pending.delete(entry.id);
     }
     return [...pending].map(([id, name]) => ({ id, name }));
   }
@@ -679,9 +686,9 @@ class $AgentPaneContent implements PaneContent {
       colorDepth: context.colorDepth,
       palette: context.palette,
     });
-    const stalled = this.session.turnState.value === "stalled";
+    const stalled = this.session.turnState.value === 'stalled';
     segments.push({
-      text: stalled ? "  stalled — esc to cancel" : "  esc to cancel",
+      text: stalled ? '  stalled — esc to cancel' : '  esc to cancel',
       color: stalled ? context.palette.warning : context.palette.dim,
       bold: stalled,
     });
@@ -690,7 +697,7 @@ class $AgentPaneContent implements PaneContent {
 
   handleKey(key: KeyEvent): boolean {
     // Shift+Tab cycles the permission mode (a boolean → on↔off); the mode line updates live.
-    if ((key.name === "tab" && key.shift) || key.name === "backtab") {
+    if ((key.name === 'tab' && key.shift) || key.name === 'backtab') {
       if (this.permissionMode) {
         this.permissionMode.value = !this.permissionMode.value;
         this.viewRevision.value += 1;
@@ -699,7 +706,7 @@ class $AgentPaneContent implements PaneContent {
     }
     // Ctrl+E cycles the engine (claude ⇄ codex), swapping the backend behind the same transcript. No-op
     // while busy (the session guards the swap) — so it never disrupts an in-flight turn.
-    if (key.ctrl && !key.meta && !key.option && key.name === "e") {
+    if (key.ctrl && !key.meta && !key.option && key.name === 'e') {
       this.cycleEngine();
       return true;
     }
@@ -708,34 +715,34 @@ class $AgentPaneContent implements PaneContent {
     // swallowed while the prompt is up (the composer is suspended — no accidental typing answers it).
     const pendingPermission = this.session.pendingPermission;
     if (pendingPermission) {
-      if (key.name === "pageup") {
+      if (key.name === 'pageup') {
         this.scrollPort?.scrollRowsBy(-(this.lastBodyHeight - 1));
         return true;
       }
-      if (key.name === "pagedown") {
+      if (key.name === 'pagedown') {
         this.scrollPort?.scrollRowsBy(this.lastBodyHeight - 1);
         return true;
       }
       if (!key.ctrl && !key.meta && !key.option && !key.super) {
-        if (key.name === "y") {
-          this.session.respondToPermission(pendingPermission.id, "allow");
+        if (key.name === 'y') {
+          this.session.respondToPermission(pendingPermission.id, 'allow');
           return true;
         }
-        if (key.name === "a") {
+        if (key.name === 'a') {
           this.session.respondToPermission(
             pendingPermission.id,
-            "always-allow",
+            'always-allow',
           );
           return true;
         }
-        if (key.name === "n" || key.name === "escape") {
-          this.session.respondToPermission(pendingPermission.id, "deny");
+        if (key.name === 'n' || key.name === 'escape') {
+          this.session.respondToPermission(pendingPermission.id, 'deny');
           return true;
         }
       }
       return true; // swallow everything else while the prompt is up
     }
-    if (key.name === "return") {
+    if (key.name === 'return') {
       // Clear the draft ONLY when the session accepted it — Enter while busy must keep the follow-up
       // draft intact (unconditional clearing destroyed it, the reviewed data loss).
       if (this.session.send(this.composer.value)) {
@@ -746,49 +753,49 @@ class $AgentPaneContent implements PaneContent {
       return true;
     }
     // Transcript paging always works (the composer keeps the arrow keys for cursor motion).
-    if (key.name === "pageup") {
+    if (key.name === 'pageup') {
       this.scrollPort?.scrollRowsBy(-(this.lastBodyHeight - 1));
       return true;
     }
-    if (key.name === "pagedown") {
+    if (key.name === 'pagedown') {
       this.scrollPort?.scrollRowsBy(this.lastBodyHeight - 1);
       return true;
     }
     // Alt/Option/Ctrl → move by WORD (mac overlay uses Option); super/Cmd → jump to line start/end.
     const byWord = key.ctrl || key.option || key.meta;
-    if (key.name === "left") {
+    if (key.name === 'left') {
       if (key.super) this.composer.moveHome();
       else if (byWord) this.composer.moveWordLeft();
       else this.composer.moveLeft();
       return this.composerHandled();
     }
-    if (key.name === "right") {
+    if (key.name === 'right') {
       if (key.super) this.composer.moveEnd();
       else if (byWord) this.composer.moveWordRight();
       else this.composer.moveRight();
       return this.composerHandled();
     }
-    if (key.name === "home") {
+    if (key.name === 'home') {
       this.composer.moveHome();
       return this.composerHandled();
     }
-    if (key.name === "end") {
+    if (key.name === 'end') {
       this.composer.moveEnd();
       return this.composerHandled();
     }
     // Up/Down move the composer cursor between its visual lines; at the first/last line they fall
     // through to transcript scroll (an empty single-line composer therefore scrolls, as before).
-    if (key.name === "up") {
+    if (key.name === 'up') {
       if (this.composer.moveUp()) return this.composerHandled();
       this.scrollPort?.scrollRowsBy(-1);
       return true;
     }
-    if (key.name === "down") {
+    if (key.name === 'down') {
       if (this.composer.moveDown()) return this.composerHandled();
       this.scrollPort?.scrollRowsBy(1);
       return true;
     }
-    if (key.name === "backspace") {
+    if (key.name === 'backspace') {
       // Ctrl/Cmd+Backspace clears the whole line; Alt/Option+Backspace deletes the word BEFORE the
       // cursor; plain Backspace deletes the grapheme before the cursor.
       if (key.ctrl || key.super) this.composer.deleteLine();
@@ -796,7 +803,7 @@ class $AgentPaneContent implements PaneContent {
       else this.composer.backspace();
       return this.composerHandled();
     }
-    if (key.name === "delete") {
+    if (key.name === 'delete') {
       this.composer.deleteForward();
       return this.composerHandled();
     }
@@ -891,15 +898,15 @@ class $AgentPaneContent implements PaneContent {
   /** Which surface a pane-local row (0 at the pane's top) belongs to. Rows outside the transcript body
    *  and composer input (spinner, blank, rules, mode line) are inert 'other'. */
   regionAtRow(localRow: number): AgentPaneRegion {
-    if (localRow < this.lastBodyHeight) return { kind: "transcript", localRow };
+    if (localRow < this.lastBodyHeight) return { kind: 'transcript', localRow };
     const composerEnd = this.lastComposerStart + this.lastComposerRows;
     if (localRow >= this.lastComposerStart && localRow < composerEnd) {
       return {
-        kind: "composer",
+        kind: 'composer',
         visibleRow: localRow - this.lastComposerStart,
       };
     }
-    return { kind: "other" };
+    return { kind: 'other' };
   }
 
   /** Map a transcript-region local row to an absolute projected-line index (clamped). */
@@ -943,7 +950,7 @@ class $AgentPaneContent implements PaneContent {
   transcriptLineGraphemeCount(lineIndex: number): number {
     // DISPLAY cells (the drag's inclusive-head clamp works in the pointer's own unit).
     return WrapText.Class.displayWidth(
-      this.lastProjectedLines[lineIndex]?.text ?? "",
+      this.lastProjectedLines[lineIndex]?.text ?? '',
     );
   }
 
@@ -992,7 +999,7 @@ class $AgentPaneContent implements PaneContent {
           endCell ?? Number.MAX_SAFE_INTEGER,
         );
       },
-      "\n",
+      '\n',
     );
     if (!text) return 0;
     await Clipboard.Class.copy(text);
@@ -1041,6 +1048,11 @@ export namespace AgentPaneContent {
   export type Model = InstanceType<typeof Class>;
 }
 
+export interface AgentPaneIdentity {
+  identifier?: string;
+  label?: string;
+}
+
 export interface AgentScrollPort {
   readonly scrollTop: number;
   readonly stuckToBottom: boolean;
@@ -1066,6 +1078,6 @@ export interface AgentTerminalFollowPort {
 }
 
 export type AgentPaneRegion =
-  | { readonly kind: "transcript"; readonly localRow: number }
-  | { readonly kind: "composer"; readonly visibleRow: number }
-  | { readonly kind: "other" };
+  | { readonly kind: 'transcript'; readonly localRow: number }
+  | { readonly kind: 'composer'; readonly visibleRow: number }
+  | { readonly kind: 'other' };

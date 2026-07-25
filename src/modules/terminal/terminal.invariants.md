@@ -285,6 +285,43 @@ another content's region.
 
 **Last refined:** 2026-07-25
 
+### Each panel instance owns one independent session
+
+**Invariant:** If Add creates another Terminal or Agent instance, then it receives a unique instance
+identifier and label, owns a newly constructed backend/session, remains registered while hidden, and
+releases that owned session only when its heading or contents-list row is closed.
+
+**Scope:** `TerminalFactory`, `AgentFactory`, their `PaneContent` implementations, Bootstrap's
+per-kind instance registries, and the bottom `PanelHost`. Output and Problems content kinds are
+outside this wave.
+
+**Mechanism:** Bootstrap allocates `terminal-N`/`agent-N` identities and calls the corresponding
+factory for every Add selection. `PanelHost` retains all instances in one ordered registry but
+projects at most one visible instance of each kind; selecting another same-kind row swaps the
+visible cell without disposal. `removeContent` unregisters exactly that identity and calls its
+`dispose` seam, while other instances and their session state survive.
+
+**Generates:** Independent Terminal 2 and Agent 2 sessions; hidden live instances selectable from the
+contents list; one terminal plus one agent visible side by side; instance-scoped close.
+
+**Evidence:** `src/modules/terminal/TerminalFactory.ts`;
+`src/modules/terminal/TerminalPaneContent.ts`; `src/modules/agent/AgentFactory.ts`;
+`src/modules/agent/AgentPaneContent.ts`; `src/modules/app/Bootstrap.ts`;
+`src/modules/ui/PanelHost.test.ts`; `src/modules/terminal/TerminalFactory.test.ts`;
+`src/modules/agent/AgentFactory.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** Terminal 2 sharing Terminal 1's backend; selecting a hidden instance
+destroying the prior instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying
+simultaneous cells.
+
+**Verification:** `bun test src/modules/terminal/TerminalFactory.test.ts
+src/modules/agent/AgentFactory.test.ts src/modules/ui/PanelHost.test.ts && bun
+scripts/harness/smoke-panel-chrome-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### A focused panel routes keystrokes to its active pane content
 
 **Invariant:** When the panel is focused, every non-reserved keystroke is encoded to terminal bytes and

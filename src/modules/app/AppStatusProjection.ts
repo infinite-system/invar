@@ -216,6 +216,13 @@ class $AppStatusProjection {
         ports.panelHost.focusedContent?.id ?? ports.panelHost.activeId.value,
       panelContentIds: ports.panelHost.order.value,
       panelContentOrder: ports.panelHost.order.value,
+      panelContentLabels: ports.panelHost.orderedContents.map(
+        (content) => content.instanceLabel ?? content.title,
+      ),
+      panelContentKinds: ports.panelHost.orderedContents.map(
+        (content) => content.kind ?? content.id,
+      ),
+      panelExpanded: ports.panelHost.expanded.value,
       panelListVisible: ports.panelHost.panelListVisible,
       panelListGeometry: ports.view.panelContentsListRegion(),
       terminalColumns: ports.view.panelViewportColumns(),
@@ -422,8 +429,10 @@ export interface AppStatusProjectionPorts {
     InstanceType<typeof PanelHost.Class>,
     | 'visible'
     | 'focused'
+    | 'expanded'
     | 'activeId'
     | 'order'
+    | 'orderedContents'
     | 'resolvedCells'
     | 'focusedContent'
     | 'focusedIndex'

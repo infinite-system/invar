@@ -12,6 +12,7 @@ class FakeContent implements PaneContent {
     readonly id: string,
     readonly title: string,
     readonly icon: string,
+    readonly kind: string = id,
   ) {}
 
   render(): StyledText {
@@ -75,4 +76,21 @@ test('dragging a row reorders the live split through the host', () => {
   host.dispose();
   expect(order.value).toEqual(['terminal', 'agent']);
   expect(persistenceCount).toBe(1);
+});
+
+test('the list selects visibility among multiple open instances of one kind', () => {
+  const host = new PanelHost.Class();
+  host.register(new FakeContent('terminal', 'Terminal', 'T', 'terminal'));
+  host.register(new FakeContent('terminal-2', 'Terminal 2', 'T', 'terminal'));
+  host.showContent('terminal');
+  const list = new PanelContentsList.Class(host);
+
+  expect(list.visible).toBe(true);
+  expect(list.rows.map((row) => row.title)).toEqual(['Terminal', 'Terminal 2']);
+  list.pointerDown(2, 1);
+  expect(host.resolvedCells.map((cell) => cell.content.id)).toEqual([
+    'terminal-2',
+  ]);
+  expect(list.rows[0]?.visible).toBe(false);
+  expect(list.rows[1]?.visible).toBe(true);
 });

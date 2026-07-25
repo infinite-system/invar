@@ -73,6 +73,7 @@ import { Logging } from '../system/Logging';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
 import { PanelContentsList } from './PanelContentsList';
+import { PanelHeading, type PanelHeadingProjection } from './PanelHeading';
 import {
   LayoutModel,
   type LayoutPreset,
@@ -102,6 +103,7 @@ class $RootView {
     rightDockHost: PanelHost.Instance,
     toggleTerminal: () => void,
     toggleAgent: () => void,
+    openPanelAddPopup: (anchor: { column: number; row: number }) => void,
     toggleRightDock: () => void,
     activateQuickOpen: () => void,
     revealFindMatch: () => void,
@@ -443,6 +445,7 @@ class $RootView {
     );
     let panelHeightRows =
       LayoutModel.Class.defaultBottomPanelRows(initialLayoutRows);
+    let currentLayoutRows = initialLayoutRows;
     const panelBox = new BoxRenderable(renderer, {
       id: 'panel-box',
       position: 'absolute',
@@ -502,7 +505,9 @@ class $RootView {
     // bar into panelBox, positions it over whichever visible cell shows the agent, and feeds the drag its
     // screen↔content mapping (the pane owns the selection MODEL).
     const agentContent = (): AgentPaneContent.Model | null => {
-      const content = panelHost.content('agent');
+      const content = panelHost.resolvedCells.find(
+        (cell) => cell.content instanceof AgentPaneContent.Class,
+      )?.content;
       return content instanceof AgentPaneContent.Class ? content : null;
     };
     // Live geometry of the cell currently showing the agent (null when the agent is not a visible cell).
@@ -581,7 +586,7 @@ class $RootView {
         renderer.requestRender();
       },
     };
-    let agentPortAttached = false;
+    const agentsWithScrollPort = new WeakSet<AgentPaneContent.Model>();
     // A small manual drag for the COMPOSER selection (it needs no momentum/edge-autoscroll, so it does NOT
     // go through the viewport): true while a composer drag is in flight. `transcriptDragging` marks a
     // transcript drag routed through the viewport (so a click on inert chrome rows starts neither).
@@ -598,9 +603,11 @@ class $RootView {
       readonly heading: TextRenderable;
       readonly body: TextRenderable;
       readonly splitterElement: SplitterElement.Model | null;
+      headingProjection: PanelHeadingProjection | null;
     }
     const panelCellViews: PanelCellView[] = [];
     let mountedPanelCellCount = -1;
+    let mountedPanelContentsListVisible = false;
     // Cumulative width share up to and including the divider's LEFT cell — the [0,1] boundary a ratio
     // SplitterModel reports, so a drag anchors exactly where the divider currently sits.
     const panelBoundaryFraction = (dividerIndex: number): number => {
@@ -651,9 +658,27 @@ class $RootView {
       // AGENT it also begins a drag-selection (transcript via the shared viewport engine, composer via a
       // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
       // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
-      heading.onMouseDown = () => {
+      heading.onMouseDown = (event) => {
         panelHost.focus();
         panelHost.focusCell(index);
+        const view = panelCellViews[index];
+        const action = view?.headingProjection
+          ? PanelHeading.Class.controlAtColumn(
+              view.headingProjection,
+              Number(event.x) - Number(heading.x),
+            )
+          : null;
+        const content = panelHost.resolvedCells[index]?.content;
+        if (action === 'add') {
+          openPanelAddPopup({
+            column: Number(event.x),
+            row: Number(event.y),
+          });
+        } else if (action === 'expand') {
+          panelHost.toggleExpanded();
+        } else if (action === 'close' && content) {
+          panelHost.removeContent(content.id);
+        }
         renderer.requestRender();
       };
       body.onMouseDown = (event: MouseEvent) => {
@@ -783,6 +808,7 @@ class $RootView {
         heading,
         body,
         splitterElement,
+        headingProjection: null,
       };
       panelCellViews[index] = view;
       return view;
@@ -790,7 +816,12 @@ class $RootView {
     // Mount exactly `count` cell views in left-to-right order (divider before each body from cell 1 on).
     // Only re-attaches when the count changes; unchanged frames skip all mount churn.
     const syncPanelCellMount = (count: number): void => {
-      if (count === mountedPanelCellCount) return;
+      if (
+        count === mountedPanelCellCount &&
+        panelContentsList.visible === mountedPanelContentsListVisible
+      ) {
+        return;
+      }
       for (const view of panelCellViews) {
         panelBox.remove(view.container);
         if (view.splitterElement)
@@ -804,6 +835,7 @@ class $RootView {
       }
       if (panelContentsList.visible) panelBox.add(panelContentsListRenderable);
       mountedPanelCellCount = count;
+      mountedPanelContentsListVisible = panelContentsList.visible;
     };
     // Draggable panel height: a HORIZONTAL SplitterModel in cells. The grab strip sits ABOVE the panel,
     // so dragging UP must GROW the panel — the pointer Y is negated before it reaches the model (up =
@@ -815,7 +847,8 @@ class $RootView {
       reportUnit: 'cells',
       initialSize: panelHeightRows,
       minimumSize: 3,
-      maximumSize: 40,
+      maximumSize: () =>
+        LayoutModel.Class.maximumUnexpandedBottomPanelRows(currentLayoutRows),
       pointerDirection: -1,
       currentSize: () => panelHeightRows,
       onDragStart: () => panelHost.focus(),
@@ -908,6 +941,7 @@ class $RootView {
       rightDockVisible: rightDockHost.visible.value,
       rightDockColumns: settings.rightDockWidth.value,
       bottomPanelVisible: panelHost.visible.value,
+      bottomPanelExpanded: panelHost.expanded.value,
       bottomPanelRows: panelHeightRows,
       panelAlignment: settings.panelAlignment.value,
       leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
@@ -934,6 +968,7 @@ class $RootView {
         Number(layoutCanvas.height) > 0
           ? Number(layoutCanvas.height)
           : fallbackRows;
+      currentLayoutRows = totalRows;
       layoutSlotGeometry = LayoutModel.Class.resolve({
         totalColumns,
         totalRows,
@@ -945,6 +980,7 @@ class $RootView {
         rightDockVisible: rightDockHost.visible.value,
         rightDockColumns: settings.rightDockWidth.value,
         bottomPanelVisible: panelHost.visible.value,
+        bottomPanelExpanded: panelHost.expanded.value,
         bottomPanelRows: panelHeightRows,
         panelAlignment: settings.panelAlignment.value,
         leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
@@ -986,6 +1022,7 @@ class $RootView {
           left: layoutSlotGeometry.bottomPanelSplitter.left,
           top: layoutSlotGeometry.bottomPanelSplitter.top,
           length: layoutSlotGeometry.bottomPanelSplitter.width,
+          visible: !panelHost.expanded.value,
         });
         panelBox.left = layoutSlotGeometry.bottomPanel.left;
         panelBox.top = layoutSlotGeometry.bottomPanel.top;
@@ -1426,17 +1463,24 @@ class $RootView {
           if (!view) return;
           const cellFocused = panelFocused && index === focusedIndex;
           view.container.width = span.columns;
-          view.heading.content = ` ${span.content.icon ? `${span.content.icon} ` : ''}${span.content.title}`;
-          view.heading.fg = cellFocused ? palette.accent : palette.dim;
+          view.headingProjection = PanelHeading.Class.project({
+            width: span.columns,
+            title: span.content.title,
+            icon: span.content.icon,
+            focused: cellFocused,
+            expanded: panelHost.expanded.value,
+            palette,
+          });
+          view.heading.content = view.headingProjection.text;
           view.body.fg = palette.fg;
           const agent =
             span.content instanceof AgentPaneContent.Class
               ? span.content
               : null;
           if (agent) {
-            if (!agentPortAttached) {
+            if (!agentsWithScrollPort.has(agent)) {
               agent.attachScrollPort(agentScrollPort);
-              agentPortAttached = true;
+              agentsWithScrollPort.add(agent);
             }
             agentScrollViewport.followContentTail(); // tail-anchor before reading scrollTop for the window
             // Reserve the cell's trailing column for the vertical bar when the transcript overflows.
@@ -1464,6 +1508,7 @@ class $RootView {
               bodyRows: agent.viewportRows,
             };
             agentVisible = true;
+            agent.setPaneVisible(true);
             // Position the vertical scrollbar in the cell's trailing column, spanning the transcript rows
             // (region is in panelBox CONTENT-local coordinates; width includes the reserved bar column).
             agentScrollViewport.updateScrollbars({
@@ -1488,11 +1533,22 @@ class $RootView {
           agentScrollViewport.hideBars();
           agentCellGeometry = null;
         }
-        agentContent()?.setPaneVisible(agentVisible); // spinner gate: busy AND on-screen
+        for (const content of panelHost.orderedContents) {
+          if (
+            content instanceof AgentPaneContent.Class &&
+            content !== agentContent()
+          ) {
+            content.setPaneVisible(false);
+          }
+        }
       } else {
         agentScrollViewport.hideBars();
         agentCellGeometry = null;
-        agentContent()?.setPaneVisible(false); // panel hidden — no hidden 10 Hz animation
+        for (const content of panelHost.orderedContents) {
+          if (content instanceof AgentPaneContent.Class) {
+            content.setPaneVisible(false);
+          }
+        }
       }
       statusBar.update(
         palette,

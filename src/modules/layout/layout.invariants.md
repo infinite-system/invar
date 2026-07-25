@@ -165,6 +165,69 @@ scripts/harness/smoke-layout-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Expanded panel overrides only the editor center rows
+
+**Invariant:** If the bottom panel is expanded, then its slot occupies the complete vertical extent
+of the editor center, its splitter and editor-center slots have zero height, and both dock
+rectangles remain exactly the rectangles resolved from the prior unexpanded panel height.
+
+**Scope:** `LayoutModel.resolve`, `PanelHost.expanded`, and the bottom-panel Expand/Restore control in
+`RootView`. Horizontal panel alignment and dock configuration remain governed by the shared layout
+configuration.
+
+**Mechanism:** `LayoutModel` first resolves the bounded unexpanded panel and splitter geometry. The
+expanded override substitutes only the editor-center, bottom-panel, and bottom-panel-splitter row
+slots; dock span calculations continue to use the unexpanded splitter edge. RootView passes the
+host's expanded state into that one resolver, while the splitter's retained size remains unchanged
+for Restore.
+
+**Generates:** VS Code-style editor-center expansion without covering either dock; a zero-row
+splitter while expanded; exact restoration of the user's previous panel height.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts`;
+`src/modules/ui/RootView.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** Expansion covering a dock; an ends-at-panel dock changing height; expanded
+geometry retaining an editor row or live splitter; Restore choosing a default instead of the prior
+height.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts && bun
+scripts/harness/smoke-panel-chrome-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### An unexpanded bottom panel leaves one editor row
+
+**Invariant:** If the bottom-panel splitter reaches its maximum, then the unexpanded layout retains
+exactly one editor-center row above the one-row splitter and assigns every remaining center row to
+the panel.
+
+**Scope:** The bottom-panel `SplitterModel` maximum supplied by `RootView` and
+`LayoutModel.maximumUnexpandedBottomPanelRows`. Expanded mode is governed separately.
+
+**Mechanism:** The maximum is a live function of the current layout-row count:
+`totalRows - minimumEditorRows - bottomPanelSplitterRows`. `SplitterModel` resolves that bound for
+construction and every drag clamp, so terminal resize changes cannot preserve a stale limit.
+
+**Generates:** Near-full-height drag at every terminal size; one visible editor sliver; a bounded
+panel size that remains valid across resize.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/SplitterModel.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/layout/LayoutModel.test.ts`;
+`src/modules/layout/SplitterModel.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** A fixed historical 40-row cap; dragging the splitter above row one; terminal
+resize leaving the panel larger than its new maximum.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts
+src/modules/layout/SplitterModel.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### A reported size never leaves its configured bounds
 
 **Invariant:** If any code path sets the splitter size (construction seed or a drag), then the value it

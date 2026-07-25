@@ -81,6 +81,39 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### Panel heading controls share paint and hit geometry
+
+**Invariant:** If a bottom-panel heading paints Add, Expand/Restore, or Close controls, then one
+`PanelHeadingProjection` determines both the displayed control segments and the screen columns that
+activate their actions.
+
+**Scope:** `PanelHeading`, the generic headed panel cells in `RootView`, and the `PanelAddPopup`
+adapter. The contents-list row controls and status-bar buttons are outside this heading rule.
+
+**Mechanism:** `PanelHeading.project` clips the title around three right-aligned control segments and
+returns their exact half-open column ranges with the `StyledText`; `controlAtColumn` resolves pointer
+input only from those ranges. RootView retains that projection for each painted cell. Add opens the
+shared `BoundedListPopup` with Terminal and Agent items, Expand toggles the host layout override, and
+Close removes that cell's owned content.
+
+**Generates:** Right-edge controls that survive cell resizing; identical paint and pointer
+boundaries; one shared dropdown implementation; a close action attached to each visible region.
+
+**Evidence:** `src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
+`src/modules/ui/PanelAddPopup.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
+
+**Impossible if true:** A painted control column invoking a neighboring action; a narrow heading
+leaving an invisible clickable control; Add reimplementing popup placement or row-hit math; Close
+targeting whichever content happens to be active instead of the headed region.
+
+**Verification:** `bun test src/modules/ui/PanelHeading.test.ts
+src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Panel content order is one persisted sequence
 
 **Invariant:** If open panel content is reordered, then `Settings.panelContentOrder`,
@@ -114,19 +147,21 @@ scripts/harness/smoke-panel-split-harness.ts`
 
 ### The panel contents list mirrors open content
 
-**Invariant:** If the bottom panel has more than one open content, then its right edge shows exactly
-one docked row per open content with icon, title, activation, drag reorder, and close actions; if one
-content remains, the list is absent.
+**Invariant:** If the bottom panel owns more than one registered content session, then its right edge
+shows exactly one docked row per session with icon, instance title, visible state, activation, drag
+reorder, and close actions; if one session remains, the list is absent.
 
-**Scope:** `PanelContentsList`, its `RootView` renderable, and open cells in the bottom `PanelHost`.
-Registered but closed content and popup lists are outside this rule.
+**Scope:** `PanelContentsList`, its `RootView` renderable, and registered contents in the bottom
+`PanelHost`. Popup lists and other panel hosts are outside this rule.
 
-**Mechanism:** `PanelContentsList.rows` projects `PanelHost.resolvedCells` directly.
-`PanelContentsList.pointerDown` and `pointerDrag` delegate activation, close, and reorder to
-`PanelHost`; panel-context keybindings delegate to the same host methods.
+**Mechanism:** `PanelContentsList.rows` projects `PanelHost.orderedContents` and marks each row by
+`isContentVisible`. `PanelContentsList.pointerDown` and `pointerDrag` delegate selection, close, and
+reorder to `PanelHost`; selecting a hidden instance replaces the visible instance of the same kind
+while preserving another kind's split cell, and close unregisters and disposes the selected session.
+Panel-context keybindings delegate to the same host methods.
 
-**Generates:** VS Code-style docked panel contents rows; visible per-row close affordances; mouse and
-keyboard parity without a popup or second content registry.
+**Generates:** VS Code-style docked session rows; visible and hidden instances in one list; per-row
+close affordances; mouse and keyboard parity without a second content registry.
 
 **Rejected alternatives:** Use `BoundedListPopup` — a modal popup does not remain docked beside panel
 content and cannot continuously mirror the open split.
@@ -134,11 +169,13 @@ content and cannot continuously mirror the open split.
 **Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`;
 `src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`.
 
-**Impossible if true:** The list showing with one open content; two open contents producing one or
-three rows; a close row without a keyboard close path; a drag updating only presentation.
+**Impossible if true:** The list showing with one registered session; two registered sessions
+producing one or three rows; hiding an instance removing its row; a close row retaining its backend;
+a drag updating only presentation.
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts && bun
-scripts/harness/smoke-panel-split-harness.ts`
+scripts/harness/smoke-panel-split-harness.ts && bun
+scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 

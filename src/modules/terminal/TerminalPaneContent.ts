@@ -10,8 +10,14 @@
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
-import type { PaneContent, PaneRenderContext } from '../ui/PaneContent.interface';
-import { TextSelectionModel, type SelectionPoint } from '../ui/TextSelectionModel';
+import type {
+  PaneContent,
+  PaneRenderContext,
+} from '../ui/PaneContent.interface';
+import {
+  TextSelectionModel,
+  type SelectionPoint,
+} from '../ui/TextSelectionModel';
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
 import { TerminalPaneRenderer } from './TerminalPaneRenderer';
@@ -40,24 +46,38 @@ class $TerminalPaneContent implements PaneContent {
     return 1;
   }
 
-  readonly id = 'terminal';
+  readonly id: string;
+  readonly kind = 'terminal';
+  readonly instanceLabel: string;
   readonly icon = '❯'; // ❯
   protected readonly selection = new TextSelectionModel.Class();
 
-  constructor(protected readonly instance: TerminalInstance.Instance) {}
+  constructor(
+    protected readonly instance: TerminalInstance.Instance,
+    identity: TerminalPaneIdentity = {},
+  ) {
+    this.id = identity.identifier ?? 'terminal';
+    this.instanceLabel = identity.label ?? 'Terminal';
+  }
 
   protected get terminalPadColumns(): number {
-    const terminalPaneContentClass = this.constructor as typeof $TerminalPaneContent;
+    const terminalPaneContentClass = this
+      .constructor as typeof $TerminalPaneContent;
     return terminalPaneContentClass.padColumns;
   }
 
   protected get terminalPadRows(): number {
-    const terminalPaneContentClass = this.constructor as typeof $TerminalPaneContent;
+    const terminalPaneContentClass = this
+      .constructor as typeof $TerminalPaneContent;
     return terminalPaneContentClass.padRows;
   }
 
   get title(): string {
-    return this.instance.exited.value ? `${this.instance.title} (exited)` : this.instance.title;
+    const liveTitle =
+      this.id === 'terminal'
+        ? this.instance.title
+        : `${this.instanceLabel} · ${this.instance.title}`;
+    return this.instance.exited.value ? `${liveTitle} (exited)` : liveTitle;
   }
 
   get renderRevision(): Ref<number> {
@@ -77,7 +97,9 @@ class $TerminalPaneContent implements PaneContent {
         (_unused, rowIndex) =>
           this.selection.rangeForLine(
             rowIndex,
-            WrapText.Class.displayWidth(this.instance.visibleLineText(rowIndex)),
+            WrapText.Class.displayWidth(
+              this.instance.visibleLineText(rowIndex),
+            ),
           ),
       ),
     });
@@ -137,7 +159,9 @@ class $TerminalPaneContent implements PaneContent {
     return this.instance.lastObservedBoundarySource;
   }
 
-  onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
+  onTerminalCommandEvent(
+    callback: (event: TerminalCommandEvent) => void,
+  ): void {
     this.instance.onTerminalCommandEvent(callback);
   }
 
@@ -165,12 +189,15 @@ class $TerminalPaneContent implements PaneContent {
   }
 
   async copySelection(): Promise<number> {
-    const text = this.selection.selectedText((line, startCell, endCell) =>
-      WrapText.Class.sliceByDisplayCells(
-        this.instance.visibleLineText(line),
-        startCell,
-        endCell ?? Number.MAX_SAFE_INTEGER,
-      ), '\n');
+    const text = this.selection.selectedText(
+      (line, startCell, endCell) =>
+        WrapText.Class.sliceByDisplayCells(
+          this.instance.visibleLineText(line),
+          startCell,
+          endCell ?? Number.MAX_SAFE_INTEGER,
+        ),
+      '\n',
+    );
     if (!text) return 0;
     await Clipboard.Class.copy(text);
     return text.length;
@@ -221,4 +248,9 @@ export namespace TerminalPaneContent {
   export const $Class = $TerminalPaneContent;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface TerminalPaneIdentity {
+  identifier?: string;
+  label?: string;
 }

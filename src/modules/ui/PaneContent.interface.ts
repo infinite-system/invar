@@ -18,6 +18,10 @@ import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 export interface PaneContent {
   /** Stable identity used by the switcher (unique within a PanelHost). */
   readonly id: string;
+  /** Shared-generator kind. Multiple independently owned instances may have the same kind. */
+  readonly kind?: string;
+  /** Stable user-facing instance name (Terminal, Terminal 2, Agent 2). */
+  readonly instanceLabel?: string;
   /** Human-readable name shown in this content region's own heading. */
   readonly title: string;
   /** Optional switcher glyph. */

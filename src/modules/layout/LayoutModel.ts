@@ -1,7 +1,15 @@
-import { Static } from "ivue/extras";
+import { Static } from 'ivue/extras';
 
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 class $LayoutModel {
+  protected static get minimumEditorRows(): number {
+    return 1;
+  }
+
+  protected static get bottomPanelSplitterRows(): number {
+    return 1;
+  }
+
   // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
   protected static get defaultBottomPanelProportion(): number {
     return 0.45;
@@ -16,54 +24,63 @@ class $LayoutModel {
     );
   }
 
+  static maximumUnexpandedBottomPanelRows(totalRows: number): number {
+    return Math.max(
+      1,
+      Math.floor(totalRows) -
+        this.minimumEditorRows -
+        this.bottomPanelSplitterRows,
+    );
+  }
+
   protected static get $layoutPresets(): readonly LayoutPreset[] {
     const presets: readonly LayoutPreset[] = [
       {
-        identifier: "default",
-        label: "Default",
+        identifier: 'default',
+        label: 'Default',
         primaryDockVisible: true,
         rightDockVisible: true,
         bottomPanelVisible: true,
-        sidebarPosition: "left",
-        panelAlignment: "center",
-        leftDockVerticalSpan: "full-height",
-        rightDockVerticalSpan: "ends-at-panel",
+        sidebarPosition: 'left',
+        panelAlignment: 'center',
+        leftDockVerticalSpan: 'full-height',
+        rightDockVerticalSpan: 'ends-at-panel',
       },
       {
-        identifier: "full-height-docks",
-        label: "Full-height docks",
+        identifier: 'full-height-docks',
+        label: 'Full-height docks',
         primaryDockVisible: true,
         rightDockVisible: true,
         bottomPanelVisible: true,
-        sidebarPosition: "left",
-        panelAlignment: "center",
-        leftDockVerticalSpan: "full-height",
-        rightDockVerticalSpan: "full-height",
+        sidebarPosition: 'left',
+        panelAlignment: 'center',
+        leftDockVerticalSpan: 'full-height',
+        rightDockVerticalSpan: 'full-height',
       },
       {
-        identifier: "centered-panel",
-        label: "Centered panel",
+        identifier: 'centered-panel',
+        label: 'Centered panel',
         primaryDockVisible: true,
         rightDockVisible: true,
         bottomPanelVisible: true,
-        sidebarPosition: "left",
-        panelAlignment: "center",
-        leftDockVerticalSpan: "ends-at-panel",
-        rightDockVerticalSpan: "ends-at-panel",
+        sidebarPosition: 'left',
+        panelAlignment: 'center',
+        leftDockVerticalSpan: 'ends-at-panel',
+        rightDockVerticalSpan: 'ends-at-panel',
       },
       {
-        identifier: "focus",
-        label: "Focus",
+        identifier: 'focus',
+        label: 'Focus',
         primaryDockVisible: false,
         rightDockVisible: false,
         bottomPanelVisible: false,
-        sidebarPosition: "left",
-        panelAlignment: "center",
-        leftDockVerticalSpan: "full-height",
-        rightDockVerticalSpan: "ends-at-panel",
+        sidebarPosition: 'left',
+        panelAlignment: 'center',
+        leftDockVerticalSpan: 'full-height',
+        rightDockVerticalSpan: 'ends-at-panel',
       },
     ];
-    Object.defineProperty(this, "$layoutPresets", {
+    Object.defineProperty(this, '$layoutPresets', {
       configurable: true,
       value: presets,
     });
@@ -119,7 +136,7 @@ class $LayoutModel {
     let activityBarLeft: number;
     let sidebarLeft: number;
     let sidebarSplitterLeft: number;
-    if (options.sidebarPosition === "left") {
+    if (options.sidebarPosition === 'left') {
       activityBarLeft = 0;
       sidebarLeft = activityBarColumns;
       sidebarSplitterLeft = sidebarLeft + sidebarColumns;
@@ -132,29 +149,42 @@ class $LayoutModel {
     }
     const editorRight = editorLeft + editorColumns;
     const rightDockSplitterLeft =
-      options.sidebarPosition === "left"
+      options.sidebarPosition === 'left'
         ? editorRight
         : activityBarLeft + activityBarColumns;
     const rightDockLeft = rightDockSplitterLeft + rightDockSplitterColumns;
 
-    const maximumPanelBoxRows = Math.max(1, totalRows - 1);
-    const panelBoxRows = options.bottomPanelVisible
+    const bottomPanelExpanded =
+      options.bottomPanelVisible && (options.bottomPanelExpanded ?? false);
+    const maximumPanelBoxRows =
+      this.maximumUnexpandedBottomPanelRows(totalRows);
+    const unexpandedPanelBoxRows = options.bottomPanelVisible
       ? Math.max(
           1,
           Math.min(Math.floor(options.bottomPanelRows), maximumPanelBoxRows),
         )
       : 0;
+    const panelBoxRows = bottomPanelExpanded
+      ? totalRows
+      : unexpandedPanelBoxRows;
+    const unexpandedPanelSplitterTop = options.bottomPanelVisible
+      ? Math.max(0, totalRows - unexpandedPanelBoxRows - 1)
+      : totalRows;
     const panelSplitterTop = options.bottomPanelVisible
-      ? totalRows - panelBoxRows - 1
+      ? bottomPanelExpanded
+        ? 0
+        : unexpandedPanelSplitterTop
       : totalRows;
-    const editorRows = options.bottomPanelVisible
-      ? Math.max(1, panelSplitterTop)
-      : totalRows;
+    const editorRows = bottomPanelExpanded
+      ? 0
+      : options.bottomPanelVisible
+        ? Math.max(1, panelSplitterTop)
+        : totalRows;
     const primaryDockRows = primaryDockVisible
       ? this.dockRows(
           options.leftDockVerticalSpan,
           options.bottomPanelVisible,
-          panelSplitterTop,
+          unexpandedPanelSplitterTop,
           totalRows,
         )
       : 0;
@@ -162,7 +192,7 @@ class $LayoutModel {
       ? this.dockRows(
           options.rightDockVerticalSpan,
           options.bottomPanelVisible,
-          panelSplitterTop,
+          unexpandedPanelSplitterTop,
           totalRows,
         )
       : 0;
@@ -175,7 +205,7 @@ class $LayoutModel {
     );
     if (
       options.rightDockVisible &&
-      options.rightDockVerticalSpan === "full-height"
+      options.rightDockVerticalSpan === 'full-height'
     ) {
       panelRight = Math.min(panelRight, rightDockSplitterLeft);
     }
@@ -221,11 +251,16 @@ class $LayoutModel {
         left: panelLeft,
         top: panelSplitterTop,
         width: panelRight - panelLeft,
-        height: options.bottomPanelVisible ? 1 : 0,
+        height:
+          options.bottomPanelVisible && !bottomPanelExpanded
+            ? this.bottomPanelSplitterRows
+            : 0,
       },
       bottomPanel: {
         left: panelLeft,
-        top: panelSplitterTop + (options.bottomPanelVisible ? 1 : 0),
+        top: bottomPanelExpanded
+          ? 0
+          : panelSplitterTop + (options.bottomPanelVisible ? 1 : 0),
         width: panelRight - panelLeft,
         height: panelBoxRows,
       },
@@ -238,7 +273,7 @@ class $LayoutModel {
     panelSplitterTop: number,
     totalRows: number,
   ): number {
-    if (!bottomPanelVisible || verticalSpan === "full-height") {
+    if (!bottomPanelVisible || verticalSpan === 'full-height') {
       return totalRows;
     }
     return Math.max(1, panelSplitterTop);
@@ -249,7 +284,7 @@ class $LayoutModel {
     editorRight: number,
     totalColumns: number,
   ): number {
-    return alignment === "right" ? totalColumns : editorRight;
+    return alignment === 'right' ? totalColumns : editorRight;
   }
 }
 
@@ -258,11 +293,11 @@ export namespace LayoutModel {
   export const Class = Static($LayoutModel);
 }
 
-export type SidebarPosition = "left" | "right";
+export type SidebarPosition = 'left' | 'right';
 
-export type PanelAlignment = "center" | "right";
+export type PanelAlignment = 'center' | 'right';
 
-export type DockVerticalSpan = "full-height" | "ends-at-panel";
+export type DockVerticalSpan = 'full-height' | 'ends-at-panel';
 
 export interface LayoutConfigurationValues {
   sidebarPosition: SidebarPosition;
@@ -300,6 +335,7 @@ export interface LayoutModelOptions {
   rightDockVisible: boolean;
   rightDockColumns: number;
   bottomPanelVisible: boolean;
+  bottomPanelExpanded?: boolean;
   bottomPanelRows: number;
   panelAlignment: PanelAlignment;
   leftDockVerticalSpan: DockVerticalSpan;
