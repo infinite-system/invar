@@ -132,7 +132,7 @@ Renderer is a Static flyweight pulling transcript rows into cells, exactly as
 **Generates:** panel switching, splitter resize, focus routing, and toggle keybinding for free;
 the fleet dashboard later is "more contents," not new hosting.
 
-**Evidence:** `src/modules/ui/PaneContent.ts:2` (the interchangeability contract);
+**Evidence:** `src/modules/ui/PaneContent.interface.ts:2` (the interchangeability contract);
 `terminal.invariants.md` → "The panel renders exactly the active pane content cells each frame".
 
 **Impossible if true:** `RootView.ts` containing the string `agent` in a render branch; a second
@@ -239,8 +239,8 @@ present in the frame.
 
 ```
 src/modules/agent/
-  AgentEvents.ts         — event/type vocabulary (deltas, tool_use, results, consent records)
-  AgentBackend.ts        — the seam (interface + namespace slot)
+  AgentEvents.interface.ts — event/type vocabulary (deltas, tool_use, results, consent records)
+  AgentBackend.interface.ts — the seam (interface + namespace slot)
   CliStreamBackend.ts    — drives `claude -p --output-format stream-json` (subscription-billed
                            structured events — the default native backend; verified 2026-07-23)
   ClaudeSdkBackend.ts    — Claude Agent SDK adapter (API-key billing; only file importing the SDK)

@@ -38,7 +38,13 @@ function expectRule(
   expect(violations.map((violation) => violation.rule)).toContain(expectedRule);
 }
 
-function runCheckerFixture(moduleName: string): {
+function runCheckerFixture(
+  moduleName: string,
+  fixture: { fileName: string; sourceText: string } = {
+    fileName: 'Example.ts',
+    sourceText: `${validClassFile('Example')}\nconst detachedData = 1;\n`,
+  },
+): {
   exitCode: number;
   combinedOutput: string;
 } {
@@ -53,8 +59,8 @@ function runCheckerFixture(moduleName: string): {
   );
   mkdirSync(fixtureModuleDirectory, { recursive: true });
   writeFileSync(
-    resolve(fixtureModuleDirectory, 'Example.ts'),
-    `${validClassFile('Example')}\nconst detachedData = 1;\n`,
+    resolve(fixtureModuleDirectory, fixture.fileName),
+    fixture.sourceText,
   );
   writeFileSync(
     resolve(fixtureModuleDirectory, 'Example.test.ts'),
@@ -87,7 +93,7 @@ describe('file grammar failure paths', () => {
       [
         {
           fileName: 'src/modules/example/Example.ts',
-          sourceText: 'export type Value = string;',
+          sourceText: 'export const value = "example";',
         },
       ],
       'eponymous-class',
@@ -98,7 +104,7 @@ describe('file grammar failure paths', () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/agent/AgentEvents.ts',
+          fileName: 'src/modules/agent/AgentEvents.interface.ts',
           sourceText: 'export type AgentEvent = { kind: string };',
         },
       ],
@@ -122,7 +128,7 @@ describe('file grammar failure paths', () => {
     expectRule(
       [
         {
-          fileName: 'src/modules/lsp/LanguageProvider.ts',
+          fileName: 'src/modules/lsp/LanguageProvider.interface.ts',
           sourceText: `
 enum ProviderMode { Ready }
 export interface LanguageProvider {
@@ -169,6 +175,30 @@ export interface LanguageProvider {
       ],
       'module-variable',
     );
+  });
+
+  test('rejects classes and detached functions in contract-interface files', () => {
+    const violations = inspectFileGrammar([
+      {
+        fileName: 'src/modules/example/Example.interface.ts',
+        sourceText: `
+export interface Example {
+  value: string;
+}
+
+class ExampleImplementation {}
+function createExample(): Example {
+  return { value: 'example' };
+}
+`,
+      },
+    ]);
+
+    expect(
+      violations.filter(
+        (violation) => violation.rule === 'contract-interface-content',
+      ),
+    ).toHaveLength(2);
   });
 
   test('rejects private modifiers', () => {
@@ -286,7 +316,7 @@ test('accepts the complete class grammar and colocated pair', () => {
 test('accepts an eponymous contract interface without a test pair', () => {
   const violations = inspectFileGrammar([
     {
-      fileName: 'src/modules/agent/AgentBackend.ts',
+      fileName: 'src/modules/agent/AgentBackend.interface.ts',
       sourceText: `
 export interface AgentBackend {
   send(prompt: string): void;
@@ -297,6 +327,26 @@ export type AgentBackendFactory = () => AgentBackend;
     },
   ]);
   expect(violations).toEqual([]);
+});
+
+test('suggests the interface naming convention for a legacy type-only contract', () => {
+  const violations = inspectFileGrammar([
+    {
+      fileName: 'src/modules/example/Example.ts',
+      sourceText: `
+export interface Example {
+  value: string;
+}
+`,
+    },
+  ]);
+
+  expect(violations).toEqual([
+    expect.objectContaining({
+      rule: 'contract-interface-file-name',
+      message: expect.stringContaining('Example.interface.ts'),
+    }),
+  ]);
 });
 
 describe('converted-module enforcement ratchet', () => {
@@ -315,6 +365,44 @@ describe('converted-module enforcement ratchet', () => {
 
     expect(checkerResult.exitCode).toBe(0);
     expect(checkerResult.combinedOutput).toContain('app\treported\t1');
+    expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
+  });
+
+  test('contract-interface shape violations are enforced in every module', () => {
+    const checkerResult = runCheckerFixture('app', {
+      fileName: 'Example.interface.ts',
+      sourceText: `
+export interface Example {
+  value: string;
+}
+function createExample(): Example {
+  return { value: 'example' };
+}
+`,
+    });
+
+    expect(checkerResult.exitCode).toBe(1);
+    expect(checkerResult.combinedOutput).toContain('app\tenforced\t1');
+    expect(checkerResult.combinedOutput).toContain(
+      '[contract-interface-content] *.interface.ts files may declare interfaces and type aliases, never classes or detached functions',
+    );
+  });
+
+  test('legacy contract filename suggestions remain report-only in converted modules', () => {
+    const checkerResult = runCheckerFixture('lsp', {
+      fileName: 'Example.ts',
+      sourceText: `
+export interface Example {
+  value: string;
+}
+`,
+    });
+
+    expect(checkerResult.exitCode).toBe(0);
+    expect(checkerResult.combinedOutput).toContain('lsp\treported\t1');
+    expect(checkerResult.combinedOutput).toContain(
+      'suggestion: type-only contract file should be named Example.interface.ts',
+    );
     expect(checkerResult.combinedOutput).toContain('check-file-grammar: PASS');
   });
 });

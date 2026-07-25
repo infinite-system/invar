@@ -1,7 +1,7 @@
 # Agent Harness — Invariants
 
 Load-bearing rules for `src/modules/agent/` (the native AI-agent pane) and its composable-pane mount
-(`src/modules/ui/PaneContent.ts`, `src/modules/ui/PanelHost.ts`). Stands on `project.invariants.md`
+(`src/modules/ui/PaneContent.interface.ts`, `src/modules/ui/PanelHost.ts`). Stands on `project.invariants.md`
 (one-way data flow, cost tracks the observed set) and deliberately mirrors `terminal.invariants.md`
 (backend-seam + single-source-of-truth patterns). This is the *second* agent integration; the PTY
 guest path (Claude Code inside the terminal pane) stays valid and untouched. Tier-S scope: one
@@ -22,7 +22,7 @@ them with its own capabilities. Composition requires the event stream; pixels ar
 **Scope:** the whole `agent/` module. Does not apply to the PTY guest path, which is knowingly the
 pixels path and stays a plain terminal citizen.
 
-**Mechanism:** `AgentBackend` yields typed `AgentEvent`s (`AgentEvents.ts`): text-delta, tool-use,
+**Mechanism:** `AgentBackend` yields typed `AgentEvent`s (`AgentEvents.interface.ts`): text-delta, tool-use,
 tool-result, error, session lifecycle. `AgentSession` folds those into model state. No ANSI parsing
 exists anywhere in the module.
 

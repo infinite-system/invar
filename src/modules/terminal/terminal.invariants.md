@@ -1,7 +1,7 @@
 # Terminal — Invariants
 
 Load-bearing rules for `src/modules/terminal/` (the integrated terminal) and its composable-pane
-mount (`src/modules/ui/PaneContent.ts`, `src/modules/ui/PanelHost.ts`). Stands on
+mount (`src/modules/ui/PaneContent.interface.ts`, `src/modules/ui/PanelHost.ts`). Stands on
 `project.invariants.md` (one-way data flow, cost tracks the observed set) and the ui rendering
 records. Tier S scope: one interactive terminal in a switchable bottom panel slot.
 

@@ -2183,7 +2183,7 @@ src/
 │
 ├── lsp/
 │   ├── LanguageClient.ts
-│   ├── LanguageProvider.ts
+│   ├── LanguageProvider.interface.ts
 │   ├── LspProcess.ts
 │   ├── LspTransport.ts
 │   ├── JsonRpc.ts

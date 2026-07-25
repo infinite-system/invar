@@ -174,7 +174,7 @@ layout and PascalCase class files.
 | `workspace` | `Workspace.ts`, `WorkspaceManager.ts`, `WorkspaceTabs.ts`, `WorkspaceSnapshot.ts`, `Project.ts`, `Worktree.ts`, `ProjectFiles.ts`, `FileEntry.ts`, `FileTree.ts` | reactive |
 | `editor` | `Editor.ts`, `Buffer.ts`, `Cursor.ts`, `Selection.ts`, `Viewport.ts`, `MovementController.ts`, `NavigationHistory.ts`, `Search.ts`, `EditorRenderable.ts` | reactive + renderable |
 | `syntax` | `SyntaxModel.ts`, `TreeSitterParser.ts`, `HighlightStore.ts`, `SymbolOutline.ts`, `SymbolStore.ts`, `SymbolView.ts`, `LanguageRegistry.ts` | plain + reactive |
-| `lsp` | `LanguageClient.ts`, `LanguageProvider.ts`, `LspProcess.ts`, `LspTransport.ts`, `JsonRpc.ts`, `TypeScriptProvider.ts` | plain resources + reactive |
+| `lsp` | `LanguageClient.ts`, `LanguageProvider.interface.ts`, `LspProcess.ts`, `LspTransport.ts`, `JsonRpc.ts`, `TypeScriptProvider.ts` | plain resources + reactive |
 | `diagnostics` | `DiagnosticStore.ts`, `DiagnosticView.ts`, `diagnostics.sources.ts` | plain + reactive |
 | `git` | `GitRepository.ts`, `GitStatus.ts`, `GitHistory.ts`, `GitWatcher.ts`, `GitCommands.ts`, `git.parsers.ts` | reactive + static |
 | `diff` | `DiffEngine.ts`, `DiffModel.ts`, `DiffView.ts`, `DiffRenderable.ts` | plain + reactive + renderable |

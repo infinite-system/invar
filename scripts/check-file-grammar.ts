@@ -5,7 +5,8 @@
 // TypeScript's source-ordered statement list rather than text patterns. CONVERTED_MODULES is the
 // phase-2 ratchet: each conversion wave appends its modules in the same commit that converts them.
 // Listed modules fail on every violation and can never regress; unlisted modules remain report-only
-// until their wave, with their per-module violation counts printed on every run.
+// until their wave, with their per-module violation counts printed on every run. Contract-interface
+// files are structurally declared by their *.interface.ts names and enforced in every module.
 // invariant: Public classes use the namespace pattern (project.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
 
@@ -17,6 +18,8 @@ export type FileGrammarRule =
   | 'arrow-function-class-field'
   | 'class-file-order'
   | 'construction-bypass'
+  | 'contract-interface-content'
+  | 'contract-interface-file-name'
   | 'contract-interface-order'
   | 'eponymous-class'
   | 'eponymous-interface'
@@ -56,39 +59,19 @@ export const CONVERTED_MODULES = new Set<string>([
   'syntax',
 ]);
 
-const contractInterfaceFiles = new Map<string, string>([
-  [
-    'src/modules/agent/AgentBackend.ts',
-    'AgentBackend is the agent provider contract and has no constructable class.',
-  ],
-  [
-    'src/modules/agent/AgentEvents.ts',
-    'AgentEvents is the structured event vocabulary contract and has no constructable class.',
-  ],
-  [
-    'src/modules/lsp/LanguageProvider.ts',
-    'LanguageProvider is the language provider contract and has no constructable class.',
-  ],
-  [
-    'src/modules/narration/TtsBackend.ts',
-    'TtsBackend is the narration provider contract and has no constructable class.',
-  ],
-  [
-    'src/modules/terminal/TerminalBackend.ts',
-    'TerminalBackend is the terminal provider contract and has no constructable class.',
-  ],
-  [
-    'src/modules/ui/PaneContent.ts',
-    'PaneContent is the panel-content contract and has no constructable class.',
-  ],
-]);
-
-// Pair completeness exemptions are explicit and justified here. Contract interfaces have no class
-// behavior to drive independently; their implementations carry the behavioral tests.
-export const colocatedTestPairExemptions = new Map(contractInterfaceFiles);
-
 function normalizeFileName(fileName: string): string {
   return fileName.replaceAll('\\', '/').replace(/^\.\//, '');
+}
+
+function isContractInterfaceFile(fileName: string): boolean {
+  return normalizeFileName(fileName).endsWith('.interface.ts');
+}
+
+function eponymousNameFor(fileName: string): string {
+  const fileBaseName = basename(fileName, extname(fileName));
+  return fileBaseName.endsWith('.interface')
+    ? fileBaseName.slice(0, -'.interface'.length)
+    : fileBaseName;
 }
 
 function moduleNameFor(fileName: string): string {
@@ -457,6 +440,47 @@ function inspectTopLevelBehavior(
   return violations;
 }
 
+function inspectContractInterfaceContent(
+  sourceFile: typescript.SourceFile,
+): FileGrammarViolation[] {
+  const violations: FileGrammarViolation[] = [];
+  for (const statement of sourceFile.statements) {
+    if (
+      typescript.isClassDeclaration(statement) ||
+      typescript.isFunctionDeclaration(statement)
+    ) {
+      violations.push(
+        createViolation(
+          sourceFile,
+          statement,
+          'contract-interface-content',
+          '*.interface.ts files may declare interfaces and type aliases, never classes or detached functions',
+        ),
+      );
+    } else if (typescript.isVariableStatement(statement)) {
+      violations.push(
+        createViolation(
+          sourceFile,
+          statement,
+          'module-variable',
+          'module-level data or behavior does not belong in a contract-interface file',
+        ),
+      );
+    }
+  }
+  return violations;
+}
+
+function isPureContractSource(sourceFile: typescript.SourceFile): boolean {
+  const declarations = sourceFile.statements.filter(
+    (statement) => !isImportStatement(statement),
+  );
+  return (
+    declarations.length > 0 &&
+    declarations.every((statement) => isTypeStatement(statement))
+  );
+}
+
 function inspectClassFileGrammar(
   sourceFile: typescript.SourceFile,
   eponymousName: string,
@@ -618,6 +642,7 @@ function inspectContractInterfaceGrammar(
     const statement = statements[statementIndex]!;
     if (
       isTypeStatement(statement) ||
+      typescript.isClassDeclaration(statement) ||
       typescript.isFunctionDeclaration(statement) ||
       typescript.isVariableStatement(statement)
     ) {
@@ -652,18 +677,28 @@ function inspectSource(file: FileGrammarInput): {
     return { hasEponymousClass: false, violations: [] };
   }
 
-  const violations = [
-    ...inspectClassMembers(sourceFile),
-    ...inspectTopLevelBehavior(sourceFile),
-  ];
-  const eponymousName = basename(fileName, extname(fileName));
-  if (contractInterfaceFiles.has(fileName)) {
+  const violations = [...inspectClassMembers(sourceFile)];
+  const eponymousName = eponymousNameFor(fileName);
+  if (isContractInterfaceFile(fileName)) {
+    violations.push(...inspectContractInterfaceContent(sourceFile));
     violations.push(
       ...inspectContractInterfaceGrammar(sourceFile, eponymousName),
     );
     return { hasEponymousClass: false, violations };
   }
 
+  if (isPureContractSource(sourceFile)) {
+    violations.push(
+      createFileViolation(
+        sourceFile,
+        'contract-interface-file-name',
+        `type-only contract file should be named ${eponymousName}.interface.ts so its shape is structurally declared`,
+      ),
+    );
+    return { hasEponymousClass: false, violations };
+  }
+
+  violations.push(...inspectTopLevelBehavior(sourceFile));
   const grammarResult = inspectClassFileGrammar(sourceFile, eponymousName);
   violations.push(...grammarResult.violations);
   return { hasEponymousClass: grammarResult.hasEponymousClass, violations };
@@ -701,7 +736,7 @@ export function inspectFileGrammar(
     violations.push(...sourceResult.violations);
     if (
       !sourceResult.hasEponymousClass ||
-      colocatedTestPairExemptions.has(file.fileName)
+      isContractInterfaceFile(file.fileName)
     ) {
       continue;
     }
@@ -779,15 +814,21 @@ interface FileGrammarEnforcementResult {
   reportedViolations: FileGrammarViolation[];
 }
 
+function isEnforcedViolation(violation: FileGrammarViolation): boolean {
+  return (
+    violation.rule !== 'contract-interface-file-name' &&
+    (isContractInterfaceFile(violation.fileName) ||
+      CONVERTED_MODULES.has(moduleNameFor(violation.fileName)))
+  );
+}
+
 function enforceConvertedModules(
   violations: readonly FileGrammarViolation[],
 ): FileGrammarEnforcementResult {
   const enforcedViolations: FileGrammarViolation[] = [];
   const reportedViolations: FileGrammarViolation[] = [];
   for (const violation of violations) {
-    const violationCollection = CONVERTED_MODULES.has(
-      moduleNameFor(violation.fileName),
-    )
+    const violationCollection = isEnforcedViolation(violation)
       ? enforcedViolations
       : reportedViolations;
     violationCollection.push(violation);
@@ -806,30 +847,41 @@ function printEnforcedViolations(
   }
 }
 
+function printReportedSuggestions(
+  violations: readonly FileGrammarViolation[],
+): void {
+  for (const violation of violations) {
+    if (violation.rule !== 'contract-interface-file-name') continue;
+    process.stdout.write(
+      `${violation.fileName}:${violation.line}:${violation.column}: ` +
+        `suggestion: ${violation.message}\n`,
+    );
+  }
+}
+
 function printViolationCountTable(
   violations: readonly FileGrammarViolation[],
 ): void {
-  const violationCountsByModule = new Map<string, number>();
+  const violationCountsByModuleAndEnforcement = new Map<string, number>();
   for (const violation of violations) {
     const moduleName = moduleNameFor(violation.fileName);
-    violationCountsByModule.set(
-      moduleName,
-      (violationCountsByModule.get(moduleName) ?? 0) + 1,
+    const enforcement = isEnforcedViolation(violation)
+      ? 'enforced'
+      : 'reported';
+    const countKey = `${moduleName}\t${enforcement}`;
+    violationCountsByModuleAndEnforcement.set(
+      countKey,
+      (violationCountsByModuleAndEnforcement.get(countKey) ?? 0) + 1,
     );
   }
   process.stdout.write('file-grammar violations by module:\n');
   process.stdout.write('module\tenforcement\tviolations\n');
-  for (const [moduleName, violationCount] of [
-    ...violationCountsByModule,
+  for (const [countKey, violationCount] of [
+    ...violationCountsByModuleAndEnforcement,
   ].sort()) {
-    const enforcement = CONVERTED_MODULES.has(moduleName)
-      ? 'enforced'
-      : 'reported';
-    process.stdout.write(
-      `${moduleName}\t${enforcement}\t${violationCount}\n`,
-    );
+    process.stdout.write(`${countKey}\t${violationCount}\n`);
   }
-  if (violationCountsByModule.size === 0)
+  if (violationCountsByModuleAndEnforcement.size === 0)
     process.stdout.write('(none)\t-\t0\n');
 }
 
@@ -846,6 +898,7 @@ if (import.meta.main) {
   const enforcementResult = enforceConvertedModules(violations);
 
   printViolationCountTable(violations);
+  printReportedSuggestions(enforcementResult.reportedViolations);
 
   if (enforcementResult.enforcedViolations.length > 0) {
     printEnforcedViolations(enforcementResult.enforcedViolations);
@@ -861,6 +914,7 @@ if (import.meta.main) {
     `check-file-grammar: PASS (${files.length} TypeScript file(s), ` +
       `${enforcementResult.reportedViolations.length} legacy violation(s) reported, ` +
       `${CONVERTED_MODULES.size} converted module(s) enforced, ` +
-      `${colocatedTestPairExemptions.size} explicit test-pair exemption(s))\n`,
+      `${files.filter((file) => isContractInterfaceFile(file.fileName)).length} ` +
+      'structural interface test-pair exemption(s))\n',
   );
 }

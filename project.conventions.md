@@ -31,7 +31,9 @@ Change a convention → change it HERE (and note the why in decisions.md).
   `<module>.<role>.ts`. Docs are `project.<role>.md`. "ivue" is always lowercase.
 - FILE-NAME-FOLLOWS-CONTENT: a file whose primary export is a `namespace X` backing a Static/Reactive
   class (`export const/let Class = Static($X)` / `Reactive($X)`) is named `X.ts` (PascalCase matching
-  the namespace). A genuine role-collection of loose data/config with NO class stays
+  the namespace). A pure contract whose primary declaration is `export interface X` is named
+  `X.interface.ts`; the suffix structurally declares the interface-only grammar and removes any
+  maintained exemption list. A genuine role-collection of loose data/config with NO class stays
   `<module>.<role>.ts` (e.g. `keybindings.defaults.ts`). The filename tells you which shape is inside.
 - ATOMIC-BIND (forgetting is made impossible, not discouraged): converting a bare-function module to a
   namespace+Static/Reactive class REQUIRES renaming the file to `<Namespace>.ts` in the SAME commit. A
@@ -56,11 +58,10 @@ Change a convention → change it HERE (and note the why in decisions.md).
   scheduled grammar sweep — the LAW applies to all NEW/EDITED code NOW, ahead of enforcement):
   1. **Sequence:** imports → `// invariant:` annotations → the EPONYMOUS declaration → exported
      types → end of file. Nothing else at module level. The eponymous declaration is the class
-     the file is named for (namespace-pattern manifest included); in the enumerated
-     contract-interface files (AgentBackend, TtsBackend, PaneContent, TerminalBackend,
-     LanguageProvider, AgentEvents) it is the eponymous INTERFACE — the seam itself. Types are
-     second-order citizens: they describe, the class generates; TS type hoisting makes
-     below-class types legal even in the class's own signatures.
+     the file is named for (namespace-pattern manifest included); in `X.interface.ts` it is
+     `export interface X` — the seam itself. Interface files contain no classes or detached
+     functions. Types are second-order citizens: they describe, the class or interface seam
+     generates; TS type hoisting makes below-declaration types legal in its own signatures.
   2. **No detached behavior or data:** module-level helper functions become `protected` static
      or instance METHODS on the class (prototype methods — never arrow-function class fields,
      which bind per-instance and break `super` chains). Module-level constants (sentinels,
@@ -73,7 +74,7 @@ Change a convention → change it HERE (and note the why in decisions.md).
      invariant: *Construction goes through overridable seams*; everything must extend).
   4. **Tests are strictly colocated:** `Foo.test.ts` beside `Foo.ts`, never in `__tests__/`
      directories; PAIR-COMPLETENESS — every eponymous class file has its colocated test
-     (explicit enumerated exemptions only, e.g. pure contract-interface files).
+     (`*.interface.ts` files are structurally exempt because they contain no behavior).
 - BLAME HYGIENE: every grammar-only conversion commit is appended by full hash to `.git-blame-ignore-revs`; phase-2 waves extend the same list.
   Existing violations (~824 sites inventoried) are converted by the scheduled big-bang sweep;
   new code NEVER adds more. When editing a file the sweep has not reached yet, follow the new
