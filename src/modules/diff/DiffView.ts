@@ -1,15 +1,3 @@
-// Standalone side-by-side diff projection. The reviewer supplies callbacks and may mount this under
-// any renderable; RootView and tab ownership deliberately remain outside this module.
-//
-// The shared scroll-coordinate methods are intentionally independent of diff row semantics. They
-// are the extraction seam for a future generic synchronized split pane; this module does not build
-// that abstraction prematurely.
-//
-// invariant: Both panes share every aligned row (src/modules/diff/diff.invariants.md)
-// invariant: Diff rendering stays viewport bounded (src/modules/diff/diff.invariants.md)
-// invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
-// invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
-
 import {
   BoxRenderable,
   StyledText,
@@ -57,79 +45,126 @@ import {
   type DiffAlignmentResult,
 } from './DiffAlignment';
 
-export interface DiffViewCallbacks {
-  onOpenFull?: () => void;
-  onNextChange?: (changeNumber: number, totalChanges: number, alignedRowIndex: number) => void;
-  onPrevChange?: (changeNumber: number, totalChanges: number, alignedRowIndex: number) => void;
-}
-
-export interface DiffViewOptions extends DiffViewCallbacks {
-  previousVersionText: string;
-  currentVersionText: string;
-  previousVersionPath?: string;
-  currentVersionPath?: string;
-  parentRenderable?: Renderable;
-}
-
-interface HeaderSegment {
-  kind: 'openFull' | 'nextChange' | 'previousChange';
-  startColumn: number;
-  endColumnExclusive: number;
-}
-
-interface RenderedDiffPane {
-  gutter: StyledText;
-  code: StyledText;
-}
-
-interface DiffPaneRenderables {
-  pane: BoxRenderable;
-  title: TextRenderable;
-  content: BoxRenderable;
-  gutter: TextRenderable;
-  code: SelectableText.Model;
-}
-
-/** The bright accent for a changed row's GUTTER MARKER (line number tint) — the same hues the git
- *  panel uses for add/modify/delete. Distinct from the row's background fill below. */
-function changedRowColor(kind: AlignedRowKind, palette: Palette): string | null {
-  switch (kind) {
-    case 'added': return palette.added;
-    case 'deleted': return palette.deleted;
-    case 'modified': return palette.modified;
-    case 'equal': return null;
-  }
-}
-
-/** The muted BACKGROUND fill for a changed row — theme-fitting (not the neon accent), so code text on
- *  top stays legible on a near-black editor. Null for unchanged rows (no fill). */
-function changedRowBackground(kind: AlignedRowKind, palette: Palette): string | null {
-  switch (kind) {
-    case 'added': return palette.diffAddedBg;
-    case 'deleted': return palette.diffDeletedBg;
-    case 'modified': return palette.diffModifiedBg;
-    case 'equal': return null;
-  }
-}
-
-function syntaxRoleColor(role: Role, palette: Palette): string {
-  switch (role) {
-    case 'keyword': return palette.keyword;
-    case 'string': return palette.string;
-    case 'number': return palette.number;
-    case 'comment': return palette.comment;
-    case 'func': return palette.func;
-    case 'type': return palette.type;
-    case 'operator': return palette.operator;
-    case 'added': return palette.added;
-    case 'removed': return palette.deleted;
-    case 'variable': return palette.variable;
-    case 'text': return palette.fg;
-  }
-  return palette.fg;
-}
-
+// Standalone side-by-side diff projection. The reviewer supplies callbacks and may mount this under
+// any renderable; RootView and tab ownership deliberately remain outside this module.
+//
+// The shared scroll-coordinate methods are intentionally independent of diff row semantics. They
+// are the extraction seam for a future generic synchronized split pane; this module does not build
+// that abstraction prematurely.
+//
+// invariant: Both panes share every aligned row (src/modules/diff/diff.invariants.md)
+// invariant: Diff rendering stays viewport bounded (src/modules/diff/diff.invariants.md)
+// invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
+// invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
 class $DiffView {
+  protected get DiffAlignment() {
+    return DiffAlignment.Class;
+  }
+
+  protected get EditorCoordinates() {
+    return EditorCoordinates.Class;
+  }
+
+  protected get Highlighter() {
+    return Highlighter.Class;
+  }
+
+  protected get LanguageRegistry() {
+    return LanguageRegistry.Class;
+  }
+
+  protected get Momentum() {
+    return Momentum.Class;
+  }
+
+  protected get ReadOnlyTextBuffer() {
+    return ReadOnlyTextBuffer.Class;
+  }
+
+  protected get ScrollbarGeometry() {
+    return ScrollbarGeometry.Class;
+  }
+
+  protected get SelectableText() {
+    return SelectableText.Class;
+  }
+
+  protected get SelectionDragBehavior() {
+    return SelectionDragBehavior.Class;
+  }
+
+  protected get SolidThumbScrollBar() {
+    return SolidThumbScrollBar.Class;
+  }
+
+  protected get SplitterModel() {
+    return SplitterModel.Class;
+  }
+
+  /** The bright accent for a changed row's GUTTER MARKER (line number tint) — the same hues the git
+   *  panel uses for add/modify/delete. Distinct from the row's background fill below. */
+  protected changedRowColor(
+    kind: AlignedRowKind,
+    palette: Palette,
+  ): string | null {
+    switch (kind) {
+      case 'added':
+        return palette.added;
+      case 'deleted':
+        return palette.deleted;
+      case 'modified':
+        return palette.modified;
+      case 'equal':
+        return null;
+    }
+  }
+
+  /** The muted BACKGROUND fill for a changed row — theme-fitting (not the neon accent), so code text on
+   *  top stays legible on a near-black editor. Null for unchanged rows (no fill). */
+  protected changedRowBackground(
+    kind: AlignedRowKind,
+    palette: Palette,
+  ): string | null {
+    switch (kind) {
+      case 'added':
+        return palette.diffAddedBg;
+      case 'deleted':
+        return palette.diffDeletedBg;
+      case 'modified':
+        return palette.diffModifiedBg;
+      case 'equal':
+        return null;
+    }
+  }
+
+  protected syntaxRoleColor(role: Role, palette: Palette): string {
+    switch (role) {
+      case 'keyword':
+        return palette.keyword;
+      case 'string':
+        return palette.string;
+      case 'number':
+        return palette.number;
+      case 'comment':
+        return palette.comment;
+      case 'func':
+        return palette.func;
+      case 'type':
+        return palette.type;
+      case 'operator':
+        return palette.operator;
+      case 'added':
+        return palette.added;
+      case 'removed':
+        return palette.deleted;
+      case 'variable':
+        return palette.variable;
+      case 'text':
+        return palette.fg;
+    }
+    return palette.fg;
+  }
+
   /** Project existing change blocks into one kind per overview-track row without recomputing a diff. */
   static overviewKinds(
     alignment: DiffAlignmentResult,
@@ -155,31 +190,31 @@ class $DiffView {
   readonly previousVersionLines: readonly string[];
   readonly currentVersionLines: readonly string[];
   readonly rootRenderable: BoxRenderable;
-  private readonly headerRenderable: TextRenderable;
-  private readonly bodyRenderable: BoxRenderable;
-  private readonly previousPaneRenderables: DiffPaneRenderables;
-  private readonly currentPaneRenderables: DiffPaneRenderables;
-  private readonly paneDividerRenderable: BoxRenderable;
-  private readonly paneSplitter: SplitterModel.Instance;
-  private readonly paneSplitterElement: SplitterElement.Model;
-  private readonly overviewRulerRenderable: TextRenderable;
-  private readonly verticalScrollbarRenderable: ScrollBarRenderable;
-  private readonly horizontalScrollbarRenderable: ScrollBarRenderable;
-  private readonly previousSelectionDragBehavior: SelectionDragBehavior.Model;
-  private readonly currentSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected readonly headerRenderable: TextRenderable;
+  protected readonly bodyRenderable: BoxRenderable;
+  protected readonly previousPaneRenderables: DiffPaneRenderables;
+  protected readonly currentPaneRenderables: DiffPaneRenderables;
+  protected readonly paneDividerRenderable: BoxRenderable;
+  protected readonly paneSplitter: SplitterModel.Instance;
+  protected readonly paneSplitterElement: SplitterElement.Model;
+  protected readonly overviewRulerRenderable: TextRenderable;
+  protected readonly verticalScrollbarRenderable: ScrollBarRenderable;
+  protected readonly horizontalScrollbarRenderable: ScrollBarRenderable;
+  protected readonly previousSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected readonly currentSelectionDragBehavior: SelectionDragBehavior.Model;
   // Presentation geometry only. Projection and hit-testing share these values, but update() does
   // not mutate reactive model state and therefore cannot create a render-invalidation loop.
-  private headerSegments: HeaderSegment[] = [];
-  private isApplyingScrollbarGeometry = false;
-  private verticalReportedToTrueScale = 1;
-  private horizontalReportedToTrueScale = 1;
-  private activeSelectionSide: 'previous' | 'current' | null = null;
-  private activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
-  private readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
-  private readonly currentTextBuffer: ReadOnlyTextBuffer.Model;
-  private focusedFindSide: 'previous' | 'current' = 'current';
-  private findBarSource: FindBar.Instance | null = null;
-  private findIdentifier = 'diff';
+  protected headerSegments: HeaderSegment[] = [];
+  protected isApplyingScrollbarGeometry = false;
+  protected verticalReportedToTrueScale = 1;
+  protected horizontalReportedToTrueScale = 1;
+  protected activeSelectionSide: 'previous' | 'current' | null = null;
+  protected activeSelectionBuffer: ReadOnlyTextBuffer.Model | null = null;
+  protected readonly previousTextBuffer: ReadOnlyTextBuffer.Model;
+  protected readonly currentTextBuffer: ReadOnlyTextBuffer.Model;
+  protected focusedFindSide: 'previous' | 'current' = 'current';
+  protected findBarSource: FindBar.Instance | null = null;
+  protected findIdentifier = 'diff';
 
   get alignedRowScrollOffset() {
     return ref(0);
@@ -204,13 +239,13 @@ class $DiffView {
   // Settings store when attached, so the diff pane's fling obeys the same Ctrl+, tuning as the editor
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Horizontal stays
   // DEFAULT_MOMENTUM (a short-throw axis, not user-tuned).
-  private settingsSource: Settings.Instance | null = null;
+  protected settingsSource: Settings.Instance | null = null;
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
     this.paneSplitter.size.value = settings.diffSplitRatio.value;
     this.update();
   }
-  private get verticalMomentum(): MomentumOptions {
+  protected get verticalMomentum(): MomentumOptions {
     const settings = this.settingsSource;
     if (!settings) return VERTICAL_MOMENTUM;
     return {
@@ -225,9 +260,16 @@ class $DiffView {
     public readonly theme: Theme.Instance,
     public readonly options: DiffViewOptions,
   ) {
-    this.alignment = DiffAlignment.Class.align(options.previousVersionText, options.currentVersionText);
-    this.previousVersionLines = DiffAlignment.Class.splitLines(options.previousVersionText);
-    this.currentVersionLines = DiffAlignment.Class.splitLines(options.currentVersionText);
+    this.alignment = this.DiffAlignment.align(
+      options.previousVersionText,
+      options.currentVersionText,
+    );
+    this.previousVersionLines = this.DiffAlignment.splitLines(
+      options.previousVersionText,
+    );
+    this.currentVersionLines = this.DiffAlignment.splitLines(
+      options.currentVersionText,
+    );
     this.previousTextBuffer = this.createReadOnlyTextBuffer(
       options.previousVersionPath ?? 'previous version',
       options.previousVersionText,
@@ -328,11 +370,11 @@ class $DiffView {
   }
 
   createScrollBarRenderable(options: ScrollBarOptions): ScrollBarRenderable {
-    return new SolidThumbScrollBar.Class(this.renderer, options);
+    return new this.SolidThumbScrollBar(this.renderer, options);
   }
 
   createReadOnlyTextBuffer(path: string, text: string): ReadOnlyTextBuffer.Model {
-    const textBuffer = new ReadOnlyTextBuffer.Class();
+    const textBuffer = new this.ReadOnlyTextBuffer();
     textBuffer.openText(path, text);
     return textBuffer;
   }
@@ -376,7 +418,7 @@ class $DiffView {
       wrapMode: 'none',
       selectable: false,
     });
-    const code = new SelectableText.Class(this.renderer, {
+    const code = new this.SelectableText(this.renderer, {
       id: `diff-${side}-code`,
       content: '',
       wrapMode: 'none',
@@ -402,7 +444,7 @@ class $DiffView {
   }
 
   impulseVerticalScroll(deltaRows: number): void {
-    this.verticalScrollMomentum.value = Momentum.Class.addImpulse(
+    this.verticalScrollMomentum.value = this.Momentum.addImpulse(
       this.verticalScrollMomentum.value,
       deltaRows,
       this.verticalMomentum,
@@ -410,7 +452,7 @@ class $DiffView {
   }
 
   impulseHorizontalScroll(deltaColumns: number): void {
-    this.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
+    this.horizontalScrollMomentum.value = this.Momentum.addImpulse(
       this.horizontalScrollMomentum.value,
       deltaColumns,
       DEFAULT_MOMENTUM,
@@ -418,8 +460,16 @@ class $DiffView {
   }
 
   tickScrollMomentum(deltaTimeSeconds: number): boolean {
-    const verticalStep = Momentum.Class.stepMomentum(this.verticalScrollMomentum.value, deltaTimeSeconds, this.verticalMomentum);
-    const horizontalStep = Momentum.Class.stepMomentum(this.horizontalScrollMomentum.value, deltaTimeSeconds, DEFAULT_MOMENTUM);
+    const verticalStep = this.Momentum.stepMomentum(
+      this.verticalScrollMomentum.value,
+      deltaTimeSeconds,
+      this.verticalMomentum,
+    );
+    const horizontalStep = this.Momentum.stepMomentum(
+      this.horizontalScrollMomentum.value,
+      deltaTimeSeconds,
+      DEFAULT_MOMENTUM,
+    );
     this.verticalScrollMomentum.value = verticalStep.momentum;
     this.horizontalScrollMomentum.value = horizontalStep.momentum;
     if (verticalStep.rows !== 0) {
@@ -438,21 +488,21 @@ class $DiffView {
       this.currentSelectionDragBehavior.tick(deltaTimeSeconds);
     if (verticalStep.rows !== 0 || horizontalStep.rows !== 0 || selectionAutoscrolling) this.update();
     return (
-      Momentum.Class.isMoving(verticalStep.momentum) ||
-      Momentum.Class.isMoving(horizontalStep.momentum) ||
+      this.Momentum.isMoving(verticalStep.momentum) ||
+      this.Momentum.isMoving(horizontalStep.momentum) ||
       selectionAutoscrolling
     );
   }
 
   moveByKeyboardAlignedRows(deltaRows: number): void {
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.verticalScrollMomentum.value = this.Momentum.halt();
     this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(this.alignedRowScrollOffset.value + deltaRows);
     this.synchronizeActiveChangeBlockNumber();
     this.update();
   }
 
   moveByKeyboardColumns(deltaColumns: number): void {
-    this.horizontalScrollMomentum.value = Momentum.Class.halt();
+    this.horizontalScrollMomentum.value = this.Momentum.halt();
     this.horizontalScrollOffset.value = this.clampHorizontalOffset(this.horizontalScrollOffset.value + deltaColumns);
     this.update();
   }
@@ -462,8 +512,8 @@ class $DiffView {
   }
 
   haltScrollMomentum(): void {
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
-    this.horizontalScrollMomentum.value = Momentum.Class.halt();
+    this.verticalScrollMomentum.value = this.Momentum.halt();
+    this.horizontalScrollMomentum.value = this.Momentum.halt();
   }
 
   // --- toolbar actions and callback seams ---
@@ -473,12 +523,12 @@ class $DiffView {
   }
 
   jumpToNextChange(): void {
-    const nextAlignedRowIndex = DiffAlignment.Class.nextChangeBlockStart(
+    const nextAlignedRowIndex = this.DiffAlignment.nextChangeBlockStart(
       this.alignment.changeBlocks,
       this.alignedRowScrollOffset.value,
     ) ?? this.alignment.changeBlocks[0]?.startAlignedRowIndex ?? null;
     if (nextAlignedRowIndex === null) return;
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.verticalScrollMomentum.value = this.Momentum.halt();
     this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(nextAlignedRowIndex);
     this.activeChangeBlockNumber.value =
       this.changeBlockNumberAt(nextAlignedRowIndex) ?? 0;
@@ -491,12 +541,13 @@ class $DiffView {
   }
 
   jumpToPreviousChange(): void {
-    const previousAlignedRowIndex = DiffAlignment.Class.previousChangeBlockStart(
+    const previousAlignedRowIndex =
+      this.DiffAlignment.previousChangeBlockStart(
       this.alignment.changeBlocks,
       this.alignedRowScrollOffset.value,
     ) ?? this.alignment.changeBlocks[this.alignment.changeBlocks.length - 1]?.startAlignedRowIndex ?? null;
     if (previousAlignedRowIndex === null) return;
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.verticalScrollMomentum.value = this.Momentum.halt();
     this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(previousAlignedRowIndex);
     this.activeChangeBlockNumber.value =
       this.changeBlockNumberAt(previousAlignedRowIndex) ?? 0;
@@ -598,8 +649,14 @@ class $DiffView {
       const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
       const isFillerRow = lineNumber === null;
       // Marker = bright accent for the gutter line-number tint; background = the muted row fill.
-      const rowMarkerColor = changedRowColor(alignedRow.kind, palette);
-      const rowBackgroundColor = changedRowBackground(alignedRow.kind, palette);
+      const rowMarkerColor = this.changedRowColor(
+        alignedRow.kind,
+        palette,
+      );
+      const rowBackgroundColor = this.changedRowBackground(
+        alignedRow.kind,
+        palette,
+      );
       const gutterText = isFillerRow
         ? ' '.repeat(gutterWidth)
         : `${String(lineNumber).padStart(gutterWidth - 1, ' ')} `;
@@ -645,7 +702,10 @@ class $DiffView {
           visibleLineWindow.startGrapheme,
         );
         codeChunks.push(...lineChunks);
-        const remainingColumns = Math.max(0, codeContentWidth - EditorCoordinates.Class.lineWidth(visibleLine));
+        const remainingColumns = Math.max(
+          0,
+          codeContentWidth - this.EditorCoordinates.lineWidth(visibleLine),
+        );
         if (remainingColumns > 0) {
           const paddingChunk = fg(palette.fg)(' '.repeat(remainingColumns));
           codeChunks.push(rowBackgroundColor ? bg(rowBackgroundColor)(paddingChunk) : paddingChunk);
@@ -675,7 +735,8 @@ class $DiffView {
     const lineMatches = lineIndex === undefined
       ? []
       : findEngine?.matches.value.filter((match) => match.line === lineIndex) ?? [];
-    const visibleGraphemeCount = EditorCoordinates.Class.graphemeCount(visibleLine);
+    const visibleGraphemeCount =
+      this.EditorCoordinates.graphemeCount(visibleLine);
     const boundaries = new Set<number>([0, visibleGraphemeCount]);
     for (const match of lineMatches) {
       boundaries.add(Math.max(0, Math.min(visibleGraphemeCount, match.startColumn - visibleStartGrapheme)));
@@ -688,16 +749,21 @@ class $DiffView {
       const segmentEnd = orderedBoundaries[boundaryIndex + 1]!;
       if (segmentEnd <= segmentStart) continue;
       const segmentText = visibleLine.slice(
-        EditorCoordinates.Class.graphemeToU16(visibleLine, segmentStart),
-        EditorCoordinates.Class.graphemeToU16(visibleLine, segmentEnd),
+        this.EditorCoordinates.graphemeToU16(visibleLine, segmentStart),
+        this.EditorCoordinates.graphemeToU16(visibleLine, segmentEnd),
       );
       const findHighlighted = lineMatches.some(
         (match) =>
           match.startColumn < visibleStartGrapheme + segmentEnd &&
           match.endColumn > visibleStartGrapheme + segmentStart,
       );
-      for (const highlightedSpan of Highlighter.Class.highlightLine(segmentText, language)) {
-        let syntaxChunk = fg(syntaxRoleColor(highlightedSpan.role, palette))(highlightedSpan.text);
+      for (const highlightedSpan of this.Highlighter.highlightLine(
+        segmentText,
+        language,
+      )) {
+        let syntaxChunk = fg(
+          this.syntaxRoleColor(highlightedSpan.role, palette),
+        )(highlightedSpan.text);
         if (findHighlighted) syntaxChunk = bg(palette.cursorLine)(syntaxChunk);
         else if (rowBackgroundColor) syntaxChunk = bg(rowBackgroundColor)(syntaxChunk);
         chunks.push(syntaxChunk);
@@ -710,7 +776,7 @@ class $DiffView {
     return this.sliceLineWindowDetails(sourceLine, codeViewportWidth).text;
   }
 
-  private sliceLineWindowDetails(
+  protected sliceLineWindowDetails(
     sourceLine: string,
     codeViewportWidth: number,
   ): { text: string; startGrapheme: number } {
@@ -718,14 +784,34 @@ class $DiffView {
     if (horizontalScrollOffset === 0 && sourceLine.length <= codeViewportWidth) {
       return { text: sourceLine, startGrapheme: 0 };
     }
-    let startGraphemeIndex = EditorCoordinates.Class.graphemeAtDisplayColumn(sourceLine, horizontalScrollOffset);
-    if (EditorCoordinates.Class.displayColumn(sourceLine, startGraphemeIndex) < horizontalScrollOffset) startGraphemeIndex++;
+    let startGraphemeIndex =
+      this.EditorCoordinates.graphemeAtDisplayColumn(
+        sourceLine,
+        horizontalScrollOffset,
+      );
+    if (
+      this.EditorCoordinates.displayColumn(
+        sourceLine,
+        startGraphemeIndex,
+      ) < horizontalScrollOffset
+    ) {
+      startGraphemeIndex++;
+    }
     const endGraphemeIndex =
-      EditorCoordinates.Class.graphemeAtDisplayColumn(sourceLine, horizontalScrollOffset + codeViewportWidth) + 1;
+      this.EditorCoordinates.graphemeAtDisplayColumn(
+        sourceLine,
+        horizontalScrollOffset + codeViewportWidth,
+      ) + 1;
     return {
       text: sourceLine.slice(
-        EditorCoordinates.Class.graphemeToU16(sourceLine, startGraphemeIndex),
-        EditorCoordinates.Class.graphemeToU16(sourceLine, endGraphemeIndex),
+        this.EditorCoordinates.graphemeToU16(
+          sourceLine,
+          startGraphemeIndex,
+        ),
+        this.EditorCoordinates.graphemeToU16(
+          sourceLine,
+          endGraphemeIndex,
+        ),
       ),
       startGrapheme: startGraphemeIndex,
     };
@@ -735,7 +821,7 @@ class $DiffView {
     const bodyWidth = Math.max(1, Number(this.bodyRenderable.width) || 1);
     const bodyHeight = Math.max(1, Number(this.bodyRenderable.height) || 1);
     const region = { top: 0, left: 0, width: bodyWidth, height: bodyHeight };
-    const verticalGeometry = ScrollbarGeometry.Class.scrollbarGeometry('vertical', region, {
+    const verticalGeometry = this.ScrollbarGeometry.scrollbarGeometry('vertical', region, {
       scrollSize: this.alignment.alignedRows.length,
       viewportSize: this.viewportAlignedRowCount(),
       scrollPosition: this.alignedRowScrollOffset.value,
@@ -750,7 +836,7 @@ class $DiffView {
     this.applyScrollbarGeometry(
       this.horizontalScrollbarRenderable,
       'horizontal',
-      ScrollbarGeometry.Class.scrollbarGeometry('horizontal', region, {
+      this.ScrollbarGeometry.scrollbarGeometry('horizontal', region, {
         scrollSize: this.widestVisibleLineWidth(),
         viewportSize: this.sharedCodeViewportWidth(),
         scrollPosition: this.horizontalScrollOffset.value,
@@ -759,7 +845,10 @@ class $DiffView {
     );
   }
 
-  private synchronizeOverviewRuler(verticalGeometry: BarGeometry | null, palette: Palette): void {
+  protected synchronizeOverviewRuler(
+    verticalGeometry: BarGeometry | null,
+    palette: Palette,
+  ): void {
     // invariant: The overview ruler locates every change block (src/modules/diff/diff.invariants.md)
     if (!verticalGeometry) {
       this.overviewRulerRenderable.visible = false;
@@ -770,10 +859,14 @@ class $DiffView {
     this.overviewRulerRenderable.top = verticalGeometry.trackTop;
     this.overviewRulerRenderable.left = Math.max(0, verticalGeometry.trackLeft - 1);
     this.overviewRulerRenderable.height = verticalGeometry.trackLength;
-    const overviewKinds = $DiffView.overviewKinds(this.alignment, verticalGeometry.trackLength);
+    const diffViewClass = this.constructor as typeof $DiffView;
+    const overviewKinds = diffViewClass.overviewKinds(
+      this.alignment,
+      verticalGeometry.trackLength,
+    );
     const overviewChunks: TextChunk[] = [];
     overviewKinds.forEach((kind, trackRowIndex) => {
-      const color = kind ? changedRowColor(kind, palette) : null;
+      const color = kind ? this.changedRowColor(kind, palette) : null;
       overviewChunks.push(bg(color ?? palette.panel)(fg(color ?? palette.panel)(' ')));
       if (trackRowIndex < overviewKinds.length - 1) overviewChunks.push(fg(palette.panel)('\n'));
     });
@@ -812,7 +905,7 @@ class $DiffView {
 
   // --- draggable persisted pane split ---
 
-  private paneExtentWidth(): number {
+  protected paneExtentWidth(): number {
     // One divider cell plus one overview-ruler cell and one vertical-scrollbar cell are outside the
     // two pane widths. The ruler and scrollbar are absolute, but reserving them keeps current text
     // from rendering beneath the scroll axis.
@@ -828,16 +921,16 @@ class $DiffView {
     return Math.max(2, extentWidth - 3);
   }
 
-  private paneSplitRatio(): number {
+  protected paneSplitRatio(): number {
     const ratio = this.settingsSource?.diffSplitRatio.value ?? this.paneSplitter.size.value;
     return Math.max(0.15, Math.min(0.85, ratio));
   }
 
-  private previousPaneWidth(): number {
+  protected previousPaneWidth(): number {
     return Math.max(1, Math.round(this.paneExtentWidth() * this.paneSplitRatio()));
   }
 
-  private synchronizePaneSplitGeometry(): void {
+  protected synchronizePaneSplitGeometry(): void {
     // invariant: The diff pane split stays draggable and persistent (src/modules/diff/diff.invariants.md)
     const previousPaneWidth = this.previousPaneWidth();
     this.previousPaneRenderables.pane.width = previousPaneWidth;
@@ -847,13 +940,17 @@ class $DiffView {
 
   // --- editor-parity selection and drag autoscroll ---
 
-  private paneRenderables(side: 'previous' | 'current'): DiffPaneRenderables {
+  protected paneRenderables(
+    side: 'previous' | 'current',
+  ): DiffPaneRenderables {
     return side === 'previous' ? this.previousPaneRenderables : this.currentPaneRenderables;
   }
 
-  private createSelectionDragBehavior(side: 'previous' | 'current'): SelectionDragBehavior.Model {
+  protected createSelectionDragBehavior(
+    side: 'previous' | 'current',
+  ): SelectionDragBehavior.Model {
     // invariant: Diff selection reuses shared drag behavior (src/modules/diff/diff.invariants.md)
-    return new SelectionDragBehavior.Class({
+    return new this.SelectionDragBehavior({
       viewportRectangle: () => {
         const codeRenderable = this.paneRenderables(side).code;
         return {
@@ -868,7 +965,7 @@ class $DiffView {
       horizontalScrollingEnabled: () => true,
       lineGraphemeCount: (lineIndex) =>
         this.activeSelectionBuffer
-          ? EditorCoordinates.Class.graphemeCount(
+          ? this.EditorCoordinates.graphemeCount(
               this.activeSelectionBuffer.document.line(lineIndex),
             )
           : 0,
@@ -908,7 +1005,7 @@ class $DiffView {
     });
   }
 
-  private bindPaneSelectionEvents(side: 'previous' | 'current'): void {
+  protected bindPaneSelectionEvents(side: 'previous' | 'current'): void {
     const codeRenderable = this.paneRenderables(side).code;
     const selectionDragBehavior = side === 'previous'
       ? this.previousSelectionDragBehavior
@@ -919,7 +1016,7 @@ class $DiffView {
     codeRenderable.onMouseDragEnd = () => selectionDragBehavior.end();
   }
 
-  private selectionPositionAtCell(
+  protected selectionPositionAtCell(
     side: 'previous' | 'current',
     screenColumn: number,
     screenRow: number,
@@ -945,11 +1042,17 @@ class $DiffView {
       this.horizontalScrollOffset.value + Math.max(0, screenColumn - codeRenderable.x - 1);
     return {
       line: lineNumber - 1,
-      column: EditorCoordinates.Class.graphemeAtDisplayColumn(sourceLine, displayColumn),
+      column: this.EditorCoordinates.graphemeAtDisplayColumn(
+        sourceLine,
+        displayColumn,
+      ),
     };
   }
 
-  private nearestLineNumber(side: 'previous' | 'current', alignedRowIndex: number): number | null {
+  protected nearestLineNumber(
+    side: 'previous' | 'current',
+    alignedRowIndex: number,
+  ): number | null {
     const lineNumberAt = (candidateAlignedRowIndex: number): number | null => {
       const alignedRow = this.alignment.alignedRows[candidateAlignedRowIndex];
       if (!alignedRow) return null;
@@ -966,7 +1069,7 @@ class $DiffView {
     return null;
   }
 
-  private activateSelection(
+  protected activateSelection(
     side: 'previous' | 'current',
     position: SelectionDragPosition,
     pointerDisplayColumn: number,
@@ -989,11 +1092,14 @@ class $DiffView {
     this.update();
   }
 
-  private findTargetIdentifier(side: 'previous' | 'current'): string {
+  protected findTargetIdentifier(side: 'previous' | 'current'): string {
     return `${this.findIdentifier}:${side}`;
   }
 
-  private revealFindMatch(side: 'previous' | 'current', match: FindInBufferMatch): void {
+  protected revealFindMatch(
+    side: 'previous' | 'current',
+    match: FindInBufferMatch,
+  ): void {
     this.focusedFindSide = side;
     const matchingAlignedRowIndex = this.alignment.alignedRows.findIndex((alignedRow) => {
       const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
@@ -1033,7 +1139,7 @@ class $DiffView {
     return this.activeSelectionBuffer?.copySelection() ?? 0;
   }
 
-  private applyPaneSelection(side: 'previous' | 'current'): void {
+  protected applyPaneSelection(side: 'previous' | 'current'): void {
     const codeRenderable = this.paneRenderables(side).code;
     const selectionRange = this.activeSelectionBuffer?.cursor.selectionRange();
     if (this.activeSelectionSide !== side || !selectionRange) {
@@ -1068,13 +1174,13 @@ class $DiffView {
     const firstLineIndex = firstSelectedVisibleRow.lineNumber - 1;
     const lastLineIndex = lastSelectedVisibleRow.lineNumber - 1;
     const startDisplayColumn = firstLineIndex === selectionRange.start.line
-      ? EditorCoordinates.Class.displayColumn(
+      ? this.EditorCoordinates.displayColumn(
           this.lineForSide(side, firstSelectedVisibleRow.lineNumber),
           selectionRange.start.col,
         ) - this.horizontalScrollOffset.value
       : 0;
     const endDisplayColumn = lastLineIndex === selectionRange.end.line
-      ? EditorCoordinates.Class.displayColumn(
+      ? this.EditorCoordinates.displayColumn(
           this.lineForSide(side, lastSelectedVisibleRow.lineNumber),
           selectionRange.end.col,
         ) - this.horizontalScrollOffset.value
@@ -1116,7 +1222,7 @@ class $DiffView {
 
   onVerticalScrollbarChanged(reportedPosition: number): void {
     if (this.isApplyingScrollbarGeometry) return;
-    this.verticalScrollMomentum.value = Momentum.Class.halt();
+    this.verticalScrollMomentum.value = this.Momentum.halt();
     this.alignedRowScrollOffset.value = this.clampAlignedRowOffset(
       Math.round(reportedPosition * this.verticalReportedToTrueScale),
     );
@@ -1126,7 +1232,7 @@ class $DiffView {
 
   onHorizontalScrollbarChanged(reportedPosition: number): void {
     if (this.isApplyingScrollbarGeometry) return;
-    this.horizontalScrollMomentum.value = Momentum.Class.halt();
+    this.horizontalScrollMomentum.value = this.Momentum.halt();
     this.horizontalScrollOffset.value = this.clampHorizontalOffset(
       Math.round(reportedPosition * this.horizontalReportedToTrueScale),
     );
@@ -1165,7 +1271,7 @@ class $DiffView {
 
   languageForSide(side: 'previous' | 'current'): LangId {
     const path = side === 'previous' ? this.options.previousVersionPath : this.options.currentVersionPath;
-    return LanguageRegistry.Class.forPath(path ?? 'diff.txt');
+    return this.LanguageRegistry.forPath(path ?? 'diff.txt');
   }
 
   widestVisibleLineWidth(): number {
@@ -1186,7 +1292,11 @@ class $DiffView {
 
   lineWidthForAlignedRow(alignedRow: AlignedRow, side: 'previous' | 'current'): number {
     const lineNumber = side === 'previous' ? alignedRow.leftLineNumber : alignedRow.rightLineNumber;
-    return lineNumber === null ? 0 : EditorCoordinates.Class.lineWidth(this.lineForSide(side, lineNumber));
+    return lineNumber === null
+      ? 0
+      : this.EditorCoordinates.lineWidth(
+          this.lineForSide(side, lineNumber),
+        );
   }
 
   clampAlignedRowOffset(alignedRowIndex: number): number {
@@ -1246,4 +1356,45 @@ export namespace DiffView {
   export const $Class = $DiffView;
   export let Class = Reactive($DiffView);
   export type Instance = typeof Class.Instance;
+}
+
+export interface DiffViewCallbacks {
+  onOpenFull?: () => void;
+  onNextChange?: (
+    changeNumber: number,
+    totalChanges: number,
+    alignedRowIndex: number,
+  ) => void;
+  onPrevChange?: (
+    changeNumber: number,
+    totalChanges: number,
+    alignedRowIndex: number,
+  ) => void;
+}
+
+export interface DiffViewOptions extends DiffViewCallbacks {
+  previousVersionText: string;
+  currentVersionText: string;
+  previousVersionPath?: string;
+  currentVersionPath?: string;
+  parentRenderable?: Renderable;
+}
+
+interface HeaderSegment {
+  kind: 'openFull' | 'nextChange' | 'previousChange';
+  startColumn: number;
+  endColumnExclusive: number;
+}
+
+interface RenderedDiffPane {
+  gutter: StyledText;
+  code: StyledText;
+}
+
+interface DiffPaneRenderables {
+  pane: BoxRenderable;
+  title: TextRenderable;
+  content: BoxRenderable;
+  gutter: TextRenderable;
+  code: SelectableText.Model;
 }
