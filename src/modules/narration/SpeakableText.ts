@@ -1,7 +1,7 @@
 import { Static } from 'ivue/extras';
 
 // invariant: Narration speaks prose, not markdown syntax (src/modules/narration/narration.invariants.md)
-// invariant: Inline code content is preserved without backticks (src/modules/narration/narration.invariants.md)
+// invariant: Inline code speaks its content, pronounceably, without backticks (src/modules/narration/narration.invariants.md)
 // invariant: Internal tokens are never speakable (src/modules/narration/narration.invariants.md)
 
 class $SpeakableText {
@@ -62,6 +62,11 @@ class $SpeakableText {
     const tokenCore = tokenParts?.[1] ?? token;
     const trailingPunctuation = tokenParts?.[2] ?? '';
     if (!tokenCore) return token;
+    const urlParts = /^https?:\/\/([^/\s]+)/.exec(tokenCore);
+    if (urlParts) {
+      // A URL spoken segment-by-segment is babble; the host is the part a listener can use.
+      return `${urlParts[1]} link${trailingPunctuation}`;
+    }
     if (this.isPathLike(tokenCore)) {
       return this.dropExtension(this.lastSegment(tokenCore)) + trailingPunctuation;
     }
@@ -69,6 +74,83 @@ class $SpeakableText {
       return this.splitWords(this.dropExtension(tokenCore)) + trailingPunctuation;
     }
     return token;
+  }
+
+  /** Hex commit-ish token: 7-40 hex digits containing BOTH letters and digits (a bare number like
+   *  1200000 stays a number; a bare word like "deadbeef"... also qualifies — speech prefers "hash"
+   *  over eight spelled letters). */
+  protected static get commitHashToken(): RegExp {
+    return /^[0-9a-f]{7,40}$/i;
+  }
+
+  protected static get uuidToken(): RegExp {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  }
+
+  protected static get hexColorToken(): RegExp {
+    return /^#[0-9a-f]{3,8}$/i;
+  }
+
+  /** A long mixed-alphabet run with digits and no path/prose shape — base64 payloads, tokens, keys. */
+  protected static get encodedDataToken(): RegExp {
+    return /^[A-Za-z0-9+/_-]{16,}={0,2}$/;
+  }
+
+  protected static get escapeSequenceToken(): RegExp {
+    return /\\x1b|\\e\[|\\u001b/;
+  }
+
+  /** Spoken stand-ins for tokens a speech engine can only spell letter-by-letter (the "bebebe"
+   *  babble). Applied to the FINAL restored text, so inline-code content is covered too: the
+   *  inline-code rule is "no backticks, content spoken in pronounceable form", not letter-junk. */
+  protected static makeTokenPronounceable(token: string): string {
+    const tokenParts = /^(.*?)([.,;:!?)\]]*)$/.exec(token);
+    const tokenCore = tokenParts?.[1] ?? token;
+    const trailingPunctuation = tokenParts?.[2] ?? '';
+    if (!tokenCore) return token;
+    if (this.uuidToken.test(tokenCore)) return `identifier${trailingPunctuation}`;
+    if (this.hexColorToken.test(tokenCore)) return `color${trailingPunctuation}`;
+    if (
+      this.commitHashToken.test(tokenCore)
+      && /[a-f]/i.test(tokenCore)
+      && /\d/.test(tokenCore)
+    ) {
+      return `hash${trailingPunctuation}`;
+    }
+    if (
+      this.encodedDataToken.test(tokenCore)
+      && !tokenCore.includes('_')
+      && (
+        tokenCore.endsWith('=')
+        || (/\d/.test(tokenCore) && /[a-z]/.test(tokenCore) && /[A-Z]/.test(tokenCore))
+      )
+    ) {
+      return `encoded data${trailingPunctuation}`;
+    }
+    if (this.escapeSequenceToken.test(tokenCore)) return `escape sequence${trailingPunctuation}`;
+    if (tokenCore === '&&') return `and${trailingPunctuation}`;
+    if (tokenCore === '||') return `or${trailingPunctuation}`;
+    if (/^--?[a-zA-Z][\w-]*$/.test(tokenCore)) {
+      return this.splitWords(tokenCore.replace(/^--?/, '')) + trailingPunctuation;
+    }
+    return token;
+  }
+
+  /** Speech-normalize the final text: babble tokens become spoken stand-ins, markdown table rows
+   *  lose their pipe walls, and separator rows disappear. */
+  protected static makePronounceable(text: string): string {
+    const withoutTableChrome = text
+      .replace(/\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?/g, ' ')
+      .replace(/\s\|\s/g, ', ')
+      .replace(/^\|\s*/g, '')
+      .replace(/\s*\|$/g, '');
+    return withoutTableChrome
+      .split(/(\s+)/)
+      .map((token) => (/\S/.test(token) ? this.makeTokenPronounceable(token) : token))
+      .join('')
+      .replace(/,(\s*,)+/g, ',')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   protected static inlineCodePlaceholder(
@@ -112,8 +194,9 @@ class $SpeakableText {
     text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
     text = text.replace(/^\s*[-*+]\s+/gm, '');
     text = text.replace(/^\s*>\s?/gm, '');
-    text = text.replace(/(\*\*|__)(.+?)\1/g, '$2');
-    text = text.replace(/(\*|_)(.+?)\1/g, '$2');
+    // [\s\S] instead of dot: emphasis spans crossing a line break must still shed their markers.
+    text = text.replace(/(\*\*|__)([\s\S]+?)\1/g, '$2');
+    text = text.replace(/(\*|_)([\s\S]+?)\1/g, '$2');
     text = text
       .split(/(\s+)/)
       .map((token) => (/\S/.test(token) ? this.speakBareToken(token) : token))
@@ -148,7 +231,7 @@ class $SpeakableText {
     if (!restorationIsTotal) {
       return { text: markdown, usedOriginalFallback: true };
     }
-    return { text: speakableText, usedOriginalFallback: false };
+    return { text: this.makePronounceable(speakableText), usedOriginalFallback: false };
   }
 
   static forSpeech(markdown: string): string {

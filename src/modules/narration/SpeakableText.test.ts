@@ -157,3 +157,32 @@ test('empty / whitespace-only input yields empty string', () => {
   expect(speak('')).toBe('');
   expect(speak('   \n  ')).toBe('');
 });
+
+test('babble tokens become spoken stand-ins: hashes, UUIDs, colors, base64, escapes', () => {
+  expect(speak('landed in commit `f11d070` after 4cd1bd7')).toBe('landed in commit hash after hash');
+  expect(speak('session faf7e858-c256-4735-9bbd-ba8dca8023dd done')).toBe('session identifier done');
+  expect(speak('background #1e1e2e here')).toBe('background color here');
+  expect(speak('payload QUNUSVZFLVRSQU5TQ1JJUFQ= arrived')).toBe('payload encoded data arrived');
+  expect(speak('send \\x1b[27;6;97~ to open')).toBe('send escape sequence to open');
+});
+
+test('shell operators and option flags read as words', () => {
+  expect(speak('run `bunx tsc --noEmit && bun test` now')).toBe('run bunx tsc no Emit and bun test now');
+  expect(speak('true || false')).toBe('true or false');
+});
+
+test('markdown tables lose pipe walls and separator rows', () => {
+  expect(speak('| column | value |\n|---|---|\n| width | 120 |')).toBe('column, value, width, 120');
+});
+
+test('emphasis spanning a line break still sheds its markers', () => {
+  expect(speak('so **first\nsecond** done')).toBe('so first second done');
+});
+
+test('bare URLs speak as their host, not spelled segments', () => {
+  expect(speak('see https://github.com/infinite-system/invar/pull/42 for details')).toBe('see github.com link for details');
+});
+
+test('a bare version number stays a number, brand words stay intact', () => {
+  expect(speak('version 1200000 of GitHub')).toBe('version 1200000 of GitHub');
+});

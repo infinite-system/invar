@@ -242,36 +242,47 @@ removed with its backticks.
 
 **Last refined:** 2026-07-24
 
-### Inline code content is preserved without backticks
+### Inline code speaks its content, pronounceably, without backticks
 
 **Invariant:** If an assistant message contains a single-backtick inline-code span, then narration
-removes the two delimiter backticks and preserves every character between them in the same position.
-Code expressions, paths, identifiers, and symbol-only spans all retain their content.
+removes the two delimiter backticks and speaks the content in PRONOUNCEABLE form: every token a
+speech engine can read as words is preserved verbatim, and every token it could only spell
+letter-by-letter (the enumerated babble classes: commit hashes, UUIDs, hex colors, encoded-data
+runs, textual escape sequences) becomes a brief spoken stand-in ("hash", "identifier", "color",
+"encoded data", "escape sequence"). Shell operators read as words (`&&` → "and", `||` → "or") and
+option flags read as their split words. Nothing is silently dropped — a token is verbatim or a
+named stand-in, never absent.
 
-**Scope:** Single-backtick inline-code spans handled by `SpeakableText.forSpeech`, called by
-`NarrationProjection` before `tts.speak()`. Fenced multi-line code blocks are outside this invariant.
+**Scope:** Single-backtick inline-code spans AND bare prose tokens handled by
+`SpeakableText.forSpeech`, called by `NarrationProjection` before `tts.speak()`. Fenced multi-line
+code blocks are outside this invariant (they speak as "code block").
 
-**Mechanism:** `SpeakableText.forSpeech` extracts inline-code content into collision-free placeholders
-before prose transforms run. After markdown decoration and bare prose tokens are transformed, it
-restores each captured content string at its placeholder.
+**Mechanism:** `SpeakableText.forSpeech` extracts inline-code content into collision-free
+placeholders before prose transforms run and restores each captured string exactly once; the final
+`makePronounceable` pass then maps babble-class tokens (closed regex classes on whole tokens) to
+their stand-ins across the entire restored text, so inline and bare tokens obey one rule.
 
-**Generates:** narration that never silently loses the command, filename, expression, or symbol sequence
-the assistant placed inline; removal of backtick decoration without deletion of message content.
+**Generates:** narration that keeps the command, filename, expression, or identifier the assistant
+placed inline; speech that never degenerates into letter-by-letter spelling ("bebebe" babble) on
+hashes, UUIDs, colors, payloads, or escape notation; tables spoken without pipe walls; emphasis
+markers shed even across line breaks.
 
 **Evidence:** `src/modules/narration/NarrationProjection.test.ts` (mixed prose, message start/end,
-multiple spans, symbol-only span); `src/modules/narration/SpeakableText.test.ts` (paths, identifiers,
-expressions, and dense inline code retain content); `scripts/harness/smoke-audio-narration-harness.ts`
-(an echo reply containing `bun test` reaches the mock TTS as `bun test`).
+multiple spans, symbol-only span); `src/modules/narration/SpeakableText.test.ts` (babble-class
+stand-ins, operators/flags as words, tables, cross-line emphasis, URL hosts, version numbers and
+brand words untouched); `scripts/harness/smoke-audio-narration-harness.ts` (an echo reply
+containing `bun test` reaches the mock TTS as `bun test`).
 
 **Impossible if true:** `run bun test first` becoming `run first`; a symbol-only inline span
-disappearing; an inline path or expression being replaced by a generic word; a delimiter backtick
-reaching the TTS backend.
+disappearing; a delimiter backtick reaching the TTS backend; a 40-character hex string or base64
+payload reaching the TTS backend verbatim; a plain number or a brand word (GitHub, iPhone)
+replaced by a stand-in.
 
 **Verification:** `bun test src/modules/narration/NarrationProjection.test.ts src/modules/narration/SpeakableText.test.ts && bun scripts/harness/smoke-audio-narration-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ### Internal tokens are never speakable
 
