@@ -33,6 +33,8 @@ class $PaneSplitters {
       initialSize: deps.settings.sidebarWidth.value,
       minimumSize: 18,
       maximumSize: 70,
+      pointerDirection: () =>
+        deps.settings.sidebarPosition.value === 'left' ? 1 : -1,
       currentSize: () => deps.settings.sidebarWidth.value,
       onSizeChange: (width) => {
         deps.settings.sidebarWidth.value = Math.round(width);

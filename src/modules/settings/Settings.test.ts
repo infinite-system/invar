@@ -49,7 +49,12 @@ describe('Settings', () => {
     expect(settings.theme.value).toBe('dark');
     expect(settings.wordWrap.value).toBe(false);
     expect(settings.workspaceTabPosition.value).toBe('top');
+    expect(settings.sidebarPosition.value).toBe('left');
+    expect(settings.panelAlignment.value).toBe('center');
+    expect(settings.leftDockVerticalSpan.value).toBe('full-height');
+    expect(settings.rightDockVerticalSpan.value).toBe('ends-at-panel');
     expect(settings.sidebarWidth.value).toBe(32);
+    expect(settings.rightDockWidth.value).toBe(28);
     expect(settings.diffSplitRatio.value).toBe(0.5);
     expect(settings.markdownSplitRatio.value).toBe(0.5);
     expect(settings.gitSplitRatio.value).toBe(0.5);
@@ -98,6 +103,9 @@ describe('Settings', () => {
         sidebarWidth: 'wide', // wrong type, dropped -> default 32
         glyphMode: 'bogus', // out of enum, dropped -> default 'auto'
         typescriptServer: 'deno', // out of enum, dropped -> default 'tsgo'
+        sidebarPosition: 'middle',
+        panelAlignment: 'stretch',
+        leftDockVerticalSpan: 'sometimes',
         unknownKey: 99, // unknown, ignored
       }),
     });
@@ -106,6 +114,9 @@ describe('Settings', () => {
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.glyphMode.value).toBe('auto');
     expect(settings.typescriptServer.value).toBe('tsgo');
+    expect(settings.sidebarPosition.value).toBe('left');
+    expect(settings.panelAlignment.value).toBe('center');
+    expect(settings.leftDockVerticalSpan.value).toBe('full-height');
   });
 
   test('set() + save() round-trips through the filesystem', () => {

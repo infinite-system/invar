@@ -12,6 +12,11 @@ import { ref, type Ref } from 'vue';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { Environment } from '../system/Environment';
+import type {
+  DockVerticalSpan,
+  PanelAlignment,
+  SidebarPosition,
+} from '../layout/LayoutModel';
 
 /** The modifier key that re-routes wheel input, or `none` to leave it unbound. */
 export type ScrollModifier = 'alt' | 'shift' | 'ctrl' | 'none';
@@ -55,6 +60,10 @@ export interface SettingsValues {
   showIndentGuides: boolean;
   reducedMotion: boolean;
   workspaceTabPosition: WorkspaceTabPosition;
+  sidebarPosition: SidebarPosition;
+  panelAlignment: PanelAlignment;
+  leftDockVerticalSpan: DockVerticalSpan;
+  rightDockVerticalSpan: DockVerticalSpan;
   // Language intelligence.
   typescriptServer: TypeScriptServer;
   lspFileSizeLimitKb: number;
@@ -69,6 +78,7 @@ export interface SettingsValues {
   agentNarrationRate: number;
   // Splitter geometry.
   sidebarWidth: number;
+  rightDockWidth: number;
   gitSplitRatio: number;
   diffSplitRatio: number;
   markdownSplitRatio: number;
@@ -114,6 +124,20 @@ const ALLOWED_GLYPH_MODES: ReadonlySet<GlyphMode> = new Set<GlyphMode>([
 const ALLOWED_WORKSPACE_TAB_POSITIONS: ReadonlySet<WorkspaceTabPosition> = new Set([
   'top',
   'left',
+]);
+const ALLOWED_SIDEBAR_POSITIONS: ReadonlySet<SidebarPosition> = new Set([
+  'left',
+  'right',
+]);
+const ALLOWED_PANEL_ALIGNMENTS: ReadonlySet<PanelAlignment> = new Set([
+  'left',
+  'center',
+  'right',
+  'justify',
+]);
+const ALLOWED_DOCK_VERTICAL_SPANS: ReadonlySet<DockVerticalSpan> = new Set([
+  'full-height',
+  'ends-at-panel',
 ]);
 const ALLOWED_TYPESCRIPT_SERVERS: ReadonlySet<TypeScriptServer> = new Set<TypeScriptServer>([
   'tsgo',
@@ -175,6 +199,18 @@ class $Settings {
   get workspaceTabPosition(): Ref<WorkspaceTabPosition> {
     return ref<WorkspaceTabPosition>('top');
   }
+  get sidebarPosition(): Ref<SidebarPosition> {
+    return ref<SidebarPosition>('left');
+  }
+  get panelAlignment(): Ref<PanelAlignment> {
+    return ref<PanelAlignment>('center');
+  }
+  get leftDockVerticalSpan(): Ref<DockVerticalSpan> {
+    return ref<DockVerticalSpan>('full-height');
+  }
+  get rightDockVerticalSpan(): Ref<DockVerticalSpan> {
+    return ref<DockVerticalSpan>('ends-at-panel');
+  }
   get typescriptServer(): Ref<TypeScriptServer> {
     return ref<TypeScriptServer>('tsgo');
   }
@@ -210,6 +246,9 @@ class $Settings {
   get sidebarWidth(): Ref<number> {
     return ref(32);
   }
+  get rightDockWidth(): Ref<number> {
+    return ref(28);
+  }
   get gitSplitRatio(): Ref<number> {
     return ref(0.5);
   }
@@ -238,6 +277,10 @@ class $Settings {
       showIndentGuides: this.showIndentGuides,
       reducedMotion: this.reducedMotion,
       workspaceTabPosition: this.workspaceTabPosition,
+      sidebarPosition: this.sidebarPosition,
+      panelAlignment: this.panelAlignment,
+      leftDockVerticalSpan: this.leftDockVerticalSpan,
+      rightDockVerticalSpan: this.rightDockVerticalSpan,
       typescriptServer: this.typescriptServer,
       lspFileSizeLimitKb: this.lspFileSizeLimitKb,
       agentProvider: this.agentProvider,
@@ -249,6 +292,7 @@ class $Settings {
       agentNarrationVoice: this.agentNarrationVoice,
       agentNarrationRate: this.agentNarrationRate,
       sidebarWidth: this.sidebarWidth,
+      rightDockWidth: this.rightDockWidth,
       gitSplitRatio: this.gitSplitRatio,
       diffSplitRatio: this.diffSplitRatio,
       markdownSplitRatio: this.markdownSplitRatio,
@@ -393,6 +437,10 @@ class $Settings {
       showIndentGuides: true,
       reducedMotion: false,
       workspaceTabPosition: 'top',
+      sidebarPosition: 'left',
+      panelAlignment: 'center',
+      leftDockVerticalSpan: 'full-height',
+      rightDockVerticalSpan: 'ends-at-panel',
       typescriptServer: 'tsgo',
       lspFileSizeLimitKb: 2048,
       agentProvider: 'auto',
@@ -404,6 +452,7 @@ class $Settings {
       agentNarrationVoice: '',
       agentNarrationRate: 1.0,
       sidebarWidth: 32,
+      rightDockWidth: 28,
       gitSplitRatio: 0.5,
       diffSplitRatio: 0.5,
       markdownSplitRatio: 0.5,
@@ -448,6 +497,36 @@ class $Settings {
       result.workspaceTabPosition = record.workspaceTabPosition as WorkspaceTabPosition;
     }
     if (
+      typeof record.sidebarPosition === 'string' &&
+      ALLOWED_SIDEBAR_POSITIONS.has(record.sidebarPosition as SidebarPosition)
+    ) {
+      result.sidebarPosition = record.sidebarPosition as SidebarPosition;
+    }
+    if (
+      typeof record.panelAlignment === 'string' &&
+      ALLOWED_PANEL_ALIGNMENTS.has(record.panelAlignment as PanelAlignment)
+    ) {
+      result.panelAlignment = record.panelAlignment as PanelAlignment;
+    }
+    if (
+      typeof record.leftDockVerticalSpan === 'string' &&
+      ALLOWED_DOCK_VERTICAL_SPANS.has(
+        record.leftDockVerticalSpan as DockVerticalSpan,
+      )
+    ) {
+      result.leftDockVerticalSpan =
+        record.leftDockVerticalSpan as DockVerticalSpan;
+    }
+    if (
+      typeof record.rightDockVerticalSpan === 'string' &&
+      ALLOWED_DOCK_VERTICAL_SPANS.has(
+        record.rightDockVerticalSpan as DockVerticalSpan,
+      )
+    ) {
+      result.rightDockVerticalSpan =
+        record.rightDockVerticalSpan as DockVerticalSpan;
+    }
+    if (
       typeof record.typescriptServer === 'string' &&
       ALLOWED_TYPESCRIPT_SERVERS.has(record.typescriptServer as TypeScriptServer)
     ) {
@@ -468,6 +547,7 @@ class $Settings {
     readNumber('agentNarrationRate');
     readNumber('lspFileSizeLimitKb');
     readNumber('sidebarWidth');
+    readNumber('rightDockWidth');
     readNumber('gitSplitRatio');
     readNumber('diffSplitRatio');
     readNumber('markdownSplitRatio');

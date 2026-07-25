@@ -16,6 +16,11 @@ import {
   type TypeScriptServer,
   type AgentProvider,
 } from './Settings';
+import type {
+  DockVerticalSpan,
+  PanelAlignment,
+  SidebarPosition,
+} from '../layout/LayoutModel';
 
 /** How one setting is edited: numbers step, booleans toggle, enums cycle a fixed list, and DYNAMIC enums
  *  cycle a list PROBED at runtime (panel-open) — e.g. the installed piper voices — so the options track
@@ -37,6 +42,9 @@ export interface SettingDescriptor {
 const SCROLL_MODIFIER_OPTIONS: readonly ScrollModifier[] = ['none', 'alt', 'shift', 'ctrl'];
 const GLYPH_MODE_OPTIONS: readonly GlyphMode[] = ['auto', 'nerd', 'unicode', 'ascii'];
 const WORKSPACE_TAB_POSITION_OPTIONS: readonly WorkspaceTabPosition[] = ['top', 'left'];
+const SIDEBAR_POSITION_OPTIONS: readonly SidebarPosition[] = ['left', 'right'];
+const PANEL_ALIGNMENT_OPTIONS: readonly PanelAlignment[] = ['left', 'center', 'right', 'justify'];
+const DOCK_VERTICAL_SPAN_OPTIONS: readonly DockVerticalSpan[] = ['full-height', 'ends-at-panel'];
 const TYPESCRIPT_SERVER_OPTIONS: readonly TypeScriptServer[] = ['tsgo', 'typescript-language-server'];
 const AGENT_PROVIDER_OPTIONS: readonly AgentProvider[] = ['auto', 'claude', 'codex'];
 
@@ -68,6 +76,11 @@ const SETTING_DESCRIPTORS: readonly SettingDescriptor[] = [
   { key: 'agentNarrationVoice', label: 'Narration voice', section: 'Narration', spec: { kind: 'dynamic-enum', resolveOptions: () => VoiceDiscovery.Class.options() } },
   { key: 'agentNarrationRate', label: 'Narration speed (higher = faster; 1.0 = normal)', section: 'Narration', spec: { kind: 'number', step: 0.1, minimum: 0.5, maximum: 3.0, decimals: 1 } },
   { key: 'sidebarWidth', label: 'Sidebar width', section: 'Layout', spec: { kind: 'number', step: 1, minimum: 16, maximum: 80, decimals: 0 } },
+  { key: 'rightDockWidth', label: 'Right dock width', section: 'Layout', spec: { kind: 'number', step: 1, minimum: 16, maximum: 80, decimals: 0 } },
+  { key: 'sidebarPosition', label: 'Sidebar position', section: 'Layout', spec: { kind: 'enum', options: SIDEBAR_POSITION_OPTIONS } },
+  { key: 'panelAlignment', label: 'Panel alignment', section: 'Layout', spec: { kind: 'enum', options: PANEL_ALIGNMENT_OPTIONS } },
+  { key: 'leftDockVerticalSpan', label: 'Left dock vertical span', section: 'Layout', spec: { kind: 'enum', options: DOCK_VERTICAL_SPAN_OPTIONS } },
+  { key: 'rightDockVerticalSpan', label: 'Right dock vertical span', section: 'Layout', spec: { kind: 'enum', options: DOCK_VERTICAL_SPAN_OPTIONS } },
   { key: 'gitSplitRatio', label: 'Git changes/log split', section: 'Layout', spec: { kind: 'number', step: 0.05, minimum: 0.1, maximum: 0.9, decimals: 2 } },
   { key: 'diffSplitRatio', label: 'Diff previous/current split', section: 'Layout', spec: { kind: 'number', step: 0.05, minimum: 0.15, maximum: 0.85, decimals: 2 } },
   { key: 'markdownSplitRatio', label: 'Markdown source/preview split', section: 'Layout', spec: { kind: 'number', step: 0.05, minimum: 0.2, maximum: 0.8, decimals: 2 } },

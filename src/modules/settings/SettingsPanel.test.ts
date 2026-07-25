@@ -84,6 +84,16 @@ describe('SettingsPanel', () => {
     expect(settings.workspaceTabPosition.value).toBe('left');
     panel.adjust(-1);
     expect(settings.workspaceTabPosition.value).toBe('top');
+
+    panel.selectedIndex.value = indexOfKey(panel, 'sidebarPosition');
+    panel.adjust(1);
+    expect(settings.sidebarPosition.value).toBe('right');
+    panel.selectedIndex.value = indexOfKey(panel, 'panelAlignment');
+    panel.adjust(1);
+    expect(settings.panelAlignment.value).toBe('right');
+    panel.selectedIndex.value = indexOfKey(panel, 'leftDockVerticalSpan');
+    panel.adjust(1);
+    expect(settings.leftDockVerticalSpan.value).toBe('ends-at-panel');
   });
 
   test('rows() reflects the current values and the selection', () => {

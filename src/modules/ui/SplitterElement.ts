@@ -90,7 +90,11 @@ class $SplitterElement {
   protected pointerPosition(event: MouseEvent): number {
     const axisPosition =
       this.options.orientation === 'vertical' ? event.x : event.y;
-    return axisPosition * (this.options.pointerDirection ?? 1);
+    const pointerDirection =
+      typeof this.options.pointerDirection === 'function'
+        ? this.options.pointerDirection()
+        : (this.options.pointerDirection ?? 1);
+    return axisPosition * pointerDirection;
   }
 
   protected capturePointer(): void {
@@ -156,7 +160,7 @@ export interface SplitterElementOptions {
   minimumSize?: number;
   maximumSize?: number;
   extentCells?: number;
-  pointerDirection?: 1 | -1;
+  pointerDirection?: 1 | -1 | (() => 1 | -1);
   currentSize?: () => number;
   currentExtentCells?: () => number;
   onSizeChange: (size: number) => void;

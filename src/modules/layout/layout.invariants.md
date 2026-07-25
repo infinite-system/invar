@@ -67,6 +67,38 @@ tests assert the exact ratio.
 
 ## Chosen invariants
 
+### Layout slots derive from one configuration
+
+**Invariant:** If RootView places a dock, editor center, or bottom panel edge, then that rectangle
+comes from one `LayoutModel.resolve` result over the live layout configuration and viewport; no slot
+re-derives an edge from a sibling renderable.
+
+**Scope:** The left primary dock, editor center, right dock, bottom panel, and their splitters in
+`RootView`, across sidebar position, panel alignment, and each dock vertical-span setting.
+
+**Mechanism:** `LayoutModel` consumes viewport cells, configured widths/heights, visibility, and the
+four layout settings, then emits every slot rectangle in one coordinate space. RootView applies those
+rectangles directly; a full-height dock retains its columns while an ends-at-panel dock yields them
+below the panel splitter.
+
+**Generates:** Live sidebar-side changes; left, center, right, and justify panel alignment; independent
+full-height or ends-at-panel docks; a reserved right-dock slot that future PaneContent citizens can
+occupy without new root math.
+
+**Evidence:** `src/modules/layout/LayoutModel.ts`; `src/modules/layout/LayoutModel.test.ts`;
+`src/modules/ui/RootView.ts`.
+
+**Impossible if true:** RootView positioning one slot by reading another slot's laid-out edge; a
+configuration change requiring a second panel or dock formula; a full-height dock being shortened by
+opening the bottom panel.
+
+**Verification:** `bun test src/modules/layout/LayoutModel.test.ts` plus the live configuration
+geometry assertions registered in `scripts/merge-gate.sh`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-24
+
 ### A reported size never leaves its configured bounds
 
 **Invariant:** If any code path sets the splitter size (construction seed or a drag), then the value it
