@@ -6,7 +6,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 // invariant: Clipboard emissions flush at frame boundaries (src/modules/system/system.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -271,5 +271,5 @@ try {
   console.log('smoke-clipboard-frame-boundary-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

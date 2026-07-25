@@ -4,7 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -128,8 +128,8 @@ try {
 } finally {
   await driver.dispose();
   await directoryDriver?.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
-  if (directoryFixtureRoot) rmSync(directoryFixtureRoot, { recursive: true, force: true });
-  if (symlinkTargetRoot) rmSync(symlinkTargetRoot, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  if (directoryFixtureRoot) await HarnessSmoke.Class.removeTemporaryDirectory(directoryFixtureRoot);
+  if (symlinkTargetRoot) await HarnessSmoke.Class.removeTemporaryDirectory(symlinkTargetRoot);
 }

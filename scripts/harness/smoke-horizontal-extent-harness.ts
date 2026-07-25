@@ -5,7 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -14,6 +14,7 @@ import {
   requireCondition,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 const repositoryRoot = process.cwd();
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-horizontal-extent-harness-home-'));
@@ -155,5 +156,5 @@ try {
   console.log('smoke-horizontal-extent-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

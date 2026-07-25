@@ -5,7 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -16,6 +16,7 @@ import {
   requireCondition,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 function activeTabHasDirtyDot(snapshot: HarnessSnapshot.Model, activeBufferPath: string): boolean {
   const tabMarker = ` ${basename(activeBufferPath)} `;
@@ -549,5 +550,5 @@ try {
   console.log('smoke-editor-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

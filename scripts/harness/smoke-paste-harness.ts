@@ -5,7 +5,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
 // invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -16,6 +16,7 @@ import {
 } from './HarnessSmokeSupport';
 import { BracketedPasteInput } from './BracketedPasteInput';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-paste-harness-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-paste-harness-home-'));
@@ -386,6 +387,6 @@ try {
   console.log('smoke-paste-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

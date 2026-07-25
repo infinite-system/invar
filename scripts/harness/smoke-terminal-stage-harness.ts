@@ -9,7 +9,6 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -574,5 +573,5 @@ try {
   await driveTerminalCleanPromptDisabled(homeDirectory, settingsPath);
   console.log('smoke-terminal-stage-harness: ALL-PASS');
 } finally {
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

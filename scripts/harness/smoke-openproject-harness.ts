@@ -6,7 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The selected quick-open row is always visible (src/modules/search/search.invariants.md)
 // invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -146,6 +146,6 @@ try {
   console.log('smoke-openproject-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(navigatorBase, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(navigatorBase);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

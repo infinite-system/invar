@@ -7,7 +7,6 @@
 import {
   mkdirSync as makeDirectorySync,
   mkdtempSync as makeTemporaryDirectorySync,
-  rmSync as removeSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
@@ -202,7 +201,7 @@ class $SmokeTerminalFollowHarness {
     } finally {
       await driver.dispose();
       HarnessSmoke.Class.pass('terminal-follow harness process disposed');
-      removeSync(this.homeDirectory, { recursive: true, force: true });
+      await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
       this.driver = null;
     }
     await this.runHeuristicOnErrorScenario();
@@ -291,7 +290,7 @@ class $SmokeTerminalFollowHarness {
     } finally {
       await driver.dispose();
       HarnessSmoke.Class.pass('heuristic-boundary harness process disposed');
-      removeSync(this.homeDirectory, { recursive: true, force: true });
+      await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
       this.driver = null;
     }
   }

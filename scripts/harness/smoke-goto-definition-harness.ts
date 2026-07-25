@@ -5,7 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -221,6 +221,6 @@ try {
   console.log('smoke-goto-definition-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

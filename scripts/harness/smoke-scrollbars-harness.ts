@@ -4,11 +4,12 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 interface VerticalScrollBarProof {
   column: number;
@@ -562,7 +563,7 @@ try {
 } finally {
   await overflowDriver.dispose();
   await fitsDriver?.dispose();
-  rmSync(overflowFixtureRoot, { recursive: true, force: true });
-  rmSync(fitsFixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(overflowFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(fitsFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

@@ -3,7 +3,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -13,6 +13,7 @@ import {
   statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 function findQueryRow(textRows: readonly string[]): string {
   return textRows.find(
@@ -139,6 +140,6 @@ try {
   console.log('smoke-word-delete-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

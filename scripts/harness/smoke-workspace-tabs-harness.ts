@@ -3,7 +3,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import {
@@ -15,6 +15,7 @@ import {
   runGit,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 const firstRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-first-'));
 const secondRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-second-'));
@@ -229,7 +230,7 @@ try {
   console.log('smoke-workspace-tabs-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(firstRoot, { recursive: true, force: true });
-  rmSync(secondRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(firstRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(secondRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

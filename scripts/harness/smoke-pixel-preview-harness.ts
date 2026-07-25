@@ -4,7 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -134,7 +134,7 @@ async function driveKittyTier(): Promise<void> {
     );
   } finally {
     driver.dispose();
-    rmSync(homeDirectory, { recursive: true, force: true });
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
 
@@ -179,7 +179,7 @@ async function driveSixelTier(): Promise<void> {
     HarnessSmoke.Class.requireCondition(await driver.exitCode() === 0, 'sixel session quits cleanly');
   } finally {
     driver.dispose();
-    rmSync(homeDirectory, { recursive: true, force: true });
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
 
@@ -228,7 +228,7 @@ async function driveHalfBlockFloor(): Promise<void> {
     driver.sendKeys('Control+q');
   } finally {
     driver.dispose();
-    rmSync(homeDirectory, { recursive: true, force: true });
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
 
@@ -241,5 +241,5 @@ try {
   await driveHalfBlockFloor();
   console.log('smoke-pixel-preview-harness: ALL-PASS');
 } finally {
-  rmSync(fixtureRoot, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
 }

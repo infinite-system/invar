@@ -6,7 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: The shortcut sheet lists the effective bindings (src/modules/ui/ui.invariants.md)
 // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -209,6 +209,6 @@ try {
   console.log('smoke-shortcut-help-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

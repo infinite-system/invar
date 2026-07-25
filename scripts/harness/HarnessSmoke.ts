@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { Static } from 'ivue/extras';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -41,6 +41,17 @@ class $HarnessSmoke {
 
   static readStatus(statusPath: string): StatusSnapshot {
     return JSON.parse(readFileSync(statusPath, 'utf8')) as StatusSnapshot;
+  }
+
+  static async removeTemporaryDirectory(directoryPath: string): Promise<void> {
+    try {
+      rmSync(directoryPath, { recursive: true, force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EFAULT') throw error;
+      // Bun can transiently surface EFAULT while recursive removal crosses a just-closed watcher.
+      await Bun.sleep(25);
+      rmSync(directoryPath, { recursive: true, force: true });
+    }
   }
 
   static async awaitStatus(

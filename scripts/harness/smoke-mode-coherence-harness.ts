@@ -3,7 +3,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -12,6 +12,7 @@ import {
   requireCondition,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
+import { HarnessSmoke } from './HarnessSmoke';
 
 async function openDocument(driver: PtyTestDriver.Model): Promise<void> {
   await driver.awaitSnapshot((snapshot) => snapshot.findText('document.txt') !== null, 15_000);
@@ -66,7 +67,7 @@ async function proveQuitFromOverlay(
     requireCondition(exitResult === 'exited', `reserved Ctrl+Q quits from ${overlayLabel}`);
   } finally {
     await driver.dispose();
-    rmSync(sessionRoot, { recursive: true, force: true });
+    await HarnessSmoke.Class.removeTemporaryDirectory(sessionRoot);
   }
 }
 
@@ -179,6 +180,6 @@ try {
   console.log('smoke-mode-coherence-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

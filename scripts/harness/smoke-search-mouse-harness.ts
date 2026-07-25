@@ -8,23 +8,12 @@
 // invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
 // invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
 // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
-
-async function removeTemporaryDirectory(directoryPath: string): Promise<void> {
-  try {
-    rmSync(directoryPath, { recursive: true, force: true });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EFAULT') throw error;
-    // Bun can transiently surface EFAULT while recursive removal crosses a just-closed watcher.
-    await Bun.sleep(25);
-    rmSync(directoryPath, { recursive: true, force: true });
-  }
-}
 
 function resultRowBackground(snapshot: HarnessSnapshot.Model, marker: string): number | null {
   const position = snapshot.findText(marker);
@@ -328,6 +317,6 @@ try {
   console.log('smoke-search-mouse-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  await removeTemporaryDirectory(navigatorBase);
-  await removeTemporaryDirectory(homeDirectory);
+  await HarnessSmoke.Class.removeTemporaryDirectory(navigatorBase);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

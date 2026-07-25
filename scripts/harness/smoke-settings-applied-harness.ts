@@ -8,7 +8,6 @@ import {
   mkdirSync,
   mkdtempSync,
   renameSync,
-  rmSync,
   symlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -702,8 +701,8 @@ try {
 
   console.log('smoke-settings-applied-harness: ALL-PASS');
 } finally {
-  rmSync(settingsHome, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(settingsHome);
   for (const fixtureDirectory of fixtureDirectories) {
-    rmSync(fixtureDirectory, { recursive: true, force: true });
+    await HarnessSmoke.Class.removeTemporaryDirectory(fixtureDirectory);
   }
 }

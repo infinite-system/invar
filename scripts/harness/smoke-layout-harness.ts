@@ -9,7 +9,7 @@
 // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
 // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
 // invariant: The right dock control owns the status edge (src/modules/ui/ui.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -1084,7 +1084,7 @@ try {
   console.log('smoke-layout-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
-  rmSync(compactHomeDirectory, { recursive: true, force: true });
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  await HarnessSmoke.Class.removeTemporaryDirectory(compactHomeDirectory);
 }
