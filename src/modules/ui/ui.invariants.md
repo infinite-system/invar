@@ -584,7 +584,7 @@ in a given frame; when authority changes, the newest STOPS the other and adopts 
 Two writers in one frame silently eat input.
 
 **Scope:** every scroll offset — editor `viewport.scrollTop`, `gitPanel.logScrollTop`, tree
-selection window.
+selection window, agent transcript viewport, and terminal emulator `viewportY`.
 
 **Mechanism:** wheel routes through `Workspace.scrollGitLog` / `viewport.scrollBy`; keyboard through
 `moveLog` / tree `moveSelection`; each input event is the sole writer for that event. When the
@@ -593,8 +593,9 @@ contract). Cross-substrate transfer from `VirtualScroller` ("One Writer Per Regi
 
 **Generates:** deterministic scrolling; no lost wheel/keys.
 
-**Evidence:** today only one path writes each offset per event; recorded now to bind the scroll
-animation increment.
+**Evidence:** `Momentum.addImpulse` deterministically restarts a contrary-direction gesture and
+programmatic jumps halt momentum; `scripts/harness/smoke-terminal-harness.ts` observes a contrary
+terminal notch reverse direction across synchronized frames.
 
 **Impossible if true:** a frame in which two authorities both write the same scroll offset.
 
@@ -603,17 +604,19 @@ scroll-to's offset, not a blend.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### The wheel gesture resolves through one settings-sourced step
 
 **Invariant:** How far one wheel notch moves — the rows-per-notch and the fast-scroll multiplier —
 and whether a wheel event counts as horizontal are computed in exactly ONE place, read from
 `Settings`, never hardcoded. Every scroll consumer (the editor in wrap mode, the editor in
-non-wrap/momentum mode, the file tree, and each git region) feeds through that same step, so a
-settings change moves all regimes identically and no two consumers can drift apart.
+non-wrap/momentum mode, the file tree, each git region, the agent transcript, and terminal
+scrollback) feeds through that same step, so a settings change moves all regimes identically and no
+two consumers can drift apart.
 
-**Scope:** every wheel handler — `EditorPane`, `Sidebar` (tree + git), and any future scrollable pane.
+**Scope:** every wheel handler — `EditorPane`, `Sidebar` (tree + git), `ScrollableTextViewport`,
+`PaneContent` scroll projections, and any future scrollable pane.
 
 **Mechanism:** `ScrollGesture.Class.wheelStep(event, settings)` and `.modifierHeld(event, modifier)`
 are the sole definitions; a handler NEVER re-derives notch size, the fast multiplier, or the
@@ -623,16 +626,18 @@ WRITES the offset; this governs how the gesture is MEASURED before the write).
 
 **Generates:** uniform, configurable scroll feel across every pane from one settings source.
 
-**Evidence:** `ScrollGesture` is the single module; the sidebar and editor handlers both call it.
+**Evidence:** `ScrollGesture` is the single module; the sidebar, editor, shared text viewport, and
+panel cell route all call it before a content receives its signed row impulse.
 
 **Impossible if true:** two panes scrolling at different speeds for the same `linesPerNotch`; a wheel
 handler that ignores a settings change; a hardcoded notch count anywhere.
 
-**Verification:** review + smoke-scrollbars / smoke-tree-scroll drive wheel steps against settings.
+**Verification:** review + `bun scripts/harness/smoke-scrollbars-harness.ts` and `bun
+scripts/harness/smoke-terminal-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-25
 
 ### A context menu is modal and single-consumer
 
@@ -1045,7 +1050,8 @@ the trailing inner edge of the pane's CONTENT rect, derived each frame through t
 source; every non-overflowing axis has no bar, and scrollbar visual thickness is axis-independent.
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
-changes vertical + horizontal, git commit log vertical + horizontal, and any future pane).
+changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
+scrollback, and any future pane).
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
@@ -1057,35 +1063,40 @@ drag geometry).
 clipped content; grabbable thumbs; no phantom bars; equal visual thickness across axes.
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
-`scripts/smoke-scrollbars.sh` (narrow tree/changes/log overflow, real SGR 75 reveal, half-height
-horizontal paint vs vertical columns, and fitting-pane absence), wired in `scripts/merge-gate.sh`.
+`scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
+fitting-pane absence, and the agent per-frame input/paint probe);
+`scripts/harness/smoke-terminal-harness.ts` (long terminal scrollback and solid vertical thumb),
+wired in `scripts/merge-gate.sh`.
 
 **Impossible if true:** an overflowing tree, changes, or log row whose clipped tail cannot be
 reached; a bar visible with nothing to scroll; a horizontal thumb that reads twice as thick as the
 same configured vertical thumb; two bars deriving placement from different math.
 
-**Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bash scripts/smoke-scrollbars.sh`
+**Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bun
+scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ### A scrollbar thumb is painted as background fill, never block glyphs
 
 **Invariant:** Every scrollbar thumb (and track) renders as BACKGROUND colour on blank cells — no
-cell of a scrollbar ever carries a block-element glyph (U+2580–U+259F) — and the painted thumb rect
-is the same rect the slider's mouse hit-test uses.
+cell of a scrollbar ever carries a block-element glyph (U+2580–U+259F) — the painted thumb rect is
+the same rect the slider's mouse hit-test uses, and fixed viewport/content inputs produce a fixed
+whole-cell thumb length at every scroll position.
 
-**Scope:** every scrollbar in the app: the eight pane bars built by `ScrollbarSync`, both
-`ScrollableTextViewport` bars (hover card, agent transcript, markdown preview), and the two
-`DiffView` bars.
+**Scope:** every scrollbar in the app: the pane bars built by `ScrollbarSync`, the optional
+`PaneContent` scroll bars (terminal scrollback), both `ScrollableTextViewport` bars (hover card,
+agent transcript, markdown preview), and the two `DiffView` bars.
 
 **Mechanism:** all scrollbar construction goes through ONE class, `SolidThumbScrollBar`
 (`src/modules/ui/SolidThumbScrollBar.ts`), which repaints OpenTUI's slider cells with two `fillRect`
 calls (track, then a normalized whole-cell thumb rect in the thumb colour). The normalized rect
 reads OpenTUI's virtual half-cell size and start, rounds the position-independent size once, and
-clamps the rounded start to the track. It replaces the slider instance's `getThumbRect`, so the
-same normalized rect also drives the native mouse hit-test. Foreground block glyphs
+clamps the rounded start to the track with the shared two-cell minimum. It replaces the slider
+instance's `getThumbRect`, so the same normalized rect also drives the native mouse hit-test.
+Foreground block glyphs
 (`█ ▀ ▄`) are rasterized with inter-line gaps by macOS Terminal.app — a glyph-built thumb shows dark
 horizontal lines through it — while a background fill covers every pixel of the cell, so the artifact
 is impossible by construction. The same seam re-asserts `slider.viewPortSize` after each scroll-state
@@ -1098,14 +1109,18 @@ thumb length; drag positions that agree with the drawn thumb.
 **Evidence:** driven frame assertions in `scripts/harness/smoke-scrollbars-harness.ts`: zero
 block-element glyphs in the solid bars, contiguous multi-cell bg-fill thumb runs, and per-completed-
 frame editor wrap-off, editor wrap-on, and diff probes that record constant viewport/total inputs,
-moving scroll positions, and byte-identical thumb extents. Live drag was verified against the same
-rect (drag 6 rows moved scrollTop by the reported-scale prediction exactly).
+moving scroll positions, and byte-identical thumb extents. Its agent probe additionally holds
+`viewportRows=14` and `contentRows=181` while 20 changing positions all paint a 2-row thumb.
+`scripts/harness/smoke-terminal-harness.ts` proves the same solid multi-cell thumb on real terminal
+scrollback. `src/modules/ui/SolidThumbScrollBar.test.ts` exhausts half-cell start parity and the
+two-cell minimum. Live drag was verified against the same rect.
 
 **Impossible if true:** a thumb showing horizontal seams in Terminal.app; a scrollbar cell holding
 `█`/`▀`/`▄`; a half-cell thumb on an overflowing pane; a drag grab-point disagreeing with the drawn
 thumb.
 
-**Verification:** `bun scripts/harness/smoke-scrollbars-harness.ts` (wired into merge-gate).
+**Verification:** `bun test src/modules/ui/SolidThumbScrollBar.test.ts && bun
+scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** provisional
 

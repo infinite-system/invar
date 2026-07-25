@@ -11,11 +11,15 @@ import { Terminal, type IBufferCell } from '@xterm/headless';
 
 class $TerminalEmulator {
   protected readonly terminal: Terminal;
-  protected readonly reusableCell: { cell: IBufferCell | undefined } = { cell: undefined };
+  protected readonly reusableCell: { cell: IBufferCell | undefined } = {
+    cell: undefined,
+  };
   protected replyCallback: ((data: string) => void) | null = null;
   protected readonly cellsChangedCallbacks = new Set<() => void>();
   protected metadataChangedCallback: (() => void) | null = null;
-  protected readonly lineFeedCallbacks = new Set<(event: TerminalLineFeedEvent) => void>();
+  protected readonly lineFeedCallbacks = new Set<
+    (event: TerminalLineFeedEvent) => void
+  >();
   protected readonly shellIntegrationCallbacks = new Set<
     (event: TerminalShellIntegrationEvent) => void
   >();
@@ -24,7 +28,8 @@ class $TerminalEmulator {
   protected isSgrMouseEncodingEnabledValue = false;
   protected hasShellPromptMarkerValue = false;
   protected isShellPromptActiveValue = false;
-  protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null = null;
+  protected lastShellIntegrationEventValue: TerminalShellIntegrationEvent | null =
+    null;
 
   constructor(columns: number, rows: number) {
     this.terminal = new Terminal({
@@ -34,16 +39,16 @@ class $TerminalEmulator {
       scrollback: 1000,
     });
     this.terminal.onData((data) => this.replyCallback?.(data));
-    this.terminal.onWriteParsed(() => this.notifyCallbacks(this.cellsChangedCallbacks));
+    this.terminal.onWriteParsed(() =>
+      this.notifyCallbacks(this.cellsChangedCallbacks),
+    );
     this.terminal.onLineFeed(() => this.observeLineFeed());
     this.terminal.onTitleChange((title) => this.observeTitle(title));
-    this.terminal.parser.registerOscHandler(
-      7,
-      (currentWorkingDirectory) => this.observeCurrentWorkingDirectory(currentWorkingDirectory),
+    this.terminal.parser.registerOscHandler(7, (currentWorkingDirectory) =>
+      this.observeCurrentWorkingDirectory(currentWorkingDirectory),
     );
-    this.terminal.parser.registerOscHandler(
-      133,
-      (marker) => this.observeShellIntegrationMarker(marker),
+    this.terminal.parser.registerOscHandler(133, (marker) =>
+      this.observeShellIntegrationMarker(marker),
     );
     this.terminal.parser.registerCsiHandler(
       { prefix: '?', final: 'h' },
@@ -113,6 +118,24 @@ class $TerminalEmulator {
     return this.terminal.buffer.active.cursorY;
   }
 
+  get scrollTop(): number {
+    return this.terminal.buffer.active.viewportY;
+  }
+
+  get scrollContentRows(): number {
+    const active = this.terminal.buffer.active;
+    return active.baseY + this.terminal.rows;
+  }
+
+  get scrollViewportRows(): number {
+    return this.terminal.rows;
+  }
+
+  get isScrolledToBottom(): boolean {
+    const active = this.terminal.buffer.active;
+    return active.viewportY >= active.baseY;
+  }
+
   get title(): string {
     return this.terminalTitle;
   }
@@ -147,7 +170,22 @@ class $TerminalEmulator {
 
   visibleLineText(row: number): string {
     const active = this.terminal.buffer.active;
-    return active.getLine(active.baseY + row)?.translateToString(true) ?? '';
+    return (
+      active.getLine(active.viewportY + row)?.translateToString(true) ?? ''
+    );
+  }
+
+  scrollToLine(line: number): void {
+    this.terminal.scrollToLine(
+      Math.max(
+        0,
+        Math.min(Math.floor(line), this.terminal.buffer.active.baseY),
+      ),
+    );
+  }
+
+  scrollToBottom(): void {
+    this.terminal.scrollToBottom();
   }
 
   recentTextLines(maximumLineCount?: number): readonly string[] {
@@ -156,7 +194,9 @@ class $TerminalEmulator {
     ).lines;
   }
 
-  scrollbackText(request: TerminalScrollbackRequest = {}): TerminalScrollbackSnapshot {
+  scrollbackText(
+    request: TerminalScrollbackRequest = {},
+  ): TerminalScrollbackSnapshot {
     const active = this.terminal.buffer.active;
     const terminalEmulatorClass = this.constructor as typeof $TerminalEmulator;
     const totalLines = active.length;
@@ -172,8 +212,8 @@ class $TerminalEmulator {
         Math.min(totalLines, Math.floor(request.range.endLine)),
       );
     } else {
-      const requestedLineCount = request.lineCount
-        ?? terminalEmulatorClass.defaultScrollbackLineCount;
+      const requestedLineCount =
+        request.lineCount ?? terminalEmulatorClass.defaultScrollbackLineCount;
       const safeLineCount = Number.isFinite(requestedLineCount)
         ? Math.max(0, Math.floor(requestedLineCount))
         : terminalEmulatorClass.defaultScrollbackLineCount;
@@ -227,16 +267,12 @@ class $TerminalEmulator {
   /** Pull one visible cell (viewport row/column) into a flat struct. Reuses a single xterm cell
    *  object across the pull to stay allocation-free per cell — the flyweight viewport-pull.
    *
-   *  `row` is VIEWPORT-relative (0 = top visible line). xterm's getLine() indexes the WHOLE buffer
-   *  including scrollback, so we add `baseY` (the absolute line of the viewport top when scrolled to
-   *  the bottom — the live state, since no scrollback-scroll UI exists yet). This is the same origin
-   *  `cursorY` is measured against, so cells and cursor stay aligned. Without the offset, once any
-   *  content scrolls into scrollback (baseY > 0 — e.g. after a full-screen alt-screen app like an
-   *  editor or Claude Code exits) the pull would read the TOP OF SCROLLBACK: stale artifacts on
-   *  screen while live output + the cursor sit below the rendered window (typing appears to vanish). */
+   *  `row` is VIEWPORT-relative (0 = top visible line). xterm's getLine() indexes the WHOLE buffer,
+   *  so we add its live `viewportY`. At the bottom viewportY equals baseY; while the user inspects
+   *  scrollback it is smaller. The emulator remains the one scroll-position authority. */
   cell(row: number, column: number): TerminalCell | null {
     const active = this.terminal.buffer.active;
-    const line = active.getLine(active.baseY + row);
+    const line = active.getLine(active.viewportY + row);
     if (!line) return null;
     const cell = line.getCell(column, this.reusableCell.cell);
     if (!cell) return null;
@@ -283,7 +319,9 @@ class $TerminalEmulator {
     this.metadataChangedCallback?.();
   }
 
-  protected observeCurrentWorkingDirectory(currentWorkingDirectory: string): false {
+  protected observeCurrentWorkingDirectory(
+    currentWorkingDirectory: string,
+  ): false {
     this.terminalCurrentWorkingDirectory = currentWorkingDirectory;
     this.metadataChangedCallback?.();
     return false;
@@ -294,10 +332,12 @@ class $TerminalEmulator {
     const markerCode = markerParts[0];
     const kind = this.shellIntegrationKind(markerCode);
     if (!kind) return false;
-    const semanticMarker = markerCode as TerminalShellIntegrationEvent['marker'];
+    const semanticMarker =
+      markerCode as TerminalShellIntegrationEvent['marker'];
     this.hasShellPromptMarkerValue = true;
     if (markerCode === 'A') this.isShellPromptActiveValue = true;
-    if (markerCode === 'C' || markerCode === 'D') this.isShellPromptActiveValue = false;
+    if (markerCode === 'C' || markerCode === 'D')
+      this.isShellPromptActiveValue = false;
     const event: TerminalShellIntegrationEvent = {
       kind,
       marker: semanticMarker,
@@ -348,7 +388,10 @@ class $TerminalEmulator {
 
   protected activeLineText(): string {
     const active = this.terminal.buffer.active;
-    return active.getLine(active.baseY + active.cursorY)?.translateToString(true) ?? '';
+    return (
+      active.getLine(active.baseY + active.cursorY)?.translateToString(true) ??
+      ''
+    );
   }
 
   protected observeLineFeed(): void {
@@ -369,8 +412,14 @@ class $TerminalEmulator {
       firstLineIndex -= 1;
     }
     const lineSegments: string[] = [];
-    for (let lineIndex = firstLineIndex; lineIndex <= endingLineIndex; lineIndex += 1) {
-      lineSegments.push(active.getLine(lineIndex)?.translateToString(true) ?? '');
+    for (
+      let lineIndex = firstLineIndex;
+      lineIndex <= endingLineIndex;
+      lineIndex += 1
+    ) {
+      lineSegments.push(
+        active.getLine(lineIndex)?.translateToString(true) ?? '',
+      );
     }
     return {
       text: lineSegments.join(''),
@@ -446,10 +495,7 @@ export interface TerminalScrollbackSnapshot {
 }
 
 export type TerminalShellIntegrationEventKind =
-  | 'prompt-start'
-  | 'command-start'
-  | 'output-start'
-  | 'command-end';
+  'prompt-start' | 'command-start' | 'output-start' | 'command-end';
 
 export interface TerminalShellIntegrationEvent {
   kind: TerminalShellIntegrationEventKind;

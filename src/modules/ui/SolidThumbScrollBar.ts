@@ -81,8 +81,9 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     virtualThumbSize: number,
     trackLength: number,
   ): ThumbAxis {
+    const minimumLength = Math.min(2, trackLength);
     const length = Math.max(
-      1,
+      minimumLength,
       Math.min(Math.ceil(virtualThumbSize / 2), trackLength),
     );
     const start = Math.max(

@@ -359,6 +359,48 @@ the panel is unfocused; a modal overlay key reaching the pane retained beneath i
 
 **Last refined:** 2026-07-25
 
+### Child terminal modes own wheel input
+
+**Invariant:** A wheel over a terminal scrolls host scrollback only while the primary screen is
+active and child mouse tracking is disabled. If either the alternate screen is active or any child
+mouse-tracking mode is enabled, the same gesture is encoded as an SGR mouse wheel event and written
+to the child; it never changes host scrollback.
+
+**Scope:** `TerminalEmulator` mode state, `TerminalInstance`, `TerminalPaneContent`, the optional
+scroll projection on `PaneContent`, and the panel cell wheel route in `RootView`.
+
+**Mechanism:** `TerminalInstance.forwardsWheelToChild` reads the emulator's active buffer and mouse
+tracking mode. `TerminalPaneContent.onWheel` chooses exactly one regime: child ownership writes one
+SGR event with pane-local coordinates and modifiers; host ownership feeds the settings-normalized
+row impulse into `Momentum`, whose progressive gain, deterministic contrary-direction restart,
+one-row floor, decay, and stop threshold are shared with every scrolling surface. The emulator owns
+`viewportY`; the generic pane scroll projection paints a `SolidThumbScrollBar` from that same
+position and extent. Fresh child output halts a glide and returns the viewport to `baseY`.
+
+**Generates:** Smooth terminal scrollback over multiple cell frames; immediate reversal; a visible
+solid thumb; bottom-follow on new output; full-screen and mouse-aware child applications receiving
+their own wheel input without a competing host scroll.
+
+**Evidence:** `src/modules/terminal/TerminalPaneContent.test.ts` independently drives primary,
+mouse-tracking, and alternate-screen byte cases; `src/modules/terminal/TerminalInstance.test.ts`
+proves fresh output returns a manually scrolled viewport to the live bottom;
+`scripts/harness/smoke-terminal-harness.ts` drives a real long Bash scrollback through five
+synchronized positions, reverses it with a contrary notch, observes the solid thumb, returns to the
+bottom on fresh output, then launches an alternate-screen mouse-tracking child that receives the
+exact SGR wheel bytes while host position and extent remain unchanged.
+
+**Impossible if true:** A full-screen child and host scrollback both moving for one wheel gesture; a
+mouse-tracking child receiving no wheel bytes; a terminal wheel jumping without shared momentum; new
+shell output remaining off-screen; an overflowing terminal with no thumb.
+
+**Verification:** `bun test src/modules/terminal/TerminalPaneContent.test.ts
+src/modules/terminal/TerminalInstance.test.ts && bun
+scripts/harness/smoke-terminal-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Animated agent commands stay visible and inert
 
 **Invariant:** If Invar animates an agent command into an idle terminal prompt, then every sanitized

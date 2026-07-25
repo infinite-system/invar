@@ -46,15 +46,18 @@ class $TerminalInstance {
     this.terminalCommandController = new TerminalCommandController.Class({
       write: (data) => this.sendInput(data),
       submit: () => this.submitAgentCommand(),
-      isPromptIdle: () => !this.userInputAwaitingParse && this.emulator.isPromptIdle,
+      isPromptIdle: () =>
+        !this.userInputAwaitingParse && this.emulator.isPromptIdle,
       currentInputLine: () => this.emulator.currentPromptInputLine(),
       currentWorkingDirectory: () => this.currentWorkingDirectory,
       typingSpeed: commandOptions.typingSpeed ?? (() => 40),
       reducedMotion: commandOptions.reducedMotion ?? (() => false),
       random: Math.random,
       scheduler: {
-        setTimeout: (callback, milliseconds) => setTimeout(callback, milliseconds),
-        clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+        setTimeout: (callback, milliseconds) =>
+          setTimeout(callback, milliseconds),
+        clearTimeout: (handle) =>
+          clearTimeout(handle as ReturnType<typeof setTimeout>),
       },
     });
     this.terminalObserver = this.createTerminalObserver();
@@ -63,6 +66,8 @@ class $TerminalInstance {
     this.emulator.onReply((data) => this.backend.write(data));
     this.emulator.onCellsChanged(() => {
       this.userInputAwaitingParse = false;
+      this.emulator.scrollToBottom();
+      this.outputRevision.value++;
       this.renderRevision.value++;
       this.terminalCommandController.notifyTerminalChanged();
     });
@@ -80,6 +85,12 @@ class $TerminalInstance {
   /** Bumped on every parsed emulator pulse and on exit — the reactive paint signal the frame effect
    *  observes so async PTY output repaints on its own. */
   get renderRevision() {
+    return ref(0);
+  }
+
+  /** Child-output-only pulse. The pane uses it to halt an in-flight scrollback glide when fresh
+   *  output returns the emulator viewport to the live bottom. */
+  get outputRevision() {
     return ref(0);
   }
 
@@ -163,7 +174,9 @@ class $TerminalInstance {
     return this.terminalObserver.snapshot(1)[0]?.boundarySource ?? null;
   }
 
-  onTerminalCommandEvent(callback: (event: TerminalCommandEvent) => void): void {
+  onTerminalCommandEvent(
+    callback: (event: TerminalCommandEvent) => void,
+  ): void {
     this.terminalCommandController.onEvent(callback);
   }
 
@@ -193,6 +206,34 @@ class $TerminalInstance {
 
   get cursorRow(): number {
     return this.emulator.cursorRow;
+  }
+
+  get scrollTop(): number {
+    return this.emulator.scrollTop;
+  }
+
+  get scrollContentRows(): number {
+    return this.emulator.scrollContentRows;
+  }
+
+  get scrollViewportRows(): number {
+    return this.emulator.scrollViewportRows;
+  }
+
+  get isScrolledToBottom(): boolean {
+    return this.emulator.isScrolledToBottom;
+  }
+
+  get forwardsWheelToChild(): boolean {
+    return (
+      this.emulator.mouseTrackingMode !== 'none' ||
+      this.emulator.isAlternateScreenActive
+    );
+  }
+
+  scrollToLine(line: number): void {
+    this.emulator.scrollToLine(line);
+    this.renderRevision.value++;
   }
 
   /** Pull one visible cell for the renderer (viewport-pull; no per-cell state held here). */
@@ -228,7 +269,9 @@ class $TerminalInstance {
   }
 
   protected updateHeaderMetadata(): void {
-    const titleIdentityAndPath = TerminalHeader.Class.identityAndPath(this.emulator.title);
+    const titleIdentityAndPath = TerminalHeader.Class.identityAndPath(
+      this.emulator.title,
+    );
     if (titleIdentityAndPath) {
       this.lastKnownIdentity = titleIdentityAndPath.identity;
       this.lastKnownWorkingDirectory = titleIdentityAndPath.path;
@@ -238,7 +281,8 @@ class $TerminalInstance {
     const workingDirectory = TerminalHeader.Class.workingDirectory(
       this.emulator.currentWorkingDirectory,
     );
-    if (workingDirectory) this.lastKnownWorkingDirectory = workingDirectory.path;
+    if (workingDirectory)
+      this.lastKnownWorkingDirectory = workingDirectory.path;
   }
 }
 

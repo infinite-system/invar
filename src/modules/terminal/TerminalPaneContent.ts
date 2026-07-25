@@ -7,12 +7,16 @@
 //
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+// invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import type {
   PaneContent,
   PaneRenderContext,
+  PaneScrollPort,
+  PaneWheelContext,
 } from '../ui/PaneContent.interface';
 import {
   TextSelectionModel,
@@ -51,6 +55,9 @@ class $TerminalPaneContent implements PaneContent {
   readonly instanceLabel: string;
   readonly icon = '❯'; // ❯
   protected readonly selection = new TextSelectionModel.Class();
+  protected scrollPort: PaneScrollPort | null = null;
+  protected observedOutputRevision = 0;
+  protected verticalMomentum: ScrollMomentum = Momentum.Class.atRest;
 
   constructor(
     protected readonly instance: TerminalInstance.Instance,
@@ -84,7 +91,16 @@ class $TerminalPaneContent implements PaneContent {
     return this.instance.renderRevision;
   }
 
+  attachViewportScrollPort(scrollPort: PaneScrollPort): void {
+    this.scrollPort = scrollPort;
+    this.observedOutputRevision = this.instance.outputRevision.value;
+  }
+
   render(context: PaneRenderContext): StyledText {
+    if (this.observedOutputRevision !== this.instance.outputRevision.value) {
+      this.observedOutputRevision = this.instance.outputRevision.value;
+      this.haltScrollMomentum();
+    }
     return TerminalPaneRenderer.Class.render({
       instance: this.instance,
       palette: context.palette,
@@ -118,6 +134,39 @@ class $TerminalPaneContent implements PaneContent {
     if (!text) return false;
     this.instance.sendUserInput(text);
     return true;
+  }
+
+  onWheel(rowDelta: number, context?: PaneWheelContext): boolean {
+    if (this.instance.forwardsWheelToChild) {
+      this.instance.sendInput(this.sgrWheelSequence(rowDelta, context));
+      return true;
+    }
+    this.verticalMomentum = Momentum.Class.addImpulse(
+      this.verticalMomentum,
+      rowDelta,
+      this.scrollPort?.momentumOptions() ?? Momentum.Class.verticalOptions,
+    );
+    this.scrollPort?.requestRender();
+    return true;
+  }
+
+  tickScroll(deltaSeconds: number): boolean {
+    const options =
+      this.scrollPort?.momentumOptions() ?? Momentum.Class.verticalOptions;
+    const stepped = Momentum.Class.stepMomentum(
+      this.verticalMomentum,
+      deltaSeconds,
+      options,
+    );
+    this.verticalMomentum = stepped.momentum;
+    if (stepped.rows !== 0) {
+      this.instance.scrollToLine(this.instance.scrollTop + stepped.rows);
+    }
+    return Momentum.Class.isMoving(this.verticalMomentum);
+  }
+
+  haltScrollMomentum(): void {
+    this.verticalMomentum = Momentum.Class.halt();
   }
 
   stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
@@ -157,6 +206,30 @@ class $TerminalPaneContent implements PaneContent {
 
   get lastObservedBoundarySource(): 'osc133' | 'heuristic' | null {
     return this.instance.lastObservedBoundarySource;
+  }
+
+  get scrollTop(): number {
+    return this.instance.scrollTop;
+  }
+
+  get scrollContentRows(): number {
+    return this.instance.scrollContentRows;
+  }
+
+  get scrollViewportRows(): number {
+    return this.instance.scrollViewportRows;
+  }
+
+  get forwardsWheelToChild(): boolean {
+    return this.instance.forwardsWheelToChild;
+  }
+
+  get scrollbarRowOffset(): number {
+    return this.terminalPadRows;
+  }
+
+  scrollToLine(line: number): void {
+    this.instance.scrollToLine(line);
   }
 
   onTerminalCommandEvent(
@@ -213,8 +286,38 @@ class $TerminalPaneContent implements PaneContent {
     };
   }
 
+  protected sgrWheelSequence(
+    rowDelta: number,
+    context?: PaneWheelContext,
+  ): string {
+    const modifiers =
+      (context?.modifiers.shift ? 4 : 0) +
+      (context?.modifiers.alt ? 8 : 0) +
+      (context?.modifiers.ctrl ? 16 : 0);
+    const button = (rowDelta < 0 ? 64 : 65) + modifiers;
+    const column = Math.max(
+      1,
+      Math.min(
+        this.instance.columns,
+        (context?.column ?? this.terminalPadColumns) -
+          this.terminalPadColumns +
+          1,
+      ),
+    );
+    const row = Math.max(
+      1,
+      Math.min(
+        this.instance.rows,
+        (context?.row ?? this.terminalPadRows) - this.terminalPadRows + 1,
+      ),
+    );
+    return `\x1b[<${button};${column};${row}M`;
+  }
+
   caret(): { column: number; row: number } | null {
-    if (this.instance.exited.value) return null;
+    if (this.instance.exited.value || !this.instance.isScrolledToBottom) {
+      return null;
+    }
     // Shift by the gutter so the block cursor lands on the padded cell, not the pane origin.
     return {
       column: this.instance.cursorColumn + this.terminalPadColumns,

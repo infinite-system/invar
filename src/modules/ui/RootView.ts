@@ -57,6 +57,8 @@ import { MarkdownSplitView } from '../markdown/MarkdownSplitView';
 import { SelectableText } from './SelectableText';
 import { GitRows, type ChangeRow, type FileRow } from '../git/GitRows';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
+import { SolidThumbScrollBar } from './SolidThumbScrollBar';
+import type { PaneContent, PaneScrollPort } from './PaneContent.interface';
 import type { ContextMenu, ContextMenuItem } from './ContextMenu';
 import type { BoundedListPopup } from './BoundedListPopup';
 import type { OverlayCoordinator } from './OverlayCoordinator';
@@ -70,6 +72,7 @@ import type { QuickOpen } from '../search/QuickOpen';
 import { PaneSplitters } from './PaneSplitters';
 import { SplitterElement } from './SplitterElement';
 import { Logging } from '../system/Logging';
+import { Momentum } from '../system/Momentum';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
 import { PanelContentsList } from './PanelContentsList';
@@ -403,6 +406,11 @@ class $RootView {
       if (direction !== 'up' && direction !== 'down') return;
       rightDockHost.activeContent?.onWheel?.(
         (direction === 'up' ? -1 : 1) * wheelStep(event),
+        {
+          column: Number(event.x) - Number(rightDockBody.x),
+          row: Number(event.y) - Number(rightDockBody.y),
+          modifiers: event.modifiers,
+        },
       );
       renderer.requestRender();
     };
@@ -587,6 +595,19 @@ class $RootView {
       },
     };
     const agentsWithScrollPort = new WeakSet<AgentPaneContent.Model>();
+    // Pane contents may publish an external scroll extent (the terminal keeps its position in xterm).
+    // This host supplies the same settings-derived physics and SolidThumbScrollBar projection to every
+    // such content without learning its kind.
+    const paneScrollPort: PaneScrollPort = {
+      momentumOptions: () => ({
+        impulse: settings.scrollAccelGain.value,
+        max: settings.verticalFlingCeiling.value,
+        decayPerSec: settings.scrollFriction.value,
+        stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      }),
+      requestRender: () => renderer.requestRender(),
+    };
+    const contentsWithScrollPort = new WeakSet<PaneContent>();
     // A small manual drag for the COMPOSER selection (it needs no momentum/edge-autoscroll, so it does NOT
     // go through the viewport): true while a composer drag is in flight. `transcriptDragging` marks a
     // transcript drag routed through the viewport (so a click on inert chrome rows starts neither).
@@ -602,6 +623,11 @@ class $RootView {
       readonly container: BoxRenderable;
       readonly heading: TextRenderable;
       readonly body: TextRenderable;
+      readonly verticalScrollBar: SolidThumbScrollBar.Model;
+      readonly verticalScrollBarState: {
+        applyingGeometry: boolean;
+        reportedToTrueScale: number;
+      };
       readonly splitterElement: SplitterElement.Model | null;
       headingProjection: PanelHeadingProjection | null;
     }
@@ -647,8 +673,32 @@ class $RootView {
         minHeight: 0,
         width: '100%',
       });
+      const verticalScrollBarState = {
+        applyingGeometry: false,
+        reportedToTrueScale: 1,
+      };
+      const verticalScrollBar = new SolidThumbScrollBar.Class(renderer, {
+        id: `panel-cell-${index}-scrollbar-v`,
+        orientation: 'vertical',
+        position: 'absolute',
+        width: 1,
+        showArrows: false,
+        visible: false,
+        zIndex: 50,
+        onChange: (position) => {
+          if (verticalScrollBarState.applyingGeometry) return;
+          const content = panelHost.resolvedCells[index]?.content;
+          if (!content?.scrollToLine) return;
+          content.haltScrollMomentum?.();
+          content.scrollToLine(
+            Math.round(position * verticalScrollBarState.reportedToTrueScale),
+          );
+          renderer.requestRender();
+        },
+      });
       container.add(heading);
       container.add(body);
+      container.add(verticalScrollBar);
       // The cell at this pool index whose content is the agent, else null (for scroll/selection routing).
       const agentAtCell = (): AgentPaneContent.Model | null => {
         const content = panelHost.resolvedCells[index]?.content;
@@ -781,7 +831,11 @@ class $RootView {
         if (!content?.onWheel) return;
         const direction = event.scroll?.direction;
         if (direction !== 'up' && direction !== 'down') return;
-        content.onWheel((direction === 'up' ? -1 : 1) * wheelStep(event));
+        content.onWheel((direction === 'up' ? -1 : 1) * wheelStep(event), {
+          column: Number(event.x) - Number(body.x),
+          row: Number(event.y) - Number(body.y),
+          modifiers: event.modifiers,
+        });
         renderer.requestRender();
       };
       let splitterElement: SplitterElement.Model | null = null;
@@ -807,6 +861,8 @@ class $RootView {
         container,
         heading,
         body,
+        verticalScrollBar,
+        verticalScrollBarState,
         splitterElement,
         headingProjection: null,
       };
@@ -1478,6 +1534,7 @@ class $RootView {
               ? span.content
               : null;
           if (agent) {
+            view.verticalScrollBar.visible = false;
             if (!agentsWithScrollPort.has(agent)) {
               agent.attachScrollPort(agentScrollPort);
               agentsWithScrollPort.add(agent);
@@ -1526,6 +1583,72 @@ class $RootView {
               colorDepth: theme.colorDepth.value,
               focused: cellFocused,
             });
+            const content = span.content;
+            if (
+              content.attachViewportScrollPort &&
+              !contentsWithScrollPort.has(content)
+            ) {
+              content.attachViewportScrollPort(paneScrollPort);
+              contentsWithScrollPort.add(content);
+            }
+            const scrollTop = content.scrollTop;
+            const scrollContentRows = content.scrollContentRows;
+            const scrollViewportRows = content.scrollViewportRows;
+            if (
+              typeof scrollTop === 'number' &&
+              typeof scrollContentRows === 'number' &&
+              typeof scrollViewportRows === 'number' &&
+              content.scrollToLine
+            ) {
+              const geometry = ScrollbarGeometry.Class.scrollbarGeometry(
+                'vertical',
+                {
+                  top: Math.max(
+                    0,
+                    Number(view.body.y) -
+                      Number(view.container.y) +
+                      (content.scrollbarRowOffset ?? 0) -
+                      1,
+                  ),
+                  left: Number(view.body.x) - Number(view.container.x),
+                  width: span.columns,
+                  height: scrollViewportRows,
+                },
+                {
+                  scrollSize: scrollContentRows,
+                  viewportSize: scrollViewportRows,
+                  scrollPosition: scrollTop,
+                },
+              );
+              if (geometry) {
+                view.verticalScrollBar.visible = true;
+                view.verticalScrollBar.slider.backgroundColor = palette.panel;
+                view.verticalScrollBar.slider.foregroundColor = palette.dim;
+                view.verticalScrollBar.top = geometry.trackTop;
+                view.verticalScrollBar.left = geometry.trackLeft;
+                view.verticalScrollBar.height = geometry.trackLength;
+                view.verticalScrollBar.width = Math.max(
+                  1,
+                  Math.round(settings.scrollbarThickness.value),
+                );
+                view.verticalScrollBarState.applyingGeometry = true;
+                try {
+                  view.verticalScrollBar.scrollSize = scrollContentRows;
+                  view.verticalScrollBar.viewportSize =
+                    geometry.reportedViewportSize;
+                  view.verticalScrollBar.scrollPosition =
+                    geometry.reportedPosition;
+                } finally {
+                  view.verticalScrollBarState.applyingGeometry = false;
+                }
+                view.verticalScrollBarState.reportedToTrueScale =
+                  geometry.reportedToTrueScale;
+              } else {
+                view.verticalScrollBar.visible = false;
+              }
+            } else {
+              view.verticalScrollBar.visible = false;
+            }
           }
           view.splitterElement?.updateAppearance(palette);
         });
@@ -1543,6 +1666,9 @@ class $RootView {
         }
       } else {
         agentScrollViewport.hideBars();
+        for (const view of panelCellViews) {
+          view.verticalScrollBar.visible = false;
+        }
         agentCellGeometry = null;
         for (const content of panelHost.orderedContents) {
           if (content instanceof AgentPaneContent.Class) {
@@ -1892,8 +2018,13 @@ class $RootView {
       overlayDialogBounds: () => overlayLayer.dialogBounds(),
       overlayScrollPositions: () => overlayLayer.scrollPositions(),
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
-      tickPanelScroll: (dtSeconds: number) =>
-        agentScrollViewport.tick(dtSeconds),
+      tickPanelScroll(dtSeconds: number): boolean {
+        let moving = agentScrollViewport.tick(dtSeconds);
+        for (const cell of panelHost.resolvedCells) {
+          moving = (cell.content.tickScroll?.(dtSeconds) ?? false) || moving;
+        }
+        return moving;
+      },
       dismissHover: () => hoverCard.clear(),
       dismissHoverSoft: () => {
         if (!hoverCard.engaged()) hoverCard.clear();

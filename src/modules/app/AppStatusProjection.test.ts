@@ -96,6 +96,10 @@ describe('AppStatusProjection', () => {
     let terminalPaneContent: {
       observedEventCount: number;
       lastObservedBoundarySource: 'osc133' | 'heuristic' | null;
+      scrollTop: number;
+      scrollContentRows: number;
+      scrollViewportRows: number;
+      forwardsWheelToChild: boolean;
     } | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
@@ -189,12 +193,18 @@ describe('AppStatusProjection', () => {
       stuckToBottom: false,
       expandedCount: 2,
       scrollTop: 9,
+      viewportRows: 12,
+      contentLineCount: 38,
       currentEngine: 'codex',
       title: 'Codex (working…)',
     } as unknown as AgentPaneContent.Model;
     terminalPaneContent = {
       observedEventCount: 7,
       lastObservedBoundarySource: 'heuristic',
+      scrollTop: 19,
+      scrollContentRows: 43,
+      scrollViewportRows: 24,
+      forwardsWheelToChild: true,
     };
 
     const publishedSnapshot = AppStatusProjection.Class.publish(ports);
@@ -203,12 +213,18 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.agentPendingPermissionTool).toBe('Write');
     expect(publishedSnapshot.agentEngine).toBe('codex');
     expect(publishedSnapshot.agentTitle).toBe('Codex (working…)');
+    expect(publishedSnapshot.agentViewportRows).toBe(12);
+    expect(publishedSnapshot.agentContentLineCount).toBe(38);
     expect(publishedSnapshot.agentAssistantEntryCount).toBe(0);
     expect(publishedSnapshot.agentLastAssistantText).toBe('');
     expect(publishedSnapshot.terminalObservedEventCount).toBe(7);
     expect(publishedSnapshot.terminalLastObservedBoundarySource).toBe(
       'heuristic',
     );
+    expect(publishedSnapshot.terminalScrollTop).toBe(19);
+    expect(publishedSnapshot.terminalScrollContentRows).toBe(43);
+    expect(publishedSnapshot.terminalScrollViewportRows).toBe(24);
+    expect(publishedSnapshot.terminalWheelForwardedToChild).toBe(true);
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
 
     panelHost.dispose();

@@ -28,6 +28,7 @@ import {
   type SelectionDragPosition,
 } from './SelectionDragBehavior';
 import type { Settings } from '../settings/Settings';
+import { Logging } from '../system/Logging';
 class $ScrollableTextViewport {
   protected scrollTopValue = 0;
   protected scrollLeftValue = 0;

@@ -41,6 +41,7 @@ import type { AgentTerminalFollowMode } from '../settings/Settings';
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
 // invariant: Stream inactivity is visible and non-destructive (src/modules/agent/agent.invariants.md)
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
+// invariant: Agent transcript scroll extent is position independent (src/modules/agent/agent.invariants.md)
 
 class $AgentPaneContent implements PaneContent {
   static get transcriptFindTargetIdentifier(): string {

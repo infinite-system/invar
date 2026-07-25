@@ -222,6 +222,42 @@ composer painting typed text in either of its two reserved right-edge columns.
 **Last refined:** 2026-07-25
 
 ### Composer editing uses the input model
+### Agent transcript scroll extent is position independent
+
+**Invariant:** For a fixed projected transcript and viewport geometry, every completed scroll frame
+uses the same total visual-row count and viewport-row count; changing `scrollTop` can move the thumb
+but cannot change its painted extent.
+
+**Scope:** `AgentTranscriptProjection`, `AgentPaneContent` transcript layout,
+`ScrollableTextViewport`, `ScrollbarGeometry`, and the agent path in the permanent scrollbar
+harness. Streaming, expansion, resizing, or a provider switch may legitimately change the projected
+total; mere scrolling may not.
+
+**Mechanism:** `AgentPaneContent.render` projects the complete transcript at the current text width,
+records `lines.length` as `contentLineCount`, and only then slices the visible window from
+`scrollTop`. The shared viewport reads that full count and `viewportRows` once per paint for clamping
+and scrollbar geometry. `SolidThumbScrollBar` rounds the position-independent virtual thumb size
+once and clamps only its start, so half-cell start parity cannot alter the whole-cell length.
+
+**Generates:** Stable agent thumb size during momentum; wrap-derived totals that do not breathe with
+position; one exact input probe reusable for future transcript projections.
+
+**Evidence:** `scripts/harness/smoke-scrollbars-harness.ts` creates a long wrapped echo transcript
+and records every completed synchronized scroll frame. The driven run held
+`viewportRows=14` and `contentRows=181` while `scrollTop` moved through 20 positions from 158 to 112;
+the painted thumb remained exactly 2 rows in all 20 frames.
+
+**Impossible if true:** Scrolling a fixed transcript changes its total visual-row count; the agent
+thumb alternates between lengths while viewport and content inputs stay fixed; visible-window
+slicing becomes the scrollbar's content extent.
+
+**Verification:** `bun scripts/harness/smoke-scrollbars-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Composer word edits share one seam
 
 **Invariant:** If the agent composer edits or moves within its logical line, then its text and
 grapheme caret operations come from `TextInputModel`.

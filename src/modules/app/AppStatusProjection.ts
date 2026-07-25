@@ -303,6 +303,8 @@ class $AppStatusProjection {
       agentStuckToBottom: ports.agentPaneContent?.stuckToBottom ?? true,
       agentExpandedCount: ports.agentPaneContent?.expandedCount ?? 0,
       agentScrollTop: ports.agentPaneContent?.scrollTop ?? 0,
+      agentViewportRows: ports.agentPaneContent?.viewportRows ?? 0,
+      agentContentLineCount: ports.agentPaneContent?.contentLineCount ?? 0,
       // Interactive permission prompt state (drives the permission-flow smoke): the pending tool name
       // (empty when none) — flips on when ask-mode pauses a tool, off when y/n/a resolves it.
       agentPendingPermissionTool:
@@ -334,6 +336,13 @@ class $AppStatusProjection {
         ports.terminalPaneContent?.observedEventCount ?? 0,
       terminalLastObservedBoundarySource:
         ports.terminalPaneContent?.lastObservedBoundarySource ?? null,
+      terminalScrollTop: ports.terminalPaneContent?.scrollTop ?? 0,
+      terminalScrollContentRows:
+        ports.terminalPaneContent?.scrollContentRows ?? 0,
+      terminalScrollViewportRows:
+        ports.terminalPaneContent?.scrollViewportRows ?? 0,
+      terminalWheelForwardedToChild:
+        ports.terminalPaneContent?.forwardsWheelToChild ?? false,
       agentLastToolResult: (() => {
         const transcript =
           ports.agentPaneContent?.agentSession.transcript ?? [];
@@ -479,11 +488,18 @@ export interface AppStatusProjectionPorts {
     | 'stuckToBottom'
     | 'expandedCount'
     | 'scrollTop'
+    | 'viewportRows'
+    | 'contentLineCount'
     | 'currentEngine'
     | 'title'
   > | null;
   readonly terminalPaneContent: Pick<
     TerminalPaneContent.Model,
-    'observedEventCount' | 'lastObservedBoundarySource'
+    | 'observedEventCount'
+    | 'lastObservedBoundarySource'
+    | 'scrollTop'
+    | 'scrollContentRows'
+    | 'scrollViewportRows'
+    | 'forwardsWheelToChild'
   > | null;
 }

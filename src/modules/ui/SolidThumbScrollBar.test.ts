@@ -25,7 +25,7 @@ test('whole-cell thumb length is independent of half-cell start parity', () => {
   const maximumVirtualThumbStart = trackLength * 2 - virtualThumbSize;
   const thumbAxes = Array.from(
     { length: maximumVirtualThumbStart + 1 },
-    (_unused, virtualThumbStart) =>
+    (_unusedValue, virtualThumbStart) =>
       TestSolidThumbScrollBar.thumbAxis(
         virtualThumbStart,
         virtualThumbSize,
@@ -37,5 +37,15 @@ test('whole-cell thumb length is independent of half-cell start parity', () => {
     new Set([2]),
   );
   expect(thumbAxes[0]).toEqual({ start: 0, length: 2 });
-  expect(thumbAxes.at(-1)).toEqual({ start: trackLength - 2, length: 2 });
+  expect(thumbAxes.at(-1)).toEqual({
+    start: trackLength - 2,
+    length: 2,
+  });
+});
+
+test('whole-cell thumb preserves the shared two-cell minimum', () => {
+  expect(TestSolidThumbScrollBar.thumbAxis(39, 1, 21)).toEqual({
+    start: 19,
+    length: 2,
+  });
 });

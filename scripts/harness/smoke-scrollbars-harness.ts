@@ -7,6 +7,7 @@
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -32,6 +33,21 @@ interface VerticalThumbFrame {
   viewportRows?: number;
   totalRows?: number;
   scrollTop?: number;
+}
+
+interface Rectangle {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+interface AgentThumbFrame {
+  readonly frame: number;
+  readonly viewportRows: number;
+  readonly contentRows: number;
+  readonly scrollTop: number;
+  readonly paintedThumbRows: number;
 }
 
 function pass(label: string): void {
@@ -445,6 +461,119 @@ function horizontalEditorScrollBarProof(
     thumbStartColumn: longestThumbStartColumn,
     trackLength: barCells.length,
   };
+}
+
+function bottomPanelSlot(status: StatusSnapshot): Rectangle {
+  const layoutSlots = status.layoutSlots as
+    Record<string, Rectangle> | undefined;
+  const bottomPanel = layoutSlots?.bottomPanel;
+  if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
+  return bottomPanel;
+}
+
+function agentThumbRowCount(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): number {
+  const paneRows = snapshot
+    .textRows()
+    .map((rowText, row) => ({
+      rowText: rowText.slice(
+        panelRectangle.left,
+        panelRectangle.left + panelRectangle.width,
+      ),
+      row,
+    }))
+    .filter(
+      ({ rowText, row }) =>
+        row > panelRectangle.top &&
+        row < panelRectangle.top + panelRectangle.height - 1 &&
+        rowText.startsWith('│') &&
+        rowText.endsWith('│'),
+    );
+  if (paneRows.length === 0) return 0;
+  const rightBorderColumn =
+    panelRectangle.left +
+    Math.max(
+      ...paneRows.map(({ rowText }) => rowText.trimEnd().lastIndexOf('│')),
+    );
+  const scrollBarColumn = rightBorderColumn - 1;
+  const blankBackgrounds = paneRows.map(({ rowText, row }) => {
+    const cell = snapshot.cell(row, scrollBarColumn);
+    return rowText[scrollBarColumn - panelRectangle.left] === ' '
+      ? (cell?.background ?? null)
+      : null;
+  });
+  const backgroundCounts = new Map<number, number>();
+  for (const background of blankBackgrounds) {
+    if (background === null) continue;
+    backgroundCounts.set(
+      background,
+      (backgroundCounts.get(background) ?? 0) + 1,
+    );
+  }
+  const paneBackground = [...backgroundCounts.entries()].sort(
+    (firstBackground, secondBackground) =>
+      secondBackground[1] - firstBackground[1],
+  )[0]?.[0];
+  let longestThumbRun = 0;
+  let currentThumbRun = 0;
+  let currentThumbBackground: number | null = null;
+  for (const background of [...blankBackgrounds, null]) {
+    if (
+      background !== null &&
+      background !== paneBackground &&
+      background === currentThumbBackground
+    ) {
+      currentThumbRun += 1;
+    } else {
+      longestThumbRun = Math.max(longestThumbRun, currentThumbRun);
+      currentThumbBackground =
+        background !== paneBackground ? background : null;
+      currentThumbRun = currentThumbBackground === null ? 0 : 1;
+    }
+  }
+  return longestThumbRun;
+}
+
+async function collectAgentThumbFrames(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  panelRectangle: Rectangle,
+  wheelColumn: number,
+  wheelRow: number,
+): Promise<readonly AgentThumbFrame[]> {
+  const frames: AgentThumbFrame[] = [];
+  let nextFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+  sendRepeatedWheel(driver, 'up', 18, wheelColumn, wheelRow);
+  for (let frameIndex = 0; frameIndex < 120; frameIndex += 1) {
+    let completed: Awaited<typeof nextFrame>;
+    try {
+      completed = await nextFrame;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
+      ) {
+        break;
+      }
+      throw error;
+    }
+    const status = HarnessSmoke.Class.readStatus(statusPath);
+    frames.push({
+      frame: Number(status.frame),
+      viewportRows: Number(status.agentViewportRows),
+      contentRows: Number(status.agentContentLineCount),
+      scrollTop: Number(status.agentScrollTop),
+      paintedThumbRows: agentThumbRowCount(completed.snapshot, panelRectangle),
+    });
+    if (frameIndex < 119) {
+      nextFrame = driver.awaitNextCompletedFrameSnapshot(150);
+    }
+  }
+  return frames;
 }
 
 function sendRepeatedWheel(
@@ -876,6 +1005,7 @@ const fitsFixtureRoot = mkdtempSync(
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-scrollbars-harness-home-'),
 );
+const statusPath = join(homeDirectory, 'status.json');
 await buildOverflowFixture(overflowFixtureRoot);
 await buildFitsFixture(fitsFixtureRoot);
 
@@ -928,6 +1058,11 @@ const overflowDriver = new PtyTestDriver.Class({
   columns: 120,
   rows: 28,
   homeDirectory,
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    INVAR_AGENT_BACKEND: 'echo',
+    INVAR_AGENT_ECHO_DELAY_MS: '10',
+  },
 });
 
 let fitsDriver: PtyTestDriver.Model | null = null;
@@ -1178,6 +1313,104 @@ try {
   requireCondition(
     horizontalScrollBarRowCount(snapshot) === 0,
     'fitting git panes paint no horizontal bars',
+  );
+
+  console.log(
+    '== harness scrollbars: agent thumb uses stable per-frame extent inputs ==',
+  );
+  overflowDriver.sendRawInput('\x1b[27;6;97~');
+  const agentStatus = await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the agent pane opens with its transcript extent published',
+    (candidate) =>
+      candidate.panelActiveContent === 'agent' &&
+      Number(candidate.agentViewportRows) > 0,
+  );
+  const agentOpenedSnapshot = await overflowDriver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('✦ Claude') !== null &&
+      candidate.findText('EXPAND') !== null,
+  );
+  HarnessSmoke.Class.clickText(overflowDriver, agentOpenedSnapshot, 'EXPAND');
+  const expandedAgentStatus = await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the agent panel expands before the per-frame thumb probe',
+    (candidate) =>
+      candidate.panelExpanded === true &&
+      Number(candidate.agentViewportRows) >
+        Number(agentStatus.agentViewportRows),
+  );
+  const panelRectangle = bottomPanelSlot(expandedAgentStatus);
+  const wrappedTranscriptPrompt = Array.from(
+    { length: 260 },
+    (_unusedValue, wordIndex) =>
+      `wrapped-transcript-word-${String(wordIndex).padStart(3, '0')}`,
+  ).join(' ');
+  overflowDriver.sendPaste(wrappedTranscriptPrompt);
+  await overflowDriver.awaitQuiescence();
+  overflowDriver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the long wrapped transcript turn completes with an overflowing extent',
+    (candidate) =>
+      candidate.agentBusy === false &&
+      Number(candidate.agentContentLineCount) >
+        Number(candidate.agentViewportRows),
+    15_000,
+  );
+  const agentBarSnapshot = await overflowDriver.awaitSnapshot(
+    (candidate) => agentThumbRowCount(candidate, panelRectangle) >= 2,
+  );
+  const transcriptWheelPosition =
+    agentBarSnapshot.findText('✓ 3 lines') ??
+    agentBarSnapshot.findText('$ echo');
+  requireCondition(
+    transcriptWheelPosition !== null,
+    'the stable agent probe identifies a visible transcript row',
+  );
+  const agentThumbFrames = await collectAgentThumbFrames(
+    overflowDriver,
+    statusPath,
+    panelRectangle,
+    transcriptWheelPosition.column,
+    transcriptWheelPosition.row,
+  );
+  requireCondition(
+    agentThumbFrames.length >= 3,
+    `agent wheel burst emitted ${agentThumbFrames.length} completed scroll frames`,
+  );
+  const distinctViewportRows = [
+    ...new Set(agentThumbFrames.map((frame) => frame.viewportRows)),
+  ];
+  const distinctContentRows = [
+    ...new Set(agentThumbFrames.map((frame) => frame.contentRows)),
+  ];
+  const distinctThumbRows = [
+    ...new Set(agentThumbFrames.map((frame) => frame.paintedThumbRows)),
+  ];
+  requireCondition(
+    distinctViewportRows.length === 1 && distinctContentRows.length === 1,
+    `agent scrollbar inputs stay fixed per completed frame ` +
+      `(viewport=${distinctViewportRows.join(',')}; content=${distinctContentRows.join(',')})`,
+  );
+  requireCondition(
+    new Set(agentThumbFrames.map((frame) => frame.scrollTop)).size >= 2,
+    `agent scroll position moves across synchronized frames ` +
+      `(${agentThumbFrames.map((frame) => frame.scrollTop).join(',')})`,
+  );
+  requireCondition(
+    distinctThumbRows.length === 1 && (distinctThumbRows[0] ?? 0) >= 2,
+    `agent painted thumb extent stays fixed ` +
+      `(${agentThumbFrames.map((frame) => frame.paintedThumbRows).join(',')})`,
+  );
+  pass(
+    `agent frame probe: viewportRows=${distinctViewportRows[0]}, ` +
+      `contentRows=${distinctContentRows[0]}, ` +
+      `scrollTop=${agentThumbFrames.map((frame) => frame.scrollTop).join('→')}, ` +
+      `paintedThumbRows=${distinctThumbRows[0]}`,
   );
 
   overflowDriver.sendKeys('Control+q');

@@ -68,6 +68,26 @@ test('viewport reads follow the scrollback base — latest lines show, not the t
   expect(rowText(instance, 0)).toBe('L5'); // top visible line, NOT 'L0' (top of scrollback)
 });
 
+test('fresh child output returns a manually scrolled viewport to the live bottom', async () => {
+  const { backend, instance } = makeInstance(20, 5);
+  backend.feed(
+    Array.from(
+      { length: 20 },
+      (_unusedValue, lineIndex) => `L${lineIndex}`,
+    ).join('\r\n'),
+  );
+  await instance.flush();
+  instance.scrollToLine(2);
+  expect(instance.isScrolledToBottom).toBe(false);
+  expect(rowText(instance, 0)).toBe('L2');
+
+  backend.feed('\r\nLATEST');
+  await instance.flush();
+
+  expect(instance.isScrolledToBottom).toBe(true);
+  expect(rowText(instance, 4)).toBe('LATEST');
+});
+
 test('readTerminalInput observes the prompt line and bounded recent emulator text', async () => {
   const { backend, instance } = makeInstance(30, 5);
   backend.feed('old output\r\nnew output\r\n$ printf brokn');
@@ -85,13 +105,15 @@ test('scrollback reads reach beyond the default and redact every agent read path
     { length: 70 },
     (_unusedValue, lineIndex) => `line-${lineIndex + 1}`,
   );
-  backend.feed([
-    ...ordinaryLines,
-    'API_TOKEN=fixture-token',
-    'NORMAL=value',
-    'Password: hunter2',
-    '$ CLIENT_SECRET=typed-secret',
-  ].join('\r\n'));
+  backend.feed(
+    [
+      ...ordinaryLines,
+      'API_TOKEN=fixture-token',
+      'NORMAL=value',
+      'Password: hunter2',
+      '$ CLIENT_SECRET=typed-secret',
+    ].join('\r\n'),
+  );
   await instance.flush();
 
   const counted = instance.readTerminalScrollback({ lineCount: 55 });
@@ -117,7 +139,9 @@ test('emulator replies (device reports) return to the child through the backend 
   // ESC[6n = Device Status Report (cursor position) → the emulator replies with ESC[row;colR.
   backend.feed('\x1b[6n');
   await instance.flush();
-  expect(backend.writes.some((written) => written.includes('\x1b['))).toBe(true);
+  expect(backend.writes.some((written) => written.includes('\x1b['))).toBe(
+    true,
+  );
 });
 
 test('sendInput crosses only the backend seam', () => {

@@ -11,6 +11,7 @@
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
+import type { MomentumOptions } from '../system/Momentum';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 
@@ -38,9 +39,19 @@ export interface PaneContent {
   handleKey(key: KeyEvent): boolean;
   /** Optional: a wheel gesture over this cell, in signed content rows (negative = toward older/up,
    *  positive = toward newer/down); magnitude is the settings-sourced step. True if it was consumed. */
-  onWheel?(rowDelta: number): boolean;
+  onWheel?(rowDelta: number, context?: PaneWheelContext): boolean;
   /** Optional horizontal-wheel counterpart, in signed content columns. */
   onHorizontalWheel?(columnDelta: number): boolean;
+  /** Advance content-owned scroll momentum for one frame. True keeps the demand-driven frame loop live. */
+  tickScroll?(deltaSeconds: number): boolean;
+  /** Optional scroll projection. The host supplies settings-derived physics and paints the shared bar. */
+  attachViewportScrollPort?(scrollPort: PaneScrollPort): void;
+  readonly scrollTop?: number;
+  readonly scrollContentRows?: number;
+  readonly scrollViewportRows?: number;
+  readonly scrollbarRowOffset?: number;
+  haltScrollMomentum?(): void;
+  scrollToLine?(line: number): void;
   /** Optional hover projection in content-local cells. */
   onPointerMove?(column: number, row: number): boolean;
   /** Optional pointer-leave notification for clearing transient hover state. */
@@ -77,4 +88,20 @@ export interface PaneRenderContext {
   colorDepth: ColorDepth;
   /** True while the panel owns the keyboard (content may paint focus affordances). */
   focused: boolean;
+}
+
+export interface PaneWheelContext {
+  /** Content-local cell under the wheel event. */
+  readonly column: number;
+  readonly row: number;
+  readonly modifiers: {
+    readonly alt: boolean;
+    readonly shift: boolean;
+    readonly ctrl: boolean;
+  };
+}
+
+export interface PaneScrollPort {
+  momentumOptions(): MomentumOptions;
+  requestRender(): void;
 }
