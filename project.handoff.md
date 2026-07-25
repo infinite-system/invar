@@ -3,33 +3,25 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR — 2026-07-25 OVERNIGHT (CURRENT) — USER ASLEEP, STANDING GOAL: DRAIN THE LEDGER
+## RESUME ANCHOR (2026-07-25 ~04:55)
 
-**Ground-truth against git first. `origin/main` was `f11d070` at this writing. User's parting goal
-(~02:00): "knock all those things out of the park" — full autonomy on the open ledger.**
+Main @ 1816297. Landed today (user-driven day queue): extent fix, layout wave 1 (LayoutModel +
+SplitterElement + right dock), osc52 clipboard/paste hardening, editor+diff grammar waves (6
+modules enforced), scroll-feel pack (one fling profile both axes + progressive impulse gain with
+one-row floor), agent word-boundary wrap (#52), layout-settings visibility fix (#49), narration
+pronounceability pass (#47).
 
-LANDED TODAY+TONIGHT (~55 landings, main never red): all user bugs (5 morning + hscroll + narration
-inline-code + garble/placeholder-leak f11d070 + scrollbar gaps + thumb oscillation + gutter-diff
-stale-head 7b66859 = tabs 108→11ms + popup bounds 5cabfc5); terminal UX pack + visible typing +
-input-correctness pack 53ab6a1 (grapheme typing, OSC 52 copy, word ops, fix-my-command — USER
-CONFIRMED WORKING in cmux; Terminal.app = no OSC 52, host limitation, document); harness era
-complete (swap, corpus, ring retired, budgets+retry, gate ~3min); grammar: 4 modules enforced
-(syntax git markdown lsp), 1,273 left; BoundedListPopup; conventions: FILE GRAMMAR law,
-CLAUDE.md→AGENTS.md redirect + skills index + gate check, ast-query tool+skill.
+IN FLIGHT: observer wave 1 (/tmp/wt-observer, TerminalObserver per tmp/terminal-observation-design.md
++ TASK2.md read-more-than-40-lines addendum); panel UX pack (/tmp/wt-panelux, #48 agent pane
+separation + #51 taller default panel, click-to-split, status-bar corner: time then right-dock
+control outermost).
 
-IN FLIGHT: extent fix gate take-2 (fix-horizontal-extent-init — JpegDecoder clamp + consumer-scoped
-aggregate invariant; wrap leaked via constructor early-ref-read, reverted byte-identical); layout
-wave 1 delivered+reconciled (feat-layout-model-wave1 tip 052db6a — splitter seam, layout model,
-right dock; 2 real first-paint breaks fixed) AWAITING GATE; osc52 builder running
-(fix-osc52-frame-boundary — frame-boundary clipboard emission + chunked-paste cases).
+NEXT QUEUE: #53 terminal-follow modes (observer wave 2: follow / on-error / on-request / off,
+footer control); #44 interface-rename (after observer w1); #43 wave 2 (file-tree citizen + command
+bar; brief staged in scratchpad wavebriefs); grammar waves image/workspace/narration then agent,
+ui LAST; #40 gate rework (preserve failing step logs — evidence-destruction proven costly; +
+word-delete gate-context timeout logged twice, never solo-reproduced); #31, #33, #34, #35.
 
-OVERNIGHT ORDER: land extent → gate+land layout → osc52 lands → #46 TerminalObserver waves 1-4
-(tmp/terminal-observation-design.md IS the spec) after osc52 (same module) → grammar TWO-WIDE
-(editor+diff, image+workspace, narration+small-tail, agent solo, ui LAST after layout chrome) →
-#44 interface-rename (small) → #43 wave 2 (file-tree citizen + command bar) after layout lands.
-Ledger: #31 census, #33 capsule, #34 plugin-canvas (enriched thesis), #35 navigator, #40 parallel
-pool (evidence mounting: 3 timeout-reruns at ≥3 builders). Gate discipline tonight: ≤1 builder
-during gates preferred; timeout-red under churn → rerun once (starvation rarely repeats).
 
 ## PRIOR ANCHOR — 2026-07-24 NIGHT — DETERMINISTIC-GATE ERA; GRAMMAR BIG-BANG RUNNING
 
