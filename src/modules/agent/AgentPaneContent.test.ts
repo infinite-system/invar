@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'bun:test';
-import { StyledText } from '@opentui/core';
-import { AgentPaneContent, type AgentScrollPort } from './AgentPaneContent';
-import { AgentSession } from './AgentSession';
-import { MockAgentBackend } from './MockAgentBackend';
-import { ThemePalettes } from '../theme/ThemePalettes';
-import type { PaneRenderContext } from '../ui/PaneContent.interface';
-import { ref } from 'vue';
-import type { AgentTerminalFollowMode } from '../settings/Settings';
+import { describe, expect, test } from "bun:test";
+import { StyledText } from "@opentui/core";
+import { AgentPaneContent, type AgentScrollPort } from "./AgentPaneContent";
+import { AgentSession } from "./AgentSession";
+import { MockAgentBackend } from "./MockAgentBackend";
+import { ThemePalettes } from "../theme/ThemePalettes";
+import type { PaneRenderContext } from "../ui/PaneContent.interface";
+import { ref } from "vue";
+import type { AgentTerminalFollowMode } from "../settings/Settings";
 
 const darkPalette = ThemePalettes.Class.dark;
 
@@ -15,11 +15,20 @@ class FakePort implements AgentScrollPort {
   scrollTop = 0;
   stuckToBottom = true;
   readonly calls: string[] = [];
-  scrollRowsBy(deltaRows: number): void { this.calls.push(`rows:${deltaRows}`); }
-  scrollToBottom(): void { this.calls.push('bottom'); this.stuckToBottom = true; }
+  scrollRowsBy(deltaRows: number): void {
+    this.calls.push(`rows:${deltaRows}`);
+  }
+  scrollToBottom(): void {
+    this.calls.push("bottom");
+    this.stuckToBottom = true;
+  }
 }
 
-function makePane(): { pane: AgentPaneContent.Model; backend: MockAgentBackend.Model; port: FakePort } {
+function makePane(): {
+  pane: AgentPaneContent.Model;
+  backend: MockAgentBackend.Model;
+  port: FakePort;
+} {
   const backend = new MockAgentBackend.Class();
   const session = new AgentSession.Class(backend);
   const pane = new AgentPaneContent.Class(session);
@@ -28,36 +37,50 @@ function makePane(): { pane: AgentPaneContent.Model; backend: MockAgentBackend.M
   return { pane, backend, port };
 }
 
-const context = (overrides: Partial<PaneRenderContext> = {}): PaneRenderContext => ({
+const context = (
+  overrides: Partial<PaneRenderContext> = {},
+): PaneRenderContext => ({
   width: 60,
   height: 16,
   palette: darkPalette,
-  glyphLevel: 'unicode',
-  colorDepth: 'truecolor',
+  glyphLevel: "unicode",
+  colorDepth: "truecolor",
   focused: true,
   ...overrides,
 });
 
 function paintedText(styled: StyledText): string {
   const chunks = styled.chunks as unknown as { text: string }[];
-  return chunks.map((chunk) => chunk.text).join('');
+  return chunks.map((chunk) => chunk.text).join("");
 }
 function chunkTexts(styled: StyledText): string[] {
-  return (styled.chunks as unknown as { text: string }[]).map((chunk) => chunk.text);
+  return (styled.chunks as unknown as { text: string }[]).map(
+    (chunk) => chunk.text,
+  );
 }
 
-describe('AgentPaneContent — collapsible tool rows', () => {
-  test('a tool call renders COLLAPSED by default and EXPANDS on a click of its row', () => {
+describe("AgentPaneContent — collapsible tool rows", () => {
+  test("a tool call renders COLLAPSED by default and EXPANDS on a click of its row", () => {
     const { pane, backend } = makePane();
     backend.script([
-      { kind: 'tool-use', id: 't1', name: 'Bash', input: { command: 'echo hi' } },
-      { kind: 'tool-result', id: 't1', result: 'hi\nsecond line', isError: false },
-      { kind: 'session-end', reason: 'completed' },
+      {
+        kind: "tool-use",
+        id: "t1",
+        name: "Bash",
+        input: { command: "echo hi" },
+      },
+      {
+        kind: "tool-result",
+        id: "t1",
+        result: "hi\nsecond line",
+        isError: false,
+      },
+      { kind: "session-end", reason: "completed" },
     ]);
 
     const collapsed = paintedText(pane.render(context()));
-    expect(collapsed).toContain('▸');
-    expect(collapsed).toContain('$ echo hi'); // human summary, not raw JSON
+    expect(collapsed).toContain("▸");
+    expect(collapsed).toContain("$ echo hi"); // human summary, not raw JSON
     expect(collapsed).not.toContain('{"command"'); // the raw JSON blob is NOT shown collapsed
     expect(collapsed).not.toContain('  "command"'); // nor the pretty (indented) form
     expect(pane.expandedCount).toBe(0);
@@ -68,85 +91,97 @@ describe('AgentPaneContent — collapsible tool rows', () => {
     expect(pane.expandedCount).toBe(1);
 
     const expanded = paintedText(pane.render(context()));
-    expect(expanded).toContain('▾');
+    expect(expanded).toContain("▾");
     expect(expanded).toContain('  "command"');
     expect(pane.onPointerDown(0, 0)).toBe(false); // a blank pad row toggles nothing
   });
 });
 
-describe('AgentPaneContent — scroll delegates to the injected engine', () => {
-  test('PageUp/PageDown/arrows drive the port; Enter re-anchors to the bottom; stuck reads the port', () => {
+describe("AgentPaneContent — scroll delegates to the injected engine", () => {
+  test("PageUp/PageDown/arrows drive the port; Enter re-anchors to the bottom; stuck reads the port", () => {
     const { pane, backend, port } = makePane();
-    for (let index = 0; index < 40; index += 1) backend.emit({ kind: 'text-delta', text: `line ${index}\n` });
-    backend.emit({ kind: 'session-end', reason: 'completed' });
+    for (let index = 0; index < 40; index += 1)
+      backend.emit({ kind: "text-delta", text: `line ${index}\n` });
+    backend.emit({ kind: "session-end", reason: "completed" });
     pane.render(context());
     const page = pane.viewportRows - 1; // PageUp/Down move one body height minus one row
 
     expect(pane.stuckToBottom).toBe(true); // reads port.stuckToBottom
-    pane.handleKey({ name: 'pageup' } as never);
-    pane.handleKey({ name: 'pagedown' } as never);
-    pane.handleKey({ name: 'up' } as never); // composer empty → scroll
-    pane.handleKey({ name: 'down' } as never);
-    expect(port.calls).toEqual([`rows:${-page}`, `rows:${page}`, 'rows:-1', 'rows:1']);
+    pane.handleKey({ name: "pageup" } as never);
+    pane.handleKey({ name: "pagedown" } as never);
+    pane.handleKey({ name: "up" } as never); // composer empty → scroll
+    pane.handleKey({ name: "down" } as never);
+    expect(port.calls).toEqual([
+      `rows:${-page}`,
+      `rows:${page}`,
+      "rows:-1",
+      "rows:1",
+    ]);
 
     port.stuckToBottom = false;
-    pane.handleKey({ name: 'a', sequence: 'a' } as never); // type into composer
-    pane.handleKey({ name: 'return' } as never); // send → re-anchor
-    expect(port.calls).toContain('bottom');
+    pane.handleKey({ name: "a", sequence: "a" } as never); // type into composer
+    pane.handleKey({ name: "return" } as never); // send → re-anchor
+    expect(port.calls).toContain("bottom");
   });
 
-  test('Up on a SINGLE-line composer falls through to transcript scroll (cursor on the only line)', () => {
+  test("Up on a SINGLE-line composer falls through to transcript scroll (cursor on the only line)", () => {
     const { pane, port } = makePane();
     pane.render(context());
-    pane.handleKey({ name: 'a', sequence: 'a' } as never); // one visual line of text
-    pane.handleKey({ name: 'up' } as never);
-    expect(port.calls).toContain('rows:-1'); // first visual line → scroll the transcript
+    pane.handleKey({ name: "a", sequence: "a" } as never); // one visual line of text
+    pane.handleKey({ name: "up" } as never);
+    expect(port.calls).toContain("rows:-1"); // first visual line → scroll the transcript
   });
 
-  test('Up MOVES the composer cursor (no scroll) when it is multi-line and not on the first line', () => {
+  test("Up MOVES the composer cursor (no scroll) when it is multi-line and not on the first line", () => {
     const { pane, port } = makePane();
-    for (const character of 'x'.repeat(200)) pane.handleKey({ name: character, sequence: character } as never);
+    for (const character of "x".repeat(200))
+      pane.handleKey({ name: character, sequence: character } as never);
     pane.render(context()); // cursor at the end → last of several wrapped visual lines
     const scrollCallsBefore = port.calls.length;
-    pane.handleKey({ name: 'up' } as never); // moves the cursor up a visual line
+    pane.handleKey({ name: "up" } as never); // moves the cursor up a visual line
     expect(port.calls.length).toBe(scrollCallsBefore); // no transcript scroll
   });
 });
 
-describe('AgentPaneContent — multi-line composer', () => {
-  test('one astral grapheme is accepted as one typed character', () => {
+describe("AgentPaneContent — multi-line composer", () => {
+  test("one astral grapheme is accepted as one typed character", () => {
     const { pane } = makePane();
-    pane.handleKey({ name: '🦊', sequence: '🦊' } as never);
-    expect(paintedText(pane.render(context()))).toContain('🦊');
+    pane.handleKey({ name: "🦊", sequence: "🦊" } as never);
+    expect(paintedText(pane.render(context()))).toContain("🦊");
   });
 
-  test('a long composer input WRAPS and GROWS the composer, shrinking the transcript body', () => {
+  test("a long composer input WRAPS and GROWS the composer, shrinking the transcript body", () => {
     const { pane } = makePane();
-    const emptyBodyRows = (() => { pane.render(context()); return pane.viewportRows; })();
+    const emptyBodyRows = (() => {
+      pane.render(context());
+      return pane.viewportRows;
+    })();
     // Type well past one wrapped row at width 60 (inner 58 after the 2-col prompt gutter).
-    for (const character of 'x'.repeat(180)) pane.handleKey({ name: character, sequence: character } as never);
+    for (const character of "x".repeat(180))
+      pane.handleKey({ name: character, sequence: character } as never);
     pane.render(context());
     expect(pane.viewportRows).toBeLessThan(emptyBodyRows); // composer grew, transcript body shrank
   });
 
-  test('Alt+Backspace deletes the previous WORD via the shared TextEditing seam', () => {
+  test("Alt+Backspace deletes the previous WORD via the shared TextEditing seam", () => {
     const { pane } = makePane();
-    for (const character of 'hello world') pane.handleKey({ name: character, sequence: character } as never);
-    pane.handleKey({ name: 'backspace', option: true } as never);
+    for (const character of "hello world")
+      pane.handleKey({ name: character, sequence: character } as never);
+    pane.handleKey({ name: "backspace", option: true } as never);
     pane.render(context());
     // The last word ("world") is gone; the earlier word remains.
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('hello');
-    expect(painted).not.toContain('world');
+    expect(painted).toContain("hello");
+    expect(painted).not.toContain("world");
   });
 });
 
-describe('AgentPaneContent — transcript selection + highlight', () => {
-  test('a transcript selection highlights the span (a chunk equals the selected text) and copies it', async () => {
+describe("AgentPaneContent — transcript selection + highlight", () => {
+  test("a transcript selection highlights the span (a chunk equals the selected text) and copies it", async () => {
     const { pane, backend } = makePane();
     backend.script([
-      { kind: 'text-delta', text: 'hello there' },
-      { kind: 'session-end', reason: 'completed' },
+      { kind: "text-delta", text: "hello there" },
+      { kind: "session-end", reason: "completed" },
     ]);
     pane.render(context());
     // Select "hello" on the assistant body line. The body line is at absolute projected-line index 1
@@ -156,98 +191,115 @@ describe('AgentPaneContent — transcript selection + highlight', () => {
     expect(pane.hasSelection()).toBe(true);
 
     const styled = pane.render(context());
-    expect(chunkTexts(styled)).toContain('hello'); // the highlighted span became its own chunk
+    expect(chunkTexts(styled)).toContain("hello"); // the highlighted span became its own chunk
     expect(await pane.copySelection()).toBe(5); // copied "hello"
   });
 });
 
-describe('AgentPaneContent — permission prompt keyboard routing', () => {
+describe("AgentPaneContent — permission prompt keyboard routing", () => {
   const pending = () => {
     const { pane, backend } = makePane();
     const decisions: string[] = [];
-    backend.emit({ kind: 'session-start' });
-    backend.emit({ kind: 'permission-request', id: 'p1', toolName: 'Bash', input: { command: 'echo x' }, respond: (d) => decisions.push(d) });
+    backend.emit({ kind: "session-start" });
+    backend.emit({
+      kind: "permission-request",
+      id: "p1",
+      toolName: "Bash",
+      input: { command: "echo x" },
+      respond: (d) => decisions.push(d),
+    });
     return { pane, backend, decisions };
   };
 
-  test('y allows, and the prompt renders while pending', () => {
+  test("y allows, and the prompt renders while pending", () => {
     const { pane, decisions } = pending();
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('? Claude wants to run');
-    expect(painted).toContain('[y] allow');
-    pane.handleKey({ name: 'y', sequence: 'y' } as never);
-    expect(decisions).toEqual(['allow']);
+    expect(painted).toContain("? Claude wants to run");
+    expect(painted).toContain("[y] allow");
+    pane.handleKey({ name: "y", sequence: "y" } as never);
+    expect(decisions).toEqual(["allow"]);
   });
 
-  test('n denies; Escape denies too', () => {
+  test("n denies; canceling the turn denies the pending request and records cancellation", () => {
     const first = pending();
-    first.pane.handleKey({ name: 'n', sequence: 'n' } as never);
-    expect(first.decisions).toEqual(['deny']);
+    first.pane.handleKey({ name: "n", sequence: "n" } as never);
+    expect(first.decisions).toEqual(["deny"]);
     const second = pending();
-    second.pane.handleKey({ name: 'escape' } as never);
-    expect(second.decisions).toEqual(['deny']);
+    expect(second.pane.cancelTurn()).toBe(true);
+    expect(second.decisions).toEqual(["deny"]);
+    expect(second.pane.agentSession.turnState.value).toBe("canceled");
   });
 
-  test('a answers always-allow', () => {
+  test("a answers always-allow", () => {
     const { pane, decisions } = pending();
-    pane.handleKey({ name: 'a', sequence: 'a' } as never);
-    expect(decisions).toEqual(['always-allow']);
+    pane.handleKey({ name: "a", sequence: "a" } as never);
+    expect(decisions).toEqual(["always-allow"]);
   });
 
-  test('while pending, other typing is SWALLOWED (composer suspended, no accidental answers)', () => {
+  test("while pending, other typing is SWALLOWED (composer suspended, no accidental answers)", () => {
     const { pane, decisions } = pending();
-    pane.handleKey({ name: 'z', sequence: 'z' } as never);
-    pane.handleKey({ name: 'return' } as never);
+    pane.handleKey({ name: "z", sequence: "z" } as never);
+    pane.handleKey({ name: "return" } as never);
     expect(decisions).toEqual([]); // nothing resolved
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('? Claude wants to run'); // still pending
-    expect(painted).not.toContain('❯ z'); // the z never reached the composer
+    expect(painted).toContain("? Claude wants to run"); // still pending
+    expect(painted).not.toContain("❯ z"); // the z never reached the composer
     // After resolving, the composer works again.
-    pane.handleKey({ name: 'y', sequence: 'y' } as never);
-    pane.handleKey({ name: 'z', sequence: 'z' } as never);
-    expect(paintedText(pane.render(context()))).toContain('z');
+    pane.handleKey({ name: "y", sequence: "y" } as never);
+    pane.handleKey({ name: "z", sequence: "z" } as never);
+    expect(paintedText(pane.render(context()))).toContain("z");
   });
 
-  test('PageUp still scrolls the transcript while a prompt is pending', () => {
+  test("PageUp still scrolls the transcript while a prompt is pending", () => {
     const { pane, backend, port } = makePane();
-    backend.emit({ kind: 'session-start' });
-    backend.emit({ kind: 'permission-request', id: 'p1', toolName: 'Bash', input: {}, respond: () => {} });
+    backend.emit({ kind: "session-start" });
+    backend.emit({
+      kind: "permission-request",
+      id: "p1",
+      toolName: "Bash",
+      input: {},
+      respond: () => {},
+    });
     pane.render(context());
-    pane.handleKey({ name: 'pageup' } as never);
-    expect(port.calls.some((call) => call.startsWith('rows:-'))).toBe(true); // review keys stay live
+    pane.handleKey({ name: "pageup" } as never);
+    expect(port.calls.some((call) => call.startsWith("rows:-"))).toBe(true); // review keys stay live
   });
 });
 
 /** A fake engine port recording cycle() calls. */
 class FakeEnginePort {
-  provider = 'claude';
+  provider = "claude";
   canCycle = true;
   cycles = 0;
-  cycle(): boolean { this.cycles += 1; this.provider = this.provider === 'claude' ? 'codex' : 'claude'; return true; }
+  cycle(): boolean {
+    this.cycles += 1;
+    this.provider = this.provider === "claude" ? "codex" : "claude";
+    return true;
+  }
 }
 
-describe('AgentPaneContent — engine switcher', () => {
-  test('the mode line shows the current engine + a cycle affordance; currentEngine reflects it', () => {
+describe("AgentPaneContent — engine switcher", () => {
+  test("the mode line shows the current engine + a cycle affordance; currentEngine reflects it", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
-    expect(painted).toContain('⇄'); // cyclable affordance
-    expect(pane.currentEngine).toBe('claude');
+    expect(painted).toContain("engine: claude");
+    expect(painted).toContain("⇄"); // cyclable affordance
+    expect(pane.currentEngine).toBe("claude");
   });
 
-  test('Ctrl+E cycles the engine', () => {
+  test("Ctrl+E cycles the engine", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
     pane.render(context());
-    pane.handleKey({ name: 'e', ctrl: true } as never);
+    pane.handleKey({ name: "e", ctrl: true } as never);
     expect(enginePort.cycles).toBe(1);
-    expect(pane.currentEngine).toBe('codex');
+    expect(pane.currentEngine).toBe("codex");
   });
 
-  test('a click on the engine segment (mode-line row) cycles; a click off it does not', () => {
+  test("a click on the engine segment (mode-line row) cycles; a click off it does not", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
@@ -263,15 +315,15 @@ describe('AgentPaneContent — engine switcher', () => {
     expect(enginePort.cycles).toBe(before);
   });
 
-  test('a non-cyclable port (one engine) shows a passive label, no affordance, and clicks/keys no-op', () => {
+  test("a non-cyclable port (one engine) shows a passive label, no affordance, and clicks/keys no-op", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
     enginePort.canCycle = false;
     pane.attachEnginePort(enginePort);
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
-    expect(painted).not.toContain('⇄');
-    pane.handleKey({ name: 'e', ctrl: true } as never); // cycleEngine → port.cycle still called but…
+    expect(painted).toContain("engine: claude");
+    expect(painted).not.toContain("⇄");
+    pane.handleKey({ name: "e", ctrl: true } as never); // cycleEngine → port.cycle still called but…
     // The pane calls cycle(); the port itself decides. Here canCycle=false but our fake still flips —
     // the REAL guard (availability) lives in Bootstrap's port. The pane's hit-test, however, refuses the
     // click when canCycle is false:
@@ -281,106 +333,106 @@ describe('AgentPaneContent — engine switcher', () => {
   });
 });
 
-describe('AgentPaneContent — terminal follow footer control', () => {
-  test('the live mode paints next to the engine and its painted target cycles the shared port', () => {
+describe("AgentPaneContent — terminal follow footer control", () => {
+  test("the live mode paints next to the engine and its painted target cycles the shared port", () => {
     const { pane } = makePane();
     pane.attachEnginePort(new FakeEnginePort());
-    const mode = ref<AgentTerminalFollowMode>('follow-all');
+    const mode = ref<AgentTerminalFollowMode>("follow-all");
     let cycleCount = 0;
     pane.attachTerminalFollowPort({
       mode,
-      label: () => mode.value === 'follow-all' ? 'follow' : mode.value,
+      label: () => (mode.value === "follow-all" ? "follow" : mode.value),
       cycle: () => {
         cycleCount += 1;
-        mode.value = 'on-error';
+        mode.value = "on-error";
         return mode.value;
       },
     });
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
-    expect(painted).toContain('follow: follow');
+    expect(painted).toContain("engine: claude");
+    expect(painted).toContain("follow: follow");
     const modeRow = context().height - 2;
     expect(pane.onPointerDown(25, modeRow)).toBe(true);
     expect(cycleCount).toBe(1);
-    expect(paintedText(pane.render(context()))).toContain('follow: on-error');
+    expect(paintedText(pane.render(context()))).toContain("follow: on-error");
   });
 });
 
-describe('AgentPaneContent — live provider identity (title + greeting + labels)', () => {
-  test('the title derives LIVE from the engine port (registry display label), including busy state', () => {
+describe("AgentPaneContent — live provider identity (title + greeting + labels)", () => {
+  test("the title derives LIVE from the engine port (registry display label), including busy state", () => {
     const { pane, backend } = makePane();
     const enginePort = new FakeEnginePort();
-    enginePort.provider = 'codex';
+    enginePort.provider = "codex";
     pane.attachEnginePort(enginePort);
-    expect(pane.title).toBe('Codex');
-    pane.agentSession.send('go'); // busy
-    expect(pane.title).toBe('Codex (working…)');
-    backend.emit({ kind: 'session-end', reason: 'completed' });
-    expect(pane.title).toBe('Codex');
+    expect(pane.title).toBe("Codex");
+    pane.agentSession.send("go"); // busy
+    expect(pane.title).toBe("Codex (working…)");
+    backend.emit({ kind: "session-end", reason: "completed" });
+    expect(pane.title).toBe("Codex");
   });
 
-  test('cycling the engine relabels the title IMMEDIATELY (no frozen label)', () => {
+  test("cycling the engine relabels the title IMMEDIATELY (no frozen label)", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
-    expect(pane.title).toBe('Claude');
-    pane.handleKey({ name: 'e', ctrl: true } as never); // claude → codex
-    expect(pane.title).toBe('Codex');
+    expect(pane.title).toBe("Claude");
+    pane.handleKey({ name: "e", ctrl: true } as never); // claude → codex
+    expect(pane.title).toBe("Codex");
   });
 
-  test('with no engine port bound, the title falls back to the SESSION active engine', () => {
+  test("with no engine port bound, the title falls back to the SESSION active engine", () => {
     const backend = new MockAgentBackend.Class();
-    const session = new AgentSession.Class(backend, 'codex');
+    const session = new AgentSession.Class(backend, "codex");
     const pane = new AgentPaneContent.Class(session);
-    expect(pane.title).toBe('Codex');
+    expect(pane.title).toBe("Codex");
   });
 
-  test('the empty-transcript greeting names the active provider', () => {
+  test("the empty-transcript greeting names the active provider", () => {
     const { pane } = makePane();
     const enginePort = new FakeEnginePort();
-    enginePort.provider = 'codex';
+    enginePort.provider = "codex";
     pane.attachEnginePort(enginePort);
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('Ask Codex anything');
-    expect(painted).not.toContain('Ask Claude');
+    expect(painted).toContain("Ask Codex anything");
+    expect(painted).not.toContain("Ask Claude");
   });
 
-  test('after a switch, NEW assistant rows carry the new engine label while history keeps its own', () => {
+  test("after a switch, NEW assistant rows carry the new engine label while history keeps its own", () => {
     const { pane, backend } = makePane();
-    backend.emit({ kind: 'text-delta', text: 'first answer' });
-    backend.emit({ kind: 'session-end', reason: 'completed' });
+    backend.emit({ kind: "text-delta", text: "first answer" });
+    backend.emit({ kind: "session-end", reason: "completed" });
     const next = new MockAgentBackend.Class();
-    expect(pane.agentSession.swapBackend(next, 'codex')).toBe(true);
-    pane.agentSession.send('again');
-    next.emit({ kind: 'text-delta', text: 'second answer' });
+    expect(pane.agentSession.swapBackend(next, "codex")).toBe(true);
+    pane.agentSession.send("again");
+    next.emit({ kind: "text-delta", text: "second answer" });
     const rows = chunkTexts(pane.render(context({ height: 24 })));
-    const claudeLabelRow = rows.findIndex((text) => text.trim() === 'Claude');
-    const codexLabelRow = rows.findIndex((text) => text.trim() === 'Codex');
+    const claudeLabelRow = rows.findIndex((text) => text.trim() === "Claude");
+    const codexLabelRow = rows.findIndex((text) => text.trim() === "Codex");
     expect(claudeLabelRow).toBeGreaterThanOrEqual(0); // history keeps the old producer's label
     expect(codexLabelRow).toBeGreaterThan(claudeLabelRow); // the new turn is labeled by the new engine
   });
 });
 
-describe('AgentPaneContent — system (engine switch) note renders', () => {
-  test('a system entry renders as a dim centered aside', () => {
+describe("AgentPaneContent — system (engine switch) note renders", () => {
+  test("a system entry renders as a dim centered aside", () => {
     const { pane, backend } = makePane();
-    backend.emit({ kind: 'text-delta', text: 'hello' });
-    backend.emit({ kind: 'session-end', reason: 'completed' });
-    pane.agentSession.swapBackend(new MockAgentBackend.Class(), 'codex');
+    backend.emit({ kind: "text-delta", text: "hello" });
+    backend.emit({ kind: "session-end", reason: "completed" });
+    pane.agentSession.swapBackend(new MockAgentBackend.Class(), "codex");
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('— switched to codex — context ported —');
+    expect(painted).toContain("— switched to codex — context ported —");
   });
 });
 
-describe('AgentPaneContent — monotonic repaint fuse (review B1)', () => {
-  test('a +1/−1 pair across sources can NEVER cancel: the fused revision strictly increases', () => {
+describe("AgentPaneContent — monotonic repaint fuse (review B1)", () => {
+  test("a +1/−1 pair across sources can NEVER cancel: the fused revision strictly increases", () => {
     const { pane, backend } = makePane();
-    backend.emit({ kind: 'session-start' }); // busy → spinner armed
+    backend.emit({ kind: "session-start" }); // busy → spinner armed
     const seen: number[] = [pane.renderRevision.value];
     // Simulate the cancelling pair: a session bump (+1) coinciding with a spinner reset (frame N→0).
-    backend.emit({ kind: 'text-delta', text: 'x' });
+    backend.emit({ kind: "text-delta", text: "x" });
     seen.push(pane.renderRevision.value);
-    backend.emit({ kind: 'session-end', reason: 'completed' }); // stops the spinner AND bumps the session
+    backend.emit({ kind: "session-end", reason: "completed" }); // stops the spinner AND bumps the session
     seen.push(pane.renderRevision.value);
     for (let index = 1; index < seen.length; index += 1) {
       expect(seen[index]!).toBeGreaterThan(seen[index - 1]!); // strictly monotonic — no net-zero frames
@@ -388,34 +440,52 @@ describe('AgentPaneContent — monotonic repaint fuse (review B1)', () => {
   });
 });
 
-describe('AgentPaneContent — Enter while busy keeps the draft (review B3)', () => {
-  test('a follow-up typed during a streaming turn survives a premature Enter', () => {
+describe("AgentPaneContent — queued composer submissions", () => {
+  test("a follow-up typed during a streaming turn enters the visible queue and clears the composer", () => {
     const { pane, backend } = makePane();
-    pane.handleKey({ name: 'a', sequence: 'a' } as never);
-    pane.handleKey({ name: 'return' } as never); // sends "a" → busy
-    expect(backend.sent).toEqual(['a']);
-    for (const character of 'b') pane.handleKey({ name: character, sequence: character } as never);
-    pane.handleKey({ name: 'return' } as never); // busy → REFUSED, draft must survive
-    expect(backend.sent).toEqual(['a']); // nothing new sent
-    expect(paintedText(pane.render(context()))).toContain('❯ b'); // the draft is still in the composer
-    backend.emit({ kind: 'session-end', reason: 'completed' }); // turn settles
-    pane.handleKey({ name: 'return' } as never); // now it sends
-    expect(backend.sent).toEqual(['a', 'b']);
-    expect(paintedText(pane.render(context()))).not.toContain('❯ b'); // cleared on ACCEPT
+    pane.handleKey({ name: "a", sequence: "a" } as never);
+    pane.handleKey({ name: "return" } as never); // sends "a" → busy
+    expect(backend.sent).toEqual(["a"]);
+    for (const character of "b")
+      pane.handleKey({ name: character, sequence: character } as never);
+    pane.handleKey({ name: "return" } as never);
+    expect(backend.sent).toEqual(["a"]);
+    const queuedPaint = paintedText(pane.render(context()));
+    expect(queuedPaint).toContain("You  [queued]");
+    expect(queuedPaint).toContain("b");
+    expect(queuedPaint).not.toContain("❯ b");
+
+    backend.emit({ kind: "session-end", reason: "completed" });
+    expect(backend.sent).toEqual(["a", "b"]);
+  });
+
+  test("clicking a queued message after cancellation releases the head", () => {
+    const { pane, backend } = makePane();
+    pane.agentSession.send("first");
+    pane.agentSession.send("second");
+    pane.cancelTurn();
+    const paintedRows = paintedText(pane.render(context({ height: 24 }))).split(
+      "\n",
+    );
+    const queuedRow = paintedRows.findIndex((row) => row.includes("[queued]"));
+    expect(queuedRow).toBeGreaterThanOrEqual(0);
+
+    expect(pane.onPointerDown(4, queuedRow)).toBe(true);
+    expect(backend.sent).toEqual(["first", "second"]);
   });
 });
 
-describe('AgentPaneContent — spinner gated on visibility (review B8)', () => {
-  test('a busy but HIDDEN pane runs no spinner timer; showing it arms the timer; hiding tears it down', () => {
+describe("AgentPaneContent — spinner gated on visibility (review B8)", () => {
+  test("a busy but HIDDEN pane runs no spinner timer; showing it arms the timer; hiding tears it down", () => {
     const { pane, backend } = makePane();
-    backend.emit({ kind: 'session-start' }); // busy
+    backend.emit({ kind: "session-start" }); // busy
     expect(pane.spinnerActive).toBe(false); // hidden (never shown) → no timer despite busy
     pane.setPaneVisible(true);
     expect(pane.spinnerActive).toBe(true); // busy ∧ visible → armed
     pane.setPaneVisible(false);
     expect(pane.spinnerActive).toBe(false); // hidden again → torn down (no hidden 10 Hz animation)
     pane.setPaneVisible(true);
-    backend.emit({ kind: 'session-end', reason: 'completed' });
+    backend.emit({ kind: "session-end", reason: "completed" });
     expect(pane.spinnerActive).toBe(false); // idle → torn down even while visible
   });
 });

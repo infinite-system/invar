@@ -78,7 +78,114 @@ the renderer reads only `session.transcript`.
 
 **Last refined:** 2026-07-23
 
+### Process exit and stream closure are independent
+
+**Invariant:** If an agent child process exits, then its stdout or stderr iterator may remain open,
+so process exit must complete the turn without waiting for stream closure.
+
+**Scope:** `CliStreamBackend`, `CodexStreamBackend`, and every future child-process
+`AgentBackend`. `SdkStreamBackend` and long-lived app-server turn interruption are covered by
+their own abort completion paths.
+
+**Mechanism:** Each child backend observes `child.exited` as soon as the child is spawned and
+settles the matching turn from that promise. Stream pumps only translate output; they do not own
+turn completion.
+
+**Generates:** Exit listeners independent of stream iteration; child-identity guards; a
+process-death test whose stdout iterator never closes.
+
+**Evidence:** `src/modules/agent/CliStreamBackend.test.ts`;
+`src/modules/agent/CodexStreamBackend.test.ts`; `scripts/harness/smoke-agent-cancel-harness.ts`.
+
+**Impossible if true:** An exited child leaving `agentTurnState` running or stalled because its
+stdout iterator did not close.
+
+**Verification:** `bun test src/modules/agent/CliStreamBackend.test.ts src/modules/agent/CodexStreamBackend.test.ts && bun scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ## Chosen invariants
+
+### Every agent turn reaches a terminal state
+
+**Invariant:** If an agent turn starts, then backend completion, backend failure, process exit, or
+user cancellation moves it out of running or stalled and leaves the composer usable.
+
+**Scope:** `AgentSession`, every `AgentBackend`, the focused agent pane Escape action, and
+`agentTurnState`.
+
+**Mechanism:** `AgentSession` owns one turn state machine. Every backend termination path emits one
+`session-end`; Escape records `canceled` immediately and calls the backend interruption seam, while
+late events from that canceled turn cannot revive it.
+
+**Generates:** Escape cancellation; transcript cancellation records; backend process cleanup;
+running, stalled, canceled, and idle probe states.
+
+**Evidence:** `src/modules/agent/AgentSession.test.ts`;
+`src/modules/agent/AgentPaneContent.test.ts`; `scripts/harness/smoke-agent-cancel-harness.ts`.
+
+**Impossible if true:** A dead or canceled backend leaving `agentBusy` true; Escape closing an
+agent turn while an input overlay is open; a canceled turn consuming later composer input.
+
+**Verification:** `bun test src/modules/agent/AgentSession.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Stream inactivity is visible and non-destructive
+
+**Invariant:** If an in-flight agent turn emits no backend event for the inactivity threshold,
+then its state becomes stalled and remains alive until an event arrives or the user cancels it.
+
+**Scope:** The `AgentSession` inactivity watchdog, the spinner line, and `agentTurnState`.
+
+**Mechanism:** Every backend event resets one turn-owned timer. Expiry changes only the projected
+state and render revision; it never calls `AgentBackend.interrupt`.
+
+**Generates:** The `stalled — esc to cancel` spinner state; a 120-second production threshold; a
+short injected threshold for deterministic tests and the driven harness.
+
+**Evidence:** `src/modules/agent/AgentSession.test.ts`;
+`src/modules/agent/AgentPaneContent.test.ts`; `scripts/harness/smoke-agent-cancel-harness.ts`.
+
+**Impossible if true:** Watchdog expiry killing a child or aborting a stream; a silent turn
+remaining visually indistinguishable from an active turn after the threshold.
+
+**Verification:** `bun test src/modules/agent/AgentSession.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Queued agent messages preserve order
+
+**Invariant:** If the user submits messages while an agent turn is active, then those messages
+remain visible in transcript order and reach the backend in that order as turns settle.
+
+**Scope:** User messages submitted from `AgentPaneContent`; terminal-follow external prompts retain
+their existing queue and are outside this user-controlled hold contract.
+
+**Mechanism:** `AgentSession` owns queued delivery state on the transcript entries themselves.
+Normal completion dispatches the head; cancellation holds the queue until empty Enter or a queued
+message click explicitly releases the head.
+
+**Generates:** Editable composer during turns; queued transcript affordances;
+`queuedMessageCount`; ordered automatic dispatch; cancellation hold and explicit release.
+
+**Evidence:** `src/modules/agent/AgentSession.test.ts`;
+`src/modules/agent/AgentPaneContent.test.ts`; `scripts/harness/smoke-agent-cancel-harness.ts`.
+
+**Impossible if true:** A later queued message reaching the backend before an earlier one; queued
+text existing only in the composer; cancellation automatically sending the queue.
+
+**Verification:** `bun test src/modules/agent/AgentSession.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-agent-cancel-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
 
 ### Agent text wraps at word boundaries
 

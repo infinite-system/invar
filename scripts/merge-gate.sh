@@ -241,6 +241,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # wave 3
   step "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
   step "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
+  step "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
   step "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
   step "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
   step "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts

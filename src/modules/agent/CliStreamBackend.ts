@@ -8,21 +8,23 @@
 // fixtures; only the subprocess pumping is shell-bound (verified by driving). No ANSI anywhere.
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
-import type { AgentBackend } from './AgentBackend.interface';
-import { AgentPermissions } from './AgentPermissions';
-import type { AgentEvent } from './AgentEvents.interface';
-import { ClaudeStreamMapping } from './ClaudeStreamMapping';
-import { Processes, type SpawnedProcess } from '../system/Processes';
+// invariant: Process exit and stream closure are independent (src/modules/agent/agent.invariants.md)
+// invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
+import type { AgentBackend } from "./AgentBackend.interface";
+import { AgentPermissions } from "./AgentPermissions";
+import type { AgentEndReason, AgentEvent } from "./AgentEvents.interface";
+import { ClaudeStreamMapping } from "./ClaudeStreamMapping";
+import { Processes, type SpawnedProcess } from "../system/Processes";
 
 class $CliStreamBackend implements AgentBackend {
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
   protected child: CliStreamProcess | null = null;
   protected sessionId: string | null = null;
-  protected sawResult = false;
+  protected streamEndReason: AgentEndReason | null = null;
   protected interrupting = false;
   protected disposed = false;
   /** Tail of the child's stderr, so a non-zero exit can surface a useful reason (e.g. not logged in). */
-  protected stderrTail = '';
+  protected stderrTail = "";
 
   constructor(protected readonly options: CliStreamOptions) {}
 
@@ -33,69 +35,99 @@ class $CliStreamBackend implements AgentBackend {
         lower,
       )
     ) {
-      return 'Claude is not authenticated. Run `claude login` in a terminal (or set ANTHROPIC_API_KEY), then send again.';
+      return "Claude is not authenticated. Run `claude login` in a terminal (or set ANTHROPIC_API_KEY), then send again.";
     }
     return null;
   }
 
   send(prompt: string): void {
     if (this.disposed || this.child) return; // one turn at a time (AgentSession also guards this)
-    this.sawResult = false;
+    this.streamEndReason = null;
     this.interrupting = false;
-    this.stderrTail = '';
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
+    this.stderrTail = "";
+    const args = ["-p", prompt, "--output-format", "stream-json", "--verbose"];
     // Resolve the permission mode LIVE at send time so a Shift+Tab toggle since creation is honored.
-    if (AgentPermissions.Class.resolveLive(this.options.skipPermissions)) args.push('--dangerously-skip-permissions');
-    if (this.options.model) args.push('--model', this.options.model);
-    if (this.sessionId) args.push('--resume', this.sessionId); // continue the conversation
+    if (AgentPermissions.Class.resolveLive(this.options.skipPermissions))
+      args.push("--dangerously-skip-permissions");
+    if (this.options.model) args.push("--model", this.options.model);
+    if (this.sessionId) args.push("--resume", this.sessionId); // continue the conversation
     let child: CliStreamProcess;
     try {
-      child = Processes.Class.spawn([this.options.claudePath, ...args], {
-        cwd: this.options.cwd,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        stdin: 'ignore',
-      });
+      child = this.spawn(args);
     } catch (error) {
-      this.emit({ kind: 'error', message: `Failed to launch claude: ${String(error)}` });
-      this.emit({ kind: 'session-end', reason: 'error' });
+      this.emit({
+        kind: "error",
+        message: `Failed to launch claude: ${String(error)}`,
+      });
+      this.emit({ kind: "session-end", reason: "error" });
       return;
     }
     this.child = child;
-    void this.pump(child);
+    void this.pumpStdout(child);
+    void this.drainStderr(child);
+    void child.exited.then(
+      (exitCode) => this.completeChildExit(child, exitCode),
+      (error) => this.completeChildExit(child, -1, error),
+    );
   }
 
-  protected async pump(child: CliStreamProcess): Promise<void> {
-    const drainStderr = this.drainStderr(child); // concurrent, so a blocked stderr can't stall stdout
+  protected spawn(argumentsAfterExecutable: string[]): CliStreamProcess {
+    return Processes.Class.spawn(
+      [this.options.claudePath, ...argumentsAfterExecutable],
+      {
+        cwd: this.options.cwd,
+        detached: true,
+        stdout: "pipe",
+        stderr: "pipe",
+        stdin: "ignore",
+      },
+    );
+  }
+
+  protected async pumpStdout(child: CliStreamProcess): Promise<void> {
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
     try {
       for await (const chunk of child.stdout as AsyncIterable<Uint8Array>) {
+        if (this.child !== child) return;
         buffer += decoder.decode(chunk, { stream: true });
         let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          this.consumeLine(buffer.slice(0, newlineIndex));
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          this.consumeLine(child, buffer.slice(0, newlineIndex));
           buffer = buffer.slice(newlineIndex + 1);
         }
       }
-      this.consumeLine(buffer);
+      this.consumeLine(child, buffer);
     } catch (error) {
-      this.emit({ kind: 'error', message: String(error) });
-    }
-    const exitCode = await child.exited;
-    await drainStderr;
-    this.child = null;
-    // If the stream carried its own `result` event we already ended; otherwise synthesize an end so the
-    // session never hangs on a crashed/killed subprocess. A non-zero exit with no result surfaces the
-    // stderr reason (turned into a friendly hint for the common "not logged in" case).
-    if (!this.sawResult && !this.disposed) {
-      const interrupted = this.interrupting;
-      if (!interrupted && exitCode !== 0) {
-        const hint = this.authHintFor(this.stderrTail);
-        this.emit({ kind: 'error', message: hint ?? (this.stderrTail.trim().slice(-400) || 'claude exited with an error') });
+      if (this.child === child && !this.interrupting && !this.disposed) {
+        this.emit({ kind: "error", message: String(error) });
       }
-      this.emit({ kind: 'session-end', reason: interrupted ? 'interrupted' : exitCode === 0 ? 'completed' : 'error' });
     }
+  }
+
+  protected completeChildExit(
+    child: CliStreamProcess,
+    exitCode: number,
+    exitError?: unknown,
+  ): void {
+    if (this.child !== child) return;
+    this.child = null;
+    if (this.disposed) return;
+    const interrupted = this.interrupting;
+    const reason = interrupted
+      ? "interrupted"
+      : (this.streamEndReason ?? (exitCode === 0 ? "completed" : "error"));
+    if (!interrupted && reason === "error") {
+      const hint = this.authHintFor(this.stderrTail);
+      this.emit({
+        kind: "error",
+        message:
+          hint ??
+          (this.stderrTail.trim().slice(-400) ||
+            (exitError ? String(exitError) : "claude exited with an error")),
+      });
+    }
+    this.emit({ kind: "session-end", reason });
   }
 
   /** Drain the child's stderr into a bounded tail — never emitted verbatim unless the turn fails. */
@@ -104,14 +136,17 @@ class $CliStreamBackend implements AgentBackend {
     const decoder = new TextDecoder();
     try {
       for await (const chunk of child.stderr as AsyncIterable<Uint8Array>) {
-        this.stderrTail = (this.stderrTail + decoder.decode(chunk, { stream: true })).slice(-2000);
+        this.stderrTail = (
+          this.stderrTail + decoder.decode(chunk, { stream: true })
+        ).slice(-2000);
       }
     } catch {
       /* stderr closed — ignore */
     }
   }
 
-  protected consumeLine(line: string): void {
+  protected consumeLine(child: CliStreamProcess, line: string): void {
+    if (this.child !== child) return;
     const trimmed = line.trim();
     if (!trimmed) return;
     let raw: unknown;
@@ -123,8 +158,12 @@ class $CliStreamBackend implements AgentBackend {
     const sessionId = ClaudeStreamMapping.Class.sessionIdOf(raw);
     if (sessionId) this.sessionId = sessionId; // captured for --resume on the next turn
     for (const event of ClaudeStreamMapping.Class.mapEvent(raw)) {
-      if (event.kind === 'session-end') this.sawResult = true; // the stream ended the turn itself
-      this.emit(event);
+      if (event.kind === "session-end") {
+        this.streamEndReason = event.reason;
+        this.terminateChild(child);
+      } else {
+        this.emit(event);
+      }
     }
   }
 
@@ -135,15 +174,27 @@ class $CliStreamBackend implements AgentBackend {
   interrupt(): void {
     if (this.child) {
       this.interrupting = true;
-      this.child.kill();
+      this.terminateChild(this.child);
     }
   }
 
   dispose(): void {
     this.disposed = true;
-    this.child?.kill();
+    if (this.child) this.terminateChild(this.child);
     this.child = null;
     this.eventCallback = null;
+  }
+
+  protected terminateChild(child: CliStreamProcess): void {
+    if (process.platform !== "win32" && child.pid) {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+        return;
+      } catch {
+        /* the child may already have exited; the direct handle is the fallback */
+      }
+    }
+    child.kill();
   }
 
   protected emit(event: AgentEvent): void {
@@ -164,4 +215,4 @@ export interface CliStreamOptions {
   model?: string;
 }
 
-type CliStreamProcess = SpawnedProcess<'ignore', 'pipe', 'pipe'>;
+type CliStreamProcess = SpawnedProcess<"ignore", "pipe", "pipe">;
