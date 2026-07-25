@@ -280,6 +280,122 @@ async function driveReducedMotion(
   }
 }
 
+async function measureAgentTypingDuration(
+  homeDirectory: string,
+  settingsPath: string,
+  label: string,
+  agentTypingSpeed: number,
+): Promise<number> {
+  writeFileSync(
+    settingsPath,
+    JSON.stringify({
+      agentSkipPermissions: true,
+      agentTypingSpeed,
+      reducedMotion: false,
+      terminalCleanPrompt: true,
+    }),
+  );
+  const statusPath = join(homeDirectory, `${label}-typing-status.json`);
+  const executedCommandPath = join(homeDirectory, `${label}-typing-proof.txt`);
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: join(process.cwd(), 'fixtures'),
+    columns: 140,
+    rows: 42,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    driver.sendRawInput('\x1b[27;6;97~');
+    await driver.awaitSnapshot((candidate) => candidate.findText('Ask Claude') !== null);
+    const command = `printf ${label.toUpperCase()} > ${executedCommandPath} # ${'x'.repeat(60)}`;
+    const startedMilliseconds = performance.now();
+    driver.sendText(`terminal-tools:run:${command}`);
+    driver.sendKeys('Enter');
+    await awaitFileContents(executedCommandPath, label.toUpperCase());
+    return performance.now() - startedMilliseconds;
+  } finally {
+    await driver.dispose();
+  }
+}
+
+async function driveAgentTypingSpeed(
+  homeDirectory: string,
+  settingsPath: string,
+): Promise<void> {
+  console.log('== harness terminal-stage: agentTypingSpeed controls visible typing duration ==');
+  const slowDurationMilliseconds = await measureAgentTypingDuration(
+    homeDirectory,
+    settingsPath,
+    'slow',
+    10,
+  );
+  const fastDurationMilliseconds = await measureAgentTypingDuration(
+    homeDirectory,
+    settingsPath,
+    'fast',
+    240,
+  );
+  HarnessSmoke.Class.requireCondition(
+    slowDurationMilliseconds > fastDurationMilliseconds + 400,
+    'agentTypingSpeed 240 completes materially faster than 10 '
+      + `(${fastDurationMilliseconds.toFixed(0)} ms versus ${slowDurationMilliseconds.toFixed(0)} ms)`,
+  );
+}
+
+async function driveTerminalCleanPromptDisabled(
+  homeDirectory: string,
+  settingsPath: string,
+): Promise<void> {
+  writeFileSync(join(homeDirectory, '.bashrc'), "PS1='NORMAL_PROMPT> '\n");
+  writeFileSync(
+    settingsPath,
+    JSON.stringify({
+      agentSkipPermissions: true,
+      agentTypingSpeed: 40,
+      reducedMotion: false,
+      terminalCleanPrompt: false,
+    }),
+  );
+  const statusPath = join(homeDirectory, 'default-prompt-status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: join(process.cwd(), 'fixtures'),
+    columns: 140,
+    rows: 42,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+      SHELL: '/bin/bash',
+    },
+  });
+  try {
+    console.log('== harness terminal-stage: terminalCleanPrompt false keeps the shell prompt ==');
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    driver.sendKeys('F8');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      (status) => status.panelActiveContent === 'terminal'
+        && status.terminalFocused === true,
+    );
+    const snapshot = await driver.awaitGridCondition(
+      'the normal interactive shell prompt from HOME is visible',
+      (candidate) => candidate.findText('NORMAL_PROMPT>') !== null,
+      15_000,
+    );
+    HarnessSmoke.Class.requireCondition(
+      snapshot.findText('NORMAL_PROMPT>') !== null,
+      'terminalCleanPrompt false preserves the user shell prompt',
+    );
+  } finally {
+    await driver.dispose();
+  }
+}
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-stage-harness-home-'));
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 const settingsPath = join(settingsDirectory, 'settings.json');
@@ -288,6 +404,8 @@ mkdirSync(settingsDirectory, { recursive: true });
 try {
   await driveAnimatedTerminalTools(homeDirectory, settingsPath);
   await driveReducedMotion(homeDirectory, settingsPath);
+  await driveAgentTypingSpeed(homeDirectory, settingsPath);
+  await driveTerminalCleanPromptDisabled(homeDirectory, settingsPath);
   console.log('smoke-terminal-stage-harness: ALL-PASS');
 } finally {
   rmSync(homeDirectory, { recursive: true, force: true });
