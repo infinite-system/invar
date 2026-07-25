@@ -13,6 +13,7 @@
 // invariant: Narration speaks only completed assistant turns (src/modules/narration/narration.invariants.md)
 // invariant: Narration is a pure projection of the transcript (src/modules/narration/narration.invariants.md)
 // invariant: A keystroke barges in on narration (src/modules/narration/narration.invariants.md)
+// invariant: Internal tokens are never speakable (src/modules/narration/narration.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, watch, type Ref } from 'vue';
 import type { AgentSession } from '../agent/AgentSession';
@@ -73,10 +74,17 @@ class $NarrationProjection {
       if (entry && entry.role === 'assistant') {
         // Speak the PROSE, not the markdown: strip syntax + simplify paths so piper doesn't spell out
         // backticks/paths letter-by-letter (the "bebebe" babble).
-        const speakable = SpeakableText.Class.forSpeech(entry.text);
-        if (speakable) {
-          this.tts.speak(speakable);
-          this.lastSpoken.value = speakable;
+        const speechPreparation = SpeakableText.Class.prepareForSpeech(
+          entry.text,
+        );
+        if (speechPreparation.usedOriginalFallback) {
+          this.session.appendSystemNote(
+            'Narration warning: formatting protection failed; speaking the original text.',
+          );
+        }
+        if (speechPreparation.text) {
+          this.tts.speak(speechPreparation.text);
+          this.lastSpoken.value = speechPreparation.text;
           this.spokenCount.value += 1;
         }
       }

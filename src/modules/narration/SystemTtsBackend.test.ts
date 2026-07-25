@@ -4,6 +4,7 @@
 // box detects no TTS engine, so the full backend is silent by construction).
 import { describe, test, expect } from 'bun:test';
 import { SystemTtsBackend, MAX_PENDING_UTTERANCES } from './SystemTtsBackend';
+import { Processes } from '../system/Processes';
 
 describe('SystemTtsBackend.enqueueBounded', () => {
   test('under the cap everything queues in order', () => {
@@ -32,6 +33,59 @@ describe('SystemTtsBackend.enqueueBounded', () => {
       expect(queue.length).toBeLessThanOrEqual(3);
     }
   });
+});
+
+test('live playback is serial and starts the next utterance only after the active one exits', async () => {
+  const originalProcessesClass = Processes.Class;
+  const startedUtterances: string[] = [];
+  const completeProcesses: Array<() => void> = [];
+
+  class SerialTestProcesses extends Processes.$Class {
+    static override spawn(
+      ...spawnArguments: Parameters<typeof Processes.Class.spawn>
+    ): ReturnType<typeof Processes.Class.spawn> {
+      const argumentVector = spawnArguments[0];
+      startedUtterances.push(argumentVector[argumentVector.length - 1] as string);
+      let completeProcess = (): void => {};
+      const exited = new Promise<number>((resolveExit) => {
+        completeProcess = () => resolveExit(0);
+      });
+      completeProcesses.push(completeProcess);
+      return {
+        kill: (): void => {},
+        exited,
+      } as ReturnType<typeof Processes.Class.spawn>;
+    }
+  }
+
+  Processes.Class = SerialTestProcesses as typeof Processes.Class;
+  try {
+    const backend = new SystemTtsBackend.Class({
+      enginePath: '/test/direct-speech-engine',
+    });
+    backend.speak('first utterance');
+    backend.speak('second utterance');
+    backend.speak('third utterance');
+    expect(startedUtterances).toEqual(['first utterance']);
+
+    completeProcesses.shift()?.();
+    await Promise.resolve();
+    expect(startedUtterances).toEqual([
+      'first utterance',
+      'second utterance',
+    ]);
+
+    completeProcesses.shift()?.();
+    await Promise.resolve();
+    expect(startedUtterances).toEqual([
+      'first utterance',
+      'second utterance',
+      'third utterance',
+    ]);
+    backend.dispose();
+  } finally {
+    Processes.Class = originalProcessesClass;
+  }
 });
 
 // The rate setting is a SPEED MULTIPLIER (higher = faster) — the user-facing axis. Each engine maps it

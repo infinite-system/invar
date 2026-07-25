@@ -85,6 +85,55 @@ test('inline code content is narrated in place for every adjacent position and c
   }
 });
 
+test('hostile inline-code turns reach mock TTS in order with no internal tokens', () => {
+  const {
+    session,
+    backend: agentBackend,
+    tts: textToSpeechBackend,
+  } = wire(true);
+  const assistantReplies = [
+    '`alpha``beta`',
+    '**`boldCode`** [`linkCode`](https://example.com)',
+    'first `one`\n\nsecond `two`',
+  ];
+
+  for (const assistantReply of assistantReplies) {
+    agentBackend.script(completedTurn(assistantReply));
+  }
+
+  expect(textToSpeechBackend.spoken).toEqual([
+    'alphabeta',
+    'boldCode linkCode',
+    'first one second two',
+  ]);
+  expect(
+    textToSpeechBackend.spoken.every(
+      (spokenText) => !/[\uE000-\uF8FF]/u.test(spokenText),
+    ),
+  ).toBe(true);
+  expect(session.transcript.filter((entry) => entry.role === 'system')).toEqual([]);
+});
+
+test('a restore miss speaks original text and appends a transcript-visible warning', () => {
+  const {
+    session,
+    backend: agentBackend,
+    tts: textToSpeechBackend,
+  } = wire(true);
+  const assistantReply = '[visible text](`inlineDestination`)';
+
+  agentBackend.script(completedTurn(assistantReply));
+
+  expect(textToSpeechBackend.spoken).toEqual([assistantReply]);
+  expect(textToSpeechBackend.spoken[0]).not.toMatch(/[\uE000-\uF8FF]/u);
+  expect(
+    session.transcript.some(
+      (entry) => entry.role === 'system'
+        && entry.text.includes('Narration warning'),
+    ),
+  ).toBe(true);
+});
+
 test('MILESTONE filter: streaming text is NOT spoken until the turn completes', () => {
   const { backend, tts } = wire(true);
   backend.emit({ kind: 'session-start' });

@@ -2,6 +2,7 @@ import { Static } from 'ivue/extras';
 
 // invariant: Narration speaks prose, not markdown syntax (src/modules/narration/narration.invariants.md)
 // invariant: Inline code content is preserved without backticks (src/modules/narration/narration.invariants.md)
+// invariant: Internal tokens are never speakable (src/modules/narration/narration.invariants.md)
 
 class $SpeakableText {
   /** Recognized source/file extensions — dropped from a BARE spoken name (`Editor.ts` → `Editor`). A
@@ -77,10 +78,18 @@ class $SpeakableText {
     return `${inlineCodeSentinelPrefix}${inlineCodeIndex}\uE001`;
   }
 
+  protected static inlineCodePlaceholderPattern(
+    inlineCodeSentinelPrefix: string,
+  ): RegExp {
+    return new RegExp(`${inlineCodeSentinelPrefix}\\d+\uE001`, 'gu');
+  }
+
   /** Strip markdown decoration while preserving every single-backtick inline-code span's content in
-   *  place. Fenced code blocks retain their existing spoken "code block" placeholder. */
-  static forSpeech(markdown: string): string {
-    const inlineCodeContents: string[] = [];
+   *  place. The final registry sweep is total: every extracted placeholder must be encountered exactly
+   *  once and no placeholder prefix may survive. A failed proof returns the original text so no
+   *  internal token can become speech. */
+  static prepareForSpeech(markdown: string): SpeakableTextPreparation {
+    const inlineCodeByPlaceholder = new Map<string, string>();
     let inlineCodeSentinelPrefix = '\uE000';
     while (markdown.includes(inlineCodeSentinelPrefix)) {
       inlineCodeSentinelPrefix += '\uE000';
@@ -91,9 +100,12 @@ class $SpeakableText {
     text = text.replace(
       /`([^`\n]+)`/g,
       (_matchedInlineCode, inlineCodeContent: string) => {
-        const inlineCodeIndex = inlineCodeContents.length;
-        inlineCodeContents.push(inlineCodeContent);
-        return this.inlineCodePlaceholder(inlineCodeSentinelPrefix, inlineCodeIndex);
+        const inlineCodePlaceholder = this.inlineCodePlaceholder(
+          inlineCodeSentinelPrefix,
+          inlineCodeByPlaceholder.size,
+        );
+        inlineCodeByPlaceholder.set(inlineCodePlaceholder, inlineCodeContent);
+        return inlineCodePlaceholder;
       },
     );
     text = text.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1');
@@ -107,27 +119,49 @@ class $SpeakableText {
       .map((token) => (/\S/.test(token) ? this.speakBareToken(token) : token))
       .join('');
 
-    let speakableText = text.replace(/\s+/g, ' ').trim();
-    for (
-      let inlineCodeIndex = 0;
-      inlineCodeIndex < inlineCodeContents.length;
-      inlineCodeIndex += 1
+    let restorationIsTotal = true;
+    const speakableText = text
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(
+        this.inlineCodePlaceholderPattern(
+          inlineCodeSentinelPrefix,
+        ),
+        (inlineCodePlaceholder) => {
+          const inlineCodeContent = inlineCodeByPlaceholder.get(
+            inlineCodePlaceholder,
+          );
+          if (inlineCodeContent === undefined) {
+            restorationIsTotal = false;
+            return inlineCodePlaceholder;
+          }
+          inlineCodeByPlaceholder.delete(inlineCodePlaceholder);
+          return inlineCodeContent;
+        },
+      );
+    if (
+      inlineCodeByPlaceholder.size > 0
+      || speakableText.includes(inlineCodeSentinelPrefix)
     ) {
-      const inlineCodeContent = inlineCodeContents[inlineCodeIndex] as string;
-      const inlineCodePlaceholder = this.inlineCodePlaceholder(
-        inlineCodeSentinelPrefix,
-        inlineCodeIndex,
-      );
-      speakableText = speakableText.replaceAll(
-        inlineCodePlaceholder,
-        () => inlineCodeContent,
-      );
+      restorationIsTotal = false;
     }
-    return speakableText;
+    if (!restorationIsTotal) {
+      return { text: markdown, usedOriginalFallback: true };
+    }
+    return { text: speakableText, usedOriginalFallback: false };
+  }
+
+  static forSpeech(markdown: string): string {
+    return this.prepareForSpeech(markdown).text;
   }
 }
 
 export namespace SpeakableText {
   export const $Class = $SpeakableText;
   export const Class = Static($SpeakableText);
+}
+
+export interface SpeakableTextPreparation {
+  readonly text: string;
+  readonly usedOriginalFallback: boolean;
 }

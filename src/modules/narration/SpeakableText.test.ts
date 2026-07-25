@@ -67,6 +67,86 @@ test('dense inline code retains every span content while dropping only backticks
   expect(spokenText).not.toContain('`');
 });
 
+test('hostile inline-code shapes restore every extracted span exactly once', () => {
+  const hostileCases = [
+    {
+      description: 'adjacent spans',
+      markdown: '`a``b`',
+      expectedSpokenText: 'ab',
+    },
+    {
+      description: 'message start and end',
+      markdown: '`start` through `end`',
+      expectedSpokenText: 'start through end',
+    },
+    {
+      description: 'bold link text and list transforms',
+      markdown: '**`boldCode`** [`linkCode`](https://example.com)\n- `listCode`',
+      expectedSpokenText: 'boldCode linkCode listCode',
+    },
+    {
+      description: 'unterminated backtick',
+      markdown: 'keep `unterminated',
+      expectedSpokenText: 'keep `unterminated',
+    },
+    {
+      description: 'multiple spans in one sentence',
+      markdown: 'one `alpha` two `beta` three `gamma`',
+      expectedSpokenText: 'one alpha two beta three gamma',
+    },
+    {
+      description: 'placeholder-like content',
+      markdown: 'keep `INLINE_CODE_PLACEHOLDER_0` verbatim',
+      expectedSpokenText: 'keep INLINE_CODE_PLACEHOLDER_0 verbatim',
+    },
+    {
+      description: 'multiple paragraphs',
+      markdown: 'first `alpha`\n\nsecond `beta`',
+      expectedSpokenText: 'first alpha second beta',
+    },
+  ];
+
+  for (const hostileCase of hostileCases) {
+    const speechPreparation = SpeakableText.Class.prepareForSpeech(
+      hostileCase.markdown,
+    );
+    expect(
+      speechPreparation.text,
+      hostileCase.description,
+    ).toBe(hostileCase.expectedSpokenText);
+    expect(
+      speechPreparation.usedOriginalFallback,
+      hostileCase.description,
+    ).toBe(false);
+    expect(speechPreparation.text, hostileCase.description).not.toMatch(
+      /[\uE000-\uF8FF]/u,
+    );
+  }
+});
+
+test('a transform that removes an extracted token degrades to the untouched original', () => {
+  const markdown = '[visible text](`inlineDestination`)';
+  const speechPreparation = SpeakableText.Class.prepareForSpeech(markdown);
+
+  expect(speechPreparation).toEqual({
+    text: markdown,
+    usedOriginalFallback: true,
+  });
+  expect(speechPreparation.text).not.toMatch(/[\uE000-\uF8FF]/u);
+});
+
+test('user content matching the initial token alphabet remains content, not a registry token', () => {
+  const tokenLikeContent = '\uE0000\uE001';
+  const speechPreparation = SpeakableText.Class.prepareForSpeech(
+    `keep \`${tokenLikeContent}\` verbatim`,
+  );
+
+  expect(speechPreparation).toEqual({
+    text: `keep ${tokenLikeContent} verbatim`,
+    usedOriginalFallback: false,
+  });
+});
+
 test('bare (un-backticked) prose: paths + filenames + multi-word identifiers, but brand words spared', () => {
   expect(speak('committed to /tmp/wt-voice/Editor.ts today')).toBe('committed to Editor today');
   expect(speak('the attachWordWrap helper')).toBe('the attach Word Wrap helper'); // 2 humps → split

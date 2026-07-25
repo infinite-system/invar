@@ -128,14 +128,19 @@ try {
     enabledStatusPath,
     (status) => status.panelActiveContent === 'agent',
   );
-  const inlineCodePrompt = 'run `bun test` first';
+  const inlineCodePrompt =
+    '**`alpha``beta`** and [`linkCode`](https://example.com) then `INLINE_CODE_PLACEHOLDER_0`';
   await driveTurn(driver, enabledStatusPath, inlineCodePrompt);
   let enabledStatus = HarnessSmoke.Class.readStatus(enabledStatusPath);
+  const narrationLastSpoken = String(enabledStatus.narrationLastSpoken);
   HarnessSmoke.Class.requireCondition(
     Number(enabledStatus.narrationSpokenCount) > 0
-      && String(enabledStatus.narrationLastSpoken).includes('run bun test first')
-      && !String(enabledStatus.narrationLastSpoken).includes('`bun test`'),
-    'enabled narration speaks inline code content without backticks',
+      && narrationLastSpoken.includes(
+        'alphabeta and linkCode then INLINE_CODE_PLACEHOLDER_0',
+      )
+      && !narrationLastSpoken.includes('`')
+      && !/[\uE000-\uF8FF]/u.test(narrationLastSpoken),
+    'enabled narration speaks hostile inline-code shapes with no internal tokens',
   );
 
   const bargeInCountBeforeTyping = Number(enabledStatus.narrationBargeInCount);

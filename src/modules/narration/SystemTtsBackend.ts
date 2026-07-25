@@ -149,7 +149,14 @@ class $SystemTtsBackend implements TtsBackend {
   constructor(options: SystemTtsOptions = {}) {
     const resolveVoice = options.voiceProvider ?? ((): string => options.voice ?? '');
     const resolveRate = options.rateProvider ?? ((): number => options.rate ?? 1.0);
-    this.engine = detectEngine(resolveVoice, resolveRate);
+    const enginePath = options.enginePath;
+    this.engine = enginePath
+      ? {
+          name: 'direct-override',
+          playsDirectly: true,
+          synthCommand: (text) => [enginePath, text],
+        }
+      : detectEngine(resolveVoice, resolveRate);
     this.playerPath = this.engine && !this.engine.playsDirectly ? detectPlayer() : null;
   }
 

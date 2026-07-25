@@ -272,3 +272,37 @@ reaching the TTS backend.
 **Status:** provisional
 
 **Last refined:** 2026-07-24
+
+### Internal tokens are never speakable
+
+**Invariant:** If narration hands text to any `TtsBackend`, then every internal placeholder has been
+restored exactly once. If the transform cannot prove total restoration, narration hands the backend
+the untransformed assistant text and appends a transcript-visible system warning.
+
+**Scope:** `SpeakableText.prepareForSpeech`, `NarrationProjection.onTranscriptChanged`, every inline-code
+placeholder created while preparing an assistant transcript entry, and every `TtsBackend` implementation.
+
+**Mechanism:** `SpeakableText.prepareForSpeech` registers collision-free placeholders in a `Map`, restores
+them with one final registry sweep, deletes each entry as it is restored, and accepts transformed text only
+when the registry is empty and its selected placeholder prefix is absent. `NarrationProjection` consumes
+the checked result immediately before `tts.speak`; a failed check uses the original entry text and calls
+`AgentSession.appendSystemNote`.
+
+**Generates:** total inline-code restoration; an original-text safety fallback; a visible diagnostic
+instead of synthesized gibberish; hostile-shape regression coverage at the pure transform, mock TTS, and
+driven harness boundaries.
+
+**Evidence:** `src/modules/narration/SpeakableText.test.ts` (hostile shapes plus a link-destination restore
+miss); `src/modules/narration/NarrationProjection.test.ts` (mock TTS receives no internal tokens and a
+restore miss records a system warning); `scripts/harness/smoke-audio-narration-harness.ts` (adjacent,
+bold, link, and placeholder-like shapes reach the mock backend without internal tokens).
+
+**Impossible if true:** a private-use placeholder token reaching `TtsBackend.speak`; an extracted token
+being silently lost or restored twice; a restore failure producing speech without a visible transcript
+warning.
+
+**Verification:** `bun test src/modules/narration/SpeakableText.test.ts src/modules/narration/NarrationProjection.test.ts && bun scripts/harness/smoke-audio-narration-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
