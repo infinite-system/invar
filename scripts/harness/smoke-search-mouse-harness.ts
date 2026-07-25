@@ -15,6 +15,17 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
+async function removeTemporaryDirectory(directoryPath: string): Promise<void> {
+  try {
+    rmSync(directoryPath, { recursive: true, force: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EFAULT') throw error;
+    // Bun can transiently surface EFAULT while recursive removal crosses a just-closed watcher.
+    await Bun.sleep(25);
+    rmSync(directoryPath, { recursive: true, force: true });
+  }
+}
+
 function resultRowBackground(snapshot: HarnessSnapshot.Model, marker: string): number | null {
   const position = snapshot.findText(marker);
   if (!position) return null;
@@ -317,6 +328,6 @@ try {
   console.log('smoke-search-mouse-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  rmSync(navigatorBase, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
+  await removeTemporaryDirectory(navigatorBase);
+  await removeTemporaryDirectory(homeDirectory);
 }
