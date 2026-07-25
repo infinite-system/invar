@@ -38,6 +38,7 @@ async function sendTurn(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === false",
     (status) => status.agentBusy === false,
   );
 }
@@ -88,6 +89,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -106,10 +108,13 @@ try {
     await sendTurn(driver, statusPath, fillerTurn);
   }
   await sendTurn(driver, statusPath, 'omega needle last');
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).agentStuckToBottom === true,
-    'transcript is tail-anchored after seeding',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the seeded transcript is tail-anchored',
+    (status) => status.agentStuckToBottom === true,
   );
+  HarnessSmoke.Class.pass('transcript is tail-anchored after seeding');
 
   console.log('== harness agent search: click the themed search icon ==');
   let snapshot = await driver.awaitGridCondition(
@@ -142,6 +147,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.findOpen === true && status.findTarget === 'agent-transcript'",
     (status) => status.findOpen === true && status.findTarget === 'agent-transcript',
   );
   HarnessSmoke.Class.pass('mouse icon opens the shared transcript FindBar');
@@ -150,26 +156,30 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('1 of 4') !== null,
   );
-  let status = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.findQuery === 'needle'
-      && status.findMatchCount === 4
-      && status.agentStuckToBottom === false
-      && status.agentScrollTop === 0,
-    'live query finds four transcript matches and reveals the first at the top',
-  );
-
-  console.log('== harness agent search: Ctrl+F reopens the same retained target ==');
-  driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    'the live transcript query finds four matches and reveals the first',
+    (status) => status.findQuery === 'needle'
+      && status.findMatchCount === 4
+      && status.agentStuckToBottom === false
+      && status.agentScrollTop === 0,
+  );
+  HarnessSmoke.Class.pass('live query finds four transcript matches and reveals the first at the top');
+
+  console.log('== harness agent search: Ctrl+F reopens the same retained target ==');
+  driver.sendKeys('Escape');
+  const lastMatchStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: candidate.findOpen === false",
     (candidate) => candidate.findOpen === false,
   );
   driver.sendKeys('Control+f');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findOpen === true && candidate.findTarget === 'agent-transcript' && candidate.findQuery === 'needle' && candidate.findMatchCount === 4",
     (candidate) => candidate.findOpen === true
       && candidate.findTarget === 'agent-transcript'
       && candidate.findQuery === 'needle'
@@ -194,18 +204,21 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findCurrentMatchIndex === 1",
     (candidate) => candidate.findCurrentMatchIndex === 1,
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findCurrentMatchIndex === 2",
     (candidate) => candidate.findCurrentMatchIndex === 2,
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findCurrentMatchIndex === 3 && Number(candidate.agentScrollTop) > 0",
     (candidate) => candidate.findCurrentMatchIndex === 3
       && Number(candidate.agentScrollTop) > 0,
   );
@@ -213,9 +226,9 @@ try {
     'the final transcript search match is visible',
     (candidate) => candidate.findText('omega needle last') !== null,
   );
-  status = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
-    status.findCurrentMatchIndex === 3 && Number(status.agentScrollTop) > 0,
+    lastMatchStatus.findCurrentMatchIndex === 3
+      && Number(lastMatchStatus.agentScrollTop) > 0,
     'cycling reaches the last match and moves the viewport',
   );
 
@@ -227,6 +240,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findOpen === false",
     (candidate) => candidate.findOpen === false,
   );
   driver.sendText('after esc');
@@ -248,6 +262,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.findOpen === true && candidate.findQuery === 'needle' && candidate.findMatchCount === 4",
     (candidate) => candidate.findOpen === true
       && candidate.findQuery === 'needle'
       && candidate.findMatchCount === 4,

@@ -51,6 +51,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.focus === 'git' && status.gitChangedCount === 0",
     (status) => status.focus === 'git' && status.gitChangedCount === 0,
   );
   HarnessSmoke.Class.pass('clean repo, 0 changes');
@@ -62,6 +63,7 @@ try {
   const changedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.gitChangedCount) >= 3",
     (status) => Number(status.gitChangedCount) >= 3,
     8_000,
   );
@@ -75,6 +77,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitChangedCount === 0",
     (status) => status.gitChangedCount === 0,
     7_000,
   );
@@ -104,14 +107,19 @@ try {
   const beforeOpenStatus = await HarnessSmoke.Class.awaitStatus(
     directoryDriver,
     directoryStatusPath,
+    "status condition: Number(status.gitChangedCount) >= 1",
     (status) => Number(status.gitChangedCount) >= 1,
   );
   directoryDriver.sendKeysWithoutFrameExpectation('o');
   await HarnessSmoke.Class.awaitFrameSilence(directoryDriver, 600);
-  const afterOpenStatus = HarnessSmoke.Class.readStatus(directoryStatusPath);
+  await HarnessSmoke.Class.awaitStatus(
+    directoryDriver,
+    directoryStatusPath,
+    'the Git changed count remains published after opening the untracked symlink row',
+    (status) => Number(status.gitChangedCount) >= 1,
+  );
   HarnessSmoke.Class.requireCondition(
-    Number(beforeOpenStatus.gitChangedCount) >= 1
-      && Number(afterOpenStatus.gitChangedCount) >= 1,
+    Number(beforeOpenStatus.gitChangedCount) >= 1,
     'opening the untracked node_modules-symlink row did not crash the app',
   );
 

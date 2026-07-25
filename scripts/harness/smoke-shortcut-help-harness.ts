@@ -50,6 +50,7 @@ async function scrollToTop(driver: PtyTestDriver.Model, statusPath: string): Pro
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.shortcutHelpScrollTop === 0",
     (status) => status.shortcutHelpScrollTop === 0,
   );
 }
@@ -64,6 +65,7 @@ async function openWithShiftF1(
       await HarnessSmoke.Class.awaitStatusWithoutFrame(
         driver,
         statusPath,
+        "status condition: status.shortcutHelpOpen === true",
         (status) => status.shortcutHelpOpen === true,
         750,
       );
@@ -84,6 +86,7 @@ async function assertSheetStatus(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.shortcutHelpOpen === true && status.inputOverlay === 'shortcutHelp' && status.inputOverlayCount === 1",
     (status) => status.shortcutHelpOpen === true
       && status.inputOverlay === 'shortcutHelp'
       && status.inputOverlayCount === 1,
@@ -113,6 +116,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/document.txt')",
     (status) => String(status.activeBuffer).endsWith('/document.txt'),
   );
   snapshot = await driver.awaitGridCondition(
@@ -155,6 +159,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.shortcutHelpOpen === false",
     (status) => status.shortcutHelpOpen === false,
   );
   HarnessSmoke.Class.pass('Escape closes the sheet in state and cells');
@@ -173,6 +178,7 @@ try {
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.quickOpenOpen === true && candidate.shortcutHelpOpen === false",
     (candidate) => candidate.quickOpenOpen === true
       && candidate.shortcutHelpOpen === false,
   );
@@ -189,6 +195,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false",
     (candidate) => candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false,
   );
   HarnessSmoke.Class.pass('reopening the sheet closes Quick Open');

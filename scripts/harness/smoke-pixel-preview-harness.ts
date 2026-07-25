@@ -38,6 +38,7 @@ async function awaitImageStatus(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/picture.png')",
     (status) => status.activeFileIsImage === true
       && String(status.activeBuffer).endsWith('/picture.png'),
     15_000,
@@ -83,6 +84,7 @@ async function driveKittyTier(): Promise<void> {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.ready === true",
       (status) => status.ready === true,
       15_000,
     );
@@ -91,6 +93,7 @@ async function driveKittyTier(): Promise<void> {
     await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
       statusPath,
+      "status condition: status.activeFileIsImage === true",
       (status) => status.activeFileIsImage === true,
     );
     await Bun.sleep(250);
@@ -112,6 +115,7 @@ async function driveKittyTier(): Promise<void> {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/sample.ts')",
       (status) => status.activeFileIsImage === false
         && String(status.activeBuffer).endsWith('/sample.ts'),
     );
@@ -152,6 +156,7 @@ async function driveSixelTier(): Promise<void> {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.ready === true",
       (status) => status.ready === true,
       15_000,
     );
@@ -196,6 +201,7 @@ async function driveHalfBlockFloor(): Promise<void> {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.ready === true",
       (status) => status.ready === true,
       15_000,
     );
@@ -213,6 +219,7 @@ async function driveHalfBlockFloor(): Promise<void> {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/data.bin')",
       (status) => status.activeFileIsImage === false
         && String(status.activeBuffer).endsWith('/data.bin'),
     );

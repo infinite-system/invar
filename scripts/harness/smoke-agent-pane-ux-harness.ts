@@ -7,6 +7,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
@@ -34,8 +35,8 @@ interface ComposerScreenRow {
   readonly content: string;
 }
 
-function bottomPanelSlot(statusPath: string): Rectangle {
-  const layoutSlots = HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+function bottomPanelSlot(status: StatusSnapshot): Rectangle {
+  const layoutSlots = status.layoutSlots as
     | Record<string, Rectangle>
     | undefined;
   const bottomPanel = layoutSlots?.bottomPanel;
@@ -225,6 +226,7 @@ async function submitTurn(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === true",
     (status) => status.agentBusy === true,
   );
 }
@@ -233,6 +235,7 @@ async function awaitIdle(driver: PtyTestDriver.Model, statusPath: string): Promi
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === false",
     (status) => status.agentBusy === false,
     10_000,
   );
@@ -259,6 +262,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -275,11 +279,16 @@ try {
         && candidate.findText('  Ask Claude') !== null;
     },
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).terminalFocused === true,
-    'agent pane opens focused with framed composer chrome',
+  const focusedPaneStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent pane opens focused with its panel geometry published',
+    (status) => status.terminalFocused === true
+      && typeof status.layoutSlots === 'object'
+      && status.layoutSlots !== null,
   );
-  const panelRectangle = bottomPanelSlot(statusPath);
+  HarnessSmoke.Class.pass('agent pane opens focused with framed composer chrome');
+  const panelRectangle = bottomPanelSlot(focusedPaneStatus);
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('✦ Claude') !== null,
     'agent pane owns a heading inside the shared panel border',
@@ -380,9 +389,14 @@ try {
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('$ echo') !== null
       && snapshot.findText('{"command"') === null
-      && snapshot.findText('  "command"') === null
-      && HarnessSmoke.Class.readStatus(statusPath).agentExpandedCount === 0,
+      && snapshot.findText('  "command"') === null,
     'collapsed tool shows the human phrase and hides raw input',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the collapsed tool publishes no expanded tool rows',
+    (status) => status.agentExpandedCount === 0,
   );
   const collapsedToolPosition = snapshot.findText('▸ ⚙ Bash');
   HarnessSmoke.Class.requireCondition(collapsedToolPosition !== null, 'collapsed tool row paints');
@@ -410,6 +424,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.agentExpandedCount === 1",
     (candidate) => candidate.agentExpandedCount === 1,
   );
   HarnessSmoke.Class.pass('expanded tool state is published');
@@ -431,6 +446,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentExpandedCount === 0",
     (status) => status.agentExpandedCount === 0,
   );
   snapshot = await driver.awaitGridCondition(
@@ -452,7 +468,13 @@ try {
     (candidate) => candidate.findText('gamma-newest-prompt') !== null
       && verticalScrollBarRun(candidate, panelRectangle) >= 2,
   );
-  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the transcript tail anchor and maximum scroll position are published',
+    (candidate) => candidate.agentStuckToBottom === true
+      && typeof candidate.agentScrollTop === 'number',
+  );
   HarnessSmoke.Class.requireCondition(
     status.agentStuckToBottom === true && snapshot.findText('alpha-marker') === null,
     'tail anchor follows the newest turn and scrolls the first above the fold',
@@ -476,14 +498,17 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(candidate.agentScrollTop) < maximumScrollTop",
     (candidate) => Number(candidate.agentScrollTop) < maximumScrollTop,
   );
   await HarnessSmoke.Class.awaitFrameSilence(driver, 400, 5_000);
-  status = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.agentStuckToBottom === false,
-    'wheel momentum glides upward, settles, and releases the tail anchor',
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'settled upward wheel momentum releases the transcript tail anchor',
+    (candidate) => candidate.agentStuckToBottom === false,
   );
+  HarnessSmoke.Class.pass('wheel momentum glides upward, settles, and releases the tail anchor');
   for (let page = 0; page < 8 && driver.snapshot().findText('alpha-marker') === null; page++) {
     driver.sendKeys('PageUp');
     await driver.awaitQuiescence();
@@ -496,17 +521,14 @@ try {
     snapshot.findText('alpha-marker') !== null,
     'PageUp reveals the earliest turn',
   );
-  for (
-    let page = 0;
-    page < 8 && HarnessSmoke.Class.readStatus(statusPath).agentStuckToBottom !== true;
-    page += 1
-  ) {
+  for (let page = 0; page < 8; page += 1) {
     driver.sendKeys('PageDown');
     await driver.awaitQuiescence();
   }
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.agentStuckToBottom === true",
     (candidate) => candidate.agentStuckToBottom === true,
     8_000,
   );
@@ -532,6 +554,7 @@ try {
   const transcriptCopyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: Number(candidate.lastCopyChars) >= 5",
     (candidate) => Number(candidate.lastCopyChars) >= 5,
   );
   HarnessSmoke.Class.requireCondition(
@@ -557,6 +580,7 @@ try {
   const composerCopyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: Number(candidate.lastCopyChars) >= 5",
     (candidate) => Number(candidate.lastCopyChars) >= 5,
   );
   HarnessSmoke.Class.requireCondition(

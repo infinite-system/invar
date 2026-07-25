@@ -92,11 +92,13 @@ async function openDiff(
   statusPath: string,
 ): Promise<HarnessSnapshot.Model> {
   driver.sendKeys('Control+g');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.focus === 'git');
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.focus === 'git'",
+                                                           (status) => status.focus === 'git');
   driver.sendKeys('o');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.showingDiff === true",
     (status) => status.showingDiff === true,
   );
   return driver.awaitSnapshot(
@@ -189,7 +191,13 @@ try {
   if (!currentTitlePosition || !openCurrentPosition || !nextPosition) {
     throw new Error('Toolbar positions vanished');
   }
-  const scrollBeforeNext = Number(HarnessSmoke.Class.readStatus(statusPath).diffScrollTop);
+  const nextBaselineStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the aligned diff offset is published before clicking Next',
+    (status) => typeof status.diffScrollTop === 'number',
+  );
+  const scrollBeforeNext = Number(nextBaselineStatus.diffScrollTop);
   driver.sendMouse({
     kind: 'press',
     column: nextPosition.column + 1,
@@ -205,6 +213,7 @@ try {
   const nextStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.diffScrollTop) > scrollBeforeNext",
     (status) => Number(status.diffScrollTop) > scrollBeforeNext,
   );
   HarnessSmoke.Class.pass(
@@ -232,17 +241,23 @@ try {
   snapshot = await driver.awaitSnapshot((candidate) => {
     const position = candidate.findText('Current (working)');
     return position !== null
-      && position.column > currentColumnBeforeDrag
-      && Number(HarnessSmoke.Class.readStatus(statusPath).diffSplitRatio) > 0.5;
+      && position.column > currentColumnBeforeDrag;
   });
+  const persistedRatioStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the divider drag publishes a diff split ratio above one half',
+    (status) => Number(status.diffSplitRatio) > 0.5,
+  );
   const currentColumnAfterDrag = snapshot.findText('Current (working)')?.column ?? -1;
-  const persistedRatio = HarnessSmoke.Class.readStatus(statusPath).diffSplitRatio;
+  const persistedRatio = persistedRatioStatus.diffSplitRatio;
   HarnessSmoke.Class.pass(
     `divider drag moved current pane right `
     + `(${currentColumnBeforeDrag} -> ${currentColumnAfterDrag}), ratio=${persistedRatio}`,
   );
   driver.sendKeys('Escape');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.showingDiff === false);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.showingDiff === false",
+                                                           (status) => status.showingDiff === false);
   snapshot = await openDiff(driver, statusPath);
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Current (working)')?.column === currentColumnAfterDrag,
@@ -275,6 +290,7 @@ try {
   const draggedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.diffScrollTop) > 0 && Number(status.diffSelectionChars) > 200",
     (status) => Number(status.diffScrollTop) > 0 && Number(status.diffSelectionChars) > 200,
   );
   driver.sendMouse({
@@ -292,9 +308,14 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) => selectionPaintedRowCount(candidate) > 10,
   );
-  const selectionCharacterCount = Number(
-    HarnessSmoke.Class.readStatus(statusPath).diffSelectionChars,
+  const completedSelectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the released diff selection publishes its final character count',
+    (status) => Number(status.diffSelectionChars)
+      >= Number(draggedStatus.diffSelectionChars),
   );
+  const selectionCharacterCount = Number(completedSelectionStatus.diffSelectionChars);
   HarnessSmoke.Class.pass(
     `held edge drag scrolled to ${draggedStatus.diffScrollTop} and selected `
     + `${selectionCharacterCount} chars across ${selectionPaintedRowCount(snapshot)} painted rows`,
@@ -304,6 +325,7 @@ try {
   const copiedStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: Number(status.lastCopyChars) > 0",
     (status) => Number(status.lastCopyChars) > 0,
   );
   const currentText = await Bun.file(currentPath).text();
@@ -334,6 +356,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.showingDiff === false && status.activeBuffer === currentPath",
     (status) => status.showingDiff === false && status.activeBuffer === currentPath,
   );
   await driver.awaitSnapshot(

@@ -155,14 +155,21 @@ try {
     15_000,
   );
   for (let openAttempt = 0; openAttempt < 130; openAttempt++) {
-    const previousBufferCount =
-      Number(HarnessSmoke.Class.readStatus(statusPath).bufferTabCount) || 0;
+    const openingStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the buffer count and focus are published before opening another fixture buffer',
+      (status) => typeof status.bufferTabCount === 'number'
+        && typeof status.focus === 'string',
+    );
+    const previousBufferCount = Number(openingStatus.bufferTabCount);
     if (previousBufferCount >= 100) break;
-    if (HarnessSmoke.Class.readStatus(statusPath).focus !== 'files') {
+    if (openingStatus.focus !== 'files') {
       driver.sendKeys('Tab');
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,
+        "status condition: status.focus === 'files'",
         (status) => status.focus === 'files',
       );
     }
@@ -170,17 +177,22 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: Number(status.bufferTabCount) > previousBufferCount",
       (status) => Number(status.bufferTabCount) > previousBufferCount,
     );
   }
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).bufferTabCount === 100,
-    'fixture exposes exactly 100 open buffers',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the fixture publishes exactly 100 open buffers',
+    (status) => status.bufferTabCount === 100,
   );
+  HarnessSmoke.Class.pass('fixture exposes exactly 100 open buffers');
   driver.sendKeys('Control+PageDown');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeBufferIndex === 0",
     (status) => status.activeBufferIndex === 0,
   );
 
@@ -195,6 +207,7 @@ try {
   let popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null",
     (status) => status.boundedListPopupOpen === true
       && popupGeometry(status) !== null,
   );
@@ -235,6 +248,7 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: (popupGeometry(status)?.firstVisible ?? 0) > 0",
     (status) => (popupGeometry(status)?.firstVisible ?? 0) > 0,
   );
   geometry = popupGeometry(popupStatus);
@@ -248,7 +262,9 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    (status) => status.boundedListPopupQuery === 'file-073',
+    "status condition: status.boundedListPopupQuery === 'file-073'",
+    (status) => status.boundedListPopupQuery === 'file-073'
+      && status.boundedListPopupMatches === 1,
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
@@ -257,14 +273,12 @@ try {
       && popupListContains(candidate, geometry, 'file-073.txt')
       && !popupListContains(candidate, geometry, 'file-072.txt'),
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).boundedListPopupMatches === 1,
-    'the shared fuzzy scorer reduces the grid to one live match',
-  );
+  HarnessSmoke.Class.pass('the shared fuzzy scorer reduces the grid to one live match');
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeBufferIndex === 72 && status.boundedListPopupOpen === false",
     (status) => status.activeBufferIndex === 72
       && status.boundedListPopupOpen === false,
   );
@@ -281,12 +295,14 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === true",
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('file-025');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupQuery === 'file-025'",
     (status) => status.boundedListPopupQuery === 'file-025',
   );
   geometry = popupGeometry(popupStatus);
@@ -304,6 +320,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeBufferIndex === 24 && status.boundedListPopupOpen === false",
     (status) => status.activeBufferIndex === 24
       && status.boundedListPopupOpen === false,
   );
@@ -319,12 +336,14 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === true",
     (status) => status.boundedListPopupOpen === true,
   );
   clickPosition(driver, { column: 0, row: 39 });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === false",
     (status) => status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('click outside dismisses without activating a row');
@@ -338,6 +357,7 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === true && popupGeometry(status) !== null",
     (status) => status.boundedListPopupOpen === true
       && popupGeometry(status) !== null,
   );
@@ -350,6 +370,7 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupQuery === 'branch-011'",
     (status) => status.boundedListPopupQuery === 'branch-011',
   );
   geometry = popupGeometry(popupStatus);
@@ -363,6 +384,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogBranch === 'branch-011' && status.boundedListPopupOpen === false",
     (status) => status.gitLogBranch === 'branch-011'
       && status.boundedListPopupOpen === false,
   );
@@ -372,6 +394,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogBranch === ''",
     (status) => status.gitLogBranch === '',
   );
   snapshot = await driver.awaitSnapshot(
@@ -381,12 +404,14 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupOpen === true",
     (status) => status.boundedListPopupOpen === true,
   );
   driver.sendText('branch-007');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.boundedListPopupQuery === 'branch-007'",
     (status) => status.boundedListPopupQuery === 'branch-007',
   );
   geometry = popupGeometry(popupStatus);
@@ -404,6 +429,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogBranch === 'branch-007' && status.boundedListPopupOpen === false",
     (status) => status.gitLogBranch === 'branch-007'
       && status.boundedListPopupOpen === false,
   );

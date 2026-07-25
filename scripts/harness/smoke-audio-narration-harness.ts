@@ -64,6 +64,7 @@ async function driveTurn(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === false",
     (status) => status.agentBusy === false,
   );
   await driver.awaitSnapshot((snapshot) => snapshot.findText('You said') !== null);
@@ -87,26 +88,27 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     disabledStatusPath,
-    (status) => status.ready === true,
+    'the application is ready with narration disabled',
+    (status) => status.ready === true && status.narrationEnabled === false,
     20_000,
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(disabledStatusPath).narrationEnabled === false,
-    'narration is disabled at boot',
-  );
+  HarnessSmoke.Class.pass('narration is disabled at boot');
   driver.sendRawInput('\x1b[27;6;97~');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     disabledStatusPath,
+    "status condition: status.panelActiveContent === 'agent'",
     (status) => status.panelActiveContent === 'agent',
   );
   await driveTurn(driver, disabledStatusPath, 'hello narration');
-  const disabledStatus = HarnessSmoke.Class.readStatus(disabledStatusPath);
-  HarnessSmoke.Class.requireCondition(
-    disabledStatus.narrationSpokenCount === 0
-      && disabledStatus.narrationLastSpoken === '',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    disabledStatusPath,
     'disabled narration completes the turn without speaking',
+    (status) => status.narrationSpokenCount === 0
+      && status.narrationLastSpoken === '',
   );
+  HarnessSmoke.Class.pass('disabled narration completes the turn without speaking');
 
   console.log('== harness audio narration: enabled setting speaks and supports barge-in ==');
   await driver.dispose();
@@ -117,23 +119,32 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     enabledStatusPath,
-    (status) => status.ready === true,
+    'the application is ready with narration enabled',
+    (status) => status.ready === true && status.narrationEnabled === true,
     20_000,
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(enabledStatusPath).narrationEnabled === true,
-    'narration setting is applied at boot',
-  );
+  HarnessSmoke.Class.pass('narration setting is applied at boot');
   driver.sendRawInput('\x1b[27;6;97~');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     enabledStatusPath,
+    "status condition: status.panelActiveContent === 'agent'",
     (status) => status.panelActiveContent === 'agent',
   );
   const inlineCodePrompt =
     '**`alpha``beta`** and [`linkCode`](https://example.com) then `INLINE_CODE_PLACEHOLDER_0`';
   await driveTurn(driver, enabledStatusPath, inlineCodePrompt);
-  let enabledStatus = HarnessSmoke.Class.readStatus(enabledStatusPath);
+  let enabledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    enabledStatusPath,
+    'enabled narration publishes sanitized hostile inline-code speech',
+    (status) => Number(status.narrationSpokenCount) > 0
+      && String(status.narrationLastSpoken).includes(
+        'alphabeta and linkCode then INLINE_CODE_PLACEHOLDER_0',
+      )
+      && !String(status.narrationLastSpoken).includes('`')
+      && !/[\uE000-\uF8FF]/u.test(String(status.narrationLastSpoken)),
+  );
   const narrationLastSpoken = String(enabledStatus.narrationLastSpoken);
   HarnessSmoke.Class.requireCondition(
     Number(enabledStatus.narrationSpokenCount) > 0
@@ -148,7 +159,13 @@ try {
   const bargeInCountBeforeTyping = Number(enabledStatus.narrationBargeInCount);
   driver.sendText('x');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('❯ x') !== null);
-  enabledStatus = HarnessSmoke.Class.readStatus(enabledStatusPath);
+  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  enabledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    enabledStatusPath,
+    'ordinary typing preserves the narration barge-in count',
+    (status) => Number(status.narrationBargeInCount) === bargeInCountBeforeTyping,
+  );
   HarnessSmoke.Class.requireCondition(
     Number(enabledStatus.narrationBargeInCount) === bargeInCountBeforeTyping,
     'ordinary typing does not barge in',
@@ -157,6 +174,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     enabledStatusPath,
+    "status condition: Number(status.narrationBargeInCount) > bargeInCountBeforeTyping",
     (status) => Number(status.narrationBargeInCount) > bargeInCountBeforeTyping,
   );
   HarnessSmoke.Class.pass('Escape explicitly barges in on narration');

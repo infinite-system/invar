@@ -88,6 +88,7 @@ async function runServerCase(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.ready === true",
       (status) => status.ready === true,
       20_000,
     );
@@ -95,13 +96,20 @@ async function runServerCase(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: String(status.activeBuffer).endsWith('/e.ts')",
       (status) => String(status.activeBuffer).endsWith('/e.ts'),
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the diagnostics provider publishes at least one diagnostic',
+      (status) => Number(status.diagnosticsCount) > 0,
+      55_000,
     );
     const snapshot = await driver.awaitSnapshot(
       (candidate) => {
         const counts = diagnosticColorCounts(candidate);
-        return Number(HarnessSmoke.Class.readStatus(statusPath).diagnosticsCount) > 0
-          && counts.gutter >= 1
+        return counts.gutter >= 1
           && counts.range >= 1;
       },
       55_000,

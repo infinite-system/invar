@@ -85,6 +85,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -96,6 +97,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/answer.ts')",
     (status) => String(status.activeBuffer).endsWith('/answer.ts'),
   );
   const symbolPosition = declarationSymbolPosition(snapshot);
@@ -133,9 +135,13 @@ try {
   if (!cardSpan) throw new Error('Hover card disappeared');
 
   console.log('== harness hover: card selection and copy stay engaged ==');
-  const copyCountBefore = Number(
-    HarnessSmoke.Class.readStatus(statusPath).lastCopyChars ?? 0,
+  const copyBaselineStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the copied character count is published before hover-card selection',
+    (status) => typeof status.lastCopyChars === 'number',
   );
+  const copyCountBefore = Number(copyBaselineStatus.lastCopyChars);
   await dragBetweenCells(
     driver,
     cardSpan.startColumn,
@@ -147,6 +153,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: Number(status.lastCopyChars) > copyCountBefore",
     (status) => Number(status.lastCopyChars) > copyCountBefore,
   );
   snapshot = await driver.awaitGridCondition(

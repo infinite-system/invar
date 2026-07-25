@@ -9,10 +9,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  awaitStatusPublication,
   dragBetweenCells,
   pass,
   requireCondition,
-  statusField,
 } from './HarnessSmokeSupport';
 import { BracketedPasteInput } from './BracketedPasteInput';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -77,36 +77,51 @@ try {
   pass('editor is ready for bracketed paste');
 
   console.log('== harness paste: single-line editor paste inserts at the caret ==');
-  const firstRevision = statusField<number>(statusPath, 'bufferRevision') ?? 0;
+  const firstRevisionStatus = await awaitStatusPublication(
+    statusPath,
+    'the buffer revision is published before single-line paste',
+    (status) => typeof status.bufferRevision === 'number',
+  );
+  const firstRevision = Number(firstRevisionStatus.bufferRevision);
   driver.sendPaste('PASTEUNIQUEXYZ');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEUNIQUEXYZ') !== null);
-  requireCondition(
-    (statusField<number>(statusPath, 'bufferRevision') ?? 0) > firstRevision,
-    'single-line paste bumped the buffer revision',
+  await awaitStatusPublication(
+    statusPath,
+    'single-line paste advances the revision and dirties the document',
+    (status) => Number(status.bufferRevision) > firstRevision
+      && status.dirty === true,
   );
-  requireCondition(statusField<boolean>(statusPath, 'dirty') === true, 'paste dirtied the document');
+  pass('single-line paste bumped the buffer revision');
+  pass('paste dirtied the document');
 
   console.log('== harness paste: multi-line editor paste creates visible lines ==');
-  const secondRevision = statusField<number>(statusPath, 'bufferRevision') ?? 0;
+  const secondRevisionStatus = await awaitStatusPublication(
+    statusPath,
+    'the buffer revision is published before multi-line paste',
+    (status) => typeof status.bufferRevision === 'number',
+  );
+  const secondRevision = Number(secondRevisionStatus.bufferRevision);
   driver.sendPaste('ALPHALINE\nBRAVOLINE\nCHARLIELINE');
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('ALPHALINE') !== null
       && snapshot.findText('CHARLIELINE') !== null,
   );
-  requireCondition(
-    (statusField<number>(statusPath, 'bufferRevision') ?? 0) > secondRevision,
-    'multi-line paste bumped the buffer revision',
+  await awaitStatusPublication(
+    statusPath,
+    'multi-line paste advances the buffer revision',
+    (status) => Number(status.bufferRevision) > secondRevision,
   );
+  pass('multi-line paste bumped the buffer revision');
 
   console.log('== harness paste: terminal paste reaches the child PTY ==');
   driver.sendKeys('F8');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'terminalFocused') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the terminal pane is active and focused',
+    (status) => status.terminalFocused === true
+      && status.panelActiveContent === 'terminal',
   );
-  requireCondition(
-    statusField<string>(statusPath, 'panelActiveContent') === 'terminal',
-    'active pane is the terminal',
-  );
+  pass('active pane is the terminal');
   driver.sendPaste('PASTEDINTERMINAL');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINTERMINAL') !== null);
   pass('terminal child echoed pasted text at its prompt');
@@ -219,8 +234,10 @@ try {
 
   console.log('== harness paste: agent paste inserts into the composer ==');
   driver.sendRawInput('\x1b[27;6;97~');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+  await awaitStatusPublication(
+    statusPath,
+    'the agent pane is published as active',
+    (status) => status.panelActiveContent === 'agent',
   );
   driver.sendPaste('PASTEDINAGENT');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEDINAGENT') !== null);
@@ -241,10 +258,12 @@ try {
       (snapshot) => snapshot.findText(payloadSuffix) !== null,
       30_000,
     );
-    requireCondition(
-      statusField<string>(statusPath, 'panelActiveContent') === 'agent',
-      `${payloadByteCount}-byte paste remained routed to the agent composer`,
+    await awaitStatusPublication(
+      statusPath,
+      `${payloadByteCount}-byte paste remains routed to the agent composer`,
+      (status) => status.panelActiveContent === 'agent',
     );
+    pass(`${payloadByteCount}-byte paste remained routed to the agent composer`);
     pass(
       `${payloadByteCount}-byte paste split across markers and payload reaches the agent composer`,
     );
@@ -276,18 +295,24 @@ try {
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
 
-  const layoutSlots = statusField<
-    Record<string, { left: number; top: number; width: number; height: number }>
-  >(statusPath, 'layoutSlots');
+  const panelLayoutStatus = await awaitStatusPublication(
+    statusPath,
+    'panel layout geometry and cell columns are published',
+    (status) => typeof status.layoutSlots === 'object'
+      && status.layoutSlots !== null
+      && Array.isArray(status.panelCellIds)
+      && Array.isArray(status.panelCellColumns)
+      && typeof status.height === 'number',
+  );
+  const layoutSlots = panelLayoutStatus.layoutSlots as
+    Record<string, { left: number; top: number; width: number; height: number }>;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
-  const screenRows = Number(statusField<number>(statusPath, 'height') ?? 40);
+  const screenRows = Number(panelLayoutStatus.height);
   const layoutCanvasTop =
     screenRows - 1 - (bottomPanel.top + bottomPanel.height);
-  const panelCellIdentifiers =
-    statusField<string[]>(statusPath, 'panelCellIds') ?? [];
-  const panelCellColumns =
-    statusField<number[]>(statusPath, 'panelCellColumns') ?? [];
+  const panelCellIdentifiers = panelLayoutStatus.panelCellIds as string[];
+  const panelCellColumns = panelLayoutStatus.panelCellColumns as number[];
   const agentCellIndex = panelCellIdentifiers.indexOf('agent');
   if (agentCellIndex < 0) throw new Error('Agent panel cell disappeared');
   const panelBodyColumn = bottomPanel.left + 2 + (
@@ -297,8 +322,10 @@ try {
     layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2);
   driver.sendMouse({ kind: 'press', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
   driver.sendMouse({ kind: 'release', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+  await awaitStatusPublication(
+    statusPath,
+    'the clicked agent panel cell becomes active',
+    (status) => status.panelActiveContent === 'agent',
   );
   driver.sendText(
     `terminal-tools:stage:printf ANIMATING_${'x'.repeat(100)}`,
@@ -316,12 +343,16 @@ try {
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
   driver.sendKeys('F8');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
+  await awaitStatusPublication(
+    statusPath,
+    'F8 returns to the agent pane',
+    (status) => status.panelActiveContent === 'agent',
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'terminalVisible') === false,
+  await awaitStatusPublication(
+    statusPath,
+    'the terminal pane is published as hidden',
+    (status) => status.terminalVisible === false,
   );
 
   console.log('== harness paste: focus recovery re-enables bracketed paste ==');
@@ -335,13 +366,20 @@ try {
     driver.outputSequenceCount('\x1b[?2004h') > pasteEnableCountBefore,
     'focus-in recovery emitted a fresh DECSET 2004 enable sequence',
   );
-  const thirdRevision = statusField<number>(statusPath, 'bufferRevision') ?? 0;
+  const thirdRevisionStatus = await awaitStatusPublication(
+    statusPath,
+    'the buffer revision is published before post-focus paste',
+    (status) => typeof status.bufferRevision === 'number',
+  );
+  const thirdRevision = Number(thirdRevisionStatus.bufferRevision);
   driver.sendPaste('PASTEAFTERREFOCUS');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('PASTEAFTERREFOCUS') !== null);
-  requireCondition(
-    (statusField<number>(statusPath, 'bufferRevision') ?? 0) > thirdRevision,
-    'paste after refocus bumped the buffer revision',
+  await awaitStatusPublication(
+    statusPath,
+    'paste after refocus advances the buffer revision',
+    (status) => Number(status.bufferRevision) > thirdRevision,
   );
+  pass('paste after refocus bumped the buffer revision');
 
   driver.sendKeys('Control+q');
   await driver.exitCode();

@@ -12,9 +12,7 @@ import {
   markerForeground,
   pass,
   requireCondition,
-  requireEqual,
   runGit,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -69,7 +67,13 @@ try {
     (candidate) => candidate.findText(firstName.slice(0, 17)) !== null,
     15_000,
   );
-  requireEqual(statusField<number>(statusPath, 'workspaceCount'), 1, 'booted one workspace');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'one workspace is present after boot',
+    (status) => status.workspaceCount === 1,
+  );
+  pass('booted one workspace');
   const plusColumn = Array.from(snapshot.rowText(0)).lastIndexOf('+');
   requireCondition(plusColumn >= 0, 'workspace plus button paints on the top strip');
   driver.sendMouse({ kind: 'press', column: plusColumn, row: 0, button: 'left' });
@@ -86,12 +90,15 @@ try {
     (candidate) => candidate.findText('SECOND_TREE_ONLY.txt') !== null,
     15_000,
   );
-  requireEqual(statusField<number>(statusPath, 'workspaceCount'), 2, 'second workspace was added');
-  requireEqual(
-    statusField<string>(statusPath, 'activeWorkspaceRoot'),
-    secondRoot,
-    'new workspace is active',
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the second workspace is added and active',
+    (status) => status.workspaceCount === 2
+      && status.activeWorkspaceRoot === secondRoot,
   );
+  pass('second workspace was added');
+  pass('new workspace is active');
   requireCondition(snapshot.findText('…') !== null, 'long project name is capped with an ellipsis');
 
   const secondNamePosition = snapshot.findText(secondName.slice(0, 17));
@@ -129,23 +136,25 @@ try {
   snapshot = driver.snapshot();
   clickMarker(driver, snapshot, firstName.slice(0, 17));
   await driver.awaitSnapshot((candidate) => candidate.findText('FIRST_TREE_ONLY.txt') !== null);
-  requireEqual(
-    statusField<string>(statusPath, 'activeWorkspaceRoot'),
-    firstRoot,
-    'click switched to the first root',
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the first workspace becomes active after its tab is clicked',
+    (status) => status.activeWorkspaceRoot === firstRoot,
   );
+  pass('click switched to the first root');
   driver.sendKeys('Control+g');
   await driver.awaitSnapshot((candidate) => candidate.findText('first-root-change.txt') !== null);
   pass('git panel returned to the first repository');
-  requireEqual(
-    statusField<number>(statusPath, 'liveGitWatcherCount'),
-    1,
-    'two workspaces cost one live GitWatcher',
+  await awaitStatus(
+    driver,
+    statusPath,
+    'only the active workspace owns a live Git watcher',
+    (status) => status.liveGitWatcherCount === 1
+      && String(status.workspaceLiveGitWatchers) === 'true,false',
   );
-  requireCondition(
-    String(statusField<unknown>(statusPath, 'workspaceLiveGitWatchers')) === 'true,false',
-    'only the active workspace owns a watcher',
-  );
+  pass('two workspaces cost one live GitWatcher');
+  pass('only the active workspace owns a watcher');
 
   console.log('== harness workspace tabs: settings reorients top to left and back ==');
   driver.sendKeys('Control+,');
@@ -192,11 +201,18 @@ try {
   );
 
   console.log('== harness workspace tabs: Ctrl+Shift brackets cycle projects ==');
-  const cycleRootBefore = statusField<string>(statusPath, 'activeWorkspaceRoot');
+  const cycleStatusBefore = await awaitStatus(
+    driver,
+    statusPath,
+    'an active workspace root is published before keyboard cycling',
+    (status) => typeof status.activeWorkspaceRoot === 'string',
+  );
+  const cycleRootBefore = cycleStatusBefore.activeWorkspaceRoot;
   driver.sendRawInput('\x1b[93;6u');
   await awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeWorkspaceRoot !== cycleRootBefore",
     (status) => status.activeWorkspaceRoot !== cycleRootBefore,
   );
   pass('Ctrl+Shift+] cycles to the next project');
@@ -204,6 +220,7 @@ try {
   await awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeWorkspaceRoot === cycleRootBefore",
     (status) => status.activeWorkspaceRoot === cycleRootBefore,
   );
   pass('Ctrl+Shift+[ cycles back to the previous project');

@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  awaitStatusPublication,
   markerForeground,
   pass,
   requireCondition,
@@ -48,10 +49,12 @@ try {
   );
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
-  requireCondition(
-    statusField<string>(statusPath, 'focus') === 'editor',
-    'comment.ts opened with the editor focused',
+  await awaitStatusPublication(
+    statusPath,
+    'comment.ts has editor focus',
+    (status) => status.focus === 'editor',
   );
+  pass('comment.ts opened with the editor focused');
 
   console.log('== harness comment styling: JSDoc middle lines use the comment foreground ==');
   const commentForeground = markerForeground(snapshot, 'leadcomment');
@@ -78,10 +81,12 @@ try {
     (candidate) => candidate.findText('hscrollcomment') !== null
       && candidate.findText('hscrolldoc') !== null,
   );
-  requireCondition(
-    (statusField<number>(statusPath, 'editorScrollLeft') ?? 0) > 0,
-    'horizontal scroll moved right',
+  await awaitStatusPublication(
+    statusPath,
+    'the editor publishes a positive horizontal scroll offset',
+    (status) => Number(status.editorScrollLeft) > 0,
   );
+  pass('horizontal scroll moved right');
   requireCondition(
     markerForeground(snapshot, 'hscrollcomment') === commentForeground,
     'horizontally sliced line-comment tail keeps comment foreground',
@@ -93,25 +98,33 @@ try {
 
   console.log('== harness comment styling: find boundary keeps the sliced tail colour ==');
   driver.sendKeys('Control+f');
-  await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Find') !== null
-      && statusField<boolean>(statusPath, 'findOpen') === true,
+  await driver.awaitSnapshot((candidate) => candidate.findText('Find') !== null);
+  await awaitStatusPublication(
+    statusPath,
+    'Find is published as open',
+    (status) => status.findOpen === true,
   );
   let findQuery = '';
   for (const character of 'findmatch') {
     findQuery += character;
     driver.sendRawInputWithoutFrameExpectation(character);
-    await driver.awaitSnapshot(
-      () => statusField<string>(statusPath, 'findQuery') === findQuery,
+    await awaitStatusPublication(
+      statusPath,
+      `the Find query publishes ${findQuery}`,
+      (status) => status.findQuery === findQuery,
     );
   }
-  requireCondition(
-    statusField<number>(statusPath, 'findMatchCount') === 1,
-    'horizontal comment find query has exactly one match',
+  await awaitStatusPublication(
+    statusPath,
+    'the horizontal comment Find query publishes one match',
+    (status) => status.findMatchCount === 1,
   );
+  pass('horizontal comment find query has exactly one match');
   driver.sendRawInputWithoutFrameExpectation('\x1b');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'findOpen') === false,
+  await awaitStatusPublication(
+    statusPath,
+    'Find is published as closed',
+    (status) => status.findOpen === false,
   );
   driver.sendKeys('End');
   snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('afterfind') !== null);
@@ -126,10 +139,12 @@ try {
     (candidate) => candidate.findText('zebramarker') !== null
       && candidate.findText('docmid') !== null,
   );
-  requireCondition(
-    statusField<boolean>(statusPath, 'wordWrap') === true,
-    'word wrap mode is enabled',
+  await awaitStatusPublication(
+    statusPath,
+    'word wrap is published as enabled',
+    (status) => status.wordWrap === true,
   );
+  pass('word wrap mode is enabled');
   const wrappedCommentForeground = markerForeground(snapshot, 'leadcomment');
   requireCondition(
     markerForeground(snapshot, 'zebramarker') === wrappedCommentForeground,

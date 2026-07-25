@@ -2,6 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 
+// invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
+// invariant: Every wait names itself (scripts/harness/harness.invariants.md)
+
 export type HarnessStatus = Record<string, unknown>;
 
 export function pass(label: string): void {
@@ -36,15 +39,22 @@ export function statusField<T>(statusPath: string, fieldName: string): T | undef
 export async function awaitStatus(
   driver: PtyTestDriver.Model,
   statusPath: string,
+  description: string,
   predicate: (status: HarnessStatus) => boolean,
   timeoutMilliseconds = 30_000,
 ): Promise<HarnessStatus> {
   void driver;
-  return awaitStatusPublication(statusPath, predicate, timeoutMilliseconds);
+  return awaitStatusPublication(
+    statusPath,
+    description,
+    predicate,
+    timeoutMilliseconds,
+  );
 }
 
 export async function awaitStatusPublication(
   statusPath: string,
+  description: string,
   predicate: (status: HarnessStatus) => boolean,
   timeoutMilliseconds = 30_000,
 ): Promise<HarnessStatus> {
@@ -54,7 +64,7 @@ export async function awaitStatusPublication(
     if (status && predicate(status)) return status;
     await Bun.sleep(5);
   }
-  throw new Error(`Timed out waiting for status publication at ${statusPath}`);
+  throw new Error(`Timed out waiting for ${description} at ${statusPath}`);
 }
 
 export function markerPosition(

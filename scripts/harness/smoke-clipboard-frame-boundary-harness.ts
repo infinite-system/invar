@@ -64,8 +64,7 @@ async function awaitClipboardEmission(
     await Bun.sleep(5);
   }
   throw new Error(
-    `Timed out waiting for OSC 52 payload ${expectedText}; status=`
-    + `${JSON.stringify(HarnessSmoke.Class.readStatus(statusPath))}; outputTail=`
+    `Timed out waiting for OSC 52 payload ${expectedText}; outputTail=`
     + JSON.stringify(driver.recordedOutput().slice(-800)),
   );
 }
@@ -133,6 +132,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -159,6 +159,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === false",
     (status) => status.agentBusy === false,
   );
   const transcriptPosition = await selectVisibleText('ACTIVE-TRANSCRIPT');
@@ -219,6 +220,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
     (status) => status.panelActiveContent === 'terminal' && status.terminalFocused === true,
   );
   driver.sendText('printf IDLE-TERMINAL');

@@ -66,21 +66,26 @@ try {
     snapshot.findText('feat-only-2') === null,
     'feature-only commits do not render on main',
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).gitLogBranch === '',
-    'viewer follows HEAD',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Git log viewer follows HEAD',
+    (status) => status.gitLogBranch === '',
   );
+  HarnessSmoke.Class.pass('viewer follows HEAD');
 
   console.log('== harness git-log: external main commit appears without app input ==');
   commit(fixtureRoot, 'ext-tip-C', true);
   const externalMainTip = HarnessSmoke.Class.runGit(fixtureRoot, ['rev-parse', 'HEAD']);
   await driver.awaitSnapshot((candidate) => candidate.findText('ext-tip-C') !== null, 12_000);
   HarnessSmoke.Class.pass('external commit reached the history pane within the reconcile window');
-  const refreshedMainStatus = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    refreshedMainStatus.gitLogTipSha === externalMainTip,
-    'displayed tip SHA matches the real tip',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the displayed Git log tip SHA matches the external main tip',
+    (status) => status.gitLogTipSha === externalMainTip,
   );
+  HarnessSmoke.Class.pass('displayed tip SHA matches the real tip');
 
   console.log('== harness git-log: b switches to the read-only feature view ==');
   driver.sendKeys('b');
@@ -89,10 +94,13 @@ try {
       && candidate.findText('view only') !== null
       && candidate.findText('feat-only-2') !== null,
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).gitLogBranch === 'feature',
-    "viewer switched to 'feature'",
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Git log viewer switches to feature',
+    (status) => status.gitLogBranch === 'feature',
   );
+  HarnessSmoke.Class.pass("viewer switched to 'feature'");
   HarnessSmoke.Class.pass('header names the viewed branch');
   HarnessSmoke.Class.pass("feature's own history renders");
   HarnessSmoke.Class.requireCondition(
@@ -119,16 +127,20 @@ try {
   );
   await driver.awaitSnapshot((candidate) => candidate.findText('feat-ext-D') !== null, 12_000);
   HarnessSmoke.Class.pass('viewed-branch external commit reached the pane');
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).gitLogTipSha === featureExternalCommit,
-    'viewed tip SHA tracks the viewed ref',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the viewed Git log tip SHA tracks the external feature commit',
+    (status) => status.gitLogTipSha === featureExternalCommit,
   );
+  HarnessSmoke.Class.pass('viewed tip SHA tracks the viewed ref');
 
   console.log('== harness git-log: viewed-branch commit expands and opens by SHA ==');
   driver.sendKeys('Down', 'Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogExpanded === 1",
     (status) => status.gitLogExpanded === 1,
   );
   HarnessSmoke.Class.pass('commit on the viewed branch expanded inline');
@@ -138,6 +150,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.showingDiff === true",
     (status) => status.showingDiff === true,
   );
   HarnessSmoke.Class.pass('file diff of a non-checked-out commit opened');
@@ -146,11 +159,13 @@ try {
 
   console.log('== harness git-log: Escape returns the viewer to HEAD ==');
   driver.sendKeys('Control+g');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.focus === 'git');
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.focus === 'git'",
+                                                           (status) => status.focus === 'git');
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogBranch === ''",
     (status) => status.gitLogBranch === '',
   );
   snapshot = await driver.awaitSnapshot(
@@ -163,8 +178,13 @@ try {
   console.log('== harness git-log: branch menu is mouse-driven ==');
   HarnessSmoke.Class.clickText(driver, snapshot, 'history: main', 7);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('main (checked out)') !== null
-      && HarnessSmoke.Class.readStatus(statusPath).boundedListPopupOpen === true,
+    (candidate) => candidate.findText('main (checked out)') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the branch menu is published as open',
+    (status) => status.boundedListPopupOpen === true,
   );
   HarnessSmoke.Class.pass('header click opened the branch menu');
   HarnessSmoke.Class.pass('menu marks the checked-out branch');
@@ -194,11 +214,13 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.gitLogBranch === 'feature'",
     (status) => status.gitLogBranch === 'feature',
   );
   HarnessSmoke.Class.pass('menu click re-sourced the viewer to feature');
   driver.sendKeys('Escape');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.gitLogBranch === '');
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.gitLogBranch === ''",
+                                                           (status) => status.gitLogBranch === '');
 
   console.log('== harness git-log: read-only guarantee ==');
   HarnessSmoke.Class.requireCondition(

@@ -60,6 +60,7 @@ async function openAgentPane(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.panelActiveContent === 'agent' && status.terminalFocused === true",
     (status) => status.panelActiveContent === 'agent'
       && status.terminalFocused === true,
   );
@@ -70,7 +71,15 @@ async function focusPanelCell(
   statusPath: string,
   cellIndex: number,
 ): Promise<Record<string, unknown>> {
-  const status = HarnessSmoke.Class.readStatus(statusPath);
+  const status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `panel cell ${cellIndex} geometry is published before focusing it`,
+    (candidate) => Array.isArray(candidate.panelCellColumns)
+      && typeof candidate.height === 'number'
+      && typeof candidate.layoutSlots === 'object'
+      && candidate.layoutSlots !== null,
+  );
   const cellColumns = (status.panelCellColumns as number[]) ?? [];
   const panelRow = Number(status.height) - 8;
   const layoutSlots = status.layoutSlots as
@@ -85,6 +94,7 @@ async function focusPanelCell(
   return HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.panelFocusedIndex === cellIndex",
     (candidate) => candidate.panelFocusedIndex === cellIndex,
   );
 }
@@ -120,13 +130,15 @@ async function driveAnimatedTerminalTools(
   const replacementPath = join(homeDirectory, 'replacement-proof.txt');
 
   try {
-    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.ready === true",
+                                                             (status) => status.ready === true);
 
     console.log('== harness terminal-stage: clean themed prompt and live header ==');
     driver.sendKeys('F8');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
       (status) => status.panelActiveContent === 'terminal'
         && status.terminalFocused === true,
     );
@@ -181,6 +193,7 @@ async function driveAnimatedTerminalTools(
     const splitStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal,agent' && status.panelFocusedIndex === 0",
       (status) => Array.isArray(status.panelCellIds)
         && status.panelCellIds.join(',') === 'terminal,agent'
         && status.panelFocusedIndex === 0,
@@ -351,6 +364,7 @@ async function driveAnimatedTerminalTools(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: candidate.panelFocusedIndex === terminalCellIndex",
       (candidate) => candidate.panelFocusedIndex === terminalCellIndex,
     );
     HarnessSmoke.Class.pass('queued command types only after the user releases the prompt');
@@ -411,7 +425,8 @@ async function driveReducedMotion(
     },
   });
   try {
-    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.ready === true",
+                                                             (status) => status.ready === true);
     await openAgentPane(driver, statusPath);
     const command = `printf INSTANT > ${reducedMotionPath} # ${'x'.repeat(120)}`;
     const startedMilliseconds = performance.now();
@@ -457,7 +472,8 @@ async function measureAgentTypingDuration(
     },
   });
   try {
-    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.ready === true",
+                                                             (status) => status.ready === true);
     await openAgentPane(driver, statusPath);
     const command = `printf ${label.toUpperCase()} > ${executedCommandPath} # ${'x'.repeat(60)}`;
     const startedMilliseconds = performance.now();
@@ -522,11 +538,13 @@ async function driveTerminalCleanPromptDisabled(
   });
   try {
     console.log('== harness terminal-stage: terminalCleanPrompt false keeps the shell prompt ==');
-    await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.ready === true);
+    await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.ready === true",
+                                                             (status) => status.ready === true);
     driver.sendKeys('F8');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.panelActiveContent === 'terminal' && status.terminalFocused === true",
       (status) => status.panelActiveContent === 'terminal'
         && status.terminalFocused === true,
     );

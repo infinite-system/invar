@@ -52,6 +52,7 @@ async function openTrackedFile(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeBuffer === trackedPath",
     (status) => status.activeBuffer === trackedPath,
   );
 }
@@ -101,6 +102,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     editDriver,
     editStatusPath,
+    "status condition: status.activeBuffer === switchedTrackedPath",
     (status) => status.activeBuffer === switchedTrackedPath,
   );
   await editDriver.awaitGridCondition(
@@ -113,6 +115,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     editDriver,
     editStatusPath,
+    "status condition: status.activeBuffer === trackedPath",
     (status) => status.activeBuffer === trackedPath,
   );
   await editDriver.awaitGridCondition(

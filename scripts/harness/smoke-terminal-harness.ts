@@ -43,6 +43,7 @@ try {
   const bootStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     15_000,
   );
@@ -73,6 +74,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === true",
     (status) => status.terminalVisible === true,
   );
   HarnessSmoke.Class.pass('status-bar terminal button opens the panel');
@@ -91,6 +93,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === false",
     (status) => status.terminalVisible === false,
   );
   HarnessSmoke.Class.pass('second status-bar click hides the panel');
@@ -100,6 +103,7 @@ try {
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === true && status.terminalFocused === true && status.panelActiveContent === 'terminal' && Number(status.terminalColumns) > 0 && Number(status.terminalRows) > 0",
     (status) => status.terminalVisible === true
       && status.terminalFocused === true
       && status.panelActiveContent === 'terminal'
@@ -158,6 +162,7 @@ try {
   const resizedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.terminalRows) > initialRows",
     (status) => Number(status.terminalRows) > initialRows,
   );
   const resizedColumns = Number(resizedStatus.terminalColumns);
@@ -184,10 +189,13 @@ try {
   await HarnessSmoke.Class.awaitFrameSilence(driver);
   await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);
   HarnessSmoke.Class.pass('terminal-open idle window emits at most the minute-clock frame');
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).terminalFocused === true,
-    'terminal remains focused before quit',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the terminal remains focused before quit',
+    (status) => status.terminalFocused === true,
   );
+  HarnessSmoke.Class.pass('terminal remains focused before quit');
 
   driver.sendKeys('Control+q');
   HarnessSmoke.Class.requireCondition(await driver.exitCode() === 0, 'Ctrl+Q quits from the terminal');

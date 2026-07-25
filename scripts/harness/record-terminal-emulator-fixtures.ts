@@ -101,6 +101,7 @@ class $TerminalEmulatorFixtureRecorder {
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      "status condition: status.ready === true",
       (status) => status.ready === true,
       15_000,
     );

@@ -186,39 +186,45 @@ async function adjustSettingThroughSettings(
   expectedValue: string,
 ): Promise<StatusSnapshot> {
   const targetSettingLabel = layoutSettingLabel(settingName);
-  const currentDescriptorIndex = Number(
-    HarnessSmoke.Class.readStatus(statusPath).settingsSelected,
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selected settings row is published before layout-setting navigation',
+    (status) => typeof status.settingsSelected === 'number'
+      && typeof status.settingsSelectedLabel === 'string',
   );
+  const currentDescriptorIndex = Number(selectionStatus.settingsSelected);
   if (currentDescriptorIndex > 0) {
     driver.sendKeysWithoutFrameExpectation(
       ...Array.from({ length: currentDescriptorIndex }, () => 'Up'),
     );
-    await HarnessSmoke.Class.awaitStatus(
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      'settings navigation reaches the first descriptor',
       (candidate) => Number(candidate.settingsSelected) === 0,
     );
   }
   for (let navigationStep = 0; navigationStep < 40; navigationStep++) {
-    const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
-    if (currentStatus.settingsSelectedLabel === targetSettingLabel) break;
-    const previousSelectedLabel = currentStatus.settingsSelectedLabel;
+    if (selectionStatus.settingsSelectedLabel === targetSettingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
     driver.sendKeysWithoutFrameExpectation('Down');
-    await HarnessSmoke.Class.awaitStatus(
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
+      `settings navigation advances toward ${targetSettingLabel}`,
       (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
     );
   }
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).settingsSelectedLabel
-      === targetSettingLabel,
+    selectionStatus.settingsSelectedLabel === targetSettingLabel,
     `${settingName} row is discovered from its live settings label`,
   );
   driver.sendKeysWithoutFrameExpectation('Right');
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate[settingName] === expectedValue",
     (candidate) => candidate[settingName] === expectedValue,
   );
   HarnessSmoke.Class.pass(
@@ -235,6 +241,7 @@ async function closeSettingsForLayoutFrame(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.settingsOpen === false",
     (candidate) => candidate.settingsOpen === false,
   );
   await driver.awaitQuiescence();
@@ -248,6 +255,7 @@ async function reopenSettingsAfterLayoutFrame(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.settingsOpen === true",
     (candidate) => candidate.settingsOpen === true,
   );
   await driver.awaitQuiescence();
@@ -259,7 +267,14 @@ async function cyclePanelAlignments(
   context: string,
 ): Promise<StatusSnapshot> {
   const alignmentCycle = ['left', 'center', 'right', 'justify'] as const;
-  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a valid panel alignment is published before cycling alignments',
+    (candidate) => alignmentCycle.includes(
+      candidate.panelAlignment as (typeof alignmentCycle)[number],
+    ),
+  );
   for (
     let panelAlignmentCount = 0;
     panelAlignmentCount < alignmentCycle.length;
@@ -290,7 +305,13 @@ async function changeDockVerticalSpan(
   settingName: 'leftDockVerticalSpan' | 'rightDockVerticalSpan',
   context: string,
 ): Promise<StatusSnapshot> {
-  const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const currentStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${settingName} is published before changing dock vertical span`,
+    (status) => status[settingName] === 'full-height'
+      || status[settingName] === 'ends-at-panel',
+  );
   const expectedSpan =
     currentStatus[settingName] === 'full-height'
       ? 'ends-at-panel'
@@ -381,7 +402,19 @@ async function assertSplitterStates(
   ) => boolean,
 ): Promise<void> {
   await driver.awaitQuiescence();
-  const initialStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const initialStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${splitterName} splitter geometry is published before interaction`,
+    (status) => {
+      try {
+        const region = splitterRegion(status, splitterName);
+        return region.visible && region.width > 0 && region.height > 0;
+      } catch {
+        return false;
+      }
+    },
+  );
   const initialRegion = splitterRegion(initialStatus, splitterName);
   HarnessSmoke.Class.requireCondition(
     initialRegion.visible && initialRegion.width > 0 && initialRegion.height > 0,
@@ -425,6 +458,7 @@ async function assertSplitterStates(
   const changedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: changed( initialRegion, splitterRegion(candidate, splitterName), candidate, )",
     (candidate) => changed(
       initialRegion,
       splitterRegion(candidate, splitterName),
@@ -452,10 +486,27 @@ async function assertSplitterStates(
     button: 'left',
   });
   driver.sendMouse({ kind: 'move', column: 1, row: 1 });
+  const settledSplitterStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${splitterName} splitter publishes its settled geometry after release`,
+    (status) => {
+      try {
+        return changed(
+          initialRegion,
+          splitterRegion(status, splitterName),
+          status,
+        );
+      } catch {
+        return false;
+      }
+    },
+  );
+  const settledSplitterPoint = splitterPoint(
+    splitterRegion(settledSplitterStatus, splitterName),
+  );
   await driver.awaitSnapshot(
-    (snapshot) => backgroundAt(snapshot, splitterPoint(
-      splitterRegion(HarnessSmoke.Class.readStatus(statusPath), splitterName),
-    )) === restingBackground,
+    (snapshot) => backgroundAt(snapshot, settledSplitterPoint) === restingBackground,
   );
   HarnessSmoke.Class.pass(`${splitterName} splitter returns to its muted rest role`);
 }
@@ -509,6 +560,7 @@ try {
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.ready === true",
     (candidate) => candidate.ready === true,
     20_000,
   );
@@ -599,6 +651,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.terminalVisible === true",
     (candidate) => candidate.terminalVisible === true,
   );
   await driver.awaitQuiescence();
@@ -751,9 +804,21 @@ try {
   );
 
   console.log('== harness layout: settings UI edits reconfigure live slot edges ==');
+  const sidebarLayoutStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the sidebar layout slot is published before opening settings',
+    (status) => {
+      try {
+        return layoutSlot(status, 'sidebar').width > 0;
+      } catch {
+        return false;
+      }
+    },
+  );
   clickCell(
     driver,
-    layoutSlot(HarnessSmoke.Class.readStatus(statusPath), 'sidebar').left + 2,
+    layoutSlot(sidebarLayoutStatus, 'sidebar').left + 2,
     4,
   );
   await driver.awaitQuiescence();
@@ -804,6 +869,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.settingsOpen === false",
     (candidate) => candidate.settingsOpen === false,
   );
 
@@ -811,6 +877,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.rightDockVisible === true",
     (candidate) => candidate.rightDockVisible === true,
   );
   HarnessSmoke.Class.requireCondition(
@@ -855,12 +922,14 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.settingsOpen === false",
     (candidate) => candidate.settingsOpen === false,
   );
   await invokeCommand(driver, 'View: Toggle Right Dock');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.rightDockVisible === false",
     (candidate) => candidate.rightDockVisible === false,
   );
 
@@ -869,6 +938,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.sidebarView === 'git' && splitterRegion(candidate, 'git').visible",
     (candidate) => candidate.sidebarView === 'git'
       && splitterRegion(candidate, 'git').visible,
   );
@@ -887,6 +957,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.rightDockVisible === true",
     (candidate) => candidate.rightDockVisible === true,
   );
   HarnessSmoke.Class.requireCondition(
@@ -897,6 +968,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.rightDockVisible === false",
     (candidate) => candidate.rightDockVisible === false,
   );
   await driver.awaitQuiescence();
@@ -917,6 +989,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: { const mouse = candidate.mouse as { x?: number; y?: number } | null; return mouse?.x === clockColumn && mouse.y === statusBarRow; }",
     (candidate) => {
       const mouse = candidate.mouse as { x?: number; y?: number } | null;
       return mouse?.x === clockColumn && mouse.y === statusBarRow;
@@ -930,6 +1003,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.rightDockVisible === true",
     (candidate) => candidate.rightDockVisible === true,
   );
   HarnessSmoke.Class.pass('clicking the status affordance opened the command-owned host');
@@ -949,10 +1023,13 @@ try {
     0,
     (before, after) => after.left < before.left,
   );
-  HarnessSmoke.Class.requireCondition(
-    Number(HarnessSmoke.Class.readStatus(statusPath).rightDockWidth) > 28,
-    'right-dock splitter resize live-applied and persisted its width setting',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the resized right dock width is live-applied and persisted',
+    (candidate) => Number(candidate.rightDockWidth) > 28,
   );
+  HarnessSmoke.Class.pass('right-dock splitter resize live-applied and persisted its width setting');
 
   driver.sendKeys('Control+q');
 
@@ -971,6 +1048,7 @@ try {
     await HarnessSmoke.Class.awaitStatus(
       compactDriver,
       compactStatusPath,
+      "status condition: candidate.ready === true",
       (candidate) => candidate.ready === true,
       20_000,
     );
@@ -978,6 +1056,7 @@ try {
     const compactStatus = await HarnessSmoke.Class.awaitStatus(
       compactDriver,
       compactStatusPath,
+      "status condition: candidate.terminalVisible === true",
       (candidate) => candidate.terminalVisible === true,
     );
     HarnessSmoke.Class.requireCondition(

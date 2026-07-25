@@ -9,9 +9,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  awaitStatusPublication,
   pass,
   requireCondition,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -32,8 +32,10 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness horizontal extent: open the real regression file ==');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'ready') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the application is ready for horizontal extent verification',
+    (status) => status.ready === true,
     60_000,
   );
   driver.sendKeys('Control+p');
@@ -41,10 +43,12 @@ try {
   driver.sendText(regressionFileName);
   await driver.awaitQuiescence();
   driver.sendKeys('Enter');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'activeBuffer')?.endsWith(
+  await awaitStatusPublication(
+    statusPath,
+    `the active buffer is src/modules/image/${regressionFileName}`,
+    (status) => String(status.activeBuffer).endsWith(
       `/src/modules/image/${regressionFileName}`,
-    ) === true,
+    ),
     15_000,
   );
   pass(`opened src/modules/image/${regressionFileName}`);
@@ -58,8 +62,6 @@ try {
   }
 
   console.log('== harness horizontal extent: Alt-wheel clamps against the opening viewport ==');
-  let stableClampObservations = 0;
-  let previousScrollLeft = -1;
   for (let wheelEvent = 1; wheelEvent <= 80; wheelEvent++) {
     driver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
@@ -78,13 +80,7 @@ try {
         throw error;
       }
     }
-    const scrollLeft = statusField<number>(statusPath, 'editorScrollLeft') ?? 0;
-    if (scrollLeft === previousScrollLeft) stableClampObservations += 1;
-    else stableClampObservations = 0;
-    previousScrollLeft = scrollLeft;
-    if (stableClampObservations >= 5) break;
   }
-  requireCondition(previousScrollLeft > 0, 'Alt-wheel moved the horizontal viewport');
   for (let silenceAttempt = 1; silenceAttempt <= 40; silenceAttempt++) {
     try {
       await driver.assertNoCompleteFrameEmittedFor(200);
@@ -93,7 +89,21 @@ try {
       if (silenceAttempt === 40) throw error;
     }
   }
-  const openingViewportClamp = statusField<number>(statusPath, 'editorScrollLeft') ?? 0;
+  let previousPublishedScrollLeft: number | null = null;
+  let stablePublicationCount = 0;
+  const openingClampStatus = await awaitStatusPublication(
+    statusPath,
+    'the positive opening-viewport horizontal clamp stabilizes',
+    (status) => {
+      const publishedScrollLeft = Number(status.editorScrollLeft);
+      if (publishedScrollLeft === previousPublishedScrollLeft) stablePublicationCount += 1;
+      else stablePublicationCount = 0;
+      previousPublishedScrollLeft = publishedScrollLeft;
+      return publishedScrollLeft > 0 && stablePublicationCount >= 3;
+    },
+  );
+  const openingViewportClamp = Number(openingClampStatus.editorScrollLeft);
+  pass('Alt-wheel moved the horizontal viewport');
   pass(`Alt-wheel stopped at opening-viewport scrollLeft ${openingViewportClamp}`);
 
   console.log('== harness horizontal extent: reveal the deep widest line without more horizontal input ==');
@@ -130,10 +140,12 @@ try {
     widestLineSnapshot !== null,
     `vertical wheel reveals the deep widest line marker "${widestLineMarker}"`,
   );
-  requireCondition(
-    statusField<number>(statusPath, 'editorScrollLeft') === openingViewportClamp,
-    'vertical scrolling does not change the horizontal clamp',
+  await awaitStatusPublication(
+    statusPath,
+    'vertical scrolling preserves the opening horizontal clamp',
+    (status) => status.editorScrollLeft === openingViewportClamp,
   );
+  pass('vertical scrolling does not change the horizontal clamp');
   requireCondition(
     widestLineSnapshot.findText(widestLineTail) !== null,
     `Alt-wheel reveals the widest line tail "${widestLineTail}"`,

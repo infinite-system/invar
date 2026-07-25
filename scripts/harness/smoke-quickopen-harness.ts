@@ -41,6 +41,7 @@ try {
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/src/widget.txt')",
     (status) => String(status.activeBuffer).endsWith('/src/widget.txt'),
   );
   HarnessSmoke.Class.pass(

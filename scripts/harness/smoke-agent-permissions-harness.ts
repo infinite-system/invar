@@ -20,6 +20,7 @@ async function submitPrompt(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentPendingPermissionTool === 'Bash'",
     (status) => status.agentPendingPermissionTool === 'Bash',
   );
   await driver.awaitGridCondition(
@@ -40,6 +41,7 @@ async function answerPermission(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.agentBusy === false && status.agentPendingPermissionTool === ''",
     (status) => status.agentBusy === false
       && status.agentPendingPermissionTool === '',
   );
@@ -66,6 +68,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -78,7 +81,12 @@ try {
   console.log('== harness agent permissions: allow one gated tool ==');
   await submitPrompt(driver, statusPath, 'first-gated-command');
   let snapshot = driver.snapshot();
-  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the gated agent tool remains busy behind the permission prompt',
+    (candidate) => candidate.agentBusy === true,
+  );
   HarnessSmoke.Class.requireCondition(
     status.agentBusy === true
       && snapshot.findText('? Claude wants to run') !== null
@@ -118,11 +126,13 @@ try {
     (snapshot) => snapshot.findText('? Claude wants to run') !== null
       && snapshot.findText('zqx') === null,
   );
-  status = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.agentPendingPermissionTool === 'Bash',
-    'stray typing leaves the permission unresolved',
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'stray typing leaves the Bash permission unresolved',
+    (candidate) => candidate.agentPendingPermissionTool === 'Bash',
   );
+  HarnessSmoke.Class.pass('stray typing leaves the permission unresolved');
   await answerPermission(driver, statusPath, 'y');
   HarnessSmoke.Class.pass('a later valid answer resolves the prompt');
 
@@ -135,12 +145,13 @@ try {
   driver.sendText('fifth-auto-allowed');
   await driver.awaitSnapshot((candidate) => candidate.findText('fifth-auto-allowed') !== null);
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(
+  status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    (candidate) => candidate.agentBusy === false,
+    "status condition: candidate.agentBusy === false",
+    (candidate) => candidate.agentBusy === false
+      && candidate.agentPendingPermissionTool === '',
   );
-  status = HarnessSmoke.Class.readStatus(statusPath);
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('gated for: fifth-auto-allowed') !== null,
   );

@@ -97,6 +97,7 @@ async function launchDriver(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     15_000,
   );
@@ -105,13 +106,25 @@ async function launchDriver(
 
 async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
   for (let openAttempt = 0; openAttempt < 4; openAttempt++) {
-    const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
-    if (typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0) return;
+    try {
+      await HarnessSmoke.Class.awaitStatus(
+        launchedDriver.driver,
+        launchedDriver.statusPath,
+        'an active buffer is already published',
+        (status) => typeof status.activeBuffer === 'string'
+          && status.activeBuffer.length > 0,
+        50,
+      );
+      return;
+    } catch {
+      // The fixture has not opened yet; drive the next tree row.
+    }
     launchedDriver.driver.sendKeys('Enter');
     try {
       await HarnessSmoke.Class.awaitStatus(
         launchedDriver.driver,
         launchedDriver.statusPath,
+        "status condition: typeof candidate.activeBuffer === 'string' && candidate.activeBuffer.length > 0",
         (candidate) => typeof candidate.activeBuffer === 'string'
           && candidate.activeBuffer.length > 0,
         1_000,
@@ -128,26 +141,54 @@ async function selectSettingByVisibleLabel(
   launchedDriver: LaunchedDriver,
   settingLabel: string,
 ): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    launchedDriver.driver,
+    launchedDriver.statusPath,
+    'the selected settings label is published before navigation',
+    (status) => typeof status.settingsSelectedLabel === 'string',
+  );
   for (let navigationStep = 0; navigationStep < 40; navigationStep++) {
-    const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
-    if (status.settingsSelectedLabel === settingLabel) break;
-    const previousSelectedLabel = status.settingsSelectedLabel;
+    if (selectionStatus.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
     launchedDriver.driver.sendKeys('Down');
-    await HarnessSmoke.Class.awaitStatus(
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
       launchedDriver.driver,
       launchedDriver.statusPath,
+      `settings navigation advances toward ${settingLabel}`,
       (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
     );
   }
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(launchedDriver.statusPath).settingsSelectedLabel
-      === settingLabel,
+    selectionStatus.settingsSelectedLabel === settingLabel,
     `${settingLabel} is discovered by its live settings label`,
   );
   await launchedDriver.driver.awaitGridCondition(
     `${settingLabel} is the visibly selected settings row`,
     (snapshot) => snapshot.findText(`› ${settingLabel}`) !== null,
   );
+}
+
+async function awaitStablePublishedNumber(
+  launchedDriver: LaunchedDriver,
+  fieldName: string,
+  description: string,
+): Promise<number> {
+  let previousValue: number | null = null;
+  let stablePublicationCount = 0;
+  const status = await HarnessSmoke.Class.awaitStatus(
+    launchedDriver.driver,
+    launchedDriver.statusPath,
+    description,
+    (candidate) => {
+      const currentValue = Number(candidate[fieldName]);
+      if (!Number.isFinite(currentValue)) return false;
+      if (currentValue === previousValue) stablePublicationCount += 1;
+      else stablePublicationCount = 0;
+      previousValue = currentValue;
+      return stablePublicationCount >= 3;
+    },
+  );
+  return Number(status[fieldName]);
 }
 
 async function settleMomentum(launchedDriver: LaunchedDriver): Promise<void> {
@@ -171,7 +212,11 @@ async function scrollTopAfterNotch(
       alt,
     });
     await settleMomentum(launchedDriver);
-    return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
+    return awaitStablePublishedNumber(
+      launchedDriver,
+      'editorScrollTop',
+      'the post-notch editor scroll top stabilizes',
+    );
   } finally {
     await launchedDriver.driver.dispose();
   }
@@ -191,7 +236,11 @@ async function scrollTopAfterFling(label: string, workspaceRoot: string): Promis
       await Bun.sleep(30);
     }
     await settleMomentum(launchedDriver);
-    return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollTop);
+    return awaitStablePublishedNumber(
+      launchedDriver,
+      'editorScrollTop',
+      'the post-fling editor scroll top stabilizes',
+    );
   } finally {
     await launchedDriver.driver.dispose();
   }
@@ -406,7 +455,11 @@ try {
         await Bun.sleep(120);
       }
       await settleMomentum(launchedDriver);
-      return Number(HarnessSmoke.Class.readStatus(launchedDriver.statusPath).editorScrollLeft);
+      return awaitStablePublishedNumber(
+        launchedDriver,
+        'editorScrollLeft',
+        'the horizontal editor scroll offset stabilizes',
+      );
     } finally {
       await launchedDriver.driver.dispose();
     }
@@ -601,6 +654,7 @@ try {
         const status = await HarnessSmoke.Class.awaitStatus(
           launchedDriver.driver,
           launchedDriver.statusPath,
+          "status condition: String(candidate.activeBuffer).endsWith('/big.ts') && ( candidate.lspSizeSuppressed === true || Number(candidate.diagnosticsCount) > 0 )",
           (candidate) => String(candidate.activeBuffer).endsWith('/big.ts')
             && (
               candidate.lspSizeSuppressed === true

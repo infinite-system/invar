@@ -7,6 +7,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -18,8 +19,8 @@ interface Rectangle {
   height: number;
 }
 
-function bottomPanelSlot(statusPath: string): Rectangle {
-  const layoutSlots = HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+function bottomPanelSlot(status: StatusSnapshot): Rectangle {
+  const layoutSlots = status.layoutSlots as
     | Record<string, Rectangle>
     | undefined;
   const bottomPanel = layoutSlots?.bottomPanel;
@@ -81,6 +82,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     firstStatusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -92,17 +94,22 @@ try {
       && candidate.findText('✦ Claude') !== null
       && candidate.findText('⇄') !== null,
   );
-  let status = HarnessSmoke.Class.readStatus(firstStatusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.agentEngine === 'claude' && status.agentTitle === 'Claude',
-    'Claude boot resolves engine and title',
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    firstStatusPath,
+    'Claude boot resolves the agent engine and title',
+    (candidate) => candidate.agentEngine === 'claude'
+      && candidate.agentTitle === 'Claude'
+      && typeof candidate.layoutSlots === 'object'
+      && candidate.layoutSlots !== null,
   );
+  HarnessSmoke.Class.pass('Claude boot resolves engine and title');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('✦ Claude') !== null
       && snapshot.findText('⇄') !== null,
     'Claude title and engine-cycle affordance render',
   );
-  let panelRectangle = bottomPanelSlot(firstStatusPath);
+  let panelRectangle = bottomPanelSlot(status);
   const initialEngineSegment = snapshot.findText('engine: claude');
   if (!initialEngineSegment) throw new Error('Claude engine segment disappeared');
   HarnessSmoke.Class.requireCondition(
@@ -129,11 +136,14 @@ try {
       && candidate.findText('✦ Codex') !== null
       && hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
-  status = HarnessSmoke.Class.readStatus(firstStatusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.agentEngine === 'codex' && status.agentTitle === 'Codex',
-    'Ctrl+E switches the live provider identity to Codex',
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    firstStatusPath,
+    'Ctrl+E publishes the Codex provider identity',
+    (candidate) => candidate.agentEngine === 'codex'
+      && candidate.agentTitle === 'Codex',
   );
+  HarnessSmoke.Class.pass('Ctrl+E switches the live provider identity to Codex');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('✦ Codex') !== null
       && hasTranscriptLabel(snapshot, panelRectangle, 'Claude'),
@@ -180,6 +190,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     firstStatusPath,
+    "status condition: candidate.agentEngine === 'claude'",
     (candidate) => candidate.agentEngine === 'claude',
   );
   await driver.awaitSnapshot((candidate) => candidate.findText('switched to claude') !== null);
@@ -195,6 +206,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     secondStatusPath,
+    "status condition: candidate.ready === true",
     (candidate) => candidate.ready === true,
     20_000,
   );
@@ -205,12 +217,18 @@ try {
       && candidate.findText('✦ Codex') !== null
       && candidate.findText('Ask Claude') === null,
   );
-  panelRectangle = bottomPanelSlot(secondStatusPath);
-  status = HarnessSmoke.Class.readStatus(secondStatusPath);
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    secondStatusPath,
+    'fresh Codex boot publishes the Codex provider identity',
+    (candidate) => candidate.agentEngine === 'codex'
+      && candidate.agentTitle === 'Codex'
+      && typeof candidate.layoutSlots === 'object'
+      && candidate.layoutSlots !== null,
+  );
+  panelRectangle = bottomPanelSlot(status);
   HarnessSmoke.Class.requireCondition(
-    status.agentEngine === 'codex'
-      && status.agentTitle === 'Codex'
-      && snapshot.findText('Ask Claude') === null,
+    snapshot.findText('Ask Claude') === null,
     'Codex-provider boot has no frozen Claude identity',
   );
   await submitTurn(driver, 'hello codex');

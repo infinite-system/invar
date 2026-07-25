@@ -14,8 +14,6 @@ import {
   dragBetweenCells,
   pass,
   requireCondition,
-  requireEqual,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -58,30 +56,47 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness editor: launch, navigate, and open a file ==');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'ready') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the application is ready with an active workspace',
+    (status) => status.ready === true && Boolean(status.activeWorkspace),
     15_000,
   );
-  requireCondition(Boolean(statusField<string>(statusPath, 'activeWorkspace')), 'workspace is active');
+  pass('workspace is active');
   driver.sendKeys('Down');
   await driver.awaitQuiescence();
   driver.sendKeys('Down');
   await driver.awaitQuiescence();
   for (let openAttempt = 1; openAttempt <= 8; openAttempt++) {
-    if (statusField<string>(statusPath, 'activeBuffer')) break;
+    const openAttemptStatus = await awaitStatusPublication(
+      statusPath,
+      'the active buffer field is published during tree navigation',
+      (status) => Object.hasOwn(status, 'activeBuffer'),
+    );
+    if (openAttemptStatus.activeBuffer) break;
     driver.sendKeys('Enter');
     await driver.awaitQuiescence();
     driver.sendKeys('Down');
     await driver.awaitQuiescence();
   }
-  const activeBufferPath = statusField<string>(statusPath, 'activeBuffer');
-  requireCondition(Boolean(activeBufferPath), 'tree navigation opened a file');
-  if (!activeBufferPath) throw new Error('FAIL active buffer path is absent after open');
+  const openedBufferStatus = await awaitStatusPublication(
+    statusPath,
+    'tree navigation publishes an active buffer path',
+    (status) => typeof status.activeBuffer === 'string'
+      && status.activeBuffer.length > 0,
+  );
+  const activeBufferPath = String(openedBufferStatus.activeBuffer);
+  pass('tree navigation opened a file');
 
   console.log('== harness editor: typing updates the document and native caret ==');
   driver.sendKeys('Right');
   await driver.awaitQuiescence();
-  const revisionBeforeTyping = statusField<number>(statusPath, 'bufferRevision') ?? 0;
+  const typingBaselineStatus = await awaitStatusPublication(
+    statusPath,
+    'the buffer revision is published before typing',
+    (status) => typeof status.bufferRevision === 'number',
+  );
+  const revisionBeforeTyping = Number(typingBaselineStatus.bufferRevision);
   driver.sendText('X');
   let snapshot = await driver.awaitSnapshot((candidate) => {
     const typedPosition = candidate.findText('X');
@@ -89,10 +104,12 @@ try {
       && candidate.cursorColumn === typedPosition.column + 1
       && candidate.cursorRow === typedPosition.row;
   });
-  requireCondition(
-    (statusField<number>(statusPath, 'bufferRevision') ?? 0) > revisionBeforeTyping,
-    'typing bumped the buffer revision',
+  await awaitStatusPublication(
+    statusPath,
+    'typing advances the buffer revision',
+    (status) => Number(status.bufferRevision) > revisionBeforeTyping,
   );
+  pass('typing bumped the buffer revision');
   const typedPosition = snapshot.findText('X');
   requireCondition(typedPosition !== null, 'typed glyph paints in the emulator grid');
   const typedGutterNumber = gutterNumber(snapshot, typedPosition.row);
@@ -104,18 +121,27 @@ try {
 
   console.log('== harness editor: keyboard selection creates and clears one range ==');
   driver.sendKeys('Shift+Right');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'hasSelection') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'keyboard selection publishes one selection range',
+    (status) => status.hasSelection === true && Boolean(status.selection),
   );
-  requireCondition(Boolean(statusField(statusPath, 'selection')), 'selection range is published');
+  pass('selection range is published');
   driver.sendKeys('Escape');
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'hasSelection') === false,
+  await awaitStatusPublication(
+    statusPath,
+    'Escape publishes the keyboard selection as cleared',
+    (status) => status.hasSelection === false,
   );
   pass('Escape cleared the keyboard selection');
 
   console.log('== harness editor: undo to disk state clears flag and rendered dirty dot ==');
-  requireEqual(statusField<boolean>(statusPath, 'dirty'), true, 'buffer is dirty after typing');
+  await awaitStatusPublication(
+    statusPath,
+    'the typed buffer is published as dirty',
+    (status) => status.dirty === true,
+  );
+  pass('buffer is dirty after typing');
   snapshot = await driver.awaitGridCondition(
     'the active tab paints its dirty dot',
     (candidate) => activeTabHasDirtyDot(candidate, activeBufferPath),
@@ -125,11 +151,21 @@ try {
     'active tab paints the dirty dot',
   );
   for (let undoAttempt = 1; undoAttempt <= 5; undoAttempt++) {
-    if (statusField<boolean>(statusPath, 'dirty') === false) break;
+    const undoStatus = await awaitStatusPublication(
+      statusPath,
+      'the dirty field is published during undo',
+      (status) => typeof status.dirty === 'boolean',
+    );
+    if (undoStatus.dirty === false) break;
     driver.sendKeys('Control+z');
     await driver.awaitQuiescence();
   }
-  requireEqual(statusField<boolean>(statusPath, 'dirty'), false, 'undo cleared the dirty flag');
+  await awaitStatusPublication(
+    statusPath,
+    'undo publishes the buffer as clean',
+    (status) => status.dirty === false,
+  );
+  pass('undo cleared the dirty flag');
   snapshot = await driver.awaitGridCondition(
     'undo clears the active tab dirty dot',
     (candidate) => !activeTabHasDirtyDot(candidate, activeBufferPath),
@@ -161,29 +197,33 @@ try {
   );
   await driver.awaitGridCondition(
     'the dragged editor selection paints before the untouched interval begins',
-    (candidate) => statusField<boolean>(statusPath, 'hasSelection') === true
-      && candidate.rowCells(selectionLine.row)
+    (candidate) => candidate.rowCells(selectionLine.row)
         .slice(selectionLine.column, selectionLine.column + 11)
         .some((cell) => cell.background !== unselectedBackground),
   );
-  await driver.assertNoCompleteFrameEmittedFor(800);
-  requireEqual(
-    statusField<boolean>(statusPath, 'hasSelection'),
-    true,
-    'selection remains after an untouched interval',
+  await awaitStatusPublication(
+    statusPath,
+    'the dragged editor selection is published',
+    (status) => status.hasSelection === true,
   );
+  await driver.assertNoCompleteFrameEmittedFor(800);
+  await awaitStatusPublication(
+    statusPath,
+    'the selection remains published after an untouched interval',
+    (status) => status.hasSelection === true,
+  );
+  pass('selection remains after an untouched interval');
   driver.sendRawInputWithoutFrameExpectation('\x03');
   await awaitStatusPublication(
     statusPath,
-    (status) => (status.lastCopyChars as number | undefined) !== undefined,
+    'Ctrl+C publishes a positive copied character count',
+    (status) => Number(status.lastCopyChars) > 0,
   );
-  requireCondition(
-    (statusField<number>(statusPath, 'lastCopyChars') ?? 0) > 0,
-    'Ctrl+C copied selected characters',
-  );
+  pass('Ctrl+C copied selected characters');
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.hasSelection === false",
     (status) => status.hasSelection === false,
   );
 
@@ -195,7 +235,11 @@ try {
   const clickTarget = snapshot.findText('tiny project');
   requireCondition(clickTarget !== null, 'editor click target is visible');
   clickCell(driver, clickTarget.column, clickTarget.row);
-  await driver.awaitSnapshot(() => Boolean(statusField(statusPath, 'mouse')));
+  await awaitStatusPublication(
+    statusPath,
+    'the real input path publishes the mouse click',
+    (status) => Boolean(status.mouse),
+  );
   pass('mouse click is published by the real input path');
 
   console.log('== harness editor: End reveals the long line end ==');
@@ -223,35 +267,42 @@ try {
     fixturePosition.column + 6,
     fixturePosition.row,
   );
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'hasSelection') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the rightward drag selection is published',
+    (status) => status.hasSelection === true,
   );
   driver.sendRawInputWithoutFrameExpectation('\x03');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.lastCopyChars === 7",
     (status) => status.lastCopyChars === 7,
   );
-  requireEqual(
-    statusField<number>(statusPath, 'lastCopyChars'),
-    7,
-    'rightward drag copied the final release-cell character',
-  );
+  pass('rightward drag copied the final release-cell character');
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.hasSelection === false",
     (status) => status.hasSelection === false,
   );
   driver.sendKeys('Home');
   await driver.awaitQuiescence();
 
   console.log('== harness editor: Option-wheel routes horizontally and reverses ==');
-  const horizontalScrollBefore = statusField<number>(statusPath, 'editorScrollLeft') ?? 0;
+  const horizontalScrollBaseline = await awaitStatusPublication(
+    statusPath,
+    'the horizontal scroll offset is published before Option-wheel input',
+    (status) => typeof status.editorScrollLeft === 'number',
+  );
+  const horizontalScrollBefore = Number(horizontalScrollBaseline.editorScrollLeft);
   const wheelRow = fixturePosition.row;
   for (let wheelEvent = 1; wheelEvent <= 6; wheelEvent++) {
     driver.sendRawInput(`\x1b[<75;44;${wheelRow + 1}M`);
   }
-  await driver.awaitSnapshot(
-    () => (statusField<number>(statusPath, 'editorScrollLeft') ?? 0) > horizontalScrollBefore,
+  await awaitStatusPublication(
+    statusPath,
+    'Option-wheel advances the horizontal scroll offset',
+    (status) => Number(status.editorScrollLeft) > horizontalScrollBefore,
   );
   pass('Option-wheel routes to horizontal scroll');
   for (let wheelEvent = 1; wheelEvent <= 8; wheelEvent++) {
@@ -259,8 +310,10 @@ try {
   }
   await driver.awaitQuiescence();
   driver.sendKeys('Home');
-  await driver.awaitSnapshot(
-    () => statusField<number>(statusPath, 'editorScrollLeft') === 0,
+  await awaitStatusPublication(
+    statusPath,
+    'Home publishes a zero horizontal scroll offset',
+    (status) => status.editorScrollLeft === 0,
   );
 
   console.log('== harness editor: held right-edge drag auto-scrolls and extends selection ==');
@@ -276,10 +329,12 @@ try {
     row: fixturePosition.row,
     button: 'left',
   });
-  await driver.awaitSnapshot(
-    () => (statusField<number>(statusPath, 'editorScrollLeft') ?? 0) > 5,
+  const edgeScrollStatus = await awaitStatusPublication(
+    statusPath,
+    'the held right-edge drag publishes horizontal auto-scroll beyond five columns',
+    (status) => Number(status.editorScrollLeft) > 5,
   );
-  const edgeScrollLeft = statusField<number>(statusPath, 'editorScrollLeft') ?? 0;
+  const edgeScrollLeft = Number(edgeScrollStatus.editorScrollLeft);
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
     column: 117,
@@ -296,6 +351,7 @@ try {
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.focus === 'files'",
     (status) => status.focus === 'files',
   );
   snapshot = await driver.awaitGridCondition(
@@ -318,6 +374,7 @@ try {
   });
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.focus === 'files' && status.treeSelected === 0",
     (status) => status.focus === 'files' && status.treeSelected === 0,
   );
   pass('tree click focuses files and selects row zero');
@@ -328,7 +385,11 @@ try {
   const editorClickPosition = snapshot.findText('tiny project');
   requireCondition(editorClickPosition !== null, 'editor pane click target remains visible');
   clickCell(driver, editorClickPosition.column, editorClickPosition.row);
-  await driver.awaitSnapshot(() => statusField<string>(statusPath, 'focus') === 'editor');
+  await awaitStatusPublication(
+    statusPath,
+    'the editor click publishes editor focus',
+    (status) => status.focus === 'editor',
+  );
   pass('editor click restores editor focus');
   clickCell(driver, editorClickPosition.column + 3, editorClickPosition.row);
   await driver.awaitQuiescence();
@@ -354,22 +415,29 @@ try {
     'greeter.ts tree row is visible',
   );
   clickCell(driver, greeterTreePosition.column, greeterTreePosition.row);
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'activeBuffer')?.endsWith('greeter.ts') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the tree click opens greeter.ts without moving its cursor',
+    (status) => String(status.activeBuffer).endsWith('greeter.ts')
+      && (status.cursor as { line?: number } | undefined)?.line === 0,
   );
-  const cursor = statusField<{ line?: number }>(statusPath, 'cursor');
-  requireCondition(cursor?.line === 0, 'tree click opens greeter.ts without moving its editor cursor');
+  pass('tree click opens greeter.ts without moving its editor cursor');
 
   console.log('== harness editor: palette and status gear open their overlays ==');
   driver.sendKeys('F1');
   await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Command Palette') !== null
-      && statusField<string>(statusPath, 'overlay') === 'palette',
+    (candidate) => candidate.findText('Command Palette') !== null,
+  );
+  await awaitStatusPublication(
+    statusPath,
+    'the command palette overlay is published',
+    (status) => status.overlay === 'palette',
   );
   pass('F1 opens the command palette');
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.overlay === null",
     (status) => status.overlay === null,
   );
   // Click the gear WHERE IT RENDERS: fixed offsets from the right edge encode one status-bar
@@ -394,24 +462,38 @@ try {
   });
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.settingsOpen === true",
     (status) => status.settingsOpen === true,
   );
   pass('status-bar gear opens Settings');
   driver.sendRawInputWithoutFrameExpectation('\x1b');
   await awaitStatusPublication(
     statusPath,
+    "status condition: status.settingsOpen === false",
     (status) => status.settingsOpen === false,
   );
 
   console.log('== harness editor: opening files adds tabs and dehydrates clean backgrounds ==');
-  const tabsBefore = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
+  const tabBaselineStatus = await awaitStatusPublication(
+    statusPath,
+    'the tab count is published before opening more files',
+    (status) => typeof status.bufferTabCount === 'number',
+  );
+  const tabsBefore = Number(tabBaselineStatus.bufferTabCount);
   const targetTabCount = tabsBefore + 2;
   for (let openAttempt = 1; openAttempt <= 10; openAttempt++) {
-    if ((statusField<number>(statusPath, 'bufferTabCount') ?? 0) >= targetTabCount) break;
-    if (statusField<string>(statusPath, 'focus') !== 'files') {
+    const openStatus = await awaitStatusPublication(
+      statusPath,
+      'the tab count and focus are published while opening more files',
+      (status) => typeof status.bufferTabCount === 'number'
+        && typeof status.focus === 'string',
+    );
+    if (Number(openStatus.bufferTabCount) >= targetTabCount) break;
+    if (openStatus.focus !== 'files') {
       driver.sendRawInputWithoutFrameExpectation('\t');
       await awaitStatusPublication(
         statusPath,
+        "status condition: status.focus === 'files'",
         (status) => status.focus === 'files',
       );
     }
@@ -420,8 +502,14 @@ try {
     await driver.assertNoCompleteFrameEmittedFor(50).catch(() => undefined);
     await driver.awaitQuiescence();
   }
-  const tabsAfterOpen = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
-  const liveAfterOpen = statusField<number>(statusPath, 'bufferLiveCount') ?? 0;
+  const tabsAfterOpenStatus = await awaitStatusPublication(
+    statusPath,
+    'the increased tab count and live document count are published',
+    (status) => Number(status.bufferTabCount) > tabsBefore
+      && typeof status.bufferLiveCount === 'number',
+  );
+  const tabsAfterOpen = Number(tabsAfterOpenStatus.bufferTabCount);
+  const liveAfterOpen = Number(tabsAfterOpenStatus.bufferLiveCount);
   requireCondition(tabsAfterOpen > tabsBefore, `opening files adds tabs (${tabsBefore} to ${tabsAfterOpen})`);
   requireCondition(
     liveAfterOpen < tabsAfterOpen,
@@ -429,14 +517,21 @@ try {
   );
   driver.sendKeys('Control+w');
   await driver.awaitQuiescence();
-  if ((statusField<number>(statusPath, 'pendingCloseTab') ?? -1) >= 0) {
+  const pendingCloseStatus = await awaitStatusPublication(
+    statusPath,
+    'the pending close tab state is published',
+    (status) => typeof status.pendingCloseTab === 'number',
+  );
+  if (Number(pendingCloseStatus.pendingCloseTab) >= 0) {
     driver.sendKeys('y');
     await driver.awaitQuiescence();
   }
-  requireCondition(
-    (statusField<number>(statusPath, 'bufferTabCount') ?? tabsAfterOpen) < tabsAfterOpen,
-    'Ctrl+W closes the active tab',
+  await awaitStatusPublication(
+    statusPath,
+    'Ctrl+W publishes a reduced buffer tab count',
+    (status) => Number(status.bufferTabCount) < tabsAfterOpen,
   );
+  pass('Ctrl+W closes the active tab');
 
   console.log('== harness editor: demand-driven rendering is silent at rest ==');
   driver.sendKeys('Escape');

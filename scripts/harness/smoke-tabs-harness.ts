@@ -10,7 +10,6 @@ import {
   awaitStatusPublication,
   pass,
   requireCondition,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -56,22 +55,35 @@ try {
   console.log('== harness tabs: open enough files to overflow the strip ==');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('file-1.txt') !== null, 15_000);
   for (let openAttempt = 1; openAttempt <= 30; openAttempt++) {
-    if ((statusField<number>(statusPath, 'bufferTabCount') ?? 0) >= 8) break;
-    if (statusField<string>(statusPath, 'focus') !== 'files') {
+    const openingStatus = await awaitStatusPublication(
+      statusPath,
+      'the tab count and focus are published before opening another file',
+      (status) => typeof status.bufferTabCount === 'number'
+        && typeof status.focus === 'string',
+    );
+    if (Number(openingStatus.bufferTabCount) >= 8) break;
+    if (openingStatus.focus !== 'files') {
       driver.sendKeys('Tab');
       await awaitStatusPublication(
         statusPath,
+        "status condition: status.focus === 'files'",
         (status) => status.focus === 'files',
       );
     }
-    const previousTabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
+    const previousTabCount = Number(openingStatus.bufferTabCount);
     driver.sendKeys('Down', 'Enter');
     await awaitStatusPublication(
       statusPath,
+      "status condition: Number(status.bufferTabCount) > previousTabCount",
       (status) => Number(status.bufferTabCount) > previousTabCount,
     );
   }
-  const tabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 0;
+  const openedTabsStatus = await awaitStatusPublication(
+    statusPath,
+    'at least eight buffer tabs are published',
+    (status) => Number(status.bufferTabCount) >= 8,
+  );
+  const tabCount = Number(openedTabsStatus.bufferTabCount);
   requireCondition(tabCount >= 8, `opened ${tabCount} tabs`);
 
   console.log('== harness tabs: filenames, close marks, and breadcrumb paint without dividers ==');
@@ -94,16 +106,24 @@ try {
   );
 
   console.log('== harness tabs: Ctrl+PageDown and Ctrl+PageUp cycle positionally ==');
-  const startIndex = statusField<number>(statusPath, 'activeBufferIndex') ?? 0;
+  const startIndexStatus = await awaitStatusPublication(
+    statusPath,
+    'the active buffer index is published before positional cycling',
+    (status) => typeof status.activeBufferIndex === 'number',
+  );
+  const startIndex = Number(startIndexStatus.activeBufferIndex);
   driver.sendKeys('Control+PageDown');
-  await driver.awaitSnapshot(
-    () => statusField<number>(statusPath, 'activeBufferIndex')
-      === ((startIndex + 1) % tabCount),
+  await awaitStatusPublication(
+    statusPath,
+    'Ctrl+PageDown publishes the next active buffer index',
+    (status) => status.activeBufferIndex === ((startIndex + 1) % tabCount),
   );
   pass('Ctrl+PageDown advanced exactly one tab with wrap');
   driver.sendKeys('Control+PageUp');
-  await driver.awaitSnapshot(
-    () => statusField<number>(statusPath, 'activeBufferIndex') === startIndex,
+  await awaitStatusPublication(
+    statusPath,
+    'Ctrl+PageUp republishes the starting active buffer index',
+    (status) => status.activeBufferIndex === startIndex,
   );
   pass('Ctrl+PageUp returned to the starting tab');
 
@@ -117,8 +137,10 @@ try {
   requireCondition(badge.text.includes(`/${tabCount}`), `count badge shows total ${badge.text}`);
   driver.sendMouse({ kind: 'press', column: badge.column, row: badge.row, button: 'left' });
   driver.sendMouse({ kind: 'release', column: badge.column, row: badge.row, button: 'left' });
-  await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'boundedListPopupOpen') === true,
+  await awaitStatusPublication(
+    statusPath,
+    'the all-buffers popup is published as open',
+    (status) => status.boundedListPopupOpen === true,
   );
   pass('badge click opened the all-buffers dropdown');
   driver.sendKeys('Escape');
@@ -126,11 +148,21 @@ try {
 
   console.log('== harness tabs: right arrow pans without changing the active tab ==');
   for (let cycleAttempt = 0; cycleAttempt < tabCount; cycleAttempt++) {
-    if (statusField<number>(statusPath, 'activeBufferIndex') === 0) break;
+    const cycleStatus = await awaitStatusPublication(
+      statusPath,
+      'the active buffer index is published during tab cycling',
+      (status) => typeof status.activeBufferIndex === 'number',
+    );
+    if (cycleStatus.activeBufferIndex === 0) break;
     driver.sendKeys('Control+PageUp');
     await driver.awaitQuiescence();
   }
-  const activeIndexBeforeArrow = statusField<number>(statusPath, 'activeBufferIndex');
+  const arrowBaselineStatus = await awaitStatusPublication(
+    statusPath,
+    'the active buffer index is published before panning the strip',
+    (status) => typeof status.activeBufferIndex === 'number',
+  );
+  const activeIndexBeforeArrow = arrowBaselineStatus.activeBufferIndex;
   snapshot = await driver.awaitGridCondition(
     'the buffer count badge remains visible beside the tab pan arrows',
     (candidate) => badgePosition(candidate.textRows(), tabCount) !== null,
@@ -149,11 +181,12 @@ try {
     row: refreshedBadge.row,
     button: 'left',
   });
-  await driver.awaitQuiescence();
-  requireCondition(
-    statusField<number>(statusPath, 'activeBufferIndex') === activeIndexBeforeArrow,
-    'right arrow pans the strip without changing the active tab',
+  await awaitStatusPublication(
+    statusPath,
+    'the strip pan preserves the active buffer index',
+    (status) => status.activeBufferIndex === activeIndexBeforeArrow,
   );
+  pass('right arrow pans the strip without changing the active tab');
 
   driver.sendKeys('Control+q');
   console.log('smoke-tabs-harness: ALL-PASS');

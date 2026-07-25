@@ -129,6 +129,7 @@ try {
   const hoverStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.quickOpenSelected === 0",
     (status) => status.quickOpenSelected === 0,
   );
   HarnessSmoke.Class.requireCondition(
@@ -150,6 +151,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/sample.txt') && status.quickOpenOpen === false",
     (status) => String(status.activeBuffer).endsWith('/sample.txt')
       && status.quickOpenOpen === false,
   );
@@ -162,6 +164,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.findMatchCount === 4 && status.findCurrentMatchIndex === 0",
     (status) => status.findMatchCount === 4 && status.findCurrentMatchIndex === 0,
   );
   snapshot = driver.snapshot();
@@ -181,6 +184,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.findCurrentMatchIndex === 1",
     (status) => status.findCurrentMatchIndex === 1,
   );
   snapshot = await driver.awaitGridCondition(
@@ -206,13 +210,20 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.findCaseSensitive === true && status.findMatchCount === 1",
     (status) => status.findCaseSensitive === true && status.findMatchCount === 1,
   );
   HarnessSmoke.Class.pass('Aa click enables case sensitivity and immediately re-filters');
 
   driver.sendKeys('Control+h');
   await driver.awaitSnapshot((candidate) => candidate.findText('Replace') !== null);
-  const revisionBeforeReplace = Number(HarnessSmoke.Class.readStatus(statusPath).bufferRevision);
+  const replaceBaselineStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the buffer revision is published before replace-all',
+    (status) => typeof status.bufferRevision === 'number',
+  );
+  const revisionBeforeReplace = Number(replaceBaselineStatus.bufferRevision);
   buttonGeometry = findButtonGeometry(driver.snapshot());
   const replaceAllColumn = buttonGeometry.caseColumn + 9;
   driver.sendMouse({
@@ -230,6 +241,7 @@ try {
   const replacedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.bufferRevision) > revisionBeforeReplace && status.findMatchCount === 0",
     (status) => Number(status.bufferRevision) > revisionBeforeReplace
       && status.findMatchCount === 0,
   );
@@ -252,6 +264,7 @@ try {
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.quickOpenMode === 'workspacePath' && candidate.quickOpenPathOpenable === true",
     (candidate) => candidate.quickOpenMode === 'workspacePath'
       && candidate.quickOpenPathOpenable === true,
   );
@@ -268,6 +281,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.quickOpenPathOpenable === false && candidate.quickOpenMatches === 2",
     (candidate) => candidate.quickOpenPathOpenable === false
       && candidate.quickOpenMatches === 2,
   );
@@ -292,6 +306,7 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(candidate.quickOpenQuery).includes('sibling-alpha/') && candidate.quickOpenOpen === true && candidate.quickOpenPathOpenable === true",
     (candidate) => String(candidate.quickOpenQuery).includes('sibling-alpha/')
       && candidate.quickOpenOpen === true
       && candidate.quickOpenPathOpenable === true,

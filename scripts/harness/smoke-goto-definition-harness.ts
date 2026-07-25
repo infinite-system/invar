@@ -22,8 +22,8 @@ function useSitePosition(snapshot: HarnessSnapshot.Model): { row: number; column
   return null;
 }
 
-function cursorPosition(statusPath: string): string {
-  const cursor = HarnessSmoke.Class.readStatus(statusPath).cursor as
+function cursorPosition(status: { cursor?: unknown }): string {
+  const cursor = status.cursor as
     | { line?: number; col?: number }
     | undefined;
   return cursor ? `${cursor.line},${cursor.col}` : 'none';
@@ -83,6 +83,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -91,9 +92,10 @@ try {
     'the greetWidget use site in bar.ts is visible',
     (candidate) => candidate.findText('const message') !== null,
   );
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const plainClickStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/bar.ts')",
     (status) => String(status.activeBuffer).endsWith('/bar.ts'),
   );
   HarnessSmoke.Class.pass('bar.ts opens through the file tree');
@@ -121,9 +123,10 @@ try {
     (candidate) => candidate.findText('export function greetWidget') !== null,
     30_000,
   );
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const controlClickStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: { const cursor = status.cursor as { line?: number; col?: number } | undefined; return String(status.activeBuffer).endsWith('/foo.ts') && cursor?.line === 0 && cursor.col === 16; }",
     (status) => {
       const cursor = status.cursor as { line?: number; col?: number } | undefined;
       return String(status.activeBuffer).endsWith('/foo.ts')
@@ -133,7 +136,7 @@ try {
     30_000,
   );
   HarnessSmoke.Class.requireCondition(
-    cursorPosition(statusPath) === '0,16',
+    cursorPosition(controlClickStatus) === '0,16',
     'Ctrl+click lands on the greetWidget declaration cursor',
   );
   HarnessSmoke.Class.pass('declaration line is visible after Ctrl+click');
@@ -156,9 +159,10 @@ try {
     'clicking the bar.ts tab restores the greetWidget use site on the grid',
     (candidate) => candidate.findText('const message') !== null,
   );
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const functionKeyStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/bar.ts')",
     (status) => String(status.activeBuffer).endsWith('/bar.ts'),
   );
   usePosition = useSitePosition(snapshot);
@@ -178,14 +182,16 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: { const cursor = status.cursor as { line?: number } | undefined; return String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2; }",
     (status) => {
       const cursor = status.cursor as { line?: number } | undefined;
       return String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2;
     },
   );
+  const plainClickCursor = plainClickStatus.cursor as { line?: number; col?: number } | undefined;
   HarnessSmoke.Class.requireCondition(
-    String(HarnessSmoke.Class.readStatus(statusPath).activeBuffer).endsWith('/bar.ts')
-      && cursorPosition(statusPath).startsWith('2,'),
+    String(plainClickStatus.activeBuffer).endsWith('/bar.ts')
+      && plainClickCursor?.line === 2,
     'plain click places the cursor without jumping',
   );
   driver.sendKeys('F12');
@@ -197,6 +203,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: { const cursor = status.cursor as { line?: number; col?: number } | undefined; return String(status.activeBuffer).endsWith('/foo.ts') && cursor?.line === 0 && cursor.col === 16; }",
     (status) => {
       const cursor = status.cursor as { line?: number; col?: number } | undefined;
       return String(status.activeBuffer).endsWith('/foo.ts')
@@ -206,7 +213,7 @@ try {
     20_000,
   );
   HarnessSmoke.Class.requireCondition(
-    cursorPosition(statusPath) === '0,16',
+    cursorPosition(functionKeyStatus) === '0,16',
     'F12 lands on the same declaration',
   );
 

@@ -31,7 +31,8 @@ try {
   console.log('== harness navigation history: open alpha and preserve its cursor ==');
   await driver.awaitSnapshot((snapshot) => snapshot.findText('alpha.ts') !== null, 15_000);
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === alphaPath);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.activeBuffer === alphaPath",
+                                                           (status) => status.activeBuffer === alphaPath);
   await driver.awaitGridCondition(
     'alpha.ts content is visible after opening the file',
     (snapshot) => snapshot.findText('alpha one') !== null,
@@ -41,6 +42,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.cursor?.line === 3 && status.cursor.col === 0",
     (status) => status.cursor?.line === 3 && status.cursor.col === 0,
   );
   HarnessSmoke.Class.pass('cursor moved to alpha.ts line 3 (3,0)');
@@ -50,12 +52,15 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.focus === 'files'",
     (status) => status.focus === 'files',
   );
   driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.treeSelected === 1);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.treeSelected === 1",
+                                                           (status) => status.treeSelected === 1);
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.activeBuffer === betaPath",
+                                                           (status) => status.activeBuffer === betaPath);
   await driver.awaitGridCondition(
     'beta.ts content is visible after opening the file',
     (snapshot) => snapshot.findText('beta one') !== null,
@@ -67,6 +72,7 @@ try {
   const backStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeBuffer === alphaPath && status.cursor?.line === 3",
     (status) => status.activeBuffer === alphaPath && status.cursor?.line === 3,
   );
   HarnessSmoke.Class.pass('Alt+[ restored alpha.ts as the active buffer');
@@ -79,7 +85,8 @@ try {
     (snapshot) => snapshot.findText('alpha one') !== null,
   );
   driver.sendKeys('Alt+]');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.activeBuffer === betaPath",
+                                                           (status) => status.activeBuffer === betaPath);
   await driver.awaitGridCondition(
     'beta.ts content is visible after navigating forward',
     (snapshot) => snapshot.findText('beta one') !== null,
@@ -113,7 +120,12 @@ try {
   );
   driver.sendMouse({ kind: 'press', column: backColumn, row: commandBarRow, button: 'left' });
   driver.sendMouse({ kind: 'release', column: backColumn, row: commandBarRow, button: 'left' });
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === alphaPath);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'clicking command-bar back activates alpha.ts',
+    (status) => status.activeBuffer === alphaPath,
+  );
   await driver.awaitGridCondition(
     'alpha.ts content is visible after clicking the back breadcrumb',
     (candidate) => candidate.findText('alpha one') !== null,
@@ -132,7 +144,8 @@ try {
     row: commandBarRow,
     button: 'left',
   });
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, (status) => status.activeBuffer === betaPath);
+  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.activeBuffer === betaPath",
+                                                           (status) => status.activeBuffer === betaPath);
   await driver.awaitGridCondition(
     'beta.ts content is visible after clicking the forward breadcrumb',
     (candidate) => candidate.findText('beta one') !== null,

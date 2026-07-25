@@ -7,10 +7,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  awaitStatusPublication,
   pass,
   requireCondition,
-  requireEqual,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -26,10 +25,12 @@ async function assertOnlyOverlay(
   expectedOverlay: string,
   expectedTitle: string,
 ): Promise<void> {
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText(expectedTitle) !== null
-      && statusField<string>(statusPath, 'inputOverlay') === expectedOverlay
-      && statusField<number>(statusPath, 'inputOverlayCount') === 1,
+  await driver.awaitSnapshot((snapshot) => snapshot.findText(expectedTitle) !== null);
+  await awaitStatusPublication(
+    statusPath,
+    `only the ${expectedOverlay} overlay is published`,
+    (status) => status.inputOverlay === expectedOverlay
+      && status.inputOverlayCount === 1,
   );
   pass(`only ${expectedOverlay} is active and ${expectedTitle} paints`);
 }
@@ -52,8 +53,10 @@ async function proveQuitFromOverlay(
   try {
     await openDocument(driver);
     driver.sendKeys(openingKey);
-    await driver.awaitSnapshot(
-      () => statusField<string>(statusPath, 'inputOverlay') === expectedOverlay,
+    await awaitStatusPublication(
+      statusPath,
+      `${expectedOverlay} is active before the reserved quit command`,
+      (status) => status.inputOverlay === expectedOverlay,
     );
     driver.sendKeys('Control+q');
     const exitResult = await Promise.race([
@@ -87,21 +90,28 @@ try {
   await assertOnlyOverlay(driver, statusPath, 'findBar', 'Find');
   driver.sendKeys('Control+p');
   await assertOnlyOverlay(driver, statusPath, 'quickOpen', 'Go to File');
-  requireEqual(statusField<boolean>(statusPath, 'findOpen'), false, 'Quick Open closed Find');
+  await awaitStatusPublication(
+    statusPath,
+    'Quick Open publishes Find as closed',
+    (status) => status.findOpen === false,
+  );
+  pass('Quick Open closed Find');
   driver.sendKeys('F1');
   await assertOnlyOverlay(driver, statusPath, 'commandPalette', 'Command Palette');
-  requireEqual(
-    statusField<boolean>(statusPath, 'quickOpenOpen'),
-    false,
-    'command palette closed Quick Open',
+  await awaitStatusPublication(
+    statusPath,
+    'the command palette publishes Quick Open as closed',
+    (status) => status.quickOpenOpen === false,
   );
+  pass('command palette closed Quick Open');
   driver.sendKeys('Control+,');
   await assertOnlyOverlay(driver, statusPath, 'settingsPanel', 'Settings');
-  requireEqual(
-    statusField<boolean>(statusPath, 'paletteOpen'),
-    false,
-    'Settings closed the command palette',
+  await awaitStatusPublication(
+    statusPath,
+    'Settings publishes the command palette as closed',
+    (status) => status.paletteOpen === false,
   );
+  pass('Settings closed the command palette');
 
   console.log('== harness mode coherence: Ctrl+H changes the one FindBar in place ==');
   driver.sendKeys('Escape');
@@ -110,12 +120,22 @@ try {
   await driver.awaitQuiescence();
   driver.sendKeys('Control+h');
   await assertOnlyOverlay(driver, statusPath, 'findBar', 'Find / Replace');
-  requireEqual(statusField<string>(statusPath, 'findMode'), 'replace', 'FindBar mode is replace');
+  await awaitStatusPublication(
+    statusPath,
+    'FindBar publishes replace mode',
+    (status) => status.findMode === 'replace',
+  );
+  pass('FindBar mode is replace');
 
   console.log('== harness mode coherence: context menu and palette share the same slot ==');
   driver.sendKeys('F1');
   await assertOnlyOverlay(driver, statusPath, 'commandPalette', 'Command Palette');
-  const tabCount = statusField<number>(statusPath, 'bufferTabCount') ?? 1;
+  const tabStatus = await awaitStatusPublication(
+    statusPath,
+    'the buffer tab count is published before opening its popup',
+    (status) => typeof status.bufferTabCount === 'number',
+  );
+  const tabCount = Number(tabStatus.bufferTabCount);
   const badgeMarker = `/${tabCount}`;
   const snapshot = await driver.awaitGridCondition(
     'the buffer-count badge is visible behind the command palette',
@@ -136,18 +156,20 @@ try {
     button: 'left',
   });
   await assertOnlyOverlay(driver, statusPath, 'boundedListPopup', 'document.txt');
-  requireEqual(
-    statusField<boolean>(statusPath, 'paletteOpen'),
-    false,
-    'bounded list popup closed the command palette',
+  await awaitStatusPublication(
+    statusPath,
+    'the bounded list popup publishes the command palette as closed',
+    (status) => status.paletteOpen === false,
   );
+  pass('bounded list popup closed the command palette');
   driver.sendKeys('F1');
   await assertOnlyOverlay(driver, statusPath, 'commandPalette', 'Command Palette');
-  requireEqual(
-    statusField<boolean>(statusPath, 'boundedListPopupOpen'),
-    false,
-    'F1 switched the bounded-list-popup slot to the palette',
+  await awaitStatusPublication(
+    statusPath,
+    'F1 publishes the bounded list popup as closed',
+    (status) => status.boundedListPopupOpen === false,
   );
+  pass('F1 switched the bounded-list-popup slot to the palette');
   await driver.dispose();
 
   console.log('== harness mode coherence: reserved quit bypasses each input capture ==');

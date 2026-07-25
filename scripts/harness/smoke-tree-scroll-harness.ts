@@ -41,6 +41,7 @@ try {
   const scrolledStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.treeScrollTop) > 0",
     (status) => Number(status.treeScrollTop) > 0,
   );
   const scrolledOffset = Number(scrolledStatus.treeScrollTop);
@@ -56,6 +57,7 @@ try {
   const clickedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0",
     (status) => typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0,
   );
   HarnessSmoke.Class.requireCondition(

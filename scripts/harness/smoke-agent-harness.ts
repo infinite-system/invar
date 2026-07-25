@@ -54,18 +54,17 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness agent: boot and status-bar button ==');
-  await HarnessSmoke.Class.awaitStatus(
+  const bootStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    (status) => status.ready === true,
+    'the app is ready with the agent pane hidden and screen height published',
+    (status) => status.ready === true
+      && status.terminalVisible === false
+      && typeof status.height === 'number',
     20_000,
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).terminalVisible === false,
-    'agent pane is hidden at boot',
-  );
+  HarnessSmoke.Class.pass('agent pane is hidden at boot');
   await driver.awaitQuiescence();
-  const bootStatus = HarnessSmoke.Class.readStatus(statusPath);
   const agentButtonColumn = statusButtonColumn(driver, ' ✦ ');
   driver.sendMouse({
     kind: 'press',
@@ -79,13 +78,15 @@ try {
     row: Number(bootStatus.height) - 1,
     button: 'left',
   });
-  await HarnessSmoke.Class.awaitStatus(
+  const openStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    (status) => status.terminalVisible === true && status.panelActiveContent === 'agent',
+    'the agent pane is visible and active with screen height published',
+    (status) => status.terminalVisible === true
+      && status.panelActiveContent === 'agent'
+      && typeof status.height === 'number',
   );
   HarnessSmoke.Class.pass('status-bar agent button opens the agent pane');
-  const openStatus = HarnessSmoke.Class.readStatus(statusPath);
   driver.sendMouse({
     kind: 'press',
     column: statusButtonColumn(driver, ' ✦ '),
@@ -101,6 +102,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === false",
     (status) => status.terminalVisible === false,
   );
   HarnessSmoke.Class.pass('status-bar agent button hides the agent pane');
@@ -111,17 +113,17 @@ try {
     (candidate) => candidate.findText('Ask Claude') !== null
       && candidate.findText('❯') !== null,
   );
-  const toggledStatus = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    toggledStatus.terminalVisible === true
-      && toggledStatus.terminalFocused === true
-      && toggledStatus.panelActiveContent === 'agent',
-    'agent chord opens and focuses the pane',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent chord opens and focuses the registered agent pane',
+    (status) => status.terminalVisible === true
+      && status.terminalFocused === true
+      && status.panelActiveContent === 'agent'
+      && String(status.panelContentIds).includes('agent'),
   );
-  HarnessSmoke.Class.requireCondition(
-    String(toggledStatus.panelContentIds).includes('agent'),
-    'agent is registered in the shared panel host',
-  );
+  HarnessSmoke.Class.pass('agent chord opens and focuses the pane');
+  HarnessSmoke.Class.pass('agent is registered in the shared panel host');
   HarnessSmoke.Class.pass('empty-state hint and composer glyph render');
 
   driver.sendText('ping the harness');
@@ -146,6 +148,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === false",
     (status) => status.terminalVisible === false,
   );
   HarnessSmoke.Class.pass('second chord hides the panel');

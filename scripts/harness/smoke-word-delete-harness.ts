@@ -6,7 +6,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pass, requireCondition, statusField } from './HarnessSmokeSupport';
+import {
+  awaitStatusPublication,
+  pass,
+  requireCondition,
+  statusField,
+} from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function findQueryRow(textRows: readonly string[]): string {
@@ -34,10 +39,17 @@ try {
   driver.sendKeys('Enter');
   await driver.awaitSnapshot((snapshot) => snapshot.text().includes('word-delete.txt'));
   driver.sendRawInputWithoutFrameExpectation('\x1b[C');
-  await driver.awaitSnapshot(
-    () => statusField<string>(statusPath, 'focus') === 'editor',
+  await awaitStatusPublication(
+    statusPath,
+    'the word-delete editor publishes editor focus',
+    (status) => status.focus === 'editor',
   );
-  const activeBufferBefore = statusField<string>(statusPath, 'activeBuffer');
+  const activeBufferStatus = await awaitStatusPublication(
+    statusPath,
+    'the opened word-delete buffer is published',
+    (status) => typeof status.activeBuffer === 'string',
+  );
+  const activeBufferBefore = activeBufferStatus.activeBuffer;
   requireCondition(Boolean(activeBufferBefore), 'opened word-delete.txt');
 
   console.log('== harness word delete: Option+Backspace deletes the previous word ==');
@@ -64,24 +76,27 @@ try {
   // wait on BOTH the rendered text and the semantic cursor before asserting either.
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('hello ') !== null
-      && candidate.findText('world') === null
-      && statusField<{ col?: number }>(statusPath, 'cursor')?.col === 6,
+      && candidate.findText('world') === null,
   );
-  requireCondition(
-    statusField<string>(statusPath, 'activeBuffer') === activeBufferBefore,
-    'Alt+Delete kept the active buffer open',
+  await awaitStatusPublication(
+    statusPath,
+    'Alt+Delete keeps the active buffer open with the cursor after hello',
+    (status) => status.activeBuffer === activeBufferBefore
+      && (status.cursor as { col?: number } | undefined)?.col === 6,
   );
-  requireCondition(
-    statusField<{ col?: number }>(statusPath, 'cursor')?.col === 6,
-    'Alt+Delete leaves the cursor after hello and its trailing space',
-  );
+  pass('Alt+Delete kept the active buffer open');
+  pass('Alt+Delete leaves the cursor after hello and its trailing space');
   await driver.assertNoCompleteFrameEmittedFor(300);
   driver.sendRawInputWithoutFrameExpectation('\x1b\x7f');
   // Wait on the RENDERED cursor too — the status file can publish before the repaint lands.
   snapshot = await driver.awaitSnapshot(
-    (candidate) => statusField<{ col?: number }>(statusPath, 'cursor')?.col === 0
-      && candidate.cursorColumn === helloPosition.column
+    (candidate) => candidate.cursorColumn === helloPosition.column
       && candidate.cursorRow === helloPosition.row,
+  );
+  await awaitStatusPublication(
+    statusPath,
+    'repeated word delete publishes a cursor at line start',
+    (status) => (status.cursor as { col?: number } | undefined)?.col === 0,
   );
   requireCondition(
     snapshot.cursorColumn === helloPosition.column

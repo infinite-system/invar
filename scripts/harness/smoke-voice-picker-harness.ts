@@ -92,6 +92,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true",
     (status) => status.ready === true,
     20_000,
   );
@@ -101,6 +102,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Number(status.paletteMatches) >= 1",
     (status) => Number(status.paletteMatches) >= 1,
   );
   await driver.awaitGridCondition(
@@ -119,27 +121,43 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.settingsOpen === true",
     (status) => status.settingsOpen === true,
   );
   await driver.awaitGridCondition(
     'the settings view is visible before keyboard navigation',
     (snapshot) => snapshot.findText('Settings') !== null,
   );
-  for (let navigationStep = 0; navigationStep < 30; navigationStep++) {
-    if (HarnessSmoke.Class.readStatus(statusPath).settingsSelectedLabel === 'Narration voice') break;
-    driver.sendKeys('Down');
-    await driver.awaitQuiescence();
-  }
-  let status = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    status.settingsSelectedLabel === 'Narration voice'
-      && status.settingsSelectedValue === 'auto (first found)',
-    'Narration voice dynamic enum starts at auto',
+  let status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a settings selection is published before voice-row navigation',
+    (candidate) => typeof candidate.settingsSelectedLabel === 'string',
   );
+  for (let navigationStep = 0; navigationStep < 30; navigationStep++) {
+    if (status.settingsSelectedLabel === 'Narration voice') break;
+    const previousSelectedLabel = status.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    status = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'Down publishes a different selected settings row',
+      (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Narration voice row publishes its automatic initial value',
+    (candidate) => candidate.settingsSelectedLabel === 'Narration voice'
+      && candidate.settingsSelectedValue === 'auto (first found)',
+  );
+  HarnessSmoke.Class.pass('Narration voice dynamic enum starts at auto');
   driver.sendKeys('Right');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: candidate.narrationVoice === 'aaa' && candidate.settingsSelectedValue === 'aaa'",
     (candidate) => candidate.narrationVoice === 'aaa'
       && candidate.settingsSelectedValue === 'aaa',
   );
@@ -154,9 +172,10 @@ try {
 
   console.log('== harness voice picker: mouse enum, number, and boolean edits ==');
   clickWidget(driver, 'Narration voice', '>');
-  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+  const speedStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: candidate.narrationVoice === 'bbb'",
     (candidate) => candidate.narrationVoice === 'bbb',
   );
   HarnessSmoke.Class.pass('voice arrow advances from aaa to bbb');
@@ -165,16 +184,17 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: candidate.narrationRate === 1.1",
     (candidate) => candidate.narrationRate === 1.1,
   );
   HarnessSmoke.Class.pass('speed stepper raises narration rate from 1.0 to 1.1');
 
-  status = HarnessSmoke.Class.readStatus(statusPath);
-  const narrationEnabledBefore = status.narrationEnabled;
+  const narrationEnabledBefore = speedStatus.narrationEnabled;
   clickWidget(driver, 'Speak agent replies', ']');
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
+    "status condition: candidate.narrationEnabled !== narrationEnabledBefore",
     (candidate) => candidate.narrationEnabled !== narrationEnabledBefore,
   );
   HarnessSmoke.Class.pass('audio narration checkbox flips through a mouse click');

@@ -60,6 +60,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/tracked.txt')",
     (status) => String(status.activeBuffer).endsWith('/tracked.txt'),
   );
   HarnessSmoke.Class.pass('opened tracked.txt');
@@ -67,6 +68,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.currentLineBlameAuthor === 'Blame Tester'",
     (status) => status.currentLineBlameAuthor === 'Blame Tester',
   );
   HarnessSmoke.Class.pass("cursor-line blame author is 'Blame Tester' (probe)");
@@ -88,15 +90,19 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(status.activeBuffer).endsWith('/untracked.txt')",
     (status) => String(status.activeBuffer).endsWith('/untracked.txt'),
   );
   HarnessSmoke.Class.pass('opened untracked.txt');
   await driver.awaitQuiescence();
   await driver.assertNoCompleteFrameEmittedFor(600);
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).currentLineBlameAuthor === '',
-    'untracked document has no blame author',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the untracked document publishes no blame author',
+    (status) => status.currentLineBlameAuthor === '',
   );
+  HarnessSmoke.Class.pass('untracked document has no blame author');
 
   driver.sendKeys('Control+q');
   console.log('smoke-git-blame-harness: ALL-PASS');

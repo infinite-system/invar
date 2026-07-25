@@ -255,6 +255,79 @@ scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
 **Last refined:** 2026-07-24
 
+### Async-published state is always awaited
+
+**Invariant:** If a harness verdict depends on state published asynchronously through the status
+file, then the harness polls that file independently until its semantic predicate holds; it never
+samples `readStatus` or `statusField` once after a grid wait, and a grid predicate never reads status.
+
+**Scope:** Every `scripts/harness/smoke-*-harness.ts` semantic assertion. Values read from the
+`HarnessStatus` or `StatusSnapshot` returned by a completed status wait are already awaited.
+
+**Mechanism:** `HarnessSmoke.awaitStatus` and `HarnessSmoke.awaitStatusWithoutFrame` re-read status
+while using frame arrival or bounded frame silence only as progress opportunities.
+`HarnessSmokeSupport.awaitStatusPublication` polls every 5 milliseconds without depending on a
+frame. Visual and semantic transitions are awaited separately, so a status-only publication cannot
+strand a frame-driven predicate.
+
+**Generates:** Polling status assertions; returned awaited snapshots for baselines; separate grid and
+status waits when a transition has both visual and semantic outcomes.
+
+**Rejected alternatives:** Read status once after a matching frame — status publication is
+asynchronous and can lag that frame. Read status inside a grid predicate — a status-only publication
+does not produce another frame to re-evaluate the predicate.
+
+**Evidence:** `scripts/harness/HarnessSmoke.ts`; `scripts/harness/HarnessSmokeSupport.ts`; every
+registered `scripts/harness/smoke-*-harness.ts` consumer.
+
+**Impossible if true:** A smoke failing because the expected status was published just after its
+one-time read; a status-only transition timing out because no later synchronized frame re-ran a grid
+predicate.
+
+**Verification:** Run a TypeScript AST walk over `scripts/harness/smoke-*.ts` and require zero
+`readStatus` or `statusField` calls outside `awaitStatus` or `awaitStatusPublication` predicates and
+zero such reads inside `awaitSnapshot` predicates; then run every registered harness smoke once.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Every wait names itself
+
+**Invariant:** If a harness condition wait can time out, then its caller supplies a description that
+identifies the condition, and the timeout reports that description with the relevant status path or
+grid region.
+
+**Scope:** Status waits in `HarnessSmoke` and `HarnessSmokeSupport`, plus grid-condition waits in
+`PtyTestDriver`. Quiescence and fixed-duration silence observations have no target condition and are
+outside this rule.
+
+**Mechanism:** `awaitStatus`, `awaitStatusWithoutFrame`, and `awaitStatusPublication` require a
+description argument and throw `Timed out waiting for <description> at <path>`.
+`PtyTestDriver.awaitGridCondition` already requires `predicateDescription` and includes it with the
+final relevant grid region.
+
+**Generates:** Field-specific status timeout messages; transition-specific grid timeout messages;
+call sites whose awaited outcome is reviewable without opening the helper.
+
+**Rejected alternatives:** Report only the status path or predicate text synthesized by a helper —
+one file serves many unrelated waits, and generated function text is not a stable user-step name.
+
+**Evidence:** `scripts/harness/HarnessSmoke.ts`; `scripts/harness/HarnessSmokeSupport.ts`;
+`scripts/harness/PtyTestDriver.ts`; labeled calls in every registered harness smoke.
+
+**Impossible if true:** `Timed out waiting for status publication at <path>` with no condition name;
+two different waits in one smoke producing indistinguishable timeout headings; an empty grid
+condition description.
+
+**Verification:** TypeScript requires the description parameter at every status-wait call; run
+`bun test scripts/harness/HarnessSmoke.test.ts` and a TypeScript AST walk that requires a non-empty
+description argument at every status-wait call.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Shared seam changes verify every consumer
 
 **Invariant:** If a shared harness seam changes behavior, then verification covers every registered

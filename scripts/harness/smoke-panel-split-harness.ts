@@ -8,12 +8,13 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function cellColumns(statusPath: string): number[] {
-  const value = HarnessSmoke.Class.readStatus(statusPath).panelCellColumns;
+function cellColumns(status: StatusSnapshot): number[] {
+  const value = status.panelCellColumns;
   return Array.isArray(value) ? value.map(Number) : [];
 }
 
@@ -63,13 +64,11 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    (status) => status.ready === true,
+    'the application is ready with the panel hidden',
+    (status) => status.ready === true && status.terminalVisible === false,
     15_000,
   );
-  HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).terminalVisible === false,
-    'panel hidden at boot',
-  );
+  HarnessSmoke.Class.pass('panel hidden at boot');
   await driver.awaitQuiescence();
   clickCell(
     driver,
@@ -79,6 +78,7 @@ try {
   let openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.terminalVisible === true && Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal' && Array.isArray(status.panelCellColumns) && Number(status.panelCellColumns[0]) > 1",
     (status) => status.terminalVisible === true
       && Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal'
@@ -91,7 +91,7 @@ try {
     openedStatus.panelFocusedIndex === 0,
     'focused cell index is 0',
   );
-  const fullColumns = cellColumns(statusPath)[0] ?? 0;
+  const fullColumns = cellColumns(openedStatus)[0] ?? 0;
   HarnessSmoke.Class.requireCondition(fullColumns > 1, 'single cell has real width');
 
   console.log('== harness panel-split: clicking Agent adds its own side-by-side pane ==');
@@ -103,16 +103,18 @@ try {
   openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal,agent' && status.panelActiveContent === 'agent'",
     (status) => Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal,agent'
-      && status.panelActiveContent === 'agent',
+      && status.panelActiveContent === 'agent'
+      && Array.isArray(status.panelCellColumns),
   );
   HarnessSmoke.Class.pass('two cells render left-to-right');
   HarnessSmoke.Class.requireCondition(
     openedStatus.panelFocusedIndex === 1,
     'newly opened agent cell is focused',
   );
-  const initialColumns = cellColumns(statusPath);
+  const initialColumns = cellColumns(openedStatus);
   const initialLeftColumns = initialColumns[0] ?? 0;
   const initialRightColumns = initialColumns[1] ?? 0;
   HarnessSmoke.Class.requireCondition(initialLeftColumns > 1, 'left cell has its own width');
@@ -157,6 +159,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.panelFocusedIndex === 0 && status.panelActiveContent === 'terminal'",
     (status) => status.panelFocusedIndex === 0
       && status.panelActiveContent === 'terminal',
   );
@@ -189,12 +192,17 @@ try {
     button: 'left',
   });
   driver.sendMouse({ kind: 'release', column: targetColumn, row: panelRow, button: 'left' });
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, () => {
-    const resizedColumns = cellColumns(statusPath);
-    return Number(resizedColumns[0]) < initialLeftColumns
-      && Number(resizedColumns[1]) > initialRightColumns;
-  });
-  const resizedColumns = cellColumns(statusPath);
+  const resizedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the panel divider publishes narrower left and wider right cell columns',
+    (status) => {
+      const resizedColumns = cellColumns(status);
+      return Number(resizedColumns[0]) < initialLeftColumns
+        && Number(resizedColumns[1]) > initialRightColumns;
+    },
+  );
+  const resizedColumns = cellColumns(resizedStatus);
   const resizedLeftColumns = resizedColumns[0] ?? 0;
   const resizedRightColumns = resizedColumns[1] ?? 0;
   HarnessSmoke.Class.pass(
@@ -207,6 +215,7 @@ try {
   const restoredStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal'",
     (status) => Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal',
   );
@@ -216,13 +225,14 @@ try {
     'focused cell index reset',
   );
   HarnessSmoke.Class.requireCondition(
-    (cellColumns(statusPath)[0] ?? 0) > resizedLeftColumns,
+    (cellColumns(restoredStatus)[0] ?? 0) > resizedLeftColumns,
     'restored cell reclaimed the full width',
   );
   driver.sendKeys('F9');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal,agent'",
     (status) => Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal,agent',
   );
@@ -235,6 +245,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal'",
     (status) => Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal',
   );
@@ -246,6 +257,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: Array.isArray(status.panelCellIds) && status.panelCellIds.join(',') === 'terminal,agent'",
     (status) => Array.isArray(status.panelCellIds)
       && status.panelCellIds.join(',') === 'terminal,agent',
   );

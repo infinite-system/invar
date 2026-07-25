@@ -184,6 +184,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.ready === true && status.activeFileIsImage === false",
     (status) => status.ready === true && status.activeFileIsImage === false,
     15_000,
   );
@@ -191,6 +192,7 @@ try {
   const pngStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/picture.png')",
     (status) => status.activeFileIsImage === true
       && String(status.activeBuffer).endsWith('/picture.png'),
   );
@@ -208,6 +210,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/sample.ts')",
     (status) => status.activeFileIsImage === false
       && String(status.activeBuffer).endsWith('/sample.ts'),
   );
@@ -219,6 +222,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/photo.jpg')",
     (status) => status.activeFileIsImage === true
       && String(status.activeBuffer).endsWith('/photo.jpg'),
   );
@@ -240,6 +244,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/data.bin')",
     (status) => status.activeFileIsImage === false
       && String(status.activeBuffer).endsWith('/data.bin'),
   );

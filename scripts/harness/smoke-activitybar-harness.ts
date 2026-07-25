@@ -80,11 +80,13 @@ try {
   HarnessSmoke.Class.pass(`Extensions glyph 'X' rendered (row ${extensionsRow})`);
 
   console.log('== harness activitybar: initial Explorer state is coherent ==');
-  const initialStatus = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    initialStatus.sidebarView === 'files',
-    'boots on the Explorer view',
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the activity bar boots on the Explorer view',
+    (status) => status.sidebarView === 'files',
   );
+  HarnessSmoke.Class.pass('boots on the Explorer view');
   HarnessSmoke.Class.requireCondition(
     snapshot.cell(filesRow, 0)?.characters === '|',
     'active accent sits on the Explorer icon row',
@@ -104,6 +106,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.sidebarView === 'git'",
     (status) => status.sidebarView === 'git',
   );
   HarnessSmoke.Class.pass('clicking Source Control switched the view');
@@ -136,6 +139,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.sidebarView === 'extensions'",
     (status) => status.sidebarView === 'extensions',
   );
   HarnessSmoke.Class.pass('clicking Extensions switched the view');
@@ -154,6 +158,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.sidebarView === 'git'",
     (status) => status.sidebarView === 'git',
   );
   HarnessSmoke.Class.pass('Ctrl+Shift+G switched to Source Control');
@@ -163,6 +168,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.sidebarView === 'files'",
     (status) => status.sidebarView === 'files',
   );
   HarnessSmoke.Class.pass('Ctrl+Shift+E switched to Explorer');
@@ -171,6 +177,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.sidebarView === 'extensions'",
     (status) => status.sidebarView === 'extensions',
   );
   HarnessSmoke.Class.pass('Ctrl+Shift+X switched to Extensions and its content');
@@ -183,6 +190,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.showActivityBar === false",
     (status) => status.showActivityBar === false,
   );
   HarnessSmoke.Class.pass('Ctrl+Shift+B hid the bar and flipped the setting off');

@@ -56,6 +56,7 @@ try {
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.quickOpenMode === 'workspacePath'",
     (status) => status.quickOpenMode === 'workspacePath',
   );
   HarnessSmoke.Class.pass('the open-project navigator opened');
@@ -74,15 +75,15 @@ try {
 
   console.log('== harness open-project: deep keyboard selection stays in the drawn window ==');
   for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
+  const deepStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.quickOpenSelected === 20",
     (status) => status.quickOpenSelected === 20,
   );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => markerHasSelectionBackground(candidate, 'folder-20'),
   );
-  const deepStatus = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
     deepStatus.quickOpenSelected === 20,
     'arrowing down 20x advanced the selection (app stayed responsive)',
@@ -95,9 +96,10 @@ try {
 
   console.log('== harness open-project: last row remains visible and wraps to the top ==');
   for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
+  const lastFolderStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.quickOpenSelected === 40",
     (status) => status.quickOpenSelected === 40,
   );
   snapshot = await driver.awaitGridCondition(
@@ -105,14 +107,15 @@ try {
     (candidate) => markerHasSelectionBackground(candidate, 'proj'),
   );
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).quickOpenSelected === 40,
+    lastFolderStatus.quickOpenSelected === 40,
     'reached the last folder (index 40), visible, never froze',
   );
   HarnessSmoke.Class.pass('the last folder is visible with a selection background');
   driver.sendKeys('Down');
-  await HarnessSmoke.Class.awaitStatus(
+  const wrappedFolderStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: status.quickOpenSelected === 0",
     (status) => status.quickOpenSelected === 0,
   );
   snapshot = await driver.awaitGridCondition(
@@ -120,7 +123,7 @@ try {
     (candidate) => markerHasSelectionBackground(candidate, 'folder-00'),
   );
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.readStatus(statusPath).quickOpenSelected === 0,
+    wrappedFolderStatus.quickOpenSelected === 0,
     'arrowing past the last wraps back to the top (index 0)',
   );
   HarnessSmoke.Class.pass('after wrap the top folder is visible again with the selection background');
@@ -130,6 +133,7 @@ try {
   const drilledStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
+    "status condition: String(status.quickOpenQuery).includes('folder-05/')",
     (status) => String(status.quickOpenQuery).includes('folder-05/'),
   );
   HarnessSmoke.Class.pass('clicking a folder drilled into it (path completed)');

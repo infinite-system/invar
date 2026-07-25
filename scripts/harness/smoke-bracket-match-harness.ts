@@ -7,12 +7,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  awaitStatusPublication,
   markerForeground,
   pass,
   requireCondition,
-  requireEqual,
   runGit,
-  statusField,
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -60,8 +59,14 @@ try {
       && openerForeground === closerForeground
       && closerForeground !== baselineCloserForeground;
   });
-  requireEqual(statusField<number>(statusPath, 'matchingBracketLine'), 3, 'matching line is 3');
-  requireEqual(statusField<number>(statusPath, 'matchingBracketColumn'), 0, 'matching column is 0');
+  await awaitStatusPublication(
+    statusPath,
+    'the balanced closer position is published',
+    (status) => status.matchingBracketLine === 3
+      && status.matchingBracketColumn === 0,
+  );
+  pass('matching line is 3');
+  pass('matching column is 0');
   requireCondition(
     markerForeground(snapshot, '{') === markerForeground(snapshot, '}'),
     'balanced brace cells share the accent foreground',
@@ -72,11 +77,12 @@ try {
   snapshot = await driver.awaitSnapshot(
     (candidate) => markerForeground(candidate, '}') === baselineCloserForeground,
   );
-  requireEqual(
-    statusField<number>(statusPath, 'matchingBracketLine'),
-    -1,
-    'no match is published away from a bracket',
+  await awaitStatusPublication(
+    statusPath,
+    'no bracket match is published away from a bracket',
+    (status) => status.matchingBracketLine === -1,
   );
+  pass('no match is published away from a bracket');
 
   driver.sendKeys('Control+q');
   console.log('smoke-bracket-match-harness: ALL-PASS');
