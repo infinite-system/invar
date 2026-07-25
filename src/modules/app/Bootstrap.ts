@@ -17,6 +17,7 @@ import { CommandDefaults } from '../commands/CommandDefaults';
 import { RootView } from '../ui/RootView';
 import { TabStrip } from '../ui/TabStrip';
 import { ContextMenu } from '../ui/ContextMenu';
+import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -132,6 +133,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
 
   // App-level overlay view models (the view projects them; input routes through here).
   const contextMenu = new ContextMenu.Class();
+  const boundedListPopup = new BoundedListPopup.Class({ renderer, settings, theme });
   const tooltip = new Tooltip.Class();
   const settingsPanel = new SettingsPanel.Class(settings);
   const findBar = new FindBar.Class();
@@ -147,6 +149,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     commandPalette: () => commands.closePalette(),
     settingsPanel: () => settingsPanel.close(),
     contextMenu: () => contextMenu.close(),
+    boundedListPopup: () => boundedListPopup.close(),
     shortcutHelp: () => shortcutHelp.close(),
   });
 
@@ -218,6 +221,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     commands,
     app,
     contextMenu,
+    boundedListPopup,
     tooltip,
     settingsPanel,
     findBar,
@@ -465,6 +469,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     quickOpen,
     settingsPanel,
     contextMenu,
+    boundedListPopup,
     shortcutHelp,
     tooltip,
     panelHost,
@@ -484,6 +489,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   // (no ref writes), so it is safe to run inside the reactive effect with no feedback loop.
   const paint = (): void => {
     view.update();
+    boundedListPopup.update();
     AppStatusProjection.Class.publish(statusProjectionPorts);
     renderer.requestRender();
   };
@@ -569,6 +575,12 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     void contextMenu.anchorY.value;
     void contextMenu.hoveredIndex.value;
     void contextMenu.selectedIndex.value;
+    void boundedListPopup.open.value;
+    void boundedListPopup.items.value;
+    void boundedListPopup.query.value;
+    void boundedListPopup.selectedIndex.value;
+    void boundedListPopup.hoveredIndex.value;
+    void boundedListPopup.paintRevision.value;
     void tooltip.visible.value;
     void tooltip.text.value;
     void tooltip.anchorX.value;
@@ -666,6 +678,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     // The agent transcript's scroll-momentum glide + drag edge-autoscroll advance on the SAME tick and
     // settle to zero at rest (idle-quiescence preserved).
     animating = view.tickPanelScroll(deltaTimeSeconds) || animating;
+    animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
     syncAnimationLiveness(animating);
     // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
     // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
@@ -731,6 +744,7 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     Logging.Class.info('Shutdown start');
     app.$stopEffects(); // stop the frame effect FIRST — no repaint during teardown
     view.dispose();
+    boundedListPopup.dispose();
     app.dispose();
     options.onQuit?.();
   };
@@ -1167,6 +1181,11 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
     'menu.next': () => contextMenu.moveSelection(1),
     'menu.run': () => contextMenu.runSelected(),
     'menu.close': () => contextMenu.close(),
+    'listPopup.previous': () => boundedListPopup.moveSelection(-1),
+    'listPopup.next': () => boundedListPopup.moveSelection(1),
+    'listPopup.run': () => boundedListPopup.runSelected(),
+    'listPopup.close': () => boundedListPopup.close(),
+    'listPopup.erase': () => boundedListPopup.eraseQueryCharacter(),
   };
 
   const inputOverlayOpeningActionIdentifiers = new Set([
@@ -1315,6 +1334,27 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       else if (menuResolution.action && inputOverlayOpeningActionIdentifiers.has(menuResolution.action)) {
         actionHandlers[menuResolution.action]?.(key);
       } else contextMenu.close();
+      return;
+    }
+
+    // Bounded lists are modal and single-consumer. Printable keys edit the optional query; all
+    // other unbound keys are consumed without reaching the editor below.
+    if (boundedListPopup.open.value) {
+      const listPopupResolution = keybindings.resolve(
+        { name: key.name, ctrl: key.ctrl, shift: key.shift, option: key.option || key.meta, super: key.super },
+        'listPopup',
+        Date.now(),
+      );
+      if (listPopupResolution.action?.startsWith('listPopup.')) {
+        actionHandlers[listPopupResolution.action]?.(key);
+      } else if (
+        listPopupResolution.action &&
+        inputOverlayOpeningActionIdentifiers.has(listPopupResolution.action)
+      ) {
+        actionHandlers[listPopupResolution.action]?.(key);
+      } else if (isTypedCharacter(key)) {
+        boundedListPopup.appendQuery(key.sequence);
+      }
       return;
     }
 
@@ -1473,6 +1513,10 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
       return; // a focused panel owns paste even if its pane has no sink — never leak to the editor
     }
     const singleLine = text.replace(/[\r\n]+/g, ' ');
+    if (boundedListPopup.open.value) {
+      if (boundedListPopup.searchEnabled) boundedListPopup.appendQuery(singleLine);
+      return;
+    }
     if (quickOpen.open.value) { quickOpen.setQuery(quickOpen.query.value + singleLine); return; }
     if (findBar.open.value) { findBar.append(singleLine); return; }
     // Other overlays (palette, settings, help, menu) have no free-text paste target — consume it so a

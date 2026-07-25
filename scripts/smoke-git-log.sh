@@ -115,9 +115,9 @@ echo "== mouse: clicking the header opens the branch menu; clicking a row select
 header_line="$(cap | grep -nF 'history: main' | head -1 | cut -d: -f1)"
 if [ -n "$header_line" ]; then
   "$H" click "$S" 8 "$((header_line - 1))" >/dev/null; sleep 0.8; "$H" settle "$S" >/dev/null 2>&1
-  [ "$(f contextMenuOpen)" = "true" ] && pass 'header click opened the branch menu' \
-    || failure "branch menu did not open (contextMenuOpen='$(f contextMenuOpen)')"
-  expect_capture_contains 'main ✓' 'menu marks the checked-out branch'
+  [ "$(f boundedListPopupOpen)" = "true" ] && pass 'header click opened the branch menu' \
+    || failure "branch menu did not open (boundedListPopupOpen='$(f boundedListPopupOpen)')"
+  expect_capture_contains 'main (checked out)' 'menu marks the checked-out branch'
   feature_item_line="$(cap | grep -n 'feature' | grep -v 'history:' | head -1 | cut -d: -f1)"
   if [ -n "$feature_item_line" ]; then
     "$H" click "$S" 12 "$((feature_item_line - 1))" >/dev/null; sleep 0.8; "$H" settle "$S" >/dev/null 2>&1

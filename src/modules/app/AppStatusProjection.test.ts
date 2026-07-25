@@ -16,6 +16,7 @@ import { Settings, type SettingsFileSystem } from '../settings/Settings';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { StatusChannel } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
+import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { PanelHost } from '../ui/PanelHost';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -69,6 +70,13 @@ describe('AppStatusProjection', () => {
     const quickOpen = new QuickOpen.Class();
     const settingsPanel = new SettingsPanel.Class(settings);
     const contextMenu = new ContextMenu.Class();
+    const boundedListPopup = {
+      open: ref(false),
+      query: ref(''),
+      selectedIndex: ref(-1),
+      filteredMatches: [],
+      geometry: null,
+    } as unknown as InstanceType<typeof BoundedListPopup.Class>;
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
@@ -83,6 +91,7 @@ describe('AppStatusProjection', () => {
       quickOpen,
       settingsPanel,
       contextMenu,
+      boundedListPopup,
       shortcutHelp,
       tooltip,
       panelHost,

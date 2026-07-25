@@ -118,7 +118,7 @@ try {
   driver.sendMouse({ kind: 'press', column: badge.column, row: badge.row, button: 'left' });
   driver.sendMouse({ kind: 'release', column: badge.column, row: badge.row, button: 'left' });
   await driver.awaitSnapshot(
-    () => statusField<boolean>(statusPath, 'contextMenuOpen') === true,
+    () => statusField<boolean>(statusPath, 'boundedListPopupOpen') === true,
   );
   pass('badge click opened the all-buffers dropdown');
   driver.sendKeys('Escape');

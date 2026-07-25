@@ -52,6 +52,7 @@ import { SelectableText } from './SelectableText';
 import { GitRows, type ChangeRow, type FileRow } from '../git/GitRows';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import type { ContextMenu, ContextMenuItem } from './ContextMenu';
+import type { BoundedListPopup } from './BoundedListPopup';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 import type { ShortcutHelp } from './ShortcutHelp';
 import type { Tooltip } from './Tooltip';
@@ -129,6 +130,7 @@ function $buildRootView(
   commands: CommandRegistry.Instance,
   app: App.Instance,
   contextMenu: ContextMenu.Instance,
+  boundedListPopup: BoundedListPopup.Instance,
   tooltip: Tooltip.Instance,
   settingsPanel: SettingsPanel.Instance,
   findBar: FindBar.Instance,
@@ -848,7 +850,7 @@ function $buildRootView(
     theme,
     tooltip,
     overlayCoordinator,
-    contextMenu,
+    boundedListPopup,
     quickOpen,
     keybindings,
     readPalette,
@@ -1251,6 +1253,7 @@ function $buildRootView(
     tooltip,
     overlayCoordinator,
     contextMenu,
+    boundedListPopup,
     settings,
     gitPanelGeometry: () => gitPanelGeometry,
     treeWindowTop: () => scrollbarSync.treeWindowTop(),

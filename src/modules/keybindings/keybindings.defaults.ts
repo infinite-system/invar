@@ -123,6 +123,13 @@ export const canonicalBindings: Keybinding[] = [
   { chord: { key: 'return' }, action: 'menu.run', context: 'menu' },
   { chord: { key: 'escape' }, action: 'menu.close', context: 'menu' },
 
+  // --- bounded list popup (modal; printable input is the search-query residual) ---
+  { chord: { key: 'up' }, action: 'listPopup.previous', context: 'listPopup' },
+  { chord: { key: 'down' }, action: 'listPopup.next', context: 'listPopup' },
+  { chord: { key: 'return' }, action: 'listPopup.run', context: 'listPopup' },
+  { chord: { key: 'escape' }, action: 'listPopup.close', context: 'listPopup' },
+  { chord: { key: 'backspace' }, action: 'listPopup.erase', context: 'listPopup' },
+
   // --- shortcut cheat-sheet (captures input while open; Shift+F1 above toggles it globally) ---
   { chord: { key: 'escape' }, action: 'help.close', context: 'help' },
   { chord: { key: 'up' }, action: 'help.up', context: 'help' },
