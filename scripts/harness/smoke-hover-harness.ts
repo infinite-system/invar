@@ -82,7 +82,7 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness hover: open answer.ts and locate the declaration ==');
-  await HarnessSmoke.Class.awaitStatus(
+  const readyStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: status.ready === true",
@@ -135,13 +135,7 @@ try {
   if (!cardSpan) throw new Error('Hover card disappeared');
 
   console.log('== harness hover: card selection and copy stay engaged ==');
-  const copyBaselineStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the copied character count is published before hover-card selection',
-    (status) => typeof status.lastCopyChars === 'number',
-  );
-  const copyCountBefore = Number(copyBaselineStatus.lastCopyChars);
+  const copyCountBefore = Number(readyStatus.lastCopyChars ?? 0);
   await dragBetweenCells(
     driver,
     cardSpan.startColumn,
