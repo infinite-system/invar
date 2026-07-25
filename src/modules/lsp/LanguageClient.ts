@@ -8,18 +8,26 @@ import { Environment } from '../system/Environment';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { StatusChannel } from '../system/StatusChannel';
-import type { LanguageCapabilities, LanguageProvider } from './LanguageProvider.interface';
+import type {
+  LanguageCapabilities,
+  LanguageCompletionContext,
+  LanguageCompletionItem,
+  LanguageCompletionList,
+  LanguageProvider,
+  LanguageServerProvider,
+} from './LanguageProvider.interface';
 import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
 
-class $LanguageClient {
+class $LanguageClient implements LanguageProvider {
   protected static get $noCapabilities(): LanguageCapabilities {
     const noCapabilities: LanguageCapabilities = Object.freeze({
       diagnostics: false,
       definition: false,
       hover: false,
       references: false,
+      completion: false,
     });
     Object.defineProperty(this, '$noCapabilities', {
       configurable: true,
@@ -39,11 +47,10 @@ class $LanguageClient {
   }
 
   protected readonly rootPath: string;
-  protected readonly providers: readonly LanguageProvider[];
+  protected readonly providers: readonly LanguageServerProvider[];
   protected readonly processFactory: (() => LspProcessLike) | null;
   protected readonly transportFactory:
-    | ((process: LspProcessLike) => LspTransport.Model)
-    | null;
+    ((process: LspProcessLike) => LspTransport.Model) | null;
   protected readonly maxDiagnosticsPerDocument: number;
   protected readonly maxReferencesPerRequest: number;
   protected readonly preferredTypeScriptServer: (() => string) | undefined;
@@ -57,10 +64,13 @@ class $LanguageClient {
    *  may answer with an `unchanged` report instead of recomputing. */
   protected readonly diagnosticResultIds = new Map<string, string>();
   /** Per-URI debounce timers for pull diagnostics — the active pull scheduled for each document. */
-  protected readonly diagnosticPullTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  protected readonly diagnosticPullTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
   protected process: LspProcessLike | null = null;
   protected transport: LspTransport.Model | null = null;
-  protected provider: LanguageProvider | null = null;
+  protected provider: LanguageServerProvider | null = null;
   protected serverCapabilities: Record<string, unknown> = {};
   protected startPromise: Promise<boolean> | null = null;
   protected activationGeneration = 0;
@@ -72,11 +82,19 @@ class $LanguageClient {
     // Set BEFORE createProviders() — the default TypeScript provider reads it at construction.
     this.preferredTypeScriptServer = options.preferredTypeScriptServer;
     this.fileSizeLimitKb = options.fileSizeLimitKb;
-    this.providers = options.providers ? [...options.providers] : this.createProviders();
+    this.providers = options.providers
+      ? [...options.providers]
+      : this.createProviders();
     this.processFactory = options.processFactory ?? null;
     this.transportFactory = options.transportFactory ?? null;
-    this.maxDiagnosticsPerDocument = Math.max(1, options.maxDiagnosticsPerDocument ?? 10_000);
-    this.maxReferencesPerRequest = Math.max(1, options.maxReferencesPerRequest ?? 5_000);
+    this.maxDiagnosticsPerDocument = Math.max(
+      1,
+      options.maxDiagnosticsPerDocument ?? 10_000,
+    );
+    this.maxReferencesPerRequest = Math.max(
+      1,
+      options.maxReferencesPerRequest ?? 5_000,
+    );
   }
 
   protected get EditorCoordinates() {
@@ -120,10 +138,24 @@ class $LanguageClient {
   get isReady(): boolean {
     return this.status.value === 'ready';
   }
+
+  get completionTriggerCharacters(): readonly string[] {
+    const completionProvider = this.objectValue(
+      this.serverCapabilities.completionProvider,
+    );
+    const triggerCharacters = completionProvider?.triggerCharacters;
+    return Array.isArray(triggerCharacters)
+      ? triggerCharacters.filter(
+          (triggerCharacter): triggerCharacter is string =>
+            typeof triggerCharacter === 'string' && triggerCharacter.length > 0,
+        )
+      : [];
+  }
   get diagnosticCount(): number {
     void this.diagnosticsRevision.value;
     let count = 0;
-    for (const batch of this.diagnosticBatches.values()) count += batch.items.length;
+    for (const batch of this.diagnosticBatches.values())
+      count += batch.items.length;
     return count;
   }
 
@@ -131,8 +163,12 @@ class $LanguageClient {
     return this.Environment.cwd;
   }
 
-  protected createProviders(): readonly LanguageProvider[] {
-    return [new TypeScriptProvider.Class({ preferredServer: this.preferredTypeScriptServer })];
+  protected createProviders(): readonly LanguageServerProvider[] {
+    return [
+      new TypeScriptProvider.Class({
+        preferredServer: this.preferredTypeScriptServer,
+      }),
+    ];
   }
 
   protected createProcess(): LspProcessLike {
@@ -148,8 +184,10 @@ class $LanguageClient {
   /** True when some provider can serve this document — the guard callers use before a
    *  semantic request, so an unsupported file never triggers a server start. */
   supportsDocument(document: TextDocumentModel): boolean {
-    return Boolean(document.path) &&
-      this.providers.some((provider) => provider.supportsPath(document.path));
+    return (
+      Boolean(document.path) &&
+      this.providers.some((provider) => provider.supportsPath(document.path))
+    );
   }
 
   /** The current size budget in KB (`0` = no limit). Read late so a live settings change applies. */
@@ -181,7 +219,10 @@ class $LanguageClient {
   /** True when the given document/URI is currently suppressed for exceeding the size budget. */
   isSizeSuppressed(documentOrUri: TextDocumentModel | string): boolean {
     void this.sizeSuppressionRevision.value;
-    const uri = typeof documentOrUri === 'string' ? documentOrUri : this.uriFor(documentOrUri.path);
+    const uri =
+      typeof documentOrUri === 'string'
+        ? documentOrUri
+        : this.uriFor(documentOrUri.path);
     return this.sizeSuppressedUris.has(uri);
   }
 
@@ -204,9 +245,11 @@ class $LanguageClient {
     if (this.disposed || !this.supportsDocument(document)) return;
     if (this.refreshSizeSuppression(document)) return;
     const state = this.rememberDocument(document);
-    void this.ensureStarted(document.path).then((ready) => {
-      if (ready) return this.synchronize(state);
-    }).catch((reason) => this.containFailure(reason));
+    void this.ensureStarted(document.path)
+      .then((ready) => {
+        if (ready) return this.synchronize(state);
+      })
+      .catch((reason) => this.containFailure(reason));
   }
 
   syncDocument(document: TextDocumentModel): void {
@@ -221,17 +264,21 @@ class $LanguageClient {
   }
 
   closeDocument(documentOrUri: TextDocumentModel | string): void {
-    const uri = typeof documentOrUri === 'string' ? documentOrUri : this.uriFor(documentOrUri.path);
+    const uri =
+      typeof documentOrUri === 'string'
+        ? documentOrUri
+        : this.uriFor(documentOrUri.path);
     const state = this.documents.get(uri);
     if (!state) return;
     this.documents.delete(uri);
-    if (this.sizeSuppressedUris.delete(uri)) this.sizeSuppressionRevision.value++;
+    if (this.sizeSuppressedUris.delete(uri))
+      this.sizeSuppressionRevision.value++;
     this.cancelDiagnosticPull(uri);
     this.diagnosticResultIds.delete(uri);
     if (state.opened && this.transport?.running) {
-      void this.transport.notify('textDocument/didClose', { textDocument: { uri } }).catch(
-        (reason) => this.containFailure(reason),
-      );
+      void this.transport
+        .notify('textDocument/didClose', { textDocument: { uri } })
+        .catch((reason) => this.containFailure(reason));
     }
     if (this.diagnosticBatches.delete(uri)) this.bumpDiagnostics();
   }
@@ -243,16 +290,25 @@ class $LanguageClient {
     count: number,
   ): readonly LanguageDiagnostic[] {
     void this.diagnosticsRevision.value;
-    const uri = typeof documentOrUri === 'string' ? documentOrUri : this.uriFor(documentOrUri.path);
+    const uri =
+      typeof documentOrUri === 'string'
+        ? documentOrUri
+        : this.uriFor(documentOrUri.path);
     const items = this.diagnosticBatches.get(uri)?.items ?? [];
     const safeStart = Math.max(0, start);
-    const safeCount = Math.max(0, Math.min(count, this.maxDiagnosticsPerDocument));
+    const safeCount = Math.max(
+      0,
+      Math.min(count, this.maxDiagnosticsPerDocument),
+    );
     return items.slice(safeStart, safeStart + safeCount);
   }
 
   diagnosticCountFor(documentOrUri: TextDocumentModel | string): number {
     void this.diagnosticsRevision.value;
-    const uri = typeof documentOrUri === 'string' ? documentOrUri : this.uriFor(documentOrUri.path);
+    const uri =
+      typeof documentOrUri === 'string'
+        ? documentOrUri
+        : this.uriFor(documentOrUri.path);
     return this.diagnosticBatches.get(uri)?.items.length ?? 0;
   }
 
@@ -271,10 +327,13 @@ class $LanguageClient {
     const transport = await this.transportFor(document, requestRevision);
     if (!transport) return null;
     try {
-      const result = await transport.request<unknown>('textDocument/definition', {
-        textDocument: { uri: this.uriFor(document.path) },
-        position: lspPosition,
-      });
+      const result = await transport.request<unknown>(
+        'textDocument/definition',
+        {
+          textDocument: { uri: this.uriFor(document.path) },
+          position: lspPosition,
+        },
+      );
       if (document.revision.value !== requestRevision) return null;
       const locations = this.parseLocations(result);
       return locations[0] ?? null;
@@ -295,11 +354,14 @@ class $LanguageClient {
     const transport = await this.transportFor(document, requestRevision);
     if (!transport) return [];
     try {
-      const result = await transport.request<unknown>('textDocument/references', {
-        textDocument: { uri: this.uriFor(document.path) },
-        position: lspPosition,
-        context: { includeDeclaration },
-      });
+      const result = await transport.request<unknown>(
+        'textDocument/references',
+        {
+          textDocument: { uri: this.uriFor(document.path) },
+          position: lspPosition,
+          context: { includeDeclaration },
+        },
+      );
       if (document.revision.value !== requestRevision) return [];
       return this.parseLocations(result).slice(0, this.maxReferencesPerRequest);
     } catch (reason) {
@@ -308,7 +370,10 @@ class $LanguageClient {
     }
   }
 
-  async hover(document: TextDocumentModel, position: TextPosition): Promise<LanguageHover | null> {
+  async hover(
+    document: TextDocumentModel,
+    position: TextPosition,
+  ): Promise<LanguageHover | null> {
     if (!this.supports('hover')) return null;
     const requestRevision = document.revision.value;
     const lspPosition = this.toLspPosition(document, position);
@@ -324,6 +389,39 @@ class $LanguageClient {
     } catch (reason) {
       this.containFailure(reason);
       return null;
+    }
+  }
+
+  async completion(
+    document: TextDocumentModel,
+    position: TextPosition,
+    context: LanguageCompletionContext,
+  ): Promise<LanguageCompletionList> {
+    if (!this.supports('completion')) return { items: [], isIncomplete: false };
+    const requestRevision = document.revision.value;
+    const transport = await this.transportFor(document, requestRevision);
+    if (!transport) return { items: [], isIncomplete: false };
+    try {
+      const result = await transport.request<unknown>(
+        'textDocument/completion',
+        {
+          textDocument: { uri: this.uriFor(document.path) },
+          position: this.toLspPosition(document, position),
+          context: {
+            triggerKind: context.triggerKind === 'invoked' ? 1 : 2,
+            ...(context.triggerCharacter
+              ? { triggerCharacter: context.triggerCharacter }
+              : {}),
+          },
+        },
+      );
+      if (document.revision.value !== requestRevision) {
+        return { items: [], isIncomplete: false };
+      }
+      return this.parseCompletionList(result, this.uriFor(document.path));
+    } catch (reason) {
+      this.containFailure(reason);
+      return { items: [], isIncomplete: false };
     }
   }
 
@@ -414,13 +512,16 @@ class $LanguageClient {
     try {
       const selection = await this.resolveProvider(path);
       if (!selection || !this.isCurrent(generation)) {
-        if (this.isCurrent(generation)) this.setUnavailable('No TypeScript language server found');
+        if (this.isCurrent(generation))
+          this.setUnavailable('No TypeScript language server found');
         return false;
       }
 
       const process = this.createProcess();
       if (!process.start(selection.command, this.rootPath)) {
-        this.setUnavailable(process.error ?? `Unable to start ${selection.command.command}`);
+        this.setUnavailable(
+          process.error ?? `Unable to start ${selection.command.command}`,
+        );
         return false;
       }
       if (!this.isCurrent(generation)) {
@@ -429,9 +530,15 @@ class $LanguageClient {
       }
 
       const transport = this.createTransport(process);
-      transport.onNotification((method, params) => this.handleNotification(method, params));
-      transport.onRequest((method, params) => this.handleServerRequest(method, params));
-      transport.onClose((reason) => this.handleTransportClose(transport, process, reason));
+      transport.onNotification((method, params) =>
+        this.handleNotification(method, params),
+      );
+      transport.onRequest((method, params) =>
+        this.handleServerRequest(method, params),
+      );
+      transport.onClose((reason) =>
+        this.handleTransportClose(transport, process, reason),
+      );
       if (!transport.start()) {
         process.dispose();
         this.setUnavailable('Language server stdio is unavailable');
@@ -454,11 +561,24 @@ class $LanguageClient {
         capabilities: {
           textDocument: {
             synchronization: { didSave: true, dynamicRegistration: false },
-            publishDiagnostics: { versionSupport: true, relatedInformation: true },
-            diagnostic: { dynamicRegistration: false, relatedDocumentSupport: false },
+            publishDiagnostics: {
+              versionSupport: true,
+              relatedInformation: true,
+            },
+            diagnostic: {
+              dynamicRegistration: false,
+              relatedDocumentSupport: false,
+            },
             definition: { dynamicRegistration: false, linkSupport: true },
-            hover: { dynamicRegistration: false, contentFormat: ['markdown', 'plaintext'] },
+            hover: {
+              dynamicRegistration: false,
+              contentFormat: ['markdown', 'plaintext'],
+            },
             references: { dynamicRegistration: false },
+            completion: {
+              dynamicRegistration: false,
+              completionItem: { insertReplaceSupport: false },
+            },
           },
           workspace: {
             configuration: true,
@@ -472,9 +592,9 @@ class $LanguageClient {
         process.dispose();
         return false;
       }
-      this.serverCapabilities = this.objectValue(initializeResult)?.capabilities as
-        | Record<string, unknown>
-        | undefined ?? {};
+      this.serverCapabilities =
+        (this.objectValue(initializeResult)?.capabilities as
+          Record<string, unknown> | undefined) ?? {};
       await transport.notify('initialized', {});
       this.status.value = 'ready';
       this.error.value = null;
@@ -484,7 +604,9 @@ class $LanguageClient {
         if (selection.provider.supportsPath(document.document.path)) {
           // Contain a mid-sync server death (broken pipe / abrupt exit) here too: an uncaught
           // rejection from this initial re-sync must never escape as an unhandled rejection.
-          void this.synchronize(document).catch((reason) => this.containFailure(reason));
+          void this.synchronize(document).catch((reason) =>
+            this.containFailure(reason),
+          );
         }
       }
       return true;
@@ -495,8 +617,8 @@ class $LanguageClient {
   }
 
   protected async resolveProvider(path: string): Promise<{
-    provider: LanguageProvider;
-    command: Awaited<ReturnType<LanguageProvider['resolve']>> & {};
+    provider: LanguageServerProvider;
+    command: Awaited<ReturnType<LanguageServerProvider['resolve']>> & {};
   } | null> {
     for (const provider of this.providers) {
       if (!provider.supportsPath(path)) continue;
@@ -517,7 +639,11 @@ class $LanguageClient {
 
   protected async sendLatestDocument(state: OpenDocument): Promise<void> {
     const transport = this.transport;
-    if (!transport?.running || !this.provider?.supportsPath(state.document.path)) return;
+    if (
+      !transport?.running ||
+      !this.provider?.supportsPath(state.document.path)
+    )
+      return;
     // The single choke point where a document's text actually reaches the server. Never send a
     // document that exceeds the size budget, so an oversized file is never attached even if a caller
     // reaches here — the load-bearing guard the size-guard invariant rests on.
@@ -574,7 +700,8 @@ class $LanguageClient {
   }
 
   protected handleNotification(method: string, params: unknown): void {
-    if (method === 'textDocument/publishDiagnostics') this.applyDiagnostics(params);
+    if (method === 'textDocument/publishDiagnostics')
+      this.applyDiagnostics(params);
   }
 
   protected handleServerRequest(method: string, params: unknown): unknown {
@@ -590,7 +717,10 @@ class $LanguageClient {
         },
       ];
     }
-    if (method === 'client/registerCapability' || method === 'window/workDoneProgress/create') {
+    if (
+      method === 'client/registerCapability' ||
+      method === 'window/workDoneProgress/create'
+    ) {
       return null;
     }
     if (method === 'workspace/diagnostic/refresh') {
@@ -618,7 +748,8 @@ class $LanguageClient {
     // advertises publishDiagnostics.versionSupport. A versionless batch is attributed to the
     // last revision synced to the server — and still accepted only when that revision is the
     // document's current one, so a batch computed against stale text remains impossible.
-    const reportedVersion = typeof value?.version === 'number' ? value.version : null;
+    const reportedVersion =
+      typeof value?.version === 'number' ? value.version : null;
     const version = reportedVersion ?? state.lastSentVersion;
     if (version === null) return;
     this.storeDiagnostics(uri, version, value.diagnostics);
@@ -636,7 +767,8 @@ class $LanguageClient {
   protected async pullDiagnostics(state: OpenDocument): Promise<void> {
     const transport = this.transport;
     if (!transport?.running || !this.serverPullsDiagnostics) return;
-    if (!state.opened || !this.provider?.supportsPath(state.document.path)) return;
+    if (!state.opened || !this.provider?.supportsPath(state.document.path))
+      return;
     // Stamp the pull with the revision currently synced to the server. If the document advances
     // while the request is in flight, `lastSentVersion` moves past it and the store's revision
     // guard drops the stale report — the same staleness rule the push path obeys.
@@ -659,7 +791,11 @@ class $LanguageClient {
   /** Parse a `DocumentDiagnosticReport`. A `full` report REPLACES the stored batch (so a report
    *  that no longer lists a prior error clears it); an `unchanged` report keeps the current batch
    *  and only refreshes the `resultId`. */
-  protected ingestDiagnosticReport(uri: string, version: number, report: unknown): void {
+  protected ingestDiagnosticReport(
+    uri: string,
+    version: number,
+    report: unknown,
+  ): void {
     const parsed = this.parseDiagnosticReport(report);
     if (!parsed) return;
     if (parsed.resultId) this.diagnosticResultIds.set(uri, parsed.resultId);
@@ -668,12 +804,15 @@ class $LanguageClient {
     this.storeDiagnostics(uri, version, parsed.items);
   }
 
-  protected parseDiagnosticReport(report: unknown): DocumentDiagnosticReport | null {
+  protected parseDiagnosticReport(
+    report: unknown,
+  ): DocumentDiagnosticReport | null {
     const value = this.objectValue(report);
     if (!value) return null;
     const kind = value.kind === 'unchanged' ? 'unchanged' : 'full';
     const resultId = typeof value.resultId === 'string' ? value.resultId : null;
-    const items = kind === 'full' && Array.isArray(value.items) ? value.items : [];
+    const items =
+      kind === 'full' && Array.isArray(value.items) ? value.items : [];
     return { kind, resultId, items };
   }
 
@@ -686,13 +825,24 @@ class $LanguageClient {
    * invariant: Diagnostic storage stays compact and bounded (src/modules/lsp/lsp.invariants.md)
    * invariant: Diagnostics reach the store by push or pull (src/modules/lsp/lsp.invariants.md)
    */
-  protected storeDiagnostics(uri: string, version: number, rawDiagnostics: readonly unknown[]): void {
+  protected storeDiagnostics(
+    uri: string,
+    version: number,
+    rawDiagnostics: readonly unknown[],
+  ): void {
     const state = this.documents.get(uri);
     if (!state || !state.opened) return;
-    if (state.document.revision.value !== version || state.lastSentVersion !== version) return;
+    if (
+      state.document.revision.value !== version ||
+      state.lastSentVersion !== version
+    )
+      return;
 
     const items: LanguageDiagnostic[] = [];
-    for (const candidate of rawDiagnostics.slice(0, this.maxDiagnosticsPerDocument)) {
+    for (const candidate of rawDiagnostics.slice(
+      0,
+      this.maxDiagnosticsPerDocument,
+    )) {
       const diagnostic = this.parseDiagnostic(candidate, uri, version);
       if (diagnostic) items.push(diagnostic);
     }
@@ -708,13 +858,18 @@ class $LanguageClient {
 
   /** Debounce a pull for `state`, collapsing rapid edits into one `textDocument/diagnostic`. No-op
    *  for push-model servers, so the debounce/timer machinery never runs under typescript-language-server. */
-  protected scheduleDiagnosticPull(state: OpenDocument, delayMilliseconds: number): void {
+  protected scheduleDiagnosticPull(
+    state: OpenDocument,
+    delayMilliseconds: number,
+  ): void {
     if (this.disposed || !this.serverPullsDiagnostics) return;
     const existing = this.diagnosticPullTimers.get(state.uri);
     if (existing) clearTimeout(existing);
     const timer = setTimeout(() => {
       this.diagnosticPullTimers.delete(state.uri);
-      void this.pullDiagnostics(state).catch((reason) => this.containFailure(reason));
+      void this.pullDiagnostics(state).catch((reason) =>
+        this.containFailure(reason),
+      );
     }, delayMilliseconds);
     this.diagnosticPullTimers.set(state.uri, timer);
   }
@@ -741,16 +896,25 @@ class $LanguageClient {
     }
   }
 
-  protected parseDiagnostic(value: unknown, uri: string, version: number): LanguageDiagnostic | null {
+  protected parseDiagnostic(
+    value: unknown,
+    uri: string,
+    version: number,
+  ): LanguageDiagnostic | null {
     const candidate = this.objectValue(value);
     const range = this.parseRange(candidate?.range, uri);
     if (!range || typeof candidate?.message !== 'string') return null;
-    const rawSeverity = typeof candidate.severity === 'number' ? candidate.severity : 1;
+    const rawSeverity =
+      typeof candidate.severity === 'number' ? candidate.severity : 1;
     const severity = Math.max(1, Math.min(4, rawSeverity)) as 1 | 2 | 3 | 4;
     const rawCode = candidate.code;
-    const code = typeof rawCode === 'string' || typeof rawCode === 'number' ? rawCode : null;
+    const code =
+      typeof rawCode === 'string' || typeof rawCode === 'number'
+        ? rawCode
+        : null;
     return {
-      source: typeof candidate.source === 'string' ? candidate.source : 'typescript',
+      source:
+        typeof candidate.source === 'string' ? candidate.source : 'typescript',
       severity,
       message: candidate.message,
       code,
@@ -764,12 +928,16 @@ class $LanguageClient {
     const locations: LanguageLocation[] = [];
     for (const candidateValue of candidates) {
       const candidate = this.objectValue(candidateValue);
-      const uri = typeof candidate?.uri === 'string'
-        ? candidate.uri
-        : typeof candidate?.targetUri === 'string'
-          ? candidate.targetUri
-          : null;
-      const rawRange = candidate?.range ?? candidate?.targetSelectionRange ?? candidate?.targetRange;
+      const uri =
+        typeof candidate?.uri === 'string'
+          ? candidate.uri
+          : typeof candidate?.targetUri === 'string'
+            ? candidate.targetUri
+            : null;
+      const rawRange =
+        candidate?.range ??
+        candidate?.targetSelectionRange ??
+        candidate?.targetRange;
       const range = uri ? this.parseRange(rawRange, uri) : null;
       if (uri && range) locations.push({ uri, range });
     }
@@ -787,12 +955,60 @@ class $LanguageClient {
     };
   }
 
+  protected parseCompletionList(
+    value: unknown,
+    uri: string,
+  ): LanguageCompletionList {
+    const container = this.objectValue(value);
+    const rawItems = Array.isArray(value)
+      ? value
+      : Array.isArray(container?.items)
+        ? container.items
+        : [];
+    const items: LanguageCompletionItem[] = [];
+    for (const rawItem of rawItems) {
+      const item = this.objectValue(rawItem);
+      if (!item || typeof item.label !== 'string') continue;
+      const rawTextEdit = this.objectValue(item.textEdit);
+      const range = rawTextEdit
+        ? this.parseRange(rawTextEdit.range, uri)
+        : null;
+      items.push({
+        label: item.label,
+        kind:
+          typeof item.kind === 'number' && Number.isFinite(item.kind)
+            ? Math.trunc(item.kind)
+            : null,
+        insertText:
+          typeof item.insertText === 'string' ? item.insertText : null,
+        textEdit:
+          range && typeof rawTextEdit?.newText === 'string'
+            ? { range, newText: rawTextEdit.newText }
+            : null,
+        sortText: typeof item.sortText === 'string' ? item.sortText : null,
+        filterText:
+          typeof item.filterText === 'string' ? item.filterText : null,
+      });
+    }
+    return {
+      items,
+      isIncomplete: container?.isIncomplete === true,
+    };
+  }
+
   protected hoverText(value: unknown): string {
     if (typeof value === 'string') return value;
-    if (Array.isArray(value)) return value.map((item) => this.hoverText(item)).filter(Boolean).join('\n\n');
+    if (Array.isArray(value))
+      return value
+        .map((item) => this.hoverText(item))
+        .filter(Boolean)
+        .join('\n\n');
     const candidate = this.objectValue(value);
     if (typeof candidate?.value === 'string') return candidate.value;
-    if (typeof candidate?.language === 'string' && typeof candidate?.value === 'string') {
+    if (
+      typeof candidate?.language === 'string' &&
+      typeof candidate?.value === 'string'
+    ) {
       return candidate.value;
     }
     return '';
@@ -811,7 +1027,11 @@ class $LanguageClient {
 
   protected parseLspPosition(value: unknown): LspPosition | null {
     const candidate = this.objectValue(value);
-    if (typeof candidate?.line !== 'number' || typeof candidate?.character !== 'number') return null;
+    if (
+      typeof candidate?.line !== 'number' ||
+      typeof candidate?.character !== 'number'
+    )
+      return null;
     return {
       line: Math.max(0, Math.trunc(candidate.line)),
       character: Math.max(0, Math.trunc(candidate.character)),
@@ -819,28 +1039,31 @@ class $LanguageClient {
   }
 
   /** invariant: LSP positions cross through UTF-16 (src/modules/lsp/lsp.invariants.md) */
-  protected toLspPosition(document: TextDocumentModel, position: TextPosition): LspPosition {
-    const line = Math.max(0, Math.min(Math.trunc(position.line), document.lineCount - 1));
+  protected toLspPosition(
+    document: TextDocumentModel,
+    position: TextPosition,
+  ): LspPosition {
+    const line = Math.max(
+      0,
+      Math.min(Math.trunc(position.line), document.lineCount - 1),
+    );
     const text = document.line(line);
     const graphemeColumn = Math.max(0, Math.trunc(position.column));
     return {
       line,
-      character: this.EditorCoordinates.graphemeToU16(
-        text,
-        graphemeColumn,
-      ),
+      character: this.EditorCoordinates.graphemeToU16(text, graphemeColumn),
     };
   }
 
   protected fromLspPosition(uri: string, position: LspPosition): TextPosition {
     const lineText = this.lineForUri(uri, position.line);
-    const utf16Column = Math.max(0, Math.min(position.character, lineText.length));
+    const utf16Column = Math.max(
+      0,
+      Math.min(position.character, lineText.length),
+    );
     return {
       line: position.line,
-      column: this.EditorCoordinates.u16ToGrapheme(
-        lineText,
-        utf16Column,
-      ),
+      column: this.EditorCoordinates.u16ToGrapheme(lineText, utf16Column),
     };
   }
 
@@ -922,9 +1145,12 @@ class $LanguageClient {
 
   protected publishStatus(): void {
     const snapshot = this.StatusChannel.snapshot;
-    const pids = snapshot.subprocessPids.filter((pid) => pid !== this.publishedPid);
+    const pids = snapshot.subprocessPids.filter(
+      (pid) => pid !== this.publishedPid,
+    );
     const currentPid = this.process?.pid ?? null;
-    if (currentPid !== null && !pids.includes(currentPid)) pids.push(currentPid);
+    if (currentPid !== null && !pids.includes(currentPid))
+      pids.push(currentPid);
     this.publishedPid = currentPid;
     this.StatusChannel.update({
       lspStatus: this.status.value,
@@ -940,14 +1166,20 @@ class $LanguageClient {
 
   protected objectValue(value: unknown): Record<string, unknown> | null {
     return value && typeof value === 'object' && !Array.isArray(value)
-      ? value as Record<string, unknown>
+      ? (value as Record<string, unknown>)
       : null;
   }
 
-  protected async withTimeout<Result>(promise: Promise<Result>, milliseconds: number): Promise<Result> {
+  protected async withTimeout<Result>(
+    promise: Promise<Result>,
+    milliseconds: number,
+  ): Promise<Result> {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const timeout = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new Error('LSP shutdown timed out')), milliseconds);
+      timer = setTimeout(
+        () => reject(new Error('LSP shutdown timed out')),
+        milliseconds,
+      );
     });
     try {
       return await Promise.race([promise, timeout]);
@@ -966,12 +1198,7 @@ export namespace LanguageClient {
 
 export type TextDocumentModel = InstanceType<typeof TextDocument.Class>;
 export type LanguageClientStatus =
-  | 'idle'
-  | 'starting'
-  | 'ready'
-  | 'unavailable'
-  | 'error'
-  | 'disposed';
+  'idle' | 'starting' | 'ready' | 'unavailable' | 'error' | 'disposed';
 
 export interface TextPosition {
   line: number;
@@ -1004,7 +1231,7 @@ export interface LanguageDiagnostic {
 
 export interface LanguageClientOptions {
   rootPath?: string;
-  providers?: readonly LanguageProvider[];
+  providers?: readonly LanguageServerProvider[];
   processFactory?: () => LspProcessLike;
   transportFactory?: (process: LspProcessLike) => LspTransport.Model;
   maxDiagnosticsPerDocument?: number;

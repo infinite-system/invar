@@ -48,7 +48,8 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 `BoundedListPopupGeometry` determines its box bounds, optional search row, visible list window,
 scrollbar rectangle, and screen-row-to-item mapping for both painting and hit-testing.
 
-**Scope:** `BoundedListPopup` and its buffer-count and Git-log branch-selector adapters.
+**Scope:** `BoundedListPopup` and its buffer-count, Git-log branch-selector, and caret-completion
+adapters.
 
 **Mechanism:** `BoundedListPopup.layoutGeometry` produces the geometry stored for the current paint.
 The list renderer slices from its `firstVisible` and `listRows`; the vertical-only
@@ -57,18 +58,21 @@ The list renderer slices from its `firstVisible` and `listRows`; the vertical-on
 filtered matches and `revealSelectedIndex` moves that same window. The optional search row owns an
 independent rest-muted and hover-lit palette state, while the modal popup remains the query-input
 owner across list-row hover repaints. Consumer adapters provide item labels, selection, and actions
-but never calculate popup rows or query focus.
+but never calculate popup rows or query focus. Completion hides the search row and backdrop, anchors
+at the laid-out editor caret, and prefilters only when its typed prefix changes; each paint slices
+cached matches to the geometry's visible window.
 
 **Generates:** window-edge clamping and upward opening; a bounded visible window over arbitrarily
 large lists; wheel momentum and a solid vertical thumb; pointer and keyboard selection that agree
 with the row on screen.
 
-**Evidence:** `src/modules/ui/BoundedListPopup.ts`;
+**Evidence:** `src/modules/ui/BoundedListPopup.ts`; `src/modules/ui/CompletionPopup.ts`;
 `src/modules/ui/BoundedListPopup.test.ts`; `scripts/harness/smoke-bounded-list-popup-harness.ts`.
 
 **Impossible if true:** a painted row selecting a different item; a popup or scrollbar extending
 through the terminal bottom edge; a consumer reimplementing placement, visible-window, row-hit, or
-wrap math; list hover diverting typed query characters to the editor.
+wrap math; list hover diverting typed query characters to the editor; a completion paint walking all
+1,000+ source items.
 
 **Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts && bun
 scripts/harness/smoke-bounded-list-popup-harness.ts`
@@ -135,6 +139,30 @@ three rows; a close row without a keyboard close path; a drag updating only pres
 
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts && bun
 scripts/harness/smoke-panel-split-harness.ts`
+
+### Completion reuses bounded popup geometry
+
+**Invariant:** If completion is visible, then its placement, flip, visible window, scrollbar, pointer
+hit mapping, and wrapped keyboard selection come from `BoundedListPopup`; completion supplies only a
+caret anchor, prefix-filtered items, and acceptance behavior.
+
+**Scope:** `CompletionPopup`, its `RootView` caret anchor, and completion input routing in Bootstrap.
+
+**Mechanism:** The adapter owns a separately identified `BoundedListPopup`, opens it without the
+modal backdrop or search row, and updates its cached items after one cheap prefix pass. The editor
+keeps keyboard focus; completion consumes only Up, Down, Enter, Tab, and Escape.
+
+**Generates:** Caret-relative downward placement with upward flipping, O(viewport) paint, wrapped
+selection with reveal, continuous editor typing, and exact text-edit acceptance.
+
+**Evidence:** `src/modules/ui/CompletionPopup.ts`; `src/modules/ui/BoundedListPopup.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/app/Bootstrap.ts`.
+
+**Impossible if true:** A second completion-specific popup geometry implementation; a completion
+search row; an invisible modal backdrop that steals editor input; full-list work during repaint.
+
+**Verification:** `bun test src/modules/ui/CompletionPopup.test.ts
+src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completion-harness.ts`.
 
 **Status:** provisional
 

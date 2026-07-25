@@ -11,15 +11,18 @@ const overlayNames: readonly ExclusiveOverlayName[] = [
   'settingsPanel',
   'contextMenu',
   'boundedListPopup',
+  'completionPopup',
   'shortcutHelp',
 ];
 
 describe('OverlayCoordinator', () => {
   test('opening each overlay closes every sibling before the opener runs', () => {
     const openStates = new Map<ExclusiveOverlayName, boolean>();
-    const closeOverlay = (overlayName: ExclusiveOverlayName): (() => void) => () => {
-      openStates.set(overlayName, false);
-    };
+    const closeOverlay =
+      (overlayName: ExclusiveOverlayName): (() => void) =>
+      () => {
+        openStates.set(overlayName, false);
+      };
     const closeActions: Record<ExclusiveOverlayName, () => void> = {
       findBar: closeOverlay('findBar'),
       quickOpen: closeOverlay('quickOpen'),
@@ -27,12 +30,14 @@ describe('OverlayCoordinator', () => {
       settingsPanel: closeOverlay('settingsPanel'),
       contextMenu: closeOverlay('contextMenu'),
       boundedListPopup: closeOverlay('boundedListPopup'),
+      completionPopup: closeOverlay('completionPopup'),
       shortcutHelp: closeOverlay('shortcutHelp'),
     };
     const coordinator = new OverlayCoordinator.Class(closeActions);
 
     for (const overlayName of overlayNames) {
-      for (const initialOverlayName of overlayNames) openStates.set(initialOverlayName, true);
+      for (const initialOverlayName of overlayNames)
+        openStates.set(initialOverlayName, true);
 
       coordinator.openExclusiveOverlay(overlayName, () => {
         for (const siblingOverlayName of overlayNames) {
@@ -43,9 +48,9 @@ describe('OverlayCoordinator', () => {
         openStates.set(overlayName, true);
       });
 
-      expect(overlayNames.filter((candidateName) => openStates.get(candidateName))).toEqual([
-        overlayName,
-      ]);
+      expect(
+        overlayNames.filter((candidateName) => openStates.get(candidateName)),
+      ).toEqual([overlayName]);
     }
   });
 
@@ -61,6 +66,7 @@ describe('OverlayCoordinator', () => {
       settingsPanel: () => {},
       contextMenu: () => {},
       boundedListPopup: () => {},
+      completionPopup: () => {},
       shortcutHelp: () => {},
     });
 

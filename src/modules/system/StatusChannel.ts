@@ -17,7 +17,9 @@ class $StatusChannel {
 
   /** Per-frame disk writes are harness infrastructure; normal runs retain in-memory state only. */
   protected static get observingEnabled(): boolean {
-    return process.env.TUI_OBSERVE === '1' || Boolean(process.env.TUI_STATUS_PATH);
+    return (
+      process.env.TUI_OBSERVE === '1' || Boolean(process.env.TUI_STATUS_PATH)
+    );
   }
 
   protected static get temporaryPath(): string {
@@ -113,5 +115,12 @@ export interface StatusSnapshot {
   subprocessPids: number[];
   lifecycleTier: string;
   overlay: string | null;
+  completionOpen?: boolean;
+  completionSelectedLabel?: string;
+  completionItemCount?: number;
+  completionGeometry?: {
+    listRows: number;
+    visibleItemCount: number;
+  } | null;
   [key: string]: unknown;
 }

@@ -13,6 +13,7 @@ import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
+import { CompletionPopup } from '../ui/CompletionPopup';
 import { PanelHost } from '../ui/PanelHost';
 import type { RootView } from '../ui/RootView';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
@@ -158,6 +159,10 @@ class $AppStatusProjection {
       boundedListPopupSelected: ports.boundedListPopup.selectedIndex.value,
       boundedListPopupMatches: ports.boundedListPopup.filteredMatches.length,
       boundedListPopupGeometry: ports.boundedListPopup.geometry,
+      completionOpen: ports.completionPopup.open,
+      completionSelectedLabel: ports.completionPopup.selectedLabel,
+      completionItemCount: ports.completionPopup.itemCount,
+      completionGeometry: ports.completionPopup.geometry,
       tooltipVisible: ports.tooltip.visible.value,
       // A diff is shown OVER the editor tabs (transient). Lets a driven contract confirm the diff
       // pane actually mounted, so pane-independence (editor extent survives the swap) is real-verified.
@@ -403,6 +408,10 @@ export interface AppStatusProjectionPorts {
   readonly boundedListPopup: Pick<
     InstanceType<typeof BoundedListPopup.Class>,
     'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
+  >;
+  readonly completionPopup: Pick<
+    InstanceType<typeof CompletionPopup.Class>,
+    'open' | 'selectedLabel' | 'itemCount' | 'geometry'
   >;
   readonly shortcutHelp: Pick<
     InstanceType<typeof ShortcutHelp.Class>,

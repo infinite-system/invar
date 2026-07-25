@@ -14,7 +14,10 @@ function makeClient(fake: FakeLspProcess): LanguageClient.Instance {
   });
 }
 
-function makeDocument(path: string, text = 'const x = 1\n'): TextDocument.Instance {
+function makeDocument(
+  path: string,
+  text = 'const x = 1\n',
+): TextDocument.Instance {
   const document = new TextDocument.Class();
   document.loadFromText(text, path);
   return document;
@@ -49,7 +52,9 @@ test('opening a supported document lazily starts the server and reaches ready', 
     expect(fake.startCalled).toBe(true);
     expect(client.status.value).toBe('ready');
     // The server received the initialize handshake and the didOpen sync.
-    const methods = fake.received.map((message) => ('method' in message ? message.method : null));
+    const methods = fake.received.map((message) =>
+      'method' in message ? message.method : null,
+    );
     expect(methods).toContain('initialize');
     expect(methods).toContain('initialized');
     expect(methods).toContain('textDocument/didOpen');
@@ -70,6 +75,74 @@ test('a semantic command with no prior openDocument still starts the server lazi
     const hover = await client.hover(document, { line: 0, column: 0 });
     expect(fake.startCalled).toBe(true);
     expect(hover?.contents).toBe('ok');
+  } finally {
+    await client.dispose();
+  }
+});
+
+test('completion maps the wire response and server trigger characters to the provider contract', async () => {
+  const fake = new FakeLspProcess(5005);
+  fake.onInitialize = () => ({
+    capabilities: {
+      completionProvider: { triggerCharacters: ['.', ':'] },
+    },
+  });
+  fake.responders.set('textDocument/completion', () => ({
+    isIncomplete: true,
+    items: [
+      {
+        label: 'property',
+        kind: 10,
+        insertText: 'property',
+        sortText: '01',
+        filterText: 'property',
+        textEdit: {
+          range: {
+            start: { line: 0, character: 5 },
+            end: { line: 0, character: 6 },
+          },
+          newText: 'property',
+        },
+      },
+    ],
+  }));
+  const client = makeClient(fake);
+  try {
+    const document = makeDocument(`${ROOT}/completion.ts`, 'this.p\n');
+    const result = await client.completion(
+      document,
+      { line: 0, column: 6 },
+      { triggerKind: 'triggerCharacter', triggerCharacter: '.' },
+    );
+
+    expect(client.completionTriggerCharacters).toEqual(['.', ':']);
+    expect(result).toEqual({
+      isIncomplete: true,
+      items: [
+        {
+          label: 'property',
+          kind: 10,
+          insertText: 'property',
+          sortText: '01',
+          filterText: 'property',
+          textEdit: {
+            range: {
+              start: { line: 0, column: 5 },
+              end: { line: 0, column: 6 },
+            },
+            newText: 'property',
+          },
+        },
+      ],
+    });
+    const request = fake.received.find(
+      (message) =>
+        'method' in message && message.method === 'textDocument/completion',
+    ) as { params?: unknown } | undefined;
+    expect(request?.params).toMatchObject({
+      position: { line: 0, character: 6 },
+      context: { triggerKind: 2, triggerCharacter: '.' },
+    });
   } finally {
     await client.dispose();
   }
@@ -100,7 +173,13 @@ test('a missing server executable degrades to unavailable without throwing', asy
     providers: [
       {
         id: 'none',
-        capabilities: { diagnostics: true, definition: true, hover: true, references: true },
+        capabilities: {
+          diagnostics: true,
+          definition: true,
+          hover: true,
+          references: true,
+          completion: true,
+        },
         supportsPath: (path: string) => path.endsWith('.ts'),
         resolve: async () => null,
       },
@@ -112,7 +191,9 @@ test('a missing server executable degrades to unavailable without throwing', asy
     expect(ready).toBe(false);
     expect(client.status.value).toBe('unavailable');
     // Semantic requests just return empty — they never throw into the editor.
-    expect(await client.hover(makeDocument(`${ROOT}/d.ts`), { line: 0, column: 0 })).toBeNull();
+    expect(
+      await client.hover(makeDocument(`${ROOT}/d.ts`), { line: 0, column: 0 }),
+    ).toBeNull();
   } finally {
     await client.dispose();
   }

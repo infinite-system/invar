@@ -1,14 +1,18 @@
-import { Reactive } from "ivue";
-import { ref, type Ref } from "vue";
-import { Viewport } from "./Viewport";
-import { EditorCoordinates } from "./EditorCoordinates";
-import { TextEditing } from "./TextEditing";
-import { EditorWrap } from "./EditorWrap";
-import { ReadOnlyTextBuffer } from "./ReadOnlyTextBuffer";
-import { UndoStore, type EditKind } from "../storage/UndoStore";
-import { Files } from "../system/Files";
-import { Clock } from "../system/Clock";
-import { Clipboard } from "../system/Clipboard";
+import { Reactive } from 'ivue';
+import { ref, type Ref } from 'vue';
+import { Viewport } from './Viewport';
+import { EditorCoordinates } from './EditorCoordinates';
+import { TextEditing } from './TextEditing';
+import { EditorWrap } from './EditorWrap';
+import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
+import { UndoStore, type EditKind } from '../storage/UndoStore';
+import { Files } from '../system/Files';
+import { Clock } from '../system/Clock';
+import { Clipboard } from '../system/Clipboard';
+import type {
+  LanguageCompletionItem,
+  LanguageRange,
+} from '../lsp/LanguageProvider.interface';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -195,7 +199,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   deleteToLineStart(): void {
     if (!this.hasDocument.value) return;
     if (this.hasSelection) {
-      this.captureBefore("delete");
+      this.captureBefore('delete');
       this.removeSelection();
       this.scrollLineIntoView(this.cursor.line.value);
       return;
@@ -203,7 +207,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const line = this.cursor.line.value;
     const column = this.cursor.col.value;
     if (column === 0) return; // already at line start — nothing to the left on this line
-    this.captureBefore("delete");
+    this.captureBefore('delete');
     this.document.deleteRange({ line, col: 0 }, { line, col: column });
     this.placeCursor(line, 0);
     this.scrollLineIntoView(line);
@@ -272,7 +276,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   insertText(text: string): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore("insert");
+    this.captureBefore('insert');
     this.removeSelection();
     const column = this.document.insertInline(
       this.cursor.line.value,
@@ -283,13 +287,39 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.scrollLineIntoView(this.cursor.line.value);
   }
 
+  applyCompletion(
+    item: LanguageCompletionItem,
+    fallbackRange: LanguageRange,
+  ): void {
+    if (this.readOnly.value || !this.hasDocument.value) return;
+    const edit = item.textEdit ?? {
+      range: fallbackRange,
+      newText: item.insertText ?? item.label,
+    };
+    this.captureBefore('other');
+    this.cursor.clearSelection();
+    const position = this.document.replaceRange(
+      {
+        line: edit.range.start.line,
+        col: edit.range.start.column,
+      },
+      {
+        line: edit.range.end.line,
+        col: edit.range.end.column,
+      },
+      edit.newText,
+    );
+    this.placeCursor(position.line, position.col);
+    this.scrollLineIntoView(position.line);
+  }
+
   insertNewline(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore("newline");
+    this.captureBefore('newline');
     this.removeSelection();
     // Auto-indent: copy leading whitespace of the current line.
     const currentLine = this.document.line(this.cursor.line.value);
-    const indent = currentLine.match(/^\s*/)?.[0] ?? "";
+    const indent = currentLine.match(/^\s*/)?.[0] ?? '';
     const position = this.document.splitLine(
       this.cursor.line.value,
       this.cursor.col.value,
@@ -305,7 +335,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   backspace(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore("delete");
+    this.captureBefore('delete');
     if (this.removeSelection()) {
       this.scrollLineIntoView(this.cursor.line.value);
       return;
@@ -320,7 +350,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   deleteChar(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore("delete");
+    this.captureBefore('delete');
     if (this.removeSelection()) return;
     this.document.deleteForward(this.cursor.line.value, this.cursor.col.value);
   }
@@ -329,7 +359,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   deletePreviousWord(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
     if (this.hasSelection) {
-      this.captureBefore("delete");
+      this.captureBefore('delete');
       this.removeSelection();
       this.scrollLineIntoView(this.cursor.line.value);
       return;
@@ -343,7 +373,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       return;
     }
 
-    this.captureBefore("delete");
+    this.captureBefore('delete');
     this.document.deleteRange(deletionStart, {
       line: this.cursor.line.value,
       col: this.cursor.col.value,
@@ -365,7 +395,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const line = this.cursor.line.value;
     if (line <= 0) return; // top edge: nothing above to swap with
-    this.captureBefore("other");
+    this.captureBefore('other');
     const above = this.document.line(line - 1);
     const moved = this.document.line(line);
     this.document.setLine(line - 1, moved);
@@ -383,7 +413,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const line = this.cursor.line.value;
     if (line >= this.document.lineCount - 1) return; // bottom edge: nothing below to swap with
-    this.captureBefore("other");
+    this.captureBefore('other');
     const below = this.document.line(line + 1);
     const moved = this.document.line(line);
     this.document.setLine(line + 1, moved);
@@ -399,7 +429,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Copy the cursor's line and insert the copy directly below; the cursor follows onto the copy. */
   duplicateLine(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.captureBefore("other");
+    this.captureBefore('other');
     const line = this.cursor.line.value;
     const text = this.document.line(line);
     this.document.insertLine(line + 1, text);
@@ -418,7 +448,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const text = this.selectionText();
     if (!text) return;
     await Clipboard.Class.copy(text);
-    this.captureBefore("delete");
+    this.captureBefore('delete');
     this.removeSelection();
     this.scrollLineIntoView(this.cursor.line.value);
   }
@@ -432,7 +462,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    *  under undo. */
   pasteText(text: string): void {
     if (this.readOnly.value || !this.hasDocument.value || !text) return;
-    this.captureBefore("paste");
+    this.captureBefore('paste');
     this.removeSelection();
     const position = this.document.insertMultiline(
       this.cursor.line.value,
@@ -449,7 +479,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: "other" as EditKind,
+      kind: 'other' as EditKind,
       at: Clock.Class.now(),
     };
     const target = this.undo.undo(current);
@@ -467,7 +497,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: "other" as EditKind,
+      kind: 'other' as EditKind,
       at: Clock.Class.now(),
     };
     const target = this.undo.redo(current);
@@ -489,10 +519,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   get title(): string {
-    if (!this.hasDocument.value) return "Editor";
+    if (!this.hasDocument.value) return 'Editor';
     const name = this.document.path
       ? Files.Class.basename(this.document.path)
-      : "untitled";
+      : 'untitled';
     return this.document.dirty.value ? `${name} ●` : name;
   }
 
@@ -588,13 +618,13 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     } else {
       while (
         column < lineClusters.length &&
-        isWordCharacter(lineClusters[column] ?? "")
+        isWordCharacter(lineClusters[column] ?? '')
       )
         column += 1;
     }
     while (
       column < lineClusters.length &&
-      !isWordCharacter(lineClusters[column] ?? "")
+      !isWordCharacter(lineClusters[column] ?? '')
     )
       column += 1;
     this.placeCursor(line, column);
@@ -618,7 +648,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
     const currentPrefix = currentLineText.slice(0, currentPrefixEndUtf16Offset);
     const previousLineText =
-      currentLineIndex > 0 ? this.document.line(currentLineIndex - 1) : "";
+      currentLineIndex > 0 ? this.document.line(currentLineIndex - 1) : '';
     const currentLineStart =
       currentLineIndex > 0
         ? EditorCoordinates.Class.graphemeCount(previousLineText) + 1

@@ -431,6 +431,17 @@ class $KeybindingDefaults {
         action: 'editor.backspace',
         context: 'editor',
       },
+      {
+        chord: { key: 'space', ctrl: true },
+        action: 'editor.completion',
+        context: 'editor',
+      },
+      { chord: { key: 'return' }, action: 'editor.newline', context: 'editor' },
+      {
+        chord: { key: 'backspace' },
+        action: 'editor.backspace',
+        context: 'editor',
+      },
       { chord: { key: 'delete' }, action: 'editor.delete', context: 'editor' },
       // OpenTUI decodes macOS Option+Backspace ESC DEL as backspace+meta and modified Delete as
       // delete+option; Bootstrap normalizes either modifier to this `alt` slot. Both delete a word.

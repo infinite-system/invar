@@ -23,6 +23,7 @@ import { RootView } from '../ui/RootView';
 import { TabStrip } from '../ui/TabStrip';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
+import { CompletionPopup } from '../ui/CompletionPopup';
 import { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -56,6 +57,7 @@ import type { TerminalCommandEvent } from '../terminal/TerminalCommandController
 import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import {
   AgentPaneContent,
@@ -151,6 +153,16 @@ class $Bootstrap {
       settings,
       theme,
     });
+    const completionPopup = new CompletionPopup.Class({
+      renderer,
+      settings,
+      theme,
+    });
+    let completionRequestGeneration = 0;
+    const dismissCompletion = (): void => {
+      completionRequestGeneration++;
+      completionPopup.close();
+    };
     const tooltip = new Tooltip.Class();
     const settingsPanel = new SettingsPanel.Class(settings);
     const findBar = new FindBar.Class();
@@ -185,6 +197,7 @@ class $Bootstrap {
       settingsPanel: () => settingsPanel.close(),
       contextMenu: () => contextMenu.close(),
       boundedListPopup: () => boundedListPopup.close(),
+      completionPopup: dismissCompletion,
       shortcutHelp: () => shortcutHelp.close(),
     });
 
@@ -590,6 +603,7 @@ class $Bootstrap {
       settingsPanel,
       contextMenu,
       boundedListPopup,
+      completionPopup,
       shortcutHelp,
       tooltip,
       panelHost,
@@ -615,6 +629,7 @@ class $Bootstrap {
     const paint = (): void => {
       view.update();
       boundedListPopup.update();
+      completionPopup.update();
       AppStatusProjection.Class.publish(statusProjectionPorts);
       renderer.requestRender();
     };
@@ -709,6 +724,7 @@ class $Bootstrap {
       void boundedListPopup.selectedIndex.value;
       void boundedListPopup.hoveredIndex.value;
       void boundedListPopup.paintRevision.value;
+      void completionPopup.paintRevision;
       void tooltip.visible.value;
       void tooltip.text.value;
       void tooltip.anchorX.value;
@@ -826,6 +842,7 @@ class $Bootstrap {
       // settle to zero at rest (idle-quiescence preserved).
       animating = view.tickPanelScroll(deltaTimeSeconds) || animating;
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
+      animating = completionPopup.tick(deltaTimeSeconds) || animating;
       syncAnimationLiveness(animating);
       // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
       // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
@@ -915,6 +932,7 @@ class $Bootstrap {
       app.$stopEffects(); // stop the frame effect FIRST — no repaint during teardown
       view.dispose();
       boundedListPopup.dispose();
+      completionPopup.dispose();
       app.dispose();
       options.onQuit?.();
     };
@@ -990,6 +1008,79 @@ class $Bootstrap {
       if (!sequence || sequence.length !== 1) return false;
       const code = sequence.charCodeAt(0);
       return code >= 32 && code !== 127;
+    };
+    const completionPrefix = (): {
+      text: string;
+      range: {
+        start: { line: number; column: number };
+        end: { line: number; column: number };
+      };
+    } => {
+      const editor = workspaceSet.active.editor;
+      const line = editor.cursor.line.value;
+      const endColumn = editor.cursor.col.value;
+      const lineText = editor.document.line(line);
+      const linePrefix = lineText.slice(
+        0,
+        EditorCoordinates.Class.graphemeToU16(lineText, endColumn),
+      );
+      const text = linePrefix.match(/[\p{L}\p{N}_$]+$/u)?.[0] ?? '';
+      return {
+        text,
+        range: {
+          start: {
+            line,
+            column: endColumn - EditorCoordinates.Class.graphemeCount(text),
+          },
+          end: { line, column: endColumn },
+        },
+      };
+    };
+    const requestCompletion = (
+      triggerKind: 'invoked' | 'triggerCharacter',
+      triggerCharacter?: string,
+    ): void => {
+      const editor = workspaceSet.active.editor;
+      if (
+        !editor.hasDocument.value ||
+        workspaceSet.active.focus.value !== 'editor'
+      )
+        return;
+      const document = editor.document;
+      const path = document.path;
+      const revision = document.revision.value;
+      const position = {
+        line: editor.cursor.line.value,
+        column: editor.cursor.col.value,
+      };
+      const requestGeneration = ++completionRequestGeneration;
+      void workspaceSet.active
+        .completionAt(position, { triggerKind, triggerCharacter })
+        .then((completionList) => {
+          const activeEditor = workspaceSet.active.editor;
+          if (
+            requestGeneration !== completionRequestGeneration ||
+            activeEditor.document !== document ||
+            activeEditor.document.path !== path ||
+            activeEditor.document.revision.value !== revision ||
+            activeEditor.cursor.line.value !== position.line ||
+            activeEditor.cursor.col.value !== position.column
+          )
+            return;
+          const anchor = view.editorCaretAnchor();
+          if (!anchor || completionList.items.length === 0) {
+            dismissCompletion();
+            return;
+          }
+          const prefix = completionPrefix();
+          completionPopup.show(completionList, anchor, prefix.text, (item) => {
+            const currentPrefix = completionPrefix();
+            workspaceSet.active.editor.applyCompletion(
+              item,
+              currentPrefix.range,
+            );
+          });
+        });
     };
 
     // ---------------------------------------------------------------------------------------------
@@ -1292,6 +1383,7 @@ class $Bootstrap {
             key.shift,
           );
       },
+      'editor.completion': () => requestCompletion('invoked'),
       'editor.moveDown': (key) => {
         const markdownSplitView = view.activeMarkdownSplitView();
         if (markdownSplitView?.previewFocused)
@@ -1779,6 +1871,48 @@ class $Bootstrap {
         return;
       }
 
+      // Completion is deliberately non-modal: the editor retains focus and continues mutating the
+      // document while this adapter consumes only its navigation/acceptance keys.
+      if (
+        completionPopup.open &&
+        workspaceSet.active.focus.value === 'editor'
+      ) {
+        if (key.name === 'escape') {
+          dismissCompletion();
+          return;
+        }
+        if (key.name === 'up' || key.name === 'down') {
+          completionPopup.moveSelection(key.name === 'up' ? -1 : 1);
+          return;
+        }
+        if (key.name === 'return' || key.name === 'tab') {
+          completionPopup.acceptSelected();
+          return;
+        }
+        if (key.name === 'backspace') {
+          workspaceSet.active.editor.backspace();
+          const prefix = completionPrefix();
+          completionPopup.narrow(prefix.text);
+          requestCompletion('invoked');
+          return;
+        }
+        if (isTypedCharacter(key)) {
+          workspaceSet.active.editor.insertText(key.sequence);
+          const prefix = completionPrefix();
+          completionPopup.narrow(prefix.text);
+          const triggerCharacters =
+            workspaceSet.active.completionTriggerCharacters();
+          requestCompletion(
+            triggerCharacters.includes(key.sequence)
+              ? 'triggerCharacter'
+              : 'invoked',
+            triggerCharacters.includes(key.sequence) ? key.sequence : undefined,
+          );
+          return;
+        }
+        dismissCompletion();
+      }
+
       // The cheat-sheet is an input-capturing overlay: while open, keys resolve in its 'help'
       // context (Esc closes, arrows scroll, global chords still work — opening another overlay
       // closes the sheet through the coordinator) and unbound keys are consumed.
@@ -1940,8 +2074,15 @@ class $Bootstrap {
         context === 'editor' &&
         isTypedCharacter(key) &&
         !view.activeMarkdownSplitView()?.previewFocused
-      )
+      ) {
         workspaceSet.active.editor.insertText(key.sequence);
+        if (
+          workspaceSet.active
+            .completionTriggerCharacters()
+            .includes(key.sequence)
+        )
+          requestCompletion('triggerCharacter', key.sequence);
+      }
       // No explicit render here — any model mutation above triggers the frame effect.
     };
     // A throw while handling a keystroke must not wedge the loop: isolate + repaint so the app stays
@@ -2047,6 +2188,16 @@ class $Bootstrap {
             rightDockHost.blur();
           }
           if (event.type === 'down') tooltip.clear(); // any click hides the tooltip, wherever it lands
+          if (event.type === 'down' && completionPopup.open) {
+            const geometry = completionPopup.geometry;
+            const insideCompletion =
+              geometry !== null &&
+              event.x >= geometry.boxLeft &&
+              event.x < geometry.boxLeft + geometry.boxWidth &&
+              event.y >= geometry.boxTop &&
+              event.y < geometry.boxTop + geometry.boxHeight;
+            if (!insideCompletion) dismissCompletion();
+          }
           // A click hides the hover card UNLESS it lands ON the card (engaged): a down on the card begins a
           // drag-select and must not dismiss it; a down anywhere else closes it.
           if (event.type === 'down') view.dismissHoverSoft();

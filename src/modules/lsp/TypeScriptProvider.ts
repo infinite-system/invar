@@ -1,11 +1,11 @@
 import { Files } from '../system/Files';
 import type {
   LanguageCapabilities,
-  LanguageProvider,
+  LanguageServerProvider,
   LanguageServerCommand,
 } from './LanguageProvider.interface';
 
-class $TypeScriptProvider implements LanguageProvider {
+class $TypeScriptProvider implements LanguageServerProvider {
   protected static get $typescriptExtensions(): ReadonlySet<string> {
     const typescriptExtensions = new Set([
       '.ts',
@@ -59,6 +59,7 @@ class $TypeScriptProvider implements LanguageProvider {
     definition: true,
     hover: true,
     references: true,
+    completion: true,
   };
 
   constructor(protected readonly options: TypeScriptProviderOptions = {}) {}

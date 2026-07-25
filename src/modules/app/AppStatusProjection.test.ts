@@ -79,6 +79,12 @@ describe('AppStatusProjection', () => {
       filteredMatches: [],
       geometry: null,
     } as unknown as InstanceType<typeof BoundedListPopup.Class>;
+    const completionPopup = {
+      open: false,
+      selectedLabel: '',
+      itemCount: 0,
+      geometry: null,
+    };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
@@ -100,6 +106,7 @@ describe('AppStatusProjection', () => {
       settingsPanel,
       contextMenu,
       boundedListPopup,
+      completionPopup,
       shortcutHelp,
       tooltip,
       panelHost,

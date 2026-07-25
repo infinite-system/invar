@@ -116,7 +116,9 @@ class $TextDocument {
   }
 
   insertLine(index: number, text: string): void {
-    this.replaceLineRange(Math.max(0, Math.min(index, this._lines.length)), 0, [text]);
+    this.replaceLineRange(Math.max(0, Math.min(index, this._lines.length)), 0, [
+      text,
+    ]);
     this.dirty.value = true;
     this.revision.value++;
   }
@@ -171,8 +173,8 @@ class $TextDocument {
     let longestUtf16LineIndex = 0;
     for (let lineIndex = 1; lineIndex < this._lines.length; lineIndex += 1) {
       if (
-        (this._lines[lineIndex]?.length ?? 0)
-        > (this._lines[longestUtf16LineIndex]?.length ?? 0)
+        (this._lines[lineIndex]?.length ?? 0) >
+        (this._lines[longestUtf16LineIndex]?.length ?? 0)
       ) {
         longestUtf16LineIndex = lineIndex;
       }
@@ -185,7 +187,8 @@ class $TextDocument {
     for (let lineIndex = 0; lineIndex < this._lines.length; lineIndex += 1) {
       if (lineIndex === longestUtf16LineIndex) continue;
       const line = this._lines[lineIndex] ?? '';
-      if (this.lineDisplayWidthUpperBound(line) <= this.maximumLineWidthValue) continue;
+      if (this.lineDisplayWidthUpperBound(line) <= this.maximumLineWidthValue)
+        continue;
       const lineWidth = this.measureLineDisplayWidth(line);
       if (lineWidth > this.maximumLineWidthValue) {
         this.maximumLineWidthValue = lineWidth;
@@ -211,9 +214,9 @@ class $TextDocument {
   ): void {
     const previousMaximumLineWidthLineIndex = this.maximumLineWidthLineIndex;
     const maximumLineWasDeleted =
-      deletedLineCount > 0
-      && previousMaximumLineWidthLineIndex >= startLineIndex
-      && previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
+      deletedLineCount > 0 &&
+      previousMaximumLineWidthLineIndex >= startLineIndex &&
+      previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
 
     if (maximumLineWasDeleted) {
@@ -221,7 +224,8 @@ class $TextDocument {
       return;
     }
     if (startLineIndex <= previousMaximumLineWidthLineIndex) {
-      this.maximumLineWidthLineIndex += replacementLines.length - deletedLineCount;
+      this.maximumLineWidthLineIndex +=
+        replacementLines.length - deletedLineCount;
     }
     for (
       let replacementLineOffset = 0;
@@ -230,12 +234,13 @@ class $TextDocument {
     ) {
       const replacementLine = replacementLines[replacementLineOffset] ?? '';
       if (
-        this.lineDisplayWidthUpperBound(replacementLine)
-        <= this.maximumLineWidthValue
+        this.lineDisplayWidthUpperBound(replacementLine) <=
+        this.maximumLineWidthValue
       ) {
         continue;
       }
-      const replacementLineWidth = this.measureLineDisplayWidth(replacementLine);
+      const replacementLineWidth =
+        this.measureLineDisplayWidth(replacementLine);
       if (replacementLineWidth > this.maximumLineWidthValue) {
         this.maximumLineWidthValue = replacementLineWidth;
         this.maximumLineWidthLineIndex = startLineIndex + replacementLineOffset;
@@ -248,13 +253,17 @@ class $TextDocument {
   /** Insert `text` (no newlines) at line/grapheme-col. Returns the new grapheme col. */
   insertInline(line: number, column: number, text: string): number {
     const currentLine = this.line(line);
-    const graphemeColumn = EditorCoordinates.Class.clampCol(currentLine, column);
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
-    this.replaceLineRange(
-      line,
-      1,
-      [currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset)],
+    const graphemeColumn = EditorCoordinates.Class.clampCol(
+      currentLine,
+      column,
     );
+    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+      currentLine,
+      graphemeColumn,
+    );
+    this.replaceLineRange(line, 1, [
+      currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset),
+    ]);
     this.dirty.value = true;
     this.revision.value++;
     return graphemeColumn + EditorCoordinates.Class.graphemeCount(text);
@@ -263,7 +272,10 @@ class $TextDocument {
   /** Split a line at grapheme-col into two lines (Enter). Returns new cursor {line, col}. */
   splitLine(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(currentLine, EditorCoordinates.Class.clampCol(currentLine, column));
+    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+      currentLine,
+      EditorCoordinates.Class.clampCol(currentLine, column),
+    );
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
     this.replaceLineRange(line, 1, [before, after]);
@@ -276,10 +288,21 @@ class $TextDocument {
   deleteBackward(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
     if (column > 0) {
-      const graphemeColumn = EditorCoordinates.Class.clampCol(currentLine, column);
-      const start = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn - 1);
-      const end = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
-      this.replaceLineRange(line, 1, [currentLine.slice(0, start) + currentLine.slice(end)]);
+      const graphemeColumn = EditorCoordinates.Class.clampCol(
+        currentLine,
+        column,
+      );
+      const start = EditorCoordinates.Class.graphemeToU16(
+        currentLine,
+        graphemeColumn - 1,
+      );
+      const end = EditorCoordinates.Class.graphemeToU16(
+        currentLine,
+        graphemeColumn,
+      );
+      this.replaceLineRange(line, 1, [
+        currentLine.slice(0, start) + currentLine.slice(end),
+      ]);
       this.dirty.value = true;
       this.revision.value++;
       return { line, col: graphemeColumn - 1 };
@@ -298,11 +321,22 @@ class $TextDocument {
   /** Delete the grapheme at line/col (Delete). Returns cursor unchanged. */
   deleteForward(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
-    const graphemeColumn = EditorCoordinates.Class.clampCol(currentLine, column);
+    const graphemeColumn = EditorCoordinates.Class.clampCol(
+      currentLine,
+      column,
+    );
     if (graphemeColumn < EditorCoordinates.Class.graphemeCount(currentLine)) {
-      const start = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn);
-      const end = EditorCoordinates.Class.graphemeToU16(currentLine, graphemeColumn + 1);
-      this.replaceLineRange(line, 1, [currentLine.slice(0, start) + currentLine.slice(end)]);
+      const start = EditorCoordinates.Class.graphemeToU16(
+        currentLine,
+        graphemeColumn,
+      );
+      const end = EditorCoordinates.Class.graphemeToU16(
+        currentLine,
+        graphemeColumn + 1,
+      );
+      this.replaceLineRange(line, 1, [
+        currentLine.slice(0, start) + currentLine.slice(end),
+      ]);
       this.dirty.value = true;
       this.revision.value++;
     } else if (line < this._lines.length - 1) {
@@ -316,16 +350,27 @@ class $TextDocument {
   // --- multi-line range ops (positions are {line, grapheme-col}; start <= end) ---
 
   /** Text of the [start, end) range, joined by EOL across lines. */
-  sliceRange(start: { line: number; col: number }, end: { line: number; col: number }): string {
+  sliceRange(
+    start: { line: number; col: number },
+    end: { line: number; col: number },
+  ): string {
     if (start.line === end.line) {
       const currentLine = this.line(start.line);
-      return currentLine.slice(EditorCoordinates.Class.graphemeToU16(currentLine, start.col), EditorCoordinates.Class.graphemeToU16(currentLine, end.col));
+      return currentLine.slice(
+        EditorCoordinates.Class.graphemeToU16(currentLine, start.col),
+        EditorCoordinates.Class.graphemeToU16(currentLine, end.col),
+      );
     }
     const first = this.line(start.line);
     const last = this.line(end.line);
-    const parts: string[] = [first.slice(EditorCoordinates.Class.graphemeToU16(first, start.col))];
-    for (let index = start.line + 1; index < end.line; index++) parts.push(this.line(index));
-    parts.push(last.slice(0, EditorCoordinates.Class.graphemeToU16(last, end.col)));
+    const parts: string[] = [
+      first.slice(EditorCoordinates.Class.graphemeToU16(first, start.col)),
+    ];
+    for (let index = start.line + 1; index < end.line; index++)
+      parts.push(this.line(index));
+    parts.push(
+      last.slice(0, EditorCoordinates.Class.graphemeToU16(last, end.col)),
+    );
     return parts.join(this._eol);
   }
 
@@ -337,16 +382,25 @@ class $TextDocument {
     if (start.line === end.line) {
       const currentLine = this.line(start.line);
       this.replaceLineRange(start.line, 1, [
-        currentLine.slice(0, EditorCoordinates.Class.graphemeToU16(currentLine, start.col))
-          + currentLine.slice(EditorCoordinates.Class.graphemeToU16(currentLine, end.col)),
+        currentLine.slice(
+          0,
+          EditorCoordinates.Class.graphemeToU16(currentLine, start.col),
+        ) +
+          currentLine.slice(
+            EditorCoordinates.Class.graphemeToU16(currentLine, end.col),
+          ),
       ]);
     } else {
       const head = this.line(start.line).slice(
         0,
         EditorCoordinates.Class.graphemeToU16(this.line(start.line), start.col),
       );
-      const tail = this.line(end.line).slice(EditorCoordinates.Class.graphemeToU16(this.line(end.line), end.col));
-      this.replaceLineRange(start.line, end.line - start.line + 1, [head + tail]);
+      const tail = this.line(end.line).slice(
+        EditorCoordinates.Class.graphemeToU16(this.line(end.line), end.col),
+      );
+      this.replaceLineRange(start.line, end.line - start.line + 1, [
+        head + tail,
+      ]);
     }
     this.dirty.value = true;
     this.revision.value++;
@@ -354,22 +408,76 @@ class $TextDocument {
   }
 
   /** Insert possibly-multiline text at line/grapheme-col. Returns the end position. */
-  insertMultiline(line: number, column: number, text: string): { line: number; col: number } {
+  insertMultiline(
+    line: number,
+    column: number,
+    text: string,
+  ): { line: number; col: number } {
     const parts = text.split(/\r?\n/);
     if (parts.length === 1) {
       return { line, col: this.insertInline(line, column, parts[0] ?? '') };
     }
     const currentLine = this.line(line);
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(currentLine, EditorCoordinates.Class.clampCol(currentLine, column));
+    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+      currentLine,
+      EditorCoordinates.Class.clampCol(currentLine, column),
+    );
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
     const firstPart = parts[0] ?? '';
     const lastPart = parts[parts.length - 1] ?? '';
     const middle = parts.slice(1, -1);
-    this.replaceLineRange(line, 1, [before + firstPart, ...middle, lastPart + after]);
+    this.replaceLineRange(line, 1, [
+      before + firstPart,
+      ...middle,
+      lastPart + after,
+    ]);
     this.dirty.value = true;
     this.revision.value++;
-    return { line: line + parts.length - 1, col: EditorCoordinates.Class.graphemeCount(lastPart) };
+    return {
+      line: line + parts.length - 1,
+      col: EditorCoordinates.Class.graphemeCount(lastPart),
+    };
+  }
+
+  /** Replace a completion/edit range as one document mutation and return the inserted-text end. */
+  replaceRange(
+    start: { line: number; col: number },
+    end: { line: number; col: number },
+    text: string,
+  ): { line: number; col: number } {
+    const firstLine = this.line(start.line);
+    const lastLine = this.line(end.line);
+    const head = firstLine.slice(
+      0,
+      EditorCoordinates.Class.graphemeToU16(firstLine, start.col),
+    );
+    const tail = lastLine.slice(
+      EditorCoordinates.Class.graphemeToU16(lastLine, end.col),
+    );
+    const replacementParts = text.split(/\r?\n/);
+    const firstPart = replacementParts[0] ?? '';
+    const lastPart = replacementParts[replacementParts.length - 1] ?? '';
+    const replacementLines =
+      replacementParts.length === 1
+        ? [head + firstPart + tail]
+        : [head + firstPart, ...replacementParts.slice(1, -1), lastPart + tail];
+    this.replaceLineRange(
+      start.line,
+      end.line - start.line + 1,
+      replacementLines,
+    );
+    this.dirty.value = true;
+    this.revision.value++;
+    return replacementParts.length === 1
+      ? {
+          line: start.line,
+          col: start.col + EditorCoordinates.Class.graphemeCount(firstPart),
+        }
+      : {
+          line: start.line + replacementParts.length - 1,
+          col: EditorCoordinates.Class.graphemeCount(lastPart),
+        };
   }
 
   /** Snapshot the full line array (for undo). */

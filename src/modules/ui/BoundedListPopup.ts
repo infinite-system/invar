@@ -56,6 +56,10 @@ class $BoundedListPopup {
   protected pointerPressedFilteredIndex = -1;
   protected pointerDragged = false;
   protected searchHovered = false;
+  protected searchVisibleValue = true;
+  protected backdropVisibleValue = true;
+  protected filteredMatchesValue: readonly BoundedListPopupMatch[] = [];
+  protected maximumItemWidthValue = 1;
 
   get open() {
     return ref(false);
@@ -77,7 +81,10 @@ class $BoundedListPopup {
   }
 
   get searchEnabled(): boolean {
-    return this.items.value.length > this.searchThresholdValue;
+    return (
+      this.searchVisibleValue &&
+      this.items.value.length > this.searchThresholdValue
+    );
   }
 
   get acceptsQueryInput(): boolean {
@@ -85,7 +92,7 @@ class $BoundedListPopup {
   }
 
   get filteredMatches(): readonly BoundedListPopupMatch[] {
-    return $BoundedListPopup.filterItems(this.items.value, this.query.value);
+    return this.filteredMatchesValue;
   }
 
   get geometry(): BoundedListPopupGeometry | null {
@@ -94,8 +101,9 @@ class $BoundedListPopup {
 
   constructor(protected readonly dependencies: BoundedListPopupDependencies) {
     const { renderer } = dependencies;
+    const identifier = dependencies.identifier ?? 'bounded-list-popup';
     this.backdrop = new BoxRenderable(renderer, {
-      id: 'bounded-list-popup-backdrop',
+      id: `${identifier}-backdrop`,
       position: 'absolute',
       left: 0,
       top: 0,
@@ -105,7 +113,7 @@ class $BoundedListPopup {
       zIndex: 125,
     });
     this.box = new BoxRenderable(renderer, {
-      id: 'bounded-list-popup',
+      id: identifier,
       position: 'absolute',
       border: true,
       borderStyle: 'rounded',
@@ -114,13 +122,13 @@ class $BoundedListPopup {
       zIndex: 130,
     });
     this.searchInput = new TextRenderable(renderer, {
-      id: 'bounded-list-popup-search',
+      id: `${identifier}-search`,
       content: '',
       height: 1,
       selectable: false,
     });
     this.list = new TextRenderable(renderer, {
-      id: 'bounded-list-popup-list',
+      id: `${identifier}-list`,
       content: '',
       selectable: false,
     });
@@ -130,7 +138,7 @@ class $BoundedListPopup {
       renderer,
       settings: dependencies.settings,
       parent: this.box,
-      id: 'bounded-list-popup',
+      id: identifier,
       disableHorizontal: true,
       scrollbarZIndex: 1,
       extent: () => ({
@@ -286,10 +294,13 @@ class $BoundedListPopup {
     this.selectionHandler = selectionHandler;
     this.searchThresholdValue =
       options.searchThreshold ?? $BoundedListPopup.defaultSearchThreshold;
+    this.searchVisibleValue = options.searchVisible ?? true;
+    this.backdropVisibleValue = options.showBackdrop ?? true;
     this.minimumWidthValue =
       options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
     this.titleValue = options.title ?? '';
     this.query.value = '';
+    this.recomputeMatches();
     this.hoveredIndex.value = -1;
     this.searchHovered = false;
     this.viewport.reset();
@@ -316,6 +327,7 @@ class $BoundedListPopup {
   close(): void {
     this.open.value = false;
     this.items.value = [];
+    this.filteredMatchesValue = [];
     this.query.value = '';
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
@@ -337,6 +349,31 @@ class $BoundedListPopup {
     if (!this.searchEnabled || text.length === 0) return;
     this.query.value += text;
     this.refilter();
+  }
+
+  setQuery(query: string): void {
+    this.query.value = query;
+    this.refilter();
+  }
+
+  replaceItems(
+    items: readonly BoundedListPopupItem[],
+    selectedItemIdentifier?: string,
+  ): void {
+    this.items.value = items;
+    this.recomputeMatches();
+    this.viewport.reset();
+    this.hoveredIndex.value = -1;
+    const selectedIndex = selectedItemIdentifier
+      ? this.filteredMatches.findIndex(
+          (match) =>
+            match.item.enabled !== false &&
+            match.item.identifier === selectedItemIdentifier,
+        )
+      : -1;
+    this.selectedIndex.value =
+      selectedIndex >= 0 ? selectedIndex : this.firstEnabledFilteredIndex();
+    this.requestPaint();
   }
 
   eraseQueryCharacter(): void {
@@ -381,13 +418,7 @@ class $BoundedListPopup {
     const desiredBoxWidth = Math.max(
       this.minimumWidthValue,
       EditorCoordinates.Class.lineWidth(this.titleValue) + 4,
-      this.maximumItemWidth(
-        this.items.value.map((item, sourceIndex) => ({
-          item,
-          sourceIndex,
-          score: 0,
-        })),
-      ) + $BoundedListPopup.horizontalFrameColumns,
+      this.maximumItemWidthValue + $BoundedListPopup.horizontalFrameColumns,
     );
     this.currentGeometry = $BoundedListPopup.layoutGeometry({
       screenWidth: this.dependencies.renderer.width,
@@ -401,7 +432,7 @@ class $BoundedListPopup {
     });
     const geometry = this.currentGeometry;
     const palette = this.dependencies.theme.palette;
-    this.backdrop.visible = true;
+    this.backdrop.visible = this.backdropVisibleValue;
     this.box.visible = true;
     this.box.left = geometry.boxLeft;
     this.box.top = geometry.boxTop;
@@ -562,10 +593,25 @@ class $BoundedListPopup {
   }
 
   protected refilter(): void {
+    this.recomputeMatches();
     this.viewport.reset();
     this.hoveredIndex.value = -1;
     this.selectedIndex.value = this.firstEnabledFilteredIndex();
     this.requestPaint();
+  }
+
+  protected recomputeMatches(): void {
+    this.filteredMatchesValue = $BoundedListPopup.filterItems(
+      this.items.value,
+      this.query.value,
+    );
+    this.maximumItemWidthValue = this.maximumItemWidth(
+      this.items.value.map((item, sourceIndex) => ({
+        item,
+        sourceIndex,
+        score: 0,
+      })),
+    );
   }
 
   protected revealSelectedIndex(): void {
@@ -703,6 +749,7 @@ export interface BoundedListPopupDependencies {
   renderer: CliRenderer;
   settings: Settings.Instance;
   theme: Theme.Instance;
+  identifier?: string;
 }
 
 export interface BoundedListPopupItem {
@@ -723,6 +770,8 @@ export interface BoundedListPopupOpenOptions {
   searchThreshold?: number;
   minimumWidth?: number;
   selectedItemIdentifier?: string;
+  searchVisible?: boolean;
+  showBackdrop?: boolean;
 }
 
 export interface BoundedListPopupMatch {

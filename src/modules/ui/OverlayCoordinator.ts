@@ -1,42 +1,59 @@
 class $OverlayCoordinator {
-    protected get OverlayCoordinator() {
-        return OverlayCoordinator.Class as unknown as typeof $OverlayCoordinator;
+  protected get OverlayCoordinator() {
+    return OverlayCoordinator.Class as unknown as typeof $OverlayCoordinator;
+  }
+  protected static get $exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
+    const exclusiveOverlayNamesValue: readonly ExclusiveOverlayName[] = [
+      'findBar',
+      'quickOpen',
+      'commandPalette',
+      'settingsPanel',
+      'contextMenu',
+      'boundedListPopup',
+      'completionPopup',
+      'shortcutHelp',
+    ];
+    Object.defineProperty(this, '$exclusiveOverlayNames', {
+      configurable: true,
+      value: exclusiveOverlayNamesValue,
+    });
+    return exclusiveOverlayNamesValue;
+  }
+  protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
+    return this.OverlayCoordinator.$exclusiveOverlayNames;
+  }
+  constructor(protected readonly closeActions: ExclusiveOverlayCloseActions) {}
+  /** Close every sibling before opening the requested overlay. The requested overlay stays mounted,
+   *  so Find-to-Replace is a mode change on one bar rather than a close-and-reopen cycle. */
+  openExclusiveOverlay(
+    overlayName: ExclusiveOverlayName,
+    openOverlay: () => void,
+  ): void {
+    for (const siblingOverlayName of this.exclusiveOverlayNames) {
+      if (siblingOverlayName !== overlayName)
+        this.closeActions[siblingOverlayName]();
     }
-    protected static get $exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
-        const exclusiveOverlayNamesValue: readonly ExclusiveOverlayName[] = [
-            'findBar',
-            'quickOpen',
-            'commandPalette',
-            'settingsPanel',
-            'contextMenu',
-            'boundedListPopup',
-            'shortcutHelp',
-        ];
-        Object.defineProperty(this, "$exclusiveOverlayNames", { configurable: true, value: exclusiveOverlayNamesValue });
-        return exclusiveOverlayNamesValue;
-    }
-    protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
-        return this.OverlayCoordinator.$exclusiveOverlayNames;
-    }
-    constructor(protected readonly closeActions: ExclusiveOverlayCloseActions) { }
-    /** Close every sibling before opening the requested overlay. The requested overlay stays mounted,
-     *  so Find-to-Replace is a mode change on one bar rather than a close-and-reopen cycle. */
-    openExclusiveOverlay(overlayName: ExclusiveOverlayName, openOverlay: () => void): void {
-        for (const siblingOverlayName of this.exclusiveOverlayNames) {
-            if (siblingOverlayName !== overlayName)
-                this.closeActions[siblingOverlayName]();
-        }
-        openOverlay();
-    }
+    openOverlay();
+  }
 }
 export namespace OverlayCoordinator {
-    export const $Class = $OverlayCoordinator;
-    export let Class = $Class;
-    export type Instance = InstanceType<typeof Class>;
+  export const $Class = $OverlayCoordinator;
+  export let Class = $Class;
+  export type Instance = InstanceType<typeof Class>;
 }
 // The single modal slot for every input-capturing overlay. Overlay models keep their own focused
 // state, while this coordinator owns the cross-overlay rule: opening one closes every sibling first.
 //
 // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
-export type ExclusiveOverlayName = 'findBar' | 'quickOpen' | 'commandPalette' | 'settingsPanel' | 'contextMenu' | 'boundedListPopup' | 'shortcutHelp';
-export type ExclusiveOverlayCloseActions = Readonly<Record<ExclusiveOverlayName, () => void>>;
+export type ExclusiveOverlayName =
+  | 'findBar'
+  | 'quickOpen'
+  | 'commandPalette'
+  | 'settingsPanel'
+  | 'contextMenu'
+  | 'boundedListPopup'
+  | 'completionPopup'
+  | 'shortcutHelp';
+export type ExclusiveOverlayCloseActions = Readonly<
+  Record<ExclusiveOverlayName, () => void>
+>;

@@ -10,13 +10,14 @@ import type { LanguageServerCommand } from './LanguageProvider.interface';
 import type { LspProcessLike, LspWritable } from './LspProcess';
 import type {
   LanguageCapabilities,
-  LanguageProvider,
+  LanguageServerProvider,
 } from './LanguageProvider.interface';
 
 export type ServerResponder = (params: unknown) => unknown;
 
 export class FakeLspProcess implements LspProcessLike {
-  protected controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  protected controller: ReadableStreamDefaultController<Uint8Array> | null =
+    null;
   protected _stdout: ReadableStream<Uint8Array> | null = null;
   protected _stdin: LspWritable | null = null;
   protected readonly decoder = new JsonRpc.Class();
@@ -103,7 +104,11 @@ export class FakeLspProcess implements LspProcessLike {
   }
 
   pushDiagnostics(uri: string, version: number, diagnostics: unknown[]): void {
-    this.pushNotification('textDocument/publishDiagnostics', { uri, version, diagnostics });
+    this.pushNotification('textDocument/publishDiagnostics', {
+      uri,
+      version,
+      diagnostics,
+    });
   }
 
   /** Resolve once the server has received a notification/request with `method`. */
@@ -155,15 +160,18 @@ const FULL_CAPABILITIES: LanguageCapabilities = {
   definition: true,
   hover: true,
   references: true,
+  completion: true,
 };
 
 /** A provider that resolves a dummy command without touching disk. */
-export class FakeProvider implements LanguageProvider {
+export class FakeProvider implements LanguageServerProvider {
   readonly id = 'fake';
   readonly capabilities = FULL_CAPABILITIES;
 
   supportsPath(path: string): boolean {
-    return path.endsWith('.ts') || path.endsWith('.tsx') || path.endsWith('.js');
+    return (
+      path.endsWith('.ts') || path.endsWith('.tsx') || path.endsWith('.js')
+    );
   }
 
   async resolve(): Promise<LanguageServerCommand> {
@@ -173,5 +181,6 @@ export class FakeProvider implements LanguageProvider {
 
 /** Flush pending micro/macrotasks so in-flight notify chains settle deterministically. */
 export async function flush(times = 6): Promise<void> {
-  for (let index = 0; index < times; index++) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  for (let index = 0; index < times; index++)
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }

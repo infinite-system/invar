@@ -1032,6 +1032,35 @@ class $RootView {
       if (laidOut && laidOut > 1) return Math.max(1, laidOut - 1);
       return Math.max(1, (editorArea.width as number) - 2 - 6);
     };
+    const editorCaretAnchor = (): { column: number; row: number } | null => {
+      const editor = workspaceSet.active.editor;
+      if (!editor.hasDocument.value || workspaceSet.active.activeFileIsImage)
+        return null;
+      if (editor.wordWrap.value) {
+        const position = editorController.wrapVisualPosition(
+          editor.cursor.line.value,
+          editor.cursor.col.value,
+        );
+        return position && typeof position === 'object'
+          ? {
+              column: codeBody.x + position.column,
+              row: codeBody.y + position.rowIndex,
+            }
+          : null;
+      }
+      const cursorDisplayColumn = EditorCoordinates.Class.displayColumn(
+        editor.document.line(editor.cursor.line.value),
+        editor.cursor.col.value,
+      );
+      return {
+        column:
+          codeBody.x + cursorDisplayColumn - editor.viewport.scrollLeft.value,
+        row:
+          codeBody.y +
+          editor.cursor.line.value -
+          editor.viewport.scrollTop.value,
+      };
+    };
     /** Grapheme-safe window over display columns; never splits a wide glyph at either edge. */
     // displayColumnWindow / padToDisplayWidth now live on EditorCoordinates (the display-column-math
     // capability) so every pane renderer shares one horizontal-windowing primitive. Local aliases keep
@@ -1785,6 +1814,7 @@ class $RootView {
       update,
       editorViewportHeight,
       editorViewportWidth,
+      editorCaretAnchor,
       tickDragAutoScroll,
       // Frame-loop hook (runs every frame with FRESH layout, unlike the reactive paint): advance the diff's
       // momentum glide AND repaint the diff once its container has laid out to full height (root height goes
@@ -1874,6 +1904,7 @@ export interface RootView {
   update(): void;
   editorViewportHeight(): number;
   editorViewportWidth(): number;
+  editorCaretAnchor(): { column: number; row: number } | null;
   /** Frame-tick hook: advance drag-edge auto-scroll; true while active (keep frames coming). */
   tickDragAutoScroll(dtSeconds: number): boolean;
   /** Frame-tick hook: advance the open diff's scroll-momentum glide; true while moving. */

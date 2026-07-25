@@ -4,7 +4,10 @@ import { spawnSync } from 'node:child_process';
 import { FileTree } from './FileTree';
 import { Editor } from '../editor/Editor';
 import { OpenBufferSet } from './OpenBufferSet';
-import { NavigationHistory, type Location } from '../navigation/NavigationHistory';
+import {
+  NavigationHistory,
+  type Location,
+} from '../navigation/NavigationHistory';
 import { Files } from '../system/Files';
 import { ImageDecoders } from '../image/ImageDecoders';
 import { GitRepository } from '../git/GitRepository';
@@ -33,6 +36,10 @@ import {
 } from '../lsp/LanguageClient';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath } from 'node:path';
+import type {
+  LanguageCompletionContext,
+  LanguageCompletionList,
+} from '../lsp/LanguageProvider.interface';
 
 // A workspace: one project root with its file tree, an editor, and which pane has focus.
 // WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -48,7 +55,13 @@ class $Workspace {
   protected static projectNameForRoot(absoluteRoot: string): string {
     const result = spawnSync(
       'git',
-      ['-C', absoluteRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+      [
+        '-C',
+        absoluteRoot,
+        'rev-parse',
+        '--path-format=absolute',
+        '--git-common-dir',
+      ],
       { encoding: 'utf8', timeout: 2000 },
     );
     if (result.status !== 0) return '';
@@ -81,17 +94,24 @@ class $Workspace {
   // The empty-state editor shown when no tab is open (hasDocument stays false).
   protected emptyEditor = this.createEditor();
 
-  protected createTree() { return new FileTree.Class(); }
+  protected createTree() {
+    return new FileTree.Class();
+  }
   protected createEditor() {
     const editor = new Editor.Class();
     // Word wrap is global: every editor reads the SAME settings.wordWrap when settings are attached, so
     // the mode is consistent across tabs + the diff/empty editors. Editors made before attachSettings
     // (diffEditor/emptyEditor) are retro-attached there.
-    if (this.settingsSource) editor.attachWordWrap(this.settingsSource.wordWrap);
+    if (this.settingsSource)
+      editor.attachWordWrap(this.settingsSource.wordWrap);
     return editor;
   }
-  protected createGitPanel() { return new GitPanel.Class(); }
-  protected createNavigationHistory() { return new NavigationHistory.Class(); }
+  protected createGitPanel() {
+    return new GitPanel.Class();
+  }
+  protected createNavigationHistory() {
+    return new NavigationHistory.Class();
+  }
   protected createBufferSet() {
     return new OpenBufferSet.Class({
       // The set only ever holds Editors (this seam is the sole creator), so `editor` below can treat
@@ -103,7 +123,8 @@ class $Workspace {
         // client here — one choke point. Client construction is cheap; the server subprocess
         // starts only for supported files.
         // invariant: LSP activation follows semantic demand (src/modules/lsp/lsp.invariants.md)
-        if (editor.hasDocument.value) this.ensureLanguageClient().openDocument(editor.document);
+        if (editor.hasDocument.value)
+          this.ensureLanguageClient().openDocument(editor.document);
         return editor;
       },
       disposeBuffer: (buffer) => {
@@ -127,7 +148,8 @@ class $Workspace {
     // client is created) is honoured when a document activates the server.
     return new LanguageClient.Class({
       rootPath: this.root,
-      preferredTypeScriptServer: () => this.settingsSource?.typescriptServer.value ?? 'auto',
+      preferredTypeScriptServer: () =>
+        this.settingsSource?.typescriptServer.value ?? 'auto',
       // Late-read the size budget so a file larger than the limit is never attached to the server
       // (which would balloon and crash the app). `0` = no limit; unset settings (bare tests) also
       // read 0 so tests are unaffected.
@@ -135,7 +157,8 @@ class $Workspace {
     });
   }
   protected ensureLanguageClient(): LanguageClient.Model {
-    if (!this.languageClientInstance) this.languageClientInstance = this.createLanguageClient();
+    if (!this.languageClientInstance)
+      this.languageClientInstance = this.createLanguageClient();
     return this.languageClientInstance;
   }
 
@@ -159,7 +182,13 @@ class $Workspace {
     if (this.showingDiff.value) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     const client = this.languageClientInstance;
-    if (!client || !editor || !editor.hasDocument.value || !editor.document.path) return null;
+    if (
+      !client ||
+      !editor ||
+      !editor.hasDocument.value ||
+      !editor.document.path
+    )
+      return null;
     void client.sizeSuppressionRevision.value; // reactive: re-evaluate as suppression flips
     return client.sizeSuppressionNotice(editor.document);
   }
@@ -175,7 +204,8 @@ class $Workspace {
   async goToDefinition(position?: TextPosition): Promise<boolean> {
     if (this.showingDiff.value) return false;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) return false;
+    if (!editor || !editor.hasDocument.value || !editor.document.path)
+      return false;
     const client = this.ensureLanguageClient();
     if (!client.supportsDocument(editor.document)) return false;
     const requestPosition = position ?? {
@@ -208,8 +238,12 @@ class $Workspace {
       return location;
     }
     if (landedPath !== resolvePath(document.path)) return location;
-    if (!/^\s*import\b/.test(document.line(location.range.start.line))) return location;
-    const rehoppedLocation = await client.definition(document, location.range.start);
+    if (!/^\s*import\b/.test(document.line(location.range.start.line)))
+      return location;
+    const rehoppedLocation = await client.definition(
+      document,
+      location.range.start,
+    );
     if (!rehoppedLocation) return location;
     const rehoppedToSameSpot =
       rehoppedLocation.uri === location.uri &&
@@ -229,10 +263,31 @@ class $Workspace {
   async hoverAt(position: TextPosition): Promise<LanguageHover | null> {
     if (this.showingDiff.value) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) return null;
+    if (!editor || !editor.hasDocument.value || !editor.document.path)
+      return null;
     const client = this.ensureLanguageClient();
     if (!client.supportsDocument(editor.document)) return null;
     return client.hover(editor.document, position);
+  }
+
+  async completionAt(
+    position: TextPosition,
+    context: LanguageCompletionContext,
+  ): Promise<LanguageCompletionList> {
+    if (this.showingDiff.value) return { items: [], isIncomplete: false };
+    const editor = this.buffers.activeBuffer as Editor.Instance | null;
+    if (!editor || !editor.hasDocument.value || !editor.document.path) {
+      return { items: [], isIncomplete: false };
+    }
+    const client = this.ensureLanguageClient();
+    if (!client.supportsDocument(editor.document)) {
+      return { items: [], isIncomplete: false };
+    }
+    return client.completion(editor.document, position, context);
+  }
+
+  completionTriggerCharacters(): readonly string[] {
+    return this.languageClientInstance?.completionTriggerCharacters ?? [];
   }
 
   /** Diagnostics whose range covers a document position — surfaced in the hover card so an errored
@@ -240,18 +295,34 @@ class $Workspace {
   diagnosticsAt(position: TextPosition): readonly HoverDiagnostic[] {
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     const client = this.languageClientInstance;
-    if (this.showingDiff.value || !client || !editor || !editor.hasDocument.value) return [];
+    if (
+      this.showingDiff.value ||
+      !client ||
+      !editor ||
+      !editor.hasDocument.value
+    )
+      return [];
     void client.diagnosticsRevision.value; // reactive: re-query as diagnostics arrive
     const total = client.diagnosticCountFor(editor.document);
     if (total === 0) return [];
     const covering: HoverDiagnostic[] = [];
-    for (const diagnostic of client.diagnosticSlice(editor.document, 0, total)) {
+    for (const diagnostic of client.diagnosticSlice(
+      editor.document,
+      0,
+      total,
+    )) {
       const { start, end } = diagnostic.range;
       const afterStart =
-        position.line > start.line || (position.line === start.line && position.column >= start.column);
+        position.line > start.line ||
+        (position.line === start.line && position.column >= start.column);
       const beforeEnd =
-        position.line < end.line || (position.line === end.line && position.column <= end.column);
-      if (afterStart && beforeEnd) covering.push({ severity: diagnostic.severity, message: diagnostic.message });
+        position.line < end.line ||
+        (position.line === end.line && position.column <= end.column);
+      if (afterStart && beforeEnd)
+        covering.push({
+          severity: diagnostic.severity,
+          message: diagnostic.message,
+        });
     }
     return covering;
   }
@@ -264,7 +335,8 @@ class $Workspace {
     } catch {
       return false;
     }
-    if (!Files.Class.exists(targetPath) || Files.Class.isDir(targetPath)) return false;
+    if (!Files.Class.exists(targetPath) || Files.Class.isDir(targetPath))
+      return false;
     // Record the SOURCE (the symbol under the cursor) before the jump moves us away, open the
     // target WITHOUT the tab-open auto-record (we record the precise declaration landing ourselves,
     // not the fresh-open 0,0), then record the DESTINATION so Forward returns to the declaration.
@@ -272,7 +344,10 @@ class $Workspace {
     this.withSuppressedLocationRecording(() => {
       this.openFileInTab(targetPath);
       this.focus.value = 'editor';
-      this.editor.placeCursor(location.range.start.line, location.range.start.column);
+      this.editor.placeCursor(
+        location.range.start.line,
+        location.range.start.column,
+      );
       this.editor.revealCursor();
     });
     this.recordCurrentLocation();
@@ -306,12 +381,17 @@ class $Workspace {
     return (
       !this.showingDiff.value &&
       this.editor.hasDocument.value &&
-      ImageDecoders.Class.supports(Files.Class.extname(this.editor.document.path))
+      ImageDecoders.Class.supports(
+        Files.Class.extname(this.editor.document.path),
+      )
     );
   }
 
   get showingMarkdownPreview(): boolean {
-    return this.activeFileIsMarkdown && this.markdownPreviewPaths.value.has(this.editor.document.path);
+    return (
+      this.activeFileIsMarkdown &&
+      this.markdownPreviewPaths.value.has(this.editor.document.path)
+    );
   }
 
   toggleMarkdownPreview(): void {
@@ -358,8 +438,12 @@ class $Workspace {
       const editor = this.editor;
       void editor.document.revision.value;
       if (this.showingDiff.value || !editor.hasDocument.value) return new Map();
-      if (this.activeHeadDocumentPath.value !== editor.document.path) return new Map();
-      return GutterDiff.Class.statusByLine(this.activeHeadText.value, editor.document.text);
+      if (this.activeHeadDocumentPath.value !== editor.document.path)
+        return new Map();
+      return GutterDiff.Class.statusByLine(
+        this.activeHeadText.value,
+        editor.document.text,
+      );
     });
   }
 
@@ -370,24 +454,36 @@ class $Workspace {
     return computed<Map<number, DiagnosticLineMark[]>>(() => {
       const editor = this.editor;
       const client = this.languageClientInstance;
-      if (this.showingDiff.value || !editor.hasDocument.value || !client) return new Map();
+      if (this.showingDiff.value || !editor.hasDocument.value || !client)
+        return new Map();
       void client.diagnosticsRevision.value; // reactivity: repaint when diagnostics change
       void editor.document.revision.value;
       const total = client.diagnosticCountFor(editor.document);
       if (total === 0) return new Map();
       const byLine = new Map<number, DiagnosticLineMark[]>();
-      for (const diagnostic of client.diagnosticSlice(editor.document, 0, total)) {
+      for (const diagnostic of client.diagnosticSlice(
+        editor.document,
+        0,
+        total,
+      )) {
         const firstLine = diagnostic.range.start.line;
         const lastLine = diagnostic.range.end.line;
         for (let line = firstLine; line <= lastLine; line += 1) {
           if (line < 0 || line >= editor.document.lineCount) continue;
-          const startColumn = line === firstLine ? diagnostic.range.start.column : 0;
+          const startColumn =
+            line === firstLine ? diagnostic.range.start.column : 0;
           const endColumn =
             line === lastLine
               ? diagnostic.range.end.column
-              : EditorCoordinates.Class.graphemeCount(editor.document.line(line));
+              : EditorCoordinates.Class.graphemeCount(
+                  editor.document.line(line),
+                );
           const marks = byLine.get(line) ?? [];
-          marks.push({ startColumn, endColumn: Math.max(startColumn, endColumn), severity: diagnostic.severity });
+          marks.push({
+            startColumn,
+            endColumn: Math.max(startColumn, endColumn),
+            severity: diagnostic.severity,
+          });
           byLine.set(line, marks);
         }
       }
@@ -400,7 +496,11 @@ class $Workspace {
     const requestToken = ++this.activeHeadTextRequestToken;
     this.activeHeadDocumentPath.value = '';
     const editor = this.editor;
-    if (this.showingDiff.value || !editor.hasDocument.value || !editor.document.path) {
+    if (
+      this.showingDiff.value ||
+      !editor.hasDocument.value ||
+      !editor.document.path
+    ) {
       this.activeHeadText.value = '';
       return;
     }
@@ -448,11 +548,17 @@ class $Workspace {
   get editor(): Editor.Instance {
     if (this.showingDiff.value) return this.diffEditor;
     // Safe cast: createBufferSet's seam is the only buffer creator and always makes an Editor.
-    return (this.buffers.activeBuffer as Editor.Instance | null) ?? this.emptyEditor;
+    return (
+      (this.buffers.activeBuffer as Editor.Instance | null) ?? this.emptyEditor
+    );
   }
   // Git repository + commit log need the root, so they are created in open() (not field-init).
-  protected createGit(root: string) { return new GitRepository.Class(root); }
-  protected createCommitLog(root: string) { return new CommitLog.Class(root); }
+  protected createGit(root: string) {
+    return new GitRepository.Class(root);
+  }
+  protected createCommitLog(root: string) {
+    return new CommitLog.Class(root);
+  }
   // Watches the working tree so EXTERNAL changes (editor saves elsewhere, other processes, branch
   // switches, on-disk edits) live-refresh the git panel + tree decorations — not just our own actions.
   protected createGitWatcher(root: string, repository: GitRepository.Instance) {
@@ -468,14 +574,17 @@ class $Workspace {
   // open(), dropped on suspend/dispose, recreated on resume — blame memory follows the live
   // workspace, never the process lifetime.
   protected blameCacheInstance: GitBlameCache.Model | null = null;
-  protected createGitBlameCache(root: string) { return new GitBlameCache.Class(root); }
+  protected createGitBlameCache(root: string) {
+    return new GitBlameCache.Class(root);
+  }
 
   /** The blame for the ACTIVE editor's cursor line, or null (no document / not blamed yet / not
    *  tracked). The ONE query the status bar and the status side-channel both read — a single
    *  implementation, and the cache's stat memo makes the second same-frame read stat-free. */
   get activeLineBlame(): BlameLine | null {
     const blameCache = this.blameCacheInstance;
-    if (!blameCache || this.git.value === null || this.showingDiff.value) return null;
+    if (!blameCache || this.git.value === null || this.showingDiff.value)
+      return null;
     const editor = this.editor;
     if (!editor.hasDocument.value || !editor.document.path) return null;
     return blameCache.lineBlame(editor.document.path, editor.cursor.line.value);
@@ -496,7 +605,9 @@ class $Workspace {
     this.diffEditor.attachWordWrap(settings.wordWrap);
     this.emptyEditor.attachWordWrap(settings.wordWrap);
     for (const entry of this.buffers.entries.value) {
-      (entry.buffer as Editor.Instance | null)?.attachWordWrap(settings.wordWrap);
+      (entry.buffer as Editor.Instance | null)?.attachWordWrap(
+        settings.wordWrap,
+      );
     }
   }
   protected get flingMomentum(): MomentumOptions {
@@ -515,7 +626,9 @@ class $Workspace {
   // read THIS, never gitPanel.splitRatio directly, or the two diverge.
   get gitSplitRatio(): number {
     const settings = this.settingsSource;
-    return settings ? settings.gitSplitRatio.value : this.gitPanel.splitRatio.value;
+    return settings
+      ? settings.gitSplitRatio.value
+      : this.gitPanel.splitRatio.value;
   }
   // Clamp + write the split LIVE (a divider drag tick). Updates the reactive settings.gitSplitRatio in
   // memory so the split moves smoothly; the panel-local ratio stays mirrored. Does NOT persist — save()
@@ -530,7 +643,9 @@ class $Workspace {
   persistGitSplit(): void {
     this.settingsSource?.save();
   }
-  protected createCommitExpansion(root: string) { return new CommitExpansion.Class(root); }
+  protected createCommitExpansion(root: string) {
+    return new CommitExpansion.Class(root);
+  }
 
   get focus() {
     return ref<Focus>('files');
@@ -705,8 +820,13 @@ class $Workspace {
   scrollGitLog(delta: number): void {
     const gitPanel = this.gitPanel;
     const end = this.logFlatEnd();
-    const maxScrollTop = Number.isFinite(end) ? Math.max(0, end - 1) : gitPanel.logScrollTop.value + Math.max(0, delta);
-    gitPanel.logScrollTop.value = Math.max(0, Math.min(gitPanel.logScrollTop.value + delta, maxScrollTop));
+    const maxScrollTop = Number.isFinite(end)
+      ? Math.max(0, end - 1)
+      : gitPanel.logScrollTop.value + Math.max(0, delta);
+    gitPanel.logScrollTop.value = Math.max(
+      0,
+      Math.min(gitPanel.logScrollTop.value + delta, maxScrollTop),
+    );
     this.ensureLogWindow(gitPanel.logScrollTop.value);
   }
 
@@ -722,7 +842,8 @@ class $Workspace {
 
   /** One past the last flat log row (Infinity until the end of history is discovered). */
   logFlatEnd(): number {
-    const end = this.commitLog.value?.knownEnd.value ?? Number.POSITIVE_INFINITY;
+    const end =
+      this.commitLog.value?.knownEnd.value ?? Number.POSITIVE_INFINITY;
     return GitLogRows.Class.totalFlatRows(this.expandedEntries(), end);
   }
 
@@ -745,7 +866,10 @@ class $Workspace {
   ensureLogWindow(flatTop: number, count = 50): void {
     const commitLog = this.commitLog.value;
     if (!commitLog) return;
-    const firstCommitIndex = GitLogRows.Class.commitIndexAtFlatRow(this.expandedEntries(), Math.max(0, flatTop));
+    const firstCommitIndex = GitLogRows.Class.commitIndexAtFlatRow(
+      this.expandedEntries(),
+      Math.max(0, flatTop),
+    );
     void commitLog.ensureRange(firstCommitIndex, count);
   }
 
@@ -779,7 +903,10 @@ class $Workspace {
     if (viewedBranch === undefined) {
       actualTipSha = git.head.value; // fresh from the status reconcile that just landed — free
     } else {
-      const result = await this.GitCommands.revParse(commitLog.cwd, `refs/heads/${viewedBranch}`);
+      const result = await this.GitCommands.revParse(
+        commitLog.cwd,
+        `refs/heads/${viewedBranch}`,
+      );
       // Recheck EVERYTHING captured before the await: a newer probe, a viewer switch (token bump),
       // a replaced log instance (workspace reopen), a changed viewed branch, or a hidden panel all
       // make this result stale — apply nothing.
@@ -827,7 +954,9 @@ class $Workspace {
     if (!commitLog) return;
     const checkedOutBranch = this.git.value?.branch.value ?? '';
     const normalizedBranch =
-      branchName === null || branchName === checkedOutBranch ? undefined : branchName;
+      branchName === null || branchName === checkedOutBranch
+        ? undefined
+        : branchName;
     if (commitLog.branch.value === normalizedBranch) return;
     this.logTipProbeToken++; // a viewer switch supersedes any tip probe still awaiting its rev-parse
     this.commitExpansion.value?.reset(); // expansion is commit-INDEX keyed — stale across refs
@@ -872,7 +1001,10 @@ class $Workspace {
     const sha = row.kind === 'commit' ? row.record?.sha : row.sha;
     if (!sha || !expansion.isExpanded(sha)) return;
     expansion.collapse(sha);
-    const headerFlatIndex = GitLogRows.Class.commitFlatIndex(expansion.entries.value, row.commitIndex);
+    const headerFlatIndex = GitLogRows.Class.commitFlatIndex(
+      expansion.entries.value,
+      row.commitIndex,
+    );
     this.gitPanel.logIndex.value = headerFlatIndex;
     if (this.gitPanel.logScrollTop.value > headerFlatIndex) {
       this.gitPanel.logScrollTop.value = headerFlatIndex;
@@ -901,21 +1033,37 @@ class $Workspace {
   /** A wheel notch: add a momentum impulse (the frame loop then glides the log). Every scroll regime,
    *  both axes, uses the one settings-tuned fling profile so no axis feels slower than another. */
   impulseGitLog(deltaRows: number): void {
-    this.gitPanel.logMomentum.value = Momentum.Class.addImpulse(this.gitPanel.logMomentum.value, deltaRows, this.flingMomentum);
+    this.gitPanel.logMomentum.value = Momentum.Class.addImpulse(
+      this.gitPanel.logMomentum.value,
+      deltaRows,
+      this.flingMomentum,
+    );
   }
 
   impulseEditorVerticalScroll(deltaRows: number): void {
     const viewport = this.editor.viewport;
-    viewport.verticalScrollMomentum.value = Momentum.Class.addImpulse(viewport.verticalScrollMomentum.value, deltaRows, this.flingMomentum);
+    viewport.verticalScrollMomentum.value = Momentum.Class.addImpulse(
+      viewport.verticalScrollMomentum.value,
+      deltaRows,
+      this.flingMomentum,
+    );
   }
 
   impulseEditorHorizontalScroll(deltaColumns: number): void {
     const viewport = this.editor.viewport;
-    viewport.horizontalScrollMomentum.value = Momentum.Class.addImpulse(viewport.horizontalScrollMomentum.value, deltaColumns, this.flingMomentum);
+    viewport.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
+      viewport.horizontalScrollMomentum.value,
+      deltaColumns,
+      this.flingMomentum,
+    );
   }
 
   impulseTreeScroll(deltaRows: number): void {
-    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(this.tree.selectionMomentum.value, deltaRows, this.flingMomentum);
+    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(
+      this.tree.selectionMomentum.value,
+      deltaRows,
+      this.flingMomentum,
+    );
   }
 
   impulseTreeHorizontalScroll(deltaColumns: number): void {
@@ -927,7 +1075,11 @@ class $Workspace {
   }
 
   impulseGitChangesScroll(deltaRows: number): void {
-    this.gitPanel.changesMomentum.value = Momentum.Class.addImpulse(this.gitPanel.changesMomentum.value, deltaRows, this.flingMomentum);
+    this.gitPanel.changesMomentum.value = Momentum.Class.addImpulse(
+      this.gitPanel.changesMomentum.value,
+      deltaRows,
+      this.flingMomentum,
+    );
   }
 
   impulseGitChangesHorizontalScroll(deltaColumns: number): void {
@@ -976,7 +1128,11 @@ class $Workspace {
   async toggleStageAtRow(rowIndex: number): Promise<void> {
     const git = this.git.value;
     if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(git.staged.value, git.unstaged.value, git.untracked.value);
+    const rows = GitRows.Class.buildChangeRows(
+      git.staged.value,
+      git.unstaged.value,
+      git.untracked.value,
+    );
     const row = rows[rowIndex];
     if (row?.kind !== 'file') return;
     if (row.bucket === 'staged') await git.unstage([row.path]);
@@ -991,11 +1147,19 @@ class $Workspace {
     const editorViewport = this.editor.viewport;
 
     // Every regime, both axes, steps with the one settings-tuned fling profile.
-    const gitLogStep = Momentum.Class.stepMomentum(gitPanel.logMomentum.value, dtSeconds, this.flingMomentum);
+    const gitLogStep = Momentum.Class.stepMomentum(
+      gitPanel.logMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
     gitPanel.logMomentum.value = gitLogStep.momentum;
     if (gitLogStep.rows !== 0) this.scrollGitLog(gitLogStep.rows);
 
-    const editorVerticalStep = Momentum.Class.stepMomentum(editorViewport.verticalScrollMomentum.value, dtSeconds, this.flingMomentum);
+    const editorVerticalStep = Momentum.Class.stepMomentum(
+      editorViewport.verticalScrollMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
     editorViewport.verticalScrollMomentum.value = editorVerticalStep.momentum;
     if (editorVerticalStep.rows !== 0) {
       // In wrap mode scrollTop is a VISUAL-row offset, so the momentum glide clamps to the wrapped
@@ -1007,8 +1171,13 @@ class $Workspace {
       editorViewport.scrollBy(editorVerticalStep.rows, totalRows);
     }
 
-    const editorHorizontalStep = Momentum.Class.stepMomentum(editorViewport.horizontalScrollMomentum.value, dtSeconds, this.flingMomentum);
-    editorViewport.horizontalScrollMomentum.value = editorHorizontalStep.momentum;
+    const editorHorizontalStep = Momentum.Class.stepMomentum(
+      editorViewport.horizontalScrollMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
+    editorViewport.horizontalScrollMomentum.value =
+      editorHorizontalStep.momentum;
     if (editorHorizontalStep.rows !== 0 && !this.editor.wordWrap.value) {
       // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
       // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
@@ -1018,29 +1187,57 @@ class $Workspace {
       );
     }
 
-    const treeStep = Momentum.Class.stepMomentum(this.tree.selectionMomentum.value, dtSeconds, this.flingMomentum);
+    const treeStep = Momentum.Class.stepMomentum(
+      this.tree.selectionMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
     this.tree.selectionMomentum.value = treeStep.momentum;
     // Wheel scrolls the tree WINDOW (independent offset), not the selection — so the list scrolls as
     // one uniform surface and the selection highlight travels with its row (git-changes behaviour).
     if (treeStep.rows !== 0) this.tree.scrollBy(treeStep.rows);
 
-    const treeHorizontalStep = Momentum.Class.stepMomentum(this.tree.horizontalScrollMomentum.value, dtSeconds, this.flingMomentum);
+    const treeHorizontalStep = Momentum.Class.stepMomentum(
+      this.tree.horizontalScrollMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
     this.tree.horizontalScrollMomentum.value = treeHorizontalStep.momentum;
-    if (treeHorizontalStep.rows !== 0) this.tree.scrollByColumns(treeHorizontalStep.rows);
+    if (treeHorizontalStep.rows !== 0)
+      this.tree.scrollByColumns(treeHorizontalStep.rows);
 
-    const changesStep = Momentum.Class.stepMomentum(gitPanel.changesMomentum.value, dtSeconds, this.flingMomentum);
+    const changesStep = Momentum.Class.stepMomentum(
+      gitPanel.changesMomentum.value,
+      dtSeconds,
+      this.flingMomentum,
+    );
     gitPanel.changesMomentum.value = changesStep.momentum;
     if (changesStep.rows !== 0) {
       const git = this.git.value;
-      const changeRows = git ? GitRows.Class.buildChangeRows(git.staged.value, git.unstaged.value, git.untracked.value) : [];
+      const changeRows = git
+        ? GitRows.Class.buildChangeRows(
+            git.staged.value,
+            git.unstaged.value,
+            git.untracked.value,
+          )
+        : [];
       const changesRegionHeight = Math.max(
         1,
-        Math.max(2, Math.floor(editorViewport.height.value * this.gitSplitRatio)) - 1,
+        Math.max(
+          2,
+          Math.floor(editorViewport.height.value * this.gitSplitRatio),
+        ) - 1,
       );
-      const maximumChangesScrollTop = Math.max(0, changeRows.length - changesRegionHeight);
+      const maximumChangesScrollTop = Math.max(
+        0,
+        changeRows.length - changesRegionHeight,
+      );
       gitPanel.changesScrollTop.value = Math.max(
         0,
-        Math.min(gitPanel.changesScrollTop.value + changesStep.rows, maximumChangesScrollTop),
+        Math.min(
+          gitPanel.changesScrollTop.value + changesStep.rows,
+          maximumChangesScrollTop,
+        ),
       );
     }
 
@@ -1049,11 +1246,16 @@ class $Workspace {
       dtSeconds,
     );
     gitPanel.changesHorizontalMomentum.value = changesHorizontalStep.momentum;
-    if (changesHorizontalStep.rows !== 0) gitPanel.scrollChangesByColumns(changesHorizontalStep.rows);
+    if (changesHorizontalStep.rows !== 0)
+      gitPanel.scrollChangesByColumns(changesHorizontalStep.rows);
 
-    const logHorizontalStep = Momentum.Class.stepMomentum(gitPanel.logHorizontalMomentum.value, dtSeconds);
+    const logHorizontalStep = Momentum.Class.stepMomentum(
+      gitPanel.logHorizontalMomentum.value,
+      dtSeconds,
+    );
     gitPanel.logHorizontalMomentum.value = logHorizontalStep.momentum;
-    if (logHorizontalStep.rows !== 0) gitPanel.scrollLogByColumns(logHorizontalStep.rows);
+    if (logHorizontalStep.rows !== 0)
+      gitPanel.scrollLogByColumns(logHorizontalStep.rows);
 
     return [
       gitLogStep.momentum,
@@ -1072,7 +1274,11 @@ class $Workspace {
   async openChangeAtRow(rowIndex: number): Promise<void> {
     const git = this.git.value;
     if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(git.staged.value, git.unstaged.value, git.untracked.value);
+    const rows = GitRows.Class.buildChangeRows(
+      git.staged.value,
+      git.unstaged.value,
+      git.untracked.value,
+    );
     const row = rows[rowIndex];
     if (row?.kind !== 'file') return;
     // Newest CLICK wins (shared token with openCommitFileDiff — the two entry points race each
@@ -1104,27 +1310,47 @@ class $Workspace {
   requestDiscardAtRow(rowIndex: number): void {
     const git = this.git.value;
     if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(git.staged.value, git.unstaged.value, git.untracked.value);
+    const rows = GitRows.Class.buildChangeRows(
+      git.staged.value,
+      git.unstaged.value,
+      git.untracked.value,
+    );
     const row = rows[rowIndex];
     if (row?.kind !== 'file') return;
-    this.gitPanel.confirmDiscard.value = { paths: [row.path], buckets: new Map([[row.path, row.bucket]]) };
+    this.gitPanel.confirmDiscard.value = {
+      paths: [row.path],
+      buckets: new Map([[row.path, row.bucket]]),
+    };
   }
 
   /** The file rows for the current multi-selection (empty when none). */
-  protected selectedFileRows(): Array<{ path: string; bucket: 'staged' | 'unstaged' | 'untracked' }> {
+  protected selectedFileRows(): Array<{
+    path: string;
+    bucket: 'staged' | 'unstaged' | 'untracked';
+  }> {
     const git = this.git.value;
     if (!git) return [];
     const selected = this.gitPanel.selectedPaths.value;
-    const rows = GitRows.Class.buildChangeRows(git.staged.value, git.unstaged.value, git.untracked.value);
-    const out: Array<{ path: string; bucket: 'staged' | 'unstaged' | 'untracked' }> = [];
-    for (const row of rows) if (row.kind === 'file' && selected.has(row.path)) out.push(row);
+    const rows = GitRows.Class.buildChangeRows(
+      git.staged.value,
+      git.unstaged.value,
+      git.untracked.value,
+    );
+    const out: Array<{
+      path: string;
+      bucket: 'staged' | 'unstaged' | 'untracked';
+    }> = [];
+    for (const row of rows)
+      if (row.kind === 'file' && selected.has(row.path)) out.push(row);
     return out;
   }
 
   /** Collective actions over the multi-selection (context menu). */
   async stageSelected(): Promise<void> {
     const git = this.git.value;
-    const targets = this.selectedFileRows().filter((row) => row.bucket !== 'staged');
+    const targets = this.selectedFileRows().filter(
+      (row) => row.bucket !== 'staged',
+    );
     if (!git || targets.length === 0) return;
     await git.stage(targets.map((row) => row.path));
     await git.refresh();
@@ -1132,7 +1358,9 @@ class $Workspace {
 
   async unstageSelected(): Promise<void> {
     const git = this.git.value;
-    const targets = this.selectedFileRows().filter((row) => row.bucket === 'staged');
+    const targets = this.selectedFileRows().filter(
+      (row) => row.bucket === 'staged',
+    );
     if (!git || targets.length === 0) return;
     await git.unstage(targets.map((row) => row.path));
     await git.refresh();
@@ -1251,8 +1479,10 @@ class $Workspace {
    * External URLs and directories are deliberately not editor targets. */
   // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
   resolveFileReference(reference: string): string | null {
-    const withoutFragment = reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
-    if (!withoutFragment || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(withoutFragment)) return null;
+    const withoutFragment =
+      reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
+    if (!withoutFragment || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(withoutFragment))
+      return null;
     let decodedReference = withoutFragment;
     try {
       decodedReference = decodeURIComponent(withoutFragment);
@@ -1263,7 +1493,10 @@ class $Workspace {
     const candidatePaths = [
       Files.Class.confineToRoot(this.root, decodedReference),
       this.editor.hasDocument.value
-        ? Files.Class.confineToRoot(Files.Class.dirname(this.editor.document.path), decodedReference)
+        ? Files.Class.confineToRoot(
+            Files.Class.dirname(this.editor.document.path),
+            decodedReference,
+          )
         : null,
     ];
     for (const candidatePath of candidatePaths) {

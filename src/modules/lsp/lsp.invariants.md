@@ -91,6 +91,35 @@ text but drifts by the surrogate/cluster width once an emoji or combining mark p
 
 ## Chosen invariants
 
+### Completion is provider-neutral
+
+**Invariant:** If the editor requests completion, then it consumes only the
+`LanguageProvider.completion(document, position, context)` domain contract; LSP wire shapes and
+language-specific launch choices do not cross that boundary.
+
+**Scope:** Completion requests, trigger-character discovery, item mapping, and editor acceptance.
+
+**Mechanism:** `LanguageClient` implements `LanguageProvider`, converts positions at the UTF-16
+boundary, maps completion-list fields into compact domain records, and exposes trigger characters
+from initialized server capabilities. `TypeScriptProvider` remains only a server-launch provider.
+
+**Generates:** One editor and popup path for TypeScript, a mock Rust provider, and future providers;
+revision-stamped completion responses; exact `textEdit` application through one document mutation.
+
+**Evidence:** `src/modules/lsp/LanguageProvider.interface.ts`;
+`src/modules/lsp/LanguageClient.ts`; `src/modules/lsp/LanguageClient.test.ts`;
+`src/modules/ui/CompletionPopup.test.ts`; `src/modules/editor/Editor.test.ts`.
+
+**Impossible if true:** A TypeScript condition in editor input routing; raw LSP completion fields in
+the popup; an accepted completion implemented as two revisions or two undo entries.
+
+**Verification:** `bun test src/modules/lsp/LanguageClient.test.ts
+src/modules/ui/CompletionPopup.test.ts src/modules/editor/Editor.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### The LSP attaches only to documents within the size budget
 
 **Invariant:** If a document's text exceeds the configured size budget (`lspFileSizeLimitKb`, in KB;
