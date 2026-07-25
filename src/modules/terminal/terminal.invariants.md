@@ -59,7 +59,8 @@ historical VT sequence.
 - Chunk boundaries — representative ESC, CSI, OSC, DCS, APC, DEC private-mode, CJK, astral, and
   combining sequences are split at every byte boundary across two writes.
 - Recorded dialect — real 80x24 OpenTUI boot, F1 keypress-diff, and light-theme streams pin every
-  text row, cursor position, and one cell for every distinct style signature.
+  text row, cursor position, and one cell for every distinct style signature; a real shimmed Bash
+  stream pins OSC 133 A/B/C/D command metadata and exit status.
 - Documented gaps — OSC 52 clipboard, OSC 10/11 color, OSC 99 notification, OSC 1337 capability,
   and OSC 66 shell-integration requests are not implemented; XTGETTCAP DCS, Kitty keyboard and
   graphics probes, CSI version/pixel/modify-other-keys probes, sixel, and DEC modes 2027/2031 are
@@ -78,8 +79,8 @@ changes; retirement of the statistical tmux sentinel ring from the normal merge 
 emulator through timed end-to-end drives and adds minutes without specifying which bytes must produce
 which cells.
 
-**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts` (161 tests: 51 direct
-fixtures, 107 every-byte-boundary cases, and 3 recorded-real streams);
+**Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts` (219 tests, including
+every-byte-boundary OSC 133 cases and 4 recorded-real streams);
 `scripts/harness/record-terminal-emulator-fixtures.ts`;
 `src/modules/terminal/fixtures/`.
 
@@ -92,7 +93,66 @@ cross-oracle sample.
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
+
+### Observation never writes to the PTY
+
+**Invariant:** If `TerminalObserver` observes terminal activity, then it receives parsed emulator
+events only and has no capability that can write bytes to `TerminalBackend` or the PTY.
+
+**Scope:** `TerminalObserver` construction, OSC 133 and heuristic boundary detection, redaction,
+payload assembly, and ring buffering. Existing command staging and user input paths remain the only
+terminal write authorities and are outside observation.
+
+**Mechanism:** `TerminalObserver` depends only on `TerminalEmulator` read and subscription methods.
+The class has no `TerminalBackend`, file descriptor, `sendInput`, or `write` dependency; its absence
+anchor sits at the observer declaration where any future write capability would first be introduced.
+
+**Generates:** A one-way stream tap; observer failure isolation in `TerminalEmulator`; terminal
+observation that cannot alter shell input or execution.
+
+**Evidence:** `src/modules/terminal/TerminalObserver.ts`;
+`src/modules/terminal/TerminalObserver.test.ts` `the observer seam exposes no backend or PTY write
+capability`.
+
+**Impossible if true:** Enabling or constructing an observer changes bytes received by the child;
+observer code calls a backend write; an observer callback exception stops terminal parsing.
+
+**Verification:** `bun test src/modules/terminal/TerminalObserver.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Observation payloads are bounded and self describing
+
+**Invariant:** If `TerminalObserver` buffers a command completion, then the event declares
+`headLines`, `tailLines`, `totalLines`, `truncated`, and `byteCap`; output content stays within the
+declared byte cap, and the ring stays within 100 events and 256 KB by evicting oldest events.
+
+**Scope:** OSC 133 and heuristic `command-completed` events built and retained by
+`TerminalObserver`. Later MCP delivery, wake policy, and transcript insertion are outside this wave.
+
+**Mechanism:** The observer redacts each command and output line before retaining it, counts every
+line, keeps only bounded head and tail candidates, applies the UTF-8 byte cap while assembling the
+payload, then evicts entries from the front until both ring bounds hold.
+
+**Generates:** Fixed observation memory; newest-last snapshots; declared line and byte truncation;
+no unredacted event payload in the buffer.
+
+**Evidence:** `src/modules/terminal/TerminalObserver.ts`;
+`src/modules/terminal/TerminalObserver.test.ts` head-tail, UTF-8 byte-cap, redaction-table, and
+count/byte eviction cases.
+
+**Impossible if true:** An event silently omits output without `truncated: true`; retained output
+exceeds its `byteCap`; the ring contains more than 100 events or exceeds 256 KB; a buffered event
+contains a password prompt or secret-shaped assignment value.
+
+**Verification:** `bun test src/modules/terminal/TerminalObserver.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
 
 ### One openpty allocator serves both PTY roles
 
