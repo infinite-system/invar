@@ -349,3 +349,41 @@ Loop check (every 10 min): VERIFY — do not assume — that the currently activ
 Refreshed 2026-07-24 after a session restart proved the doctrine: the in-memory crons died, the
 verbatim copies here restored them. This refresh generalized the stale specifics (the finished
 11-task batch, the stood-down fork id, the old baseline SHA) into evidence-based forms.
+
+## Gate concurrency (superseding one-gate-at-a-time, as of 2026-07-25)
+
+Two or more gates MAY now run simultaneously. The rule existed because of two shared-namespace
+collisions, both fixed in 9f6c617 — the pre-gate reaper killed every `/tmp/tui-*` app (executing a
+peer gate's in-flight smokes and producing reds indistinguishable from starvation), and the failure-log
+directory was a single path wiped at gate start. An orphan is now PARENT-GONE, and failure dirs are
+per-run with a symlink to the latest.
+
+Operating limits, measured on a 16-core box: inotify `max_user_instances` is 128 and each app is one
+instance; each app is ~250MB RSS; a serial gate contributes ~1.5 load. CPU binds first at roughly
+12-14 CONCURRENT APPS, so reason about the PRODUCT `gates x pool workers`, not the gate count.
+
+Use concurrency for PARALLEL SPECULATIVE VERIFICATION — gate every ready branch at once to discover
+all their defects in one wall-clock window — then LAND SERIALLY: ff-only merges force each branch to
+rebase onto the new main and re-verify, and semantic conflicts across landings are routine, not rare.
+
+Treat concurrency as a HAZARD-FINDING instrument too: load-sensitive races are invisible on an idle
+machine. The first two-gate run exposed a latent await-after-terminal-action race that dozens of
+serial runs had missed.
+
+## Diagnosis rules earned 2026-07-25
+
+- A red naming a smoke UNRELATED to the branch's diff: test MAIN first. Retry-once absorbs starvation
+  but MASKS races; the same smoke failing across unrelated branches means the defect is on main. Land
+  the branch that fixes main before re-gating branches that merely inherited its red.
+- After a deliberate-exit action (Ctrl+Q, F10, quit), assert on the EXIT, never on a frame.
+- A repro count only counts on a QUIET machine. N-of-N under churn measures the churn.
+- Diagnostic probes must run the ENTIRE instrument; a probe that truncates at the suspected wait will
+  "confirm" a wrong hypothesis (it did, three times).
+- Where syntax cannot decide reactivity or type-shape, use the TYPE (the tsc program the gate already
+  builds). A syntactic rule over a reactive codebase produces confident false positives.
+- Landing checklist: clean tree; no tracked TASK files; checker verified by BOTH `--all` and `--refs`
+  EXIT CODES; blame-ignore hashes proven as HEAD ancestors at landing time; doc-section conflicts
+  unioned by RECONSTRUCTION from the authoritative file, never regex splicing; fresh worktrees get
+  `bun install` before any instrument.
+- Machine hygiene is gate hygiene: full swap or a memory-hungry neighbour produces exactly the
+  timeout-class red signature. Check `free -h` and the top RSS consumers before blaming a branch.
