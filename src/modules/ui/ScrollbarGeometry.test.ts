@@ -1,7 +1,7 @@
 // Property tests over the ONE scrollbar-geometry source: track within the region, corner free,
 // exact extremes, min-thumb — across region shapes (split positions, tiny panes, huge content).
 import { test, expect, describe } from 'bun:test';
-import { ScrollbarGeometry, MINIMUM_THUMB_CELLS, type RegionRect } from './ScrollbarGeometry';
+import { ScrollbarGeometry, type RegionRect } from './ScrollbarGeometry';
 
 const shapes: Array<{ name: string; region: RegionRect }> = [
   { name: 'editor pane', region: { top: 0, left: 6, width: 80, height: 37 } },
@@ -66,6 +66,6 @@ describe('minimum thumb', () => {
     const region = shapes[1]!.region; // 17-cell log region
     const geometry = ScrollbarGeometry.Class.scrollbarGeometry('vertical', region, { scrollSize: 100000, viewportSize: 17, scrollPosition: 0 })!;
     const thumbCells = Math.max(1, Math.round((geometry.reportedViewportSize / 100000) * geometry.trackLength));
-    expect(thumbCells).toBeGreaterThanOrEqual(MINIMUM_THUMB_CELLS);
+    expect(thumbCells).toBeGreaterThanOrEqual(ScrollbarGeometry.Class.minimumThumbCells);
   });
 });
