@@ -8,23 +8,12 @@ import type { TextDocument } from '../editor/TextDocument';
 import { TextEditing } from '../editor/TextEditing';
 import { FindInBuffer, type FindInBufferMatch } from './FindInBuffer';
 
-export type FindBarMode = 'find' | 'replace';
-
-/** One independently searchable text pane. The identifier preserves its query/matches while focus
- * moves to another pane; revealMatch is the pane's sole scroll/selection writer. */
-export interface FindBarTarget {
-  identifier: string;
-  document: TextDocument.Instance;
-  replaceAllowed: boolean;
-  revealMatch(match: FindInBufferMatch): void;
-}
-
 class $FindBar {
   // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
   // invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md)
-  private readonly enginesByTargetIdentifier = new Map<string, FindInBuffer.Instance>();
-  private readonly documentIdentifiers = new WeakMap<object, string>();
-  private nextDocumentIdentifier = 0;
+  protected readonly enginesByTargetIdentifier = new Map<string, FindInBuffer.Instance>();
+  protected readonly documentIdentifiers = new WeakMap<object, string>();
+  protected nextDocumentIdentifier = 0;
 
   get open() {
     return ref(false);
@@ -95,7 +84,7 @@ class $FindBar {
   }
 
   /** True while typing should edit the REPLACEMENT field (replace mode + that field focused). */
-  private get editingReplacement(): boolean {
+  protected get editingReplacement(): boolean {
     return this.mode.value === 'replace' && this.replaceFocused.value;
   }
 
@@ -182,4 +171,15 @@ export namespace FindBar {
   export const $Class = $FindBar;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export type FindBarMode = 'find' | 'replace';
+
+/** One independently searchable text pane. The identifier preserves its query/matches while focus
+ * moves to another pane; revealMatch is the pane's sole scroll/selection writer. */
+export interface FindBarTarget {
+  identifier: string;
+  document: TextDocument.Instance;
+  replaceAllowed: boolean;
+  revealMatch(match: FindInBufferMatch): void;
 }

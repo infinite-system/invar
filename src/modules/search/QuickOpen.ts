@@ -6,39 +6,12 @@ import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { Processes } from '../system/Processes';
 
-export interface QuickOpenMatch {
-  path: string;
-  score: number;
-}
-
-export type ProjectFileEnumerator = (projectRoot: string) => Promise<readonly string[]>;
-
-export type SiblingFolderEnumerator = (parentDirectory: string) => readonly string[];
-
-export type DirectoryNameLister = (directory: string) => readonly string[];
-
-export type DirectoryPredicate = (path: string) => boolean;
-
-export interface QuickOpenOptions {
-  enumerateProjectFiles?: ProjectFileEnumerator;
-  /** Injects the whole subfolder listing (bypasses the hardened default) — used by navigator tests. */
-  enumerateSiblingFolders?: SiblingFolderEnumerator;
-  /** Injects only the raw directory-entry names — the hardened default runs its cap + guard on top. */
-  listDirectoryNames?: DirectoryNameLister;
-  isDirectory?: DirectoryPredicate;
-}
-
-/**
- * Upper bound on directory entries the open-project navigator will classify per listing. A directory can
- * hold hundreds of thousands of entries; classifying every one synchronously (a stat per entry, some of
- * which can block on a stale mount) is exactly the unbounded work that froze the picker. Capping bounds
- * the work to a fixed ceiling regardless of how pathological the directory is.
- */
-const SIBLING_FOLDER_ENTRY_LIMIT = 2000;
-
-export type QuickOpenMode = 'files' | 'workspacePath';
-
 class $QuickOpen {
+  /** Upper bound on entries the open-project navigator classifies per listing. */
+  protected static get siblingFolderEntryLimit(): number {
+    return 2000;
+  }
+
   constructor(readonly options: QuickOpenOptions = {}) {}
 
   get open() {
@@ -78,13 +51,13 @@ class $QuickOpen {
     return ref(true);
   }
 
-  private projectFiles: readonly string[] = [];
-  private latestEnumerationRequestIdentifier = 0;
+  protected projectFiles: readonly string[] = [];
+  protected latestEnumerationRequestIdentifier = 0;
 
   // Path-navigator state (workspacePath mode): the directory currently listed and its subfolders,
   // cached so a keystroke that stays within the same directory re-filters instead of re-reading it.
-  private workspaceDirectory: string | null = null;
-  private workspaceSubfolders: readonly string[] = [];
+  protected workspaceDirectory: string | null = null;
+  protected workspaceSubfolders: readonly string[] = [];
 
   /** Open quick-open and replace its candidates with the project files reported by ripgrep. */
   async show(projectRoot: string): Promise<void> {
@@ -204,7 +177,7 @@ class $QuickOpen {
    *  a click, so Enter commits wherever the input currently points. */
   activate(): string | null {
     if (this.mode.value === 'workspacePath') {
-      const workspacePath = stripTrailingSlash(this.query.value.trim());
+      const workspacePath = this.stripTrailingSlash(this.query.value.trim());
       return workspacePath.length > 0 ? workspacePath : null;
     }
     return this.matches.value[this.selectedIndex.value]?.path ?? null;
@@ -258,13 +231,15 @@ class $QuickOpen {
       return this.options.enumerateSiblingFolders(parentDirectory);
     }
     const entryNames = this.listDirectoryNames(parentDirectory);
+    const siblingFolderEntryLimit = (this.constructor as typeof $QuickOpen)
+      .siblingFolderEntryLimit;
     const cappedEntryNames =
-      entryNames.length > SIBLING_FOLDER_ENTRY_LIMIT
-        ? entryNames.slice(0, SIBLING_FOLDER_ENTRY_LIMIT)
+      entryNames.length > siblingFolderEntryLimit
+        ? entryNames.slice(0, siblingFolderEntryLimit)
         : entryNames;
-    if (entryNames.length > SIBLING_FOLDER_ENTRY_LIMIT) {
+    if (entryNames.length > siblingFolderEntryLimit) {
       Logging.Class.info(
-        `QuickOpen: ${parentDirectory} has ${entryNames.length} entries; listing the first ${SIBLING_FOLDER_ENTRY_LIMIT}`,
+        `QuickOpen: ${parentDirectory} has ${entryNames.length} entries; listing the first ${siblingFolderEntryLimit}`,
       );
     }
     const subfolderPaths: string[] = [];
@@ -292,7 +267,7 @@ class $QuickOpen {
     return Files.Class.isDir(path);
   }
 
-  private refilter(): void {
+  protected refilter(): void {
     if (this.mode.value === 'workspacePath') {
       this.refilterWorkspacePath();
       return;
@@ -322,7 +297,7 @@ class $QuickOpen {
    * (fuzzy, closest first; an empty segment lists all), and set them as the selectable open-targets.
    */
   // invariant: The open-project path input is a live directory navigator (src/modules/search/search.invariants.md)
-  private refilterWorkspacePath(): void {
+  protected refilterWorkspacePath(): void {
     const query = this.query.value;
     const lastSlashIndex = query.lastIndexOf('/');
     const directoryPrefix = lastSlashIndex >= 0 ? query.slice(0, lastSlashIndex + 1) : '';
@@ -330,7 +305,7 @@ class $QuickOpen {
 
     // Live validity for the alert affordance: the path Enter would open is an existing directory.
     // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
-    const candidatePath = stripTrailingSlash(query.trim());
+    const candidatePath = this.stripTrailingSlash(query.trim());
     this.workspacePathOpenable.value = candidatePath.length > 0 && this.isDirectory(candidatePath);
 
     if (directoryPrefix !== this.workspaceDirectory) {
@@ -338,7 +313,7 @@ class $QuickOpen {
       this.workspaceSubfolders =
         directoryPrefix.length === 0
           ? []
-          : this.enumerateSiblingFolders(directoryForListing(directoryPrefix));
+          : this.enumerateSiblingFolders(this.directoryForListing(directoryPrefix));
     }
 
     const scoredFolders: QuickOpenMatch[] = [];
@@ -356,18 +331,18 @@ class $QuickOpen {
     this.matches.value = scoredFolders;
     this.selectedIndex.value = scoredFolders.length > 0 ? 0 : -1;
   }
-}
 
-/** The directory to enumerate for a `dir/` prefix: drop the trailing slash, but keep root `/` intact. */
-function directoryForListing(directoryPrefix: string): string {
-  if (directoryPrefix === '/') return '/';
-  return directoryPrefix.endsWith('/') ? directoryPrefix.slice(0, -1) : directoryPrefix;
-}
+  /** Directory to enumerate for a `dir/` prefix, keeping root `/` intact. */
+  protected directoryForListing(directoryPrefix: string): string {
+    if (directoryPrefix === '/') return '/';
+    return directoryPrefix.endsWith('/') ? directoryPrefix.slice(0, -1) : directoryPrefix;
+  }
 
-/** Strip a single trailing slash for opening a path, keeping root `/` intact. */
-function stripTrailingSlash(path: string): string {
-  if (path === '/') return '/';
-  return path.endsWith('/') ? path.slice(0, -1) : path;
+  /** Strip one trailing slash for opening a path, keeping root `/` intact. */
+  protected stripTrailingSlash(path: string): string {
+    if (path === '/') return '/';
+    return path.endsWith('/') ? path.slice(0, -1) : path;
+  }
 }
 
 export namespace QuickOpen {
@@ -375,3 +350,22 @@ export namespace QuickOpen {
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
+export interface QuickOpenMatch {
+  path: string;
+  score: number;
+}
+
+export type ProjectFileEnumerator = (projectRoot: string) => Promise<readonly string[]>;
+export type SiblingFolderEnumerator = (parentDirectory: string) => readonly string[];
+export type DirectoryNameLister = (directory: string) => readonly string[];
+export type DirectoryPredicate = (path: string) => boolean;
+
+export interface QuickOpenOptions {
+  enumerateProjectFiles?: ProjectFileEnumerator;
+  enumerateSiblingFolders?: SiblingFolderEnumerator;
+  listDirectoryNames?: DirectoryNameLister;
+  isDirectory?: DirectoryPredicate;
+}
+
+export type QuickOpenMode = 'files' | 'workspacePath';

@@ -3,60 +3,8 @@ import { ref, shallowRef } from 'vue';
 import type { TextDocument } from '../editor/TextDocument';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
-export interface FindInBufferMatch {
-  line: number;
-  startColumn: number;
-  endColumn: number;
-}
-
-interface MatchReplacementContext {
-  matchedText: string;
-  capturedTexts: readonly (string | undefined)[];
-  namedCapturedTexts: Readonly<Record<string, string | undefined>> | undefined;
-  prefixText: string;
-  suffixText: string;
-  startUtf16Offset: number;
-  endUtf16Offset: number;
-}
-
-function escapeRegularExpression(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function expandReplacement(
-  replacement: string,
-  context: MatchReplacementContext,
-): string {
-  return replacement.replace(
-    /\$(\$|&|`|'|<([^>]+)>|(\d{1,2}))/g,
-    (replacementToken, substitutionToken: string, capturedName: string | undefined, capturedNumberText: string | undefined) => {
-      if (substitutionToken === '$') return '$';
-      if (substitutionToken === '&') return context.matchedText;
-      if (substitutionToken === '`') return context.prefixText;
-      if (substitutionToken === "'") return context.suffixText;
-      if (capturedName !== undefined) {
-        if (context.namedCapturedTexts === undefined) return replacementToken;
-        return context.namedCapturedTexts[capturedName] ?? '';
-      }
-
-      const capturedNumber = Number(capturedNumberText);
-      if (capturedNumber > 0 && capturedNumber <= context.capturedTexts.length) {
-        return context.capturedTexts[capturedNumber - 1] ?? '';
-      }
-
-      if (capturedNumberText?.length === 2) {
-        const firstCapturedNumber = Number(capturedNumberText[0]);
-        if (firstCapturedNumber > 0 && firstCapturedNumber <= context.capturedTexts.length) {
-          return (context.capturedTexts[firstCapturedNumber - 1] ?? '') + capturedNumberText[1];
-        }
-      }
-      return replacementToken;
-    },
-  );
-}
-
 class $FindInBuffer {
-  private replacementContexts: MatchReplacementContext[] = [];
+  protected replacementContexts: MatchReplacementContext[] = [];
 
   constructor(public readonly document: TextDocument.Instance) {}
 
@@ -175,7 +123,7 @@ class $FindInBuffer {
         { line: currentMatch.line, col: currentMatch.endColumn },
       );
     }
-    const replacementText = expandReplacement(this.replacement.value, replacementContext);
+    const replacementText = this.expandReplacement(this.replacement.value, replacementContext);
     if (replacementText.length > 0) {
       if (/\r|\n/.test(replacementText)) {
         this.document.insertMultiline(currentMatch.line, currentMatch.startColumn, replacementText);
@@ -207,7 +155,7 @@ class $FindInBuffer {
       const lineText = updatedLines[match.line] ?? '';
       updatedLines[match.line] =
         lineText.slice(0, replacementContext.startUtf16Offset)
-        + expandReplacement(this.replacement.value, replacementContext)
+        + this.expandReplacement(this.replacement.value, replacementContext)
         + lineText.slice(replacementContext.endUtf16Offset);
     }
 
@@ -218,11 +166,47 @@ class $FindInBuffer {
     return replacementCount;
   }
 
-  private createRegularExpression(): RegExp | null {
+  protected escapeRegularExpression(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  protected expandReplacement(
+    replacement: string,
+    context: MatchReplacementContext,
+  ): string {
+    return replacement.replace(
+      /\$(\$|&|`|'|<([^>]+)>|(\d{1,2}))/g,
+      (replacementToken, substitutionToken: string, capturedName: string | undefined, capturedNumberText: string | undefined) => {
+        if (substitutionToken === '$') return '$';
+        if (substitutionToken === '&') return context.matchedText;
+        if (substitutionToken === '`') return context.prefixText;
+        if (substitutionToken === "'") return context.suffixText;
+        if (capturedName !== undefined) {
+          if (context.namedCapturedTexts === undefined) return replacementToken;
+          return context.namedCapturedTexts[capturedName] ?? '';
+        }
+
+        const capturedNumber = Number(capturedNumberText);
+        if (capturedNumber > 0 && capturedNumber <= context.capturedTexts.length) {
+          return context.capturedTexts[capturedNumber - 1] ?? '';
+        }
+
+        if (capturedNumberText?.length === 2) {
+          const firstCapturedNumber = Number(capturedNumberText[0]);
+          if (firstCapturedNumber > 0 && firstCapturedNumber <= context.capturedTexts.length) {
+            return (context.capturedTexts[firstCapturedNumber - 1] ?? '') + capturedNumberText[1];
+          }
+        }
+        return replacementToken;
+      },
+    );
+  }
+
+  protected createRegularExpression(): RegExp | null {
     if (this.query.value.length === 0) return null;
     const querySource = this.useRegex.value
       ? this.query.value
-      : escapeRegularExpression(this.query.value);
+      : this.escapeRegularExpression(this.query.value);
     const regularExpressionSource = this.wholeWord.value
       ? `\\b(?:${querySource})\\b`
       : querySource;
@@ -233,7 +217,7 @@ class $FindInBuffer {
     }
   }
 
-  private clearMatches(): void {
+  protected clearMatches(): void {
     this.matches.value = [];
     this.replacementContexts = [];
     this.currentMatchIndex.value = -1;
@@ -244,4 +228,20 @@ export namespace FindInBuffer {
   export const $Class = $FindInBuffer;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface FindInBufferMatch {
+  line: number;
+  startColumn: number;
+  endColumn: number;
+}
+
+interface MatchReplacementContext {
+  matchedText: string;
+  capturedTexts: readonly (string | undefined)[];
+  namedCapturedTexts: Readonly<Record<string, string | undefined>> | undefined;
+  prefixText: string;
+  suffixText: string;
+  startUtf16Offset: number;
+  endUtf16Offset: number;
 }
