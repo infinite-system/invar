@@ -18,146 +18,51 @@ import type {
   SidebarPosition,
 } from '../layout/LayoutModel';
 
-/** The modifier key that re-routes wheel input, or `none` to leave it unbound. */
-export type ScrollModifier = 'alt' | 'shift' | 'ctrl' | 'none';
-
-/** How glyphs are selected for rendering: automatic detection or a forced tier. */
-export type GlyphMode = 'auto' | 'nerd' | 'unicode' | 'ascii';
-
-/** Where the project-layer tab strip is mounted in the root frame. */
-export type WorkspaceTabPosition = 'top' | 'left';
-
-/** Which TypeScript language server backs LSP. `tsgo` (the native-Go `@typescript/native-preview`
- *  build — ~14 MB vs ~580 MB for the Node family) is the PRIMARY default; `typescript-language-server`
- *  is the fallback. If the chosen binary can't be resolved, resolve() falls back to the other so LSP
- *  still works. NOTE: tsgo (pull-model) does not push diagnostics yet, so RED-SQUIGGLY DIAGNOSTICS
- *  only appear under `typescript-language-server` until LanguageClient gains pull-diagnostics. */
-export type TypeScriptServer = 'tsgo' | 'typescript-language-server';
-
-/** Which engine backs the native agent pane. `auto` picks the first CLI available on PATH (Claude
- *  preferred); `claude` drives `claude -p --output-format stream-json`; `codex` drives
- *  `codex exec --json`. Provider-neutral: the setting expresses intent, each backend translates to its
- *  own CLI dialect. When neither CLI resolves, the pane falls back to the local echo backend. */
-export type AgentProvider = 'auto' | 'claude' | 'codex';
-
-/** When completed terminal commands enter the native agent session. */
-export type AgentTerminalFollowMode =
-  | 'follow-all'
-  | 'on-error'
-  | 'on-request'
-  | 'off';
-
-/** The full set of settable values — one field per reactive getter on the store. */
-export interface SettingsValues {
-  // Scroll physics.
-  verticalFlingCeiling: number;
-  scrollAccelGain: number;
-  scrollFriction: number;
-  linesPerNotch: number;
-  // Wheel routing.
-  horizontalScrollModifier: ScrollModifier;
-  fastScrollModifier: ScrollModifier;
-  fastScrollMultiplier: number;
-  // Chrome.
-  scrollbarThickness: number;
-  glyphMode: GlyphMode;
-  theme: string;
-  wordWrap: boolean;
-  showActivityBar: boolean;
-  showIndentGuides: boolean;
-  reducedMotion: boolean;
-  workspaceTabPosition: WorkspaceTabPosition;
-  sidebarPosition: SidebarPosition;
-  panelAlignment: PanelAlignment;
-  leftDockVerticalSpan: DockVerticalSpan;
-  rightDockVerticalSpan: DockVerticalSpan;
-  // Language intelligence.
-  typescriptServer: TypeScriptServer;
-  lspFileSizeLimitKb: number;
-  // AI agent pane (provider-neutral).
-  agentProvider: AgentProvider;
-  agentSkipPermissions: boolean;
-  agentTerminalFollowMode: AgentTerminalFollowMode;
-  agentModel: string;
-  agentTypingSpeed: number;
-  terminalCleanPrompt: boolean;
-  agentAudioNarration: boolean;
-  agentNarrationVoice: string;
-  agentNarrationRate: number;
-  // Splitter geometry.
-  sidebarWidth: number;
-  rightDockWidth: number;
-  gitSplitRatio: number;
-  diffSplitRatio: number;
-  markdownSplitRatio: number;
-}
-
-/** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */
-export interface SettingsFileSystem {
-  /** Read a text file, or `null` when it is missing or unreadable (never throws). */
-  readTextFile(path: string): string | null;
-  /** Write a text file, creating parent directories as needed. */
-  writeTextFile(path: string, content: string): void;
-  /** The current user's home directory. */
-  homeDirectory(): string;
-}
-
-/** Locations the store reads from and writes back to; any omitted field is derived from the OS. */
-export interface SettingsPaths {
-  /** User-level file (written back by `save()`). Default: `~/.config/invar/settings.json`. */
-  userPath?: string;
-  /** Project-override file. Default: `<workspaceRoot>/.invar/settings.json`. */
-  projectPath?: string;
-  /** Workspace root used to derive `projectPath`. Default: `Environment.cwd`. */
-  workspaceRoot?: string;
-}
-
-export interface SettingsOptions {
-  /** Inject a fake filesystem (tests); when absent the default Files/Environment-backed one is used. */
-  fileSystem?: SettingsFileSystem;
-}
-
-const ALLOWED_SCROLL_MODIFIERS: ReadonlySet<ScrollModifier> = new Set<ScrollModifier>([
-  'alt',
-  'shift',
-  'ctrl',
-  'none',
-]);
-const ALLOWED_GLYPH_MODES: ReadonlySet<GlyphMode> = new Set<GlyphMode>([
-  'auto',
-  'nerd',
-  'unicode',
-  'ascii',
-]);
-const ALLOWED_WORKSPACE_TAB_POSITIONS: ReadonlySet<WorkspaceTabPosition> = new Set([
-  'top',
-  'left',
-]);
-const ALLOWED_SIDEBAR_POSITIONS: ReadonlySet<SidebarPosition> = new Set([
-  'left',
-  'right',
-]);
-const ALLOWED_PANEL_ALIGNMENTS: ReadonlySet<PanelAlignment> = new Set([
-  'left',
-  'center',
-  'right',
-  'justify',
-]);
-const ALLOWED_DOCK_VERTICAL_SPANS: ReadonlySet<DockVerticalSpan> = new Set([
-  'full-height',
-  'ends-at-panel',
-]);
-const ALLOWED_TYPESCRIPT_SERVERS: ReadonlySet<TypeScriptServer> = new Set<TypeScriptServer>([
-  'tsgo',
-  'typescript-language-server',
-]);
-const ALLOWED_AGENT_PROVIDERS: ReadonlySet<AgentProvider> = new Set<AgentProvider>([
-  'auto',
-  'claude',
-  'codex',
-]);
-
 class $Settings {
+  protected static cachedSet<Value>(
+    propertyName: string,
+    values: readonly Value[],
+  ): ReadonlySet<Value> {
+    const allowedValues = new Set(values);
+    Object.defineProperty(this, propertyName, {
+      configurable: true,
+      value: allowedValues,
+    });
+    return allowedValues;
+  }
+
+  protected static get $allowedScrollModifiers(): ReadonlySet<ScrollModifier> {
+    return this.cachedSet('$allowedScrollModifiers', ['alt', 'shift', 'ctrl', 'none']);
+  }
+
+  protected static get $allowedGlyphModes(): ReadonlySet<GlyphMode> {
+    return this.cachedSet('$allowedGlyphModes', ['auto', 'nerd', 'unicode', 'ascii']);
+  }
+
+  protected static get $allowedWorkspaceTabPositions(): ReadonlySet<WorkspaceTabPosition> {
+    return this.cachedSet('$allowedWorkspaceTabPositions', ['top', 'left']);
+  }
+
+  protected static get $allowedSidebarPositions(): ReadonlySet<SidebarPosition> {
+    return this.cachedSet('$allowedSidebarPositions', ['left', 'right']);
+  }
+
+  protected static get $allowedPanelAlignments(): ReadonlySet<PanelAlignment> {
+    return this.cachedSet('$allowedPanelAlignments', ['left', 'center', 'right', 'justify']);
+  }
+
+  protected static get $allowedDockVerticalSpans(): ReadonlySet<DockVerticalSpan> {
+    return this.cachedSet('$allowedDockVerticalSpans', ['full-height', 'ends-at-panel']);
+  }
+
+  protected static get $allowedTypeScriptServers(): ReadonlySet<TypeScriptServer> {
+    return this.cachedSet('$allowedTypeScriptServers', ['tsgo', 'typescript-language-server']);
+  }
+
+  protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
+    return this.cachedSet('$allowedAgentProviders', ['auto', 'claude', 'codex']);
+  }
+
   constructor(readonly options: SettingsOptions = {}) {}
 
   // ---- Reactive fields (ref-returning getters; read/write via `.value`) --------------------------
@@ -271,7 +176,7 @@ class $Settings {
   }
 
   /** Every field keyed by name — the one place each name maps to its reactive cell. */
-  private get fields(): { [Key in keyof SettingsValues]: Ref<SettingsValues[Key]> } {
+  protected get fields(): { [Key in keyof SettingsValues]: Ref<SettingsValues[Key]> } {
     return {
       verticalFlingCeiling: this.verticalFlingCeiling,
       scrollAccelGain: this.scrollAccelGain,
@@ -313,11 +218,12 @@ class $Settings {
 
   // ---- Filesystem seam ---------------------------------------------------------------------------
 
-  private fileSystemInstance: SettingsFileSystem | undefined;
+  protected fileSystemInstance: SettingsFileSystem | undefined;
 
   /** Overridable owned construction of the filesystem capability. */
   protected createFileSystem(): SettingsFileSystem {
-    return this.options.fileSystem ?? $Settings.defaultFileSystem();
+    const settingsClass = this.constructor as typeof $Settings;
+    return this.options.fileSystem ?? settingsClass.defaultFileSystem();
   }
 
   protected get fileSystem(): SettingsFileSystem {
@@ -348,14 +254,14 @@ class $Settings {
 
   // ---- Path resolution ---------------------------------------------------------------------------
 
-  private storedUserPath: string | undefined;
+  protected storedUserPath: string | undefined;
 
   /** Where `save()` writes — the resolved user path from the last `load()`, else the OS default. */
   get userSettingsPath(): string {
     return this.storedUserPath ?? this.resolvePaths().userPath;
   }
 
-  private resolvePaths(paths: SettingsPaths = {}): { userPath: string; projectPath: string } {
+  protected resolvePaths(paths: SettingsPaths = {}): { userPath: string; projectPath: string } {
     const home = this.fileSystem.homeDirectory();
     const workspaceRoot = paths.workspaceRoot ?? Environment.Class.cwd;
     return {
@@ -376,7 +282,8 @@ class $Settings {
     this.storedUserPath = resolved.userPath;
     const userValues = this.readSettingsFile(resolved.userPath);
     const projectValues = this.readSettingsFile(resolved.projectPath);
-    this.applyValues({ ...$Settings.defaults, ...userValues, ...projectValues });
+    const settingsClass = this.constructor as typeof $Settings;
+    this.applyValues({ ...settingsClass.defaults, ...userValues, ...projectValues });
   }
 
   /** Serialize the current values to the user-level file (best-effort; write errors are swallowed). */
@@ -408,7 +315,7 @@ class $Settings {
   }
 
   /** Assign the provided fields to their reactive cells. */
-  private applyValues(values: Partial<SettingsValues>): void {
+  protected applyValues(values: Partial<SettingsValues>): void {
     const fields = this.fields;
     for (const key of Object.keys(values) as (keyof SettingsValues)[]) {
       const value = values[key];
@@ -418,7 +325,7 @@ class $Settings {
   }
 
   /** Read + parse a settings file, returning only recognized, well-typed keys (never throws). */
-  private readSettingsFile(path: string): Partial<SettingsValues> {
+  protected readSettingsFile(path: string): Partial<SettingsValues> {
     const text = this.fileSystem.readTextFile(path);
     if (text === null) return {};
     let parsed: unknown;
@@ -427,7 +334,7 @@ class $Settings {
     } catch {
       return {};
     }
-    return $Settings.sanitize(parsed);
+    return (this.constructor as typeof $Settings).sanitize(parsed);
   }
 
   // ---- Static helpers ----------------------------------------------------------------------------
@@ -483,7 +390,7 @@ class $Settings {
     };
     const readModifier = (key: keyof SettingsValues): void => {
       const value = record[key];
-      if (typeof value === 'string' && ALLOWED_SCROLL_MODIFIERS.has(value as ScrollModifier)) {
+    if (typeof value === 'string' && this.$allowedScrollModifiers.has(value as ScrollModifier)) {
         result[key] = value as never;
       }
     };
@@ -495,7 +402,7 @@ class $Settings {
     readModifier('fastScrollModifier');
     readNumber('fastScrollMultiplier');
     readNumber('scrollbarThickness');
-    if (typeof record.glyphMode === 'string' && ALLOWED_GLYPH_MODES.has(record.glyphMode as GlyphMode)) {
+    if (typeof record.glyphMode === 'string' && this.$allowedGlyphModes.has(record.glyphMode as GlyphMode)) {
       result.glyphMode = record.glyphMode as GlyphMode;
     }
     if (typeof record.theme === 'string') result.theme = record.theme;
@@ -505,25 +412,25 @@ class $Settings {
     if (typeof record.reducedMotion === 'boolean') result.reducedMotion = record.reducedMotion;
     if (
       typeof record.workspaceTabPosition === 'string' &&
-      ALLOWED_WORKSPACE_TAB_POSITIONS.has(record.workspaceTabPosition as WorkspaceTabPosition)
+      this.$allowedWorkspaceTabPositions.has(record.workspaceTabPosition as WorkspaceTabPosition)
     ) {
       result.workspaceTabPosition = record.workspaceTabPosition as WorkspaceTabPosition;
     }
     if (
       typeof record.sidebarPosition === 'string' &&
-      ALLOWED_SIDEBAR_POSITIONS.has(record.sidebarPosition as SidebarPosition)
+      this.$allowedSidebarPositions.has(record.sidebarPosition as SidebarPosition)
     ) {
       result.sidebarPosition = record.sidebarPosition as SidebarPosition;
     }
     if (
       typeof record.panelAlignment === 'string' &&
-      ALLOWED_PANEL_ALIGNMENTS.has(record.panelAlignment as PanelAlignment)
+      this.$allowedPanelAlignments.has(record.panelAlignment as PanelAlignment)
     ) {
       result.panelAlignment = record.panelAlignment as PanelAlignment;
     }
     if (
       typeof record.leftDockVerticalSpan === 'string' &&
-      ALLOWED_DOCK_VERTICAL_SPANS.has(
+      this.$allowedDockVerticalSpans.has(
         record.leftDockVerticalSpan as DockVerticalSpan,
       )
     ) {
@@ -532,7 +439,7 @@ class $Settings {
     }
     if (
       typeof record.rightDockVerticalSpan === 'string' &&
-      ALLOWED_DOCK_VERTICAL_SPANS.has(
+      this.$allowedDockVerticalSpans.has(
         record.rightDockVerticalSpan as DockVerticalSpan,
       )
     ) {
@@ -541,20 +448,20 @@ class $Settings {
     }
     if (
       typeof record.typescriptServer === 'string' &&
-      ALLOWED_TYPESCRIPT_SERVERS.has(record.typescriptServer as TypeScriptServer)
+      this.$allowedTypeScriptServers.has(record.typescriptServer as TypeScriptServer)
     ) {
       result.typescriptServer = record.typescriptServer as TypeScriptServer;
     }
     if (
       typeof record.agentProvider === 'string' &&
-      ALLOWED_AGENT_PROVIDERS.has(record.agentProvider as AgentProvider)
+      this.$allowedAgentProviders.has(record.agentProvider as AgentProvider)
     ) {
       result.agentProvider = record.agentProvider as AgentProvider;
     }
     if (typeof record.agentSkipPermissions === 'boolean') result.agentSkipPermissions = record.agentSkipPermissions;
     if (
       typeof record.agentTerminalFollowMode === 'string'
-      && $Settings.allowedAgentTerminalFollowModes.has(
+      && this.$allowedAgentTerminalFollowModes.has(
         record.agentTerminalFollowMode as AgentTerminalFollowMode,
       )
     ) {
@@ -576,8 +483,8 @@ class $Settings {
     return result;
   }
 
-  protected static get allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
-    return new Set<AgentTerminalFollowMode>([
+  protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
+    return this.cachedSet('$allowedAgentTerminalFollowModes', [
       'follow-all',
       'on-error',
       'on-request',
@@ -591,4 +498,83 @@ export namespace Settings {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+/** The modifier key that re-routes wheel input, or `none` to leave it unbound. */
+export type ScrollModifier = 'alt' | 'shift' | 'ctrl' | 'none';
+
+/** How glyphs are selected for rendering: automatic detection or a forced tier. */
+export type GlyphMode = 'auto' | 'nerd' | 'unicode' | 'ascii';
+
+/** Where the project-layer tab strip is mounted in the root frame. */
+export type WorkspaceTabPosition = 'top' | 'left';
+
+/** Which TypeScript language server backs LSP. */
+export type TypeScriptServer = 'tsgo' | 'typescript-language-server';
+
+/** Which engine backs the native agent pane. */
+export type AgentProvider = 'auto' | 'claude' | 'codex';
+
+/** When completed terminal commands enter the native agent session. */
+export type AgentTerminalFollowMode =
+  | 'follow-all'
+  | 'on-error'
+  | 'on-request'
+  | 'off';
+
+/** The full set of settable values — one field per reactive getter on the store. */
+export interface SettingsValues {
+  verticalFlingCeiling: number;
+  scrollAccelGain: number;
+  scrollFriction: number;
+  linesPerNotch: number;
+  horizontalScrollModifier: ScrollModifier;
+  fastScrollModifier: ScrollModifier;
+  fastScrollMultiplier: number;
+  scrollbarThickness: number;
+  glyphMode: GlyphMode;
+  theme: string;
+  wordWrap: boolean;
+  showActivityBar: boolean;
+  showIndentGuides: boolean;
+  reducedMotion: boolean;
+  workspaceTabPosition: WorkspaceTabPosition;
+  sidebarPosition: SidebarPosition;
+  panelAlignment: PanelAlignment;
+  leftDockVerticalSpan: DockVerticalSpan;
+  rightDockVerticalSpan: DockVerticalSpan;
+  typescriptServer: TypeScriptServer;
+  lspFileSizeLimitKb: number;
+  agentProvider: AgentProvider;
+  agentSkipPermissions: boolean;
+  agentTerminalFollowMode: AgentTerminalFollowMode;
+  agentModel: string;
+  agentTypingSpeed: number;
+  terminalCleanPrompt: boolean;
+  agentAudioNarration: boolean;
+  agentNarrationVoice: string;
+  agentNarrationRate: number;
+  sidebarWidth: number;
+  rightDockWidth: number;
+  gitSplitRatio: number;
+  diffSplitRatio: number;
+  markdownSplitRatio: number;
+}
+
+/** Narrow filesystem seam the store depends on — the whole surface a fake must satisfy. */
+export interface SettingsFileSystem {
+  readTextFile(path: string): string | null;
+  writeTextFile(path: string, content: string): void;
+  homeDirectory(): string;
+}
+
+/** Locations the store reads from and writes back to; any omitted field is derived from the OS. */
+export interface SettingsPaths {
+  userPath?: string;
+  projectPath?: string;
+  workspaceRoot?: string;
+}
+
+export interface SettingsOptions {
+  fileSystem?: SettingsFileSystem;
 }
