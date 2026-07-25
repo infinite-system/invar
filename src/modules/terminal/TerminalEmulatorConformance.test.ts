@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { Buffer } from 'node:buffer';
 import { Static } from 'ivue/extras';
-import { TerminalEmulator, type TerminalCell } from './TerminalEmulator';
+import {
+  TerminalEmulator,
+  type TerminalCell,
+  type TerminalShellIntegrationEvent,
+} from './TerminalEmulator';
 
 // invariant: Terminal emulator behavior is specified by byte fixtures (src/modules/terminal/terminal.invariants.md)
 
@@ -493,6 +497,78 @@ class $TerminalEmulatorConformance {
       },
       {
         category: 'OSC-modes',
+        name: 'OSC 133 A records prompt start',
+        input: '\x1b]133;A\x07',
+        expectations: {
+          cursor: { row: 0, column: 0 },
+          shellIntegrationEvents: [{
+            kind: 'prompt-start',
+            marker: 'A',
+            exitCode: null,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: '',
+            cursorColumn: 0,
+          }],
+        },
+      },
+      {
+        category: 'OSC-modes',
+        name: 'OSC 133 B records command start',
+        input: '$ \x1b]133;B\x07',
+        expectations: {
+          textRows: { 0: '$ ' },
+          cursor: { row: 0, column: 2 },
+          shellIntegrationEvents: [{
+            kind: 'command-start',
+            marker: 'B',
+            exitCode: null,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: '$ ',
+            cursorColumn: 2,
+          }],
+        },
+      },
+      {
+        category: 'OSC-modes',
+        name: 'OSC 133 C records output start and typed command',
+        columns: 20,
+        input: '$ echo ready\r\n\x1b]133;C\x07',
+        expectations: {
+          textRows: { 0: '$ echo ready' },
+          cursor: { row: 1, column: 0 },
+          shellIntegrationEvents: [{
+            kind: 'output-start',
+            marker: 'C',
+            exitCode: null,
+            command: 'echo ready',
+            currentWorkingDirectory: '',
+            currentLine: '',
+            cursorColumn: 0,
+          }],
+        },
+      },
+      {
+        category: 'OSC-modes',
+        name: 'OSC 133 D records command end and exit code',
+        input: 'failed\x1b]133;D;17\x07',
+        expectations: {
+          textRows: { 0: 'failed' },
+          cursor: { row: 0, column: 6 },
+          shellIntegrationEvents: [{
+            kind: 'command-end',
+            marker: 'D',
+            exitCode: 17,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: 'failed',
+            cursorColumn: 6,
+          }],
+        },
+      },
+      {
+        category: 'OSC-modes',
         name: 'DEC 2026 synchronized output markers pair across writes',
         input: ['\x1b[?2026h', 'SYNC', '\x1b[?2026l'],
         expectationsAfterEachWrite: [
@@ -770,6 +846,78 @@ class $TerminalEmulatorConformance {
       },
       {
         category: 'chunk-split',
+        name: 'OSC 133 A prompt start',
+        input: '\x1b]133;A\x07',
+        expectations: {
+          cursor: { row: 0, column: 0 },
+          shellIntegrationEvents: [{
+            kind: 'prompt-start',
+            marker: 'A',
+            exitCode: null,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: '',
+            cursorColumn: 0,
+          }],
+        },
+      },
+      {
+        category: 'chunk-split',
+        name: 'OSC 133 B command start',
+        input: '$ \x1b]133;B\x07',
+        expectations: {
+          textRows: { 0: '$ ' },
+          cursor: { row: 0, column: 2 },
+          shellIntegrationEvents: [{
+            kind: 'command-start',
+            marker: 'B',
+            exitCode: null,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: '$ ',
+            cursorColumn: 2,
+          }],
+        },
+      },
+      {
+        category: 'chunk-split',
+        name: 'OSC 133 C output start',
+        columns: 20,
+        input: '$ printf ready\r\n\x1b]133;C\x07',
+        expectations: {
+          textRows: { 0: '$ printf ready' },
+          cursor: { row: 1, column: 0 },
+          shellIntegrationEvents: [{
+            kind: 'output-start',
+            marker: 'C',
+            exitCode: null,
+            command: 'printf ready',
+            currentWorkingDirectory: '',
+            currentLine: '',
+            cursorColumn: 0,
+          }],
+        },
+      },
+      {
+        category: 'chunk-split',
+        name: 'OSC 133 D command end',
+        input: 'done\x1b]133;D;23\x07',
+        expectations: {
+          textRows: { 0: 'done' },
+          cursor: { row: 0, column: 4 },
+          shellIntegrationEvents: [{
+            kind: 'command-end',
+            marker: 'D',
+            exitCode: 23,
+            command: null,
+            currentWorkingDirectory: '',
+            currentLine: 'done',
+            cursorColumn: 4,
+          }],
+        },
+      },
+      {
+        category: 'chunk-split',
         name: 'DCS with ST terminator',
         input: 'A\x1bPq~\x1b\\B',
         expectations: {
@@ -850,6 +998,11 @@ class $TerminalEmulatorConformance {
         inputPaths: ['./fixtures/terminal-emulator-recorded-light-theme.base64'],
         expectationsPath: './fixtures/terminal-emulator-recorded-light-theme.expected.json',
       },
+      {
+        name: 'shimmed Bash OSC 133 command lifecycle',
+        inputPaths: ['./fixtures/terminal-observer-recorded-bash.base64'],
+        expectationsPath: './fixtures/terminal-observer-recorded-bash.expected.json',
+      },
     ];
   }
 
@@ -873,7 +1026,9 @@ class $TerminalEmulatorConformance {
       fixture.rows ?? fixture.expectations.rows ?? 4,
     );
     const replies: string[] = [];
+    const shellIntegrationEvents: TerminalShellIntegrationEvent[] = [];
     emulator.onReply((reply) => replies.push(reply));
+    emulator.onShellIntegrationEvent((event) => shellIntegrationEvents.push(event));
     const inputChunks = Array.isArray(fixture.input) ? fixture.input : [fixture.input];
     try {
       for (let writeIndex = 0; writeIndex < inputChunks.length; writeIndex++) {
@@ -881,10 +1036,20 @@ class $TerminalEmulatorConformance {
         await emulator.flush();
         const intermediateExpectations = fixture.expectationsAfterEachWrite?.[writeIndex];
         if (intermediateExpectations) {
-          this.assertExpectations(emulator, intermediateExpectations, replies);
+          this.assertExpectations(
+            emulator,
+            intermediateExpectations,
+            replies,
+            shellIntegrationEvents,
+          );
         }
       }
-      this.assertExpectations(emulator, fixture.expectations, replies);
+      this.assertExpectations(
+        emulator,
+        fixture.expectations,
+        replies,
+        shellIntegrationEvents,
+      );
     } finally {
       emulator.dispose();
     }
@@ -894,6 +1059,7 @@ class $TerminalEmulatorConformance {
     emulator: TerminalEmulator.Model,
     expectations: TerminalFixtureExpectations,
     replies: readonly string[],
+    shellIntegrationEvents: readonly TerminalShellIntegrationEvent[],
   ): void {
     if (expectations.columns !== undefined) expect(emulator.columns).toBe(expectations.columns);
     if (expectations.rows !== undefined) expect(emulator.rows).toBe(expectations.rows);
@@ -908,6 +1074,11 @@ class $TerminalEmulatorConformance {
       expect(emulator.currentWorkingDirectory).toBe(expectations.currentWorkingDirectory);
     }
     if (expectations.replies !== undefined) expect(replies).toEqual(expectations.replies);
+    if (expectations.shellIntegrationEvents !== undefined) {
+      expect(shellIntegrationEvents).toEqual(expectations.shellIntegrationEvents);
+      expect(emulator.lastShellIntegrationEvent)
+        .toEqual(expectations.shellIntegrationEvents.at(-1) ?? null);
+    }
     if (expectations.textRows) {
       for (const [rowTextIndex, expectedRowText] of Object.entries(expectations.textRows)) {
         const row = Number(rowTextIndex);
@@ -1044,6 +1215,7 @@ interface TerminalFixtureExpectations {
   currentWorkingDirectory?: string;
   modes?: TerminalModeExpectations;
   replies?: string[];
+  shellIntegrationEvents?: TerminalShellIntegrationEvent[];
 }
 
 interface TerminalConformanceFixture {

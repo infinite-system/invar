@@ -16,10 +16,12 @@ class $TerminalRcfile {
       '__invar_prompt_user="${USER:-$(id -un)}"',
       '__invar_prompt_host="${HOSTNAME:-$(hostname)}"',
       '__invar_emit_prompt_metadata() {',
-      "  printf '\\e]7;file://%s%s\\a\\e]0;%s@%s:%s\\a\\e]133;A\\a' \"$__invar_prompt_host\" \"$PWD\" \"$__invar_prompt_user\" \"$__invar_prompt_host\" \"$PWD\"",
+      '  __invar_last_exit_code=$?',
+      "  printf '\\e]133;D;%s\\a\\e]7;file://%s%s\\a\\e]0;%s@%s:%s\\a\\e]133;A\\a' \"$__invar_last_exit_code\" \"$__invar_prompt_host\" \"$PWD\" \"$__invar_prompt_user\" \"$__invar_prompt_host\" \"$PWD\"",
       '}',
       'PROMPT_COMMAND="__invar_emit_prompt_metadata"',
-      `PS1='\\[${promptEscape}\\]$ \\[\\e[0m\\]'`,
+      "PS0=$'\\e]133;C\\a'",
+      `PS1='\\[${promptEscape}\\]$ \\[\\e[0m\\e]133;B\\a\\]'`,
       '',
     ].join('\n');
   }
@@ -31,11 +33,16 @@ class $TerminalRcfile {
       '__invar_prompt_user="${USER:-$(id -un)}"',
       '__invar_prompt_host="${HOST:-$(hostname)}"',
       '__invar_emit_prompt_metadata() {',
-      "  printf '\\e]7;file://%s%s\\a\\e]0;%s@%s:%s\\a\\e]133;A\\a' \"$__invar_prompt_host\" \"$PWD\" \"$__invar_prompt_user\" \"$__invar_prompt_host\" \"$PWD\"",
+      '  __invar_last_exit_code=$?',
+      "  printf '\\e]133;D;%s\\a\\e]7;file://%s%s\\a\\e]0;%s@%s:%s\\a\\e]133;A\\a' \"$__invar_last_exit_code\" \"$__invar_prompt_host\" \"$PWD\" \"$__invar_prompt_user\" \"$__invar_prompt_host\" \"$PWD\"",
+      '}',
+      '__invar_emit_command_output_start() {',
+      "  printf '\\e]133;C\\a'",
       '}',
       'autoload -Uz add-zsh-hook',
       'add-zsh-hook precmd __invar_emit_prompt_metadata',
-      `PROMPT=$'%{${promptEscape}%}$ %{\\e[0m%}'`,
+      'add-zsh-hook preexec __invar_emit_command_output_start',
+      `PROMPT=$'%{${promptEscape}%}$ %{\\e[0m\\e]133;B\\a%}'`,
       '',
     ].join('\n');
   }

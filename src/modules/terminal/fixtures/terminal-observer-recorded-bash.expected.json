@@ -1,0 +1,82 @@
+{
+  "columns": 120,
+  "rows": 24,
+  "textRows": {
+    "0": "To run a command as administrator (user \"root\"), use \"sudo <command>\".",
+    "1": "See \"man sudo_root\" for details.",
+    "2": "",
+    "3": "$ printf 'alpha\\n'; false; (exit 7)",
+    "4": "alpha",
+    "5": "$ "
+  },
+  "cursor": {
+    "row": 5,
+    "column": 2
+  },
+  "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+  "shellIntegrationEvents": [
+    {
+      "kind": "command-end",
+      "marker": "D",
+      "exitCode": 0,
+      "command": null,
+      "currentWorkingDirectory": "",
+      "currentLine": "",
+      "cursorColumn": 0
+    },
+    {
+      "kind": "prompt-start",
+      "marker": "A",
+      "exitCode": null,
+      "command": null,
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "",
+      "cursorColumn": 0
+    },
+    {
+      "kind": "command-start",
+      "marker": "B",
+      "exitCode": null,
+      "command": null,
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "$ ",
+      "cursorColumn": 2
+    },
+    {
+      "kind": "output-start",
+      "marker": "C",
+      "exitCode": null,
+      "command": "printf 'alpha\\n'; false; (exit 7)",
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "",
+      "cursorColumn": 0
+    },
+    {
+      "kind": "command-end",
+      "marker": "D",
+      "exitCode": 7,
+      "command": null,
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "",
+      "cursorColumn": 0
+    },
+    {
+      "kind": "prompt-start",
+      "marker": "A",
+      "exitCode": null,
+      "command": null,
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "",
+      "cursorColumn": 0
+    },
+    {
+      "kind": "command-start",
+      "marker": "B",
+      "exitCode": null,
+      "command": null,
+      "currentWorkingDirectory": "file://fixture-host/tmp/invar-terminal-observer-fixture",
+      "currentLine": "$ ",
+      "cursorColumn": 2
+    }
+  ]
+}
