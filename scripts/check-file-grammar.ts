@@ -47,6 +47,7 @@ export interface FileGrammarInspectionOptions {
 }
 
 export const CONVERTED_MODULES = new Set<string>([
+  'diff',
   'editor',
   'git',
   'lsp',
