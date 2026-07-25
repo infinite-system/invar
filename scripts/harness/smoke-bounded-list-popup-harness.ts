@@ -81,6 +81,24 @@ function popupItemPosition(
   return null;
 }
 
+function popupListContains(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+  text: string,
+): boolean {
+  for (
+    let row = geometry.listTop;
+    row < geometry.listTop + geometry.listRows;
+    row++
+  ) {
+    const popupRowText = Array.from(snapshot.rowText(row))
+      .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+      .join('');
+    if (popupRowText.includes(text)) return true;
+  }
+  return false;
+}
+
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-bounded-list-popup-harness-'));
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-bounded-list-popup-harness-home-'),
@@ -106,7 +124,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-m',
   'popup fixture root',
 ]);
-for (let branchNumber = 1; branchNumber <= 12; branchNumber++) {
+for (let branchNumber = 1; branchNumber <= 30; branchNumber++) {
   HarnessSmoke.Class.runGit(
     fixtureRoot,
     ['branch', `branch-${String(branchNumber).padStart(3, '0')}`],
@@ -127,18 +145,29 @@ try {
     (snapshot) => snapshot.findText('file-001.txt') !== null,
     15_000,
   );
-  const openRemainingBufferKeys: string[] = [];
-  for (let bufferNumber = 2; bufferNumber <= 100; bufferNumber++) {
-    openRemainingBufferKeys.push('Tab', 'Down', 'Enter');
+  for (let openAttempt = 0; openAttempt < 130; openAttempt++) {
+    const previousBufferCount =
+      Number(HarnessSmoke.Class.readStatus(statusPath).bufferTabCount) || 0;
+    if (previousBufferCount >= 100) break;
+    if (HarnessSmoke.Class.readStatus(statusPath).focus !== 'files') {
+      driver.sendKeys('Tab');
+      await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        (status) => status.focus === 'files',
+      );
+    }
+    driver.sendKeys('Down', 'Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      (status) => Number(status.bufferTabCount) > previousBufferCount,
+    );
   }
-  driver.sendKeys(...openRemainingBufferKeys);
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    (status) => status.bufferTabCount === 100,
-    45_000,
+  HarnessSmoke.Class.requireCondition(
+    HarnessSmoke.Class.readStatus(statusPath).bufferTabCount === 100,
+    'fixture exposes exactly 100 open buffers',
   );
-  HarnessSmoke.Class.pass('fixture exposes exactly 100 open buffers');
   driver.sendKeys('Control+PageDown');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -175,32 +204,43 @@ try {
   if (!geometry) throw new Error('Popup geometry vanished');
   const popupWheelColumn = geometry.listLeft + Math.max(0, geometry.listColumns - 2);
   const popupWheelRow = geometry.listTop + Math.floor(geometry.listRows / 2);
-  for (let wheelNumber = 0; wheelNumber < 36; wheelNumber++) {
+  let tailVisible = false;
+  for (let wheelNumber = 0; wheelNumber < 80; wheelNumber++) {
     driver.sendMouse({
       kind: 'wheel',
       column: popupWheelColumn,
       row: popupWheelRow,
       direction: 'down',
     });
+    await driver.awaitQuiescence();
+    snapshot = driver.snapshot();
+    if (popupListContains(snapshot, geometry, 'file-100.txt')) {
+      tailVisible = true;
+      break;
+    }
   }
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('file-100.txt') !== null,
-    15_000,
+  HarnessSmoke.Class.requireCondition(
+    tailVisible,
+    'wheel scrolling reveals the 100-buffer tail',
   );
-  popupStatus = HarnessSmoke.Class.readStatus(statusPath);
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    (status) => (popupGeometry(status)?.firstVisible ?? 0) > 0,
+  );
   geometry = popupGeometry(popupStatus);
   HarnessSmoke.Class.requireCondition(
     geometry !== null && geometry.firstVisible > 0,
     'wheel scrolling moved the visible list window',
   );
-  HarnessSmoke.Class.pass('wheel scrolling reveals the 100-buffer tail');
 
   console.log('== bounded popup: live filter and keyboard selection ==');
   driver.sendText('file-073');
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('⌕ file-073') !== null
-      && candidate.findText('file-073.txt') !== null
-      && candidate.findText('file-072.txt') === null,
+      && geometry !== null
+      && popupListContains(candidate, geometry, 'file-073.txt')
+      && !popupListContains(candidate, geometry, 'file-072.txt'),
   );
   HarnessSmoke.Class.requireCondition(
     HarnessSmoke.Class.readStatus(statusPath).boundedListPopupMatches === 1,
@@ -230,8 +270,9 @@ try {
   );
   driver.sendText('file-025');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('file-025.txt') !== null
-      && candidate.findText('file-024.txt') === null,
+    (candidate) => geometry !== null
+      && popupListContains(candidate, geometry, 'file-025.txt')
+      && !popupListContains(candidate, geometry, 'file-024.txt'),
   );
   const bufferItem = popupItemPosition(snapshot, 'file-025.txt');
   HarnessSmoke.Class.requireCondition(bufferItem !== null, 'filtered buffer row is visible');
@@ -285,8 +326,9 @@ try {
   driver.sendText('branch-011');
   snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('⌕ branch-011') !== null
-      && candidate.findText('branch-011') !== null
-      && candidate.findText('branch-010') === null,
+      && geometry !== null
+      && popupListContains(candidate, geometry, 'branch-011')
+      && !popupListContains(candidate, geometry, 'branch-010'),
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
@@ -314,8 +356,9 @@ try {
   );
   driver.sendText('branch-007');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('branch-007') !== null
-      && candidate.findText('branch-006') === null,
+    (candidate) => geometry !== null
+      && popupListContains(candidate, geometry, 'branch-007')
+      && !popupListContains(candidate, geometry, 'branch-006'),
   );
   const branchItem = popupItemPosition(snapshot, 'branch-007');
   HarnessSmoke.Class.requireCondition(branchItem !== null, 'filtered branch row is visible');
