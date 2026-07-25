@@ -51,14 +51,22 @@ export interface FileGrammarInspectionOptions {
 
 export const CONVERTED_MODULES = new Set<string>([
   'agent',
+  'commands',
   'diff',
   'editor',
   'git',
   'image',
+  'kernel',
+  'keybindings',
   'lsp',
   'markdown',
   'narration',
+  'navigation',
+  'search',
+  'settings',
+  'storage',
   'syntax',
+  'theme',
   'workspace',
 ]);
 
