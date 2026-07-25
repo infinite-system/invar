@@ -1,3 +1,12 @@
+# THE LAW LIVES IN AGENTS.md — READ IT FULLY BEFORE ANY WORK
+
+This file is a REDIRECT plus Claude-specific runtime notes. The single canonical source of this
+repo's conventions, invariants, skills, and non-negotiable rules is **`AGENTS.md`** (which points
+to `project.conventions.md`, the invariant contracts, and the skills). Do not act on this repo —
+not even a "one-line fix" — before reading AGENTS.md. Nothing below is law; it is bun ergonomics.
+
+---
+
 
 Default to using Bun instead of Node.js.
 

@@ -1,7 +1,13 @@
 # AGENTS.md — Invar
 
 Any agent (codex, claude, fable, or a human tool) working in this repo: **load the repo's IBR
-framework and conventions before writing code.** They live as skills in this repo — read them,
+framework and conventions before writing code.
+
+> Parity note: `CLAUDE.md` is a REDIRECT to this file (Claude Code auto-loads CLAUDE.md; codex
+> auto-loads AGENTS.md; neither reads the other's file) — THIS file is the single canonical law;
+> never add rules to CLAUDE.md.
+> Structural code search: prefer `bun scripts/ast-query.ts` (parse-don't-grep) for any question
+> about code structure — see `.claude/skills/ast-query/SKILL.md`. grep stays for prose/logs.** They live as skills in this repo — read them,
 don't work from a second-hand summary:
 
 >  **`.claude/skills/ibr/IBR.md`** — the Invariant-Based Reasoning framework that governs this
