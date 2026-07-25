@@ -522,8 +522,7 @@ try {
     'PageUp reveals the earliest turn',
   );
   for (let page = 0; page < 8; page += 1) {
-    driver.sendKeys('PageDown');
-    await driver.awaitQuiescence();
+    driver.sendKeysWithoutFrameExpectation('PageDown');
   }
   await HarnessSmoke.Class.awaitStatus(
     driver,
