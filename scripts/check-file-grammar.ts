@@ -57,6 +57,7 @@ export const CONVERTED_MODULES = new Set<string>([
   'lsp',
   'markdown',
   'syntax',
+  'workspace',
 ]);
 
 function normalizeFileName(fileName: string): string {
