@@ -174,9 +174,19 @@ try {
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
 
-  const panelBodyRow = Number(statusField<number>(statusPath, 'height') ?? 40) - 8;
-  driver.sendMouse({ kind: 'press', column: 10, row: panelBodyRow, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: 10, row: panelBodyRow, button: 'left' });
+  const layoutSlots = statusField<
+    Record<string, { left: number; top: number; width: number; height: number }>
+  >(statusPath, 'layoutSlots');
+  const bottomPanel = layoutSlots?.bottomPanel;
+  if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
+  const screenRows = Number(statusField<number>(statusPath, 'height') ?? 40);
+  const layoutCanvasTop =
+    screenRows - 1 - (bottomPanel.top + bottomPanel.height);
+  const panelBodyColumn = bottomPanel.left + 2;
+  const panelBodyRow =
+    layoutCanvasTop + bottomPanel.top + Math.floor(bottomPanel.height / 2);
+  driver.sendMouse({ kind: 'press', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
+  driver.sendMouse({ kind: 'release', column: panelBodyColumn, row: panelBodyRow, button: 'left' });
   await driver.awaitSnapshot(
     () => statusField<string>(statusPath, 'panelActiveContent') === 'agent',
   );

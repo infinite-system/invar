@@ -726,12 +726,17 @@ function $buildRootView(
     panelMounted = visible;
   }
 
-  // Laid-out inner cell region of the panel box (border-inset). 0 when hidden. The frame loop reads
-  // these to converge the terminal's cols×rows (like the editor viewport), never inside the paint.
+  // Resolved inner cell region of the panel slot (border-inset). Read the current LayoutModel result,
+  // not the renderable's previous Yoga box: absolute slot geometry is applied during this paint, so
+  // layout read-back would be one frame stale when a quiet pane first opens.
   const panelViewportColumns = (): number =>
-    panelHost.visible.value ? Math.max(1, (panelBox.width as number) - 2) : 0;
+    panelHost.visible.value
+      ? Math.max(1, layoutSlotGeometry.bottomPanel.width - 2)
+      : 0;
   const panelViewportRows = (): number =>
-    panelHost.visible.value ? Math.max(1, (panelBox.height as number) - 2) : 0;
+    panelHost.visible.value
+      ? Math.max(1, layoutSlotGeometry.bottomPanel.height - 2)
+      : 0;
   const panelContainsPoint = (x: number, y: number): boolean => {
     if (!panelHost.visible.value) return false;
     const boxX = panelBox.x as number;
@@ -744,11 +749,11 @@ function $buildRootView(
   };
   const rightDockViewportColumns = (): number =>
     rightDockHost.visible.value
-      ? Math.max(1, Number(rightDockBox.width) - 2)
+      ? Math.max(1, layoutSlotGeometry.rightDock.width - 2)
       : 0;
   const rightDockViewportRows = (): number =>
     rightDockHost.visible.value
-      ? Math.max(1, Number(rightDockBox.height) - 2)
+      ? Math.max(1, layoutSlotGeometry.rightDock.height - 2)
       : 0;
   const rightDockContainsPoint = (x: number, y: number): boolean => {
     if (!rightDockHost.visible.value) return false;

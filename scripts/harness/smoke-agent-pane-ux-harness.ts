@@ -20,6 +20,22 @@ const thinkingWords = [
 ];
 const spinnerGlyphs = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
 
+interface Rectangle {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function bottomPanelSlot(statusPath: string): Rectangle {
+  const layoutSlots = HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+    | Record<string, Rectangle>
+    | undefined;
+  const bottomPanel = layoutSlots?.bottomPanel;
+  if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
+  return bottomPanel;
+}
+
 function firstRowContaining(snapshot: HarnessSnapshot.Model, marker: string): number | null {
   return snapshot.findText(marker)?.row ?? null;
 }
@@ -68,18 +84,33 @@ async function awaitClipboardEmission(
   );
 }
 
-function verticalScrollBarRun(snapshot: HarnessSnapshot.Model): number {
+function verticalScrollBarRun(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+): number {
   const paneRows = snapshot.textRows()
-    .map((rowText, row) => ({ rowText, row }))
-    .filter(({ rowText }) => rowText.startsWith('│'));
+    .map((rowText, row) => ({
+      rowText: rowText.slice(
+        panelRectangle.left,
+        panelRectangle.left + panelRectangle.width,
+      ),
+      row,
+    }))
+    .filter(({ rowText, row }) =>
+      row > panelRectangle.top
+      && row < panelRectangle.top + panelRectangle.height - 1
+      && rowText.startsWith('│')
+      && rowText.endsWith('│'));
   if (paneRows.length === 0) return 0;
-  const rightBorderColumn = Math.max(
+  const rightBorderColumn = panelRectangle.left + Math.max(
     ...paneRows.map(({ rowText }) => rowText.trimEnd().lastIndexOf('│')),
   );
   const scrollBarColumn = rightBorderColumn - 1;
   const blankBackgrounds = paneRows.map(({ rowText, row }) => {
     const cell = snapshot.cell(row, scrollBarColumn);
-    return rowText[scrollBarColumn] === ' ' ? cell?.background ?? null : null;
+    return rowText[scrollBarColumn - panelRectangle.left] === ' '
+      ? cell?.background ?? null
+      : null;
   });
   const backgroundCounts = new Map<number, number>();
   for (const background of blankBackgrounds) {
@@ -167,6 +198,14 @@ try {
     HarnessSmoke.Class.readStatus(statusPath).terminalFocused === true,
     'agent pane opens focused with framed composer chrome',
   );
+  const panelSlotRectangle = bottomPanelSlot(statusPath);
+  const panelBorderPosition = snapshot.findText('╭─Claude');
+  if (!panelBorderPosition) throw new Error('Agent pane border disappeared');
+  const panelRectangle = {
+    ...panelSlotRectangle,
+    left: panelBorderPosition.column,
+    top: panelBorderPosition.row,
+  };
   const originalModeLine = snapshot.textRows().find((rowText) => rowText.includes('permissions'));
   driver.sendKeys('Shift+Tab');
   snapshot = await driver.awaitSnapshot((candidate) => {
@@ -218,8 +257,12 @@ try {
   HarnessSmoke.Class.requireCondition(userTurnRow !== null, 'user turn remains in the transcript');
   if (userTurnRow === null) throw new Error('User turn row disappeared');
   const followingRow = snapshot.rowText(userTurnRow + 1);
+  const followingPanelRow = followingRow.slice(
+    panelRectangle.left,
+    panelRectangle.left + panelRectangle.width,
+  );
   HarnessSmoke.Class.requireCondition(
-    /^│[\s█▄░]*│\s*$/.test(followingRow),
+    /^│[\s█▄░]*│$/.test(followingPanelRow),
     'a blank line follows the posted user turn',
   );
 
@@ -297,7 +340,7 @@ try {
   snapshot = await driver.awaitGridCondition(
     'the newest prompt and transcript scrollbar are visible at the tail',
     (candidate) => candidate.findText('gamma-newest-prompt') !== null
-      && verticalScrollBarRun(candidate) >= 2,
+      && verticalScrollBarRun(candidate, panelRectangle) >= 2,
   );
   let status = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
@@ -305,7 +348,7 @@ try {
     'tail anchor follows the newest turn and scrolls the first above the fold',
   );
   HarnessSmoke.Class.requireCondition(
-    verticalScrollBarRun(snapshot) >= 2,
+    verticalScrollBarRun(snapshot, panelRectangle) >= 2,
     'overflowing transcript paints a multi-cell blank background scrollbar thumb',
   );
 
@@ -315,7 +358,7 @@ try {
   for (let wheelEvent = 0; wheelEvent < 4; wheelEvent++) {
     driver.sendMouse({
       kind: 'wheel',
-      column: 6,
+      column: newestPosition.column,
       row: newestPosition.row,
       direction: 'up',
     });
@@ -346,8 +389,8 @@ try {
   for (let wheelEvent = 0; wheelEvent < 80; wheelEvent++) {
     driver.sendMouse({
       kind: 'wheel',
-      column: 6,
-      row: newestPosition.row,
+      column: panelRectangle.left + 2,
+      row: panelRectangle.top + 2,
       direction: 'down',
     });
   }

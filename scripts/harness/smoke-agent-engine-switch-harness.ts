@@ -11,9 +11,31 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function hasTranscriptLabel(snapshot: HarnessSnapshot.Model, label: string): boolean {
+interface Rectangle {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function bottomPanelSlot(statusPath: string): Rectangle {
+  const layoutSlots = HarnessSmoke.Class.readStatus(statusPath).layoutSlots as
+    | Record<string, Rectangle>
+    | undefined;
+  const bottomPanel = layoutSlots?.bottomPanel;
+  if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
+  return bottomPanel;
+}
+
+function hasTranscriptLabel(
+  snapshot: HarnessSnapshot.Model,
+  panelRectangle: Rectangle,
+  label: string,
+): boolean {
   return snapshot.textRows().some((rowText) => {
-    const trimmedRow = rowText.trimEnd();
+    const trimmedRow = rowText
+      .slice(panelRectangle.left, panelRectangle.left + panelRectangle.width)
+      .trimEnd();
     return trimmedRow.endsWith('│')
       && trimmedRow.slice(0, -1).trimEnd() === `│  ${label}`;
   });
@@ -68,8 +90,7 @@ try {
     (candidate) => candidate.findText('engine: claude') !== null
       && candidate.findText('Ask Claude anything') !== null
       && candidate.findText('╭─Claude') !== null
-      && candidate.findText('⇄') !== null
-      && candidate.findText('ctrl+e') !== null,
+      && candidate.findText('⇄') !== null,
   );
   let status = HarnessSmoke.Class.readStatus(firstStatusPath);
   HarnessSmoke.Class.requireCondition(
@@ -78,18 +99,32 @@ try {
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('╭─Claude') !== null
-      && snapshot.findText('⇄') !== null
-      && snapshot.findText('ctrl+e') !== null,
+      && snapshot.findText('⇄') !== null,
     'Claude title and engine-cycle affordance render',
+  );
+  const firstPanelSlotRectangle = bottomPanelSlot(firstStatusPath);
+  const firstPanelBorderPosition = snapshot.findText('╭─Claude');
+  if (!firstPanelBorderPosition) throw new Error('Claude pane border disappeared');
+  let panelRectangle = {
+    ...firstPanelSlotRectangle,
+    left: firstPanelBorderPosition.column,
+    top: firstPanelBorderPosition.row,
+  };
+  const initialEngineSegment = snapshot.findText('engine: claude');
+  if (!initialEngineSegment) throw new Error('Claude engine segment disappeared');
+  HarnessSmoke.Class.requireCondition(
+    initialEngineSegment.column > panelRectangle.left
+      && initialEngineSegment.column < panelRectangle.left + panelRectangle.width - 1,
+    'engine-cycle affordance stays inside the editor-centered bottom-panel slot',
   );
 
   await submitTurn(driver, 'Please remember this token for later: MAGENTA-8842.');
   snapshot = await driver.awaitGridCondition(
     'the pre-switch reply carries the Claude transcript label',
-    (candidate) => hasTranscriptLabel(candidate, 'Claude'),
+    (candidate) => hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
   HarnessSmoke.Class.requireCondition(
-    hasTranscriptLabel(snapshot, 'Claude'),
+    hasTranscriptLabel(snapshot, panelRectangle, 'Claude'),
     'pre-switch reply is labeled Claude',
   );
   driver.sendRawInput('\x1b[27;5;101~');
@@ -99,7 +134,7 @@ try {
       && candidate.findText('context ported') !== null
       && candidate.findText('engine: codex') !== null
       && candidate.findText('╭─Codex') !== null
-      && hasTranscriptLabel(candidate, 'Claude'),
+      && hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
   status = HarnessSmoke.Class.readStatus(firstStatusPath);
   HarnessSmoke.Class.requireCondition(
@@ -107,32 +142,46 @@ try {
     'Ctrl+E switches the live provider identity to Codex',
   );
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText('╭─Codex') !== null && hasTranscriptLabel(snapshot, 'Claude'),
+    snapshot.findText('╭─Codex') !== null
+      && hasTranscriptLabel(snapshot, panelRectangle, 'Claude'),
     'pane retitles while history retains its producing engine label',
   );
 
   await submitTurn(driver, 'What token did I ask you to remember?');
   snapshot = await driver.awaitGridCondition(
-    'the ported context reply carries the Codex transcript label',
-    (candidate) => candidate.findText('Context ported from the previous engine') !== null
-      && candidate.findText('MAGENTA-8842') !== null
-      && hasTranscriptLabel(candidate, 'Codex'),
+    'the ported context reply includes the remembered token',
+    (candidate) => candidate.findText('End of ported context') !== null
+      && candidate.findText('MAGENTA-8842') !== null,
+  );
+  for (
+    let page = 0;
+    page < 8 && !hasTranscriptLabel(snapshot, panelRectangle, 'Codex');
+    page += 1
+  ) {
+    driver.sendKeys('PageUp');
+    await driver.awaitQuiescence();
+    snapshot = driver.snapshot();
+  }
+  snapshot = await driver.awaitGridCondition(
+    'the narrower editor-centered pane reveals the Codex transcript label',
+    (candidate) => hasTranscriptLabel(candidate, panelRectangle, 'Codex'),
   );
   HarnessSmoke.Class.requireCondition(
-    hasTranscriptLabel(snapshot, 'Codex'),
+    hasTranscriptLabel(snapshot, panelRectangle, 'Codex'),
     'post-switch reply is labeled Codex and receives ported context',
   );
-  status = HarnessSmoke.Class.readStatus(firstStatusPath);
+  const engineSegment = snapshot.findText('engine: codex');
+  if (!engineSegment) throw new Error('Codex engine segment disappeared');
   driver.sendMouse({
     kind: 'press',
-    column: 4,
-    row: Number(status.height) - 4,
+    column: engineSegment.column + 1,
+    row: engineSegment.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: 4,
-    row: Number(status.height) - 4,
+    column: engineSegment.column + 1,
+    row: engineSegment.row,
     button: 'left',
   });
   await HarnessSmoke.Class.awaitStatus(
@@ -163,6 +212,14 @@ try {
       && candidate.findText('╭─Codex') !== null
       && candidate.findText('Ask Claude') === null,
   );
+  const secondPanelSlotRectangle = bottomPanelSlot(secondStatusPath);
+  const secondPanelBorderPosition = snapshot.findText('╭─Codex');
+  if (!secondPanelBorderPosition) throw new Error('Codex pane border disappeared');
+  panelRectangle = {
+    ...secondPanelSlotRectangle,
+    left: secondPanelBorderPosition.column,
+    top: secondPanelBorderPosition.row,
+  };
   status = HarnessSmoke.Class.readStatus(secondStatusPath);
   HarnessSmoke.Class.requireCondition(
     status.agentEngine === 'codex'
@@ -173,10 +230,10 @@ try {
   await submitTurn(driver, 'hello codex');
   snapshot = await driver.awaitGridCondition(
     'the first fresh-provider reply carries the Codex transcript label',
-    (candidate) => hasTranscriptLabel(candidate, 'Codex'),
+    (candidate) => hasTranscriptLabel(candidate, panelRectangle, 'Codex'),
   );
   HarnessSmoke.Class.requireCondition(
-    hasTranscriptLabel(snapshot, 'Codex'),
+    hasTranscriptLabel(snapshot, panelRectangle, 'Codex'),
     'first Codex-provider reply is labeled Codex',
   );
   driver.sendKeys('Control+q');

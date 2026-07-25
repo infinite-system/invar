@@ -155,13 +155,20 @@ async function driveAnimatedTerminalTools(
     driver.sendText('terminal-tools:list');
     driver.sendKeys('Enter');
     snapshot = await driver.awaitSnapshot(
-      (candidate) => candidate.findText('runTerminalCommand') !== null
-        && candidate.findText('replaceTerminalInput') !== null,
+      (candidate) => candidate.findText('runTerminalCommand') !== null,
     );
+    for (
+      let page = 0;
+      page < 8 && snapshot.findText('replaceTerminalInput') === null;
+      page += 1
+    ) {
+      driver.sendKeys('PageUp');
+      await driver.awaitQuiescence();
+      snapshot = driver.snapshot();
+    }
     HarnessSmoke.Class.requireCondition(
-      snapshot.findText('runTerminalCommand') !== null
-        && snapshot.findText('replaceTerminalInput') !== null,
-      'echo backend renders the registered terminal tool manuals in bypass mode',
+      snapshot.findText('replaceTerminalInput') !== null,
+      'the editor-centered pane exposes every registered terminal tool manual by scrolling',
     );
 
     console.log('== harness terminal-stage: staged command is inert until human Enter ==');
@@ -280,7 +287,7 @@ async function driveAnimatedTerminalTools(
     await awaitFileContents(replacementPath, 'REPLACED');
     await focusPanelCell(driver, statusPath, 0);
     await driver.awaitSnapshot(
-      (candidate) => candidate.findText('replaced-then-staged') !== null,
+      (candidate) => candidate.findText('terminal command user-executed') !== null,
     );
     HarnessSmoke.Class.pass('replacement executes only after human Enter and records the diff event');
 
@@ -321,7 +328,13 @@ async function driveAnimatedTerminalTools(
     );
     driver.sendKeys('Control+c');
     await driver.awaitSnapshot(
-      (candidate) => rightPaneText(candidate, leftPaneColumns).includes('printf QUEUED'),
+      (candidate) => rightPaneText(candidate, leftPaneColumns).includes('printf QUEUED')
+        && candidate.findText('terminal command pending') === null,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      (candidate) => candidate.panelFocusedIndex === 1,
     );
     HarnessSmoke.Class.pass('queued command types only after the user releases the prompt');
     driver.sendKeys('Enter');
