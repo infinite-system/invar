@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { AgentThinkingIndicator } from './AgentThinkingIndicator';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 const text = (segments: { text: string }[]) => segments.map((segment) => segment.text).join('');
 
@@ -9,7 +11,7 @@ const baseState = (overrides: Partial<Parameters<typeof AgentThinkingIndicator.C
   elapsedSeconds: 0,
   glyphLevel: 'unicode' as const,
   colorDepth: 'truecolor' as const,
-  palette: DARK,
+  palette: darkPalette,
   ...overrides,
 });
 
@@ -105,7 +107,7 @@ describe('AgentThinkingIndicator.composeWaitingNote', () => {
     pendingCount: 1,
     highlight: false,
     glyphLevel: 'unicode' as const,
-    palette: DARK,
+    palette: darkPalette,
     ...overrides,
   });
 

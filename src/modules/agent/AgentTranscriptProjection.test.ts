@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { AgentTranscriptProjection } from './AgentTranscriptProjection';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import type { TranscriptEntry } from './AgentEvents.interface';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 const project = (
   transcript: TranscriptEntry[],
@@ -9,7 +11,7 @@ const project = (
   expanded: ReadonlySet<number> = new Set(),
   glyph: 'nerd' | 'unicode' | 'ascii' = 'unicode',
   activeProviderLabel = 'Claude',
-) => AgentTranscriptProjection.Class.project(transcript, DARK, glyph, width, expanded, activeProviderLabel);
+) => AgentTranscriptProjection.Class.project(transcript, darkPalette, glyph, width, expanded, activeProviderLabel);
 
 describe('AgentTranscriptProjection.project', () => {
   test('an empty transcript projects the single empty-state hint (not a toggle row)', () => {

@@ -2,15 +2,26 @@
 // capability fallback ladders. Consumed by ui, editor, syntax, diagnostics.
 //
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
-import { Reactive } from 'ivue';
-import { ref } from 'vue';
-import { TerminalCapabilities, type ColorDepth, type GlyphLevel } from './TerminalCapabilities';
-import { PALETTES, DARK, ThemePalettes, type Palette } from './ThemePalettes';
-import { ThemeIcons, type IconSet, type ActionIconSet, type CheckboxIconSet, type ActivityIconSet, type FindIconSet } from './ThemeIcons';
+import { Reactive } from "ivue";
+import { ref } from "vue";
+import {
+  TerminalCapabilities,
+  type ColorDepth,
+  type GlyphLevel,
+} from "./TerminalCapabilities";
+import { ThemePalettes, type Palette } from "./ThemePalettes";
+import {
+  ThemeIcons,
+  type IconSet,
+  type ActionIconSet,
+  type CheckboxIconSet,
+  type ActivityIconSet,
+  type FindIconSet,
+} from "./ThemeIcons";
 
 class $Theme {
   get paletteName() {
-    return ref(DARK.name);
+    return ref(ThemePalettes.Class.dark.name);
   }
   get colorDepth() {
     return ref<ColorDepth>(TerminalCapabilities.Class.detectColorDepth());
@@ -22,7 +33,9 @@ class $Theme {
   // Derived (plain getters — re-derive on read, zero per-instance cost).
   // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
   get palette(): Palette {
-    const base = PALETTES[this.paletteName.value] ?? DARK;
+    const base =
+      ThemePalettes.Class.palettes[this.paletteName.value] ??
+      ThemePalettes.Class.dark;
     return ThemePalettes.Class.quantizePalette(base, this.colorDepth.value);
   }
   get icons(): IconSet {
@@ -71,10 +84,13 @@ class $Theme {
   }
 
   setPalette(name: string): void {
-    if (PALETTES[name]) this.paletteName.value = name;
+    if (ThemePalettes.Class.palettes[name]) this.paletteName.value = name;
   }
   toggleDark(): void {
-    this.paletteName.value = this.paletteName.value === DARK.name ? 'invar-light' : DARK.name;
+    this.paletteName.value =
+      this.paletteName.value === ThemePalettes.Class.dark.name
+        ? "invar-light"
+        : ThemePalettes.Class.dark.name;
   }
   setColorDepth(d: ColorDepth): void {
     this.colorDepth.value = d;

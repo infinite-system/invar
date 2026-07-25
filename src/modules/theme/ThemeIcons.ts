@@ -1,17 +1,382 @@
 // File-type icon sets as swappable data, each level of the glyph fallback ladder.
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
-import { Static } from 'ivue/extras';
-import type { GlyphLevel } from './TerminalCapabilities';
+import { Static } from "ivue/extras";
+import type { GlyphLevel } from "./TerminalCapabilities";
+
+class $ThemeIcons {
+  protected static cache<Value>(propertyName: string, value: Value): Value {
+    Object.defineProperty(this, propertyName, { configurable: true, value });
+    return value;
+  }
+
+  protected static get $nerd(): IconSet {
+    return this.cache("$nerd", {
+      ext: {
+        ts: "",
+        tsx: "",
+        js: "",
+        jsx: "",
+        json: "",
+        md: "",
+        lock: "",
+        sh: "",
+        css: "",
+        html: "",
+        vue: "﵂",
+        wasm: "",
+        png: "",
+        jpg: "",
+        svg: "",
+        gif: "",
+        git: "",
+        gitignore: "",
+        toml: "",
+        yaml: "",
+        yml: "",
+      },
+      folderOpen: "",
+      folderClosed: "",
+      file: "",
+    });
+  }
+
+  protected static get $unicode(): IconSet {
+    return this.cache("$unicode", {
+      ext: {
+        ts: "◆",
+        tsx: "◆",
+        js: "●",
+        jsx: "●",
+        json: "⛃",
+        md: "✎",
+        lock: "🔒",
+        sh: "⚙",
+        css: "❖",
+        html: "◈",
+        vue: "◇",
+        wasm: "⬡",
+        png: "🖼",
+        jpg: "🖼",
+        svg: "🖼",
+        gif: "🖼",
+        git: "⎇",
+        gitignore: "⎇",
+        toml: "⚙",
+        yaml: "⚙",
+        yml: "⚙",
+      },
+      folderOpen: "▾",
+      folderClosed: "▸",
+      file: "·",
+    });
+  }
+
+  protected static get $ascii(): IconSet {
+    return this.cache("$ascii", {
+      ext: {},
+      folderOpen: "-",
+      folderClosed: "+",
+      file: " ",
+    });
+  }
+
+  // invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
+  protected static get $sets(): Record<GlyphLevel, IconSet> {
+    return this.cache("$sets", {
+      nerd: this.$nerd,
+      unicode: this.$unicode,
+      ascii: this.$ascii,
+    });
+  }
+
+  // Action-button glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
+  // letter fallback (o/d/+/-) so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
+  protected static get $actionIcons(): Record<GlyphLevel, ActionIconSet> {
+    return this.cache("$actionIcons", {
+      nerd: {
+        open: "\u{f08e}",
+        discard: "\u{f0e2}",
+        stage: "\u{f067}",
+        unstage: "\u{f068}",
+        preview: "\u{f06e}",
+      }, // fa external-link / undo / plus / minus / eye
+      unicode: {
+        open: "↗",
+        discard: "↩",
+        stage: "✚",
+        unstage: "−",
+        preview: "◫",
+      },
+      ascii: {
+        open: "o",
+        discard: "d",
+        stage: "+",
+        unstage: "-",
+        preview: "p",
+      },
+    });
+  }
+
+  // Staging-checkbox glyph ladder. nerd = fa square / check-square; unicode = ballot box ☐/☑;
+  // ascii = blank / x so a no-nerd-font terminal still degrades to the classic ` ` / `x`.
+  protected static get $checkboxIcons(): Record<GlyphLevel, CheckboxIconSet> {
+    return this.cache("$checkboxIcons", {
+      nerd: { unchecked: "\u{f0c8}", checked: "\u{f14a}" },
+      unicode: { unchecked: "☐", checked: "☑" },
+      ascii: { unchecked: " ", checked: "x" },
+    });
+  }
+
+  // Activity-bar glyph ladder. nerd = codicons (files / git branch / puzzle piece); unicode =
+  // single-cell portable symbols; ascii = the letter fallback (F/G/X) so a no-nerd-font terminal
+  // still reads an identity. The accent bar degrades `▎` → `|`. Each glyph is exactly one cell.
+  protected static get $activityIcons(): Record<GlyphLevel, ActivityIconSet> {
+    return this.cache("$activityIcons", {
+      nerd: {
+        files: "\u{f07b}",
+        sourceControl: "\u{f126}",
+        extensions: "\u{f12e}",
+        accentBar: "▎",
+      }, // fa folder / code-fork / puzzle-piece
+      unicode: {
+        files: "▤",
+        sourceControl: "⎇",
+        extensions: "⊞",
+        accentBar: "▎",
+      },
+      ascii: {
+        files: "F",
+        sourceControl: "G",
+        extensions: "X",
+        accentBar: "|",
+      },
+    });
+  }
+
+  // Status-bar affordance glyph ladder. nerd = fa cog; unicode = the gear ⚙; ascii = `*` so a
+  // no-nerd-font terminal still shows a settings mark. Single cell at every tier.
+  protected static get $settingsIcons(): Record<GlyphLevel, string> {
+    return this.cache("$settingsIcons", {
+      nerd: "\u{f013}", // fa cog / gear
+      unicode: "⚙",
+      ascii: "*",
+    });
+  }
+
+  protected static get $terminalIcons(): Record<GlyphLevel, string> {
+    return this.cache("$terminalIcons", {
+      nerd: "\u{f120}", // fa terminal (prompt)
+      unicode: "❯",
+      ascii: ">",
+    });
+  }
+
+  protected static get $agentIcons(): Record<GlyphLevel, string> {
+    return this.cache("$agentIcons", {
+      nerd: "\u{f544}", // fa robot (the native agent pane)
+      unicode: "✦", // matches AgentPaneContent's switcher glyph
+      ascii: "A",
+    });
+  }
+
+  protected static get $rightDockIcons(): Record<GlyphLevel, string> {
+    return this.cache("$rightDockIcons", {
+      nerd: "\u{f0db}",
+      unicode: "▥",
+      ascii: "R",
+    });
+  }
+
+  // Find-bar action glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
+  // letter/arrow fallback so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
+  protected static get $findIcons(): Record<GlyphLevel, FindIconSet> {
+    return this.cache("$findIcons", {
+      nerd: {
+        search: "\u{f002}",
+        previous: "\u{f062}",
+        next: "\u{f063}",
+        replace: "\u{f021}",
+        replaceAll: "\u{f051}",
+        toggleMode: "\u{f0ec}",
+      }, // fa search / up / down / refresh / step-forward / exchange
+      unicode: {
+        search: "⌕",
+        previous: "↑",
+        next: "↓",
+        replace: "⟳",
+        replaceAll: "⇊",
+        toggleMode: "⇅",
+      },
+      ascii: {
+        search: "/",
+        previous: "^",
+        next: "v",
+        replace: "r",
+        replaceAll: "R",
+        toggleMode: "x",
+      },
+    });
+  }
+
+  static iconSetFor(level: GlyphLevel): IconSet {
+    return this.$sets[level];
+  }
+
+  static settingsIconFor(level: GlyphLevel): string {
+    return this.$settingsIcons[level];
+  }
+
+  static terminalIconFor(level: GlyphLevel): string {
+    return this.$terminalIcons[level];
+  }
+
+  static agentIconFor(level: GlyphLevel): string {
+    return this.$agentIcons[level];
+  }
+
+  static rightDockIconFor(level: GlyphLevel): string {
+    return this.$rightDockIcons[level];
+  }
+
+  static actionIconsFor(level: GlyphLevel): ActionIconSet {
+    return this.$actionIcons[level];
+  }
+
+  static checkboxIconsFor(level: GlyphLevel): CheckboxIconSet {
+    return this.$checkboxIcons[level];
+  }
+
+  static activityIconsFor(level: GlyphLevel): ActivityIconSet {
+    return this.$activityIcons[level];
+  }
+
+  static findIconsFor(level: GlyphLevel): FindIconSet {
+    return this.$findIcons[level];
+  }
+
+  // Alert / warning glyph ladder (single cell): nerd = fa exclamation-triangle; unicode = ⚠; ascii = !.
+  // Used to flag an un-openable path in the open-project navigator, painted in the theme warning colour.
+  protected static get $alertIcons(): Record<GlyphLevel, string> {
+    return this.cache("$alertIcons", {
+      nerd: "\u{f071}",
+      unicode: "⚠",
+      ascii: "!",
+    });
+  }
+
+  static alertIconFor(level: GlyphLevel): string {
+    return this.$alertIcons[level];
+  }
+
+  // The spinner animation cycles: braille at glyph-capable tiers, a rotating ascii bar below — a
+  // no-unicode terminal still animates.
+  protected static get $brailleSpinnerFrames(): readonly string[] {
+    return this.cache("$brailleSpinnerFrames", [
+      "⠋",
+      "⠙",
+      "⠹",
+      "⠸",
+      "⠼",
+      "⠴",
+      "⠦",
+      "⠧",
+    ]);
+  }
+
+  protected static get $asciiSpinnerFrames(): readonly string[] {
+    return this.cache("$asciiSpinnerFrames", ["|", "/", "-", "\\"]);
+  }
+
+  // Agent transcript glyph ladder. The tool cog reuses SETTINGS_ICON per tier (one cog definition);
+  // carets are fa caret-right/caret-down degrading to ▸/▾ then >/v; results are fa check/times
+  // degrading to ✓/✗ then +/x. Single cell everywhere a column is indexed.
+  protected static get $agentTranscriptIcons(): Record<
+    GlyphLevel,
+    AgentTranscriptIconSet
+  > {
+    return this.cache("$agentTranscriptIcons", {
+      nerd: {
+        caretCollapsed: "\u{f0da}",
+        caretExpanded: "\u{f0d7}",
+        tool: this.$settingsIcons.nerd,
+        resultOk: "\u{f00c}",
+        resultError: "\u{f00d}",
+        ellipsis: "…",
+        ellipsisCell: "…",
+        rule: "─",
+        spinnerFrames: this.$brailleSpinnerFrames,
+      },
+      unicode: {
+        caretCollapsed: "▸",
+        caretExpanded: "▾",
+        tool: this.$settingsIcons.unicode,
+        resultOk: "✓",
+        resultError: "✗",
+        ellipsis: "…",
+        ellipsisCell: "…",
+        rule: "─",
+        spinnerFrames: this.$brailleSpinnerFrames,
+      },
+      ascii: {
+        caretCollapsed: ">",
+        caretExpanded: "v",
+        tool: this.$settingsIcons.ascii,
+        resultOk: "+",
+        resultError: "x",
+        ellipsis: "...",
+        ellipsisCell: ".",
+        rule: "-",
+        spinnerFrames: this.$asciiSpinnerFrames,
+      },
+    });
+  }
+
+  static agentTranscriptIconsFor(level: GlyphLevel): AgentTranscriptIconSet {
+    return this.$agentTranscriptIcons[level];
+  }
+
+  // Between-buffer-tab powerline separator ladder: solid nerd powerline glyph → portable ❯ → ascii >.
+  protected static get $tabSeparators(): Record<GlyphLevel, string> {
+    return this.cache("$tabSeparators", {
+      nerd: "\u{e0b0}",
+      unicode: "❯",
+      ascii: ">",
+    });
+  }
+
+  static tabSeparatorFor(level: GlyphLevel): string {
+    return this.$tabSeparators[level];
+  }
+
+  /** Resolve an icon for a filename against a set (extension keyed, with folder/file default). */
+  // invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
+  static iconFor(
+    set: IconSet,
+    name: string,
+    isDirectory: boolean,
+    open = false,
+  ): string {
+    if (isDirectory) return open ? set.folderOpen : set.folderClosed;
+    const dotIndex = name.lastIndexOf(".");
+    const extension =
+      dotIndex >= 0 ? name.slice(dotIndex + 1).toLowerCase() : "";
+    if (name === ".gitignore") return set.ext.git ?? set.file;
+    return set.ext[extension] ?? set.file;
+  }
+}
+
+export namespace ThemeIcons {
+  export const $Class = $ThemeIcons;
+  export const Class = Static($ThemeIcons);
+}
 
 export interface IconSet {
-  // by extension (no dot) or special key
   ext: Record<string, string>;
   folderOpen: string;
   folderClosed: string;
   file: string;
 }
 
-/** Git changes-row action button glyphs — SINGLE-CELL each so the button hit-zone columns align. */
 export interface ActionIconSet {
   open: string;
   discard: string;
@@ -20,27 +385,18 @@ export interface ActionIconSet {
   preview: string;
 }
 
-/** Single-cell staging checkbox glyphs (unchecked ↔ checked) for the git changes rows. */
 export interface CheckboxIconSet {
   unchecked: string;
   checked: string;
 }
 
-/** Activity-bar view-switcher glyphs — one CENTERED single-cell glyph per view, plus the VS-Code
- *  left accent bar drawn beside the ACTIVE item. Every glyph is exactly one cell so the 4-wide
- *  button columns align across tiers. Dual-tier by construction: `nerd` = detailed codicons,
- *  `unicode`/`ascii` = the portable fallback so identity survives where no Nerd Font is installed. */
 export interface ActivityIconSet {
   files: string;
   sourceControl: string;
   extensions: string;
-  /** The active-item left accent bar (VS Code's `▎`), degrading to `|` without box-drawing glyphs. */
   accentBar: string;
 }
 
-/** Find/search glyphs — SINGLE-CELL each so button hit-zone columns align. `search` is shared by
- *  every chrome affordance that opens the FindBar; the case-sensitivity affordance keeps its VS Code
- *  `Aa` two-letter label rather than using a glyph. */
 export interface FindIconSet {
   search: string;
   previous: string;
@@ -50,239 +406,14 @@ export interface FindIconSet {
   toggleMode: string;
 }
 
-/** Agent-pane transcript + chrome glyphs. Single-cell where they index columns (carets, tool,
- *  results, rule); `ellipsis` is the LABEL suffix ("Thinking…" vs "Thinking..."), `ellipsisCell`
- *  the single-cell truncation mark; `spinnerFrames` the animation cycle per tier. This set is the
- *  ONE home for these tokens — the agent modules carry no private ladders. */
 export interface AgentTranscriptIconSet {
   caretCollapsed: string;
   caretExpanded: string;
-  /** The tool cog — the SAME glyph as the status-bar settings ladder, interned here so the cog has
-   *  exactly one definition per tier. */
   tool: string;
   resultOk: string;
   resultError: string;
   ellipsis: string;
   ellipsisCell: string;
-  /** The horizontal-rule cell (`─` degrading to `-`). */
   rule: string;
   spinnerFrames: readonly string[];
-}
-
-const NERD: IconSet = {
-  ext: {
-    ts: '', tsx: '', js: '', jsx: '',
-    json: '', md: '', lock: '', sh: '',
-    css: '', html: '', vue: '﵂', wasm: '',
-    png: '', jpg: '', svg: '', gif: '',
-    git: '', gitignore: '', toml: '', yaml: '', yml: '',
-  },
-  folderOpen: '',
-  folderClosed: '',
-  file: '',
-};
-
-const UNICODE: IconSet = {
-  ext: {
-    ts: '◆', tsx: '◆', js: '●', jsx: '●', json: '⛃', md: '✎',
-    lock: '🔒', sh: '⚙', css: '❖', html: '◈', vue: '◇', wasm: '⬡',
-    png: '🖼', jpg: '🖼', svg: '🖼', gif: '🖼',
-    git: '⎇', gitignore: '⎇', toml: '⚙', yaml: '⚙', yml: '⚙',
-  },
-  folderOpen: '▾',
-  folderClosed: '▸',
-  file: '·',
-};
-
-const ASCII: IconSet = {
-  ext: {},
-  folderOpen: '-',
-  folderClosed: '+',
-  file: ' ',
-};
-
-// invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
-const SETS: Record<GlyphLevel, IconSet> = {
-  nerd: NERD,
-  unicode: UNICODE,
-  ascii: ASCII,
-};
-
-// Action-button glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
-// letter fallback (o/d/+/-) so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
-const ACTION_ICONS: Record<GlyphLevel, ActionIconSet> = {
-  nerd: { open: '\u{f08e}', discard: '\u{f0e2}', stage: '\u{f067}', unstage: '\u{f068}', preview: '\u{f06e}' }, // fa external-link / undo / plus / minus / eye
-  unicode: { open: '↗', discard: '↩', stage: '✚', unstage: '−', preview: '◫' },
-  ascii: { open: 'o', discard: 'd', stage: '+', unstage: '-', preview: 'p' },
-};
-
-// Staging-checkbox glyph ladder. nerd = fa square / check-square; unicode = ballot box ☐/☑;
-// ascii = blank / x so a no-nerd-font terminal still degrades to the classic ` ` / `x`.
-const CHECKBOX_ICONS: Record<GlyphLevel, CheckboxIconSet> = {
-  nerd: { unchecked: '\u{f0c8}', checked: '\u{f14a}' },
-  unicode: { unchecked: '☐', checked: '☑' },
-  ascii: { unchecked: ' ', checked: 'x' },
-};
-
-// Activity-bar glyph ladder. nerd = codicons (files / git branch / puzzle piece); unicode =
-// single-cell portable symbols; ascii = the letter fallback (F/G/X) so a no-nerd-font terminal
-// still reads an identity. The accent bar degrades `▎` → `|`. Each glyph is exactly one cell.
-const ACTIVITY_ICONS: Record<GlyphLevel, ActivityIconSet> = {
-  nerd: { files: '\u{f07b}', sourceControl: '\u{f126}', extensions: '\u{f12e}', accentBar: '▎' }, // fa folder / code-fork / puzzle-piece
-  unicode: { files: '▤', sourceControl: '⎇', extensions: '⊞', accentBar: '▎' },
-  ascii: { files: 'F', sourceControl: 'G', extensions: 'X', accentBar: '|' },
-};
-
-// Status-bar affordance glyph ladder. nerd = fa cog; unicode = the gear ⚙; ascii = `*` so a
-// no-nerd-font terminal still shows a settings mark. Single cell at every tier.
-const SETTINGS_ICON: Record<GlyphLevel, string> = {
-  nerd: '\u{f013}', // fa cog / gear
-  unicode: '⚙',
-  ascii: '*',
-};
-
-const TERMINAL_ICON: Record<GlyphLevel, string> = {
-  nerd: '\u{f120}', // fa terminal (prompt)
-  unicode: '❯',
-  ascii: '>',
-};
-
-const AGENT_ICON: Record<GlyphLevel, string> = {
-  nerd: '\u{f544}', // fa robot (the native agent pane)
-  unicode: '✦', // matches AgentPaneContent's switcher glyph
-  ascii: 'A',
-};
-
-const RIGHT_DOCK_ICON: Record<GlyphLevel, string> = {
-  nerd: '\u{f0db}',
-  unicode: '▥',
-  ascii: 'R',
-};
-
-// Find-bar action glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
-// letter/arrow fallback so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
-const FIND_ICONS: Record<GlyphLevel, FindIconSet> = {
-  nerd: { search: '\u{f002}', previous: '\u{f062}', next: '\u{f063}', replace: '\u{f021}', replaceAll: '\u{f051}', toggleMode: '\u{f0ec}' }, // fa search / up / down / refresh / step-forward / exchange
-  unicode: { search: '⌕', previous: '↑', next: '↓', replace: '⟳', replaceAll: '⇊', toggleMode: '⇅' },
-  ascii: { search: '/', previous: '^', next: 'v', replace: 'r', replaceAll: 'R', toggleMode: 'x' },
-};
-
-function $iconSetFor(level: GlyphLevel): IconSet {
-  return SETS[level];
-}
-
-function $settingsIconFor(level: GlyphLevel): string {
-  return SETTINGS_ICON[level];
-}
-
-function $terminalIconFor(level: GlyphLevel): string {
-  return TERMINAL_ICON[level];
-}
-
-function $agentIconFor(level: GlyphLevel): string {
-  return AGENT_ICON[level];
-}
-
-function $rightDockIconFor(level: GlyphLevel): string {
-  return RIGHT_DOCK_ICON[level];
-}
-
-function $actionIconsFor(level: GlyphLevel): ActionIconSet {
-  return ACTION_ICONS[level];
-}
-
-function $checkboxIconsFor(level: GlyphLevel): CheckboxIconSet {
-  return CHECKBOX_ICONS[level];
-}
-
-function $activityIconsFor(level: GlyphLevel): ActivityIconSet {
-  return ACTIVITY_ICONS[level];
-}
-
-function $findIconsFor(level: GlyphLevel): FindIconSet {
-  return FIND_ICONS[level];
-}
-
-// Alert / warning glyph ladder (single cell): nerd = fa exclamation-triangle; unicode = ⚠; ascii = !.
-// Used to flag an un-openable path in the open-project navigator, painted in the theme warning colour.
-const ALERT_ICONS: Record<GlyphLevel, string> = {
-  nerd: '\u{f071}',
-  unicode: '⚠',
-  ascii: '!',
-};
-
-function $alertIconFor(level: GlyphLevel): string {
-  return ALERT_ICONS[level];
-}
-
-// The spinner animation cycles: braille at glyph-capable tiers, a rotating ascii bar below — a
-// no-unicode terminal still animates.
-const BRAILLE_SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'] as const;
-const ASCII_SPINNER_FRAMES = ['|', '/', '-', '\\'] as const;
-
-// Agent transcript glyph ladder. The tool cog reuses SETTINGS_ICON per tier (one cog definition);
-// carets are fa caret-right/caret-down degrading to ▸/▾ then >/v; results are fa check/times
-// degrading to ✓/✗ then +/x. Single cell everywhere a column is indexed.
-const AGENT_TRANSCRIPT_ICONS: Record<GlyphLevel, AgentTranscriptIconSet> = {
-  nerd: {
-    caretCollapsed: '\u{f0da}', caretExpanded: '\u{f0d7}', tool: SETTINGS_ICON.nerd,
-    resultOk: '\u{f00c}', resultError: '\u{f00d}',
-    ellipsis: '…', ellipsisCell: '…', rule: '─', spinnerFrames: BRAILLE_SPINNER_FRAMES,
-  },
-  unicode: {
-    caretCollapsed: '▸', caretExpanded: '▾', tool: SETTINGS_ICON.unicode,
-    resultOk: '✓', resultError: '✗',
-    ellipsis: '…', ellipsisCell: '…', rule: '─', spinnerFrames: BRAILLE_SPINNER_FRAMES,
-  },
-  ascii: {
-    caretCollapsed: '>', caretExpanded: 'v', tool: SETTINGS_ICON.ascii,
-    resultOk: '+', resultError: 'x',
-    ellipsis: '...', ellipsisCell: '.', rule: '-', spinnerFrames: ASCII_SPINNER_FRAMES,
-  },
-};
-
-function $agentTranscriptIconsFor(level: GlyphLevel): AgentTranscriptIconSet {
-  return AGENT_TRANSCRIPT_ICONS[level];
-}
-
-// Between-buffer-tab powerline separator ladder: solid nerd powerline glyph → portable ❯ → ascii >.
-const TAB_SEPARATOR: Record<GlyphLevel, string> = {
-  nerd: '\u{e0b0}',
-  unicode: '❯',
-  ascii: '>',
-};
-
-function $tabSeparatorFor(level: GlyphLevel): string {
-  return TAB_SEPARATOR[level];
-}
-
-/** Resolve an icon for a filename against a set (extension keyed, with folder/file default). */
-// invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
-function $iconFor(set: IconSet, name: string, isDirectory: boolean, open = false): string {
-  if (isDirectory) return open ? set.folderOpen : set.folderClosed;
-  const dotIndex = name.lastIndexOf('.');
-  const extension = dotIndex >= 0 ? name.slice(dotIndex + 1).toLowerCase() : '';
-  if (name === '.gitignore') return set.ext.git ?? set.file;
-  return set.ext[extension] ?? set.file;
-}
-
-class $ThemeIcons {
-  static iconSetFor = $iconSetFor;
-  static settingsIconFor = $settingsIconFor;
-  static terminalIconFor = $terminalIconFor;
-  static agentIconFor = $agentIconFor;
-  static rightDockIconFor = $rightDockIconFor;
-  static actionIconsFor = $actionIconsFor;
-  static checkboxIconsFor = $checkboxIconsFor;
-  static activityIconsFor = $activityIconsFor;
-  static findIconsFor = $findIconsFor;
-  static alertIconFor = $alertIconFor;
-  static agentTranscriptIconsFor = $agentTranscriptIconsFor;
-  static tabSeparatorFor = $tabSeparatorFor;
-  static iconFor = $iconFor;
-}
-
-export namespace ThemeIcons {
-  export const $Class = $ThemeIcons;
-  export const Class = Static($ThemeIcons);
 }

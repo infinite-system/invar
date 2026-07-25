@@ -5,8 +5,10 @@ import {
   type TestRenderer,
 } from '@opentui/core/testing';
 import { RGBA } from '@opentui/core';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import { SplitterElement } from './SplitterElement';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 let renderer: TestRenderer | null = null;
 let mockMouse: MockMouse | null = null;
@@ -58,21 +60,21 @@ describe('SplitterElement', () => {
     const splitter = await createSplitter();
     splitter.setGeometry({ left: 17, top: 3, length: 14 });
     await renderOnce?.();
-    splitter.updateAppearance(DARK);
+    splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(DARK.border),
+      RGBA.fromHex(darkPalette.border),
     );
 
     await mockMouse?.moveTo(17, 3);
-    splitter.updateAppearance(DARK);
+    splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(DARK.accent),
+      RGBA.fromHex(darkPalette.accent),
     );
 
     await mockMouse?.moveTo(30, 3);
-    splitter.updateAppearance(DARK);
+    splitter.updateAppearance(darkPalette);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(DARK.border),
+      RGBA.fromHex(darkPalette.border),
     );
   });
 
@@ -82,17 +84,17 @@ describe('SplitterElement', () => {
     await renderOnce?.();
     await mockMouse?.pressDown(17, 3);
     await mockMouse?.emitMouseEvent('drag', 30, 3);
-    splitter.updateAppearance(DARK);
+    splitter.updateAppearance(darkPalette);
     expect(splitter.active).toBe(true);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(DARK.accent),
+      RGBA.fromHex(darkPalette.accent),
     );
 
     await mockMouse?.release(30, 3);
-    splitter.updateAppearance(DARK);
+    splitter.updateAppearance(darkPalette);
     expect(splitter.active).toBe(false);
     expect(splitter.renderable.backgroundColor).toEqual(
-      RGBA.fromHex(DARK.border),
+      RGBA.fromHex(darkPalette.border),
     );
   });
 

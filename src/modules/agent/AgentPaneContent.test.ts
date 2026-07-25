@@ -3,10 +3,12 @@ import { StyledText } from '@opentui/core';
 import { AgentPaneContent, type AgentScrollPort } from './AgentPaneContent';
 import { AgentSession } from './AgentSession';
 import { MockAgentBackend } from './MockAgentBackend';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import type { PaneRenderContext } from '../ui/PaneContent.interface';
 import { ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 /** A fake scroll engine — records the scroll commands the pane issues, without any renderer. */
 class FakePort implements AgentScrollPort {
@@ -29,7 +31,7 @@ function makePane(): { pane: AgentPaneContent.Model; backend: MockAgentBackend.M
 const context = (overrides: Partial<PaneRenderContext> = {}): PaneRenderContext => ({
   width: 60,
   height: 16,
-  palette: DARK,
+  palette: darkPalette,
   glyphLevel: 'unicode',
   colorDepth: 'truecolor',
   focused: true,

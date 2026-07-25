@@ -7,8 +7,10 @@ import { AgentTranscriptProjection } from './AgentTranscriptProjection';
 import { AgentTranscriptSearch } from './AgentTranscriptSearch';
 import { TextDocument } from '../editor/TextDocument';
 import { FindInBuffer } from '../search/FindInBuffer';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import type { TranscriptEntry } from './AgentEvents.interface';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 /** Project a transcript, mirror it into a document, and run one query — the exact runtime pipeline. */
 function searchTranscript(
@@ -19,7 +21,7 @@ function searchTranscript(
 ) {
   const lines = AgentTranscriptProjection.Class.project(
     transcript,
-    DARK,
+    darkPalette,
     'unicode',
     width,
     expandedIndices,
@@ -120,7 +122,7 @@ describe('AgentTranscriptSearch — the match projection over projected transcri
   test('searchableLineTexts is exactly the projected texts in order (the mirror can never diverge)', () => {
     const lines = AgentTranscriptProjection.Class.project(
       [{ role: 'user', text: 'alpha' }, { role: 'assistant', text: 'beta' }],
-      DARK,
+      darkPalette,
       'unicode',
       40,
       new Set(),

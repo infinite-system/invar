@@ -1,15 +1,17 @@
 import { expect, test } from 'bun:test';
-import { DARK } from '../theme/ThemePalettes';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import { AgentPaneRenderer } from './AgentPaneRenderer';
+
+const darkPalette = ThemePalettes.Class.dark;
 
 test('render paints the supplied transcript and composer rows', () => {
   const rendered = AgentPaneRenderer.Class.render({
-    palette: DARK,
+    palette: darkPalette,
     padLeft: 0,
     bodyRows: [
       {
         text: 'answer',
-        color: DARK.fg,
+        color: darkPalette.fg,
         bold: false,
         entryIndex: 0,
         toggleable: false,
