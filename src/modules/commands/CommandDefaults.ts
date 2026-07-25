@@ -1,56 +1,20 @@
-// Default command set — the core is complete without plugins, so every essential action is
-// registered here. Plugins (M7) contribute additional commands to the same registry.
-//
-// invariant: The core is complete without plugins (project.invariants.md)
 import { Static } from 'ivue/extras';
 import type { CommandRegistry } from './CommandRegistry';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { Theme } from '../theme/Theme';
 
-export interface CommandContext {
-  workspaceSet: WorkspaceSet.Instance;
-  theme: Theme.Instance;
-  openWorkspaceFolder: () => void;
-  quit: () => void;
-  requestRender: () => void;
-  hasOpenDiff: () => boolean;
-  nextDiffChange: () => void;
-  previousDiffChange: () => void;
-  toggleMarkdownPreview: () => void;
-  toggleActivityBar: () => void;
-  toggleRightDock: () => void;
-  toggleTerminal: () => void;
-  toggleAgent: () => void;
-  togglePanelSplit: () => void;
-  cycleTerminalFollowMode: () => void;
-  hasHoveredMarkdownReference: () => boolean;
-  openHoveredMarkdownReference: () => void;
-  openShortcutHelp: () => void;
-  /** Speak a fixed sample line through the REAL TTS backend in the currently-selected voice — the
-   *  audition affordance for the voice picker (legit user-triggered audio, never in the gate). */
-  testNarrationVoice: () => void;
-}
-
-// Manifest first — the capability's surface reads at the top of the file; implementations follow.
-// The `$` impls below are FUNCTION DECLARATIONS (hoisted + initialized before this class statement
-// runs), so the static fields bind the real functions despite appearing above them.
+// Default command set — the core is complete without plugins, so every essential action is
+// registered here. Plugins (M7) contribute additional commands to the same registry.
+// invariant: The core is complete without plugins (project.invariants.md)
 class $CommandDefaults {
-  static registerDefaultCommands = $registerDefaultCommands;
-}
+  static registerDefaultCommands(
+    registry: CommandRegistry.Instance,
+    context: CommandContext,
+  ): void {
+    const getEditor = () => context.workspaceSet.active.editor;
+    const hasDocument = () => context.workspaceSet.active.editor.hasDocument.value;
 
-export namespace CommandDefaults {
-  export const $Class = $CommandDefaults;
-  export const Class = Static($CommandDefaults);
-}
-
-function $registerDefaultCommands(
-  registry: CommandRegistry.Instance,
-  context: CommandContext,
-): void {
-  const getEditor = () => context.workspaceSet.active.editor;
-  const hasDocument = () => context.workspaceSet.active.editor.hasDocument.value;
-
-  registry.registerAll([
+    registry.registerAll([
     {
       id: 'workspace.openFolder',
       title: 'Workspace: Open Folder',
@@ -283,5 +247,35 @@ function $registerDefaultCommands(
       category: 'Application',
       run: () => context.quit(),
     },
-  ]);
+    ]);
+  }
+}
+
+export namespace CommandDefaults {
+  export const $Class = $CommandDefaults;
+  export const Class = Static($CommandDefaults);
+}
+
+export interface CommandContext {
+  workspaceSet: WorkspaceSet.Instance;
+  theme: Theme.Instance;
+  openWorkspaceFolder: () => void;
+  quit: () => void;
+  requestRender: () => void;
+  hasOpenDiff: () => boolean;
+  nextDiffChange: () => void;
+  previousDiffChange: () => void;
+  toggleMarkdownPreview: () => void;
+  toggleActivityBar: () => void;
+  toggleRightDock: () => void;
+  toggleTerminal: () => void;
+  toggleAgent: () => void;
+  togglePanelSplit: () => void;
+  cycleTerminalFollowMode: () => void;
+  hasHoveredMarkdownReference: () => boolean;
+  openHoveredMarkdownReference: () => void;
+  openShortcutHelp: () => void;
+  /** Speak a fixed sample line through the REAL TTS backend in the currently-selected voice — the
+   *  audition affordance for the voice picker (legit user-triggered audio, never in the gate). */
+  testNarrationVoice: () => void;
 }

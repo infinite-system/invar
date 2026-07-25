@@ -10,18 +10,10 @@ import { ref, shallowRef } from 'vue';
 import { CommandScoring } from './CommandScoring';
 import { TextEditing } from '../editor/TextEditing';
 
-export interface Command {
-  id: string;
-  title: string;
-  category?: string;
-  run: () => void | Promise<void>;
-  when?: () => boolean;
-}
-
 class $CommandRegistry {
   // invariant: Every action dispatches through the one registry (src/modules/commands/commands.invariants.md)
   //   — the single source of truth; both the palette and keybindings resolve actions out of this map.
-  private commands = new Map<string, Command>();
+  protected commands = new Map<string, Command>();
 
   // Palette reactive state.
   get open() {
@@ -33,7 +25,7 @@ class $CommandRegistry {
   get selectedIndex() {
     return ref(0);
   }
-  private get filteredRef() {
+  protected get filteredRef() {
     return shallowRef<Command[]>([]);
   }
 
@@ -68,7 +60,7 @@ class $CommandRegistry {
     return this.filteredRef.value;
   }
 
-  private recompute(): void {
+  protected recompute(): void {
     const query = this.query.value;
     // invariant: Command scoring is a pure ordering (src/modules/commands/commands.invariants.md)
     //   — the palette ranking derives entirely from fuzzyScore, with title localeCompare as the only tiebreak.
@@ -135,4 +127,12 @@ export namespace CommandRegistry {
   export const $Class = $CommandRegistry;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface Command {
+  id: string;
+  title: string;
+  category?: string;
+  run: () => void | Promise<void>;
+  when?: () => boolean;
 }
