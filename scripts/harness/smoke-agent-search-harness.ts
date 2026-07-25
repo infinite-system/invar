@@ -169,7 +169,7 @@ try {
 
   console.log('== harness agent search: Ctrl+F reopens the same retained target ==');
   driver.sendKeys('Escape');
-  const lastMatchStatus = await HarnessSmoke.Class.awaitStatus(
+  await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: candidate.findOpen === false",
@@ -215,7 +215,7 @@ try {
     (candidate) => candidate.findCurrentMatchIndex === 2,
   );
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(
+  const lastMatchStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: candidate.findCurrentMatchIndex === 3 && Number(candidate.agentScrollTop) > 0",
