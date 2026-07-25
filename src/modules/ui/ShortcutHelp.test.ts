@@ -5,14 +5,14 @@ import { describe, expect, test } from 'bun:test';
 import { ShortcutHelp, type ShortcutHelpRow } from './ShortcutHelp';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { CommandRegistry } from '../commands/CommandRegistry';
-import { canonicalBindings } from '../keybindings/keybindings.defaults';
+import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
 
 function buildSheet(): {
   keybindings: KeybindingRegistry.Instance;
   sheet: InstanceType<typeof ShortcutHelp.Class>;
 } {
   const keybindings = new KeybindingRegistry.Class();
-  keybindings.registerLayer('canonical', canonicalBindings);
+  keybindings.registerLayer('canonical', KeybindingDefaults.Class.canonicalBindings);
   const commands = new CommandRegistry.Class();
   commands.register({
     id: 'help.shortcuts',

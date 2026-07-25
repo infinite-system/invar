@@ -1,12 +1,14 @@
+import { Static } from 'ivue/extras';
+import type { Keybinding } from './KeybindingRegistry';
+
 // The CANONICAL binding layer — the floor: only universally-deliverable chords (Ctrl, plain keys,
 // function keys, arrows). Overlays (mac) ALIAS actions bound here; they never replace the floor.
 // Bindings are pure data: chord (or step list) -> action id (+ context / guard).
-//
 // invariant: The canonical layer is the floor (keybindings.invariants.md)
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
-import type { Keybinding } from './KeybindingRegistry';
-
-export const canonicalBindings: Keybinding[] = [
+class $KeybindingDefaults {
+  protected static get $canonicalBindings(): Keybinding[] {
+    const canonicalBindings: Keybinding[] = [
   // --- global ---
   // RESERVED escape hatches: quit fires from ANY mode (even a focused search/modal input) so the
   // user is never trapped. `reserved` routes these ahead of modal input consumption (single chords
@@ -245,4 +247,20 @@ export const canonicalBindings: Keybinding[] = [
   { chord: { key: 'z', ctrl: true, shift: false }, action: 'editor.undo', context: 'editor' },
   { chord: { key: 'z', ctrl: true, shift: true }, action: 'editor.redo', context: 'editor' },
   { chord: { key: 'y', ctrl: true }, action: 'editor.redo', context: 'editor' },
-];
+    ];
+    Object.defineProperty(this, '$canonicalBindings', {
+      configurable: true,
+      value: canonicalBindings,
+    });
+    return canonicalBindings;
+  }
+
+  static get canonicalBindings(): Keybinding[] {
+    return this.$canonicalBindings;
+  }
+}
+
+export namespace KeybindingDefaults {
+  export const $Class = $KeybindingDefaults;
+  export const Class = Static($KeybindingDefaults);
+}

@@ -1,14 +1,16 @@
+import { Static } from 'ivue/extras';
+import type { Keybinding } from './KeybindingRegistry';
+
 // The macOS overlay — ALIASES for mac-native chords, layered over the canonical floor (every
 // action here is also reachable canonically; removing this layer leaves a fully operable app).
 // Registered unconditionally: these patterns only match when the terminal actually delivers the
 // corresponding events, so on non-mac terminals they are inert — degradation is silence, never a
 // misfire.
-//
 // invariant: Modifier fidelity varies by protocol (keybindings.invariants.md)
 // invariant: The canonical layer is the floor (keybindings.invariants.md)
-import type { Keybinding } from './KeybindingRegistry';
-
-export const macOverlayBindings: Keybinding[] = [
+class $KeybindingMac {
+  protected static get $overlayBindings(): Keybinding[] {
+    const overlayBindings: Keybinding[] = [
   // Deliberately no Alt/Option+Delete -> buffer.close alias. Word deletion lives in the canonical
   // text-input bindings; closing a buffer remains Ctrl+W (and any independently deliverable Cmd alias).
   // Option word-jumps. Terminals encode Option+arrow either as alt+arrow, or as the readline
@@ -45,4 +47,20 @@ export const macOverlayBindings: Keybinding[] = [
   // Cmd+Shift+] / Cmd+Shift+[ cycle projects — the mac-native form of the bracket cycling on the floor.
   { chord: { key: ']', super: true, shift: true }, action: 'workspace.next' },
   { chord: { key: '[', super: true, shift: true }, action: 'workspace.previous' },
-];
+    ];
+    Object.defineProperty(this, '$overlayBindings', {
+      configurable: true,
+      value: overlayBindings,
+    });
+    return overlayBindings;
+  }
+
+  static get overlayBindings(): Keybinding[] {
+    return this.$overlayBindings;
+  }
+}
+
+export namespace KeybindingMac {
+  export const $Class = $KeybindingMac;
+  export const Class = Static($KeybindingMac);
+}

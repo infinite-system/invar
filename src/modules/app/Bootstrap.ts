@@ -32,8 +32,8 @@ import { ScrollPhysics } from '../ui/ScrollPhysics';
 import { Clipboard } from '../system/Clipboard';
 import { GitRows } from '../git/GitRows';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
-import { canonicalBindings } from '../keybindings/keybindings.defaults';
-import { macOverlayBindings } from '../keybindings/keybindings.mac';
+import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
+import { KeybindingMac } from '../keybindings/KeybindingMac';
 import { Environment } from '../system/Environment';
 import { Logging } from '../system/Logging';
 import { HandlerGuard } from './HandlerGuard';
@@ -122,8 +122,8 @@ async function $boot(options: BootOptions = {}): Promise<BootedApp> {
   workspaceSet.open(options.root ?? Environment.Class.cwd);
   const keybindings = new KeybindingRegistry.Class();
   keybindings.registerGuard('editorHasSelection', () => workspaceSet.active.editor.cursor.hasSelection);
-  keybindings.registerLayer('canonical', canonicalBindings);
-  keybindings.registerLayer('mac', macOverlayBindings);
+  keybindings.registerLayer('canonical', KeybindingDefaults.Class.canonicalBindings);
+  keybindings.registerLayer('mac', KeybindingMac.Class.overlayBindings);
   const bufferTabStrip = new TabStrip.Class('horizontal', () =>
     workspaceSet.active.buffers.tabs().map((bufferTab) => ({
       identifier: bufferTab.path,

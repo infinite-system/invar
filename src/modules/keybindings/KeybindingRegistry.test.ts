@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test';
-import { KeybindingRegistry, type ChordEvent } from '../KeybindingRegistry';
-import { canonicalBindings } from '../keybindings.defaults';
-import { macOverlayBindings } from '../keybindings.mac';
+import { KeybindingRegistry, type ChordEvent } from './KeybindingRegistry';
+import { KeybindingDefaults } from './KeybindingDefaults';
+import { KeybindingMac } from './KeybindingMac';
 import { parseKeypress } from '@opentui/core';
 
 function chord(name: string, modifiers: Partial<ChordEvent> = {}): ChordEvent {
@@ -10,8 +10,8 @@ function chord(name: string, modifiers: Partial<ChordEvent> = {}): ChordEvent {
 
 function registryWithDefaults(): KeybindingRegistry.Instance {
   const registry = new KeybindingRegistry.Class();
-  registry.registerLayer('canonical', canonicalBindings);
-  registry.registerLayer('mac', macOverlayBindings);
+  registry.registerLayer('canonical', KeybindingDefaults.Class.canonicalBindings);
+  registry.registerLayer('mac', KeybindingMac.Class.overlayBindings);
   return registry;
 }
 

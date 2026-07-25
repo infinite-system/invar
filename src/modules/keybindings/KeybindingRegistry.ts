@@ -1,75 +1,20 @@
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
+
 // Layered, intent-addressed keybinding resolution. Bindings are DATA (chord pattern or step list →
 // action id, with optional context + guard); resolution is a pure lookup over layers where LATER
 // layers shadow earlier ones (canonical floor ← platform overlays ← user rebinds). Multi-step
 // chords are step-list data with a timeout — not bespoke state code.
-//
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
 // invariant: Resolution is layered and later layers shadow earlier (keybindings.invariants.md)
-import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
-
-/** A normalized chord pattern. ctrl/alt/super must match exactly (absent = required absent); shift
- *  left undefined is DON'T-CARE (movement actions read the event's shift as "extend"). */
-export interface ChordPattern {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  super?: boolean;
-}
-
-export interface Keybinding {
-  action: string;
-  /** Single chord (exclusive with steps). */
-  chord?: ChordPattern;
-  /** Multi-step chord, e.g. Ctrl+X then Ctrl+C. */
-  steps?: ChordPattern[];
-  /** Focus context this binding applies in; 'global' applies everywhere. */
-  context?: 'global' | 'editor' | 'files' | 'git' | 'palette' | 'menu' | 'listPopup' | 'settings' | 'quickopen' | 'find' | 'help' | 'agent' | 'terminal';
-  /** Named guard (host-registered predicate) that must be true for the binding to fire. */
-  when?: string;
-  /** A RESERVED-GLOBAL escape hatch (e.g. quit): fires from ANY mode — even while a modal/search
-   *  input is focused — so the user is never trapped. Must be a single chord (no steps): the
-   *  pass-through check is stateless. invariant: Reserved global chords fire from any mode. */
-  reserved?: boolean;
-}
-
-/** The slice of a decoded key event that resolution needs. */
-export interface ChordEvent {
-  name: string;
-  ctrl: boolean;
-  shift: boolean;
-  option: boolean;
-  super?: boolean;
-}
-
-export interface Resolution {
-  /** The action to dispatch, or null (no binding — the caller applies the context's default). */
-  action: string | null;
-  /** True when this event STARTED or ADVANCED a multi-step chord (caller shows the armed hint). */
-  chordPending: boolean;
-}
-
-const CHORD_TIMEOUT_MS = 2000;
-
-function patternMatches(pattern: ChordPattern, event: ChordEvent): boolean {
-  if (pattern.key !== event.name) return false;
-  if ((pattern.ctrl ?? false) !== event.ctrl) return false;
-  if ((pattern.alt ?? false) !== event.option) return false;
-  if ((pattern.super ?? false) !== (event.super ?? false)) return false;
-  if (pattern.shift !== undefined && pattern.shift !== event.shift) return false;
-  return true;
-}
-
-interface Layer {
-  name: string;
-  bindings: Keybinding[];
-}
-
 class $KeybindingRegistry {
-  private layers: Layer[] = [];
-  private guards = new Map<string, () => boolean>();
-  private pendingChord: { binding: Keybinding; stepIndex: number; armedAtMs: number } | null = null;
+  protected static get chordTimeoutMilliseconds(): number {
+    return 2000;
+  }
+
+  protected layers: Layer[] = [];
+  protected guards = new Map<string, () => boolean>();
+  protected pendingChord: { binding: Keybinding; stepIndex: number; armedAtMs: number } | null = null;
 
   /** Bumped whenever layers change, so effective-binding hints recompute. */
   get revision() {
@@ -88,13 +33,22 @@ class $KeybindingRegistry {
     this.guards.set(name, predicate);
   }
 
-  private guardPasses(binding: Keybinding): boolean {
+  protected patternMatches(pattern: ChordPattern, event: ChordEvent): boolean {
+    if (pattern.key !== event.name) return false;
+    if ((pattern.ctrl ?? false) !== event.ctrl) return false;
+    if ((pattern.alt ?? false) !== event.option) return false;
+    if ((pattern.super ?? false) !== (event.super ?? false)) return false;
+    if (pattern.shift !== undefined && pattern.shift !== event.shift) return false;
+    return true;
+  }
+
+  protected guardPasses(binding: Keybinding): boolean {
     if (!binding.when) return true;
     const guard = this.guards.get(binding.when);
     return guard ? guard() : false;
   }
 
-  private inContext(binding: Keybinding, context: string): boolean {
+  protected inContext(binding: Keybinding, context: string): boolean {
     return (binding.context ?? 'global') === 'global' || binding.context === context;
   }
 
@@ -106,9 +60,10 @@ class $KeybindingRegistry {
   resolve(event: ChordEvent, context: string, nowMs: number): Resolution {
     if (this.pendingChord) {
       const { binding, stepIndex, armedAtMs } = this.pendingChord;
-      const expired = nowMs - armedAtMs > CHORD_TIMEOUT_MS;
+      const keybindingRegistryClass = this.constructor as typeof $KeybindingRegistry;
+      const expired = nowMs - armedAtMs > keybindingRegistryClass.chordTimeoutMilliseconds;
       const nextStep = binding.steps?.[stepIndex];
-      if (!expired && nextStep && patternMatches(nextStep, event)) {
+      if (!expired && nextStep && this.patternMatches(nextStep, event)) {
         if (stepIndex + 1 >= (binding.steps?.length ?? 0)) {
           this.pendingChord = null;
           this.chordArmed.value = false;
@@ -129,10 +84,10 @@ class $KeybindingRegistry {
       if (!layer) continue;
       for (const binding of layer.bindings) {
         if (!this.inContext(binding, context)) continue;
-        if (binding.chord && patternMatches(binding.chord, event) && this.guardPasses(binding)) {
+        if (binding.chord && this.patternMatches(binding.chord, event) && this.guardPasses(binding)) {
           if (binding.when) matchedGuardedSingle = matchedGuardedSingle ?? binding;
           else matchedSingle = matchedSingle ?? binding;
-        } else if (binding.steps?.[0] && patternMatches(binding.steps[0], event) && this.guardPasses(binding)) {
+        } else if (binding.steps?.[0] && this.patternMatches(binding.steps[0], event) && this.guardPasses(binding)) {
           matchedChordStart = matchedChordStart ?? binding;
         }
       }
@@ -163,7 +118,7 @@ class $KeybindingRegistry {
       if (!layer) continue;
       for (const binding of layer.bindings) {
         if (!binding.reserved || !binding.chord) continue;
-        if (patternMatches(binding.chord, event) && this.guardPasses(binding)) return binding.action;
+        if (this.patternMatches(binding.chord, event) && this.guardPasses(binding)) return binding.action;
       }
     }
     return null;
@@ -227,4 +182,51 @@ export namespace KeybindingRegistry {
   export const $Class = $KeybindingRegistry;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+/** A normalized chord pattern. ctrl/alt/super must match exactly (absent = required absent); shift
+ *  left undefined is DON'T-CARE (movement actions read the event's shift as "extend"). */
+export interface ChordPattern {
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
+  super?: boolean;
+}
+
+export interface Keybinding {
+  action: string;
+  /** Single chord (exclusive with steps). */
+  chord?: ChordPattern;
+  /** Multi-step chord, e.g. Ctrl+X then Ctrl+C. */
+  steps?: ChordPattern[];
+  /** Focus context this binding applies in; 'global' applies everywhere. */
+  context?: 'global' | 'editor' | 'files' | 'git' | 'palette' | 'menu' | 'listPopup' | 'settings' | 'quickopen' | 'find' | 'help' | 'agent' | 'terminal';
+  /** Named guard (host-registered predicate) that must be true for the binding to fire. */
+  when?: string;
+  /** A RESERVED-GLOBAL escape hatch (e.g. quit): fires from ANY mode — even while a modal/search
+   *  input is focused — so the user is never trapped. Must be a single chord (no steps): the
+   *  pass-through check is stateless. invariant: Reserved global chords fire from any mode. */
+  reserved?: boolean;
+}
+
+/** The slice of a decoded key event that resolution needs. */
+export interface ChordEvent {
+  name: string;
+  ctrl: boolean;
+  shift: boolean;
+  option: boolean;
+  super?: boolean;
+}
+
+export interface Resolution {
+  /** The action to dispatch, or null (no binding — the caller applies the context's default). */
+  action: string | null;
+  /** True when this event STARTED or ADVANCED a multi-step chord (caller shows the armed hint). */
+  chordPending: boolean;
+}
+
+interface Layer {
+  name: string;
+  bindings: Keybinding[];
 }
