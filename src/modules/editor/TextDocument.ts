@@ -12,17 +12,17 @@ import { EditorCoordinates } from './EditorCoordinates';
 class $TextDocument {
   path = '';
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
-  private _lines: string[] = [''];
+  protected _lines: string[] = [''];
   // The exact horizontal extent is full-document state. A single champion makes localized edits
   // O(changed lines); shrinking/deleting that champion triggers the same cheap-bound rescan.
   protected maximumLineWidthValue = 0;
   protected maximumLineWidthLineIndex = -1;
-  private _eol: '\n' | '\r\n' = '\n';
+  protected _eol: '\n' | '\r\n' = '\n';
   // Signature of the content as it was last SAVED/LOADED (the clean baseline). Lets undo/redo clear
   // the dirty flag when the buffer returns to exactly the on-disk content, instead of staying dirty
   // forever after the first edit. Line-count + FNV-1a hash: a false "clean" would need a hash
   // collision AND a matching line count for different text — negligible, and only costs a missing dot.
-  private savedSignature = '';
+  protected savedSignature = '';
 
   // Reactive signals: revision (bumped on any change) and dirty flag.
   get revision() {
@@ -138,7 +138,7 @@ class $TextDocument {
   }
 
   /** Snapshot the current content as the clean baseline (called on load + save). */
-  private captureSavedBaseline(): void {
+  protected captureSavedBaseline(): void {
     this.savedSignature = this.contentSignature();
   }
 
@@ -150,7 +150,7 @@ class $TextDocument {
 
   /** `lineCount:hash` over the joined lines (FNV-1a, allocation-free — hashes chars in place with a
    *  newline separator between lines rather than materializing one big joined string). */
-  private contentSignature(): string {
+  protected contentSignature(): string {
     let hash = 0x811c9dc5;
     for (let lineIndex = 0; lineIndex < this._lines.length; lineIndex += 1) {
       const line = this._lines[lineIndex]!;

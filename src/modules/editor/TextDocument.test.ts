@@ -1,6 +1,15 @@
 import { test, expect } from "bun:test";
 import { TextDocument } from "./TextDocument";
 
+class CountingTextDocument extends TextDocument.$Class {
+  measurementCount = 0;
+
+  protected override measureLineDisplayWidth(line: string): number {
+    this.measurementCount += 1;
+    return super.measureLineDisplayWidth(line);
+  }
+}
+
 test("TextDocument splits text into lines and stamps a revision", () => {
   const document = new TextDocument.Class();
   const revisionBefore = document.revision.value;
@@ -53,4 +62,22 @@ test("TextDocument maintains the full-document display width through localized e
   expect(document.maximumLineWidth).toBe(24);
   document.restore(["restored"]);
   expect(document.maximumLineWidth).toBe(8);
+});
+
+test("TextDocument measures only viable full-document width candidates", () => {
+  const document = new CountingTextDocument();
+  const lines = Array.from({ length: 500 }, (_unused, lineIndex) =>
+    lineIndex === 399
+      ? "中".repeat(60)
+      : lineIndex === 0
+        ? "x".repeat(100)
+        : `short line ${lineIndex}`,
+  );
+  document.loadFromText(lines.join("\n"));
+  expect(document.maximumLineWidth).toBe(120);
+  expect(document.measurementCount).toBe(2);
+
+  document.setLine(399, "界".repeat(80));
+  expect(document.maximumLineWidth).toBe(160);
+  expect(document.measurementCount).toBe(4);
 });
