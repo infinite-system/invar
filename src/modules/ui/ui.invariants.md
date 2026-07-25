@@ -140,6 +140,10 @@ three rows; a close row without a keyboard close path; a drag updating only pres
 **Verification:** `bun test src/modules/ui/PanelContentsList.test.ts && bun
 scripts/harness/smoke-panel-split-harness.ts`
 
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Completion reuses bounded popup geometry
 
 **Invariant:** If completion is visible, then its placement, flip, visible window, scrollbar, pointer
