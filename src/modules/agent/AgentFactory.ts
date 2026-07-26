@@ -10,6 +10,10 @@ import { AgentSession } from './AgentSession';
 import { AgentPaneContent } from './AgentPaneContent';
 import type { AgentProvider } from '../settings/Settings';
 import type { AgentTerminalToolPort } from './AgentTerminalTools';
+import {
+  AgentIbrFoundation,
+  type AgentIbrFoundationResolution,
+} from './AgentIbrFoundation';
 
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: One session is one Reactive instance (src/modules/agent/agent.invariants.md)
@@ -18,6 +22,10 @@ class $AgentFactory {
   /** Pick the backend by provider setting + CLI availability. Claude now rides the SDK backend
    *  (SdkStreamBackend — interactive permission prompts in ask-mode, bypass resolved live per turn). */
   static createBackend(options: AgentCreateOptions): AgentBackend {
+    const ibrFoundation =
+      options.ibrFoundation !== undefined
+        ? options.ibrFoundation
+        : AgentIbrFoundation.Class.resolve(options.cwd ?? process.cwd());
     if (process.env.INVAR_AGENT_BACKEND === 'echo') {
       return new EchoAgentBackend.Class({
         terminalTools: options.terminalTools,
@@ -32,11 +40,13 @@ class $AgentFactory {
         ? new CliStreamBackend.Class({
             claudePath: resolved.binaryPath,
             cwd: options.cwd,
+            ibrFoundationPath: ibrFoundation?.path,
             skipPermissions,
             model,
           })
         : new SdkStreamBackend.Class({
             cwd: options.cwd,
+            ibrFoundationContent: ibrFoundation?.content,
             skipPermissions,
             model,
             terminalTools: options.terminalTools,
@@ -66,11 +76,17 @@ class $AgentFactory {
 
   /** Wire backend + session into a ready AgentPaneContent. */
   static create(options: AgentCreateOptions = {}): AgentPaneContent.Model {
-    const backend = options.backend ?? this.createBackend(options);
+    const ibrFoundation =
+      options.ibrFoundation !== undefined
+        ? options.ibrFoundation
+        : AgentIbrFoundation.Class.resolve(options.cwd ?? process.cwd());
+    const backend =
+      options.backend ?? this.createBackend({ ...options, ibrFoundation });
     const session = new AgentSession.Class(
       backend,
       AgentProviderRegistry.Class.resolve(options.provider).engine,
       options.cwd ?? process.cwd(),
+      ibrFoundation,
     );
     return new AgentPaneContent.Class(session, {
       identifier: options.identifier,
@@ -100,4 +116,6 @@ export interface AgentCreateOptions {
   model?: string;
   /** Visible integrated-terminal tools exposed to the model through each provider's native tool path. */
   terminalTools?: AgentTerminalToolPort;
+  /** Resolved once per workspace and shared by backend construction and session parity. */
+  ibrFoundation?: AgentIbrFoundationResolution | null;
 }

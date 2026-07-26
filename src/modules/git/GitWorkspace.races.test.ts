@@ -50,6 +50,24 @@ function viewer(commandsClass: typeof GitCommands.Class): TestGitWorkspace {
 }
 
 describe('repository contribution supersession', () => {
+  test('comparison preview preserves pane focus until activation', () => {
+    const workspace = new Workspace.Class();
+    const contribution = new TestGitWorkspace(workspace, GitCommands.Class);
+    const comparison = {
+      previousVersionText: 'before',
+      currentVersionText: 'after',
+      previousVersionPath: 'sample.ts @ previous',
+      currentVersionPath: 'sample.ts',
+    };
+    workspace.focusPrimaryPane('git');
+
+    contribution.showComparison(comparison, false);
+    expect(workspace.focus.value).toBe('primaryPane');
+
+    contribution.showComparison(comparison, true);
+    expect(workspace.focus.value).toBe('editor');
+  });
+
   test('a stale failed tip probe cannot replace a newer branch view', async () => {
     let releaseProbe: ((value: GitCommandResult) => void) | null = null;
     class DeferredCommands extends GitCommands.$Class {

@@ -449,6 +449,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # 4) Driving SMOKES — the real user paths.
   parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
   parallel_safe_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
+  quiet_serial_smoke "smoke: inline rewrite harness" bun scripts/harness/smoke-inline-rewrite-harness.ts
   # The dirty marker is content-derived: typing then BACKSPACING (no undo) must clear the marker, a
   # deleted-and-retyped line must read clean, and a mid-session save must move the baseline.
   parallel_safe_smoke "smoke: dirty-marker harness" bun scripts/harness/smoke-dirty-marker-harness.ts
@@ -568,6 +569,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
   parallel_safe_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
+  parallel_safe_smoke "smoke: agent skill popup harness" bun scripts/harness/smoke-agent-skill-popup-harness.ts
   parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
   parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
   parallel_safe_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts

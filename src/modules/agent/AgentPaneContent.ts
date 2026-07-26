@@ -27,7 +27,7 @@ import {
   AgentTranscriptProjection,
   type ProjectedLine,
 } from './AgentTranscriptProjection';
-import { AgentComposer } from './AgentComposer';
+import { AgentComposer, type AgentSkillInvocation } from './AgentComposer';
 import { AgentSpinner } from './AgentSpinner';
 import {
   AgentThinkingIndicator,
@@ -209,6 +209,18 @@ class $AgentPaneContent implements PaneContent {
 
   get agentSession(): AgentSession.Instance {
     return this.session;
+  }
+
+  skillInvocation(): AgentSkillInvocation | null {
+    return this.composer.skillInvocation();
+  }
+
+  acceptSkillInvocation(
+    invocation: AgentSkillInvocation,
+    skillName: string,
+  ): void {
+    this.composer.replaceSkillInvocation(invocation, skillName);
+    this.composerHandled();
   }
   get title(): string {
     // LIVE identity: the registry's display label for the ACTIVE engine — the engine port when bound

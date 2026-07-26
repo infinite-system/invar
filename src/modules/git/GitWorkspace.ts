@@ -27,6 +27,7 @@ import { GitDocumentState } from './GitDocumentState';
 // invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
+// invariant: Commit selection previews without focus transfer (src/modules/git/git.invariants.md)
 class $GitWorkspace
   implements
     DocumentLifecycleContribution,
@@ -88,14 +89,18 @@ class $GitWorkspace
   }
   protected comparisonRequestToken = 0;
 
-  /** Put a comparison of two revisions on the editor surface. */
-  showComparison(request: Omit<GitComparisonRequest, 'token'>): void {
+  /** Put a comparison of two revisions on the editor surface. Selection preserves focus; explicit
+   *  activation transfers it after the request becomes the visible comparison. */
+  showComparison(
+    request: Omit<GitComparisonRequest, 'token'>,
+    transferFocus: boolean,
+  ): void {
     this.comparisonRequest.value = {
       token: ++this.comparisonRequestToken,
       ...request,
     };
     this.showingComparison.value = true;
-    this.workspace.focusEditor();
+    if (transferFocus) this.workspace.focusEditor();
   }
 
   // --- EditorSurfaceClaim -----------------------------------------------------------------------
@@ -478,15 +483,52 @@ class $GitWorkspace
     if (nextBranch !== undefined) this.selectLogBranch(nextBranch);
   }
 
+  previewLogRow(flatIndex: number): void {
+    void this.showLogRowComparison(flatIndex, false);
+  }
+
   activateLogRow(flatIndex: number): void {
+    void this.showLogRowComparison(flatIndex, true);
+  }
+
+  expandLogRow(flatIndex: number): void {
+    const row = this.logRowAt(flatIndex);
+    const expansion = this.commitExpansion.value;
+    if (row?.kind !== 'commit' || !row.record || !expansion) return;
+    void expansion.expand(row.commitIndex, row.record.sha);
+  }
+
+  protected async showLogRowComparison(
+    flatIndex: number,
+    transferFocus: boolean,
+  ): Promise<void> {
+    const requestGeneration = ++this.diffOpenRequestGeneration;
     const row = this.logRowAt(flatIndex);
     const expansion = this.commitExpansion.value;
     if (!row || !expansion) return;
-    if (row.kind === 'commit') {
-      if (row.record) expansion.toggle(row.commitIndex, row.record.sha);
-    } else if (row.kind === 'commitFile') {
-      void this.openCommitFileDiff(row.sha, row.path);
+    if (row.kind === 'commitFile') {
+      await this.loadCommitFileDiff(
+        row.sha,
+        row.path,
+        transferFocus,
+        requestGeneration,
+      );
+      return;
     }
+    if (row.kind !== 'commit' || !row.record) return;
+    await expansion.expand(row.commitIndex, row.record.sha);
+    if (requestGeneration !== this.diffOpenRequestGeneration) return;
+    const expandedCommit = expansion.entries.value.find(
+      (entry) => entry.sha === row.record?.sha,
+    );
+    const firstChangedFile = expandedCommit?.files?.[0];
+    if (!firstChangedFile) return;
+    await this.loadCommitFileDiff(
+      row.record.sha,
+      firstChangedFile.path,
+      transferFocus,
+      requestGeneration,
+    );
   }
 
   collapseLogRow(flatIndex: number): void {
@@ -518,20 +560,41 @@ class $GitWorkspace
     return result.code === 0 ? result.stdout : '';
   }
 
-  async openCommitFileDiff(sha: string, filePath: string): Promise<void> {
+  async openCommitFileDiff(
+    sha: string,
+    filePath: string,
+    transferFocus = true,
+  ): Promise<void> {
     const requestGeneration = ++this.diffOpenRequestGeneration;
+    await this.loadCommitFileDiff(
+      sha,
+      filePath,
+      transferFocus,
+      requestGeneration,
+    );
+  }
+
+  protected async loadCommitFileDiff(
+    sha: string,
+    filePath: string,
+    transferFocus: boolean,
+    requestGeneration: number,
+  ): Promise<void> {
     const previousVersionText = await this.fileTextAtReference(
       `${sha}^`,
       filePath,
     );
     const currentVersionText = await this.fileTextAtReference(sha, filePath);
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
-    this.showComparison({
-      previousVersionText,
-      currentVersionText,
-      previousVersionPath: `${filePath} @ ${sha.slice(0, 7)}^`,
-      currentVersionPath: filePath,
-    });
+    this.showComparison(
+      {
+        previousVersionText,
+        currentVersionText,
+        previousVersionPath: `${filePath} @ ${sha.slice(0, 7)}^`,
+        currentVersionPath: filePath,
+      },
+      transferFocus,
+    );
   }
 
   protected workingFileText(filePath: string): string {
@@ -569,12 +632,15 @@ class $GitWorkspace
       currentVersionText = this.workingFileText(row.path);
     }
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
-    this.showComparison({
-      previousVersionText,
-      currentVersionText,
-      previousVersionPath: row.path,
-      currentVersionPath: row.path,
-    });
+    this.showComparison(
+      {
+        previousVersionText,
+        currentVersionText,
+        previousVersionPath: row.path,
+        currentVersionPath: row.path,
+      },
+      true,
+    );
   }
 
   async toggleStageAtRow(rowIndex: number): Promise<void> {

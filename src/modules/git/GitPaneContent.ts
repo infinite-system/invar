@@ -17,6 +17,7 @@ import { GitPaneRenderer, type GitPanelGeometry } from './GitPaneRenderer';
 import type { GitWorkspace } from './GitWorkspace';
 
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
+// invariant: Commit selection previews without focus transfer (src/modules/git/git.invariants.md)
 class $GitPaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
@@ -52,6 +53,8 @@ class $GitPaneContent implements PaneContent {
   protected viewportColumns = 1;
   protected viewportRows = 1;
   protected readonly splitter: SplitterElement.Model;
+  protected lastLogClickFlatIndex = -1;
+  protected lastLogClickTimestampMilliseconds = 0;
 
   get id(): string {
     return 'git';
@@ -191,9 +194,17 @@ class $GitPaneContent implements PaneContent {
       return true;
     }
     if (hit.region === 'log') {
+      const clickTimestampMilliseconds = Date.now();
+      const isDoubleClick =
+        hit.index === this.lastLogClickFlatIndex &&
+        clickTimestampMilliseconds - this.lastLogClickTimestampMilliseconds <
+          450;
+      this.lastLogClickFlatIndex = hit.index;
+      this.lastLogClickTimestampMilliseconds = clickTimestampMilliseconds;
       workspace.panel.region.value = 'log';
       workspace.panel.setLogSelection(hit.index);
-      workspace.activateLogRow(hit.index);
+      if (isDoubleClick) workspace.activateLogRow(hit.index);
+      else workspace.previewLogRow(hit.index);
       return true;
     }
     const changeRow = workspace.currentChangeRows()[hit.index];
@@ -310,7 +321,7 @@ class $GitPaneContent implements PaneContent {
           region: 'log',
           index: Math.max(
             0,
-            this.geometry.logTop + row - this.geometry.logHeaderRow - 2,
+            this.geometry.logTop + row - this.geometry.logHeaderRow - 1,
           ),
         };
       }

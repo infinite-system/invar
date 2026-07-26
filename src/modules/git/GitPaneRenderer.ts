@@ -9,6 +9,7 @@
 //
 // invariant: Renderables hold no model state (src/modules/ui/ui.invariants.md)
 // invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
+// invariant: Git row decoration stays within one row (src/modules/git/git.invariants.md)
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
@@ -240,7 +241,6 @@ class $GitPaneRenderer {
             chunks.push(paint(` ${actionIcons.open}`, palette.accent));
             chunks.push(paint(`  ${actionIcons.discard}`, palette.deleted));
             chunks.push(paint(`  ${stageGlyph}`, stageColor));
-            chunks.push(paint(' ', palette.fg));
             chunks.push(paint(' '.repeat(scrollbarThickness), palette.fg));
             chunks.push(fg(palette.fg)('\n'));
           } else {

@@ -422,6 +422,108 @@ describe('AgentSession — engine swap (live provider switch)', () => {
     expect(next.sent[1]).toBe('another message');
   });
 
+  test('a fresh Codex backend receives IBR at position zero before the user prompt', () => {
+    class CodexMockBackend extends MockAgentBackend.$Class {
+      readonly ibrFoundationDelivery = 'prepend-prompt' as const;
+    }
+    const backend = new CodexMockBackend();
+    const session = new AgentSession.Class(backend, 'codex', '/workspace', {
+      path: '/workspace/.claude/skills/ibr/IBR.md',
+      content: 'IBR FOUNDATION',
+    });
+
+    expect(session.ibrFoundationState).toBe('prepend-prompt-pending');
+    session.send('first user message');
+
+    expect(backend.sent[0]).toBe('IBR FOUNDATION\n\nfirst user message');
+    expect(session.ibrFoundationState).toBe('prepend-prompt-sent');
+    expect(session.transcript).toEqual([
+      { role: 'user', text: 'first user message' },
+    ]);
+  });
+
+  test('stateless Codex execution begins every fresh turn with IBR', () => {
+    class StatelessCodexBackend extends MockAgentBackend.$Class {
+      readonly ibrFoundationDelivery = 'prepend-every-prompt' as const;
+    }
+    const backend = new StatelessCodexBackend();
+    const session = new AgentSession.Class(backend, 'codex', '/workspace', {
+      path: '/workspace/.claude/skills/ibr/IBR.md',
+      content: 'IBR FOUNDATION',
+    });
+
+    expect(session.ibrFoundationState).toBe('prepend-every-prompt');
+    session.send('first');
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    session.send('second');
+
+    expect(backend.sent).toEqual([
+      'IBR FOUNDATION\n\nfirst',
+      'IBR FOUNDATION\n\nsecond',
+    ]);
+  });
+
+  test('Claude to Codex prepends IBR before context and double switching never stacks copies', () => {
+    class ClaudeMockBackend extends MockAgentBackend.$Class {
+      readonly ibrFoundationDelivery = 'append-system-prompt' as const;
+    }
+    class CodexMockBackend extends MockAgentBackend.$Class {
+      readonly ibrFoundationDelivery = 'prepend-prompt' as const;
+    }
+    const foundation = {
+      path: '/workspace/.claude/skills/ibr/IBR.md',
+      content: 'IBR FOUNDATION',
+    };
+    const claude = new ClaudeMockBackend();
+    const session = new AgentSession.Class(
+      claude,
+      'claude',
+      '/workspace',
+      foundation,
+    );
+    session.send('remember ORCHID');
+    claude.emit({ kind: 'text-delta', text: 'remembered' });
+    claude.emit({ kind: 'session-end', reason: 'completed' });
+
+    const firstCodex = new CodexMockBackend();
+    session.swapBackend(firstCodex, 'codex');
+    session.send('repeat it');
+    const firstCodexPrompt = firstCodex.sent[0]!;
+    expect(firstCodexPrompt.startsWith('IBR FOUNDATION\n\n')).toBe(true);
+    expect(firstCodexPrompt.indexOf('Context ported')).toBeGreaterThan(
+      firstCodexPrompt.indexOf('IBR FOUNDATION'),
+    );
+    expect(firstCodexPrompt.indexOf('repeat it')).toBeGreaterThan(
+      firstCodexPrompt.indexOf('Context ported'),
+    );
+    expect(firstCodexPrompt.match(/IBR FOUNDATION/g)).toHaveLength(1);
+    firstCodex.emit({ kind: 'session-end', reason: 'completed' });
+
+    const secondClaude = new ClaudeMockBackend();
+    session.swapBackend(secondClaude, 'claude');
+    session.send('through Claude');
+    expect(secondClaude.sent[0]?.match(/IBR FOUNDATION/g)).toBeNull();
+    secondClaude.emit({ kind: 'session-end', reason: 'completed' });
+
+    const secondCodex = new CodexMockBackend();
+    session.swapBackend(secondCodex, 'codex');
+    session.send('back to Codex');
+    expect(secondCodex.sent[0]?.match(/IBR FOUNDATION/g)).toHaveLength(1);
+  });
+
+  test('a workspace without IBR records the unavailable decision', () => {
+    const backend = new MockAgentBackend.Class();
+    const session = new AgentSession.Class(
+      backend,
+      'claude',
+      '/workspace-without-ibr',
+      null,
+    );
+
+    expect(session.ibrFoundationState).toBe('unavailable');
+    expect(session.ibrFoundationPath).toBeNull();
+  });
+
   test('swapBackend is refused while a turn is busy (switch only at rest) and does not leak', () => {
     const { session } = makeSession();
     session.send('go'); // now streaming/busy

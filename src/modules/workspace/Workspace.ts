@@ -1,5 +1,5 @@
 import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, type Ref } from 'vue';
 import { Editor } from '../editor/Editor';
 import { OpenBufferSet } from './OpenBufferSet';
 import {
@@ -124,6 +124,15 @@ class $Workspace {
     // (emptyEditor) are retro-attached there.
     if (this.settingsSource)
       editor.attachWordWrap(this.settingsSource.wordWrap);
+    if (this.inlineRewriteEnabledSource) {
+      editor.attachInlineRewrite(
+        this.inlineRewriteEnabledSource,
+        () =>
+          (this.inlineRewriteEligibility?.() ?? false) &&
+          this.focus.value === 'editor' &&
+          this.editorSurfaces.activeDocumentIsKeyboardTarget,
+      );
+    }
     return editor;
   }
   protected createNavigationHistory() {
@@ -480,6 +489,27 @@ class $Workspace {
   // ceiling / gain / friction from the reactive Settings store so the settings panel LIVE-APPLIES
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default.
   protected settingsSource: Settings.Instance | null = null;
+  protected inlineRewriteEnabledSource: Ref<boolean> | null = null;
+  protected inlineRewriteEligibility: (() => boolean) | null = null;
+
+  attachInlineRewrite(enabled: Ref<boolean>, eligibility: () => boolean): void {
+    this.inlineRewriteEnabledSource = enabled;
+    this.inlineRewriteEligibility = eligibility;
+    const attachEditor = (editor: Editor.Instance): void =>
+      editor.attachInlineRewrite(
+        enabled,
+        () =>
+          eligibility() &&
+          this.focus.value === 'editor' &&
+          this.editorSurfaces.activeDocumentIsKeyboardTarget,
+      );
+    attachEditor(this.emptyEditor);
+    for (const entry of this.buffers.entries.value) {
+      const editor = entry.buffer as Editor.Instance | null;
+      if (editor) attachEditor(editor);
+    }
+  }
+
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
     // Retro-attach the global wordWrap source to editors already built (the field-init empty editor +
@@ -535,6 +565,7 @@ class $Workspace {
   /** Release per-root live resources while preserving this workspace's resumable model state. */
   suspendOwnedResources(): void {
     this.resourcesSuspended = true;
+    this.editor.inlineRewrite.dismiss();
     for (const contribution of this.contributions) contribution.suspended();
     // A suspended (background) workspace holds no language-server subprocess; resuming recreates
     // the client lazily through the buffer seams / the next semantic request.
@@ -560,6 +591,7 @@ class $Workspace {
     void this.languageClientInstance?.dispose();
     this.languageClientInstance = null;
     this.buffers.disposeAll();
+    this.emptyEditor.dispose();
   }
 
   toggleFocus(): void {

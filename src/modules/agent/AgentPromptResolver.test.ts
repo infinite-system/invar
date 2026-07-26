@@ -3,6 +3,41 @@ import { Files } from '../system/Files';
 import { AgentPromptResolver } from './AgentPromptResolver';
 
 describe('AgentPromptResolver', () => {
+  test('lists valid workspace skills in stable name order', () => {
+    const workspaceRoot = Files.Class.createTemporaryDirectory(
+      'invar-agent-skills-',
+    );
+    try {
+      Files.Class.write(
+        Files.Class.join(
+          workspaceRoot,
+          '.claude',
+          'skills',
+          'zebra',
+          'SKILL.md',
+        ),
+        'No frontmatter.',
+      );
+      Files.Class.write(
+        Files.Class.join(
+          workspaceRoot,
+          '.claude',
+          'skills',
+          'ivue',
+          'SKILL.md',
+        ),
+        '---\ndescription: reactive guidance\n---\nUse ivue.',
+      );
+
+      expect(AgentPromptResolver.Class.skills(workspaceRoot)).toEqual([
+        { name: 'ivue', description: 'reactive guidance' },
+        { name: 'zebra', description: '' },
+      ]);
+    } finally {
+      Files.Class.removeDirectory(workspaceRoot);
+    }
+  });
+
   test('resolves a project skill body before a same-named command and appends arguments', () => {
     const workspaceRoot =
       Files.Class.createTemporaryDirectory('invar-agent-skill-');

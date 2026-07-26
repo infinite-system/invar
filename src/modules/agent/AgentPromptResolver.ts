@@ -5,6 +5,34 @@ import { Files } from '../system/Files';
 // invariant: File access is confined to a single root (src/modules/system/system.invariants.md)
 
 class $AgentPromptResolver {
+  static skills(workspaceRoot: string): readonly AgentPromptSkill[] {
+    const skillRoot = Files.Class.confineToRoot(
+      workspaceRoot,
+      '.claude/skills',
+    );
+    if (skillRoot === null) return [];
+    const skills: AgentPromptSkill[] = [];
+    for (const entry of Files.Class.list(skillRoot)) {
+      if (!entry.isDir || !/^[A-Za-z0-9_-]+$/.test(entry.name)) continue;
+      const skillPath = Files.Class.confineToRoot(
+        skillRoot,
+        `${entry.name}/SKILL.md`,
+      );
+      if (skillPath === null || !Files.Class.exists(skillPath)) continue;
+      try {
+        skills.push({
+          name: entry.name,
+          description: this.frontmatterDescription(Files.Class.read(skillPath)),
+        });
+      } catch {
+        continue;
+      }
+    }
+    return skills.sort((first, second) =>
+      first.name.localeCompare(second.name),
+    );
+  }
+
   static resolve(workspaceRoot: string, prompt: string): string {
     const invocation = /^\/(\S+)(?:\s+([\s\S]*))?$/.exec(prompt);
     if (!invocation) return prompt;
@@ -71,6 +99,18 @@ class $AgentPromptResolver {
       .trim();
   }
 
+  protected static frontmatterDescription(instruction: string): string {
+    const lines = instruction.replace(/^\uFEFF/, '').split(/\r?\n/);
+    if (lines[0] !== '---') return '';
+    const closingDelimiterIndex = lines.indexOf('---', 1);
+    if (closingDelimiterIndex < 0) return '';
+    for (const line of lines.slice(1, closingDelimiterIndex)) {
+      const match = /^description:\s*(.*)$/.exec(line);
+      if (match) return (match[1] ?? '').trim();
+    }
+    return '';
+  }
+
   protected static withArguments(
     instructionBody: string,
     argumentsText: string,
@@ -85,3 +125,8 @@ export namespace AgentPromptResolver {
   export const $Class = $AgentPromptResolver;
   export const Class = Static($Class);
 }
+
+export type AgentPromptSkill = Readonly<{
+  name: string;
+  description: string;
+}>;

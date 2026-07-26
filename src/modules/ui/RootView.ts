@@ -1324,8 +1324,37 @@ class $RootView {
       // (project › dir › file). Keep the border BOX (codeBody coords stay stable) but drop the redundant
       // '╭─README.md' legend. Safe: the app's find/paste source identity is the document PATH, never this
       // display title — the only thing that ever keyed off the legend text was a test probe (now fixed).
-      editorArea.title = '';
-      editorArea.titleColor = sourcePaneFocused ? palette.accent : palette.dim;
+      const inlineRewrite = workspaceSet.active.editor.inlineRewrite;
+      const rewriteCandidate = inlineRewrite.selectedCandidate;
+      if (rewriteCandidate) {
+        const acceptHint = keybindings.bindingHint(
+          'inlineRewrite.accept',
+          'editor',
+        );
+        const rejectHint = keybindings.bindingHint(
+          'inlineRewrite.reject',
+          'editor',
+        );
+        const nextHint = keybindings.bindingHint(
+          'inlineRewrite.next',
+          'editor',
+        );
+        const previousHint = keybindings.bindingHint(
+          'inlineRewrite.previous',
+          'editor',
+        );
+        const nextKeyHint = nextHint.split('+').at(-1) ?? nextHint;
+        editorArea.title =
+          ` AI ${inlineRewrite.selectedCandidateIndex.value + 1}/` +
+          `${inlineRewrite.candidates.value.length} · ${acceptHint} accept · ` +
+          `${rejectHint} reject · ${previousHint}/${nextKeyHint} vary `;
+        editorArea.titleColor = palette.inlineRewriteForeground;
+      } else {
+        editorArea.title = '';
+        editorArea.titleColor = sourcePaneFocused
+          ? palette.accent
+          : palette.dim;
+      }
       // A surface presenting something other than the active buffer has no editor buffer tabs —
       // blank the buffer tab strip (keep its ROW so the panes don't jump when toggling in and out).
       const activeDocumentIsPresented =
@@ -1697,6 +1726,7 @@ class $RootView {
         !activeFileIsImage &&
         workspaceSet.active.focus.value === 'editor' &&
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        !editor.inlineRewrite.visible &&
         !commands.open.value
           ? editorController.visualPosition(cursorLine, editor.cursor.col.value)
           : null;
@@ -1902,6 +1932,20 @@ class $RootView {
       }
       return headings;
     };
+    const focusedPanelCaretAnchor = (): {
+      column: number;
+      row: number;
+    } | null => {
+      if (!panelHost.visible.value || !panelHost.focused.value) return null;
+      const focusedIndex = panelHost.focusedIndex.value;
+      const body = panelCellViews[focusedIndex]?.body;
+      const caret = panelHost.focusedContent?.caret?.() ?? null;
+      if (!body || !caret) return null;
+      return {
+        column: Number(body.x) + caret.column,
+        row: Number(body.y) + caret.row,
+      };
+    };
     update();
     return {
       update,
@@ -1947,6 +1991,7 @@ class $RootView {
       panelViewportColumns,
       panelViewportRows,
       panelContainsPoint,
+      focusedPanelCaretAnchor,
       panelHeadingGeometry,
       panelContentsListRegion: () => ({
         left:
@@ -2075,6 +2120,7 @@ export interface RootView {
   panelViewportRows(): number;
   /** True when the screen cell (x,y) falls inside the visible panel box (focus-follows-click). */
   panelContainsPoint(x: number, y: number): boolean;
+  focusedPanelCaretAnchor(): { column: number; row: number } | null;
   panelHeadingGeometry(): readonly PanelHeadingGeometry[];
   panelContentsListRegion(): {
     left: number;

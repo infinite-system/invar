@@ -32,6 +32,7 @@ class $CommitExpansion {
   protected expansionOrder: string[] = [];
   /** Per-sha stale-supersession tickets: a collapse (or re-expand) invalidates an in-flight fetch. */
   protected fetchTickets = new Map<string, number>();
+  protected fetchPromises = new Map<string, Promise<void>>();
   protected nextTicket = 0;
 
   protected static get defaultCapacity(): number {
@@ -63,6 +64,7 @@ class $CommitExpansion {
    */
   async expand(commitIndex: number, sha: string): Promise<void> {
     if (this.isExpanded(sha)) {
+      await this.fetchPromises.get(sha);
       return;
     }
     while (this.expansionOrder.length >= this.capacity) {
@@ -76,17 +78,18 @@ class $CommitExpansion {
     this.setEntry({ commitIndex, sha, files: null });
     const ticket = ++this.nextTicket;
     this.fetchTickets.set(sha, ticket);
-    const files = await this.fetchFiles(sha);
-    if (this.fetchTickets.get(sha) !== ticket) {
-      return;
+    const fetchPromise = this.completeExpansion(commitIndex, sha, ticket);
+    this.fetchPromises.set(sha, fetchPromise);
+    await fetchPromise;
+    if (this.fetchPromises.get(sha) === fetchPromise) {
+      this.fetchPromises.delete(sha);
     }
-    this.fetchTickets.delete(sha);
-    this.setEntry({ commitIndex, sha, files });
   }
 
   /** Collapse: drop the entry AND its cached files (evict on collapse — re-expanding refetches). */
   collapse(sha: string): void {
     this.fetchTickets.delete(sha);
+    this.fetchPromises.delete(sha);
     this.expansionOrder = this.expansionOrder.filter(
       (openSha) => openSha !== sha,
     );
@@ -100,6 +103,7 @@ class $CommitExpansion {
   /** Drop everything (history changed / repository reset). In-flight fetches become inert. */
   reset(): void {
     this.fetchTickets.clear();
+    this.fetchPromises.clear();
     this.expansionOrder = [];
     if (this.entries.value.length > 0) {
       this.entries.value = [];
@@ -113,6 +117,17 @@ class $CommitExpansion {
     nextEntries.push(entry);
     nextEntries.sort((first, second) => first.commitIndex - second.commitIndex);
     this.entries.value = nextEntries;
+  }
+
+  protected async completeExpansion(
+    commitIndex: number,
+    sha: string,
+    ticket: number,
+  ): Promise<void> {
+    const files = await this.fetchFiles(sha);
+    if (this.fetchTickets.get(sha) !== ticket) return;
+    this.fetchTickets.delete(sha);
+    this.setEntry({ commitIndex, sha, files });
   }
 
   /**

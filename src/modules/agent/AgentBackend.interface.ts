@@ -13,6 +13,14 @@ import type { AgentEvent } from './AgentEvents.interface';
 /** A source of agent events. The single boundary between AgentSession and whatever produces the
  *  structured event stream (a real `claude` subprocess, the SDK, or a scripted test double). */
 export interface AgentBackend {
+  /**
+   * How this backend establishes the workspace IBR foundation. Claude appends
+   * it through its system-prompt mechanism; Codex needs AgentSession to
+   * prepend it to the first prompt sent to each fresh backend. An omitted
+   * declaration safely defaults to prompt prepending.
+   */
+  readonly ibrFoundationDelivery?:
+    'append-system-prompt' | 'prepend-prompt' | 'prepend-every-prompt';
   /** Submit a user turn. The backend responds by emitting events through the onEvent sink. */
   send(prompt: string): void;
   /** Register the sink for events coming FROM the agent. Called once by the owning AgentSession. */

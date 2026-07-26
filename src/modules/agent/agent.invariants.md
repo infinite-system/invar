@@ -289,6 +289,48 @@ deletion disagreeing with the editor for the same text; movement or deletion spl
 
 **Last refined:** 2026-07-25
 
+### Agent skill invocations use the composer popup
+
+**Invariant:** If the agent composer caret follows a slash token at the
+beginning of text or after whitespace, then matching workspace skills appear
+in the shared bounded-list popup and acceptance replaces only that token.
+
+**Scope:** `AgentComposer`, `AgentSkillPopup`, the focused agent input route,
+and project skills under `.claude/skills`. A slash inside a word and a caret
+outside the slash token are not invocation contexts.
+
+**Mechanism:** `AgentComposer.skillInvocation` recognizes the token and owns
+grapheme-safe replacement. `AgentPromptResolver.skills` confines and preloads
+the workspace skill list. `AgentSkillPopup` adapts those matches to one
+`BoundedListPopup` with its search row and backdrop disabled. The popup passes
+the composer's lower boundary into shared placement geometry, so available
+rows choose the dropup. Up and Down therefore use the bounded list's shared
+`ScrollPhysics`; Enter and pointer selection share its selection callback.
+Escape records the exact dismissed token without editing composer text.
+
+**Generates:** Live prefix filtering; caret-anchored dropup placement; keyboard
+and mouse selection; dismissal that remains closed until the invocation
+changes; one skill census for both suggestions and slash resolution.
+
+**Evidence:** `src/modules/agent/AgentComposer.test.ts`;
+`src/modules/agent/AgentPromptResolver.test.ts`;
+`src/modules/ui/BoundedListPopup.test.ts`;
+`scripts/harness/smoke-agent-skill-popup-harness.ts`.
+
+**Impossible if true:** A mid-word slash opening skill suggestions; Escape
+deleting the slash token; agent list navigation bypassing shared acceleration;
+the list painting below the composer when that region is outside the
+compositional placement boundary.
+
+**Verification:** `bun test src/modules/agent/AgentComposer.test.ts
+src/modules/agent/AgentPromptResolver.test.ts
+src/modules/ui/BoundedListPopup.test.ts && bun
+scripts/harness/smoke-agent-skill-popup-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Agent transcript scroll extent is position independent
 
 **Invariant:** For a fixed projected transcript and viewport geometry, every completed scroll frame
@@ -582,3 +624,49 @@ scripts/harness/smoke-agent-cancel-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-25
+
+### Every agent backend session begins from the IBR foundation
+
+**Invariant:** If a workspace provides `.claude/skills/ibr/IBR.md`, then each
+fresh backend session establishes that content before user or carried
+conversation context.
+
+**Scope:** `AgentIbrFoundation`, `AgentFactory`, `AgentSession`, Claude CLI and
+SDK backends, Codex stream and app-server backends, and engine swaps. A
+workspace without the file records an unavailable decision and proceeds
+silently.
+
+**Mechanism:** `AgentIbrFoundation` confines and resolves the file once for
+factory construction. Claude CLI receives
+`--append-system-prompt-file <resolved-path>` and the SDK appends the content
+to its preset system prompt. Those backends declare append delivery.
+`AgentSession` treats Codex and undeclared backends as prepend delivery: the
+first prompt to every newly wired backend is IBR, then the bounded serialized
+transcript, then the new user prompt. Stateless Codex CLI execution declares
+that every prompt starts a fresh session and receives IBR every time. IBR is
+delivery machinery rather than a transcript entry, so serialization and
+repeated swaps cannot stack copies. The session retains the resolved path and
+delivery state.
+
+**Generates:** Claude CLI and SDK parity; a fresh Codex foundation; ordered
+Claude-to-Codex continuation; silent support for repositories without IBR; a
+dedupe rule independent of switch count.
+
+**Evidence:** `src/modules/agent/AgentIbrFoundation.test.ts`;
+`src/modules/agent/CliStreamBackend.test.ts`;
+`src/modules/agent/SdkStreamBackend.test.ts`;
+`src/modules/agent/AgentSession.test.ts`.
+
+**Impossible if true:** A Codex continuation whose context lacks IBR at
+position zero while the workspace provides IBR.md; a Claude process missing
+the append-system-prompt file flag; a Claude-to-Codex-to-Claude sequence
+stacking IBR in transcript context.
+
+**Verification:** `bun test src/modules/agent/AgentIbrFoundation.test.ts
+src/modules/agent/CliStreamBackend.test.ts
+src/modules/agent/SdkStreamBackend.test.ts
+src/modules/agent/AgentSession.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26

@@ -42,6 +42,24 @@ describe('BoundedListPopup', () => {
     expect(geometry.bottomRow).toBeLessThan(23);
   });
 
+  test('respects a caller-provided available bottom boundary', () => {
+    const geometry = BoundedListPopup.$Class.layoutGeometry({
+      screenWidth: 80,
+      screenHeight: 40,
+      anchor: { column: 4, row: 34 },
+      desiredBoxWidth: 24,
+      itemCount: 1,
+      searchVisible: false,
+      iconColumns: 0,
+      scrollbarThickness: 1,
+      firstVisible: 0,
+      availableBottomExclusive: 34,
+    });
+
+    expect(geometry.opensUpward).toBe(true);
+    expect(geometry.bottomRow).toBeLessThan(34);
+  });
+
   test('clamps the visible window and shares its rows with hit geometry', () => {
     const geometry = BoundedListPopup.$Class.layoutGeometry({
       screenWidth: 40,
