@@ -192,7 +192,9 @@ test('the host floor names NO contributed-surface action — the surface owns it
   const floorActions = KeybindingDefaults.Class.canonicalBindings.map(
     (binding) => binding.action,
   );
-  expect(floorActions.filter((action) => action.startsWith('diff.'))).toEqual([]);
+  expect(floorActions.filter((action) => action.startsWith('diff.'))).toEqual(
+    [],
+  );
 });
 
 test('every adopted text input receives the same complete binding table', () => {
