@@ -822,3 +822,37 @@ contention; the discriminator is a solo re-run on an idle machine and costs abou
 fixture "fix" that shortened a directory prefix silently deleted the PRECONDITION of an ellipsis
 assertion — the assertion still ran and could no longer fail, which is a ratchet hole a counter cannot
 see.
+
+## 2026-07-25 23:15 — the PTY deadlock, and what a shared seam's defect looks like from two sides
+Root-caused the multi-minute paste stall that cost roughly forty minutes of gate wall-clock across four
+runs. `OpenPty.write` performs a SYNCHRONOUS BLOCKING `write(2)` loop through FFI on a master descriptor
+that is never set `O_NONBLOCK`. The deadlock is textbook once seen: the harness blocks writing 64KB → the
+application reads some and RENDERS, writing output back to the slave → the slave's output buffer fills
+because the harness is stuck in `write()` and not reading → the application blocks writing and therefore
+STOPS READING INPUT → the harness never drains. Both processes idle at 0% CPU indefinitely; the
+25-minute instance only ended when I killed it.
+
+**Two corrections to my own claims, in opposite directions, both worth keeping.** I first said this "may
+be a product bug — a real user pasting 64KB sees the editor freeze". FALSE for that scenario: a real
+terminal emulator drains continuously, so the deadlock cannot form. But then: `OpenPty` is a SHARED SEAM
+used by `OpenPtyBackend`, the app's own integrated terminal. A user pasting into the terminal pane makes
+this same blocking write toward a child shell, and if that child is not draining (stopped process, paused
+pager, flow control) the app's render loop blocks and the UI freezes. So the product risk is real, in a
+place I had not looked, and the fix belongs at the seam rather than at either caller.
+
+Generalizable: **when a defect lives in a shared seam, enumerate its CONSUMERS before deciding whether it
+is a test problem or a product problem.** I nearly filed this as harness-only because that is where it
+was observed. The same code with the same bug means the same failure, and the consumer list is the cheap
+way to find the second face of it.
+
+**The counterintuitive part of the fix, recorded so nobody repeats the wrong half:** chunking the write
+does NOTHING while the descriptor blocks — each chunk still blocks once the buffer is full. Non-blocking
+mode is the load-bearing half, and chunking is only how you make progress once you have it. A drain queue
+must also be scheduled ONLY while it has work, because a polling interval at rest would break the
+idle-quiescence contract.
+
+**On mitigation versus fix.** Moving paste to the quiet-serial tail bought back minutes per gate for two
+seconds of tail, and it was the right immediate call. It also would have been an easy place to stop:
+the symptom was gone from the metric I was watching. The tell that it was a mitigation and not a fix was
+that it explained nothing — a reclassification that makes a number better while the mechanism stays
+unknown should be labelled as such at the moment you land it, so the real work does not get closed.
