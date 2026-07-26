@@ -1484,30 +1484,36 @@ try {
     maximumHorizontalThumb !== null,
     'editor horizontal viewport reaches the full-document right extent',
   );
-  let deepWidestLineReached = false;
-  for (let wheelEvent = 1; wheelEvent <= 180; wheelEvent++) {
-    const currentSnapshot = overflowDriver.snapshot();
-    if (currentSnapshot.findText('DEEP-WIDEST-END-MARKER') !== null) {
-      snapshot = currentSnapshot;
-      deepWidestLineReached = true;
-      break;
-    }
-    const nextCompletedFrame =
-      overflowDriver.awaitNextCompletedFrameSnapshot(2_000);
-    overflowDriver.sendMouse({
+  let deepWidestLineSnapshot: HarnessSnapshot.Model | null = null;
+  const deepWidestLineObservation = overflowDriver
+    .awaitGridCondition(
+      'the deep widest line is visible during the wheel drive',
+      (candidate) => candidate.findText('DEEP-WIDEST-END-MARKER') !== null,
+      15_000,
+    )
+    .then((candidate) => {
+      deepWidestLineSnapshot = candidate;
+      return candidate;
+    });
+  for (
+    let wheelEventNumber = 1;
+    wheelEventNumber <= 180 && deepWidestLineSnapshot === null;
+    wheelEventNumber++
+  ) {
+    // Sustain the drive while the state observer watches completed frames.
+    // Cell quantization may legitimately emit no terminal diff for any one
+    // impulse, so no per-input frame existence is assumed.
+    overflowDriver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
       column: 80,
       row: 10,
       direction: 'down',
     });
-    snapshot = (await nextCompletedFrame).snapshot;
-    if (snapshot.findText('DEEP-WIDEST-END-MARKER') !== null) {
-      deepWidestLineReached = true;
-      break;
-    }
+    await Bun.sleep(20);
   }
+  snapshot = await deepWidestLineObservation;
   requireCondition(
-    deepWidestLineReached,
+    deepWidestLineSnapshot !== null,
     'the line-400 widest tail is visible at the unchanged full-document horizontal extent',
   );
 

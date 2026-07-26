@@ -18,18 +18,20 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
 Per-frame glide behaviour on the real app through the PTY. Reports, per gesture: moving frame count,
-total distance, input-write-to-first-frame latency, max/mean frame delta, peak velocity, fps, and
-bytes per frame. Reads the lowest visible fixture line out of every completed synchronized frame, so
-each sample IS that frame's scrollTop with no publish race. Runs under the machine-wide
-quiet-exclusive lock.
+total distance, input-write-to-first-frame latency, max/mean frame delta, peak velocity, whole-glide
+fps, sustained-fast fps, and bytes per frame. Reads the lowest visible fixture line out of every
+completed synchronized frame, so each sample IS that frame's scrollTop with no publish race. Runs
+under the machine-wide quiet-exclusive lock.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
-KNOWN RESULTS: a fling runs 19-23 fps against a declared 30; and the same gesture yields ~48 rows
-from idle but ~36 after a previous fling (a 45% peak-velocity deficit, because gain derives from a
-decaying velocity). Both are PRE-EXISTING and intended-feel questions, not regressions.
+KNOWN RESULTS: before the 2026-07-26 cadence and gesture-gain repair, a fling ran 19-23 whole-glide
+fps and the same gesture yielded ~48 rows from idle but ~36 after a previous fling. Afterward,
+identical gestures yield 48 rows and the sustained-fast segment runs 29.9-30.1 fps with 3,107 mean
+bytes per frame.
 CAUTION: send a gesture as ONE PTY write. Split across 12 writes the identical gesture lands on one
-of three quantized outcomes ±35%, because progressive gain compounds from current velocity and the
-chunk boundary decides the peak.
+of three quantized outcomes ±35%, because the chunk boundary decides whether one physical gesture
+straddles input frames. Whole-glide fps includes the slow tail, where sub-two-row movement naturally
+produces unchanged render ticks on a cell grid; use sustained-fast fps for renderer cadence.
 
 ### `bun scripts/harness/measure-completion-list-latency.ts`
 Keystroke-to-visible and wheel-to-visible latency for the completion popup at 10 / 1,000 / 5,000

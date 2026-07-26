@@ -75,6 +75,7 @@ interface GestureMeasurement {
   readonly peakVelocityRowsPerSecond: number;
   readonly glideDurationMilliseconds: number;
   readonly framesPerSecond: number;
+  readonly sustainedFastFramesPerSecond: number;
   // A real terminal converts bytes per frame into frame TIME: the emulator has to parse and paint
   // every byte before the next frame can land. Frame cost is therefore the quantity that turns into
   // "fewer, larger steps" outside the harness, where the emulator is not free.
@@ -161,6 +162,19 @@ function summarize(
       ? samples.at(-1)!.byteArrivalTimestampMilliseconds -
         samples[0]!.byteArrivalTimestampMilliseconds
       : 0;
+  // Below two rows per completed frame, cell-grid quantization naturally produces unchanged render
+  // ticks and slower row-crossing intervals. The fast segment ends at the final >=2-row crossing,
+  // so its cadence measures the renderer while motion is fast enough to change every frame.
+  const sustainedFastFrameEndIndex = frameDeltas.reduce(
+    (lastFastFrameIndex, deltaRows, frameDeltaIndex) =>
+      Math.abs(deltaRows) >= 2 ? frameDeltaIndex + 1 : lastFastFrameIndex,
+    0,
+  );
+  const sustainedFastDurationMilliseconds =
+    sustainedFastFrameEndIndex > 0
+      ? samples[sustainedFastFrameEndIndex]!.byteArrivalTimestampMilliseconds -
+        samples[0]!.byteArrivalTimestampMilliseconds
+      : 0;
   return {
     positions,
     inputToFirstFrameMilliseconds:
@@ -188,6 +202,11 @@ function summarize(
       glideDurationMilliseconds > 0
         ? ((samples.length - 1) * 1000) / glideDurationMilliseconds
         : 0,
+    sustainedFastFramesPerSecond:
+      sustainedFastDurationMilliseconds > 0
+        ? (sustainedFastFrameEndIndex * 1000) /
+          sustainedFastDurationMilliseconds
+        : 0,
     meanFrameByteCount:
       frameByteCounts.length === 0
         ? 0
@@ -200,12 +219,12 @@ function summarize(
   };
 }
 
-// Demand-driven rendering makes "no frame arrives" the QUIESCENCE CONDITION, not a silence
-// assumption: while any glide is active the app holds a live render request, so frames keep coming;
-// the moment every animation settles the request is dropped and frame production stops. Draining
-// until a frame wait expires therefore observes rest itself, and it observes it identically at every
-// commit — unlike the `workspaceScrollMomentumAtRest` status field, which does not exist in the
-// earlier builds this instrument also has to run against.
+// Demand-driven rendering makes "no frame arrives" the QUIESCENCE CONDITION,
+// not a silence assumption: while any glide is active the app cadence requests
+// frames; the moment every animation settles the cadence stops. Draining until
+// a frame wait expires therefore observes rest itself, and it observes it
+// identically at every commit — unlike the `workspaceScrollMomentumAtRest`
+// status field, which does not exist in historical builds this measures.
 async function drainToQuiescence(driver: PtyTestDriver.Model): Promise<void> {
   while (true) {
     try {
@@ -380,6 +399,7 @@ try {
         `meanDelta=${measurement.meanMovingFrameDeltaRows.toFixed(2)} ` +
         `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
         `fps=${measurement.framesPerSecond.toFixed(1)} ` +
+        `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
         `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
         `maxBytes=${measurement.maximumFrameByteCount}`,
     );

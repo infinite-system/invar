@@ -3,14 +3,15 @@
 // crossing-regularity invariant: device-pixel → cell-row). We model velocity (rows/sec) that
 // decays over time; a constant velocity emits row-crossings at a constant frame interval (regular),
 // and we HALT below a threshold rather than creep the last rows slowly (sub-row ticking is
-// impossible per the invariant — don't chase it). Pure: dt is passed in, so it is unit-testable
-// with no clock and no renderer.
+// impossible per the invariant — don't chase it). Frame time and impulse time are injectable, so
+// the physics remain unit-testable with no renderer.
 //
 // Stateless capability (project.conventions.md new-file rule): the physics are pure statics published
 // through the Static() seam like ScrollbarGeometry; the momentum VALUE (ScrollMomentum) is plain data
 // each caller holds in its own reactive cell.
 import { Static } from 'ivue/extras';
 
+// invariant: Fling gain comes from the current gesture (src/modules/ui/ui.invariants.md)
 class $Momentum {
   protected static get $defaultOptions(): MomentumOptions {
     const defaultOptions: MomentumOptions = {
@@ -44,7 +45,11 @@ class $Momentum {
   }
 
   protected static get $atRest(): ScrollMomentum {
-    const atRest: ScrollMomentum = { velocity: 0, residual: 0 };
+    const atRest: ScrollMomentum = {
+      velocity: 0,
+      residual: 0,
+      restEquivalentGestureVelocity: 0,
+    };
     Object.defineProperty(this, '$atRest', {
       configurable: true,
       value: atRest,
@@ -77,42 +82,81 @@ class $Momentum {
     return 3;
   }
 
+  /** Wheel impulses inside this interval belong to one physical gesture. Terminal input has no
+   *  gesture-end event, so cadence supplies the same boundary that key repeat inference uses. */
+  protected static get gestureContinuationWindowMilliseconds(): number {
+    return 150;
+  }
+
   /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.
    *  Gain is PROGRESSIVE: a notch from rest lands small (precise single-step feel) and a sustained
-   *  notch train compounds toward the cap, so fluidity is preserved while first steps stay small.
-   *  A from-rest notch is floored at the velocity that glides ONE full row before the halt
-   *  threshold eats it — a wheel notch that visibly does nothing is not precision, it is a dead
-   *  input. */
+   *  gesture compounds toward the cap. The gain curve reads only the current gesture's
+   *  rest-equivalent velocity; physical velocity still composes with any previous glide. A
+   *  from-rest notch is floored at the velocity that glides ONE full row before the halt threshold
+   *  eats it — a wheel notch that visibly does nothing is not precision, it is a dead input. */
   static addImpulse(
     momentum: ScrollMomentum,
     deltaRows: number,
     options: MomentumOptions = this.defaultOptions,
+    currentTimestampMilliseconds = performance.now(),
   ): ScrollMomentum {
     // A notch AGAINST the current glide is a precision intent — stop and turn. Under ramped gain a
     // low-velocity reversal notch only subtracts a fraction of the impulse, so whether the sign
     // flips would depend on how much glide remains: a timing-dependent, sometimes-dead reversal.
     // Halting and stepping from rest makes reversal deterministic and immediate.
     if (
-      momentum.velocity !== 0
-      && deltaRows !== 0
-      && Math.sign(deltaRows) !== Math.sign(momentum.velocity)
+      momentum.velocity !== 0 &&
+      deltaRows !== 0 &&
+      Math.sign(deltaRows) !== Math.sign(momentum.velocity)
     ) {
-      return this.addImpulse(this.atRest, deltaRows, options);
+      return this.addImpulse(
+        this.atRest,
+        deltaRows,
+        options,
+        currentTimestampMilliseconds,
+      );
     }
     const gainRampCeiling = options.impulse * this.gainRampNotchSpan;
-    const gainScale = this.initialGainFraction
-      + (1 - this.initialGainFraction)
-        * Math.min(1, Math.abs(momentum.velocity) / gainRampCeiling);
-    let velocity = momentum.velocity + deltaRows * options.impulse * gainScale;
-    if (momentum.velocity === 0 && deltaRows !== 0) {
+    const elapsedSincePreviousImpulseMilliseconds =
+      currentTimestampMilliseconds -
+      (momentum.lastImpulseTimestampMilliseconds ?? Number.NEGATIVE_INFINITY);
+    const gestureContinues =
+      elapsedSincePreviousImpulseMilliseconds >= 0 &&
+      elapsedSincePreviousImpulseMilliseconds <
+        this.gestureContinuationWindowMilliseconds;
+    const restEquivalentGestureVelocity = gestureContinues
+      ? (momentum.restEquivalentGestureVelocity ?? 0)
+      : 0;
+    const gainScale =
+      this.initialGainFraction +
+      (1 - this.initialGainFraction) *
+        Math.min(1, Math.abs(restEquivalentGestureVelocity) / gainRampCeiling);
+    const curveGainedVelocity = deltaRows * options.impulse * gainScale;
+    let restEquivalentGestureVelocityAfterImpulse =
+      restEquivalentGestureVelocity + curveGainedVelocity;
+    if (!gestureContinues && deltaRows !== 0) {
       // Distance to halt from v0 is (v0 - stopVelocity) / -ln(decayPerSec); require >= 1 row.
       const decayRatePerSecond = -Math.log(options.decayPerSec);
       const singleRowVelocity = options.stopVelocity + decayRatePerSecond;
-      if (Math.abs(velocity) < singleRowVelocity) {
-        velocity = Math.sign(deltaRows) * singleRowVelocity;
+      if (
+        Math.abs(restEquivalentGestureVelocityAfterImpulse) < singleRowVelocity
+      ) {
+        restEquivalentGestureVelocityAfterImpulse =
+          Math.sign(deltaRows) * singleRowVelocity;
       }
     }
-    return { velocity: Math.max(-options.max, Math.min(options.max, velocity)), residual: momentum.residual };
+    const gainedPhysicalVelocity =
+      restEquivalentGestureVelocityAfterImpulse - restEquivalentGestureVelocity;
+    const velocity = momentum.velocity + gainedPhysicalVelocity;
+    return {
+      velocity: Math.max(-options.max, Math.min(options.max, velocity)),
+      residual: momentum.residual,
+      restEquivalentGestureVelocity: Math.max(
+        -options.max,
+        Math.min(options.max, restEquivalentGestureVelocityAfterImpulse),
+      ),
+      lastImpulseTimestampMilliseconds: currentTimestampMilliseconds,
+    };
   }
 
   /**
@@ -135,7 +179,16 @@ class $Momentum {
       velocity = 0;
       residual = 0;
     }
-    return { momentum: { velocity, residual }, rows };
+    return {
+      momentum: {
+        velocity,
+        residual,
+        restEquivalentGestureVelocity: momentum.restEquivalentGestureVelocity,
+        lastImpulseTimestampMilliseconds:
+          momentum.lastImpulseTimestampMilliseconds,
+      },
+      rows,
+    };
   }
 
   /** Immediately halt (adopt-and-stop for a programmatic jump — One-Writer-Per-Regime). */
@@ -156,6 +209,11 @@ export namespace Momentum {
 export interface ScrollMomentum {
   velocity: number; // rows per second (sign = direction); 0 = at rest
   residual: number; // fractional rows carried between frames [0,1)
+  // Gain-curve input accumulated from notches in the current physical gesture. Optional so external
+  // plain values created before this field existed enter honestly at rest-equivalent gain.
+  restEquivalentGestureVelocity?: number;
+  // Input-cadence boundary for the gain accumulator. It never participates in physical velocity.
+  lastImpulseTimestampMilliseconds?: number;
 }
 
 export interface MomentumOptions {

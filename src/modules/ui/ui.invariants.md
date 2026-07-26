@@ -976,6 +976,43 @@ scripts/harness/smoke-terminal-harness.ts`.
 
 **Last refined:** 2026-07-26
 
+### Fling gain comes from the current gesture
+
+**Invariant:** If a wheel gesture adds impulses while velocity remains from an earlier glide, then
+the progressive gain scale comes only from the current gesture's rest-equivalent impulse sequence,
+while the gained velocity still composes with the residual physical velocity.
+
+**Scope:** `Momentum.addImpulse` for every horizontal and vertical wheel-momentum consumer. Contrary
+direction input still halts and restarts, and direct or programmatic scroll still adopts and stops.
+
+**Mechanism:** `ScrollMomentum.restEquivalentGestureVelocity` accumulates only impulses inside the
+150 ms input-cadence window identified by `lastImpulseTimestampMilliseconds`. `addImpulse` reads that
+value for progressive gain and adds the result to physical `velocity`; `stepMomentum` decays only the
+physical velocity and preserves the gesture accumulator until cadence starts a new gesture.
+
+**Generates:** Identical gesture gain from rest or during a decaying glide; preserved momentum
+composition; one gain derivation shared by every `Momentum` consumer.
+
+**Rejected alternatives:** Derive gain from physical velocity — decay from the previous fling changes
+the next gesture's curve. Reset gain on a rendered frame — one PTY write may be parsed across frames,
+so renderer timing would split one physical gesture.
+
+**Evidence:** `src/modules/system/Momentum.ts`;
+`src/modules/system/Momentum.test.ts` (`a follow-on gesture derives gain from rest while composing
+velocity`); `scripts/harness/measure-scroll-smoothness.ts`.
+
+**Impossible if true:** Two identical same-direction gestures receiving different gain because one
+started during residual glide; preserving equal gain by discarding the residual velocity instead of
+composing it.
+
+**Verification:** `bun test src/modules/system/Momentum.test.ts && bun
+scripts/harness/measure-scroll-smoothness.ts`; compare every follow-on gesture's
+`totalDistanceRows` with the first gesture within 10%.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Wheel impulses start their own frame sequence
 
 **Invariant:** If `ScrollableTextViewport.handleWheel` adds a momentum impulse, then the shared
@@ -1015,9 +1052,10 @@ scripts/behavioral-contracts.sh`
 ### A fast glide crosses rows in many small steps
 
 **Invariant:** If a wheel gesture puts a pane's momentum regime into a fast glide, then the travel
-arrives as MANY SMALL per-frame row crossings and never as a few large jumps: no completed frame
-advances the offset by more than two frame budgets at the configured velocity ceiling, and the glide
-is carried by at least ten moving frames. Total displacement is NOT this property — the identical
+arrives as MANY SMALL per-frame row crossings and never as a few large jumps: its sustained fast
+segment runs at no less than 28 FPS against the declared 30 FPS target, no completed frame advances
+the offset by more than two frame budgets at the configured velocity ceiling, and the glide is
+carried by at least ten moving frames. Total displacement is NOT this property — the identical
 distance delivered in fewer, larger steps satisfies every displacement contract while the motion is
 visibly choppy and its effective velocity is lower.
 
@@ -1029,13 +1067,14 @@ settings-sourced step* governs how the gesture is measured first.
 
 **Mechanism:** three properties together bound the step size. `Momentum.stepMomentum` carries the
 fractional row `residual` inside the momentum value between frames, so a whole-row write never
-discards sub-row progress and no consumer may round the integrator's position. `Bootstrap`'s frame
-tick holds ONE live render request for as long as any glide is active, so a glide's frames are
-produced at `targetFps` instead of on demand. And `dtSeconds` is clamped to
+discards sub-row progress and no consumer may round the integrator's position. `Bootstrap` advances
+animation physics and requests a one-shot render from one absolute-deadline cadence timer; each
+deadline advances by `1000 / renderer.targetFps`, so timer overshoot and frame work shorten the next
+wait instead of accumulating drift. `deltaTimeSeconds` is clamped to
 `MAXIMUM_DELTA_TIME_SECONDS`, so a resumed clock advances one frame's worth rather than the whole
-idle gap. Per-frame travel is therefore velocity ÷ cadence, and BOTH factors are declared values
-(`Settings.verticalFlingCeiling`, `createCliRenderer`'s `targetFps`) — which is what makes the bound
-computable from the app rather than fitted to an observation.
+idle gap. Per-frame travel is therefore velocity divided by cadence, and BOTH factors are declared
+values (`Settings.verticalFlingCeiling`, `createCliRenderer`'s `targetFps`) — which is what makes the
+bound computable from the app rather than fitted to an observation.
 
 **Generates:** motion that reads as continuous rather than as a sequence of jumps; a hard bound on how
 far one frame may teleport a viewport; a smoothness figure that is independent of displacement, so a
@@ -1046,13 +1085,16 @@ every completed synchronized frame of one fast gesture at the real PTY, and repo
 count, the per-frame delta distribution, the peak velocity and the distance. Driven on 2026-07-26 at
 six commits spanning 24 hours of history (`40d244b~1` through `e6450c6`), a 12-notch fling was carried
 by 17 to 19 moving frames with a largest single-frame step of 7 rows at every one of them. The
-`glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, the cadence floor
-and the travel floor.
+`glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, moving-frame
+floor, travel floor, 28 FPS sustained-fast cadence, and follow-on travel parity. After replacing the
+recursive live-loop delay with the absolute-deadline cadence on 2026-07-26, the standard gesture ran
+at 29.9 to 30.1 sustained-fast FPS with 3,107 mean bytes per frame.
 
 **Impossible if true:** a fling that covers its distance in a handful of large jumps; a renderer that
 writes a quantized copy of the momentum integrator's position back into the viewport each frame (that
 rounding both enlarges the steps and loses velocity, while leaving total displacement intact); a glide
-whose frames are produced on demand instead of held live.
+whose sustained fast segment falls below 28 FPS while the declared target remains 30 FPS; an idle
+animation timer that keeps producing frames after every animation settles.
 
 **Verification:** `bash scripts/behavioral-contracts.sh` (the `glide-smoothness` contract); `bun
 scripts/harness/measure-scroll-smoothness.ts` for the raw per-frame distribution.

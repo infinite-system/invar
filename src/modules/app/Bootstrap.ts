@@ -918,12 +918,15 @@ class $Bootstrap {
     let frame = 0;
     // Smooth-scroll animation clock. dt is clamped so a resume from idle (a "paused clock") advances
     // one frame's worth, not the whole idle gap — the paused-clock invariant.
-    let lastFrameMilliseconds = 0;
+    let lastAnimationTickMilliseconds = 0;
     const MAXIMUM_DELTA_TIME_SECONDS = 0.1; // seconds
     // Animation liveness: while ANY animation runs (any pane's wheel-momentum glide, drag-edge
-    // auto-scroll, tooltip dwell) we hold ONE live request so the render loop runs; at quiescence we
-    // drop it and the loop STOPS (frames and status writes cease — 'idle CPU above ~zero is forbidden').
-    let liveAnimationHeld = false;
+    // auto-scroll, tooltip dwell), one fixed cadence requests frames. The timer owns absolute
+    // deadlines, so frame-listener and paint work cannot accumulate into the next delay. At
+    // quiescence the timer stops (frames and status writes cease).
+    // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
+    let animationFrameCadenceTimer: ReturnType<typeof setTimeout> | null = null;
+    let nextAnimationFrameDeadlineMilliseconds = 0;
     // Last panel geometry pushed to the terminal — so the resize ioctl fires only on a real change.
     // The panel converge signature: total rows + each cell's id=width. Keyed on the LAYOUT, not just the
     // total width, so splitting/un-splitting/dragging the divider (which redistributes the SAME total
@@ -931,32 +934,29 @@ class $Bootstrap {
     // pre-split full width because the panel's outer width never changed.
     let lastPanelLayoutKey = '';
     let lastRightDockLayoutKey = '';
-    const syncAnimationLiveness = (animating: boolean): void => {
-      if (animating && !liveAnimationHeld) {
-        renderer.requestLive();
-        liveAnimationHeld = true;
-      } else if (!animating && liveAnimationHeld) {
-        renderer.dropLive();
-        liveAnimationHeld = false;
-        lastFrameMilliseconds = 0; // paused-clock: the next animation's first frame gets a fresh dt
+    const stopAnimationFrameCadence = (): void => {
+      if (animationFrameCadenceTimer !== null) {
+        clearTimeout(animationFrameCadenceTimer);
+        animationFrameCadenceTimer = null;
       }
+      // Paused-clock: the next animation's first tick gets a fresh delta.
+      lastAnimationTickMilliseconds = 0;
+      nextAnimationFrameDeadlineMilliseconds = 0;
     };
-    const frameTick = (): void => {
-      frame += 1;
-      // Drive every pane glide: step all momentum by real dt; the live request keeps frames coming
-      // while anything moves (including frames that advance 0 whole rows).
+
+    const advanceAnimationFrame = (): boolean => {
       const nowMilliseconds = performance.now();
       const deltaTimeSeconds =
-        lastFrameMilliseconds === 0
-          ? 1 / 30
+        lastAnimationTickMilliseconds === 0
+          ? 1 / renderer.targetFps
           : Math.min(
               MAXIMUM_DELTA_TIME_SECONDS,
-              (nowMilliseconds - lastFrameMilliseconds) / 1000,
+              (nowMilliseconds - lastAnimationTickMilliseconds) / 1000,
             );
-      lastFrameMilliseconds = nowMilliseconds;
+      lastAnimationTickMilliseconds = nowMilliseconds;
       let animating = false;
-      // All pane wheel-momentum regimes step here and each
-      // settles to EXACTLY zero, so `animating` returns to false at rest — quiescence preserved.
+      // All pane wheel-momentum regimes settle to EXACTLY zero, so `animating`
+      // returns to false at rest and quiescence is preserved.
       const workspaceScrollMomentumIsActive =
         workspaceSet.active.tickScrollAnimations(deltaTimeSeconds);
       animating = workspaceScrollMomentumIsActive || animating;
@@ -986,7 +986,37 @@ class $Bootstrap {
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
       animating = completionPopup.tick(deltaTimeSeconds) || animating;
       animating = view.tickOverlayScroll(deltaTimeSeconds) || animating;
-      syncAnimationLiveness(animating);
+      if (!animating) stopAnimationFrameCadence();
+      return animating;
+    };
+
+    const scheduleAnimationFrame = (): void => {
+      const frameIntervalMilliseconds = 1000 / renderer.targetFps;
+      const nowMilliseconds = performance.now();
+      if (nextAnimationFrameDeadlineMilliseconds === 0) {
+        nextAnimationFrameDeadlineMilliseconds =
+          nowMilliseconds + frameIntervalMilliseconds;
+      }
+      const delayMilliseconds = Math.max(
+        0,
+        nextAnimationFrameDeadlineMilliseconds - nowMilliseconds,
+      );
+      animationFrameCadenceTimer = setTimeout(() => {
+        animationFrameCadenceTimer = null;
+        nextAnimationFrameDeadlineMilliseconds += frameIntervalMilliseconds;
+        const animating = advanceAnimationFrame();
+        renderer.requestRender();
+        if (animating) scheduleAnimationFrame();
+      }, delayMilliseconds);
+    };
+
+    const frameTick = (): void => {
+      frame += 1;
+      // A demand-rendered input frame detects a newly active animation. Once
+      // active, the deadline timer owns both physics steps and render requests.
+      if (animationFrameCadenceTimer === null && advanceAnimationFrame()) {
+        scheduleAnimationFrame();
+      }
       // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
       // or its line count crosses a digit boundary; boot/resize alone goes stale). Mutating outside
       // the reactive effect: the write triggers one repaint and converges — no feedback loop.
@@ -1047,6 +1077,7 @@ class $Bootstrap {
     };
     renderer.on('frame', onFrame);
     app.onDispose(() => renderer.off('frame', onFrame));
+    app.onDispose(stopAnimationFrameCadence);
     app.onDispose(() => workspaceSet.dispose()); // stop all working-tree watchers + dispose open buffers
 
     // Awaitable render for boot/resize/harness determinism: sync size, paint, wait one frame.

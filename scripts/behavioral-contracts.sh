@@ -44,6 +44,19 @@ trap 'rm -rf "$LONG" "$TREE"; for s in $SESSIONS; do "$H" kill "$s" >/dev/null 2
 
 open_file() { for _ in 1 2 3 4; do b="$("$H" field "$1" activeBuffer 2>/dev/null)"; [ -n "$b" ] && [ "$b" != "null" ] && return 0; "$H" send "$1" Enter >/dev/null; sleep 0.2; done; }
 
+await_workspace_momentum_at_rest() {
+  local session_name="$1"
+  local attempt_number
+  for attempt_number in $(seq 1 100); do
+    if [ "$("$H" field "$session_name" workspaceScrollMomentumAtRest)" = \
+         "true" ]; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
 # ---- CONTRACT: momentum glide (editor.invariants / ui.invariants: wheel fling glides then decays) ----
 # ESSENCE: one wheel notch produces MORE travel than its immediate single-row step (the impulse feeds a
 # momentum glide), and the motion then DECAYS TO REST (a later sample equals the settled value). The
@@ -114,10 +127,10 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 #    missed at least two consecutive frames — that is the definition of choppy, and it is impossible
 #    while cadence holds. A consumer that rounded the integrator's position every frame would show up
 #    here too, because quantizing fractional rows both enlarges the steps and loses velocity.
-#  * CADENCE FLOOR — the decay curve fixes the glide's DURATION: falling from the 220 ceiling to the
-#    stopVelocity threshold of 3 at decayPerSec 0.015 takes ln(220/3)/ln(1/0.015) = 1.02 s, so a
-#    saturated fling must be carried by ~30 frames at target cadence. Under 10 moving frames the
-#    glide is being delivered below a third of cadence.
+#  * CADENCE FLOOR — while travel remains at least two rows per completed frame,
+#    cell-grid quantization cannot hide unchanged ticks. That sustained-fast
+#    segment must run at >=28 FPS against the declared 30 FPS target. The full
+#    decay must also span at least ten moving frames.
 #  * TRAVEL FLOOR — the second reported symptom (lower peak velocity) as a clock-free figure: with
 #    linesPerNotch 1 the 12-notch fling REQUESTS 12 rows, and momentum that cannot at least double the
 #    raw notch travel is not a fling at all. 24 rows is that doubling.
@@ -130,27 +143,81 @@ SMOOTH_LOG="$ROOT/artifacts/scroll-smoothness.log"
 mkdir -p "$ROOT/artifacts"
 if SMOOTHNESS_GESTURES=2 bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$SMOOTH_JSON" 2>"$SMOOTH_LOG"; then
-  read -r smooth_frames smooth_max_step smooth_travel <<<"$(python3 -c "
+  read -r smooth_frames smooth_max_step smooth_travel \
+    smooth_from_rest_travel smooth_follow_on_min_travel \
+    smooth_follow_on_max_travel smooth_follow_on_within_tolerance \
+    smooth_fast_cadence_floor_passes smooth_minimum_fast_fps <<<"$(python3 -c "
 import json
 gestures = json.load(open('$SMOOTH_JSON'))['gestures']
+from_rest_travel = gestures[0]['totalDistanceRows']
+follow_on_travel = [gesture['totalDistanceRows'] for gesture in gestures[1:]]
+follow_on_within_tolerance = all(
+    abs(travel - from_rest_travel) <= abs(from_rest_travel) * 0.10
+    for travel in follow_on_travel
+)
+minimum_fast_fps = min(
+    gesture['sustainedFastFramesPerSecond'] for gesture in gestures
+)
 print(min(g['movingFrameCount'] for g in gestures),
       max(g['maximumFrameDeltaRows'] for g in gestures),
-      max(g['totalDistanceRows'] for g in gestures))
+      max(g['totalDistanceRows'] for g in gestures),
+      from_rest_travel,
+      min(follow_on_travel),
+      max(follow_on_travel),
+      int(follow_on_within_tolerance),
+      int(minimum_fast_fps >= 28),
+      f'{minimum_fast_fps:.1f}')
 ")"
   if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
-    pass "no glide frame jumps more than two frame budgets (largest step=$smooth_max_step rows, bound 15)"
+    smooth_step_message="no glide frame jumps more than two frame budgets"
+    smooth_step_message+=" (largest step=$smooth_max_step rows, bound 15)"
+    pass "$smooth_step_message"
   else
-    bad "glide is CHOPPY: one frame advanced $smooth_max_step rows (bound 15 = 2 x 220 rows/s ceiling / 30 fps) — the render loop skipped consecutive frames"
+    smooth_step_message="glide is CHOPPY: one frame advanced"
+    smooth_step_message+=" $smooth_max_step rows (bound 15)"
+    bad "$smooth_step_message"
   fi
   if [ "${smooth_frames:-0}" -ge 10 ] 2>/dev/null; then
-    pass "the fling is carried by many frames (fewest moving frames=$smooth_frames, floor 10)"
+    smooth_frame_message="the fling is carried by many frames"
+    smooth_frame_message+=" (fewest moving frames=$smooth_frames, floor 10)"
+    pass "$smooth_frame_message"
   else
-    bad "glide CADENCE COLLAPSED: only $smooth_frames moving frames carried the fling (floor 10; a 1.02s glide at 30fps is ~30) — same distance, fewer steps"
+    smooth_frame_message="glide CADENCE COLLAPSED: only $smooth_frames"
+    smooth_frame_message+=" moving frames carried the fling (floor 10)"
+    bad "$smooth_frame_message"
   fi
   if [ "${smooth_travel:-0}" -ge 24 ] 2>/dev/null; then
-    pass "a 12-notch fling outruns its raw notch travel (best trial=$smooth_travel rows, floor 24 = 2 x 12 notches)"
+    smooth_travel_message="a 12-notch fling outruns its raw notch travel"
+    smooth_travel_message+=" (best=$smooth_travel rows, floor 24)"
+    pass "$smooth_travel_message"
   else
-    bad "glide PEAK VELOCITY collapsed: the best 12-notch fling travelled only $smooth_travel rows (floor 24 = twice the 12 rows the notches request) — momentum is not amplifying the gesture"
+    smooth_travel_message="glide PEAK VELOCITY collapsed:"
+    smooth_travel_message+=" best 12-notch trial=$smooth_travel rows (floor 24)"
+    bad "$smooth_travel_message"
+  fi
+  if [ "${smooth_follow_on_within_tolerance:-0}" -eq 1 ] 2>/dev/null; then
+    follow_on_message="follow-on travel matches rest within 10%"
+    follow_on_message+=" (rest=$smooth_from_rest_travel,"
+    follow_on_message+=" follow-on=$smooth_follow_on_min_travel"
+    follow_on_message+="..$smooth_follow_on_max_travel rows)"
+    pass "$follow_on_message"
+  else
+    follow_on_message="follow-on gain depends on residual velocity"
+    follow_on_message+=" (rest=$smooth_from_rest_travel,"
+    follow_on_message+=" follow-on=$smooth_follow_on_min_travel"
+    follow_on_message+="..$smooth_follow_on_max_travel rows; bound 10%)"
+    bad "$follow_on_message"
+  fi
+  if [ "${smooth_fast_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
+    fast_cadence_message="sustained fast glide meets declared cadence"
+    fast_cadence_message+=" (slowest=${smooth_minimum_fast_fps}fps,"
+    fast_cadence_message+=" floor 28)"
+    pass "$fast_cadence_message"
+  else
+    fast_cadence_message="sustained fast glide misses declared cadence"
+    fast_cadence_message+=" (slowest=${smooth_minimum_fast_fps}fps,"
+    fast_cadence_message+=" floor 28)"
+    bad "$fast_cadence_message"
   fi
 else
   bad "glide-smoothness instrument did not complete — see $SMOOTH_LOG"
@@ -169,10 +236,17 @@ open_file "$S"
 tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12M')"; tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12m')"; sleep 0.2  # focus
 tmux send-keys -t "$S" -l "$(printf '\033[<65;60;12M')"   # ONE wheel-down
 sleep 0.12; wearly="$("$H" field "$S" editorScrollTop)"
-sleep 1.4; "$H" settle "$S" >/dev/null 2>&1; wsingle="$("$H" field "$S" editorScrollTop)"
+if ! await_workspace_momentum_at_rest "$S"; then
+  bad "wrap-mode single notch did not publish momentum at rest"
+fi
+wsingle="$("$H" field "$S" editorScrollTop)"
 sleep 0.6; wsingle_rest="$("$H" field "$S" editorScrollTop)"
 for _ in 1 2 3 4 5; do tmux send-keys -t "$S" -l "$(printf '\033[<65;60;12M')"; done
-sleep 1.6; "$H" settle "$S" >/dev/null 2>&1; wramped="$("$H" field "$S" editorScrollTop)"
+sleep 0.12
+if ! await_workspace_momentum_at_rest "$S"; then
+  bad "wrap-mode ramp did not publish momentum at rest"
+fi
+wramped="$("$H" field "$S" editorScrollTop)"
 sleep 0.6; wrest="$("$H" field "$S" editorScrollTop)"
 wgain=$((wramped - wsingle_rest))
 if [ "${wsingle:-0}" -ge 1 ] 2>/dev/null \
