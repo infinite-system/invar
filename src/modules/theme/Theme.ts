@@ -12,13 +12,14 @@ import {
 import { ThemePalettes, type Palette } from './ThemePalettes';
 import {
   ThemeIcons,
-  type IconSet,
   type ActionIconSet,
   type CheckboxIconSet,
   type ActivityIconSet,
   type FindIconSet,
   type GlyphSlot,
   type InterfaceGlyphVocabulary,
+  type SymbolClass,
+  type SymbolMarkSet,
 } from './ThemeIcons';
 
 class $Theme {
@@ -40,8 +41,11 @@ class $Theme {
       ThemePalettes.Class.dark;
     return ThemePalettes.Class.quantizePalette(base, this.colorDepth.value);
   }
-  get icons(): IconSet {
-    return ThemeIcons.Class.iconSetFor(this.glyphLevel.value);
+  /** The active tier's whole symbol-mark row: read ONCE by a consumer that marks a list of items,
+   *  so a five-thousand-item completion rebuild does not re-read the tier per item. */
+  // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
+  get symbolMarks(): SymbolMarkSet {
+    return ThemeIcons.Class.symbolMarksFor(this.glyphLevel.value);
   }
   /** Status-bar settings (gear) glyph at the current glyph level (nerd cog → ⚙ → `*`). */
   get settingsIcon(): string {
@@ -88,8 +92,13 @@ class $Theme {
     return ThemeIcons.Class.glyphFor(this.glyphLevel.value, slot);
   }
 
+  /** One mark for one symbol class at the active tier. */
+  symbolMark(symbolClass: SymbolClass): string {
+    return ThemeIcons.Class.symbolMarkFor(this.glyphLevel.value, symbolClass);
+  }
+
   icon(name: string, isDir: boolean, open = false): string {
-    return ThemeIcons.Class.iconFor(this.icons, name, isDir, open);
+    return ThemeIcons.Class.iconFor(this.glyphLevel.value, name, isDir, open);
   }
 
   setPalette(name: string): void {

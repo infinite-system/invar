@@ -14,10 +14,10 @@ import { BreadcrumbPicker } from './BreadcrumbPicker';
 
 // The picker under test resolves marks through the SAME resolver the file tree paints with, so the
 // stub forwards to `ThemeIcons` instead of inventing glyphs a second time.
-const unicodeIconSet = ThemeIcons.Class.iconSetFor('unicode');
+const unicodeSymbolMarks = ThemeIcons.Class.symbolMarksFor('unicode');
 const themeIconStub = {
   icon: (name: string, isDirectory: boolean, open = false): string =>
-    ThemeIcons.Class.iconFor(unicodeIconSet, name, isDirectory, open),
+    ThemeIcons.Class.iconFor('unicode', name, isDirectory, open),
 };
 
 test('the parent row and Left share one upward generator', () => {
@@ -94,10 +94,10 @@ test('the parent row and Left share one upward generator', () => {
     // The icon carries the directory distinction, so no label repeats it with a trailing slash.
     expect(openedItems.every((item) => !item.label.includes('/'))).toBe(true);
     expect(openedItems.map((item) => item.icon)).toEqual([
-      unicodeIconSet.folderClosed,
-      unicodeIconSet.folderClosed,
-      unicodeIconSet.ext.ts,
-      unicodeIconSet.file,
+      unicodeSymbolMarks.directoryClosed,
+      unicodeSymbolMarks.directoryClosed,
+      unicodeSymbolMarks.typescript,
+      unicodeSymbolMarks.file,
     ]);
     expect(openedItems[0]?.identifier).toBe(
       BreadcrumbPicker.Class.parentDirectoryItemIdentifier,
