@@ -16,6 +16,33 @@ Change a convention → change it HERE (and note the why in decisions.md).
 - Do NOT rename ivue namespace tokens (`Class`, `$Class`, `Model`, `Instance`) or library APIs.
 - Late-dependency getter members carry NO `Class` suffix: `get GitCommands() { return
   GitCommands.Class; }`.
+- **Name the state a thing establishes, not the steps it takes.** Mechanism names rot into lies, and
+  a descriptive name is TRUSTED, so a stale one is worse than an abbreviation — an abbreviation makes
+  a reader look, a good name lets them assume. Lived case (2026-07-25): a harness helper called
+  `focusPanelOutsideDialog` did exactly that — clicked outside an open dialog to focus the pane
+  beneath. Then outside-press dismissal landed, that gesture became "close", and the name still read
+  perfectly while describing something impossible. Renamed `focusPanelBeforeOpeningDialog`, which
+  names the state it leaves behind and survives a change of gesture. Ask: if the implementation
+  changed tomorrow, would this name still be true? If not, it names the wrong thing.
+- **A rename sweep lands ALONE, and lands first.** A convention rename is a semantic conflict factory:
+  git merges it cleanly as text and the result does not compile. Lived case (2026-07-25): a builder
+  renamed `deps` → `dependencies` in `OverlayLayer` for this very convention while main separately
+  landed `createModalDismissal` using `this.deps`. Clean text merge, broken build. Never bundle a
+  sweep with feature work, and gate it against LATEST main immediately rather than letting it age.
+
+### Why explicit naming is load-bearing here (not style)
+An explicit name removes a LOOKUP. Both humans and delegated agents read from a window, not from the
+whole program: `elapsedMilliseconds` carries its unit and its derived-duration nature to every site
+that mentions it, while `elapsed` or `dt` forces a trip to the definition — and a trip that gets
+skipped becomes a guess. Names are the cheapest type annotation that survives into a `grep`.
+
+The second-order effect is what the gates actually run on: consistent naming turns semantic
+properties into SEARCHABLE SURFACE PATTERNS. `scripts/merge-gate.sh` distinguishes a measurement
+from a wait by looking for a subtraction of two clock readings (`performance.now() -`), which only
+works because every measuring site spells it the same way. `assertNoCompleteFrameEmittedFor` states
+that it is an absence claim over an interval, and that name is what made the whole class visible;
+`checkQuiet(600)` would have hidden it. Conventions are how a mechanical checker reaches a property
+a mechanical checker should not be able to see.
 
 ## Class kinds & file shape (NEW-FILE RULE)
 - The three namespace forms below govern *Public classes use the namespace pattern*

@@ -261,3 +261,36 @@ Embedded in `scripts/codex/_preamble.txt`. IBR *explicitness over abstraction* a
 User directive: "code is getting sloppy… use full names… a global understanding for ALL code always."
 
 **Status:** adopted · **Logged:** 2026-07-21
+
+## D — Name the state established, not the steps taken (naming convention, refinement 2)
+
+**Decision:** Extend the full-descriptive-names convention with two rules: an identifier names the
+STATE it establishes rather than the mechanism it uses, and a rename sweep lands alone and early.
+
+**Why the first rule:** the value of a descriptive name is that it removes a lookup — the reader
+trusts it and does not go to the definition. That trust is exactly what makes a stale descriptive
+name worse than an abbreviation: an abbreviation forces a look, a good name licenses an assumption.
+A name that describes MECHANISM therefore has a built-in expiry, because mechanisms change while
+intent does not. Lived case: `focusPanelOutsideDialog` clicked outside an open dialog to focus the
+pane beneath, and read perfectly — until outside-press dismissal landed and that gesture became
+"close". The name then described something impossible, while still reading like documentation. Its
+replacement, `focusPanelBeforeOpeningDialog`, names the state it leaves behind and survives any
+change of gesture. Test: if the implementation changed tomorrow, would the name still be true?
+
+**Why the second rule:** a convention rename is a semantic-conflict factory. Git merges a rename
+cleanly as text, so nothing warns you; the build breaks instead. Lived case: a builder renamed
+`deps` → `dependencies` in `OverlayLayer` (for this very convention) on a branch, while main
+separately landed `createModalDismissal` using `this.deps`. Clean merge, broken compile. Sweeps
+must not ride along with feature work, and must be gated against LATEST main before they age.
+
+**Why explicitness is load-bearing rather than stylistic (the part worth keeping):** humans and
+delegated agents both read from a window, not from the whole program, so a name is the cheapest type
+annotation that survives into a `grep`. The second-order effect is what the gates run on: consistent
+naming turns semantic properties into searchable surface patterns. `merge-gate.sh` now distinguishes
+a MEASUREMENT from a WAIT by finding a subtraction of two clock readings (`performance.now() -`),
+which only works because every measuring site spells it identically — and
+`assertNoCompleteFrameEmittedFor` is what made the absence-assertion class visible at all, where
+`checkQuiet(600)` would have hidden it. Conventions are how a mechanical checker reaches a property
+it should not be able to see.
+
+**Status:** adopted · **Logged:** 2026-07-25
