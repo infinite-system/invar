@@ -54,6 +54,48 @@ test('completion applies the exact text edit as one undoable mutation', () => {
   expect(editor.document.line(0)).toBe('this.pr');
 });
 
+test('an accepted inline rewrite is exactly one undo step', () => {
+  const editor = openWith('const answer = calculate();');
+  editor.inlineRewrite.candidates.value = [
+    {
+      region: {
+        start: { line: 0, column: 0 },
+        end: { line: 0, column: 27 },
+      },
+      replacementText: 'const answer = calculateAnswer();',
+      rationale: 'names the result',
+    },
+  ];
+
+  editor.acceptInlineRewrite();
+  expect(editor.document.line(0)).toBe('const answer = calculateAnswer();');
+  editor.performUndo();
+  expect(editor.document.line(0)).toBe('const answer = calculate();');
+  editor.dispose();
+});
+
+test('ordinary typing dismisses a rewrite and the character still lands', () => {
+  const editor = openWith('value');
+  editor.cursor.set(0, 5);
+  editor.inlineRewrite.candidates.value = [
+    {
+      region: {
+        start: { line: 0, column: 0 },
+        end: { line: 0, column: 5 },
+      },
+      replacementText: 'betterValue',
+      rationale: 'clearer name',
+    },
+  ];
+
+  // invariant: An inline rewrite proposal never consumes an ordinary edit keystroke (src/modules/editor/editor.invariants.md)
+  editor.insertText('x');
+
+  expect(editor.inlineRewrite.visible).toBe(false);
+  expect(editor.document.line(0)).toBe('valuex');
+  editor.dispose();
+});
+
 test('newline splits the line and auto-indents', () => {
   const editor = openWith('  foo');
   editor.cursor.set(0, 5); // end of "  foo"

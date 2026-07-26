@@ -77,6 +77,7 @@ import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
+import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
 
 class $Bootstrap {
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
@@ -118,17 +119,32 @@ class $Bootstrap {
     // Reactive settings store (item G): load user + project settings; changes live-apply + persist.
     const settings = new Settings.Class();
     settings.load({ workspaceRoot: options.root ?? Environment.Class.cwd });
+    const inlineRewriteEnabled = settings.registerSetting({
+      identifier: 'inlineRewrite.enabled',
+      label: 'Enabled',
+      section: 'Inline Rewrite',
+      defaultValue: new CodexRewriteProvider.Class().available,
+      spec: { kind: 'boolean' },
+    });
+    app.onDispose(() => inlineRewriteEnabled.dispose());
+    let inlineRewriteOverlayOpen = (): boolean => true;
     const workspaceSet = new WorkspaceSet.Class(settings, {
       awaitNextViewPaint: () =>
         new Promise<void>((resolve) => {
           renderer.once('frame', () => resolve());
         }),
+      inlineRewriteEnabled: inlineRewriteEnabled.value,
+      inlineRewriteEligible: () => !inlineRewriteOverlayOpen(),
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
     keybindings.registerGuard(
       'editorHasSelection',
       () => workspaceSet.active.editor.cursor.hasSelection,
+    );
+    keybindings.registerGuard(
+      'inlineRewriteVisible',
+      () => workspaceSet.active.editor.inlineRewrite.visible,
     );
     keybindings.registerLayer(
       'canonical',
@@ -339,6 +355,8 @@ class $Bootstrap {
       activateQuickOpenSelection,
       revealFindMatch,
     );
+    inlineRewriteOverlayOpen = () =>
+      view.modalOverlayOwnsScreen() || completionPopup.open;
 
     // Lazily create + register the terminal PaneContent on first toggle (idle cost is zero until then).
     // The initial cols×rows seed from the laid-out panel region; the frame loop converges the true size.
@@ -1581,6 +1599,18 @@ class $Bootstrap {
       'editor.duplicateLine': () => workspaceSet.active.editor.duplicateLine(),
       'editor.indent': () => workspaceSet.active.editor.indent(),
       'editor.outdent': () => workspaceSet.active.editor.outdent(),
+      'inlineRewrite.request': () => {
+        dismissCompletion();
+        workspaceSet.active.editor.requestInlineRewrite();
+      },
+      'inlineRewrite.accept': () =>
+        workspaceSet.active.editor.acceptInlineRewrite(),
+      'inlineRewrite.reject': () =>
+        workspaceSet.active.editor.rejectInlineRewrite(),
+      'inlineRewrite.next': () =>
+        workspaceSet.active.editor.cycleInlineRewrite(1),
+      'inlineRewrite.previous': () =>
+        workspaceSet.active.editor.cycleInlineRewrite(-1),
       // Toggle the bottom panel (terminal). Reserved so it fires from ANY mode — including from within a
       // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
       // terminal button runs, so chord and click are one action.
@@ -1917,19 +1947,27 @@ class $Bootstrap {
         completionPopup.open &&
         workspaceSet.active.focus.value === 'editor'
       ) {
-        if (key.name === 'escape') {
+        const completionKeyIsUnmodified =
+          !key.ctrl && !key.shift && !key.option && !key.meta && !key.super;
+        if (completionKeyIsUnmodified && key.name === 'escape') {
           dismissCompletion();
           return;
         }
-        if (key.name === 'up' || key.name === 'down') {
+        if (
+          completionKeyIsUnmodified &&
+          (key.name === 'up' || key.name === 'down')
+        ) {
           completionPopup.moveSelection(key.name === 'up' ? -1 : 1);
           return;
         }
-        if (key.name === 'return' || key.name === 'tab') {
+        if (
+          completionKeyIsUnmodified &&
+          (key.name === 'return' || key.name === 'tab')
+        ) {
           completionPopup.acceptSelected();
           return;
         }
-        if (key.name === 'backspace') {
+        if (completionKeyIsUnmodified && key.name === 'backspace') {
           workspaceSet.active.editor.backspace();
           const prefix = completionPrefix();
           if (completionPopup.sourceIsIncomplete) requestCompletion('invoked');

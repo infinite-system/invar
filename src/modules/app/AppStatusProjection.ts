@@ -172,6 +172,16 @@ class $AppStatusProjection {
       completionSelectedLabel: ports.completionPopup.selectedLabel,
       completionItemCount: ports.completionPopup.itemCount,
       completionGeometry: ports.completionPopup.geometry,
+      inlineRewriteEnabled: editor.inlineRewrite.enabled.value,
+      inlineRewriteVisible: editor.inlineRewrite.visible,
+      inlineRewriteRequestInFlight: editor.inlineRewrite.requestInFlight.value,
+      inlineRewriteRequestCount: editor.inlineRewrite.requestCount.value,
+      inlineRewriteErrorCount: editor.inlineRewrite.errorCount.value,
+      inlineRewriteCandidateCount: editor.inlineRewrite.candidates.value.length,
+      inlineRewriteSelectedCandidate:
+        editor.inlineRewrite.selectedCandidateIndex.value,
+      inlineRewriteRationale:
+        editor.inlineRewrite.selectedCandidate?.rationale ?? '',
       tooltipVisible: ports.tooltip.visible.value,
       // Whichever contributed surface occupies the editor column, by its own stable identifier —
       // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
