@@ -499,7 +499,15 @@ if [ "${FAST:-0}" != "1" ]; then
   # invariant: Shared seam changes verify every consumer (scripts/harness/harness.invariants.md)
   # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
   # the independent terminal-emulator verification ring.
-  quiet_serial_smoke "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
+  # Moved to the POOL: this smoke's only reason to be in the quiet tail was a 600 ms
+  # frame-silence window, and that window was proven UNSOUND earlier tonight (GitWatcher's
+  # 5 s reconcile floor legitimately repaints after the fixture creates an untracked file,
+  # so ~12% of windows contained a CORRECT repaint). It was replaced by a STATE assertion —
+  # a document outside version control keeps publishing no blame author however often git
+  # reconciles underneath it — which is immune to load and to timer phase. The structural
+  # guard now confirms it carries no timing-sensitive assertion, so the tail has no claim
+  # on it. This is the first tail reduction earned by converting absence into state.
+  parallel_safe_smoke "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
   parallel_safe_smoke "smoke: git-log harness" bun scripts/harness/smoke-git-log-harness.ts
   quiet_serial_smoke "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
   parallel_safe_smoke "smoke: gutter-diff harness" bun scripts/harness/smoke-gutter-diff-harness.ts
