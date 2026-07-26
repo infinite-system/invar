@@ -14,22 +14,18 @@
 # Ordering and reasoning for driving these to zero live in project.canvas-census.md
 # ("Extraction order"). Do not add a domain here without adding it to that census.
 
-# --- source control, comparison view (owner-named 2026-07-26, extraction step 2) ---------------
-# Workspace.ts: 27 = the diff editor + showingDiff/diffRequest/diffRequestToken/showComparison, the
-#   8 mode-check guards, the 4 dismissal writes, and the DiffRequest type.
-# Bootstrap.ts: 17 = the frame-loop tick, the command-context wiring, the copy chain, and the
-#   45-line inline diff key block.
-# AppStatusProjection.ts: 10 = the diff* projection fields read by the driven smokes.
-comparison	src/modules/workspace/Workspace.ts	27
-comparison	src/modules/app/Bootstrap.ts	17
-comparison	src/modules/app/AppStatusProjection.ts	10
+# --- source control, comparison view: EXTRACTED 2026-07-26, promoted to zero tolerance ---------
+# Was 27 (Workspace.ts) + 17 (Bootstrap.ts) + 10 (AppStatusProjection.ts) = 54 lines. Now 0, so it
+# is enforced by `plugin_boundary_forbid` in the gate rather than by a row here. Left as a comment
+# because the shape of what moved is the worked example for markdown below.
 
 # --- markdown (owner-named 2026-07-26, extraction step 3) --------------------------------------
 # Workspace.ts: 13 = markdownPreviewPaths / activeFileIsMarkdown / showingMarkdownPreview /
 #   toggleMarkdownPreview, plus the comment + annotation on the GENERIC resolveFileReference.
-# Bootstrap.ts: 62 = the 29-site previewFocused fan-out plus command/action wiring. Blocked on the
-#   editor-column occupant port (census Gap A) and the editor-title action question (Gap D).
+# Bootstrap.ts: 60 = the 29-site previewFocused fan-out plus command/action wiring. The editor-column
+#   occupant port (census Gap A) now EXISTS and is proven by the comparison surface, so step 3 is
+#   unblocked except for the editor-title action question (Gap D, one customer).
 # AppStatusProjection.ts: 13 = the markdown* projection fields read by the driven smokes.
 markdown	src/modules/workspace/Workspace.ts	13
-markdown	src/modules/app/Bootstrap.ts	62
+markdown	src/modules/app/Bootstrap.ts	60
 markdown	src/modules/app/AppStatusProjection.ts	13

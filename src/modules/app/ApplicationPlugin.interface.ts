@@ -7,6 +7,7 @@ import type { ContextMenu } from '../ui/ContextMenu';
 import type { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import type { PanelHost } from '../ui/PanelHost';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import type { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { WorkspacePlugin } from '../workspace/WorkspacePlugin.interface';
@@ -30,6 +31,8 @@ export interface ApplicationPluginContext {
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
+  /** Register an occupant of the editor column (a comparison, a rendered preview). */
+  readonly editorSurfaceContents: EditorSurfaceContents.Model;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly requestRender: () => void;
 }

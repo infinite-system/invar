@@ -74,6 +74,7 @@ import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 import type { ApplicationPlugin } from './ApplicationPlugin.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
+import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 
@@ -225,6 +226,10 @@ class $Bootstrap {
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
+    // Contributed occupants of the editor column register here. Created BEFORE plugin activation
+    // (which runs before buildRootView), so a provider registers early and its content is built
+    // lazily at mount time from a view-supplied context.
+    const editorSurfaceContents = new EditorSurfaceContents.Class();
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     );
@@ -241,6 +246,7 @@ class $Bootstrap {
         overlayCoordinator,
         statusBarSegments,
         statusProjectionContributions,
+        editorSurfaceContents,
         registerPrimaryDockContent: (content) =>
           primaryDockHost.register(content),
         requestRender: () => renderer.requestRender(),
@@ -276,7 +282,7 @@ class $Bootstrap {
       if (rightDockHost.visible.value) panelHost.blur();
     };
 
-    // Reveal through the bound pane target: source, Markdown preview, and each diff side keep their own
+    // Reveal through the bound pane target: the source editor and every contributed surface's panes keep their own
     // scroll/selection writer while FindBar retains independent engines for all of them.
     const revealFindMatch = (): void => {
       const match = findBar.engine?.currentMatch;
@@ -327,6 +333,7 @@ class $Bootstrap {
       primaryDockHost,
       rightDockHost,
       statusBarSegments,
+      editorSurfaceContents,
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
@@ -806,8 +813,9 @@ class $Bootstrap {
       void editor.viewport.scrollTop.value;
       void editor.viewport.scrollLeft.value;
       void editor.wordWrap.value;
-      void settings.diffSplitRatio.value;
       void settings.markdownSplitRatio.value;
+      // Contributed editor surfaces subscribe their own paint signals.
+      editorSurfaceContents.observePaintSignals();
       void settings.workspaceTabPosition.value;
       void workspaceSet.entries.value;
       void workspaceSet.activeWorkspaceIndex.value;
@@ -948,7 +956,8 @@ class $Bootstrap {
       // Drag-edge auto-scroll: while a selection drag holds at a pane edge, keep scrolling +
       // extending the selection.
       animating = view.tickDragAutoScroll(deltaTimeSeconds) || animating;
-      animating = view.tickDiffMomentum(deltaTimeSeconds) || animating; // the open diff's fling glide
+      // The mounted contributed surface advances its own glide + settle-repaint.
+      animating = view.tickContributedSurface(deltaTimeSeconds) || animating;
       animating = view.tickMarkdownPreview(deltaTimeSeconds) || animating;
       // Tooltip dwell: the frame tick advances the timer; it's just another animation source, so it
       // folds into the SAME single-live-request model (holds a frame while counting, false at rest).
@@ -1070,10 +1079,6 @@ class $Bootstrap {
         ),
       quit: () => void shutdown(),
       requestRender: () => app.requestRender(),
-      hasOpenDiff: () =>
-        workspaceSet.active.showingDiff.value && view.activeDiffView() !== null,
-      nextDiffChange: () => view.activeDiffView()?.jumpToNextChange(),
-      previousDiffChange: () => view.activeDiffView()?.jumpToPreviousChange(),
       toggleMarkdownPreview: () => workspaceSet.active.toggleMarkdownPreview(),
       toggleActivityBar: () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
@@ -1323,9 +1328,6 @@ class $Bootstrap {
       'buffer.close': () => workspaceSet.active.closeActiveTab(),
       'buffer.next': () => workspaceSet.active.cycleTab(1),
       'buffer.previous': () => workspaceSet.active.cycleTab(-1),
-      'diff.nextChange': () => view.activeDiffView()?.jumpToNextChange(),
-      'diff.previousChange': () =>
-        view.activeDiffView()?.jumpToPreviousChange(),
       'markdown.togglePreview': () =>
         workspaceSet.active.toggleMarkdownPreview(),
       'markdown.openHoveredReference': () =>
@@ -1507,18 +1509,18 @@ class $Bootstrap {
       'editor.copy': () => {
         // Publish how many characters landed on the clipboard — the observable proof that copy
         // actually copied (the human-QA "cannot copy" bug's verification channel).
-        const diffView = workspaceSet.active.showingDiff.value
-          ? view.activeDiffView()
-          : null;
         const markdownSplitView = view.activeMarkdownSplitView();
-        // An engaged hover card with a selection owns Ctrl+C — copy ITS text, not the editor's beneath.
+        // An engaged hover card with a selection owns Ctrl+C — copy ITS text, not the editor's
+        // beneath. Otherwise the mounted contributed surface is asked whether it owns a selection;
+        // a null answer falls through to the source editor.
+        const contributedSurfaceCopy =
+          view.contributedEditorSurface()?.copySelection() ?? null;
         const copyPromise = view.hoverHasSelection()
           ? view.hoverCopySelection()
-          : diffView
-            ? diffView.copySelection()
-            : markdownSplitView?.previewFocused
+          : (contributedSurfaceCopy ??
+            (markdownSplitView?.previewFocused
               ? markdownSplitView.copySelection()
-              : workspaceSet.active.editor.copySelection();
+              : workspaceSet.active.editor.copySelection()));
         void copyPromise.then((copiedCharacters) => {
           if (copiedCharacters > 0) {
             app.copyNotice.value = `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
@@ -1642,7 +1644,7 @@ class $Bootstrap {
     ]);
 
     // The find/replace bar's key handling, shared VERBATIM by the two routes that reach it — the global
-    // 'find' context (editor / markdown preview / diff targets) and the focused agent pane's interception
+    // 'find' context (the source editor and every contributed surface's own targets) and the focused agent pane's interception
     // (the transcript target) — so transcript search speaks the ONE find vocabulary: type = live query,
     // Enter/Shift+Enter cycle + reveal, Tab switches field, Esc closes (returning keys to whatever owns
     // them beneath — the editor there, the agent composer here).
@@ -2064,50 +2066,15 @@ class $Bootstrap {
         return;
       }
 
-      // A diff is open OVER the tabs: editor-context keys drive the DiffView (synced aligned-row panes),
-      // not the hidden buffer. n/p jump changes, Enter promotes to a real editable tab, Esc closes.
-      if (context === 'editor' && workspaceSet.active.showingDiff.value) {
-        const diff = view.activeDiffView();
-        if (diff) {
-          switch (key.name) {
-            case 'up':
-              diff.moveByKeyboardAlignedRows(-1);
-              return;
-            case 'down':
-              diff.moveByKeyboardAlignedRows(1);
-              return;
-            case 'pageup':
-              diff.pageByKeyboard(-1);
-              return;
-            case 'pagedown':
-              diff.pageByKeyboard(1);
-              return;
-            case 'left':
-              diff.moveByKeyboardColumns(-1);
-              return;
-            case 'right':
-              diff.moveByKeyboardColumns(1);
-              return;
-            case 'n':
-              diff.jumpToNextChange();
-              return;
-            case 'p':
-              diff.jumpToPreviousChange();
-              return;
-            case 'return':
-              if (!key.ctrl) {
-                diff.openFull();
-                return;
-              }
-              break;
-            case 'escape':
-              workspaceSet.active.showingDiff.value = false;
-              workspaceSet.active.diffRequest.value = null;
-              return;
-            default:
-              break;
-          }
-        }
+      // A contributed surface occupies the editor column: it consumes editor-context keys before the
+      // keybinding registry, so its own panes move instead of the hidden buffer. The host does not
+      // know which keys those are — the surface answers true when it handled one.
+      if (
+        context === 'editor' &&
+        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        view.contributedEditorSurface()?.handleKey(key)
+      ) {
+        return;
       }
 
       const resolution = keybindings.resolve(

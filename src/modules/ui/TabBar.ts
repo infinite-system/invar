@@ -379,7 +379,7 @@ class $TabBar {
       this.dependencies;
     const controlsShown = (): boolean =>
       workspaceSet.active.editor.hasDocument.value &&
-      !workspaceSet.active.showingDiff.value;
+      workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
     breadcrumbBar.onMouseDown = (event) => {
       if (!controlsShown()) return;
       tooltip.clear();

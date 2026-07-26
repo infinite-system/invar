@@ -63,7 +63,8 @@ class $EditorPaneRenderer {
     context: EditorPaneRenderContext,
   ): EditorPaneRender | null {
     const { workspace, palette } = context;
-    if (workspace.showingDiff.value) return null;
+    // Another surface presents the column: the source editor yields the paint entirely.
+    if (!workspace.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = workspace.editor;
     if (!editor.hasDocument.value) return null;
     const language = LanguageRegistry.Class.forPath(editor.document.path);

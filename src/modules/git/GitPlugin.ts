@@ -13,6 +13,7 @@ import { RelativeTime } from './RelativeTime';
 import { GitPaneContent } from './GitPaneContent';
 import { GitRows } from './GitRows';
 import { GitWorkspace } from './GitWorkspace';
+import { GitComparisonSurface } from './GitComparisonSurface';
 
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
@@ -25,6 +26,8 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
   >();
   protected application: ApplicationPluginContext | null = null;
   protected paneContent: GitPaneContent.Model | null = null;
+  protected comparisonSurface: GitComparisonSurface.Model | null = null;
+  protected disposeComparisonSurface: (() => void) | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const gitWorkspace = new GitWorkspace.Class(workspace);
@@ -38,6 +41,15 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
       this.activeWorkspace(),
     );
     context.registerPrimaryDockContent(this.paneContent);
+    // The comparison view is this plugin's own occupant of the editor column: the host mounts it
+    // through the generic contract and never learns that a comparison is what it mounted.
+    this.comparisonSurface = new GitComparisonSurface.Class(
+      () => this.workspaces.get(context.workspaceSet.active) ?? null,
+      context.settings,
+    );
+    this.disposeComparisonSurface = context.editorSurfaceContents.register(
+      this.comparisonSurface,
+    );
     context.statusBarSegments.register(this);
     context.statusProjectionContributions.register({
       snapshot: () => this.statusSnapshot(),
@@ -48,6 +60,9 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
   disposeApplication(): void {
     this.paneContent?.dispose();
     this.paneContent = null;
+    this.disposeComparisonSurface?.();
+    this.disposeComparisonSurface = null;
+    this.comparisonSurface = null;
     this.application = null;
   }
 
@@ -273,6 +288,23 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
         category: 'Source Control',
         run: () => void active().cycleLogBranch(),
       },
+      // Change navigation inside an open comparison. Registered HERE, not in the core command
+      // defaults: a comparison is this plugin's view, so its commands are its own.
+      {
+        id: 'diff.previousChange',
+        title: 'Diff: Previous Change',
+        category: 'Diff',
+        when: () => this.comparisonSurface?.comparisonView !== null,
+        run: () =>
+          this.comparisonSurface?.comparisonView?.jumpToPreviousChange(),
+      },
+      {
+        id: 'diff.nextChange',
+        title: 'Diff: Next Change',
+        category: 'Diff',
+        when: () => this.comparisonSurface?.comparisonView !== null,
+        run: () => this.comparisonSurface?.comparisonView?.jumpToNextChange(),
+      },
     ]);
   }
 
@@ -281,7 +313,16 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
     if (!application) return {};
     const workspace = this.activeWorkspace();
     const repository = workspace.repository.value;
+    const comparisonView = this.comparisonSurface?.comparisonView ?? null;
     return {
+      // The transient-comparison projection the driven smokes read. It lives here because the
+      // comparison is this plugin's view; the app core contributes only the generic
+      // `editorSurfaceIdentifier`.
+      showingDiff: workspace.showingComparison.value,
+      diffScrollTop: comparisonView?.alignedRowScrollOffset.value ?? 0,
+      diffSelectionChars: comparisonView?.selectionCharacterCount() ?? 0,
+      diffSelection: comparisonView?.selectionRange() ?? null,
+      diffSplitRatio: application.settings.diffSplitRatio.value,
       liveGitWatcherCount: application.workspaceSet.entries.value.filter(
         (entry) => this.controllerFor(entry).hasLiveWatcher,
       ).length,

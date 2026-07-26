@@ -101,7 +101,7 @@ describe('repository contribution supersession', () => {
     await release('older^:older.ts', 'older previous');
     await release('older:older.ts', 'older current');
     await older;
-    expect(contribution.workspace.diffRequest.value?.currentVersionPath).toBe(
+    expect(contribution.comparisonRequest.value?.currentVersionPath).toBe(
       'newer.ts',
     );
   });

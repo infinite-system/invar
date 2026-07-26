@@ -124,8 +124,11 @@ render uses and writes only the code body and gutter.
 asks it), the image branch in `RootView.update`, and `ImagePreview.render` (the decode-error fallback).
 Not `PngDecoder`/`JpegDecoder`/`HalfBlockRenderer`, which are policy agnostic.
 
-**Mechanism:** `Workspace.activeFileIsImage` mirrors `activeFileIsMarkdown` — false during a diff or with
-no document, true when `ImageDecoders.supports(extname(path))` (case-folded inside the registry).
+**Mechanism:** `Workspace.activeFileIsImage` mirrors `activeFileIsMarkdown` — false with no document
+or while a contributed editor surface presents something other than the active buffer
+(`editorSurfaces.activeDocumentIsPresented`, see the workspace record "The editor surface answers
+capabilities, not plugin modes"), true when `ImageDecoders.supports(extname(path))` (case-folded
+inside the registry).
 `RootView.update` computes it once and,
 when true, sets the code body to `ImagePreview.render(path, columns, rows, palette.panel)` and blanks the
 gutter; otherwise the unchanged editor render path runs. `ImagePreview` resolves the decoder from the

@@ -234,20 +234,6 @@ class $CommandDefaults {
         run: () => getEditor().gotoBottom(),
       },
       {
-        id: 'diff.previousChange',
-        title: 'Diff: Previous Change',
-        category: 'Diff',
-        when: context.hasOpenDiff,
-        run: context.previousDiffChange,
-      },
-      {
-        id: 'diff.nextChange',
-        title: 'Diff: Next Change',
-        category: 'Diff',
-        when: context.hasOpenDiff,
-        run: context.nextDiffChange,
-      },
-      {
         id: 'files.refresh',
         title: 'Files: Refresh Tree',
         category: 'Files',
@@ -280,9 +266,6 @@ export interface CommandContext {
   openWorkspaceFolder: () => void;
   quit: () => void;
   requestRender: () => void;
-  hasOpenDiff: () => boolean;
-  nextDiffChange: () => void;
-  previousDiffChange: () => void;
   toggleMarkdownPreview: () => void;
   toggleActivityBar: () => void;
   toggleRightDock: () => void;

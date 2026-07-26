@@ -8,6 +8,7 @@ import type { Workspace } from '../workspace/Workspace';
 import type { DocumentHandle } from '../workspace/DocumentHandle';
 import type { DocumentLifecycleContribution } from '../workspace/DocumentLifecycle';
 import type { GutterDecorationContribution } from '../workspace/GutterDecorations';
+import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import { GitRepository } from './GitRepository';
 import { GitWatcher } from './GitWatcher';
 import { GitBlameCache } from './GitBlameCache';
@@ -24,16 +25,22 @@ import { GitDocumentState } from './GitDocumentState';
 // invariant: N open workspaces do not cost N live GitWatchers (src/modules/workspace/workspace.invariants.md)
 // invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
+// invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 class $GitWorkspace
-  implements DocumentLifecycleContribution, GutterDecorationContribution
+  implements
+    DocumentLifecycleContribution,
+    GutterDecorationContribution,
+    EditorSurfaceClaim
 {
   constructor(readonly workspace: Workspace.Model) {
     this.disposeDocumentLifecycle = workspace.documentLifecycle.register(this);
     this.disposeGutterDecorations = workspace.gutterDecorations.register(this);
+    this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
   }
 
   protected readonly disposeDocumentLifecycle: () => void;
   protected readonly disposeGutterDecorations: () => void;
+  protected readonly disposeEditorSurfaceClaim: () => void;
   protected readonly documentStates = new Map<
     DocumentHandle.Model,
     GitDocumentState.Model
@@ -45,6 +52,46 @@ class $GitWorkspace
   protected diffOpenRequestGeneration = 0;
 
   panel = new GitPanel.Class();
+
+  // --- the transient comparison, and this contribution's claim over the editor surface ---------
+  // A comparison of two revisions is source control's own view: it is transient, never becomes a
+  // file tab, and while it is up the active buffer's text is NOT what the user sees. The host used
+  // to hold this state and ask itself "is a diff showing?" before every language request; now this
+  // contribution holds it and ANSWERS the host's capability questions instead.
+  get showingComparison() {
+    return ref(false);
+  }
+  /** Both full-text SIDES of the comparison on screen, or null. The token forces the view host to
+   *  rebuild, because the comparison view reconstructs per request. */
+  get comparisonRequest() {
+    return shallowRef<GitComparisonRequest | null>(null);
+  }
+  protected comparisonRequestToken = 0;
+
+  /** Put a comparison of two revisions on the editor surface. */
+  showComparison(request: Omit<GitComparisonRequest, 'token'>): void {
+    this.comparisonRequest.value = {
+      token: ++this.comparisonRequestToken,
+      ...request,
+    };
+    this.showingComparison.value = true;
+    this.workspace.focusEditor();
+  }
+
+  // --- EditorSurfaceClaim -----------------------------------------------------------------------
+  readonly identifier = 'sourceControl.comparison';
+  get occupyingEditorSurface(): boolean {
+    return this.showingComparison.value;
+  }
+  /** A comparison REPLACES the active buffer's text, so the active document is not presented — and
+   *  with `activeDocumentIsKeyboardTarget` omitted, it takes the keyboard too. */
+  get activeDocumentIsPresented(): boolean {
+    return !this.showingComparison.value;
+  }
+  release(): void {
+    this.showingComparison.value = false;
+    this.comparisonRequest.value = null;
+  }
 
   get repository() {
     return shallowRef<GitRepository.Instance | null>(null);
@@ -112,6 +159,7 @@ class $GitWorkspace
     this.suspended();
     this.disposeDocumentLifecycle();
     this.disposeGutterDecorations();
+    this.disposeEditorSurfaceClaim();
     this.documentStates.clear();
     this.repository.value?.dispose();
     this.repository.value = null;
@@ -227,7 +275,7 @@ class $GitWorkspace
       !document ||
       !this.blameCache ||
       !this.repository.value ||
-      this.workspace.showingDiff.value
+      this.showingComparison.value
     ) {
       return null;
     }
@@ -458,7 +506,7 @@ class $GitWorkspace
     );
     const currentVersionText = await this.fileTextAtReference(sha, filePath);
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
-    this.workspace.showComparison({
+    this.showComparison({
       previousVersionText,
       currentVersionText,
       previousVersionPath: `${filePath} @ ${sha.slice(0, 7)}^`,
@@ -501,7 +549,7 @@ class $GitWorkspace
       currentVersionText = this.workingFileText(row.path);
     }
     if (requestGeneration !== this.diffOpenRequestGeneration) return;
-    this.workspace.showComparison({
+    this.showComparison({
       previousVersionText,
       currentVersionText,
       previousVersionPath: row.path,
@@ -756,4 +804,14 @@ export namespace GitWorkspace {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+/** The two full-text SIDES of a comparison the source-control plugin puts on the editor surface
+ *  (the token forces the view host to rebuild). */
+export interface GitComparisonRequest {
+  token: number;
+  previousVersionText: string;
+  currentVersionText: string;
+  previousVersionPath: string;
+  currentVersionPath: string;
 }

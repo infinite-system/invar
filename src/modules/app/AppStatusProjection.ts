@@ -31,7 +31,6 @@ class $AppStatusProjection {
 
   static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     const editor = ports.workspaceSet.active.editor;
-    const diffView = ports.view.activeDiffView();
     const markdownSplitView = ports.view.activeMarkdownSplitView();
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
@@ -161,13 +160,12 @@ class $AppStatusProjection {
       completionItemCount: ports.completionPopup.itemCount,
       completionGeometry: ports.completionPopup.geometry,
       tooltipVisible: ports.tooltip.visible.value,
-      // A diff is shown OVER the editor tabs (transient). Lets a driven contract confirm the diff
-      // pane actually mounted, so pane-independence (editor extent survives the swap) is real-verified.
-      showingDiff: ports.workspaceSet.active.showingDiff.value,
-      diffScrollTop: diffView?.alignedRowScrollOffset.value ?? 0,
-      diffSelectionChars: diffView?.selectionCharacterCount() ?? 0,
-      diffSelection: diffView?.selectionRange() ?? null,
-      diffSplitRatio: ports.settings.diffSplitRatio.value,
+      // Whichever contributed surface occupies the editor column, by its own stable identifier —
+      // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
+      // its plugin's status snapshot; the app core no longer knows what those surfaces are.
+      editorSurfaceIdentifier:
+        ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
+        '',
       markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
       markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: ports.settings.markdownSplitRatio.value,
@@ -239,7 +237,7 @@ class $AppStatusProjection {
       matchingBracketLine: (() => {
         if (
           !editor.hasDocument.value ||
-          ports.workspaceSet.active.showingDiff.value
+          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
         )
           return -1;
         return (
@@ -254,7 +252,7 @@ class $AppStatusProjection {
       matchingBracketColumn: (() => {
         if (
           !editor.hasDocument.value ||
-          ports.workspaceSet.active.showingDiff.value
+          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
         )
           return -1;
         return (
@@ -370,7 +368,6 @@ export interface AppStatusProjectionPorts {
     | 'agentNarrationVoice'
     | 'agentNarrationRate'
     | 'showActivityBar'
-    | 'diffSplitRatio'
     | 'markdownSplitRatio'
     | 'sidebarWidth'
     | 'rightDockWidth'
@@ -453,7 +450,6 @@ export interface AppStatusProjectionPorts {
   >;
   readonly view: Pick<
     RootView,
-    | 'activeDiffView'
     | 'activeMarkdownSplitView'
     | 'panelViewportColumns'
     | 'panelViewportRows'

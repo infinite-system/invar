@@ -68,6 +68,61 @@ src/modules/git/GitDocumentState.test.ts && bash scripts/smoke-gutter-diff.sh`.
 
 **Last refined:** 2026-07-26
 
+### The editor surface answers capabilities, not plugin modes
+
+**Invariant:** If host behaviour depends on what occupies the editor surface, then the host asks the
+occupying contribution a CAPABILITY question it can answer without being named — never "which plugin
+surface is showing"; and a contribution that occupies the surface releases its own state, which the
+host never writes.
+
+**Scope:** `EditorSurfaceClaims` and every host site whose behaviour changed while a transient
+surface was up: the six language-intelligence requests, the two content-type routers
+(`activeFileIsMarkdown`, `activeFileIsImage`), `Workspace.editor`, the source-editor paint and
+chrome (`EditorPaneRenderer`, `EditorPane` bracket match, the buffer tab strip and breadcrumb,
+`AppStatusProjection` bracket fields), and editor-context key routing in `Bootstrap`. Excludes what
+the surface itself paints, which is `EditorSurfaceContents`' business.
+
+**Components:**
+- *Presentation* — `activeDocumentIsPresented`: is the active tab's document still the text on
+  screen? A comparison answers no; a source|preview split answers YES, because the real editor is
+  embedded in its left pane.
+- *Keyboard ownership* — `activeDocumentIsKeyboardTarget`: does the active tab's editor own the keys
+  and the caret? Omitted answers the same as presentation.
+
+**Mechanism:** Contributions register an `EditorSurfaceClaim` on `Workspace.editorSurfaces`. Both
+aggregate getters default to TRUE with no claim up, so a plugin-free canvas keeps every capability.
+Host guards read the aggregate; dismissal (`openFileInTab`, `activateTab`, `cycleTab`, a surface's
+own Escape) calls `releaseOccupying()`, and each claim tears down its own transient state.
+
+**Generates:** One question where fourteen `showingDiff` mode checks stood; a surface that occupies
+the column WITHOUT suppressing language intelligence (impossible to express while the question was
+"is a diff showing"); a document-less editor shared by the empty state and any presenting surface,
+replacing two identical empty editors; plugin state the host cannot write.
+
+**Rejected alternatives:** Keep the mode flag and rename it (`activePaneIsDiff ||
+activePaneIsMarkdownPreview`) — the same defect with more names, and every new surface edits every
+caller. Split presentation and language intelligence into separate questions now — no current
+customer distinguishes them, so it would be a port with no second answer; the image router will be
+the site that decides it.
+
+**Evidence:** `EditorSurfaceClaims.ts`; `EditorSurfaceClaims.test.ts` (the embedding claim reported
+as presented while occupying, the omitted-answer default, release touching only occupying claims);
+`Workspace.ts` (the six language guards, both content-type routers, `get editor`, the three
+dismissal sites); `Workspace.test.ts` "opening a real file releases a contributed surface";
+`GitWorkspace.ts` (the comparison claim); `GitComparisonContent.test.ts` (Escape releases the claim
+rather than mutating host state).
+
+**Impossible if true:** A host guard naming a plugin's surface; a plugin's transient state written
+by the host; a surface that embeds the real editor losing completions, hover, or diagnostics; a
+newly contributed surface requiring an edit to any language-request guard.
+
+**Verification:** `bun test src/modules/workspace/EditorSurfaceClaims.test.ts
+src/modules/workspace/Workspace.test.ts src/modules/git/GitComparisonContent.test.ts && bash scripts/conventions-gate.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Workspace and file navigation are separate layers
 
 **Invariant:** If the user navigates, then project/worktree navigation (the outer layer) and

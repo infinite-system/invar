@@ -215,7 +215,9 @@ cursor selection and shared drag-edge behavior extend the underlying pane text w
 diff scrolls.
 
 **Scope:** `SelectionDragBehavior`, `DiffView.createSelectionDragBehavior`, the active read-only
-`ReadOnlyTextBuffer`, and Ctrl+C routing in `Bootstrap` while `Workspace.showingDiff` is true.
+`ReadOnlyTextBuffer`, and Ctrl+C routing in `Bootstrap`, which asks the mounted editor-surface
+content whether it owns a selection (`GitComparisonContent.copySelection`) rather than testing a
+comparison mode.
 
 **Mechanism:** Both `RootView`'s normal editor and `DiffView` construct `SelectionDragBehavior` with
 their own coordinate/scroll callbacks. Diff hit-testing maps an aligned row to its real side line,

@@ -9,7 +9,9 @@ composes like legos"*.
 This document turns "decouple everything" into a **finite, ordered list**. It is the inventory the
 next builder reads instead of rediscovering the surface one domain at a time.
 
-Baseline commit: `2751b32`. Host files audited:
+Baseline commit: `2751b32`. **Status: steps 1 and 2 of the extraction order are DONE** (the
+editor-column occupant port with its capability answers, and the diff extraction) — see
+[Progress](#progress). Host files audited:
 `src/modules/workspace/Workspace.ts` (922 lines), `src/modules/workspace/WorkspaceSet.ts`,
 `src/modules/app/` (the app core the conventions gate's step-11 boundary covers), and
 `src/modules/ui/` (the host chrome, *not* covered by step 11 today).
@@ -49,9 +51,16 @@ Plus the plugin lifecycle itself: `WorkspacePlugin.attachWorkspace` →
 `WorkspaceContribution{opened, settingsAttached?, suspended, resumed, disposed, tickScroll?,
 tabDetail?, worktreeName?, projectName?}` and `ApplicationPlugin.activateApplication(context)`.
 
-**No port exists for:** an occupant of the **editor column**, a **capability answer** about the
-visible editor surface, **default keybindings**, or an **editor-title action**. Those four gaps are
-what the remaining extractions need; see [Port gaps](#port-gaps).
+Ports 5 and 6, added 2026-07-26 by extraction step 1:
+
+5. **Editor-surface capability answers** — `EditorSurfaceClaims` (workspace). Customers: the
+   source-control comparison (answers "not presented"), a source|preview split (answers
+   "presented"). Governed by the record *The editor surface answers capabilities, not plugin modes*.
+6. **Editor-column occupant** — `EditorSurfaceContents` (ui) + `ApplicationPluginContext.
+   editorSurfaceContents`. Customers: the source-control comparison today; the Markdown split is
+   step 3's customer.
+
+**Still no port for:** **default keybindings** (Gap C) or an **editor-title action** (Gap D).
 
 ---
 
@@ -336,9 +345,9 @@ Counted for completeness so nobody mistakes size for debt:
 
 ## Port gaps
 
-Four ports the remaining extractions need. Two are justified, two are not.
+Four ports the remaining extractions need. Two were justified and are now BUILT; two are not.
 
-### Gap A — editor-column surface occupant — **JUSTIFIED (2 customers)**
+### Gap A — editor-column surface occupant — **BUILT 2026-07-26** (`ui/EditorSurfaceContents.ts`)
 
 Today `ui/EditorContentMount.ts` hard-codes `mounted: 'editor' | 'diff' | 'markdown'`, imports
 `DiffView` and `MarkdownSplitView` directly, owns both lifecycles, keys both identities, hard-codes
@@ -357,7 +366,7 @@ vocabulary*): `identifier`, `active()`, `create(context)` given a definite-size 
 answers below. `ApplicationPluginContext` is built *before* `buildRootView`, so the registry must
 be created early and the surface **created lazily at mount time** with a view-supplied context.
 
-### Gap B — capability answers about the visible editor surface — **JUSTIFIED (2 customers)**
+### Gap B — capability answers about the visible editor surface — **BUILT 2026-07-26** (`workspace/EditorSurfaceClaims.ts`)
 
 Two questions, both derived from guard sites only — nothing invented:
 
@@ -370,8 +379,14 @@ Markdown answering `true` to (1) is *not* a redundant customer: it is the proof 
 editor column does **not** imply suppressing language intelligence — precisely the conflation
 `showingDiff` hid. A single-customer version of this port would be `isDiff` renamed.
 
-Best folded **into Gap A** (the occupant answers for itself) rather than shipped as a separate
-registry — the occupant is the only thing that can answer.
+Shipped as a workspace-level registry rather than folded into Gap A, because the host's own guards
+live in `Workspace` (the model layer) and must not reach into `ui/`. The occupant answers the
+questions; `EditorSurfaceClaims` is where it answers them.
+
+Question 2's second customer is still pending: only the comparison answers it today (it omits the
+member and inherits question 1's answer). The 29 `Bootstrap` sites that will be its real consumer
+land with step 3. **This is the one place in the port whose second answer is owed**, and it is owed
+by design, not overlooked — see step 3 below.
 
 ### Gap C — plugin default keybindings — **JUSTIFIED (2 customers)**
 
@@ -436,14 +451,16 @@ restated against the new owners as part of the extraction that moves them.
 
 Ordered by **what unblocks what**, not by size.
 
-### 1. Gap A + Gap B — the editor-column occupant port with capability answers
+### 1. Gap A + Gap B — the editor-column occupant port with capability answers — **DONE**
 
-**First, because every later step reads its answers.** Nothing else can be moved cleanly while
-`EditorContentMount` hard-codes three contents and `Bootstrap` routes keys by view name. Build it
-against the *two* customers that already exist so it cannot be a guess.
-Cost driver: ~30 rename sites in `RootView`/`Bootstrap`, mechanical once the port lands.
+**First, because every later step reads its answers.** Nothing else could be moved cleanly while
+`EditorContentMount` hard-coded three contents and `Bootstrap` routed keys by view name.
+Landed as `workspace/EditorSurfaceClaims.ts` (2 capability questions) and
+`ui/EditorSurfaceContents.ts` (identity-keyed occupant with update / tick / handleKey / findTarget /
+copySelection / observePaintSignals / dispose), the member set derived from the sites that previously
+reached a view by name.
 
-### 2. DIFF → source-control plugin
+### 2. DIFF → source-control plugin — **DONE**
 
 **Second, because its state has exactly one producer** (`GitWorkspace`, already the plugin) and its
 14 mode checks all collapse to Gap B's question 1. Lowest risk-per-line of the two owner-named
@@ -453,9 +470,13 @@ domains. Moves: `diffEditor`, `showingDiff`, `diffRequest`, `diffRequestToken`, 
 (via the existing `StatusProjectionContributions` port), and `DiffRequest`'s type.
 Needs Gap C for the two diff chords.
 
-### 3. MARKDOWN → new markdown plugin
+### 3. MARKDOWN → new markdown plugin — **NEXT**
 
-**Third: same port, but 29 extra guard sites and Gap D unresolved.** Moves
+**Third: same port, but 29 extra guard sites and Gap D unresolved.** The port it needs now exists
+and has a worked example (`git/GitComparisonSurface.ts` + `git/GitComparisonContent.ts`); the split
+becomes a second occupant that answers `activeDocumentIsPresented: true` and
+`activeDocumentIsKeyboardTarget: !previewFocused`, which is what supplies question 2's second answer
+and collapses the 29 `previewFocused` guards. Moves
 `markdownPreviewPaths`, `activeFileIsMarkdown`, `showingMarkdownPreview`, `toggleMarkdownPreview`,
 the `markdown.*` commands and chords, the `markdown*` status fields, and
 `StatusBarSegmentContext.markdownPreviewFocused` → `focusedSurfaceTitle`.
@@ -490,11 +511,29 @@ lifecycle behind the existing ports; leave the request methods until either the 
 | Domain | Matching lines | Real coupling sites | New port needed | Status |
 | --- | --- | --- | --- | --- |
 | git | 0 | 0 | — | **done** (task #34) |
-| diff | 34 | 8 state/method + 14 guards | Gap A+B, Gap C | owner-named, next |
-| markdown | 13 | 4 state/method + 29 guards | Gap A+B, Gap C, (Gap D unresolved) | owner-named, next |
+| diff | **0** | **0** | Gap A+B **built** | **done** 2026-07-26 |
+| markdown | 13 | 4 state/method + 29 guards | Gap A+B built; Gap C, (Gap D unresolved) | owner-named, NEXT |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
 | file tree | 33 | 8 (model + 2 momentum lanes) | dock-fallback flag | after the editor column |
 | language | 61 | 18 | semantic-request port = **GUESS** | blocked on the owner |
 
-Guard collapse available today: **14 diff mode checks + 29 markdown mode checks → 2 capability
-questions.**
+Guard collapse: **14 diff mode checks → 1 capability question (done)**; 29 markdown mode checks → the
+second question (step 3).
+
+## Progress
+
+**2026-07-26 — steps 1 and 2 landed.**
+
+- `Workspace.ts`: zero `diff` references (was 27 lines). `src/modules/app`: zero (was 27 across
+  `Bootstrap.ts` + `AppStatusProjection.ts`), so the `comparison` domain graduated from the
+  shrinking allowlist to the gate's zero-tolerance list.
+- 8 host guards + 6 chrome/paint checks now read one capability question.
+- `diffEditor` deleted: it and `emptyEditor` were two identical document-less editors, and "empty" is
+  the whole of either's behaviour.
+- `showingDiff` / `diffRequest` / `diffRequestToken` / `showComparison` / `DiffRequest` moved to
+  `GitWorkspace` (already the sole producer); `Bootstrap`'s 45-line inline diff key switch became
+  `GitComparisonContent.handleKey`; the `diff.*` commands and `diff*` status fields moved to
+  `GitPlugin` through the ports that already existed; `void settings.diffSplitRatio.value` became
+  `observePaintSignals()`.
+- markdown residue in host core: 13 (`Workspace.ts`) + 60 (`Bootstrap.ts`) + 13
+  (`AppStatusProjection.ts`), all held by the ratchet.

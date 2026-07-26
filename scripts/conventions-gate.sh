@@ -210,7 +210,7 @@ plugin_boundary_ratchet() {
 plugin_boundary_forbid 'source-control' \
   "(from ['\"]\.\./git/|\bGit[A-Z]|['\"]git\.|['\"]git['\"])" \
   "import { GitPanel } from '../git/GitPanel';"
-plugin_boundary_ratchet 'comparison' 'source-control (comparison view)' \
+plugin_boundary_forbid 'source-control (comparison view)' \
   "([Dd]iff[A-Z]|\bdiff[A-Z]|\bshowingDiff\b|from ['\"]\.\./diff/|['\"]diff\.)" \
   "const request = workspaceSet.active.diffRequest.value;"
 plugin_boundary_ratchet 'markdown' 'markdown' \

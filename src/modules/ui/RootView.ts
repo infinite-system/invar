@@ -50,7 +50,6 @@ import { OverlayLayer } from './OverlayLayer';
 import { HoverCard } from './HoverCard';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { EditorWrap } from '../editor/EditorWrap';
-import { DiffView } from '../diff/DiffView';
 import { MarkdownSplitView } from '../markdown/MarkdownSplitView';
 import { SelectableText } from './SelectableText';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
@@ -84,6 +83,10 @@ import {
   type LayoutSlotGeometry,
 } from '../layout/LayoutModel';
 import type { StatusBarSegments } from './StatusBarSegments';
+import type {
+  EditorSurfaceContent,
+  EditorSurfaceContents,
+} from './EditorSurfaceContents';
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $RootView {
   public static buildRootView(
@@ -107,6 +110,7 @@ class $RootView {
     primaryDockHost: PanelHost.Instance,
     rightDockHost: PanelHost.Instance,
     statusBarSegments: StatusBarSegments.Model,
+    editorSurfaceContents: EditorSurfaceContents.Model,
     toggleTerminal: () => void,
     toggleAgent: () => void,
     openPanelAddPopup: (anchor: { column: number; row: number }) => void,
@@ -277,11 +281,12 @@ class $RootView {
     editorColumn.add(tabBar);
     editorColumn.add(breadcrumbBar);
     editorColumn.add(editorArea);
-    // A definite-size host for the rich DiffView, swapped IN PLACE of editorArea (add/remove, not runtime
-    // flex toggling — OpenTUI doesn't re-lay-out on a runtime flexGrow/height change). flexGrow:1 mirrors
-    // editorArea, so the DiffView (height:100%) inside gets a real box. Not added until a diff opens.
-    const diffContainer = new BoxRenderable(renderer, {
-      id: 'diff-container',
+    // A definite-size host for whichever CONTRIBUTED surface claims the editor column, swapped IN
+    // PLACE of editorArea (add/remove, not runtime flex toggling — OpenTUI doesn't re-lay-out on a
+    // runtime flexGrow/height change). flexGrow:1 mirrors editorArea, so a surface sized height:100%
+    // inside gets a real box. Not added until a surface claims the column.
+    const surfaceContainer = new BoxRenderable(renderer, {
+      id: 'editor-surface-container',
       flexGrow: 1,
       width: '100%',
       flexDirection: 'column',
@@ -1260,9 +1265,9 @@ class $RootView {
     // renderStatus moved into the StatusBar controller (it composes the same parts from workspace/app
     // state + the markdown-preview-focused flag RootView passes to statusBar.update).
     // The editor content-area MOUNT controller owns what occupies the editor column (plain editor /
-    // side-by-side DiffView / Markdown split) and the diff+markdown instance lifecycle. update() calls
-    // sync() each paint; the frame loop calls tickDiff()/tickMarkdown(); readers (caret, status, find
-    // target, editor pane) reach the active instances through its getters.
+    // contributed surface / Markdown split) and the mounted instance lifecycle. update() calls
+    // sync() each paint; the frame loop calls tickContributedSurface()/tickMarkdown(); readers (caret,
+    // status, find target, editor pane) reach the mounted instances through its getters.
     const editorContentMount = new EditorContentMount.Class({
       renderer,
       theme,
@@ -1271,18 +1276,18 @@ class $RootView {
       workspaceSet,
       keybindings,
       tooltip,
+      editorSurfaceContents,
       editorColumn,
       editorArea,
-      diffContainer,
+      surfaceContainer,
       markdownContainer,
     });
     function findTarget(): FindBarTarget | null {
       // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
       // invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md)
-      const diffView = editorContentMount.diffView;
-      if (workspaceSet.active.showingDiff.value && diffView) {
-        return diffView.findTarget();
-      }
+      const contributedSurfaceTarget =
+        editorContentMount.contributedSurface?.findTarget();
+      if (contributedSurfaceTarget) return contributedSurfaceTarget;
       const markdownSplitView = editorContentMount.markdownSplitView;
       if (markdownSplitView?.previewFocused) {
         return markdownSplitView.findTarget();
@@ -1343,13 +1348,18 @@ class $RootView {
       // display title — the only thing that ever keyed off the legend text was a test probe (now fixed).
       editorArea.title = '';
       editorArea.titleColor = sourcePaneFocused ? palette.accent : palette.dim;
-      // The diff view has no editor buffer tabs — blank the buffer tab strip while a diff is showing
-      // (keep its row so the diff panes don't jump when toggling in/out of a diff).
-      const diffShowing = workspaceSet.active.showingDiff.value;
-      tabBar.content = diffShowing ? '' : tabBarController.renderBuffer();
-      // Breadcrumb row: the active file's path, blank during a diff or when no file is open.
+      // A surface presenting something other than the active buffer has no editor buffer tabs —
+      // blank the buffer tab strip (keep its ROW so the panes don't jump when toggling in and out).
+      const activeDocumentIsPresented =
+        workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
+      tabBar.content = activeDocumentIsPresented
+        ? tabBarController.renderBuffer()
+        : '';
+      // Breadcrumb row: the active file's path, blank when another surface presents the column or
+      // when no file is open.
       breadcrumbBar.content =
-        diffShowing || !workspaceSet.active.editor.hasDocument.value
+        !activeDocumentIsPresented ||
+        !workspaceSet.active.editor.hasDocument.value
           ? ''
           : tabBarController.renderBreadcrumb();
       workspaceTabBar.content = tabBarController.renderWorkspace();
@@ -1799,7 +1809,7 @@ class $RootView {
     // is then applied FROM the model by applySelection() each paint, so it persists across repaints
     // and Ctrl+C copies exactly what is highlighted.
     // invariant: The selected range renders with a background (ui.invariants.md)
-    // One shared drag/autoscroll behavior serves this editor and DiffView. The hosts differ only in
+    // One shared drag/autoscroll behavior serves this editor and every read-only surface. They differ only in
     // coordinate mapping and scroll storage; pointer lifecycle, edge zones, rate, and re-extension are
     // identical. invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
     function tickDragAutoScroll(deltaTimeSeconds: number): boolean {
@@ -1977,17 +1987,18 @@ class $RootView {
       editorViewportWidth,
       editorCaretAnchor,
       tickDragAutoScroll,
-      // Frame-loop hook (runs every frame with FRESH layout, unlike the reactive paint): advance the diff's
-      // momentum glide AND repaint the diff once its container has laid out to full height (root height goes
-      // 0 -> real a frame or two after the container swap). Repaint-on-height-change keeps frames live until
-      // the layout settles, then stops (returns momentum-moving) so idle-quiescence holds.
-      tickDiffMomentum(dtSeconds: number): boolean {
-        return editorContentMount.tickDiff(dtSeconds);
+      // Frame-loop hook (runs every frame with FRESH layout, unlike the reactive paint): let the
+      // mounted contributed surface advance its own momentum glide AND repaint once its container has
+      // laid out to full height (root height goes 0 -> real a frame or two after the container swap).
+      // Repaint-on-height-change keeps frames live until the layout settles, then stops so
+      // idle-quiescence holds.
+      tickContributedSurface(dtSeconds: number): boolean {
+        return editorContentMount.tickContributedSurface(dtSeconds);
       },
       tickMarkdownPreview(dtSeconds: number): boolean {
         return editorContentMount.tickMarkdown(dtSeconds);
       },
-      activeDiffView: () => editorContentMount.diffView,
+      contributedEditorSurface: () => editorContentMount.contributedSurface,
       activeMarkdownSplitView: () => editorContentMount.markdownSplitView,
       findTarget,
       shortcutHelpViewportRows: () => overlayLayer.shortcutHelpViewportRows(),
@@ -2097,10 +2108,10 @@ export interface RootView {
   editorCaretAnchor(): { column: number; row: number } | null;
   /** Frame-tick hook: advance drag-edge auto-scroll; true while active (keep frames coming). */
   tickDragAutoScroll(dtSeconds: number): boolean;
-  /** Frame-tick hook: advance the open diff's scroll-momentum glide; true while moving. */
-  tickDiffMomentum(dtSeconds: number): boolean;
-  /** The live DiffView instance when a diff is open, else null (for keyboard routing). */
-  activeDiffView(): DiffView.Instance | null;
+  /** Frame-tick hook: advance the mounted contributed surface's own animations; true while live. */
+  tickContributedSurface(dtSeconds: number): boolean;
+  /** The mounted contributed editor surface, else null (for key, find, and clipboard routing). */
+  contributedEditorSurface(): EditorSurfaceContent | null;
   /** Frame-tick hook for Markdown preview momentum, drag selection, and async parse landing. */
   tickMarkdownPreview(dtSeconds: number): boolean;
   activeMarkdownSplitView(): MarkdownSplitView.Instance | null;
