@@ -1221,6 +1221,11 @@ class $Bootstrap {
     // dispatch. No chord conditionals live here — bindings are data in keybindings.defaults/mac.
     // invariant: Bindings are intent addressed (src/modules/keybindings/keybindings.invariants.md)
     const applyTextInputAction = (action: TextInputAction): void => {
+      // The bounded popup is modal and topmost, so its search field owns text input first.
+      if (boundedListPopup.acceptsQueryInput) {
+        boundedListPopup.applyQueryInputAction(action);
+        return;
+      }
       if (findBar.open.value) {
         findBar.applyInputAction(action);
         revealFindMatch();
@@ -1915,7 +1920,13 @@ class $Bootstrap {
           'listPopup',
           Date.now(),
         );
-        if (listPopupResolution.action?.startsWith('listPopup.')) {
+        // `listPopup.*` drives the list; `textInput.*` drives the search field — word movement, word
+        // deletion, Home/End, and delete-line reach it through the same action table every other
+        // one-line input uses.
+        if (
+          listPopupResolution.action?.startsWith('listPopup.') ||
+          listPopupResolution.action?.startsWith('textInput.')
+        ) {
           dispatchAction(listPopupResolution.action, key);
         } else if (
           listPopupResolution.action &&

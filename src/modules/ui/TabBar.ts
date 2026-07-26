@@ -145,6 +145,7 @@ class $TabBar {
       popup: this.dependencies.boundedListPopup,
       overlayCoordinator: this.dependencies.overlayCoordinator,
       workspaceSet: this.dependencies.workspaceSet,
+      theme: this.dependencies.theme,
     });
   }
   // The arrows PAN the strip viewport only — they never change the active buffer (the render clamps

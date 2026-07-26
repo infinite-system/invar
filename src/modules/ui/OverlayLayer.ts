@@ -38,6 +38,7 @@ import {
 } from './OverlayDialogGeometry';
 import { OverlayCloseButton } from './OverlayCloseButton';
 import { ModalOverlayDismissal } from './ModalOverlayDismissal';
+import { TextFieldPainter } from './TextFieldPainter';
 import {
   ScrollableTextViewport,
   type ViewportExtent,
@@ -880,7 +881,20 @@ class $OverlayLayer {
           this.commandPaletteViewportRows,
         );
       }
-      this.commandPaletteInput.content = `> ${commands.queryInput.valueBeforeCaret}▏${commands.queryInput.valueAfterCaret}`;
+      // A modal dialog input is always the focused field and is never a pointer-hover target, so it
+      // takes the focused tone and the shared caret; the popup search row is the field that also has
+      // idle and hovered states.
+      // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
+      this.commandPaletteInput.content = new StyledText(
+        TextFieldPainter.Class.paint({
+          prefix: '> ',
+          input: commands.queryInput,
+          tone: TextFieldPainter.Class.toneFor(palette, 'focused'),
+          surfaceBackground: palette.panel,
+          caretVisible: true,
+          width: null,
+        }).chunks,
+      );
       this.commandPaletteInput.fg = palette.fg;
       const commandPaletteFirstVisible = this.commandPaletteViewport.scrollTop;
       this.commandPaletteFirstVisible = commandPaletteFirstVisible;
@@ -988,10 +1002,15 @@ class $OverlayLayer {
       // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
       const showPathAlert =
         openingWorkspace && !quickOpen.workspacePathOpenable.value;
-      const inputPrefix =
-        `${openingWorkspace ? '+' : theme.actionIcons.open} ` +
-        `${quickOpen.queryInput.valueBeforeCaret}▏${quickOpen.queryInput.valueAfterCaret}`;
-      const inputChunks: TextChunk[] = [fg(palette.fg)(inputPrefix)];
+      // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
+      const inputChunks: TextChunk[] = TextFieldPainter.Class.paint({
+        prefix: `${openingWorkspace ? '+' : theme.actionIcons.open} `,
+        input: quickOpen.queryInput,
+        tone: TextFieldPainter.Class.toneFor(palette, 'focused'),
+        surfaceBackground: palette.panel,
+        caretVisible: true,
+        width: null,
+      }).chunks;
       if (showPathAlert)
         inputChunks.push(fg(palette.warning)(`  ${theme.alertIcon}`));
       this.quickOpenInput.content = new StyledText(inputChunks);

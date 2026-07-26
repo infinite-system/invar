@@ -11,13 +11,41 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
+// The expected glyphs come from the SAME vocabulary the bar paints from, so a vocabulary change (⊞ →
+// ⬢ for the user who could not recognize ⊞) never re-breaks this drive. What the literal row must be
+// is pinned once, in `src/modules/theme/ThemeIcons.test.ts`; what this smoke proves is that the
+// painted cell IS the named slot and that it occupies exactly one cell.
+function activityGlyphsFor(
+  glyphLevel: 'nerd' | 'unicode',
+): readonly [string, string, string] {
+  const vocabulary = ThemeIcons.Class.interfaceGlyphVocabularyFor(glyphLevel);
+  return [
+    vocabulary.activityFiles,
+    vocabulary.activitySourceControl,
+    vocabulary.activityExtensions,
+  ];
+}
+
 function glyphRow(snapshot: HarnessSnapshot.Model, glyph: string): number {
   for (let row = 0; row < snapshot.rows; row++) {
     if (snapshot.cell(row, 2)?.characters === glyph) return row;
+  }
+  return -1;
+}
+
+// The sidebar's left edge is the alignment witness: a glyph the renderer measures wider than the
+// terminal renders it pushes everything to its right off by a column on that row alone.
+function sidebarEdgeColumn(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+): number {
+  for (let column = 0; column < snapshot.columns; column++) {
+    if (snapshot.cell(row, column)?.characters === '│') return column;
   }
   return -1;
 }
@@ -72,11 +100,31 @@ async function driveActivityGlyphTier(
       15_000,
     );
     for (const glyph of expectedGlyphs) {
+      const glyphRowIndex = glyphRow(snapshot, glyph);
       HarnessSmoke.Class.requireCondition(
-        glyphRow(snapshot, glyph) >= 0,
+        glyphRowIndex >= 0,
         `${glyphLevel} activity glyph slot renders ${glyph}`,
       );
+      // Column 0 is the accent, 1 a pad, 2 the glyph, 3 a pad. The glyph must own exactly one
+      // terminal cell or the four-column bar cannot keep its rows aligned.
+      HarnessSmoke.Class.requireCondition(
+        snapshot.cell(glyphRowIndex, 2)?.width === 1,
+        `${glyphLevel} activity glyph ${glyph} occupies exactly one terminal cell`,
+      );
     }
+    const sourceControlEdgeColumn = sidebarEdgeColumn(
+      snapshot,
+      glyphRow(snapshot, expectedGlyphs[1]),
+    );
+    const extensionsEdgeColumn = sidebarEdgeColumn(
+      snapshot,
+      glyphRow(snapshot, expectedGlyphs[2]),
+    );
+    HarnessSmoke.Class.requireCondition(
+      sourceControlEdgeColumn > 0 &&
+        sourceControlEdgeColumn === extensionsEdgeColumn,
+      `${glyphLevel} activity rows keep the sidebar edge in one column`,
+    );
   } finally {
     await tierDriver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(tierHomeDirectory);
@@ -120,12 +168,12 @@ try {
   console.log(
     '== harness activitybar: semantic slots resolve at nerd and unicode tiers ==',
   );
-  await driveActivityGlyphTier(fixtureRoot, 'nerd', [
-    '\u{f07b}',
-    '\u{e702}',
-    '\u{f487}',
-  ]);
-  await driveActivityGlyphTier(fixtureRoot, 'unicode', ['☰', '⑂', '⊞']);
+  await driveActivityGlyphTier(fixtureRoot, 'nerd', activityGlyphsFor('nerd'));
+  await driveActivityGlyphTier(
+    fixtureRoot,
+    'unicode',
+    activityGlyphsFor('unicode'),
+  );
 
   console.log(
     '== harness activitybar: fallback glyph tier renders every view ==',

@@ -99,11 +99,74 @@ src/modules/git/GitPaneContent.test.ts && bash scripts/smoke-activitybar.sh`.
 
 **Last refined:** 2026-07-26
 
+### One painter draws every single-line text field
+
+**Invariant:** If a single-line text field is painted, then `TextFieldPainter` draws its visible text
+window, its caret cell, and its state tone: the caret sits at the field's `TextInputModel` caret and
+is drawn by INVERTING the cell it occupies, and the tone is one of `idle`, `focused`, or `hovered`,
+with the focus tone quieter than the hover tone.
+
+**Scope:** `BoundedListPopup`'s search row, the command-palette and Quick Open inputs in
+`OverlayLayer`, and the query and replacement fields in `FindBarRenderer`. The editor body caret
+(projected as the terminal's own hardware cursor) and the multi-line wrapping `AgentComposer` are
+outside this rule — a wrapping surface resolves its caret through a row mapping, not a one-line
+window.
+
+**Components:**
+- *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `EditorCoordinates.lineWidth` gives the
+  caret's display column; the grapheme at the caret (a space at end-of-text) is the inverted cell.
+- *State tone* — `TextFieldPainter.toneFor` maps `idle`/`focused`/`hovered` to one palette pair;
+  `stateFor` decides that hover outranks focus.
+- *Fixed geometry* — the caret cell is always emitted and only recoloured, so a field's painted width
+  and text window are identical in every state.
+
+**Mechanism:** `TextFieldPainter.paint` takes the input MODEL, never a caret index, so a painted caret
+cannot be re-derived from string length; every column it computes goes through `EditorCoordinates`, so
+a wide or East-Asian grapheme moves the caret by display cells. Inverting a cell costs no column and
+needs no glyph, so the caret shifts nothing and adds no appearance literal — the same reduction
+`SolidThumbScrollBar` made for thumbs. `toneFor` reads `border`/`dim`, `cursorLine`/`fg`, and
+`accent`/`panel`: idle recesses below `panel`, focus lifts one step above it while brightening the
+text, and only hover uses the theme's vivid colour, so hierarchy stays carried by text brightness as
+`ThemePalettes` documents. The caret is STEADY — a blinking caret would request frames forever and
+break the `idle-quiescence` contract in `scripts/behavioral-contracts.sh`.
+
+**Generates:** A visible caret in every one-line field; a focused field distinguishable from an idle
+one; hover retained where a field is a pointer target; one caret implementation instead of four; a
+field that can gain a state without touching its consumers.
+
+**Rejected alternatives:** Insert a bar glyph at the caret (what the palette, Quick Open, and Find bar
+did) — it shifts every cell after the caret and mints a glyph literal outside the theme. Blink the
+caret on a timer — it would request frames at rest and break idle-quiescence. Give the modal dialog
+inputs the full three-tone state — they are always the focused field and are never hover targets, so
+two of the three states would be unreachable decoration.
+
+**Evidence:** `src/modules/ui/TextFieldPainter.ts`; `src/modules/ui/TextFieldPainter.test.ts` (caret at
+the model offset, end-of-text caret, wide-glyph columns, identical geometry across the three states,
+tone ordering); consumers `src/modules/ui/BoundedListPopup.ts`, `src/modules/ui/OverlayLayer.ts`,
+`src/modules/ui/FindBarRenderer.ts`; `scripts/harness/smoke-field-caret-harness.ts` (caret at the
+published `boundedListPopupQueryCaretCell` through typing, word movement, word deletion, and a pasted
+wide-glyph query; three distinct observed backgrounds);
+`scripts/harness/smoke-text-input-harness.ts` (the inverted caret cell in open-project, the palette,
+and find).
+
+**Impossible if true:** A focusable one-line field with no visible caret; a focused field painted
+identically to an idle one; a hover highlight lost because a field became focusable; a caret column
+derived from string length drifting on a wide glyph or emoji; a caret that widens its field or shifts
+the text after it; a caret that requests frames while the app is at rest.
+
+**Verification:** `bun test src/modules/ui/TextFieldPainter.test.ts && bun
+scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-text-input-harness.ts &&
+bash scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Bounded list popups share paint and hit geometry
 
 **Invariant:** If a bounded list popup is drawn and accepts pointer input, then one
-`BoundedListPopupGeometry` determines its box bounds, optional search row, optional backward-control
-cell, visible list window, scrollbar rectangle, and screen-row-to-item mapping for both painting and
+`BoundedListPopupGeometry` determines its box bounds, optional search row, visible list window,
+per-row icon column, scrollbar rectangle, and screen-row-to-item mapping for both painting and
 hit-testing.
 
 **Scope:** `BoundedListPopup` and its buffer-count, Git-log branch-selector, and caret-completion
@@ -113,13 +176,16 @@ adapters.
 The list renderer slices from its `firstVisible` and `listRows`; the vertical-only
 `ScrollableTextViewport` receives the same list rectangle; and pointer selection calls
 `filterIndexAtRow` with that stored geometry. `nextEnabledFilteredIndex` wraps through the current
-filtered matches and `revealSelectedIndex` moves that same window. The optional search row owns an
-independent rest-muted and hover-lit palette state, while the modal popup remains the query-input
-owner across list-row hover repaints. The optional backward control is painted and hit-tested only
-through `navigateBackwardControl`. Consumer adapters provide item labels, selection, and actions but
-never calculate popup rows, controls, or query focus. Completion hides the search row and backdrop,
-anchors at the laid-out editor caret, and prefilters only when its typed prefix changes; each paint
-slices cached matches to the geometry's visible window.
+filtered matches and `revealSelectedIndex` moves that same window. The optional search row delegates
+its window, caret, and idle/focused/hovered tone to `TextFieldPainter` and publishes the painted caret
+cell as `queryCaretCell`, while the modal popup remains the query-input owner across list-row hover
+repaints. Row text comes from the one `itemRowText` generator, whose icon cell is `listIconColumns`
+wide on EVERY row — the widest icon in the item set, so a two-cell pictograph widens that shared
+column instead of pushing one row's label out of the column its neighbours established. Consumer
+adapters provide item labels, icons, selection, and actions but never calculate popup rows, columns,
+or query focus. Completion hides the search row and backdrop, anchors at the laid-out editor caret,
+and prefilters only when its typed prefix changes; each paint slices cached matches to the geometry's
+visible window.
 
 **Generates:** window-edge clamping and upward opening; a bounded visible window over arbitrarily
 large lists; wheel momentum and a solid vertical thumb; pointer and keyboard selection that agree
@@ -129,10 +195,9 @@ with the row on screen.
 `src/modules/ui/BoundedListPopup.test.ts`; `scripts/harness/smoke-bounded-list-popup-harness.ts`.
 
 **Impossible if true:** a painted row selecting a different item; a popup or scrollbar extending
-through the terminal bottom edge; a painted backward control whose published cell does not activate
-it; a consumer reimplementing placement, visible-window, row-hit, control-hit, or wrap math; list
-hover diverting typed query characters to the editor; a completion paint walking all 1,000+ source
-items.
+through the terminal bottom edge; two rows in one list starting their labels in different columns; a
+consumer reimplementing placement, visible-window, row-hit, icon-column, or wrap math; list hover
+diverting typed query characters to the editor; a completion paint walking all 1,000+ source items.
 
 **Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts && bun
 scripts/harness/smoke-bounded-list-popup-harness.ts`
@@ -191,10 +256,12 @@ panel creation, completion, and hierarchical pickers. Domain-specific item disco
 performed for a selected leaf remain in the adapter.
 
 **Mechanism:** `BoundedListPopupItem.keepOpenOnSelect` controls dismissal at the one activation
-chokepoint used by Enter and pointer release; `drillable` gates Right; the optional
-`navigateBackwardHandler` receives Left; and `replaceItems` atomically re-roots items, selection,
-title, viewport, and query. `BreadcrumbPicker` only maps filesystem entries into those options and
-opens a selected file.
+chokepoint used by Enter and pointer release; `drillable` gates Right; `pinnedWhileQueryEmpty` marks
+a browsing row that leads the empty-query list and is never scored; `icon` fills the shared icon
+column; the optional `navigateBackwardHandler` receives Left and the activation of a pinned parent
+row; and `replaceItems` atomically re-roots items, selection, title, viewport, and query.
+`BreadcrumbPicker` only maps filesystem entries into those options — resolving each row's mark
+through the same `Theme.icon` the file tree uses — and opens a selected file.
 
 **Generates:** One modal input route; one query editor; one wrapped selection model; hierarchical
 drill navigation that any list adapter can opt into without another popup or input branch.
@@ -217,45 +284,58 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Popup hierarchy is mouse and keyboard reachable
 
-**Invariant:** If a bounded popup exposes upward hierarchy navigation, then Left and its visible
-mouse control invoke one backward operation, while the control is absent when no parent is
-reachable.
+**Invariant:** If a bounded popup exposes upward hierarchy navigation, then its parent operation is a
+`..` ROW at the head of the list — Enter on that row, a click on that row, and Left invoke one
+backward operation — and that row is absent when no parent is reachable.
 
 **Scope:** `BoundedListPopup` adapters that provide `navigateBackwardHandler`, currently
-`BreadcrumbPicker`. Flat popup adapters and the breadcrumb popup at the workspace root do not paint
-the control.
+`BreadcrumbPicker`. Flat popup adapters and the breadcrumb popup at the workspace root offer no
+parent row.
 
 **Components:**
-- *Shared operation* — Left and a click on `navigateBackwardControl` both call
-  `BoundedListPopup.navigateBackward`.
-- *Honest root* — `navigateBackwardAvailable` removes the control geometry and paint at the
-  workspace root.
+- *Shared operation* — Enter on the `..` row, a pointer release on it, and Left all reach
+  `BoundedListPopup.navigateBackward` and from there the one `BreadcrumbPicker.navigateBackward`.
+- *Honest root* — the row exists only where `parentDirectoryOf` resolves a confined parent, so the
+  workspace-root list contains no `..` entry at all.
+- *Browsing not searching* — the row is pinned to the head of the list while the query is empty and
+  gone once the user types; it is never fuzzy-scored, and selection never comes to rest on it.
 - *Directory continuity* — moving up keeps the popup open, clears the old directory query, and
   selects the directory just left.
 
-**Mechanism:** `BoundedListPopup.layoutGeometry` publishes the one-cell
-`navigateBackwardControl`, and the popup uses that same cell for paint, hover, and hit-testing.
-`BreadcrumbPicker.navigateBackward` is the sole filesystem re-root generator and calls
+**Mechanism:** `BreadcrumbPicker.itemsForDirectory` prepends one synthetic item carrying
+`pinnedWhileQueryEmpty`, `keepOpenOnSelect`, and the folder icon its sibling directories wear.
+`BoundedListPopup.filterItems` puts pinned items ahead of the scored matches on an empty query and
+drops them entirely on a non-empty one, and `firstEnabledFilteredIndex` skips pinned rows so the
+resting selection is always a real entry. Because `..` is an ORDINARY list row, Enter and pointer
+release already share the single `runFilteredIndex` activation chokepoint, and
+`BreadcrumbPicker.activateItem` routes its identifier into the same `navigateBackward` generator the
+Left key calls. That generator resolves the parent through `parentDirectoryOf` and calls
 `replaceItems` with `resetQuery: true` and the previous directory identifier.
 
-**Generates:** Mouse reachability for the complete breadcrumb drill path; identical published
-folder, item, and selection state after Left or click; a root popup with no dead control.
+**Generates:** Keyboard reachability through the Up/Down/Enter the user already uses, with no second
+chord; mouse reachability with no separate hit region, paint, or hover state; identical published
+folder, row, and selection state after Enter on `..`, a click on `..`, or Left; a root popup with no
+dead row.
 
-**Rejected alternatives:** Give the click a breadcrumb-specific re-root path — keyboard and mouse
-can drift in folder, query, selection, or dismissal behavior. Paint an always-present root control —
-it looks actionable while having no valid operation.
+**Rejected alternatives:** A one-cell chrome control beside the search input (shipped and replaced on
+2026-07-26) — a second navigation model with its own hit region, paint, and discoverability problem,
+reachable by mouse only. Give the row a breadcrumb-specific re-root path — keyboard and mouse can
+drift in folder, query, selection, or dismissal behavior. Keep the row at the workspace root — it
+looks actionable while having no valid operation. Fuzzy-score `..` like a file — a query containing
+`.` would leave a browsing affordance competing for rank inside a search result.
 
 **Evidence:** `src/modules/ui/BoundedListPopup.ts`; `src/modules/ui/BreadcrumbPicker.ts`;
-`src/modules/theme/ThemeIcons.ts`; `src/modules/ui/BreadcrumbPicker.test.ts`;
+`src/modules/ui/BreadcrumbPicker.test.ts`; `src/modules/ui/BoundedListPopup.test.ts`;
 `scripts/harness/smoke-bounded-list-popup-harness.ts`.
 
-**Impossible if true:** Left and click publishing different folders or item identifiers; an upward
-click dismissing the popup; the old directory query surviving a re-root; a live-looking upward
-control at the workspace root.
+**Impossible if true:** Enter, a pointer release, or Left publishing different folders, rows, or
+selections; an upward activation dismissing the popup; the old directory query surviving a re-root; a
+`..` row at the workspace root; a typed query leaving `..` among the offered rows; the resting
+selection landing on `..`.
 
 **Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts
 src/modules/ui/BreadcrumbPicker.test.ts src/modules/theme/ThemeIcons.test.ts && bun

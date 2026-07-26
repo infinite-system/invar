@@ -566,7 +566,8 @@ scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-agent-pane-ux
 ### Editable text fields share one input model
 
 **Invariant:** If Invar owns an editable one-logical-line text field, then its text, grapheme caret,
-insertion, deletion, and horizontal movement come from `TextInputModel`.
+insertion, deletion, and horizontal movement come from `TextInputModel`, and every action
+`TextInputModel.apply` implements is REACHABLE in that field.
 
 **Scope:** `AgentComposer`; `QuickOpen.query`; `CommandRegistry.query`; `FindInBuffer.query` and
 `replacement`; `BoundedListPopup.query`; every future one-line editable field. Full document
@@ -576,7 +577,10 @@ editors and terminal subprocess input are outside this rule.
 boundaries to `TextEditing`. Consumers retain only their surface-specific filtering, layout,
 selection, pointer, history, or navigation behavior. `scripts/ast-query.ts text-input-census
 --require-zero` fails when a class still combines its own input-like state with edit or movement
-members.
+members. Reachability has one chord table too: `KeybindingDefaults.textInputBindings(context)` emits
+the `textInput.*` bindings per field context and `Bootstrap.applyTextInputAction` routes them to the
+focused field, so a surface that already owns an unmodified key declares it in `hostOwnedPlainKeys`
+instead of writing a second mapping.
 
 **Generates:** One editing behavior across every text field; one complete text-input keybinding
 table; caret painting at the real grapheme position; an enforced zero-count census gate.
@@ -587,18 +591,23 @@ or delete a different span.
 **Evidence:** `src/modules/editor/TextInputModel.ts`;
 `src/modules/editor/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
 `src/modules/search/QuickOpen.ts`, `src/modules/commands/CommandRegistry.ts`, and
-`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`;
-`scripts/conventions-gate.sh`.
+`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`
+(`applyQueryInputAction`); `src/modules/keybindings/KeybindingDefaults.ts`
+(`textInputBindings`); `scripts/conventions-gate.sh`.
 
 **Impossible if true:** An adopted text field storing its own query or caret and reimplementing
-insert, backspace, delete, word deletion, or horizontal movement.
+insert, backspace, delete, word deletion, or horizontal movement; an adopted field that composes the
+model yet leaves word movement or word deletion unreachable because its keys were never routed; a
+fourth chord table for the same `textInput.*` actions.
 
-**Verification:** `bun test src/modules/editor/TextInputModel.test.ts && bun scripts/ast-query.ts
-text-input-census --require-zero`
+**Verification:** `bun test src/modules/editor/TextInputModel.test.ts
+src/modules/keybindings/KeybindingDefaults.test.ts && bun scripts/ast-query.ts text-input-census
+--require-zero && bun scripts/harness/smoke-text-input-harness.ts && bun
+scripts/harness/smoke-field-caret-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### The app is built only after the kernel is sealed
 
@@ -837,9 +846,10 @@ binding; no modal state gates insertion.
 semantic glyph slots, icon sets), never hard-coded, and each resolves through a capability
 fallback ladder; changing a glyph vocabulary never changes input or projection behavior.
 
-**Scope:** Themes, file-type icons, syntax colors, git/diagnostic decorations, gutter, activity-bar
-items, panel-heading controls, and popup navigation controls. Text content that is not an icon or
-control glyph is outside the glyph-slot rule.
+**Scope:** Themes, file-type icons wherever they are painted (file tree and breadcrumb popup rows
+alike), syntax colors, git/diagnostic decorations, gutter, activity-bar items, and panel-heading
+controls. Text content that is not an icon or control glyph — a filename, a `..` parent label — is
+outside the glyph-slot rule.
 
 **Mechanism:** Stands on *Terminal color and glyph support varies*. `theme.palettes.ts` /
 `ThemeIcons.ts` are semantic-token data; `InterfaceGlyphVocabulary` gives behavior a stable slot
@@ -853,8 +863,9 @@ theme/icon plugin contributions; activity and heading consumers that name slots 
 **Evidence:** The brief's diagnostic undercurl→underline→gutter fallback; the `theme` module
 lands M2; `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/ActivityBar.ts`;
 `src/modules/ui/PanelHeading.ts`; `src/modules/ui/BoundedListPopup.ts`;
-`src/modules/theme/ThemeIcons.test.ts`;
-`scripts/harness/smoke-activitybar-harness.ts`.
+`src/modules/ui/BreadcrumbPicker.ts`; `src/modules/theme/ThemeIcons.test.ts`;
+`scripts/harness/smoke-activitybar-harness.ts` (its expected glyph row is DERIVED from the
+vocabulary, so a glyph change never edits the drive).
 
 **Impossible if true:** A hard-coded truecolor/nerd-glyph that breaks legibility on a limited
 terminal; a component that colors itself without going through the theme; changing an activity or

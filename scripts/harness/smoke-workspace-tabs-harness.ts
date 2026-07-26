@@ -15,6 +15,7 @@ import {
   requireCondition,
   runGit,
 } from './HarnessSmokeSupport';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
@@ -181,7 +182,17 @@ try {
   driver.sendText(secondName);
   await driver.awaitGridCondition(
     'the project picker paints the complete typed path on its input row',
-    (candidate) => candidate.findText(`+ ${secondRoot}▏`) !== null,
+    (candidate) => {
+      const pathPosition = candidate.findText(`+ ${secondRoot}`);
+      if (!pathPosition) return false;
+      // The shared field painter puts the caret in the cell AFTER the typed path by inverting it,
+      // so the caret is read as the field foreground turned into a background, not as a glyph.
+      const caretColumn = pathPosition.column + `+ ${secondRoot}`.length;
+      return (
+        candidate.cell(pathPosition.row, caretColumn)?.background ===
+        Number.parseInt(ThemePalettes.Class.dark.fg.slice(1), 16)
+      );
+    },
   );
   pass('project picker paints the complete typed path');
   await driver.awaitSnapshot((candidate) =>

@@ -9,6 +9,8 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -16,8 +18,15 @@ import { PtyTestDriver } from './PtyTestDriver';
 interface DiscoveredInputPosition {
   row: number;
   column: number;
-  caretCharacters: string;
 }
+
+// The shared painter draws the caret by INVERTING the cell it sits on, so the caret cell carries the
+// field's foreground as its background and the text around it never shifts. The colour comes from the
+// same theme data the app paints from, never a literal.
+const caretCellBackground = Number.parseInt(
+  ThemePalettes.Class.dark.fg.slice(1),
+  16,
+);
 
 async function awaitInputValue(
   driver: PtyTestDriver.Model,
@@ -28,13 +37,13 @@ async function awaitInputValue(
 ): Promise<HarnessSnapshot.Model> {
   return driver.awaitGridCondition(description, (snapshot) => {
     const rowText = snapshot.rowText(inputPosition.row);
-    const caretColumn = inputPosition.column + beforeCaret.length;
+    const caretColumn =
+      inputPosition.column + EditorCoordinates.Class.lineWidth(beforeCaret);
     const caretCell = snapshot.cell(inputPosition.row, caretColumn);
     return (
       rowText.slice(inputPosition.column, caretColumn) === beforeCaret &&
-      caretCell?.characters === inputPosition.caretCharacters &&
-      rowText.slice(caretColumn + 1, caretColumn + 1 + afterCaret.length) ===
-        afterCaret
+      caretCell?.background === caretCellBackground &&
+      rowText.slice(caretColumn, caretColumn + afterCaret.length) === afterCaret
     );
   });
 }
@@ -57,13 +66,12 @@ async function exerciseSharedInput(
     valuePosition.column + inputValue.length,
   );
   HarnessSmoke.Class.requireCondition(
-    Boolean(caretCell?.characters.trim()),
-    `${surfaceName} paints a one-cell caret after inserted text`,
+    caretCell?.background === caretCellBackground,
+    `${surfaceName} paints an inverted one-cell caret after inserted text`,
   );
   const inputPosition: DiscoveredInputPosition = {
     row: valuePosition.row,
     column: valuePosition.column,
-    caretCharacters: caretCell?.characters ?? '',
   };
 
   driver.sendKeys('Left');

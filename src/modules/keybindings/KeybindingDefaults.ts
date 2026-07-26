@@ -7,10 +7,18 @@ import type { Keybinding } from './KeybindingRegistry';
 // invariant: The canonical layer is the floor (keybindings.invariants.md)
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
 class $KeybindingDefaults {
+  /**
+   * The ONE chord table for every editable one-line field, instantiated per context. A host that
+   * already owns an UNMODIFIED key (the bounded popup's Left/Right drill and Backspace erase) lists
+   * it in `hostOwnedPlainKeys`, so the field never advertises a chord it cannot receive; the
+   * modified chords — word movement, word deletion, Home/End, delete-line — always reach the field.
+   */
   protected static textInputBindings(
     context: TextInputBindingContext,
+    options: TextInputBindingOptions = {},
   ): Keybinding[] {
-    return [
+    const hostOwnedPlainKeys = new Set(options.hostOwnedPlainKeys ?? []);
+    const bindings: Keybinding[] = [
       {
         chord: { key: 'left' },
         action: 'textInput.moveLeft',
@@ -102,6 +110,13 @@ class $KeybindingDefaults {
         context,
       },
     ];
+    if (hostOwnedPlainKeys.size === 0) return bindings;
+    return bindings.filter((binding) => {
+      const chord = binding.chord;
+      if (!chord) return true;
+      const unmodified = !chord.ctrl && !chord.alt && !chord.super;
+      return !(unmodified && hostOwnedPlainKeys.has(chord.key));
+    });
   }
 
   protected static get $canonicalBindings(): Keybinding[] {
@@ -368,6 +383,12 @@ class $KeybindingDefaults {
         action: 'listPopup.erase',
         context: 'listPopup',
       },
+      // The popup's search row is an editable one-line field, so it gets the SAME text-input table
+      // as the palette, Quick Open, find, and the agent composer. Left/Right stay the popup's drill
+      // and step-out, and Backspace stays its erase — those three unmodified keys are host-owned.
+      ...this.textInputBindings('listPopup', {
+        hostOwnedPlainKeys: ['left', 'right', 'backspace'],
+      }),
 
       // --- shortcut cheat-sheet (captures input while open; Shift+F1 above toggles it globally) ---
       { chord: { key: 'escape' }, action: 'help.close', context: 'help' },
@@ -659,4 +680,9 @@ export namespace KeybindingDefaults {
 }
 
 export type TextInputBindingContext =
-  'palette' | 'quickopen' | 'find' | 'agent';
+  'palette' | 'quickopen' | 'find' | 'agent' | 'listPopup';
+
+export interface TextInputBindingOptions {
+  /** Unmodified keys the surrounding surface already owns; their text-field chords are omitted. */
+  hostOwnedPlainKeys?: readonly string[];
+}

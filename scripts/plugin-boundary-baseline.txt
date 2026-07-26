@@ -14,10 +14,18 @@
 # Ordering and reasoning for driving these to zero live in project.canvas-census.md
 # ("Extraction order"). Do not add a domain here without adding it to that census.
 
-# --- source control, comparison view: EXTRACTED 2026-07-26, promoted to zero tolerance ---------
-# Was 27 (Workspace.ts) + 17 (Bootstrap.ts) + 10 (AppStatusProjection.ts) = 54 lines. Now 0, so it
-# is enforced by `plugin_boundary_forbid` in the gate rather than by a row here. Left as a comment
-# because the shape of what moved is the worked example for markdown below.
+# --- source control, the panel: EXTRACTED by task #34 ------------------------------------------
+# Zero rows for Workspace.ts and src/modules/app, so ANY reference there fails. The keybinding
+# defaults still carry its chord DATA (13 action identifiers + the 'git' keybinding context), which
+# is a different extraction — issue #100 — and is allowlisted here, not silently tolerated.
+source-control	src/modules/keybindings/KeybindingDefaults.ts	13
+source-control	src/modules/keybindings/KeybindingRegistry.ts	1
+
+# --- source control, comparison view: EXTRACTED 2026-07-26 -------------------------------------
+# Was 27 (Workspace.ts) + 17 (Bootstrap.ts) + 10 (AppStatusProjection.ts) = 54 lines, now 0 in all
+# three, so they carry no rows and one reference there fails. Its two chords remain in the keybinding
+# defaults (issue #100).
+comparison	src/modules/keybindings/KeybindingDefaults.ts	2
 
 # --- markdown (owner-named 2026-07-26, extraction step 3) --------------------------------------
 # Workspace.ts: 13 = markdownPreviewPaths / activeFileIsMarkdown / showingMarkdownPreview /
@@ -29,3 +37,4 @@
 markdown	src/modules/workspace/Workspace.ts	13
 markdown	src/modules/app/Bootstrap.ts	60
 markdown	src/modules/app/AppStatusProjection.ts	13
+markdown	src/modules/keybindings/KeybindingDefaults.ts	3

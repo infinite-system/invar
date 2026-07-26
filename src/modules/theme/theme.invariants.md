@@ -100,9 +100,9 @@ active theme (a `Palette` field or a semantic `GlyphSlot` / `IconSet` / `ActionI
 the drawing site — the `theme` module is the single source of appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
-activity-bar, panel-heading, and popup backward-control glyphs. The sole home for color and glyph
-literals is `src/modules/theme`; consumers pull tokens or name semantic slots, they do not mint
-appearance.
+activity-bar and panel-heading control glyphs and the file-type marks the file tree and the
+breadcrumb popup share. The sole home for color and glyph literals is `src/modules/theme`; consumers
+pull tokens or name semantic slots, they do not mint appearance.
 
 **Mechanism:** `Theme` exposes `palette`, `icons`, `actionIcons`, `checkboxIcons`, and `icon()`
 as plain getters that re-derive from `PALETTES` and the icon tables on read. Its
@@ -116,7 +116,9 @@ boundary for auditing hard-coded appearance.
 
 **Evidence:** `src/modules/theme/Theme.ts` (`palette`, `icons`, `actionIcons`, `checkboxIcons`,
 `glyphVocabulary`, `glyph`, and `icon`); the color literals live only in `ThemePalettes.ts` and the
-glyph literals only in `ThemeIcons.ts`; `ThemeIcons.test.ts` verifies the semantic slot ladder.
+glyph literals only in `ThemeIcons.ts`; `src/modules/ui/BreadcrumbPicker.ts` resolves its row marks
+through `Theme.icon` rather than restating the tree's table; `ThemeIcons.test.ts` verifies the
+semantic slot ladder.
 
 **Impossible if true:** A rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
@@ -172,14 +174,17 @@ never empty or undefined.
 
 **Scope:** `ThemeIcons.iconSetFor`, `actionIconsFor`, `checkboxIconsFor`,
 `interfaceGlyphVocabularyFor`, `glyphFor`, and `iconFor`, plus the `Theme` getters that call them.
-Covers file-tree icons, git changes-row action buttons, staging checkboxes, activity-bar items, and
-panel-heading and popup backward controls.
+Covers file-tree and breadcrumb-popup file icons, git changes-row action buttons, staging checkboxes,
+activity-bar items, and panel-heading controls.
 
 **Mechanism:** The `SETS`, `ACTION_ICONS`, and `CHECKBOX_ICONS` tables are keyed by `GlyphLevel`,
 and `$interfaceGlyphVocabularies` maps every `GlyphSlot` at each level, so selection is a total
 lookup with no missing rung. The `ascii` entries remain printable; action, checkbox, activity, and
-control glyphs are authored as one cell each; `iconFor` falls back through
-`set.ext[extension] ?? set.file` so it always returns a printable string.
+panel-control glyphs are authored as one cell each, as are the `folderOpen`, `folderClosed`, and
+`file` defaults; `iconFor` falls back through `set.ext[extension] ?? set.file` so it always returns
+a printable string. The unicode EXTENSION map deliberately keeps wide pictographs (`🔒`, `🖼`), so a
+consumer that puts icons in a column sizes that column to the widest icon in its item set instead of
+assuming one cell.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button
 and checkbox columns never shift width between capability levels.
@@ -191,10 +196,17 @@ and checkbox columns never shift width between capability levels.
 tier` in `src/modules/theme/ThemeIcons.test.ts`.
 
 **Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
-action/checkbox glyph wider than one cell at any level; `iconFor` returning empty or undefined for
-an unknown extension; an activity, panel, or popup control choosing its glyph literal in behavior
-code; a popup backward glyph colliding with a reserved diff, dirty, separator, panel, or activity
-mark.
+action/checkbox glyph wider than one cell at any level; a `folderOpen`, `folderClosed`, or `file`
+default wider than one cell; `iconFor` returning empty or undefined for an unknown extension; an
+activity or panel control choosing its glyph literal in behavior code; two activity or panel slots
+resolving to the same glyph at one tier; an activity glyph colliding with a reserved diff, dirty,
+separator, or overview mark.
+
+**Open question:** The unicode extension map paints `●` for `.js`/`.jsx`, which is also the reserved
+DIRTY marker, and `⑂` for git files, which is also the Source Control activity glyph. Neither pair
+shares a column today, so no row is ambiguous, but the reserved-mark table does not record either
+conflict. Pre-existing in the tree's icon set; inherited unchanged when the breadcrumb popup started
+reusing that set on 2026-07-26.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
 scripts/harness/smoke-activitybar-harness.ts`

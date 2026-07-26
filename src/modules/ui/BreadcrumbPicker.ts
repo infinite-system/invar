@@ -1,4 +1,5 @@
 import { Files } from '../system/Files';
+import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type {
   BoundedListPopup,
@@ -10,7 +11,18 @@ import type { OverlayCoordinator } from './OverlayCoordinator';
 
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
+// invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 class $BreadcrumbPicker {
+  // The MS-DOS / Norton Commander parent row. Namespaced so it can never be confused with the
+  // absolute filesystem paths every real entry uses as its identifier.
+  static get parentDirectoryItemIdentifier(): string {
+    return 'breadcrumb-picker:parent-directory';
+  }
+
+  static get parentDirectoryItemLabel(): string {
+    return '..';
+  }
+
   protected workspaceRoot = '';
   protected currentDirectory = '';
   protected directoryPaths = new Set<string>();
@@ -41,12 +53,14 @@ class $BreadcrumbPicker {
             minimumWidth: 28,
             searchThreshold: 0,
             navigateBackwardHandler: () => this.navigateBackward(),
-            navigateBackwardAvailable: () => this.navigateBackwardAvailable(),
           },
         ),
     );
   }
 
+  // Every row — the parent row included — takes its mark from the SAME resolver the file tree
+  // paints with, so a directory is told apart by its icon instead of by a trailing slash the tree
+  // never used.
   protected itemsForDirectory(
     directoryPath: string,
   ): readonly BoundedListPopupItem[] {
@@ -54,16 +68,34 @@ class $BreadcrumbPicker {
     this.directoryPaths = new Set(
       entries.filter((entry) => entry.isDir).map((entry) => entry.path),
     );
-    return entries.map((entry) => ({
+    const entryItems = entries.map((entry) => ({
       identifier: entry.path,
-      label: entry.isDir ? `${entry.name}/` : entry.name,
-      searchText: entry.name,
+      label: entry.name,
+      icon: this.dependencies.theme.icon(entry.name, entry.isDir),
       drillable: entry.isDir,
       keepOpenOnSelect: entry.isDir,
     }));
+    if (this.parentDirectoryOf(directoryPath) === null) return entryItems;
+    return [
+      {
+        identifier: $BreadcrumbPicker.parentDirectoryItemIdentifier,
+        label: $BreadcrumbPicker.parentDirectoryItemLabel,
+        icon: this.dependencies.theme.icon(
+          $BreadcrumbPicker.parentDirectoryItemLabel,
+          true,
+        ),
+        keepOpenOnSelect: true,
+        pinnedWhileQueryEmpty: true,
+      },
+      ...entryItems,
+    ];
   }
 
   protected activateItem(item: BoundedListPopupItem): void {
+    if (item.identifier === $BreadcrumbPicker.parentDirectoryItemIdentifier) {
+      this.navigateBackward();
+      return;
+    }
     if (this.directoryPaths.has(item.identifier)) {
       this.currentDirectory = item.identifier;
       this.replaceDirectory();
@@ -73,22 +105,26 @@ class $BreadcrumbPicker {
     this.dependencies.workspaceSet.active.focus.value = 'editor';
   }
 
+  // The ONE upward generator: the `..` row's activation, the Left key, and the parent row's very
+  // existence all resolve the parent through `parentDirectoryOf`, so no second re-root path exists
+  // that could publish a different folder, query, or selection.
   protected navigateBackward(): void {
-    if (!this.navigateBackwardAvailable()) return;
     const previousDirectory = this.currentDirectory;
-    const parentDirectory = Files.Class.confineToRoot(
-      this.workspaceRoot,
-      Files.Class.dirname(this.currentDirectory),
-    );
-    if (!parentDirectory) return;
+    const parentDirectory = this.parentDirectoryOf(previousDirectory);
+    if (parentDirectory === null) return;
     this.currentDirectory = parentDirectory;
     this.replaceDirectory(previousDirectory);
   }
 
-  protected navigateBackwardAvailable(): boolean {
+  protected parentDirectoryOf(directoryPath: string): string | null {
+    if (directoryPath.length === 0 || directoryPath === this.workspaceRoot) {
+      return null;
+    }
     return (
-      this.currentDirectory.length > 0 &&
-      this.currentDirectory !== this.workspaceRoot
+      Files.Class.confineToRoot(
+        this.workspaceRoot,
+        Files.Class.dirname(directoryPath),
+      ) || null
     );
   }
 
@@ -125,4 +161,5 @@ export interface BreadcrumbPickerDependencies {
   popup: Pick<BoundedListPopup.Instance, 'openAt' | 'replaceItems'>;
   overlayCoordinator: Pick<OverlayCoordinator.Instance, 'openExclusiveOverlay'>;
   workspaceSet: WorkspaceSet.Instance;
+  theme: Pick<Theme.Instance, 'icon'>;
 }

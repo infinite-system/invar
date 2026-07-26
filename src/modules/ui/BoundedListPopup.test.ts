@@ -12,7 +12,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 30,
       itemCount: 100,
       searchVisible: true,
-      navigateBackwardVisible: false,
+      iconColumns: 0,
       scrollbarThickness: 1,
       firstVisible: 0,
     });
@@ -32,7 +32,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 24,
       itemCount: 40,
       searchVisible: true,
-      navigateBackwardVisible: false,
+      iconColumns: 0,
       scrollbarThickness: 1,
       firstVisible: 0,
     });
@@ -50,7 +50,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 20,
       itemCount: 100,
       searchVisible: true,
-      navigateBackwardVisible: false,
+      iconColumns: 0,
       scrollbarThickness: 2,
       firstVisible: 99,
     });
@@ -70,7 +70,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 30,
       itemCount: 100,
       searchVisible: true,
-      navigateBackwardVisible: false,
+      iconColumns: 0,
       scrollbarThickness: 1,
       firstVisible: 99,
     });
@@ -81,7 +81,7 @@ describe('BoundedListPopup', () => {
     expect(geometry.bottomRow).toBeLessThan(3);
   });
 
-  test('publishes one navigation control cell and reserves its chrome row', () => {
+  test('publishes the icon column and reserves a chrome row only for search', () => {
     const geometry = BoundedListPopup.$Class.layoutGeometry({
       screenWidth: 40,
       screenHeight: 12,
@@ -89,17 +89,69 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 20,
       itemCount: 2,
       searchVisible: false,
-      navigateBackwardVisible: true,
+      iconColumns: 2,
       scrollbarThickness: 1,
       firstVisible: 0,
     });
 
     expect(geometry.searchRow).toBeNull();
-    expect(geometry.navigateBackwardControl).toEqual({
-      column: geometry.boxLeft + 1,
-      row: geometry.boxTop + 1,
-    });
-    expect(geometry.listTop).toBe(geometry.boxTop + 2);
+    expect(geometry.listIconColumns).toBe(2);
+    expect(geometry.listTop).toBe(geometry.boxTop + 1);
+  });
+
+  test('a pinned row leads the empty query and leaves once the user types', () => {
+    const items = [
+      { identifier: 'parent', label: '..', pinnedWhileQueryEmpty: true },
+      { identifier: 'alpha', label: 'alpha.ts' },
+      { identifier: 'beta', label: 'beta.ts' },
+    ];
+
+    expect(
+      BoundedListPopup.$Class
+        .filterItems(items, '')
+        .map((match) => match.item.identifier),
+    ).toEqual(['parent', 'alpha', 'beta']);
+    const typedIdentifiers = BoundedListPopup.$Class
+      .filterItems(items, 'a')
+      .map((match) => match.item.identifier);
+    expect(typedIdentifiers).not.toContain('parent');
+    expect(typedIdentifiers.length).toBe(2);
+    // `.` would fuzzy-match `..` if the pinned row were scored like a file.
+    expect(
+      BoundedListPopup.$Class
+        .filterItems(items, '.')
+        .map((match) => match.item.identifier),
+    ).not.toContain('parent');
+  });
+
+  test('icons never become searchable text and never shift the label column', () => {
+    const items = [
+      {
+        identifier: 'parent',
+        label: '..',
+        icon: '▸',
+        pinnedWhileQueryEmpty: true,
+      },
+      { identifier: 'module', label: 'picker-module.ts', icon: '◆' },
+      { identifier: 'image', label: 'picture.png', icon: '🖼' },
+    ];
+
+    expect(BoundedListPopup.$Class.filterItems(items, '◆')).toEqual([]);
+    const iconColumns = BoundedListPopup.$Class.itemSetIconColumns(items);
+    expect(iconColumns).toBe(2);
+    const labelOffsets = items.map(
+      (item) =>
+        EditorCoordinates.Class.lineWidth(
+          BoundedListPopup.$Class.itemRowText(item, iconColumns),
+        ) - EditorCoordinates.Class.lineWidth(item.label),
+    );
+    expect(new Set(labelOffsets).size).toBe(1);
+    expect(BoundedListPopup.$Class.itemSetMaximumWidth(items)).toBe(
+      1 +
+        iconColumns +
+        1 +
+        EditorCoordinates.Class.lineWidth('picker-module.ts'),
+    );
   });
 
   test('filters and ranks through the shared quick-open scorer', () => {
