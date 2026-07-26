@@ -220,6 +220,42 @@ descriptor that the shared allocator does not own.
 
 **Last refined:** 2026-07-24
 
+### Shared PTY writes never block the event loop
+
+**Invariant:** If `OpenPty.write` accepts bytes for a PTY master descriptor, then delivery never
+blocks the JavaScript event loop that must also read the descriptor and render the resulting output.
+
+**Scope:** The shared `OpenPty` master descriptor and write path used by `OpenPtyBackend` and
+`PtyTestDriver`. Child read policy and application output generation are outside this rule.
+
+**Mechanism:** `OpenPty` preserves the descriptor status flags, applies `O_NONBLOCK` with `fcntl`
+before each write drain, and restores the blocking state needed by Bun's async PTY read stream after
+the drain. `write` copies bytes into one ordered queue and returns; an event-loop drain writes at most
+16 KB per turn. A partial write advances the queue, `EAGAIN` or `EWOULDBLOCK` schedules a later retry,
+and every other errno throws. A drain timer exists only while queued bytes remain and is cleared on
+close; a read restart is scheduled only if a read races the non-blocking write window and reports
+`EAGAIN`.
+
+**Generates:** Responsive large terminal paste into a stopped or slow child; deadlock-free harness
+input while Invar renders output; ordered chunk delivery; idle quiescence with no write polling at
+rest.
+
+**Evidence:** `src/modules/terminal/OpenPty.ts`; `src/modules/terminal/OpenPty.test.ts` `a saturated
+PTY write leaves the event loop responsive` and `a genuine asynchronous PTY write failure names its
+errno`; `scripts/harness/smoke-terminal-backpressure-harness.ts`.
+
+**Impossible if true:** A large master write preventing a scheduled timer or UI keystroke from
+running; the harness and application each waiting for the other to drain the same PTY; an
+`EAGAIN`/`EWOULDBLOCK` being raised as a terminal failure; a write retry timer firing while the queue
+is empty.
+
+**Verification:** `bun test src/modules/terminal/OpenPty.test.ts && bun
+scripts/harness/smoke-terminal-backpressure-harness.ts && bash scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Terminal bytes cross exactly one backend seam
 
 **Invariant:** Every byte to or from the child process passes through the `TerminalBackend` interface
@@ -505,8 +541,8 @@ paths.
 
 **Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
 until it emits one paste event. `Bootstrap` dispatches that complete text through the focused pane
-seam, and `OpenPty.write` retries partial libc writes until every terminal payload byte crosses the
-PTY.
+seam, and `OpenPty.write` queues partial libc writes on a non-blocking descriptor until every
+terminal payload byte crosses the PTY.
 
 **Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
 drives; large terminal payloads that cannot truncate on a partial PTY write.
