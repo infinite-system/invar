@@ -348,11 +348,12 @@ class $TabBarRenderer {
     const badgeText = ` ${activeIndex + 1}/${total} `;
     const badgeWidth = EditorCoordinates.Class.lineWidth(badgeText);
     const arrowCellWidth = 3; // ' « ' / ' » ' — padded so the hit target is easy to click
-    const previewToggleWidth = context.activeFileIsMarkdown ? 3 : 0;
-    const overflow = totalWidth + badgeWidth + previewToggleWidth > barWidth;
+    const actionCellWidth = 3; // ' icon ' — same padded hit target as the pan arrows
+    const actionsWidth = context.editorTitleActions.length * actionCellWidth;
+    const overflow = totalWidth + badgeWidth + actionsWidth > barWidth;
     const rightControlsWidth =
       badgeWidth +
-      previewToggleWidth +
+      actionsWidth +
       (overflow ? 1 /* ellipsis */ + arrowCellWidth * 2 : 0);
     const tabsAreaWidth = Math.max(1, barWidth - rightControlsWidth);
     // How many whole tabs fit when rendering forward from a given start index.
@@ -468,30 +469,39 @@ class $TabBarRenderer {
       );
       column += 1;
     }
-    // Extensible right-side action cluster: Markdown preview is the first action and sits BEFORE the
-    // strip-pan arrows exactly where future editor-view actions can join it.
-    if (context.activeFileIsMarkdown) {
+    // The right-side action cluster: one padded cell per CONTRIBUTED editor-title command, in
+    // registration order, sitting before the strip-pan arrows. This renderer knows nothing about
+    // which plugin asked — only that a command declared an icon and its guard holds.
+    // invariant: No action requires a memorized motion (project.invariants.md)
+    for (const [actionIndex, action] of context.editorTitleActions.entries()) {
       const start = column;
-      const active = context.showingMarkdownPreview;
-      const hovered = hover?.kind === 'previewToggle';
-      const background = context.previewPressed
+      const active = action.toggled;
+      const hovered =
+        hover?.kind === 'titleAction' && hover.index === actionIndex;
+      const pressed = context.pressedTitleActionIndex === actionIndex;
+      const background = pressed
         ? palette.accent
         : active
           ? palette.selection
           : hovered
             ? palette.cursorLine
             : null;
-      const color = context.previewPressed
+      const color = pressed
         ? palette.bg
         : active || hovered
           ? palette.accent
           : palette.fg;
-      const label = ` ${context.previewIcon} `;
+      const label = ` ${action.icon} `;
       chunks.push(
         background ? bg(background)(fg(color)(label)) : fg(color)(label),
       );
-      column += previewToggleWidth;
-      segments.push({ kind: 'previewToggle', start, end: column });
+      column += actionCellWidth;
+      segments.push({
+        kind: 'titleAction',
+        index: actionIndex,
+        start,
+        end: column,
+      });
     }
     if (overflow) {
       // Bigger, easy-to-hit arrows: a bolder glyph in a padded 3-cell hit target. BRIGHT (fg/accent)
@@ -626,13 +636,18 @@ export type TabBarSegment =
       closeColumn: number;
     }
   | {
-      kind: 'previewToggle' | 'arrowLeft' | 'arrowRight' | 'badge';
+      kind: 'titleAction';
+      index: number;
+      start: number;
+      end: number;
+    }
+  | {
+      kind: 'arrowLeft' | 'arrowRight' | 'badge';
       start: number;
       end: number;
     };
 export type TabBarHover = {
-  kind:
-    'tab' | 'close' | 'previewToggle' | 'arrowLeft' | 'arrowRight' | 'badge';
+  kind: 'tab' | 'close' | 'titleAction' | 'arrowLeft' | 'arrowRight' | 'badge';
   index: number;
 } | null;
 export interface WorkspaceTabBarRenderContext {
@@ -657,12 +672,21 @@ export interface BufferTabBarRenderContext {
   separatorGlyph: string;
   hover: TabBarHover;
   closePressed: number | null;
-  previewPressed: boolean;
+  /** Index of the editor-title action currently held down, or null. */
+  pressedTitleActionIndex: number | null;
   arrowPressed: 'arrowLeft' | 'arrowRight' | null;
   lastRevealedIndex: number;
-  activeFileIsMarkdown: boolean;
-  showingMarkdownPreview: boolean;
-  previewIcon: string;
+  /** Contributed editor-title affordances, already filtered by their command guards. */
+  editorTitleActions: readonly EditorTitleAction[];
+}
+
+/** One clickable affordance in the editor title row, projected from a command that declared an
+ *  icon. The renderer never learns which plugin contributed it. */
+export interface EditorTitleAction {
+  readonly commandId: string;
+  readonly title: string;
+  readonly icon: string;
+  readonly toggled: boolean;
 }
 export interface WorkspaceTabBarRender {
   text: StyledText;

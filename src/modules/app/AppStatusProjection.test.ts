@@ -128,7 +128,6 @@ describe('AppStatusProjection', () => {
       statusProjectionContributions,
       pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
-        activeMarkdownSplitView: () => null,
         panelViewportColumns: () => 80,
         panelViewportRows: () => 24,
         panelHeadingGeometry: () => [

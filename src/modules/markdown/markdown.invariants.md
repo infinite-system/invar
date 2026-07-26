@@ -224,19 +224,25 @@ screen.
 **Invariant:** If the active editor tab is a Markdown file and preview mode is enabled, then the
 editable source and the rendered current document appear together in two resizable panes.
 
-**Scope:** `Workspace.showingMarkdownPreview`, `RootView.syncDiffView`, `MarkdownSplitView`,
-`MarkdownPreview`, and the `previewToggle` tab-bar segment.
+**Scope:** `MarkdownWorkspace` (the per-tab preview mode and its editor-surface claim),
+`MarkdownPreviewSurface` / `MarkdownPreviewContent` (the mounted occupant), `EditorContentMount`
+(the generic host mount), `MarkdownSplitView`, `MarkdownPreview`, and the contributed editor-title
+action the tab strip renders from the `markdown.togglePreview` command.
 
-**Mechanism:** The tab button and `markdown.togglePreview` action change one per-path Workspace mode.
-`RootView` mounts `MarkdownSplitView` in the live editor slot, moves the existing source renderable
-into its left pane, and opens the existing `MarkdownPreview` on the active `TextDocument` revision.
-One `SplitterModel` writes `Settings.markdownSplitRatio` live and persists it once on release.
+**Mechanism:** The tab-strip affordance and the `markdown.togglePreview` command are the SAME
+command — the button is rendered from its `editorTitleIcon`, so there is one action, not two — and it
+flips one per-path mode on `MarkdownWorkspace`. That makes the plugin's provider claim the editor
+column; `EditorContentMount` mounts whatever claims it, handing the content the source renderable it
+moves into its left pane, and `MarkdownPreview` opens on the active `TextDocument` revision. One
+`SplitterModel` writes `Settings.markdownSplitRatio` live and persists it once on release.
 
 **Generates:** source-only default mode; source and preview together; live edit reparsing; one
 clickable and keyboard-bound toggle; persistent pane geometry.
 
-**Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; live mount in
-`src/modules/ui/RootView.ts`; `scripts/smoke-markdown.sh` toggle and splitter drives.
+**Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; `MarkdownWorkspace.test.ts`,
+`MarkdownPreviewSurface.test.ts`, `MarkdownPreviewContent.test.ts`, `MarkdownPlugin.test.ts`; the
+generic mount in `src/modules/ui/EditorContentMount.ts`; `scripts/smoke-markdown.sh` toggle and
+splitter drives.
 
 **Impossible if true:** enabling preview on an active Markdown tab while only raw source remains;
 editing source while the visible preview remains on an older revision; dragging the divider while
@@ -254,11 +260,14 @@ both pane widths stay fixed; reopening the split at the default ratio after a co
 workspace root, then Ctrl or Cmd click and the hovered Ctrl Enter chord open or focus that file tab.
 
 **Scope:** reference spans from `MarkdownParser`, `MarkdownRenderable.referenceAtCell`,
-`MarkdownSplitView` hover and activation, and `Workspace.resolveFileReference`.
+`MarkdownSplitView` hover and activation, the wiring in `MarkdownPreviewContent`, and the host's
+generic `Workspace.resolveFileReference`.
 
 **Mechanism:** Rendering and hit-testing share the same visible `PreviewRow` and packed inline-span
-coordinates. Workspace resolution strips fragments, rejects external schemes and escapes, and
-confirms the target exists before routing through `Workspace.openFileInTab`.
+coordinates. `Workspace.resolveFileReference` — kept in the host because it is GENERIC path
+confinement with no markdown in it, and rendered documents are simply its first caller — strips
+fragments, rejects external schemes and escapes, and confirms the target exists before
+`MarkdownPreviewContent` routes it through `Workspace.openFileInTab`.
 
 **Generates:** clickable standard Markdown links; clickable backtick file paths; hover emphasis and
 an explanatory tooltip; a keyboard activation chord; no-op external or missing targets.

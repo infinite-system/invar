@@ -75,7 +75,7 @@ class $Workspace {
   editorSurfaces = new EditorSurfaceClaims.Class();
   protected readonly contributions: WorkspaceContribution[] = [];
   // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
-  // from the tree / quick-open / a hover or Markdown reference) records the location left AND the
+  // from the tree / quick-open / a hover or a rendered reference) records the location left AND the
   // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
   // enabled/disabled affordances.
   navigationHistory = this.createNavigationHistory();
@@ -407,20 +407,6 @@ class $Workspace {
     return true;
   }
 
-  /** File paths whose tabs currently show the Markdown source | preview split. A set keeps the mode
-   * per tab, so switching away and back does not silently discard the user's view choice. */
-  get markdownPreviewPaths() {
-    return shallowRef<ReadonlySet<string>>(new Set());
-  }
-
-  get activeFileIsMarkdown(): boolean {
-    return (
-      this.editorSurfaces.activeDocumentIsPresented &&
-      this.editor.hasDocument.value &&
-      Files.Class.extname(this.editor.document.path).toLowerCase() === '.md'
-    );
-  }
-
   /** The active buffer is a previewable image — any extension the ImageDecoders registry supports
    *  (.png/.jpg/.jpeg today; the registry is the ONE source of truth, no extension list here) —
    *  RootView renders it as half-block cells instead of the binary-file text. Never true with no
@@ -436,22 +422,6 @@ class $Workspace {
     );
   }
 
-  get showingMarkdownPreview(): boolean {
-    return (
-      this.activeFileIsMarkdown &&
-      this.markdownPreviewPaths.value.has(this.editor.document.path)
-    );
-  }
-
-  toggleMarkdownPreview(): void {
-    if (!this.activeFileIsMarkdown) return;
-    const path = this.editor.document.path;
-    const nextPaths = new Set(this.markdownPreviewPaths.value);
-    if (nextPaths.has(path)) nextPaths.delete(path);
-    else nextPaths.add(path);
-    this.markdownPreviewPaths.value = nextPaths;
-    this.focus.value = 'editor';
-  }
   /** The editor whose text is the subject of the editor surface: the active tab's buffer, else the
    *  document-less empty editor — which is also what a contributed surface presenting something
    *  else leaves behind. All movement/render/edit target this one. */
@@ -767,9 +737,11 @@ class $Workspace {
     if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we arrived
   }
 
-  /** Resolve a rendered Markdown reference through the existing workspace confinement boundary.
-   * External URLs and directories are deliberately not editor targets. */
-  // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
+  /** Resolve a textual reference to a real file inside this workspace, or null. Pure path
+   *  confinement: strip a fragment or query, reject any `scheme:` URL and any malformed escape, then
+   *  try the reference against the workspace root and against the active document's directory,
+   *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
+   *  knows what produced the reference; rendered documents are simply its first caller. */
   resolveFileReference(reference: string): string | null {
     const withoutFragment =
       reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';

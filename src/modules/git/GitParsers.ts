@@ -26,7 +26,9 @@ class $GitParsers {
         continue;
       }
       if (rawLine.startsWith('? ')) {
-        statusSnapshot.untracked.push(this.makeFileRecord(rawLine.slice(2), '??'));
+        statusSnapshot.untracked.push(
+          this.makeFileRecord(rawLine.slice(2), '??'),
+        );
         continue;
       }
       if (rawLine.startsWith('! ')) {
@@ -49,12 +51,17 @@ class $GitParsers {
           continue;
         }
         const tabIndex = parsePrefix.rest.indexOf('\t');
-        const path = tabIndex < 0 ? parsePrefix.rest : parsePrefix.rest.slice(0, tabIndex);
+        const path =
+          tabIndex < 0 ? parsePrefix.rest : parsePrefix.rest.slice(0, tabIndex);
         const originalPath =
           tabIndex < 0 ? undefined : parsePrefix.rest.slice(tabIndex + 1);
         this.addTrackedRecord(
           statusSnapshot,
-          this.makeFileRecord(path, parsePrefix.fields[1] ?? '..', originalPath),
+          this.makeFileRecord(
+            path,
+            parsePrefix.fields[1] ?? '..',
+            originalPath,
+          ),
         );
         continue;
       }
@@ -93,7 +100,11 @@ class $GitParsers {
   }
 
   protected static decodeGitPath(quotedPath: string): string {
-    if (quotedPath.length < 2 || quotedPath[0] !== '"' || quotedPath[quotedPath.length - 1] !== '"') {
+    if (
+      quotedPath.length < 2 ||
+      quotedPath[0] !== '"' ||
+      quotedPath[quotedPath.length - 1] !== '"'
+    ) {
       return quotedPath;
     }
 
@@ -103,7 +114,9 @@ class $GitParsers {
       const character = quotedPath[scanIndex];
       if (character !== '\\') {
         const codePoint = quotedPath.codePointAt(scanIndex);
-        decodedBytes.push(...this.textEncoder.encode(String.fromCodePoint(codePoint ?? 0)));
+        decodedBytes.push(
+          ...this.textEncoder.encode(String.fromCodePoint(codePoint ?? 0)),
+        );
         scanIndex += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
         continue;
       }
@@ -138,7 +151,11 @@ class $GitParsers {
       '"': 34,
       '\\': 92,
     };
-    return escapedCharacterCodes[escapedCharacter] ?? escapedCharacter.codePointAt(0) ?? 0;
+    return (
+      escapedCharacterCodes[escapedCharacter] ??
+      escapedCharacter.codePointAt(0) ??
+      0
+    );
   }
 
   protected static makeFileRecord(
@@ -245,14 +262,7 @@ class $GitParsers {
   }
 
   static get logFormat(): string {
-    return [
-      '%H',
-      '%h',
-      '%an',
-      '%ad',
-      '%s',
-      '%D',
-    ].join('%x1f') + '%x1e';
+    return ['%H', '%h', '%an', '%ad', '%s', '%D'].join('%x1f') + '%x1e';
   }
 
   protected static get textEncoder(): TextEncoder {

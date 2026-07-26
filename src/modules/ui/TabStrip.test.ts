@@ -12,7 +12,10 @@ describe('TabStrip', () => {
     expect(tabStrip.orientation.value).toBe('horizontal');
     tabStrip.setOrientation('vertical');
     expect(tabStrip.orientation.value).toBe('vertical');
-    expect(tabStrip.items.map((item) => item.identifier)).toEqual(['first', 'second']);
+    expect(tabStrip.items.map((item) => item.identifier)).toEqual([
+      'first',
+      'second',
+    ]);
   });
 
   test('panning changes only the viewport offset and never activates a tab', () => {

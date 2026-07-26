@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { SelectionDragBehavior, type SelectionDragPosition } from './SelectionDragBehavior';
+import {
+  SelectionDragBehavior,
+  type SelectionDragPosition,
+} from './SelectionDragBehavior';
 
 function createBehavior(): {
   behavior: SelectionDragBehavior.Model;
@@ -15,13 +18,23 @@ function createBehavior(): {
   const columnSteps: number[] = [];
   const finished = { count: 0 };
   const behavior = new SelectionDragBehavior.Class({
-    viewportRectangle: () => ({ leftColumn: 10, rightColumn: 19, topRow: 5, bottomRow: 14 }),
-    positionAtCell: (screenColumn, screenRow) => ({ line: screenRow - 5, column: screenColumn - 10 }),
+    viewportRectangle: () => ({
+      leftColumn: 10,
+      rightColumn: 19,
+      topRow: 5,
+      bottomRow: 14,
+    }),
+    positionAtCell: (screenColumn, screenRow) => ({
+      line: screenRow - 5,
+      column: screenColumn - 10,
+    }),
     horizontalScrollPosition: () => 3,
     horizontalScrollingEnabled: () => true,
     beginSelection: (position) => begun.push(position),
     extendSelection: (position) => extended.push(position),
-    finishSelection: () => { finished.count += 1; },
+    finishSelection: () => {
+      finished.count += 1;
+    },
     scrollColumns: (columnDelta) => columnSteps.push(columnDelta),
     scrollRows: (rowDelta) => rowSteps.push(rowDelta),
     haltCompetingScroll: () => {},

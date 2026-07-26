@@ -37,7 +37,13 @@ describe('ContextMenu', () => {
 
   test('openAt clamps the box fully onto the screen', () => {
     const menu = new ContextMenu.Class();
-    menu.openAt(threeItems(), SCREEN.width - 2, SCREEN.height - 1, SCREEN, () => {});
+    menu.openAt(
+      threeItems(),
+      SCREEN.width - 2,
+      SCREEN.height - 1,
+      SCREEN,
+      () => {},
+    );
     expect(menu.anchorX.value).toBe(SCREEN.width - menu.width);
     expect(menu.anchorY.value).toBe(SCREEN.height - menu.height);
     menu.close();

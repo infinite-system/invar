@@ -199,20 +199,6 @@ class $CommandDefaults {
         run: context.cycleTerminalFollowMode,
       },
       {
-        id: 'markdown.togglePreview',
-        title: 'Markdown: Toggle Preview',
-        category: 'Markdown',
-        when: () => context.workspaceSet.active.activeFileIsMarkdown,
-        run: context.toggleMarkdownPreview,
-      },
-      {
-        id: 'markdown.openHoveredReference',
-        title: 'Markdown: Open Hovered File Reference',
-        category: 'Markdown',
-        when: context.hasHoveredMarkdownReference,
-        run: context.openHoveredMarkdownReference,
-      },
-      {
         id: 'go.definition',
         title: 'Go: Definition',
         category: 'Go',
@@ -266,7 +252,6 @@ export interface CommandContext {
   openWorkspaceFolder: () => void;
   quit: () => void;
   requestRender: () => void;
-  toggleMarkdownPreview: () => void;
   toggleActivityBar: () => void;
   toggleRightDock: () => void;
   toggleTerminal: () => void;
@@ -278,8 +263,6 @@ export interface CommandContext {
   movePanelContentDown: () => void;
   closeActivePanelContent: () => void;
   cycleTerminalFollowMode: () => void;
-  hasHoveredMarkdownReference: () => boolean;
-  openHoveredMarkdownReference: () => void;
   openShortcutHelp: () => void;
   /** Speak a fixed sample line through the REAL TTS backend in the currently-selected voice — the
    *  audition affordance for the voice picker (legit user-triggered audio, never in the gate). */

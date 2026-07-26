@@ -14,8 +14,19 @@ import { TextRenderable } from '@opentui/core';
 
 class $SelectableText extends TextRenderable {
   // invariant: The selected range renders with a background (ui.invariants.md)
-  setSelectionRange(anchorX: number, anchorY: number, focusX: number, focusY: number): void {
-    this.lastLocalSelection = { anchorX, anchorY, focusX, focusY, isActive: true };
+  setSelectionRange(
+    anchorX: number,
+    anchorY: number,
+    focusX: number,
+    focusY: number,
+  ): void {
+    this.lastLocalSelection = {
+      anchorX,
+      anchorY,
+      focusX,
+      focusY,
+      isActive: true,
+    };
     this.refreshLocalSelection();
     this.requestRender();
   }

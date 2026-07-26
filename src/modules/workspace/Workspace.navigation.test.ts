@@ -16,11 +16,16 @@ let workspaceDirectory = '';
 const filePaths: string[] = [];
 
 beforeEach(() => {
-  workspaceDirectory = makeTemporaryDirectorySync(join(temporaryDirectory(), 'tui-nav-'));
+  workspaceDirectory = makeTemporaryDirectorySync(
+    join(temporaryDirectory(), 'tui-nav-'),
+  );
   filePaths.length = 0;
   for (const name of ['alpha.txt', 'beta.txt', 'gamma.txt']) {
     const path = join(workspaceDirectory, name);
-    writeFileSync(path, 'line one\nline two\nline three\nline four\nline five\n');
+    writeFileSync(
+      path,
+      'line one\nline two\nline three\nline four\nline five\n',
+    );
     filePaths.push(path);
   }
 });

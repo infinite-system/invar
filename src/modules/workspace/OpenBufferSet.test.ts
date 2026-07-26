@@ -1,5 +1,9 @@
 import { test, expect, describe } from 'bun:test';
-import { OpenBufferSet, type LiveBuffer, type BufferPosition } from './OpenBufferSet';
+import {
+  OpenBufferSet,
+  type LiveBuffer,
+  type BufferPosition,
+} from './OpenBufferSet';
 
 // A fake live buffer: records dispose, carries a mutable dirty flag + position.
 class FakeBuffer implements LiveBuffer {
@@ -74,7 +78,10 @@ describe('flyweight: N tabs are NOT N live documents', () => {
   test('activation rehydrates and restores the saved position', () => {
     const { set, created } = makeSet();
     set.open('a.ts');
-    (set.activeBuffer as FakeBuffer).setPosition({ cursorLine: 42, scrollTop: 30 });
+    (set.activeBuffer as FakeBuffer).setPosition({
+      cursorLine: 42,
+      scrollTop: 30,
+    });
     set.open('b.ts'); // deactivate a.ts -> snapshot + dispose
     expect(set.liveCount).toBe(1);
     set.activate(0); // rehydrate a.ts

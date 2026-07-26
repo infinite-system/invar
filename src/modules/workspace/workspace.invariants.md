@@ -87,7 +87,11 @@ the surface itself paints, which is `EditorSurfaceContents`' business.
   screen? A comparison answers no; a source|preview split answers YES, because the real editor is
   embedded in its left pane.
 - *Keyboard ownership* — `activeDocumentIsKeyboardTarget`: does the active tab's editor own the keys
-  and the caret? Omitted answers the same as presentation.
+  and the caret? Omitted answers the same as presentation. Its two consumers are the comparison
+  (which omits it and so takes the keyboard with the text) and the Markdown split (which answers by
+  which of its own panes has focus) — the second was IDENTIFIED before the question was added and
+  landed with the Markdown extraction. Were a future refactor to leave it with one consumer again,
+  fold it back into presentation rather than keep a question only one surface can answer.
 
 **Mechanism:** Contributions register an `EditorSurfaceClaim` on `Workspace.editorSurfaces`. Both
 aggregate getters default to TRUE with no claim up, so a plugin-free canvas keeps every capability.
@@ -107,13 +111,17 @@ the site that decides it.
 
 **Evidence:** `EditorSurfaceClaims.ts`; `EditorSurfaceClaims.test.ts` (the embedding claim reported
 as presented while occupying, the omitted-answer default, release touching only occupying claims);
+`MarkdownWorkspace.ts` + `MarkdownWorkspace.test.ts` (the embedding claim in the real tree: presented
+while occupying, keyboard answer following the focused pane, and a release that keeps its per-tab
+state because the claim is DERIVED from the active tab rather than stored);
 `Workspace.ts` (the six language guards, both content-type routers, `get editor`, the three
 dismissal sites); `Workspace.test.ts` "opening a real file releases a contributed surface";
 `GitWorkspace.ts` (the comparison claim); `GitComparisonContent.test.ts` (Escape releases the claim
 rather than mutating host state).
 
 **Impossible if true:** A host guard naming a plugin's surface; a plugin's transient state written
-by the host; a surface that embeds the real editor losing completions, hover, or diagnostics; a
+by the host; a claim whose occupancy is computed FROM the aggregate it feeds (self-referential, and
+caught as a real recursion when the Markdown claim first tried it); a surface that embeds the real editor losing completions, hover, or diagnostics; a
 newly contributed surface requiring an edit to any language-request guard.
 
 **Verification:** `bun test src/modules/workspace/EditorSurfaceClaims.test.ts

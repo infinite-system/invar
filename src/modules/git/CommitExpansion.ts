@@ -87,9 +87,13 @@ class $CommitExpansion {
   /** Collapse: drop the entry AND its cached files (evict on collapse — re-expanding refetches). */
   collapse(sha: string): void {
     this.fetchTickets.delete(sha);
-    this.expansionOrder = this.expansionOrder.filter((openSha) => openSha !== sha);
+    this.expansionOrder = this.expansionOrder.filter(
+      (openSha) => openSha !== sha,
+    );
     if (this.isExpanded(sha)) {
-      this.entries.value = this.entries.value.filter((entry) => entry.sha !== sha);
+      this.entries.value = this.entries.value.filter(
+        (entry) => entry.sha !== sha,
+      );
     }
   }
 
@@ -115,7 +119,9 @@ class $CommitExpansion {
    * Overridable via constructor `fetch` (tests inject a fake). Failures degrade to an empty list
    * (the commit shows expanded with no file rows — never a thrown error).
    */
-  protected async fetchFiles(sha: string): Promise<readonly CommitFileChange[]> {
+  protected async fetchFiles(
+    sha: string,
+  ): Promise<readonly CommitFileChange[]> {
     if (this.options.fetch) {
       return this.options.fetch(sha);
     }
@@ -134,7 +140,9 @@ export namespace CommitExpansion {
   export type Instance = typeof Class.Instance;
 }
 
-export type CommitFilesFetch = (sha: string) => Promise<readonly CommitFileChange[]>;
+export type CommitFilesFetch = (
+  sha: string,
+) => Promise<readonly CommitFileChange[]>;
 
 export interface CommitExpansionOptions {
   fetch?: CommitFilesFetch;

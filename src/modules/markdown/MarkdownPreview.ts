@@ -1,6 +1,10 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { MarkdownDocument, type MarkdownDocumentOptions, type MarkdownSource } from './MarkdownDocument';
+import {
+  MarkdownDocument,
+  type MarkdownDocumentOptions,
+  type MarkdownSource,
+} from './MarkdownDocument';
 import type { BlockRecord, BlockKind } from './MarkdownParser';
 import { StatusChannel } from '../system/StatusChannel';
 
@@ -56,7 +60,10 @@ class $MarkdownPreview {
     this.active.value = true;
     document.open();
     this.$watchEffect(() => this.invalidateRender());
-    StatusChannel.Class.update({ markdownPreviewOpen: true, markdownScrollTop: 0 });
+    StatusChannel.Class.update({
+      markdownPreviewOpen: true,
+      markdownScrollTop: 0,
+    });
   }
 
   // invariant: Closing releases all preview work (src/modules/markdown/markdown.invariants.md)
@@ -92,7 +99,10 @@ class $MarkdownPreview {
 
   scrollBy(delta: number, width: number, height: number): void {
     const maximum = Math.max(0, this.totalRows(width) - Math.max(1, height));
-    this.scrollTop.value = Math.max(0, Math.min(maximum, this.scrollTop.value + delta));
+    this.scrollTop.value = Math.max(
+      0,
+      Math.min(maximum, this.scrollTop.value + delta),
+    );
     StatusChannel.Class.update({ markdownScrollTop: this.scrollTop.value });
   }
 
@@ -109,12 +119,18 @@ class $MarkdownPreview {
     const rowLimit = Math.max(0, Math.floor(height));
     if (!document || rowLimit === 0) return [];
 
-    if (document.error.value) return [this.statusRow(`Markdown: ${document.error.value}`)];
+    if (document.error.value)
+      return [this.statusRow(`Markdown: ${document.error.value}`)];
     if (document.parsing.value && document.blocks.value.length === 0) {
       return [this.statusRow('Parsing Markdown…')];
     }
 
-    return this.collectRows(document.blocks.value, rowWidth, this.scrollTop.value, rowLimit);
+    return this.collectRows(
+      document.blocks.value,
+      rowWidth,
+      this.scrollTop.value,
+      rowLimit,
+    );
   }
 
   /** Materialize the rendered text only for operations whose domain is the whole preview (find and
@@ -123,7 +139,8 @@ class $MarkdownPreview {
     const document = this.document.value;
     const rowWidth = Math.max(1, Math.floor(width));
     if (!document) return [];
-    if (document.error.value) return [this.statusRow(`Markdown: ${document.error.value}`)];
+    if (document.error.value)
+      return [this.statusRow(`Markdown: ${document.error.value}`)];
     if (document.parsing.value && document.blocks.value.length === 0) {
       return [this.statusRow('Parsing Markdown…')];
     }
@@ -151,7 +168,11 @@ class $MarkdownPreview {
       rowCount++;
       return false;
     };
-    this.visitBlocks(document.blocks.value, Math.max(1, Math.floor(width)), emit);
+    this.visitBlocks(
+      document.blocks.value,
+      Math.max(1, Math.floor(width)),
+      emit,
+    );
     return rowCount;
   }
 
@@ -191,7 +212,16 @@ class $MarkdownPreview {
       overrideText,
     ) => {
       if (rowIndex >= firstVisible && rowIndex < endVisible) {
-        rows.push({ block, blockIndex, textStart, textEnd, prefix, suffix, role, overrideText });
+        rows.push({
+          block,
+          blockIndex,
+          textStart,
+          textEnd,
+          prefix,
+          suffix,
+          role,
+          overrideText,
+        });
       }
       rowIndex++;
       return rowIndex >= endVisible;
@@ -201,7 +231,11 @@ class $MarkdownPreview {
     return rows;
   }
 
-  protected visitBlocks(blocks: readonly BlockRecord[], width: number, emit: EmitRow): void {
+  protected visitBlocks(
+    blocks: readonly BlockRecord[],
+    width: number,
+    emit: EmitRow,
+  ): void {
     for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
@@ -210,34 +244,107 @@ class $MarkdownPreview {
     }
   }
 
-  protected visitBlock(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
+  protected visitBlock(
+    block: BlockRecord,
+    blockIndex: number,
+    width: number,
+    emit: EmitRow,
+  ): boolean {
     switch (block.kind) {
       case 'code':
         return this.visitCode(block, blockIndex, width, emit);
       case 'blockquote':
-        return this.visitWrapped(block, blockIndex, width, '│ ', '', 'quote', emit);
+        return this.visitWrapped(
+          block,
+          blockIndex,
+          width,
+          '│ ',
+          '',
+          'quote',
+          emit,
+        );
       case 'table':
-        return this.visitWrapped(block, blockIndex, width, '│ ', ' │', 'table', emit);
+        return this.visitWrapped(
+          block,
+          blockIndex,
+          width,
+          '│ ',
+          ' │',
+          'table',
+          emit,
+        );
       case 'hr':
         return emit(block, blockIndex, 0, 0, '', '', 'rule', '─'.repeat(width));
       case 'listitem': {
         const indentation = '  '.repeat(Math.max(0, (block.level ?? 1) - 1));
         const prefix = `${indentation}${block.marker ?? '•'} `;
-        return this.visitWrapped(block, blockIndex, width, prefix, '', 'content', emit);
+        return this.visitWrapped(
+          block,
+          blockIndex,
+          width,
+          prefix,
+          '',
+          'content',
+          emit,
+        );
       }
       default:
-        return this.visitWrapped(block, blockIndex, width, '', '', 'content', emit);
+        return this.visitWrapped(
+          block,
+          blockIndex,
+          width,
+          '',
+          '',
+          'content',
+          emit,
+        );
     }
   }
 
-  protected visitCode(block: BlockRecord, blockIndex: number, width: number, emit: EmitRow): boolean {
+  protected visitCode(
+    block: BlockRecord,
+    blockIndex: number,
+    width: number,
+    emit: EmitRow,
+  ): boolean {
     const label = block.language ? ` ${block.language} ` : '';
     const remaining = Math.max(0, width - label.length - 2);
-    if (emit(block, blockIndex, 0, 0, '', '', 'codeBorder', `┌${label}${'─'.repeat(remaining)}┐`.slice(0, width))) {
+    if (
+      emit(
+        block,
+        blockIndex,
+        0,
+        0,
+        '',
+        '',
+        'codeBorder',
+        `┌${label}${'─'.repeat(remaining)}┐`.slice(0, width),
+      )
+    ) {
       return true;
     }
-    if (this.visitWrapped(block, blockIndex, width, '│ ', ' │', 'codeContent', emit)) return true;
-    return emit(block, blockIndex, 0, 0, '', '', 'codeBorder', `└${'─'.repeat(Math.max(0, width - 2))}┘`.slice(0, width));
+    if (
+      this.visitWrapped(
+        block,
+        blockIndex,
+        width,
+        '│ ',
+        ' │',
+        'codeContent',
+        emit,
+      )
+    )
+      return true;
+    return emit(
+      block,
+      blockIndex,
+      0,
+      0,
+      '',
+      '',
+      'codeBorder',
+      `└${'─'.repeat(Math.max(0, width - 2))}┘`.slice(0, width),
+    );
   }
 
   protected visitWrapped(
@@ -249,7 +356,10 @@ class $MarkdownPreview {
     role: PreviewRowRole,
     emit: EmitRow,
   ): boolean {
-    const contentWidth = Math.max(1, width - firstPrefix.length - suffix.length);
+    const contentWidth = Math.max(
+      1,
+      width - firstPrefix.length - suffix.length,
+    );
     let lineStart = 0;
     let isFirst = true;
 
@@ -257,7 +367,17 @@ class $MarkdownPreview {
       const newline = block.text.indexOf('\n', lineStart);
       const physicalEnd = newline < 0 ? block.text.length : newline;
       if (physicalEnd === lineStart) {
-        if (emit(block, blockIndex, lineStart, lineStart, isFirst ? firstPrefix : ' '.repeat(firstPrefix.length), suffix, role)) {
+        if (
+          emit(
+            block,
+            blockIndex,
+            lineStart,
+            lineStart,
+            isFirst ? firstPrefix : ' '.repeat(firstPrefix.length),
+            suffix,
+            role,
+          )
+        ) {
           return true;
         }
       } else {
@@ -268,20 +388,23 @@ class $MarkdownPreview {
             const candidate = block.text.lastIndexOf(' ', segmentEnd);
             if (candidate > segmentStart) segmentEnd = candidate;
           }
-          if (emit(
-            block,
-            blockIndex,
-            segmentStart,
-            segmentEnd,
-            isFirst ? firstPrefix : ' '.repeat(firstPrefix.length),
-            suffix,
-            role,
-          )) {
+          if (
+            emit(
+              block,
+              blockIndex,
+              segmentStart,
+              segmentEnd,
+              isFirst ? firstPrefix : ' '.repeat(firstPrefix.length),
+              suffix,
+              role,
+            )
+          ) {
             return true;
           }
           isFirst = false;
           segmentStart = segmentEnd;
-          while (segmentStart < physicalEnd && block.text[segmentStart] === ' ') segmentStart++;
+          while (segmentStart < physicalEnd && block.text[segmentStart] === ' ')
+            segmentStart++;
         }
       }
       isFirst = false;

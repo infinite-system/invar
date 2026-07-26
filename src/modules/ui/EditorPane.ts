@@ -387,7 +387,7 @@ class $EditorPane {
       codeBody,
       workspaceSet,
       settings,
-      focusMarkdownSource,
+      focusSourceEditor,
       hover,
     } = this.deps;
     editorArea.onMouseScroll = (event) => {
@@ -426,7 +426,7 @@ class $EditorPane {
       }
     };
     codeBody.onMouseDown = (event) => {
-      focusMarkdownSource();
+      focusSourceEditor();
       if (process.env.TUI_DEBUG_MOUSE === '1') {
         Logging.Class.info(
           `mouseDown (${event.x},${event.y}) hit=${JSON.stringify(this.documentPositionAtCell(event.x, event.y))}`,
@@ -531,7 +531,9 @@ export interface EditorPaneDeps {
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;
   /** Focus the markdown split's source pane on an editor click (no-op when no split is mounted). */
-  focusMarkdownSource: () => void;
+  /** Hand the keyboard back to the source editor — a click in the source pane while a contributed
+   *  surface's own pane holds it. */
+  focusSourceEditor: () => void;
   /** The LSP hover-card handle: a mouse-move over a symbol points it; leaving the code clears it. */
   hover: {
     pointAt(

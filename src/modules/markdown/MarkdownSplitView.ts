@@ -19,7 +19,10 @@ import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
 import { SplitterElement } from '../ui/SplitterElement';
 import { MarkdownPreview } from './MarkdownPreview';
 import type { MarkdownSource } from './MarkdownDocument';
-import { MarkdownRenderable, type MarkdownReferenceHit } from './MarkdownRenderable';
+import {
+  MarkdownRenderable,
+  type MarkdownReferenceHit,
+} from './MarkdownRenderable';
 
 class $MarkdownSplitView {
   readonly rootRenderable: BoxRenderable;
@@ -88,8 +91,8 @@ class $MarkdownSplitView {
     this.rootRenderable.add(this.previewPaneRenderable);
     options.parentRenderable.add(this.rootRenderable);
     this.bindPreviewEvents();
-    this.previewRenderable.attachFindEngineProvider(
-      () => options.findBar.engineFor(this.previewFindTargetIdentifier()),
+    this.previewRenderable.attachFindEngineProvider(() =>
+      options.findBar.engineFor(this.previewFindTargetIdentifier()),
     );
     this.preview.open(options.source, this.previewRenderable);
     this.update();
@@ -100,7 +103,11 @@ class $MarkdownSplitView {
   }
 
   protected createPreviewRenderable(): MarkdownRenderable.Model {
-    return new MarkdownRenderable.Class(this.renderer, this.preview, this.theme);
+    return new MarkdownRenderable.Class(
+      this.renderer,
+      this.preview,
+      this.theme,
+    );
   }
 
   protected createPreviewTextBuffer(): ReadOnlyTextBuffer.Model {
@@ -137,17 +144,23 @@ class $MarkdownSplitView {
       viewportRectangle: () => ({
         leftColumn: this.previewRenderable.bodyRenderable.x,
         rightColumn:
-          this.previewRenderable.bodyRenderable.x + Math.max(1, this.previewViewportWidth()) - 1,
+          this.previewRenderable.bodyRenderable.x +
+          Math.max(1, this.previewViewportWidth()) -
+          1,
         topRow: this.previewRenderable.bodyRenderable.y,
         bottomRow:
-          this.previewRenderable.bodyRenderable.y + Math.max(1, this.previewViewportHeight()) - 1,
+          this.previewRenderable.bodyRenderable.y +
+          Math.max(1, this.previewViewportHeight()) -
+          1,
       }),
       positionAtCell: (screenColumn, screenRow) =>
         this.previewRenderable.positionAtCell(screenColumn, screenRow),
       horizontalScrollPosition: () => 0,
       horizontalScrollingEnabled: () => false,
       lineGraphemeCount: (lineIndex) =>
-        EditorCoordinates.Class.graphemeCount(this.previewTextBuffer.document.line(lineIndex)),
+        EditorCoordinates.Class.graphemeCount(
+          this.previewTextBuffer.document.line(lineIndex),
+        ),
       beginSelection: (position, pointerDisplayColumn) => {
         this.focusPreview();
         this.previewTextBuffer.cursor.set(
@@ -176,7 +189,11 @@ class $MarkdownSplitView {
       },
       scrollColumns: () => {},
       scrollRows: (rowDelta) => {
-        this.preview.scrollBy(rowDelta, this.previewViewportWidth(), this.previewViewportHeight());
+        this.preview.scrollBy(
+          rowDelta,
+          this.previewViewportWidth(),
+          this.previewViewportHeight(),
+        );
       },
       haltCompetingScroll: () => {
         this.verticalScrollMomentum.value = Momentum.Class.halt();
@@ -216,9 +233,13 @@ class $MarkdownSplitView {
     this.previewPaneRenderable.borderColor = this.previewFocused
       ? palette.borderActive
       : palette.border;
-    this.previewPaneRenderable.titleColor = this.previewFocused ? palette.accent : palette.dim;
+    this.previewPaneRenderable.titleColor = this.previewFocused
+      ? palette.accent
+      : palette.dim;
     this.splitterElement.updateAppearance(palette);
-    this.previewRenderable.setHoveredReferenceKey(this.hoveredReferenceKey.value);
+    this.previewRenderable.setHoveredReferenceKey(
+      this.hoveredReferenceKey.value,
+    );
     this.previewRenderable.refresh();
     this.synchronizeRenderedPreviewDocument();
     this.applyPreviewSelection();
@@ -239,20 +260,34 @@ class $MarkdownSplitView {
         this.previewViewportHeight(),
       );
     }
-    const selectionAutoscrolling = this.previewSelectionDragBehavior.tick(deltaTimeSeconds);
+    const selectionAutoscrolling =
+      this.previewSelectionDragBehavior.tick(deltaTimeSeconds);
     const laidOutWidth = Number(this.rootRenderable.width) || 0;
     const layoutChanged = laidOutWidth !== this.lastLaidOutWidth;
     if (layoutChanged) this.lastLaidOutWidth = laidOutWidth;
     const documentChanged = this.synchronizeRenderedPreviewDocument();
-    if (momentumStep.rows !== 0 || selectionAutoscrolling || layoutChanged || documentChanged) {
+    if (
+      momentumStep.rows !== 0 ||
+      selectionAutoscrolling ||
+      layoutChanged ||
+      documentChanged
+    ) {
       this.update();
     }
-    return Momentum.Class.isMoving(momentumStep.momentum) || selectionAutoscrolling || layoutChanged;
+    return (
+      Momentum.Class.isMoving(momentumStep.momentum) ||
+      selectionAutoscrolling ||
+      layoutChanged
+    );
   }
 
   moveByKeyboardRows(rowDelta: number): void {
     this.verticalScrollMomentum.value = Momentum.Class.halt();
-    this.preview.scrollBy(rowDelta, this.previewViewportWidth(), this.previewViewportHeight());
+    this.preview.scrollBy(
+      rowDelta,
+      this.previewViewportWidth(),
+      this.previewViewportHeight(),
+    );
     this.update();
   }
 
@@ -287,7 +322,11 @@ class $MarkdownSplitView {
       line: match.line,
       col: match.startColumn,
     };
-    this.preview.scrollTo(match.line, this.previewViewportWidth(), this.previewViewportHeight());
+    this.preview.scrollTo(
+      match.line,
+      this.previewViewportWidth(),
+      this.previewViewportHeight(),
+    );
     this.selectionRevision.value += 1;
     this.update();
   }
@@ -300,7 +339,9 @@ class $MarkdownSplitView {
     if (renderedText === this.renderedPreviewText) return false;
     this.renderedPreviewText = renderedText;
     this.previewTextBuffer.replaceText(renderedText);
-    this.options.findBar.engineFor(this.previewFindTargetIdentifier())?.findAll();
+    this.options.findBar
+      .engineFor(this.previewFindTargetIdentifier())
+      ?.findAll();
     this.selectionRevision.value += 1;
     return true;
   }
@@ -318,20 +359,30 @@ class $MarkdownSplitView {
       return;
     }
     const anchorRow = Math.max(0, selection.start.line - firstVisibleRow);
-    const focusRow = Math.min(viewportHeight - 1, selection.end.line - firstVisibleRow);
-    const anchorColumn = selection.start.line >= firstVisibleRow
-      ? EditorCoordinates.Class.displayColumn(
-          this.previewTextBuffer.document.line(selection.start.line),
-          selection.start.col,
-        )
-      : 0;
-    const focusColumn = selection.end.line < firstVisibleRow + viewportHeight
-      ? EditorCoordinates.Class.displayColumn(
-          this.previewTextBuffer.document.line(selection.end.line),
-          selection.end.col,
-        )
-      : this.previewViewportWidth();
-    this.previewRenderable.setSelectionRange(anchorColumn, anchorRow, focusColumn, focusRow);
+    const focusRow = Math.min(
+      viewportHeight - 1,
+      selection.end.line - firstVisibleRow,
+    );
+    const anchorColumn =
+      selection.start.line >= firstVisibleRow
+        ? EditorCoordinates.Class.displayColumn(
+            this.previewTextBuffer.document.line(selection.start.line),
+            selection.start.col,
+          )
+        : 0;
+    const focusColumn =
+      selection.end.line < firstVisibleRow + viewportHeight
+        ? EditorCoordinates.Class.displayColumn(
+            this.previewTextBuffer.document.line(selection.end.line),
+            selection.end.col,
+          )
+        : this.previewViewportWidth();
+    this.previewRenderable.setSelectionRange(
+      anchorColumn,
+      anchorRow,
+      focusColumn,
+      focusRow,
+    );
   }
 
   protected bindPreviewEvents(): void {
@@ -341,13 +392,18 @@ class $MarkdownSplitView {
       const resolvedReference = this.resolvedReferenceAt(event.x, event.y);
       // OpenTUI exposes terminal Meta/Super mouse modifiers through the SGR alt bit. Supporting
       // ctrl OR alt therefore covers Ctrl-click and terminal Cmd/Meta-click without a second path.
-      if (event.button === 0 && (event.modifiers.ctrl || event.modifiers.alt) && resolvedReference) {
+      if (
+        event.button === 0 &&
+        (event.modifiers.ctrl || event.modifiers.alt) &&
+        resolvedReference
+      ) {
         this.options.openReference(resolvedReference.path);
         return;
       }
       this.previewSelectionDragBehavior.begin(event.x, event.y);
     };
-    previewBody.onMouseDrag = (event) => this.previewSelectionDragBehavior.drag(event.x, event.y);
+    previewBody.onMouseDrag = (event) =>
+      this.previewSelectionDragBehavior.drag(event.x, event.y);
     previewBody.onMouseUp = () => this.previewSelectionDragBehavior.end();
     previewBody.onMouseDragEnd = () => this.previewSelectionDragBehavior.end();
     previewBody.onMouseScroll = (event) => {
@@ -364,9 +420,15 @@ class $MarkdownSplitView {
       const resolvedReference = this.resolvedReferenceAt(event.x, event.y);
       this.hoveredReferenceKey.value = resolvedReference?.hit.key ?? null;
       this.hoveredReferencePath.value = resolvedReference?.path ?? null;
-      this.previewRenderable.setHoveredReferenceKey(this.hoveredReferenceKey.value);
+      this.previewRenderable.setHoveredReferenceKey(
+        this.hoveredReferenceKey.value,
+      );
       if (resolvedReference) {
-        this.options.showReferenceTooltip(resolvedReference.path, event.x, event.y);
+        this.options.showReferenceTooltip(
+          resolvedReference.path,
+          event.x,
+          event.y,
+        );
       } else {
         this.options.clearReferenceTooltip();
       }
@@ -396,7 +458,10 @@ class $MarkdownSplitView {
   }
 
   protected sourcePaneWidth(): number {
-    const ratio = Math.max(0.2, Math.min(0.8, this.options.settings.markdownSplitRatio.value));
+    const ratio = Math.max(
+      0.2,
+      Math.min(0.8, this.options.settings.markdownSplitRatio.value),
+    );
     return Math.max(1, Math.round(this.paneExtentWidth() * ratio));
   }
 
@@ -404,7 +469,10 @@ class $MarkdownSplitView {
     const sourcePaneWidth = this.sourcePaneWidth();
     this.options.sourceRenderable.width = sourcePaneWidth;
     this.options.sourceRenderable.height = '100%';
-    this.previewPaneRenderable.width = Math.max(1, this.paneExtentWidth() - sourcePaneWidth);
+    this.previewPaneRenderable.width = Math.max(
+      1,
+      this.paneExtentWidth() - sourcePaneWidth,
+    );
     this.paneSplitter.setExtentCells(this.paneExtentWidth());
   }
 
@@ -464,7 +532,11 @@ export interface MarkdownSplitViewOptions {
   findBar: FindBar.Instance;
   resolveReference(reference: string): string | null;
   openReference(path: string): void;
-  showReferenceTooltip(path: string, screenColumn: number, screenRow: number): void;
+  showReferenceTooltip(
+    path: string,
+    screenColumn: number,
+    screenRow: number,
+  ): void;
   clearReferenceTooltip(): void;
 }
 

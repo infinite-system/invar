@@ -786,8 +786,8 @@ latest-revision results are applied.
 ### The host canvas is complete without plugins
 
 **Invariant:** If all plugins are disabled, then the host canvas still opens workspaces, files,
-editing, language intelligence, Markdown, panes, popups, commands, and status contributions;
-shipped domain capabilities may be default plugins but may not require host-core knowledge.
+editing, language intelligence, panes, popups, commands, and status contributions; shipped domain
+capabilities may be default plugins but may not require host-core knowledge.
 
 **Scope:** The workspace and application hosts, their contribution ports, and the default plugin
 composition. Whether a domain capability ships enabled by default is a product-composition choice,
@@ -797,12 +797,23 @@ not a reason to couple it into the host.
 shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only generic plugin
 and contribution contracts.
 
+**Refined 2026-07-26 — Markdown struck from the enumeration.** It was listed as a host-canvas
+capability; the product owner directed that "markdown should also be separate markdown plugin", so
+it now ships as a default plugin like source control. This REFINES the record rather than violating
+it: the mechanism above already says a shipped capability may be a default plugin, and only the
+enumeration was stale. **`language intelligence` is deliberately still listed.** Extracting it is a
+renegotiation of this record — the owner's decision, not a refactor — and no direction for it
+exists; see project.canvas-census.md, extraction step 6.
+
 **Generates:** A usable plugin-free editor canvas; default shipped capabilities without
 host-to-domain imports; plugins that carry their own behavior.
 
-**Evidence:** `src/modules/plugins/DefaultPlugins.ts`;
+**Evidence:** `src/modules/plugins/DefaultPlugins.ts` (source control, Markdown, extensions);
 `src/modules/workspace/WorkspacePlugin.interface.ts`;
-`src/modules/app/ApplicationPlugin.interface.ts`; the conventions gate's core-boundary check.
+`src/modules/app/ApplicationPlugin.interface.ts`;
+`src/modules/workspace/EditorSurfaceClaims.ts` and `src/modules/ui/EditorSurfaceContents.ts` (the
+editor-column ports); the conventions gate's step-11 boundary check, whose matchers each carry a
+positive control and whose shrinking allowlist is `scripts/plugin-boundary-baseline.txt`.
 
 **Impossible if true:** Disabling plugins prevents opening or editing a file; `Workspace` or app
 core importing, constructing, or typing a concrete plugin implementation.

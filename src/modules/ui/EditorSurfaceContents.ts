@@ -75,8 +75,23 @@ export interface EditorSurfaceContent {
   update(): void;
   /** Advance owned animations and settle-repaints for one frame; true keeps the frame loop live. */
   tick(deltaSeconds: number): boolean;
-  /** Consume an editor-context key before the keybinding registry sees it; true if handled. */
+  /** Consume an editor-context key before the keybinding registry sees it; true if handled. Use for
+   *  keys the surface owns OUTRIGHT; movement that the user can rebind goes through the verbs below,
+   *  so it stays reachable from a remapped chord. */
   handleKey(key: EditorSurfaceKeyEvent): boolean;
+  /** Scroll the surface's focused pane by signed rows, driven by the host's movement commands so the
+   *  bindings remain rebindable and the acceleration curve stays shared. */
+  scrollFocusedPaneByRows(rowDelta: number): void;
+  /** Page the focused pane one viewport in `direction`. */
+  pageFocusedPane(direction: -1 | 1): void;
+  /** Select everything in the focused pane. */
+  selectAllInFocusedPane(): void;
+  /** Give the keyboard back to the source editor — Escape's meaning for a surface that embeds it,
+   *  and for one that replaces it, dismissal. */
+  yieldKeyboardToSourceEditor(): void;
+  /** Name of the focused pane for the status bar, or null when the surface labels its panes itself
+   *  and the host should say nothing. */
+  readonly focusedPaneTitle: string | null;
   /** The find/replace target this content owns, or null to fall through to the source editor. */
   findTarget(): FindBarTarget | null;
   /** Copy this content's own selection to the clipboard, resolving the number of characters that
@@ -97,6 +112,9 @@ export interface EditorSurfaceContentContext {
   readonly tooltip: Tooltip.Instance;
   /** Definite-size host box, already mounted in the editor column. */
   readonly container: BoxRenderable;
+  /** The source editor's renderable. A surface that EMBEDS the editor (a source|preview split) moves
+   *  it into one of its own panes; a surface that replaces the editor ignores it. */
+  readonly sourceRenderable: BoxRenderable;
   /** The provider's own mount identity for this instance — a stable per-instance find-engine key. */
   readonly mountIdentity: string;
   readonly requestRender: () => void;

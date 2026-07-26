@@ -27,14 +27,8 @@ source-control	src/modules/keybindings/KeybindingRegistry.ts	1
 # defaults (issue #100).
 comparison	src/modules/keybindings/KeybindingDefaults.ts	2
 
-# --- markdown (owner-named 2026-07-26, extraction step 3) --------------------------------------
-# Workspace.ts: 13 = markdownPreviewPaths / activeFileIsMarkdown / showingMarkdownPreview /
-#   toggleMarkdownPreview, plus the comment + annotation on the GENERIC resolveFileReference.
-# Bootstrap.ts: 60 = the 29-site previewFocused fan-out plus command/action wiring. The editor-column
-#   occupant port (census Gap A) now EXISTS and is proven by the comparison surface, so step 3 is
-#   unblocked except for the editor-title action question (Gap D, one customer).
-# AppStatusProjection.ts: 13 = the markdown* projection fields read by the driven smokes.
-markdown	src/modules/workspace/Workspace.ts	13
-markdown	src/modules/app/Bootstrap.ts	60
-markdown	src/modules/app/AppStatusProjection.ts	13
+# --- markdown: EXTRACTED 2026-07-26 ------------------------------------------------------------
+# Was 13 (Workspace.ts) + 60 (Bootstrap.ts, the 29-site previewFocused fan-out plus command wiring)
+# + 13 (AppStatusProjection.ts) = 86 lines, now 0 in all three, so they carry no rows and one
+# reference there fails. Its three chords remain in the keybinding defaults (issue #100).
 markdown	src/modules/keybindings/KeybindingDefaults.ts	3

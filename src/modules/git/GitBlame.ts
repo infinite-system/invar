@@ -32,13 +32,18 @@ class $GitBlame {
   }
 
   static parsePorcelain(output: string): Map<number, BlameLine> {
-    const shaMetadata = new Map<string, { author: string; authorTimeMs: number; summary: string }>();
+    const shaMetadata = new Map<
+      string,
+      { author: string; authorTimeMs: number; summary: string }
+    >();
     const result = new Map<number, BlameLine>();
     const rawLines = output.split('\n');
     let rawLineIndex = 0;
 
     while (rawLineIndex < rawLines.length) {
-      const header = this.parsePorcelainMetadataLine(rawLines[rawLineIndex] ?? '');
+      const header = this.parsePorcelainMetadataLine(
+        rawLines[rawLineIndex] ?? '',
+      );
       if (!header.sha) {
         rawLineIndex += 1;
         continue;
@@ -61,7 +66,9 @@ class $GitBlame {
         if (currentLine.startsWith('author ')) {
           metadata.author = currentLine.slice('author '.length);
         } else if (currentLine.startsWith('author-time ')) {
-          metadata.authorTimeMs = Number.parseInt(currentLine.slice('author-time '.length), 10) * 1000;
+          metadata.authorTimeMs =
+            Number.parseInt(currentLine.slice('author-time '.length), 10) *
+            1000;
         } else if (currentLine.startsWith('summary ')) {
           metadata.summary = currentLine.slice('summary '.length);
         }
@@ -102,4 +109,3 @@ export interface BlameLine {
   readonly summary: string;
   readonly uncommitted: boolean;
 }
-

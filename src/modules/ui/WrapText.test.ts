@@ -39,24 +39,44 @@ describe('WrapText.wrap', () => {
 });
 
 describe('WrapText geometry (segments + point↔offset mapping)', () => {
-  const segmentsOf = (text: string, width: number) => WrapText.Class.segments(text, width);
+  const segmentsOf = (text: string, width: number) =>
+    WrapText.Class.segments(text, width);
 
   test('segments carry grapheme offsets + display widths', () => {
     const segments = segmentsOf('界x界', 3); // 界(2)+x(1)=3 cells row 1; 界 row 2
     expect(segments.map((segment) => segment.text)).toEqual(['界x', '界']);
-    expect(segments[0]).toMatchObject({ graphemeStart: 0, graphemeCount: 2, displayWidth: 3, isLogicalLineStart: true });
-    expect(segments[1]).toMatchObject({ graphemeStart: 2, graphemeCount: 1, displayWidth: 2, isLogicalLineStart: false });
+    expect(segments[0]).toMatchObject({
+      graphemeStart: 0,
+      graphemeCount: 2,
+      displayWidth: 3,
+      isLogicalLineStart: true,
+    });
+    expect(segments[1]).toMatchObject({
+      graphemeStart: 2,
+      graphemeCount: 1,
+      displayWidth: 2,
+      isLogicalLineStart: false,
+    });
   });
 
   test('forward mapping: caret after a wide cluster lands at its DISPLAY column (the éx probe fixed)', () => {
     // 'éx' at width 1: two graphemes → two rows; caret at the END (offset 2) = row 1, column 1.
     const segments = segmentsOf('éx', 1);
     expect(segments).toHaveLength(2);
-    expect(WrapText.Class.visualPositionOf(segments, 2)).toEqual({ line: 1, column: 1 });
+    expect(WrapText.Class.visualPositionOf(segments, 2)).toEqual({
+      line: 1,
+      column: 1,
+    });
     // CJK: caret after 界界 (offset 2) at width 4 = row 0 column 4 (2 wide cells).
     const cjk = segmentsOf('界界界', 4);
-    expect(WrapText.Class.visualPositionOf(cjk, 2)).toEqual({ line: 1, column: 0 }); // on the boundary → next row start
-    expect(WrapText.Class.visualPositionOf(cjk, 1)).toEqual({ line: 0, column: 2 }); // after ONE wide cluster = column 2
+    expect(WrapText.Class.visualPositionOf(cjk, 2)).toEqual({
+      line: 1,
+      column: 0,
+    }); // on the boundary → next row start
+    expect(WrapText.Class.visualPositionOf(cjk, 1)).toEqual({
+      line: 0,
+      column: 2,
+    }); // after ONE wide cluster = column 2
   });
 
   test('inverse mapping: a display column inside a wide cluster snaps to its start', () => {
@@ -72,7 +92,13 @@ describe('WrapText geometry (segments + point↔offset mapping)', () => {
     const segments = segmentsOf(text, 3);
     for (let offset = 0; offset <= 5; offset += 1) {
       const position = WrapText.Class.visualPositionOf(segments, offset);
-      expect(WrapText.Class.graphemeAtVisualPosition(segments, position.line, position.column)).toBe(offset);
+      expect(
+        WrapText.Class.graphemeAtVisualPosition(
+          segments,
+          position.line,
+          position.column,
+        ),
+      ).toBe(offset);
     }
   });
 });

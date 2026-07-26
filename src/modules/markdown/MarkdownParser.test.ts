@@ -53,7 +53,9 @@ test('parses ordered and unordered list items with markers', () => {
   expect(items[0]!.marker).toBe('•');
   expect(items[2]!.level).toBe(2); // two-space indent → depth 2
 
-  const ordered = parse('1. one\n2. two').filter((block) => block.kind === 'listitem');
+  const ordered = parse('1. one\n2. two').filter(
+    (block) => block.kind === 'listitem',
+  );
   expect(ordered.map((item) => item.marker)).toEqual(['1.', '2.']);
 });
 
@@ -84,7 +86,9 @@ test('parses a horizontal rule', () => {
 });
 
 test('packs inline emphasis strong code and link into flat spans', () => {
-  const [paragraph] = parse('A **bold**, *em*, `code` and a [link](https://x.y).');
+  const [paragraph] = parse(
+    'A **bold**, *em*, `code` and a [link](https://x.y).',
+  );
   expect(paragraph!.kind).toBe('paragraph');
   // markup is stripped from the rendered text
   expect(paragraph!.text).toBe('A bold, em, code and a link.');
@@ -93,7 +97,10 @@ test('packs inline emphasis strong code and link into flat spans', () => {
   const runs = [];
   for (let spanIndex = 0; spanIndex < paragraph!.spans.length; spanIndex += 4) {
     runs.push({
-      text: paragraph!.text.slice(paragraph!.spans[spanIndex]!, paragraph!.spans[spanIndex + 1]!),
+      text: paragraph!.text.slice(
+        paragraph!.spans[spanIndex]!,
+        paragraph!.spans[spanIndex + 1]!,
+      ),
       style: paragraph!.spans[spanIndex + 2]!,
       link: paragraph!.spans[spanIndex + 3]!,
     });

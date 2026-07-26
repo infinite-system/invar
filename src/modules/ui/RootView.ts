@@ -50,7 +50,6 @@ import { OverlayLayer } from './OverlayLayer';
 import { HoverCard } from './HoverCard';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { EditorWrap } from '../editor/EditorWrap';
-import { MarkdownSplitView } from '../markdown/MarkdownSplitView';
 import { SelectableText } from './SelectableText';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
@@ -287,12 +286,6 @@ class $RootView {
     // inside gets a real box. Not added until a surface claims the column.
     const surfaceContainer = new BoxRenderable(renderer, {
       id: 'editor-surface-container',
-      flexGrow: 1,
-      width: '100%',
-      flexDirection: 'column',
-    });
-    const markdownContainer = new BoxRenderable(renderer, {
-      id: 'markdown-container',
       flexGrow: 1,
       width: '100%',
       flexDirection: 'column',
@@ -1241,6 +1234,7 @@ class $RootView {
       boundedListPopup,
       quickOpen,
       keybindings,
+      commands,
       readPalette,
     });
     // The editor tab bar. ONE geometry source: a layout pass produces positioned SEGMENTS that BOTH the
@@ -1280,7 +1274,6 @@ class $RootView {
       editorColumn,
       editorArea,
       surfaceContainer,
-      markdownContainer,
     });
     function findTarget(): FindBarTarget | null {
       // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
@@ -1288,10 +1281,6 @@ class $RootView {
       const contributedSurfaceTarget =
         editorContentMount.contributedSurface?.findTarget();
       if (contributedSurfaceTarget) return contributedSurfaceTarget;
-      const markdownSplitView = editorContentMount.markdownSplitView;
-      if (markdownSplitView?.previewFocused) {
-        return markdownSplitView.findTarget();
-      }
       const editor = workspaceSet.active.editor;
       if (!editor.hasDocument.value) return null;
       return {
@@ -1299,7 +1288,7 @@ class $RootView {
         document: editor.document,
         replaceAllowed: !editor.readOnly.value,
         revealMatch: (match) => {
-          editorContentMount.markdownSplitView?.focusSource();
+          editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor();
           editor.placeCursor(match.line, match.endColumn);
           editor.cursor.anchor.value = {
             line: match.line,
@@ -1338,7 +1327,7 @@ class $RootView {
       editorArea.backgroundColor = palette.bg;
       const sourcePaneFocused =
         workspaceSet.active.focus.value === 'editor' &&
-        !(editorContentMount.markdownSplitView?.previewFocused ?? false);
+        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget;
       editorArea.borderColor = sourcePaneFocused
         ? palette.borderActive
         : palette.border;
@@ -1664,7 +1653,7 @@ class $RootView {
       }
       statusBar.update(
         palette,
-        editorContentMount.markdownSplitView?.previewFocused ?? false,
+        editorContentMount.contributedSurface?.focusedPaneTitle ?? null,
       );
       overlayLayer.update(palette);
       hoverCard.update(palette);
@@ -1726,7 +1715,7 @@ class $RootView {
           editor.hasDocument.value &&
           !activeFileIsImage &&
           workspaceSet.active.focus.value === 'editor' &&
-          !editorContentMount.markdownSplitView?.previewFocused &&
+          workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
           !commands.open.value
             ? editorController.wrapVisualPosition(
                 cursorLine,
@@ -1760,7 +1749,7 @@ class $RootView {
         editor.hasDocument.value &&
         !activeFileIsImage &&
         workspaceSet.active.focus.value === 'editor' &&
-        !editorContentMount.markdownSplitView?.previewFocused &&
+        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
         !commands.open.value &&
         cursorLine >= scrollTop &&
         cursorLine < scrollTop + viewportHeight &&
@@ -1911,8 +1900,8 @@ class $RootView {
       readPalette,
       editorViewportHeight,
       editorViewportWidth,
-      focusMarkdownSource: () =>
-        editorContentMount.markdownSplitView?.focusSource(),
+      focusSourceEditor: () =>
+        editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor(),
       hover: {
         pointAt: (position, screenX, screenY) =>
           hoverCard.pointAt(position, screenX, screenY),
@@ -1995,11 +1984,7 @@ class $RootView {
       tickContributedSurface(dtSeconds: number): boolean {
         return editorContentMount.tickContributedSurface(dtSeconds);
       },
-      tickMarkdownPreview(dtSeconds: number): boolean {
-        return editorContentMount.tickMarkdown(dtSeconds);
-      },
       contributedEditorSurface: () => editorContentMount.contributedSurface,
-      activeMarkdownSplitView: () => editorContentMount.markdownSplitView,
       findTarget,
       shortcutHelpViewportRows: () => overlayLayer.shortcutHelpViewportRows(),
       scrollShortcutHelpBy: (rowDelta: number) =>
@@ -2113,8 +2098,6 @@ export interface RootView {
   /** The mounted contributed editor surface, else null (for key, find, and clipboard routing). */
   contributedEditorSurface(): EditorSurfaceContent | null;
   /** Frame-tick hook for Markdown preview momentum, drag selection, and async parse landing. */
-  tickMarkdownPreview(dtSeconds: number): boolean;
-  activeMarkdownSplitView(): MarkdownSplitView.Instance | null;
   findTarget(): FindBarTarget | null;
   /** Rows the shortcut cheat-sheet can show at once (scroll actions clamp against this). */
   shortcutHelpViewportRows(): number;

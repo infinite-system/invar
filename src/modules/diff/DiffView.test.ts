@@ -7,13 +7,14 @@ describe('DiffView overview ruler projection', () => {
     const alignedRows: DiffAlignmentResult['alignedRows'] = Array.from(
       { length: 100 },
       (_unused, alignedRowIndex) => ({
-        kind: alignedRowIndex === 4
-          ? 'modified'
-          : alignedRowIndex === 50
-            ? 'added'
-            : alignedRowIndex === 95
-              ? 'deleted'
-              : 'equal',
+        kind:
+          alignedRowIndex === 4
+            ? 'modified'
+            : alignedRowIndex === 50
+              ? 'added'
+              : alignedRowIndex === 95
+                ? 'deleted'
+                : 'equal',
         leftLineNumber: alignedRowIndex + 1,
         rightLineNumber: alignedRowIndex + 1,
       }),
@@ -29,7 +30,16 @@ describe('DiffView overview ruler projection', () => {
 
     const overviewKinds = DiffView.$Class.overviewKinds(alignment, 10);
     expect(overviewKinds).toEqual([
-      'modified', null, null, null, null, 'added', null, null, null, 'deleted',
+      'modified',
+      null,
+      null,
+      null,
+      null,
+      'added',
+      null,
+      null,
+      null,
+      'deleted',
     ]);
   });
 
@@ -42,7 +52,12 @@ describe('DiffView overview ruler projection', () => {
       })),
       changeBlocks: [],
     };
-    expect(DiffView.$Class.overviewKinds(alignment, 4)).toEqual([null, null, null, null]);
+    expect(DiffView.$Class.overviewKinds(alignment, 4)).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
     expect(DiffView.$Class.overviewKinds(alignment, 0)).toEqual([]);
   });
 });

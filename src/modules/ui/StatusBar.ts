@@ -322,20 +322,21 @@ class $StatusBar {
       row < top + Number(renderable.height)
     );
   }
-  protected renderStatus(markdownPreviewFocused: boolean): string {
+  protected renderStatus(focusedSurfaceTitle: string | null): string {
     return this.deps.statusBarSegments
       .segments({
         workspaceSet: this.deps.workspaceSet,
         app: this.deps.app,
         primaryDockHost: this.deps.primaryDockHost,
-        markdownPreviewFocused,
+        focusedSurfaceTitle,
       })
       .join('  ·  ');
   }
-  /** Re-sync the bar from the model each frame. `markdownPreviewFocused` is composer state RootView owns. */
-  update(palette: Palette, markdownPreviewFocused: boolean): void {
+  /** Re-sync the bar from the model each frame. `focusedSurfaceTitle` is the mounted editor
+   *  surface's own answer, which RootView reads. */
+  update(palette: Palette, focusedSurfaceTitle: string | null): void {
     this.bar.backgroundColor = palette.statusBg;
-    this.statusText.content = this.renderStatus(markdownPreviewFocused);
+    this.statusText.content = this.renderStatus(focusedSurfaceTitle);
     this.statusText.fg = palette.dim;
     // The `?` help affordance brightens on hover and while its sheet is open.
     this.shortcutHelpButton.fg =

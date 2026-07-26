@@ -5,6 +5,7 @@
 // invariant: No action requires a memorized motion (project.invariants.md)
 //   — everything is in the palette, discoverable and rebindable.
 // invariant: The host canvas is complete without plugins (project.invariants.md)
+import type { ActionIconSet } from '../theme/ThemeIcons';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from './CommandScoring';
@@ -52,6 +53,17 @@ class $CommandRegistry {
 
   get(id: string): Command | undefined {
     return this.commands.get(id);
+  }
+
+  /** Commands that ask to appear in the editor title row, in registration order, filtered by the
+   *  same guard `all()` uses — a guarded-off command is not offered as an affordance either. */
+  editorTitleActions(): Command[] {
+    // invariant: A command runs only when its guard holds (src/modules/commands/commands.invariants.md)
+    return [...this.commands.values()].filter(
+      (command) =>
+        command.editorTitleIcon !== undefined &&
+        (command.when ? command.when() : true),
+    );
   }
 
   all(): Command[] {
@@ -158,4 +170,12 @@ export interface Command {
   category?: string;
   run: () => void | Promise<void>;
   when?: () => boolean;
+  /** Surface this command as a clickable affordance in the editor title row. The value names a key
+   *  in the theme's action-icon set, so the glyph follows the glyph-level ladder rather than being a
+   *  literal. A command that can be clicked is still just a command — this is a field on the one
+   *  action contract, not a second way to declare an action.
+   *  invariant: No action requires a memorized motion (project.invariants.md) */
+  editorTitleIcon?: keyof ActionIconSet;
+  /** For an editor-title affordance that is a TOGGLE: whether it currently reads as on. */
+  toggled?: () => boolean;
 }

@@ -9,8 +9,8 @@ composes like legos"*.
 This document turns "decouple everything" into a **finite, ordered list**. It is the inventory the
 next builder reads instead of rediscovering the surface one domain at a time.
 
-Baseline commit: `2751b32`. **Status: steps 1 and 2 of the extraction order are DONE** (the
-editor-column occupant port with its capability answers, and the diff extraction) — see
+Baseline commit: `2751b32`. **Status: steps 1, 2 and 3 are DONE** (the editor-column occupant port
+with its capability answers, the diff extraction, and the markdown extraction) — see
 [Progress](#progress). Host files audited:
 `src/modules/workspace/Workspace.ts` (922 lines), `src/modules/workspace/WorkspaceSet.ts`,
 `src/modules/app/` (the app core the conventions gate's step-11 boundary covers), and
@@ -60,7 +60,8 @@ Ports 5 and 6, added 2026-07-26 by extraction step 1:
    editorSurfaceContents`. Customers: the source-control comparison today; the Markdown split is
    step 3's customer.
 
-**Still no port for:** **default keybindings** (Gap C) or an **editor-title action** (Gap D).
+**Still no port for:** **default keybindings** (Gap C). Gap D was resolved without a port — see
+below.
 
 ---
 
@@ -398,20 +399,31 @@ Customers: source control (2 diff chords) and markdown (2 chords). → one-field
 expose `keybindings` on `ApplicationPluginContext` (or a `defaultKeybindings` array on
 `ApplicationPlugin`).
 
-### Gap D — editor-title action cluster — **GUESS (1 customer)**
+### Gap D — editor-title action cluster — **RESOLVED 2026-07-26 without a new port**
 
 `ui/TabBarRenderer.ts:351` reserves 3 cells and `471-495` paints the Markdown preview toggle, with
 a comment that already calls itself *"Extensible right-side action cluster … exactly where future
 editor-view actions can join it"*. `ui/TabBar.ts:301-304` wires the click straight to
 `toggleMarkdownPreview()` and `336-345` hard-codes the tooltip + `markdown.togglePreview` hint.
 
-Customers today: **markdown only.** The diff view's "Open current" affordance lives in `DiffView`'s
-own header, not the tab bar; image has none.
-→ **Do not build a general action-contribution port for one customer.** Either (a) accept that the
-markdown plugin contributes this one affordance through Gap A's occupant, or (b) leave the toggle
-in host chrome and record it as the one knowingly-retained markdown name in `ui/` (the precedent
-exists: `ui/ShortcutHelp.ts:51-52` already keeps `git:`, `diff:`, `markdown:` category labels as
-plain data, and git is a plugin).
+Customers today: **markdown only.** So no new port was built. Instead the EXISTING command contract
+gained two optional fields — `editorTitleIcon` (a key into the theme's action-icon set, so the glyph
+follows the glyph-level ladder) and `toggled` — plus `CommandRegistry.editorTitleActions()`, which
+returns icon-bearing commands filtered by the same guard `all()` uses. `TabBarRenderer` paints one
+padded cell per returned command and `TabBar` dispatches the click by `commandId`.
+
+The distinction that makes this legitimate: **a new PORT needs two customers because it is a new
+concept the host must learn; extending a contract that already has many customers is a FIELD
+ADDITION, and the bar for that is only "does it fit the existing concept".** A command that can be
+surfaced as a clickable affordance is still just a command, and it keeps the toggle a single action
+— one id, one guard, one binding hint — rather than a button and a command that can drift apart.
+
+**The diff view's "Open current" does NOT fit these fields, and was left alone.**
+`diff.invariants.md` → *Base and current stay unambiguous* requires that affordance to be
+"positioned with the right pane" and makes "Open current appearing over the base pane" impossible-if-
+true. The editor-title row is one strip across the whole column with no pane association, so moving
+it there would break the record that makes base and current readable. It stays in `DiffView`'s own
+header.
 
 ### Not a gap — already generic
 
@@ -470,7 +482,7 @@ domains. Moves: `diffEditor`, `showingDiff`, `diffRequest`, `diffRequestToken`, 
 (via the existing `StatusProjectionContributions` port), and `DiffRequest`'s type.
 Needs Gap C for the two diff chords.
 
-### 3. MARKDOWN → new markdown plugin — **NEXT**
+### 3. MARKDOWN → new markdown plugin — **DONE**
 
 **Third: same port, but 29 extra guard sites and Gap D unresolved.** The port it needs now exists
 and has a worked example (`git/GitComparisonSurface.ts` + `git/GitComparisonContent.ts`); the split
@@ -512,13 +524,13 @@ lifecycle behind the existing ports; leave the request methods until either the 
 | --- | --- | --- | --- | --- |
 | git | 0 | 0 | — | **done** (task #34) |
 | diff | **0** | **0** | Gap A+B **built** | **done** 2026-07-26 |
-| markdown | 13 | 4 state/method + 29 guards | Gap A+B built; Gap C, (Gap D unresolved) | owner-named, NEXT |
+| markdown | **0** | **0** | Gap A+B built; Gap D resolved by field addition | **done** 2026-07-26 |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
 | file tree | 33 | 8 (model + 2 momentum lanes) | dock-fallback flag | after the editor column |
-| language | 61 | 18 | semantic-request port = **GUESS** | blocked on the owner |
+| language | 61 | 18 | semantic-request port = **GUESS** | **blocked on the owner** — a contract renegotiation |
 
-Guard collapse: **14 diff mode checks → 1 capability question (done)**; 29 markdown mode checks → the
-second question (step 3).
+Guard collapse: **14 diff mode checks → 1 capability question**; **29 markdown mode checks → the
+second question**. Both done: 43 mode checks became 2 questions.
 
 ## Progress
 
@@ -537,3 +549,20 @@ second question (step 3).
   `observePaintSignals()`.
 - markdown residue in host core: 13 (`Workspace.ts`) + 60 (`Bootstrap.ts`) + 13
   (`AppStatusProjection.ts`), all held by the ratchet.
+
+**2026-07-26 — step 3 landed, and the boundary check widened.**
+
+- `Workspace.ts` and `src/modules/app`: zero `markdown` references (was 86 lines across three
+  files). Markdown ships as a default plugin (`MarkdownPlugin`, `MarkdownWorkspace`,
+  `MarkdownPreviewSurface`, `MarkdownPreviewContent`).
+- The 29 `previewFocused` guards became `activeDocumentIsKeyboardTarget`, which is what supplied that
+  question's second answer. Movement still arrives through REBINDABLE commands, not a raw-key
+  intercept, so a remapped chord still drives the preview.
+- `EditorContentMount` lost its hard-coded three-way branch entirely: `'editor' | 'surface'`, with
+  the source renderable handed to whichever surface embeds it.
+- `StatusBarSegmentContext.markdownPreviewFocused` → `focusedSurfaceTitle`, answered by the content.
+- `resolveFileReference` stayed in the host, as the census argued: generic path confinement.
+- The gate's boundary paths now include `src/modules/keybindings`, which held **19** plugin names
+  while the check reported PASS. They are allowlisted, not tolerated; their extraction is issue #100.
+- Remaining host-core plugin names, all allowlisted and all in the keybinding DEFAULTS: 13
+  source-control chords + the `'git'` keybinding context, 2 diff chords, 3 markdown chords.

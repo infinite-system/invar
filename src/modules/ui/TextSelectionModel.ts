@@ -27,7 +27,12 @@ class $TextSelectionModel {
 
   /** Finish a drag: a bare click (anchor === focus) leaves no span, so drop it. */
   finish(): void {
-    if (this.anchor && this.focus && this.anchor.line === this.focus.line && this.anchor.column === this.focus.column) {
+    if (
+      this.anchor &&
+      this.focus &&
+      this.anchor.line === this.focus.line &&
+      this.anchor.column === this.focus.column
+    ) {
       this.anchor = null;
       this.focus = null;
     }
@@ -50,14 +55,21 @@ class $TextSelectionModel {
   /** True when a NON-EMPTY span is selected. */
   hasSelection(): boolean {
     const span = this.normalized();
-    return span !== null && !(span[0].line === span[1].line && span[0].column === span[1].column);
+    return (
+      span !== null &&
+      !(span[0].line === span[1].line && span[0].column === span[1].column)
+    );
   }
 
   /** The [start, end) DISPLAY-CELL columns highlighted on `line` (clamped to the line's cell width), or
    *  null when the line is outside the span/empty. */
   rangeForLine(line: number, lineLength: number): SelectionSpanRange | null {
     const span = this.normalized();
-    if (!span || (span[0].line === span[1].line && span[0].column === span[1].column)) return null;
+    if (
+      !span ||
+      (span[0].line === span[1].line && span[0].column === span[1].column)
+    )
+      return null;
     const [start, end] = span;
     if (line < start.line || line > end.line) return null;
     const startColumn = line === start.line ? start.column : 0;
@@ -73,7 +85,11 @@ class $TextSelectionModel {
    *  (WrapText.sliceByDisplayCells is the shared slicer); the surface owns the join (transcript rows →
    *  '\n', composer wraps → ''). Null slices (a line the surface no longer has) are skipped. */
   selectedText(
-    sliceLine: (line: number, startCell: number, endCell: number | null) => string | null,
+    sliceLine: (
+      line: number,
+      startCell: number,
+      endCell: number | null,
+    ) => string | null,
     joiner: string,
   ): string {
     const span = this.normalized();

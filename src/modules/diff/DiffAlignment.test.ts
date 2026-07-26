@@ -1,8 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { DiffAlignment, type AlignedRow } from './DiffAlignment';
 
-function align(previousVersionText: string, currentVersionText: string): readonly AlignedRow[] {
-  return DiffAlignment.Class.align(previousVersionText, currentVersionText).alignedRows;
+function align(
+  previousVersionText: string,
+  currentVersionText: string,
+): readonly AlignedRow[] {
+  return DiffAlignment.Class.align(previousVersionText, currentVersionText)
+    .alignedRows;
 }
 
 describe('DiffAlignment', () => {
@@ -23,7 +27,9 @@ describe('DiffAlignment', () => {
   });
 
   test('a replacement with more current lines pairs first then adds left fillers', () => {
-    expect(align('before\nold\nafter', 'before\nnew one\nnew two\nafter')).toEqual([
+    expect(
+      align('before\nold\nafter', 'before\nnew one\nnew two\nafter'),
+    ).toEqual([
       { kind: 'equal', leftLineNumber: 1, rightLineNumber: 1 },
       { kind: 'modified', leftLineNumber: 2, rightLineNumber: 2 },
       { kind: 'added', leftLineNumber: null, rightLineNumber: 3 },
@@ -32,7 +38,9 @@ describe('DiffAlignment', () => {
   });
 
   test('a replacement with more previous lines pairs first then adds right fillers', () => {
-    expect(align('before\nold one\nold two\nafter', 'before\nnew\nafter')).toEqual([
+    expect(
+      align('before\nold one\nold two\nafter', 'before\nnew\nafter'),
+    ).toEqual([
       { kind: 'equal', leftLineNumber: 1, rightLineNumber: 1 },
       { kind: 'modified', leftLineNumber: 2, rightLineNumber: 2 },
       { kind: 'deleted', leftLineNumber: 3, rightLineNumber: null },
@@ -59,16 +67,31 @@ describe('DiffAlignment', () => {
       { startAlignedRowIndex: 3, endAlignedRowIndexExclusive: 4 },
       { startAlignedRowIndex: 6, endAlignedRowIndexExclusive: 7 },
     ]);
-    expect(DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 1)).toBe(3);
-    expect(DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 3)).toBe(6);
-    expect(DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 6)).toBeNull();
-    expect(DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 6)).toBe(3);
-    expect(DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 3)).toBe(1);
-    expect(DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 1)).toBeNull();
+    expect(
+      DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 1),
+    ).toBe(3);
+    expect(
+      DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 3),
+    ).toBe(6);
+    expect(
+      DiffAlignment.Class.nextChangeBlockStart(result.changeBlocks, 6),
+    ).toBeNull();
+    expect(
+      DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 6),
+    ).toBe(3);
+    expect(
+      DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 3),
+    ).toBe(1);
+    expect(
+      DiffAlignment.Class.previousChangeBlockStart(result.changeBlocks, 1),
+    ).toBeNull();
   });
 
   test('identical files contain only equal rows and no change blocks', () => {
-    const result = DiffAlignment.Class.align('one\ntwo\nthree', 'one\ntwo\nthree');
+    const result = DiffAlignment.Class.align(
+      'one\ntwo\nthree',
+      'one\ntwo\nthree',
+    );
     expect(result.alignedRows).toEqual([
       { kind: 'equal', leftLineNumber: 1, rightLineNumber: 1 },
       { kind: 'equal', leftLineNumber: 2, rightLineNumber: 2 },
@@ -86,16 +109,32 @@ describe('DiffAlignment', () => {
   });
 
   test('five to five hundred additive lines keeps all originals paired and creates 495 fillers', () => {
-    const previousLines = ['shared one', 'shared two', 'shared three', 'shared four', 'shared five'];
-    const currentLines = Array.from({ length: 500 }, (_, lineIndex) => `added ${lineIndex + 1}`);
+    const previousLines = [
+      'shared one',
+      'shared two',
+      'shared three',
+      'shared four',
+      'shared five',
+    ];
+    const currentLines = Array.from(
+      { length: 500 },
+      (_, lineIndex) => `added ${lineIndex + 1}`,
+    );
     const pairedCurrentLineNumbers = [1, 101, 201, 301, 500];
     pairedCurrentLineNumbers.forEach((currentLineNumber, previousLineIndex) => {
       currentLines[currentLineNumber - 1] = previousLines[previousLineIndex]!;
     });
 
-    const result = DiffAlignment.Class.align(previousLines.join('\n'), currentLines.join('\n'));
+    const result = DiffAlignment.Class.align(
+      previousLines.join('\n'),
+      currentLines.join('\n'),
+    );
     expect(result.alignedRows).toHaveLength(500);
-    expect(result.alignedRows.filter((row) => row.kind === 'added' && row.leftLineNumber === null)).toHaveLength(495);
+    expect(
+      result.alignedRows.filter(
+        (row) => row.kind === 'added' && row.leftLineNumber === null,
+      ),
+    ).toHaveLength(495);
     expect(result.alignedRows.filter((row) => row.kind === 'equal')).toEqual(
       pairedCurrentLineNumbers.map((rightLineNumber, previousLineIndex) => ({
         kind: 'equal',

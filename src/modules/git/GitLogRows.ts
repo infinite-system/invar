@@ -20,26 +20,40 @@ class $GitLogRows {
     return entry.files === null ? 1 : entry.files.length;
   }
 
-  protected static sortedByIndex(expanded: readonly ExpandedCommit[]): ExpandedCommit[] {
-    return [...expanded].sort((first, second) => first.commitIndex - second.commitIndex);
+  protected static sortedByIndex(
+    expanded: readonly ExpandedCommit[],
+  ): ExpandedCommit[] {
+    return [...expanded].sort(
+      (first, second) => first.commitIndex - second.commitIndex,
+    );
   }
 
   /** Extra (non-header) flat rows contributed by expanded commits BEFORE `commitIndex`. */
-  static extraRowsBefore(expanded: readonly ExpandedCommit[], commitIndex: number): number {
+  static extraRowsBefore(
+    expanded: readonly ExpandedCommit[],
+    commitIndex: number,
+  ): number {
     let extra = 0;
     for (const entry of expanded) {
-      if (entry.commitIndex < commitIndex) extra += this.expandedRowCount(entry);
+      if (entry.commitIndex < commitIndex)
+        extra += this.expandedRowCount(entry);
     }
     return extra;
   }
 
   /** Flat index of a commit's header row. */
-  static commitFlatIndex(expanded: readonly ExpandedCommit[], commitIndex: number): number {
+  static commitFlatIndex(
+    expanded: readonly ExpandedCommit[],
+    commitIndex: number,
+  ): number {
     return commitIndex + this.extraRowsBefore(expanded, commitIndex);
   }
 
   /** Total flat rows once the end of history is known; Infinity until (`knownEnd` = commit count). */
-  static totalFlatRows(expanded: readonly ExpandedCommit[], knownEnd: number): number {
+  static totalFlatRows(
+    expanded: readonly ExpandedCommit[],
+    knownEnd: number,
+  ): number {
     if (!Number.isFinite(knownEnd)) return Number.POSITIVE_INFINITY;
     return knownEnd + this.extraRowsBefore(expanded, knownEnd);
   }
@@ -48,7 +62,10 @@ class $GitLogRows {
    * The commit whose block (header row + expansion rows) contains flat row `flatIndex` — the
    * piecewise-linear inverse of `commitFlatIndex`. O(|expanded|).
    */
-  static commitIndexAtFlatRow(expanded: readonly ExpandedCommit[], flatIndex: number): number {
+  static commitIndexAtFlatRow(
+    expanded: readonly ExpandedCommit[],
+    flatIndex: number,
+  ): number {
     let extra = 0;
     for (const entry of this.sortedByIndex(expanded)) {
       const headerFlatIndex = entry.commitIndex + extra;
@@ -74,7 +91,9 @@ class $GitLogRows {
     knownEnd: number,
   ): CommitLogRow[] {
     const sorted = this.sortedByIndex(expanded);
-    const entriesByIndex = new Map(sorted.map((entry) => [entry.commitIndex, entry]));
+    const entriesByIndex = new Map(
+      sorted.map((entry) => [entry.commitIndex, entry]),
+    );
     const rows: CommitLogRow[] = [];
     const start = Math.max(0, flatStart);
     let commitIndex = this.commitIndexAtFlatRow(sorted, start);
@@ -107,7 +126,9 @@ class $GitLogRows {
                 sha: entry.sha,
                 path: change.path,
                 glyph: change.status,
-                ...(change.originalPath === undefined ? {} : { originalPath: change.originalPath }),
+                ...(change.originalPath === undefined
+                  ? {}
+                  : { originalPath: change.originalPath }),
               });
             }
             flatIndex += 1;
@@ -156,4 +177,3 @@ export interface CommitLoadingRow {
 export type CommitLogRow = CommitHeaderRow | CommitFileRow | CommitLoadingRow;
 
 /** Stateless capability: pure flat-row arithmetic + window construction for the commit log. */
-

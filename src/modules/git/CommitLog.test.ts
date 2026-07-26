@@ -14,7 +14,10 @@ function makeCommit(index: number): CommitRecord {
 }
 
 // A fake page fetch backed by a fixed total; records the (skip,limit) calls it received.
-function fakeFetch(total: number, calls: Array<{ skip: number; limit: number }>): CommitPageFetch {
+function fakeFetch(
+  total: number,
+  calls: Array<{ skip: number; limit: number }>,
+): CommitPageFetch {
   return async (skip, limit) => {
     calls.push({ skip, limit });
     const records: CommitRecord[] = [];
@@ -39,7 +42,10 @@ describe('CommitLog', () => {
 
   test('only missing ranges are fetched on re-ensure (no redundant refetch)', async () => {
     const calls: Array<{ skip: number; limit: number }> = [];
-    const log = new CommitLog.Class('/repo', { fetch: fakeFetch(1000, calls), branch: undefined });
+    const log = new CommitLog.Class('/repo', {
+      fetch: fakeFetch(1000, calls),
+      branch: undefined,
+    });
     await log.ensureRange(0, 10, 100); // keepMargin large so nothing evicted
     calls.length = 0;
     await log.ensureRange(5, 10, 100); // 5..14 : 5..9 cached, only 10..14 missing
@@ -56,7 +62,8 @@ describe('CommitLog', () => {
     const fetch: CommitPageFetch = async (skip, limit) => {
       if (failNext) return null; // command failure — NOT an empty page
       const records: CommitRecord[] = [];
-      for (let index = skip; index < skip + limit; index++) records.push(makeCommit(index));
+      for (let index = skip; index < skip + limit; index++)
+        records.push(makeCommit(index));
       return records;
     };
     const log = new CommitLog.Class('/repo', { fetch });
@@ -64,7 +71,13 @@ describe('CommitLog', () => {
     // The failure must not have been cached as EOF (the empty-repository lie) — the rows stay
     // unloaded placeholders and the extent stays unknown.
     expect(log.knownEnd.value).toBe(Number.POSITIVE_INFINITY);
-    expect(log.rows(0, 5)).toEqual([undefined, undefined, undefined, undefined, undefined]);
+    expect(log.rows(0, 5)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
 
     failNext = false; // the transient failure clears (e.g. index lock released)
     await log.ensureRange(0, 5);
@@ -96,7 +109,10 @@ describe('CommitLog', () => {
       fetchedBranches.push(branch);
       const records: CommitRecord[] = [];
       for (let index = skip; index < skip + limit; index++) {
-        records.push({ ...makeCommit(index), subject: `${branch ?? 'HEAD'} ${index}` });
+        records.push({
+          ...makeCommit(index),
+          subject: `${branch ?? 'HEAD'} ${index}`,
+        });
       }
       return records;
     };
@@ -139,7 +155,8 @@ describe('CommitLog', () => {
         return [{ ...makeCommit(999), subject: 'STALE' }];
       }
       const records: CommitRecord[] = [];
-      for (let index = skip; index < skip + limit; index++) records.push(makeCommit(index));
+      for (let index = skip; index < skip + limit; index++)
+        records.push(makeCommit(index));
       return records;
     };
     const log = new CommitLog.Class('/repo', { fetch });

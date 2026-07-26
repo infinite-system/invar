@@ -109,12 +109,34 @@ class $GitComparisonContent implements EditorSurfaceContent {
         this.view.openFull();
         return true;
       case 'escape':
-        this.gitWorkspace.release();
+        this.yieldKeyboardToSourceEditor();
         return true;
       default:
         return false;
     }
   }
+
+  // The comparison has no embedded source editor: its two panes are read-only revisions, so the
+  // shared movement verbs drive the aligned-row window and Escape dismisses the comparison entirely.
+  scrollFocusedPaneByRows(rowDelta: number): void {
+    this.view.moveByKeyboardAlignedRows(rowDelta);
+  }
+
+  pageFocusedPane(direction: -1 | 1): void {
+    this.view.pageByKeyboard(direction);
+  }
+
+  selectAllInFocusedPane(): void {
+    this.view.selectAllInActivePane();
+  }
+
+  yieldKeyboardToSourceEditor(): void {
+    this.gitWorkspace.release();
+  }
+
+  /** Null: the comparison labels its own panes `Base (HEAD)` / `Current (working)` in its header.
+   *  invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md) */
+  readonly focusedPaneTitle = null;
 
   findTarget(): FindBarTarget | null {
     return this.view.findTarget();

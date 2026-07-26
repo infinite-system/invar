@@ -33,10 +33,7 @@ class $GutterDiff {
         alignedRow.rightLineNumber !== null &&
         (alignedRow.kind === 'added' || alignedRow.kind === 'modified')
       ) {
-        statusByLine.set(
-          alignedRow.rightLineNumber - 1,
-          alignedRow.kind,
-        );
+        statusByLine.set(alignedRow.rightLineNumber - 1, alignedRow.kind);
       }
     }
 

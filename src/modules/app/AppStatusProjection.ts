@@ -31,7 +31,6 @@ class $AppStatusProjection {
 
   static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     const editor = ports.workspaceSet.active.editor;
-    const markdownSplitView = ports.view.activeMarkdownSplitView();
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
       ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
@@ -91,11 +90,6 @@ class $AppStatusProjection {
       sourceFindQuery: editor.hasDocument.value
         ? (ports.findBar.engineFor(`source:${editor.document.path}`)?.query
             .value ?? '')
-        : '',
-      markdownPreviewFindQuery: markdownSplitView
-        ? (ports.findBar.engineFor(
-            markdownSplitView.previewFindTargetIdentifier(),
-          )?.query.value ?? '')
         : '',
       quickOpenOpen: ports.quickOpen.open.value,
       quickOpenSelected: ports.quickOpen.selectedIndex.value,
@@ -176,14 +170,6 @@ class $AppStatusProjection {
       editorSurfaceIdentifier:
         ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
         '',
-      markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
-      markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
-      markdownSplitRatio: ports.settings.markdownSplitRatio.value,
-      markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
-      markdownPreviewSelectionChars:
-        markdownSplitView?.selectionCharacterCount() ?? 0,
-      markdownHoveredReference:
-        markdownSplitView?.hoveredReferencePath.value ?? null,
       settingsOpen: ports.settingsPanel.open.value,
       settingsSelected: ports.settingsPanel.selectedIndex.value,
       shortcutHelpOpen: ports.shortcutHelp.open.value,
@@ -378,7 +364,6 @@ export interface AppStatusProjectionPorts {
     | 'agentNarrationVoice'
     | 'agentNarrationRate'
     | 'showActivityBar'
-    | 'markdownSplitRatio'
     | 'sidebarWidth'
     | 'rightDockWidth'
     | 'agentAudioNarration'
@@ -462,7 +447,6 @@ export interface AppStatusProjectionPorts {
   >;
   readonly view: Pick<
     RootView,
-    | 'activeMarkdownSplitView'
     | 'panelViewportColumns'
     | 'panelViewportRows'
     | 'panelHeadingGeometry'

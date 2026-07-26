@@ -29,6 +29,9 @@ class $GitComparisonSurface implements EditorSurfaceContentProvider {
   /** The mounted comparison view, or null. Read by the plugin's own commands and status snapshot —
    *  never by the host, which knows only the generic content contract. */
   get comparisonView(): DiffView.Instance | null {
+    // Guarded by the live identity: the mount disposes the content when the claim drops, and this
+    // reference would otherwise outlive it.
+    if (this.mountIdentity() === '') return null;
     return this.content?.comparisonView ?? null;
   }
 

@@ -56,12 +56,20 @@ test('refresh supersedes an older completion', async () => {
   const olderRefresh = repository.refresh();
   const newerRefresh = repository.refresh();
 
-  newer.resolve({ code: 0, stdout: statusOutput('newer', 'newer.ts'), stderr: '' });
+  newer.resolve({
+    code: 0,
+    stdout: statusOutput('newer', 'newer.ts'),
+    stderr: '',
+  });
   await newerRefresh;
   expect(repository.branch.value).toBe('newer');
   expect(repository.unstaged.value[0]?.path).toBe('newer.ts');
 
-  older.resolve({ code: 0, stdout: statusOutput('older', 'older.ts'), stderr: '' });
+  older.resolve({
+    code: 0,
+    stdout: statusOutput('older', 'older.ts'),
+    stderr: '',
+  });
   await olderRefresh;
   expect(repository.branch.value).toBe('newer');
   expect(repository.unstaged.value[0]?.path).toBe('newer.ts');
@@ -113,15 +121,24 @@ test('a failed status refresh degrades to error state', async () => {
       return { code: 128, stdout: '', stderr: 'fatal: not a git repository' };
     }
   }
-  const repository = new TestGitRepository('/not-a-repository', FailingGitCommands);
+  const repository = new TestGitRepository(
+    '/not-a-repository',
+    FailingGitCommands,
+  );
   await expect(repository.refresh()).resolves.toBeUndefined();
   expect(repository.error.value).toContain('not a git repository');
   expect(repository.refreshing.value).toBe(false);
   expect(repository.staged.value).toEqual([]);
 });
 
-async function runGit(workingDirectory: string, arguments_: string[]): Promise<string> {
-  const result = await Processes.Class.run(['git', ...arguments_], workingDirectory);
+async function runGit(
+  workingDirectory: string,
+  arguments_: string[],
+): Promise<string> {
+  const result = await Processes.Class.run(
+    ['git', ...arguments_],
+    workingDirectory,
+  );
   if (!result.ok) {
     throw new Error(result.stderr);
   }
@@ -132,7 +149,11 @@ async function createRepositoryFixture(): Promise<string> {
   const workingDirectory = mkdtempSync(join(tmpdir(), 'invar-git-'));
   await runGit(workingDirectory, ['init', '--quiet']);
   await runGit(workingDirectory, ['config', 'user.name', 'Invar Test']);
-  await runGit(workingDirectory, ['config', 'user.email', 'invar@example.test']);
+  await runGit(workingDirectory, [
+    'config',
+    'user.email',
+    'invar@example.test',
+  ]);
   writeFileSync(join(workingDirectory, 'tracked.txt'), 'original\n');
   await runGit(workingDirectory, ['add', '--', 'tracked.txt']);
   await runGit(workingDirectory, ['commit', '--quiet', '-m', 'Initial commit']);
@@ -147,21 +168,28 @@ test('stage and unstage all transition a real git fixture', async () => {
 
     const repository = new GitRepository.Class(cwd);
     await repository.refresh();
-    expect(repository.unstaged.value.map((record) => record.path)).toEqual(['tracked.txt']);
-    expect(repository.untracked.value.map((record) => record.path)).toEqual(['new file.txt']);
-
-    expect(await repository.stageAll()).toBe(true);
-    expect(repository.staged.value.map((record) => record.path).sort()).toEqual([
-      'new file.txt',
+    expect(repository.unstaged.value.map((record) => record.path)).toEqual([
       'tracked.txt',
     ]);
+    expect(repository.untracked.value.map((record) => record.path)).toEqual([
+      'new file.txt',
+    ]);
+
+    expect(await repository.stageAll()).toBe(true);
+    expect(repository.staged.value.map((record) => record.path).sort()).toEqual(
+      ['new file.txt', 'tracked.txt'],
+    );
     expect(repository.unstaged.value).toEqual([]);
     expect(repository.untracked.value).toEqual([]);
 
     expect(await repository.unstageAll()).toBe(true);
     expect(repository.staged.value).toEqual([]);
-    expect(repository.unstaged.value.map((record) => record.path)).toEqual(['tracked.txt']);
-    expect(repository.untracked.value.map((record) => record.path)).toEqual(['new file.txt']);
+    expect(repository.unstaged.value.map((record) => record.path)).toEqual([
+      'tracked.txt',
+    ]);
+    expect(repository.untracked.value.map((record) => record.path)).toEqual([
+      'new file.txt',
+    ]);
 
     const history = await repository.loadHistory({ limit: 1 });
     expect(history).toHaveLength(1);
