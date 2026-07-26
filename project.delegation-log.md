@@ -98,3 +98,52 @@ NOT to touch. This reinforces the pre-existing "SERIALIZE RootView, PARALLELIZE 
 - fix-lastchar-selection · tip 37c551b · merged-into main (37c551b) · 2026-07-23 · rightward drag-select now INCLUDES the char under the release cell (fixes "horizontal scrollbar + drag to right end drops the last letter"). Centralized in SelectionDragBehavior (pivot/anchor + inclusiveHead +1 clamped via new optional lineGraphemeCount host hook); wired into all 4 text surfaces — editor, diff, hover, markdown — so none selects a char short while another selects whole (hover copy 13→14). Teeth-proven smoke-editor assertion (7 not 6; counterfactual with +1 removed → 6). ui.invariants.md updated. finished/ tag pushed. Note: the scrolled-right-END exact-cell case is drift-sensitive in the SGR harness (reveal-scroll shifts the precomputed cell); verified deterministically at Home where the fix is scroll-position-independent — real users track the last char visually.
 
 - feat-terminal-tier-s · merged-into origin/main · 2026-07-23 · INTEGRATED TERMINAL (tier S) + composable bottom-panel system [flagship]. New `PaneContent` seam + generic switchable `PanelHost` (bottom slot; terminal is its first citizen, register more contents with zero host rewiring). Terminal stack: `TerminalBackend` seam (`OpenPtyBackend` = openpty via bun:ffi from libc.so.6 + setsid --ctty Bun.spawn onto the slave fd, node:fs push-reads, TIOCSWINSZ ioctl resize — node-pty proven-dead under Bun; `MockBackend` scripted double), `@xterm/headless` `TerminalEmulator`, reactive `TerminalInstance`, flyweight `TerminalPaneRenderer` (xterm buffer→OpenTUI cells, run-coalesced, 256-color), `TerminalKeys` VT encoder, `TerminalFactory` (lazy spawn on first toggle). RootView: resizable bottom panel via SplitterModel; Bootstrap: focused-key→bytes routing, cols/rows convergence, F8/Ctrl+backtick reserved toggle. Also folded in (user requests): StatusBar **settings gear** (⚙ theme ladder → settings.toggle via overlay coordinator, tooltip) + **HH:MM minute-clock** (one re-armed boundary timer, once/min repaint, unref'd). Integration-merge surfaced + fixed a real panel-overflow-under-statusbar bug (panelStack flexShrink:0 + mainRow minHeight:0). Idle-quiescence refined to ≤1/window for the once/min clock (behavioral-contracts + 2 smokes + conventions note). New terminal.invariants.md (1 reality + 3 chosen). 27 unit tests (22 terminal/panel + 5 panel-host). Merge-gate ALL-PASS. Driven: echo hello renders in pane cells, /dev/pts tty, stty size==pane, split-resize reflow, gear opens settings, clock renders, idle≤1, Ctrl+Q quits from terminal. Deferred (tier M/L): multi-terminal + switcher-tab UI, scrollback gestures, throughput coalescing, mouse passthrough, macOS job control, split-height persistence. finished/ tag pushed.
+
+## In-flight dispatch state — 2026-07-25 20:2x (conductor: Opus 5, session 01MQcoW1)
+
+Where to WATCH each dispatched task. Task descriptions live in the conductor's session task list,
+which is not on disk, so the durable record is here plus each builder's own `TASK.md` brief.
+
+| # | task | branch | worktree | live transcript | report on completion |
+| --- | --- | --- | --- | --- | --- |
+| 78 | workspace activation must cost O(depth), not O(repo size) | `perf-workspace-activation` | `/tmp/conductor-diffview` | `/tmp/workspace-activation-codex.log` | `/tmp/workspace-activation-READY.md` |
+| 79 | overlay wheel scroll: one generator owns the wheel-to-frame obligation | `fix-overlay-wheel-scroll` | `/tmp/conductor-altdelete` | `/tmp/overlay-wheel-codex.log` | `/tmp/overlay-wheel-READY.md` |
+
+Each builder's exact instructions are the `TASK.md` in its worktree. Its code so far is
+`git -C <worktree> diff origin/main`. Gate logs are `/tmp/wt-*-gate*.log`, and
+`/tmp/merge-gate-failures` is a symlink to the most recent failing run's FULL step logs.
+
+**#78 — workspace activation (user report: switching tabs stalls on big projects).** Diagnosis was
+done by the conductor before dispatch, so the builder verifies rather than re-derives.
+`Workspace.resumeOwnedResources()` re-creates the `GitWatcher` on every activation (suspend disposes
+it); `GitWatcher.start()` → `walkAndWatch` runs `spawnSync('git', ['check-ignore', …])` PER VISITED
+DIRECTORY, synchronously, on the main thread. Measured (visited = dirs surviving gitignore pruning,
+~1.4 ms per spawn): `blackline-app` 3,256 tracked / 37,184 dirs / 36,522 ignored → ~662 visited →
+~930 ms; `realized` 3,088 / 239,901 / 239,395 → ~506 → ~710 ms; `ivue` → ~151 → ~210 ms. Pruning
+already works; the per-directory subprocess is the entire cost. Fix: level-order walk with ONE bulk
+`check-ignore` per depth (O(depth) ≈ 10-15 spawns), async spawn with a yield between levels, and the
+walk deferred off the switch path. WORKERS REJECTED with reason: the cost is process spawn and
+syscalls, not JavaScript CPU, so a worker leaves the O(n) intact and merely relocates it — "the
+editor froze" becomes "the git panel takes a second" — while adding startup and serialization cost;
+watchers cannot move at all since every event would cross a message boundary to its consumer.
+Gated as a COUNT (ignore-query subprocesses bounded by depth, equal across a tiny and a 500-dir
+fixture) rather than a duration, because a duration threshold measures the machine and flakes.
+STILL OPEN: `dev/blackline` (the parent, not `blackline-app`) reports 0 tracked files with 1,561
+dirs — if a root is not a git root there is no GitWatcher, so heaviness there is a DIFFERENT
+size-dependent path (file-tree or quick-open enumeration). The class is not closed by this fix.
+
+**#79 — overlay wheel scroll (user report: dialogs scroll only by dragging the thumb).** Nothing was
+unwired: all twelve `OverlayLayer` handlers call `<viewport>.handleWheel`. But `handleWheel` adds a
+MOMENTUM IMPULSE rather than moving `scrollTop`, and the frame loop is demand-driven —
+`syncAnimationLiveness` requests live frames from INSIDE `frameTick`, so at rest there are no frames
+and the impulse decays unobserved. The agent panel's handler (`RootView.ts` ~824) calls
+`handleWheel` AND `renderer.requestRender()`; the twelve overlay handlers omit the second call. Fix
+belongs in `ScrollableTextViewport` (it already holds `renderer` in its deps) so no consumer can
+forget, with the redundant `requestRender()` calls removed from the other consumers. Third instance
+of this class this session, which is why the seam moves rather than the line being added twice more.
+
+**#77 — coverage-ratchet holes.** NOT dispatched, deliberately: no builder, no log. Recorded as a
+plan while user-reported bugs are unmerged. The landed ratchet gates DISCLOSURE of assertion loss,
+not justification; the three known holes in cost order are vague records (closeable by requiring the
+declared counts to match reality), padding within a file, and semantic weakening (needs mutation
+probing, not a counter).
