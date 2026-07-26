@@ -147,3 +147,34 @@ plan while user-reported bugs are unmerged. The landed ratchet gates DISCLOSURE 
 not justification; the three known holes in cost order are vague records (closeable by requiring the
 declared counts to match reality), padding within a file, and semantic weakening (needs mutation
 probing, not a counter).
+
+### Correction + result — #78 workspace activation (2026-07-25 20:40)
+
+**My projection was ~3x too high, and the builder said so rather than adopting it.** I estimated one
+ignore-query subprocess per VISITED directory (662 / 506 / 151 for blackline-app / realized / ivue) and
+~930 / 710 / 210 ms. Measured reality on this checkout: **216 / 129 / 33 subprocesses** and
+**280 / 159 / 29 ms**, because the old implementation already skipped ignore queries for LEAF
+directories — a detail my read of the walk missed. The watched-directory counts (662 / 506) were right;
+the subprocess-per-directory model was not. The diagnosed defect was still real: synchronous ignore
+subprocesses scaled with repository topology on the activation path. Anywhere I stated 930 ms, read
+280 ms.
+
+Lesson for briefs: hand over measurements AND the instruction to contradict them. This one said "if your
+measurement contradicts the table, say so — the table is evidence, not doctrine", and that sentence is
+why the correction came back instead of a builder quietly reproducing my error in its report.
+
+**Result** (`perf-workspace-activation`, tip `0cbe4e0` after a clean rebase, tsc 0):
+synchronous construction on the switch path is now **0.145 ms** with ~40 ms of asynchronous
+establishment afterwards, and ignore-query subprocesses are **9 / 8 / 6** — O(depth), not O(topology).
+Level-order walk: watch and read the current depth, gather all candidate children across the whole
+level, submit them through ONE awaited `git check-ignore -z --stdin`, prune, yield to the event loop,
+descend. Pruning still happens before a directory is watched or read. No worker was introduced, as
+briefed. Bootstrap supplies a next-painted-frame barrier that establishment, reconciliation, and
+`git.refresh()` await, with a stale-watcher identity check so deferred work cannot apply after another
+switch.
+
+**Acceptance evidence is COUNTS, not milliseconds** (the point of the brief): tiny fixture 2
+ignore-query subprocesses / 5 watched directories; wide fixture 2 subprocesses / 522 watched
+directories, including a 1,200-directory ignored subtree that was pruned and never watched. Equal
+subprocess counts across a 100x directory difference is the invariant. Both counts non-zero is the
+liveness control. Two open workspaces reported exactly one live GitWatcher, so the resource bound held.
