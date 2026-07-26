@@ -16,6 +16,7 @@ import { TextInputModel } from '../editor/TextInputModel';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import { ModalOverlayDismissal } from './ModalOverlayDismissal';
+import type { ScrollPhysics } from './ScrollPhysics';
 import { ScrollableTextViewport } from './ScrollableTextViewport';
 
 // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
@@ -24,6 +25,8 @@ import { ScrollableTextViewport } from './ScrollableTextViewport';
 // invariant: Appearance comes only from theme data (src/modules/theme/theme.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
+// invariant: List interactions inspect only visible rows (src/modules/ui/ui.invariants.md)
+// invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 class $BoundedListPopup {
   protected static get defaultSearchThreshold(): number {
     return 10;
@@ -64,7 +67,16 @@ class $BoundedListPopup {
   protected searchHovered = false;
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
+  protected itemsAlreadyFilteredValue = false;
   protected filteredMatchesValue: readonly BoundedListPopupMatch[] = [];
+  protected enabledNavigationValue: BoundedListPopupEnabledNavigation = {
+    enabledFilteredIndices: [],
+    enabledPositionByFilteredIndex: new Int32Array(0),
+  };
+  protected readonly maximumItemWidthByItems = new WeakMap<
+    readonly BoundedListPopupItem[],
+    number
+  >();
   protected maximumItemWidthValue = 1;
 
   get open() {
@@ -140,7 +152,7 @@ class $BoundedListPopup {
       scrollbarZIndex: 1,
       extent: () => ({
         contentRows: this.filteredMatches.length,
-        contentColumns: this.maximumItemWidth(this.filteredMatches),
+        contentColumns: this.maximumItemWidthValue,
         viewportRows: Math.max(1, this.currentGeometry?.listRows ?? 1),
         viewportColumns: Math.max(1, this.currentGeometry?.listColumns ?? 1),
       }),
@@ -292,13 +304,14 @@ class $BoundedListPopup {
     options: BoundedListPopupOpenOptions = {},
   ): void {
     if (items.length === 0) return;
-    this.items.value = items;
+    this.replaceItemSet(items);
     this.anchorValue = anchor;
     this.selectionHandler = selectionHandler;
     this.searchThresholdValue =
       options.searchThreshold ?? $BoundedListPopup.defaultSearchThreshold;
     this.searchVisibleValue = options.searchVisible ?? true;
     this.backdropVisibleValue = options.showBackdrop ?? true;
+    this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
     this.minimumWidthValue =
       options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
     this.titleValue = options.title ?? '';
@@ -332,6 +345,11 @@ class $BoundedListPopup {
     this.open.value = false;
     this.items.value = [];
     this.filteredMatchesValue = [];
+    this.enabledNavigationValue = {
+      enabledFilteredIndices: [],
+      enabledPositionByFilteredIndex: new Int32Array(0),
+    };
+    this.maximumItemWidthValue = 1;
     this.queryInput.clear();
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
@@ -356,6 +374,7 @@ class $BoundedListPopup {
   }
 
   setQuery(query: string): void {
+    if (query === this.query.value) return;
     this.queryInput.setValue(query);
     this.refilter();
   }
@@ -367,7 +386,7 @@ class $BoundedListPopup {
   ): void {
     if (options.resetQuery) this.queryInput.clear();
     if (options.title !== undefined) this.titleValue = options.title;
-    this.items.value = items;
+    this.replaceItemSet(items);
     this.recomputeMatches();
     this.viewport.reset();
     this.hoveredIndex.value = -1;
@@ -389,11 +408,14 @@ class $BoundedListPopup {
   }
 
   moveSelection(direction: 1 | -1): void {
-    const matches = this.filteredMatches;
+    const movementSteps = this.dependencies.scrollPhysics.keyAccelerationFor(
+      direction === 1 ? 'list:down' : 'list:up',
+    );
     const filteredIndex = $BoundedListPopup.nextEnabledFilteredIndex(
-      matches,
+      this.enabledNavigationValue,
       this.selectedIndex.value,
       direction,
+      movementSteps,
     );
     if (filteredIndex < 0) return;
     this.selectedIndex.value = filteredIndex;
@@ -576,36 +598,64 @@ class $BoundedListPopup {
     return new TextInputModel.Class();
   }
 
-  static nextEnabledFilteredIndex(
+  static enabledNavigation(
     matches: readonly BoundedListPopupMatch[],
-    selectedIndex: number,
-    direction: 1 | -1,
-  ): number {
-    if (matches.length === 0) return -1;
-    const navigationOrigin =
-      selectedIndex >= 0 ? selectedIndex : direction === 1 ? -1 : 0;
-    for (let step = 1; step <= matches.length; step += 1) {
-      const filteredIndex =
-        (((navigationOrigin + direction * step) % matches.length) +
-          matches.length) %
-        matches.length;
-      if (matches[filteredIndex]?.item.enabled !== false) {
-        return filteredIndex;
-      }
+  ): BoundedListPopupEnabledNavigation {
+    const enabledFilteredIndices: number[] = [];
+    const enabledPositionByFilteredIndex = new Int32Array(matches.length);
+    enabledPositionByFilteredIndex.fill(-1);
+    for (
+      let filteredIndex = 0;
+      filteredIndex < matches.length;
+      filteredIndex++
+    ) {
+      if (matches[filteredIndex]?.item.enabled === false) continue;
+      enabledPositionByFilteredIndex[filteredIndex] =
+        enabledFilteredIndices.length;
+      enabledFilteredIndices.push(filteredIndex);
     }
-    return -1;
+    return { enabledFilteredIndices, enabledPositionByFilteredIndex };
   }
 
-  protected maximumItemWidth(
-    matches: readonly BoundedListPopupMatch[],
+  static nextEnabledFilteredIndex(
+    navigation: BoundedListPopupEnabledNavigation,
+    selectedIndex: number,
+    direction: 1 | -1,
+    movementSteps = 1,
   ): number {
+    const enabledItemCount = navigation.enabledFilteredIndices.length;
+    if (enabledItemCount === 0) return -1;
+    const selectedEnabledPosition =
+      navigation.enabledPositionByFilteredIndex[selectedIndex] ?? -1;
+    const navigationOrigin =
+      selectedEnabledPosition >= 0
+        ? selectedEnabledPosition
+        : direction === 1
+          ? -1
+          : 0;
+    const wrappedEnabledPosition =
+      (((navigationOrigin + direction * movementSteps) % enabledItemCount) +
+        enabledItemCount) %
+      enabledItemCount;
+    return navigation.enabledFilteredIndices[wrappedEnabledPosition] ?? -1;
+  }
+
+  static itemSetMaximumWidth(items: readonly BoundedListPopupItem[]): number {
     let maximumWidth = 1;
-    for (const match of matches) {
+    for (const item of items) {
       maximumWidth = Math.max(
         maximumWidth,
-        EditorCoordinates.Class.lineWidth(` ${match.item.label}`),
+        EditorCoordinates.Class.lineWidth(` ${item.label}`),
       );
     }
+    return maximumWidth;
+  }
+
+  protected maximumItemWidth(items: readonly BoundedListPopupItem[]): number {
+    const cachedMaximumWidth = this.maximumItemWidthByItems.get(items);
+    if (cachedMaximumWidth !== undefined) return cachedMaximumWidth;
+    const maximumWidth = $BoundedListPopup.itemSetMaximumWidth(items);
+    this.maximumItemWidthByItems.set(items, maximumWidth);
     return maximumWidth;
   }
 
@@ -629,17 +679,21 @@ class $BoundedListPopup {
   }
 
   protected recomputeMatches(): void {
-    this.filteredMatchesValue = $BoundedListPopup.filterItems(
-      this.items.value,
-      this.query.value,
+    this.filteredMatchesValue = this.itemsAlreadyFilteredValue
+      ? this.items.value.map((item, sourceIndex) => ({
+          item,
+          sourceIndex,
+          score: 0,
+        }))
+      : $BoundedListPopup.filterItems(this.items.value, this.query.value);
+    this.enabledNavigationValue = $BoundedListPopup.enabledNavigation(
+      this.filteredMatchesValue,
     );
-    this.maximumItemWidthValue = this.maximumItemWidth(
-      this.items.value.map((item, sourceIndex) => ({
-        item,
-        sourceIndex,
-        score: 0,
-      })),
-    );
+  }
+
+  protected replaceItemSet(items: readonly BoundedListPopupItem[]): void {
+    this.items.value = items;
+    this.maximumItemWidthValue = this.maximumItemWidth(items);
   }
 
   protected revealSelectedIndex(): void {
@@ -779,17 +833,18 @@ export interface BoundedListPopupDependencies {
   renderer: CliRenderer;
   settings: Settings.Instance;
   theme: Theme.Instance;
+  scrollPhysics: ScrollPhysics.Model;
   identifier?: string;
 }
 
 export interface BoundedListPopupItem {
-  identifier: string;
-  label: string;
-  searchText?: string;
-  enabled?: boolean;
-  selected?: boolean;
-  drillable?: boolean;
-  keepOpenOnSelect?: boolean;
+  readonly identifier: string;
+  readonly label: string;
+  readonly searchText?: string;
+  readonly enabled?: boolean;
+  readonly selected?: boolean;
+  readonly drillable?: boolean;
+  readonly keepOpenOnSelect?: boolean;
 }
 
 export interface BoundedListPopupAnchor {
@@ -804,6 +859,7 @@ export interface BoundedListPopupOpenOptions {
   selectedItemIdentifier?: string;
   searchVisible?: boolean;
   showBackdrop?: boolean;
+  itemsAlreadyFiltered?: boolean;
   navigateBackwardHandler?: () => void;
 }
 
@@ -816,6 +872,11 @@ export interface BoundedListPopupMatch {
   item: BoundedListPopupItem;
   sourceIndex: number;
   score: number;
+}
+
+export interface BoundedListPopupEnabledNavigation {
+  enabledFilteredIndices: readonly number[];
+  enabledPositionByFilteredIndex: Int32Array;
 }
 
 export interface BoundedListPopupGeometryInput {

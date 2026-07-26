@@ -8,6 +8,7 @@
 import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ScrollPhysics } from '../../src/modules/ui/ScrollPhysics';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -34,20 +35,40 @@ async function openOnlyFile(
   );
 }
 
+function completionItemIndex(label: string): number {
+  if (label === 'push_str') return 0;
+  if (label === 'pop') return 1;
+  const propertyMatch = label.match(/^property(\d{4})$/);
+  if (!propertyMatch) return -1;
+  return Number(propertyMatch[1]) + 2;
+}
+
 async function driveMockProvider(): Promise<void> {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-completion-rust-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-completion-rust-home-'),
   );
   const statusPath = join(homeDirectory, 'status.json');
-  await Bun.write(join(fixtureRoot, 'main.rs'), 'words.');
+  await Bun.write(
+    join(fixtureRoot, 'main.rs'),
+    [
+      'words.',
+      ...Array.from(
+        { length: 599 },
+        (_unusedValue, lineIndex) => `line_${lineIndex}`,
+      ),
+    ].join('\n'),
+  );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
     repositoryRoot,
     columns: 100,
     rows: 28,
     homeDirectory,
-    environment: { TUI_STATUS_PATH: statusPath },
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      TUI_COMPLETION_ITEM_COUNT: '5000',
+    },
     command: [
       process.execPath,
       `--preload=${join(
@@ -74,8 +95,8 @@ async function driveMockProvider(): Promise<void> {
       20_000,
     );
     HarnessSmoke.Class.requireCondition(
-      Number(openStatus.completionItemCount) === 1_502,
-      'mock provider exposes all 1,502 items through the completion contract',
+      Number(openStatus.completionItemCount) === 5_000,
+      'mock provider exposes all 5,000 items through the completion contract',
     );
     HarnessSmoke.Class.requireCondition(
       Number(openStatus.completionGeometry?.visibleItemCount) <=
@@ -84,14 +105,124 @@ async function driveMockProvider(): Promise<void> {
           Number(openStatus.completionItemCount),
       'large completion rendering stays bounded to the popup viewport',
     );
+    const completionRequestCountBeforeMovement = Number(
+      openStatus.completionRequestCount,
+    );
+    const completionFilterCountBeforeMovement = Number(
+      openStatus.completionFilterCount,
+    );
+    const completionSourceFilterCountBeforeMovement = Number(
+      openStatus.completionSourceFilterCount,
+    );
+    driver.sendKeys('Down');
+    let movementStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      "status condition: status.completionSelectedLabel === 'pop'",
+      (status) => status.completionSelectedLabel === 'pop',
+    );
+    HarnessSmoke.Class.requireCondition(
+      completionItemIndex(String(movementStatus.completionSelectedLabel)) === 1,
+      'one deliberate list press moves exactly one row',
+    );
+    let previousCompletionItemIndex = 1;
+    let acceleratedMovementObserved = false;
+    for (let repeatNumber = 0; repeatNumber < 14; repeatNumber++) {
+      const previousSelectedLabel = String(
+        movementStatus.completionSelectedLabel,
+      );
+      driver.sendKeys('Down');
+      movementStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        'status condition: held Down advances the completion selection',
+        (status) =>
+          String(status.completionSelectedLabel) !== previousSelectedLabel,
+      );
+      const nextCompletionItemIndex = completionItemIndex(
+        String(movementStatus.completionSelectedLabel),
+      );
+      const movementRows =
+        nextCompletionItemIndex - previousCompletionItemIndex;
+      HarnessSmoke.Class.requireCondition(
+        movementRows >= 1 &&
+          movementRows <= ScrollPhysics.Class.KEY_ACCEL_CAP_ROWS,
+        `held list movement stays within the ${ScrollPhysics.Class.KEY_ACCEL_CAP_ROWS}-row ceiling`,
+      );
+      acceleratedMovementObserved ||= movementRows > 1;
+      previousCompletionItemIndex = nextCompletionItemIndex;
+    }
+    HarnessSmoke.Class.requireCondition(
+      acceleratedMovementObserved,
+      'held Down accelerates through the 5,000-item completion list',
+    );
+    const geometryBeforeWheel =
+      movementStatus.completionGeometry as unknown as {
+        listLeft: number;
+        listTop: number;
+        firstVisible: number;
+      };
+    driver.sendMouse({
+      kind: 'wheel',
+      column: geometryBeforeWheel.listLeft + 1,
+      row: geometryBeforeWheel.listTop + 1,
+      direction: 'down',
+    });
+    movementStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: completion wheel advances firstVisible',
+      (status) =>
+        Number(
+          (
+            status.completionGeometry as {
+              firstVisible?: number;
+            } | null
+          )?.firstVisible,
+        ) > geometryBeforeWheel.firstVisible,
+    );
+    HarnessSmoke.Class.requireCondition(
+      Number(movementStatus.completionRequestCount) ===
+        completionRequestCountBeforeMovement &&
+        Number(movementStatus.completionFilterCount) ===
+          completionFilterCountBeforeMovement &&
+        Number(movementStatus.completionSourceFilterCount) ===
+          completionSourceFilterCountBeforeMovement,
+      'list movement and scrolling issue zero requests and zero refilters',
+    );
+    const completionRequestCountBeforeQuery = Number(
+      movementStatus.completionRequestCount,
+    );
+    const completionFilterCountBeforeQuery = Number(
+      movementStatus.completionFilterCount,
+    );
+    const completionSourceFilterCountBeforeQuery = Number(
+      movementStatus.completionSourceFilterCount,
+    );
     driver.sendText('push');
-    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    const narrowedStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
       statusPath,
       "status condition: status.completionSelectedLabel === 'push_str' && status.completionItemCount === 1",
       (status) =>
         status.completionSelectedLabel === 'push_str' &&
         status.completionItemCount === 1,
+    );
+    HarnessSmoke.Class.requireCondition(
+      Number(narrowedStatus.completionRequestCount) ===
+        completionRequestCountBeforeQuery &&
+        Number(narrowedStatus.completionFilterCount) ===
+          completionFilterCountBeforeQuery + 4 &&
+        Number(narrowedStatus.completionSourceFilterCount) ===
+          completionSourceFilterCountBeforeQuery + 4,
+      `each of four query changes filters exactly once without a new language request ` +
+        `(requests ${completionRequestCountBeforeQuery}->${Number(
+          narrowedStatus.completionRequestCount,
+        )}, match preparations ${completionFilterCountBeforeQuery}->${Number(
+          narrowedStatus.completionFilterCount,
+        )}, source filters ${completionSourceFilterCountBeforeQuery}->${Number(
+          narrowedStatus.completionSourceFilterCount,
+        )})`,
     );
     driver.sendKeys('Tab');
     await HarnessSmoke.Class.awaitStatusWithoutFrame(
@@ -142,6 +273,37 @@ async function driveMockProvider(): Promise<void> {
     );
     HarnessSmoke.Class.pass(
       'Escape dismisses completion without leaving editor focus',
+    );
+    driver.sendKeys('Control+Home', 'Up', 'Down');
+    let editorMovementStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: first editor Down reaches line 1',
+      (status) => status.cursor?.line === 1,
+    );
+    let previousEditorLine = 1;
+    let acceleratedEditorMovementObserved = false;
+    for (let repeatNumber = 0; repeatNumber < 12; repeatNumber++) {
+      driver.sendKeys('Down');
+      editorMovementStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        'status condition: held editor Down advances the caret',
+        (status) => Number(status.cursor?.line) > previousEditorLine,
+      );
+      const editorMovementRows =
+        Number(editorMovementStatus.cursor?.line) - previousEditorLine;
+      HarnessSmoke.Class.requireCondition(
+        editorMovementRows >= 1 &&
+          editorMovementRows <= ScrollPhysics.Class.KEY_ACCEL_CAP_ROWS,
+        `held editor movement stays within the ${ScrollPhysics.Class.KEY_ACCEL_CAP_ROWS}-row ceiling`,
+      );
+      acceleratedEditorMovementObserved ||= editorMovementRows > 1;
+      previousEditorLine = Number(editorMovementStatus.cursor?.line);
+    }
+    HarnessSmoke.Class.requireCondition(
+      acceleratedEditorMovementObserved,
+      'held editor Down accelerates through the same run tracker',
     );
     driver.sendKeys('Control+q');
   } finally {

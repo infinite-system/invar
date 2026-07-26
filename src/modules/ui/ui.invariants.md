@@ -81,6 +81,45 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-25
 
+### List interactions inspect only visible rows
+
+**Invariant:** If a bounded list item set and query are unchanged, then move, scroll, hover, accept,
+and paint work is bounded by the visible rows and does not grow with the number of items.
+
+**Scope:** `BoundedListPopup`, `CompletionPopup`, and every adapter on that seam. A query change may
+filter and build enabled navigation once; a previously unseen immutable item-set identity may scan
+labels once for exact box width.
+
+**Mechanism:** `BoundedListPopup` caches exact maximum label width by immutable item-set identity,
+precomputes enabled-index navigation during the permitted match pass, supplies cached extent values
+to `ScrollableTextViewport`, and slices only `firstVisible..listRows` during paint. Completion marks
+its source-filtered items so the popup does not run a second fuzzy filter.
+
+**Generates:** Item-count-independent movement, wheel, hover, accept, and repaint; exact widest-label
+layout; one source filter per query change; zero language requests or filters during movement.
+
+**Rejected alternatives:** Add a lazy or paged item source — items already arrive as an in-memory
+array and the measured interaction cost comes from a width rescan, not materialization. Estimate
+width from visible rows — the popup box changes width while scrolling and violates the widest-label
+layout contract.
+
+**Evidence:** `src/modules/ui/BoundedListPopup.ts`;
+`scripts/harness/measure-completion-list-latency.ts` measured popup-update medians at
+0.069/0.069/0.068 ms for 10/1,000/5,000 items after the fix;
+`scripts/harness/smoke-completion-harness.ts` counts requests and filters.
+
+**Impossible if true:** Movement or wheel popup-update time increasing with item count; a full label
+scan in `update`, extent, move, scroll, hover, or accept; any language request or refilter caused by
+selection movement or scrolling.
+
+**Verification:** `bun test src/modules/ui/BoundedListPopup.test.ts
+src/modules/ui/CompletionPopup.test.ts && bun scripts/harness/smoke-completion-harness.ts && bun
+scripts/harness/measure-completion-list-latency.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Bounded list interactions live in one popup
 
 **Invariant:** If a bounded searchable list needs filtering, wrapped selection, pointer activation,

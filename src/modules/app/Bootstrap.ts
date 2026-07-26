@@ -156,15 +156,18 @@ class $Bootstrap {
 
     // App-level overlay view models (the view projects them; input routes through here).
     const contextMenu = new ContextMenu.Class();
+    const scrollPhysics = new ScrollPhysics.Class();
     const boundedListPopup = new BoundedListPopup.Class({
       renderer,
       settings,
       theme,
+      scrollPhysics,
     });
     const completionPopup = new CompletionPopup.Class({
       renderer,
       settings,
       theme,
+      scrollPhysics,
     });
     let completionRequestGeneration = 0;
     const dismissCompletion = (): void => {
@@ -1090,31 +1093,14 @@ class $Bootstrap {
     });
 
     // --- input: handlers MUTATE model state only; the frame effect repaints. -----------------
-    // Accelerated arrows: terminals report key REPEAT (not down/up), so we ramp the step size when
-    // the same arrow keeps arriving quickly, and reset on direction change or pause.
+    // Accelerated arrows: terminals report key REPEAT (not down/up), so ScrollPhysics infers the
+    // shared run from direction and cadence for editor and list consumers.
     // invariant: Terminals report key repeat not key up (project.invariants.md)
-    let accelerationDirection = '';
-    let accelerationRun = 0;
-    let accelerationLast = 0;
-    // Continuous key-repeat run tracking; the CURVES live in ScrollPhysics (hand-tuned product
-    // values — quiet start, strong quadratic build, high cap).
-    const movementRun = (key: KeyEvent): number => {
-      const now = Date.now();
-      const direction = key.name;
-      if (
-        direction === accelerationDirection &&
-        now - accelerationLast < ScrollPhysics.Class.KEY_RUN_WINDOW_MS
-      ) {
-        accelerationRun += 1;
-      } else {
-        accelerationRun = 0;
-      }
-      accelerationDirection = direction;
-      accelerationLast = now;
-      return accelerationRun;
-    };
-    const movementAcceleration = (key: KeyEvent): number =>
-      ScrollPhysics.Class.keyAcceleration(movementRun(key));
+    const movementAcceleration = (
+      key: KeyEvent,
+      movementScope: 'editor' | 'markdownPreview',
+    ): number =>
+      scrollPhysics.keyAccelerationFor(`${movementScope}:${key.name}`);
     const isTypedCharacter = (key: KeyEvent): boolean => {
       if (key.ctrl || key.meta || key.option) return false;
       const sequence = key.sequence;
@@ -1188,8 +1174,29 @@ class $Bootstrap {
           const prefix = completionPrefix();
           completionPopup.show(completionList, anchor, prefix.text, (item) => {
             const currentPrefix = completionPrefix();
+            const originalTextEdit = item.textEdit;
+            const itemTextEditMatchesOriginalPrefix =
+              originalTextEdit !== null &&
+              originalTextEdit.range.start.line === prefix.range.start.line &&
+              originalTextEdit.range.start.column ===
+                prefix.range.start.column &&
+              originalTextEdit.range.end.line === prefix.range.end.line &&
+              originalTextEdit.range.end.column === prefix.range.end.column;
+            const acceptedItem =
+              itemTextEditMatchesOriginalPrefix && originalTextEdit
+                ? {
+                    ...item,
+                    textEdit: {
+                      newText: originalTextEdit.newText,
+                      range: {
+                        start: originalTextEdit.range.start,
+                        end: currentPrefix.range.end,
+                      },
+                    },
+                  }
+                : item;
             workspaceSet.active.editor.applyCompletion(
-              item,
+              acceptedItem,
               currentPrefix.range,
             );
           });
@@ -1506,10 +1513,12 @@ class $Bootstrap {
       'editor.moveUp': (key) => {
         const markdownSplitView = view.activeMarkdownSplitView();
         if (markdownSplitView?.previewFocused)
-          markdownSplitView.moveByKeyboardRows(-movementAcceleration(key));
+          markdownSplitView.moveByKeyboardRows(
+            -movementAcceleration(key, 'markdownPreview'),
+          );
         else
           workspaceSet.active.editor.moveVertical(
-            -movementAcceleration(key),
+            -movementAcceleration(key, 'editor'),
             key.shift,
           );
       },
@@ -1517,17 +1526,19 @@ class $Bootstrap {
       'editor.moveDown': (key) => {
         const markdownSplitView = view.activeMarkdownSplitView();
         if (markdownSplitView?.previewFocused)
-          markdownSplitView.moveByKeyboardRows(movementAcceleration(key));
+          markdownSplitView.moveByKeyboardRows(
+            movementAcceleration(key, 'markdownPreview'),
+          );
         else
           workspaceSet.active.editor.moveVertical(
-            movementAcceleration(key),
+            movementAcceleration(key, 'editor'),
             key.shift,
           );
       },
       'editor.moveLeft': (key) => {
         if (!view.activeMarkdownSplitView()?.previewFocused) {
           workspaceSet.active.editor.moveHorizontal(
-            -movementAcceleration(key),
+            -movementAcceleration(key, 'editor'),
             key.shift,
           );
         }
@@ -1535,7 +1546,7 @@ class $Bootstrap {
       'editor.moveRight': (key) => {
         if (!view.activeMarkdownSplitView()?.previewFocused) {
           workspaceSet.active.editor.moveHorizontal(
-            movementAcceleration(key),
+            movementAcceleration(key, 'editor'),
             key.shift,
           );
         }
@@ -1565,10 +1576,10 @@ class $Bootstrap {
           ? view
               .activeMarkdownSplitView()
               ?.moveByKeyboardRows(
-                -ScrollPhysics.Class.jumpRows(movementRun(key)),
+                -scrollPhysics.jumpRowsFor(`markdownPreview:${key.name}`),
               )
           : workspaceSet.active.editor.moveVertical(
-              -ScrollPhysics.Class.jumpRows(movementRun(key)),
+              -scrollPhysics.jumpRowsFor(`editor:${key.name}`),
               key.shift,
             ),
       'editor.jumpDown': (key) =>
@@ -1576,10 +1587,10 @@ class $Bootstrap {
           ? view
               .activeMarkdownSplitView()
               ?.moveByKeyboardRows(
-                ScrollPhysics.Class.jumpRows(movementRun(key)),
+                scrollPhysics.jumpRowsFor(`markdownPreview:${key.name}`),
               )
           : workspaceSet.active.editor.moveVertical(
-              ScrollPhysics.Class.jumpRows(movementRun(key)),
+              scrollPhysics.jumpRowsFor(`editor:${key.name}`),
               key.shift,
             ),
       'editor.wordLeft': (key) => {
@@ -2049,22 +2060,23 @@ class $Bootstrap {
         if (key.name === 'backspace') {
           workspaceSet.active.editor.backspace();
           const prefix = completionPrefix();
-          completionPopup.narrow(prefix.text);
-          requestCompletion('invoked');
+          if (completionPopup.sourceIsIncomplete) requestCompletion('invoked');
+          else completionPopup.narrow(prefix.text);
           return;
         }
         if (isTypedCharacter(key)) {
           workspaceSet.active.editor.insertText(key.sequence);
           const prefix = completionPrefix();
-          completionPopup.narrow(prefix.text);
           const triggerCharacters =
             workspaceSet.active.completionTriggerCharacters();
-          requestCompletion(
-            triggerCharacters.includes(key.sequence)
-              ? 'triggerCharacter'
-              : 'invoked',
-            triggerCharacters.includes(key.sequence) ? key.sequence : undefined,
-          );
+          const isTriggerCharacter = triggerCharacters.includes(key.sequence);
+          if (isTriggerCharacter) {
+            requestCompletion('triggerCharacter', key.sequence);
+          } else if (completionPopup.sourceIsIncomplete) {
+            requestCompletion('invoked');
+          } else {
+            completionPopup.narrow(prefix.text);
+          }
           return;
         }
         dismissCompletion();

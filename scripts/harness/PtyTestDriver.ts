@@ -474,6 +474,10 @@ class $PtyTestDriver {
     );
   }
 
+  get lastCompletedFrame(): CompletedSynchronizedFrame | null {
+    return this.quiescence.lastCompletedFrame;
+  }
+
   outputSequenceCount(sequence: string): number {
     if (!sequence) return 0;
     const registeredCounter = this.outputSequenceCounters.get(sequence);

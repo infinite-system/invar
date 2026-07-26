@@ -11,6 +11,7 @@ import {
   type BoundedListPopupAnchor,
   type BoundedListPopupItem,
 } from './BoundedListPopup';
+import type { ScrollPhysics } from './ScrollPhysics';
 
 // invariant: Completion is provider-neutral (src/modules/lsp/lsp.invariants.md)
 // invariant: Completion reuses bounded popup geometry (src/modules/ui/ui.invariants.md)
@@ -24,12 +25,15 @@ class $CompletionPopup {
   protected sourceIdentifierByItem = new Map<LanguageCompletionItem, string>();
   protected acceptanceHandler: ((item: LanguageCompletionItem) => void) | null =
     null;
+  protected prefixValue = '';
+  protected sourceIsIncompleteValue = false;
 
   constructor(dependencies: CompletionPopupDependencies) {
     this.popup = new BoundedListPopup.Class({
       renderer: dependencies.renderer,
       settings: dependencies.settings,
       theme: dependencies.theme,
+      scrollPhysics: dependencies.scrollPhysics,
       identifier: 'completion-popup',
     });
   }
@@ -47,6 +51,10 @@ class $CompletionPopup {
     return this.popup.filteredMatches.length;
   }
 
+  get sourceIsIncomplete(): boolean {
+    return this.sourceIsIncompleteValue;
+  }
+
   get paintRevision() {
     return this.popup.paintRevision;
   }
@@ -62,6 +70,8 @@ class $CompletionPopup {
     acceptanceHandler: (item: LanguageCompletionItem) => void,
   ): void {
     this.sourceItems = completionList.items;
+    this.sourceIsIncompleteValue = completionList.isIncomplete;
+    this.prefixValue = prefix;
     this.sourceIdentifierByItem = new Map(
       completionList.items.map((item, index) => [
         item,
@@ -82,12 +92,14 @@ class $CompletionPopup {
         minimumWidth: 24,
         searchVisible: false,
         showBackdrop: false,
+        itemsAlreadyFiltered: true,
       },
     );
   }
 
   narrow(prefix: string): void {
-    if (!this.open) return;
+    if (!this.open || prefix === this.prefixValue) return;
+    this.prefixValue = prefix;
     const selectedIdentifier =
       this.popup.filteredMatches[this.popup.selectedIndex.value]?.item
         .identifier;
@@ -113,6 +125,8 @@ class $CompletionPopup {
     this.completionItemsByIdentifier.clear();
     this.sourceIdentifierByItem.clear();
     this.acceptanceHandler = null;
+    this.prefixValue = '';
+    this.sourceIsIncompleteValue = false;
   }
 
   tick(deltaTimeSeconds: number): boolean {
@@ -181,4 +195,5 @@ export interface CompletionPopupDependencies {
   renderer: CliRenderer;
   settings: Settings.Instance;
   theme: Theme.Instance;
+  scrollPhysics: ScrollPhysics.Model;
 }

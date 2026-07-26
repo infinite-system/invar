@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { CommandScoring } from '../commands/CommandScoring';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { BoundedListPopup } from './BoundedListPopup';
 
 describe('BoundedListPopup', () => {
@@ -105,15 +106,16 @@ describe('BoundedListPopup', () => {
       ],
       '',
     );
+    const navigation = BoundedListPopup.$Class.enabledNavigation(matches);
 
     expect(
-      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 2, 1),
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 2, 1),
     ).toBe(0);
     expect(
-      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 0, -1),
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 0, -1),
     ).toBe(2);
     expect(
-      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, -1, -1),
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, -1, -1),
     ).toBe(2);
   });
 
@@ -131,11 +133,44 @@ describe('BoundedListPopup', () => {
       'alpha',
       'alphabet',
     ]);
+    const navigation = BoundedListPopup.$Class.enabledNavigation(matches);
     expect(
-      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 0, -1),
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 0, -1),
     ).toBe(1);
     expect(
-      BoundedListPopup.$Class.nextEnabledFilteredIndex(matches, 1, 1),
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 1, 1),
     ).toBe(0);
+  });
+
+  test('accelerated navigation skips disabled rows in constant time', () => {
+    const matches = BoundedListPopup.$Class.filterItems(
+      [
+        { identifier: 'first', label: 'first' },
+        { identifier: 'disabled-1', label: 'disabled 1', enabled: false },
+        { identifier: 'second', label: 'second' },
+        { identifier: 'disabled-2', label: 'disabled 2', enabled: false },
+        { identifier: 'third', label: 'third' },
+      ],
+      '',
+    );
+    const navigation = BoundedListPopup.$Class.enabledNavigation(matches);
+
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 0, 1, 2),
+    ).toBe(4);
+    expect(
+      BoundedListPopup.$Class.nextEnabledFilteredIndex(navigation, 4, -1, 2),
+    ).toBe(0);
+  });
+
+  test('item-set width preserves exact display-column layout', () => {
+    const items = [
+      { identifier: 'narrow', label: 'narrow' },
+      { identifier: 'wide', label: 'wide界' },
+    ];
+
+    expect(BoundedListPopup.$Class.itemSetMaximumWidth(items)).toBe(
+      1 + EditorCoordinates.Class.lineWidth('wide界'),
+    );
   });
 });

@@ -5,13 +5,74 @@ import {
   type TextDocumentModel,
   type TextPosition,
 } from '../../src/modules/lsp/LanguageClient';
+import { StatusChannel } from '../../src/modules/system/StatusChannel';
 import type {
   LanguageCompletionContext,
   LanguageCompletionItem,
   LanguageCompletionList,
 } from '../../src/modules/lsp/LanguageProvider.interface';
+import {
+  BoundedListPopup,
+  type BoundedListPopupItem,
+} from '../../src/modules/ui/BoundedListPopup';
+import { CompletionPopup } from '../../src/modules/ui/CompletionPopup';
+
+class $MeasuredBoundedListPopup extends BoundedListPopup.$Class {
+  protected completionFilterCount = 0;
+  protected completionPopupUpdateCount = 0;
+
+  protected override recomputeMatches(): void {
+    const startTimestampMilliseconds = performance.now();
+    super.recomputeMatches();
+    if (this.dependencies.identifier !== 'completion-popup') return;
+    this.completionFilterCount++;
+    StatusChannel.Class.update({
+      completionFilterCount: this.completionFilterCount,
+      completionFilterDurationMilliseconds:
+        performance.now() - startTimestampMilliseconds,
+    });
+  }
+
+  override update(): void {
+    const startTimestampMilliseconds = performance.now();
+    super.update();
+    if (this.dependencies.identifier !== 'completion-popup') return;
+    this.completionPopupUpdateCount++;
+    StatusChannel.Class.update({
+      completionPopupUpdateCount: this.completionPopupUpdateCount,
+      completionPopupUpdateDurationMilliseconds:
+        performance.now() - startTimestampMilliseconds,
+    });
+  }
+}
+
+class $MeasuredCompletionPopup extends CompletionPopup.$Class {
+  protected completionSourceFilterCount = 0;
+
+  protected override popupItems(
+    prefix: string,
+  ): readonly BoundedListPopupItem[] {
+    const popupItems = super.popupItems(prefix);
+    this.completionSourceFilterCount++;
+    StatusChannel.Class.update({
+      completionSourceFilterCount: this.completionSourceFilterCount,
+    });
+    return popupItems;
+  }
+}
 
 class $MockCompletionLanguageClient extends LanguageClient.$Class {
+  protected static get completionItemCount(): number {
+    const configuredItemCount = Number(
+      process.env.TUI_COMPLETION_ITEM_COUNT ?? 1_502,
+    );
+    return Number.isFinite(configuredItemCount)
+      ? Math.max(2, Math.floor(configuredItemCount))
+      : 1_502;
+  }
+
+  protected completionRequestCount = 0;
+
   override supportsDocument(document: TextDocumentModel): boolean {
     return document.path.endsWith('.rs') || super.supportsDocument(document);
   }
@@ -33,6 +94,10 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
     position: TextPosition,
     _context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
+    this.completionRequestCount++;
+    StatusChannel.Class.update({
+      completionRequestCount: this.completionRequestCount,
+    });
     const lineText = document.line(position.line);
     const prefixText =
       Array.from(lineText)
@@ -63,15 +128,21 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
       items: [
         completionItem('push_str', '0000'),
         completionItem('pop', '0001'),
-        ...Array.from({ length: 1_500 }, (_unusedValue, index) =>
-          completionItem(
-            `property${String(index).padStart(4, '0')}`,
-            String(index + 2).padStart(4, '0'),
-          ),
+        ...Array.from(
+          {
+            length: $MockCompletionLanguageClient.completionItemCount - 2,
+          },
+          (_unusedValue, index) =>
+            completionItem(
+              `property${String(index).padStart(4, '0')}`,
+              String(index + 2).padStart(4, '0'),
+            ),
         ),
       ],
     };
   }
 }
 
+BoundedListPopup.Class = Reactive($MeasuredBoundedListPopup);
+CompletionPopup.Class = Reactive($MeasuredCompletionPopup);
 LanguageClient.Class = Reactive($MockCompletionLanguageClient);

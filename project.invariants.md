@@ -309,6 +309,41 @@ bound.
 
 **Last refined:** 2026-07-24
 
+### Held key movement accelerates within a ceiling
+
+**Invariant:** If plain arrow events repeat in one direction within the terminal repeat window, then
+movement follows one shared acceleration run whose first event moves exactly one unit and whose step
+never exceeds 50 units.
+
+**Scope:** Plain arrow movement in the editor caret, Markdown preview, `BoundedListPopup`, and every
+future consumer of `ScrollPhysics.keyAccelerationFor`. Ctrl-arrow jump movement uses the separate
+bounded jump curve.
+
+**Mechanism:** One stateful `ScrollPhysics` instance owns direction, run length, and last-event time.
+`keyRunLength` resets without key-up after a pause or direction change, and `keyAcceleration` maps the
+run through the hand-tuned quadratic curve capped by `KEY_ACCEL_CAP_ROWS`.
+
+**Generates:** Exact deliberate presses; accelerated holds; one terminal-repeat inference seam for
+editor and list movement; a 50-unit maximum plain-arrow step.
+
+**Rejected alternatives:** Track repeat runs in each input handler — the editor and popup infer holds
+differently and drift. Wait for key-up — terminals do not report it.
+
+**Evidence:** `src/modules/ui/ScrollPhysics.ts`; `src/modules/ui/ScrollPhysics.test.ts`;
+`scripts/harness/smoke-completion-harness.ts` drives both a 5,000-item completion list and a long
+editor file.
+
+**Impossible if true:** One deliberate arrow press moves more than one unit; a held plain arrow never
+accelerates; one repeat moves more than 50 units; a consumer needs a key-up event or private run
+tracker.
+
+**Verification:** `bun test src/modules/ui/ScrollPhysics.test.ts
+src/modules/ui/BoundedListPopup.test.ts && bun scripts/harness/smoke-completion-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Derived state is a plain getter unless caching is proven
 
 **Invariant:** If a value is derived from reactive state, then it is expressed as a named plain
