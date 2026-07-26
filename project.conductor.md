@@ -1086,3 +1086,14 @@ Today's filetree arc was build → merge-adopt → regression-fix, three codex d
 worktree, each with a monitor keyed on commit-count-or-silence. The commit-count monitor is the right
 wake condition for codex (no task notifications): it fires exactly when the work is committed, and the
 silence arm catches a dead run without polling. The conductor's own role stayed review + gate + land.
+
+## 2026-07-26 15:15 — the lock's first catch was falsifying its own favorite explanation
+The quiet lock landed (582420f) and its first gate immediately did something more valuable than
+preventing a flake: agent-permissions passed-only-on-retry AGAIN — inside the serialized tail, under
+quiet-exclusive, with the pool finished. Before the lock, every retried pass could be (and was) blamed
+on load. Under the lock, a TAIL smoke's retry cannot be: nothing else was running. The retry
+mechanism's own label ("first attempt was starvation-class") is now demonstrably wrong for this smoke,
+and what looked like one diffuse population has split into two: load flakes (pool residents — moved to
+the tail or tolerated) and genuine intermittents that load was CAMOUFLAGING. The lock is as much a
+classifier as a scheduler: it removes the excuse, and whatever still flakes under it is a real defect
+with nowhere to hide. Filed as #109 with today's three preserved attempt-1 logs.
