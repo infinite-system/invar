@@ -566,7 +566,8 @@ scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-agent-pane-ux
 ### Editable text fields share one input model
 
 **Invariant:** If Invar owns an editable one-logical-line text field, then its text, grapheme caret,
-insertion, deletion, and horizontal movement come from `TextInputModel`.
+insertion, deletion, and horizontal movement come from `TextInputModel`, and every action
+`TextInputModel.apply` implements is REACHABLE in that field.
 
 **Scope:** `AgentComposer`; `QuickOpen.query`; `CommandRegistry.query`; `FindInBuffer.query` and
 `replacement`; `BoundedListPopup.query`; every future one-line editable field. Full document
@@ -576,7 +577,10 @@ editors and terminal subprocess input are outside this rule.
 boundaries to `TextEditing`. Consumers retain only their surface-specific filtering, layout,
 selection, pointer, history, or navigation behavior. `scripts/ast-query.ts text-input-census
 --require-zero` fails when a class still combines its own input-like state with edit or movement
-members.
+members. Reachability has one chord table too: `KeybindingDefaults.textInputBindings(context)` emits
+the `textInput.*` bindings per field context and `Bootstrap.applyTextInputAction` routes them to the
+focused field, so a surface that already owns an unmodified key declares it in `hostOwnedPlainKeys`
+instead of writing a second mapping.
 
 **Generates:** One editing behavior across every text field; one complete text-input keybinding
 table; caret painting at the real grapheme position; an enforced zero-count census gate.
@@ -587,18 +591,23 @@ or delete a different span.
 **Evidence:** `src/modules/editor/TextInputModel.ts`;
 `src/modules/editor/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
 `src/modules/search/QuickOpen.ts`, `src/modules/commands/CommandRegistry.ts`, and
-`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`;
-`scripts/conventions-gate.sh`.
+`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`
+(`applyQueryInputAction`); `src/modules/keybindings/KeybindingDefaults.ts`
+(`textInputBindings`); `scripts/conventions-gate.sh`.
 
 **Impossible if true:** An adopted text field storing its own query or caret and reimplementing
-insert, backspace, delete, word deletion, or horizontal movement.
+insert, backspace, delete, word deletion, or horizontal movement; an adopted field that composes the
+model yet leaves word movement or word deletion unreachable because its keys were never routed; a
+fourth chord table for the same `textInput.*` actions.
 
-**Verification:** `bun test src/modules/editor/TextInputModel.test.ts && bun scripts/ast-query.ts
-text-input-census --require-zero`
+**Verification:** `bun test src/modules/editor/TextInputModel.test.ts
+src/modules/keybindings/KeybindingDefaults.test.ts && bun scripts/ast-query.ts text-input-census
+--require-zero && bun scripts/harness/smoke-text-input-harness.ts && bun
+scripts/harness/smoke-field-caret-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### The app is built only after the kernel is sealed
 

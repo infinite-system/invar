@@ -11,12 +11,15 @@
 // invariant: Renderables hold no model state (src/modules/ui/ui.invariants.md)
 // invariant: Find bar controls are mouse-clickable buttons (src/modules/search/search.invariants.md)
 // invariant: Case sensitivity is a live toggle that re-runs the query (src/modules/search/search.invariants.md)
+// invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import type { TextInputModel } from '../editor/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 import type { FindIconSet } from '../theme/ThemeIcons';
 import type { FindBar } from '../search/FindBar';
+import { TextFieldPainter } from './TextFieldPainter';
 class $FindBarRenderer {
   public static render(context: FindBarRenderContext): FindBarRenderResult {
     const { findBar, palette, findIcons } = context;
@@ -35,16 +38,34 @@ class $FindBarRenderer {
           ? 'no results'
           : '';
     const chunks: TextChunk[] = [];
-    const queryText = engine
-      ? `${engine.queryInput.valueBeforeCaret}${queryFocused ? '▏' : ''}${engine.queryInput.valueAfterCaret}`
-      : '';
-    chunks.push(fg(palette.fg)(`${findIcons.search} ${queryText}   `));
+    if (engine) {
+      chunks.push(
+        ...this.paintField(
+          context,
+          `${findIcons.search} `,
+          engine.queryInput,
+          queryFocused,
+        ),
+      );
+    } else {
+      chunks.push(fg(palette.fg)(`${findIcons.search} `));
+    }
+    chunks.push(fg(palette.fg)('   '));
     chunks.push(fg(palette.dim)(`${counter}\n`));
     if (replaceMode) {
-      const replacementText = engine
-        ? `${engine.replacementInput.valueBeforeCaret}${queryFocused ? '' : '▏'}${engine.replacementInput.valueAfterCaret}`
-        : '';
-      chunks.push(fg(palette.fg)(`⇄ ${replacementText}\n`));
+      if (engine) {
+        chunks.push(
+          ...this.paintField(
+            context,
+            '⇄ ',
+            engine.replacementInput,
+            !queryFocused,
+          ),
+        );
+      } else {
+        chunks.push(fg(palette.fg)('⇄ '));
+      }
+      chunks.push(fg(palette.fg)('\n'));
     }
     // Button row: one geometry source drives both the chunks and the hit-zones. Each button is its glyph
     // (single-cell, from the theme ladder) or the `Aa` case label, flanked by spaces, then a 1-cell gap.
@@ -80,6 +101,28 @@ class $FindBarRenderer {
     }
     chunks.push(fg(palette.dim)('  esc'));
     return { text: new StyledText(chunks), buttons };
+  }
+
+  /** Both fields flow inside a longer line (the counter follows the query), so they take no fixed
+   *  width — only the shared window, caret, and state tone. The bar has no pointer hover, so its
+   *  fields use the idle and focused tones and never the hovered one. */
+  protected static paintField(
+    context: FindBarRenderContext,
+    prefix: string,
+    input: TextInputModel.Model,
+    focused: boolean,
+  ): TextChunk[] {
+    return TextFieldPainter.Class.paint({
+      prefix,
+      input,
+      tone: TextFieldPainter.Class.toneFor(
+        context.palette,
+        focused ? 'focused' : 'idle',
+      ),
+      surfaceBackground: context.palette.panel,
+      caretVisible: focused,
+      width: null,
+    }).chunks;
   }
 }
 export namespace FindBarRenderer {

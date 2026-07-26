@@ -162,6 +162,10 @@ class $AppStatusProjection {
           ports.boundedListPopup.selectedIndex.value
         ]?.item.identifier ?? null,
       boundedListPopupGeometry: ports.boundedListPopup.geometry,
+      // The query model's grapheme caret plus the CELL the painter put it in: a driven contract
+      // addresses the caret by this published geometry instead of hunting for a caret glyph.
+      boundedListPopupQueryCaret: ports.boundedListPopup.queryCaret,
+      boundedListPopupQueryCaretCell: ports.boundedListPopup.queryCaretCell,
       completionOpen: ports.completionPopup.open,
       completionSelectedLabel: ports.completionPopup.selectedLabel,
       completionItemCount: ports.completionPopup.itemCount,
@@ -415,6 +419,8 @@ export interface AppStatusProjectionPorts {
     | 'filteredMatches'
     | 'geometry'
     | 'title'
+    | 'queryCaret'
+    | 'queryCaretCell'
   >;
   readonly completionPopup: Pick<
     InstanceType<typeof CompletionPopup.Class>,

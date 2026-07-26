@@ -12,12 +12,13 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TextInputModel } from '../editor/TextInputModel';
+import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import { ModalOverlayDismissal } from './ModalOverlayDismissal';
 import type { ScrollPhysics } from './ScrollPhysics';
 import { ScrollableTextViewport } from './ScrollableTextViewport';
+import { TextFieldPainter } from './TextFieldPainter';
 
 // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: A scrollable pane height is an input not an output (src/modules/ui/ui.invariants.md)
@@ -28,6 +29,7 @@ import { ScrollableTextViewport } from './ScrollableTextViewport';
 // invariant: List interactions inspect only visible rows (src/modules/ui/ui.invariants.md)
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
 // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
+// invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 class $BoundedListPopup {
   protected static get defaultSearchThreshold(): number {
     return 10;
@@ -80,6 +82,7 @@ class $BoundedListPopup {
   >();
   protected maximumItemWidthValue = 1;
   protected iconColumnsValue = 0;
+  protected queryCaretCellValue: BoundedListPopupCaretCell | null = null;
 
   get open() {
     return ref(false);
@@ -121,6 +124,17 @@ class $BoundedListPopup {
 
   get title(): string {
     return this.titleValue;
+  }
+
+  /** The painted caret cell of the search field, in screen coordinates — the published geometry a
+   *  driven contract addresses instead of hunting for a caret glyph. */
+  get queryCaretCell(): BoundedListPopupCaretCell | null {
+    return this.queryCaretCellValue;
+  }
+
+  /** The query model's grapheme caret offset. */
+  get queryCaret(): number {
+    return this.queryInput.caret.value;
   }
 
   constructor(protected readonly dependencies: BoundedListPopupDependencies) {
@@ -379,6 +393,7 @@ class $BoundedListPopup {
     this.selectionHandler = null;
     this.navigationBackwardHandler = null;
     this.currentGeometry = null;
+    this.queryCaretCellValue = null;
     this.pointerPressedFilteredIndex = -1;
     this.pointerDragged = false;
     this.viewport.reset();
@@ -427,6 +442,20 @@ class $BoundedListPopup {
   eraseQueryCharacter(): void {
     if (!this.searchEnabled || this.query.value.length === 0) return;
     if (this.queryInput.backspace()) this.refilter();
+  }
+
+  /**
+   * Apply one shared text-input action to the search query. A movement changes no filtered set, so
+   * it only requests the repaint the moved caret needs; an edit refilters. Without this the popup
+   * had the model's word movement and word deletion and dropped them at the input boundary.
+   * invariant: Editable text fields share one input model (project.invariants.md)
+   */
+  applyQueryInputAction(action: TextInputAction): void {
+    if (!this.searchEnabled) return;
+    const originalQuery = this.queryInput.value;
+    const actionChangedState = this.queryInput.apply(action);
+    if (this.queryInput.value !== originalQuery) this.refilter();
+    else if (actionChangedState) this.requestPaint();
   }
 
   moveSelection(direction: 1 | -1): void {
@@ -515,28 +544,34 @@ class $BoundedListPopup {
     this.searchInput.visible = this.searchEnabled;
     this.searchInput.width =
       geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
-    if (this.searchInput.visible) {
-      const searchColumns =
-        geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
-      const searchText = ` ${this.dependencies.theme.findIcons.search} ${this.query.value}`;
-      const searchBackground = this.searchHovered
-        ? palette.accent
-        : palette.border;
-      const searchForeground = this.searchHovered ? palette.panel : palette.dim;
-      this.searchInput.content = new StyledText([
-        bg(searchBackground)(
-          fg(searchForeground)(
-            EditorCoordinates.Class.padToDisplayWidth(
-              EditorCoordinates.Class.displayColumnWindow(
-                searchText,
-                0,
-                searchColumns,
-              ),
-              searchColumns,
-            ),
-          ),
+    if (this.searchEnabled) {
+      // The search row is a single-line text field like every other: its window, caret, and state
+      // tone come from the one painter, so it cannot drift into its own two-state highlight or lose
+      // the caret the query model already knows about.
+      // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
+      const queryFocused = this.acceptsQueryInput;
+      const paintedField = TextFieldPainter.Class.paint({
+        prefix: ` ${this.dependencies.theme.findIcons.search} `,
+        input: this.queryInput,
+        tone: TextFieldPainter.Class.toneFor(
+          palette,
+          TextFieldPainter.Class.stateFor({
+            focused: queryFocused,
+            hovered: this.searchHovered,
+          }),
         ),
-      ]);
+        surfaceBackground: palette.panel,
+        caretVisible: queryFocused,
+        width: geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+      });
+      this.searchInput.content = new StyledText(paintedField.chunks);
+      this.queryCaretCellValue = {
+        column: geometry.listLeft + paintedField.caretColumn,
+        row: geometry.searchRow ?? geometry.boxTop + 1,
+        width: paintedField.caretWidth,
+      };
+    } else {
+      this.queryCaretCellValue = null;
     }
     this.list.visible = true;
     this.list.height = geometry.listRows;
@@ -972,4 +1007,11 @@ export interface BoundedListPopupGeometry {
   firstVisible: number;
   visibleItemCount: number;
   verticalOverflow: boolean;
+}
+
+/** The search field's painted caret cell in screen coordinates (width 2 over a wide glyph). */
+export interface BoundedListPopupCaretCell {
+  column: number;
+  row: number;
+  width: number;
 }

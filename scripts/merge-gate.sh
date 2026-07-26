@@ -459,6 +459,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: tabs"        bash scripts/smoke-tabs.sh
   parallel_safe_smoke "smoke: tabs harness" bun scripts/harness/smoke-tabs-harness.ts
   parallel_safe_smoke "smoke: bounded list popup harness" bun scripts/harness/smoke-bounded-list-popup-harness.ts
+  parallel_safe_smoke "smoke: field caret harness" bun scripts/harness/smoke-field-caret-harness.ts
   parallel_safe_smoke "smoke: completion harness" bun scripts/harness/smoke-completion-harness.ts
   parallel_safe_full_tmux_smoke "smoke: workspace tabs" bash scripts/smoke-workspace-tabs.sh
   parallel_safe_smoke "smoke: workspace tabs harness" bun scripts/harness/smoke-workspace-tabs-harness.ts

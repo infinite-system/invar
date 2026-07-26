@@ -99,6 +99,69 @@ src/modules/git/GitPaneContent.test.ts && bash scripts/smoke-activitybar.sh`.
 
 **Last refined:** 2026-07-26
 
+### One painter draws every single-line text field
+
+**Invariant:** If a single-line text field is painted, then `TextFieldPainter` draws its visible text
+window, its caret cell, and its state tone: the caret sits at the field's `TextInputModel` caret and
+is drawn by INVERTING the cell it occupies, and the tone is one of `idle`, `focused`, or `hovered`,
+with the focus tone quieter than the hover tone.
+
+**Scope:** `BoundedListPopup`'s search row, the command-palette and Quick Open inputs in
+`OverlayLayer`, and the query and replacement fields in `FindBarRenderer`. The editor body caret
+(projected as the terminal's own hardware cursor) and the multi-line wrapping `AgentComposer` are
+outside this rule — a wrapping surface resolves its caret through a row mapping, not a one-line
+window.
+
+**Components:**
+- *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `EditorCoordinates.lineWidth` gives the
+  caret's display column; the grapheme at the caret (a space at end-of-text) is the inverted cell.
+- *State tone* — `TextFieldPainter.toneFor` maps `idle`/`focused`/`hovered` to one palette pair;
+  `stateFor` decides that hover outranks focus.
+- *Fixed geometry* — the caret cell is always emitted and only recoloured, so a field's painted width
+  and text window are identical in every state.
+
+**Mechanism:** `TextFieldPainter.paint` takes the input MODEL, never a caret index, so a painted caret
+cannot be re-derived from string length; every column it computes goes through `EditorCoordinates`, so
+a wide or East-Asian grapheme moves the caret by display cells. Inverting a cell costs no column and
+needs no glyph, so the caret shifts nothing and adds no appearance literal — the same reduction
+`SolidThumbScrollBar` made for thumbs. `toneFor` reads `border`/`dim`, `cursorLine`/`fg`, and
+`accent`/`panel`: idle recesses below `panel`, focus lifts one step above it while brightening the
+text, and only hover uses the theme's vivid colour, so hierarchy stays carried by text brightness as
+`ThemePalettes` documents. The caret is STEADY — a blinking caret would request frames forever and
+break the `idle-quiescence` contract in `scripts/behavioral-contracts.sh`.
+
+**Generates:** A visible caret in every one-line field; a focused field distinguishable from an idle
+one; hover retained where a field is a pointer target; one caret implementation instead of four; a
+field that can gain a state without touching its consumers.
+
+**Rejected alternatives:** Insert a bar glyph at the caret (what the palette, Quick Open, and Find bar
+did) — it shifts every cell after the caret and mints a glyph literal outside the theme. Blink the
+caret on a timer — it would request frames at rest and break idle-quiescence. Give the modal dialog
+inputs the full three-tone state — they are always the focused field and are never hover targets, so
+two of the three states would be unreachable decoration.
+
+**Evidence:** `src/modules/ui/TextFieldPainter.ts`; `src/modules/ui/TextFieldPainter.test.ts` (caret at
+the model offset, end-of-text caret, wide-glyph columns, identical geometry across the three states,
+tone ordering); consumers `src/modules/ui/BoundedListPopup.ts`, `src/modules/ui/OverlayLayer.ts`,
+`src/modules/ui/FindBarRenderer.ts`; `scripts/harness/smoke-field-caret-harness.ts` (caret at the
+published `boundedListPopupQueryCaretCell` through typing, word movement, word deletion, and a pasted
+wide-glyph query; three distinct observed backgrounds);
+`scripts/harness/smoke-text-input-harness.ts` (the inverted caret cell in open-project, the palette,
+and find).
+
+**Impossible if true:** A focusable one-line field with no visible caret; a focused field painted
+identically to an idle one; a hover highlight lost because a field became focusable; a caret column
+derived from string length drifting on a wide glyph or emoji; a caret that widens its field or shifts
+the text after it; a caret that requests frames while the app is at rest.
+
+**Verification:** `bun test src/modules/ui/TextFieldPainter.test.ts && bun
+scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-text-input-harness.ts &&
+bash scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Bounded list popups share paint and hit geometry
 
 **Invariant:** If a bounded list popup is drawn and accepts pointer input, then one
@@ -113,15 +176,16 @@ adapters.
 The list renderer slices from its `firstVisible` and `listRows`; the vertical-only
 `ScrollableTextViewport` receives the same list rectangle; and pointer selection calls
 `filterIndexAtRow` with that stored geometry. `nextEnabledFilteredIndex` wraps through the current
-filtered matches and `revealSelectedIndex` moves that same window. The optional search row owns an
-independent rest-muted and hover-lit palette state, while the modal popup remains the query-input
-owner across list-row hover repaints. Row text comes from the one `itemRowText` generator, whose icon
-cell is `listIconColumns` wide on EVERY row — the widest icon in the item set, so a two-cell
-pictograph widens that shared column instead of pushing one row's label out of the column its
-neighbours established. Consumer adapters provide item labels, icons, selection, and actions but
-never calculate popup rows, columns, or query focus. Completion hides the search row and backdrop,
-anchors at the laid-out editor caret, and prefilters only when its typed prefix changes; each paint
-slices cached matches to the geometry's visible window.
+filtered matches and `revealSelectedIndex` moves that same window. The optional search row delegates
+its window, caret, and idle/focused/hovered tone to `TextFieldPainter` and publishes the painted caret
+cell as `queryCaretCell`, while the modal popup remains the query-input owner across list-row hover
+repaints. Row text comes from the one `itemRowText` generator, whose icon cell is `listIconColumns`
+wide on EVERY row — the widest icon in the item set, so a two-cell pictograph widens that shared
+column instead of pushing one row's label out of the column its neighbours established. Consumer
+adapters provide item labels, icons, selection, and actions but never calculate popup rows, columns,
+or query focus. Completion hides the search row and backdrop, anchors at the laid-out editor caret,
+and prefilters only when its typed prefix changes; each paint slices cached matches to the geometry's
+visible window.
 
 **Generates:** window-edge clamping and upward opening; a bounded visible window over arbitrarily
 large lists; wheel momentum and a solid vertical thumb; pointer and keyboard selection that agree
