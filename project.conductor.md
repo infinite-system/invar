@@ -1065,3 +1065,24 @@ a fresh Agent spawn dies the same way). This is the third quota-driven flip in t
 rule is not "use codex" or "use opus": it is that WHICH fleet is a quota fact the user owns — act on
 their latest statement, expect it to flip again, and when several builders die simultaneously with the
 same API error, treat it as a quota event and preserve worktrees as WIP commits before anything else.
+
+## 2026-07-26 13:20 — the extraction did not create the bug; it removed the accident hiding it
+The filetree landing's deterministic red (gutter-diff, 4/4) diagnosed to a STALE FOCUS BIT that
+existed on pre-filetree main: a sidebar click moves workspace focus editor→primaryPane→editor
+synchronously, and the default QUEUED Vue watcher coalesced the round trip to its starting value —
+so it never ran and never blurred the dock. Harmless for months, because the old tree pane had no
+keybindingContext and the stale dock could not resolve any key. The extraction added
+keybindingContext:'files' (correctly), and the latent bit started swallowing Enter as tree.activate,
+reopening a file so the smoke typed into the WRONG DOCUMENT. Three durable pieces. (1) Focus transfer
+is input ownership: a watcher that projects focus must flush SYNC, because coalescing away an
+intermediate transition changes who owns the next keystroke. (2) Both of my ranked suspects (decoration
+pipeline, focus routing) were wrong — the builder measured instead of trusting the brief's guesses,
+which is exactly what the brief told it to do. Rank candidates, never just one, and expect all of them
+to lose to measurement. (3) A change that EXPOSES a latent defect will bisect to the innocent commit;
+the fix belongs at the latent defect, not at the exposer.
+
+## 2026-07-26 13:20 — codex round-trips are cheap; use them for the fix loop, not just the build
+Today's filetree arc was build → merge-adopt → regression-fix, three codex dispatches into the SAME
+worktree, each with a monitor keyed on commit-count-or-silence. The commit-count monitor is the right
+wake condition for codex (no task notifications): it fires exactly when the work is committed, and the
+silence arm catches a dead run without polling. The conductor's own role stayed review + gate + land.
