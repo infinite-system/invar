@@ -1,7 +1,75 @@
 import { expect, test } from 'bun:test';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { TerminalEmulator } from '../terminal/TerminalEmulator';
+import type { GlyphLevel } from './TerminalCapabilities';
 import { ThemeIcons } from './ThemeIcons';
+
+interface ThemeGlyphEntry {
+  readonly name: string;
+  readonly glyph: string;
+}
+
+function themeGlyphEntriesFor(level: GlyphLevel): ThemeGlyphEntry[] {
+  const agentTranscriptIcons = ThemeIcons.Class.agentTranscriptIconsFor(level);
+  const namedEntries = (
+    vocabularyName: string,
+    vocabulary: object,
+  ): ThemeGlyphEntry[] =>
+    Object.entries(vocabulary).map(([slot, glyph]) => ({
+      name: `${level}.${vocabularyName}.${slot}`,
+      glyph: String(glyph),
+    }));
+
+  return [
+    ...namedEntries('symbol', ThemeIcons.Class.symbolMarksFor(level)),
+    ...namedEntries('action', ThemeIcons.Class.actionIconsFor(level)),
+    ...namedEntries('checkbox', ThemeIcons.Class.checkboxIconsFor(level)),
+    ...namedEntries('activity', ThemeIcons.Class.activityIconsFor(level)),
+    ...namedEntries(
+      'interface',
+      ThemeIcons.Class.interfaceGlyphVocabularyFor(level),
+    ),
+    ...namedEntries('find', ThemeIcons.Class.findIconsFor(level)),
+    ...namedEntries('agentTranscript', {
+      caretCollapsed: agentTranscriptIcons.caretCollapsed,
+      caretExpanded: agentTranscriptIcons.caretExpanded,
+      tool: agentTranscriptIcons.tool,
+      resultOk: agentTranscriptIcons.resultOk,
+      resultError: agentTranscriptIcons.resultError,
+      ellipsis: agentTranscriptIcons.ellipsis,
+      ellipsisCell: agentTranscriptIcons.ellipsisCell,
+      rule: agentTranscriptIcons.rule,
+    }),
+    ...agentTranscriptIcons.spinnerFrames.map((glyph, frameIndex) => ({
+      name: `${level}.agentTranscript.spinner.${frameIndex}`,
+      glyph,
+    })),
+    {
+      name: `${level}.settings`,
+      glyph: ThemeIcons.Class.settingsIconFor(level),
+    },
+    {
+      name: `${level}.terminal`,
+      glyph: ThemeIcons.Class.terminalIconFor(level),
+    },
+    {
+      name: `${level}.agent`,
+      glyph: ThemeIcons.Class.agentIconFor(level),
+    },
+    {
+      name: `${level}.rightDock`,
+      glyph: ThemeIcons.Class.rightDockIconFor(level),
+    },
+    {
+      name: `${level}.alert`,
+      glyph: ThemeIcons.Class.alertIconFor(level),
+    },
+    {
+      name: `${level}.tabSeparator`,
+      glyph: ThemeIcons.Class.tabSeparatorFor(level),
+    },
+  ];
+}
 
 test('icon fallback ladder: nerd has glyphs, ascii uses markers', () => {
   expect(
@@ -142,26 +210,22 @@ test('activity and panel control glyphs stay pairwise distinct at every tier', (
   }
 });
 
-test('file icon sets keep folder and file marks one cell at every tier', () => {
-  // The breadcrumb popup now shows the tree's icons, so its label column is aligned by the widest
-  // icon in the set. Folder and file defaults must stay one cell; the unicode extension map still
-  // carries deliberately wide pictographs (🔒 for lock, 🖼 for images), which widen that shared
-  // column for every row rather than breaking one row's alignment.
+test('file icon sets keep every file mark one cell at every tier', () => {
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
-    const symbolMarks = ThemeIcons.Class.symbolMarksFor(level);
-    expect(EditorCoordinates.Class.lineWidth(symbolMarks.directoryClosed)).toBe(
-      1,
-    );
-    expect(EditorCoordinates.Class.lineWidth(symbolMarks.directoryOpen)).toBe(
-      1,
-    );
-    expect(EditorCoordinates.Class.lineWidth(symbolMarks.file)).toBe(1);
+    for (const mark of Object.values(ThemeIcons.Class.symbolMarksFor(level))) {
+      expect(EditorCoordinates.Class.lineWidth(mark)).toBe(1);
+    }
   }
   expect(
-    EditorCoordinates.Class.lineWidth(
-      ThemeIcons.Class.symbolMarksFor('unicode').image,
+    ThemeIcons.Class.markOwnersFor(
+      ThemeIcons.Class.symbolMarkFor('unicode', 'lockfile'),
     ),
-  ).toBe(2);
+  ).toEqual(['symbol class: lockfile']);
+  expect(
+    ThemeIcons.Class.markOwnersFor(
+      ThemeIcons.Class.symbolMarkFor('unicode', 'image'),
+    ),
+  ).toEqual(['symbol class: image']);
 });
 
 // The complete symbol-mark table, pinned per tier. One whole-row `toEqual` is STRICTER than per-class
@@ -228,13 +292,13 @@ test('the symbol-mark table resolves every class at every tier', () => {
       '◉',
       '⛃',
       '✎',
-      '🔒',
+      '⚿',
       '⚙',
       '❖',
       '◈',
       '◇',
       '⬡',
-      '🖼',
+      '▞',
       '⑂',
       '⚙',
       'ƒ',
@@ -406,50 +470,58 @@ test('the code-symbol families stay pairwise distinct including at the ascii run
   }
 });
 
-// The #95 defect class in one instrument: a mark the APP measures at one width while the TERMINAL
-// renders it at another shifts every cell to its right. `lineWidth` is the app's authority (OpenTUI's
-// width table); `@xterm/headless`, behind the harness emulator, is an independent implementation of
-// what a terminal actually does — so the two disagreeing is the defect, and this test is the only
-// place that can see it. A width table read twice would agree with itself and prove nothing.
-test('every symbol mark the app measures agrees with the terminal that renders it', async () => {
+// One instrument closes the emoji-presentation class across EVERY public
+// ThemeIcons vocabulary surface. `lineWidth` is the app's OpenTUI-backed
+// authority; `@xterm/headless`, behind the harness emulator, is independent.
+// A mismatch reserves a phantom column, while any terminal-rendered two-cell
+// glyph breaks one-cell icon rows even if both authorities happen to agree.
+test('every theme glyph agrees and avoids double-cell rendering', async () => {
   const emulator = new TerminalEmulator.Class(8, 2);
-  const renderedWidthOf = async (mark: string): Promise<number> => {
-    emulator.write(`\u001b[2J\u001b[H${mark}`);
+  const renderedWidthOf = async (glyph: string): Promise<number> => {
+    emulator.write(`\u001b[2J\u001b[H${glyph}`);
     await emulator.flush();
-    return emulator.cell(0, 0)?.width ?? 0;
+    return emulator.cursorColumn;
   };
 
   try {
-    // Positive control: the instrument must be ABLE to answer two. A width check that can only ever
-    // answer one cannot fail toward the answer that matters, so it would be decoration.
+    // Positive control: both authorities must be able to answer two.
     expect(await renderedWidthOf('漢')).toBe(2);
     expect(EditorCoordinates.Class.lineWidth('漢')).toBe(2);
 
-    // The two pictographs the file-type marks paint deliberately wide are the ONLY disagreement in
-    // the whole table: the app measures them at two cells, this terminal renders them in one. That is
-    // a real defect in an existing vocabulary choice, not in the code-symbol families, so it is
-    // enumerated rather than tolerated — a THIRD disagreement fails here.
-    const knownWidthDisagreements = new Set(['🔒', '🖼']);
-    for (const level of ['nerd', 'unicode', 'ascii'] as const) {
-      const symbolMarks = ThemeIcons.Class.symbolMarksFor(level);
-      for (const mark of Object.values(symbolMarks)) {
-        const measuredWidth = EditorCoordinates.Class.lineWidth(mark);
-        const renderedWidth = await renderedWidthOf(mark);
-        if (knownWidthDisagreements.has(mark)) {
-          expect([measuredWidth, renderedWidth]).toEqual([2, 1]);
-          continue;
-        }
-        expect(renderedWidth).toBe(measuredWidth);
-        expect(renderedWidth).toBe(1);
-      }
-      for (const slot of ['foldOpen', 'foldClosed'] as const) {
-        const mark = ThemeIcons.Class.glyphFor(level, slot);
-        expect(await renderedWidthOf(mark)).toBe(
-          EditorCoordinates.Class.lineWidth(mark),
-        );
-        expect(await renderedWidthOf(mark)).toBe(1);
+    const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
+    const vocabularyEntries = glyphLevels.flatMap((level) =>
+      themeGlyphEntriesFor(level),
+    );
+    expect(glyphLevels).toEqual(['nerd', 'unicode', 'ascii']);
+    expect(vocabularyEntries.length).toBeGreaterThan(200);
+    expect(
+      vocabularyEntries.every(
+        (entry) => entry.name.length > 0 && entry.glyph.length > 0,
+      ),
+    ).toBe(true);
+    expect(new Set(vocabularyEntries.map((entry) => entry.name)).size).toBe(
+      vocabularyEntries.length,
+    );
+
+    const widthOffenders: Array<{
+      name: string;
+      glyph: string;
+      measuredWidth: number;
+      renderedWidth: number;
+    }> = [];
+    for (const entry of vocabularyEntries) {
+      const measuredWidth = EditorCoordinates.Class.lineWidth(entry.glyph);
+      const renderedWidth = await renderedWidthOf(entry.glyph);
+      if (measuredWidth !== renderedWidth || renderedWidth === 2) {
+        widthOffenders.push({
+          name: entry.name,
+          glyph: entry.glyph,
+          measuredWidth,
+          renderedWidth,
+        });
       }
     }
+    expect(widthOffenders).toEqual([]);
   } finally {
     emulator.dispose();
   }

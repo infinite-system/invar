@@ -68,13 +68,19 @@ class $ThemeIcons {
         javascript: '◉',
         json: '⛃',
         markdown: '✎',
-        lockfile: '🔒',
+        // ⚿ SQUARED KEY: a portable lock-family mark without emoji
+        // presentation. It is one cell in both width authorities and keeps
+        // enough solid structure to remain legible at terminal size.
+        lockfile: '⚿',
         shellScript: '⚙',
         stylesheet: '❖',
         markup: '◈',
         vueComponent: '◇',
         webAssembly: '⬡',
-        image: '🖼',
+        // ▞ QUADRANT UPPER RIGHT AND LOWER LEFT: two solid raster cells
+        // suggest image pixels without thin detail, emoji presentation, or
+        // the ambiguous-width Geometric Shapes block.
+        image: '▞',
         versionControl: '⑂',
         configuration: '⚙',
         // ƒ (U+0192), the function letterform: a method, a function, and a constructor are the one

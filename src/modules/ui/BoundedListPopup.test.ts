@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { CommandScoring } from '../commands/CommandScoring';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { ThemeIcons } from '../theme/ThemeIcons';
 import { BoundedListPopup } from './BoundedListPopup';
 
 describe('BoundedListPopup', () => {
@@ -143,20 +144,31 @@ describe('BoundedListPopup', () => {
   });
 
   test('icons never become searchable text and never shift the label column', () => {
+    const unicodeSymbolMarks = ThemeIcons.Class.symbolMarksFor('unicode');
     const items = [
       {
         identifier: 'parent',
         label: '..',
-        icon: '▸',
+        icon: unicodeSymbolMarks.directoryClosed,
         pinnedWhileQueryEmpty: true,
       },
-      { identifier: 'module', label: 'picker-module.ts', icon: '◆' },
-      { identifier: 'image', label: 'picture.png', icon: '🖼' },
+      {
+        identifier: 'module',
+        label: 'picker-module.ts',
+        icon: unicodeSymbolMarks.typescript,
+      },
+      {
+        identifier: 'image',
+        label: 'picture.png',
+        icon: unicodeSymbolMarks.image,
+      },
     ];
 
-    expect(BoundedListPopup.$Class.filterItems(items, '◆')).toEqual([]);
+    expect(
+      BoundedListPopup.$Class.filterItems(items, unicodeSymbolMarks.typescript),
+    ).toEqual([]);
     const iconColumns = BoundedListPopup.$Class.itemSetIconColumns(items);
-    expect(iconColumns).toBe(2);
+    expect(iconColumns).toBe(1);
     const labelOffsets = items.map(
       (item) =>
         EditorCoordinates.Class.lineWidth(

@@ -238,104 +238,84 @@ a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex s
 
 ### The glyph ladder degrades icons single-cell and legible
 
-**Invariant:** If a symbol mark, action button, checkbox glyph, or fold control is resolved, then it
-is selected from the row for the active glyph level (`nerd` → `unicode` → `ascii`); the `ascii` rung
-is always a printable single-cell marker, and every action/checkbox glyph, fold control, and every
-CODE-SYMBOL mark at every level is exactly one cell — the git-panel and fold-control hit columns and
-the completion popup's mark column depend on it — and an unknown file extension or completion kind
-resolves to a printable class, never to empty or undefined.
+**Invariant:** If an icon-cell glyph is resolved, then it is selected from the
+row for the active glyph level (`nerd` → `unicode` → `ascii`), measures the
+same width in the app and terminal, and renders in exactly one cell. The
+`ascii` rung is always printable, and an unknown file extension or completion
+kind resolves to a printable class, never to empty or undefined.
 
-**Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`, `symbolClassForFileEntry`, `iconFor`,
-`actionIconsFor`, `checkboxIconsFor`, `interfaceGlyphVocabularyFor`, and `glyphFor`, plus the
-`Theme` getters that call them. Covers file-tree, breadcrumb-popup, and completion-popup marks, git
-changes-row action buttons, staging checkboxes, activity-bar items, panel-heading controls, and
-editor fold controls.
+**Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`,
+`symbolClassForFileEntry`, `iconFor`, `actionIconsFor`, `checkboxIconsFor`,
+`activityIconsFor`, `interfaceGlyphVocabularyFor`, `glyphFor`, `findIconsFor`,
+the status-bar icon accessors, `alertIconFor`, `agentTranscriptIconsFor`, and
+`tabSeparatorFor`, plus the `Theme` getters that call them. Covers file-tree,
+breadcrumb-popup, and completion-popup marks, git changes-row action buttons,
+staging checkboxes, activity-bar items, panel-heading controls, editor fold
+controls, find controls, status affordances, agent transcript cells, alerts,
+and tab separators.
 
-**Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed by `GlyphLevel`, and
-`$symbolMarks` and `$interfaceGlyphVocabularies` each map EVERY key at each level, so selection is a
-total lookup with no missing rung — a `Record<SymbolClass, string>` makes a missing mark a type error
-rather than an undefined cell. The `ascii` entries remain printable; action, checkbox, activity,
-panel-control, directory, file, and code-symbol marks are authored as one cell each; the classifiers
-fall back (`?? 'file'`, `?? 'unclassified'`) so a resolve always returns a printable string. The unicode
-FILE-TYPE marks deliberately keep wide pictographs (`🔒`, `🖼`), so a consumer that puts marks in a
-column sizes that column to the widest mark in its item set instead of assuming one cell; the
-code-symbol marks are one cell precisely so a completion list never widens that column. The
-`foldOpen` and `foldClosed` interface slots are also one cell at every tier because the number-gutter
-edge is one exact mouse hit column.
-Which mark a slot may take is decided by `$markOwnerships` — the marks that can meet, each paired with
-the surface that means something by it, derived from the vocabularies that paint them — under the rule
-that a mark may be shared only by owners meaning the SAME thing.
+**Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed
+by `GlyphLevel`, and `$symbolMarks` and `$interfaceGlyphVocabularies` each map
+EVERY key at each level, so selection is a total lookup with no missing rung —
+a `Record<SymbolClass, string>` makes a missing mark a type error rather than
+an undefined cell. The `ascii` entries remain printable; icon-cell glyphs are
+authored as one cell each; the classifiers fall back (`?? 'file'`,
+`?? 'unclassified'`) so a resolve always returns a printable string. The
+full-vocabulary width test enumerates every public `ThemeIcons` surface at
+every tier, compares `EditorCoordinates.lineWidth` with the independent
+`@xterm/headless` cursor advance, and rejects either a disagreement or a
+terminal-rendered double-cell glyph. There is no exception list: adding an
+emoji-presentation or wide mark fails the test immediately. The `foldOpen`
+and `foldClosed` interface slots are one cell because the number-gutter edge
+is one exact mouse hit column. Which mark a slot may take is decided by
+`$markOwnerships` — the marks that can meet, each paired with the surface that
+means something by it, derived from the vocabularies that paint them — under
+the rule that a mark may be shared only by owners meaning the SAME thing.
 
-**Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button,
-checkbox, and fold-control columns never shift width between capability levels; a completion mark
-column of exactly one cell at every tier.
+**Generates:** Legible output on a no-nerd-font terminal; stable click
+hit-zones because button, checkbox, and fold-control columns never shift width
+between capability levels; file-tree, breadcrumb, and completion mark columns
+of exactly one cell at every tier; a closed width class without per-glyph
+exceptions.
 
-**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`, `$actionIcons`, `$checkboxIcons`,
-`$interfaceGlyphVocabularies`, `symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`,
-`unicode icon set resolves known extension and falls back for unknown`, `checkbox icons ladder`,
-`git action icons ladder`, `semantic interface glyph slots resolve through every capability tier`,
+**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`,
+`$actionIcons`, `$checkboxIcons`, `$interfaceGlyphVocabularies`,
+`symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`, `unicode icon
+set resolves known extension and falls back for unknown`, `checkbox icons
+ladder`, `git action icons ladder`, `semantic interface glyph slots resolve
+through every capability tier`,
 `fold controls agree on one cell across app and terminal width authorities`,
-`every code-symbol mark is one display cell at every tier`, `the code-symbol families stay pairwise
-distinct including at the ascii rung`, `every shared mark is declared, and every declaration is still
-real`, `the mark-sharing detector reports a collision when one exists` (the synthetic-list positive
-control), `the javascript mark is not the dirty tab marker`, and `every symbol mark the app measures
-agrees with the terminal that renders it` in `src/modules/theme/ThemeIcons.test.ts` — the last of which compares the app's width
-authority (`EditorCoordinates.lineWidth`, OpenTUI's table) against an INDEPENDENT one (`@xterm/headless`
-behind `TerminalEmulator`), and carries a wide-glyph positive control so it can fail toward two.
+`every code-symbol mark is one display cell at every tier`, `the code-symbol
+families stay pairwise distinct including at the ascii rung`, `every shared
+mark is declared, and every declaration is still real`, `the mark-sharing
+detector reports a collision when one exists` (the synthetic-list positive
+control), `the javascript mark is not the dirty tab marker`, and `every theme
+glyph agrees and avoids double-cell rendering` in
+`src/modules/theme/ThemeIcons.test.ts` — the last enumerates every vocabulary
+surface, compares the app's width authority (`EditorCoordinates.lineWidth`,
+OpenTUI's table) against an independent one (`@xterm/headless` behind
+`TerminalEmulator`), and carries a wide-glyph positive control so it can fail
+toward two.
 
-**Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
-action/checkbox glyph, fold control, or code-symbol mark wider than one cell at any level; a
-`directoryOpen`,
-`directoryClosed`, or `file` mark wider than one cell; `iconFor` or `symbolMarkFor` returning empty or
-undefined for an unknown extension or kind; an activity or panel control choosing its glyph literal in
-behavior code; two activity or panel slots resolving to the same glyph at one tier; a mark carried by two
-surfaces that mean different things by it, or carried by two surfaces without a recorded reason; a
-recorded sharing reason that outlives the sharing it describes; a NEW mark whose app-measured width
-disagrees with the width the terminal renders.
+**Rejected alternatives:** Keep a known-width exception list — it preserves
+the defect and grows whenever another emoji-presentation mark lands. The full
+vocabulary is now the authority: every entry is enumerated, disagreement and
+double-cell rendering are both forbidden, and the wide-glyph positive control
+proves the detector can fail toward two.
 
-**Open question:** CLOSED, and replaced by a mechanism plus one narrower question. The previous entry
-recorded two collisions and then reasoned that "neither pair shares a column today" — a POSITION
-argument, true only while the tree owned the vocabulary alone, and already false in spirit once the
-breadcrumb popup became a second consumer and the completion popup a third. It also could not be
-checked: the mark table it depended on did not enumerate the file-type marks at all, so its
-impossibility claim was one that could not fail.
+**Open question:** The settings gear still has unrelated shell-script and
+configuration-file owners in the same mark column; resolving that semantic
+collision is separate from width uniformity.
 
-The mechanism is `$markOwnerships` — every mark that can land in a list row's mark column or a
-single-cell chrome strip, paired with the surface that means something by it, derived from the
-vocabularies that paint it rather than restated. On top of it: **a mark may be shared only by owners
-that mean the SAME thing**, enforced by `undeclaredMarkSharings` (a sharing nobody declared fails) and
-`staleMarkSharingDeclarations` (a declaration whose sharing no longer exists also fails, so the record
-cannot outlive reality), with a synthetic-list positive control proving the detector can report.
-
-Under that rule: `⑂` is INTENDED — the Source Control activity item and a git file row both mean
-version control, so one mark is consistency, not ambiguity. `●` FAILED the rule — "JavaScript source"
-and "unsaved changes" are unrelated meanings — and is resolved: `.js`/`.jsx` moved to `◉` (U+25C9,
-solid so nothing thin can vanish, one cell in both width authorities), leaving `●` to the tab marker
-alone.
-
-The narrower question the complete table then exposed, recorded rather than picked in passing: `⚙`
-carries FOUR owners. Two of them mean settings (the activity item and the status-bar affordance, a
-legitimate alias), but the other two are "a shell script" and "a configuration file" — different
-things, and unlike the `●` pair they land in the SAME mark column, so a `.sh` row and a `.yaml` row are
-already indistinguishable in the tree, the breadcrumb popup, and now completion. That is the worse
-collision class. It is declared with its reason because resolving it means choosing a new file-type
-mark, which moves the tree for every user and deserves its own change. `❯` is shared by the buffer-tab
-separator and the status-bar terminal affordance on the same terms.
-
-Out of scope and named: the git-panel action buttons, staging checkboxes, find-bar buttons, and
-agent-transcript carets are not yet in the ownership table. Each sits in its own dedicated affordance
-column rather than a shared mark column, and each has candidate collisions of its own (`↗` is both
-panel-expand and open-externally; `▸`/`▾` are both directory state and transcript disclosure).
-Extending the table there is a separate change, because resolving any of them moves a hit column.
-
-Second, and measured rather than suspected: the two wide pictographs are the ONLY marks in the table
-where the app's width authority and the terminal's disagree — `lineWidth` measures `🔒` (U+1F512) and
-`🖼` (U+1F5BC) at two cells while `@xterm/headless` renders each in one. The app therefore reserves a
-column the terminal does not use, so a tree or breadcrumb list containing a lock or image file is one
-column wider than its content. The disagreement is now ENUMERATED by `every symbol mark the app
-measures agrees with the terminal that renders it`, so a third one fails the gate; choosing which
-authority is right (narrow text-presentation pictographs, or emoji-presentation width) is a separate
-change because it moves the tree's layout.
+**Impossible if true:** An icon-cell glyph wider than one cell at any level;
+any theme glyph whose app-measured width disagrees with terminal cursor
+advance; a file-tree or breadcrumb filename starting in a different column
+because of its icon; `iconFor` or `symbolMarkFor` returning empty or undefined
+for an unknown extension or kind; an activity or panel control choosing its
+glyph literal in behavior code; two activity or panel slots resolving to the
+same glyph at one tier; a mark carried by two surfaces that mean different
+things by it, or carried by two surfaces without a recorded reason; a recorded
+sharing reason that outlives the sharing it describes.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
 scripts/harness/smoke-activitybar-harness.ts`
