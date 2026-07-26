@@ -400,7 +400,10 @@ real terminal, not the harness.
    no output. If a recorded loop below is absent from `CronList`, re-arm it from the verbatim text
    *in this fire*, before any other work, and say so in the report. Never infer a cron is live from
    this file, from a previous fire's report, or from the fact that fires have been arriving — the
-   hourly arriving tells you nothing about the 10-minute one.
+   hourly arriving tells you nothing about the other one. THE CURRENT PAIR (as of 2026-07-26): the
+   hourly orchestration loop, and the 30-minute RECONCILIATION SWEEP at `11,41 * * * *`. The old
+   10-minute liveness poll is RETIRED — do not re-arm it (its history is at the bottom of the
+   cron-prompts section).
 1. **Drain the real backlog first** — the task list (HANDOFF → the numbered UI tasks → polish
    requests → follow-ups). Ensure the fork is driving each unfinished task; nudge or take over.
    No creative experiment while any core task is unmerged.
@@ -474,22 +477,17 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui
 (5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. ONE gate at a time across the fleet, and the conductor holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, timestamp first if the user is away.
 ```
 
-### 10-minute liveness check — `3,13,23,33,43,53 * * * *` (every 10 min)
+### RETIRED: the 10-minute liveness check (was `3,13,23,33,43,53 * * * *`)
 
-```
-Loop check (every 10 min): VERIFY — do not assume — that the currently active builder agents (whatever this session has in flight: check recent task notifications / SendMessage pins) are actually progressing. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor, /tmp/tui-demo, or any /tmp/wt-* worktree they opened) — do NOT treat raw `src/main.ts` process count or instance age as a liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on builder-specific evidence: (1) writes in the active build worktrees (/tmp/wt-*) in the last ~10 min (exclude .git and node_modules); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / GATE_EXIT / still-appending); (3) new commits on main or on the active feature branches (git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'); (4) builder jsonl mtimes under ~/.claude/projects/-home-parallels-dev-ibr/*/subagents/. If a builder is DORMANT on a red or finished gate: read the gate log, diagnose the failing step, nudge via SendMessage with the precise fix. If genuinely STALLED across a FULL cycle (no worktree writes, no gate activity, no commits): take over — diagnose, fix, gate, merge. If progressing, note it briefly. ALSO treat a GREEN gate whose branch is still unlanded as a stall — landing is the conductor's job and a finished gate that nobody merges is wasted wall-clock. Flag over-spawn (cap builders ~2-3) and CPU contention. GATES DO NOT OVERLAP LIVE BUILDERS: a gate and a builder's verification phase are the same resource, and 'the builders look quiet' is not a launch condition (a quiet builder reaches its own tests inside the gate's 5-minute window, and log growth is what a READING builder produces). Hold gating while any builder is alive, then drain the gate queue back-to-back on a quiet machine — a re-run costs 5 minutes, a wait usually costs less. Gates MAY run concurrently with each other (two gates 6m04s/6m07s vs 8m03s serial), but a pool phase must not overlap another gate's quiet timing tail until the machine-wide quiet lock lands. Before calling a timeout-class red a defect, ask what else was running and re-run that ONE smoke solo on an idle machine. Report concisely.
-```
-
-Refreshed 2026-07-24 after a session restart proved the doctrine: the in-memory crons died, the
-verbatim copies here restored them. This refresh generalized the stale specifics (the finished
-11-task batch, the stood-down fork id, the old baseline SHA) into evidence-based forms.
-
-Refreshed again 2026-07-25: the 10-minute heartbeat was found **absent** from `CronList` while this
-file still recorded it as live, which is what step 0 above now guards. Its verbatim text was also
-carrying a superseded rule (one gate at a time) — a stale recorded prompt is worse than none, since
-a restored cron would have re-imposed a constraint the fleet had already measured its way out of.
-Rule earned: when doctrine in this skill changes, the verbatim prompts are part of the change set,
-not a separate chore.
+Retired 2026-07-26 and replaced by the 30-minute RECONCILIATION SWEEP above — do NOT re-arm it.
+Why it retired: per-builder commit-count-or-silence Monitors now fire the instant work commits or a
+codex log goes silent, which beats any fixed polling cadence at the poll's own job; and the codex
+fleet leaves durable evidence (logs, worktrees, branches) that a half-hour sweep reconciles lazily.
+What the poll did that still matters — green-unlanded detection, dead-builder recovery, the
+never-kill-user-instances rule, checkout sync — moved into the sweep's five checks verbatim. Its
+prompt history (three refreshes, each earned by a restart or a superseded rule) is preserved in git;
+the armable text was deliberately deleted from this file because a stale recorded prompt is worse
+than none — a restored cron would re-impose retired doctrine.
 
 ## Gate concurrency (superseding one-gate-at-a-time, as of 2026-07-25)
 
