@@ -184,6 +184,29 @@ function popupListContains(
   return false;
 }
 
+function sharedTextColumn(
+  snapshot: HarnessSnapshot.Model,
+  labels: readonly string[],
+): number | null {
+  const positions = labels.map((label) => snapshot.findText(label));
+  if (positions.some((position) => position === null)) return null;
+  const columns = positions.map((position) => position?.column ?? -1);
+  return new Set(columns).size === 1 ? (columns[0] ?? null) : null;
+}
+
+function sharedPopupItemColumn(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+  labels: readonly string[],
+): number | null {
+  const positions = labels.map((label) =>
+    popupItemPosition(snapshot, geometry, label),
+  );
+  if (positions.some((position) => position === null)) return null;
+  const columns = positions.map((position) => position?.column ?? -1);
+  return new Set(columns).size === 1 ? (columns[0] ?? null) : null;
+}
+
 function cellAttributeSignature(
   snapshot: HarnessSnapshot.Model,
   position: { column: number; row: number },
@@ -209,6 +232,12 @@ const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-bounded-list-popup-harness-home-'),
 );
 const statusPath = join(homeDirectory, 'status.json');
+const uniformTreeFileNames = [
+  'a-ordinary.txt',
+  'b-picture.png',
+  'bun.lock',
+] as const;
+const totalFixtureBufferCount = 103;
 
 for (let fileNumber = 1; fileNumber <= 100; fileNumber++) {
   const paddedFileNumber = String(fileNumber).padStart(3, '0');
@@ -216,6 +245,9 @@ for (let fileNumber = 1; fileNumber <= 100; fileNumber++) {
     join(fixtureRoot, `file-${paddedFileNumber}.txt`),
     `buffer ${paddedFileNumber}\n`,
   );
+}
+for (const fileName of uniformTreeFileNames) {
+  await Bun.write(join(fixtureRoot, fileName), `${fileName}\n`);
 }
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
@@ -245,10 +277,17 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== bounded popup: build and open the 100-buffer fixture ==');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('file-001.txt') !== null,
+  console.log('== bounded popup: build and open the 103-buffer fixture ==');
+  const uniformTreeSnapshot = await driver.awaitGridCondition(
+    'ordinary, image, and bun.lock tree filenames share one column',
+    (candidate) =>
+      sharedTextColumn(candidate, uniformTreeFileNames) !== null &&
+      candidate.findText('file-001.txt') !== null,
     15_000,
+  );
+  HarnessSmoke.Class.requireCondition(
+    sharedTextColumn(uniformTreeSnapshot, uniformTreeFileNames) !== null,
+    'every tree row filename starts in the same terminal column',
   );
   for (let openAttempt = 0; openAttempt < 130; openAttempt++) {
     const openingStatus = await HarnessSmoke.Class.awaitStatus(
@@ -260,7 +299,7 @@ try {
         typeof status.focus === 'string',
     );
     const previousBufferCount = Number(openingStatus.bufferTabCount);
-    if (previousBufferCount >= 100) break;
+    if (previousBufferCount >= totalFixtureBufferCount) break;
     if (openingStatus.focus !== 'files') {
       // Tab indents in the editor now (#91); the host focus chord is Ctrl+Shift+J.
       driver.sendKeys('Control+Shift+j');
@@ -282,10 +321,10 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the fixture publishes exactly 100 open buffers',
-    (status) => status.bufferTabCount === 100,
+    'the fixture publishes exactly 103 open buffers',
+    (status) => status.bufferTabCount === totalFixtureBufferCount,
   );
-  HarnessSmoke.Class.pass('fixture exposes exactly 100 open buffers');
+  HarnessSmoke.Class.pass('fixture exposes exactly 103 open buffers');
   driver.sendKeys('Control+PageDown');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -295,13 +334,13 @@ try {
   );
 
   let snapshot = await driver.awaitGridCondition(
-    'the 100-buffer badge paints',
-    (candidate) => badgePosition(candidate, 100) !== null,
+    'the 103-buffer badge paints',
+    (candidate) => badgePosition(candidate, totalFixtureBufferCount) !== null,
   );
-  const badge = badgePosition(snapshot, 100);
+  const badge = badgePosition(snapshot, totalFixtureBufferCount);
   HarnessSmoke.Class.requireCondition(
     badge !== null,
-    '100-buffer badge is visible',
+    '103-buffer badge is visible',
   );
   if (!badge) throw new Error('Buffer badge vanished');
   clickPosition(driver, badge);
@@ -481,9 +520,9 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.activeBufferIndex === 72 && status.boundedListPopupOpen === false',
+    'file-073 is active and the bounded list popup is closed',
     (status) =>
-      status.activeBufferIndex === 72 && status.boundedListPopupOpen === false,
+      status.activeBufferIndex === 75 && status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('keyboard Enter focuses the filtered buffer');
 
@@ -492,9 +531,9 @@ try {
   );
   snapshot = await driver.awaitGridCondition(
     'the buffer badge remains available',
-    (candidate) => badgePosition(candidate, 100) !== null,
+    (candidate) => badgePosition(candidate, totalFixtureBufferCount) !== null,
   );
-  const mouseSelectionBadge = badgePosition(snapshot, 100);
+  const mouseSelectionBadge = badgePosition(snapshot, totalFixtureBufferCount);
   if (!mouseSelectionBadge)
     throw new Error('Buffer badge vanished before mouse selection');
   clickPosition(driver, mouseSelectionBadge);
@@ -530,17 +569,17 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'status condition: status.activeBufferIndex === 24 && status.boundedListPopupOpen === false',
+    'file-025 is active and the bounded list popup is closed',
     (status) =>
-      status.activeBufferIndex === 24 && status.boundedListPopupOpen === false,
+      status.activeBufferIndex === 27 && status.boundedListPopupOpen === false,
   );
   HarnessSmoke.Class.pass('mouse click focuses the filtered buffer');
 
   snapshot = await driver.awaitGridCondition(
     'the buffer badge remains available for outside-dismiss coverage',
-    (candidate) => badgePosition(candidate, 100) !== null,
+    (candidate) => badgePosition(candidate, totalFixtureBufferCount) !== null,
   );
-  const dismissalBadge = badgePosition(snapshot, 100);
+  const dismissalBadge = badgePosition(snapshot, totalFixtureBufferCount);
   if (!dismissalBadge)
     throw new Error('Buffer badge vanished before outside dismissal');
   clickPosition(driver, dismissalBadge);
@@ -578,6 +617,15 @@ try {
     join(pickerNestedDirectory, 'breadcrumb-target.txt'),
     'BREADCRUMB PICKER FILE CONTENT\n',
   );
+  await Bun.write(join(pickerNestedDirectory, 'bun.lock'), 'lock fixture\n');
+  await Bun.write(
+    join(pickerNestedDirectory, 'picker-image.png'),
+    'image fixture\n',
+  );
+  await Bun.write(
+    join(pickerNestedDirectory, 'picker-ordinary.txt'),
+    'ordinary fixture\n',
+  );
   await Bun.write(
     join(pickerDeeperDirectory, 'deeper-file.txt'),
     'deeper file\n',
@@ -595,16 +643,22 @@ try {
     'deeper',
     'breadcrumb-active.txt',
     'breadcrumb-target.txt',
+    'bun.lock',
+    'picker-image.png',
     'picker-module.ts',
     'picker-notes.md',
+    'picker-ordinary.txt',
   ] as const;
   const pickerNestedMatchIdentifiers = [
     parentRowIdentifier,
     pickerDeeperDirectory,
     join(pickerNestedDirectory, 'breadcrumb-active.txt'),
     join(pickerNestedDirectory, 'breadcrumb-target.txt'),
+    join(pickerNestedDirectory, 'bun.lock'),
+    join(pickerNestedDirectory, 'picker-image.png'),
     join(pickerNestedDirectory, 'picker-module.ts'),
     join(pickerNestedDirectory, 'picker-notes.md'),
+    join(pickerNestedDirectory, 'picker-ordinary.txt'),
   ] as const;
   const pickerDeeperMatchIdentifiers = [
     parentRowIdentifier,
@@ -796,6 +850,14 @@ try {
         popupRowLabel(snapshot, nestedRowGeometry, filteredIndex) === label,
     ),
     'every painted row label starts at the same published label column',
+  );
+  HarnessSmoke.Class.requireCondition(
+    sharedPopupItemColumn(
+      snapshot,
+      nestedRowGeometry,
+      pickerNestedRowLabels,
+    ) !== null,
+    'every breadcrumb filename starts in the same terminal column',
   );
   HarnessSmoke.Class.requireCondition(
     pickerNestedRowLabels.every(
