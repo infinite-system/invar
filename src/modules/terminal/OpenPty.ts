@@ -61,6 +61,10 @@ class $OpenPty {
         args: [FFIType.int, FFIType.int, FFIType.int],
         returns: FFIType.int,
       },
+      dup: {
+        args: [FFIType.int],
+        returns: FFIType.int,
+      },
       write: {
         args: [FFIType.int, FFIType.ptr, FFIType.u64],
         returns: FFIType.i64,
@@ -148,11 +152,20 @@ class $OpenPty {
     this.startMasterRead(callback);
   }
 
+  /** Give the read stream a duplicate, never the master. The stream closes the descriptor it holds
+   *  when it is destroyed or reaches end-of-file, and it does that close from an I/O thread rather
+   *  than from the turn that called `destroy()` — `autoClose: false` does not prevent it (measured
+   *  on Bun 1.3.14, Linux arm64). Handing it the master gave the master two closers: the stream and
+   *  `close()`. Whichever ran first freed the number, and the other one then closed whatever the
+   *  process had allocated in the gap — a pty a second `OpenPty` had just opened, a file, a socket.
+   *  The victim saw `EBADF` from a descriptor that had been valid one statement earlier, because the
+   *  thief was not JavaScript. A private duplicate gives every descriptor exactly one closer. The
+   *  duplicate shares the master's open file, so the status flags this class steers still govern it. */
   protected startMasterRead(callback: (bytes: Uint8Array) => void): void {
     if (this.closed) return;
     const readStream = createReadStream('', {
-      fd: this.masterFileDescriptor,
-      autoClose: false,
+      fd: this.duplicateMasterFileDescriptor(),
+      autoClose: true,
     });
     this.readStream = readStream;
     readStream.on('data', (chunk: Buffer) => callback(new Uint8Array(chunk)));
@@ -173,6 +186,19 @@ class $OpenPty {
         this.readStream = null;
       }
     });
+  }
+
+  protected duplicateMasterFileDescriptor(): number {
+    const openPtyClass = this.constructor as typeof $OpenPty;
+    const duplicateFileDescriptor =
+      openPtyClass.$terminalControlLibrary.symbols.dup(
+        this.masterFileDescriptor,
+      );
+    if (duplicateFileDescriptor < 0) {
+      const failureErrno = this.currentErrno();
+      throw this.fileControlError('dup', failureErrno);
+    }
+    return duplicateFileDescriptor;
   }
 
   protected scheduleMasterReadRestart(
@@ -203,7 +229,8 @@ class $OpenPty {
         0,
       );
     if (currentFileStatusFlags < 0) {
-      throw this.fileControlError('F_GETFL');
+      const failureErrno = this.currentErrno();
+      throw this.fileControlError('F_GETFL', failureErrno);
     }
     this.fileStatusFlagsWithoutNonBlocking =
       currentFileStatusFlags & ~openPtyClass.nonBlockingFileStatusFlag;
@@ -212,34 +239,75 @@ class $OpenPty {
 
   protected establishNonBlockingWriteState(): void {
     const openPtyClass = this.constructor as typeof $OpenPty;
-    const setFileStatusFlagsResult =
-      openPtyClass.$terminalControlLibrary.symbols.fcntl(
-        this.masterFileDescriptor,
-        openPtyClass.setFileStatusFlagsCommand,
-        this.fileStatusFlagsWithoutNonBlocking |
-          openPtyClass.nonBlockingFileStatusFlag,
-      );
-    if (setFileStatusFlagsResult < 0) {
-      throw this.fileControlError('F_SETFL');
-    }
+    this.applyFileStatusFlags(
+      this.fileStatusFlagsWithoutNonBlocking |
+        openPtyClass.nonBlockingFileStatusFlag,
+    );
   }
 
   protected establishBlockingReadState(): void {
+    this.applyFileStatusFlags(this.fileStatusFlagsWithoutNonBlocking);
+  }
+
+  /** Set the master's status flags and prove they took. `F_SETFL` reporting success is not evidence
+   *  that the requested flags are now in force: it reports on whatever descriptor the number named
+   *  when the kernel ran, and a blocking-mode this class did not request is exactly the state
+   *  `Shared PTY writes never block the event loop` forbids. So the flags are read back. */
+  protected applyFileStatusFlags(requestedFileStatusFlags: number): void {
     const openPtyClass = this.constructor as typeof $OpenPty;
     const setFileStatusFlagsResult =
       openPtyClass.$terminalControlLibrary.symbols.fcntl(
         this.masterFileDescriptor,
         openPtyClass.setFileStatusFlagsCommand,
-        this.fileStatusFlagsWithoutNonBlocking,
+        requestedFileStatusFlags,
       );
     if (setFileStatusFlagsResult < 0) {
-      throw this.fileControlError('F_SETFL');
+      // Read errno as the very first statement after the failed call. Anything interposed here —
+      // a property chain that allocates, a string built for a message, a collection — can make a
+      // failing syscall of its own and overwrite errno, which is how one of these failures was
+      // reported as errno 11 (EAGAIN), a value `F_SETFL` cannot produce.
+      const failureErrno = this.currentErrno();
+      throw this.fileControlError('F_SETFL', failureErrno);
+    }
+    this.verifyFileStatusFlags(requestedFileStatusFlags);
+  }
+
+  /** Read the master's status flags back and require the non-blocking bit to be the requested one.
+   *  Only that bit is compared because it is the only one this class steers; the kernel keeps the
+   *  access mode and `O_LARGEFILE` regardless of what `F_SETFL` is handed. */
+  protected verifyFileStatusFlags(requestedFileStatusFlags: number): void {
+    const openPtyClass = this.constructor as typeof $OpenPty;
+    const observedFileStatusFlags =
+      openPtyClass.$terminalControlLibrary.symbols.fcntl(
+        this.masterFileDescriptor,
+        openPtyClass.getFileStatusFlagsCommand,
+        0,
+      );
+    if (observedFileStatusFlags < 0) {
+      const failureErrno = this.currentErrno();
+      throw this.fileControlError('F_GETFL read-back', failureErrno);
+    }
+    const requestedNonBlocking =
+      (requestedFileStatusFlags & openPtyClass.nonBlockingFileStatusFlag) !== 0;
+    const observedNonBlocking =
+      (observedFileStatusFlags & openPtyClass.nonBlockingFileStatusFlag) !== 0;
+    if (requestedNonBlocking !== observedNonBlocking) {
+      throw new Error(
+        `OpenPty F_SETFL requested O_NONBLOCK=${requestedNonBlocking} on ` +
+          `descriptor ${this.masterFileDescriptor} but it reports ` +
+          `O_NONBLOCK=${observedNonBlocking} ` +
+          `(requested flags 0x${requestedFileStatusFlags.toString(16)}, ` +
+          `observed flags 0x${observedFileStatusFlags.toString(16)})`,
+      );
     }
   }
 
-  protected fileControlError(operationName: string): Error {
+  protected fileControlError(
+    operationName: string,
+    failureErrno: number,
+  ): Error {
     return new Error(
-      `OpenPty ${operationName} failed with errno ${this.currentErrno()}`,
+      `OpenPty ${operationName} failed with errno ${failureErrno}`,
     );
   }
 
@@ -348,15 +416,16 @@ class $OpenPty {
     );
   }
 
-  /** The child inherited the slave; close only the parent's copy so master EOF remains meaningful. */
+  /** The child inherited the slave; close only the parent's copy so master EOF remains meaningful.
+   *  `slaveFileDescriptorValue` is the state that says whether this copy is still ours, so it is the
+   *  only guard: a close that fails while we still hold the descriptor is a second closer somewhere,
+   *  which is the defect this class was just repaired for, and it must be heard. `Bun.spawn` does not
+   *  take ownership of a descriptor number passed in `stdio` (measured on Bun 1.3.14, Linux arm64). */
   releaseSlaveFileDescriptor(): void {
     if (this.slaveFileDescriptorValue < 0) return;
-    try {
-      closeSync(this.slaveFileDescriptorValue);
-    } catch {
-      // The runtime may already have closed its copy after spawn.
-    }
+    const releasedFileDescriptor = this.slaveFileDescriptorValue;
     this.slaveFileDescriptorValue = -1;
+    closeSync(releasedFileDescriptor);
   }
 
   close(): void {
@@ -376,10 +445,12 @@ class $OpenPty {
     }
     this.readStream = null;
     this.releaseSlaveFileDescriptor();
-    try {
+    // The master has exactly one closer, so this must succeed. Swallowing its failure is what let
+    // the double close live: the losing close returned EBADF and nobody heard it, while the winning
+    // one had already handed the number to an unrelated descriptor. `closed` is the state that says
+    // whether the descriptor is still ours, and it is checked at the top of this method.
+    if (this.masterFileDescriptor >= 0) {
       closeSync(this.masterFileDescriptor);
-    } catch {
-      // The master is already closed.
     }
   }
 }
