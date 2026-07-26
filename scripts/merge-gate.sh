@@ -484,7 +484,22 @@ if [ "${FAST:-0}" != "1" ]; then
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
   parallel_safe_full_tmux_smoke "smoke: paste"       bash scripts/smoke-paste.sh
-  parallel_safe_smoke "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
+  # QUIET-SERIAL for a reason that is NOT assertion timing: BACKPRESSURE. This smoke
+  # writes a 65,536-byte bracketed-paste payload into a PTY whose kernel buffer is far
+  # smaller. Run alone it takes 2 SECONDS (measured 2-of-2 on main, 3-of-3 on a feature
+  # branch). Run inside the pool beside five other workers it has stalled for ~4.5
+  # MINUTES at 0% CPU — the application drains slowly under contention, so the harness's
+  # write blocks and both sides idle. One straggler stretched a 0m52s pool phase to
+  # 5m53s, and it did it again on a later run, so it taxes every gate that overlaps a
+  # builder.
+  #
+  # The pool's entry requirement is "runs correctly in the pool", and this does not.
+  # Two seconds of tail buys back minutes of pool. The underlying question — whether the
+  # application or the harness owns the backpressure, since a real user pasting 64KB on a
+  # busy machine would stall identically — is tracked separately and is NOT settled by
+  # this move. Do not shrink the payload to "fix" it: 64KB is deliberate coverage of
+  # chunked paste, and shrinking it would delete the precondition of that coverage.
+  quiet_serial_smoke "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
   quiet_serial_smoke "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
