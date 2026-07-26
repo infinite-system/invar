@@ -59,7 +59,13 @@ class $ThemeIcons {
         directoryClosed: '▸',
         file: '·',
         typescript: '◆',
-        javascript: '●',
+        // ◉ (U+25C9) not ● (U+25CF): the solid circle is ALSO the dirty and active-tab marker, and
+        // "JavaScript source" and "unsaved changes" are unrelated meanings. Nothing composes a file
+        // mark and a dirty dot into one row TODAY, but that is a position argument, not a structural
+        // one, and this vocabulary already gained a second consumer and now a third. The fisheye keeps
+        // the round silhouette users read as JS, is solid so no thin stroke can vanish at terminal
+        // size, and measures one cell in BOTH the app's width table and the terminal's.
+        javascript: '◉',
         json: '⛃',
         markdown: '✎',
         lockfile: '🔒',
@@ -149,46 +155,190 @@ class $ThemeIcons {
     });
   }
 
-  // Every cell mark another surface already owns, keyed to its OWNER. A new symbol class must not
-  // paint one of these: the same mark carrying two meanings is unreadable. Two properties make this
-  // table load-bearing rather than decorative. It records OWNERSHIP, not just membership, so a slot
-  // can ask "is this mark reserved by someone ELSE"; and every entry the theme owns is READ from the
-  // vocabulary that paints it, so swapping a vocabulary glyph can never leave the reserved table
-  // describing the previous one. The `●` entry is the exception, and the reason is a defect: the
-  // dirty/active tab marker is a literal inside `TabBarRenderer`, not a theme slot, so the theme
-  // cannot read it from its owner.
-  protected static get $reservedMarks(): ReadonlyMap<string, string> {
+  // WHO OWNS WHICH MARK. Every mark that can land in a list row's mark column or a single-cell chrome
+  // strip, paired with the surface that means something by it. Three properties make this table an
+  // instrument rather than a note.
+  //
+  // It is COMPLETE for those surfaces — including the file-type marks, whose absence was why the
+  // recorded collisions below could not be checked. An impossibility claim whose data source is
+  // incomplete is a claim that cannot fail.
+  //
+  // It is DERIVED from the vocabularies that paint the marks, so swapping a glyph cannot leave this
+  // table describing the previous one. The single literal is `●`, and that is itself the finding: the
+  // dirty/active tab marker is written inside `TabBarRenderer` instead of being a theme slot, so the
+  // theme cannot read it from its owner.
+  //
+  // It is scoped to the UNICODE tier on purpose. That is the tier where every surface draws from one
+  // small portable alphabet, so it is the tier where marks are forced to meet. The nerd tier gives
+  // each slot its own private-use code point, and the ascii rung is a deliberately degenerate alphabet
+  // of letters and punctuation where reuse is unavoidable; the ascii column's own distinctness is
+  // asserted separately.
+  //
+  // NOT yet covered, and named rather than silently omitted: the git-panel action buttons, the staging
+  // checkboxes, the find-bar buttons, and the agent-transcript carets. Each lives in its own dedicated
+  // affordance column rather than a shared mark column, and each has its own candidate collisions
+  // (`↗` is both panel-expand and open-externally; `▸`/`▾` are both directory state and transcript
+  // disclosure). Auditing those is a separate change, because resolving any of them moves a hit
+  // column.
+  protected static get $markOwnerships(): readonly MarkOwnership[] {
     const unicodeVocabulary = this.$interfaceGlyphVocabularies.unicode;
+    const unicodeSymbolMarks = this.$symbolMarks.unicode;
+    return this.cache('$markOwnerships', [
+      { mark: unicodeVocabulary.activityFiles, owner: 'activity: Explorer' },
+      {
+        mark: unicodeVocabulary.activitySourceControl,
+        owner: 'activity: Source Control',
+      },
+      {
+        mark: unicodeVocabulary.activityExtensions,
+        owner: 'activity: Extensions',
+      },
+      { mark: unicodeVocabulary.activitySearch, owner: 'activity: Search' },
+      { mark: unicodeVocabulary.activitySettings, owner: 'activity: Settings' },
+      {
+        mark: unicodeVocabulary.activityAccentBar,
+        owner: 'the diff and activity accent bar',
+      },
+      { mark: unicodeVocabulary.panelAdd, owner: 'panel add' },
+      { mark: unicodeVocabulary.panelExpand, owner: 'panel expand' },
+      { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
+      { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
+      { mark: unicodeVocabulary.overviewMark, owner: 'the overview pip' },
+      {
+        mark: this.$tabSeparators.unicode,
+        owner: 'the buffer-tab separator',
+      },
+      {
+        mark: this.$terminalIcons.unicode,
+        owner: 'the status-bar terminal affordance',
+      },
+      {
+        mark: this.$settingsIcons.unicode,
+        owner: 'the status-bar settings affordance',
+      },
+      {
+        mark: this.$agentIcons.unicode,
+        owner: 'the status-bar agent affordance',
+      },
+      {
+        mark: this.$rightDockIcons.unicode,
+        owner: 'the status-bar right-dock affordance',
+      },
+      {
+        mark: this.$alertIcons.unicode,
+        owner: 'the un-openable path warning',
+      },
+      {
+        mark: '●',
+        owner: 'the dirty and active tab marker (a TabBarRenderer literal)',
+      },
+      ...(
+        Object.entries(unicodeSymbolMarks) as readonly [SymbolClass, string][]
+      ).map(([symbolClass, mark]) => ({
+        mark,
+        owner: `symbol class: ${symbolClass}`,
+      })),
+    ]);
+  }
+
+  // The sharings that are INTENDED or KNOWN, each with its reason. A sharing absent from this map
+  // fails the gate; a sharing listed here that is no longer real also fails, so the list cannot rot
+  // into an allowlist nobody revisits.
+  protected static get $declaredMarkSharings(): ReadonlyMap<string, string> {
     return this.cache(
-      '$reservedMarks',
+      '$declaredMarkSharings',
       new Map([
         [
-          unicodeVocabulary.activityAccentBar,
-          'the diff and activity accent bar',
+          this.$symbolMarks.unicode.versionControl,
+          'INTENDED. The Source Control activity item and a git file row mean the SAME thing — ' +
+            'version control — so one mark is consistency, not ambiguity. This is the rule the ' +
+            'other entries fail: a mark may be shared only by owners that mean the same thing.',
         ],
-        ['●', 'the dirty and active tab marker (a TabBarRenderer literal)'],
+        [
+          this.$symbolMarks.unicode.configuration,
+          'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
+            'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
+            '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
+            '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
+            'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
+            'its own change deliberately rather than picked in passing.',
+        ],
         [
           this.$tabSeparators.unicode,
-          'the buffer-tab separator and the terminal prompt',
+          'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
+            'paint the chevron with different meanings. They are in different chrome strips and no ' +
+            'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
+            'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
         ],
-        [unicodeVocabulary.overviewMark, 'the editor overview pip'],
-        [unicodeVocabulary.panelExpand, 'panel expand'],
-        [unicodeVocabulary.panelRestore, 'panel restore'],
-        [unicodeVocabulary.panelAdd, 'panel add'],
-        [unicodeVocabulary.panelClose, 'panel close'],
-        [unicodeVocabulary.activityFiles, 'activity: Explorer'],
-        [unicodeVocabulary.activitySourceControl, 'activity: Source Control'],
-        [unicodeVocabulary.activityExtensions, 'activity: Extensions'],
-        [
-          unicodeVocabulary.activitySearch,
-          'activity: Search, and the find field',
-        ],
-        [
-          unicodeVocabulary.activitySettings,
-          'activity: Settings, and the status-bar settings affordance',
-        ],
-        [this.$symbolMarks.unicode.webAssembly, 'the WebAssembly file mark'],
       ]),
+    );
+  }
+
+  protected static get $markOwnersByMark(): ReadonlyMap<
+    string,
+    readonly string[]
+  > {
+    const markOwnersByMark = new Map<string, string[]>();
+    for (const ownership of this.$markOwnerships) {
+      const owners = markOwnersByMark.get(ownership.mark);
+      if (owners === undefined) {
+        markOwnersByMark.set(ownership.mark, [ownership.owner]);
+        continue;
+      }
+      owners.push(ownership.owner);
+    }
+    return this.cache('$markOwnersByMark', markOwnersByMark);
+  }
+
+  /** Every recorded mark ownership at the shared portable tier. */
+  static get markOwnerships(): readonly MarkOwnership[] {
+    return this.$markOwnerships;
+  }
+
+  /** The surfaces that mean something by a mark — empty when no surface claims it. */
+  static markOwnersFor(mark: string): readonly string[] {
+    return this.$markOwnersByMark.get(mark) ?? [];
+  }
+
+  /** The reasons recorded for the sharings that are intended or knowingly carried. */
+  static get declaredMarkSharings(): ReadonlyMap<string, string> {
+    return this.$declaredMarkSharings;
+  }
+
+  /** Pure detector, so a test can drive it with a synthetic list and prove it CAN report. */
+  static markSharingsIn(
+    ownerships: readonly MarkOwnership[],
+  ): readonly MarkSharing[] {
+    const ownersByMark = new Map<string, string[]>();
+    for (const ownership of ownerships) {
+      const owners = ownersByMark.get(ownership.mark) ?? [];
+      owners.push(ownership.owner);
+      ownersByMark.set(ownership.mark, owners);
+    }
+    return [...ownersByMark.entries()]
+      .filter(([, owners]) => owners.length > 1)
+      .map(([mark, owners]) => ({ mark, owners }));
+  }
+
+  /** Marks carried by more than one surface at the shared portable tier. */
+  static get markSharings(): readonly MarkSharing[] {
+    return this.markSharingsIn(this.$markOwnerships);
+  }
+
+  /** A sharing nobody declared — the failure this table exists to produce. */
+  static get undeclaredMarkSharings(): readonly MarkSharing[] {
+    return this.markSharings.filter(
+      (sharing) => !this.$declaredMarkSharings.has(sharing.mark),
+    );
+  }
+
+  /** A declaration whose sharing no longer exists, so the record can never outlive the reality. */
+  static get staleMarkSharingDeclarations(): readonly string[] {
+    const sharedMarks = new Set(
+      this.markSharings.map((sharing) => sharing.mark),
+    );
+    return [...this.$declaredMarkSharings.keys()].filter(
+      (mark) => !sharedMarks.has(mark),
     );
   }
 
@@ -257,9 +407,17 @@ class $ThemeIcons {
         // U+2261 carries the same list-of-lines meaning at an unambiguous single cell.
         activityFiles: '≡',
         activitySourceControl: '⑂',
-        // ⬢ BLACK HEXAGON is the module/package convention and stays legible at terminal size,
-        // where ⊞'s thin internal cross disappeared for the user who reported it.
-        activityExtensions: '⬢',
+        // Third glyph for this slot, and the two failures ARE the specification. ⊞ was
+        // unrecognisable: its thin internal cross disappeared at terminal size. ⬢ BLACK HEXAGON was
+        // legible but read as oversized beside its siblings — and measurement says that was
+        // aesthetic, not a width bug: U+2B22 measures ONE cell in the app table AND renders in one
+        // cell in the terminal, so the activity strip was never misaligned; the hexagon simply carries
+        // more ink than ≡ ⑂ ⌕ ⚙. The constraint is therefore a narrow band: solid (no fine detail that
+        // can vanish), one unambiguous cell, and not visually heavier than the row. ⧫ BLACK LOZENGE is
+        // solid, keeps a package-like read, is slimmer than the hexagon, and is East-Asian-Width
+        // NEUTRAL rather than AMBIGUOUS — narrow by classification instead of by hope, which also
+        // removes a latent risk the hexagon carried even though this terminal agreed on its width.
+        activityExtensions: '⧫',
         activitySearch: '⌕',
         activitySettings: '⚙',
         activityAccentBar: '▎',
@@ -380,11 +538,6 @@ class $ThemeIcons {
   // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
   static symbolMarkFor(level: GlyphLevel, symbolClass: SymbolClass): string {
     return this.$symbolMarks[level][symbolClass];
-  }
-
-  /** The recorded reserved marks, each mapped to the surface that already owns it. */
-  static get reservedMarks(): ReadonlyMap<string, string> {
-    return this.$reservedMarks;
   }
 
   static settingsIconFor(level: GlyphLevel): string {
@@ -593,6 +746,18 @@ export type SymbolClass =
 
 /** One capability tier's complete row: every symbol class has a mark, so lookup is total. */
 export type SymbolMarkSet = Record<SymbolClass, string>;
+
+/** One surface's claim on one mark: what it paints, and what it means by it. */
+export interface MarkOwnership {
+  readonly mark: string;
+  readonly owner: string;
+}
+
+/** A mark more than one surface claims, with every claimant named. */
+export interface MarkSharing {
+  readonly mark: string;
+  readonly owners: readonly string[];
+}
 
 export interface ActionIconSet {
   open: string;

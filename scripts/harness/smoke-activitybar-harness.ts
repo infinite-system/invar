@@ -17,7 +17,7 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 // The expected glyphs come from the SAME vocabulary the bar paints from, so a vocabulary change (⊞ →
-// ⬢ for the user who could not recognize ⊞) never re-breaks this drive. What the literal row must be
+// ⬢ → ⧫ over two user reports) never re-breaks this drive. What the literal row must be
 // is pinned once, in `src/modules/theme/ThemeIcons.test.ts`; what this smoke proves is that the
 // painted cell IS the named slot and that it occupies exactly one cell.
 function activityGlyphsFor(

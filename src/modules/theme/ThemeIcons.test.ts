@@ -90,7 +90,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f00d}',
       '•',
     ],
-    unicode: ['≡', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×', '•'],
+    unicode: ['≡', '⑂', '⧫', '⌕', '⚙', '+', '↗', '↙', '×', '•'],
     ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '.'],
   } as const;
 
@@ -101,23 +101,20 @@ test('semantic interface glyph slots resolve through every capability tier', () 
   }
 });
 
-test('the extensions glyph is one cell and avoids every reserved mark', () => {
-  // The user could not recognize ⊞ at terminal size, so the slot moved on. The reserved table is
-  // every mark another surface already owns: diff bar, dirty dot, tab separator, overview pip, the
-  // panel controls, the sibling activity glyphs, and ⬡ (the wasm file icon, which is why the
-  // outline hexagon was NOT an acceptable fallback). It is DATA now, so this test enumerates the
-  // recorded table instead of re-pasting a list that can silently fall behind it — and because the
-  // table records each mark's OWNER, the claim is exact: this slot's glyph is either unreserved or
-  // reserved by this very slot, never a mark some other surface already means something with.
-  const reservedMarks = ThemeIcons.Class.reservedMarks;
-
+test('the extensions glyph is one cell and is claimed by nobody else', () => {
+  // Two recorded failures for this slot: ⊞ was unrecognisable (a thin internal cross that vanished at
+  // terminal size) and ⬢ was legible but read as oversized. The claim here is not "avoid this list of
+  // glyphs" — it is that no OTHER surface means something by this slot's mark, asked of the recorded
+  // ownership table rather than of a literal list a test would have to keep in step by hand.
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     const glyph = ThemeIcons.Class.glyphFor(level, 'activityExtensions');
     expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
-    expect(reservedMarks.get(glyph) ?? 'activity: Extensions').toBe(
-      'activity: Extensions',
-    );
   }
+  expect(
+    ThemeIcons.Class.markOwnersFor(
+      ThemeIcons.Class.glyphFor('unicode', 'activityExtensions'),
+    ),
+  ).toEqual(['activity: Extensions']);
 });
 
 test('activity and panel control glyphs stay pairwise distinct at every tier', () => {
@@ -165,9 +162,10 @@ test('file icon sets keep folder and file marks one cell at every tier', () => {
 
 // The complete symbol-mark table, pinned per tier. One whole-row `toEqual` is STRICTER than per-class
 // checks: it catches a missing class, an extra class, and — the reason it exists — a file-type mark
-// that changed while the extension keys were being folded into symbol classes. Every value below is
-// byte-identical to what the extension-keyed table painted before the fold, which is the appearance
-// -preservation proof for the file tree and the breadcrumb popup.
+// that changed while the extension keys were being folded into symbol classes. Every value below was
+// byte-identical to what the extension-keyed table painted before the fold, which was the
+// appearance-preservation proof for the file tree and the breadcrumb popup; the one deliberate change
+// since is `javascript`, moved off the dirty-tab marker's code point by the mark-ownership check.
 test('the symbol-mark table resolves every class at every tier', () => {
   const symbolClasses = [
     'directoryOpen',
@@ -223,7 +221,7 @@ test('the symbol-mark table resolves every class at every tier', () => {
       '▸',
       '·',
       '◆',
-      '●',
+      '◉',
       '⛃',
       '✎',
       '🔒',
@@ -312,12 +310,60 @@ test('code-symbol marks never take a mark another surface already owns', () => {
     'unclassified',
   ] as const;
 
-  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
-    for (const symbolClass of codeSymbolClasses) {
-      const mark = ThemeIcons.Class.symbolMarkFor(level, symbolClass);
-      expect(ThemeIcons.Class.reservedMarks.get(mark) ?? null).toBe(null);
-    }
+  for (const symbolClass of codeSymbolClasses) {
+    const mark = ThemeIcons.Class.symbolMarkFor('unicode', symbolClass);
+    expect(ThemeIcons.Class.markOwnersFor(mark)).toEqual([
+      `symbol class: ${symbolClass}`,
+    ]);
   }
+});
+
+// The collision detector, and the two claims that make it an instrument rather than a note. A mark
+// carried by two surfaces with unrelated meanings is unreadable, so every sharing must be DECLARED
+// with a reason — and a declaration whose sharing no longer exists must be removed, so the record
+// cannot outlive the reality it describes. The ownership table this reads is complete for the surfaces
+// whose marks can meet, which is exactly what the earlier recorded-but-unchecked collisions lacked.
+test('every shared mark is declared, and every declaration is still real', () => {
+  expect(
+    ThemeIcons.Class.undeclaredMarkSharings.map((sharing) => ({
+      mark: sharing.mark,
+      owners: sharing.owners,
+    })),
+  ).toEqual([]);
+  expect(ThemeIcons.Class.staleMarkSharingDeclarations).toEqual([]);
+  for (const [, reason] of ThemeIcons.Class.declaredMarkSharings) {
+    expect(reason.length).toBeGreaterThan(40);
+  }
+});
+
+// Positive control: the detector must be ABLE to report a sharing. Driven with a synthetic ownership
+// list, because a check whose only evidence is "it says nothing about the real table" proves nothing.
+test('the mark-sharing detector reports a collision when one exists', () => {
+  expect(
+    ThemeIcons.Class.markSharingsIn([
+      { mark: '@', owner: 'first surface' },
+      { mark: '#', owner: 'second surface' },
+      { mark: '@', owner: 'third surface' },
+    ]),
+  ).toEqual([{ mark: '@', owners: ['first surface', 'third surface'] }]);
+  expect(
+    ThemeIcons.Class.markSharingsIn([
+      { mark: '@', owner: 'first surface' },
+      { mark: '#', owner: 'second surface' },
+    ]),
+  ).toEqual([]);
+});
+
+// The resolved collision, stated so it cannot silently come back: the JavaScript file mark and the
+// dirty/active tab marker were the same code point with unrelated meanings.
+test('the javascript mark is not the dirty tab marker', () => {
+  const dirtyTabMarker = '●';
+  expect(ThemeIcons.Class.markOwnersFor(dirtyTabMarker)).toEqual([
+    'the dirty and active tab marker (a TabBarRenderer literal)',
+  ]);
+  expect(ThemeIcons.Class.symbolMarkFor('unicode', 'javascript')).not.toBe(
+    dirtyTabMarker,
+  );
 });
 
 // The families must be distinguishable from each other AND from the folder/file marks that share the
