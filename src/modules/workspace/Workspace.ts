@@ -1,6 +1,5 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { FileTree } from './FileTree';
 import { Editor } from '../editor/Editor';
 import { OpenBufferSet } from './OpenBufferSet';
 import {
@@ -39,7 +38,7 @@ import type {
   WorkspacePlugin,
 } from './WorkspacePlugin.interface';
 
-// A workspace: one project root with its file tree, an editor, and which pane has focus.
+// A workspace: one project root with its editor, documents, and generic contribution lifecycle.
 // WorkspaceSet layers project tabs and flyweight activation over this per-root core.
 //
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
@@ -63,8 +62,6 @@ class $Workspace {
   }
 
   root = '';
-  // invariant: Construction goes through overridable seams (project.invariants.md)
-  tree = this.createTree();
   // The set of open editor buffers behind the tab bar (item 10a): opening a file ADDS or FOCUSES a
   // tab, never replaces. Flyweight — only the active buffer (and any dirty background buffer) holds a
   // live document; clean background tabs dehydrate to a light handle and rehydrate on activation.
@@ -85,9 +82,6 @@ class $Workspace {
   // both — they were two identical empty editors, and "empty" is the whole of either's behaviour.
   protected emptyEditor = this.createEditor();
 
-  protected createTree() {
-    return new FileTree.Class();
-  }
   protected createEditor() {
     const editor = new Editor.Class();
     // Word wrap is global: every editor reads the SAME settings.wordWrap when settings are attached, so
@@ -475,10 +469,10 @@ class $Workspace {
     };
   }
   get focus() {
-    return ref<Focus>('files');
+    return ref<Focus>('editor');
   }
   get primaryPaneContentIdentifier() {
-    return ref('files');
+    return ref('');
   }
   get name() {
     return ref('');
@@ -498,8 +492,7 @@ class $Workspace {
     this.root = root;
     const absoluteRoot = Files.Class.absolute(root);
     this.name.value = Files.Class.basename(absoluteRoot) || absoluteRoot;
-    this.tree.open(root);
-    this.focus.value = 'files';
+    this.focus.value = 'editor';
     for (const contribution of this.contributions) contribution.opened(root);
   }
 
@@ -530,21 +523,23 @@ class $Workspace {
   }
 
   toggleFocus(): void {
-    this.focus.value = this.focus.value === 'files' ? 'editor' : 'files';
+    if (this.focus.value === 'primaryPane') {
+      this.focus.value = 'editor';
+    } else if (this.primaryPaneContentIdentifier.value) {
+      this.focus.value = 'primaryPane';
+    }
   }
 
   focusEditor(): void {
     this.focus.value = 'editor';
   }
-  focusFiles(): void {
-    this.primaryPaneContentIdentifier.value = 'files';
-    this.focus.value = 'files';
-  }
   focusPrimaryPane(contentIdentifier?: string): void {
     if (contentIdentifier) {
       this.primaryPaneContentIdentifier.value = contentIdentifier;
     }
-    this.focus.value = 'primaryPane';
+    if (this.primaryPaneContentIdentifier.value) {
+      this.focus.value = 'primaryPane';
+    }
   }
 
   impulseEditorVerticalScroll(deltaRows: number): void {
@@ -563,30 +558,6 @@ class $Workspace {
       deltaColumns,
       this.flingMomentum,
     );
-  }
-
-  impulseTreeScroll(deltaRows: number): void {
-    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(
-      this.tree.selectionMomentum.value,
-      deltaRows,
-      this.flingMomentum,
-    );
-  }
-
-  impulseTreeHorizontalScroll(deltaColumns: number): void {
-    this.tree.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
-      this.tree.horizontalScrollMomentum.value,
-      deltaColumns,
-      this.flingMomentum,
-    );
-  }
-
-  haltTreeScroll(): void {
-    this.tree.selectionMomentum.value = Momentum.Class.halt();
-  }
-
-  haltTreeHorizontalScroll(): void {
-    this.tree.horizontalScrollMomentum.value = Momentum.Class.halt();
   }
 
   // invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
@@ -626,50 +597,15 @@ class $Workspace {
       );
     }
 
-    const treeStep = Momentum.Class.stepMomentum(
-      this.tree.selectionMomentum.value,
-      dtSeconds,
-      this.flingMomentum,
-    );
-    this.tree.selectionMomentum.value = treeStep.momentum;
-    // Wheel scrolls the tree WINDOW (independent offset), not the selection — so the list scrolls as
-    // one uniform surface and the selection highlight travels with its row.
-    if (treeStep.rows !== 0) this.tree.scrollBy(treeStep.rows);
-
-    const treeHorizontalStep = Momentum.Class.stepMomentum(
-      this.tree.horizontalScrollMomentum.value,
-      dtSeconds,
-      this.flingMomentum,
-    );
-    this.tree.horizontalScrollMomentum.value = treeHorizontalStep.momentum;
-    if (treeHorizontalStep.rows !== 0)
-      this.tree.scrollByColumns(treeHorizontalStep.rows);
-
     const contributionIsMoving = this.contributions.some(
       (contribution) => contribution.tickScroll?.(dtSeconds) ?? false,
     );
 
     return (
-      [
-        editorVerticalStep.momentum,
-        editorHorizontalStep.momentum,
-        treeStep.momentum,
-        treeHorizontalStep.momentum,
-      ].some((momentum) => Momentum.Class.isMoving(momentum)) ||
-      contributionIsMoving
+      [editorVerticalStep.momentum, editorHorizontalStep.momentum].some(
+        (momentum) => Momentum.Class.isMoving(momentum),
+      ) || contributionIsMoving
     );
-  }
-
-  /** Activate the current tree selection: open a file (adds/focuses a tab) or toggle a dir. */
-  activate(): { opened?: string } {
-    this.haltTreeScroll();
-    const result = this.tree.activateSelected();
-    if (result && 'openFile' in result) {
-      this.openFileInTab(result.openFile);
-      this.focus.value = 'editor';
-      return { opened: result.openFile };
-    }
-    return {};
   }
 
   // --- editor buffer tabs (item 10a) ---------------------------------------
@@ -815,7 +751,7 @@ class $Workspace {
   /** Close tab `index`, fully disposing its buffer (document/undo/syntax). Clean-close path. */
   closeTab(index: number): void {
     this.buffers.close(index);
-    if (this.buffers.count === 0) this.focus.value = 'files';
+    if (this.buffers.count === 0) this.focusPrimaryPane();
   }
 
   /** Save the active file and update its tab's dirty state. */
@@ -860,7 +796,7 @@ export namespace Workspace {
   export type Instance = typeof Class.Instance;
 }
 
-export type Focus = 'files' | 'editor' | 'primaryPane';
+export type Focus = 'editor' | 'primaryPane';
 
 /** A diagnostic surfaced in the hover card: its severity and message text. */
 export interface HoverDiagnostic {

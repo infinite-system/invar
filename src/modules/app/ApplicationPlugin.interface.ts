@@ -15,6 +15,7 @@ import type { StatusProjectionContributions } from './StatusProjectionContributi
 
 export interface ApplicationPlugin extends WorkspacePlugin {
   readonly primaryDockContentIdentifiers?: readonly string[];
+  readonly primaryDockFallbackContentIdentifier?: string;
   activateApplication(context: ApplicationPluginContext): void;
   disposeApplication?(): void;
 }

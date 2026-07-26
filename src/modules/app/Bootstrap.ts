@@ -50,7 +50,6 @@ import {
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
 import { PanelAddPopup, type PanelContentKind } from '../ui/PanelAddPopup';
-import { FileTreePaneContent } from '../ui/FileTreePaneContent';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { TerminalFactory } from '../terminal/TerminalFactory';
 import { TerminalPaneContent } from '../terminal/TerminalPaneContent';
@@ -201,17 +200,6 @@ class $Bootstrap {
     const rightDockHost = new PanelHost.Class({
       showWhenContentRegistered: true,
     });
-    primaryDockHost.register(
-      new FileTreePaneContent.Class({
-        workspaceSet,
-        activityIcon: () => theme.glyph('activityFiles'),
-        icon: (name, isDirectory, expanded) =>
-          theme.icon(name, isDirectory, expanded),
-        scrollbarThicknessCells: () =>
-          Math.max(1, Math.round(settings.scrollbarThickness.value)),
-      }),
-    );
-    primaryDockHost.show();
 
     const overlayCoordinator = new OverlayCoordinator.Class({
       findBar: () => findBar.close(),
@@ -252,6 +240,15 @@ class $Bootstrap {
         requestRender: () => renderer.requestRender(),
       });
       app.onDispose(() => plugin.disposeApplication?.());
+    }
+    const primaryDockFallbackContentIdentifier = (options.plugins ?? []).find(
+      (plugin) => plugin.primaryDockFallbackContentIdentifier !== undefined,
+    )?.primaryDockFallbackContentIdentifier;
+    if (
+      primaryDockFallbackContentIdentifier &&
+      primaryDockHost.has(primaryDockFallbackContentIdentifier)
+    ) {
+      primaryDockHost.showContent(primaryDockFallbackContentIdentifier);
     }
     statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;
@@ -714,7 +711,16 @@ class $Bootstrap {
     app.$watch(
       () => workspaceSet.active.focus.value,
       (focus) => {
-        if (focus !== 'primaryPane') primaryDockHost.blur();
+        if (focus === 'primaryPane') {
+          const contentIdentifier =
+            workspaceSet.active.primaryPaneContentIdentifier.value;
+          if (contentIdentifier) {
+            primaryDockHost.activate(contentIdentifier);
+            primaryDockHost.focus();
+          }
+        } else {
+          primaryDockHost.blur();
+        }
       },
     );
     // Word wrap toggling (command OR settings panel) switches viewport.scrollTop between LOGICAL-line and
@@ -824,8 +830,6 @@ class $Bootstrap {
       // The breadcrumb's ‹ › history buttons re-colour (enabled/disabled) as the trail moves.
       void workspaceSet.active.navigationHistory.currentIndex.value;
       void workspaceSet.active.navigationHistory.entries.value;
-      void workspaceSet.active.tree.selectedIndex.value;
-      void workspaceSet.active.tree.hoveredIndex.value;
       // Overlay models: the context menu and tooltip repaint on any of their display state.
       void contextMenu.open.value;
       void contextMenu.items.value;
@@ -881,6 +885,7 @@ class $Bootstrap {
       for (const content of panelHost.visibleContents())
         void content.renderRevision.value;
       void primaryDockHost.visible.value;
+      void primaryDockHost.focused.value;
       void primaryDockHost.activeId.value;
       for (const content of primaryDockHost.visibleContents()) {
         void content.renderRevision.value;
@@ -1331,42 +1336,12 @@ class $Bootstrap {
       // at the ends of the history.
       'navigation.back': () => workspaceSet.active.navigateBack(),
       'navigation.forward': () => workspaceSet.active.navigateForward(),
-      'view.showFiles': () => {
-        primaryDockHost.showContent('files');
-        workspaceSet.active.focusFiles();
-      },
       // Ctrl+Shift+B shows/hides the whole activity bar (same setting-flip the palette command runs).
       'view.toggleActivityBar': () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
         app.requestRender();
       },
       'view.toggleRightDock': toggleRightDock,
-      'tree.up': () => {
-        workspaceSet.active.haltTreeScroll();
-        workspaceSet.active.tree.moveSelection(-1);
-      },
-      'tree.down': () => {
-        workspaceSet.active.haltTreeScroll();
-        workspaceSet.active.tree.moveSelection(1);
-      },
-      'tree.activate': () => void workspaceSet.active.activate(),
-      'tree.rightExpandOrOpen': () => {
-        // Right on a FILE opens it; on a collapsed dir expands; on an expanded dir steps into it.
-        workspaceSet.active.haltTreeScroll();
-        if (
-          workspaceSet.active.tree.selected?.isDir &&
-          workspaceSet.active.tree.selected.expanded
-        )
-          workspaceSet.active.tree.moveSelection(1);
-        else workspaceSet.active.activate();
-      },
-      'tree.leftCollapse': () => {
-        if (
-          workspaceSet.active.tree.selected?.isDir &&
-          workspaceSet.active.tree.selected.expanded
-        )
-          workspaceSet.active.activate();
-      },
       // Movement arrives through the REBINDABLE command, not a raw-key intercept, so a remapped
       // chord still drives whichever surface owns the keyboard.
       'editor.moveUp': (key) => {
@@ -1493,7 +1468,7 @@ class $Bootstrap {
           view.contributedEditorSurface()?.yieldKeyboardToSourceEditor();
         else if (workspaceSet.active.editor.hasSelection)
           workspaceSet.active.editor.cursor.clearSelection();
-        else workspaceSet.active.focusFiles();
+        else workspaceSet.active.focusPrimaryPane();
       },
       'editor.save': () => workspaceSet.active.saveActiveFile(),
       'editor.selectAll': () => {

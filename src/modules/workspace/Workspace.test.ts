@@ -76,9 +76,9 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     workspace.closeTab(0);
     workspace.closeTab(0);
     expect(workspace.buffers.count).toBe(0);
-    // No tabs -> the empty-state editor (no document); focus falls back to the file tree.
+    // No tabs -> the empty-state editor. A plugin may nominate a dock fallback; bare host stays here.
     expect(workspace.editor.hasDocument.value).toBe(false);
-    expect(workspace.focus.value).toBe('files');
+    expect(workspace.focus.value).toBe('editor');
   });
 
   test('a DIRTY tab requires a close confirmation; confirm closes, cancel keeps it', () => {

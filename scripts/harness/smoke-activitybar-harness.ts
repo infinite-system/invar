@@ -205,10 +205,12 @@ try {
   );
   const pluginPrimaryDockContentIdentifiers =
     initialStatus.pluginPrimaryDockContentIdentifiers as string[];
-  const expectedPrimaryDockContentIdentifiers = [
-    'files',
-    ...pluginPrimaryDockContentIdentifiers,
-  ];
+  const expectedPrimaryDockContentIdentifiers =
+    pluginPrimaryDockContentIdentifiers;
+  HarnessSmoke.Class.requireCondition(
+    pluginPrimaryDockContentIdentifiers.includes('files'),
+    'the default plugin manifest declares the Explorer view',
+  );
   HarnessSmoke.Class.requireCondition(
     pluginPrimaryDockContentIdentifiers.includes('git'),
     'the default plugin manifest declares the Source Control view',

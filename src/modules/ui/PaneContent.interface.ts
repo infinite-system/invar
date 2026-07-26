@@ -41,7 +41,7 @@ export interface PaneContent {
   readonly keybindingContext?: string;
   /** A ref bumped whenever the content's projection changes (observed by the frame effect so an
    *  async change repaints without a keypress). */
-  readonly renderRevision: Ref<number>;
+  readonly renderRevision: Readonly<Ref<unknown>>;
   /** Project the content into cells for the given region. */
   render(context: PaneRenderContext): StyledText;
   /** Optional native caret cell (viewport-local column/row) so the host can place the terminal-style
@@ -64,6 +64,11 @@ export interface PaneContent {
   readonly scrollbarRowOffset?: number;
   haltScrollMomentum?(): void;
   scrollToLine?(line: number): void;
+  readonly scrollLeft?: number;
+  readonly scrollContentColumns?: number;
+  readonly scrollViewportColumns?: number;
+  haltHorizontalScrollMomentum?(): void;
+  scrollToColumn?(column: number): void;
   /** Optional hover projection in content-local cells. */
   onPointerMove?(column: number, row: number): boolean;
   /** Optional pointer-leave notification for clearing transient hover state. */

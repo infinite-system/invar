@@ -9,10 +9,10 @@ composes like legos"*.
 This document turns "decouple everything" into a **finite, ordered list**. It is the inventory the
 next builder reads instead of rediscovering the surface one domain at a time.
 
-Baseline commit: `2751b32`. **Status: steps 1, 2 and 3 are DONE** (the editor-column occupant port
-with its capability answers, the diff extraction, and the markdown extraction) — see
-[Progress](#progress). Host files audited:
-`src/modules/workspace/Workspace.ts` (922 lines), `src/modules/workspace/WorkspaceSet.ts`,
+Baseline commit: `2751b32`. **Status: steps 1, 2, 3, and 5 are DONE** (the editor-column occupant
+port with its capability answers, the diff extraction, the Markdown extraction, and the file-tree
+extraction) — see [Progress](#progress). Host files audited:
+`src/modules/workspace/Workspace.ts`, `src/modules/workspace/WorkspaceSet.ts`,
 `src/modules/app/` (the app core the conventions gate's step-11 boundary covers), and
 `src/modules/ui/` (the host chrome, *not* covered by step 11 today).
 
@@ -122,45 +122,20 @@ cover it) and leave the six request methods as the host's single provider until 
 
 ---
 
-## Domain 2 — FILE TREE (33 matching lines)
+## Domain 2 — FILE TREE — **DONE**
 
-### Sites
+The host has zero file-tree model, construction, command-dispatch, status-projection, or scrollbar
+sites. `FileTreePlugin` owns the application contribution; `FileTreeWorkspace` owns one tree and
+its two momentum lanes per workspace; `FileTreePaneContent` owns rendering, pointer/keyboard
+context, and generic scroll projection. A selected leaf calls the host-owned
+`Workspace.openFileInTab` capability.
 
-| Line(s) | Kind | Site | Verdict |
-| --- | --- | --- | --- |
-| 3 | TYPE | `import { FileTree } from './FileTree'` (value import) | SPECIFIC |
-| 65 | STATE | `tree = this.createTree()` | SPECIFIC |
-| 84-86 | CONSTRUCT | `createTree()` seam | SPECIFIC |
-| 539 | METHOD | `this.tree.open(root)` inside `open()` | SPECIFIC |
-| 606-628 | METHOD | `impulseTreeScroll`, `impulseTreeHorizontalScroll`, `haltTreeScroll`, `haltTreeHorizontalScroll` | SPECIFIC — four host methods that exist only to forward momentum to one pane |
-| 667-684, 694-695 | METHOD | the tree's two momentum lanes inside `tickScrollAnimations` | SPECIFIC |
-| 702-711 | METHOD | `activate()` — `tree.activateSelected()` → `openFileInTab` | SPECIFIC |
-| 524 | STATE | `worktreeName` — matches the grep on the word "tree" only | GENERIC — unrelated to `FileTree`; it is the source-control worktree label already fed by `WorkspaceContribution.worktreeName?()` |
-| 41, 74, 673 | PROSE | comments | — |
-
-### Verdict
-
-**One `GENERIC` false positive (`worktreeName`); the rest is real.** The tree's *view* is already
-decoupled — `src/modules/ui/FileTreePaneContent.ts` is a `PaneContent` citizen with
-`id === 'files'`. What remains in the host is the **model** and its **two momentum lanes**.
-
-### Port needed
-
-`tickScrollAnimations` already calls `contribution.tickScroll?.(dtSeconds)` — **port 1-4 already
-cover the tree's frame needs.** The blocker is different: the tree is the host's *default* primary
-pane (`focus: 'files'`, `primaryPaneContentIdentifier = 'files'`, `focusFiles()`), and
-`WorkspaceSet`/`Bootstrap`/`RootView` treat `'files'` as the fallback dock identity.
-
-Two customers for a **"default dock content identity"** port? The source-control pane and the tree
-pane both want to be a dock citizen, and the tree additionally wants to be the *fallback*.
-`GitPlugin.primaryDockContentIdentifiers = ['git']` already exists as the registration half.
-→ **JUSTIFIED**: extend the existing dock registration with a `fallback`/`defaultContent` flag
-(customers: file-tree plugin declares it, source control declares it not). This is a one-field
-extension of port 4, not a new port.
-
-The four `impulseTree*` / `haltTree*` methods are pure forwarding and become the tree plugin's own
-methods once `Bootstrap` routes wheel gestures to the focused dock content (`PaneContent.onWheel?`
-already exists and is used by the terminal/agent — the tree's forwarding predates it).
+No new sidebar port was added: `registerPrimaryDockContent` carries the view unchanged. Two narrow
+fields completed existing many-customer contracts:
+`ApplicationPlugin.primaryDockFallbackContentIdentifier` lets the plugin nominate `files` without
+the host naming it, and `PaneContent`'s horizontal-scroll projection lets `ScrollbarSync` drive any
+primary-dock content without an identity branch. With no plugins the primary dock stays hidden and
+the document canvas remains usable through Quick Open.
 
 ---
 
@@ -442,14 +417,11 @@ header.
 
 ## Contract consequences
 
-`project.invariants.md` → **The host canvas is complete without plugins** currently asserts the host
-canvas provides "workspaces, files, editing, language intelligence, **Markdown**, panes, popups,
-commands, and status contributions".
-
-Extracting Markdown makes that sentence false as written. This is a **refines**, not a violation:
-the record's *mechanism* ("shipped domain capabilities may be default plugins but may not require
-host-core knowledge") already anticipates the move — only the enumeration is stale. Markdown must
-be struck from the list, and if language is ever extracted, so must "language intelligence".
+`project.invariants.md` → **The host canvas is complete without plugins** now distinguishes generic
+document opening from contributed discovery/presentation. Markdown and the file-tree view were
+struck from its host-capability enumeration because both ship as default plugins; the mechanism
+already allowed that composition. Language intelligence remains explicitly host-owned until the
+owner renegotiates it.
 
 `src/modules/diff/diff.invariants.md:218` names `Workspace.showingDiff` in the *Scope* of
 **Diff selection reuses shared drag behavior**; `src/modules/markdown/markdown.invariants.md:227`
@@ -501,13 +473,12 @@ Requires the *The host canvas is complete without plugins* record to be refined.
 question 1 must split into "presents the active document" vs "provides language intelligence".
 Cheap, and it validates the port with a third customer.
 
-### 5. FILE TREE → file-tree plugin
+### 5. FILE TREE → file-tree plugin — **DONE**
 
-**Fifth: no new port needed** (the view is already a `PaneContent` citizen; `tickScroll?` and
-`onWheel?` already exist), but it needs the *fallback dock content* flag and it touches
-`focus: 'files'` / `primaryPaneContentIdentifier` defaults in `Workspace`, `WorkspaceSet`,
-`Bootstrap` and `RootView` — a wide, shallow change. Do it after the editor column is generic so
-both docks use one vocabulary.
+**Fifth: no new port needed.** The view registers through `registerPrimaryDockContent`; the
+fallback identity is a field on `ApplicationPlugin`, and horizontal scrollbar state is an optional
+projection on `PaneContent`. Host focus is now only `editor | primaryPane`; no host type or default
+names `files`.
 
 ### 6. LANGUAGE → language plugin — **BLOCKED, needs the owner**
 
@@ -526,7 +497,7 @@ lifecycle behind the existing ports; leave the request methods until either the 
 | diff | **0** | **0** | Gap A+B **built** | **done** 2026-07-26 |
 | markdown | **0** | **0** | Gap A+B built; Gap D resolved by field addition | **done** 2026-07-26 |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
-| file tree | 33 | 8 (model + 2 momentum lanes) | dock-fallback flag | after the editor column |
+| file tree | **0** | **0** | dock-fallback field **built** | **done** 2026-07-26 |
 | language | 61 | 18 | semantic-request port = **GUESS** | **blocked on the owner** — a contract renegotiation |
 
 Guard collapse: **14 diff mode checks → 1 capability question**; **29 markdown mode checks → the
@@ -566,3 +537,16 @@ second question**. Both done: 43 mode checks became 2 questions.
   while the check reported PASS. They are allowlisted, not tolerated; their extraction is issue #100.
 - Remaining host-core plugin names, all allowlisted and all in the keybinding DEFAULTS: 13
   source-control chords + the `'git'` keybinding context, 2 diff chords, 3 markdown chords.
+
+**2026-07-26 — step 5 landed.**
+
+- `Workspace.ts` and `src/modules/app`: zero file-tree references. `Workspace` keeps generic
+  document opening, tab state, and contribution lifecycle; the plugin owns hierarchy discovery,
+  selection, rendering, commands, status fields, and both momentum lanes.
+- `ScrollbarSync` now projects both axes from optional `PaneContent` fields, so the host has no
+  `files` identity branch.
+- A plugin-free boot hides the empty primary dock. The default composition nominates the file tree
+  as its initial dock content through `primaryDockFallbackContentIdentifier`.
+- Remaining file-tree names in host core are keybinding data only: the Explorer accelerator plus
+  the `files` context and tree actions. They remain on the shrinking allowlist with the other
+  contributed-surface bindings (issue #100).

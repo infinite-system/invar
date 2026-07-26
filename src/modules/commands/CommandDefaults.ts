@@ -101,23 +101,11 @@ class $CommandDefaults {
         run: context.testNarrationVoice,
       },
       {
-        id: 'view.focusFiles',
-        title: 'View: Focus File Explorer',
-        category: 'View',
-        run: () => context.workspaceSet.active.focusFiles(),
-      },
-      {
         id: 'view.focusEditor',
         title: 'View: Focus Editor',
         category: 'View',
         when: hasDocument,
         run: () => context.workspaceSet.active.focusEditor(),
-      },
-      {
-        id: 'view.showFiles',
-        title: 'View: Show Explorer',
-        category: 'View',
-        run: () => context.workspaceSet.active.focusFiles(),
       },
       {
         id: 'view.toggleTheme',
@@ -218,12 +206,6 @@ class $CommandDefaults {
         category: 'Go',
         when: hasDocument,
         run: () => getEditor().gotoBottom(),
-      },
-      {
-        id: 'files.refresh',
-        title: 'Files: Refresh Tree',
-        category: 'Files',
-        run: () => context.workspaceSet.active.tree.refresh(),
       },
       {
         id: 'help.shortcuts',

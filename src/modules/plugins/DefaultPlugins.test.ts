@@ -6,5 +6,5 @@ test('the shipped application registers its built in contributions', () => {
     DefaultPlugins.Class.create().flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['git', 'extensions']);
+  ).toEqual(['files', 'git', 'extensions']);
 });

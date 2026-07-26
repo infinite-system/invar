@@ -20,8 +20,9 @@ keypress, and no per-item render effect exists.
 `app/AppStatusProjection.ts`, and `App`'s owned effect scope.
 
 **Mechanism:** `app.$watchEffect(...)` touches the load-bearing signals (document revision, cursor
-line/col, viewport scrollTop, workspace focus, tree selection, palette open/query/selection, theme
-selection) then calls `paint()` = `view.update()` + `AppStatusProjection.publish()` +
+line/col, viewport scrollTop, workspace focus, visible pane-content revisions, palette
+open/query/selection, theme selection) then calls `paint()` = `view.update()` +
+`AppStatusProjection.publish()` +
 `requestRender()`. `AppStatusProjection` reads narrow live ports and updates `StatusChannel`
 without mutating model state, so the effect never self-triggers. The frame tick publishes whether
 workspace and panel scroll momentum are exactly at rest before settling the status frame, giving

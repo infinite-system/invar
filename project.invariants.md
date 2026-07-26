@@ -785,9 +785,10 @@ latest-revision results are applied.
 
 ### The host canvas is complete without plugins
 
-**Invariant:** If all plugins are disabled, then the host canvas still opens workspaces, files,
-editing, language intelligence, panes, popups, commands, and status contributions; shipped domain
-capabilities may be default plugins but may not require host-core knowledge.
+**Invariant:** If all plugins are disabled, then the host canvas still opens workspaces and
+documents, edits, provides language intelligence, hosts panes, popups, commands, and status
+contributions; shipped domain capabilities may be default plugins but may not require host-core
+knowledge.
 
 **Scope:** The workspace and application hosts, their contribution ports, and the default plugin
 composition. Whether a domain capability ships enabled by default is a product-composition choice,
@@ -797,18 +798,19 @@ not a reason to couple it into the host.
 shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only generic plugin
 and contribution contracts.
 
-**Refined 2026-07-26 — Markdown struck from the enumeration.** It was listed as a host-canvas
-capability; the product owner directed that "markdown should also be separate markdown plugin", so
-it now ships as a default plugin like source control. This REFINES the record rather than violating
-it: the mechanism above already says a shipped capability may be a default plugin, and only the
-enumeration was stale. **`language intelligence` is deliberately still listed.** Extracting it is a
-renegotiation of this record — the owner's decision, not a refactor — and no direction for it
-exists; see project.canvas-census.md, extraction step 6.
+**Refined 2026-07-26 — Markdown and the file-tree view struck from the enumeration.** Both now
+ship as default plugins. Generic document opening stays in the host and is reachable without the
+tree through Quick Open, navigation, language jumps, and editor tabs. This refines the enumeration
+rather than the mechanism: the mechanism already says shipped capabilities may be default plugins.
+**`language intelligence` is deliberately still listed.** Extracting it remains a renegotiation of
+this record; see project.canvas-census.md, extraction step 6.
 
 **Generates:** A usable plugin-free editor canvas; default shipped capabilities without
 host-to-domain imports; plugins that carry their own behavior.
 
-**Evidence:** `src/modules/plugins/DefaultPlugins.ts` (source control, Markdown, extensions);
+**Evidence:** `src/modules/plugins/DefaultPlugins.ts` (file tree, source control, Markdown,
+extensions);
+`src/modules/filetree/FileTreePlugin.ts`;
 `src/modules/workspace/WorkspacePlugin.interface.ts`;
 `src/modules/app/ApplicationPlugin.interface.ts`;
 `src/modules/workspace/EditorSurfaceClaims.ts` and `src/modules/ui/EditorSurfaceContents.ts` (the
@@ -933,6 +935,7 @@ milestone, hardest-first):
 - M5: `lsp`, `diagnostics`
 - M6: `markdown`
 - M7: `kernel` (composition), `commands`, `keybindings`
+- Added canvas plugins: `filetree`
 
 **Mechanism:** The `/invariants` skill derives review scope from colocated contracts; a contract
 next to the module makes changes to it implicate its rules. Module contracts are bootstrapped

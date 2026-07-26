@@ -277,8 +277,14 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
           if (workspace.commitLog.value?.branch.value !== undefined) {
             workspace.selectLogBranch(null);
           } else {
-            context.primaryDockHost.activate('files');
-            context.workspaceSet.active.focusFiles();
+            const fallbackIdentifier =
+              context.workspaceSet.active.primaryPaneContentIdentifier.value;
+            if (fallbackIdentifier) {
+              context.primaryDockHost.activate(fallbackIdentifier);
+              context.workspaceSet.active.focusPrimaryPane(fallbackIdentifier);
+            } else {
+              context.workspaceSet.active.focusEditor();
+            }
           }
         },
       },

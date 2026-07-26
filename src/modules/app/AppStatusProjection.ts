@@ -127,10 +127,6 @@ class $AppStatusProjection {
       sidebarViewIdentifiers: ports.primaryDockHost.orderedContents.map(
         (content) => content.id,
       ),
-      treeRows: ports.workspaceSet.active.tree.rows.length,
-      treeSelected: ports.workspaceSet.active.tree.selectedIndex.value,
-      treeScrollTop: ports.workspaceSet.active.tree.scrollTop.value,
-      treeHovered: ports.workspaceSet.active.tree.hoveredIndex.value,
       editorScrollTop: editor.viewport.scrollTop.value,
       editorScrollLeft: editor.viewport.scrollLeft.value,
       wordWrap: editor.wordWrap.value,

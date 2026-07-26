@@ -24,8 +24,8 @@ class $ScrollbarSync {
   protected applying = false;
   protected readonly editorVerticalBar: SolidThumbScrollBar.Model;
   protected readonly editorHorizontalBar: SolidThumbScrollBar.Model;
-  protected readonly treeVerticalBar: SolidThumbScrollBar.Model;
-  protected readonly treeHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly primaryDockVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly primaryDockHorizontalBar: SolidThumbScrollBar.Model;
   protected readonly editorOverviewRuler = new OverviewRuler.Class();
   protected editorOverviewMarks: readonly OverviewRulerMark[] = [];
   protected paintedEditorOverviewMarks: readonly OverviewRulerMark[] | null =
@@ -82,25 +82,25 @@ class $ScrollbarSync {
         foregroundColor: dependencies.theme.palette.accent,
       },
     );
-    this.treeVerticalBar = makeBar(
-      'tree-scrollbar-v',
+    this.primaryDockVerticalBar = makeBar(
+      'primary-dock-scrollbar-v',
       'vertical',
       (position) => {
-        workspace().haltTreeScroll();
-        workspace().tree.scrollTop.value = this.truePosition(
-          this.treeVerticalBar,
-          position,
+        const content = dependencies.primaryDockHost.activeContent;
+        content?.haltScrollMomentum?.();
+        content?.scrollToLine?.(
+          this.truePosition(this.primaryDockVerticalBar, position),
         );
       },
     );
-    this.treeHorizontalBar = makeBar(
-      'tree-scrollbar-h',
+    this.primaryDockHorizontalBar = makeBar(
+      'primary-dock-scrollbar-h',
       'horizontal',
       (position) => {
-        workspace().haltTreeHorizontalScroll();
-        workspace().tree.scrollLeft.value = this.truePosition(
-          this.treeHorizontalBar,
-          position,
+        const content = dependencies.primaryDockHost.activeContent;
+        content?.haltHorizontalScrollMomentum?.();
+        content?.scrollToColumn?.(
+          this.truePosition(this.primaryDockHorizontalBar, position),
         );
       },
       {
@@ -110,9 +110,12 @@ class $ScrollbarSync {
     );
     dependencies.editorArea.add(this.editorVerticalBar);
     dependencies.editorArea.add(this.editorHorizontalBar);
-    dependencies.sidebar.add(this.treeVerticalBar);
-    dependencies.sidebar.add(this.treeHorizontalBar);
-    for (const bar of [this.editorHorizontalBar, this.treeHorizontalBar]) {
+    dependencies.sidebar.add(this.primaryDockVerticalBar);
+    dependencies.sidebar.add(this.primaryDockHorizontalBar);
+    for (const bar of [
+      this.editorHorizontalBar,
+      this.primaryDockHorizontalBar,
+    ]) {
       bar.onMouseMove = (event) =>
         dependencies.tooltip.point(
           'Horizontal scroll — drag or Option+wheel',
@@ -275,27 +278,20 @@ class $ScrollbarSync {
   }
 
   syncPaneViewportGeometry(): boolean {
-    if (this.dependencies.primaryDockHost.activeContent?.id !== 'files') {
-      return false;
-    }
-    const tree = this.dependencies.workspaceSet.active.tree;
+    const content = this.dependencies.primaryDockHost.activeContent;
+    if (!content) return false;
     const viewportHeight = Math.max(
       1,
       Number(this.dependencies.sidebar.height) - 2,
     );
-    const viewportWidth = Math.max(
-      1,
-      this.dependencies.sidebarWidth() -
-        2 -
-        this.dependencies.scrollbarThicknessCells(),
+    const paneColumns = Math.max(1, this.dependencies.sidebarWidth() - 2);
+    const originalViewportHeight = content.scrollViewportRows;
+    const originalViewportWidth = content.scrollViewportColumns;
+    content.onResize(paneColumns, viewportHeight);
+    return (
+      content.scrollViewportRows !== originalViewportHeight ||
+      content.scrollViewportColumns !== originalViewportWidth
     );
-    const changed =
-      tree.viewportHeight.value !== viewportHeight ||
-      tree.viewportWidth.value !== viewportWidth;
-    tree.viewportHeight.value = viewportHeight;
-    tree.viewportWidth.value = viewportWidth;
-    tree.clampHorizontalScroll();
-    return changed;
   }
 
   syncScrollbars(): void {
@@ -337,23 +333,26 @@ class $ScrollbarSync {
       viewportSize: editorWidth,
       scrollPosition: editor.viewport.scrollLeft.value,
     });
-    const filesVisible =
-      this.dependencies.primaryDockHost.activeContent?.id === 'files';
+    const primaryDockContent = this.dependencies.primaryDockHost.visible.value
+      ? this.dependencies.primaryDockHost.activeContent
+      : null;
     const sidebarRegion = {
       top: 0,
       left: 0,
       width: this.dependencies.sidebarWidth() - 2,
       height: Math.max(1, Number(this.dependencies.sidebar.height) - 2),
     };
-    this.applyBar(this.treeVerticalBar, 'vertical', sidebarRegion, {
-      scrollSize: filesVisible ? workspace.tree.rows.length : 0,
-      viewportSize: sidebarRegion.height,
-      scrollPosition: workspace.tree.scrollTop.value,
+    this.applyBar(this.primaryDockVerticalBar, 'vertical', sidebarRegion, {
+      scrollSize: primaryDockContent?.scrollContentRows ?? 0,
+      viewportSize:
+        primaryDockContent?.scrollViewportRows ?? sidebarRegion.height,
+      scrollPosition: primaryDockContent?.scrollTop ?? 0,
     });
-    this.applyBar(this.treeHorizontalBar, 'horizontal', sidebarRegion, {
-      scrollSize: filesVisible ? workspace.tree.contentWidth : 0,
-      viewportSize: workspace.tree.viewportWidth.value,
-      scrollPosition: workspace.tree.scrollLeft.value,
+    this.applyBar(this.primaryDockHorizontalBar, 'horizontal', sidebarRegion, {
+      scrollSize: primaryDockContent?.scrollContentColumns ?? 0,
+      viewportSize:
+        primaryDockContent?.scrollViewportColumns ?? sidebarRegion.width,
+      scrollPosition: primaryDockContent?.scrollLeft ?? 0,
     });
   }
 }

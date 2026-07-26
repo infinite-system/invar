@@ -87,7 +87,7 @@ hosts for branch and row actions.
 bounded-popup implementation; no parallel plugin pane stack.
 
 **Evidence:** `PaneContent.interface.ts`; `PanelHost.ts`; `RootView.ts`; `Sidebar.ts`;
-`FileTreePaneContent.ts`; `GitPaneContent.ts`.
+`src/modules/filetree/FileTreePaneContent.ts`; `GitPaneContent.ts`.
 
 **Impossible if true:** A plugin pane requiring a domain-specific branch in `RootView`, `Sidebar`,
 or `ActivityBar`; a plugin implementing independent popup placement, filtering, and row hit tests.
@@ -634,7 +634,7 @@ entry) that satisfies the product north star's visible-affordance rule; per-work
 keyboard parity that can never disagree with what the bar shows.
 
 **Evidence:** `src/modules/ui/ActivityBar.ts`; `src/modules/ui/PanelHost.ts`;
-`src/modules/ui/RootView.ts`; `src/modules/ui/FileTreePaneContent.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/filetree/FileTreePaneContent.ts`;
 `src/modules/git/GitPaneContent.ts`; `scripts/smoke-activitybar.sh`.
 
 **Impossible if true:** the bar highlighting one view while the sidebar shows another; two items
@@ -1628,7 +1628,8 @@ asserts full/dim backgrounds through FrameProbe.
 vanishing on scroll or on losing focus; a list where click selects but the keyboard cannot move from
 there; different list panes disagreeing on the selection model.
 
-**Verification:** `bun test src/modules/workspace/GitPanel.test.ts src/modules/workspace/FileTree.scroll.test.ts && bash scripts/smoke-selection.sh`
+**Verification:** `bun test src/modules/workspace/GitPanel.test.ts
+src/modules/filetree/FileTree.scroll.test.ts && bash scripts/smoke-selection.sh`
 
 **Status:** established
 
@@ -1776,24 +1777,25 @@ scripts/harness/smoke-layout-harness.ts`
 **Scope:** `FileTreePaneContent`, the primary-dock `PanelHost`, `Sidebar`, and the primary dock slot
 resolved by `LayoutModel`. Git and Extensions extraction into `PaneContent` is outside this wave.
 
-**Mechanism:** `Bootstrap` constructs and registers `FileTreePaneContent`. `RootView` asks the host
-for its active content and calls `PaneContent.render`, while `Sidebar` forwards file-view pointer and
-wheel events through the optional pane methods. The adapter delegates rendering to
-`TreePaneRenderer` and every mutation to the existing active workspace `FileTree` and `Workspace`
-methods.
+**Mechanism:** `FileTreePlugin` constructs and registers `FileTreePaneContent` through the
+application-plugin context. `RootView` asks the host for its active content and calls
+`PaneContent.render`, while `Sidebar` forwards pointer and wheel events through the optional pane
+methods. The adapter delegates rendering to `TreePaneRenderer` and mutations to the active
+`FileTreeWorkspace`, which invokes the host's generic document-opening capability for a leaf.
 
 **Generates:** One file-tree pane adapter; the same expand, selection, open, navigation, badge,
 momentum, and scrollbar behavior in left and right primary-dock positions; no file-tree renderer
 call in `RootView`.
 
-**Evidence:** `src/modules/ui/FileTreePaneContent.ts`;
-`src/modules/ui/FileTreePaneContent.test.ts`; `src/modules/app/Bootstrap.ts`;
+**Evidence:** `src/modules/filetree/FileTreePlugin.ts`;
+`src/modules/filetree/FileTreePaneContent.ts`;
+`src/modules/filetree/FileTreePaneContent.test.ts`; `src/modules/app/Bootstrap.ts`;
 `scripts/harness/smoke-layout-harness.ts`.
 
 **Impossible if true:** `RootView` calling `TreePaneRenderer` directly; moving the primary dock to
 the right replacing or disabling the tree; a tree click bypassing the `PaneContent` adapter.
 
-**Verification:** `bun test src/modules/ui/FileTreePaneContent.test.ts && bun
+**Verification:** `bun test src/modules/filetree/FileTreePaneContent.test.ts && bun
 scripts/harness/smoke-layout-harness.ts`
 
 **Status:** provisional

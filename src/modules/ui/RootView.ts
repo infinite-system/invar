@@ -1317,7 +1317,6 @@ class $RootView {
       activityBar.update(palette);
       sidebar.backgroundColor = palette.panel;
       const sidebarViewFocused =
-        workspaceSet.active.focus.value === 'files' ||
         workspaceSet.active.focus.value === 'primaryPane';
       sidebar.borderColor = sidebarViewFocused
         ? palette.borderActive

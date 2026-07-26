@@ -14,7 +14,7 @@ import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { Palette } from '../theme/ThemePalettes';
-import type { FileTree } from '../workspace/FileTree';
+import type { FileTree } from './FileTree';
 class $TreePaneRenderer {
   public static render(context: TreePaneRenderContext): StyledText {
     const { tree, palette, filesFocused, innerWidth, viewportWidth } = context;

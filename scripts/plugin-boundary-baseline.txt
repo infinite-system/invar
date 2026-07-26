@@ -32,3 +32,9 @@ comparison	src/modules/keybindings/KeybindingDefaults.ts	2
 # + 13 (AppStatusProjection.ts) = 86 lines, now 0 in all three, so they carry no rows and one
 # reference there fails. Its three chords remain in the keybinding defaults (issue #100).
 markdown	src/modules/keybindings/KeybindingDefaults.ts	3
+
+# --- file tree: EXTRACTED 2026-07-26 -----------------------------------------------------------
+# Workspace.ts and src/modules/app are zero tolerance. The Explorer accelerator plus the tree
+# navigation context/actions remain keybinding data until the shared issue-#100 extraction.
+file-tree	src/modules/keybindings/KeybindingDefaults.ts	9
+file-tree	src/modules/keybindings/KeybindingRegistry.ts	1

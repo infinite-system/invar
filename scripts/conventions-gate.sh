@@ -222,6 +222,9 @@ plugin_boundary_check 'comparison' 'source-control (comparison view)' \
 plugin_boundary_check 'markdown' 'markdown' \
   "([Mm]arkdown|from ['\"]\.\./markdown/|['\"]markdown\.)" \
   "workspaceSet.active.toggleMarkdownPreview();"
+plugin_boundary_check 'file-tree' 'file tree' \
+  "([Ff]ileTree|\btree[A-Z]|\bfocusFiles\b|\bfiles\.|\btree\.|view\.(show|focus)Files|['\"]files['\"])" \
+  "workspaceSet.active.tree.moveSelection(-1);"
 
 [ "$fail" = 0 ] && echo "conventions-gate: PASS"
 exit "$fail"
