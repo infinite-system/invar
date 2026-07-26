@@ -143,14 +143,79 @@ rm -f /tmp/conventions-gate-mapcoh.$$.log
 
 # 11) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
 #     name a concrete plugin, import its module, or dispatch its domain command identifiers.
-plugin_core_references=$(rg -n --glob '*.ts' --glob '!*.test.ts' \
-  "(from ['\"]\\.\\./git/|\\bGit[A-Z]|['\"]git\\.|['\"]git['\"])" \
-  src/modules/workspace/Workspace.ts src/modules/app || true)
-if [ -n "$plugin_core_references" ]; then
-  echo "CONVENTIONS FAIL: host core names the source-control plugin:"
-  echo "$plugin_core_references"
+#     Uses `grep -E` deliberately: an earlier revision called `rg`, which is NOT installed in the
+#     build environment, and swallowed the failure with `|| true` — so the check passed
+#     unconditionally and enforced nothing. Every matcher below is therefore paired with a
+#     POSITIVE CONTROL: a known-violating line it MUST detect. A boundary check that cannot fail
+#     is worse than no boundary check, because it reports safety it does not provide.
+#     This step is the enforcement half of the project record "The host canvas is complete without
+#     plugins" (project.invariants.md), whose Evidence names it.
+plugin_boundary_paths=(src/modules/workspace/Workspace.ts src/modules/app)
+plugin_boundary_scan() {
+  # $1 = extended-regex matcher. Prints "path:line:text" for each violation.
+  grep -rEn --include='*.ts' --exclude='*.test.ts' -- "$1" \
+    "${plugin_boundary_paths[@]}" 2>/dev/null || true
+}
+plugin_boundary_positive_control() {
+  # $1 = plugin label, $2 = matcher, $3 = a known-VIOLATING line the matcher MUST detect.
+  # Returns non-zero (and fails the gate) when the matcher cannot see its own known violation.
+  if printf '%s\n' "$3" | grep -qE -- "$2"; then return 0; fi
+  echo "CONVENTIONS FAIL: the $1 boundary matcher failed its POSITIVE CONTROL —"
+  echo "  it did not detect the known violation: $3"
+  echo "  (the matcher is broken; it would have reported a clean core no matter what)"
   fail=1
-fi
+  return 1
+}
+
+# Zero-tolerance domains: extraction finished, so ANY host-core reference is a regression.
+plugin_boundary_forbid() {
+  local plugin_label="$1" matcher="$2" positive_control="$3" violations
+  plugin_boundary_positive_control "$plugin_label" "$matcher" "$positive_control" || return
+  violations="$(plugin_boundary_scan "$matcher")"
+  if [ -n "$violations" ]; then
+    echo "CONVENTIONS FAIL: host core names the ${plugin_label} plugin:"
+    echo "$violations"
+    fail=1
+  fi
+}
+
+# In-flight domains: a per-file SHRINKING ALLOWLIST from scripts/plugin-boundary-baseline.txt. New
+# coupling fails immediately even while known sites remain; a decrease prints tightenable slack.
+plugin_boundary_ratchet() {
+  local domain="$1" plugin_label="$2" matcher="$3" positive_control="$4"
+  plugin_boundary_positive_control "$plugin_label" "$matcher" "$positive_control" || return
+  local baseline_file="$(dirname "$0")/plugin-boundary-baseline.txt" allowed path count
+  while IFS= read -r counted; do
+    path="${counted%:*}"
+    count="${counted##*:}"
+    [ "$count" = 0 ] && continue
+    allowed="$(awk -v domain="$domain" -v path="$path" \
+      '$1 == domain && $2 == path { print $3 }' "$baseline_file")"
+    if [ -z "$allowed" ]; then
+      echo "CONVENTIONS FAIL: ${path} names the ${plugin_label} plugin (${count} line(s)) and is not"
+      echo "  on the ${domain} boundary allowlist — host core may not take on NEW plugin coupling."
+      fail=1
+    elif [ "$count" -gt "$allowed" ]; then
+      echo "CONVENTIONS FAIL: ${path} grew its ${plugin_label} coupling: ${count} line(s) > allowed ${allowed}."
+      echo "  The ${domain} allowlist only ever shrinks (see project.canvas-census.md)."
+      fail=1
+    elif [ "$count" -lt "$allowed" ]; then
+      echo "conventions-gate: BOUNDARY RATCHET SLACK — ${path} is down to ${count} ${plugin_label} line(s)"
+      echo "  from an allowed ${allowed}; tighten scripts/plugin-boundary-baseline.txt in this commit."
+    fi
+  done < <(grep -rEnc --include='*.ts' --exclude='*.test.ts' -- "$matcher" \
+    "${plugin_boundary_paths[@]}" 2>/dev/null || true)
+}
+
+plugin_boundary_forbid 'source-control' \
+  "(from ['\"]\.\./git/|\bGit[A-Z]|['\"]git\.|['\"]git['\"])" \
+  "import { GitPanel } from '../git/GitPanel';"
+plugin_boundary_ratchet 'comparison' 'source-control (comparison view)' \
+  "([Dd]iff[A-Z]|\bdiff[A-Z]|\bshowingDiff\b|from ['\"]\.\./diff/|['\"]diff\.)" \
+  "const request = workspaceSet.active.diffRequest.value;"
+plugin_boundary_ratchet 'markdown' 'markdown' \
+  "([Mm]arkdown|from ['\"]\.\./markdown/|['\"]markdown\.)" \
+  "workspaceSet.active.toggleMarkdownPreview();"
 
 [ "$fail" = 0 ] && echo "conventions-gate: PASS"
 exit "$fail"

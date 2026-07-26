@@ -1,0 +1,35 @@
+# PLUGIN CANVAS BOUNDARY — the shrinking allowlist for host-core references to a plugin domain.
+#
+# Read by scripts/conventions-gate.sh step 11. Format (tab- or space-separated):
+#
+#   <domain>  <host-core path>  <maximum matching lines>
+#
+# The gate FAILS when a listed path exceeds its maximum, or when a host-core path with any match is
+# not listed at all. That makes NEW coupling impossible to add quietly while an in-flight extraction
+# still has known sites. A decrease never fails; it prints BOUNDARY RATCHET SLACK so the number can
+# be tightened in the same commit that earned it. THE NUMBERS ONLY EVER GO DOWN, and a domain with
+# no rows left is promoted to the zero-tolerance list in the gate itself (as `source-control` was
+# after task #34).
+#
+# Ordering and reasoning for driving these to zero live in project.canvas-census.md
+# ("Extraction order"). Do not add a domain here without adding it to that census.
+
+# --- source control, comparison view (owner-named 2026-07-26, extraction step 2) ---------------
+# Workspace.ts: 27 = the diff editor + showingDiff/diffRequest/diffRequestToken/showComparison, the
+#   8 mode-check guards, the 4 dismissal writes, and the DiffRequest type.
+# Bootstrap.ts: 17 = the frame-loop tick, the command-context wiring, the copy chain, and the
+#   45-line inline diff key block.
+# AppStatusProjection.ts: 10 = the diff* projection fields read by the driven smokes.
+comparison	src/modules/workspace/Workspace.ts	27
+comparison	src/modules/app/Bootstrap.ts	17
+comparison	src/modules/app/AppStatusProjection.ts	10
+
+# --- markdown (owner-named 2026-07-26, extraction step 3) --------------------------------------
+# Workspace.ts: 13 = markdownPreviewPaths / activeFileIsMarkdown / showingMarkdownPreview /
+#   toggleMarkdownPreview, plus the comment + annotation on the GENERIC resolveFileReference.
+# Bootstrap.ts: 62 = the 29-site previewFocused fan-out plus command/action wiring. Blocked on the
+#   editor-column occupant port (census Gap A) and the editor-title action question (Gap D).
+# AppStatusProjection.ts: 13 = the markdown* projection fields read by the driven smokes.
+markdown	src/modules/workspace/Workspace.ts	13
+markdown	src/modules/app/Bootstrap.ts	62
+markdown	src/modules/app/AppStatusProjection.ts	13
