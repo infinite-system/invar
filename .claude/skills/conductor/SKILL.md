@@ -212,6 +212,15 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   (transcript mtime, git status) LAG an in-flight agent — hold "stalled/uncommitted" diagnoses
   loosely; a suspected-dormancy nudge should ask the agent to SELF-REPORT (authoritative), not assert
   a stall. The nudge is harmless when wrong.
+- **`find -newermt '-10 minutes'` matches NOTHING — use `find -mmin -10`.** GNU find parses that
+  argument as a date, and the leading-minus relative form is not the relative-past spelling it
+  expects, so the scan silently reports zero writes for worktrees that are actively being written.
+  This probe has failed toward "dead" three separate times, once for three live builders at once —
+  and a liveness probe that can only fail toward "dead" is how you take over work that was fine.
+  Every liveness scan gets a POSITIVE CONTROL in the same command: `touch <wt>/.liveness-probe`
+  first, require the count to be ≥1, then delete it. If the control is missing, the probe is broken,
+  not the builder. Cheapest cross-check with no date parsing at all:
+  `find <wt> -type f -not -path '*/.git/*' -printf '%TH:%TM  %p\n' | sort -r | head`.
 - **Arm a Monitor on a long gate's log** whose result must be acted on — the tracked-bg completion
   re-invoke is unreliable (agents go dormant on finished gates). A Monitor on the named gate log wakes
   the agent reliably; the loop-check is the floor under it.
