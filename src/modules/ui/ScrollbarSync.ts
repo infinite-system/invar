@@ -142,6 +142,18 @@ class $ScrollbarSync {
         : geometry.trackLeft;
     bar.width = orientation === 'vertical' ? thickness : geometry.trackLength;
     bar.height = orientation === 'vertical' ? geometry.trackLength : thickness;
+    const slider = (
+      bar as unknown as {
+        slider?: {
+          width?: number;
+          height?: number;
+        };
+      }
+    ).slider;
+    if (slider) {
+      if (orientation === 'vertical') slider.width = thickness;
+      else slider.height = thickness;
+    }
     this.applying = true;
     try {
       bar.scrollSize = scroll.scrollSize;

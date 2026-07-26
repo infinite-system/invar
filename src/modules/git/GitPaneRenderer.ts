@@ -342,8 +342,8 @@ class $GitPaneRenderer {
         }
       });
     }
-    // Geometry for the hit-testers (sidebar-relative rows; +1 = sidebar top border, +1 branch row).
-    const dividerRow = 1 + 1 + changesVisible;
+    // Geometry for the hit-testers in pane-content-local rows: one branch row, then changes.
+    const dividerRow = 1 + changesVisible;
     const geometry: GitPanelGeometry = {
       changesTop,
       changesRows: changesVisible,

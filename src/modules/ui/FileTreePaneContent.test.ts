@@ -42,6 +42,7 @@ describe('FileTreePaneContent', () => {
         },
       } as never,
       icon: () => 'f',
+      activityIcon: () => 'F',
       scrollbarThicknessCells: () => 1,
     });
 
@@ -61,6 +62,7 @@ describe('FileTreePaneContent', () => {
         },
       } as never,
       icon: () => 'f',
+      activityIcon: () => 'F',
       scrollbarThicknessCells: () => 2,
     });
 

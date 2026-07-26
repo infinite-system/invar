@@ -295,7 +295,7 @@ class $GitWorkspace
   }
 
   show(): void {
-    this.workspace.focusPrimaryPane('source-control');
+    this.workspace.focusPrimaryPane('git');
     void this.repository.value?.refresh().then(() => this.reconcileLogTip());
     void this.commitLog.value?.ensureRange(0, 50);
   }

@@ -12,11 +12,17 @@ class $Sidebar {
   }
 
   protected wireHandlers(): void {
-    const { sidebar, primaryDockHost, tooltip, settings, renderer } =
-      this.dependencies;
+    const {
+      sidebar,
+      contentBody,
+      primaryDockHost,
+      tooltip,
+      settings,
+      renderer,
+    } = this.dependencies;
     const localColumn = (screenColumn: number): number =>
-      screenColumn - (sidebar.x + 1);
-    const localRow = (screenRow: number): number => screenRow - (sidebar.y + 1);
+      screenColumn - contentBody.x;
+    const localRow = (screenRow: number): number => screenRow - contentBody.y;
 
     sidebar.onMouseScroll = (event) => {
       const direction = event.scroll?.direction;
@@ -80,6 +86,7 @@ export namespace Sidebar {
 export interface SidebarDependencies {
   renderer: CliRenderer;
   sidebar: BoxRenderable;
+  contentBody: { x: number; y: number };
   primaryDockHost: PanelHost.Instance;
   tooltip: Tooltip.Instance;
   settings: Settings.Instance;

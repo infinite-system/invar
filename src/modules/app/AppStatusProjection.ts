@@ -122,8 +122,18 @@ class $AppStatusProjection {
         : '',
       narrationVoice: ports.settings.agentNarrationVoice.value,
       narrationRate: ports.settings.agentNarrationRate.value,
-      focus: ports.workspaceSet.active.focus.value,
+      focus:
+        ports.workspaceSet.active.focus.value === 'primaryPane'
+          ? (ports.primaryDockHost.activeId.value ?? 'primaryPane')
+          : ports.workspaceSet.active.focus.value,
       sidebarView: ports.primaryDockHost.activeId.value,
+      pluginPrimaryDockContentIdentifiers: [
+        ...ports.pluginPrimaryDockContentIdentifiers,
+      ],
+      activityBarItemIdentifiers: ports.view.activityBarItemIdentifiers(),
+      sidebarViewIdentifiers: ports.primaryDockHost.orderedContents.map(
+        (content) => content.id,
+      ),
       treeRows: ports.workspaceSet.active.tree.rows.length,
       treeSelected: ports.workspaceSet.active.tree.selectedIndex.value,
       treeScrollTop: ports.workspaceSet.active.tree.scrollTop.value,
@@ -425,8 +435,9 @@ export interface AppStatusProjectionPorts {
   >;
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
-    'visible' | 'activeId'
+    'visible' | 'activeId' | 'orderedContents'
   >;
+  readonly pluginPrimaryDockContentIdentifiers: readonly string[];
   readonly statusProjectionContributions: Pick<
     StatusProjectionContributions.Model,
     'snapshot'
@@ -452,6 +463,7 @@ export interface AppStatusProjectionPorts {
     | 'rightDockViewportRows'
     | 'layoutGeometry'
     | 'splitterRegions'
+    | 'activityBarItemIdentifiers'
     | 'overlayDialogBounds'
     | 'overlayScrollPositions'
     | 'overlayViewportExtents'

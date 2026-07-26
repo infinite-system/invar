@@ -67,7 +67,9 @@ class $ActivityBar {
           ? keybindings.bindingHint(action, 'global')
           : '';
         tooltip.point(
-          chordHint ? `${hit.content.title} (${chordHint})` : hit.content.title,
+          chordHint
+            ? `${hit.content.activityLabel ?? hit.content.title} (${chordHint})`
+            : (hit.content.activityLabel ?? hit.content.title),
           event.x,
           event.y,
         );
@@ -100,7 +102,11 @@ class $ActivityBar {
         chunks.push(fg(palette.fg)(' '));
         chunks.push(fg(palette.accent)(badge));
         chunks.push(fg(palette.fg)('  \n'));
-        chunks.push(fg(palette.accent)(isActive ? '▎' : ' '));
+        chunks.push(
+          fg(palette.accent)(
+            isActive ? this.dependencies.activityAccent() : ' ',
+          ),
+        );
         chunks.push(
           fg(isActive ? palette.accent : isHovered ? palette.fg : palette.dim)(
             ` ${content.icon ?? '·'} `,
@@ -115,6 +121,12 @@ class $ActivityBar {
       },
     );
     this.body.content = new StyledText(chunks);
+  }
+
+  itemIdentifiers(): string[] {
+    return this.dependencies.primaryDockHost.orderedContents.map(
+      (content) => content.id,
+    );
   }
 
   setVisible(visible: boolean): void {
@@ -135,4 +147,5 @@ export interface ActivityBarDependencies {
   tooltip: Tooltip.Instance;
   keybindings: KeybindingRegistry.Instance;
   commands: CommandRegistry.Instance;
+  activityAccent: () => string;
 }

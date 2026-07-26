@@ -18,6 +18,7 @@ import { GitWorkspace } from './GitWorkspace';
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Status text is assembled from ordered contributions (src/modules/ui/ui.invariants.md)
 class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
+  readonly primaryDockContentIdentifiers = ['git'] as const;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
     GitWorkspace.Model
@@ -36,7 +37,7 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
     this.paneContent = new GitPaneContent.Class(context, () =>
       this.activeWorkspace(),
     );
-    context.primaryDockHost.register(this.paneContent);
+    context.registerPrimaryDockContent(this.paneContent);
     context.statusBarSegments.register(this);
     context.statusProjectionContributions.register({
       snapshot: () => this.statusSnapshot(),

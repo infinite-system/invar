@@ -5,10 +5,12 @@ import type { BoundedListPopupItem } from '../ui/BoundedListPopup';
 import type { ContextMenuItem } from '../ui/ContextMenu';
 import type {
   PaneContent,
+  PaneContentSplitter,
   PanePointerContext,
   PaneRenderContext,
   PaneWheelContext,
 } from '../ui/PaneContent.interface';
+import { SplitterElement } from '../ui/SplitterElement';
 import type { ApplicationPluginContext } from '../app/ApplicationPlugin.interface';
 import type { FileRow } from './GitRows';
 import { GitPaneRenderer, type GitPanelGeometry } from './GitPaneRenderer';
@@ -19,7 +21,24 @@ class $GitPaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationPluginContext,
     protected readonly activeWorkspace: () => GitWorkspace.Model,
-  ) {}
+  ) {
+    this.splitter = new SplitterElement.Class({
+      renderer: application.renderer,
+      identifier: 'git-split-divider',
+      orientation: 'horizontal',
+      reportUnit: 'ratio',
+      initialSize: activeWorkspace().splitRatio,
+      minimumSize: 0.15,
+      maximumSize: 0.85,
+      currentSize: () => activeWorkspace().splitRatio,
+      currentExtentCells: () => this.viewportRows,
+      onSizeChange: (ratio) => activeWorkspace().setSplit(ratio),
+      onDragStart: () => this.onFocus(),
+      onDragEnd: () => activeWorkspace().persistSplit(),
+    });
+    this.splitter.renderable.position = 'absolute';
+    this.splitter.renderable.visible = false;
+  }
 
   protected geometry: GitPanelGeometry = {
     changesTop: 0,
@@ -29,12 +48,19 @@ class $GitPaneContent implements PaneContent {
     logTop: 0,
     logRows: 0,
   };
+  protected viewportColumns = 1;
+  protected viewportRows = 1;
+  protected readonly splitter: SplitterElement.Model;
 
   get id(): string {
-    return 'source-control';
+    return 'git';
   }
 
   get title(): string {
+    return 'Git';
+  }
+
+  get activityLabel(): string {
     return 'Source Control';
   }
 
@@ -176,7 +202,25 @@ class $GitPaneContent implements PaneContent {
     return true;
   }
 
-  onResize(_columns: number, _rows: number): void {}
+  onResize(columns: number, rows: number): void {
+    this.viewportColumns = Math.max(1, columns);
+    this.viewportRows = Math.max(1, rows);
+  }
+
+  splitters(): readonly PaneContentSplitter[] {
+    return [
+      {
+        id: 'git',
+        element: this.splitter,
+        geometry: () => ({
+          left: 0,
+          top: Math.max(1, this.geometry.dividerRow),
+          length: this.viewportColumns,
+          visible: this.geometry.dividerRow > 0,
+        }),
+      },
+    ];
+  }
 
   onFocus(): void {
     this.application.primaryDockHost.focus();
@@ -192,28 +236,33 @@ class $GitPaneContent implements PaneContent {
     region: 'changes' | 'log' | 'logHeader';
     index: number;
   } | null {
-    if (row >= 1 && row < this.geometry.dividerRow - 1) {
+    if (row >= 1 && row < this.geometry.dividerRow) {
       return {
         region: 'changes',
         index: this.geometry.changesTop + row - 1,
       };
     }
     if (this.geometry.logHeaderRow >= 0) {
-      const localHeaderRow = this.geometry.logHeaderRow - 1;
-      if (row === localHeaderRow) {
+      if (row === this.geometry.logHeaderRow) {
         return { region: 'logHeader', index: 0 };
       }
-      if (row > localHeaderRow) {
+      if (row > this.geometry.logHeaderRow) {
         return {
           region: 'log',
-          index: this.geometry.logTop + row - localHeaderRow - 1,
+          index: Math.max(
+            0,
+            this.geometry.logTop + row - this.geometry.logHeaderRow - 2,
+          ),
         };
       }
     }
-    if (row >= this.geometry.dividerRow) {
+    if (row > this.geometry.dividerRow) {
       return {
         region: 'log',
-        index: this.geometry.logTop + row - this.geometry.dividerRow,
+        index: Math.max(
+          0,
+          this.geometry.logTop + row - this.geometry.dividerRow - 2,
+        ),
       };
     }
     return null;
@@ -241,7 +290,9 @@ class $GitPaneContent implements PaneContent {
     if (column >= actionAreaStart + 2 && column < actionAreaStart + 5) {
       return 'discard';
     }
-    if (column < actionAreaStart + 8) return 'stage';
+    if (column >= actionAreaStart + 5 && column < actionAreaStart + 8) {
+      return 'stage';
+    }
     return null;
   }
 
@@ -294,24 +345,31 @@ class $GitPaneContent implements PaneContent {
           candidate.kind === 'file' &&
           workspace.panel.selectedPaths.value.has(candidate.path),
       );
+    const stageableCount = selectedRows.filter(
+      (candidate) => candidate.bucket !== 'staged',
+    ).length;
+    const unstageableCount = selectedRows.filter(
+      (candidate) => candidate.bucket === 'staged',
+    ).length;
     const items: ContextMenuItem[] = [
       {
-        id: 'sourceControl.stageSelected',
-        label: 'Stage selected',
-        enabled: selectedRows.some(
-          (candidate) => candidate.bucket !== 'staged',
-        ),
+        id: 'git.stageSelected',
+        label: `Stage (${stageableCount})`,
+        enabled: stageableCount > 0,
       },
       {
-        id: 'sourceControl.unstageSelected',
-        label: 'Unstage selected',
-        enabled: selectedRows.some(
-          (candidate) => candidate.bucket === 'staged',
-        ),
+        id: 'git.unstageSelected',
+        label: `Unstage (${unstageableCount})`,
+        enabled: unstageableCount > 0,
       },
       {
-        id: 'sourceControl.discardSelected',
-        label: 'Discard selected…',
+        id: 'git.discardSelected',
+        label: `Discard… (${selectedRows.length})`,
+        enabled: selectedRows.length > 0,
+      },
+      {
+        id: 'git.openDiff',
+        label: 'Open diff',
         enabled: selectedRows.length > 0,
       },
     ];
@@ -327,12 +385,14 @@ class $GitPaneContent implements PaneContent {
             height: this.application.renderer.height,
           },
           (identifier) => {
-            if (identifier === 'sourceControl.stageSelected') {
+            if (identifier === 'git.stageSelected') {
               void workspace.stageSelected();
-            } else if (identifier === 'sourceControl.unstageSelected') {
+            } else if (identifier === 'git.unstageSelected') {
               void workspace.unstageSelected();
-            } else {
+            } else if (identifier === 'git.discardSelected') {
               workspace.requestDiscardSelected();
+            } else {
+              void workspace.openChangeAtRow(rowIndex);
             }
           },
         ),

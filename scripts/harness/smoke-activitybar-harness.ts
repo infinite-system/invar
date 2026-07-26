@@ -149,11 +149,31 @@ try {
   );
 
   console.log('== harness activitybar: initial Explorer state is coherent ==');
-  await HarnessSmoke.Class.awaitStatus(
+  const initialStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the activity bar boots on the Explorer view',
     (status) => status.sidebarView === 'files',
+  );
+  const pluginPrimaryDockContentIdentifiers =
+    initialStatus.pluginPrimaryDockContentIdentifiers as string[];
+  const expectedPrimaryDockContentIdentifiers = [
+    'files',
+    ...pluginPrimaryDockContentIdentifiers,
+  ];
+  HarnessSmoke.Class.requireCondition(
+    pluginPrimaryDockContentIdentifiers.includes('git'),
+    'the default plugin manifest declares the Source Control view',
+  );
+  HarnessSmoke.Class.requireCondition(
+    JSON.stringify(initialStatus.activityBarItemIdentifiers) ===
+      JSON.stringify(expectedPrimaryDockContentIdentifiers),
+    'the activity bar item set contains every plugin-contributed view in order',
+  );
+  HarnessSmoke.Class.requireCondition(
+    JSON.stringify(initialStatus.sidebarViewIdentifiers) ===
+      JSON.stringify(expectedPrimaryDockContentIdentifiers),
+    'the sidebar view-id set contains every plugin-contributed view in order',
   );
   HarnessSmoke.Class.pass('boots on the Explorer view');
   HarnessSmoke.Class.requireCondition(

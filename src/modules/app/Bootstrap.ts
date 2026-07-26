@@ -203,6 +203,7 @@ class $Bootstrap {
     primaryDockHost.register(
       new FileTreePaneContent.Class({
         workspaceSet,
+        activityIcon: () => theme.glyph('activityFiles'),
         icon: (name, isDirectory, expanded) =>
           theme.icon(name, isDirectory, expanded),
         scrollbarThicknessCells: () =>
@@ -224,6 +225,9 @@ class $Bootstrap {
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
+    const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
+      (plugin) => plugin.primaryDockContentIdentifiers ?? [],
+    );
     for (const plugin of options.plugins ?? []) {
       plugin.activateApplication({
         renderer,
@@ -237,6 +241,8 @@ class $Bootstrap {
         overlayCoordinator,
         statusBarSegments,
         statusProjectionContributions,
+        registerPrimaryDockContent: (content) =>
+          primaryDockHost.register(content),
         requestRender: () => renderer.requestRender(),
       });
       app.onDispose(() => plugin.disposeApplication?.());
@@ -741,6 +747,7 @@ class $Bootstrap {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      pluginPrimaryDockContentIdentifiers,
       view,
       get mouse() {
         return lastMouse;

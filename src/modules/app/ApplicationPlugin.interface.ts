@@ -6,12 +6,14 @@ import type { BoundedListPopup } from '../ui/BoundedListPopup';
 import type { ContextMenu } from '../ui/ContextMenu';
 import type { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import type { PanelHost } from '../ui/PanelHost';
+import type { PaneContent } from '../ui/PaneContent.interface';
 import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { WorkspacePlugin } from '../workspace/WorkspacePlugin.interface';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
 
 export interface ApplicationPlugin extends WorkspacePlugin {
+  readonly primaryDockContentIdentifiers?: readonly string[];
   activateApplication(context: ApplicationPluginContext): void;
   disposeApplication?(): void;
 }
@@ -28,5 +30,6 @@ export interface ApplicationPluginContext {
   readonly overlayCoordinator: OverlayCoordinator.Instance;
   readonly statusBarSegments: StatusBarSegments.Model;
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
+  readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly requestRender: () => void;
 }

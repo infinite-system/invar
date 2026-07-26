@@ -14,6 +14,10 @@ import type { Ref } from 'vue';
 import type { MomentumOptions } from '../system/Momentum';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
+import type {
+  SplitterElement,
+  SplitterElementGeometry,
+} from './SplitterElement';
 
 /** A switchable occupant of any PanelHost-backed slot. */
 export interface PaneContent {
@@ -25,6 +29,8 @@ export interface PaneContent {
   readonly instanceLabel?: string;
   /** Human-readable name shown in this content region's own heading. */
   readonly title: string;
+  /** Optional activity-bar label when the pane heading and affordance use different established names. */
+  readonly activityLabel?: string;
   /** Optional switcher glyph. */
   readonly icon?: string;
   /** Optional command identifier taught by an activity-bar affordance. */
@@ -77,12 +83,23 @@ export interface PaneContent {
   handlePaste?(text: string): boolean;
   /** The panel's region resized to this many cell columns × rows. */
   onResize(columns: number, rows: number): void;
+  /** Optional resizable boundaries owned by this content and mounted by its host. */
+  splitters?(): readonly PaneContentSplitter[];
   /** The panel gained keyboard focus. */
   onFocus(): void;
   /** The panel lost keyboard focus. */
   onBlur(): void;
   /** Release owned resources. */
   dispose(): void;
+}
+
+export interface PaneContentSplitter {
+  /** Stable status/probe identity for the contributed splitter. */
+  readonly id: string;
+  /** Shared paint, hit-test, hover, and captured-drag controller. */
+  readonly element: SplitterElement.Model;
+  /** Content-local geometry resolved from the same projection that drew the pane. */
+  geometry(): SplitterElementGeometry;
 }
 
 /** What a pane content is handed to render itself into a hosted pane slot. */

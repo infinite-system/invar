@@ -330,7 +330,35 @@ class $RootView {
       tooltip,
       keybindings,
       commands,
+      activityAccent: () => theme.glyph('activityAccentBar'),
     });
+    const mountedPrimaryDockSplitters = new Set<SplitterElement.Model>();
+    const synchronizePrimaryDockSplitters = (palette: Palette): void => {
+      const activeSplitters = primaryDockHost.visible.value
+        ? (primaryDockHost.activeContent?.splitters?.() ?? [])
+        : [];
+      const activeElements = new Set(
+        activeSplitters.map((splitter) => splitter.element),
+      );
+      for (const content of primaryDockHost.orderedContents) {
+        for (const splitter of content.splitters?.() ?? []) {
+          if (!mountedPrimaryDockSplitters.has(splitter.element)) {
+            sidebar.add(splitter.element.renderable);
+            mountedPrimaryDockSplitters.add(splitter.element);
+          }
+        }
+      }
+      for (const splitterElement of mountedPrimaryDockSplitters) {
+        if (!activeElements.has(splitterElement)) {
+          splitterElement.renderable.visible = false;
+        }
+        splitterElement.updateAppearance(palette);
+      }
+      for (const splitter of activeSplitters) {
+        splitter.element.setGeometry(splitter.geometry());
+        splitter.element.updateAppearance(palette);
+      }
+    };
     layoutCanvas.add(activityBar.bar);
     layoutCanvas.add(sidebar);
     layoutCanvas.add(sidebarDivider);
@@ -1327,10 +1355,13 @@ class $RootView {
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;
+      const primaryDockWidth = Math.max(1, sidebarWidth() - 2);
+      const primaryDockHeight = Math.max(1, Number(sidebar.height) - 2);
+      primaryDockContent?.onResize(primaryDockWidth, primaryDockHeight);
       sidebarBody.content = primaryDockContent
         ? primaryDockContent.render({
-            width: Math.max(1, sidebarWidth() - 2),
-            height: Math.max(1, Number(sidebar.height) - 2),
+            width: primaryDockWidth,
+            height: primaryDockHeight,
             palette,
             glyphLevel: theme.glyphLevel.value,
             colorDepth: theme.colorDepth.value,
@@ -1338,6 +1369,7 @@ class $RootView {
           })
         : '';
       sidebarBody.fg = palette.fg;
+      synchronizePrimaryDockSplitters(palette);
       // When the active buffer is an image, the code body shows the half-block preview (no gutter, no
       // syntax text). Non-image files are untouched — the editor render path below is unchanged.
       // invariant: A raster image renders as half-block cells sized to the pane (src/modules/image/image.invariants.md)
@@ -1783,6 +1815,7 @@ class $RootView {
     const sidebarController = new Sidebar.Class({
       renderer,
       sidebar,
+      contentBody: sidebarBody,
       tooltip,
       settings,
       primaryDockHost,
@@ -2003,11 +2036,28 @@ class $RootView {
       rightDockViewportRows,
       rightDockContainsPoint,
       layoutGeometry: () => layoutSlotGeometry,
-      splitterRegions: () => ({
-        sidebar: renderableRegion(paneSplitters.sidebar.renderable),
-        bottomPanel: renderableRegion(panelSplitter.renderable),
-        rightDock: renderableRegion(rightDockSplitter.renderable),
-      }),
+      splitterRegions: () => {
+        const regions: Record<
+          string,
+          {
+            left: number;
+            top: number;
+            width: number;
+            height: number;
+            visible: boolean;
+          }
+        > = {
+          sidebar: renderableRegion(paneSplitters.sidebar.renderable),
+          bottomPanel: renderableRegion(panelSplitter.renderable),
+          rightDock: renderableRegion(rightDockSplitter.renderable),
+        };
+        for (const splitter of primaryDockHost.activeContent?.splitters?.() ??
+          []) {
+          regions[splitter.id] = renderableRegion(splitter.element.renderable);
+        }
+        return regions;
+      },
+      activityBarItemIdentifiers: () => activityBar.itemIdentifiers(),
       dispose() {
         try {
           editorContentMount.dispose();
@@ -2111,7 +2161,7 @@ export interface RootView {
   rightDockContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<
-    'sidebar' | 'bottomPanel' | 'rightDock',
+    string,
     {
       left: number;
       top: number;
@@ -2120,6 +2170,7 @@ export interface RootView {
       visible: boolean;
     }
   >;
+  activityBarItemIdentifiers(): string[];
   dispose(): void;
 }
 

@@ -126,6 +126,7 @@ describe('AppStatusProjection', () => {
       primaryDockHost,
       rightDockHost,
       statusProjectionContributions,
+      pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
         activeDiffView: () => null,
         activeMarkdownSplitView: () => null,
@@ -179,6 +180,7 @@ describe('AppStatusProjection', () => {
           },
           rightDock: { left: 92, top: 0, width: 1, height: 40, visible: false },
         }),
+        activityBarItemIdentifiers: () => ['files', 'git', 'extensions'],
       },
       get mouse() {
         return mouse;
@@ -206,6 +208,15 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.boundedListPopupTitle).toBe('');
     expect(initialSnapshot.boundedListPopupItemIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupSelectedIdentifier).toBeNull();
+    expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
+      'git',
+      'extensions',
+    ]);
+    expect(initialSnapshot.activityBarItemIdentifiers).toEqual([
+      'files',
+      'git',
+      'extensions',
+    ]);
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
     narration = {
