@@ -152,7 +152,12 @@ rm -f /tmp/conventions-gate-mapcoh.$$.log
 #     is worse than no boundary check, because it reports safety it does not provide.
 #     This step is the enforcement half of the project record "The host canvas is complete without
 #     plugins" (project.invariants.md), whose Evidence names it.
-plugin_boundary_paths=(src/modules/workspace/Workspace.ts src/modules/app src/modules/keybindings)
+plugin_boundary_paths=(
+  src/modules/workspace/Workspace.ts
+  src/modules/app
+  src/modules/keybindings
+  src/modules/settings
+)
 plugin_boundary_scan() {
   # $1 = extended-regex matcher. Prints "path:line:text" for each violation.
   grep -rEn --include='*.ts' --exclude='*.test.ts' -- "$1" \
@@ -214,8 +219,8 @@ plugin_boundary_check() {
 }
 
 plugin_boundary_check 'source-control' 'source-control' \
-  "(from ['\"]\.\./git/|\bGit[A-Z]|['\"]git\.|['\"]git['\"])" \
-  "import { GitPanel } from '../git/GitPanel';"
+  "(from ['\"]\.\./git/|\bGit[A-Z]|\bgit[A-Z]|['\"]git\.|['\"]git['\"])" \
+  "get gitSplitRatio() { return ref(0.5); }"
 plugin_boundary_check 'comparison' 'source-control (comparison view)' \
   "([Dd]iff[A-Z]|\bdiff[A-Z]|\bshowingDiff\b|from ['\"]\.\./diff/|['\"]diff\.)" \
   "const request = workspaceSet.active.diffRequest.value;"

@@ -3,7 +3,6 @@ import { GitComparisonSurface } from './GitComparisonSurface';
 import type { GitComparisonContent } from './GitComparisonContent';
 import type { GitComparisonRequest, GitWorkspace } from './GitWorkspace';
 import type { EditorSurfaceContentContext } from '../ui/EditorSurfaceContents';
-import type { Settings } from '../settings/Settings';
 
 const request: GitComparisonRequest = {
   token: 4,
@@ -14,25 +13,39 @@ const request: GitComparisonRequest = {
 };
 
 // The per-workspace source-control contribution, reduced to the three members the provider reads.
-function createGitWorkspace(root: string) {
+function createGitWorkspace(root: string, splitRatioReads: number[] = []) {
   const gitWorkspace = {
     showingComparison: { value: false },
     comparisonRequest: { value: null as GitComparisonRequest | null },
     workspace: { root },
+    diffSplitRatioSetting: {
+      value: {
+        get value() {
+          splitRatioReads.push(1);
+          return 0.5;
+        },
+      },
+    },
   };
   return gitWorkspace as unknown as GitWorkspace.Model & typeof gitWorkspace;
 }
 
 function createSurface(gitWorkspace: GitWorkspace.Model | null) {
   const splitRatioReads: number[] = [];
-  const settings = {
-    diffSplitRatio: {
-      get value() {
-        splitRatioReads.push(1);
-        return 0.5;
+  if (gitWorkspace) {
+    (
+      gitWorkspace as unknown as {
+        diffSplitRatioSetting: { value: { value: number } };
+      }
+    ).diffSplitRatioSetting = {
+      value: {
+        get value() {
+          splitRatioReads.push(1);
+          return 0.5;
+        },
       },
-    },
-  } as unknown as Settings.Instance;
+    };
+  }
   const created: EditorSurfaceContentContext[] = [];
   class TestSurface extends GitComparisonSurface.$Class {
     protected override createContent(
@@ -47,7 +60,7 @@ function createSurface(gitWorkspace: GitWorkspace.Model | null) {
     }
   }
   return {
-    surface: new TestSurface(() => gitWorkspace, settings),
+    surface: new TestSurface(() => gitWorkspace),
     splitRatioReads,
     created,
   };
@@ -120,7 +133,9 @@ describe('GitComparisonSurface', () => {
   });
 
   it('subscribes the persisted split ratio so a divider drag repaints the host', () => {
-    const { surface, splitRatioReads } = createSurface(null);
+    const { surface, splitRatioReads } = createSurface(
+      createGitWorkspace('/project'),
+    );
     surface.observePaintSignals();
     expect(splitRatioReads.length).toBe(1);
   });

@@ -4,6 +4,17 @@ import { DefaultPlugins } from './DefaultPlugins';
 test('the shipped application registers its built in contributions', () => {
   const contributors = DefaultPlugins.Class.create();
   expect(
+    contributors.map((contributor) => [
+      contributor.identifier,
+      contributor.name,
+    ]),
+  ).toEqual([
+    ['file-tree', 'File Tree'],
+    ['git', 'Git'],
+    ['markdown', 'Markdown'],
+    ['extensions', 'Extensions'],
+  ]);
+  expect(
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),

@@ -37,6 +37,7 @@ import {
 } from '../system/Momentum';
 import { Logging } from '../system/Logging';
 import type { Settings } from '../settings/Settings';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import {
@@ -249,9 +250,16 @@ class $DiffView {
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default. Both axes use
   // the one profile: a horizontal axis on a slower curve reads as lag next to the vertical fling.
   protected settingsSource: Settings.Instance | null = null;
-  attachSettings(settings: Settings.Instance): void {
+  protected splitRatioSetting: RegisteredSetting<number> | null = null;
+  attachSettings(
+    settings: Settings.Instance,
+    splitRatioSetting?: RegisteredSetting<number>,
+  ): void {
     this.settingsSource = settings;
-    this.paneSplitter.size.value = settings.diffSplitRatio.value;
+    this.splitRatioSetting = splitRatioSetting ?? null;
+    if (splitRatioSetting) {
+      this.paneSplitter.size.value = splitRatioSetting.value.value;
+    }
     this.update();
   }
   protected get flingMomentum(): MomentumOptions {
@@ -319,12 +327,11 @@ class $DiffView {
       currentSize: () => this.paneSplitRatio(),
       currentExtentCells: () => this.paneExtentWidth(),
       onSizeChange: (ratio) => {
-        if (this.settingsSource)
-          this.settingsSource.diffSplitRatio.value = ratio;
+        if (this.splitRatioSetting) this.splitRatioSetting.value.value = ratio;
         this.update();
       },
       onDragEnd: () => {
-        this.settingsSource?.save();
+        this.splitRatioSetting?.save();
         this.update();
       },
     });
@@ -1075,7 +1082,7 @@ class $DiffView {
 
   protected paneSplitRatio(): number {
     const ratio =
-      this.settingsSource?.diffSplitRatio.value ?? this.paneSplitter.size.value;
+      this.splitRatioSetting?.value.value ?? this.paneSplitter.size.value;
     return Math.max(0.15, Math.min(0.85, ratio));
   }
 

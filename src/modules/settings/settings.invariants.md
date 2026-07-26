@@ -12,16 +12,16 @@ Ctrl+, panel UI and RootView wiring are OUT of scope here.
 unreadable, or containing invalid JSON — the load path degrades to the layer beneath instead of
 propagating an error.
 
-**Scope:** `Settings.load` / `Settings.readSettingsFile` reading the user and project files.
+**Scope:** `Settings.load` / `Settings.readSettingsRecord` reading the user and project files.
 
-**Mechanism:** `readSettingsFile` gets `null` from the filesystem seam for a missing/unreadable file
+**Mechanism:** `readSettingsRecord` gets `null` from the filesystem seam for a missing/unreadable file
 and returns `{}`; a `JSON.parse` throw is caught and also returns `{}`. `sanitize` then keeps only
 recognized, correctly-typed keys. The reality is that `~/.config/invar/settings.json` and
 `.invar/settings.json` are user-editable files on disk the editor does not exclusively own.
 
 **Generates:** the never-throw load contract; the defaults-as-floor behavior.
 
-**Evidence:** `Settings.ts` `readSettingsFile` (null-guard + try/catch) and `sanitize`
+**Evidence:** `Settings.ts` `readSettingsRecord` (null-guard + try/catch) and `sanitize`
 (per-key type/enum checks); `Settings.test.ts` "corrupt JSON falls back to defaults without
 throwing" and "unrecognized and mistyped keys are dropped".
 
@@ -36,6 +36,38 @@ snapshot equals defaults for the affected fields (no throw).
 **Last refined:** 2026-07-21
 
 ## Chosen invariants
+
+### Plugin settings live in contributed schema
+
+**Invariant:** If a setting belongs to a plugin, then the host `SettingsValues`, defaults, sanitizer,
+and panel descriptors do not name it; the setting exists only while its contributor's schema
+registration is active.
+
+**Scope:** `Settings.registerSetting`, the application contribution context, and `SettingsPanel`
+descriptor projection.
+
+**Mechanism:** contributors register typed `SettingContribution` records. `Settings` owns their
+reactive values and retains raw user/project records so late registration receives the same
+defaults-user-project precedence as host fields. `SettingsPanel` appends active contributed
+descriptors generically. Disposing the registration removes the descriptor and cell while a saved
+user value remains available for a later reinstall.
+
+**Generates:** plugin-owned headings and settings rows; disable/re-enable symmetry; a host schema
+whose vocabulary does not grow with installed plugins.
+
+**Evidence:** `SettingContribution.interface.ts`; `Settings.ts` (`registerSetting`);
+`SettingsPanel.ts` (`descriptors`); `Settings.test.ts` ("disposing a contribution removes its schema
+but preserves saved data"); `SettingsPanel.test.ts` ("contributed rows use their heading and
+disappear on dispose").
+
+**Impossible if true:** a plugin setting getter or key in `SettingsValues`; a disabled plugin leaving
+a row in Settings; a plugin heading special-cased in the overlay.
+
+**Verification:** `bun test src/modules/settings && bash scripts/conventions-gate.sh`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
 
 ### Every setting is a reactive cell read through its value ref
 

@@ -17,6 +17,11 @@ import type {
   PanelAlignment,
   SidebarPosition,
 } from '../layout/LayoutModel';
+import type {
+  RegisteredSetting,
+  SettingContribution,
+  SettingValue,
+} from './SettingContribution.interface';
 
 class $Settings {
   protected static cachedSet<Value>(
@@ -185,15 +190,6 @@ class $Settings {
   get rightDockWidth(): Ref<number> {
     return ref(28);
   }
-  get gitSplitRatio(): Ref<number> {
-    return ref(0.5);
-  }
-  get diffSplitRatio(): Ref<number> {
-    return ref(0.5);
-  }
-  get markdownSplitRatio(): Ref<number> {
-    return ref(0.5);
-  }
   get panelContentOrder(): Ref<string[]> {
     return shallowRef(['agent', 'terminal']);
   }
@@ -235,11 +231,19 @@ class $Settings {
       agentNarrationRate: this.agentNarrationRate,
       sidebarWidth: this.sidebarWidth,
       rightDockWidth: this.rightDockWidth,
-      gitSplitRatio: this.gitSplitRatio,
-      diffSplitRatio: this.diffSplitRatio,
-      markdownSplitRatio: this.markdownSplitRatio,
       panelContentOrder: this.panelContentOrder,
     };
+  }
+
+  protected contributedSettings = new Map<
+    string,
+    ContributedSettingRecord<SettingValue>
+  >();
+  protected storedUserRecord: Record<string, unknown> = {};
+  protected storedProjectRecord: Record<string, unknown> = {};
+
+  get schemaRevision(): Ref<number> {
+    return ref(0);
   }
 
   // ---- Filesystem seam ---------------------------------------------------------------------------
@@ -315,24 +319,29 @@ class $Settings {
   load(paths: SettingsPaths = {}): void {
     const resolved = this.resolvePaths(paths);
     this.storedUserPath = resolved.userPath;
-    const userValues = this.readSettingsFile(resolved.userPath);
-    const projectValues = this.readSettingsFile(resolved.projectPath);
+    this.storedUserRecord = this.readSettingsRecord(resolved.userPath);
+    this.storedProjectRecord = this.readSettingsRecord(resolved.projectPath);
     const settingsClass = this.constructor as typeof $Settings;
     this.applyValues({
       ...settingsClass.defaults,
-      ...userValues,
-      ...projectValues,
+      ...settingsClass.sanitize(this.storedUserRecord),
+      ...settingsClass.sanitize(this.storedProjectRecord),
     });
+    for (const record of this.contributedSettings.values()) {
+      record.value.value = this.contributedValue(record.contribution);
+    }
   }
 
   /** Serialize the current values to the user-level file (best-effort; write errors are swallowed). */
   save(): void {
-    const serialized = JSON.stringify(this.snapshot(), null, 2);
+    const snapshot = this.persistenceSnapshot();
+    const serialized = JSON.stringify(snapshot, null, 2);
     try {
       this.fileSystem.writeTextFile(this.userSettingsPath, serialized + '\n');
     } catch {
       // Best-effort persistence — a failed write must never crash the app.
     }
+    this.storedUserRecord = { ...snapshot };
     // save() is a SYNCHRONOUS disk write and MUST be infrequent (persist-on-settle, never per drag/scroll
     // tick — that stalls the frame). This trace lets the perf smoke assert exactly one save per drag.
     Logging.Class.info('settings-save');
@@ -346,12 +355,75 @@ class $Settings {
     this.applyValues({ [key]: value } as Partial<SettingsValues>);
   }
 
+  setContributed(identifier: string, value: SettingValue): void {
+    const record = this.contributedSettings.get(identifier);
+    if (!record) return;
+    const sanitized = this.sanitizeContributedValue(record.contribution, value);
+    if (sanitized !== undefined) record.value.value = sanitized;
+  }
+
+  // invariant: Plugin settings live in contributed schema (settings.invariants.md)
+  registerSetting<Value extends SettingValue>(
+    contribution: SettingContribution<Value>,
+  ): RegisteredSetting<Value> {
+    if (this.fields[contribution.identifier as keyof SettingsValues]) {
+      throw new Error(
+        `Contributed setting duplicates host setting: ${contribution.identifier}`,
+      );
+    }
+    if (this.contributedSettings.has(contribution.identifier)) {
+      throw new Error(
+        `Contributed setting already registered: ${contribution.identifier}`,
+      );
+    }
+    const value = ref(this.contributedValue(contribution)) as Ref<Value>;
+    const record: ContributedSettingRecord<Value> = { contribution, value };
+    this.contributedSettings.set(
+      contribution.identifier,
+      record as ContributedSettingRecord<SettingValue>,
+    );
+    this.schemaRevision.value += 1;
+    let registered = true;
+    return {
+      value,
+      save: () => this.save(),
+      dispose: () => {
+        if (!registered) return;
+        registered = false;
+        this.contributedSettings.delete(contribution.identifier);
+        this.schemaRevision.value += 1;
+      },
+    };
+  }
+
+  contributedSettingDescriptors(): readonly SettingContribution[] {
+    void this.schemaRevision.value;
+    return [...this.contributedSettings.values()].map(
+      (record) => record.contribution,
+    );
+  }
+
   /** A plain snapshot of every current value. */
   snapshot(): SettingsValues {
     const values = {} as SettingsValues;
     const fields = this.fields;
     for (const key of Object.keys(fields) as (keyof SettingsValues)[]) {
       (values[key] as SettingsValues[typeof key]) = fields[key].value;
+    }
+    return values;
+  }
+
+  settingValue(identifier: string): SettingValue | undefined {
+    const hostField = this.fields[identifier as keyof SettingsValues];
+    return (
+      hostField?.value ?? this.contributedSettings.get(identifier)?.value.value
+    );
+  }
+
+  protected persistenceSnapshot(): Record<string, SettingValue> {
+    const values: Record<string, SettingValue> = { ...this.snapshot() };
+    for (const [identifier, record] of this.contributedSettings) {
+      values[identifier] = record.value.value;
     }
     return values;
   }
@@ -367,8 +439,7 @@ class $Settings {
     }
   }
 
-  /** Read + parse a settings file, returning only recognized, well-typed keys (never throws). */
-  protected readSettingsFile(path: string): Partial<SettingsValues> {
+  protected readSettingsRecord(path: string): Record<string, unknown> {
     const text = this.fileSystem.readTextFile(path);
     if (text === null) return {};
     let parsed: unknown;
@@ -377,7 +448,49 @@ class $Settings {
     } catch {
       return {};
     }
-    return (this.constructor as typeof $Settings).sanitize(parsed);
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return {};
+    }
+    return parsed as Record<string, unknown>;
+  }
+
+  protected contributedValue<Value extends SettingValue>(
+    contribution: SettingContribution<Value>,
+  ): Value {
+    const projectValue = this.sanitizeContributedValue(
+      contribution,
+      this.storedProjectRecord[contribution.identifier],
+    );
+    if (projectValue !== undefined) return projectValue;
+    const userValue = this.sanitizeContributedValue(
+      contribution,
+      this.storedUserRecord[contribution.identifier],
+    );
+    return userValue ?? contribution.defaultValue;
+  }
+
+  protected sanitizeContributedValue<Value extends SettingValue>(
+    contribution: SettingContribution<Value>,
+    candidate: unknown,
+  ): Value | undefined {
+    const spec = contribution.spec;
+    if (spec.kind === 'boolean') {
+      return typeof candidate === 'boolean' ? (candidate as Value) : undefined;
+    }
+    if (spec.kind === 'number') {
+      return typeof candidate === 'number' && Number.isFinite(candidate)
+        ? (candidate as Value)
+        : undefined;
+    }
+    const options = spec.kind === 'enum' ? spec.options : spec.resolveOptions();
+    return typeof candidate === 'string' &&
+      (candidate === '' || options.includes(candidate))
+      ? (candidate as Value)
+      : undefined;
   }
 
   // ---- Static helpers ----------------------------------------------------------------------------
@@ -416,9 +529,6 @@ class $Settings {
       agentNarrationRate: 1.0,
       sidebarWidth: 32,
       rightDockWidth: 28,
-      gitSplitRatio: 0.5,
-      diffSplitRatio: 0.5,
-      markdownSplitRatio: 0.5,
       panelContentOrder: ['agent', 'terminal'],
     };
   }
@@ -548,9 +658,6 @@ class $Settings {
     readNumber('lspFileSizeLimitKb');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
-    readNumber('gitSplitRatio');
-    readNumber('diffSplitRatio');
-    readNumber('markdownSplitRatio');
     if (
       Array.isArray(record.panelContentOrder) &&
       record.panelContentOrder.length > 0 &&
@@ -635,9 +742,6 @@ export interface SettingsValues {
   agentNarrationRate: number;
   sidebarWidth: number;
   rightDockWidth: number;
-  gitSplitRatio: number;
-  diffSplitRatio: number;
-  markdownSplitRatio: number;
   panelContentOrder: string[];
 }
 
@@ -657,4 +761,9 @@ export interface SettingsPaths {
 
 export interface SettingsOptions {
   fileSystem?: SettingsFileSystem;
+}
+
+interface ContributedSettingRecord<Value extends SettingValue> {
+  contribution: SettingContribution<Value>;
+  value: Ref<Value>;
 }

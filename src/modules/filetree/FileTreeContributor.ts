@@ -10,6 +10,7 @@ import type {
 } from '../workspace/WorkspaceContributor.interface';
 import { FileTreePaneContent } from './FileTreePaneContent';
 import { FileTreeWorkspace } from './FileTreeWorkspace';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
@@ -17,6 +18,8 @@ import { FileTreeWorkspace } from './FileTreeWorkspace';
 class $FileTreeContributor
   implements ApplicationContributor, WorkspaceContributor
 {
+  readonly identifier = 'file-tree';
+  readonly name = 'File Tree';
   readonly primaryDockContentIdentifiers = ['files'] as const;
   readonly primaryDockFallbackContentIdentifier = 'files';
   readonly workspaceContributor: WorkspaceContributor = this;
@@ -27,6 +30,8 @@ class $FileTreeContributor
   protected application: ApplicationContributionContext | null = null;
   protected paneContent: FileTreePaneContent.Model | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
+  protected disposeCommands: (() => void) | null = null;
+  protected showHiddenFilesSetting: RegisteredSetting<boolean> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const fileTreeWorkspace = this.createWorkspaceContribution(workspace);
@@ -36,6 +41,42 @@ class $FileTreeContributor
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
+    this.showHiddenFilesSetting = context.registerSetting({
+      identifier: 'fileTreeShowHiddenFiles',
+      label: 'Show hidden files',
+      section: this.name,
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
+    context.registerKeybindings([
+      {
+        chord: { key: 'e', ctrl: true, shift: true },
+        action: 'view.showFiles',
+      },
+      { chord: { key: 'tab' }, action: 'focus.toggle', context: 'files' },
+      { chord: { key: 'up' }, action: 'tree.up', context: 'files' },
+      { chord: { key: 'down' }, action: 'tree.down', context: 'files' },
+      {
+        chord: { key: 'return' },
+        action: 'tree.activate',
+        context: 'files',
+      },
+      {
+        chord: { key: 'space' },
+        action: 'tree.activate',
+        context: 'files',
+      },
+      {
+        chord: { key: 'right' },
+        action: 'tree.rightExpandOrOpen',
+        context: 'files',
+      },
+      {
+        chord: { key: 'left' },
+        action: 'tree.leftCollapse',
+        context: 'files',
+      },
+    ]);
     this.paneContent = this.createPaneContent(context);
     context.registerPrimaryDockContent(this.paneContent);
     this.disposeStatusProjection =
@@ -49,7 +90,10 @@ class $FileTreeContributor
   protected createWorkspaceContribution(
     workspace: Workspace.Model,
   ): FileTreeWorkspace.Model {
-    return new FileTreeWorkspace.Class(workspace);
+    return new FileTreeWorkspace.Class(
+      workspace,
+      this.showHiddenFilesSetting?.value,
+    );
   }
 
   protected createPaneContent(
@@ -59,10 +103,12 @@ class $FileTreeContributor
   }
 
   disposeApplication(): void {
-    this.paneContent?.dispose();
     this.paneContent = null;
+    this.disposeCommands?.();
+    this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
+    this.showHiddenFilesSetting = null;
     this.application = null;
   }
 
@@ -88,7 +134,7 @@ class $FileTreeContributor
       context.primaryDockHost.showContent('files');
       context.workspaceSet.active.focusPrimaryPane('files');
     };
-    context.commands.registerAll([
+    this.disposeCommands = context.commands.registerAll([
       {
         id: 'view.focusFiles',
         title: 'View: Focus File Explorer',

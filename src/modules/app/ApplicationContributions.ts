@@ -1,0 +1,152 @@
+import { Reactive } from 'ivue';
+import { ref } from 'vue';
+import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+import type { Settings } from '../settings/Settings';
+import type {
+  ApplicationContributionCatalog,
+  ApplicationContributionContext,
+  ApplicationContributionEntry,
+  ApplicationContributor,
+} from './ApplicationContributor.interface';
+
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
+class $ApplicationContributions implements ApplicationContributionCatalog {
+  protected readonly activeContributions = new Map<
+    string,
+    ActiveContribution
+  >();
+
+  constructor(
+    protected readonly contributors: readonly ApplicationContributor[],
+    protected readonly options: ApplicationContributionsOptions,
+  ) {}
+
+  get revision() {
+    return ref(0);
+  }
+
+  entries(): readonly ApplicationContributionEntry[] {
+    void this.revision.value;
+    return this.contributors.map((contributor) => ({
+      identifier: contributor.identifier,
+      name: contributor.name,
+      enabled: this.activeContributions.has(contributor.identifier),
+      canDisable: contributor.canDisable !== false,
+    }));
+  }
+
+  activateAll(): void {
+    for (const contributor of this.contributors) {
+      this.activate(contributor);
+    }
+  }
+
+  setEnabled(identifier: string, enabled: boolean): void {
+    const contributor = this.contributors.find(
+      (candidate) => candidate.identifier === identifier,
+    );
+    if (!contributor) return;
+    if (!enabled && contributor.canDisable === false) return;
+    if (enabled) this.activate(contributor);
+    else this.deactivate(contributor);
+    this.options.requestRender();
+  }
+
+  protected activate(contributor: ApplicationContributor): void {
+    if (this.activeContributions.has(contributor.identifier)) return;
+    const registrationDisposers: (() => void)[] = [];
+    const context: ApplicationContributionContext = {
+      ...this.options,
+      applicationContributions: this,
+      registerKeybindings: (bindings) => {
+        registrationDisposers.push(
+          this.options.keybindings.registerPluginLayer(
+            `plugin:${contributor.identifier}`,
+            bindings,
+          ),
+        );
+      },
+      registerSetting: (contribution) => {
+        const registeredSetting =
+          this.options.settings.registerSetting(contribution);
+        registrationDisposers.push(() => registeredSetting.dispose());
+        return registeredSetting;
+      },
+      registerPrimaryDockContent: (content) => {
+        this.options.primaryDockHost.register(content);
+        registrationDisposers.push(() =>
+          this.options.primaryDockHost.removeContent(content.id),
+        );
+      },
+    };
+    try {
+      contributor.activateApplication(context);
+      const disposeWorkspaceContribution = contributor.workspaceContributor
+        ? this.options.workspaceSet.registerContributor(
+            contributor.workspaceContributor,
+          )
+        : null;
+      this.activeContributions.set(contributor.identifier, {
+        contributor,
+        registrationDisposers,
+        disposeWorkspaceContribution,
+      });
+      this.revision.value += 1;
+    } catch (error) {
+      contributor.disposeApplication?.();
+      for (
+        let disposerIndex = registrationDisposers.length - 1;
+        disposerIndex >= 0;
+        disposerIndex--
+      ) {
+        registrationDisposers[disposerIndex]?.();
+      }
+      throw error;
+    }
+  }
+
+  protected deactivate(contributor: ApplicationContributor): void {
+    const active = this.activeContributions.get(contributor.identifier);
+    if (!active) return;
+    active.disposeWorkspaceContribution?.();
+    contributor.disposeApplication?.();
+    for (
+      let disposerIndex = active.registrationDisposers.length - 1;
+      disposerIndex >= 0;
+      disposerIndex--
+    ) {
+      active.registrationDisposers[disposerIndex]?.();
+    }
+    this.activeContributions.delete(contributor.identifier);
+    this.revision.value += 1;
+  }
+
+  dispose(): void {
+    for (const contributor of [...this.contributors].reverse()) {
+      this.deactivate(contributor);
+    }
+  }
+}
+
+export namespace ApplicationContributions {
+  export const $Class = $ApplicationContributions;
+  export let Class = Reactive($Class);
+  export type Instance = typeof Class.Instance;
+}
+
+export type ApplicationContributionsOptions = Omit<
+  ApplicationContributionContext,
+  | 'applicationContributions'
+  | 'registerKeybindings'
+  | 'registerSetting'
+  | 'registerPrimaryDockContent'
+> & {
+  keybindings: KeybindingRegistry.Instance;
+  settings: Settings.Instance;
+};
+
+interface ActiveContribution {
+  contributor: ApplicationContributor;
+  registrationDisposers: (() => void)[];
+  disposeWorkspaceContribution: (() => void) | null;
+}

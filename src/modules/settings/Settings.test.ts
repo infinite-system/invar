@@ -55,9 +55,6 @@ describe('Settings', () => {
     expect(settings.rightDockVerticalSpan.value).toBe('ends-at-panel');
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.rightDockWidth.value).toBe(28);
-    expect(settings.diffSplitRatio.value).toBe(0.5);
-    expect(settings.markdownSplitRatio.value).toBe(0.5);
-    expect(settings.gitSplitRatio.value).toBe(0.5);
     expect(settings.agentTerminalFollowMode.value).toBe('off');
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
   });
@@ -155,8 +152,20 @@ describe('Settings', () => {
     settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
     settings.set('theme', 'nord');
     settings.set('sidebarWidth', 48);
-    settings.set('diffSplitRatio', 0.65);
-    settings.set('markdownSplitRatio', 0.6);
+    const contributedRatio = settings.registerSetting({
+      identifier: 'samplePluginRatio',
+      label: 'Sample ratio',
+      section: 'Sample Plugin',
+      defaultValue: 0.5 as number,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.1,
+        maximum: 0.9,
+        decimals: 2,
+      },
+    });
+    contributedRatio.value.value = 0.65;
     settings.set('agentTerminalFollowMode', 'on-request');
     settings.set('panelContentOrder', ['terminal', 'agent']);
     settings.save();
@@ -166,8 +175,7 @@ describe('Settings', () => {
     expect(written).toBeDefined();
     expect(JSON.parse(written as string).theme).toBe('nord');
     expect(JSON.parse(written as string).sidebarWidth).toBe(48);
-    expect(JSON.parse(written as string).diffSplitRatio).toBe(0.65);
-    expect(JSON.parse(written as string).markdownSplitRatio).toBe(0.6);
+    expect(JSON.parse(written as string).samplePluginRatio).toBe(0.65);
     expect(JSON.parse(written as string).agentTerminalFollowMode).toBe(
       'on-request',
     );
@@ -186,12 +194,49 @@ describe('Settings', () => {
       },
     });
     reloaded.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+    const reloadedRatio = reloaded.registerSetting({
+      identifier: 'samplePluginRatio',
+      label: 'Sample ratio',
+      section: 'Sample Plugin',
+      defaultValue: 0.5 as number,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.1,
+        maximum: 0.9,
+        decimals: 2,
+      },
+    });
     expect(reloaded.theme.value).toBe('nord');
     expect(reloaded.sidebarWidth.value).toBe(48);
-    expect(reloaded.diffSplitRatio.value).toBe(0.65);
-    expect(reloaded.markdownSplitRatio.value).toBe(0.6);
+    expect(reloadedRatio.value.value).toBe(0.65);
     expect(reloaded.agentTerminalFollowMode.value).toBe('on-request');
     expect(reloaded.panelContentOrder.value).toEqual(['terminal', 'agent']);
+  });
+
+  test('disposing a contribution removes its schema but preserves saved data', () => {
+    const { settings } = makeStore();
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+    const first = settings.registerSetting({
+      identifier: 'samplePluginEnabled',
+      label: 'Enabled',
+      section: 'Sample Plugin',
+      defaultValue: false as boolean,
+      spec: { kind: 'boolean' },
+    });
+    first.value.value = true;
+    first.save();
+    first.dispose();
+    expect(settings.contributedSettingDescriptors()).toEqual([]);
+
+    const restored = settings.registerSetting({
+      identifier: 'samplePluginEnabled',
+      label: 'Enabled',
+      section: 'Sample Plugin',
+      defaultValue: false as boolean,
+      spec: { kind: 'boolean' },
+    });
+    expect(restored.value.value).toBe(true);
   });
 
   test('a reactive read re-runs when set() changes the value (live-apply)', () => {

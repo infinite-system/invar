@@ -1,6 +1,6 @@
 import { MarkdownPreviewContent } from './MarkdownPreviewContent';
 import type { MarkdownWorkspace } from './MarkdownWorkspace';
-import type { Settings } from '../settings/Settings';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type {
   EditorSurfaceContent,
   EditorSurfaceContentContext,
@@ -16,7 +16,7 @@ import type {
 class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
   constructor(
     protected readonly activeWorkspace: () => MarkdownWorkspace.Model | null,
-    protected readonly settings: Settings.Instance,
+    protected readonly splitRatioSetting: RegisteredSetting<number>,
   ) {}
 
   readonly identifier = 'markdown.preview';
@@ -40,7 +40,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
 
   /** The split's pane ratio is persisted, so a divider drag must repaint the host. */
   observePaintSignals(): void {
-    void this.settings.markdownSplitRatio.value;
+    void this.splitRatioSetting.value.value;
   }
 
   create(context: EditorSurfaceContentContext): EditorSurfaceContent {
@@ -61,6 +61,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
     return new MarkdownPreviewContent.Class(
       markdownWorkspace.workspace,
       context,
+      this.splitRatioSetting,
     );
   }
 }

@@ -76,6 +76,7 @@ import { StatusProjectionContributions } from './StatusProjectionContributions';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
+import { ApplicationContributions } from './ApplicationContributions';
 
 class $Bootstrap {
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
@@ -122,11 +123,6 @@ class $Bootstrap {
         new Promise<void>((resolve) => {
           renderer.once('frame', () => resolve());
         }),
-      contributors: (options.plugins ?? []).flatMap((contributor) =>
-        contributor.workspaceContributor
-          ? [contributor.workspaceContributor]
-          : [],
-      ),
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -225,13 +221,15 @@ class $Bootstrap {
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     );
-    for (const contributor of options.plugins ?? []) {
-      contributor.activateApplication({
+    const applicationContributions = new ApplicationContributions.Class(
+      options.plugins ?? [],
+      {
         renderer,
         workspaceSet,
         settings,
         theme,
         commands,
+        keybindings,
         primaryDockHost,
         contextMenu,
         boundedListPopup,
@@ -239,12 +237,11 @@ class $Bootstrap {
         statusBarSegments,
         statusProjectionContributions,
         editorSurfaceContents,
-        registerPrimaryDockContent: (content) =>
-          primaryDockHost.register(content),
         requestRender: () => renderer.requestRender(),
-      });
-      app.onDispose(() => contributor.disposeApplication?.());
-    }
+      },
+    );
+    applicationContributions.activateAll();
+    app.onDispose(() => applicationContributions.dispose());
     const primaryDockFallbackContentIdentifier = (options.plugins ?? []).find(
       (plugin) => plugin.primaryDockFallbackContentIdentifier !== undefined,
     )?.primaryDockFallbackContentIdentifier;

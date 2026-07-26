@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { MarkdownPreviewSurface } from './MarkdownPreviewSurface';
 import type { MarkdownPreviewContent } from './MarkdownPreviewContent';
 import type { MarkdownWorkspace } from './MarkdownWorkspace';
-import type { Settings } from '../settings/Settings';
 import type { EditorSurfaceContentContext } from '../ui/EditorSurfaceContents';
+import { ref } from 'vue';
 
 function createMarkdownWorkspace(root: string, path: string) {
   const markdownWorkspace = {
@@ -16,14 +16,19 @@ function createMarkdownWorkspace(root: string, path: string) {
 
 function createSurface(markdownWorkspace: MarkdownWorkspace.Model | null) {
   const splitRatioReads: number[] = [];
-  const settings = {
-    markdownSplitRatio: {
-      get value() {
-        splitRatioReads.push(1);
-        return 0.5;
-      },
+  const splitRatio = ref(0.5);
+  Object.defineProperty(splitRatio, 'value', {
+    configurable: true,
+    get() {
+      splitRatioReads.push(1);
+      return 0.5;
     },
-  } as unknown as Settings.Instance;
+  });
+  const splitRatioSetting = {
+    value: splitRatio,
+    save() {},
+    dispose() {},
+  };
   const created: EditorSurfaceContentContext[] = [];
   class TestSurface extends MarkdownPreviewSurface.$Class {
     protected override createContent(
@@ -37,7 +42,7 @@ function createSurface(markdownWorkspace: MarkdownWorkspace.Model | null) {
     }
   }
   return {
-    surface: new TestSurface(() => markdownWorkspace, settings),
+    surface: new TestSurface(() => markdownWorkspace, splitRatioSetting),
     splitRatioReads,
     created,
   };

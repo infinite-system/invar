@@ -46,7 +46,10 @@ class $GitComparisonContent implements EditorSurfaceContent {
       onNextChange: () => context.requestRender(),
       onPrevChange: () => context.requestRender(),
     });
-    view.attachSettings(context.settings); // live scroll physics, same as the editor
+    view.attachSettings(
+      context.settings,
+      this.gitWorkspace.diffSplitRatioSetting,
+    );
     view.attachFindBar(context.findBar, context.mountIdentity);
     return view;
   }

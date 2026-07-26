@@ -7,10 +7,14 @@ import type { WorkspaceContributor } from './WorkspaceContributor.interface';
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 class $WorkspaceSet {
+  protected readonly contributors: WorkspaceContributor[];
+
   constructor(
     protected readonly settings: Settings.Instance,
     protected readonly options: WorkspaceSetOptions = {},
-  ) {}
+  ) {
+    this.contributors = [...(options.contributors ?? [])];
+  }
 
   get entries() {
     return shallowRef<Workspace.Instance[]>([]);
@@ -120,12 +124,32 @@ class $WorkspaceSet {
     this.activeWorkspaceIndex.value = -1;
   }
 
+  registerContributor(contributor: WorkspaceContributor): () => void {
+    if (this.contributors.includes(contributor)) return () => {};
+    this.contributors.push(contributor);
+    for (const workspace of this.entries.value) {
+      workspace.registerContributor(contributor);
+    }
+    let registered = true;
+    return () => {
+      if (!registered) return;
+      registered = false;
+      const contributorIndex = this.contributors.indexOf(contributor);
+      if (contributorIndex >= 0) {
+        this.contributors.splice(contributorIndex, 1);
+      }
+      for (const workspace of this.entries.value) {
+        workspace.unregisterContributor(contributor);
+      }
+    };
+  }
+
   protected createWorkspace(): Workspace.Instance {
     return (
       this.options.createWorkspace?.() ??
       new Workspace.Class({
         awaitNextViewPaint: this.options.awaitNextViewPaint,
-        contributors: this.options.contributors,
+        contributors: this.contributors,
       })
     );
   }

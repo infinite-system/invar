@@ -152,7 +152,7 @@ settle
 expect_equal "$(field sidebarView)" 'extensions' 'clicking Extensions switched the view'
 expect_equal "$(char_at "$extensions_row" 0)" "$accent_bar" 'accent moved to the Extensions button, on the icon row (aligned)'
 expect_equal "$(accent_count_col0)" '1' 'still exactly one active item on Extensions'
-expect_frame_contains 'Coming soon' 'Extensions view renders the placeholder'
+expect_frame_contains 'Space/Enter installs or' 'Extensions view renders plugin controls'
 expect_frame_absent 'tree-marker.txt' 'the file tree is gone while Extensions is shown'
 
 echo '== click Explorer: back to the tree =='
@@ -174,7 +174,7 @@ expect_equal "$(field sidebarView)" 'files' 'Ctrl+Shift+E switched to Explorer'
 send_kitty '120;6u'   # Ctrl+Shift+X -> Extensions
 settle
 expect_equal "$(field sidebarView)" 'extensions' 'Ctrl+Shift+X switched to Extensions'
-expect_frame_contains 'Coming soon' 'the chord switched the rendered content too'
+expect_frame_contains 'Space/Enter installs or' 'the chord switched the rendered content too'
 
 echo '== Ctrl+Shift+B toggles the whole activity bar (hide reclaims the 4 columns) =='
 send_kitty '101;6u'   # back to Explorer for a known state

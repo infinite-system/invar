@@ -55,9 +55,7 @@ class $Workspace {
       byLine: (handle) => this.languageDecorationsByLine(handle),
     });
     for (const contributor of options.contributors ?? []) {
-      this.contributions.push(
-        contributor.attachWorkspace(this as unknown as Workspace.Model),
-      );
+      this.registerContributor(contributor);
     }
   }
 
@@ -72,6 +70,44 @@ class $Workspace {
   // never learns which surface is up.
   editorSurfaces = new EditorSurfaceClaims.Class();
   protected readonly contributions: WorkspaceContribution[] = [];
+  protected readonly contributorDisposers = new Map<
+    WorkspaceContributor,
+    () => void
+  >();
+  protected resourcesSuspended = false;
+
+  registerContributor(contributor: WorkspaceContributor): () => void {
+    const existingDisposer = this.contributorDisposers.get(contributor);
+    if (existingDisposer) return existingDisposer;
+    const contribution = contributor.attachWorkspace(
+      this as unknown as Workspace.Model,
+    );
+    this.contributions.push(contribution);
+    if (this.settingsSource) {
+      contribution.settingsAttached?.(this.settingsSource);
+    }
+    if (this.root) {
+      contribution.opened(this.root);
+      if (this.resourcesSuspended) contribution.suspended();
+    }
+    let registered = true;
+    const dispose = (): void => {
+      if (!registered) return;
+      registered = false;
+      this.contributorDisposers.delete(contributor);
+      const contributionIndex = this.contributions.indexOf(contribution);
+      if (contributionIndex >= 0) {
+        this.contributions.splice(contributionIndex, 1);
+      }
+      contribution.disposed();
+    };
+    this.contributorDisposers.set(contributor, dispose);
+    return dispose;
+  }
+
+  unregisterContributor(contributor: WorkspaceContributor): void {
+    this.contributorDisposers.get(contributor)?.();
+  }
   // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
   // from the tree / quick-open / a hover or a rendered reference) records the location left AND the
   // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
@@ -498,6 +534,7 @@ class $Workspace {
 
   /** Release per-root live resources while preserving this workspace's resumable model state. */
   suspendOwnedResources(): void {
+    this.resourcesSuspended = true;
     for (const contribution of this.contributions) contribution.suspended();
     // A suspended (background) workspace holds no language-server subprocess; resuming recreates
     // the client lazily through the buffer seams / the next semantic request.
@@ -509,13 +546,16 @@ class $Workspace {
 
   /** Recreate per-root live resources when this workspace becomes the observed project again. */
   resumeOwnedResources(): void {
+    this.resourcesSuspended = false;
     this.buffers.reactivate();
     for (const contribution of this.contributions) contribution.resumed();
   }
 
   /** Tear down owned resources with effects, handles, or subprocesses. */
   dispose(): void {
-    for (const contribution of this.contributions) contribution.disposed();
+    for (const disposeContribution of [...this.contributorDisposers.values()]) {
+      disposeContribution();
+    }
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
     void this.languageClientInstance?.dispose();
     this.languageClientInstance = null;

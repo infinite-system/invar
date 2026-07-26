@@ -3,8 +3,8 @@ import { ref, shallowRef } from 'vue';
 
 // Layered, intent-addressed keybinding resolution. Bindings are DATA (chord pattern or step list →
 // action id, with optional context + guard); resolution is a pure lookup over layers where LATER
-// layers shadow earlier ones (canonical floor ← platform overlays ← user rebinds). Multi-step
-// chords are step-list data with a timeout — not bespoke state code.
+// layers shadow earlier ones (canonical floor ← platform overlays ← plugin defaults ← user
+// rebinds). Multi-step chords are step-list data with a timeout — not bespoke state code.
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
 // invariant: Resolution is layered and later layers shadow earlier (keybindings.invariants.md)
 // invariant: Focus owns the keystroke (keybindings.invariants.md)
@@ -29,6 +29,7 @@ class $KeybindingRegistry {
   }
 
   protected layers: Layer[] = [];
+  protected nextLayerSequence = 0;
   protected guards = new Map<string, () => boolean>();
   protected pendingChord: {
     binding: Keybinding;
@@ -45,11 +46,63 @@ class $KeybindingRegistry {
   }
 
   registerLayer(name: string, bindings: Keybinding[]): void {
+    this.registerTieredLayer(name, bindings, name === 'user' ? 'user' : 'host');
+  }
+
+  // invariant: Plugin bindings cannot reserve chords (keybindings.invariants.md)
+  registerPluginLayer(
+    name: string,
+    bindings: readonly Keybinding[],
+  ): () => void {
+    const reservedBinding = bindings.find(
+      (binding) => binding.reserved || binding.reservedBecause,
+    );
+    if (reservedBinding) {
+      throw new Error(
+        `Plugin keybinding cannot reserve ${reservedBinding.action}`,
+      );
+    }
+    return this.registerTieredLayer(name, bindings, 'plugin');
+  }
+
+  registerUserLayer(name: string, bindings: readonly Keybinding[]): () => void {
+    return this.registerTieredLayer(name, bindings, 'user');
+  }
+
+  protected registerTieredLayer(
+    name: string,
+    bindings: readonly Keybinding[],
+    tier: LayerTier,
+  ): () => void {
+    const sequence = this.nextLayerSequence++;
+    const layer: Layer = {
+      name,
+      bindings: [...bindings],
+      tier,
+      sequence,
+    };
     this.layers = [
       ...this.layers.filter((layer) => layer.name !== name),
-      { name, bindings },
-    ];
+      layer,
+    ].sort(
+      (left, right) =>
+        this.tierPrecedence(left.tier) - this.tierPrecedence(right.tier) ||
+        left.sequence - right.sequence,
+    );
     this.revision.value += 1;
+    let registered = true;
+    return () => {
+      if (!registered) return;
+      registered = false;
+      this.layers = this.layers.filter((candidate) => candidate !== layer);
+      this.revision.value += 1;
+    };
+  }
+
+  protected tierPrecedence(tier: LayerTier): number {
+    if (tier === 'host') return 0;
+    if (tier === 'plugin') return 1;
+    return 2;
   }
 
   registerGuard(name: string, predicate: () => boolean): void {
@@ -334,21 +387,7 @@ export interface Keybinding {
   /** Multi-step chord, e.g. Ctrl+X then Ctrl+C. */
   steps?: ChordPattern[];
   /** Focus context this binding applies in; 'global' applies everywhere. */
-  context?:
-    | 'global'
-    | 'editor'
-    | 'files'
-    | 'git'
-    | 'palette'
-    | 'menu'
-    | 'listPopup'
-    | 'settings'
-    | 'quickopen'
-    | 'find'
-    | 'help'
-    | 'agent'
-    | 'terminal'
-    | 'panel';
+  context?: string;
   /** Named guard (host-registered predicate) that must be true for the binding to fire. */
   when?: string;
   /** A RESERVED-GLOBAL escape hatch (e.g. quit): fires from ANY mode — even while a modal/search
@@ -381,4 +420,8 @@ export interface Resolution {
 interface Layer {
   name: string;
   bindings: Keybinding[];
+  tier: LayerTier;
+  sequence: number;
 }
+
+type LayerTier = 'host' | 'plugin' | 'user';

@@ -3,17 +3,23 @@ import type { Settings } from '../settings/Settings';
 import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import { FileTree } from './FileTree';
+import type { Ref } from 'vue';
 
 // invariant: The file tree costs only what is expanded and visible (filetree.invariants.md)
 class $FileTreeWorkspace implements WorkspaceContribution {
-  constructor(readonly workspace: Workspace.Model) {}
+  constructor(
+    readonly workspace: Workspace.Model,
+    protected readonly showHiddenFiles?: Readonly<Ref<boolean>>,
+  ) {
+    this.tree = this.createTree();
+  }
 
   // invariant: Construction goes through overridable seams (project.invariants.md)
-  readonly tree = this.createTree();
+  readonly tree: FileTree.Instance;
   protected settingsSource: Settings.Instance | null = null;
 
   protected createTree(): FileTree.Instance {
-    return new FileTree.Class();
+    return new FileTree.Class(this.showHiddenFiles);
   }
 
   settingsAttached(settings: Settings.Instance): void {

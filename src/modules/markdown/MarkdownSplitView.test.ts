@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { ref } from 'vue';
 import { MarkdownSplitView } from './MarkdownSplitView';
 
 test('source pane geometry reads the overridable extent seam', () => {
@@ -20,6 +21,13 @@ test('source pane geometry reads the overridable extent seam', () => {
       settings: {
         markdownSplitRatio: { value: 0.3 },
       },
+    },
+  });
+  Object.defineProperty(splitView, 'splitRatioSetting', {
+    value: {
+      value: ref(0.3),
+      save() {},
+      dispose() {},
     },
   });
 

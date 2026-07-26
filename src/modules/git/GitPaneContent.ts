@@ -21,13 +21,14 @@ class $GitPaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => GitWorkspace.Model,
+    initialSplitRatio = 0.5,
   ) {
     this.splitter = new SplitterElement.Class({
       renderer: application.renderer,
       identifier: 'git-split-divider',
       orientation: 'horizontal',
       reportUnit: 'ratio',
-      initialSize: activeWorkspace().splitRatio,
+      initialSize: initialSplitRatio,
       minimumSize: 0.15,
       maximumSize: 0.85,
       currentSize: () => activeWorkspace().splitRatio,
