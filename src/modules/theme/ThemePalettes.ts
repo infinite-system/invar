@@ -1,7 +1,7 @@
 // Color palettes as semantic tokens, with truecolor → 256 → 16 down-quantization.
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
-import { Static } from "ivue/extras";
-import type { ColorDepth } from "./TerminalCapabilities";
+import { Static } from 'ivue/extras';
+import type { ColorDepth } from './TerminalCapabilities';
 
 // Tokyo Night — accurate spec values (the canonical dark theme). Low contrast between adjacent
 // surfaces (bg/panel/border are all near-black blues that differ only slightly), hierarchy carried by
@@ -26,81 +26,85 @@ class $ThemePalettes {
   }
 
   protected static get $dark(): Palette {
-    return this.cache("$dark", {
-      name: "invar-dark",
-      bg: "#1a1b26",
-      panel: "#16161e",
-      statusBg: "#16161e",
-      border: "#101014",
-      borderActive: "#7aa2f7",
-      fg: "#a9b1d6",
-      dim: "#787c99",
-      accent: "#7aa2f7",
-      terminalPrompt: "#7aa2f7",
-      selection: "#2b2f41",
-      selectionMuted: "#283457",
-      cursorLine: "#1e202e",
-      indentGuide: "#292e42",
-      added: "#41a6b5",
-      modified: "#6183bb",
-      deleted: "#db4b4b",
-      diffAddedBg: "#164846",
-      diffModifiedBg: "#394b70",
-      diffDeletedBg: "#823c41",
-      keyword: "#bb9af7",
-      string: "#9ece6a",
-      number: "#ff9e64",
-      comment: "#51597d",
-      func: "#7aa2f7",
-      type: "#0db9d7",
-      variable: "#c0caf5",
-      operator: "#89ddff",
-      error: "#db4b4b",
-      warning: "#e0af68",
-      info: "#0da0ba",
+    return this.cache('$dark', {
+      name: 'invar-dark',
+      bg: '#1a1b26',
+      panel: '#16161e',
+      statusBg: '#16161e',
+      border: '#101014',
+      borderActive: '#7aa2f7',
+      fg: '#a9b1d6',
+      dim: '#787c99',
+      accent: '#7aa2f7',
+      terminalPrompt: '#7aa2f7',
+      selection: '#2b2f41',
+      selectionMuted: '#283457',
+      cursorLine: '#1e202e',
+      indentGuide: '#292e42',
+      inlineRewriteForeground: '#7dcfff',
+      inlineRewriteBackground: '#24283b',
+      added: '#41a6b5',
+      modified: '#6183bb',
+      deleted: '#db4b4b',
+      diffAddedBg: '#164846',
+      diffModifiedBg: '#394b70',
+      diffDeletedBg: '#823c41',
+      keyword: '#bb9af7',
+      string: '#9ece6a',
+      number: '#ff9e64',
+      comment: '#51597d',
+      func: '#7aa2f7',
+      type: '#0db9d7',
+      variable: '#c0caf5',
+      operator: '#89ddff',
+      error: '#db4b4b',
+      warning: '#e0af68',
+      info: '#0da0ba',
     });
   }
 
   // Tokyo Night Day — a soft grey-blue light theme (bg is never #fff so it doesn't burn the eyes),
   // body text a dark blue-grey rather than black, all accents desaturated for easy daytime reading.
   protected static get $light(): Palette {
-    return this.cache("$light", {
-      name: "invar-light",
-      bg: "#e1e2e7",
-      panel: "#d4d6e4",
-      statusBg: "#c4c8da",
-      border: "#b6bad0",
-      borderActive: "#2e7de9",
-      fg: "#343b58",
-      dim: "#848cb5",
-      accent: "#2e7de9",
-      terminalPrompt: "#2e7de9",
-      selection: "#b7c1e3",
-      selectionMuted: "#a3b6e8",
-      cursorLine: "#d6d8e6",
-      indentGuide: "#c8cbe0",
-      added: "#587539",
-      modified: "#8c6c3e",
-      deleted: "#f52a65",
-      diffAddedBg: "#d5e6d0",
-      diffModifiedBg: "#ece6d0",
-      diffDeletedBg: "#f2d5dc",
-      keyword: "#9854f1",
-      string: "#587539",
-      number: "#b15c00",
-      comment: "#848cb5",
-      func: "#2e7de9",
-      type: "#007197",
-      variable: "#343b58",
-      operator: "#0f4b6e",
-      error: "#f52a65",
-      warning: "#8c6c3e",
-      info: "#2e7de9",
+    return this.cache('$light', {
+      name: 'invar-light',
+      bg: '#e1e2e7',
+      panel: '#d4d6e4',
+      statusBg: '#c4c8da',
+      border: '#b6bad0',
+      borderActive: '#2e7de9',
+      fg: '#343b58',
+      dim: '#848cb5',
+      accent: '#2e7de9',
+      terminalPrompt: '#2e7de9',
+      selection: '#b7c1e3',
+      selectionMuted: '#a3b6e8',
+      cursorLine: '#d6d8e6',
+      indentGuide: '#c8cbe0',
+      inlineRewriteForeground: '#007197',
+      inlineRewriteBackground: '#cbd5ef',
+      added: '#587539',
+      modified: '#8c6c3e',
+      deleted: '#f52a65',
+      diffAddedBg: '#d5e6d0',
+      diffModifiedBg: '#ece6d0',
+      diffDeletedBg: '#f2d5dc',
+      keyword: '#9854f1',
+      string: '#587539',
+      number: '#b15c00',
+      comment: '#848cb5',
+      func: '#2e7de9',
+      type: '#007197',
+      variable: '#343b58',
+      operator: '#0f4b6e',
+      error: '#f52a65',
+      warning: '#8c6c3e',
+      info: '#2e7de9',
     });
   }
 
   protected static get $palettes(): Readonly<Record<string, Palette>> {
-    return this.cache("$palettes", {
+    return this.cache('$palettes', {
       [this.$dark.name]: this.$dark,
       [this.$light.name]: this.$light,
     });
@@ -121,7 +125,7 @@ class $ThemePalettes {
   // --- Down-quantization ---------------------------------------------------------
 
   protected static hexToRgb(hex: string): [number, number, number] {
-    const hexDigits = hex.replace("#", "");
+    const hexDigits = hex.replace('#', '');
     return [
       parseInt(hexDigits.slice(0, 2), 16),
       parseInt(hexDigits.slice(2, 4), 16),
@@ -148,7 +152,7 @@ class $ThemePalettes {
   protected static get $ansi16(): ReadonlyArray<
     readonly [number, number, number]
   > {
-    return this.cache("$ansi16", [
+    return this.cache('$ansi16', [
       [0, 0, 0],
       [128, 0, 0],
       [0, 128, 0],
@@ -189,22 +193,22 @@ class $ThemePalettes {
   }
 
   protected static rgbToHex(red: number, green: number, blue: number): string {
-    const toHexByte = (value: number) => value.toString(16).padStart(2, "0");
+    const toHexByte = (value: number) => value.toString(16).padStart(2, '0');
     return `#${toHexByte(red)}${toHexByte(green)}${toHexByte(blue)}`;
   }
 
   /** Return a palette whose colors are quantized to the terminal's depth. */
   // invariant: The palette ladder quantizes color without leaving the palette (src/modules/theme/theme.invariants.md)
   static quantizePalette(palette: Palette, depth: ColorDepth): Palette {
-    if (depth === "truecolor") return palette;
+    if (depth === 'truecolor') return palette;
     const mapColor =
-      depth === "256"
+      depth === '256'
         ? (color: string) => this.to256Hex(color)
         : (color: string) => this.to16Hex(color);
     const result = { ...palette };
     for (const key of Object.keys(result) as Array<keyof Palette>) {
       const value = result[key];
-      if (typeof value === "string" && value.startsWith("#")) {
+      if (typeof value === 'string' && value.startsWith('#')) {
         (result[key] as string) = mapColor(value);
       }
     }
@@ -232,6 +236,8 @@ export interface Palette {
   selectionMuted: string;
   cursorLine: string;
   indentGuide: string;
+  inlineRewriteForeground: string;
+  inlineRewriteBackground: string;
   added: string;
   modified: string;
   deleted: string;

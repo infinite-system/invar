@@ -1,5 +1,5 @@
 import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, type Ref } from 'vue';
 import { Workspace } from './Workspace';
 import type { Settings } from '../settings/Settings';
 import type { WorkspaceContributor } from './WorkspaceContributor.interface';
@@ -59,6 +59,14 @@ class $WorkspaceSet {
     }
     const workspace = this.createWorkspace();
     workspace.attachSettings(this.settings);
+    if (this.options.inlineRewriteEnabled) {
+      workspace.attachInlineRewrite(
+        this.options.inlineRewriteEnabled,
+        () =>
+          this.entries.value[this.activeWorkspaceIndex.value] === workspace &&
+          (this.options.inlineRewriteEligible?.() ?? true),
+      );
+    }
     workspace.open(root);
     this.entries.value = [...this.entries.value, workspace];
     this.activeWorkspaceIndex.value = this.entries.value.length - 1;
@@ -165,6 +173,8 @@ export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
   awaitNextViewPaint?: () => Promise<void>;
   contributors?: readonly WorkspaceContributor[];
+  inlineRewriteEnabled?: Ref<boolean>;
+  inlineRewriteEligible?: () => boolean;
 }
 
 export interface WorkspaceTab {
