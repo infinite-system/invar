@@ -1904,8 +1904,8 @@ class $RootView {
     const imagePreview = new ImagePreview.Class();
     // Pixel-tier image preview (kitty graphics / sixel above the half-block floor). The graphics tier
     // derives from OpenTUI's reported capabilities — held in a ref because the report arrives ASYNC via
-    // the `capabilities` event, and update() reading the ref inside the frame effect is what upgrades
-    // the tier the moment the terminal answers (half-block floor until then; degrade-up, never flash).
+    // the `capabilities` event. The event re-runs update() and requests a frame explicitly, so
+    // PixelImageMount re-syncs at the richer tier (half-block until then; never flash).
     // invariant: Graphics tier prefers the reported capability and degrades to cells (src/modules/theme/theme.invariants.md)
     const readReportedGraphics = (): ReportedGraphicsCapabilities | null => {
       const capabilities = renderer.capabilities;
@@ -1921,6 +1921,8 @@ class $RootView {
     );
     renderer.on('capabilities', () => {
       reportedGraphics.value = readReportedGraphics();
+      update();
+      renderer.requestRender();
     });
     // The emission surface: OpenTUI's writeOut routes through the native zig writer — the SAME queue
     // as frame bytes, so an out-of-band graphics payload serializes between frames, never mid-frame.

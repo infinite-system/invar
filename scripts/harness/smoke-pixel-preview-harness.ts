@@ -83,7 +83,7 @@ const unitResult = Bun.spawnSync(
     process.execPath,
     'test',
     'src/modules/image/',
-    'src/modules/theme/__tests__/GraphicsTier.test.ts',
+    'src/modules/theme/GraphicsTier.test.ts',
   ],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
@@ -100,6 +100,126 @@ await Bun.write(
   new Uint8Array([66, 73, 78, 0, 0, 1, 2, 3]),
 );
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
+async function driveLateKittyCapabilityUpgrade(): Promise<void> {
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-pixel-late-capability-harness-home-'),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      COLORTERM: 'truecolor',
+      TUI_GRAPHICS_TIER: undefined,
+      TMUX: undefined,
+      KITTY_WINDOW_ID: undefined,
+      TERM_PROGRAM: undefined,
+    },
+    retainFullOutput: true,
+  });
+  driver.outputSequenceCount('\x1b_Ga=T');
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.ready === true',
+      (status) => status.ready === true,
+      15_000,
+    );
+    await openThroughQuickOpen(driver, 'picture');
+    await awaitImageStatus(driver, statusPath);
+    const halfBlockSnapshot = await driver.awaitGridCondition(
+      'the unforced image paints at the half-block floor before the capability answer',
+      (candidate) => halfBlockCount(candidate) > 500,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(halfBlockSnapshot) > 500,
+      'the unforced image paints at the half-block floor before the capability answer',
+    );
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') === 0,
+      'no kitty placement is emitted before the terminal reports kitty graphics',
+    );
+
+    const graphicsQueryPrefix = '\x1b_Gi=';
+    const graphicsQuerySuffix = ',s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\';
+    const rawOutput = driver.recordedOutput();
+    const graphicsQueryStart = rawOutput.indexOf(graphicsQueryPrefix);
+    const graphicsQuerySuffixStart = rawOutput.indexOf(
+      graphicsQuerySuffix,
+      graphicsQueryStart,
+    );
+    const graphicsQueryIdentifier =
+      graphicsQueryStart >= 0 && graphicsQuerySuffixStart >= 0
+        ? rawOutput.slice(
+            graphicsQueryStart + graphicsQueryPrefix.length,
+            graphicsQuerySuffixStart,
+          )
+        : '';
+    HarnessSmoke.Class.requireCondition(
+      /^\d+$/.test(graphicsQueryIdentifier),
+      'the graphics capability query is discovered in the raw PTY output',
+    );
+    const graphicsCapabilityQuery =
+      graphicsQueryPrefix + graphicsQueryIdentifier + graphicsQuerySuffix;
+    const graphicsCapabilityReply =
+      graphicsQueryPrefix + graphicsQueryIdentifier + ';OK\x1b\\';
+    console.log(
+      `graphics capability query ${JSON.stringify(graphicsCapabilityQuery)}`,
+    );
+    console.log(
+      `graphics capability reply ${JSON.stringify(graphicsCapabilityReply)}`,
+    );
+
+    const placementCountBeforeCapabilityReply =
+      driver.outputSequenceCount('\x1b_Ga=T');
+    const outputLengthBeforeCapabilityReply = driver.recordedOutput().length;
+    driver.sendRawInputWithoutFrameExpectation(graphicsCapabilityReply);
+    const upgradedProjectionSnapshot = await driver.awaitGridCondition(
+      'the late capability answer replaces half-block cells with a pixel-tier projection',
+      (candidate) => halfBlockCount(candidate) === 0,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(upgradedProjectionSnapshot) === 0,
+      'the late capability answer clears the stale half-block projection',
+    );
+    await driver.awaitOutputCondition(
+      'a kitty placement appears after the late capability reply without user input',
+      () =>
+        driver.outputSequenceCount('\x1b_Ga=T') >
+        placementCountBeforeCapabilityReply,
+    );
+    HarnessSmoke.Class.requireCondition(
+      driver.outputSequenceCount('\x1b_Ga=T') >
+        placementCountBeforeCapabilityReply,
+      'the late kitty capability answer schedules its own placement frame',
+    );
+    const outputAfterCapabilityReply = driver
+      .recordedOutput()
+      .slice(outputLengthBeforeCapabilityReply);
+    const latePlacementOffset = outputAfterCapabilityReply.indexOf('\x1b_Ga=T');
+    const precedingFrameEndOffset = outputAfterCapabilityReply
+      .slice(0, latePlacementOffset)
+      .lastIndexOf('\x1b[?2026l');
+    HarnessSmoke.Class.requireCondition(
+      precedingFrameEndOffset >= 0 &&
+        precedingFrameEndOffset < latePlacementOffset,
+      'the blanking frame settles before the late kitty placement is emitted',
+    );
+    driver.sendKeys('Control+q');
+    HarnessSmoke.Class.requireCondition(
+      (await driver.exitCode()) === 0,
+      'late-capability session quits cleanly',
+    );
+  } finally {
+    await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
 
 async function driveKittyTier(): Promise<void> {
   const homeDirectory = mkdtempSync(
@@ -531,6 +651,8 @@ async function driveHalfBlockFloor(): Promise<void> {
 }
 
 try {
+  console.log('== harness pixel-preview: late unforced kitty capability ==');
+  await driveLateKittyCapabilityUpgrade();
   console.log('== harness pixel-preview: forced kitty tier ==');
   await driveKittyTier();
   console.log('== harness pixel-preview: forced sixel tier ==');
