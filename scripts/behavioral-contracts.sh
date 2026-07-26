@@ -52,17 +52,39 @@ glide_pane() { # <label> <fixture> <status-field> <needs-open> <wheel-col>
   [ "$needsopen" = "open" ] && open_file "$S"
   # Focus the pane first — a wheel over an unfocused editor can be swallowed before the glide starts.
   tmux send-keys -t "$S" -l "$(printf '\033[<0;%d;12M' "$wcol")"; tmux send-keys -t "$S" -l "$(printf '\033[<0;%d;12m' "$wcol")"; sleep 0.2
-  tmux send-keys -t "$S" -l "$(printf '\033[<65;%d;12M' "$wcol")"   # ONE wheel-down over the pane
-  sleep 0.12; local early="$("$H" field "$S" "$fld")"
-  sleep 1.4; "$H" settle "$S" >/dev/null 2>&1; local settled="$("$H" field "$S" "$fld")"
-  sleep 0.6; local rest="$("$H" field "$S" "$fld")"
+  # ONE notch from rest. Progressive gain means this is DELIBERATELY small — the first notch carries
+  # `initialGainFraction` (0.3) of the impulse with a one-row floor, because "it scrolls too much
+  # right away" was the reported defect. The previous form of this contract demanded that a single
+  # notch overshoot past its step (settled > 1), which was written for the pre-gain profile; against
+  # the current profile it straddles the 1-vs-2 boundary and reddened at random on whichever pane
+  # sampled first (observed on tree and on editor in consecutive runs, 2026-07-25).
+  tmux send-keys -t "$S" -l "$(printf '\033[<65;%d;12M' "$wcol")"
+  sleep 1.4; "$H" settle "$S" >/dev/null 2>&1; local single_notch_travel="$("$H" field "$S" "$fld")"
+  sleep 0.6; local single_notch_rest="$("$H" field "$S" "$fld")"
+  # Now RAMP: five notches in quick succession must travel materially further than five times the
+  # first notch's step, because gain climbs toward full impulse over gainRampNotchSpan. This is the
+  # "still gets faster if you scroll more" half of the felt invariant, and it is a comparison between
+  # two drives rather than a magnitude read at a fixed instant, so machine speed cannot flip it.
+  local notch_index=0
+  while [ "$notch_index" -lt 5 ]; do
+    tmux send-keys -t "$S" -l "$(printf '\033[<65;%d;12M' "$wcol")"
+    notch_index=$((notch_index + 1))
+  done
+  sleep 1.6; "$H" settle "$S" >/dev/null 2>&1; local ramped_travel="$("$H" field "$S" "$fld")"
+  sleep 0.6; local ramped_rest="$("$H" field "$S" "$fld")"
   "$H" kill "$S" >/dev/null 2>&1
-  # glide: settled travel exceeds a single-row step (>1); continued past the wheel (settled >= early);
-  # decayed to rest (rest == settled, no further drift).
-  if [ "${settled:-0}" -gt 1 ] 2>/dev/null && [ "${settled:-0}" -ge "${early:-0}" ] 2>/dev/null && [ "${rest:-0}" = "${settled:-0}" ]; then
-    pass "$label glide-then-decay (early=$early settled=$settled rest=$rest)"
+  local ramp_gain=$((ramped_travel - single_notch_rest))
+  if [ "${single_notch_travel:-0}" -ge 1 ] 2>/dev/null \
+     && [ "${single_notch_rest:-0}" = "${single_notch_travel:-0}" ] 2>/dev/null; then
+    pass "$label first notch from rest is a small settled step (travel=$single_notch_travel, rest=$single_notch_rest)"
   else
-    bad "$label NO glide/decay (early=$early settled=$settled rest=$rest) — a pure step gives ~1 and no continuation"
+    bad "$label first notch did not settle to a small step (travel=$single_notch_travel rest=$single_notch_rest) — expected >=1 row then no drift"
+  fi
+  if [ "${ramp_gain:-0}" -gt "$((single_notch_travel * 2))" ] 2>/dev/null \
+     && [ "${ramped_rest:-0}" = "${ramped_travel:-0}" ] 2>/dev/null; then
+    pass "$label five notches accelerate then decay to rest (gain=$ramp_gain vs single=$single_notch_travel, rest=$ramped_rest)"
+  else
+    bad "$label NO progressive gain/decay (gain=$ramp_gain single=$single_notch_travel ramped=$ramped_travel rest=$ramped_rest) — five notches must outrun five single steps, then stop"
   fi
 }
 
