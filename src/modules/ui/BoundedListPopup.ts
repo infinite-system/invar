@@ -27,6 +27,7 @@ import { ScrollableTextViewport } from './ScrollableTextViewport';
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
 // invariant: List interactions inspect only visible rows (src/modules/ui/ui.invariants.md)
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
+// invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
 class $BoundedListPopup {
   protected static get defaultSearchThreshold(): number {
     return 10;
@@ -58,6 +59,7 @@ class $BoundedListPopup {
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
   protected navigationBackwardHandler: (() => void) | null = null;
+  protected navigationBackwardAvailability: (() => boolean) | null = null;
   protected searchThresholdValue = $BoundedListPopup.defaultSearchThreshold;
   protected minimumWidthValue = $BoundedListPopup.minimumBoxWidth;
   protected titleValue = '';
@@ -65,6 +67,7 @@ class $BoundedListPopup {
   protected pointerPressedFilteredIndex = -1;
   protected pointerDragged = false;
   protected searchHovered = false;
+  protected navigationBackwardHovered = false;
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
   protected itemsAlreadyFilteredValue = false;
@@ -115,6 +118,17 @@ class $BoundedListPopup {
 
   get geometry(): BoundedListPopupGeometry | null {
     return this.currentGeometry;
+  }
+
+  get title(): string {
+    return this.titleValue;
+  }
+
+  get navigateBackwardAvailable(): boolean {
+    return (
+      this.navigationBackwardHandler !== null &&
+      (this.navigationBackwardAvailability?.() ?? true)
+    );
   }
 
   constructor(protected readonly dependencies: BoundedListPopupDependencies) {
@@ -217,10 +231,11 @@ class $BoundedListPopup {
   ): BoundedListPopupGeometry {
     const screenWidth = Math.max(1, Math.floor(input.screenWidth));
     const screenHeight = Math.max(1, Math.floor(input.screenHeight));
-    const searchRows = input.searchVisible ? 1 : 0;
+    const chromeRows =
+      input.searchVisible || input.navigateBackwardVisible ? 1 : 0;
     const naturalListRows = Math.max(1, input.itemCount);
     const naturalHeight =
-      $BoundedListPopup.verticalFrameRows + searchRows + naturalListRows;
+      $BoundedListPopup.verticalFrameRows + chromeRows + naturalListRows;
     const safeBottomExclusive = Math.max(
       1,
       screenHeight - $BoundedListPopup.reservedBottomRows,
@@ -256,7 +271,7 @@ class $BoundedListPopup {
     );
     const listRows = Math.max(
       0,
-      boxHeight - $BoundedListPopup.verticalFrameRows - searchRows,
+      boxHeight - $BoundedListPopup.verticalFrameRows - chromeRows,
     );
     const verticalOverflow = input.itemCount > listRows;
     const interiorColumns = Math.max(
@@ -276,6 +291,7 @@ class $BoundedListPopup {
       0,
       Math.min(Math.floor(input.firstVisible), maximumFirstVisible),
     );
+    const chromeRow = chromeRows > 0 ? boxTop + 1 : null;
     return {
       boxLeft,
       boxTop,
@@ -283,9 +299,16 @@ class $BoundedListPopup {
       boxHeight,
       bottomRow: boxTop + boxHeight - 1,
       opensUpward,
-      searchRow: input.searchVisible ? boxTop + 1 : null,
+      searchRow: input.searchVisible ? chromeRow : null,
+      navigateBackwardControl:
+        input.navigateBackwardVisible && chromeRow !== null
+          ? {
+              column: boxLeft + 1,
+              row: chromeRow,
+            }
+          : null,
       listLeft: boxLeft + 1,
-      listTop: boxTop + 1 + searchRows,
+      listTop: boxTop + 1 + chromeRows,
       listColumns,
       listRows,
       firstVisible,
@@ -316,10 +339,13 @@ class $BoundedListPopup {
       options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
     this.titleValue = options.title ?? '';
     this.navigationBackwardHandler = options.navigateBackwardHandler ?? null;
+    this.navigationBackwardAvailability =
+      options.navigateBackwardAvailable ?? null;
     this.queryInput.clear();
     this.recomputeMatches();
     this.hoveredIndex.value = -1;
     this.searchHovered = false;
+    this.navigationBackwardHovered = false;
     this.viewport.reset();
     const selectedItemIdentifier =
       options.selectedItemIdentifier ??
@@ -356,6 +382,7 @@ class $BoundedListPopup {
     this.searchHovered = false;
     this.selectionHandler = null;
     this.navigationBackwardHandler = null;
+    this.navigationBackwardAvailability = null;
     this.currentGeometry = null;
     this.pointerPressedFilteredIndex = -1;
     this.pointerDragged = false;
@@ -433,6 +460,7 @@ class $BoundedListPopup {
   }
 
   navigateBackward(): void {
+    if (!this.navigateBackwardAvailable) return;
     this.navigationBackwardHandler?.();
   }
 
@@ -464,6 +492,7 @@ class $BoundedListPopup {
       desiredBoxWidth,
       itemCount: matches.length,
       searchVisible: this.searchEnabled,
+      navigateBackwardVisible: this.navigateBackwardAvailable,
       scrollbarThickness,
       firstVisible: this.viewport.scrollTop,
     });
@@ -489,29 +518,51 @@ class $BoundedListPopup {
     } else {
       this.dismissal.hide();
     }
-    this.searchInput.visible = this.searchEnabled;
+    this.searchInput.visible =
+      this.searchEnabled || this.navigateBackwardAvailable;
     this.searchInput.width =
       geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
-    if (this.searchEnabled) {
-      const searchText = ` ${this.dependencies.theme.findIcons.search} ${this.query.value}`;
+    if (this.searchInput.visible) {
+      const chromeChunks: TextChunk[] = [];
+      const navigateBackwardControl = geometry.navigateBackwardControl;
+      if (navigateBackwardControl) {
+        const navigateBackwardGlyph = fg(palette.accent)(
+          this.dependencies.theme.glyph('popupNavigateBackward'),
+        );
+        chromeChunks.push(
+          this.navigationBackwardHovered
+            ? bg(palette.cursorLine)(navigateBackwardGlyph)
+            : navigateBackwardGlyph,
+        );
+      }
+      const remainingChromeColumns =
+        geometry.boxWidth -
+        $BoundedListPopup.horizontalFrameColumns -
+        (navigateBackwardControl ? 1 : 0);
+      const searchText = this.searchEnabled
+        ? ` ${this.dependencies.theme.findIcons.search} ${this.query.value}`
+        : '';
       const searchBackground = this.searchHovered
         ? palette.accent
-        : palette.border;
+        : this.searchEnabled
+          ? palette.border
+          : palette.panel;
       const searchForeground = this.searchHovered ? palette.panel : palette.dim;
-      this.searchInput.content = new StyledText([
+      chromeChunks.push(
         bg(searchBackground)(
           fg(searchForeground)(
             EditorCoordinates.Class.padToDisplayWidth(
               EditorCoordinates.Class.displayColumnWindow(
                 searchText,
                 0,
-                geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+                remainingChromeColumns,
               ),
-              geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+              remainingChromeColumns,
             ),
           ),
         ),
-      ]);
+      );
+      this.searchInput.content = new StyledText(chromeChunks);
     }
     this.list.visible = true;
     this.list.height = geometry.listRows;
@@ -747,21 +798,61 @@ class $BoundedListPopup {
     return filteredIndex >= 0 ? { line: filteredIndex, column: 0 } : null;
   }
 
+  protected static navigateBackwardControlContains(
+    geometry: BoundedListPopupGeometry,
+    screenColumn: number,
+    screenRow: number,
+  ): boolean {
+    return (
+      geometry.navigateBackwardControl?.column === screenColumn &&
+      geometry.navigateBackwardControl.row === screenRow
+    );
+  }
+
   protected wirePointerInput(): void {
     const handleWheel = (event: MouseEvent): void =>
       this.viewport.handleWheel(event);
     this.box.onMouseScroll = handleWheel;
     this.searchInput.onMouseScroll = handleWheel;
     this.list.onMouseScroll = handleWheel;
-    this.searchInput.onMouseMove = () => {
-      if (this.searchHovered) return;
-      this.searchHovered = true;
+    this.searchInput.onMouseMove = (event: MouseEvent) => {
+      const geometry = this.currentGeometry;
+      const navigationBackwardHovered =
+        geometry !== null &&
+        $BoundedListPopup.navigateBackwardControlContains(
+          geometry,
+          event.x,
+          event.y,
+        );
+      const searchHovered = this.searchEnabled && !navigationBackwardHovered;
+      if (
+        navigationBackwardHovered === this.navigationBackwardHovered &&
+        searchHovered === this.searchHovered
+      ) {
+        return;
+      }
+      this.navigationBackwardHovered = navigationBackwardHovered;
+      this.searchHovered = searchHovered;
       this.requestPaint();
     };
     this.searchInput.onMouseOut = () => {
-      if (!this.searchHovered) return;
+      if (!this.searchHovered && !this.navigationBackwardHovered) return;
       this.searchHovered = false;
+      this.navigationBackwardHovered = false;
       this.requestPaint();
+    };
+    this.searchInput.onMouseDown = (event: MouseEvent) => {
+      const geometry = this.currentGeometry;
+      if (
+        geometry &&
+        $BoundedListPopup.navigateBackwardControlContains(
+          geometry,
+          event.x,
+          event.y,
+        )
+      ) {
+        this.navigateBackward();
+      }
     };
     this.list.onMouseMove = (event: MouseEvent) => {
       const geometry = this.currentGeometry;
@@ -861,6 +952,7 @@ export interface BoundedListPopupOpenOptions {
   showBackdrop?: boolean;
   itemsAlreadyFiltered?: boolean;
   navigateBackwardHandler?: () => void;
+  navigateBackwardAvailable?: () => boolean;
 }
 
 export interface BoundedListPopupReplaceOptions {
@@ -886,6 +978,7 @@ export interface BoundedListPopupGeometryInput {
   desiredBoxWidth: number;
   itemCount: number;
   searchVisible: boolean;
+  navigateBackwardVisible: boolean;
   scrollbarThickness: number;
   firstVisible: number;
 }
@@ -898,6 +991,7 @@ export interface BoundedListPopupGeometry {
   bottomRow: number;
   opensUpward: boolean;
   searchRow: number | null;
+  navigateBackwardControl: BoundedListPopupControlGeometry | null;
   listLeft: number;
   listTop: number;
   listColumns: number;
@@ -905,4 +999,9 @@ export interface BoundedListPopupGeometry {
   firstVisible: number;
   visibleItemCount: number;
   verticalOverflow: boolean;
+}
+
+export interface BoundedListPopupControlGeometry {
+  column: number;
+  row: number;
 }

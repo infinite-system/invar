@@ -5,7 +5,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -25,6 +25,7 @@ interface PopupGeometryStatus {
   bottomRow: number;
   opensUpward: boolean;
   searchRow: number | null;
+  navigateBackwardControl: { column: number; row: number } | null;
   listLeft: number;
   listTop: number;
   listColumns: number;
@@ -32,8 +33,28 @@ interface PopupGeometryStatus {
   firstVisible: number;
 }
 
+interface PopupPublishedState {
+  title: string;
+  itemIdentifiers: readonly string[];
+  selectedIdentifier: string | null;
+}
+
 function popupGeometry(status: StatusSnapshot): PopupGeometryStatus | null {
   return status.boundedListPopupGeometry as PopupGeometryStatus | null;
+}
+
+function popupPublishedState(status: StatusSnapshot): PopupPublishedState {
+  const publishedItemIdentifiers = status.boundedListPopupItemIdentifiers;
+  return {
+    title: String(status.boundedListPopupTitle ?? ''),
+    itemIdentifiers: Array.isArray(publishedItemIdentifiers)
+      ? publishedItemIdentifiers.map((identifier) => String(identifier))
+      : [],
+    selectedIdentifier:
+      typeof status.boundedListPopupSelectedIdentifier === 'string'
+        ? status.boundedListPopupSelectedIdentifier
+        : null,
+  };
 }
 
 function badgePosition(
@@ -656,46 +677,120 @@ try {
     'Enter re-roots the shared popup without dismissing it',
   );
 
-  driver.sendKeys('Left');
+  driver.sendKeys('Right');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Left returns to the source directory with the child selected',
+    'Right drills two levels below the originally opened source directory',
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
-      status.boundedListPopupMatches === 2,
+      status.boundedListPopupMatches === 1 &&
+      String(status.boundedListPopupTitle).endsWith(
+        'picker-source/picker-nested/deeper',
+      ) &&
+      popupGeometry(status)?.navigateBackwardControl !== null,
   );
   geometry = popupGeometry(popupStatus);
+  HarnessSmoke.Class.pass(
+    'Right drills into the selected directory without dismissing',
+  );
+
+  driver.sendText('deep');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the two-level-deep query is published before upward navigation',
+    (status) =>
+      status.boundedListPopupQuery === 'deep' &&
+      status.boundedListPopupMatches === 1,
+  );
+  geometry = popupGeometry(popupStatus);
+  const navigateBackwardControl = geometry?.navigateBackwardControl ?? null;
+  HarnessSmoke.Class.requireCondition(
+    navigateBackwardControl !== null,
+    'two-level-deep popup publishes its upward control geometry',
+  );
+  if (!navigateBackwardControl) {
+    throw new Error('Popup upward control geometry vanished');
+  }
   snapshot = await driver.awaitGridCondition(
-    'the parent directory cells return after Left',
+    'the published upward control cell paints a visible affordance',
+    (candidate) =>
+      Boolean(
+        candidate
+          .cell(navigateBackwardControl.row, navigateBackwardControl.column)
+          ?.characters.trim(),
+      ),
+  );
+  HarnessSmoke.Class.requireCondition(
+    Boolean(
+      snapshot
+        .cell(navigateBackwardControl.row, navigateBackwardControl.column)
+        ?.characters.trim(),
+    ),
+    'published upward control geometry contains a visible cell',
+  );
+  clickPosition(driver, navigateBackwardControl);
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'clicking published upward geometry re-roots without dismissal and clears the old-directory query',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupQuery === '' &&
+      String(status.boundedListPopupTitle).endsWith(
+        'picker-source/picker-nested',
+      ) &&
+      status.boundedListPopupSelectedIdentifier === pickerDeeperDirectory &&
+      Array.isArray(status.boundedListPopupItemIdentifiers) &&
+      status.boundedListPopupItemIdentifiers.length === 3,
+  );
+  const clickedUpwardState = popupPublishedState(popupStatus);
+  geometry = popupGeometry(popupStatus);
+  snapshot = await driver.awaitGridCondition(
+    'clicking the upward control paints the parent directory cells',
     (candidate) =>
       geometry !== null &&
-      popupListContains(candidate, geometry, 'picker-nested/') &&
-      popupListContains(candidate, geometry, 'source-peer.txt'),
+      popupListContains(candidate, geometry, 'deeper/') &&
+      popupListContains(candidate, geometry, 'breadcrumb-active.txt') &&
+      popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
   );
-  HarnessSmoke.Class.pass('Left drills back out one filesystem level');
+  HarnessSmoke.Class.pass(
+    'clicking published geometry drills upward without dismissing',
+  );
 
   driver.sendKeys('Right');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Right drills into the reselected child directory',
+    'Right returns to the child selected by the upward operation',
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
-      status.boundedListPopupMatches === 3,
+      status.boundedListPopupMatches === 1 &&
+      String(status.boundedListPopupTitle).endsWith(
+        'picker-source/picker-nested/deeper',
+      ),
   );
+  driver.sendKeys('Left');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Left publishes the exact folder item set and selection produced by the upward click',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      JSON.stringify(popupPublishedState(status)) ===
+        JSON.stringify(clickedUpwardState),
+  );
+  HarnessSmoke.Class.requireCondition(
+    JSON.stringify(popupPublishedState(popupStatus)) ===
+      JSON.stringify(clickedUpwardState),
+    'Left and the upward click publish identical folder item and selection state',
+  );
+  HarnessSmoke.Class.pass('Left drills back out one filesystem level');
+
   geometry = popupGeometry(popupStatus);
-  await driver.awaitGridCondition(
-    'the Right-drilled directory paints the target file again',
-    (candidate) =>
-      geometry !== null &&
-      popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
-  );
-  HarnessSmoke.Class.pass(
-    'Right drills into the selected directory without dismissing',
-  );
   driver.sendText('target');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -730,6 +825,50 @@ try {
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('BREADCRUMB PICKER FILE CONTENT') !== null,
     'selecting a breadcrumb file opens its content in the editor',
+  );
+
+  const reopenedBreadcrumbPathPosition = snapshot.findText(
+    'picker-source › picker-nested › breadcrumb-target.txt',
+  );
+  if (!reopenedBreadcrumbPathPosition) {
+    throw new Error('Breadcrumb target path vanished before root coverage');
+  }
+  clickPosition(driver, {
+    column: reopenedBreadcrumbPathPosition.column,
+    row: reopenedBreadcrumbPathPosition.row,
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the source breadcrumb popup reopens before workspace-root navigation',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      popupGeometry(status)?.navigateBackwardControl !== null,
+  );
+  driver.sendKeys('Left');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the workspace-root popup stays open and publishes no upward control',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      status.boundedListPopupQuery === '' &&
+      status.boundedListPopupTitle === `Browse ${basename(fixtureRoot)}` &&
+      popupGeometry(status)?.navigateBackwardControl === null,
+  );
+  HarnessSmoke.Class.requireCondition(
+    popupGeometry(popupStatus)?.navigateBackwardControl === null,
+    'workspace root omits the upward control instead of publishing a dead action',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Escape still dismisses the root-level breadcrumb popup',
+    (status) => status.boundedListPopupOpen === false,
+  );
+  HarnessSmoke.Class.pass(
+    'breadcrumb popup still opens and dismisses at the workspace root',
   );
 
   console.log(

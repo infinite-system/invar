@@ -9,6 +9,7 @@ import type { BreadcrumbPathSegment } from './Breadcrumb';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 
 // invariant: Bounded list interactions live in one popup (src/modules/ui/ui.invariants.md)
+// invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
 class $BreadcrumbPicker {
   protected workspaceRoot = '';
   protected currentDirectory = '';
@@ -40,6 +41,7 @@ class $BreadcrumbPicker {
             minimumWidth: 28,
             searchThreshold: 0,
             navigateBackwardHandler: () => this.navigateBackward(),
+            navigateBackwardAvailable: () => this.navigateBackwardAvailable(),
           },
         ),
     );
@@ -72,12 +74,7 @@ class $BreadcrumbPicker {
   }
 
   protected navigateBackward(): void {
-    if (
-      !this.currentDirectory ||
-      this.currentDirectory === this.workspaceRoot
-    ) {
-      return;
-    }
+    if (!this.navigateBackwardAvailable()) return;
     const previousDirectory = this.currentDirectory;
     const parentDirectory = Files.Class.confineToRoot(
       this.workspaceRoot,
@@ -86,6 +83,13 @@ class $BreadcrumbPicker {
     if (!parentDirectory) return;
     this.currentDirectory = parentDirectory;
     this.replaceDirectory(previousDirectory);
+  }
+
+  protected navigateBackwardAvailable(): boolean {
+    return (
+      this.currentDirectory.length > 0 &&
+      this.currentDirectory !== this.workspaceRoot
+    );
   }
 
   protected replaceDirectory(selectedItemIdentifier?: string): void {

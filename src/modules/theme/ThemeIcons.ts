@@ -146,6 +146,7 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
+        popupNavigateBackward: '\u{f062}',
       },
       unicode: {
         activityFiles: '☰',
@@ -158,6 +159,7 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
+        popupNavigateBackward: '↑',
       },
       ascii: {
         activityFiles: 'F',
@@ -170,6 +172,7 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
+        popupNavigateBackward: '^',
       },
     });
   }
@@ -460,6 +463,7 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
+  popupNavigateBackward: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

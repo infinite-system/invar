@@ -12,6 +12,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 30,
       itemCount: 100,
       searchVisible: true,
+      navigateBackwardVisible: false,
       scrollbarThickness: 1,
       firstVisible: 0,
     });
@@ -31,6 +32,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 24,
       itemCount: 40,
       searchVisible: true,
+      navigateBackwardVisible: false,
       scrollbarThickness: 1,
       firstVisible: 0,
     });
@@ -48,6 +50,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 20,
       itemCount: 100,
       searchVisible: true,
+      navigateBackwardVisible: false,
       scrollbarThickness: 2,
       firstVisible: 99,
     });
@@ -67,6 +70,7 @@ describe('BoundedListPopup', () => {
       desiredBoxWidth: 30,
       itemCount: 100,
       searchVisible: true,
+      navigateBackwardVisible: false,
       scrollbarThickness: 1,
       firstVisible: 99,
     });
@@ -75,6 +79,27 @@ describe('BoundedListPopup', () => {
     expect(geometry.boxLeft + geometry.boxWidth).toBeLessThanOrEqual(8);
     expect(geometry.boxTop).toBeGreaterThanOrEqual(0);
     expect(geometry.bottomRow).toBeLessThan(3);
+  });
+
+  test('publishes one navigation control cell and reserves its chrome row', () => {
+    const geometry = BoundedListPopup.$Class.layoutGeometry({
+      screenWidth: 40,
+      screenHeight: 12,
+      anchor: { column: 4, row: 1 },
+      desiredBoxWidth: 20,
+      itemCount: 2,
+      searchVisible: false,
+      navigateBackwardVisible: true,
+      scrollbarThickness: 1,
+      firstVisible: 0,
+    });
+
+    expect(geometry.searchRow).toBeNull();
+    expect(geometry.navigateBackwardControl).toEqual({
+      column: geometry.boxLeft + 1,
+      row: geometry.boxTop + 1,
+    });
+    expect(geometry.listTop).toBe(geometry.boxTop + 2);
   });
 
   test('filters and ranks through the shared quick-open scorer', () => {

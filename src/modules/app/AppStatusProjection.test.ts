@@ -76,10 +76,12 @@ describe('AppStatusProjection', () => {
     const contextMenu = new ContextMenu.Class();
     const boundedListPopup = {
       open: ref(false),
+      items: ref([]),
       query: ref(''),
       selectedIndex: ref(-1),
       filteredMatches: [],
       geometry: null,
+      title: '',
     } as unknown as InstanceType<typeof BoundedListPopup.Class>;
     const completionPopup = {
       open: false,
@@ -197,6 +199,9 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.terminalFollowMode).toBe('off');
     expect(initialSnapshot.terminalObservedEventCount).toBe(0);
     expect(initialSnapshot.terminalLastObservedBoundarySource).toBeNull();
+    expect(initialSnapshot.boundedListPopupTitle).toBe('');
+    expect(initialSnapshot.boundedListPopupItemIdentifiers).toEqual([]);
+    expect(initialSnapshot.boundedListPopupSelectedIdentifier).toBeNull();
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
     narration = {

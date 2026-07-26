@@ -831,8 +831,8 @@ semantic glyph slots, icon sets), never hard-coded, and each resolves through a 
 fallback ladder; changing a glyph vocabulary never changes input or projection behavior.
 
 **Scope:** Themes, file-type icons, syntax colors, git/diagnostic decorations, gutter, activity-bar
-items, and panel-heading controls. Text content that is not an icon or control glyph is outside the
-glyph-slot rule.
+items, panel-heading controls, and popup navigation controls. Text content that is not an icon or
+control glyph is outside the glyph-slot rule.
 
 **Mechanism:** Stands on *Terminal color and glyph support varies*. `theme.palettes.ts` /
 `ThemeIcons.ts` are semantic-token data; `InterfaceGlyphVocabulary` gives behavior a stable slot
@@ -845,12 +845,13 @@ theme/icon plugin contributions; activity and heading consumers that name slots 
 
 **Evidence:** The brief's diagnostic undercurl→underline→gutter fallback; the `theme` module
 lands M2; `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/ActivityBar.ts`;
-`src/modules/ui/PanelHeading.ts`; `src/modules/theme/ThemeIcons.test.ts`;
+`src/modules/ui/PanelHeading.ts`; `src/modules/ui/BoundedListPopup.ts`;
+`src/modules/theme/ThemeIcons.test.ts`;
 `scripts/harness/smoke-activitybar-harness.ts`.
 
 **Impossible if true:** A hard-coded truecolor/nerd-glyph that breaks legibility on a limited
 terminal; a component that colors itself without going through the theme; changing an activity or
-heading glyph requiring a behavior edit or changing a hit target.
+control glyph requiring a behavior edit or changing a hit target.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts
 src/modules/ui/PanelHeading.test.ts && bun scripts/harness/smoke-activitybar-harness.ts`; grep for
@@ -858,7 +859,7 @@ hard-coded colors/glyphs outside `theme`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Completion is proven not declared
 

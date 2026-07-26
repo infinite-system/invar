@@ -76,6 +76,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'panelExpand',
     'panelRestore',
     'panelClose',
+    'popupNavigateBackward',
   ] as const;
   const expectedVocabularies = {
     nerd: [
@@ -88,15 +89,37 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f065}',
       '\u{f066}',
       '\u{f00d}',
+      '\u{f062}',
     ],
-    unicode: ['☰', '⑂', '⊞', '⚲', '⚙', '+', '↗', '↙', '×'],
-    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x'],
+    unicode: ['☰', '⑂', '⊞', '⚲', '⚙', '+', '↗', '↙', '×', '↑'],
+    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '^'],
   } as const;
 
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
     expect(
       candidateGlyphSlots.map((slot) => ThemeIcons.Class.glyphFor(level, slot)),
     ).toEqual([...expectedVocabularies[level]]);
+  }
+});
+
+test('popup backward control is one display cell and avoids reserved markers', () => {
+  const reservedMarkers = new Set([
+    '▎',
+    '●',
+    '❯',
+    '↗',
+    '↙',
+    '☰',
+    '⑂',
+    '⊞',
+    '⚲',
+    '⚙',
+  ]);
+
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    const glyph = ThemeIcons.Class.glyphFor(level, 'popupNavigateBackward');
+    expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+    expect(reservedMarkers.has(glyph)).toBe(false);
   }
 });
 

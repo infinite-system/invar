@@ -168,6 +168,14 @@ class $AppStatusProjection {
       boundedListPopupQuery: ports.boundedListPopup.query.value,
       boundedListPopupSelected: ports.boundedListPopup.selectedIndex.value,
       boundedListPopupMatches: ports.boundedListPopup.filteredMatches.length,
+      boundedListPopupTitle: ports.boundedListPopup.title,
+      boundedListPopupItemIdentifiers: ports.boundedListPopup.items.value.map(
+        (item) => item.identifier,
+      ),
+      boundedListPopupSelectedIdentifier:
+        ports.boundedListPopup.filteredMatches[
+          ports.boundedListPopup.selectedIndex.value
+        ]?.item.identifier ?? null,
       boundedListPopupGeometry: ports.boundedListPopup.geometry,
       completionOpen: ports.completionPopup.open,
       completionSelectedLabel: ports.completionPopup.selectedLabel,
@@ -436,7 +444,13 @@ export interface AppStatusProjectionPorts {
   readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
   readonly boundedListPopup: Pick<
     InstanceType<typeof BoundedListPopup.Class>,
-    'open' | 'query' | 'selectedIndex' | 'filteredMatches' | 'geometry'
+    | 'open'
+    | 'items'
+    | 'query'
+    | 'selectedIndex'
+    | 'filteredMatches'
+    | 'geometry'
+    | 'title'
   >;
   readonly completionPopup: Pick<
     InstanceType<typeof CompletionPopup.Class>,

@@ -79,6 +79,7 @@ test('directories drill without dismissal and backward navigation reselects the 
       'peer.txt',
     ]);
     expect(openOptions.selectedItemIdentifier).toBe(nestedDirectory);
+    expect(openOptions.navigateBackwardAvailable?.()).toBe(true);
 
     activatePopupItem(openedItems[0]!);
     expect(replacements.at(-1)?.items.map((item) => item.label)).toEqual([
@@ -92,10 +93,49 @@ test('directories drill without dismissal and backward navigation reselects the 
       'nested/',
       'peer.txt',
     ]);
+    expect(openOptions.navigateBackwardAvailable?.()).toBe(true);
 
     activatePopupItem(replacements.at(-2)?.items[0]!);
     expect(openedFile).toBe(join(nestedDirectory, 'target.txt'));
     expect(activeWorkspace.focus.value).toBe('editor');
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test('workspace root reports backward navigation unavailable', () => {
+  const workspaceRoot = mkdtempSync(join(tmpdir(), 'breadcrumb-picker-root-'));
+  writeFileSync(join(workspaceRoot, 'root-file.txt'), 'root\n');
+  let openOptions: BoundedListPopupOpenOptions = {};
+  const picker = new BreadcrumbPicker.Class({
+    popup: {
+      openAt: (_items, _anchor, _handler, options) => {
+        openOptions = options ?? {};
+      },
+      replaceItems: () => {},
+    },
+    overlayCoordinator: {
+      openExclusiveOverlay: (_identifier, open) => open(),
+    },
+    workspaceSet: {
+      active: {
+        root: workspaceRoot,
+        focus: ref<'editor' | 'files'>('files'),
+        openFileInTab: () => {},
+      },
+    } as never,
+  });
+
+  try {
+    const rootSegment = Breadcrumb.Class.pathSegments(
+      join(workspaceRoot, 'root-file.txt'),
+      workspaceRoot,
+    )[0];
+    expect(rootSegment).toBeDefined();
+    if (!rootSegment) return;
+
+    picker.show(rootSegment, { column: 4, row: 2 });
+    expect(openOptions.navigateBackwardAvailable?.()).toBe(false);
   } finally {
     rmSync(workspaceRoot, { recursive: true, force: true });
   }

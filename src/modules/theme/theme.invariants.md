@@ -100,8 +100,9 @@ active theme (a `Palette` field or a semantic `GlyphSlot` / `IconSet` / `ActionI
 the drawing site — the `theme` module is the single source of appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
-activity-bar and panel-heading control glyphs. The sole home for color and glyph literals is
-`src/modules/theme`; consumers pull tokens or name semantic slots, they do not mint appearance.
+activity-bar, panel-heading, and popup backward-control glyphs. The sole home for color and glyph
+literals is `src/modules/theme`; consumers pull tokens or name semantic slots, they do not mint
+appearance.
 
 **Mechanism:** `Theme` exposes `palette`, `icons`, `actionIcons`, `checkboxIcons`, and `icon()`
 as plain getters that re-derive from `PALETTES` and the icon tables on read. Its
@@ -126,7 +127,7 @@ no drawing-site literal; `bun test src/modules/theme src/modules/ui/PanelHeading
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### The palette ladder quantizes color without leaving the palette
 
@@ -172,12 +173,12 @@ never empty or undefined.
 **Scope:** `ThemeIcons.iconSetFor`, `actionIconsFor`, `checkboxIconsFor`,
 `interfaceGlyphVocabularyFor`, `glyphFor`, and `iconFor`, plus the `Theme` getters that call them.
 Covers file-tree icons, git changes-row action buttons, staging checkboxes, activity-bar items, and
-panel-heading controls.
+panel-heading and popup backward controls.
 
 **Mechanism:** The `SETS`, `ACTION_ICONS`, and `CHECKBOX_ICONS` tables are keyed by `GlyphLevel`,
 and `$interfaceGlyphVocabularies` maps every `GlyphSlot` at each level, so selection is a total
-lookup with no missing rung. The `ascii` entries remain printable; action, checkbox, and activity
-glyphs are authored as one cell each; `iconFor` falls back through
+lookup with no missing rung. The `ascii` entries remain printable; action, checkbox, activity, and
+control glyphs are authored as one cell each; `iconFor` falls back through
 `set.ext[extension] ?? set.file` so it always returns a printable string.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button
@@ -191,11 +192,13 @@ tier` in `src/modules/theme/ThemeIcons.test.ts`.
 
 **Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
 action/checkbox glyph wider than one cell at any level; `iconFor` returning empty or undefined for
-an unknown extension; an activity or panel control choosing its glyph literal in behavior code.
+an unknown extension; an activity, panel, or popup control choosing its glyph literal in behavior
+code; a popup backward glyph colliding with a reserved diff, dirty, separator, panel, or activity
+mark.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
 scripts/harness/smoke-activitybar-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
