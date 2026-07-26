@@ -181,6 +181,28 @@ describe('PtyTestDriver.awaitGridCondition', () => {
     }
   });
 
+  test('rechecks a named condition even when no new frame is emitted', async () => {
+    const driver = createRecordedStreamDriver(['IDLE GRID']);
+    try {
+      await driver.awaitGridCondition(
+        'the recorded grid reaches its idle baseline',
+        (candidateSnapshot) => candidateSnapshot.findText('IDLE GRID') !== null,
+      );
+      let externalConditionSatisfied = false;
+      setTimeout(() => {
+        externalConditionSatisfied = true;
+      }, 30);
+      const snapshot = await driver.awaitGridCondition(
+        'the external state condition becomes satisfied',
+        () => externalConditionSatisfied,
+        200,
+      );
+      expect(snapshot.findText('IDLE GRID')).not.toBeNull();
+    } finally {
+      await driver.dispose();
+    }
+  });
+
   test('reports the predicate and final grid region when no frame satisfies it', async () => {
     const driver = createRecordedStreamDriver(['FIRST', 'FINAL UNSATISFIED']);
     try {
@@ -210,6 +232,75 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       );
       expect(timeoutError?.message).toContain('FINAL UNSATISFIED');
       expect(timeoutError?.message).not.toContain('synchronized frame 3');
+    } finally {
+      await driver.dispose();
+    }
+  });
+});
+
+describe('PtyTestDriver.assertContentInvariantAcrossAction', () => {
+  test('requires one region to stay byte-identical while another changes', async () => {
+    const driver = createRecordedStreamDriver(
+      ['STABLE HEADER\r\nBEFORE', 'STABLE HEADER\r\nAFTER'],
+      80,
+    );
+    try {
+      await driver.awaitGridCondition(
+        'the content-invariance fixture reaches its baseline',
+        (snapshot) => snapshot.findText('BEFORE') !== null,
+      );
+      const completedSnapshot = await driver.assertContentInvariantAcrossAction(
+        {
+          invariantRegion: {
+            startRow: 0,
+            endRowExclusive: 1,
+            startColumn: 0,
+            endColumnExclusive: 20,
+          },
+          changedRegion: {
+            startRow: 1,
+            endRowExclusive: 2,
+            startColumn: 0,
+            endColumnExclusive: 20,
+          },
+          actionDescription: 'the recorded action',
+          performAction: () => undefined,
+        },
+      );
+      expect(completedSnapshot.findText('AFTER')).not.toBeNull();
+    } finally {
+      await driver.dispose();
+    }
+  });
+
+  test('rejects when the required invariant region changes', async () => {
+    const driver = createRecordedStreamDriver(
+      ['STABLE ONE\r\nBEFORE', 'STABLE TWO\r\nAFTER'],
+      80,
+    );
+    try {
+      await driver.awaitGridCondition(
+        'the changing-invariant fixture reaches its baseline',
+        (snapshot) => snapshot.findText('BEFORE') !== null,
+      );
+      await expect(
+        driver.assertContentInvariantAcrossAction({
+          invariantRegion: {
+            startRow: 0,
+            endRowExclusive: 1,
+            startColumn: 0,
+            endColumnExclusive: 20,
+          },
+          changedRegion: {
+            startRow: 1,
+            endRowExclusive: 2,
+            startColumn: 0,
+            endColumnExclusive: 20,
+          },
+          actionDescription: 'the invariant-breaking recorded action',
+          performAction: () => undefined,
+        }),
+      ).rejects.toThrow('Expected byte-identical invariant region');
     } finally {
       await driver.dispose();
     }

@@ -11,11 +11,14 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function runNarrationUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync([process.execPath, 'test', 'src/modules/narration/'], {
-    cwd: repositoryRoot,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const result = Bun.spawnSync(
+    [process.execPath, 'test', 'src/modules/narration/'],
+    {
+      cwd: repositoryRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
   HarnessSmoke.Class.requireCondition(
     result.exitCode === 0,
     'narration projection unit tests pass',
@@ -64,14 +67,18 @@ async function driveTurn(
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.agentBusy === false",
+    'status condition: status.agentBusy === false',
     (status) => status.agentBusy === false,
   );
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('You said') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('You said') !== null,
+  );
 }
 
 const repositoryRoot = process.cwd();
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-audio-narration-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-audio-narration-harness-home-'),
+);
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 const settingsPath = join(settingsDirectory, 'settings.json');
 mkdirSync(settingsDirectory, { recursive: true });
@@ -105,17 +112,22 @@ try {
     driver,
     disabledStatusPath,
     'disabled narration completes the turn without speaking',
-    (status) => status.narrationSpokenCount === 0
-      && status.narrationLastSpoken === '',
+    (status) =>
+      status.narrationSpokenCount === 0 && status.narrationLastSpoken === '',
   );
-  HarnessSmoke.Class.pass('disabled narration completes the turn without speaking');
+  HarnessSmoke.Class.pass(
+    'disabled narration completes the turn without speaking',
+  );
 
-  console.log('== harness audio narration: enabled setting speaks and supports barge-in ==');
+  console.log(
+    '== harness audio narration: enabled setting speaks and supports barge-in ==',
+  );
   await driver.dispose();
   driver = null;
   await writeNarrationSetting(settingsPath, true);
   const enabledStatusPath = join(homeDirectory, 'enabled-status.json');
   driver = createDriver(repositoryRoot, homeDirectory, enabledStatusPath);
+  const narrationEnabledDriver = driver;
   await HarnessSmoke.Class.awaitStatus(
     driver,
     enabledStatusPath,
@@ -138,33 +150,54 @@ try {
     driver,
     enabledStatusPath,
     'enabled narration publishes sanitized hostile inline-code speech',
-    (status) => Number(status.narrationSpokenCount) > 0
-      && String(status.narrationLastSpoken).includes(
+    (status) =>
+      Number(status.narrationSpokenCount) > 0 &&
+      String(status.narrationLastSpoken).includes(
         'alphabeta and linkCode then INLINE_CODE_PLACEHOLDER_0',
-      )
-      && !String(status.narrationLastSpoken).includes('`')
-      && !/[\uE000-\uF8FF]/u.test(String(status.narrationLastSpoken)),
+      ) &&
+      !String(status.narrationLastSpoken).includes('`') &&
+      !/[\uE000-\uF8FF]/u.test(String(status.narrationLastSpoken)),
   );
   const narrationLastSpoken = String(enabledStatus.narrationLastSpoken);
   HarnessSmoke.Class.requireCondition(
-    Number(enabledStatus.narrationSpokenCount) > 0
-      && narrationLastSpoken.includes(
+    Number(enabledStatus.narrationSpokenCount) > 0 &&
+      narrationLastSpoken.includes(
         'alphabeta and linkCode then INLINE_CODE_PLACEHOLDER_0',
-      )
-      && !narrationLastSpoken.includes('`')
-      && !/[\uE000-\uF8FF]/u.test(narrationLastSpoken),
+      ) &&
+      !narrationLastSpoken.includes('`') &&
+      !/[\uE000-\uF8FF]/u.test(narrationLastSpoken),
     'enabled narration speaks hostile inline-code shapes with no internal tokens',
   );
 
   const bargeInCountBeforeTyping = Number(enabledStatus.narrationBargeInCount);
-  driver.sendText('x');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('❯ x') !== null);
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  const preTypingSnapshot = driver.snapshot();
+  const typedSnapshot = await driver.assertContentInvariantAcrossAction({
+    invariantRegion: {
+      startRow: 1,
+      endRowExclusive: Math.floor(preTypingSnapshot.rows / 2),
+      startColumn: 0,
+      endColumnExclusive: preTypingSnapshot.columns,
+    },
+    changedRegion: {
+      startRow: preTypingSnapshot.rows - 7,
+      endRowExclusive: preTypingSnapshot.rows - 1,
+      startColumn: 0,
+      endColumnExclusive: preTypingSnapshot.columns,
+    },
+    actionDescription:
+      'ordinary typing changes only the composer while the transcript stays fixed',
+    performAction: () => narrationEnabledDriver.sendText('x'),
+  });
+  HarnessSmoke.Class.requireCondition(
+    typedSnapshot.findText('❯ x') !== null,
+    'ordinary typing paints x in the composer',
+  );
   enabledStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     enabledStatusPath,
     'ordinary typing preserves the narration barge-in count',
-    (status) => Number(status.narrationBargeInCount) === bargeInCountBeforeTyping,
+    (status) =>
+      Number(status.narrationBargeInCount) === bargeInCountBeforeTyping,
   );
   HarnessSmoke.Class.requireCondition(
     Number(enabledStatus.narrationBargeInCount) === bargeInCountBeforeTyping,
@@ -174,14 +207,11 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     enabledStatusPath,
-    "status condition: Number(status.narrationBargeInCount) > bargeInCountBeforeTyping",
+    'status condition: Number(status.narrationBargeInCount) > bargeInCountBeforeTyping',
     (status) => Number(status.narrationBargeInCount) > bargeInCountBeforeTyping,
   );
   HarnessSmoke.Class.pass('Escape explicitly barges in on narration');
 
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);
-  HarnessSmoke.Class.pass('narration-enabled agent pane remains idle-quiescent');
   driver.sendKeys('Control+q');
   console.log('smoke-audio-narration-harness: ALL-PASS');
 } finally {

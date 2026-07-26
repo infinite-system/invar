@@ -10,13 +10,6 @@ interface FrameWaiter {
   timeoutHandle: ReturnType<typeof setTimeout>;
 }
 
-interface FrameSilenceWaiter {
-  startingCompletedFrameCount: number;
-  resolve: () => void;
-  reject: (error: Error) => void;
-  timeoutHandle: ReturnType<typeof setTimeout>;
-}
-
 export interface CompletedSynchronizedFrame {
   completedFrameCount: number;
   byteArrivalTimestampMilliseconds: number;
@@ -30,11 +23,11 @@ class $SynchronizedOutputQuiescence {
   private observedByteCountValue = 0;
   private lastCompletedFrameValue: CompletedSynchronizedFrame | null = null;
   private readonly waiters: FrameWaiter[] = [];
-  private readonly silenceWaiters: FrameSilenceWaiter[] = [];
   private failure: Error | null = null;
 
   constructor(
-    private readonly currentTimestampMilliseconds: () => number = () => performance.now(),
+    private readonly currentTimestampMilliseconds: () => number = () =>
+      performance.now(),
   ) {}
 
   get completedFrameCount(): number {
@@ -50,9 +43,8 @@ class $SynchronizedOutputQuiescence {
   }
 
   observe(bytes: Uint8Array | string): void {
-    const observedBytes = typeof bytes === 'string'
-      ? new TextEncoder().encode(bytes)
-      : bytes;
+    const observedBytes =
+      typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
     for (const observedByte of observedBytes) this.observeByte(observedByte);
   }
 
@@ -67,30 +59,15 @@ class $SynchronizedOutputQuiescence {
         timeoutHandle: setTimeout(() => {
           const waiterIndex = this.waiters.indexOf(waiter);
           if (waiterIndex >= 0) this.waiters.splice(waiterIndex, 1);
-          reject(new Error(
-            'Timed out waiting for the next complete synchronized frame '
-            + `(completed frames observed: ${this.completedFrameCountValue})`,
-          ));
+          reject(
+            new Error(
+              'Timed out waiting for the next complete synchronized frame ' +
+                `(completed frames observed: ${this.completedFrameCountValue})`,
+            ),
+          );
         }, timeoutMilliseconds),
       };
       this.waiters.push(waiter);
-    });
-  }
-
-  assertNoCompletedFrameFor(durationMilliseconds: number): Promise<void> {
-    if (this.failure) return Promise.reject(this.failure);
-    return new Promise((resolve, reject) => {
-      const silenceWaiter: FrameSilenceWaiter = {
-        startingCompletedFrameCount: this.completedFrameCountValue,
-        resolve,
-        reject,
-        timeoutHandle: setTimeout(() => {
-          const waiterIndex = this.silenceWaiters.indexOf(silenceWaiter);
-          if (waiterIndex >= 0) this.silenceWaiters.splice(waiterIndex, 1);
-          resolve();
-        }, durationMilliseconds),
-      };
-      this.silenceWaiters.push(silenceWaiter);
     });
   }
 
@@ -101,30 +78,33 @@ class $SynchronizedOutputQuiescence {
       clearTimeout(waiter.timeoutHandle);
       waiter.reject(error);
     }
-    for (const silenceWaiter of this.silenceWaiters.splice(0)) {
-      clearTimeout(silenceWaiter.timeoutHandle);
-      silenceWaiter.reject(error);
-    }
   }
 
   private observeByte(observedByte: number): void {
     this.observedByteCountValue++;
     if (this.matchedPrefixByteCount < synchronizedOutputMarkerPrefix.length) {
-      const expectedByte = synchronizedOutputMarkerPrefix[this.matchedPrefixByteCount];
+      const expectedByte =
+        synchronizedOutputMarkerPrefix[this.matchedPrefixByteCount];
       if (observedByte === expectedByte) {
         this.matchedPrefixByteCount++;
       } else {
-        this.matchedPrefixByteCount = observedByte === synchronizedOutputMarkerPrefix[0] ? 1 : 0;
+        this.matchedPrefixByteCount =
+          observedByte === synchronizedOutputMarkerPrefix[0] ? 1 : 0;
       }
       return;
     }
 
-    this.matchedPrefixByteCount = observedByte === synchronizedOutputMarkerPrefix[0] ? 1 : 0;
+    this.matchedPrefixByteCount =
+      observedByte === synchronizedOutputMarkerPrefix[0] ? 1 : 0;
     if (observedByte === synchronizedOutputBeginFinalByte) {
       this.synchronizedFrameDepth++;
       return;
     }
-    if (observedByte !== synchronizedOutputEndFinalByte || this.synchronizedFrameDepth === 0) return;
+    if (
+      observedByte !== synchronizedOutputEndFinalByte ||
+      this.synchronizedFrameDepth === 0
+    )
+      return;
     this.synchronizedFrameDepth--;
     if (this.synchronizedFrameDepth > 0) return;
     this.completedFrameCountValue++;
@@ -134,22 +114,12 @@ class $SynchronizedOutputQuiescence {
       observedByteCount: this.observedByteCountValue,
     };
     this.lastCompletedFrameValue = completedFrame;
-    this.rejectBrokenSilenceWaiters(completedFrame);
     this.resolveSatisfiedWaiters(completedFrame);
   }
 
-  private rejectBrokenSilenceWaiters(completedFrame: CompletedSynchronizedFrame): void {
-    for (const silenceWaiter of this.silenceWaiters.splice(0)) {
-      clearTimeout(silenceWaiter.timeoutHandle);
-      silenceWaiter.reject(new Error(
-        `Expected no complete synchronized frame for the requested interval, but frame `
-        + `${completedFrame.completedFrameCount} followed frame `
-        + `${silenceWaiter.startingCompletedFrameCount}`,
-      ));
-    }
-  }
-
-  private resolveSatisfiedWaiters(completedFrame: CompletedSynchronizedFrame): void {
+  private resolveSatisfiedWaiters(
+    completedFrame: CompletedSynchronizedFrame,
+  ): void {
     for (const waiter of this.waiters.splice(0)) {
       clearTimeout(waiter.timeoutHandle);
       waiter.resolve(completedFrame);

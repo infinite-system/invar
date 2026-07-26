@@ -11,9 +11,13 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function previewBorder(snapshot: HarnessSnapshot.Model): { row: number; column: number } {
+function previewBorder(snapshot: HarnessSnapshot.Model): {
+  row: number;
+  column: number;
+} {
   const position = snapshot.findText('╭─Preview');
-  if (!position) throw new Error(`FAIL preview border missing\n${snapshot.text()}`);
+  if (!position)
+    throw new Error(`FAIL preview border missing\n${snapshot.text()}`);
   return position;
 }
 
@@ -34,12 +38,15 @@ function previewMarkerPosition(
   throw new Error(`FAIL preview marker missing: ${marker}\n${snapshot.text()}`);
 }
 
-function previewHasMarker(snapshot: HarnessSnapshot.Model, marker: string): boolean {
+function previewHasMarker(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): boolean {
   const previewPosition = snapshot.findText('╭─Preview');
   if (!previewPosition) return false;
-  return snapshot.textRows().some(
-    (rowText) => rowText.indexOf(marker, previewPosition.column) >= 0,
-  );
+  return snapshot
+    .textRows()
+    .some((rowText) => rowText.indexOf(marker, previewPosition.column) >= 0);
 }
 
 function findPreviewButton(
@@ -56,7 +63,10 @@ function findPreviewButton(
   return null;
 }
 
-function previewButton(snapshot: HarnessSnapshot.Model): { row: number; column: number } {
+function previewButton(snapshot: HarnessSnapshot.Model): {
+  row: number;
+  column: number;
+} {
   const button = findPreviewButton(snapshot);
   if (button) return button;
   throw new Error(`FAIL Markdown preview button missing\n${snapshot.text()}`);
@@ -90,8 +100,14 @@ for (let sectionNumber = 1; sectionNumber < 90; sectionNumber++) {
   );
 }
 markdownLines.push('TRUE MARKDOWN TAIL');
-await Bun.write(join(fixtureRoot, 'README.md'), `${markdownLines.join('\n')}\n`);
-await Bun.write(join(fixtureRoot, 'target.ts'), 'export const openedFromMarkdown = true;\n');
+await Bun.write(
+  join(fixtureRoot, 'README.md'),
+  `${markdownLines.join('\n')}\n`,
+);
+await Bun.write(
+  join(fixtureRoot, 'target.ts'),
+  'export const openedFromMarkdown = true;\n',
+);
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
@@ -102,15 +118,21 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness markdown: source opens alone and tab button toggles rendered preview ==');
-  let snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('README.md') !== null, 15_000);
+  console.log(
+    '== harness markdown: source opens alone and tab button toggles rendered preview ==',
+  );
+  let snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('README.md') !== null,
+    15_000,
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: String(status.activeBuffer).endsWith('/README.md') && status.markdownPreviewOpen === false",
-    (status) => String(status.activeBuffer).endsWith('/README.md')
-      && status.markdownPreviewOpen === false,
+    (status) =>
+      String(status.activeBuffer).endsWith('/README.md') &&
+      status.markdownPreviewOpen === false,
   );
   HarnessSmoke.Class.pass('Markdown opens source-only by default');
   snapshot = await driver.awaitGridCondition(
@@ -120,8 +142,9 @@ try {
   let button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('╭─Preview') !== null
-      && previewHasMarker(candidate, 'Rendered heading'),
+    (candidate) =>
+      candidate.findText('╭─Preview') !== null &&
+      previewHasMarker(candidate, 'Rendered heading'),
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -132,7 +155,10 @@ try {
   HarnessSmoke.Class.pass('tab button mounts the preview pane');
   const renderedHeading = previewMarkerPosition(snapshot, 'Rendered heading');
   HarnessSmoke.Class.requireCondition(
-    !snapshot.rowText(renderedHeading.row).slice(renderedHeading.column - 2).startsWith('# '),
+    !snapshot
+      .rowText(renderedHeading.row)
+      .slice(renderedHeading.column - 2)
+      .startsWith('# '),
     'preview heading omits raw Markdown punctuation',
   );
   button = previewButton(snapshot);
@@ -140,22 +166,25 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.markdownPreviewOpen === false",
+    'status condition: status.markdownPreviewOpen === false',
     (status) => status.markdownPreviewOpen === false,
   );
   HarnessSmoke.Class.pass('second click returns to source-only');
   snapshot = await driver.awaitGridCondition(
     'the preview pane is absent and the Markdown preview button is painted',
-    (candidate) => candidate.findText('╭─Preview') === null
-      && findPreviewButton(candidate) !== null,
+    (candidate) =>
+      candidate.findText('╭─Preview') === null &&
+      findPreviewButton(candidate) !== null,
   );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => previewHasMarker(candidate, 'target.ts'),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    previewHasMarker(candidate, 'target.ts'),
   );
 
-  console.log('== harness markdown: rendered references hover and Ctrl+Enter open ==');
+  console.log(
+    '== harness markdown: rendered references hover and Ctrl+Enter open ==',
+  );
   let markerPosition = previewMarkerPosition(snapshot, 'target.ts');
   driver.sendMouse({
     kind: 'move',
@@ -169,7 +198,9 @@ try {
     "status condition: String(status.markdownHoveredReference).endsWith('/target.ts')",
     (status) => String(status.markdownHoveredReference).endsWith('/target.ts'),
   );
-  HarnessSmoke.Class.pass('inline-code reference resolves inside the workspace');
+  HarnessSmoke.Class.pass(
+    'inline-code reference resolves inside the workspace',
+  );
   markerPosition = previewMarkerPosition(driver.snapshot(), 'the target');
   driver.sendMouse({
     kind: 'move',
@@ -183,7 +214,9 @@ try {
     "status condition: String(status.markdownHoveredReference).endsWith('/target.ts')",
     (status) => String(status.markdownHoveredReference).endsWith('/target.ts'),
   );
-  HarnessSmoke.Class.pass('standard Markdown link resolves inside the workspace');
+  HarnessSmoke.Class.pass(
+    'standard Markdown link resolves inside the workspace',
+  );
   driver.sendRawInput('\x1b[13;5u');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -200,11 +233,13 @@ try {
   const readmeTabPosition = snapshot.findText('README.md');
   if (!readmeTabPosition) throw new Error('FAIL README tab missing');
   clickCell(driver, readmeTabPosition.column + 2, readmeTabPosition.row);
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => previewHasMarker(candidate, 'Rendered heading'),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    previewHasMarker(candidate, 'Rendered heading'),
   );
 
-  console.log('== harness markdown: splitter moves and persists across preview remount ==');
+  console.log(
+    '== harness markdown: splitter moves and persists across preview remount ==',
+  );
   const previewColumnBefore = previewBorder(snapshot).column;
   const ratioBeforeStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -214,9 +249,15 @@ try {
   );
   const ratioBefore = Number(ratioBeforeStatus.markdownSplitRatio);
   const dividerColumn = previewColumnBefore - 1;
-  const dividerTargetColumn = ratioBefore <= 0.3 ? dividerColumn + 10 : dividerColumn - 10;
+  const dividerTargetColumn =
+    ratioBefore <= 0.3 ? dividerColumn + 10 : dividerColumn - 10;
   const dividerRow = previewBorder(snapshot).row + 7;
-  driver.sendMouse({ kind: 'press', column: dividerColumn, row: dividerRow, button: 'left' });
+  driver.sendMouse({
+    kind: 'press',
+    column: dividerColumn,
+    row: dividerRow,
+    button: 'left',
+  });
   driver.sendMouse({
     kind: 'move',
     column: dividerTargetColumn,
@@ -237,8 +278,9 @@ try {
     driver,
     statusPath,
     'divider movement publishes a changed Markdown split ratio',
-    (status) => typeof status.markdownSplitRatio === 'number'
-      && status.markdownSplitRatio !== ratioBefore,
+    (status) =>
+      typeof status.markdownSplitRatio === 'number' &&
+      status.markdownSplitRatio !== ratioBefore,
   );
   const persistedRatio = Number(persistedRatioStatus.markdownSplitRatio);
   HarnessSmoke.Class.pass(
@@ -246,18 +288,24 @@ try {
   );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.markdownPreviewOpen === false",
-                                                           (status) => status.markdownPreviewOpen === false);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'status condition: status.markdownPreviewOpen === false',
+    (status) => status.markdownPreviewOpen === false,
+  );
   snapshot = await driver.awaitGridCondition(
     'the remount action starts from a source-only Markdown editor',
-    (candidate) => candidate.findText('╭─Preview') === null
-      && findPreviewButton(candidate) !== null,
+    (candidate) =>
+      candidate.findText('╭─Preview') === null &&
+      findPreviewButton(candidate) !== null,
   );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   snapshot = await driver.awaitSnapshot(
-    (candidate) => previewHasMarker(candidate, 'Rendered heading')
-      && previewBorder(candidate).column === previewColumnAfter,
+    (candidate) =>
+      previewHasMarker(candidate, 'Rendered heading') &&
+      previewBorder(candidate).column === previewColumnAfter,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -267,7 +315,9 @@ try {
   );
   HarnessSmoke.Class.pass('remounted preview reuses the persisted split ratio');
 
-  console.log('== harness markdown: edge drag autoscrolls, copies, and pastes into source ==');
+  console.log(
+    '== harness markdown: edge drag autoscrolls, copies, and pastes into source ==',
+  );
   const preview = previewBorder(snapshot);
   const selectionColumn = preview.column + 5;
   driver.sendMouse({
@@ -291,9 +341,10 @@ try {
   const selectionStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Number(status.markdownPreviewScrollTop) > 0 && Number(status.markdownPreviewSelectionChars) > 100",
-    (status) => Number(status.markdownPreviewScrollTop) > 0
-      && Number(status.markdownPreviewSelectionChars) > 100,
+    'status condition: Number(status.markdownPreviewScrollTop) > 0 && Number(status.markdownPreviewSelectionChars) > 100',
+    (status) =>
+      Number(status.markdownPreviewScrollTop) > 0 &&
+      Number(status.markdownPreviewSelectionChars) > 100,
   );
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
@@ -301,41 +352,29 @@ try {
     row: snapshot.rows - 1,
     button: 'left',
   });
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  let previousSelectionCharacterCount: number | null = null;
-  let stableSelectionPublicationCount = 0;
-  const completedSelectionStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the completed Markdown preview selection count stabilizes after release',
-    (status) => {
-      const selectionCharacterCount = Number(status.markdownPreviewSelectionChars);
-      if (selectionCharacterCount === previousSelectionCharacterCount) {
-        stableSelectionPublicationCount += 1;
-      } else {
-        stableSelectionPublicationCount = 0;
-      }
-      previousSelectionCharacterCount = selectionCharacterCount;
-      return selectionCharacterCount >= Number(selectionStatus.markdownPreviewSelectionChars)
-        && stableSelectionPublicationCount >= 3;
-    },
-  );
-  const selectionCharacters = Number(completedSelectionStatus.markdownPreviewSelectionChars);
-  HarnessSmoke.Class.pass(
-    `edge drag scrolled to ${String(completedSelectionStatus.markdownPreviewScrollTop)} and selected `
-      + `${selectionCharacters} rendered chars`,
-  );
   driver.sendKeysWithoutFrameExpectation('Control+c');
   const copiedStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
-    "status condition: Number(status.lastCopyChars) > 0",
-    (status) => Number(status.lastCopyChars) > 0,
+    'the copied character count matches the completed Markdown preview selection',
+    (status) =>
+      Number(status.lastCopyChars) > 0 &&
+      Number(status.lastCopyChars) ===
+        Number(status.markdownPreviewSelectionChars) &&
+      Number(status.markdownPreviewSelectionChars) >=
+        Number(selectionStatus.markdownPreviewSelectionChars),
+  );
+  const selectionCharacters = Number(
+    copiedStatus.markdownPreviewSelectionChars,
+  );
+  HarnessSmoke.Class.pass(
+    `edge drag scrolled to ${String(copiedStatus.markdownPreviewScrollTop)} and selected ` +
+      `${selectionCharacters} rendered chars`,
   );
   HarnessSmoke.Class.requireCondition(
-    Number(copiedStatus.lastCopyChars) === selectionCharacters
-      && typeof copiedStatus.lastCopyHash === 'string'
-      && copiedStatus.lastCopyHash.length > 0,
+    Number(copiedStatus.lastCopyChars) === selectionCharacters &&
+      typeof copiedStatus.lastCopyHash === 'string' &&
+      copiedStatus.lastCopyHash.length > 0,
     'Ctrl+C copies exactly the rendered selection range',
   );
 
@@ -346,8 +385,9 @@ try {
     driver,
     statusPath,
     'the Markdown source pane is focused with a published buffer revision',
-    (status) => status.markdownPaneFocus === 'source'
-      && typeof status.bufferRevision === 'number',
+    (status) =>
+      status.markdownPaneFocus === 'source' &&
+      typeof status.bufferRevision === 'number',
   );
   const revisionBeforePaste = Number(sourceFocusStatus.bufferRevision);
   driver.sendKeys('Control+v');
@@ -355,24 +395,32 @@ try {
     driver,
     statusPath,
     "status condition: Number(status.bufferRevision) > revisionBeforePaste && status.markdownPaneFocus === 'source'",
-    (status) => Number(status.bufferRevision) > revisionBeforePaste
-      && status.markdownPaneFocus === 'source',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforePaste &&
+      status.markdownPaneFocus === 'source',
   );
   HarnessSmoke.Class.pass(
     `Ctrl+V pastes into source (${revisionBeforePaste} to ${String(pastedStatus.bufferRevision)})`,
   );
 
-  console.log('== harness markdown: source and preview retain independent Find queries ==');
+  console.log(
+    '== harness markdown: source and preview retain independent Find queries ==',
+  );
   driver.sendKeys('Control+f');
   await driver.awaitSnapshot((candidate) => candidate.findText('Aa') !== null);
   driver.sendText('#');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.sourceFindQuery === '#'",
-                                                           (status) => status.sourceFindQuery === '#');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.sourceFindQuery === '#'",
+    (status) => status.sourceFindQuery === '#',
+  );
   driver.sendKeys('Escape');
   snapshot = await driver.awaitGridCondition(
     'Escape closes source Find and reveals the Markdown preview border',
-    (candidate) => candidate.findText('╭─Find') === null
-      && candidate.findText('╭─Preview') !== null,
+    (candidate) =>
+      candidate.findText('╭─Find') === null &&
+      candidate.findText('╭─Preview') !== null,
   );
   const reopenedPreview = previewBorder(snapshot);
   clickCell(driver, reopenedPreview.column + 5, reopenedPreview.row + 2);
@@ -389,10 +437,13 @@ try {
     driver,
     statusPath,
     "status condition: status.sourceFindQuery === '#' && status.markdownPreviewFindQuery === 'Rendered' && String(status.findTarget).endsWith(`markdown-preview:${fixtureRoot}/README.md`) && Number(status.findMatchCount) > 0",
-    (status) => status.sourceFindQuery === '#'
-      && status.markdownPreviewFindQuery === 'Rendered'
-      && String(status.findTarget).endsWith(`markdown-preview:${fixtureRoot}/README.md`)
-      && Number(status.findMatchCount) > 0,
+    (status) =>
+      status.sourceFindQuery === '#' &&
+      status.markdownPreviewFindQuery === 'Rendered' &&
+      String(status.findTarget).endsWith(
+        `markdown-preview:${fixtureRoot}/README.md`,
+      ) &&
+      Number(status.findMatchCount) > 0,
   );
   HarnessSmoke.Class.pass(
     `independent preview Find owns ${String(findStatus.findMatchCount)} rendered matches`,

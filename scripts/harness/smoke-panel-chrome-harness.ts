@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
-import { PtyTestDriver } from './PtyTestDriver';
+import { PtyTestDriver, type HarnessGridRegion } from './PtyTestDriver';
 
 interface Rectangle {
   left: number;
@@ -93,7 +93,13 @@ async function awaitPopup(
   const geometry = status.boundedListPopupGeometry as
     (Rectangle & { listTop: number; listLeft: number }) | undefined;
   if (!geometry) throw new Error('Missing Add panel popup geometry');
-  const snapshot = driver.snapshot();
+  const snapshot = await driver.awaitGridCondition(
+    'the Add popup paints Terminal and Agent through the bounded list',
+    (candidate) =>
+      candidate.findText('Add') !== null &&
+      candidate.rowText(geometry.listTop).includes('Terminal') &&
+      candidate.rowText(geometry.listTop + 1).includes('Agent'),
+  );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Add') !== null &&
       snapshot.rowText(geometry.listTop).includes('Terminal') &&
@@ -124,7 +130,18 @@ function clickPopupRow(
   geometry: Rectangle & { listTop: number; listLeft: number },
   rowIndex: number,
 ): void {
-  clickCell(driver, geometry.listLeft + 1, geometry.listTop + rowIndex);
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'press',
+    column: geometry.listLeft + 1,
+    row: geometry.listTop + rowIndex,
+    button: 'left',
+  });
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'release',
+    column: geometry.listLeft + 1,
+    row: geometry.listTop + rowIndex,
+    button: 'left',
+  });
 }
 
 function dockGeometry(status: StatusSnapshot): string {
@@ -135,6 +152,23 @@ function dockGeometry(status: StatusSnapshot): string {
     rightDock: rectangle(status, 'rightDock'),
     rightDockSplitter: rectangle(status, 'rightDockSplitter'),
   });
+}
+
+async function filesHeadingRegion(
+  driver: PtyTestDriver.Model,
+): Promise<HarnessGridRegion> {
+  const snapshot = await driver.awaitGridCondition(
+    'the Files heading is rendered before the panel opens',
+    (candidate) => candidate.findText('Files') !== null,
+  );
+  const headingPosition = snapshot.findText('Files');
+  if (!headingPosition) throw new Error('Missing Files heading position');
+  return {
+    startRow: headingPosition.row,
+    endRowExclusive: headingPosition.row + 1,
+    startColumn: headingPosition.column,
+    endColumnExclusive: headingPosition.column + 'Files'.length,
+  };
 }
 
 function requireExpandedGeometry(
@@ -199,8 +233,19 @@ async function driveSecondSize(): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
-    await HarnessSmoke.Class.awaitFrameSilence(driver);
-    driver.sendKeys('F8');
+    const compactFilesHeadingRegion = await filesHeadingRegion(driver);
+    await driver.assertContentInvariantAcrossAction({
+      invariantRegion: compactFilesHeadingRegion,
+      changedRegion: {
+        startRow: 12,
+        endRowExclusive: 23,
+        startColumn: 0,
+        endColumnExclusive: 88,
+      },
+      actionDescription:
+        'F8 opens the compact panel while the top application chrome stays fixed',
+      performAction: () => driver.sendKeys('F8'),
+    });
     const regularStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -253,10 +298,19 @@ try {
     (status) => status.ready === true && status.terminalVisible === false,
     15_000,
   );
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  HarnessSmoke.Class.pass('quiet check completes before panel interaction');
-
-  driver.sendKeys('F8');
+  const regularFilesHeadingRegion = await filesHeadingRegion(driver);
+  await driver.assertContentInvariantAcrossAction({
+    invariantRegion: regularFilesHeadingRegion,
+    changedRegion: {
+      startRow: 20,
+      endRowExclusive: 39,
+      startColumn: 0,
+      endColumnExclusive: 120,
+    },
+    actionDescription:
+      'F8 opens the panel while the top application chrome stays fixed',
+    performAction: () => driver.sendKeys('F8'),
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

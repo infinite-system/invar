@@ -25,23 +25,21 @@ records the end-marker byte-arrival timestamp before the PTY callback feeds `Ter
 `PtyTestDriver.awaitQuiescence` separately flushes `TerminalEmulator`, so the snapshot includes every
 byte through that completed frame.
 
-**Generates:** deterministic frame waits without settle sleeps; byte-arrival timestamps; marker-silence
-assertions; chunk-boundary tests for the marker detector; a fail-loud timeout when no completed frame
-arrives.
+**Generates:** deterministic frame waits without settle sleeps; byte-arrival timestamps;
+chunk-boundary tests for the marker detector; a fail-loud timeout when no completed frame arrives.
 
 **Evidence:** A raw PTY capture on 2026-07-24 recorded three matched mode-2026 frame pairs;
 `scripts/harness/SynchronizedOutputQuiescence.test.ts` preserves the observed marker shape, timestamp,
 silence, and chunk-boundary cases.
 
 **Impossible if true:** `awaitQuiescence` resolving in the middle of a synchronized frame; a marker
-split across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable;
-a silence assertion passing after a complete frame arrived during its interval.
+split across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable.
 
 **Verification:** `bun test scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ## Chosen invariants
 
@@ -259,10 +257,12 @@ gate log omitting the measurement boundary.
 condition or synchronized-output quiescence, never from a target frame ordinal. If it asserts a
 visual outcome after an action, then a named grid condition first waits for the asserted content;
 sampling after synchronized-output quiescence alone is not sufficient when the action can span
-frames.
+frames. If the outcome includes content that must not change, then the action must also change a
+required comparison region while the invariant region stays byte-identical.
 
-**Scope:** `PtyTestDriver`, every `scripts/harness/smoke-*-harness.ts` port, and shared harness
-helpers. Frame counts may diagnose output volume, but they never identify the state a waiter expects.
+**Scope:** `PtyTestDriver`, `ContentInvarianceOptions`, every
+`scripts/harness/smoke-*-harness.ts` port, and shared harness helpers. Frame counts may diagnose output
+volume, but they never identify the state a waiter expects.
 A WAIT MUST BE A CONDITION, and three shapes fail that requirement, not just the frame-ordinal one:
 (a) a target frame ordinal; (b) a predicate the PRE-ACTION state already satisfies — existence and type
 checks like `typeof status.field === 'number'` or `field !== undefined`, since a field that exists before
@@ -275,17 +275,24 @@ that loop's poll interval.
 then checks again after each future synchronized-frame completion event. `awaitQuiescence` waits on a
 completion event associated with pending input, without calculating a target frame number. Harness
 ports use `awaitGridCondition` on the visual assertion predicate before sampling the returned
-snapshot.
+snapshot. `assertContentInvariantAcrossAction` captures both required regions, performs the action,
+uses change in the required comparison region as the liveness condition, and compares the invariant
+region's serialized cells byte-for-byte.
 
 **Generates:** already-satisfied fast paths; transition waits named for visible outcomes; timeout
 errors containing the predicate description and final relevant grid region; frame coalescing and
 zero-frame actions that cannot strand a condition already visible; visual assertions that cannot
-race a later paint from the action they verify.
+race a later paint from the action they verify; content-invariance assertions whose action cannot pass
+without a visible change.
 
 **Rejected alternatives:** Wait for frame N — repaint coalescing changes frame ordinals under load,
-and an action whose target is already rendered may emit no frame.
+and an action whose target is already rendered may emit no frame. Record a frame count and require the
+next frame to belong to the action — repaint coalescing changes ordinals and valid actions may emit no
+frame. Assert a frame-silence interval — machine load can delay both a violating repaint and a
+legitimate awaited repaint across the interval boundary.
 
-**Evidence:** `scripts/harness/PtyTestDriver.ts`; the recorded-stream cases in
+**Evidence:** `scripts/harness/PtyTestDriver.ts` (`awaitGridCondition`,
+`assertContentInvariantAcrossAction`); the recorded-stream cases in
 `scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
 `scripts/harness/smoke-agent-pane-ux-harness.ts`. The COST of the two shapes this record did not
 originally forbid, measured 2026-07-25: both produced ~50% flakes that `retry-once-on-timeout` then hid,
@@ -301,7 +308,9 @@ invariant with a thin negative space protects nothing.
 predicate waiting for another frame; two coalesced invalidations requiring two completed frames; a
 visual assertion sampling the grid after only status publication or output quiescence; a post-action
 wait whose predicate the pre-action state already satisfied (so the wait returns immediately and the
-next step races); a bare `Bun.sleep` standing between a drive and the assertion that verifies it.
+next step races); a bare `Bun.sleep` standing between a drive and the assertion that verifies it; a
+visual stability claim expressed as frame silence; a content-invariance assertion with no required
+changed region proving the action occurred.
 
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
@@ -309,40 +318,43 @@ scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-25
 
 ### Async-published state is always awaited
 
 **Invariant:** If a harness verdict depends on state published asynchronously through the status
 file, then the harness polls that file independently until its semantic predicate holds; it never
-samples `readStatus` or `statusField` once after a grid wait, and a grid predicate never reads status.
+samples `readStatus` or `statusField` once after a grid wait. A condition that combines status with
+rendered content must remain independently re-evaluable when no new frame arrives.
 
-**Scope:** Every `scripts/harness/smoke-*-harness.ts` semantic assertion. Values read from the
-`HarnessStatus` or `StatusSnapshot` returned by a completed status wait are already awaited.
+**Scope:** Every `scripts/harness/smoke-*-harness.ts` semantic assertion and
+`PtyTestDriver.awaitGridCondition`. Values read from the `HarnessStatus` or `StatusSnapshot` returned
+by a completed status wait are already awaited.
 
-**Mechanism:** `HarnessSmoke.awaitStatus` and `HarnessSmoke.awaitStatusWithoutFrame` re-read status
-while using frame arrival or bounded frame silence only as progress opportunities.
-`HarnessSmokeSupport.awaitStatusPublication` polls every 5 milliseconds without depending on a
-frame. Visual and semantic transitions are awaited separately, so a status-only publication cannot
-strand a frame-driven predicate.
+**Mechanism:** `HarnessSmoke.awaitStatus`, `HarnessSmoke.awaitStatusWithoutFrame`, and
+`HarnessSmokeSupport.awaitStatusPublication` re-read status every 5 milliseconds without depending on
+a frame. `awaitGridCondition` also rechecks its named predicate between completed frames, so an exact
+status endpoint combined with grid content can complete after a status-only publication.
 
-**Generates:** Polling status assertions; returned awaited snapshots for baselines; separate grid and
-status waits when a transition has both visual and semantic outcomes.
+**Generates:** Polling status assertions; returned awaited snapshots for baselines; named combined
+conditions that progress without terminal output.
 
 **Rejected alternatives:** Read status once after a matching frame — status publication is
-asynchronous and can lag that frame. Read status inside a grid predicate — a status-only publication
-does not produce another frame to re-evaluate the predicate.
+asynchronous and can lag that frame. Re-evaluate a combined condition only when a completed frame
+arrives — an at-rest or process-state publication can legitimately produce no terminal bytes.
 
-**Evidence:** `scripts/harness/HarnessSmoke.ts`; `scripts/harness/HarnessSmokeSupport.ts`; every
-registered `scripts/harness/smoke-*-harness.ts` consumer.
+**Evidence:** `scripts/harness/HarnessSmoke.ts`; `scripts/harness/HarnessSmokeSupport.ts`;
+`scripts/harness/PtyTestDriver.ts`; the no-new-frame condition test in
+`scripts/harness/PtyTestDriver.test.ts`; every registered `scripts/harness/smoke-*-harness.ts`
+consumer.
 
 **Impossible if true:** A smoke failing because the expected status was published just after its
 one-time read; a status-only transition timing out because no later synchronized frame re-ran a grid
 predicate.
 
-**Verification:** Run a TypeScript AST walk over `scripts/harness/smoke-*.ts` and require zero
-`readStatus` or `statusField` calls outside `awaitStatus` or `awaitStatusPublication` predicates and
-zero such reads inside `awaitSnapshot` predicates; then run every registered harness smoke once.
+**Verification:** Run a TypeScript AST walk over `scripts/harness/smoke-*.ts` and require every
+`readStatus` or `statusField` verdict to be inside a re-evaluated condition; run
+`bun test scripts/harness/PtyTestDriver.test.ts`; then run every registered harness smoke once.
 
 **Status:** provisional
 
@@ -355,8 +367,7 @@ identifies the condition, and the timeout reports that description with the rele
 grid region.
 
 **Scope:** Status waits in `HarnessSmoke` and `HarnessSmokeSupport`, plus grid-condition waits in
-`PtyTestDriver`. Quiescence and fixed-duration silence observations have no target condition and are
-outside this rule.
+`PtyTestDriver`. Synchronized-output quiescence has no target condition and is outside this rule.
 
 **Mechanism:** `awaitStatus`, `awaitStatusWithoutFrame`, and `awaitStatusPublication` require a
 description argument and throw `Timed out waiting for <description> at <path>`.
@@ -418,35 +429,75 @@ require every exit status to be zero.
 
 **Last refined:** 2026-07-24
 
-### Timing-sensitive gate jobs run in a quiet serial tail
+### Stable regions stay byte-identical across actions
 
-**Invariant:** If a registered gate job measures latency, performance, frame absence, or momentum
-timing, then it runs alone after the parallel-safe smoke pool has fully drained.
+**Invariant:** If a smoke claims that visible content stays stable across an action, then a required
+invariant region is byte-identical before and after the action, and a separate required region
+changes to prove that the action occurred.
 
-**Scope:** `scripts/merge-gate.sh`, `scripts/behavioral-contracts.sh`,
-`scripts/perf-baselines.sh`, `scripts/harness/input-byte-flush-gate.ts`, every registered smoke
-source containing `assertNoCompleteFrameEmittedFor` or `awaitFrameSilence`, and every registered
-smoke with a momentum or glide assertion.
+**Scope:** `PtyTestDriver.assertContentInvariantAcrossAction` and every harness smoke that asserts
+absence of visual churn across a driven action. Idle frame-efficiency measurements and actions with
+no visible outcome are outside this rule.
+
+**Mechanism:** `ContentInvarianceOptions` requires `invariantRegion`, `changedRegion`,
+`actionDescription`, and `performAction`. The driver serializes the exact character content of every
+cell in both regions, performs the action, waits through `awaitGridCondition` until the changed
+region differs, then requires the invariant content serialization to match exactly. Color and focus
+styling are excluded because this contract is content invariance, not paint-attribute invariance.
+
+**Generates:** Load-independent absence-of-churn assertions; intrinsic action liveness; parallel-safe
+smokes; diagnostics naming both the action and the exact compared region.
+
+**Rejected alternatives:** Observe frame silence for a duration — load moves both legitimate and
+violating frames across the window. Record a frame count and claim the next frame belongs to the
+action — repaint coalescing changes ordinals, and an already-rendered target can emit no frame.
+
+**Evidence:** `scripts/harness/PtyTestDriver.ts` (`ContentInvarianceOptions`,
+`assertContentInvariantAcrossAction`); `scripts/harness/PtyTestDriver.test.ts`; migrated consumers in
+`scripts/harness/smoke-*-harness.ts`.
+
+**Impossible if true:** A content-stability assertion with no named invariant region; a passing
+invariance assertion after an action that changed no required content; a timeout or duration option
+on the content-invariance API; a stable-region claim implemented by counting frames.
+
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && ! rg
+"assertNoCompleteFrameEmittedFor|awaitFrameSilence" scripts/harness/smoke-*-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
+### Duration measurements run in a quiet serial tail
+
+**Invariant:** If a gate job measures elapsed latency, performance, or idle frame efficiency across a
+fixed interval, then it runs alone after the parallel-safe smoke pool has fully drained.
+
+**Scope:** `scripts/merge-gate.sh`, the `idle-quiescence` contract in
+`scripts/behavioral-contracts.sh`, `scripts/harness/smoke-terminal-stage-harness.ts`,
+`scripts/harness/input-byte-flush-gate.ts`, and `scripts/perf-baselines.sh`. Content-invariance
+assertions and condition-terminated waits are outside this rule.
 
 **Mechanism:** `parallel_safe_smoke` and `quiet_serial_smoke` form the explicit registry.
-`run_parallel_smoke_pool` waits for every worker process before `run_quiet_serial_smokes`, the
-input-byte-flush gate, and performance baselines begin.
+`run_parallel_smoke_pool` waits for every worker process before duration-measuring jobs, the
+input-byte-flush gate, and performance baselines begin. `validate_smoke_classification` rejects
+parallel sources that subtract clock readings.
 
-**Generates:** A bounded worker pool for timing-insensitive smokes; a fully drained phase boundary;
-serial absence, momentum, latency, and performance observations.
+**Generates:** A bounded pool for condition-terminated smokes; a fully drained phase boundary; quiet
+latency, performance, terminal-stage duration, and idle-quiescence measurements.
 
-**Rejected alternatives:** Run absence assertions under shared load — a violating frame can arrive
-after the observation window and make the assertion false-green.
+**Rejected alternatives:** Classify feature vocabulary such as momentum as timing-sensitive — a
+condition-terminated momentum smoke is load-independent, while an unrelated clock subtraction still
+measures the machine.
 
-**Evidence:** `scripts/merge-gate.sh`; `rg -l
-"assertNoCompleteFrameEmittedFor|awaitFrameSilence|[Mm]omentum|glide"
-scripts/behavioral-contracts.sh scripts/harness/smoke-*-harness.ts scripts/smoke-*.sh`.
+**Evidence:** `scripts/merge-gate.sh` (`validate_smoke_classification`,
+`run_parallel_smoke_pool`, `run_quiet_serial_smokes`); `scripts/behavioral-contracts.sh`
+(`idle-quiescence`).
 
-**Impossible if true:** A parallel worker remaining live while a quiet-tail job starts; two
-quiet-tail jobs overlapping; a smoke containing either absence-window method running in the
-parallel-safe pool.
+**Impossible if true:** A parallel worker remaining live while a duration measurement starts; two
+quiet-tail jobs overlapping; a parallel-safe smoke source subtracting two clock readings; an
+idle-quiescence frame-count window duplicated in a per-feature smoke.
 
-**Verification:** `bash -n scripts/merge-gate.sh && bash scripts/merge-gate.sh`
+**Verification:** `bash -n scripts/merge-gate.sh && SKIP_PERF=1 bash scripts/merge-gate.sh`
 
 **Status:** provisional
 

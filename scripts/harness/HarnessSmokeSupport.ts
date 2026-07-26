@@ -11,7 +11,10 @@ export function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
 
-export function requireCondition(condition: unknown, label: string): asserts condition {
+export function requireCondition(
+  condition: unknown,
+  label: string,
+): asserts condition {
   if (!condition) throw new Error(`FAIL ${label}`);
   pass(label);
 }
@@ -32,7 +35,10 @@ export function readStatus(statusPath: string): HarnessStatus | null {
   return JSON.parse(readFileSync(statusPath, 'utf8')) as HarnessStatus;
 }
 
-export function statusField<T>(statusPath: string, fieldName: string): T | undefined {
+export function statusField<T>(
+  statusPath: string,
+  fieldName: string,
+): T | undefined {
   return readStatus(statusPath)?.[fieldName] as T | undefined;
 }
 
@@ -72,7 +78,8 @@ export function markerPosition(
   marker: string,
 ): { row: number; column: number } {
   const position = snapshot.findText(marker);
-  if (!position) throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
+  if (!position)
+    throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
   return position;
 }
 
@@ -82,8 +89,18 @@ export function clickMarker(
   marker: string,
 ): void {
   const position = markerPosition(snapshot, marker);
-  driver.sendMouse({ kind: 'press', column: position.column, row: position.row, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: position.column, row: position.row, button: 'left' });
+  driver.sendMouse({
+    kind: 'press',
+    column: position.column,
+    row: position.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: position.column,
+    row: position.row,
+    button: 'left',
+  });
 }
 
 export async function dragBetweenCells(
@@ -99,21 +116,18 @@ export async function dragBetweenCells(
     row: startRow,
     button: 'left',
   });
-  driver.sendMouse({
+  driver.sendMouseWithoutFrameExpectation({
     kind: 'move',
     column: Math.floor((startColumn + endColumn) / 2),
     row: Math.floor((startRow + endRow) / 2),
     button: 'left',
   });
-  await driver.awaitQuiescence();
   driver.sendMouseWithoutFrameExpectation({
     kind: 'move',
     column: endColumn,
     row: endRow,
     button: 'left',
   });
-  await driver.assertNoCompleteFrameEmittedFor(50).catch(() => undefined);
-  await driver.awaitQuiescence();
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
     column: endColumn,
@@ -127,10 +141,15 @@ export function markerForeground(
   marker: string,
 ): number | null {
   const position = snapshot.findText(marker);
-  return position ? snapshot.cell(position.row, position.column)?.foreground ?? null : null;
+  return position
+    ? (snapshot.cell(position.row, position.column)?.foreground ?? null)
+    : null;
 }
 
-export function runGit(repositoryRoot: string, commandArguments: readonly string[]): void {
+export function runGit(
+  repositoryRoot: string,
+  commandArguments: readonly string[],
+): void {
   const result = Bun.spawnSync(['git', ...commandArguments], {
     cwd: repositoryRoot,
     stdout: 'ignore',
@@ -144,8 +163,8 @@ export function runGit(repositoryRoot: string, commandArguments: readonly string
   });
   if (result.exitCode !== 0) {
     throw new Error(
-      `git ${commandArguments.join(' ')} failed: `
-      + new TextDecoder().decode(result.stderr),
+      `git ${commandArguments.join(' ')} failed: ` +
+        new TextDecoder().decode(result.stderr),
     );
   }
 }

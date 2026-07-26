@@ -6,7 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 import { mkdirSync, mkdtempSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -92,6 +92,7 @@ async function launchDriver(
     columns,
     rows,
     homeDirectory: settingsHome,
+    retainFullOutput: true,
     environment: {
       TUI_STATUS_PATH: statusPath,
       COLORTERM: 'truecolor',
@@ -107,10 +108,10 @@ async function launchDriver(
   return { driver, statusPath };
 }
 
-async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
+async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<string> {
   for (let openAttempt = 0; openAttempt < 4; openAttempt++) {
     try {
-      await HarnessSmoke.Class.awaitStatus(
+      const status = await HarnessSmoke.Class.awaitStatus(
         launchedDriver.driver,
         launchedDriver.statusPath,
         'an active buffer is already published',
@@ -119,13 +120,13 @@ async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
           status.activeBuffer.length > 0,
         50,
       );
-      return;
+      return String(status.activeBuffer);
     } catch {
       // The fixture has not opened yet; drive the next tree row.
     }
     launchedDriver.driver.sendKeys('Enter');
     try {
-      await HarnessSmoke.Class.awaitStatus(
+      const status = await HarnessSmoke.Class.awaitStatus(
         launchedDriver.driver,
         launchedDriver.statusPath,
         "status condition: typeof candidate.activeBuffer === 'string' && candidate.activeBuffer.length > 0",
@@ -134,7 +135,7 @@ async function openOnlyFile(launchedDriver: LaunchedDriver): Promise<void> {
           candidate.activeBuffer.length > 0,
         1_000,
       );
-      return;
+      return String(status.activeBuffer);
     } catch {
       await Bun.sleep(100);
     }
@@ -173,32 +174,42 @@ async function selectSettingByVisibleLabel(
   );
 }
 
-async function awaitStablePublishedNumber(
-  launchedDriver: LaunchedDriver,
-  fieldName: string,
-  description: string,
-): Promise<number> {
-  let previousValue: number | null = null;
-  let stablePublicationCount = 0;
-  const status = await HarnessSmoke.Class.awaitStatus(
-    launchedDriver.driver,
-    launchedDriver.statusPath,
-    description,
-    (candidate) => {
-      const currentValue = Number(candidate[fieldName]);
-      if (!Number.isFinite(currentValue)) return false;
-      if (currentValue === previousValue) stablePublicationCount += 1;
-      else stablePublicationCount = 0;
-      previousValue = currentValue;
-      return stablePublicationCount >= 3;
-    },
-  );
-  return Number(status[fieldName]);
-}
-
-async function settleMomentum(launchedDriver: LaunchedDriver): Promise<void> {
-  await Bun.sleep(1_200);
-  await HarnessSmoke.Class.awaitFrameSilence(launchedDriver.driver);
+async function awaitSettledPublishedNumber(options: {
+  launchedDriver: LaunchedDriver;
+  fieldName: string;
+  description: string;
+  progressFieldName: string;
+  progressPreviousValue: number;
+  momentumAtRestFieldName: string;
+}): Promise<number> {
+  let settledValue = Number.NaN;
+  let lastProgressValue = Number.NaN;
+  let lastMomentumAtRest: unknown;
+  try {
+    await options.launchedDriver.driver.awaitGridCondition(
+      options.description,
+      () => {
+        const status = HarnessSmoke.Class.readStatus(
+          options.launchedDriver.statusPath,
+        );
+        settledValue = Number(status[options.fieldName]);
+        lastProgressValue = Number(status[options.progressFieldName]);
+        lastMomentumAtRest = status[options.momentumAtRestFieldName];
+        return (
+          Number.isFinite(settledValue) &&
+          lastMomentumAtRest === true &&
+          lastProgressValue !== options.progressPreviousValue
+        );
+      },
+    );
+  } catch (error) {
+    throw new Error(
+      `${String(error)}\nLast published ${options.fieldName}=${settledValue}, ` +
+        `${options.progressFieldName}=${lastProgressValue}, ` +
+        `${options.momentumAtRestFieldName}=${String(lastMomentumAtRest)}`,
+    );
+  }
+  return settledValue;
 }
 
 async function scrollTopAfterNotch(
@@ -209,19 +220,52 @@ async function scrollTopAfterNotch(
   const launchedDriver = await launchDriver(label, workspaceRoot);
   try {
     await openOnlyFile(launchedDriver);
-    launchedDriver.driver.sendMouseWithoutFrameExpectation({
-      kind: 'wheel',
-      column: 59,
-      row: 11,
-      direction: 'down',
-      alt,
-    });
-    await settleMomentum(launchedDriver);
-    return awaitStablePublishedNumber(
-      launchedDriver,
-      'editorScrollTop',
-      'the post-notch editor scroll top stabilizes',
+    await launchedDriver.driver.awaitGridCondition(
+      'the long fixture content is rendered before notch input',
+      (candidate) => candidate.findText('line 000') !== null,
     );
+    const openingStatus = await HarnessSmoke.Class.awaitStatus(
+      launchedDriver.driver,
+      launchedDriver.statusPath,
+      'the opening editor scroll top is published before notch input',
+      (status) => typeof status.editorScrollTop === 'number',
+    );
+    const openingSnapshot = launchedDriver.driver.snapshot();
+    let settledScrollTop = Number.NaN;
+    await launchedDriver.driver.assertContentInvariantAcrossAction({
+      invariantRegion: {
+        startRow: 0,
+        endRowExclusive: 1,
+        startColumn: 0,
+        endColumnExclusive: 20,
+      },
+      changedRegion: {
+        startRow: 1,
+        endRowExclusive: openingSnapshot.rows - 2,
+        startColumn: 32,
+        endColumnExclusive: openingSnapshot.columns,
+      },
+      actionDescription: 'editor wheel notch changes only the editor viewport',
+      performAction: async () => {
+        launchedDriver.driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 59,
+          row: 11,
+          direction: 'down',
+          alt,
+        });
+        settledScrollTop = await awaitSettledPublishedNumber({
+          launchedDriver,
+          fieldName: 'editorScrollTop',
+          description:
+            'the notch-driven editor viewport reaches its changed resting position',
+          progressFieldName: 'editorScrollTop',
+          progressPreviousValue: Number(openingStatus.editorScrollTop),
+          momentumAtRestFieldName: 'workspaceScrollMomentumAtRest',
+        });
+      },
+    });
+    return settledScrollTop;
   } finally {
     await launchedDriver.driver.dispose();
   }
@@ -234,21 +278,53 @@ async function scrollTopAfterFling(
   const launchedDriver = await launchDriver(label, workspaceRoot);
   try {
     await openOnlyFile(launchedDriver);
-    for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
-      launchedDriver.driver.sendMouseWithoutFrameExpectation({
-        kind: 'wheel',
-        column: 59,
-        row: 11,
-        direction: 'down',
-      });
-      await Bun.sleep(30);
-    }
-    await settleMomentum(launchedDriver);
-    return awaitStablePublishedNumber(
-      launchedDriver,
-      'editorScrollTop',
-      'the post-fling editor scroll top stabilizes',
+    await launchedDriver.driver.awaitGridCondition(
+      'the long fixture content is rendered before wheel-train input',
+      (candidate) => candidate.findText('line 000') !== null,
     );
+    const openingStatus = await HarnessSmoke.Class.awaitStatus(
+      launchedDriver.driver,
+      launchedDriver.statusPath,
+      'the opening editor scroll top is published before fling input',
+      (status) => typeof status.editorScrollTop === 'number',
+    );
+    const openingSnapshot = launchedDriver.driver.snapshot();
+    let settledScrollTop = Number.NaN;
+    await launchedDriver.driver.assertContentInvariantAcrossAction({
+      invariantRegion: {
+        startRow: 0,
+        endRowExclusive: 1,
+        startColumn: 0,
+        endColumnExclusive: 20,
+      },
+      changedRegion: {
+        startRow: 1,
+        endRowExclusive: openingSnapshot.rows - 2,
+        startColumn: 32,
+        endColumnExclusive: openingSnapshot.columns,
+      },
+      actionDescription: 'editor wheel train changes only the editor viewport',
+      performAction: async () => {
+        for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
+          launchedDriver.driver.sendMouseWithoutFrameExpectation({
+            kind: 'wheel',
+            column: 59,
+            row: 11,
+            direction: 'down',
+          });
+        }
+        settledScrollTop = await awaitSettledPublishedNumber({
+          launchedDriver,
+          fieldName: 'editorScrollTop',
+          description:
+            'the wheel-train editor viewport reaches its changed resting position',
+          progressFieldName: 'editorScrollTop',
+          progressPreviousValue: Number(openingStatus.editorScrollTop),
+          momentumAtRestFieldName: 'workspaceScrollMomentumAtRest',
+        });
+      },
+    });
+    return settledScrollTop;
   } finally {
     await launchedDriver.driver.dispose();
   }
@@ -331,9 +407,25 @@ async function snapshotForSetting(
 ): Promise<HarnessSnapshot.Model> {
   const launchedDriver = await launchDriver(label, workspaceRoot);
   try {
-    if (openFile) await openOnlyFile(launchedDriver);
-    await HarnessSmoke.Class.awaitFrameSilence(launchedDriver.driver);
-    return launchedDriver.driver.snapshot();
+    if (openFile) {
+      const activeBuffer = await openOnlyFile(launchedDriver);
+      return launchedDriver.driver.awaitGridCondition(
+        `${basename(activeBuffer)} is rendered before its setting snapshot`,
+        (snapshot) => snapshot.findText(basename(activeBuffer)) !== null,
+      );
+    }
+    try {
+      return await launchedDriver.driver.awaitGridCondition(
+        'the tree fixture rows are rendered before the setting snapshot',
+        (snapshot) =>
+          snapshot.findText('Files') !== null &&
+          snapshot.findText('file-01.txt') !== null,
+      );
+    } catch (error) {
+      throw new Error(
+        `${String(error)}\nRetained output:\n${launchedDriver.driver.recordedOutput().slice(-20_000)}`,
+      );
+    }
   } finally {
     await launchedDriver.driver.dispose();
   }
@@ -483,22 +575,58 @@ try {
     const launchedDriver = await launchDriver(label, longFixture);
     try {
       await openOnlyFile(launchedDriver);
-      for (let wheelIndex = 0; wheelIndex < 3; wheelIndex++) {
-        launchedDriver.driver.sendMouseWithoutFrameExpectation({
-          kind: 'wheel',
-          column: 59,
-          row: 11,
-          direction: 'down',
-          alt: true,
-        });
-        await Bun.sleep(120);
-      }
-      await settleMomentum(launchedDriver);
-      return awaitStablePublishedNumber(
-        launchedDriver,
-        'editorScrollLeft',
-        'the horizontal editor scroll offset stabilizes',
+      await launchedDriver.driver.awaitGridCondition(
+        'the long fixture content is rendered before modified wheel input',
+        (candidate) => candidate.findText('line 000') !== null,
       );
+      const openingStatus = await HarnessSmoke.Class.awaitStatus(
+        launchedDriver.driver,
+        launchedDriver.statusPath,
+        'the opening editor scroll offsets are published',
+        (status) =>
+          typeof status.editorScrollLeft === 'number' &&
+          typeof status.editorScrollTop === 'number',
+      );
+      const openingSnapshot = launchedDriver.driver.snapshot();
+      let settledHorizontalOffset = Number.NaN;
+      await launchedDriver.driver.assertContentInvariantAcrossAction({
+        invariantRegion: {
+          startRow: 0,
+          endRowExclusive: 1,
+          startColumn: 0,
+          endColumnExclusive: 20,
+        },
+        changedRegion: {
+          startRow: 1,
+          endRowExclusive: openingSnapshot.rows - 2,
+          startColumn: 32,
+          endColumnExclusive: openingSnapshot.columns,
+        },
+        actionDescription:
+          'modified wheel input changes only the editor viewport',
+        performAction: async () => {
+          for (let wheelIndex = 0; wheelIndex < 3; wheelIndex++) {
+            launchedDriver.driver.sendMouseWithoutFrameExpectation({
+              kind: 'wheel',
+              column: 59,
+              row: 11,
+              direction: 'down',
+              alt: true,
+            });
+          }
+          const progressFieldName =
+            modifier === 'alt' ? 'editorScrollLeft' : 'editorScrollTop';
+          settledHorizontalOffset = await awaitSettledPublishedNumber({
+            launchedDriver,
+            fieldName: 'editorScrollLeft',
+            description: `the ${progressFieldName} viewport reaches its changed resting position`,
+            progressFieldName,
+            progressPreviousValue: Number(openingStatus[progressFieldName]),
+            momentumAtRestFieldName: 'workspaceScrollMomentumAtRest',
+          });
+        },
+      });
+      return settledHorizontalOffset;
     } finally {
       await launchedDriver.driver.dispose();
     }
@@ -552,16 +680,39 @@ try {
     await setSetting('scrollbarThickness', thickness);
     const launchedDriver = await launchDriver(label, treeFixture);
     try {
-      for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
-        launchedDriver.driver.sendMouseWithoutFrameExpectation({
-          kind: 'wheel',
-          column: 9,
-          row: 9,
-          direction: 'down',
+      const openingSnapshot = await launchedDriver.driver.awaitGridCondition(
+        'the file tree is rendered before scrollbar wheel input',
+        (candidate) =>
+          candidate.findText('Files') !== null &&
+          candidate.findText('file-20.txt') !== null,
+      );
+      const scrolledSnapshot =
+        await launchedDriver.driver.assertContentInvariantAcrossAction({
+          invariantRegion: {
+            startRow: 0,
+            endRowExclusive: 1,
+            startColumn: 0,
+            endColumnExclusive: 20,
+          },
+          changedRegion: {
+            startRow: 1,
+            endRowExclusive: openingSnapshot.rows - 2,
+            startColumn: 0,
+            endColumnExclusive: 32,
+          },
+          actionDescription: 'tree wheel input changes only the tree viewport',
+          performAction: () => {
+            for (let wheelIndex = 0; wheelIndex < 10; wheelIndex++) {
+              launchedDriver.driver.sendMouseWithoutFrameExpectation({
+                kind: 'wheel',
+                column: 9,
+                row: 9,
+                direction: 'down',
+              });
+            }
+          },
         });
-      }
-      await settleMomentum(launchedDriver);
-      return paintedScrollbarColumnCount(launchedDriver.driver.snapshot());
+      return paintedScrollbarColumnCount(scrolledSnapshot);
     } finally {
       await launchedDriver.driver.dispose();
     }

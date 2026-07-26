@@ -25,7 +25,9 @@ function initializeRepository(repositoryRoot: string): void {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-git-watch-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-git-watch-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 mkdirSync(join(fixtureRoot, 'src'));
 await Bun.write(join(fixtureRoot, 'src', 'nested.ts'), 'a\n');
@@ -45,8 +47,13 @@ let directoryFixtureRoot: string | null = null;
 let symlinkTargetRoot: string | null = null;
 
 try {
-  console.log('== harness git-watch: clean repository starts at zero changes ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('root.txt') !== null, 15_000);
+  console.log(
+    '== harness git-watch: clean repository starts at zero changes ==',
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('root.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('Control+g');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -56,14 +63,19 @@ try {
   );
   HarnessSmoke.Class.pass('clean repo, 0 changes');
 
-  console.log('== harness git-watch: external nested changes arrive without input ==');
-  await Bun.write(join(fixtureRoot, 'src', 'nested.ts'), 'a\nEXTERNALLY MODIFIED\n');
+  console.log(
+    '== harness git-watch: external nested changes arrive without input ==',
+  );
+  await Bun.write(
+    join(fixtureRoot, 'src', 'nested.ts'),
+    'a\nEXTERNALLY MODIFIED\n',
+  );
   await Bun.write(join(fixtureRoot, 'src', 'added.ts'), 'brand new\n');
   unlinkSync(join(fixtureRoot, 'src', 'doomed.ts'));
   const changedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Number(status.gitChangedCount) >= 3",
+    'status condition: Number(status.gitChangedCount) >= 3',
     (status) => Number(status.gitChangedCount) >= 3,
     8_000,
   );
@@ -71,22 +83,36 @@ try {
     `external nested modify+add+delete reflected without input (0 -> ${changedStatus.gitChangedCount})`,
   );
 
-  console.log('== harness git-watch: reverting external changes clears the panel ==');
-  HarnessSmoke.Class.runGit(fixtureRoot, ['checkout', '-q', '--', 'src/nested.ts', 'src/doomed.ts']);
+  console.log(
+    '== harness git-watch: reverting external changes clears the panel ==',
+  );
+  HarnessSmoke.Class.runGit(fixtureRoot, [
+    'checkout',
+    '-q',
+    '--',
+    'src/nested.ts',
+    'src/doomed.ts',
+  ]);
   unlinkSync(join(fixtureRoot, 'src', 'added.ts'));
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.gitChangedCount === 0",
+    'status condition: status.gitChangedCount === 0',
     (status) => status.gitChangedCount === 0,
     7_000,
   );
   HarnessSmoke.Class.pass('panel returned to 0 after external revert');
 
-  console.log('== harness git-watch: opening an untracked directory symlink does not crash ==');
+  console.log(
+    '== harness git-watch: opening an untracked directory symlink does not crash ==',
+  );
   await driver.dispose();
-  directoryFixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-directory-harness-'));
-  symlinkTargetRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-target-harness-'));
+  directoryFixtureRoot = mkdtempSync(
+    join(tmpdir(), 'tui-git-watch-directory-harness-'),
+  );
+  symlinkTargetRoot = mkdtempSync(
+    join(tmpdir(), 'tui-git-watch-target-harness-'),
+  );
   await Bun.write(join(symlinkTargetRoot, 'pkg.js'), 'module.exports={};\n');
   await Bun.write(join(directoryFixtureRoot, 'f.txt'), 'a\n');
   initializeRepository(directoryFixtureRoot);
@@ -99,6 +125,7 @@ try {
     homeDirectory,
     environment: { TUI_STATUS_PATH: directoryStatusPath },
   });
+  const activeDirectoryDriver = directoryDriver;
   await directoryDriver.awaitSnapshot(
     (snapshot) => snapshot.findText('node_modules') !== null,
     15_000,
@@ -107,11 +134,18 @@ try {
   const beforeOpenStatus = await HarnessSmoke.Class.awaitStatus(
     directoryDriver,
     directoryStatusPath,
-    "status condition: Number(status.gitChangedCount) >= 1",
+    'status condition: Number(status.gitChangedCount) >= 1',
     (status) => Number(status.gitChangedCount) >= 1,
   );
-  directoryDriver.sendKeysWithoutFrameExpectation('o');
-  await HarnessSmoke.Class.awaitFrameSilence(directoryDriver, 600);
+  activeDirectoryDriver.sendKeys('o');
+  activeDirectoryDriver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    directoryDriver,
+    directoryStatusPath,
+    'Quick Open remains available after attempting to open the confined symlink',
+    (status) => status.quickOpenOpen === true,
+  );
+  activeDirectoryDriver.sendRawInputWithoutFrameExpectation('\x1b');
   await HarnessSmoke.Class.awaitStatus(
     directoryDriver,
     directoryStatusPath,
@@ -130,6 +164,8 @@ try {
   await directoryDriver?.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
-  if (directoryFixtureRoot) await HarnessSmoke.Class.removeTemporaryDirectory(directoryFixtureRoot);
-  if (symlinkTargetRoot) await HarnessSmoke.Class.removeTemporaryDirectory(symlinkTargetRoot);
+  if (directoryFixtureRoot)
+    await HarnessSmoke.Class.removeTemporaryDirectory(directoryFixtureRoot);
+  if (symlinkTargetRoot)
+    await HarnessSmoke.Class.removeTemporaryDirectory(symlinkTargetRoot);
 }

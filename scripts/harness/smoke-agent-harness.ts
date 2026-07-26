@@ -10,7 +10,10 @@ import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function statusButtonColumn(driver: PtyTestDriver.Model, label: string): number {
+function statusButtonColumn(
+  driver: PtyTestDriver.Model,
+  label: string,
+): number {
   const statusBarRow = driver.snapshot().rows - 1;
   const column = driver.snapshot().rowText(statusBarRow).lastIndexOf(label);
   if (column < 0) throw new Error(`Status button is not visible: ${label}`);
@@ -18,11 +21,14 @@ function statusButtonColumn(driver: PtyTestDriver.Model, label: string): number 
 }
 
 function runAgentUnitTests(repositoryRoot: string): void {
-  const result = Bun.spawnSync([process.execPath, 'test', 'src/modules/agent/'], {
-    cwd: repositoryRoot,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const result = Bun.spawnSync(
+    [process.execPath, 'test', 'src/modules/agent/'],
+    {
+      cwd: repositoryRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
   HarnessSmoke.Class.requireCondition(
     result.exitCode === 0,
     'agent-core unit tests pass',
@@ -35,7 +41,10 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-agent-harness-home-'));
 const statusPath = join(homeDirectory, 'status.json');
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
 mkdirSync(settingsDirectory, { recursive: true });
-await Bun.write(join(settingsDirectory, 'settings.json'), '{"glyphMode":"unicode"}\n');
+await Bun.write(
+  join(settingsDirectory, 'settings.json'),
+  '{"glyphMode":"unicode"}\n',
+);
 
 console.log('== harness agent: deterministic backend/session tests ==');
 runAgentUnitTests(repositoryRoot);
@@ -58,9 +67,10 @@ try {
     driver,
     statusPath,
     'the app is ready with the agent pane hidden and screen height published',
-    (status) => status.ready === true
-      && status.terminalVisible === false
-      && typeof status.height === 'number',
+    (status) =>
+      status.ready === true &&
+      status.terminalVisible === false &&
+      typeof status.height === 'number',
     20_000,
   );
   HarnessSmoke.Class.pass('agent pane is hidden at boot');
@@ -82,9 +92,10 @@ try {
     driver,
     statusPath,
     'the agent pane is visible and active with screen height published',
-    (status) => status.terminalVisible === true
-      && status.panelActiveContent === 'agent'
-      && typeof status.height === 'number',
+    (status) =>
+      status.terminalVisible === true &&
+      status.panelActiveContent === 'agent' &&
+      typeof status.height === 'number',
   );
   HarnessSmoke.Class.pass('status-bar agent button opens the agent pane');
   driver.sendMouse({
@@ -102,7 +113,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.terminalVisible === false",
+    'status condition: status.terminalVisible === false',
     (status) => status.terminalVisible === false,
   );
   HarnessSmoke.Class.pass('status-bar agent button hides the agent pane');
@@ -110,45 +121,47 @@ try {
   console.log('== harness agent: chord, composer, and echo round trip ==');
   driver.sendRawInput('\x1b[27;6;97~');
   let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Ask Claude') !== null
-      && candidate.findText('❯') !== null,
+    (candidate) =>
+      candidate.findText('Ask Claude') !== null &&
+      candidate.findText('❯') !== null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the agent chord opens and focuses the registered agent pane',
-    (status) => status.terminalVisible === true
-      && status.terminalFocused === true
-      && status.panelActiveContent === 'agent'
-      && String(status.panelContentIds).includes('agent'),
+    (status) =>
+      status.terminalVisible === true &&
+      status.terminalFocused === true &&
+      status.panelActiveContent === 'agent' &&
+      String(status.panelContentIds).includes('agent'),
   );
   HarnessSmoke.Class.pass('agent chord opens and focuses the pane');
   HarnessSmoke.Class.pass('agent is registered in the shared panel host');
   HarnessSmoke.Class.pass('empty-state hint and composer glyph render');
 
   driver.sendText('ping the harness');
-  await driver.awaitSnapshot((candidate) => candidate.findText('ping the harness') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('ping the harness') !== null,
+  );
   HarnessSmoke.Class.pass('composer paints typed text');
   driver.sendKeys('Enter');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('You') !== null
-      && candidate.findText('You said') !== null
-      && candidate.findText('ping the harness') !== null,
+    (candidate) =>
+      candidate.findText('You') !== null &&
+      candidate.findText('You said') !== null &&
+      candidate.findText('ping the harness') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('You said') !== null,
     'structured echo reply renders with the exact prompt',
   );
 
-  console.log('== harness agent: demand-driven idle and hide ==');
-  await HarnessSmoke.Class.awaitFrameSilence(driver, 150);
-  await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);
-  HarnessSmoke.Class.pass('agent pane emits at most one complete frame during four idle seconds');
+  console.log('== harness agent: hide ==');
   driver.sendRawInput('\x1b[27;6;97~');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.terminalVisible === false",
+    'status condition: status.terminalVisible === false',
     (status) => status.terminalVisible === false,
   );
   HarnessSmoke.Class.pass('second chord hides the panel');

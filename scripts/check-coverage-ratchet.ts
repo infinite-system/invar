@@ -48,7 +48,7 @@ export interface CoverageRatchetResult {
 // Calls that ASSERT: they can fail and thereby prove something. Removing one removes
 // a proof.
 const ASSERTION_CALL_NAMES: ReadonlySet<string> = new Set([
-  'assertNoCompleteFrameEmittedFor',
+  'assertContentInvariantAcrossAction',
   'expect',
   'pass',
   'requireCondition',

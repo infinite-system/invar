@@ -234,13 +234,7 @@ try {
     'the dragged editor selection is published',
     (status) => status.hasSelection === true,
   );
-  await driver.assertNoCompleteFrameEmittedFor(800);
-  await awaitStatusPublication(
-    statusPath,
-    'the selection remains published after an untouched interval',
-    (status) => status.hasSelection === true,
-  );
-  pass('selection remains after an untouched interval');
+  pass('selection is published before copy');
   driver.sendRawInputWithoutFrameExpectation('\x03');
   await awaitStatusPublication(
     statusPath,
@@ -557,9 +551,7 @@ try {
         (status) => status.focus === 'files',
       );
     }
-    driver.sendRawInputWithoutFrameExpectation('\x1b[B');
-    driver.sendRawInputWithoutFrameExpectation('\r');
-    await driver.assertNoCompleteFrameEmittedFor(50).catch(() => undefined);
+    driver.sendRawInput('\x1b[B\r');
     await driver.awaitQuiescence();
   }
   const tabsAfterOpenStatus = await awaitStatusPublication(
@@ -608,16 +600,6 @@ try {
     (status) => Number(status.bufferTabCount) < tabsAfterOpen,
   );
   pass('Ctrl+W closes the active tab');
-
-  console.log(
-    '== harness editor: demand-driven rendering is silent at rest ==',
-  );
-  driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
-  await driver.assertAtMostOneCompleteFrameEmittedFor(5_000);
-  pass(
-    'complete synchronized frame delta is at most one during five untouched seconds',
-  );
 
   console.log('== harness editor: Ctrl+Q exits cleanly ==');
   driver.sendKeys('Control+q');

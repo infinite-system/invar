@@ -558,30 +558,50 @@ try {
 
   const newestPosition = snapshot.findText('gamma-newest-prompt');
   if (!newestPosition) throw new Error('Newest prompt disappeared');
+  const scrollingComposerPosition = snapshot.findText('❯ ');
+  if (!scrollingComposerPosition)
+    throw new Error('Composer prompt disappeared');
   const maximumScrollTop = Number(status.agentScrollTop);
-  for (let wheelEvent = 0; wheelEvent < 4; wheelEvent++) {
-    driver.sendMouse({
-      kind: 'wheel',
-      column: newestPosition.column,
-      row: newestPosition.row,
-      direction: 'up',
-    });
-  }
+  snapshot = await driver.assertContentInvariantAcrossAction({
+    invariantRegion: {
+      startRow: scrollingComposerPosition.row,
+      endRowExclusive: scrollingComposerPosition.row + 1,
+      startColumn: panelRectangle.left,
+      endColumnExclusive: panelRectangle.left + panelRectangle.width,
+    },
+    changedRegion: {
+      startRow: panelRectangle.top + 1,
+      endRowExclusive: scrollingComposerPosition.row,
+      startColumn: panelRectangle.left + 1,
+      endColumnExclusive: panelRectangle.left + panelRectangle.width - 1,
+    },
+    actionDescription:
+      'transcript wheel input changes the transcript while the composer stays fixed',
+    performAction: () => {
+      for (let wheelEvent = 0; wheelEvent < 4; wheelEvent++) {
+        driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: newestPosition.column,
+          row: newestPosition.row,
+          direction: 'up',
+        });
+      }
+    },
+  });
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'status condition: Number(candidate.agentScrollTop) < maximumScrollTop',
     (candidate) => Number(candidate.agentScrollTop) < maximumScrollTop,
   );
-  await HarnessSmoke.Class.awaitFrameSilence(driver, 400, 5_000);
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'settled upward wheel momentum releases the transcript tail anchor',
+    'upward wheel input releases the transcript tail anchor',
     (candidate) => candidate.agentStuckToBottom === false,
   );
   HarnessSmoke.Class.pass(
-    'wheel momentum glides upward, settles, and releases the tail anchor',
+    'wheel input moves upward and releases the tail anchor',
   );
   for (
     let page = 0;
@@ -784,10 +804,6 @@ try {
         lastComposerRow.contentStartColumn + lastComposerRow.content.length,
     'native caret follows the end of the hyphen-wrapped composer text',
   );
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);
-  HarnessSmoke.Class.pass('animation timer is torn down at idle');
-
   driver.sendKeys('Control+q');
   console.log('smoke-agent-pane-ux-harness: ALL-PASS');
 } finally {

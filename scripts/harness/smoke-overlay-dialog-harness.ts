@@ -185,6 +185,17 @@ function markerPositionWithinBoundsOrNull(
   return null;
 }
 
+function activityBarMarkerPositionOrNull(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): { column: number; row: number } | null {
+  for (let row = 0; row < snapshot.rows; row++) {
+    const markerColumn = snapshot.rowText(row).slice(0, 4).indexOf(marker);
+    if (markerColumn >= 0) return { column: markerColumn, row };
+  }
+  return null;
+}
+
 function scrollPosition(status: HarnessStatus, dialogName: string): number {
   const positions = status.overlayScrollPositions as
     Record<string, number> | undefined;
@@ -260,9 +271,10 @@ async function requireWheelScrollsOverlay(
     row: bounds.top + wheelRowOffset,
     button: 'none',
   });
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  pass(`${label} emits no frames while idle before wheel input`);
-  const settledBeforeWheelSnapshot = driver.snapshot();
+  const settledBeforeWheelSnapshot = await driver.awaitGridCondition(
+    `${label} paints its scrollbar before wheel input`,
+    (candidate) => dialogVerticalScrollbarIsPainted(candidate, bounds),
+  );
   requireCondition(
     dialogVerticalScrollbarIsPainted(settledBeforeWheelSnapshot, bounds),
     `${label} paints a scrollbar before wheel input`,
@@ -286,14 +298,29 @@ async function requireWheelScrollsOverlay(
     `${label} has observed content on the comparison row`,
   );
 
-  driver.sendMouseWithoutFrameExpectation({
-    kind: 'wheel',
-    column: bounds.left + Math.floor(bounds.width / 2),
-    row: bounds.top + wheelRowOffset,
-    direction: 'down',
-  });
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  const settledAfterWheelSnapshot = driver.snapshot();
+  const settledAfterWheelSnapshot =
+    await driver.assertContentInvariantAcrossAction({
+      invariantRegion: {
+        startRow: bounds.top,
+        endRowExclusive: bounds.top + 1,
+        startColumn: 0,
+        endColumnExclusive: bounds.left,
+      },
+      changedRegion: {
+        startRow: bounds.top + 1,
+        endRowExclusive: bounds.top + bounds.height - 1,
+        startColumn: bounds.left + 1,
+        endColumnExclusive: bounds.left + bounds.width - 1,
+      },
+      actionDescription: `${label} wheel scrolls only the dialog content`,
+      performAction: () =>
+        driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: bounds.left + Math.floor(bounds.width / 2),
+          row: bounds.top + wheelRowOffset,
+          direction: 'down',
+        }),
+    });
   const settledContent = dialogContentRowText(
     settledAfterWheelSnapshot,
     bounds,
@@ -573,11 +600,23 @@ async function driveContextMenuWheelAndBranchCoverage(
     let snapshot = await contextMenuDriver.awaitGridCondition(
       'the ASCII Source Control glyph and fixture tree are visible',
       (candidate) =>
-        candidate.findText('G') !== null &&
+        activityBarMarkerPositionOrNull(candidate, 'G') !== null &&
         candidate.findText('other.txt') !== null,
       15_000,
     );
-    const sourceControlPosition = markerPosition(snapshot, 'G');
+    const sourceControlPosition = activityBarMarkerPositionOrNull(
+      snapshot,
+      'G',
+    );
+    requireCondition(
+      sourceControlPosition !== null,
+      'the ASCII Source Control glyph is inside the activity bar',
+    );
+    if (sourceControlPosition === null) {
+      throw new Error(
+        'FAIL the Source Control activity-bar position is absent',
+      );
+    }
     contextMenuDriver.sendMouse({
       kind: 'press',
       column: Math.max(0, sourceControlPosition.column - 1),

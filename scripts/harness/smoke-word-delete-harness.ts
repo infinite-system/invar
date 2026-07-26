@@ -16,13 +16,17 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 function findQueryRow(textRows: readonly string[]): string {
-  return textRows.find(
-    (rowText) => rowText.includes('no results') || /\d+ of \d+/.test(rowText),
-  ) ?? '';
+  return (
+    textRows.find(
+      (rowText) => rowText.includes('no results') || /\d+ of \d+/.test(rowText),
+    ) ?? ''
+  );
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-word-delete-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-word-delete-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-word-delete-harness-home-'),
+);
 const statusPath = join(fixtureRoot, 'status.json');
 await Bun.write(join(fixtureRoot, 'word-delete.txt'), '');
 
@@ -36,9 +40,14 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness word delete: open an empty editor buffer ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('word-delete.txt') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('word-delete.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('Enter');
-  await driver.awaitSnapshot((snapshot) => snapshot.text().includes('word-delete.txt'));
+  await driver.awaitSnapshot((snapshot) =>
+    snapshot.text().includes('word-delete.txt'),
+  );
   driver.sendRawInputWithoutFrameExpectation('\x1b[C');
   await awaitStatusPublication(
     statusPath,
@@ -53,65 +62,89 @@ try {
   const activeBufferBefore = activeBufferStatus.activeBuffer;
   requireCondition(Boolean(activeBufferBefore), 'opened word-delete.txt');
 
-  console.log('== harness word delete: Option+Backspace deletes the previous word ==');
+  console.log(
+    '== harness word delete: Option+Backspace deletes the previous word ==',
+  );
   driver.sendText('hello world');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('hello world') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('hello world') !== null,
+  );
   driver.sendRawInput('\x1b\x7f');
   let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('hello ') !== null
-      && candidate.findText('world') === null,
+    (candidate) =>
+      candidate.findText('hello ') !== null &&
+      candidate.findText('world') === null,
   );
   const helloPosition = snapshot.findText('hello ');
   requireCondition(
-    helloPosition !== null
-      && snapshot.cursorColumn === helloPosition.column + 6
-      && snapshot.cursorRow === helloPosition.row,
+    helloPosition !== null &&
+      snapshot.cursorColumn === helloPosition.column + 6 &&
+      snapshot.cursorRow === helloPosition.row,
     'Option+Backspace leaves the caret after hello and its trailing space',
   );
 
-  console.log('== harness word delete: Alt+Delete uses the same action and keeps the file open ==');
+  console.log(
+    '== harness word delete: Alt+Delete uses the same action and keeps the file open ==',
+  );
   driver.sendText('world');
-  await driver.awaitSnapshot((candidate) => candidate.findText('hello world') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('hello world') !== null,
+  );
   driver.sendRawInput('\x1b[3;3~');
   // Status publication and frame completion are separate authorities (harness.invariants.md):
   // wait on BOTH the rendered text and the semantic cursor before asserting either.
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('hello ') !== null
-      && candidate.findText('world') === null,
+    (candidate) =>
+      candidate.findText('hello ') !== null &&
+      candidate.findText('world') === null,
   );
   await awaitStatusPublication(
     statusPath,
     'Alt+Delete keeps the active buffer open with the cursor after hello',
-    (status) => status.activeBuffer === activeBufferBefore
-      && (status.cursor as { col?: number } | undefined)?.col === 6,
+    (status) =>
+      status.activeBuffer === activeBufferBefore &&
+      (status.cursor as { col?: number } | undefined)?.col === 6,
   );
   pass('Alt+Delete kept the active buffer open');
   pass('Alt+Delete leaves the cursor after hello and its trailing space');
-  await driver.assertNoCompleteFrameEmittedFor(300);
-  driver.sendRawInputWithoutFrameExpectation('\x1b\x7f');
-  // Wait on the RENDERED cursor too — the status file can publish before the repaint lands.
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.cursorColumn === helloPosition.column
-      && candidate.cursorRow === helloPosition.row,
-  );
+  snapshot = await driver.assertContentInvariantAcrossAction({
+    invariantRegion: {
+      startRow: helloPosition.row,
+      endRowExclusive: helloPosition.row + 1,
+      startColumn: 0,
+      endColumnExclusive: helloPosition.column - 1,
+    },
+    changedRegion: {
+      startRow: helloPosition.row,
+      endRowExclusive: helloPosition.row + 1,
+      startColumn: helloPosition.column,
+      endColumnExclusive: Math.min(snapshot.columns, helloPosition.column + 20),
+    },
+    actionDescription:
+      'repeated word deletion changes the editor text while the file tree stays fixed',
+    performAction: () => driver.sendRawInputWithoutFrameExpectation('\x1b\x7f'),
+  });
   await awaitStatusPublication(
     statusPath,
     'repeated word delete publishes a cursor at line start',
     (status) => (status.cursor as { col?: number } | undefined)?.col === 0,
   );
   requireCondition(
-    snapshot.cursorColumn === helloPosition.column
-      && snapshot.cursorRow === helloPosition.row,
+    snapshot.cursorColumn === helloPosition.column &&
+      snapshot.cursorRow === helloPosition.row,
     'repeating word delete removed whitespace plus hello and returned the caret to line start',
   );
 
   console.log('== harness word delete: punctuation is a distinct run ==');
   driver.sendText('foo...');
-  await driver.awaitSnapshot((candidate) => candidate.findText('foo...') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('foo...') !== null,
+  );
   driver.sendRawInput('\x1b\x7f');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('foo') !== null
-      && candidate.findText('foo...') === null,
+    (candidate) =>
+      candidate.findText('foo') !== null &&
+      candidate.findText('foo...') === null,
   );
   const fooPosition = snapshot.findText('foo');
   requireCondition(
@@ -121,11 +154,17 @@ try {
   driver.sendRawInput('\x1b[3;3~');
   await driver.awaitSnapshot((candidate) => candidate.findText('foo') === null);
 
-  console.log('== harness word delete: find query shares the previous-word boundary ==');
+  console.log(
+    '== harness word delete: find query shares the previous-word boundary ==',
+  );
   driver.sendKeys('Control+f');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Find') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Find') !== null,
+  );
   driver.sendText('foo bar');
-  await driver.awaitSnapshot((candidate) => findQueryRow(candidate.textRows()).includes('foo bar'));
+  await driver.awaitSnapshot((candidate) =>
+    findQueryRow(candidate.textRows()).includes('foo bar'),
+  );
   driver.sendRawInput('\x1b\x7f');
   snapshot = await driver.awaitSnapshot((candidate) => {
     const queryRow = findQueryRow(candidate.textRows());

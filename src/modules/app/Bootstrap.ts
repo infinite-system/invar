@@ -927,8 +927,13 @@ class $Bootstrap {
       let animating = false;
       // All pane wheel-momentum regimes (git log, editor V/H, tree, git changes) step here and each
       // settles to EXACTLY zero, so `animating` returns to false at rest — quiescence preserved.
-      animating =
-        workspaceSet.active.tickScrollAnimations(deltaTimeSeconds) || animating;
+      const workspaceScrollMomentumIsActive =
+        workspaceSet.active.tickScrollAnimations(deltaTimeSeconds);
+      animating = workspaceScrollMomentumIsActive || animating;
+      // invariant: Rendering is one coarse frame effect (app.invariants.md)
+      StatusChannel.Class.update({
+        workspaceScrollMomentumAtRest: !workspaceScrollMomentumIsActive,
+      });
       // Drag-edge auto-scroll: while a selection drag holds at a pane edge, keep scrolling +
       // extending the selection.
       animating = view.tickDragAutoScroll(deltaTimeSeconds) || animating;
@@ -942,7 +947,12 @@ class $Bootstrap {
       animating = view.tickHover(deltaTimeSeconds) || animating;
       // The agent transcript's scroll-momentum glide + drag edge-autoscroll advance on the SAME tick and
       // settle to zero at rest (idle-quiescence preserved).
-      animating = view.tickPanelScroll(deltaTimeSeconds) || animating;
+      const panelScrollMomentumIsActive =
+        view.tickPanelScroll(deltaTimeSeconds);
+      animating = panelScrollMomentumIsActive || animating;
+      StatusChannel.Class.update({
+        panelScrollMomentumAtRest: !panelScrollMomentumIsActive,
+      });
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
       animating = completionPopup.tick(deltaTimeSeconds) || animating;
       animating = view.tickOverlayScroll(deltaTimeSeconds) || animating;

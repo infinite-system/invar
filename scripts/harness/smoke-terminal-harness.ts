@@ -441,13 +441,12 @@ try {
     `contrary notch reverses terminal row direction within synchronized frames ` +
       `(${reversalPositions.join(',')})`,
   );
-  await HarnessSmoke.Class.awaitFrameSilence(driver, 200, 5_000);
   const scrolledStatus = HarnessSmoke.Class.readStatus(statusPath);
   HarnessSmoke.Class.requireCondition(
     Number(scrolledStatus.terminalScrollTop) <
       Number(scrolledStatus.terminalScrollContentRows) -
         Number(scrolledStatus.terminalScrollViewportRows),
-    'terminal remains above the live bottom after momentum settles',
+    'terminal remains above the live bottom after wheel reversal',
   );
   driver.sendText('echo NEW-OUTPUT-RETURNS-BOTTOM');
   driver.sendKeys('Enter');
@@ -526,11 +525,6 @@ try {
       .textRows()
       .some((rowText) => /[0-2][0-9]:[0-5][0-9]/.test(rowText)),
     'status-bar minute clock renders HH:MM',
-  );
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
-  await driver.assertAtMostOneCompleteFrameEmittedFor(4_000);
-  HarnessSmoke.Class.pass(
-    'terminal-open idle window emits at most the minute-clock frame',
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,

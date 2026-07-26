@@ -75,32 +75,35 @@ async function copySelectionRepeatedly(
   expectedText: string,
   runCount: number,
   activity: 'active' | 'idle',
-  activateRenderer?: (runIndex: number) => void,
+  activateRenderer?: (runIndex: number) => void | Promise<void>,
 ): Promise<void> {
   for (let runIndex = 0; runIndex < runCount; runIndex += 1) {
-    let followingActiveFrame:
-      | ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
-      | undefined;
     if (activity === 'active') {
       if (activateRenderer) {
-        // Thunk-driven activity starts every round from momentum REST: a wheel train landing
-        // mid-glide of the previous round's opposite train cancels velocity (dead round), and
-        // accumulated drift walks the view into a clamp. Ambient activity (a running shell loop)
-        // must NOT rest — silence there means the activity source has ended.
-        await HarnessSmoke.Class.awaitFrameSilence(driver);
-        activateRenderer(runIndex);
+        await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          'the panel scroll surface is at rest before active clipboard input',
+          (status) => status.panelScrollMomentumAtRest === true,
+        );
+        await activateRenderer(runIndex);
+        await HarnessSmoke.Class.awaitStatus(
+          driver,
+          statusPath,
+          'the panel scroll surface is active before clipboard input',
+          (status) => status.panelScrollMomentumAtRest === false,
+        );
+      } else {
+        const initialGridText = driver.snapshot().text();
+        await driver.awaitGridCondition(
+          'the active terminal output advances before clipboard input',
+          (candidate) => candidate.text() !== initialGridText,
+        );
       }
-      console.log(`    · active round ${runIndex}: awaiting pre-copy frame`);
-      await driver.awaitNextCompletedFrameSnapshot();
-      console.log(`    · active round ${runIndex}: pre-copy frame arrived`);
-      followingActiveFrame = driver.awaitNextCompletedFrameSnapshot();
-    } else {
-      await HarnessSmoke.Class.awaitFrameSilence(driver);
     }
     const previousEmissionCount = driver.clipboardEmissions().length;
     driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
     await awaitClipboardEmission(previousEmissionCount, expectedText);
-    await followingActiveFrame;
   }
   HarnessSmoke.Class.pass(
     `${expectedText} copied ${runCount}/${runCount} while renderer was ${activity}`,
@@ -219,7 +222,12 @@ try {
   // round alternation of down/up trains always has room to move — no drift-into-clamp dead rounds.
   const anchorTranscriptAtScrollbackTop = async (): Promise<void> => {
     transcriptWheelTrain('up', 12);
-    await HarnessSmoke.Class.awaitFrameSilence(driver);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the transcript reaches the top scrollback anchor',
+      (status) => Number(status.agentScrollTop) === 0,
+    );
   };
   const transcriptActivity = (runIndex: number): void => {
     transcriptWheelTrain(runIndex % 2 === 0 ? 'down' : 'up', 3);
@@ -250,7 +258,12 @@ try {
   // The active phases anchored the transcript at scrollback TOP; the newest message lives at the
   // bottom — return there before selecting it.
   transcriptWheelTrain('down', 12);
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the transcript returns to its bottom anchor',
+    (status) => status.agentStuckToBottom === true,
+  );
   await selectVisibleText('ACTIVE-TRANSCRIPT');
   await copySelectionRepeatedly('ACTIVE-TRANSCRIPT', idleCopyRunCount, 'idle');
 

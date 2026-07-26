@@ -19,7 +19,10 @@ class $HarnessSmoke {
     this.pass(label);
   }
 
-  static runGit(repositoryRoot: string, commandArguments: readonly string[]): string {
+  static runGit(
+    repositoryRoot: string,
+    commandArguments: readonly string[],
+  ): string {
     const environment = Object.fromEntries(
       Object.entries(process.env).filter(
         ([key, value]) => value !== undefined && !key.startsWith('GIT_'),
@@ -70,23 +73,6 @@ class $HarnessSmoke {
     );
   }
 
-  static async awaitFrameSilence(
-    driver: PtyTestDriver.Model,
-    silenceMilliseconds = 150,
-    timeoutMilliseconds = 30_000,
-  ): Promise<void> {
-    const deadline = performance.now() + timeoutMilliseconds;
-    while (true) {
-      await driver.awaitQuiescence(Math.max(1, deadline - performance.now()));
-      try {
-        await driver.assertNoCompleteFrameEmittedFor(silenceMilliseconds);
-        return;
-      } catch (error) {
-        if (performance.now() >= deadline) throw error;
-      }
-    }
-  }
-
   static async awaitStatusWithoutFrame(
     driver: PtyTestDriver.Model,
     statusPath: string,
@@ -104,13 +90,11 @@ class $HarnessSmoke {
       }
       const remainingMilliseconds = deadline - performance.now();
       if (remainingMilliseconds <= 0) {
-        throw new Error(`Timed out waiting for ${description} at ${statusPath}`);
+        throw new Error(
+          `Timed out waiting for ${description} at ${statusPath}`,
+        );
       }
-      try {
-        await driver.assertNoCompleteFrameEmittedFor(Math.min(50, remainingMilliseconds));
-      } catch {
-        // A frame is also progress; inspect the freshly flushed status on the next iteration.
-      }
+      await Bun.sleep(Math.min(5, remainingMilliseconds));
     }
   }
 
@@ -121,10 +105,21 @@ class $HarnessSmoke {
     columnOffset = 0,
   ): void {
     const position = snapshot.findText(marker);
-    if (!position) throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
+    if (!position)
+      throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
     const column = position.column + columnOffset;
-    driver.sendMouse({ kind: 'press', column, row: position.row, button: 'left' });
-    driver.sendMouse({ kind: 'release', column, row: position.row, button: 'left' });
+    driver.sendMouse({
+      kind: 'press',
+      column,
+      row: position.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column,
+      row: position.row,
+      button: 'left',
+    });
   }
 }
 

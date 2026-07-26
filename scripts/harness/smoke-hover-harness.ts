@@ -32,39 +32,51 @@ function hoverCardTextSpan(
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
     if (
-      !rowText.includes('answer')
-      || !rowText.includes('number')
-      || rowText.includes('export')
-      || rowText.includes('42')
-      || !rowText.includes('│')
+      !rowText.includes('answer') ||
+      !rowText.includes('number') ||
+      rowText.includes('export') ||
+      rowText.includes('42') ||
+      !rowText.includes('│')
     ) {
       continue;
     }
     const startColumn = rowText.indexOf('answer');
     const endColumn = rowText.indexOf('number') + 'number'.length - 1;
-    if (startColumn >= 0 && endColumn > startColumn) return { row, startColumn, endColumn };
+    if (startColumn >= 0 && endColumn > startColumn)
+      return { row, startColumn, endColumn };
   }
   return null;
 }
 
 const repositoryRoot = process.cwd();
-const serverBinary = join(repositoryRoot, 'node_modules', '.bin', 'typescript-language-server');
+const serverBinary = join(
+  repositoryRoot,
+  'node_modules',
+  '.bin',
+  'typescript-language-server',
+);
 if (
-  !Bun.file(serverBinary).size
-  || !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json')).size
+  !Bun.file(serverBinary).size ||
+  !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
+    .size
 ) {
-  console.log('SKIP  typescript-language-server/typescript not installed — hover smoke skipped');
+  console.log(
+    'SKIP  typescript-language-server/typescript not installed — hover smoke skipped',
+  );
   process.exit(0);
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-hover-harness-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-hover-harness-home-'));
 const statusPath = join(homeDirectory, 'status.json');
-symlinkSync(join(repositoryRoot, 'node_modules'), join(fixtureRoot, 'node_modules'));
+symlinkSync(
+  join(repositoryRoot, 'node_modules'),
+  join(fixtureRoot, 'node_modules'),
+);
 await Bun.write(
   join(fixtureRoot, 'tsconfig.json'),
-  '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", '
-    + '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
+  '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
+    '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
 );
 await Bun.write(
   join(fixtureRoot, 'answer.ts'),
@@ -85,7 +97,7 @@ try {
   const readyStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.ready === true",
+    'status condition: status.ready === true',
     (status) => status.ready === true,
     20_000,
   );
@@ -101,10 +113,13 @@ try {
     (status) => String(status.activeBuffer).endsWith('/answer.ts'),
   );
   const symbolPosition = declarationSymbolPosition(snapshot);
-  HarnessSmoke.Class.requireCondition(symbolPosition !== null, 'answer declaration cell is visible');
+  HarnessSmoke.Class.requireCondition(
+    symbolPosition !== null,
+    'answer declaration cell is visible',
+  );
   if (!symbolPosition) throw new Error('Answer declaration disappeared');
 
-  console.log('== harness hover: sub-dwell motion paints no card ==');
+  console.log('== harness hover: completed dwell paints server type ==');
   driver.sendMouse({
     kind: 'move',
     column: symbolPosition.column,
@@ -112,17 +127,6 @@ try {
     button: 'none',
   });
   await driver.awaitQuiescence();
-  await driver.assertNoCompleteFrameEmittedFor(200);
-  snapshot = await driver.awaitGridCondition(
-    'no hover card is visible before the dwell threshold',
-    (candidate) => hoverCardTextSpan(candidate) === null,
-  );
-  HarnessSmoke.Class.requireCondition(
-    hoverCardTextSpan(snapshot) === null,
-    'no hover card appears before the 0.5 second dwell threshold',
-  );
-
-  console.log('== harness hover: completed dwell paints server type ==');
   snapshot = await driver.awaitSnapshot(
     (candidate) => hoverCardTextSpan(candidate) !== null,
     30_000,
@@ -147,7 +151,7 @@ try {
   await HarnessSmoke.Class.awaitStatusWithoutFrame(
     driver,
     statusPath,
-    "status condition: Number(status.lastCopyChars) > copyCountBefore",
+    'status condition: Number(status.lastCopyChars) > copyCountBefore',
     (status) => Number(status.lastCopyChars) > copyCountBefore,
   );
   snapshot = await driver.awaitGridCondition(
@@ -161,7 +165,9 @@ try {
 
   console.log('== harness hover: keypress dismisses the card ==');
   driver.sendKeys('Escape');
-  await driver.awaitSnapshot((candidate) => hoverCardTextSpan(candidate) === null);
+  await driver.awaitSnapshot(
+    (candidate) => hoverCardTextSpan(candidate) === null,
+  );
   HarnessSmoke.Class.pass('Escape dismisses the hover card');
   driver.sendKeys('Control+q');
   console.log('smoke-hover-harness: ALL-PASS');

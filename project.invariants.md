@@ -903,7 +903,7 @@ whether a declared reason is honest, only that a reason was recorded where a rev
 **Mechanism:** Every other gate step answers "does the suite pass?"; none answered "is the suite still
 as strong as it was?". `scripts/check-coverage-ratchet.ts` walks the TypeScript AST of every
 `*.test.ts` and `scripts/harness/smoke-*.ts` at both HEAD and the merge base, counts calls that prove
-(`requireCondition`, `expect`, `pass`, `assertNoCompleteFrameEmittedFor`) and calls that wait for an
+(`requireCondition`, `expect`, `pass`, `assertContentInvariantAcrossAction`) and calls that wait for an
 observed condition (`awaitStatus`, `awaitGridCondition`, `awaitSnapshot`, `it`, `test`), and fails on
 any decrease that `coverage-deltas.md` does not name. Growth needs no bookkeeping. Counting walks the
 AST rather than matching text so a mention in a comment or a string can never inflate a floor that

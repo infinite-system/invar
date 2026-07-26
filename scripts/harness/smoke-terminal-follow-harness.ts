@@ -323,8 +323,31 @@ class $SmokeTerminalFollowHarness {
       'terminal',
       `terminal is focused before ${label}`,
     );
-    this.requiredDriver.sendText(command);
-    this.requiredDriver.sendKeys('Enter');
+    if (expectsAgentResponse) {
+      this.requiredDriver.sendText(command);
+      this.requiredDriver.sendKeys('Enter');
+    } else {
+      const commandBaselineSnapshot = this.requiredDriver.snapshot();
+      await this.requiredDriver.assertContentInvariantAcrossAction({
+        invariantRegion: {
+          startRow: Math.floor(commandBaselineSnapshot.rows / 2),
+          endRowExclusive: commandBaselineSnapshot.rows - 1,
+          startColumn: 0,
+          endColumnExclusive: Math.floor(commandBaselineSnapshot.columns / 2),
+        },
+        changedRegion: {
+          startRow: Math.floor(commandBaselineSnapshot.rows / 2),
+          endRowExclusive: commandBaselineSnapshot.rows - 1,
+          startColumn: Math.floor(commandBaselineSnapshot.columns / 2),
+          endColumnExclusive: commandBaselineSnapshot.columns,
+        },
+        actionDescription: `${label} changes only the terminal pane`,
+        performAction: () => {
+          this.requiredDriver.sendText(command);
+          this.requiredDriver.sendKeys('Enter');
+        },
+      });
+    }
     const commandStatus = await this.awaitStatus(
       `the real Bash command boundary is observed for ${label}`,
       (status) =>
@@ -339,12 +362,8 @@ class $SmokeTerminalFollowHarness {
       );
       return;
     }
-    await HarnessSmoke.Class.awaitFrameSilence(this.requiredDriver, 250);
-    HarnessSmoke.Class.pass(
-      `render stream settles before silence assertion: ${label}`,
-    );
     await this.awaitStatus(
-      `the assistant count remains unchanged after the silence window for ${label}`,
+      `the assistant count remains unchanged after the terminal action for ${label}`,
       (status) =>
         Number(status.agentAssistantEntryCount) === assistantEntryCount,
     );

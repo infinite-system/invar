@@ -64,21 +64,14 @@ describe('SynchronizedOutputQuiescence', () => {
 
   test('waits for a future completion event rather than resolving from a frame ordinal', async () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
-    quiescence.observe(`${beginSynchronizedOutput}first${endSynchronizedOutput}`);
+    quiescence.observe(
+      `${beginSynchronizedOutput}first${endSynchronizedOutput}`,
+    );
     const nextCompletedFrame = quiescence.awaitNextCompletedFrame();
-    quiescence.observe(`${beginSynchronizedOutput}second${endSynchronizedOutput}`);
+    quiescence.observe(
+      `${beginSynchronizedOutput}second${endSynchronizedOutput}`,
+    );
 
     expect((await nextCompletedFrame).completedFrameCount).toBe(2);
-  });
-
-  test('asserts marker silence and rejects when a complete frame arrives', async () => {
-    const quiescence = new SynchronizedOutputQuiescence.Class();
-    const quietInterval = quiescence.assertNoCompletedFrameFor(5);
-    quiescence.observe('ordinary terminal bytes without a frame');
-    await quietInterval;
-
-    const brokenSilence = quiescence.assertNoCompletedFrameFor(1_000);
-    quiescence.observe(`${beginSynchronizedOutput}paint${endSynchronizedOutput}`);
-    await expect(brokenSilence).rejects.toThrow('Expected no complete synchronized frame');
   });
 });

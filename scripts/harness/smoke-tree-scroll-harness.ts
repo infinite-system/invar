@@ -11,7 +11,9 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tree-scroll-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-tree-scroll-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-tree-scroll-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 for (let fileNumber = 1; fileNumber <= 60; fileNumber++) {
   await Bun.write(
@@ -30,35 +32,81 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness tree-scroll: overflowing tree boots ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('file-20.txt') !== null, 15_000);
+  const openingSnapshot = await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('file-20.txt') !== null,
+    15_000,
+  );
   HarnessSmoke.Class.pass('boot');
 
-  console.log('== harness tree-scroll: wheel moves the window without swimming selection ==');
-  for (let wheelEventIndex = 0; wheelEventIndex < 8; wheelEventIndex++) {
-    driver.sendMouse({ kind: 'wheel', column: 9, row: 9, direction: 'down' });
-  }
-  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  console.log(
+    '== harness tree-scroll: wheel moves the window without swimming selection ==',
+  );
+  await driver.assertContentInvariantAcrossAction({
+    invariantRegion: {
+      startRow: 1,
+      endRowExclusive: openingSnapshot.rows - 2,
+      startColumn: 32,
+      endColumnExclusive: openingSnapshot.columns,
+    },
+    changedRegion: {
+      startRow: 1,
+      endRowExclusive: openingSnapshot.rows - 2,
+      startColumn: 0,
+      endColumnExclusive: 30,
+    },
+    actionDescription:
+      'tree wheel input changes the file window while the editor stays fixed',
+    performAction: async () => {
+      for (let wheelEventIndex = 0; wheelEventIndex < 80; wheelEventIndex++) {
+        driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 9,
+          row: 9,
+          direction: 'down',
+        });
+      }
+      await driver.awaitGridCondition(
+        'the wheel train reaches the final file-tree row',
+        (candidate) => candidate.findText('file-60.txt') !== null,
+      );
+    },
+  });
   const scrolledStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Number(status.treeScrollTop) > 0",
+    'status condition: Number(status.treeScrollTop) > 0',
     (status) => Number(status.treeScrollTop) > 0,
   );
   const scrolledOffset = Number(scrolledStatus.treeScrollTop);
-  HarnessSmoke.Class.pass(`wheel scrolled the window (scrollTop=${scrolledOffset})`);
+  HarnessSmoke.Class.pass(
+    `wheel scrolled the window (scrollTop=${scrolledOffset})`,
+  );
   HarnessSmoke.Class.requireCondition(
     scrolledStatus.treeSelected === 0,
     'wheel left the selection put (selected=0)',
   );
 
-  console.log('== harness tree-scroll: clicking a visible lower row keeps the offset ==');
-  driver.sendMouse({ kind: 'press', column: 9, row: 19, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: 9, row: 19, button: 'left' });
+  console.log(
+    '== harness tree-scroll: clicking a visible lower row keeps the offset ==',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: 9,
+    row: 19,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: 9,
+    row: 19,
+    button: 'left',
+  });
   const clickedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0",
-    (status) => typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0,
+    (status) =>
+      typeof status.activeBuffer === 'string' && status.activeBuffer.length > 0,
   );
   HarnessSmoke.Class.requireCondition(
     clickedStatus.treeScrollTop === scrolledOffset,

@@ -13,7 +13,7 @@ describe('classifyCoverageCall', () => {
   it('separates calls that prove something from calls that wait', () => {
     expect(classifyCoverageCall('requireCondition')).toBe('assertion');
     expect(classifyCoverageCall('expect')).toBe('assertion');
-    expect(classifyCoverageCall('assertNoCompleteFrameEmittedFor')).toBe(
+    expect(classifyCoverageCall('assertContentInvariantAcrossAction')).toBe(
       'assertion',
     );
     expect(classifyCoverageCall('awaitStatus')).toBe('wait');

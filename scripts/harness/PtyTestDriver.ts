@@ -8,6 +8,7 @@
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Stable regions stay byte-identical across actions (scripts/harness/harness.invariants.md)
 // invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
@@ -51,6 +52,13 @@ export interface HarnessGridRegion {
   endRowExclusive: number;
   startColumn: number;
   endColumnExclusive: number;
+}
+
+export interface ContentInvarianceOptions {
+  invariantRegion: HarnessGridRegion;
+  changedRegion: HarnessGridRegion;
+  actionDescription: string;
+  performAction: () => void | Promise<void>;
 }
 
 class $PtyTestDriver {
@@ -313,42 +321,6 @@ class $PtyTestDriver {
     return { completedFrame, snapshot: this.snapshot() };
   }
 
-  async assertNoCompleteFrameEmittedFor(
-    durationMilliseconds: number,
-  ): Promise<void> {
-    await this.quiescence.assertNoCompletedFrameFor(durationMilliseconds);
-  }
-
-  async assertAtMostOneCompleteFrameEmittedFor(
-    durationMilliseconds: number,
-  ): Promise<void> {
-    const initialCompletedFrameCount = this.quiescence.completedFrameCount;
-    const deadline = performance.now() + durationMilliseconds;
-    try {
-      await this.assertNoCompleteFrameEmittedFor(durationMilliseconds);
-      return;
-    } catch (firstFrameError) {
-      if (
-        this.quiescence.completedFrameCount - initialCompletedFrameCount >
-        1
-      ) {
-        throw firstFrameError;
-      }
-      const remainingMilliseconds = deadline - performance.now();
-      if (remainingMilliseconds > 0) {
-        await this.assertNoCompleteFrameEmittedFor(remainingMilliseconds);
-      }
-      if (
-        this.quiescence.completedFrameCount - initialCompletedFrameCount >
-        1
-      ) {
-        throw new Error(
-          `Expected at most one complete synchronized frame for ${durationMilliseconds} ms`,
-        );
-      }
-    }
-  }
-
   async awaitSnapshot(
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
     timeoutMilliseconds = 30_000,
@@ -384,7 +356,9 @@ class $PtyTestDriver {
         );
       }
       try {
-        await this.quiescence.awaitNextCompletedFrame(remainingMilliseconds);
+        await this.quiescence.awaitNextCompletedFrame(
+          Math.min(10, remainingMilliseconds),
+        );
       } catch (error) {
         const isCompletedFrameTimeout =
           error instanceof Error &&
@@ -393,6 +367,10 @@ class $PtyTestDriver {
           );
         if (!isCompletedFrameTimeout && performance.now() < deadline)
           throw error;
+        if (isCompletedFrameTimeout && performance.now() < deadline) {
+          await this.emulator.flush();
+          continue;
+        }
         await this.emulator.flush();
         this.frameExpectationPredecessor = undefined;
         throw this.gridConditionTimeoutError(
@@ -432,6 +410,47 @@ class $PtyTestDriver {
       }
       await Bun.sleep($PtyTestDriver.outputConditionPollIntervalMilliseconds);
     }
+  }
+
+  async assertContentInvariantAcrossAction(
+    options: ContentInvarianceOptions,
+  ): Promise<HarnessSnapshot.Model> {
+    await this.emulator.flush();
+    const initialSnapshot = this.snapshot();
+    const initialInvariantContent = this.serializedRegionContent(
+      initialSnapshot,
+      options.invariantRegion,
+    );
+    const initialChangedContent = this.serializedRegionContent(
+      initialSnapshot,
+      options.changedRegion,
+    );
+
+    await options.performAction();
+    const completedSnapshot = await this.awaitGridCondition(
+      `${options.actionDescription} changes its expected region`,
+      (candidateSnapshot) =>
+        this.serializedRegionContent(
+          candidateSnapshot,
+          options.changedRegion,
+        ) !== initialChangedContent,
+      undefined,
+      options.changedRegion,
+    );
+    const completedInvariantContent = this.serializedRegionContent(
+      completedSnapshot,
+      options.invariantRegion,
+    );
+    if (completedInvariantContent !== initialInvariantContent) {
+      throw new Error(
+        `Expected byte-identical invariant region while ${options.actionDescription}; ` +
+          `rows ${options.invariantRegion.startRow}-` +
+          `${options.invariantRegion.endRowExclusive - 1}, columns ` +
+          `${options.invariantRegion.startColumn}-` +
+          `${options.invariantRegion.endColumnExclusive - 1} changed`,
+      );
+    }
+    return completedSnapshot;
   }
 
   snapshot(): HarnessSnapshot.Model {
@@ -602,6 +621,41 @@ class $PtyTestDriver {
         `columns ${startColumn}-${endColumnExclusive - 1}:\n` +
         regionText,
     );
+  }
+
+  private serializedRegionContent(
+    snapshot: HarnessSnapshot.Model,
+    region: HarnessGridRegion,
+  ): string {
+    if (
+      !Number.isInteger(region.startRow) ||
+      !Number.isInteger(region.endRowExclusive) ||
+      !Number.isInteger(region.startColumn) ||
+      !Number.isInteger(region.endColumnExclusive) ||
+      region.startRow < 0 ||
+      region.startColumn < 0 ||
+      region.endRowExclusive > snapshot.rows ||
+      region.endColumnExclusive > snapshot.columns ||
+      region.startRow >= region.endRowExclusive ||
+      region.startColumn >= region.endColumnExclusive
+    ) {
+      throw new Error(
+        `Invalid grid region rows ${region.startRow}-${region.endRowExclusive - 1}, ` +
+          `columns ${region.startColumn}-${region.endColumnExclusive - 1} ` +
+          `for ${snapshot.rows}x${snapshot.columns} snapshot`,
+      );
+    }
+    const regionRows: string[] = [];
+    for (let row = region.startRow; row < region.endRowExclusive; row++) {
+      regionRows.push(
+        snapshot
+          .rowCells(row)
+          .slice(region.startColumn, region.endColumnExclusive)
+          .map((cell) => cell.characters)
+          .join(''),
+      );
+    }
+    return JSON.stringify(regionRows);
   }
 
   private childEnvironment(

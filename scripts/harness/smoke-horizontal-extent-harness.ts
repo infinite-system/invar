@@ -17,7 +17,9 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const repositoryRoot = process.cwd();
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-horizontal-extent-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-horizontal-extent-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 const regressionFileName = 'JpegDecoder.test.ts';
 const widestLineMarker = 'contract shape: dims plus rgba';
@@ -40,74 +42,96 @@ try {
     60_000,
   );
   driver.sendKeys('Control+p');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Go to File') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Go to File') !== null,
+  );
   driver.sendText(regressionFileName);
-  await driver.awaitQuiescence();
+  await awaitStatusPublication(
+    statusPath,
+    `Quick Open resolves ${regressionFileName} before it is accepted`,
+    (status) =>
+      status.quickOpenQuery === regressionFileName &&
+      Number(status.quickOpenMatches) > 0,
+  );
   driver.sendKeys('Enter');
   await awaitStatusPublication(
     statusPath,
     `the active buffer is src/modules/image/${regressionFileName}`,
-    (status) => String(status.activeBuffer).endsWith(
-      `/src/modules/image/${regressionFileName}`,
-    ),
+    (status) =>
+      String(status.activeBuffer).endsWith(
+        `/src/modules/image/${regressionFileName}`,
+      ),
     15_000,
   );
   pass(`opened src/modules/image/${regressionFileName}`);
-  for (let silenceAttempt = 1; silenceAttempt <= 40; silenceAttempt++) {
-    try {
-      await driver.assertNoCompleteFrameEmittedFor(200);
-      break;
-    } catch (error) {
-      if (silenceAttempt === 40) throw error;
-    }
-  }
+  const openingSnapshot = await driver.awaitGridCondition(
+    `${regressionFileName} is rendered before horizontal input`,
+    (candidate) => candidate.findText(regressionFileName) !== null,
+  );
+  const filesHeadingPosition = openingSnapshot.findText('Files');
+  requireCondition(
+    filesHeadingPosition !== null,
+    'the Files heading is visible before horizontal input',
+  );
 
-  console.log('== harness horizontal extent: Alt-wheel clamps against the opening viewport ==');
-  for (let wheelEvent = 1; wheelEvent <= 80; wheelEvent++) {
-    driver.sendMouseWithoutFrameExpectation({
-      kind: 'wheel',
-      column: 70,
-      row: 15,
-      direction: 'right',
-      alt: true,
-    });
-    try {
-      await driver.awaitNextCompletedFrameSnapshot(500);
-    } catch (error) {
-      if (
-        !(error instanceof Error)
-        || !error.message.startsWith('Timed out waiting for the next complete synchronized frame')
-      ) {
-        throw error;
+  console.log(
+    '== harness horizontal extent: Alt-wheel clamps against the opening viewport ==',
+  );
+  await driver.assertContentInvariantAcrossAction({
+    invariantRegion: {
+      startRow: filesHeadingPosition.row,
+      endRowExclusive: filesHeadingPosition.row + 1,
+      startColumn: filesHeadingPosition.column,
+      endColumnExclusive: filesHeadingPosition.column + 'Files'.length,
+    },
+    changedRegion: {
+      startRow: 1,
+      endRowExclusive: openingSnapshot.rows - 2,
+      startColumn: 32,
+      endColumnExclusive: openingSnapshot.columns,
+    },
+    actionDescription:
+      'Alt-wheel changes the editor viewport while the Files heading stays fixed',
+    performAction: async () => {
+      for (let wheelEvent = 1; wheelEvent <= 80; wheelEvent++) {
+        driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 70,
+          row: 15,
+          direction: 'right',
+          alt: true,
+        });
       }
-    }
-  }
-  for (let silenceAttempt = 1; silenceAttempt <= 40; silenceAttempt++) {
-    try {
-      await driver.assertNoCompleteFrameEmittedFor(200);
-      break;
-    } catch (error) {
-      if (silenceAttempt === 40) throw error;
-    }
-  }
-  let previousPublishedScrollLeft: number | null = null;
-  let stablePublicationCount = 0;
+      await driver.awaitGridCondition(
+        'the horizontal viewport reaches its positive resting clamp',
+        () => {
+          const status = HarnessSmoke.Class.readStatus(statusPath);
+          return (
+            status.workspaceScrollMomentumAtRest === true &&
+            Number(status.editorScrollLeft) > 0
+          );
+        },
+      );
+    },
+  });
+  await driver.awaitGridCondition(
+    'the opening viewport reveals the end of the visible encodeBandsJpeg declaration',
+    (candidate) => candidate.findText('[]): Uint8Array {') !== null,
+  );
   const openingClampStatus = await awaitStatusPublication(
     statusPath,
-    'the positive opening-viewport horizontal clamp stabilizes',
-    (status) => {
-      const publishedScrollLeft = Number(status.editorScrollLeft);
-      if (publishedScrollLeft === previousPublishedScrollLeft) stablePublicationCount += 1;
-      else stablePublicationCount = 0;
-      previousPublishedScrollLeft = publishedScrollLeft;
-      return publishedScrollLeft > 0 && stablePublicationCount >= 3;
-    },
+    'the positive opening-viewport horizontal clamp is published',
+    (status) => Number(status.editorScrollLeft) > 0,
   );
   const openingViewportClamp = Number(openingClampStatus.editorScrollLeft);
   pass('Alt-wheel moved the horizontal viewport');
-  pass(`Alt-wheel stopped at opening-viewport scrollLeft ${openingViewportClamp}`);
+  pass(
+    `Alt-wheel stopped at opening-viewport scrollLeft ${openingViewportClamp}`,
+  );
 
-  console.log('== harness horizontal extent: reveal the deep widest line without more horizontal input ==');
+  console.log(
+    '== harness horizontal extent: reveal the deep widest line without more horizontal input ==',
+  );
   let nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
   for (let wheelEvent = 1; wheelEvent <= 20; wheelEvent++) {
     driver.sendMouse({
@@ -124,8 +148,10 @@ try {
       scrollFrame = await nextScrollFrame;
     } catch (error) {
       if (
-        error instanceof Error
-        && error.message.startsWith('Timed out waiting for the next complete synchronized frame')
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
       ) {
         break;
       }

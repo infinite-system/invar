@@ -420,8 +420,8 @@ if [ "${FAST:-0}" != "1" ]; then
   echo "smoke phase: PTY harness suite (INVAR_FULL_TMUX=${INVAR_FULL_TMUX:-0}; tmux audit steps skipped when 0 are reported below)"
   # 4) Driving SMOKES — the real user paths.
   parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
-  quiet_serial_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
-  quiet_serial_smoke "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
+  parallel_safe_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
+  parallel_safe_smoke "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).
   parallel_safe_full_tmux_smoke "smoke: move-line"   bash scripts/smoke-move-line.sh
@@ -456,12 +456,12 @@ if [ "${FAST:-0}" != "1" ]; then
   # non-git document shows none. Scratch repo + non-git dir; async blame is cached per file.
   parallel_safe_full_tmux_smoke "smoke: git-blame"   bash scripts/smoke-git-blame.sh
   parallel_safe_full_tmux_smoke "smoke: find"        bash scripts/smoke-find.sh
-  quiet_serial_smoke "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
+  parallel_safe_smoke "smoke: find harness" bun scripts/harness/smoke-find-harness.ts
   parallel_safe_full_tmux_smoke "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
   parallel_safe_smoke "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
   parallel_safe_full_tmux_smoke "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
   parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
-  quiet_serial_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
+  parallel_safe_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
   parallel_safe_full_tmux_smoke "smoke: quick-open"  bash scripts/smoke-quickopen.sh
   parallel_safe_full_tmux_smoke "smoke: open-project" bash scripts/smoke-openproject.sh
@@ -500,7 +500,9 @@ if [ "${FAST:-0}" != "1" ]; then
   # this move. Do not shrink the payload to "fix" it: 64KB is deliberate coverage of
   # chunked paste, and shrinking it would delete the precondition of that coverage.
   quiet_serial_smoke "smoke: paste harness" bun scripts/harness/smoke-paste-harness.ts
-  quiet_serial_smoke "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
+  # Now POOL-SAFE: its frame-silence claims became content invariance and exact
+  # at-rest/active status conditions, so it no longer measures the machine.
+  parallel_safe_smoke "smoke: clipboard frame boundary harness" bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts
   # Audio narration (third projection): drives an agent turn with narration OFF (silent) then ON (speaks
   # the completed turn through the mock TTS backend), plus barge-in. No audio in CI (INVAR_TTS_BACKEND=mock).
   parallel_safe_full_tmux_smoke "smoke: audio-narration" bash scripts/smoke-audio-narration.sh
@@ -524,50 +526,50 @@ if [ "${FAST:-0}" != "1" ]; then
   # on it. This is the first tail reduction earned by converting absence into state.
   parallel_safe_smoke "smoke: git-blame harness" bun scripts/harness/smoke-git-blame-harness.ts
   parallel_safe_smoke "smoke: git-log harness" bun scripts/harness/smoke-git-log-harness.ts
-  quiet_serial_smoke "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
+  parallel_safe_smoke "smoke: git-watch harness" bun scripts/harness/smoke-git-watch-harness.ts
   parallel_safe_smoke "smoke: gutter-diff harness" bun scripts/harness/smoke-gutter-diff-harness.ts
   parallel_safe_smoke "smoke: diff-overview harness" bun scripts/harness/smoke-diff-overview-harness.ts
-  quiet_serial_smoke "smoke: tree-scroll harness" bun scripts/harness/smoke-tree-scroll-harness.ts
+  parallel_safe_smoke "smoke: tree-scroll harness" bun scripts/harness/smoke-tree-scroll-harness.ts
   parallel_safe_smoke "smoke: quick-open harness" bun scripts/harness/smoke-quickopen-harness.ts
   parallel_safe_smoke "smoke: navigation-history harness" bun scripts/harness/smoke-navigation-history-harness.ts
   parallel_safe_smoke "smoke: open-project harness" bun scripts/harness/smoke-openproject-harness.ts
   parallel_safe_smoke "smoke: activitybar harness" bun scripts/harness/smoke-activitybar-harness.ts
   parallel_safe_smoke "smoke: panel-split harness" bun scripts/harness/smoke-panel-split-harness.ts
-  quiet_serial_smoke "smoke: panel-chrome harness" bun scripts/harness/smoke-panel-chrome-harness.ts
+  parallel_safe_smoke "smoke: panel-chrome harness" bun scripts/harness/smoke-panel-chrome-harness.ts
   # Shared splitter paint/drag states plus live slot configuration and the right-dock command/mouse
   # affordance. Kept additive to the pane-specific smokes above.
   parallel_safe_smoke "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
-  quiet_serial_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
-  quiet_serial_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
+  parallel_safe_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
+  parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
   parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
-  quiet_serial_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
-  quiet_serial_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
-  quiet_serial_smoke "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
-  quiet_serial_smoke "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
+  parallel_safe_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
+  parallel_safe_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
+  parallel_safe_smoke "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
+  parallel_safe_smoke "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
   parallel_safe_smoke "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
   parallel_safe_smoke "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
   parallel_safe_smoke "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
-  quiet_serial_smoke "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
+  parallel_safe_smoke "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
   # 5) The REAL settings applied-effect drives (every schema field, not just the --meta enumeration).
   # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
   quiet_serial_full_tmux_smoke "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
-  quiet_serial_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  parallel_safe_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   # Quiet-serial: this smoke asserts on DURATIONS, not just on rendered content.
   # It requires the reducedMotion path to finish under 1000 ms, and requires a
   # slow typing speed to take at least 400 ms longer than a fast one, measured
   # across two separately launched applications. Both are measurements of the
   # machine, so pool load can invert the margin or blow the ceiling.
   quiet_serial_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
-  quiet_serial_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
+  parallel_safe_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
   parallel_safe_smoke "smoke: pixel-preview harness" bun scripts/harness/smoke-pixel-preview-harness.ts
-  quiet_serial_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
-  quiet_serial_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
+  parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
+  parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
-  quiet_serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
+  parallel_safe_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
@@ -582,7 +584,7 @@ run_parallel_smoke_pool
 parallel_phase_elapsed_seconds="$(( $(date +%s) - parallel_phase_started_seconds ))"
 echo "merge-gate timing: parallel-safe phase $(format_duration "$parallel_phase_elapsed_seconds") (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers)"
 
-# invariant: Timing-sensitive gate jobs run in a quiet serial tail (scripts/harness/harness.invariants.md)
+# invariant: Duration measurements run in a quiet serial tail (scripts/harness/harness.invariants.md)
 quiet_phase_started_seconds="$(date +%s)"
 echo "== merge-gate: quiet-serial tail (${#quiet_smoke_names[@]} registered jobs) =="
 run_quiet_serial_smokes
