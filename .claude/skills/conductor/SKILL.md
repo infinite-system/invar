@@ -353,7 +353,7 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui
 ### 10-minute liveness check — `3,13,23,33,43,53 * * * *` (every 10 min)
 
 ```
-Loop check (every 10 min): VERIFY — do not assume — that the currently active builder agents (whatever this session has in flight: check recent task notifications / SendMessage pins) are actually progressing. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor, /tmp/tui-demo, or any /tmp/wt-* worktree they opened) — do NOT treat raw `src/main.ts` process count or instance age as a liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on builder-specific evidence: (1) writes in the active build worktrees (/tmp/wt-*) in the last ~10 min (exclude .git and node_modules); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / GATE_EXIT / still-appending); (3) new commits on main or on the active feature branches (git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'); (4) builder jsonl mtimes under ~/.claude/projects/-home-parallels-dev-ibr/*/subagents/. If a builder is DORMANT on a red or finished gate: read the gate log, diagnose the failing step, nudge via SendMessage with the precise fix. If genuinely STALLED across a FULL cycle (no worktree writes, no gate activity, no commits): take over — diagnose, fix, gate, merge. If progressing, note it briefly. ALSO treat a GREEN gate whose branch is still unlanded as a stall — landing is the conductor's job and a finished gate that nobody merges is wasted wall-clock. Flag over-spawn (cap builders ~2-3) and CPU contention: gates MAY run concurrently (proven 2026-07-25: two gates 6m04s/6m07s vs 8m03s serial), but the conductor still holds its OWN heavy work while any gate runs, and a gate whose smoke pool runs parallel jobs must NOT overlap another gate's quiet timing tail until the machine-wide quiet lock lands. Report concisely.
+Loop check (every 10 min): VERIFY — do not assume — that the currently active builder agents (whatever this session has in flight: check recent task notifications / SendMessage pins) are actually progressing. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor, /tmp/tui-demo, or any /tmp/wt-* worktree they opened) — do NOT treat raw `src/main.ts` process count or instance age as a liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on builder-specific evidence: (1) writes in the active build worktrees (/tmp/wt-*) in the last ~10 min (exclude .git and node_modules); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / GATE_EXIT / still-appending); (3) new commits on main or on the active feature branches (git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'); (4) builder jsonl mtimes under ~/.claude/projects/-home-parallels-dev-ibr/*/subagents/. If a builder is DORMANT on a red or finished gate: read the gate log, diagnose the failing step, nudge via SendMessage with the precise fix. If genuinely STALLED across a FULL cycle (no worktree writes, no gate activity, no commits): take over — diagnose, fix, gate, merge. If progressing, note it briefly. ALSO treat a GREEN gate whose branch is still unlanded as a stall — landing is the conductor's job and a finished gate that nobody merges is wasted wall-clock. Flag over-spawn (cap builders ~2-3) and CPU contention. GATES DO NOT OVERLAP LIVE BUILDERS: a gate and a builder's verification phase are the same resource, and 'the builders look quiet' is not a launch condition (a quiet builder reaches its own tests inside the gate's 5-minute window, and log growth is what a READING builder produces). Hold gating while any builder is alive, then drain the gate queue back-to-back on a quiet machine — a re-run costs 5 minutes, a wait usually costs less. Gates MAY run concurrently with each other (two gates 6m04s/6m07s vs 8m03s serial), but a pool phase must not overlap another gate's quiet timing tail until the machine-wide quiet lock lands. Before calling a timeout-class red a defect, ask what else was running and re-run that ONE smoke solo on an idle machine. Report concisely.
 ```
 
 Refreshed 2026-07-24 after a session restart proved the doctrine: the in-memory crons died, the
@@ -378,6 +378,24 @@ per-run with a symlink to the latest.
 Operating limits, measured on a 16-core box: inotify `max_user_instances` is 128 and each app is one
 instance; each app is ~250MB RSS; a serial gate contributes ~1.5 load. CPU binds first at roughly
 12-14 CONCURRENT APPS, so reason about the PRODUCT `gates x pool workers`, not the gate count.
+
+**BUT A GATE MUST NOT OVERLAP A LIVE BUILDER (learned the hard way, 2026-07-25 evening).** A gate and a
+builder's verification phase are THE SAME RESOURCE. The rule "launch a gate while the builders look
+quiet" is wrong twice over: a builder that is quiet at launch reaches its own `bun test` and smokes
+minutes later, INSIDE the gate's five-minute window; and "looks quiet" is judged from log growth, which
+is exactly what a reading-phase builder produces. Two reds tonight looked identical and had opposite
+causes — `smoke-workspace-tabs` failed 1-of-2 SOLO at load 0.28 (intrinsic, a fixture reading the
+machine's /tmp), while `smoke-editor-harness` timed out twice with a builder mid-verification
+(contention, my scheduling). So: HOLD gating while any builder is alive, then drain the gate queue
+back-to-back on a quiet machine. Serial gates on a quiet machine beat overlapped gates end-to-end,
+because a re-run costs five minutes and a wait usually costs less.
+
+Diagnosis discriminator: before attributing a timeout-class red to a defect, ask what else was running,
+then re-run that one smoke SOLO on an idle machine. It costs about a minute and it separated intrinsic
+from contention for two smokes that failed the same way tonight.
+
+The machine-wide quiet lock, when it lands, must therefore be acquirable by BUILDER verification runs
+too — not only by gates. A lock only gates respect leaves the largest contention source outside it.
 
 Use concurrency for PARALLEL SPECULATIVE VERIFICATION — gate every ready branch at once to discover
 all their defects in one wall-clock window — then LAND SERIALLY: ff-only merges force each branch to
