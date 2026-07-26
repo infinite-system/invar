@@ -6,6 +6,13 @@
 // invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { QuietLock } from './QuietLock';
+
+const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+  'input-byte-flush-gate',
+  import.meta.path,
+);
+if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 interface InputByteFlushBaseline {
   metric: 'input-byte-flush';
@@ -30,11 +37,13 @@ if (measurementSessionCount !== 5) {
   );
 }
 
-const baseline = readBaseline(join(repositoryRoot, 'project.performance-baselines.md'));
-const effectiveBaselineP50Milliseconds = process.env
-  .INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS === undefined
-  ? baseline.p50Milliseconds
-  : Number(process.env.INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS);
+const baseline = readBaseline(
+  join(repositoryRoot, 'project.performance-baselines.md'),
+);
+const effectiveBaselineP50Milliseconds =
+  process.env.INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS === undefined
+    ? baseline.p50Milliseconds
+    : Number(process.env.INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS);
 if (!Number.isFinite(effectiveBaselineP50Milliseconds)) {
   throw new Error('Input-byte-flush baseline override must be a finite number');
 }
@@ -44,7 +53,11 @@ function measureFiveSessionMedians(passLabel: string): {
   p95Milliseconds: number;
 } {
   const sessionMeasurements: SessionMeasurement[] = [];
-  for (let sessionNumber = 1; sessionNumber <= measurementSessionCount; sessionNumber++) {
+  for (
+    let sessionNumber = 1;
+    sessionNumber <= measurementSessionCount;
+    sessionNumber++
+  ) {
     const measurementResult = Bun.spawnSync(
       [process.execPath, 'scripts/harness/measure-input-byte-flush.ts'],
       {
@@ -54,7 +67,8 @@ function measureFiveSessionMedians(passLabel: string): {
         env: Object.fromEntries(
           Object.entries(process.env).filter(
             ([environmentName, environmentValue]) =>
-              environmentValue !== undefined && !environmentName.startsWith('GIT_'),
+              environmentValue !== undefined &&
+              !environmentName.startsWith('GIT_'),
           ),
         ) as Record<string, string>,
       },
@@ -63,22 +77,22 @@ function measureFiveSessionMedians(passLabel: string): {
     const standardError = new TextDecoder().decode(measurementResult.stderr);
     if (measurementResult.exitCode !== 0) {
       throw new Error(
-        `Input-byte-flush session ${sessionNumber} failed with exit `
-        + `${measurementResult.exitCode}\n${standardOutput}\n${standardError}`,
+        `Input-byte-flush session ${sessionNumber} failed with exit ` +
+          `${measurementResult.exitCode}\n${standardOutput}\n${standardError}`,
       );
     }
     const sessionMeasurement = parseSessionMeasurement(standardOutput);
     if (sessionMeasurement.boundary !== baseline.boundary) {
       throw new Error(
-        `Measurement boundary ${sessionMeasurement.boundary} does not match reviewed baseline `
-        + baseline.boundary,
+        `Measurement boundary ${sessionMeasurement.boundary} does not match reviewed baseline ` +
+          baseline.boundary,
       );
     }
     sessionMeasurements.push(sessionMeasurement);
     console.log(
-      `  ${passLabel}session ${sessionNumber}/5: `
-      + `p50 ${sessionMeasurement.p50Milliseconds.toFixed(3)} ms, `
-      + `p95 ${sessionMeasurement.p95Milliseconds.toFixed(3)} ms`,
+      `  ${passLabel}session ${sessionNumber}/5: ` +
+        `p50 ${sessionMeasurement.p50Milliseconds.toFixed(3)} ms, ` +
+        `p95 ${sessionMeasurement.p95Milliseconds.toFixed(3)} ms`,
     );
   }
   return {
@@ -100,7 +114,11 @@ const warningThresholdMilliseconds =
 const failureThresholdMilliseconds =
   effectiveBaselineP50Milliseconds * baseline.failureMultiplier;
 const commitSha = gitHeadSha(repositoryRoot);
-const historyPath = join(repositoryRoot, '.perf-history', 'input-byte-flush.ndjson');
+const historyPath = join(
+  repositoryRoot,
+  '.perf-history',
+  'input-byte-flush.ndjson',
+);
 mkdirSync(dirname(historyPath), { recursive: true });
 appendFileSync(
   historyPath,
@@ -114,20 +132,22 @@ appendFileSync(
 );
 
 console.log(
-  `input-byte-flush-gate: p50 ${p50Milliseconds.toFixed(3)} ms, `
-  + `p95 ${p95Milliseconds.toFixed(3)} ms, boundary ${baseline.boundary}`,
+  `input-byte-flush-gate: p50 ${p50Milliseconds.toFixed(3)} ms, ` +
+    `p95 ${p95Milliseconds.toFixed(3)} ms, boundary ${baseline.boundary}`,
 );
 console.log(
-  `  reviewed baseline p50 ${effectiveBaselineP50Milliseconds.toFixed(3)} ms; `
-  + `WARN > ${warningThresholdMilliseconds.toFixed(3)} ms; `
-  + `FAIL > ${failureThresholdMilliseconds.toFixed(3)} ms`,
+  `  reviewed baseline p50 ${effectiveBaselineP50Milliseconds.toFixed(3)} ms; ` +
+    `WARN > ${warningThresholdMilliseconds.toFixed(3)} ms; ` +
+    `FAIL > ${failureThresholdMilliseconds.toFixed(3)} ms`,
 );
-console.log(`  history appended: .perf-history/input-byte-flush.ndjson (${commitSha})`);
+console.log(
+  `  history appended: .perf-history/input-byte-flush.ndjson (${commitSha})`,
+);
 
 if (p50Milliseconds > failureThresholdMilliseconds) {
   console.warn(
-    `input-byte-flush-gate: first pass p50 ${p50Milliseconds.toFixed(3)} ms exceeded the FAIL `
-    + `threshold — ambient-noise retry: re-measuring once (a real regression fails twice)`,
+    `input-byte-flush-gate: first pass p50 ${p50Milliseconds.toFixed(3)} ms exceeded the FAIL ` +
+      `threshold — ambient-noise retry: re-measuring once (a real regression fails twice)`,
   );
   ({ p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('retry '));
   appendFileSync(
@@ -142,21 +162,21 @@ if (p50Milliseconds > failureThresholdMilliseconds) {
     })}\n`,
   );
   console.log(
-    `  retry medians: p50 ${p50Milliseconds.toFixed(3)} ms, `
-    + `p95 ${p95Milliseconds.toFixed(3)} ms`,
+    `  retry medians: p50 ${p50Milliseconds.toFixed(3)} ms, ` +
+      `p95 ${p95Milliseconds.toFixed(3)} ms`,
   );
 }
 if (p50Milliseconds > failureThresholdMilliseconds) {
   console.error(
-    `input-byte-flush-gate: FAIL p50 ${p50Milliseconds.toFixed(3)} ms exceeds `
-    + `baseline×${baseline.failureMultiplier} on both passes`,
+    `input-byte-flush-gate: FAIL p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +
+      `baseline×${baseline.failureMultiplier} on both passes`,
   );
   process.exit(1);
 }
 if (p50Milliseconds > warningThresholdMilliseconds) {
   console.warn(
-    `input-byte-flush-gate: WARN p50 ${p50Milliseconds.toFixed(3)} ms exceeds `
-    + `baseline×${baseline.warningMultiplier} (non-blocking)`,
+    `input-byte-flush-gate: WARN p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +
+      `baseline×${baseline.warningMultiplier} (non-blocking)`,
   );
 } else {
   console.log('input-byte-flush-gate: PASS');
@@ -168,18 +188,22 @@ function readBaseline(baselinePath: string): InputByteFlushBaseline {
     /<!-- input-byte-flush-baseline:begin -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- input-byte-flush-baseline:end -->/,
   );
   if (!baselineMatch?.[1]) {
-    throw new Error(`Machine-readable input-byte-flush baseline block is missing from ${baselinePath}`);
+    throw new Error(
+      `Machine-readable input-byte-flush baseline block is missing from ${baselinePath}`,
+    );
   }
   const parsedBaseline = JSON.parse(baselineMatch[1]) as InputByteFlushBaseline;
   if (
-    parsedBaseline.metric !== 'input-byte-flush'
-    || !Number.isFinite(parsedBaseline.p50Milliseconds)
-    || !Number.isFinite(parsedBaseline.warningMultiplier)
-    || !Number.isFinite(parsedBaseline.failureMultiplier)
-    || !parsedBaseline.boundary
-    || !parsedBaseline.baselineChangePolicy
+    parsedBaseline.metric !== 'input-byte-flush' ||
+    !Number.isFinite(parsedBaseline.p50Milliseconds) ||
+    !Number.isFinite(parsedBaseline.warningMultiplier) ||
+    !Number.isFinite(parsedBaseline.failureMultiplier) ||
+    !parsedBaseline.boundary ||
+    !parsedBaseline.baselineChangePolicy
   ) {
-    throw new Error('Machine-readable input-byte-flush baseline block is incomplete');
+    throw new Error(
+      'Machine-readable input-byte-flush baseline block is incomplete',
+    );
   }
   return parsedBaseline;
 }
@@ -192,7 +216,9 @@ function parseSessionMeasurement(standardOutput: string): SessionMeasurement {
     /byte-arrival-p50=([0-9.]+)ms .*byte-arrival-p95=([0-9.]+)ms .*boundary=(\S+)/,
   );
   if (!measurementMatch?.[1] || !measurementMatch[2] || !measurementMatch[3]) {
-    throw new Error(`Could not parse input-byte-flush output:\n${standardOutput}`);
+    throw new Error(
+      `Could not parse input-byte-flush output:\n${standardOutput}`,
+    );
   }
   return {
     p50Milliseconds: Number(measurementMatch[1]),
@@ -202,7 +228,8 @@ function parseSessionMeasurement(standardOutput: string): SessionMeasurement {
 }
 
 function median(samples: readonly number[]): number {
-  if (samples.length === 0) throw new Error('Cannot calculate a median without samples');
+  if (samples.length === 0)
+    throw new Error('Cannot calculate a median without samples');
   const sortedSamples = [...samples].sort(
     (firstSample, secondSample) => firstSample - secondSample,
   );
@@ -218,7 +245,9 @@ function gitHeadSha(workingDirectory: string): string {
     stderr: 'pipe',
   });
   if (result.exitCode !== 0) {
-    throw new Error(`git rev-parse HEAD failed: ${new TextDecoder().decode(result.stderr)}`);
+    throw new Error(
+      `git rev-parse HEAD failed: ${new TextDecoder().decode(result.stderr)}`,
+    );
   }
   return new TextDecoder().decode(result.stdout).trim();
 }

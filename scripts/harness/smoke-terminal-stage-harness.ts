@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+import { QuietLock } from './QuietLock';
 
 function paneText(
   snapshot: HarnessSnapshot.Model,
@@ -653,6 +654,12 @@ async function driveTerminalCleanPromptDisabled(
     await driver.dispose();
   }
 }
+
+const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+  'smoke-terminal-stage-harness',
+  import.meta.path,
+);
+if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-terminal-stage-harness-home-'),

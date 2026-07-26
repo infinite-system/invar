@@ -4,6 +4,13 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PtyTestDriver } from './PtyTestDriver';
+import { QuietLock } from './QuietLock';
+
+const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+  'measure-input-byte-flush',
+  import.meta.path,
+);
+if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const repositoryRoot = process.cwd();
 const latencySampleCount = Number(process.env.LATENCY_SAMPLE_COUNT ?? 20);
@@ -50,7 +57,10 @@ try {
   for (let pressNumber = 1; pressNumber <= latencySampleCount; pressNumber++) {
     const cursorColumnBefore = driver.snapshot().cursorColumn;
     const keyName = pressNumber % 2 === 1 ? 'Right' : 'Left';
-    const measurement = await driver.sendKeysAndAwaitFrameByteArrival([keyName], 3_000);
+    const measurement = await driver.sendKeysAndAwaitFrameByteArrival(
+      [keyName],
+      3_000,
+    );
     await driver.awaitQuiescence(3_000);
     const snapshotReadyTimestampMilliseconds = performance.now();
     const cursorColumnAfter = driver.snapshot().cursorColumn;
@@ -60,53 +70,59 @@ try {
       );
     }
 
-    byteArrivalLatencySamples.push(measurement.inputToFrameByteArrivalMilliseconds);
+    byteArrivalLatencySamples.push(
+      measurement.inputToFrameByteArrivalMilliseconds,
+    );
     snapshotReadyLatencySamples.push(
-      snapshotReadyTimestampMilliseconds - measurement.inputWrittenTimestampMilliseconds,
+      snapshotReadyTimestampMilliseconds -
+        measurement.inputWrittenTimestampMilliseconds,
     );
     postArrivalOracleLatencySamples.push(
-      snapshotReadyTimestampMilliseconds
-        - measurement.completedFrame.byteArrivalTimestampMilliseconds,
+      snapshotReadyTimestampMilliseconds -
+        measurement.completedFrame.byteArrivalTimestampMilliseconds,
     );
     if (previousCompletedFrameObservedByteCount !== null) {
       frameByteCounts.push(
-        measurement.completedFrame.observedByteCount
-          - previousCompletedFrameObservedByteCount,
+        measurement.completedFrame.observedByteCount -
+          previousCompletedFrameObservedByteCount,
       );
     }
-    previousCompletedFrameObservedByteCount = measurement.completedFrame.observedByteCount;
+    previousCompletedFrameObservedByteCount =
+      measurement.completedFrame.observedByteCount;
     await Bun.sleep(100);
   }
 
   const byteArrivalPercentiles = percentiles(byteArrivalLatencySamples);
   const snapshotReadyPercentiles = percentiles(snapshotReadyLatencySamples);
-  const postArrivalOraclePercentiles = percentiles(postArrivalOracleLatencySamples);
+  const postArrivalOraclePercentiles = percentiles(
+    postArrivalOracleLatencySamples,
+  );
   const medianFrameByteCount = percentile(frameByteCounts, 0.5);
 
   console.log('Input latency measurement boundaries');
   console.log(
-    `  input write start -> DEC 2026 end-marker byte arrival: `
-    + `p50 ${byteArrivalPercentiles.p50.toFixed(3)} ms, `
-    + `p95 ${byteArrivalPercentiles.p95.toFixed(3)} ms`,
+    `  input write start -> DEC 2026 end-marker byte arrival: ` +
+      `p50 ${byteArrivalPercentiles.p50.toFixed(3)} ms, ` +
+      `p95 ${byteArrivalPercentiles.p95.toFixed(3)} ms`,
   );
   console.log(
-    `  input write start -> settled TerminalEmulator snapshot: `
-    + `p50 ${snapshotReadyPercentiles.p50.toFixed(3)} ms, `
-    + `p95 ${snapshotReadyPercentiles.p95.toFixed(3)} ms`,
+    `  input write start -> settled TerminalEmulator snapshot: ` +
+      `p50 ${snapshotReadyPercentiles.p50.toFixed(3)} ms, ` +
+      `p95 ${snapshotReadyPercentiles.p95.toFixed(3)} ms`,
   );
   console.log(
-    `  marker byte arrival -> settled TerminalEmulator snapshot: `
-    + `p50 ${postArrivalOraclePercentiles.p50.toFixed(3)} ms, `
-    + `p95 ${postArrivalOraclePercentiles.p95.toFixed(3)} ms`,
+    `  marker byte arrival -> settled TerminalEmulator snapshot: ` +
+      `p50 ${postArrivalOraclePercentiles.p50.toFixed(3)} ms, ` +
+      `p95 ${postArrivalOraclePercentiles.p95.toFixed(3)} ms`,
   );
   console.log(
-    `input-byte-flush samples=${latencySampleCount} `
-    + `byte-arrival-p50=${byteArrivalPercentiles.p50.toFixed(3)}ms `
-    + `byte-arrival-p95=${byteArrivalPercentiles.p95.toFixed(3)}ms `
-    + `snapshot-ready-p50=${snapshotReadyPercentiles.p50.toFixed(3)}ms `
-    + `post-arrival-oracle-p50=${postArrivalOraclePercentiles.p50.toFixed(3)}ms `
-    + `median-frame-bytes=${medianFrameByteCount} `
-    + `boundary=input-write→DEC-2026-end-marker-byte-arrival`,
+    `input-byte-flush samples=${latencySampleCount} ` +
+      `byte-arrival-p50=${byteArrivalPercentiles.p50.toFixed(3)}ms ` +
+      `byte-arrival-p95=${byteArrivalPercentiles.p95.toFixed(3)}ms ` +
+      `snapshot-ready-p50=${snapshotReadyPercentiles.p50.toFixed(3)}ms ` +
+      `post-arrival-oracle-p50=${postArrivalOraclePercentiles.p50.toFixed(3)}ms ` +
+      `median-frame-bytes=${medianFrameByteCount} ` +
+      `boundary=input-write→DEC-2026-end-marker-byte-arrival`,
   );
 } finally {
   await driver.dispose();
@@ -122,15 +138,20 @@ function percentiles(samples: readonly number[]): { p50: number; p95: number } {
 }
 
 function percentile(samples: readonly number[], fraction: number): number {
-  if (samples.length === 0) throw new Error('Cannot calculate a percentile without samples');
+  if (samples.length === 0)
+    throw new Error('Cannot calculate a percentile without samples');
   const sortedSamples = [...samples].sort(
     (firstSample, secondSample) => firstSample - secondSample,
   );
   const sampleIndex = Math.max(
     0,
-    Math.min(sortedSamples.length - 1, Math.ceil(sortedSamples.length * fraction) - 1),
+    Math.min(
+      sortedSamples.length - 1,
+      Math.ceil(sortedSamples.length * fraction) - 1,
+    ),
   );
   const sample = sortedSamples[sampleIndex];
-  if (sample === undefined) throw new Error(`Missing percentile sample at index ${sampleIndex}`);
+  if (sample === undefined)
+    throw new Error(`Missing percentile sample at index ${sampleIndex}`);
   return sample;
 }

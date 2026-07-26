@@ -13,6 +13,7 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
+source "$DIR/quiet-lock.sh"
 export PATH="$HOME/.bun/bin:$PATH"
 gate_started_seconds="$(date +%s)"
 # THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
@@ -432,7 +433,13 @@ step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverag
 #     really happened in this repo (a gate guard called a missing binary and printed OK for 14 runs).
 step "dropped reactive observations (report-only findings, gated instrument)" bun scripts/check-reactive-observation.ts
 # 2) Unit tests.
-step "unit tests (bun test)" bun test
+# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+step \
+  "unit tests (bun test)" \
+  quiet_lock_run \
+  "loud-shared" \
+  "merge-gate unit tests" \
+  bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
 # They register in the quiet tail because their momentum and absence windows are timing-sensitive.
 quiet_serial_smoke "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
@@ -600,27 +607,41 @@ if ! validate_smoke_classification; then fail=1; fi
 
 parallel_phase_started_seconds="$(date +%s)"
 echo "== merge-gate: parallel-safe smoke pool (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers) =="
-run_parallel_smoke_pool
+# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+quiet_lock_run \
+  "loud-shared" \
+  "merge-gate parallel smoke pool" \
+  run_parallel_smoke_pool
 parallel_phase_elapsed_seconds="$(( $(date +%s) - parallel_phase_started_seconds ))"
 echo "merge-gate timing: parallel-safe phase $(format_duration "$parallel_phase_elapsed_seconds") (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers)"
 
 # invariant: Duration measurements run in a quiet serial tail (scripts/harness/harness.invariants.md)
 quiet_phase_started_seconds="$(date +%s)"
 echo "== merge-gate: quiet-serial tail (${#quiet_smoke_names[@]} registered jobs) =="
-run_quiet_serial_smokes
-# This latency check is deliberately outside SKIP_PERF and FAST. It names the raw-byte boundary,
-# records every result, and blocks only at the reviewed baseline's failure multiplier.
-# invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
-reporting_step "input byte flush latency (5-session median)" bun scripts/harness/input-byte-flush-gate.ts
-# 6) Perf baselines — SOFT: memory/CPU/latency are measured + REPORTED so a regression surfaces in
-#    the gate (it was previously unwired = a perf regression could ship). Non-blocking: the numbers
-#    are informational and the load-bearing idle-quiescence invariant is hard-gated above. Slow
-#    (idle-hold + lifecycle) — SKIP_PERF=1 to skip for fast local iteration.
-if [ "${FAST:-0}" != "1" ] && [ "${SKIP_PERF:-0}" != "1" ]; then
-  soft_step "perf-baselines (memory/CPU/latency)" bash scripts/perf-baselines.sh
-elif [ "${FAST:-0}" != "1" ]; then
-  echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
-fi
+run_machine_quiet_tail() {
+  run_quiet_serial_smokes
+  # This latency check is deliberately outside SKIP_PERF and FAST. It names
+  # the raw-byte boundary, records every result, and blocks only at the
+  # reviewed baseline's failure multiplier.
+  # invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
+  reporting_step \
+    "input byte flush latency (5-session median)" \
+    bun scripts/harness/input-byte-flush-gate.ts
+  # 6) Perf baselines are soft: the load-bearing idle-quiescence invariant is
+  # hard-gated above.
+  if [ "${FAST:-0}" != "1" ] && [ "${SKIP_PERF:-0}" != "1" ]; then
+    soft_step \
+      "perf-baselines (memory/CPU/latency)" \
+      bash scripts/perf-baselines.sh
+  elif [ "${FAST:-0}" != "1" ]; then
+    echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
+  fi
+}
+# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+quiet_lock_run \
+  "quiet-exclusive" \
+  "merge-gate quiet serial tail" \
+  run_machine_quiet_tail
 quiet_phase_elapsed_seconds="$(( $(date +%s) - quiet_phase_started_seconds ))"
 echo "merge-gate timing: quiet-serial phase $(format_duration "$quiet_phase_elapsed_seconds")"
 

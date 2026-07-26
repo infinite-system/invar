@@ -68,6 +68,13 @@ if [ "${1:-}" = "--meta" ]; then
   exit $?
 fi
 
+source "$DIR/quiet-lock.sh"
+quiet_lock_rerun_script \
+  "quiet-exclusive" \
+  "smoke-settings-applied" \
+  "$0" \
+  "$@"
+
 fail=0
 set_setting() {
   python3 - "$SET" "$1" "$2" "$3" <<'PY'

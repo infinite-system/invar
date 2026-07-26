@@ -29,6 +29,12 @@ set -uo pipefail
 SCRIPT_DIRECTORY="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIRECTORY/.." && pwd)"
 HARNESS="$SCRIPT_DIRECTORY/tui-harness.sh"
+source "$SCRIPT_DIRECTORY/quiet-lock.sh"
+quiet_lock_rerun_script \
+  "quiet-exclusive" \
+  "perf-baselines" \
+  "$0" \
+  "$@"
 BUN="${BUN:-$HOME/.bun/bin/bun}"
 CLOCK_TICKS_PER_SECOND="$(getconf CLK_TCK)"
 RUN_TAG="perf$$"

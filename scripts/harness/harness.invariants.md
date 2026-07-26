@@ -506,3 +506,50 @@ idle-quiescence frame-count window duplicated in a per-feature smoke.
 **Status:** provisional
 
 **Last refined:** 2026-07-25
+
+### Timing-sensitive smokes run on a machine-wide quiet lock
+
+**Invariant:** If a smoke makes an absence assertion, bounds a wait by elapsed
+time, or measures duration, then it runs under the machine-wide
+quiet-exclusive lock while ordinary gate load runs under the loud-shared lock.
+
+**Scope:** `scripts/quiet-lock.sh`; the quiet-serial tail in
+`scripts/merge-gate.sh`; direct runs of `scripts/behavioral-contracts.sh`,
+`scripts/smoke-agent-pane-ux.sh`, `scripts/smoke-settings-applied.sh`,
+`scripts/perf-baselines.sh`,
+`scripts/harness/smoke-terminal-stage-harness.ts`, and the input-byte-flush
+measurement. `INVAR_QUIET_LOCK=0` deliberately suspends this guarantee for
+debugging.
+
+**Mechanism:** `flock` takes a shared or exclusive lock on
+`/tmp/invar-quiet.lock` through an open file descriptor inherited by child
+processes. The gate holds loud-shared around `bun test` and the parallel pool,
+then quiet-exclusive once around the complete quiet tail. Standalone
+timing-sensitive entry points re-execute through the same helper and recognize
+an inherited quiet lock without reacquiring it. Acquisition waits at most 120
+seconds, then warns with journaled holder names and proceeds unlocked.
+
+**Generates:** Cross-gate scheduling; standalone smoke protection; shared
+parallel load; crash-released locks; a bounded diagnostic journal at
+`/tmp/invar-quiet-lock.journal`.
+
+**Rejected alternatives:** Gate-level lock — builders run smokes directly and
+bypass it. PID-file lock — a crashed holder leaves dirty state that can wedge
+future acquisition.
+
+**Evidence:** `scripts/quiet-lock.sh`; `scripts/harness/QuietLock.ts`;
+`scripts/harness/QuietLock.test.ts`; lock calls in `scripts/merge-gate.sh` and
+the standalone timing-sensitive entry points.
+
+**Impossible if true:** A quiet-tail smoke and a loud pool job both hold the
+lock at the same time; two quiet-exclusive smokes overlap; loud-shared holders
+serialize against one another; a crashed holder wedges acquisition forever.
+
+**Verification:** `bun test scripts/harness/QuietLock.test.ts && bash -n
+scripts/quiet-lock.sh scripts/merge-gate.sh scripts/behavioral-contracts.sh
+scripts/smoke-agent-pane-ux.sh scripts/smoke-settings-applied.sh
+scripts/perf-baselines.sh`
+
+**Status:** established
+
+**Last refined:** 2026-07-26

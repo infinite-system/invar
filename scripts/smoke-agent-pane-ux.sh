@@ -13,6 +13,12 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 H="$DIR/tui-harness.sh"
 ROOT="$(cd "$DIR/.." && pwd)"
+source "$DIR/quiet-lock.sh"
+quiet_lock_rerun_script \
+  "quiet-exclusive" \
+  "smoke-agent-pane-ux" \
+  "$0" \
+  "$@"
 S="smoke-agent-ux-$$"
 FIX="${1:-$ROOT/fixtures}"
 DELAY_MS=2000

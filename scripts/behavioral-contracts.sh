@@ -18,6 +18,12 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 H="$DIR/tui-harness.sh"
+source "$DIR/quiet-lock.sh"
+quiet_lock_rerun_script \
+  "quiet-exclusive" \
+  "behavioral-contracts" \
+  "$0" \
+  "$@"
 # tui-harness.sh launches every app with this worktree-local HOME. Write the contract settings to
 # that SAME isolated path; writing the caller's real $HOME makes the drive depend on stale harness
 # state and can silently run the wrap contract with wordWrap=false.
