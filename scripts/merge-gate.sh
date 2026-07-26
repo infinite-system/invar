@@ -96,6 +96,12 @@ step() {
     sleep 10
     if "$@" >"$step_log" 2>&1; then
       echo "  OK    $name (clean on retry; first attempt was starvation-class)"
+      # Feed the SAME tally the pool jobs feed. Until now only pool retries were
+      # counted, so a serial or quiet-tail step that passed only on its retry left no
+      # trace but a line buried mid-log — which is how smoke-workspace-tabs stayed
+      # 1-in-3 to 2-in-3 flaky for a whole day while every gate reported green.
+      retried_smoke_names+=("$name")
+      retried_smoke_counts+=(1)
       rm -f "$step_log"
       return
     fi
@@ -548,10 +554,13 @@ fi
 
 echo ""
 if [ "${#retried_smoke_names[@]}" -eq 0 ]; then
-  echo "RETRY TALLY: no smokes retried"
+  echo "RETRY TALLY: no steps retried — this run's green is a clean green"
 else
+  echo "RETRY TALLY: ${#retried_smoke_names[@]} step(s) PASSED ONLY ON RETRY — a retried"
+  echo "RETRY TALLY: pass is a FLAKE, not a green. Each line below is an intermittent"
+  echo "RETRY TALLY: failure the retry hid; fix or reclassify it, do not skim past it."
   for retry_number in "${!retried_smoke_names[@]}"; do
-    echo "RETRY TALLY: ${retried_smoke_names[$retry_number]} = ${retried_smoke_counts[$retry_number]}"
+    echo "RETRY TALLY:   ${retried_smoke_names[$retry_number]} = ${retried_smoke_counts[$retry_number]}"
   done
 fi
 gate_elapsed_seconds="$(( $(date +%s) - gate_started_seconds ))"
