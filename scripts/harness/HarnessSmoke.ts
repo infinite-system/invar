@@ -35,8 +35,21 @@ class $HarnessSmoke {
       env: environment,
     });
     if (result.exitCode !== 0) {
+      // Report BOTH streams and the exit code. git writes several of its most common
+      // failure reasons to STDOUT, not stderr — "nothing to commit, working tree clean"
+      // being the one that matters here — so a stderr-only message renders a failing
+      // commit as `failed: ` with no reason at all. That is what a gutter-diff fixture
+      // failure looked like tonight, in the gate AND in an independent builder run:
+      // undiagnosable by construction.
+      const standardError = new TextDecoder().decode(result.stderr).trim();
+      const standardOutput = new TextDecoder().decode(result.stdout).trim();
       throw new Error(
-        `git ${commandArguments.join(' ')} failed: ${new TextDecoder().decode(result.stderr)}`,
+        `git ${commandArguments.join(' ')} failed (exit ${result.exitCode})` +
+          (standardError.length > 0 ? `; stderr: ${standardError}` : '') +
+          (standardOutput.length > 0 ? `; stdout: ${standardOutput}` : '') +
+          (standardError.length === 0 && standardOutput.length === 0
+            ? '; both streams were empty'
+            : ''),
       );
     }
     return new TextDecoder().decode(result.stdout).trim();
