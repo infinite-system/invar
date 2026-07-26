@@ -1144,7 +1144,10 @@ try {
       candidate.terminalFocused === true &&
       candidate.panelActiveContent === 'terminal',
   );
-  await driver.awaitQuiescence();
+  await driver.awaitOutputCondition(
+    'the focused terminal leaves the hardware cursor shown',
+    () => cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
+  );
   requireCondition(
     cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
     'cursor byte probe observes the focused terminal cursor without an overlay',
@@ -1155,6 +1158,10 @@ try {
     'Settings is painted above retained terminal focus',
     (candidate) => candidate.findText('Settings') !== null,
   );
+  await driver.awaitOutputCondition(
+    'Settings leaves the retained terminal cursor hidden',
+    () => cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
+  );
   requireCondition(
     cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
     'cursor visibility bytes leave the hardware cursor hidden while Settings owns the screen',
@@ -1163,6 +1170,10 @@ try {
   await driver.awaitGridCondition(
     'Settings is absent after Escape restores terminal focus',
     (candidate) => candidate.findText('Settings') === null,
+  );
+  await driver.awaitOutputCondition(
+    'closing Settings restores the focused terminal cursor',
+    () => cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
   );
   requireCondition(
     cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
@@ -1178,6 +1189,10 @@ try {
     'Keyboard Shortcuts is painted above retained terminal focus',
     (candidate) => candidate.findText('Keyboard Shortcuts') !== null,
   );
+  await driver.awaitOutputCondition(
+    'Keyboard Shortcuts leaves the retained terminal cursor hidden',
+    () => cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
+  );
   requireCondition(
     cursorVisibilityFromOutput(driver.recordedOutput()) === 'hidden',
     'cursor visibility bytes leave the hardware cursor hidden under Keyboard Shortcuts',
@@ -1191,6 +1206,10 @@ try {
   await driver.awaitGridCondition(
     'Keyboard Shortcuts is absent after backdrop dismissal',
     (candidate) => candidate.findText('Keyboard Shortcuts') === null,
+  );
+  await driver.awaitOutputCondition(
+    'shortcut dismissal restores the focused terminal cursor',
+    () => cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',
   );
   requireCondition(
     cursorVisibilityFromOutput(driver.recordedOutput()) === 'shown',

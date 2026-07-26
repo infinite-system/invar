@@ -75,11 +75,14 @@ try {
     15_000,
   );
   HarnessSmoke.Class.pass('panel hidden at boot');
-  await driver.awaitQuiescence();
+  let statusBarSnapshot = await driver.awaitGridCondition(
+    'the terminal status button is visible before opening the panel',
+    (candidate) => candidate.findText(' ❯ ') !== null,
+  );
   clickCell(
     driver,
-    statusButtonColumn(driver.snapshot(), ' ❯ '),
-    driver.snapshot().rows - 1,
+    statusButtonColumn(statusBarSnapshot, ' ❯ '),
+    statusBarSnapshot.rows - 1,
   );
   let openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -482,16 +485,20 @@ try {
     (status) => status.ready === true && status.terminalVisible === false,
     15_000,
   );
-  await restartDriver.awaitQuiescence();
-  clickCell(
-    restartDriver,
-    statusButtonColumn(restartDriver.snapshot(), ' ❯ '),
-    restartDriver.snapshot().rows - 1,
+  statusBarSnapshot = await restartDriver.awaitGridCondition(
+    'the terminal and agent status buttons are visible after restart',
+    (candidate) =>
+      candidate.findText(' ❯ ') !== null && candidate.findText(' ✦ ') !== null,
   );
   clickCell(
     restartDriver,
-    statusButtonColumn(restartDriver.snapshot(), ' ✦ '),
-    restartDriver.snapshot().rows - 1,
+    statusButtonColumn(statusBarSnapshot, ' ❯ '),
+    statusBarSnapshot.rows - 1,
+  );
+  clickCell(
+    restartDriver,
+    statusButtonColumn(statusBarSnapshot, ' ✦ '),
+    statusBarSnapshot.rows - 1,
   );
   await HarnessSmoke.Class.awaitStatus(
     restartDriver,

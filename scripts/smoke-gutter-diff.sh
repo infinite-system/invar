@@ -75,6 +75,49 @@ raise SystemExit(1)           # none found
 PY
 }
 
+wait_for_marker() {
+  local session="$1" line_text="$2" glyph="$3" color="$4"
+  local attempt
+  for attempt in $(seq 1 200); do
+    frame_has_marker "$session" "$line_text" "$glyph" "$color" && return 0
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_no_diff_marker() {
+  local session="$1" expected_text="$2"
+  local attempt
+  for attempt in $(seq 1 200); do
+    if frame_has_no_diff_marker "$session" \
+      && "$HARNESS" capture "$session" | grep -F "$expected_text" >/dev/null; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_saved_content() {
+  local file_path="$1" expected_content="$2"
+  local attempt
+  for attempt in $(seq 1 200); do
+    [ "$(cat "$file_path" 2>/dev/null)" = "$expected_content" ] && return 0
+    sleep 0.05
+  done
+  return 1
+}
+
+require_marker_remains_for() {
+  local session="$1" line_text="$2" glyph="$3" color="$4"
+  local attempt
+  for attempt in $(seq 1 10); do
+    frame_has_marker "$session" "$line_text" "$glyph" "$color" || return 1
+    sleep 0.05
+  done
+  return 0
+}
+
 open_only_file() {
   local session="$1"
   # Height-robust: the tree rows shift down when the workspace tab strip grows past 1 line (two-line
@@ -99,9 +142,7 @@ if ! "$HARNESS" ready "$EDIT_SESSION" 20 >/dev/null || ! open_only_file "$EDIT_S
   echo '  FAIL  editor did not open the tracked fixture file'
   exit 1
 fi
-sleep 0.8
-"$HARNESS" settle "$EDIT_SESSION" >/dev/null 2>&1
-if frame_has_no_diff_marker "$EDIT_SESSION"; then
+if wait_for_no_diff_marker "$EDIT_SESSION" 'alpha'; then
   echo '  PASS  clean HEAD file has no diff glyph'
 else
   echo '  FAIL  clean HEAD file painted a diff glyph'
@@ -110,8 +151,7 @@ fi
 
 "$HARNESS" send "$EDIT_SESSION" End >/dev/null
 "$HARNESS" send "$EDIT_SESSION" -l X >/dev/null
-"$HARNESS" settle "$EDIT_SESSION" >/dev/null 2>&1
-if frame_has_marker "$EDIT_SESSION" 'alphaX' '▎' '97,131,187,255'; then
+if wait_for_marker "$EDIT_SESSION" 'alphaX' '▎' '97,131,187,255'; then
   echo '  PASS  edited existing line paints the modified-colored ▎ glyph'
 else
   echo '  FAIL  edited existing line lacks the modified-colored ▎ glyph'
@@ -121,9 +161,11 @@ fi
 # Save through the real binding; HEAD is unchanged, so the modified marker must survive the save and
 # the existing GitWatcher reconciliation that follows it.
 "$HARNESS" send "$EDIT_SESSION" C-s >/dev/null
-sleep 0.6
-"$HARNESS" settle "$EDIT_SESSION" >/dev/null 2>&1
-if frame_has_marker "$EDIT_SESSION" 'alphaX' '▎' '97,131,187,255'; then
+if ! wait_for_saved_content "$FIXTURE_ROOT/tracked.txt" $'alphaX\nbeta\ngamma'; then
+  echo '  FAIL  Control+s did not persist the edited fixture before git reconciliation'
+  exit 1
+fi
+if require_marker_remains_for "$EDIT_SESSION" 'alphaX' '▎' '97,131,187,255'; then
   echo '  PASS  modified marker converges after save and git reconciliation'
 else
   echo '  FAIL  modified marker disappeared after save/reconciliation'
@@ -136,9 +178,7 @@ fi
 git -C "$FIXTURE_ROOT" add tracked.txt
 git -C "$FIXTURE_ROOT" commit -qm 'advance HEAD'
 printf 'reconcile\n' > "$FIXTURE_ROOT/zz-reconcile-trigger.txt"
-sleep 1.2
-"$HARNESS" settle "$EDIT_SESSION" >/dev/null 2>&1
-if frame_has_no_diff_marker "$EDIT_SESSION"; then
+if wait_for_no_diff_marker "$EDIT_SESSION" 'alphaX'; then
   echo '  PASS  external HEAD advance clears the marker after git reconciliation'
 else
   echo '  FAIL  marker stayed based on the previous HEAD after reconciliation'
@@ -148,8 +188,7 @@ fi
 "$HARNESS" send "$EDIT_SESSION" End >/dev/null
 "$HARNESS" send "$EDIT_SESSION" Enter >/dev/null
 "$HARNESS" send "$EDIT_SESSION" -l 'added line' >/dev/null
-"$HARNESS" settle "$EDIT_SESSION" >/dev/null 2>&1
-if frame_has_marker "$EDIT_SESSION" 'added line' '▎' '65,166,181,255'; then
+if wait_for_marker "$EDIT_SESSION" 'added line' '▎' '65,166,181,255'; then
   echo '  PASS  appended buffer line paints the added-colored ▎ glyph'
 else
   echo '  FAIL  appended buffer line lacks the added-colored ▎ glyph'
@@ -167,12 +206,10 @@ if ! "$HARNESS" ready "$DELETE_SESSION" 20 >/dev/null || ! open_only_file "$DELE
   echo '  FAIL  editor did not reopen the tracked fixture file'
   exit 1
 fi
-sleep 0.8
 "$HARNESS" send "$DELETE_SESSION" Down >/dev/null
 "$HARNESS" send "$DELETE_SESSION" Home >/dev/null
 "$HARNESS" send "$DELETE_SESSION" BSpace >/dev/null
-"$HARNESS" settle "$DELETE_SESSION" >/dev/null 2>&1
-if frame_has_marker "$DELETE_SESSION" 'gamma' '▁' '219,75,75,255'; then
+if wait_for_marker "$DELETE_SESSION" 'gamma' '▁' '219,75,75,255'; then
   echo '  PASS  removed line paints the deleted-colored ▁ hint on the following line'
 else
   echo '  FAIL  removed line lacks the deleted-colored ▁ hint on the following line'

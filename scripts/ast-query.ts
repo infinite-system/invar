@@ -3,6 +3,7 @@
 // whole src/modules tree: parsing is cheap, only type-CHECKING is slow, and this never type-checks.
 // Usage:
 //   bun scripts/ast-query.ts calls <name>         # genuine call sites of a bare identifier
+//   bun scripts/ast-query.ts named-calls <name>   # identifier or property call sites
 //   bun scripts/ast-query.ts news <ClassName>     # `new X(...)` construction sites
 //   bun scripts/ast-query.ts identifiers <name>   # every identifier occurrence (declarations + uses)
 //   bun scripts/ast-query.ts classes              # every class declaration
@@ -32,7 +33,7 @@ const queryName = positional[1];
 
 if (!queryMode) {
   console.error(
-    'usage: bun scripts/ast-query.ts <calls|news|identifiers|classes|module-functions|private-members|text-input-census> [name] [--tests] [--path <root>]',
+    'usage: bun scripts/ast-query.ts <calls|named-calls|news|identifiers|classes|module-functions|private-members|text-input-census> [name] [--tests] [--path <root>]',
   );
   process.exit(2);
 }
@@ -116,6 +117,15 @@ const predicateByMode: Record<string, MatchPredicate> = {
     node.expression.text === queryName
       ? `${queryName}(…)`
       : null,
+  'named-calls': (node) => {
+    if (!ts.isCallExpression(node)) return null;
+    const calleeName = ts.isIdentifier(node.expression)
+      ? node.expression.text
+      : ts.isPropertyAccessExpression(node.expression)
+        ? node.expression.name.text
+        : null;
+    return calleeName === queryName ? `${queryName}(…)` : null;
+  },
   news: (node) =>
     ts.isNewExpression(node) &&
     ts.isIdentifier(node.expression) &&
@@ -155,7 +165,10 @@ if (!predicate) {
   console.error(`unknown mode: ${queryMode}`);
   process.exit(2);
 }
-if (['calls', 'news', 'identifiers'].includes(queryMode) && !queryName) {
+if (
+  ['calls', 'named-calls', 'news', 'identifiers'].includes(queryMode) &&
+  !queryName
+) {
   console.error(`mode ${queryMode} needs a name argument`);
   process.exit(2);
 }

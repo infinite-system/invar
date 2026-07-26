@@ -66,15 +66,43 @@ open_via_quickopen() { # <session> <letters...>
 
 field() { "$H" field "$1" "$2"; }
 halfblock_glyphs() { "$H" capture "$1" | grep -o "▀" | wc -l | tr -d ' '; }
+wait_for_field() {
+  local session="$1" field_name="$2" expected_value="$3"
+  local attempt
+  for attempt in $(seq 1 200); do
+    [ "$(field "$session" "$field_name")" = "$expected_value" ] && return 0
+    sleep 0.05
+  done
+  return 1
+}
+wait_for_raw_pattern() {
+  local raw_log="$1" pattern="$2"
+  local attempt
+  for attempt in $(seq 1 200); do
+    grep -aFq "$pattern" "$raw_log" && return 0
+    sleep 0.05
+  done
+  return 1
+}
+wait_for_process_exit() {
+  local process_identifier="$1"
+  local attempt
+  for attempt in $(seq 1 200); do
+    ! kill -0 "$process_identifier" 2>/dev/null && return 0
+    sleep 0.05
+  done
+  return 1
+}
 
 echo "== B) KITTY tier: transmit APC on open, delete on switch, delete-all on quit =="
 S="pix-$$-kitty"; RAW="/tmp/pix-raw-$$-kitty.log"
 if drive kitty TUI_GRAPHICS_TIER=kitty; then
   echo "  PASS  boot: ready+quiescent"
   open_via_quickopen "$S" p i c t u r e
+  wait_for_field "$S" activeFileIsImage true
   chk "active buffer is the image" "$(field "$S" activeFileIsImage)" "true"
-  sleep 1.0 # the placement emits after frames settle
-  if grep -aq $'\x1b_Ga=T' "$RAW" && grep -aq 'i=70' "$RAW"; then
+  if wait_for_raw_pattern "$RAW" $'\x1b_Ga=T' \
+    && wait_for_raw_pattern "$RAW" 'i=70'; then
     echo "  PASS  kitty transmit APC (a=T, image id) reached the pty stream"
   else
     echo "  FAIL  no kitty transmit APC in the raw stream"; fail=1
@@ -92,17 +120,17 @@ if drive kitty TUI_GRAPHICS_TIER=kitty; then
   fi
   chk "app alive after kitty placement" "$(field "$S" ready)" "true"
   open_via_quickopen "$S" s a m p l e
+  wait_for_field "$S" activeFileIsImage false
   chk "switching to .ts leaves the image buffer" "$(field "$S" activeFileIsImage)" "false"
-  sleep 0.3
-  if grep -aq $'\x1b_Ga=d,d=I' "$RAW"; then
+  if wait_for_raw_pattern "$RAW" $'\x1b_Ga=d,d=I'; then
     echo "  PASS  placement delete (d=I) emitted on buffer switch"
   else
     echo "  FAIL  no placement delete after leaving the image"; fail=1
   fi
   open_via_quickopen "$S" p i c t u r e
-  sleep 1.0
-  "$H" send "$S" C-q >/dev/null; sleep 1.5
-  if grep -aq $'\x1b_Ga=d,d=A' "$RAW"; then
+  wait_for_field "$S" activeFileIsImage true
+  "$H" send "$S" C-q >/dev/null
+  if wait_for_raw_pattern "$RAW" $'\x1b_Ga=d,d=A'; then
     echo "  PASS  delete-all sweep (d=A) emitted on quit — no image leaks onto the shell"
   else
     echo "  FAIL  no delete-all sweep on quit"; fail=1
@@ -117,9 +145,9 @@ S="pix-$$-sixel"; RAW="/tmp/pix-raw-$$-sixel.log"
 if drive sixel TUI_GRAPHICS_TIER=sixel; then
   echo "  PASS  boot: ready+quiescent"
   open_via_quickopen "$S" p i c t u r e
+  wait_for_field "$S" activeFileIsImage true
   chk "active buffer is the image" "$(field "$S" activeFileIsImage)" "true"
-  sleep 1.5 # sixel encodes the full pixel grid before emitting
-  if grep -aq $'\x1bP0;1;0q"1;1;' "$RAW"; then
+  if wait_for_raw_pattern "$RAW" $'\x1bP0;1;0q"1;1;'; then
     echo "  PASS  sixel DCS payload (introducer + raster attributes) reached the pty stream"
   else
     echo "  FAIL  no sixel DCS payload in the raw stream"; fail=1
@@ -131,8 +159,17 @@ if drive sixel TUI_GRAPHICS_TIER=sixel; then
     echo "  FAIL  expected blank cells under sixel graphics, found $glyphs ▀ glyphs"; fail=1
   fi
   chk "app alive after sixel paint" "$(field "$S" ready)" "true"
-  "$H" send "$S" C-q >/dev/null; sleep 1.0
-  echo "  PASS  sixel session quit clean (inert pixels need no sweep)"
+  sixel_pane_process_identifier="$(tmux display-message -p -t "$S" '#{pane_pid}')"
+  sixel_application_process_identifier="$(
+    pgrep -P "$sixel_pane_process_identifier" | head -1
+  )"
+  "$H" send "$S" C-q >/dev/null
+  if [ -n "$sixel_application_process_identifier" ] \
+    && wait_for_process_exit "$sixel_application_process_identifier"; then
+    echo "  PASS  sixel session quit clean (inert pixels need no sweep)"
+  else
+    echo "  FAIL  sixel session did not exit cleanly"; fail=1
+  fi
 else
   echo "  FAIL  sixel-tier session never became ready"; fail=1
 fi
@@ -143,6 +180,7 @@ S="pix-$$-floor"; RAW="/tmp/pix-raw-$$-floor.log"
 if drive floor; then
   echo "  PASS  boot: ready+quiescent"
   open_via_quickopen "$S" p i c t u r e
+  wait_for_field "$S" activeFileIsImage true
   chk "active buffer is the image" "$(field "$S" activeFileIsImage)" "true"
   glyphs="$(halfblock_glyphs "$S")"
   if [ "${glyphs:-0}" -gt 500 ]; then
@@ -158,6 +196,7 @@ if drive floor; then
     echo "  PASS  no graphics placement on the floor (tmux guard + capability silence)"
   fi
   open_via_quickopen "$S" d a t a
+  wait_for_field "$S" activeFileIsImage false
   chk "data.bin is not treated as an image" "$(field "$S" activeFileIsImage)" "false"
   if "$H" capture "$S" | grep -q "(binary file not shown)"; then
     echo "  PASS  non-image binary still hits the binary guard"

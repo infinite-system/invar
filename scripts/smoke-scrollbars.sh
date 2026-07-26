@@ -47,8 +47,6 @@ send_option_wheel_right() {
     tmux send-keys -t "$session_name" -l "$(printf '\033[<75;%d;%dM' "$pointer_column" "$pointer_row")"
     sleep 0.025
   done
-  sleep 0.8
-  "$harness" settle "$session_name" 10 >/dev/null 2>&1
 }
 # Bars render as BACKGROUND FILL on blank cells (SolidThumbScrollBar — never block glyphs), so the
 # detectors read the bg lane: a horizontal bar row is an all-blank sidebar row carrying a contiguous
@@ -194,8 +192,91 @@ send_wheel_down() {
     tmux send-keys -t "$session_name" -l "$(printf '\033[<65;%d;%dM' "$pointer_column" "$pointer_row")"
     sleep 0.025
   done
-  sleep 0.8
-  "$harness" settle "$session_name" 10 >/dev/null 2>&1
+}
+
+wait_for_scrollbar_counts() {
+  local frame_file="$1" expected_horizontal_rows="$2" expected_vertical_columns="$3"
+  local attempt
+  for attempt in $(seq 1 200); do
+    if [ "$(horizontal_bar_row_count "$frame_file")" = "$expected_horizontal_rows" ] \
+      && [ "$(vertical_bar_column_count "$frame_file")" = "$expected_vertical_columns" ]; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_horizontal_bar_minimum() {
+  local frame_file="$1" minimum_count="$2"
+  local attempt count
+  for attempt in $(seq 1 200); do
+    count="$(horizontal_bar_row_count "$frame_file")"
+    [ "${count:-0}" -ge "$minimum_count" ] 2>/dev/null && return 0
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_solid_thumb() {
+  local frame_file="$1"
+  local attempt
+  for attempt in $(seq 1 200); do
+    [[ "$(solid_thumb_check "$frame_file")" = OK* ]] && return 0
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_thumb_below() {
+  local frame_file="$1" previous_start="$2"
+  local attempt thumb_result thumb_start
+  for attempt in $(seq 1 200); do
+    thumb_result="$(solid_thumb_check "$frame_file")"
+    thumb_start="$(echo "$thumb_result" | awk '{print $2}')"
+    if [[ "$thumb_result" = OK* ]] \
+      && [ "${thumb_start:-0}" -gt "$previous_start" ] 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+wait_for_thumb_at_or_above() {
+  local frame_file="$1" target_start="$2"
+  local attempt thumb_result thumb_start
+  for attempt in $(seq 1 200); do
+    thumb_result="$(solid_thumb_check "$frame_file")"
+    thumb_start="$(echo "$thumb_result" | awk '{print $2}')"
+    if [[ "$thumb_result" = OK* ]] \
+      && [ "${thumb_start:-999}" -le "$target_start" ] 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+require_frame_text_absent_for() {
+  local frame_file="$1" marker="$2"
+  local attempt
+  for attempt in $(seq 1 10); do
+    frame_contains "$frame_file" "$marker" && return 1
+    sleep 0.05
+  done
+  return 0
+}
+
+require_horizontal_bar_count_remains() {
+  local frame_file="$1" expected_count="$2"
+  local attempt
+  for attempt in $(seq 1 10); do
+    [ "$(horizontal_bar_row_count "$frame_file")" = "$expected_count" ] \
+      || return 1
+    sleep 0.05
+  done
+  return 0
 }
 
 echo "== build narrow overflowing repository fixture =="
@@ -229,6 +310,7 @@ echo "== tree: horizontal bar paints, matches vertical thickness, and reveals cl
 "$harness" launch "$overflow_session" 54x28 env TUI_FRAME_DUMP=1 bun run src/main.ts "$overflow_workspace" >/dev/null
 if "$harness" ready "$overflow_session" 20 >/dev/null; then pass "overflow fixture booted"; else fail "overflow fixture did not boot"; fi
 overflow_frame="$(frame_path "$overflow_session")"
+wait_for_scrollbar_counts "$overflow_frame" 1 1
 tree_horizontal_rows="$(horizontal_bar_row_count "$overflow_frame")"
 tree_vertical_columns="$(vertical_bar_column_count "$overflow_frame")"
 if [ "$tree_horizontal_rows" = "1" ]; then pass "tree paints one horizontal bar row"; else fail "tree horizontal bar row count is $tree_horizontal_rows, expected 1"; fi
@@ -240,18 +322,20 @@ else
 fi
 
 echo "== solid thumb: bg fill on blank cells, no block glyphs, moves with scroll =="
+wait_for_solid_thumb "$overflow_frame"
 solid_thumb_before="$(solid_thumb_check "$overflow_frame")"
 case "$solid_thumb_before" in
   OK*) pass "thumb is a contiguous multi-cell bg-fill run, zero block glyphs (start+length: ${solid_thumb_before#OK })";;
   *) fail "solid-thumb contract: $solid_thumb_before";;
 esac
+thumb_start_before="$(echo "$solid_thumb_before" | awk '{print $2}')"
 send_wheel_down "$overflow_session" 10 10 8
+wait_for_thumb_below "$overflow_frame" "$thumb_start_before"
 solid_thumb_after="$(solid_thumb_check "$overflow_frame")"
 case "$solid_thumb_after" in
   OK*) pass "thumb stays solid while scrolled (start+length: ${solid_thumb_after#OK })";;
   *) fail "solid-thumb contract after scroll: $solid_thumb_after";;
 esac
-thumb_start_before="$(echo "$solid_thumb_before" | awk '{print $2}')"
 thumb_start_after="$(echo "$solid_thumb_after" | awk '{print $2}')"
 if [ -n "$thumb_start_before" ] && [ -n "$thumb_start_after" ] && [ "$thumb_start_after" -gt "$thumb_start_before" ] 2>/dev/null; then
   pass "wheel-down moves the bg-fill thumb down the track ($thumb_start_before -> $thumb_start_after)"
@@ -260,23 +344,34 @@ else
 fi
 # Return the tree to the top so the clipped-tail assertions below see the original window.
 for wheel_up_index in $(seq 1 40); do tmux send-keys -t "$overflow_session" -l "$(printf '\033[<64;10;10M')"; sleep 0.02; done
-sleep 0.8; "$harness" settle "$overflow_session" 10 >/dev/null 2>&1
+wait_for_thumb_at_or_above "$overflow_frame" "$thumb_start_before"
+require_frame_text_absent_for "$overflow_frame" 'CHANGES-END-MARKER' \
+  || fail "tree tail became visible while observing the returned top position"
 if frame_contains "$overflow_frame" 'CHANGES-END-MARKER'; then fail "tree tail was not clipped before scrolling"; else pass "tree tail starts clipped"; fi
 send_option_wheel_right "$overflow_session" 10 5 30
+wait_for_frame_text "$overflow_frame" 'CHANGES-END-MARKER'
 if frame_contains "$overflow_frame" 'CHANGES-END-MARKER'; then pass "Option-wheel reveals the tree filename tail"; else fail "Option-wheel did not reveal the tree filename tail"; fi
 
 echo "== git changes + log: each pane owns a horizontal bar and independent offset =="
 "$harness" send "$overflow_session" C-g >/dev/null
 if wait_for_frame_text "$overflow_frame" 'VERY-LONG-COMM'; then pass "git log loaded in the live panel"; else fail "git log did not load"; fi
-"$harness" settle "$overflow_session" 10 >/dev/null 2>&1
+wait_for_horizontal_bar_minimum "$overflow_frame" 2
 git_horizontal_rows="$(horizontal_bar_row_count "$overflow_frame")"
 if [ "$git_horizontal_rows" -ge 2 ] 2>/dev/null; then pass "changes and log each paint a horizontal bar"; else fail "git painted $git_horizontal_rows horizontal bar rows, expected at least 2"; fi
+require_frame_text_absent_for "$overflow_frame" 'END-MARKER.txt' \
+  || fail "changes tail became visible before horizontal scrolling"
 if frame_contains "$overflow_frame" 'END-MARKER.txt'; then fail "changes tail was not clipped before scrolling"; else pass "changes tail starts clipped"; fi
+require_frame_text_absent_for "$overflow_frame" 'LOG-END-MARKER' \
+  || fail "log tail became visible before horizontal scrolling"
 if frame_contains "$overflow_frame" 'LOG-END-MARKER'; then fail "log tail was not clipped before scrolling"; else pass "log tail starts clipped"; fi
 send_option_wheel_right "$overflow_session" 10 5 30
+wait_for_frame_text "$overflow_frame" 'END-MARKER.txt'
 if frame_contains "$overflow_frame" 'END-MARKER.txt'; then pass "Option-wheel reveals the changes filename tail"; else fail "Option-wheel did not reveal the changes filename tail"; fi
+require_frame_text_absent_for "$overflow_frame" 'LOG-END-MARKER' \
+  || fail "changes scrolling moved the independent log pane during observation"
 if frame_contains "$overflow_frame" 'LOG-END-MARKER'; then fail "changes scrolling moved the independent log pane"; else pass "changes scrolling leaves the log offset untouched"; fi
 send_option_wheel_right "$overflow_session" 10 22 30
+wait_for_frame_text "$overflow_frame" 'LOG-END-MARKER'
 if frame_contains "$overflow_frame" 'LOG-END-MARKER'; then pass "Option-wheel reveals the commit subject tail"; else fail "Option-wheel did not reveal the commit subject tail"; fi
 
 echo "== fitting tree + git panes paint no horizontal bar =="
@@ -296,11 +391,15 @@ printf '%s\n' '{"sidebarWidth":28,"scrollbarThickness":1,"gitSplitRatio":0.5,"sh
 "$harness" launch "$fits_session" 54x28 env TUI_FRAME_DUMP=1 bun run src/main.ts "$fits_workspace" >/dev/null
 if "$harness" ready "$fits_session" 20 >/dev/null; then pass "fitting fixture booted"; else fail "fitting fixture did not boot"; fi
 fits_frame="$(frame_path "$fits_session")"
+wait_for_frame_text "$fits_frame" 'a.txt'
+require_horizontal_bar_count_remains "$fits_frame" 0 \
+  || fail "fitting tree painted a horizontal bar during observation"
 fits_tree_horizontal_rows="$(horizontal_bar_row_count "$fits_frame")"
 if [ "$fits_tree_horizontal_rows" = "0" ]; then pass "fitting tree paints no horizontal bar"; else fail "fitting tree painted $fits_tree_horizontal_rows horizontal bar rows"; fi
 "$harness" send "$fits_session" C-g >/dev/null
 if wait_for_frame_text "$fits_frame" 'fit'; then pass "fitting git panel loaded"; else fail "fitting git panel did not load"; fi
-"$harness" settle "$fits_session" 10 >/dev/null 2>&1
+require_horizontal_bar_count_remains "$fits_frame" 0 \
+  || fail "fitting git panes painted a horizontal bar during observation"
 fits_git_horizontal_rows="$(horizontal_bar_row_count "$fits_frame")"
 if [ "$fits_git_horizontal_rows" = "0" ]; then pass "fitting git panes paint no horizontal bar"; else fail "fitting git panes painted $fits_git_horizontal_rows horizontal bar rows"; fi
 

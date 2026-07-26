@@ -80,7 +80,11 @@ try {
     (snapshot) => snapshot.findText('paste fixture') !== null,
   );
   driver.sendKeys('Right');
-  await driver.awaitQuiescence();
+  await awaitStatusPublication(
+    statusPath,
+    'the opened paste fixture has editor focus',
+    (status) => status.focus === 'editor',
+  );
   pass('editor is ready for bracketed paste');
 
   console.log(

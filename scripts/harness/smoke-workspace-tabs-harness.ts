@@ -329,7 +329,14 @@ try {
   snapshot = driver.snapshot();
   clickMarker(driver, snapshot, secondName.slice(0, 17));
   await driver.awaitQuiescence();
-  const firstSwitchedFrameStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const firstSwitchedFrameStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the switched frame is published before the watcher walk completes',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      status.gitWatcherActivationCompleted === false,
+  );
   requireCondition(
     firstSwitchedFrameStatus.activeWorkspaceRoot === secondRoot,
     'the first switched frame belongs to the selected workspace',

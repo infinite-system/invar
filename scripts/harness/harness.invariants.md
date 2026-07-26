@@ -262,7 +262,9 @@ required comparison region while the invariant region stays byte-identical.
 
 **Scope:** `PtyTestDriver`, `ContentInvarianceOptions`, every
 `scripts/harness/smoke-*-harness.ts` port, and shared harness helpers. Frame counts may diagnose output
-volume, but they never identify the state a waiter expects.
+volume, but they never identify the state a waiter expects. Fixture operations that consume
+app-produced external state — `runGit`, file reads or writes, directory or permission changes, and
+spawned processes — must first observe that state at its authoritative disk or process boundary.
 A WAIT MUST BE A CONDITION, and three shapes fail that requirement, not just the frame-ordinal one:
 (a) a target frame ordinal; (b) a predicate the PRE-ACTION state already satisfies — existence and type
 checks like `typeof status.field === 'number'` or `field !== undefined`, since a field that exists before
@@ -310,7 +312,9 @@ visual assertion sampling the grid after only status publication or output quies
 wait whose predicate the pre-action state already satisfied (so the wait returns immediately and the
 next step races); a bare `Bun.sleep` standing between a drive and the assertion that verifies it; a
 visual stability claim expressed as frame silence; a content-invariance assertion with no required
-changed region proving the action occurred.
+changed region proving the action occurred; `runGit`, a file operation, or a spawned process consuming
+state produced asynchronously by the app before a deadline-bounded disk or process observation proves
+that state exists.
 
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
@@ -318,7 +322,7 @@ scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Async-published state is always awaited
 

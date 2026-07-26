@@ -69,6 +69,28 @@ async function awaitOutputSequenceCountAbove(
   throw new Error(`Timed out waiting for ${description}`);
 }
 
+async function requireOutputSequenceCountRemainsUnchangedFor(
+  driver: PtyTestDriver.Model,
+  sequence: string,
+  expectedCount: number,
+  observationMilliseconds: number,
+  description: string,
+): Promise<void> {
+  const deadline = performance.now() + observationMilliseconds;
+  let sequenceCountRemainedUnchanged = true;
+  while (performance.now() < deadline) {
+    if (driver.outputSequenceCount(sequence) !== expectedCount) {
+      sequenceCountRemainedUnchanged = false;
+      break;
+    }
+    await Bun.sleep(Math.min(10, deadline - performance.now()));
+  }
+  HarnessSmoke.Class.requireCondition(
+    sequenceCountRemainedUnchanged,
+    description,
+  );
+}
+
 const pngPath = '/tmp/ivue-cart-dark.png';
 HarnessSmoke.Class.requireCondition(
   await Bun.file(pngPath).exists(),
@@ -318,17 +340,11 @@ async function driveKittyTier(): Promise<void> {
       'Settings remains painted after resize',
       (candidate) => candidate.findText('Settings') !== null,
     );
-    // This sleep STAYS, and the distinction matters. The three converted above were
-    // POSITIVE claims (a sequence must arrive), where a sleep races the arrival and a
-    // condition wait is strictly better. This one is an ABSENCE claim — no NEW placement
-    // may appear while Settings is open — and for absence a longer wait is the SAFER
-    // direction, so converting it to a condition wait would be meaningless (the condition
-    // is "nothing happened"). Its real weakness is that it passes whenever graphics are
-    // broken entirely; the fix is the liveness anchoring tracked in the content-invariance
-    // work, not a different wait here.
-    await Bun.sleep(100);
-    HarnessSmoke.Class.requireCondition(
-      driver.outputSequenceCount('\x1b_Ga=T') === placementCountWithoutOverlay,
+    await requireOutputSequenceCountRemainsUnchangedFor(
+      driver,
+      '\x1b_Ga=T',
+      placementCountWithoutOverlay,
+      100,
       'resize while Settings is open does not restore the kitty placement',
     );
     driver.sendKeys('Escape');

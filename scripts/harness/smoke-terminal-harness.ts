@@ -96,7 +96,14 @@ async function collectTerminalScrollFrames(
   panelRectangle: Rectangle,
 ): Promise<readonly number[]> {
   const scrollPositions: number[] = [];
-  let nextFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+  let previousStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the terminal scroll position and settled frame are published before wheel input',
+    (status) =>
+      Number.isFinite(Number(status.terminalScrollTop)) &&
+      Number.isFinite(Number(status.frame)),
+  );
   const column = panelRectangle.left + Math.floor(panelRectangle.width / 2);
   const row = panelRectangle.top + 6;
   for (let wheelEventIndex = 0; wheelEventIndex < 18; wheelEventIndex += 1) {
@@ -108,13 +115,28 @@ async function collectTerminalScrollFrames(
     });
   }
   for (let frameIndex = 0; frameIndex < 5; frameIndex += 1) {
-    await nextFrame;
-    scrollPositions.push(
-      Number(HarnessSmoke.Class.readStatus(statusPath).terminalScrollTop),
-    );
-    if (frameIndex < 4) {
-      nextFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+    const previousFrame = Number(previousStatus.frame);
+    const previousScrollTop = Number(previousStatus.terminalScrollTop);
+    try {
+      previousStatus = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        'terminal momentum publishes a new settled frame and row offset',
+        (status) =>
+          Number(status.frame) > previousFrame &&
+          Number(status.terminalScrollTop) !== previousScrollTop,
+        2_000,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith('Timed out waiting for terminal momentum')
+      ) {
+        break;
+      }
+      throw error;
     }
+    scrollPositions.push(Number(previousStatus.terminalScrollTop));
   }
   return scrollPositions;
 }
@@ -127,6 +149,33 @@ async function awaitFileBytes(filePath: string): Promise<Uint8Array> {
     await Bun.sleep(10);
   }
   throw new Error(`Timed out waiting for child input capture at ${filePath}`);
+}
+
+async function observeTerminalScrollStateRemainsUnchangedFor(
+  statusPath: string,
+  expectedScrollTop: number,
+  expectedContentRows: number,
+  observationMilliseconds: number,
+): Promise<StatusSnapshot> {
+  const deadline = performance.now() + observationMilliseconds;
+  let status = HarnessSmoke.Class.readStatus(statusPath);
+  let scrollStateRemainedUnchanged = true;
+  while (performance.now() < deadline) {
+    status = HarnessSmoke.Class.readStatus(statusPath);
+    if (
+      Number(status.terminalScrollTop) !== expectedScrollTop ||
+      Number(status.terminalScrollContentRows) !== expectedContentRows
+    ) {
+      scrollStateRemainedUnchanged = false;
+      break;
+    }
+    await Bun.sleep(Math.min(20, deadline - performance.now()));
+  }
+  HarnessSmoke.Class.requireCondition(
+    scrollStateRemainedUnchanged,
+    'the child-owned wheel observation window preserves host scroll state',
+  );
+  return status;
 }
 
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-terminal-harness-home-'));
@@ -406,10 +455,17 @@ try {
     ),
     'upward terminal glide is monotonic while its impulse decays',
   );
-  const scrollTopBeforeReversal = Number(
-    HarnessSmoke.Class.readStatus(statusPath).terminalScrollTop,
+  const reversalBaselineStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the terminal scroll position is published before reversal',
+    (status) =>
+      Number.isFinite(Number(status.terminalScrollTop)) &&
+      Number.isFinite(Number(status.frame)),
   );
-  let reversalFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+  const scrollTopBeforeReversal = Number(
+    reversalBaselineStatus.terminalScrollTop,
+  );
   driver.sendMouse({
     kind: 'wheel',
     column: panelRectangle.left + Math.floor(panelRectangle.width / 2),
@@ -417,31 +473,40 @@ try {
     direction: 'down',
   });
   const reversalPositions = [scrollTopBeforeReversal];
-  let observedReversal = false;
-  for (
-    let reversalFrameIndex = 0;
-    reversalFrameIndex < 10;
-    reversalFrameIndex += 1
-  ) {
-    await reversalFrame;
-    const position = Number(
-      HarnessSmoke.Class.readStatus(statusPath).terminalScrollTop,
-    );
-    reversalPositions.push(position);
-    const previousPosition =
-      reversalPositions[reversalPositions.length - 2] ?? position;
-    if (position > previousPosition) {
-      observedReversal = true;
-      break;
-    }
-    reversalFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
-  }
+  let previousReversalFrame = Number(reversalBaselineStatus.frame);
+  let previousReversalPosition = scrollTopBeforeReversal;
+  const reversalStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the contrary notch publishes a downward terminal row reversal',
+    (status) => {
+      const frame = Number(status.frame);
+      const position = Number(status.terminalScrollTop);
+      if (frame <= previousReversalFrame || !Number.isFinite(position)) {
+        return false;
+      }
+      reversalPositions.push(position);
+      const observedDownwardTransition = position > previousReversalPosition;
+      const remainsAboveLiveBottom =
+        position <
+        Number(status.terminalScrollContentRows) -
+          Number(status.terminalScrollViewportRows);
+      previousReversalFrame = frame;
+      previousReversalPosition = position;
+      return observedDownwardTransition && remainsAboveLiveBottom;
+    },
+    20_000,
+  );
+  const observedReversal =
+    Number(reversalStatus.terminalScrollTop) >
+    (reversalPositions[reversalPositions.length - 2] ??
+      Number(reversalStatus.terminalScrollTop));
   HarnessSmoke.Class.requireCondition(
     observedReversal,
     `contrary notch reverses terminal row direction within synchronized frames ` +
       `(${reversalPositions.join(',')})`,
   );
-  const scrolledStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const scrolledStatus = reversalStatus;
   HarnessSmoke.Class.requireCondition(
     Number(scrolledStatus.terminalScrollTop) <
       Number(scrolledStatus.terminalScrollContentRows) -
@@ -497,7 +562,13 @@ try {
     /^\x1b\[<64;\d+;\d+M$/.test(childWheelText),
     `child received one SGR wheel event ${JSON.stringify(childWheelText)}`,
   );
-  const afterChildWheelStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const afterChildWheelStatus =
+    await observeTerminalScrollStateRemainsUnchangedFor(
+      statusPath,
+      scrollTopBeforeChildWheel,
+      scrollContentRowsBeforeChildWheel,
+      250,
+    );
   HarnessSmoke.Class.requireCondition(
     Number(afterChildWheelStatus.terminalScrollTop) ===
       scrollTopBeforeChildWheel &&

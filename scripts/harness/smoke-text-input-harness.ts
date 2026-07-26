@@ -283,7 +283,12 @@ try {
     '',
     'open-project Right moves within text before navigating',
   );
-  const beforeDrillStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const beforeDrillStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the open-project query remains the full navigator path',
+    (status) => status.quickOpenQuery === navigatorPath,
+  );
   HarnessSmoke.Class.requireCondition(
     beforeDrillStatus.quickOpenQuery === navigatorPath,
     'open-project Right with text to its right does not drill into a folder',

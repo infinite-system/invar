@@ -123,29 +123,26 @@ try {
     (status) => String(status.activeBuffer).endsWith('/untracked.txt'),
   );
   HarnessSmoke.Class.pass('opened untracked.txt');
-  await HarnessSmoke.Class.awaitStatus(
+  const untrackedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the untracked document publishes no blame author',
     (status) => status.currentLineBlameAuthor === '',
   );
   HarnessSmoke.Class.pass('untracked document has no blame author');
-  // This step used to assert that NO frame arrived for 600 ms, which was
-  // unsound rather than merely flaky. GitWatcher runs a 5 s reconcile floor
-  // (startReconcileFloor) that refreshes git state unconditionally so the panel
-  // converges without watcher notifications; this fixture creates untracked.txt
-  // moments earlier, so the next tick discovers a REAL status change and
-  // repaints legitimately. A 600 ms window therefore had roughly a 12 percent
-  // chance of containing a correct repaint, and no wall-clock window can tell
-  // "the interface is churning" apart from "the convergence floor delivered a
-  // real change" (reproduced 1-in-3 solo on an idle machine, 2026-07-25).
-  //
-  // The claim actually worth making is about STATE, not about paint: a document
-  // outside version control keeps publishing no blame author no matter how many
-  // times git state reconciles underneath it. That is immune to both machine
-  // load and timer phase.
-  await driver.awaitQuiescence();
-  const settledStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const changedCountBeforeReconcile = Number(untrackedStatus.gitChangedCount);
+  await Bun.write(
+    join(fixtureRoot, 'reconcile-liveness.txt'),
+    'force a watched-tree reconciliation\n',
+  );
+  const settledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the watched-tree reconcile advances while blame stays absent',
+    (status) =>
+      Number(status.gitChangedCount) > changedCountBeforeReconcile &&
+      status.currentLineBlameAuthor === '',
+  );
   HarnessSmoke.Class.requireCondition(
     settledStatus.currentLineBlameAuthor === '',
     'the untracked document still publishes no blame author after reconcile',

@@ -138,11 +138,14 @@ class $SmokeTerminalFollowHarness {
         'agent',
         'agent footer is focused for pointer cycling',
       );
-      await driver.awaitQuiescence();
+      const footerSnapshot = await driver.awaitGridCondition(
+        'the focused agent footer paints the follow-off control',
+        (candidate) => candidate.findText('follow: off') !== null,
+      );
       HarnessSmoke.Class.pass(
         'agent footer repaint is settled before pointer discovery',
       );
-      HarnessSmoke.Class.clickText(driver, driver.snapshot(), 'follow: off', 2);
+      HarnessSmoke.Class.clickText(driver, footerSnapshot, 'follow: off', 2);
       await this.awaitStatus(
         'clicking the discovered footer text cycles off to follow',
         (status) => status.terminalFollowMode === 'follow-all',

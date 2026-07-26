@@ -97,6 +97,50 @@ async function awaitPromptRecord(
   throw new Error(`Timed out waiting for mock process record for ${prompt}`);
 }
 
+async function awaitPromptSequence(
+  promptLogPath: string,
+  expectedPrompts: readonly string[],
+  description: string,
+): Promise<string[]> {
+  const deadline = performance.now() + 5_000;
+  let observedPrompts: string[] = [];
+  while (performance.now() < deadline) {
+    observedPrompts = readPromptLog(promptLogPath);
+    if (
+      observedPrompts.slice(-expectedPrompts.length).join('|') ===
+      expectedPrompts.join('|')
+    ) {
+      return observedPrompts;
+    }
+    await Bun.sleep(20);
+  }
+  throw new Error(
+    `Timed out waiting for ${description}; observed prompts: ` +
+      observedPrompts.join(' → '),
+  );
+}
+
+async function requirePromptCountRemainsUnchangedFor(
+  promptLogPath: string,
+  expectedPromptCount: number,
+  observationMilliseconds: number,
+  description: string,
+): Promise<void> {
+  const deadline = performance.now() + observationMilliseconds;
+  let promptCountRemainedUnchanged = true;
+  while (performance.now() < deadline) {
+    if (readPromptLog(promptLogPath).length !== expectedPromptCount) {
+      promptCountRemainedUnchanged = false;
+      break;
+    }
+    await Bun.sleep(Math.min(20, deadline - performance.now()));
+  }
+  HarnessSmoke.Class.requireCondition(
+    promptCountRemainedUnchanged,
+    description,
+  );
+}
+
 async function submitMessage(
   driver: PtyTestDriver.Model,
   statusPath: string,
@@ -425,7 +469,11 @@ try {
       status.queuedMessageCount === 0 && status.agentTurnState === 'idle',
     10_000,
   );
-  const orderedPrompts = readPromptLog(promptLogPath);
+  const orderedPrompts = await awaitPromptSequence(
+    promptLogPath,
+    ['queue-root', 'queue-one', 'queue-two'],
+    'the backend prompt log to publish the ordered user queue',
+  );
   HarnessSmoke.Class.requireCondition(
     orderedPrompts.slice(-3).join('|') === 'queue-root|queue-one|queue-two',
     `queued backend delivery preserves order (${orderedPrompts.slice(-3).join(' → ')})`,
@@ -462,9 +510,10 @@ try {
     'canceled queued-turn process group is absent',
   );
   const promptsBeforeHoldWindow = readPromptLog(promptLogPath);
-  await Bun.sleep(450);
-  HarnessSmoke.Class.requireCondition(
-    readPromptLog(promptLogPath).length === promptsBeforeHoldWindow.length,
+  await requirePromptCountRemainsUnchangedFor(
+    promptLogPath,
+    promptsBeforeHoldWindow.length,
+    450,
     'cancellation does not auto-fire the queued head',
   );
   snapshot = await driver.awaitGridCondition(
@@ -479,7 +528,11 @@ try {
     (status) =>
       status.queuedMessageCount === 0 && status.agentTurnState === 'idle',
   );
-  const releasedPrompts = readPromptLog(promptLogPath);
+  const releasedPrompts = await awaitPromptSequence(
+    promptLogPath,
+    ['cancel-root', 'held-one', 'held-two'],
+    'the backend prompt log to publish the released queue in order',
+  );
   HarnessSmoke.Class.requireCondition(
     releasedPrompts.slice(-3).join('|') === 'cancel-root|held-one|held-two',
     `held queue releases in order (${releasedPrompts.slice(-3).join(' → ')})`,
