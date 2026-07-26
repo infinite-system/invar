@@ -3,7 +3,50 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-25 ~17:45)
+## RESUME ANCHOR (2026-07-25 ~21:00, overnight run)
+
+Main @ 0bfef8d. The user is ASLEEP with a standing goal: land everything, log it, reduce/distill the
+lessons, make the testing gate fast, refine continuously. Two loops are armed (hourly :07 orchestration,
+10-minute liveness) — VERIFY WITH `CronList`, never from a doc, and re-arm from the verbatim text in
+`.claude/skills/conductor/SKILL.md` if either is missing.
+
+LANDED THIS EVENING: #70 nothing-paints-above-a-modal (`6156999` + contract repair `47802a8`);
+#66 breadcrumb segment picker with drill-in (`3a1f2d1`, which also closed the last text-input census
+entry so that check is an enforced zero); the coverage RATCHET + retry TALLY + a widened harness wait
+invariant (`66dbb36`, `4c31bee`, `8f6fe7b`); and two flake fixes — workspace-tabs fixture isolation
+(`132e2c3`) and the editor-harness stale wait predicate (`47a6fb2`).
+
+IN FLIGHT: `perf-workspace-activation` (#78) is GATING — builder done, rebased, conflict resolved, its
+own smoke 3/3 green. `fix-overlay-wheel-scroll` (#79) has a live builder, 8 files touched including the
+`ScrollableTextViewport` generator, no commit yet. `fix-output-condition-waits` is MINE and uncommitted
+in `/tmp/conductor-markdown`: `PtyTestDriver.awaitOutputCondition` plus three pixel-preview sleep
+conversions, written but NOT yet verified (held while a gate runs).
+
+THE FINDING THAT SHOULD DRIVE THE NEXT SESSION: a census of every gate log on disk showed **121 runs,
+97 green, 33 masked retries** — a quarter of runs carried an intermittent that `retry-once-on-timeout`
+rescued, so a ~27%-flaky suite read as healthy. "Make the gate faster" is therefore mis-stated:
+parallelism was never the bottleneck, TRUSTWORTHINESS was, because each flake costs a five-minute
+re-run and hides itself. Ranked remaining flakes: agent-permissions 4 retries, paste 3, move-line
+2 retries + 2 HARD FAILS (the fails make it the real priority), completion/tabs/layout 1 each.
+
+Three fragility classes are now named and unwritable by invariant, and they are one defect in three
+costumes — A WAIT THAT IS NOT A CONDITION: clock-bound absence windows (#76, content invariance),
+predicates the pre-action state already satisfies (#80, one fixed), and bare sleeps standing in for
+condition waits (#80, 21 sites censused). #76 is the single highest-value item left: all 21
+quiet-serial smokes are in the serial tail ONLY because they call the silence helper and none measures
+a duration, so converting absence to content invariance moves the whole tail into the parallel pool and
+takes the gate from ~5 minutes toward the pool's ~1. Its brief is written at
+`/tmp/TASK-content-invariance.md` and explicitly forbids the frame-ordinal design an established
+invariant already rejected.
+
+MY OWN ERRORS TONIGHT, kept on purpose so they are not repeated: a 3x overestimate of the activation
+cost (the old walk already skipped leaf directories); an unsound frame-ordering design killed by
+reading the invariants file BEFORE writing code; blaming contention for a red that was intrinsic (the
+discriminator is a solo re-run, one minute); and a fixture "fix" that silently deleted an assertion's
+precondition. Full detail in `project.tasks.md` under Corrections, and in
+`~/dev/ibr/Skills/Orchestration Lessons.md`.
+
+## PRIOR ANCHOR (2026-07-25 ~17:45)
 
 Main @ ab5ee84. ~30 landings today, zero regressions on main.
 
