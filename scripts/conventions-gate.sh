@@ -143,9 +143,27 @@ rm -f /tmp/conventions-gate-mapcoh.$$.log
 
 # 11) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
 #     name a concrete plugin, import its module, or dispatch its domain command identifiers.
-plugin_core_references=$(rg -n --glob '*.ts' --glob '!*.test.ts' \
-  "(from ['\"]\\.\\./git/|\\bGit[A-Z]|['\"]git\\.|['\"]git['\"])" \
-  src/modules/workspace/Workspace.ts src/modules/app || true)
+#     THIS CHECK CALLED `rg`, WHICH IS NOT INSTALLED HERE, AND `|| true` SWALLOWED THE ERROR — so it
+#     passed unconditionally and the entire plugin-canvas boundary was unenforced. Third instance of
+#     that class tonight (the merge gate's smoke-classification guard and its liveness probe were the
+#     others). Now `grep -E`, with a POSITIVE CONTROL: the matcher must find a KNOWN-POSITIVE string
+#     before its silence about the real files is trusted, and the check refuses to pass having
+#     inspected zero files.
+plugin_boundary_pattern="(from ['\"]\\.\\./git/|Git[A-Z]|['\"]git\\.|['\"]git['\"])"
+if ! printf '%s\n' "import { GitPanel } from '../git/GitPanel';" \
+     | grep -Eq "$plugin_boundary_pattern"; then
+  echo "CONVENTIONS FAIL: plugin-boundary matcher failed its own positive control — it cannot detect"
+  echo "                  a host file importing GitPanel, so its silence proves nothing."
+  fail=1
+fi
+plugin_boundary_files=$(find src/modules/workspace/Workspace.ts src/modules/app \
+  -name '*.ts' ! -name '*.test.ts' 2>/dev/null)
+if [ -z "$plugin_boundary_files" ]; then
+  echo "CONVENTIONS FAIL: plugin-boundary check inspected NO files — the paths moved or vanished."
+  fail=1
+fi
+plugin_core_references=$(echo "$plugin_boundary_files" | tr '\n' '\0' \
+  | xargs -0 -r grep -nE "$plugin_boundary_pattern" 2>/dev/null || true)
 if [ -n "$plugin_core_references" ]; then
   echo "CONVENTIONS FAIL: host core names the source-control plugin:"
   echo "$plugin_core_references"
