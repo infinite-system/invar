@@ -139,10 +139,28 @@ try {
   console.log(
     '== harness mode coherence: Ctrl+H changes the one FindBar in place ==',
   );
+  // OBSERVE THE STATE, NOT A FRAME. `awaitQuiescence` waits for the next completed frame whenever a
+  // keystroke set a frame expectation — but `Escape` here closes Settings and can leave nothing else to
+  // repaint, and under the idle-quiescence contract a no-op keystroke emits NO frame. The wait then can
+  // only time out: "Timed out waiting for the next complete synchronized frame", which retried in three
+  // gates on 2026-07-26 and was the last recurring masked flake on main. Every other step in this smoke
+  // already waits on published status; these three now do too.
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await awaitStatusPublication(
+    statusPath,
+    'Escape leaves no overlay published',
+    (status) =>
+      status.settingsOpen === false &&
+      status.paletteOpen === false &&
+      status.quickOpenOpen === false &&
+      status.findOpen === false,
+  );
   driver.sendKeys('Control+f');
-  await driver.awaitQuiescence();
+  await awaitStatusPublication(
+    statusPath,
+    'Control+f publishes the FindBar before replace mode is requested',
+    (status) => status.findOpen === true,
+  );
   driver.sendKeys('Control+h');
   await assertOnlyOverlay(driver, statusPath, 'findBar', 'Find / Replace');
   await awaitStatusPublication(
