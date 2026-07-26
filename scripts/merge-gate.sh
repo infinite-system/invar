@@ -328,6 +328,7 @@ validate_smoke_classification() {
   local source_number
   local smoke_source
   local classification_failure_count=0
+  local inspected_source_count=0
   for source_number in "${!parallel_smoke_sources[@]}"; do
     smoke_source="${parallel_smoke_sources[$source_number]}"
     [ -n "$smoke_source" ] || continue
@@ -345,15 +346,45 @@ validate_smoke_classification() {
     #      wait deadline only ever ADDS to a clock reading and compares against
     #      it, and is load-robust because it simply waits longer. Subtraction is
     #      therefore the discriminator between measuring and waiting.
-    if rg -q \
-      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)\s*-|Date\.now\(\)\s*-' \
+    if grep -Eq \
+      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-' \
       "$smoke_source"; then
       echo "  FAIL  parallel-safe classification: ${parallel_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
       classification_failure_count=$((classification_failure_count + 1))
     fi
+    inspected_source_count=$((inspected_source_count + 1))
   done
+  # POSITIVE CONTROL. This guard can only fail toward "pass": if its matcher does not
+  # work, it finds no violations and reports OK. That is not hypothetical — it used
+  # `rg`, which is NOT INSTALLED on this machine, so for 14 gate runs it printed
+  # "every registered timing-sensitive smoke is tagged quiet-serial" while inspecting
+  # nothing, and the error text sat two lines above the OK in every one of those logs.
+  #
+  # The quiet-serial bucket is the KNOWN-POSITIVE set: those smokes are in the tail
+  # precisely because they contain the patterns above. So the guard proves its own
+  # instrument on them before trusting its silence about the parallel bucket. It also
+  # refuses to pass having inspected nothing.
+  if [ "$inspected_source_count" -eq 0 ]; then
+    echo "  FAIL  classification guard inspected NO parallel-safe sources — the registry is empty or unreadable"
+    return 1
+  fi
+  local quiet_bucket_match_count=0
+  local quiet_source
+  for quiet_source in "${quiet_smoke_sources[@]}"; do
+    [ -n "$quiet_source" ] || continue
+    [ -f "$quiet_source" ] || continue
+    if grep -Eq \
+      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-' \
+      "$quiet_source"; then
+      quiet_bucket_match_count=$((quiet_bucket_match_count + 1))
+    fi
+  done
+  if [ "$quiet_bucket_match_count" -eq 0 ]; then
+    echo "  FAIL  classification guard SELF-TEST failed: the timing-sensitivity pattern matched none of the ${#quiet_smoke_sources[@]} quiet-serial sources, so its silence about the $inspected_source_count parallel sources proves nothing (a broken or missing matcher looks exactly like a clean bill of health)"
+    return 1
+  fi
   if [ "$classification_failure_count" -eq 0 ]; then
-    echo "  OK    every registered timing-sensitive smoke is tagged quiet-serial"
+    echo "  OK    every registered timing-sensitive smoke is tagged quiet-serial ($inspected_source_count parallel sources inspected; matcher self-tested against $quiet_bucket_match_count of ${#quiet_smoke_sources[@]} quiet sources)"
     return 0
   fi
   return 1
