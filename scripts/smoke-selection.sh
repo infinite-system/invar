@@ -187,7 +187,9 @@ expect_equal "$(field focus)" 'editor' 'Tab moved focus away from tree'
 expect_equal "$(field treeSelected)" "$tree_selection_before_scroll" 'tree selection survived blur'
 expect_row_background 'directory-15' "$unfocused_selection_color" 'blurred tree selection stayed visibly dimmed'
 
-"$harness" send "$session_name" Tab >/dev/null
+# Back INTO the tree: Tab would indent now that the editor holds focus and owns the key, so the
+# host's focus chord (Ctrl+Shift+J) is what returns. The tree's own Tab (above) still leaves it.
+"$harness" chord "$session_name" Control+Shift+j >/dev/null
 "$harness" send "$session_name" Down >/dev/null
 settle
 expect_equal "$(field treeSelected)" '16' 'refocused tree arrow resumed one item after selection'
@@ -231,7 +233,9 @@ expect_equal "$(field gitChangesIndex)" "$changes_selection_before_scroll" 'chan
 expect_greater_than "$(field changesScrollTop)" '0' 'changes wheel moved only the viewport'
 expect_row_background 'file-10.txt' "$changes_focused_selection_color" 'changes highlight travelled with its item after scroll'
 
-"$harness" send "$session_name" Tab >/dev/null
+# The repository panel has no Tab binding (the host floor may not grow its source-control coupling),
+# so the global focus chord is what blurs it.
+"$harness" chord "$session_name" Control+Shift+j >/dev/null
 settle
 expect_equal "$(field gitChangesIndex)" "$changes_selection_before_scroll" 'changes selection survived blur'
 expect_row_background 'file-10.txt' "$unfocused_selection_color" 'blurred changes selection stayed visibly dimmed'
@@ -261,7 +265,7 @@ expect_equal "$(field gitLogIndex)" "$log_selection_before_scroll" 'log wheel ke
 expect_greater_than "$(field gitLogScrollTop)" '0' 'log wheel moved only the viewport'
 expect_row_background 'commit-14' "$focused_selection_color" 'commit highlight travelled with its item after scroll'
 
-"$harness" send "$session_name" Tab >/dev/null
+"$harness" chord "$session_name" Control+Shift+j >/dev/null
 settle
 expect_equal "$(field gitLogIndex)" "$log_selection_before_scroll" 'commit selection survived blur'
 expect_row_background 'commit-14' "$unfocused_selection_color" 'blurred commit selection stayed visibly dimmed'

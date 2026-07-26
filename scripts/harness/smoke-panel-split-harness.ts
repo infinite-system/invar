@@ -339,9 +339,9 @@ try {
   );
 
   console.log(
-    '== harness panel-split: F9 collapses to the focused pane, then restores the split ==',
+    '== harness panel-split: Ctrl+Shift+S collapses to the focused pane, then restores the split ==',
   );
-  driver.sendKeys('F9');
+  driver.sendKeys('Control+Shift+s');
   const restoredStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -363,7 +363,7 @@ try {
     (cellColumns(restoredStatus)[0] ?? 0) > resizedLeftColumns,
     'restored cell reclaimed the full width',
   );
-  driver.sendKeys('F9');
+  driver.sendKeys('Control+Shift+s');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -373,7 +373,7 @@ try {
       status.panelCellIds.join(',') === 'agent,terminal',
   );
   HarnessSmoke.Class.pass(
-    'F9 produces the same side-by-side terminal and agent layout',
+    'Ctrl+Shift+S produces the same side-by-side terminal and agent layout',
   );
   clickCell(
     driver,

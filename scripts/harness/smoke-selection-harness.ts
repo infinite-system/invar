@@ -19,7 +19,10 @@ function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
 
-function requireCondition(condition: unknown, label: string): asserts condition {
+function requireCondition(
+  condition: unknown,
+  label: string,
+): asserts condition {
   if (!condition) throw new Error(`FAIL ${label}`);
   pass(label);
 }
@@ -55,7 +58,8 @@ function markerPosition(
   marker: string,
 ): { row: number; column: number } {
   const position = snapshot.findText(marker);
-  if (!position) throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
+  if (!position)
+    throw new Error(`Marker is not visible: ${marker}\n${snapshot.text()}`);
   return position;
 }
 
@@ -85,7 +89,9 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
     stdout: 'ignore',
     stderr: 'pipe',
     env: Object.fromEntries(
-      Object.entries(process.env).filter(([key, value]) => value !== undefined && !key.startsWith('GIT_')),
+      Object.entries(process.env).filter(
+        ([key, value]) => value !== undefined && !key.startsWith('GIT_'),
+      ),
     ) as Record<string, string>,
   });
   if (result.exitCode !== 0) {
@@ -96,9 +102,13 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-selection-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-selection-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-selection-harness-home-'),
+);
 for (let directoryNumber = 1; directoryNumber <= 20; directoryNumber++) {
-  mkdirSync(join(fixtureRoot, `directory-${String(directoryNumber).padStart(2, '0')}`));
+  mkdirSync(
+    join(fixtureRoot, `directory-${String(directoryNumber).padStart(2, '0')}`),
+  );
 }
 for (let fileNumber = 1; fileNumber <= 35; fileNumber++) {
   await Bun.write(
@@ -139,15 +149,17 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness selection: file tree owns one item-anchored selection ==');
+  console.log(
+    '== harness selection: file tree owns one item-anchored selection ==',
+  );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('directory-15') !== null,
     15_000,
   );
   pass('overflowing fixture booted through the real PTY');
   clickMarker(driver, snapshot, 'directory-15');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
   );
   pass('click paints the selected tree token with exact truecolor background');
 
@@ -158,8 +170,8 @@ try {
     row: hoverTarget.row,
     button: 'none',
   });
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
   );
   pass('hover leaves the item selection anchored');
 
@@ -170,60 +182,58 @@ try {
     row: selectedTreePosition.row,
     direction: 'down',
   });
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'directory-15', focusedSelectionColor),
   );
   pass('wheel moves the viewport while the highlight travels with its item');
 
   driver.sendKeys('Tab');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'directory-15', unfocusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'directory-15', unfocusedSelectionColor),
   );
   pass('blur preserves a dim truecolor selection');
-  driver.sendKeys('Tab');
+  // Back INTO the tree from the editor: Tab indents there now, so the host focus chord returns.
+  driver.sendKeys('Control+Shift+j');
   await driver.awaitQuiescence();
   driver.sendKeys('Down');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'directory-16', focusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'directory-16', focusedSelectionColor),
   );
   pass('refocused keyboard movement resumes from the selected item');
 
-  console.log('== harness selection: changes and commit-log lists preserve the same contract ==');
+  console.log(
+    '== harness selection: changes and commit-log lists preserve the same contract ==',
+  );
   driver.sendKeys('Control+g');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('file-10.txt') !== null
-      && candidate.findText('commit-14') !== null,
+    (candidate) =>
+      candidate.findText('file-10.txt') !== null &&
+      candidate.findText('commit-14') !== null,
     15_000,
   );
   clickMarker(driver, snapshot, 'file-10.txt');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
   );
   pass('opening a clicked change preserves its dim selection');
 
   driver.sendKeys('Control+g');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(
-      candidate,
-      'file-10.txt',
-      focusedChangesSelectionColor,
-    ),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'file-10.txt', focusedChangesSelectionColor),
   );
   pass('refocusing changes restores the exact focused background');
-  driver.sendKeys('Tab');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
+  // The repository panel has no Tab binding (the host floor may not grow its source-control
+  // coupling), so the global focus chord is what blurs it.
+  driver.sendKeys('Control+Shift+j');
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
   );
   pass('changes selection remains visible on blur');
   driver.sendKeys('Control+g');
   await driver.awaitQuiescence();
   driver.sendKeys('Down');
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(
-      candidate,
-      'file-11.txt',
-      focusedChangesSelectionColor,
-    ),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'file-11.txt', focusedChangesSelectionColor),
   );
   pass('changes keyboard movement advances exactly one item');
 
@@ -240,8 +250,8 @@ try {
     row: commitPosition.row,
     button: 'left',
   });
-  snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
   );
   pass('commit click paints the selected commit token');
   const selectedCommitPosition = markerPosition(snapshot, 'commit-14');
@@ -251,13 +261,13 @@ try {
     row: selectedCommitPosition.row,
     direction: 'down',
   });
-  await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
+  await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'commit-14', focusedSelectionColor),
   );
   pass('commit selection remains item-anchored across wheel scroll');
-  driver.sendKeys('Tab');
-  await driver.awaitSnapshot(
-    (candidate) => markerHasBackground(candidate, 'commit-14', unfocusedSelectionColor),
+  driver.sendKeys('Control+Shift+j');
+  await driver.awaitSnapshot((candidate) =>
+    markerHasBackground(candidate, 'commit-14', unfocusedSelectionColor),
   );
   pass('commit selection stays visibly dimmed on blur');
 

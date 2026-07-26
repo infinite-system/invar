@@ -3,7 +3,7 @@
 # In a temp TS project (foo.ts declares greetWidget, bar.ts uses it) the smoke opens bar.ts,
 # Ctrl+clicks the use site (SGR mouse with the ctrl modifier bit), and asserts the editor now
 # shows foo.ts with the cursor ON the declaration; then it returns to bar.ts and repeats the
-# jump via F12 at the cursor. GUARDED SKIP: when typescript-language-server/typescript are not
+# jump via Ctrl+] at the cursor. GUARDED SKIP: when typescript-language-server/typescript are not
 # installed (repo devDependencies) the smoke skips cleanly — it never false-fails the gate.
 #
 # invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
@@ -147,7 +147,7 @@ print('yes' if any('export function greetWidget' in row.get('text', '') for row 
   fi
 fi
 
-echo '== back on bar.ts, F12 at the cursor performs the same jump =='
+echo '== back on bar.ts, Ctrl+] at the cursor performs the same jump =='
 # Return to bar.ts by clicking its tab in the tab bar (row 1), then place the cursor on the use
 # site with a PLAIN click (no modifier — this must stay an ordinary cursor placement).
 bar_tab_column="$(FRAME_PATH="$PROJECT_ROOT/artifacts/frame-$SESSION_NAME.json" CONTENT_OFFSET="${content_offset:-0}" python3 -c "
@@ -175,17 +175,17 @@ if [ "$(field activeBuffer)" = "$FIXTURE_ROOT/bar.ts" ] && [ "${plain_click_curs
 else
   fail "plain click misbehaved (activeBuffer=$(field activeBuffer) cursor=$plain_click_cursor)"
 fi
-"$HARNESS" send "$SESSION_NAME" F12 >/dev/null
+"$HARNESS" chord "$SESSION_NAME" Control+] >/dev/null
 if wait_for_buffer '/foo.ts' 20; then
   "$HARNESS" settle "$SESSION_NAME" 8 >/dev/null 2>&1 || true
-  f12_cursor="$(cursor_position)"
-  if [ "$f12_cursor" = '0,16' ]; then
-    pass "F12 jumped to the declaration ($f12_cursor)"
+  definition_jump_cursor="$(cursor_position)"
+  if [ "$definition_jump_cursor" = '0,16' ]; then
+    pass "Ctrl+] jumped to the declaration ($definition_jump_cursor)"
   else
-    fail "F12 reached foo.ts but the cursor missed the declaration (cursor=$f12_cursor, want 0,16)"
+    fail "Ctrl+] reached foo.ts but the cursor missed the declaration (cursor=$definition_jump_cursor, want 0,16)"
   fi
 else
-  fail "F12 did not open foo.ts (activeBuffer=$(field activeBuffer))"
+  fail "Ctrl+] did not open foo.ts (activeBuffer=$(field activeBuffer))"
 fi
 
 echo "== RESULT: $([ "$FAILURE_COUNT" -eq 0 ] && echo ALL-PASS || echo FAILURES) =="

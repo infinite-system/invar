@@ -300,9 +300,9 @@ try {
   HarnessSmoke.Class.pass('second status-bar click hides the panel');
 
   console.log(
-    '== harness terminal: F8 opens and focuses the real nested shell ==',
+    '== harness terminal: Ctrl+J opens and focuses the real nested shell ==',
   );
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -314,7 +314,7 @@ try {
       Number(status.terminalColumns) > 0 &&
       Number(status.terminalRows) > 0,
   );
-  HarnessSmoke.Class.pass('F8 opened and focused the terminal content');
+  HarnessSmoke.Class.pass('Ctrl+J opened and focused the terminal content');
   const initialColumns = Number(openedStatus.terminalColumns);
   const initialRows = Number(openedStatus.terminalRows);
   const initialChildColumns = initialColumns - 4;

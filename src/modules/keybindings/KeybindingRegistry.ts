@@ -7,9 +7,25 @@ import { ref, shallowRef } from 'vue';
 // chords are step-list data with a timeout — not bespoke state code.
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
 // invariant: Resolution is layered and later layers shadow earlier (keybindings.invariants.md)
+// invariant: Focus owns the keystroke (keybindings.invariants.md)
 class $KeybindingRegistry {
   protected static get chordTimeoutMilliseconds(): number {
     return 2000;
+  }
+
+  /**
+   * Decode-name normalization — the ONE place a byte-level naming artefact becomes the CHORD the
+   * binding table speaks about. A terminal that sends the bare C0 byte for Ctrl+<letter> loses the
+   * letter: 0x0A is Ctrl+J, but OpenTUI names that byte `linefeed`, so a `{ key: 'j', ctrl: true }`
+   * pattern never matched it and the panel toggle silently did nothing on such terminals. Chord
+   * patterns stay intent-addressed; the artefact is repaired here, not in every call site.
+   * invariant: A terminal delivers encoded sequences not keys (keybindings.invariants.md)
+   */
+  protected normalizeChordEvent(event: ChordEvent): ChordEvent {
+    if (event.name === 'linefeed' && !event.ctrl) {
+      return { ...event, name: 'j', ctrl: true };
+    }
+    return event;
   }
 
   protected layers: Layer[] = [];
@@ -67,7 +83,8 @@ class $KeybindingRegistry {
    * (scanning layers LAST to first — later shadows earlier): guarded singles, unguarded singles,
    * then chord STARTS. Any non-matching event cancels a pending chord and resolves normally.
    */
-  resolve(event: ChordEvent, context: string, nowMs: number): Resolution {
+  resolve(rawEvent: ChordEvent, context: string, nowMs: number): Resolution {
+    const event = this.normalizeChordEvent(rawEvent);
     if (this.pendingChord) {
       const { binding, stepIndex, armedAtMs } = this.pendingChord;
       const keybindingRegistryClass = this
@@ -147,7 +164,8 @@ class $KeybindingRegistry {
    * be stateless). This is how a focused modal/search input lets quit PASS THROUGH instead of
    * swallowing it. invariant: Reserved global chords fire from any mode (keybindings.invariants.md)
    */
-  resolveReservedGlobal(event: ChordEvent): string | null {
+  resolveReservedGlobal(rawEvent: ChordEvent): string | null {
+    const event = this.normalizeChordEvent(rawEvent);
     for (
       let layerIndex = this.layers.length - 1;
       layerIndex >= 0;
@@ -172,18 +190,41 @@ class $KeybindingRegistry {
     this.chordArmed.value = false;
   }
 
-  /** The post-shadowing binding map: action id → the chord pattern(s) that reach it (for hints).
-   *  invariant: Advertised bindings are deliverable bindings (keybindings.invariants.md) */
+  /**
+   * The post-shadowing binding map: action id → the chord pattern(s) that reach it (for hints).
+   *
+   * Later layers overwrite earlier ones (= shadowing), with ONE exception: a chord that needs `super`
+   * never displaces a floor chord. A super chord only exists when the terminal speaks the kitty
+   * protocol AND the user is on a Cmd keyboard; the platform overlay is registered unconditionally, so
+   * without this rule a Linux user's cheat-sheet would advertise `Cmd+P` for Go to File — a chord that
+   * cannot arrive for them. Hints must name a chord the CURRENT session can deliver.
+   * invariant: Advertised bindings are deliverable bindings (keybindings.invariants.md)
+   * invariant: Modifier fidelity varies by protocol (keybindings.invariants.md)
+   */
   effectiveBindings(context: string): Map<string, Keybinding> {
     void this.revision.value; // subscribe
     const effective = new Map<string, Keybinding>();
     for (const layer of this.layers) {
       for (const binding of layer.bindings) {
         if (!this.inContext(binding, context)) continue;
-        effective.set(binding.action, binding); // later layers overwrite = shadowing
+        const existing = effective.get(binding.action);
+        if (
+          existing &&
+          this.requiresSuper(binding) &&
+          !this.requiresSuper(existing)
+        )
+          continue;
+        effective.set(binding.action, binding);
       }
     }
     return effective;
+  }
+
+  /** Whether reaching this binding needs the kitty-only `super` modifier (Cmd). */
+  protected requiresSuper(binding: Keybinding): boolean {
+    return Boolean(
+      binding.chord?.super || binding.steps?.some((step) => step.super),
+    );
   }
 
   /** User-facing hint for the binding that is actually effective after all overlays and rebinds. */
@@ -208,6 +249,50 @@ class $KeybindingRegistry {
         return parts.join('+');
       })
       .join(' then ');
+  }
+
+  /**
+   * The reserved-set audit: every binding the host claims AWAY from the focused surface, with the
+   * problems that disqualify it. A reserved binding must carry a `reservedBecause` warrant and must
+   * carry a modifier — an unmodified key is content in some focused surface, so the host may never
+   * take one (this is the clause that rejects `Tab → focus.toggle`). A bare FUNCTION key is the one
+   * bounded exception: it produces no character and is kept only as the deliverability fallback for
+   * a total-loss action (quit), at the stated cost that a full-screen TUI binding the same F-key
+   * loses it. See project.keyboard.md §5.
+   * invariant: Focus owns the keystroke (keybindings.invariants.md)
+   */
+  reservedSetProblems(): string[] {
+    const problems: string[] = [];
+    for (const layer of this.layers) {
+      for (const binding of layer.bindings) {
+        if (!binding.reserved) continue;
+        const chord = binding.chord;
+        if (!chord) {
+          problems.push(
+            `${binding.action}: reserved without a single chord (the reserved check is stateless)`,
+          );
+          continue;
+        }
+        if (!binding.reservedBecause) {
+          problems.push(
+            `${binding.action} (${chord.key}): no reservedBecause warrant`,
+          );
+        }
+        const isFunctionKey = /^f[0-9]{1,2}$/.test(chord.key);
+        if (
+          !chord.ctrl &&
+          !chord.alt &&
+          !chord.super &&
+          !chord.shift &&
+          !isFunctionKey
+        ) {
+          problems.push(
+            `${binding.action} (${chord.key}): reserved chord carries no modifier`,
+          );
+        }
+      }
+    }
+    return problems;
   }
 
   /** Every action bound with `super` must also be reachable without it (the canonical floor).
@@ -270,6 +355,11 @@ export interface Keybinding {
    *  input is focused — so the user is never trapped. Must be a single chord (no steps): the
    *  pass-through check is stateless. invariant: Reserved global chords fire from any mode. */
   reserved?: boolean;
+  /** The WARRANT for a `reserved` claim, inline on the binding so the justification can never be
+   *  separated from the theft it justifies. Names which admission clause admits it (trap avoidance
+   *  or toggle symmetry) — see project.keyboard.md §2.
+   *  invariant: Focus owns the keystroke (keybindings.invariants.md) */
+  reservedBecause?: string;
 }
 
 /** The slice of a decoded key event that resolution needs. */

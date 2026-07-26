@@ -485,6 +485,13 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: mode coherence" bash scripts/smoke-mode-coherence.sh
   parallel_safe_smoke "smoke: mode coherence harness" bun scripts/harness/smoke-mode-coherence-harness.ts
   parallel_safe_full_tmux_smoke "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
+  # The keystroke-ownership contract (#91/#93/#101): Tab/Shift+Tab indentation, the arrival of
+  # every chord that replaced an F-key, the terminal pass-through sent-vs-received sweep, and the
+  # reserved set still overriding a focused terminal. An instrument nobody runs is not a gate — and
+  # the full_tmux bucket IS the bucket nobody runs (#105: a stale glyph rotted there for a day while
+  # every gate stayed green). This smoke is the only proof that the chords replacing the F-keys
+  # actually arrive, so it runs by DEFAULT rather than behind INVAR_FULL_TMUX.
+  parallel_safe_smoke "smoke: keyboard invariant" bash scripts/smoke-keyboard-invariant.sh
   parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
   parallel_safe_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
@@ -521,7 +528,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # Voice picker + mouse-editable settings: seeded voices dir → dynamic-enum picker (keyboard + mouse),
   # rate stepper, boolean toggle, Test-Voice command. No audio (mock TTS).
   parallel_safe_full_tmux_smoke "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
-  # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
+  # Bottom-panel SPLIT (experiment-panel-split): drives Ctrl+Shift+S to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
   parallel_safe_full_tmux_smoke "smoke: activitybar" bash scripts/smoke-activitybar.sh
   parallel_safe_full_tmux_smoke "smoke: panel-split" bash scripts/smoke-panel-split.sh

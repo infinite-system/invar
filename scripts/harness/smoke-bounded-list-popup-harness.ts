@@ -262,7 +262,8 @@ try {
     const previousBufferCount = Number(openingStatus.bufferTabCount);
     if (previousBufferCount >= 100) break;
     if (openingStatus.focus !== 'files') {
-      driver.sendKeys('Tab');
+      // Tab indents in the editor now (#91); the host focus chord is Ctrl+Shift+J.
+      driver.sendKeys('Control+Shift+j');
       await HarnessSmoke.Class.awaitStatus(
         driver,
         statusPath,

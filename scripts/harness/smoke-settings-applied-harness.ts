@@ -860,7 +860,7 @@ try {
         status.panelCellIds.join(',') === 'agent' &&
         status.panelActiveContent === 'agent',
     );
-    panelContentOrderDriver.driver.sendKeys('F8');
+    panelContentOrderDriver.driver.sendKeys('Control+j');
     await HarnessSmoke.Class.awaitStatus(
       panelContentOrderDriver.driver,
       panelContentOrderDriver.statusPath,

@@ -98,6 +98,25 @@ case "$cmd" in
     tmux send-keys -t "$session" "$@"
     sleep 0.25
     ;;
+  chord)
+    # chord <session> <KeyName> — send a MODIFIED chord (e.g. Control+Shift+p, Control+], Alt+z)
+    # encoded by the SAME generator the TypeScript drivers use (scripts/harness/HarnessInput.ts), so a
+    # bash smoke and a PtyTestDriver smoke can never disagree about what byte a chord is. tmux
+    # send-keys cannot name these chords, which is why raw bytes are written literally.
+    # invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
+    # The bytes travel as HEX and are sent with `tmux send-keys -H`: a chord like Ctrl+J is the single
+    # byte 0x0A, and command substitution STRIPS trailing newlines — so carrying raw bytes through
+    # `$(...)` silently loses exactly the control chords this command exists to send.
+    session="$1"; chord_name="$2"
+    chord_hex_bytes="$(HARNESS_CHORD_NAME="$chord_name" "$BUN" -e "import{HarnessInput}from'$ROOT/scripts/harness/HarnessInput.ts';const bytes=Buffer.from(HarnessInput.Class.key(process.env.HARNESS_CHORD_NAME),'binary');process.stdout.write([...bytes].map((byteValue)=>byteValue.toString(16).padStart(2,'0')).join(' '))")"
+    if [ -z "$chord_hex_bytes" ]; then
+      echo "chord: HarnessInput produced no bytes for '$chord_name'" >&2
+      exit 1
+    fi
+    # shellcheck disable=SC2086 -- the hex bytes are separate send-keys arguments by design
+    tmux send-keys -t "$session" -H $chord_hex_bytes
+    sleep 0.25
+    ;;
   paste)
     # paste <session> <text> — inject a BRACKETED PASTE (\e[200~<text>\e[201~), exactly how a
     # clipboard paste or a dictation tool (Hex) delivers bulk text once DECSET 2004 is enabled. The

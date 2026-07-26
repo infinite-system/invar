@@ -6,6 +6,7 @@ import type { Keybinding } from './KeybindingRegistry';
 // Bindings are pure data: chord (or step list) -> action id (+ context / guard).
 // invariant: The canonical layer is the floor (keybindings.invariants.md)
 // invariant: Bindings are intent addressed (keybindings.invariants.md)
+// invariant: Focus owns the keystroke (keybindings.invariants.md)
 class $KeybindingDefaults {
   /**
    * The ONE chord table for every editable one-line field, instantiated per context. A host that
@@ -125,8 +126,19 @@ class $KeybindingDefaults {
       // RESERVED escape hatches: quit fires from ANY mode (even a focused search/modal input) so the
       // user is never trapped. `reserved` routes these ahead of modal input consumption (single chords
       // only — the pass-through check is stateless; the Ctrl+X Ctrl+C chord below is editor-context).
-      { chord: { key: 'q', ctrl: true }, action: 'app.quit', reserved: true },
-      { chord: { key: 'f10' }, action: 'app.quit', reserved: true },
+      // ALIASES COME FIRST, PRIMARY LAST: `effectiveBindings` keeps the LAST binding for an action, so
+      // ordering is what makes the cheat-sheet and status-bar hints advertise the primary chord.
+      // F10 is a RETAINED function-key alias, deliberately: Ctrl+Q is flow-control (XOFF) on some
+      // terminals and VS Code's integrated terminal intercepts it, and the Ctrl+X Ctrl+C form is
+      // multi-step so it can never be reserved — without a second single-chord reserved quit a user
+      // inside a key-hungry focused terminal is TRAPPED. See project.keyboard.md §5.
+      {
+        chord: { key: 'f10' },
+        action: 'app.quit',
+        reserved: true,
+        reservedBecause:
+          'trap avoidance (fallback): the only quit chord a terminal that speaks neither kitty nor modifyOtherKeys can deliver',
+      },
       // Emacs-style quit chord (VS Code's terminal intercepts Ctrl+Q). In the editor WITH a selection,
       // the guarded single below wins and Ctrl+X stays cut.
       {
@@ -136,8 +148,30 @@ class $KeybindingDefaults {
         ],
         action: 'app.quit',
       },
-      { chord: { key: 'p', ctrl: true }, action: 'quickopen.open' }, // VS Code: Ctrl+P = go-to-file
-      { chord: { key: 'p', ctrl: true, shift: true }, action: 'palette.open' }, // Ctrl+Shift+P = command palette
+      {
+        chord: { key: 'q', ctrl: true },
+        action: 'app.quit',
+        reserved: true,
+        reservedBecause:
+          'trap avoidance: the guaranteed exit from a full-screen focused child that consumes every key',
+      },
+      // VS Code: Ctrl+P = go-to-file. shift is EXPLICITLY false, and that is load-bearing: an
+      // unspecified shift is DON'T-CARE, so this binding used to match Ctrl+SHIFT+P too and — being
+      // earlier in the array — SHADOWED the command palette. Ctrl+Shift+P never opened the palette,
+      // which is a large part of why F1 had to exist. invariant: Focus owns the keystroke
+      {
+        chord: { key: 'p', ctrl: true, shift: false },
+        action: 'quickopen.open',
+      },
+      // F1 ALSO opens the palette (VS Code parity: F1 = Show All Commands) and is the SECOND retained
+      // function key — an alias, never the primary. The palette is the universal discovery surface, so
+      // its unreachability is a total loss; F1 is the one chord that survives a terminal speaking
+      // neither the kitty protocol nor xterm modifyOtherKeys. Listed BEFORE the primary so hints show
+      // Ctrl+Shift+P. invariant: Advertised bindings are deliverable bindings
+      { chord: { key: 'f1' }, action: 'palette.open' },
+      // Ctrl+Shift+P = command palette (VS Code parity), the PRIMARY. Deliverable on legacy terminals
+      // in the modifyOtherKeys form (ESC [ 27;6;112 ~) as well as under kitty — measured, not assumed.
+      { chord: { key: 'p', ctrl: true, shift: true }, action: 'palette.open' },
       // Activity-bar view switchers (VS Code parity: Ctrl+Shift+E Explorer / Ctrl+Shift+G Source Control /
       // Ctrl+Shift+X Extensions). Global — they switch the active workspace's sidebar view from anywhere.
       // The PRIMARY affordance is the clickable activity-bar button + its tooltip; these are accelerators.
@@ -169,52 +203,65 @@ class $KeybindingDefaults {
         chord: { key: 'b', ctrl: true, alt: true },
         action: 'view.toggleRightDock',
         reserved: true,
+        reservedBecause:
+          'toggle symmetry: the chord that showed the right dock must hide it while the dock holds focus',
       },
       // Find and Replace are global overlay-switch actions: from any current input overlay, one chord
       // replaces the shared modal slot. They still no-op in Bootstrap when no document is open.
       { chord: { key: 'f', ctrl: true }, action: 'find.open' },
-      { chord: { key: 'h', ctrl: true }, action: 'find.replace' },
-      // F1 ALSO opens the palette (VS Code parity: F1 = Show All Commands). Ctrl+Shift+P is intercepted by
-      // VS Code's own terminal AND is unencodable on legacy (non-kitty) terminals that drop the shift bit
-      // on a control key — F1 is a single unshifted function key that always reaches the app, so the
-      // palette is never unreachable. invariant: Advertised bindings are deliverable bindings.
-      // shift is EXPLICITLY false: Shift+F1 below opens the shortcut cheat-sheet, and an unspecified
-      // shift here is DON'T-CARE — it would swallow the shifted chord.
-      { chord: { key: 'f1', shift: false }, action: 'palette.open' },
-      // Shift+F1 opens the keyboard cheat-sheet. A single function-key chord: decodable on legacy
-      // terminals (CSI 1;2P) and under kitty alike, and taken by nothing else. The sheet lists itself.
-      { chord: { key: 'f1', shift: true }, action: 'help.shortcuts' },
-      { chord: { key: 'g', ctrl: true }, action: 'git.togglePanel' },
-      // Toggle the bottom panel (integrated terminal). THREE deliverable chords for the one action:
-      //   • Ctrl+J — VS Code's own "toggle panel" chord and the RECOMMENDED everyday one: a plain Ctrl+key
-      //     that needs no Fn modifier (F8 does on laptops/Mac) and encodes on every terminal (0x0A).
-      //   • Ctrl+` — the VS Code terminal-specific chord; unencodable on some legacy terminals (they send
-      //     NUL), which is why it silently no-ops for some users.
-      //   • F8 — a single-function-key fallback that is always deliverable (same rationale as F1 aliasing
-      //     the command palette), but on laptop/Mac keyboards needs the Fn chord.
-      // All RESERVED so they fire from any mode — including from inside the focused terminal, to hide it
-      // (VS Code parity: Ctrl+J toggles the panel even while the terminal owns the keyboard).
+      // shift EXPLICITLY false so it cannot shadow Ctrl+Shift+H (the cheat-sheet) below.
+      { chord: { key: 'h', ctrl: true, shift: false }, action: 'find.replace' },
+      // Ctrl+Shift+H opens the keyboard cheat-sheet (H for Help). Replaces Shift+F1: deliverable in the
+      // modifyOtherKeys form on legacy terminals and under kitty, and owned by no terminal emulator.
+      // The sheet lists itself.
       {
-        chord: { key: 'j', ctrl: true },
-        action: 'panel.toggleTerminal',
-        reserved: true,
+        chord: { key: 'h', ctrl: true, shift: true },
+        action: 'help.shortcuts',
       },
+      { chord: { key: 'g', ctrl: true }, action: 'git.togglePanel' },
+      // Toggle the bottom panel (integrated terminal). TWO deliverable chords for the one action:
+      //   • Ctrl+` — the VS Code terminal-specific chord; unencodable on some legacy terminals (they send
+      //     NUL, which decodes as Ctrl+Space), which is why it silently no-ops for some users. Listed
+      //     first so the hint advertises the primary.
+      //   • Ctrl+J — VS Code's own "toggle panel" chord and the PRIMARY: a plain Ctrl+key that needs no
+      //     Fn modifier and encodes on every terminal (the C0 byte 0x0A, which the registry normalizes
+      //     from OpenTUI's `linefeed` name back to the j+ctrl CHORD).
+      // Both RESERVED so they fire from any mode — including from inside the focused terminal, to hide it
+      // (VS Code parity: Ctrl+J toggles the panel even while the terminal owns the keyboard).
       {
         chord: { key: '`', ctrl: true },
         action: 'panel.toggleTerminal',
         reserved: true,
+        reservedBecause:
+          'toggle symmetry: the chord that opened the panel must close it while the panel holds focus',
       },
-      { chord: { key: 'f8' }, action: 'panel.toggleTerminal', reserved: true },
+      // shift EXPLICITLY false: a DON'T-CARE shift here would make the RESERVED panel toggle swallow
+      // Ctrl+Shift+J (focus.toggle) before the focused surface ever saw it.
+      {
+        chord: { key: 'j', ctrl: true, shift: false },
+        action: 'panel.toggleTerminal',
+        reserved: true,
+        reservedBecause:
+          'toggle symmetry: the chord that opened the panel must close it while the panel holds focus',
+      },
       // The native agent (Claude) pane — a second PaneContent in the same bottom slot. Reserved so it
       // toggles from any mode, including from inside a focused pane, exactly like the terminal toggle.
       {
         chord: { key: 'a', ctrl: true, shift: true },
         action: 'panel.toggleAgent',
         reserved: true,
+        reservedBecause:
+          'toggle symmetry: the chord that opened the agent pane must close it while the pane holds focus',
       },
-      // Split the bottom panel into two side-by-side cells (agent | terminal) and back. Reserved so it
-      // fires even while the terminal owns the keyboard.
-      { chord: { key: 'f9' }, action: 'panel.toggleSplit', reserved: true },
+      // Split the bottom panel into two side-by-side cells (agent | terminal) and back. S for Split.
+      // Replaces F9. Reserved so it fires even while the terminal owns the keyboard.
+      {
+        chord: { key: 's', ctrl: true, shift: true },
+        action: 'panel.toggleSplit',
+        reserved: true,
+        reservedBecause:
+          'toggle symmetry: splitting and un-splitting the panel the user is focused inside',
+      },
       // Keyboard parity for the docked contents rows. Panel context keeps these gestures from stealing
       // editor or terminal input anywhere outside the focused bottom panel.
       {
@@ -242,7 +289,14 @@ class $KeybindingDefaults {
         action: 'panel.contentsClose',
         context: 'panel',
       },
-      { chord: { key: 'tab' }, action: 'focus.toggle' },
+      // Toggle focus between the sidebar and the editor. Ctrl+J moves focus in and out of the BOTTOM
+      // dock; Ctrl+Shift+J is the same gesture for the SIDE dock. NOT reserved: the panel toggles
+      // already release a user trapped inside a key-hungry pane, so this fails the trap-avoidance
+      // clause and must not be taken from a focused surface.
+      // It replaces the plain `Tab` this action used to claim GLOBALLY — a host claiming an unmodified
+      // whitespace key that the editor needs for content, which is the violation #91 reported.
+      // invariant: Focus owns the keystroke (keybindings.invariants.md)
+      { chord: { key: 'j', ctrl: true, shift: true }, action: 'focus.toggle' },
       // Editor buffer tabs (item 10a) — global (work in any focus). Ctrl+Tab needs the kitty keyboard
       // protocol; Ctrl+PageUp/PageDown are the widely-supported equivalents.
       { chord: { key: ',', ctrl: true }, action: 'settings.toggle' },
@@ -285,18 +339,13 @@ class $KeybindingDefaults {
       },
       { chord: { key: 'pagedown', ctrl: true }, action: 'buffer.next' },
       { chord: { key: 'pageup', ctrl: true }, action: 'buffer.previous' },
-      // Diff change navigation uses the conventional debugger/diff keys. The same actions are visible
-      // as toolbar buttons and command-palette entries; these bindings are discoverable accelerators.
-      {
-        chord: { key: 'f7', shift: true },
-        action: 'diff.previousChange',
-        context: 'editor',
-      },
-      {
-        chord: { key: 'f7', shift: false },
-        action: 'diff.nextChange',
-        context: 'editor',
-      },
+      // Diff change navigation used to live HERE as F7 / Shift+F7 against the `diff.*` action ids. It
+      // does not any more, in either place: a comparison is a CONTRIBUTED EDITOR SURFACE that holds
+      // the editor column and consumes editor keys before this table is consulted, so under
+      // "focus owns the keystroke" the chord belongs to that surface, which now carries
+      // Ctrl+Shift+Up/Down beside its own n / p (see project.keyboard.md). The palette entries are the
+      // contributing plugin's own commands. Removing them also takes two contributed action names out
+      // of the host's binding floor. invariant: Focus owns the keystroke
       // Markdown preview actions share the visible tab-bar button / hovered link affordance.
       {
         chord: { key: 'v', ctrl: true, shift: true },
@@ -308,8 +357,14 @@ class $KeybindingDefaults {
         action: 'markdown.openHoveredReference',
         context: 'editor',
       },
-      // Go to Definition (VS Code parity: F12; the pointer path is Ctrl/Cmd+click on the symbol).
-      { chord: { key: 'f12' }, action: 'go.definition', context: 'editor' },
+      // Go to Definition. Replaces F12 with Ctrl+] — the vi/ctags tag-jump chord, and a real C0 byte
+      // (0x1D) so it is deliverable on EVERY terminal with no protocol negotiation at all. It also
+      // pairs with the existing Alt+[ go-back. The pointer path is Ctrl/Cmd+click on the symbol.
+      {
+        chord: { key: ']', ctrl: true, shift: false },
+        action: 'go.definition',
+        context: 'editor',
+      },
       // Go Back / Go Forward through the navigation history (VS Code's Alt+Left/Right; here Alt+[ / Alt+]
       // since the arrows move the cursor). Alt+[ / Alt+] are free — only Ctrl+Shift+[/] are bound above.
       {
@@ -390,7 +445,7 @@ class $KeybindingDefaults {
         hostOwnedPlainKeys: ['left', 'right', 'backspace'],
       }),
 
-      // --- shortcut cheat-sheet (captures input while open; Shift+F1 above toggles it globally) ---
+      // --- shortcut cheat-sheet (captures input while open; Ctrl+Shift+H above toggles it globally) ---
       { chord: { key: 'escape' }, action: 'help.close', context: 'help' },
       { chord: { key: 'up' }, action: 'help.up', context: 'help' },
       { chord: { key: 'down' }, action: 'help.down', context: 'help' },
@@ -417,6 +472,11 @@ class $KeybindingDefaults {
       },
 
       // --- files (tree) ---
+      // The tree SURFACE spends Tab on leaving itself. That is not the host claiming Tab: a file tree
+      // has no content use for Tab, so it is free to spend it, exactly as the agent composer spends
+      // Shift+Tab on cycling the permission mode. In the editor the same key indents, because there
+      // ownership follows focus. invariant: Focus owns the keystroke (keybindings.invariants.md)
+      { chord: { key: 'tab' }, action: 'focus.toggle', context: 'files' },
       { chord: { key: 'up' }, action: 'tree.up', context: 'files' },
       { chord: { key: 'down' }, action: 'tree.down', context: 'files' },
       { chord: { key: 'return' }, action: 'tree.activate', context: 'files' },
@@ -429,6 +489,11 @@ class $KeybindingDefaults {
       { chord: { key: 'left' }, action: 'tree.leftCollapse', context: 'files' },
 
       // --- git panel ---
+      // NOTE: the repository panel gets NO Tab binding here, deliberately. The same
+      // surface-spends-Tab reasoning as the file tree applies, but this table is the HOST floor and
+      // the conventions gate ratchets how much source-control coupling it may carry — adding a line
+      // here would grow it. The honest home is the plugin contributing its own binding (#100); until
+      // then the panel is left with Escape and the global focus chord. Reported, not allowlisted.
       { chord: { key: 'up' }, action: 'git.up', context: 'git' },
       { chord: { key: 'down' }, action: 'git.down', context: 'git' },
       { chord: { key: 'pageup' }, action: 'git.pageUp', context: 'git' },
@@ -532,6 +597,21 @@ class $KeybindingDefaults {
         action: 'editor.completion',
         context: 'editor',
       },
+      // TAB INDENTS. The editor surface owns Tab because it holds focus and Tab is CONTENT here — the
+      // previous global `Tab → focus.toggle` was the host claiming an unmodified key it had no warrant
+      // for (#91). With a selection: indent/outdent every selected line; without: one indent unit at
+      // the caret / one unit removed from the line's leading whitespace.
+      // invariant: Focus owns the keystroke (keybindings.invariants.md)
+      {
+        chord: { key: 'tab', shift: false },
+        action: 'editor.indent',
+        context: 'editor',
+      },
+      {
+        chord: { key: 'tab', shift: true },
+        action: 'editor.outdent',
+        context: 'editor',
+      },
       { chord: { key: 'return' }, action: 'editor.newline', context: 'editor' },
       {
         chord: { key: 'backspace' },
@@ -564,8 +644,9 @@ class $KeybindingDefaults {
       },
       { chord: { key: 'escape' }, action: 'editor.escape', context: 'editor' },
       // --- editor: chords ---
+      // shift EXPLICITLY false so the table cannot claim Ctrl+Shift+S, which is the panel split.
       {
-        chord: { key: 's', ctrl: true },
+        chord: { key: 's', ctrl: true, shift: false },
         action: 'editor.save',
         context: 'editor',
       },
@@ -590,8 +671,9 @@ class $KeybindingDefaults {
         action: 'agent.cancelTurn',
         context: 'agent',
       },
+      // Cycle the agent's terminal-follow MODE (M for Mode). Replaces F6.
       {
-        chord: { key: 'f6' },
+        chord: { key: 'm', ctrl: true, shift: true },
         action: 'agent.cycleTerminalFollowMode',
         context: 'agent',
       },

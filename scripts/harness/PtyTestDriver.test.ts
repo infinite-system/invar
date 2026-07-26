@@ -76,7 +76,10 @@ describe('HarnessInput', () => {
     expect(HarnessInput.Class.key('Control+,')).toBe('\x1b[44;5u');
     expect(HarnessInput.Class.key('Alt+F5')).toBe('\x1b[15;3~');
     expect(HarnessInput.Class.key('Alt+[')).toBe('\x1b[27;3;91~');
-    expect(HarnessInput.Class.key('Control+Shift+g')).toBe('\x1b[103;6u');
+    expect(HarnessInput.Class.key('Control+Shift+g')).toBe('\x1b[27;6;103~');
+    // Ctrl+] is a real C0 byte, so it needs no protocol negotiation at all.
+    expect(HarnessInput.Class.key('Control+]')).toBe('\x1d');
+    expect(HarnessInput.Class.key('Control+Shift+Up')).toBe('\x1b[1;6A');
   });
 
   test('maps mouse gestures and bracketed paste to protocol frames', () => {

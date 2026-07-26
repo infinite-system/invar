@@ -79,13 +79,13 @@ ordered by `Settings.panelContentOrder`; the default sequence places agent left 
 new cells from `order`, and `moveOpenContentTo` rebuilds the live `layout` after changing that same
 sequence. `Settings.defaults.panelContentOrder` is `['agent', 'terminal']`.
 
-**Generates:** One ordering rule for automatic split creation, F9 split creation, drag reorder, and
+**Generates:** One ordering rule for automatic split creation, Ctrl+Shift+S split creation, drag reorder, and
 Alt+Up or Alt+Down reorder.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/settings/Settings.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`.
 
-**Impossible if true:** Opening agent and terminal with default settings placing terminal left; F9
+**Impossible if true:** Opening agent and terminal with default settings placing terminal left; Ctrl+Shift+S
 and content-toggle creation producing different orders; a reordered contents list disagreeing with
 the cell spans.
 

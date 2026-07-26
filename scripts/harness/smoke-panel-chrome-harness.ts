@@ -446,8 +446,8 @@ async function driveSecondSize(): Promise<void> {
         endColumnExclusive: 88,
       },
       actionDescription:
-        'F8 opens the compact panel while the top application chrome stays fixed',
-      performAction: () => driver.sendKeys('F8'),
+        'Ctrl+J opens the compact panel while the top application chrome stays fixed',
+      performAction: () => driver.sendKeys('Control+j'),
     });
     const regularStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
@@ -518,7 +518,7 @@ async function driveAsciiHeadingControls(): Promise<void> {
       (status) => status.ready === true && status.terminalVisible === false,
       15_000,
     );
-    driver.sendKeys('F8');
+    driver.sendKeys('Control+j');
     const restingStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -650,8 +650,8 @@ try {
       endColumnExclusive: 120,
     },
     actionDescription:
-      'F8 opens the panel while the top application chrome stays fixed',
-    performAction: () => driver.sendKeys('F8'),
+      'Ctrl+J opens the panel while the top application chrome stays fixed',
+    performAction: () => driver.sendKeys('Control+j'),
   });
   const restingHeadingStatus = await HarnessSmoke.Class.awaitStatus(
     driver,

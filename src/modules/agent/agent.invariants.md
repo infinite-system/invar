@@ -372,7 +372,7 @@ truthful at its own boundary.
   never trigger it.
 - Live terminal — `terminalExited` is read at delivery, so buffered output parsed after process death
   starts no observation turn.
-- One mode cell — footer clicks, F6, the command palette, Settings, delivery, and status all read or
+- One mode cell — footer clicks, Ctrl+Shift+M, the command palette, Settings, delivery, and status all read or
   mutate `Settings.agentTerminalFollowMode`.
 
 **Mechanism:** `AgentTerminalFollow` subscribes once to the terminal observation port and reads the

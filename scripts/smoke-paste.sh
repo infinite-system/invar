@@ -61,15 +61,15 @@ gt "multi-line paste bumped bufferRevision" "$(f bufferRevision)" "$rev2"
 has "first pasted line renders" "ALPHALINE"
 has "last pasted line renders (newline created a new line)" "CHARLIELINE"
 
-echo "== 3) TERMINAL paste is written to the child PTY (F8 opens the panel) =="
-"$H" send "$S" F8 >/dev/null
+echo "== 3) TERMINAL paste is written to the child PTY (Ctrl+J opens the panel) =="
+"$H" chord "$S" Control+j >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
-chk "terminal focused after F8" "$(f terminalFocused)" "true"
+chk "terminal focused after Ctrl+J" "$(f terminalFocused)" "true"
 chk "active pane is the terminal" "$(f panelActiveContent)" "terminal"
 "$H" paste "$S" "PASTEDINTERMINAL" >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 has "paste reached the shell (echoed at the prompt)" "PASTEDINTERMINAL"
-"$H" send "$S" F8 >/dev/null   # close the panel
+"$H" chord "$S" Control+j >/dev/null   # close the panel
 "$H" settle "$S" >/dev/null 2>&1
 
 echo "== 4) AGENT paste inserts into the composer (Ctrl+Shift+A opens the pane) =="

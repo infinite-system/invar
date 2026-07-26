@@ -23,15 +23,20 @@ function badgePosition(
     const cells = Array.from(textRows[row] ?? '');
     const slashColumn = cells.findIndex(
       (cell, column) =>
-        cell === '/' && cells.slice(column + 1, column + 1 + totalText.length).join('') === totalText,
+        cell === '/' &&
+        cells.slice(column + 1, column + 1 + totalText.length).join('') ===
+          totalText,
     );
     if (slashColumn < 0) continue;
     let startColumn = slashColumn;
-    while (startColumn > 0 && /[0-9]/.test(cells[startColumn - 1] ?? '')) startColumn--;
+    while (startColumn > 0 && /[0-9]/.test(cells[startColumn - 1] ?? ''))
+      startColumn--;
     return {
       column: startColumn,
       row,
-      text: cells.slice(startColumn, slashColumn + 1 + totalText.length).join(''),
+      text: cells
+        .slice(startColumn, slashColumn + 1 + totalText.length)
+        .join(''),
     };
   }
   return null;
@@ -54,17 +59,22 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness tabs: open enough files to overflow the strip ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('file-1.txt') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('file-1.txt') !== null,
+    15_000,
+  );
   for (let openAttempt = 1; openAttempt <= 30; openAttempt++) {
     const openingStatus = await awaitStatusPublication(
       statusPath,
       'the tab count and focus are published before opening another file',
-      (status) => typeof status.bufferTabCount === 'number'
-        && typeof status.focus === 'string',
+      (status) =>
+        typeof status.bufferTabCount === 'number' &&
+        typeof status.focus === 'string',
     );
     if (Number(openingStatus.bufferTabCount) >= 8) break;
     if (openingStatus.focus !== 'files') {
-      driver.sendKeys('Tab');
+      // Ctrl+Shift+J, not Tab: Tab is the editor surface's indentation key now.
+      driver.sendKeys('Control+Shift+j');
       await awaitStatusPublication(
         statusPath,
         "status condition: status.focus === 'files'",
@@ -75,7 +85,7 @@ try {
     driver.sendKeys('Down', 'Enter');
     await awaitStatusPublication(
       statusPath,
-      "status condition: Number(status.bufferTabCount) > previousTabCount",
+      'status condition: Number(status.bufferTabCount) > previousTabCount',
       (status) => Number(status.bufferTabCount) > previousTabCount,
     );
   }
@@ -87,26 +97,36 @@ try {
   const tabCount = Number(openedTabsStatus.bufferTabCount);
   requireCondition(tabCount >= 8, `opened ${tabCount} tabs`);
 
-  console.log('== harness tabs: filenames, close marks, and breadcrumb paint without dividers ==');
+  console.log(
+    '== harness tabs: filenames, close marks, and breadcrumb paint without dividers ==',
+  );
   let snapshot = await driver.awaitGridCondition(
     'the overflowed tab strip paints filenames, close marks, and the active breadcrumb',
-    (candidate) => candidate.textRows().some(
-      (rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText),
-    )
-      && candidate.findText('›') !== null
-      && !candidate.textRows().some((rowText) => /✕ *❯/.test(rowText)),
+    (candidate) =>
+      candidate
+        .textRows()
+        .some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)) &&
+      candidate.findText('›') !== null &&
+      !candidate.textRows().some((rowText) => /✕ *❯/.test(rowText)),
   );
   requireCondition(
-    snapshot.textRows().some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)),
+    snapshot
+      .textRows()
+      .some((rowText) => /[A-Za-z0-9_-]+\.[A-Za-z]+ +✕/.test(rowText)),
     'a buffer tab paints a filename and close mark',
   );
-  requireCondition(snapshot.findText('›') !== null, 'breadcrumb row paints the active path');
+  requireCondition(
+    snapshot.findText('›') !== null,
+    'breadcrumb row paints the active path',
+  );
   requireCondition(
     !snapshot.textRows().some((rowText) => /✕ *❯/.test(rowText)),
     'no arrow divides adjacent tabs',
   );
 
-  console.log('== harness tabs: Ctrl+PageDown and Ctrl+PageUp cycle positionally ==');
+  console.log(
+    '== harness tabs: Ctrl+PageDown and Ctrl+PageUp cycle positionally ==',
+  );
   const startIndexStatus = await awaitStatusPublication(
     statusPath,
     'the active buffer index is published before positional cycling',
@@ -117,7 +137,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'Ctrl+PageDown publishes the next active buffer index',
-    (status) => status.activeBufferIndex === ((startIndex + 1) % tabCount),
+    (status) => status.activeBufferIndex === (startIndex + 1) % tabCount,
   );
   pass('Ctrl+PageDown advanced exactly one tab with wrap');
   driver.sendKeys('Control+PageUp');
@@ -135,9 +155,22 @@ try {
   );
   const badge = badgePosition(snapshot.textRows(), tabCount);
   requireCondition(badge !== null, 'count badge is visible');
-  requireCondition(badge.text.includes(`/${tabCount}`), `count badge shows total ${badge.text}`);
-  driver.sendMouse({ kind: 'press', column: badge.column, row: badge.row, button: 'left' });
-  driver.sendMouse({ kind: 'release', column: badge.column, row: badge.row, button: 'left' });
+  requireCondition(
+    badge.text.includes(`/${tabCount}`),
+    `count badge shows total ${badge.text}`,
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: badge.column,
+    row: badge.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: badge.column,
+    row: badge.row,
+    button: 'left',
+  });
   await awaitStatusPublication(
     statusPath,
     'the all-buffers popup is published as open',
@@ -147,7 +180,9 @@ try {
   driver.sendKeys('Escape');
   await driver.awaitQuiescence();
 
-  console.log('== harness tabs: right arrow pans without changing the active tab ==');
+  console.log(
+    '== harness tabs: right arrow pans without changing the active tab ==',
+  );
   for (let cycleAttempt = 0; cycleAttempt < tabCount; cycleAttempt++) {
     const cycleStatus = await awaitStatusPublication(
       statusPath,
@@ -169,7 +204,10 @@ try {
     (candidate) => badgePosition(candidate.textRows(), tabCount) !== null,
   );
   const refreshedBadge = badgePosition(snapshot.textRows(), tabCount);
-  requireCondition(refreshedBadge !== null, 'count badge remains visible beside the pan arrows');
+  requireCondition(
+    refreshedBadge !== null,
+    'count badge remains visible beside the pan arrows',
+  );
   driver.sendMouse({
     kind: 'press',
     column: refreshedBadge.column - 2,

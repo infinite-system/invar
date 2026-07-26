@@ -132,7 +132,7 @@ try {
   pass('multi-line paste bumped the buffer revision');
 
   console.log('== harness paste: terminal paste reaches the child PTY ==');
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   await awaitStatusPublication(
     statusPath,
     'the terminal pane is active and focused',
@@ -494,10 +494,10 @@ try {
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');
   await driver.awaitQuiescence();
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   await awaitStatusPublication(
     statusPath,
-    'F8 returns to the agent pane',
+    'Ctrl+J returns to the agent pane',
     (status) => status.panelActiveContent === 'agent',
   );
   driver.sendRawInput('\x1b[27;6;97~');

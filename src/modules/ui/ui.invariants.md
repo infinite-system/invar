@@ -523,7 +523,7 @@ separate side-by-side region with its own heading and body, and adding or removi
 relabels the other content as a tab under a shared heading.
 
 **Scope:** `PanelHost.toggleContent`, panel cells in `RootView`, the terminal and agent status
-controls, the F9 split action, and the matching command-palette actions.
+controls, the Ctrl+Shift+S split action, and the matching command-palette actions.
 
 **Components:**
 - *Pane presence* — each status control toggles only its matching content.
@@ -535,14 +535,14 @@ or removes only the selected content. RootView mounts one heading-and-body conta
 cell, while status clicks, keybindings, and palette commands call the same Bootstrap toggles.
 
 **Generates:** A terminal region and an agent region that can coexist; one-click pane presence
-controls; F9 split acceleration; identical mouse, keyboard, and palette results.
+controls; Ctrl+Shift+S split acceleration; identical mouse, keyboard, and palette results.
 
 **Evidence:** `src/modules/ui/PanelHost.ts`; `src/modules/ui/RootView.ts`;
 `src/modules/app/Bootstrap.ts`; `src/modules/commands/CommandDefaults.ts`;
 `src/modules/ui/PanelHost.test.ts`; `scripts/harness/smoke-panel-split-harness.ts`.
 
 **Impossible if true:** The agent body appearing under a terminal heading; clicking Agent replacing
-the terminal body; closing Agent also closing Terminal; mouse and F9 producing different split
+the terminal body; closing Agent also closing Terminal; mouse and Ctrl+Shift+S producing different split
 layouts.
 
 **Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
@@ -890,7 +890,7 @@ overlay, any future user rebind layer).
 and overlay contexts (first-wins per action id) and labels each row with
 `bindingHint(action, context)`; a layer change bumps the registry `revision` ref, so an open sheet
 repaints with re-derived rows. The status-bar `?` is a hit-tested `TextRenderable` whose click, like
-the Shift+F1 chord, opens the sheet through
+the Ctrl+Shift+H chord, opens the sheet through
 `OverlayCoordinator.openExclusiveOverlay('shortcutHelp', …)`.
 
 **Generates:** a shortcuts page that cannot drift from what the keys actually do; discoverability

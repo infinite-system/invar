@@ -279,3 +279,28 @@ describe('effective bindings (deliverability honesty)', () => {
     );
   });
 });
+
+// --- hints never advertise an undeliverable chord ------------------------------------------------
+// invariant: Advertised bindings are deliverable bindings (keybindings.invariants.md)
+
+test('a super (Cmd) alias never displaces the floor chord in the hint map', () => {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer('canonical', [
+    { chord: { key: 'p', ctrl: true, shift: false }, action: 'quickopen.open' },
+  ]);
+  registry.registerLayer('mac', [
+    { chord: { key: 'p', super: true }, action: 'quickopen.open' },
+  ]);
+  expect(registry.bindingHint('quickopen.open', 'global')).toBe('Ctrl+P');
+});
+
+test('a user rebind DOES displace the floor chord in the hint map', () => {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer('canonical', [
+    { chord: { key: 'p', ctrl: true, shift: false }, action: 'quickopen.open' },
+  ]);
+  registry.registerLayer('user', [
+    { chord: { key: 'o', ctrl: true }, action: 'quickopen.open' },
+  ]);
+  expect(registry.bindingHint('quickopen.open', 'global')).toBe('Ctrl+O');
+});
