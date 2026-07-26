@@ -12,14 +12,32 @@ diff; measurements append history but never rewrite the baseline.
 ```json
 {
   "metric": "input-byte-flush",
-  "p50Milliseconds": 2.97,
+  "p50Milliseconds": 4.928,
   "boundary": "input-write→DEC-2026-end-marker-byte-arrival",
   "warningMultiplier": 1.3,
   "failureMultiplier": 2,
+  "trendWindowSampleCount": 5,
+  "trendWarningMultiplier": 1.15,
   "baselineChangePolicy": "Explicit edit in a landing diff only; measurement history never updates this block."
 }
 ```
 <!-- input-byte-flush-baseline:end -->
+
+Re-reviewed 2026-07-26 after the non-blocking PTY write investigation. Ten gate-history
+samples from the inline-drain fix through the task base have median p50 **4.928 ms**; a
+fresh five-session quiet-lock calibration had median **4.794 ms**. Sample-interleaved
+comparison against fixed reference `0005fa0` found only **+0.552 ms** at task base
+`d61124d`, and replacing its complete queued `OpenPty` write seam with the reference
+implementation left the paired result unchanged (**+0.477 ms**). The apparent
+~1.7 ms residual in sequential absolute runs is therefore session/environment
+bimodality, not work left on the queued write path. The reviewed absolute gate baseline
+now matches the instrument it governs.
+
+The individual-run WARN and FAIL multipliers remain unchanged. A separate report-only
+trend warning compares the median of five trailing history samples to this reviewed era
+and names a sustained shift above **1.15×** (**5.667 ms**), before the individual-run
+warning at **1.3×** (**6.406 ms**). History remains evidence only and can never rewrite
+either threshold.
 
 ## CURRENT baseline — 2026-07-24, repaired harness (the authoritative numbers)
 

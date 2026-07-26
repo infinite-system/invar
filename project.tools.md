@@ -18,9 +18,10 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
 Per-frame glide behaviour on the real app through the PTY. Reports, per gesture: moving frame count,
-total distance, max/mean frame delta, peak velocity, fps, and bytes per frame. Reads the lowest
-visible fixture line out of every completed synchronized frame, so each sample IS that frame's
-scrollTop with no publish race.
+total distance, input-write-to-first-frame latency, max/mean frame delta, peak velocity, fps, and
+bytes per frame. Reads the lowest visible fixture line out of every completed synchronized frame, so
+each sample IS that frame's scrollTop with no publish race. Runs under the machine-wide
+quiet-exclusive lock.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: a fling runs 19-23 fps against a declared 30; and the same gesture yields ~48 rows
