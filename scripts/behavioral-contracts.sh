@@ -91,6 +91,66 @@ glide_pane() { # <label> <fixture> <status-field> <needs-open> <wheel-col>
 glide_pane editor "$LONG" editorScrollTop open   60
 glide_pane tree   "$TREE" treeScrollTop  noopen 10
 
+# ---- CONTRACT: glide smoothness (RATCHET: the "choppier and slower" report of 2026-07-26) ----
+# The contract above measures total DISPLACEMENT over five notches. Displacement is a TIME INTEGRAL of
+# the momentum curve — velocity decays geometrically and the fractional row `residual` is carried in
+# the momentum value between frames — so the SAME distance delivered in fewer, larger jumps leaves
+# `gain` byte-identical while the motion is visibly choppy. That is not hypothetical: when scrolling
+# was reported as "choppier, and the velocity is less when going fast", the `gain` assertion was
+# byte-identical in gate logs from both sides of the reported change. Smoothness is a DIFFERENT NUMBER
+# and needs its own assertion, so this contract gates the per-frame step distribution of one fast
+# fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts.
+#
+# THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
+#  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
+#    travel and createCliRenderer's targetFps (30) is the cadence it must keep, so ONE frame at full
+#    speed advances 220/30 = 7.3 rows. A single step past TWO budgets (15 rows) means the render loop
+#    missed at least two consecutive frames — that is the definition of choppy, and it is impossible
+#    while cadence holds. A consumer that rounded the integrator's position every frame would show up
+#    here too, because quantizing fractional rows both enlarges the steps and loses velocity.
+#  * CADENCE FLOOR — the decay curve fixes the glide's DURATION: falling from the 220 ceiling to the
+#    stopVelocity threshold of 3 at decayPerSec 0.015 takes ln(220/3)/ln(1/0.015) = 1.02 s, so a
+#    saturated fling must be carried by ~30 frames at target cadence. Under 10 moving frames the
+#    glide is being delivered below a third of cadence.
+#  * TRAVEL FLOOR — the second reported symptom (lower peak velocity) as a clock-free figure: with
+#    linesPerNotch 1 the 12-notch fling REQUESTS 12 rows, and momentum that cannot at least double the
+#    raw notch travel is not a fling at all. 24 rows is that doubling.
+# Measured floors on 2026-07-26 across six commits spanning 24h of history (40d244b~1 .. e6450c6):
+# 17 moving frames, largest single step 7 rows, fastest trial travelling 36-48 rows. Every bound below
+# therefore has at least 1.5x headroom against a loaded machine while still catching a halving.
+echo "== CONTRACT glide-smoothness: a fast fling is many small row crossings, not a few big jumps =="
+SMOOTH_JSON="$ROOT/artifacts/scroll-smoothness.json"
+SMOOTH_LOG="$ROOT/artifacts/scroll-smoothness.log"
+mkdir -p "$ROOT/artifacts"
+if SMOOTHNESS_GESTURES=2 bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$SMOOTH_JSON" 2>"$SMOOTH_LOG"; then
+  read -r smooth_frames smooth_max_step smooth_travel <<<"$(python3 -c "
+import json
+gestures = json.load(open('$SMOOTH_JSON'))['gestures']
+print(min(g['movingFrameCount'] for g in gestures),
+      max(g['maximumFrameDeltaRows'] for g in gestures),
+      max(g['totalDistanceRows'] for g in gestures))
+")"
+  if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
+    pass "no glide frame jumps more than two frame budgets (largest step=$smooth_max_step rows, bound 15)"
+  else
+    bad "glide is CHOPPY: one frame advanced $smooth_max_step rows (bound 15 = 2 x 220 rows/s ceiling / 30 fps) — the render loop skipped consecutive frames"
+  fi
+  if [ "${smooth_frames:-0}" -ge 10 ] 2>/dev/null; then
+    pass "the fling is carried by many frames (fewest moving frames=$smooth_frames, floor 10)"
+  else
+    bad "glide CADENCE COLLAPSED: only $smooth_frames moving frames carried the fling (floor 10; a 1.02s glide at 30fps is ~30) — same distance, fewer steps"
+  fi
+  if [ "${smooth_travel:-0}" -ge 24 ] 2>/dev/null; then
+    pass "a 12-notch fling outruns its raw notch travel (best trial=$smooth_travel rows, floor 24 = 2 x 12 notches)"
+  else
+    bad "glide PEAK VELOCITY collapsed: the best 12-notch fling travelled only $smooth_travel rows (floor 24 = twice the 12 rows the notches request) — momentum is not amplifying the gesture"
+  fi
+else
+  bad "glide-smoothness instrument did not complete — see $SMOOTH_LOG"
+  sed -n '1,20p' "$SMOOTH_LOG"
+fi
+
 # ---- CONTRACT: wrap-mode momentum + visual-row extent (RATCHET: the "momentum gone in wrap" report) ----
 # Wrap mode feeds the SAME momentum engine in VISUAL-ROW units, so it glides like non-wrap AND reaches
 # the true last visual row (extent = wrapped visual rows, not logical lines). Both were user-felt gaps.

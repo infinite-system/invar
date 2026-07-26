@@ -11,6 +11,7 @@ artifacts/process-snapshots/
 artifacts/status-*.json
 artifacts/frame-*.json
 artifacts/*.tmp
+artifacts/scroll-smoothness.json
 artifacts/home/
 dist/
 artifacts/*.pulse

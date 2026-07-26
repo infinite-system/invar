@@ -1008,6 +1008,55 @@ scripts/behavioral-contracts.sh`
 
 **Last refined:** 2026-07-25
 
+### A fast glide crosses rows in many small steps
+
+**Invariant:** If a wheel gesture puts a pane's momentum regime into a fast glide, then the travel
+arrives as MANY SMALL per-frame row crossings and never as a few large jumps: no completed frame
+advances the offset by more than two frame budgets at the configured velocity ceiling, and the glide
+is carried by at least ten moving frames. Total displacement is NOT this property — the identical
+distance delivered in fewer, larger steps satisfies every displacement contract while the motion is
+visibly choppy and its effective velocity is lower.
+
+**Scope:** every wheel-momentum glide that writes a scroll offset — the editor's vertical and
+horizontal regimes, the file tree, the agent transcript, each git region, terminal scrollback, and
+any future scroll animation on the same offsets. It governs the CADENCE of the write; *One writer per
+scroll regime per frame* governs who writes and *The wheel gesture resolves through one
+settings-sourced step* governs how the gesture is measured first.
+
+**Mechanism:** three properties together bound the step size. `Momentum.stepMomentum` carries the
+fractional row `residual` inside the momentum value between frames, so a whole-row write never
+discards sub-row progress and no consumer may round the integrator's position. `Bootstrap`'s frame
+tick holds ONE live render request for as long as any glide is active, so a glide's frames are
+produced at `targetFps` instead of on demand. And `dtSeconds` is clamped to
+`MAXIMUM_DELTA_TIME_SECONDS`, so a resumed clock advances one frame's worth rather than the whole
+idle gap. Per-frame travel is therefore velocity ÷ cadence, and BOTH factors are declared values
+(`Settings.verticalFlingCeiling`, `createCliRenderer`'s `targetFps`) — which is what makes the bound
+computable from the app rather than fitted to an observation.
+
+**Generates:** motion that reads as continuous rather than as a sequence of jumps; a hard bound on how
+far one frame may teleport a viewport; a smoothness figure that is independent of displacement, so a
+refactor cannot trade one for the other unnoticed.
+
+**Evidence:** `scripts/harness/measure-scroll-smoothness.ts` reads the top visible fixture line of
+every completed synchronized frame of one fast gesture at the real PTY, and reports the moving-frame
+count, the per-frame delta distribution, the peak velocity and the distance. Driven on 2026-07-26 at
+six commits spanning 24 hours of history (`40d244b~1` through `e6450c6`), a 12-notch fling was carried
+by 17 to 19 moving frames with a largest single-frame step of 7 rows at every one of them. The
+`glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, the cadence floor
+and the travel floor.
+
+**Impossible if true:** a fling that covers its distance in a handful of large jumps; a renderer that
+writes a quantized copy of the momentum integrator's position back into the viewport each frame (that
+rounding both enlarges the steps and loses velocity, while leaving total displacement intact); a glide
+whose frames are produced on demand instead of held live.
+
+**Verification:** `bash scripts/behavioral-contracts.sh` (the `glide-smoothness` contract); `bun
+scripts/harness/measure-scroll-smoothness.ts` for the raw per-frame distribution.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### A context menu is modal and single-consumer
 
 **Invariant:** If a context menu is open, then every pointer and keyboard event belongs to the menu
