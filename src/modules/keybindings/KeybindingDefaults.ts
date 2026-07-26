@@ -172,27 +172,6 @@ class $KeybindingDefaults {
       // Ctrl+Shift+P = command palette (VS Code parity), the PRIMARY. Deliverable on legacy terminals
       // in the modifyOtherKeys form (ESC [ 27;6;112 ~) as well as under kitty — measured, not assumed.
       { chord: { key: 'p', ctrl: true, shift: true }, action: 'palette.open' },
-      // Activity-bar view switchers (VS Code parity: Ctrl+Shift+E Explorer / Ctrl+Shift+G Source Control /
-      // Ctrl+Shift+X Extensions). Global — they switch the active workspace's sidebar view from anywhere.
-      // The PRIMARY affordance is the clickable activity-bar button + its tooltip; these are accelerators.
-      // Placed HERE, ahead of `git.togglePanel` (Ctrl+G, shift don't-care) and the editor `Ctrl+E`/`Ctrl+X`
-      // bindings, so the resolver's first-in-array + shift-specificity rule routes the SHIFTED chord to the
-      // view switch while the UN-shifted chords (plain Ctrl+G/Ctrl+E) keep their existing meaning. On a
-      // legacy terminal that drops the shift bit on a control key the chord degrades to the plain Ctrl+key
-      // (button + palette remain the affordance); Ctrl+Shift+X additionally yields to the guarded editor
-      // cut while the editor holds a selection — an accepted, documented accelerator caveat.
-      {
-        chord: { key: 'e', ctrl: true, shift: true },
-        action: 'view.showFiles',
-      },
-      {
-        chord: { key: 'g', ctrl: true, shift: true },
-        action: 'view.showSourceControl',
-      },
-      {
-        chord: { key: 'x', ctrl: true, shift: true },
-        action: 'view.showExtensions',
-      },
       // Ctrl+Shift+B shows/hides the whole activity bar (Ctrl+B is VS Code's SIDEBAR toggle and is free
       // here too, but the bar is the activity-bar feature so B-for-bar with shift keeps chord space open).
       {
@@ -218,7 +197,6 @@ class $KeybindingDefaults {
         chord: { key: 'h', ctrl: true, shift: true },
         action: 'help.shortcuts',
       },
-      { chord: { key: 'g', ctrl: true }, action: 'git.togglePanel' },
       // Toggle the bottom panel (integrated terminal). TWO deliverable chords for the one action:
       //   • Ctrl+` — the VS Code terminal-specific chord; unencodable on some legacy terminals (they send
       //     NUL, which decodes as Ctrl+Space), which is why it silently no-ops for some users. Listed
@@ -339,24 +317,6 @@ class $KeybindingDefaults {
       },
       { chord: { key: 'pagedown', ctrl: true }, action: 'buffer.next' },
       { chord: { key: 'pageup', ctrl: true }, action: 'buffer.previous' },
-      // Diff change navigation used to live HERE as F7 / Shift+F7 against the `diff.*` action ids. It
-      // does not any more, in either place: a comparison is a CONTRIBUTED EDITOR SURFACE that holds
-      // the editor column and consumes editor keys before this table is consulted, so under
-      // "focus owns the keystroke" the chord belongs to that surface, which now carries
-      // Ctrl+Shift+Up/Down beside its own n / p (see project.keyboard.md). The palette entries are the
-      // contributing plugin's own commands. Removing them also takes two contributed action names out
-      // of the host's binding floor. invariant: Focus owns the keystroke
-      // Markdown preview actions share the visible tab-bar button / hovered link affordance.
-      {
-        chord: { key: 'v', ctrl: true, shift: true },
-        action: 'markdown.togglePreview',
-        context: 'editor',
-      },
-      {
-        chord: { key: 'return', ctrl: true },
-        action: 'markdown.openHoveredReference',
-        context: 'editor',
-      },
       // Go to Definition. Replaces F12 with Ctrl+] — the vi/ctags tag-jump chord, and a real C0 byte
       // (0x1D) so it is deliverable on EVERY terminal with no protocol negotiation at all. It also
       // pairs with the existing Alt+[ go-back. The pointer path is Ctrl/Cmd+click on the symbol.
@@ -470,43 +430,6 @@ class $KeybindingDefaults {
         action: 'settings.close',
         context: 'settings',
       },
-
-      // --- files (tree) ---
-      // The tree SURFACE spends Tab on leaving itself. That is not the host claiming Tab: a file tree
-      // has no content use for Tab, so it is free to spend it, exactly as the agent composer spends
-      // Shift+Tab on cycling the permission mode. In the editor the same key indents, because there
-      // ownership follows focus. invariant: Focus owns the keystroke (keybindings.invariants.md)
-      { chord: { key: 'tab' }, action: 'focus.toggle', context: 'files' },
-      { chord: { key: 'up' }, action: 'tree.up', context: 'files' },
-      { chord: { key: 'down' }, action: 'tree.down', context: 'files' },
-      { chord: { key: 'return' }, action: 'tree.activate', context: 'files' },
-      { chord: { key: 'space' }, action: 'tree.activate', context: 'files' },
-      {
-        chord: { key: 'right' },
-        action: 'tree.rightExpandOrOpen',
-        context: 'files',
-      },
-      { chord: { key: 'left' }, action: 'tree.leftCollapse', context: 'files' },
-
-      // --- git panel ---
-      // NOTE: the repository panel gets NO Tab binding here, deliberately. The same
-      // surface-spends-Tab reasoning as the file tree applies, but this table is the HOST floor and
-      // the conventions gate ratchets how much source-control coupling it may carry — adding a line
-      // here would grow it. The honest home is the plugin contributing its own binding (#100); until
-      // then the panel is left with Escape and the global focus chord. Reported, not allowlisted.
-      { chord: { key: 'up' }, action: 'git.up', context: 'git' },
-      { chord: { key: 'down' }, action: 'git.down', context: 'git' },
-      { chord: { key: 'pageup' }, action: 'git.pageUp', context: 'git' },
-      { chord: { key: 'pagedown' }, action: 'git.pageDown', context: 'git' },
-      { chord: { key: 'return' }, action: 'git.stageToggle', context: 'git' },
-      { chord: { key: 'space' }, action: 'git.stageToggle', context: 'git' },
-      { chord: { key: 'o' }, action: 'git.openFile', context: 'git' },
-      { chord: { key: 'right' }, action: 'git.expandRight', context: 'git' },
-      { chord: { key: 'left' }, action: 'git.collapseLeft', context: 'git' },
-      { chord: { key: 'd' }, action: 'git.discard', context: 'git' },
-      // Cycle WHICH branch's history the commit log shows (read-only viewer; Esc returns to HEAD).
-      { chord: { key: 'b' }, action: 'git.cycleLogBranch', context: 'git' },
-      { chord: { key: 'escape' }, action: 'git.leave', context: 'git' },
 
       // --- editor: movement (shift left unspecified = extend composes as a parameter) ---
       { chord: { key: 'up' }, action: 'editor.moveUp', context: 'editor' },

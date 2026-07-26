@@ -3,6 +3,7 @@ import { MarkdownPreviewContent } from './MarkdownPreviewContent';
 import type { MarkdownSplitView } from './MarkdownSplitView';
 import type { Workspace } from '../workspace/Workspace';
 import type { EditorSurfaceContentContext } from '../ui/EditorSurfaceContents';
+import { ref } from 'vue';
 
 // A stand-in for the real split: the same members this content drives, each recording the call.
 function createFakeSplitView() {
@@ -52,7 +53,11 @@ function createContent() {
     }
   }
   return {
-    content: new TestContent({} as unknown as Workspace.Model, context),
+    content: new TestContent({} as unknown as Workspace.Model, context, {
+      value: ref(0.5),
+      save() {},
+      dispose() {},
+    }),
     view,
   };
 }

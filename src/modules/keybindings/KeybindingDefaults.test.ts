@@ -82,7 +82,7 @@ test('Tab and Shift+Tab are the EDITOR surface s indentation, not a focus move',
   // The tree surfaces spend Tab on leaving themselves — a SURFACE choice, not a host claim.
   expect(
     registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'files', 0).action,
-  ).toBe('focus.toggle');
+  ).toBeNull();
   // In a focused terminal or agent pane nothing resolves Tab, so it reaches the child.
   expect(
     registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'terminal', 0).action,

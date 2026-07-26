@@ -113,6 +113,16 @@ class $AppStatusProjection {
         ? (ports.settingsPanel.rows()[ports.settingsPanel.selectedIndex.value]
             ?.valueText ?? '')
         : '',
+      settingsSections: [
+        ...new Set(
+          ports.settingsPanel.descriptors.map(
+            (descriptor) => descriptor.section,
+          ),
+        ),
+      ],
+      settingsLabels: ports.settingsPanel.descriptors.map(
+        (descriptor) => descriptor.label,
+      ),
       narrationVoice: ports.settings.agentNarrationVoice.value,
       narrationRate: ports.settings.agentNarrationRate.value,
       focus:
@@ -385,7 +395,7 @@ export interface AppStatusProjectionPorts {
   >;
   readonly settingsPanel: Pick<
     InstanceType<typeof SettingsPanel.Class>,
-    'open' | 'selectedIndex' | 'rows'
+    'open' | 'selectedIndex' | 'rows' | 'descriptors'
   >;
   readonly contextMenu: Pick<InstanceType<typeof ContextMenu.Class>, 'open'>;
   readonly boundedListPopup: Pick<

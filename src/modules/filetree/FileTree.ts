@@ -1,5 +1,5 @@
 import { Reactive } from 'ivue';
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, type Ref } from 'vue';
 import { Files, type DirEntry } from '../system/Files';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
@@ -11,6 +11,10 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 
 class $FileTree {
+  constructor(
+    protected readonly showHiddenFiles: Readonly<Ref<boolean>> = ref(true),
+  ) {}
+
   root = '';
   // expansion state keyed by absolute path; cheap Set, not a node graph.
   protected expanded = new Set<string>();
@@ -102,7 +106,13 @@ class $FileTree {
   }
 
   get rows(): TreeRow[] {
-    return this.rowsRef.value;
+    if (this.showHiddenFiles.value) return this.rowsRef.value;
+    return this.rowsRef.value.filter((row) => {
+      const relativePath = Files.Class.relative(this.root, row.path);
+      return !relativePath
+        .split(/[\\/]/)
+        .some((pathSegment) => pathSegment.startsWith('.'));
+    });
   }
 
   /** Widest complete rendered row: selection marker + indentation + one-cell icon + name. */

@@ -838,8 +838,8 @@ implementation resources.
 
 **Components:**
 - *Contributors register projections* — they may attach workspace lifecycle state and register
-  panes, decorations, commands, title actions, or status segments; they do not answer document
-  position queries through the plugin boundary.
+  panes, decorations, commands, title actions, status segments, settings schema, or keybinding
+  defaults; they do not answer document position queries through the plugin boundary.
 - *Providers answer questions* — they accept domain inputs and return domain answers; they do not
   register or paint host surfaces.
 - *Hosted runtimes exchange streams* — domain-specific `*Backend` contracts own external
@@ -847,10 +847,12 @@ implementation resources.
   the reactive graph directly.
 
 **Mechanism:** `ApplicationContributor.workspaceContributor` opts a contributor into the narrower
-workspace lifecycle instead of making every application contributor fabricate it. The host calls
-`LanguageProvider` for semantic answers. `AgentSession` and `TerminalInstance` alone translate their
-injected backend streams into reactive state. Because authority comes from the outward contract,
-`LanguageClient` may privately own an LSP process without becoming a hosted-runtime plugin.
+workspace lifecycle instead of making every application contributor fabricate it.
+`ApplicationContributions` scopes settings, keybindings, and panes to the contributor activation and
+unregisters them together. The host calls `LanguageProvider` for semantic answers. `AgentSession`
+and `TerminalInstance` alone translate their injected backend streams into reactive state. Because
+authority comes from the outward contract, `LanguageClient` may privately own an LSP process without
+becoming a hosted-runtime plugin.
 
 **Generates:** Separate contribution, provider, and hosted-runtime seams; an application-only
 Extensions contributor; a language extraction path that wires `LanguageProvider` without giving it

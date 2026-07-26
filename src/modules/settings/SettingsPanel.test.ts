@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import { Settings, type SettingsFileSystem } from './Settings';
 import { SettingsPanel } from './SettingsPanel';
 
-function makeSettings(): { settings: Settings.Instance; store: Record<string, string> } {
+function makeSettings(): {
+  settings: Settings.Instance;
+  store: Record<string, string>;
+} {
   const store: Record<string, string> = {};
   const fileSystem: SettingsFileSystem = {
     readTextFile: (path) => store[path] ?? null,
@@ -55,13 +58,38 @@ describe('SettingsPanel', () => {
     expect(settings.verticalFlingCeiling.value).toBe(before + 20); // stepped, live-applied
     expect(Object.keys(store).length).toBeGreaterThan(0); // save() wrote the user file
 
-    panel.selectedIndex.value = indexOfKey(panel, 'diffSplitRatio');
+    const contributedRatio = settings.registerSetting({
+      identifier: 'samplePluginRatio',
+      label: 'Split ratio',
+      section: 'Sample Plugin',
+      defaultValue: 0.5 as number,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.15,
+        maximum: 0.85,
+        decimals: 2,
+      },
+    });
+    panel.selectedIndex.value = indexOfKey(panel, 'samplePluginRatio');
     panel.adjust(1);
-    expect(settings.diffSplitRatio.value).toBe(0.55);
+    expect(contributedRatio.value.value).toBe(0.55);
+  });
 
-    panel.selectedIndex.value = indexOfKey(panel, 'markdownSplitRatio');
-    panel.adjust(1);
-    expect(settings.markdownSplitRatio.value).toBe(0.55);
+  test('contributed rows use their heading and disappear on dispose', () => {
+    const { settings } = makeSettings();
+    const panel = new SettingsPanel.Class(settings);
+    const contributedSetting = settings.registerSetting({
+      identifier: 'samplePluginEnabled',
+      label: 'Enabled',
+      section: 'Sample Plugin',
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
+    const descriptorIndex = indexOfKey(panel, 'samplePluginEnabled');
+    expect(panel.rows()[descriptorIndex]?.section).toBe('Sample Plugin');
+    contributedSetting.dispose();
+    expect(indexOfKey(panel, 'samplePluginEnabled')).toBe(-1);
   });
 
   test('adjust a BOOLEAN toggles, an ENUM cycles', () => {
@@ -99,7 +127,9 @@ describe('SettingsPanel', () => {
     expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('off');
     panel.adjust(1);
     expect(settings.agentTerminalFollowMode.value).toBe('follow-all');
-    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('follow-all');
+    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe(
+      'follow-all',
+    );
   });
 
   test('rows() reflects the current values and the selection', () => {
@@ -110,7 +140,9 @@ describe('SettingsPanel', () => {
     expect(rows.length).toBe(panel.descriptors.length);
     expect(rows[2]?.selected).toBe(true);
     expect(rows[0]?.selected).toBe(false);
-    expect(rows[0]?.valueText).toBe(String(settings.verticalFlingCeiling.value)); // number formatted
+    expect(rows[0]?.valueText).toBe(
+      String(settings.verticalFlingCeiling.value),
+    ); // number formatted
   });
 
   describe('dynamic-enum (voice picker)', () => {

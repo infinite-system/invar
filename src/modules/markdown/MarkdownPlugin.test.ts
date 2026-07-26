@@ -5,6 +5,7 @@ import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { Workspace } from '../workspace/Workspace';
+import { ref } from 'vue';
 
 function createHostWorkspace(path: string) {
   const workspace = {
@@ -29,6 +30,12 @@ function activate(path = '/project/notes.md') {
     editorSurfaceContents,
     settings: { markdownSplitRatio: { value: 0.5 } },
     statusProjectionContributions: { register: () => {} },
+    registerKeybindings: () => {},
+    registerSetting: (contribution: { defaultValue: number }) => ({
+      value: ref(contribution.defaultValue),
+      save() {},
+      dispose() {},
+    }),
   } as unknown as ApplicationContributionContext;
   plugin.activateApplication(context);
   return { plugin, workspace, commands, editorSurfaceContents };

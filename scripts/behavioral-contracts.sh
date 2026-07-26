@@ -338,6 +338,13 @@ else
   bad "diff swap corrupted the editor pane (diffOpened=$pane_diff_open before: top=$pane_before_top last=$pane_before_last after: top=$pane_after_top last=$pane_after_last)"
 fi
 
+echo "== CONTRACT plugin-manifest: contributions install and uninstall symmetrically =="
+if bash "$DIR/smoke-plugin-manifest.sh"; then
+  pass "plugin settings, keybindings, and Extensions lifecycle drive"
+else
+  bad "plugin manifest drive failed"
+fi
+
 echo ""
 if [ "$fail" = 0 ]; then echo "behavioral-contracts: ALL-PASS"; else echo "behavioral-contracts: FAILURES"; fi
 exit "$fail"

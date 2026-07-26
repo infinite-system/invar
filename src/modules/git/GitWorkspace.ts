@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { Files } from '../system/Files';
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Workspace } from '../workspace/Workspace';
 import type { DocumentHandle } from '../workspace/DocumentHandle';
 import type { DocumentLifecycleContribution } from '../workspace/DocumentLifecycle';
@@ -32,10 +33,29 @@ class $GitWorkspace
     GutterDecorationContribution,
     EditorSurfaceClaim
 {
-  constructor(readonly workspace: Workspace.Model) {
+  constructor(
+    readonly workspace: Workspace.Model,
+    splitRatioSetting?: RegisteredSetting<number>,
+    diffSplitRatioSetting?: RegisteredSetting<number>,
+  ) {
+    this.splitRatioSetting =
+      splitRatioSetting ?? this.createTransientNumberSetting();
+    this.diffSplitRatioSetting =
+      diffSplitRatioSetting ?? this.createTransientNumberSetting();
     this.disposeDocumentLifecycle = workspace.documentLifecycle.register(this);
     this.disposeGutterDecorations = workspace.gutterDecorations.register(this);
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
+  }
+
+  readonly splitRatioSetting: RegisteredSetting<number>;
+  readonly diffSplitRatioSetting: RegisteredSetting<number>;
+
+  protected createTransientNumberSetting(): RegisteredSetting<number> {
+    return {
+      value: ref(0.5),
+      save: () => {},
+      dispose: () => {},
+    };
   }
 
   protected readonly disposeDocumentLifecycle: () => void;
@@ -318,21 +338,17 @@ class $GitWorkspace
   }
 
   get splitRatio(): number {
-    return this.settingsSource
-      ? this.settingsSource.gitSplitRatio.value
-      : this.panel.splitRatio.value;
+    return this.splitRatioSetting.value.value;
   }
 
   setSplit(ratio: number): void {
     const clampedRatio = Math.max(0.15, Math.min(0.85, ratio));
     this.panel.setSplit(clampedRatio);
-    if (this.settingsSource) {
-      this.settingsSource.gitSplitRatio.value = clampedRatio;
-    }
+    this.splitRatioSetting.value.value = clampedRatio;
   }
 
   persistSplit(): void {
-    this.settingsSource?.save();
+    this.splitRatioSetting.save();
   }
 
   protected get flingMomentum(): MomentumOptions {

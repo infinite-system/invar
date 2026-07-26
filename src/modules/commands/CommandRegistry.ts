@@ -43,12 +43,26 @@ class $CommandRegistry {
     return shallowRef<Command[]>([]);
   }
 
-  register(command: Command): void {
+  register(command: Command): () => void {
     this.commands.set(command.id, command);
+    return () => {
+      if (this.commands.get(command.id) === command) {
+        this.commands.delete(command.id);
+      }
+    };
   }
 
-  registerAll(commands: Command[]): void {
-    for (const command of commands) this.register(command);
+  registerAll(commands: Command[]): () => void {
+    const disposers = commands.map((command) => this.register(command));
+    return () => {
+      for (
+        let disposerIndex = disposers.length - 1;
+        disposerIndex >= 0;
+        disposerIndex--
+      ) {
+        disposers[disposerIndex]?.();
+      }
+    };
   }
 
   get(id: string): Command | undefined {

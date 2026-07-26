@@ -12,9 +12,19 @@ import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { WorkspaceContributor } from '../workspace/WorkspaceContributor.interface';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
+import type { Keybinding } from '../keybindings/KeybindingRegistry';
+import type {
+  RegisteredSetting,
+  SettingContribution,
+  SettingValue,
+} from '../settings/SettingContribution.interface';
+import type { Ref } from 'vue';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 export interface ApplicationContributor {
+  readonly identifier: string;
+  readonly name: string;
+  readonly canDisable?: boolean;
   readonly primaryDockContentIdentifiers?: readonly string[];
   readonly primaryDockFallbackContentIdentifier?: string;
   readonly workspaceContributor?: WorkspaceContributor;
@@ -36,6 +46,24 @@ export interface ApplicationContributionContext {
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
   /** Register an occupant of the editor column (a comparison, a rendered preview). */
   readonly editorSurfaceContents: EditorSurfaceContents.Model;
+  readonly applicationContributions: ApplicationContributionCatalog;
+  readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
+  readonly registerSetting: <Value extends SettingValue>(
+    contribution: SettingContribution<Value>,
+  ) => RegisteredSetting<Value>;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly requestRender: () => void;
+}
+
+export interface ApplicationContributionCatalog {
+  readonly revision: Readonly<Ref<number>>;
+  entries(): readonly ApplicationContributionEntry[];
+  setEnabled(identifier: string, enabled: boolean): void;
+}
+
+export interface ApplicationContributionEntry {
+  identifier: string;
+  name: string;
+  enabled: boolean;
+  canDisable: boolean;
 }

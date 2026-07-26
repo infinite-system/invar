@@ -4,7 +4,6 @@ import type {
   EditorSurfaceContentContext,
   EditorSurfaceContentProvider,
 } from '../ui/EditorSurfaceContents';
-import type { Settings } from '../settings/Settings';
 import { GitComparisonContent } from './GitComparisonContent';
 import type { GitComparisonRequest, GitWorkspace } from './GitWorkspace';
 
@@ -20,7 +19,6 @@ import type { GitComparisonRequest, GitWorkspace } from './GitWorkspace';
 class $GitComparisonSurface implements EditorSurfaceContentProvider {
   constructor(
     protected readonly activeWorkspace: () => GitWorkspace.Model | null,
-    protected readonly settings: Settings.Instance,
   ) {}
 
   readonly identifier = 'sourceControl.comparison';
@@ -48,7 +46,7 @@ class $GitComparisonSurface implements EditorSurfaceContentProvider {
   /** The comparison's pane split is persisted, so a drag of the divider must repaint the host.
    *  invariant: The diff pane split stays draggable and persistent (src/modules/diff/diff.invariants.md) */
   observePaintSignals(): void {
-    void this.settings.diffSplitRatio.value;
+    void this.activeWorkspace()?.diffSplitRatioSetting.value.value;
   }
 
   // invariant: Construction goes through overridable seams (project.invariants.md)

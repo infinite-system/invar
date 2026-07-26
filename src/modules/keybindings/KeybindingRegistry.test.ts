@@ -62,11 +62,59 @@ describe('resolution precedence', () => {
 
   test('context bindings apply only in their context; global applies everywhere', () => {
     const registry = registryWithDefaults();
-    expect(registry.resolve(chord('o'), 'git', 0).action).toBe('git.openFile');
+    registry.registerPluginLayer('plugin:sample', [
+      { chord: { key: 'o' }, action: 'sample.open', context: 'sample' },
+    ]);
+    expect(registry.resolve(chord('o'), 'sample', 0).action).toBe(
+      'sample.open',
+    );
     expect(registry.resolve(chord('o'), 'editor', 0).action).toBeNull(); // typed char, no binding
     expect(
       registry.resolve(chord('q', { ctrl: true }), 'files', 0).action,
     ).toBe('app.quit');
+  });
+
+  test('plugin defaults shadow the floor but stay below user rebinds', () => {
+    const registry = new KeybindingRegistry.Class();
+    registry.registerUserLayer('user', [
+      { chord: { key: 'k' }, action: 'user.action' },
+    ]);
+    registry.registerLayer('canonical', [
+      { chord: { key: 'k' }, action: 'host.action' },
+      { chord: { key: 'p' }, action: 'host.action' },
+    ]);
+    registry.registerPluginLayer('plugin:sample', [
+      { chord: { key: 'k' }, action: 'plugin.action' },
+      { chord: { key: 'p' }, action: 'plugin.action' },
+    ]);
+    expect(registry.resolve(chord('k'), 'editor', 0).action).toBe(
+      'user.action',
+    );
+    expect(registry.resolve(chord('p'), 'editor', 0).action).toBe(
+      'plugin.action',
+    );
+  });
+
+  test('plugin layers refuse reserved claims and unregister symmetrically', () => {
+    const registry = new KeybindingRegistry.Class();
+    expect(() =>
+      registry.registerPluginLayer('plugin:sample', [
+        {
+          chord: { key: 'q', ctrl: true },
+          action: 'sample.quit',
+          reserved: true,
+          reservedBecause: 'sample warrant',
+        },
+      ]),
+    ).toThrow('Plugin keybinding cannot reserve sample.quit');
+    const unregister = registry.registerPluginLayer('plugin:sample', [
+      { chord: { key: 'k' }, action: 'sample.action' },
+    ]);
+    expect(registry.resolve(chord('k'), 'editor', 0).action).toBe(
+      'sample.action',
+    );
+    unregister();
+    expect(registry.resolve(chord('k'), 'editor', 0).action).toBeNull();
   });
 
   test('guarded single outranks chord start; failed guard lets the chord start', () => {

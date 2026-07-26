@@ -10,6 +10,7 @@ import type {
 } from '../workspace/WorkspaceContributor.interface';
 import { MarkdownPreviewSurface } from './MarkdownPreviewSurface';
 import { MarkdownWorkspace } from './MarkdownWorkspace';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 
 // Markdown as a default-composed plugin. It owns the per-tab preview mode, the split that occupies
 // the editor column, its two commands, its chord-reachable affordance in the editor title row, and
@@ -19,6 +20,8 @@ import { MarkdownWorkspace } from './MarkdownWorkspace';
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
+  readonly identifier = 'markdown';
+  readonly name = 'Markdown';
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
@@ -27,6 +30,9 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   protected application: ApplicationContributionContext | null = null;
   protected surface: MarkdownPreviewSurface.Model | null = null;
   protected disposeSurface: (() => void) | null = null;
+  protected disposeCommands: (() => void) | null = null;
+  protected disposeStatusProjection: (() => void) | null = null;
+  protected splitRatioSetting: RegisteredSetting<number> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const markdownWorkspace = new MarkdownWorkspace.Class(
@@ -39,21 +45,52 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
+    this.splitRatioSetting = context.registerSetting({
+      identifier: 'markdownSplitRatio',
+      label: 'Source/preview split',
+      section: this.name,
+      defaultValue: 0.5,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.2,
+        maximum: 0.8,
+        decimals: 2,
+      },
+    });
+    context.registerKeybindings([
+      {
+        chord: { key: 'v', ctrl: true, shift: true },
+        action: 'markdown.togglePreview',
+        context: 'editor',
+      },
+      {
+        chord: { key: 'return', ctrl: true },
+        action: 'markdown.openHoveredReference',
+        context: 'editor',
+      },
+    ]);
     this.surface = new MarkdownPreviewSurface.Class(
       () => this.workspaces.get(context.workspaceSet.active) ?? null,
-      context.settings,
+      this.splitRatioSetting,
     );
     this.disposeSurface = context.editorSurfaceContents.register(this.surface);
-    context.statusProjectionContributions.register({
-      snapshot: () => this.statusSnapshot(),
-    });
+    this.disposeStatusProjection =
+      context.statusProjectionContributions.register({
+        snapshot: () => this.statusSnapshot(),
+      });
     this.registerCommands(context);
   }
 
   disposeApplication(): void {
     this.disposeSurface?.();
     this.disposeSurface = null;
+    this.disposeCommands?.();
+    this.disposeCommands = null;
+    this.disposeStatusProjection?.();
+    this.disposeStatusProjection = null;
     this.surface = null;
+    this.splitRatioSetting = null;
     this.application = null;
   }
 
@@ -74,7 +111,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   }
 
   protected registerCommands(context: ApplicationContributionContext): void {
-    context.commands.registerAll([
+    this.disposeCommands = context.commands.registerAll([
       {
         id: 'markdown.togglePreview',
         title: 'Markdown: Toggle Preview',
@@ -109,7 +146,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     return {
       markdownPreviewOpen: markdownWorkspace.showingPreview,
       markdownPaneFocus: splitView?.focusedPane.value ?? 'source',
-      markdownSplitRatio: application.settings.markdownSplitRatio.value,
+      markdownSplitRatio: this.splitRatioSetting?.value.value ?? 0.5,
       markdownPreviewScrollTop: splitView?.preview.scrollTop.value ?? 0,
       markdownPreviewSelectionChars: splitView?.selectionCharacterCount() ?? 0,
       markdownHoveredReference: splitView?.hoveredReferencePath.value ?? null,

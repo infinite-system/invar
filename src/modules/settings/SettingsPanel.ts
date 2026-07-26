@@ -4,23 +4,26 @@
 // store — it owns no settings values itself.
 //
 // invariant: Every setting is a reactive cell read through its value ref (settings.invariants.md)
-import { Reactive } from "ivue";
-import { ref } from "vue";
-import { VoiceDiscovery } from "../narration/VoiceDiscovery";
+import { Reactive } from 'ivue';
+import { ref } from 'vue';
+import { VoiceDiscovery } from '../narration/VoiceDiscovery';
 import {
   Settings,
-  type SettingsValues,
   type ScrollModifier,
   type GlyphMode,
   type WorkspaceTabPosition,
   type TypeScriptServer,
   type AgentProvider,
-} from "./Settings";
+} from './Settings';
+import type {
+  SettingSpec,
+  SettingValue,
+} from './SettingContribution.interface';
 import type {
   DockVerticalSpan,
   PanelAlignment,
   SidebarPosition,
-} from "../layout/LayoutModel";
+} from '../layout/LayoutModel';
 
 // The editable settings, in display order, grouped into SECTIONS (contiguous — the renderer draws a
 // header whenever the section changes). Sections are presentation only; selection still indexes the
@@ -28,49 +31,49 @@ import type {
 class $SettingsPanel {
   protected static get $settingDescriptors(): readonly SettingDescriptor[] {
     const scrollModifierOptions: readonly ScrollModifier[] = [
-      "none",
-      "alt",
-      "shift",
-      "ctrl",
+      'none',
+      'alt',
+      'shift',
+      'ctrl',
     ];
     const glyphModeOptions: readonly GlyphMode[] = [
-      "auto",
-      "nerd",
-      "unicode",
-      "ascii",
+      'auto',
+      'nerd',
+      'unicode',
+      'ascii',
     ];
     const workspaceTabPositionOptions: readonly WorkspaceTabPosition[] = [
-      "top",
-      "left",
+      'top',
+      'left',
     ];
     const sidebarPositionOptions: readonly SidebarPosition[] = [
-      "left",
-      "right",
+      'left',
+      'right',
     ];
     const panelAlignmentOptions: readonly PanelAlignment[] = [
-      "center",
-      "right",
+      'center',
+      'right',
     ];
     const dockVerticalSpanOptions: readonly DockVerticalSpan[] = [
-      "full-height",
-      "ends-at-panel",
+      'full-height',
+      'ends-at-panel',
     ];
     const typeScriptServerOptions: readonly TypeScriptServer[] = [
-      "tsgo",
-      "typescript-language-server",
+      'tsgo',
+      'typescript-language-server',
     ];
     const agentProviderOptions: readonly AgentProvider[] = [
-      "auto",
-      "claude",
-      "codex",
+      'auto',
+      'claude',
+      'codex',
     ];
     const settingDescriptors: readonly SettingDescriptor[] = [
       {
-        key: "verticalFlingCeiling",
-        label: "Vertical fling ceiling (rows/s)",
-        section: "Scrolling",
+        key: 'verticalFlingCeiling',
+        label: 'Vertical fling ceiling (rows/s)',
+        section: 'Scrolling',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 20,
           minimum: 40,
           maximum: 2000,
@@ -78,11 +81,11 @@ class $SettingsPanel {
         },
       },
       {
-        key: "scrollAccelGain",
-        label: "Scroll accel gain (per notch)",
-        section: "Scrolling",
+        key: 'scrollAccelGain',
+        label: 'Scroll accel gain (per notch)',
+        section: 'Scrolling',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 2,
           minimum: 2,
           maximum: 200,
@@ -90,11 +93,11 @@ class $SettingsPanel {
         },
       },
       {
-        key: "scrollFriction",
-        label: "Scroll friction (decay/s)",
-        section: "Scrolling",
+        key: 'scrollFriction',
+        label: 'Scroll friction (decay/s)',
+        section: 'Scrolling',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 0.005,
           minimum: 0.001,
           maximum: 0.5,
@@ -102,83 +105,83 @@ class $SettingsPanel {
         },
       },
       {
-        key: "linesPerNotch",
-        label: "Lines per wheel notch",
-        section: "Scrolling",
-        spec: { kind: "number", step: 1, minimum: 1, maximum: 10, decimals: 0 },
+        key: 'linesPerNotch',
+        label: 'Lines per wheel notch',
+        section: 'Scrolling',
+        spec: { kind: 'number', step: 1, minimum: 1, maximum: 10, decimals: 0 },
       },
       {
-        key: "horizontalScrollModifier",
-        label: "Horizontal-scroll modifier",
-        section: "Scrolling",
-        spec: { kind: "enum", options: scrollModifierOptions },
+        key: 'horizontalScrollModifier',
+        label: 'Horizontal-scroll modifier',
+        section: 'Scrolling',
+        spec: { kind: 'enum', options: scrollModifierOptions },
       },
       {
-        key: "fastScrollModifier",
-        label: "Fast-scroll modifier",
-        section: "Scrolling",
-        spec: { kind: "enum", options: scrollModifierOptions },
+        key: 'fastScrollModifier',
+        label: 'Fast-scroll modifier',
+        section: 'Scrolling',
+        spec: { kind: 'enum', options: scrollModifierOptions },
       },
       {
-        key: "fastScrollMultiplier",
-        label: "Fast-scroll multiplier",
-        section: "Scrolling",
-        spec: { kind: "number", step: 1, minimum: 1, maximum: 20, decimals: 0 },
+        key: 'fastScrollMultiplier',
+        label: 'Fast-scroll multiplier',
+        section: 'Scrolling',
+        spec: { kind: 'number', step: 1, minimum: 1, maximum: 20, decimals: 0 },
       },
       {
-        key: "scrollbarThickness",
-        label: "Scrollbar thickness",
-        section: "Scrolling",
-        spec: { kind: "number", step: 1, minimum: 1, maximum: 3, decimals: 0 },
+        key: 'scrollbarThickness',
+        label: 'Scrollbar thickness',
+        section: 'Scrolling',
+        spec: { kind: 'number', step: 1, minimum: 1, maximum: 3, decimals: 0 },
       },
       {
-        key: "glyphMode",
-        label: "Glyph mode",
-        section: "Appearance",
-        spec: { kind: "enum", options: glyphModeOptions },
+        key: 'glyphMode',
+        label: 'Glyph mode',
+        section: 'Appearance',
+        spec: { kind: 'enum', options: glyphModeOptions },
       },
       {
-        key: "theme",
-        label: "Theme",
-        section: "Appearance",
-        spec: { kind: "enum", options: ["dark", "light"] },
+        key: 'theme',
+        label: 'Theme',
+        section: 'Appearance',
+        spec: { kind: 'enum', options: ['dark', 'light'] },
       },
       {
-        key: "reducedMotion",
-        label: "Reduced motion (instant agent typing)",
-        section: "Appearance",
-        spec: { kind: "boolean" },
+        key: 'reducedMotion',
+        label: 'Reduced motion (instant agent typing)',
+        section: 'Appearance',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "wordWrap",
-        label: "Word wrap",
-        section: "Editor",
-        spec: { kind: "boolean" },
+        key: 'wordWrap',
+        label: 'Word wrap',
+        section: 'Editor',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "showIndentGuides",
-        label: "Indent guides",
-        section: "Editor",
-        spec: { kind: "boolean" },
+        key: 'showIndentGuides',
+        label: 'Indent guides',
+        section: 'Editor',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "workspaceTabPosition",
-        label: "Workspace tabs",
-        section: "Editor",
-        spec: { kind: "enum", options: workspaceTabPositionOptions },
+        key: 'workspaceTabPosition',
+        label: 'Workspace tabs',
+        section: 'Editor',
+        spec: { kind: 'enum', options: workspaceTabPositionOptions },
       },
       {
-        key: "typescriptServer",
-        label: "TypeScript server",
-        section: "Language",
-        spec: { kind: "enum", options: typeScriptServerOptions },
+        key: 'typescriptServer',
+        label: 'TypeScript server',
+        section: 'Language',
+        spec: { kind: 'enum', options: typeScriptServerOptions },
       },
       {
-        key: "lspFileSizeLimitKb",
-        label: "LSP file size limit (KB, 0 = no limit)",
-        section: "Language",
+        key: 'lspFileSizeLimitKb',
+        label: 'LSP file size limit (KB, 0 = no limit)',
+        section: 'Language',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 512,
           minimum: 0,
           maximum: 51200,
@@ -186,32 +189,32 @@ class $SettingsPanel {
         },
       },
       {
-        key: "agentProvider",
-        label: "Agent engine",
-        section: "Agent",
-        spec: { kind: "enum", options: agentProviderOptions },
+        key: 'agentProvider',
+        label: 'Agent engine',
+        section: 'Agent',
+        spec: { kind: 'enum', options: agentProviderOptions },
       },
       {
-        key: "agentSkipPermissions",
-        label: "Agent bypasses permissions (off = ask interactively)",
-        section: "Agent",
-        spec: { kind: "boolean" },
+        key: 'agentSkipPermissions',
+        label: 'Agent bypasses permissions (off = ask interactively)',
+        section: 'Agent',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "agentTerminalFollowMode",
-        label: "Agent terminal follow mode",
-        section: "Agent",
+        key: 'agentTerminalFollowMode',
+        label: 'Agent terminal follow mode',
+        section: 'Agent',
         spec: {
-          kind: "enum",
-          options: ["follow-all", "on-error", "on-request", "off"],
+          kind: 'enum',
+          options: ['follow-all', 'on-error', 'on-request', 'off'],
         },
       },
       {
-        key: "agentTypingSpeed",
-        label: "Agent terminal typing speed (higher = faster)",
-        section: "Agent",
+        key: 'agentTypingSpeed',
+        label: 'Agent terminal typing speed (higher = faster)',
+        section: 'Agent',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 10,
           minimum: 10,
           maximum: 240,
@@ -219,32 +222,32 @@ class $SettingsPanel {
         },
       },
       {
-        key: "terminalCleanPrompt",
-        label: "Terminal clean themed prompt",
-        section: "Terminal",
-        spec: { kind: "boolean" },
+        key: 'terminalCleanPrompt',
+        label: 'Terminal clean themed prompt',
+        section: 'Terminal',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "agentAudioNarration",
-        label: "Speak agent replies aloud (needs a TTS engine)",
-        section: "Narration",
-        spec: { kind: "boolean" },
+        key: 'agentAudioNarration',
+        label: 'Speak agent replies aloud (needs a TTS engine)',
+        section: 'Narration',
+        spec: { kind: 'boolean' },
       },
       {
-        key: "agentNarrationVoice",
-        label: "Narration voice",
-        section: "Narration",
+        key: 'agentNarrationVoice',
+        label: 'Narration voice',
+        section: 'Narration',
         spec: {
-          kind: "dynamic-enum",
+          kind: 'dynamic-enum',
           resolveOptions: () => VoiceDiscovery.Class.options(),
         },
       },
       {
-        key: "agentNarrationRate",
-        label: "Narration speed (higher = faster; 1.0 = normal)",
-        section: "Narration",
+        key: 'agentNarrationRate',
+        label: 'Narration speed (higher = faster; 1.0 = normal)',
+        section: 'Narration',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 0.1,
           minimum: 0.5,
           maximum: 3.0,
@@ -252,11 +255,11 @@ class $SettingsPanel {
         },
       },
       {
-        key: "sidebarWidth",
-        label: "Sidebar width",
-        section: "Layout",
+        key: 'sidebarWidth',
+        label: 'Sidebar width',
+        section: 'Layout',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 1,
           minimum: 16,
           maximum: 80,
@@ -264,11 +267,11 @@ class $SettingsPanel {
         },
       },
       {
-        key: "rightDockWidth",
-        label: "Right dock width",
-        section: "Layout",
+        key: 'rightDockWidth',
+        label: 'Right dock width',
+        section: 'Layout',
         spec: {
-          kind: "number",
+          kind: 'number',
           step: 1,
           minimum: 16,
           maximum: 80,
@@ -276,67 +279,31 @@ class $SettingsPanel {
         },
       },
       {
-        key: "sidebarPosition",
-        label: "Sidebar position",
-        section: "Layout",
-        spec: { kind: "enum", options: sidebarPositionOptions },
+        key: 'sidebarPosition',
+        label: 'Sidebar position',
+        section: 'Layout',
+        spec: { kind: 'enum', options: sidebarPositionOptions },
       },
       {
-        key: "panelAlignment",
-        label: "Bottom panel alignment",
-        section: "Layout",
-        spec: { kind: "enum", options: panelAlignmentOptions },
+        key: 'panelAlignment',
+        label: 'Bottom panel alignment',
+        section: 'Layout',
+        spec: { kind: 'enum', options: panelAlignmentOptions },
       },
       {
-        key: "leftDockVerticalSpan",
-        label: "Primary dock vertical span (when bottom panel is open)",
-        section: "Layout",
-        spec: { kind: "enum", options: dockVerticalSpanOptions },
+        key: 'leftDockVerticalSpan',
+        label: 'Primary dock vertical span (when bottom panel is open)',
+        section: 'Layout',
+        spec: { kind: 'enum', options: dockVerticalSpanOptions },
       },
       {
-        key: "rightDockVerticalSpan",
-        label: "Right dock vertical span (when dock and panel are open)",
-        section: "Layout",
-        spec: { kind: "enum", options: dockVerticalSpanOptions },
-      },
-      {
-        key: "gitSplitRatio",
-        label: "Git changes/log split",
-        section: "Layout",
-        spec: {
-          kind: "number",
-          step: 0.05,
-          minimum: 0.1,
-          maximum: 0.9,
-          decimals: 2,
-        },
-      },
-      {
-        key: "diffSplitRatio",
-        label: "Diff previous/current split",
-        section: "Layout",
-        spec: {
-          kind: "number",
-          step: 0.05,
-          minimum: 0.15,
-          maximum: 0.85,
-          decimals: 2,
-        },
-      },
-      {
-        key: "markdownSplitRatio",
-        label: "Markdown source/preview split",
-        section: "Layout",
-        spec: {
-          kind: "number",
-          step: 0.05,
-          minimum: 0.2,
-          maximum: 0.8,
-          decimals: 2,
-        },
+        key: 'rightDockVerticalSpan',
+        label: 'Right dock vertical span (when dock and panel are open)',
+        section: 'Layout',
+        spec: { kind: 'enum', options: dockVerticalSpanOptions },
       },
     ];
-    Object.defineProperty(this, "$settingDescriptors", {
+    Object.defineProperty(this, '$settingDescriptors', {
       configurable: true,
       value: settingDescriptors,
     });
@@ -358,7 +325,7 @@ class $SettingsPanel {
   protected refreshDynamicOptions(): void {
     this.dynamicOptionsCache.clear();
     for (const descriptor of this.descriptors) {
-      if (descriptor.spec.kind === "dynamic-enum")
+      if (descriptor.spec.kind === 'dynamic-enum')
         this.dynamicOptionsCache.set(
           descriptor.key,
           descriptor.spec.resolveOptions(),
@@ -369,8 +336,8 @@ class $SettingsPanel {
   /** The cycle options for an enum / dynamic-enum row (dynamic ones from the panel-open probe, freshly
    *  resolved if the cache is cold — e.g. a test that adjusts without show()). */
   protected optionsFor(descriptor: SettingDescriptor): readonly string[] {
-    if (descriptor.spec.kind === "enum") return descriptor.spec.options;
-    if (descriptor.spec.kind === "dynamic-enum")
+    if (descriptor.spec.kind === 'enum') return descriptor.spec.options;
+    if (descriptor.spec.kind === 'dynamic-enum')
       return (
         this.dynamicOptionsCache.get(descriptor.key) ??
         descriptor.spec.resolveOptions()
@@ -386,7 +353,15 @@ class $SettingsPanel {
   }
 
   get descriptors(): readonly SettingDescriptor[] {
-    return this.settingsPanelClass.$settingDescriptors;
+    return [
+      ...this.settingsPanelClass.$settingDescriptors,
+      ...this.settingsStore
+        .contributedSettingDescriptors()
+        .map((contribution) => ({
+          key: contribution.identifier,
+          ...contribution,
+        })),
+    ];
   }
 
   /** The bound settings store (so the view can read live values without re-injecting it). */
@@ -428,21 +403,15 @@ class $SettingsPanel {
   adjust(direction: number): void {
     const descriptor = this.descriptors[this.selectedIndex.value];
     if (!descriptor) return;
-    const current = this.settingsStore.snapshot()[descriptor.key];
-    if (descriptor.spec.kind === "number") {
+    const current = this.settingsStore.settingValue(descriptor.key);
+    if (descriptor.spec.kind === 'number') {
       const { step, minimum, maximum, decimals } = descriptor.spec;
       const raw = (current as number) + step * direction;
       const rounded = Math.round(raw * 10 ** decimals) / 10 ** decimals;
       const next = Math.max(minimum, Math.min(rounded, maximum));
-      this.settingsStore.set(
-        descriptor.key,
-        next as SettingsValues[typeof descriptor.key],
-      );
-    } else if (descriptor.spec.kind === "boolean") {
-      this.settingsStore.set(
-        descriptor.key,
-        !(current as boolean) as SettingsValues[typeof descriptor.key],
-      );
+      this.setValue(descriptor.key, next);
+    } else if (descriptor.spec.kind === 'boolean') {
+      this.setValue(descriptor.key, !(current as boolean));
     } else {
       // enum or dynamic-enum: cycle the option list (dynamic ones probed at panel-open).
       const options = this.optionsFor(descriptor);
@@ -450,21 +419,36 @@ class $SettingsPanel {
       const currentIndex = Math.max(0, options.indexOf(current as string));
       const nextIndex =
         (currentIndex + direction + options.length) % options.length;
-      this.settingsStore.set(
-        descriptor.key,
-        options[nextIndex] as SettingsValues[typeof descriptor.key],
-      );
+      this.setValue(descriptor.key, options[nextIndex] ?? '');
     }
     this.settingsStore.save();
   }
 
+  protected setValue(key: string, value: SettingValue): void {
+    const hostDescriptor = this.settingsPanelClass.$settingDescriptors.find(
+      (descriptor) => descriptor.key === key,
+    );
+    if (hostDescriptor) {
+      this.settingsStore.set(
+        key as keyof import('./Settings').SettingsValues,
+        value as never,
+      );
+      return;
+    }
+    this.settingsStore.setContributed(key, value);
+  }
+
   /** The rows to render, with each value formatted for display. */
   rows(): SettingsPanelRow[] {
-    const values = this.settingsStore.snapshot();
     const selected = this.selectedIndex.value;
     return this.descriptors.map((descriptor, index) => ({
       label: descriptor.label,
-      valueText: this.formatValue(descriptor, values[descriptor.key]),
+      valueText: this.formatValue(
+        descriptor,
+        this.settingsStore.settingValue(descriptor.key) ??
+          descriptor.defaultValue ??
+          '',
+      ),
       selected: index === selected,
       kind: descriptor.spec.kind,
       section: descriptor.section,
@@ -474,14 +458,14 @@ class $SettingsPanel {
 
   protected formatValue(
     descriptor: SettingDescriptor,
-    value: SettingsValues[keyof SettingsValues],
+    value: SettingValue,
   ): string {
-    if (descriptor.spec.kind === "number")
+    if (descriptor.spec.kind === 'number')
       return (value as number).toFixed(descriptor.spec.decimals);
-    if (descriptor.spec.kind === "boolean") return value ? "on" : "off";
+    if (descriptor.spec.kind === 'boolean') return value ? 'on' : 'off';
     // A dynamic-enum's empty value means "auto" (the first discovered voice); show that, not blank.
-    if (descriptor.spec.kind === "dynamic-enum" && (value as string) === "")
-      return "auto (first found)";
+    if (descriptor.spec.kind === 'dynamic-enum' && (value as string) === '')
+      return 'auto (first found)';
     return String(value);
   }
 }
@@ -494,23 +478,12 @@ export namespace SettingsPanel {
 
 /** How one setting is edited: numbers step, booleans toggle, enums cycle a fixed list, and DYNAMIC enums
  * cycle a list probed at runtime. */
-export type SettingSpec =
-  | {
-      kind: "number";
-      step: number;
-      minimum: number;
-      maximum: number;
-      decimals: number;
-    }
-  | { kind: "boolean" }
-  | { kind: "enum"; options: readonly string[] }
-  | { kind: "dynamic-enum"; resolveOptions: () => readonly string[] };
-
 export interface SettingDescriptor {
-  key: keyof SettingsValues;
+  key: string;
   label: string;
-  spec: SettingSpec;
   section: string;
+  spec: SettingSpec;
+  defaultValue?: SettingValue;
 }
 
 /** One rendered settings row. */
@@ -518,7 +491,7 @@ export interface SettingsPanelRow {
   label: string;
   valueText: string;
   selected: boolean;
-  kind: SettingSpec["kind"];
+  kind: SettingSpec['kind'];
   section: string;
   index: number;
 }

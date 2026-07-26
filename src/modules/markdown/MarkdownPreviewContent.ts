@@ -7,6 +7,7 @@ import type {
   EditorSurfaceKeyEvent,
 } from '../ui/EditorSurfaceContents';
 import type { Workspace } from '../workspace/Workspace';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 
 // One mounted source | preview split. Constructed only by `MarkdownPreviewSurface`.
 //
@@ -21,6 +22,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly context: EditorSurfaceContentContext,
+    protected readonly splitRatioSetting: RegisteredSetting<number>,
   ) {
     this.view = this.createSplitView();
   }
@@ -35,6 +37,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       sourceRenderable: context.sourceRenderable,
       parentRenderable: context.container,
       settings: context.settings,
+      splitRatioSetting: this.splitRatioSetting,
       findBar: context.findBar,
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),

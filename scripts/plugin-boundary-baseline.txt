@@ -14,27 +14,16 @@
 # Ordering and reasoning for driving these to zero live in project.canvas-census.md
 # ("Extraction order"). Do not add a domain here without adding it to that census.
 
-# --- source control, the panel: EXTRACTED by task #34 ------------------------------------------
-# Zero rows for Workspace.ts and src/modules/app, so ANY reference there fails. The keybinding
-# defaults still carry its chord DATA (13 action identifiers + the 'git' keybinding context), which
-# is a different extraction — issue #100 — and is allowlisted here, not silently tolerated.
-source-control	src/modules/keybindings/KeybindingDefaults.ts	13
-source-control	src/modules/keybindings/KeybindingRegistry.ts	1
+# --- source control, the panel: EXTRACTED by task #34 and #100 ---------------------------------
+# Workspace, app, keybindings, and settings are all zero tolerance.
 
 # --- source control, comparison view: EXTRACTED 2026-07-26 -------------------------------------
 # Was 27 (Workspace.ts) + 17 (Bootstrap.ts) + 10 (AppStatusProjection.ts) = 54 lines, now 0 in all
-# three, so they carry no rows and one reference there fails. Its two chords remain in the keybinding
-# defaults (issue #100).
-comparison	src/modules/keybindings/KeybindingDefaults.ts	2
+# three, and task #100 removed its setting from the host schema.
 
 # --- markdown: EXTRACTED 2026-07-26 ------------------------------------------------------------
 # Was 13 (Workspace.ts) + 60 (Bootstrap.ts, the 29-site previewFocused fan-out plus command wiring)
-# + 13 (AppStatusProjection.ts) = 86 lines, now 0 in all three, so they carry no rows and one
-# reference there fails. Its three chords remain in the keybinding defaults (issue #100).
-markdown	src/modules/keybindings/KeybindingDefaults.ts	3
+# + 13 (AppStatusProjection.ts) = 86 lines, now 0 in all host paths.
 
 # --- file tree: EXTRACTED 2026-07-26 -----------------------------------------------------------
-# Workspace.ts and src/modules/app are zero tolerance. The Explorer accelerator plus the tree
-# navigation context/actions remain keybinding data until the shared issue-#100 extraction.
-file-tree	src/modules/keybindings/KeybindingDefaults.ts	9
-file-tree	src/modules/keybindings/KeybindingRegistry.ts	1
+# Workspace, app, keybindings, and settings are all zero tolerance.

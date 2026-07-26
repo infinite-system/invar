@@ -1086,11 +1086,14 @@ class $OverlayLayer {
           dialogName: 'settingsPanel',
           title: 'Settings',
           desiredTop: 2,
-          desiredWidth: Math.max(1, Math.floor(renderer.width * 0.7)),
+          desiredWidth: Math.max(1, Math.floor(renderer.width * 0.9)),
           desiredHeight: this.settingsContentRows + 2,
         },
       );
-      this.settingsViewportRows = settingsGeometry.interiorHeight;
+      this.settingsViewportRows = Math.max(
+        1,
+        settingsGeometry.interiorHeight - 1,
+      );
       if (!this.previousSettingsOpen) this.settingsViewport.reset();
       this.settingsViewport.reconcileExtent();
       const selectedSettingsIndex = settingsPanel.selectedIndex.value;

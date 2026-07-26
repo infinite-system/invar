@@ -160,29 +160,57 @@ only through an unlisted binding; encoding logic anywhere but the decode layer.
 ### Resolution is layered and later layers shadow earlier
 
 **Invariant:** If two layers bind the same chord in the same context, then the LATER layer wins:
-canonical floor ← platform overlay (mac) ← user rebinds. Within a layer, a context-guarded binding
-outranks an unguarded one, and a matching single binding outranks starting a chord.
+canonical floor ← platform overlay (mac) ← plugin defaults ← user rebinds. Within a layer, a
+context-guarded binding outranks an unguarded one, and a matching single binding outranks starting a
+chord.
 
 **Scope:** the registry's resolution order.
 
-**Mechanism:** layers are concatenated in priority order and scanned last-to-first; guards
-(`when` predicates registered by the host) filter candidates before precedence. Pure function of
+**Mechanism:** `registerLayer`, `registerPluginLayer`, and `registerUserLayer` assign explicit tiers;
+layers sort by tier then registration sequence and resolve last-to-first. Guards (`when` predicates
+registered by the host) filter candidates before precedence. Resolution is a pure function of
 (event, context, pending-chord state).
 
-**Generates:** mac defaults that don't fork the canonical set; user rebinds that never require
-editing shipped data; deterministic conflicts.
+**Generates:** mac defaults that don't fork the canonical set; contributed defaults that override
+the host without outranking the user; user rebinds that never require editing shipped data;
+deterministic conflicts.
 
-**Evidence:** to be realized; registry precedence tests (shadowing, guard outranking, single-over-
-chord).
+**Evidence:** `KeybindingRegistry.ts` (tiered registration and reverse resolution);
+`KeybindingRegistry.test.ts` ("plugin defaults shadow the floor but stay below user rebinds").
 
 **Impossible if true:** a chord whose meaning depends on definition ORDER within a layer file; a
 user rebind that cannot override a shipped binding.
 
-**Verification:** resolver unit tests enumerating the precedence lattice.
+**Verification:** `bun test src/modules/keybindings/KeybindingRegistry.test.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
+
+### Plugin bindings cannot reserve chords
+
+**Invariant:** If a binding is contributed by a plugin, then it cannot set `reserved` or carry a
+`reservedBecause` warrant; reservation is host-only authority.
+
+**Scope:** every binding admitted through `KeybindingRegistry.registerPluginLayer`.
+
+**Mechanism:** `registerPluginLayer` scans the entire proposed layer before registration and throws
+when either reservation field appears. The rejected layer is never inserted.
+
+**Generates:** plugins can define defaults for the surfaces they own without gaining a route that
+bypasses focused surfaces.
+
+**Evidence:** `KeybindingRegistry.ts` (`registerPluginLayer`);
+`KeybindingRegistry.test.ts` ("plugin layers refuse reserved claims and unregister symmetrically").
+
+**Impossible if true:** a plugin chord firing through `resolveReservedGlobal`; a plugin supplying
+its own warrant to take a focused terminal's chord.
+
+**Verification:** `bun test src/modules/keybindings/KeybindingRegistry.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
 
 ### The canonical layer is the floor
 

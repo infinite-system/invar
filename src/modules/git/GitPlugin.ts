@@ -17,6 +17,7 @@ import { GitPaneContent } from './GitPaneContent';
 import { GitRows } from './GitRows';
 import { GitWorkspace } from './GitWorkspace';
 import { GitComparisonSurface } from './GitComparisonSurface';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
@@ -27,6 +28,8 @@ class $GitPlugin
     WorkspaceContributor,
     StatusBarSegmentContribution
 {
+  readonly identifier = 'git';
+  readonly name = 'Git';
   readonly primaryDockContentIdentifiers = ['git'] as const;
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
@@ -37,41 +40,129 @@ class $GitPlugin
   protected paneContent: GitPaneContent.Model | null = null;
   protected comparisonSurface: GitComparisonSurface.Model | null = null;
   protected disposeComparisonSurface: (() => void) | null = null;
+  protected disposeCommands: (() => void) | null = null;
+  protected disposeStatusBar: (() => void) | null = null;
+  protected disposeStatusProjection: (() => void) | null = null;
+  protected splitRatioSetting: RegisteredSetting<number> | null = null;
+  protected diffSplitRatioSetting: RegisteredSetting<number> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
-    const gitWorkspace = new GitWorkspace.Class(workspace);
+    const gitWorkspace = new GitWorkspace.Class(
+      workspace,
+      this.splitRatioSetting ?? undefined,
+      this.diffSplitRatioSetting ?? undefined,
+    );
     this.workspaces.set(workspace, gitWorkspace);
     return gitWorkspace;
   }
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
-    this.paneContent = new GitPaneContent.Class(context, () =>
-      this.activeWorkspace(),
+    this.splitRatioSetting = context.registerSetting({
+      identifier: 'gitSplitRatio',
+      label: 'Changes/log split',
+      section: this.name,
+      defaultValue: 0.5,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.1,
+        maximum: 0.9,
+        decimals: 2,
+      },
+    });
+    this.diffSplitRatioSetting = context.registerSetting({
+      identifier: 'diffSplitRatio',
+      label: 'Previous/current split',
+      section: this.name,
+      defaultValue: 0.5,
+      spec: {
+        kind: 'number',
+        step: 0.05,
+        minimum: 0.15,
+        maximum: 0.85,
+        decimals: 2,
+      },
+    });
+    context.registerKeybindings([
+      {
+        chord: { key: 'g', ctrl: true, shift: true },
+        action: 'view.showSourceControl',
+      },
+      { chord: { key: 'g', ctrl: true }, action: 'git.togglePanel' },
+      { chord: { key: 'up' }, action: 'git.up', context: 'git' },
+      { chord: { key: 'down' }, action: 'git.down', context: 'git' },
+      { chord: { key: 'pageup' }, action: 'git.pageUp', context: 'git' },
+      {
+        chord: { key: 'pagedown' },
+        action: 'git.pageDown',
+        context: 'git',
+      },
+      {
+        chord: { key: 'return' },
+        action: 'git.stageToggle',
+        context: 'git',
+      },
+      {
+        chord: { key: 'space' },
+        action: 'git.stageToggle',
+        context: 'git',
+      },
+      { chord: { key: 'o' }, action: 'git.openFile', context: 'git' },
+      {
+        chord: { key: 'right' },
+        action: 'git.expandRight',
+        context: 'git',
+      },
+      {
+        chord: { key: 'left' },
+        action: 'git.collapseLeft',
+        context: 'git',
+      },
+      { chord: { key: 'd' }, action: 'git.discard', context: 'git' },
+      {
+        chord: { key: 'b' },
+        action: 'git.cycleLogBranch',
+        context: 'git',
+      },
+      { chord: { key: 'escape' }, action: 'git.leave', context: 'git' },
+      { chord: { key: 'tab' }, action: 'git.leave', context: 'git' },
+    ]);
+    this.paneContent = new GitPaneContent.Class(
+      context,
+      () => this.activeWorkspace(),
+      this.splitRatioSetting.value.value,
     );
     context.registerPrimaryDockContent(this.paneContent);
     // The comparison view is this plugin's own occupant of the editor column: the host mounts it
     // through the generic contract and never learns that a comparison is what it mounted.
     this.comparisonSurface = new GitComparisonSurface.Class(
       () => this.workspaces.get(context.workspaceSet.active) ?? null,
-      context.settings,
     );
     this.disposeComparisonSurface = context.editorSurfaceContents.register(
       this.comparisonSurface,
     );
-    context.statusBarSegments.register(this);
-    context.statusProjectionContributions.register({
-      snapshot: () => this.statusSnapshot(),
-    });
+    this.disposeStatusBar = context.statusBarSegments.register(this);
+    this.disposeStatusProjection =
+      context.statusProjectionContributions.register({
+        snapshot: () => this.statusSnapshot(),
+      });
     this.registerCommands(context);
   }
 
   disposeApplication(): void {
-    this.paneContent?.dispose();
     this.paneContent = null;
+    this.disposeCommands?.();
+    this.disposeCommands = null;
+    this.disposeStatusBar?.();
+    this.disposeStatusBar = null;
+    this.disposeStatusProjection?.();
+    this.disposeStatusProjection = null;
     this.disposeComparisonSurface?.();
     this.disposeComparisonSurface = null;
     this.comparisonSurface = null;
+    this.splitRatioSetting = null;
+    this.diffSplitRatioSetting = null;
     this.application = null;
   }
 
@@ -156,7 +247,7 @@ class $GitPlugin
       }
     };
 
-    context.commands.registerAll([
+    this.disposeCommands = context.commands.registerAll([
       {
         id: 'view.showSourceControl',
         title: 'View: Show Source Control',
@@ -286,14 +377,7 @@ class $GitPlugin
           if (workspace.commitLog.value?.branch.value !== undefined) {
             workspace.selectLogBranch(null);
           } else {
-            const fallbackIdentifier =
-              context.workspaceSet.active.primaryPaneContentIdentifier.value;
-            if (fallbackIdentifier) {
-              context.primaryDockHost.activate(fallbackIdentifier);
-              context.workspaceSet.active.focusPrimaryPane(fallbackIdentifier);
-            } else {
-              context.workspaceSet.active.focusEditor();
-            }
+            context.workspaceSet.active.focusEditor();
           }
         },
       },
@@ -337,7 +421,7 @@ class $GitPlugin
       diffScrollTop: comparisonView?.alignedRowScrollOffset.value ?? 0,
       diffSelectionChars: comparisonView?.selectionCharacterCount() ?? 0,
       diffSelection: comparisonView?.selectionRange() ?? null,
-      diffSplitRatio: application.settings.diffSplitRatio.value,
+      diffSplitRatio: workspace.diffSplitRatioSetting.value.value,
       liveGitWatcherCount: application.workspaceSet.entries.value.filter(
         (entry) => this.controllerFor(entry).hasLiveWatcher,
       ).length,

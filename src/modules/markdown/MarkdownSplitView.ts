@@ -13,6 +13,7 @@ import { SplitterModel } from '../layout/SplitterModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import type { Settings } from '../settings/Settings';
+import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { Theme } from '../theme/Theme';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 import { SelectionDragBehavior } from '../ui/SelectionDragBehavior';
@@ -34,6 +35,7 @@ class $MarkdownSplitView {
   protected readonly splitterElement: SplitterElement.Model;
   protected readonly previewTextBuffer: ReadOnlyTextBuffer.Model;
   protected readonly previewSelectionDragBehavior: SelectionDragBehavior.Model;
+  protected readonly splitRatioSetting: RegisteredSetting<number>;
   protected lastLaidOutWidth = -1;
   protected renderedPreviewText = '';
 
@@ -58,6 +60,8 @@ class $MarkdownSplitView {
     readonly theme: Theme.Instance,
     readonly options: MarkdownSplitViewOptions,
   ) {
+    this.splitRatioSetting =
+      options.splitRatioSetting ?? this.createTransientSplitRatioSetting();
     this.rootRenderable = new BoxRenderable(renderer, {
       id: 'markdown-split-view',
       width: '100%',
@@ -122,20 +126,28 @@ class $MarkdownSplitView {
       identifier: 'markdown-preview-divider',
       orientation: 'vertical',
       reportUnit: 'ratio',
-      initialSize: this.options.settings.markdownSplitRatio.value,
+      initialSize: this.splitRatioSetting.value.value,
       minimumSize: 0.2,
       maximumSize: 0.8,
-      currentSize: () => this.options.settings.markdownSplitRatio.value,
+      currentSize: () => this.splitRatioSetting.value.value,
       currentExtentCells: () => this.paneExtentWidth(),
       onSizeChange: (ratio) => {
-        this.options.settings.markdownSplitRatio.value = ratio;
+        this.splitRatioSetting.value.value = ratio;
         this.update();
       },
       onDragEnd: () => {
-        this.options.settings.save();
+        this.splitRatioSetting.save();
         this.update();
       },
     });
+  }
+
+  protected createTransientSplitRatioSetting(): RegisteredSetting<number> {
+    return {
+      value: ref(0.5),
+      save: () => {},
+      dispose: () => {},
+    };
   }
 
   protected createSelectionDragBehavior(): SelectionDragBehavior.Model {
@@ -460,7 +472,7 @@ class $MarkdownSplitView {
   protected sourcePaneWidth(): number {
     const ratio = Math.max(
       0.2,
-      Math.min(0.8, this.options.settings.markdownSplitRatio.value),
+      Math.min(0.8, this.splitRatioSetting.value.value),
     );
     return Math.max(1, Math.round(this.paneExtentWidth() * ratio));
   }
@@ -529,6 +541,7 @@ export interface MarkdownSplitViewOptions {
   sourceRenderable: BoxRenderable;
   parentRenderable: BoxRenderable;
   settings: Settings.Instance;
+  splitRatioSetting?: RegisteredSetting<number>;
   findBar: FindBar.Instance;
   resolveReference(reference: string): string | null;
   openReference(path: string): void;
