@@ -423,6 +423,35 @@ real terminal, not the harness.
 5. Keep the fleet alive; sync local main to origin/main (clean ff). Report concisely.
 
 ## Live cron prompts (verbatim — the running loop's exact words)
+
+### The 30-minute RECONCILIATION SWEEP (cron `11,41 * * * *`) — replaced the 10-minute liveness poll on 2026-07-26
+
+The old ten-minute check polled builder liveness. Two changes made that cadence wasteful: per-builder
+commit-count-or-silence Monitors now fire the moment work is committed (or a codex log goes silent),
+and the codex fleet leaves durable evidence (logs, worktrees, branches) that a sweep can reconcile
+lazily. What Monitors structurally CANNOT catch is drift between components — a green gate nobody
+landed, a dead builder with a dirty tree, a monitor watching a finished subject, a checkout that
+fell behind. That is what the sweep checks, at half-hour cadence, acting rather than narrating.
+
+VERBATIM PROMPT:
+Reconciliation sweep (every 30 min, bounded per fire — NOT a liveness poll; per-builder commit-count
+Monitors are the primary wake signal, this sweep catches what they structurally cannot). Check in
+order, act on findings, report in a few lines: (1) GREEN-UNLANDED — any /tmp/*-gate.log with
+GATE_EXIT=0 whose branch is not merged+pushed to origin/main: land it now (push, park with
+finished/<branch> tag). (2) DEAD-WITH-DIRTY — for each /tmp/conductor-* worktree with an active
+task: if its codex log is silent >20 min AND the tree is dirty with no new commit, the builder
+likely died mid-write — preserve the tree as a WIP commit on its branch, read the log tail to
+diagnose (quota? crash?), and either relaunch codex with a resume brief or take over. Never kill
+anything; never treat user Invar instances (/home/parallels/dev/tui-editor, /tmp/tui-demo,
+/tmp/wt-*) as builders. (3) STALE-MONITOR — TaskList: any Monitor watching a log/worktree whose
+subject already completed or aborted: TaskStop it; any builder WITHOUT a live monitor: arm the
+commit-count-or-silence monitor. (4) CHECKOUT-SYNC — user's checkout /home/parallels/dev/tui-editor
+must be clean and equal to origin/main (ff after landings; rebase their local doc commits on top
+when present). (5) CONFLICT-QUEUE — any finished branch whose merge into main conflicted and is
+awaiting a resolution round: confirm a codex is actually on it (log advancing), else dispatch one
+with the standard merge-resolution brief. If everything reconciles clean, say so in one line and
+stop — this sweep exists for drift, not for narration.
+
 These are the exact prompts driving this session's loops, recorded here so we can improve them
 deliberately. **This skill may refine them** (step 4 above) — but a cron is a session-only,
 in-memory snapshot: editing the text here does NOT change a running cron. Apply a change with
