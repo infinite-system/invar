@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +27,12 @@ interface HorizontalScrollBarProof {
   thumbLength: number;
   thumbStartColumn: number;
   trackLength: number;
+}
+
+interface DiffHorizontalScrollbarFrame {
+  readonly rowBytes: Uint8Array;
+  readonly rowHash: string;
+  readonly thumbLength: number;
 }
 
 interface VerticalThumbFrame {
@@ -473,6 +480,78 @@ function horizontalEditorScrollBarProof(
   };
 }
 
+function diffHorizontalScrollbarFrame(
+  snapshot: HarnessSnapshot.Model,
+): DiffHorizontalScrollbarFrame | null {
+  const verticalProof = verticalDiffScrollBarProof(snapshot);
+  const baseTitlePosition = snapshot.findText('Base (HEAD)');
+  if (!verticalProof || !baseTitlePosition) return null;
+  const horizontalBarRow =
+    verticalProof.trackStartRow + verticalProof.trackLength;
+  const horizontalBarStartColumn = Math.max(0, baseTitlePosition.column - 1);
+  const horizontalBarCells = snapshot
+    .rowCells(horizontalBarRow)
+    .slice(horizontalBarStartColumn, verticalProof.column);
+  if (
+    horizontalBarCells.length < 10 ||
+    horizontalBarCells.some((cell) => cell.characters !== ' ')
+  ) {
+    return null;
+  }
+  const firstBackground = horizontalBarCells[0]?.background;
+  if (firstBackground === undefined) return null;
+  let thumbLength = 0;
+  for (const cell of horizontalBarCells) {
+    if (!cell.isBackgroundRgb || cell.background !== firstBackground) {
+      break;
+    }
+    thumbLength += 1;
+  }
+  if (thumbLength < 2 || thumbLength >= horizontalBarCells.length) {
+    return null;
+  }
+  const rowBytes = new TextEncoder().encode(
+    JSON.stringify(
+      horizontalBarCells.map((cell) => ({
+        characters: cell.characters,
+        foreground: cell.foreground,
+        background: cell.background,
+        isForegroundDefault: cell.isForegroundDefault,
+        isForegroundRgb: cell.isForegroundRgb,
+        isForegroundPalette: cell.isForegroundPalette,
+        isBackgroundDefault: cell.isBackgroundDefault,
+        isBackgroundRgb: cell.isBackgroundRgb,
+        isBackgroundPalette: cell.isBackgroundPalette,
+        isBold: cell.isBold,
+        isDim: cell.isDim,
+        isItalic: cell.isItalic,
+        isUnderline: cell.isUnderline,
+        isBlink: cell.isBlink,
+        isInverse: cell.isInverse,
+        isInvisible: cell.isInvisible,
+        isStrikethrough: cell.isStrikethrough,
+        isOverline: cell.isOverline,
+        width: cell.width,
+      })),
+    ),
+  );
+  return {
+    rowBytes,
+    rowHash: createHash('sha256').update(rowBytes).digest('hex'),
+    thumbLength,
+  };
+}
+
+function byteArraysEqual(
+  firstBytes: Uint8Array,
+  secondBytes: Uint8Array,
+): boolean {
+  if (firstBytes.length !== secondBytes.length) return false;
+  return firstBytes.every(
+    (byteValue, byteIndex) => byteValue === secondBytes[byteIndex],
+  );
+}
+
 function bottomPanelSlot(status: StatusSnapshot): Rectangle {
   const layoutSlots = status.layoutSlots as
     Record<string, Rectangle> | undefined;
@@ -688,6 +767,7 @@ async function collectVerticalThumbFrames(
   scrollBarProof: (
     snapshot: HarnessSnapshot.Model,
   ) => VerticalScrollBarProof | null = verticalEditorScrollBarProof,
+  observeFrame?: (snapshot: HarnessSnapshot.Model) => void,
 ): Promise<VerticalThumbFrame[]> {
   const thumbFrames: VerticalThumbFrame[] = [];
   let reachedBottom = false;
@@ -746,6 +826,7 @@ async function collectVerticalThumbFrames(
         thumbLength: frameProof.thumbLength,
         ...scrollInputs,
       });
+      observeFrame?.(scrollFrame.snapshot);
       reachedBottom =
         frameProof.thumbEndRow >=
         frameProof.trackStartRow + frameProof.trackLength - 1;
@@ -934,6 +1015,14 @@ async function proveVerticalDiffThumbStability(
       'the diff pane vertical thumb is painted before frame collection begins',
       (candidate) => verticalDiffScrollBarProof(candidate) !== null,
     );
+    const initialHorizontalFrame = diffHorizontalScrollbarFrame(
+      driver.snapshot(),
+    );
+    requireCondition(
+      initialHorizontalFrame !== null,
+      'the diff pane horizontal thumb is painted before frame collection begins',
+    );
+    const horizontalFrames: DiffHorizontalScrollbarFrame[] = [];
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
       repositoryRoot,
@@ -941,9 +1030,84 @@ async function proveVerticalDiffThumbStability(
       'diff',
       true,
       verticalDiffScrollBarProof,
+      (snapshot) => {
+        const horizontalFrame = diffHorizontalScrollbarFrame(snapshot);
+        if (!horizontalFrame) {
+          throw new Error(
+            'FAIL diff horizontal scrollbar remains present in every scroll frame',
+          );
+        }
+        horizontalFrames.push(horizontalFrame);
+      },
     );
     pass('diff vertical thumb is present in the wheel-produced frames');
     proveStableVerticalThumbInputsAndExtent(thumbFrames, 'diff', true);
+    const distinctHorizontalRowHashes = [
+      ...new Set(horizontalFrames.map((frame) => frame.rowHash)),
+    ];
+    requireCondition(
+      horizontalFrames.length > 10,
+      `diff horizontal row observes ${horizontalFrames.length} complete scroll frames`,
+    );
+    const stableHorizontalFrame = horizontalFrames[0];
+    if (!stableHorizontalFrame) {
+      throw new Error(
+        'FAIL diff horizontal row produced no stable reference frame',
+      );
+    }
+    requireCondition(
+      horizontalFrames.every((frame) =>
+        byteArraysEqual(stableHorizontalFrame.rowBytes, frame.rowBytes),
+      ),
+      `diff horizontal scrollbar row cells stay byte-identical during vertical scroll ` +
+        `(hashes ${distinctHorizontalRowHashes.join(',')})`,
+    );
+
+    driver.sendKeys('Enter');
+    await driver.awaitGridCondition(
+      'Open current replaces the diff with the editable working file',
+      (candidate) =>
+        candidate.findText('Base (HEAD)') === null &&
+        candidate.findText('diff breathing line') !== null,
+    );
+    driver.sendKeys('Control+Home');
+    driver.sendKeys('End');
+    driver.sendText('X'.repeat(180));
+    driver.sendKeys('Control+s');
+    await driver.awaitQuiescence();
+    driver.sendKeys('Control+g');
+    await driver.awaitGridCondition(
+      'the edited diff fixture returns to the Git changes pane',
+      (candidate) => candidate.findText('VERY-LONG-COMM') !== null,
+    );
+    driver.sendKeys('o');
+    await driver.awaitGridCondition(
+      'the lengthened file reopens in a refreshed side-by-side diff',
+      (candidate) =>
+        candidate.findText('Base (HEAD)') !== null &&
+        candidate.findText('Current (working)') !== null,
+    );
+    const lengthenedHorizontalFrame = await driver.awaitGridCondition(
+      'the refreshed diff paints a changed horizontal thumb',
+      (candidate) => {
+        const frame = diffHorizontalScrollbarFrame(candidate);
+        return (
+          frame !== null &&
+          !byteArraysEqual(stableHorizontalFrame.rowBytes, frame.rowBytes)
+        );
+      },
+    );
+    const lengthenedHorizontalProof = diffHorizontalScrollbarFrame(
+      lengthenedHorizontalFrame,
+    );
+    requireCondition(
+      lengthenedHorizontalProof !== null &&
+        lengthenedHorizontalProof.thumbLength <
+          stableHorizontalFrame.thumbLength,
+      `lengthening the widest line refreshes the diff horizontal bar ` +
+        `(${stableHorizontalFrame.thumbLength} to ` +
+        `${lengthenedHorizontalProof?.thumbLength})`,
+    );
     driver.sendKeys('Control+q');
   } finally {
     await driver.dispose();
@@ -1021,8 +1185,20 @@ async function buildOverflowFixture(fixtureRoot: string): Promise<void> {
   );
   const diffBreathingLines = Array.from(
     { length: 500 },
-    (_unused, lineIndex) =>
-      `diff breathing line ${String(lineIndex + 1).padStart(3, '0')} original`,
+    (_unused, lineIndex) => {
+      const lineNumber = lineIndex + 1;
+      const blockNumber = Math.floor(lineIndex / 50) % 3;
+      const targetWidth =
+        lineNumber === 400
+          ? 130
+          : blockNumber === 0
+            ? 48
+            : blockNumber === 1
+              ? 72
+              : 56;
+      const prefix = `diff breathing line ${String(lineNumber).padStart(3, '0')} `;
+      return `${prefix}${'x'.repeat(targetWidth - prefix.length)}`;
+    },
   );
   await Bun.write(
     join(fixtureRoot, '000-DIFF-BREATHING.txt'),
