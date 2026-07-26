@@ -3,7 +3,8 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync } from 'node:fs';
+// invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import {
@@ -17,31 +18,35 @@ import {
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
-// Both roots are SIBLINGS INSIDE THEIR OWN PARENT, never directly in the system
-// temp directory. The project picker prefills the parent of the current root and
-// fuzzy-scores that parent's entries, so rooting the fixture at tmpdir() made this
-// smoke's cost depend on how many entries the whole machine happens to have in
-// /tmp. That is an environmental dependency masquerading as a test: it was ~1-in-3
-// flaky in the morning and ~2-in-3 by evening purely because the day's worktrees,
-// gate logs, and failure directories grew /tmp to 3,752 entries, and
-// retry-once-on-timeout kept rescuing it so the gate still reported green. With a
-// dedicated parent the scan sees exactly these two directories on any machine.
-const fixtureParentRoot = mkdtempSync(
-  join(tmpdir(), 'tui-workspace-tabs-fixture-'),
+// Both roots live INSIDE THEIR OWN PARENT, never directly in the system temp
+// directory, and that is load-bearing rather than tidiness. The project picker
+// prefills the parent of the current root and fuzzy-scores that parent's entries, so
+// rooting the fixture at tmpdir() made this smoke's cost depend on how many entries
+// the whole machine happened to have in /tmp: it was ~1-in-3 flaky in the morning and
+// ~2-in-3 by evening purely because a day of worktrees, gate logs, and failure
+// directories grew /tmp to 3,752 entries, while retry-once-on-timeout kept rescuing it
+// so the gate still reported green. A dedicated parent means the scan sees exactly
+// these two directories on any machine.
+//
+// The names also carry meaning: `tiny` and `wide` are the two activation fixtures the
+// GitWatcher subprocess-count assertions compare, and both are long enough for the
+// later tab-name assertions (one requires an ellipsis cap, another slices 17 chars).
+const fixtureParent = mkdtempSync(
+  join(tmpdir(), 'tui-workspace-tabs-harness-'),
 );
-// The long prefixes are load-bearing, not decoration: a later assertion requires the
-// workspace tab name to be CAPPED WITH AN ELLIPSIS, which only happens for a name this
-// long, and another slices 17 characters off it.
-const firstRoot = mkdtempSync(join(fixtureParentRoot, 'tui-workspace-first-'));
-const secondRoot = mkdtempSync(
-  join(fixtureParentRoot, 'tui-workspace-second-'),
-);
+const firstRoot = join(fixtureParent, 'tiny-workspace-project');
+const secondRoot = join(fixtureParent, 'wide-workspace-project');
+mkdirSync(firstRoot);
+mkdirSync(secondRoot);
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-workspace-tabs-harness-home-'),
 );
 const statusPath = join(homeDirectory, 'status.json');
 const firstName = basename(firstRoot);
 const secondName = basename(secondRoot);
+const tinyTrackedDirectoryCount = 3;
+const wideTrackedDirectoryCount = 520;
+const ignoredPackageCount = 600;
 
 async function selectVisibleSetting(label: string): Promise<void> {
   const settingsSnapshot = await driver.awaitGridCondition(
@@ -55,6 +60,14 @@ async function selectVisibleSetting(label: string): Promise<void> {
   );
 }
 
+mkdirSync(join(firstRoot, 'tracked'), { recursive: true });
+for (
+  let directoryIndex = 0;
+  directoryIndex < tinyTrackedDirectoryCount;
+  directoryIndex += 1
+) {
+  mkdirSync(join(firstRoot, 'tracked', `directory-${directoryIndex}`));
+}
 await Bun.write(join(firstRoot, 'FIRST_TREE_ONLY.txt'), 'first tree\n');
 await Bun.write(join(firstRoot, 'first-root-change.txt'), 'first committed\n');
 runGit(firstRoot, ['init', '-q']);
@@ -67,6 +80,25 @@ await Bun.write(
   'first committed\nfirst modified\n',
 );
 
+mkdirSync(join(secondRoot, 'tracked'), { recursive: true });
+for (
+  let directoryIndex = 0;
+  directoryIndex < wideTrackedDirectoryCount;
+  directoryIndex += 1
+) {
+  mkdirSync(join(secondRoot, 'tracked', `directory-${directoryIndex}`));
+}
+for (
+  let packageIndex = 0;
+  packageIndex < ignoredPackageCount;
+  packageIndex += 1
+) {
+  mkdirSync(
+    join(secondRoot, 'ignored-cache', `package-${packageIndex}`, 'lib'),
+    { recursive: true },
+  );
+}
+await Bun.write(join(secondRoot, '.gitignore'), 'ignored-cache/\n');
 await Bun.write(join(secondRoot, 'SECOND_TREE_ONLY.txt'), 'second tree\n');
 await Bun.write(
   join(secondRoot, 'second-root-change.txt'),
@@ -105,6 +137,26 @@ try {
     (status) => status.workspaceCount === 1,
   );
   pass('booted one workspace');
+  const tinyActivationStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the tiny workspace watcher activation completes',
+    (status) =>
+      status.gitWatcherActivationCompleted === true &&
+      Number(status.gitWatcherActivationIgnoreQuerySubprocessCount) > 0,
+  );
+  const tinyIgnoreQuerySubprocessCount = Number(
+    tinyActivationStatus.gitWatcherActivationIgnoreQuerySubprocessCount,
+  );
+  requireCondition(
+    tinyIgnoreQuerySubprocessCount > 0,
+    'the tiny activation liveness counter moves when its walk runs',
+  );
+  requireCondition(
+    Number(tinyActivationStatus.gitWatcherActivationWatchedDirectoryCount) ===
+      tinyTrackedDirectoryCount + 2,
+    'the tiny activation reports every retained directory watch',
+  );
   const plusColumn = Array.from(snapshot.rowText(0)).lastIndexOf('+');
   requireCondition(
     plusColumn >= 0,
@@ -153,6 +205,32 @@ try {
   );
   pass('second workspace was added');
   pass('new workspace is active');
+  const wideActivationStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the wide workspace watcher activation completes',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      status.gitWatcherActivationCompleted === true,
+  );
+  requireCondition(
+    Number(
+      wideActivationStatus.gitWatcherActivationIgnoreQuerySubprocessCount,
+    ) === tinyIgnoreQuerySubprocessCount,
+    'tiny and 500-directory activations launch equal ignore-query subprocess counts',
+  );
+  requireCondition(
+    Number(wideActivationStatus.gitWatcherActivationWatchedDirectoryCount) ===
+      wideTrackedDirectoryCount + 2,
+    'the wide activation watches tracked directories and prunes the ignored subtree',
+  );
+  pass(
+    `activation counters: tiny queries=${tinyIgnoreQuerySubprocessCount}, watched=${
+      tinyActivationStatus.gitWatcherActivationWatchedDirectoryCount
+    }; wide queries=${
+      wideActivationStatus.gitWatcherActivationIgnoreQuerySubprocessCount
+    }, watched=${wideActivationStatus.gitWatcherActivationWatchedDirectoryCount}`,
+  );
   requireCondition(
     snapshot.findText('…') !== null,
     'long project name is capped with an ellipsis',
@@ -221,6 +299,14 @@ try {
     (status) => status.activeWorkspaceRoot === firstRoot,
   );
   pass('click switched to the first root');
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the reactivated tiny workspace watcher completes',
+    (status) =>
+      status.activeWorkspaceRoot === firstRoot &&
+      status.gitWatcherActivationCompleted === true,
+  );
   driver.sendKeys('Control+g');
   await driver.awaitSnapshot(
     (candidate) => candidate.findText('first-root-change.txt') !== null,
@@ -236,6 +322,44 @@ try {
   );
   pass('two workspaces cost one live GitWatcher');
   pass('only the active workspace owns a watcher');
+
+  console.log(
+    '== harness workspace tabs: switched frame precedes repository work ==',
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, secondName.slice(0, 17));
+  await driver.awaitQuiescence();
+  const firstSwitchedFrameStatus = HarnessSmoke.Class.readStatus(statusPath);
+  requireCondition(
+    firstSwitchedFrameStatus.activeWorkspaceRoot === secondRoot,
+    'the first switched frame belongs to the selected workspace',
+  );
+  requireCondition(
+    firstSwitchedFrameStatus.gitWatcherActivationCompleted === false,
+    'the first switched frame arrives before the watcher walk completes',
+  );
+  const reactivatedWideStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the reactivated wide workspace watcher completes after the frame',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      status.gitWatcherActivationCompleted === true,
+  );
+  requireCondition(
+    Number(
+      reactivatedWideStatus.gitWatcherActivationIgnoreQuerySubprocessCount,
+    ) === tinyIgnoreQuerySubprocessCount,
+    'the completed wide walk repeats the depth-bounded query count',
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, firstName.slice(0, 17));
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the tiny workspace is restored after the deferral assertion',
+    (status) => status.activeWorkspaceRoot === firstRoot,
+  );
 
   console.log(
     '== harness workspace tabs: settings reorients top to left and back ==',
@@ -324,8 +448,6 @@ try {
   console.log('smoke-workspace-tabs-harness: ALL-PASS');
 } finally {
   await driver.dispose();
-  await HarnessSmoke.Class.removeTemporaryDirectory(firstRoot);
-  await HarnessSmoke.Class.removeTemporaryDirectory(secondRoot);
-  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureParentRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureParent);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

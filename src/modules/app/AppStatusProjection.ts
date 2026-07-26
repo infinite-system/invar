@@ -54,6 +54,13 @@ class $AppStatusProjection {
       workspaceLiveGitWatchers: ports.workspaceSet.entries.value.map(
         (workspaceEntry) => workspaceEntry.hasLiveGitWatcher,
       ),
+      gitWatcherActivationIgnoreQuerySubprocessCount:
+        ports.workspaceSet.active
+          .gitWatcherActivationIgnoreQuerySubprocessCount,
+      gitWatcherActivationWatchedDirectoryCount:
+        ports.workspaceSet.active.gitWatcherActivationWatchedDirectoryCount,
+      gitWatcherActivationCompleted:
+        ports.workspaceSet.active.gitWatcherActivationCompleted,
       workspaceTabPosition: ports.settings.workspaceTabPosition.value,
       activeBuffer: editor.hasDocument.value ? editor.document.path : null,
       // The active file's LSP size-suppression state — the authoritative channel a driven gate reads

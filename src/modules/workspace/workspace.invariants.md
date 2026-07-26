@@ -67,6 +67,54 @@ retaining filesystem watch handles after a workspace-tab switch.
 
 **Last refined:** 2026-07-21
 
+### Workspace activation is view-only
+
+**Invariant:** If the active workspace changes, then its first frame is independent of repository
+size: it does not await the `GitWatcher` walk or `GitRepository.refresh`, and activation ignore-query
+subprocesses scale with retained directory depth rather than directory count.
+
+**Scope:** `WorkspaceSet.activate`, `Workspace.resumeOwnedResources`, the initial watch-set
+establishment in `GitWatcher`, and the active workspace counters published by
+`AppStatusProjection`. Runtime-created directory events are outside the activation counters.
+
+**Components:**
+- *The switched view paints first* — watcher traversal and repository refresh begin only after the
+  synchronous activation path returns.
+- *Ignore queries follow depth* — every breadth-first directory level contributes at most one bulk
+  `git check-ignore -z --stdin` subprocess, regardless of that level's width.
+
+**Mechanism:** `Bootstrap` supplies `WorkspaceSet.awaitNextViewPaint`, a promise resolved by the
+renderer's next completed frame. `Workspace.activateGitResources` gives that same barrier to
+`GitWatcher` and awaits it before `GitRepository.refresh`. After the barrier,
+`walkAndWatchByLevel` gathers all candidate children at one depth, awaits one bulk
+`Processes.run` ignore query, prunes ignored directories, and yields before descending.
+
+**Generates:** View-only workspace switching; asynchronous Git panel convergence; the
+`gitWatcherActivationIgnoreQuerySubprocessCount`,
+`gitWatcherActivationWatchedDirectoryCount`, and `gitWatcherActivationCompleted` harness fields.
+
+**Rejected alternatives:** Keep every workspace watcher alive — makes switching cheap by violating
+the one-live-watcher resource bound. Move the old walk to a worker — retains directory-count work
+and forces watcher events across a message boundary.
+
+**Evidence:** `src/modules/workspace/Workspace.ts` (`activateGitResources`);
+`src/modules/git/GitWatcher.ts` (`establishWatchSet`, `walkAndWatchByLevel`);
+`src/modules/git/GitWatcher.test.ts` activation counters; the tiny-versus-wide fixture and
+first-frame assertion in `scripts/harness/smoke-workspace-tabs-harness.ts`.
+
+**Impossible if true:** Two repositories with the same retained directory depth launching
+different numbers of activation ignore-query subprocesses solely because one has more
+directories; the first switched frame reporting `gitWatcherActivationCompleted: true`; an ignored
+subtree contributing watched directories.
+
+**Verification:** `bun test src/modules/git/GitWatcher.test.ts
+src/modules/workspace/WorkspaceSet.test.ts && bun
+scripts/harness/smoke-workspace-tabs-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-25
+
 ### Tab strip panning never activates tabs
 
 **Invariant:** If a tab strip viewport pans through overflow, then its active tab stays unchanged

@@ -114,7 +114,12 @@ class $Bootstrap {
     // Reactive settings store (item G): load user + project settings; changes live-apply + persist.
     const settings = new Settings.Class();
     settings.load({ workspaceRoot: options.root ?? Environment.Class.cwd });
-    const workspaceSet = new WorkspaceSet.Class(settings);
+    const workspaceSet = new WorkspaceSet.Class(settings, {
+      awaitNextViewPaint: () =>
+        new Promise<void>((resolve) => {
+          renderer.once('frame', () => resolve());
+        }),
+    });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
     keybindings.registerGuard(

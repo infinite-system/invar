@@ -153,12 +153,12 @@ retained after workspace close.
 
 **Evidence:** `src/modules/git/GitWatcher.ts` (`scheduleRefresh`, `flushRefresh`,
 `startReconcileFloor`, `dispose`); `reconcile floor refreshes after watcher failure and stops on
-disposal` in `src/modules/git/__tests__/GitWatcher.test.ts`.
+disposal` in `src/modules/git/GitWatcher.test.ts`.
 
 **Impossible if true:** A disposed watcher firing a delayed or periodic repository refresh, or one
 event storm accumulating one debounce timer per event.
 
-**Verification:** `bun test src/modules/git/__tests__/GitWatcher.test.ts -t "reconcile floor refreshes after watcher failure and stops on disposal"`
+**Verification:** `bun test src/modules/git/GitWatcher.test.ts -t "reconcile floor refreshes after watcher failure and stops on disposal"`
 
 **Status:** provisional
 
@@ -184,7 +184,7 @@ unchanged periodic result.
 
 **Evidence:** `src/modules/git/GitWatcher.ts` (`startReconcileFloor`, `watchDirectory`,
 `onWatcherError`, `dispose`); `reconcile floor refreshes after watcher failure and stops on disposal`
-in `src/modules/git/__tests__/GitWatcher.test.ts`; `src/modules/git/GitRepository.ts` (`refresh`,
+in `src/modules/git/GitWatcher.test.ts`; `src/modules/git/GitRepository.ts` (`refresh`,
 `fileRecordsMatch`); `an unchanged background refresh preserves quiescent Git refs` in
 `src/modules/git/__tests__/GitRepository.test.ts`; `src/modules/workspace/Workspace.ts`
 (`createGitWatcher`).
@@ -194,7 +194,7 @@ one reconcile interval plus debounce solely because watcher setup, delivery, or 
 a disposed watcher continuing periodic refreshes; or unchanged periodic results replacing
 panel-observed refs and waking rendering.
 
-**Verification:** `bun test src/modules/git/__tests__/GitWatcher.test.ts src/modules/git/__tests__/GitRepository.test.ts`
+**Verification:** `bun test src/modules/git/GitWatcher.test.ts src/modules/git/GitRepository.test.ts`
 
 **Status:** provisional
 
@@ -212,9 +212,10 @@ part of the walk's watch set.
 **Scope:** One `GitWatcher` instance's watch set, from construction through `dispose`, including
 directories that appear after start. The dedicated HEAD watch is the single named exception.
 
-**Mechanism:** The watcher WALKS the working tree from the root and opens one non-recursive
-`fs.watch` per directory, pruning any child git reports through `git check-ignore` (and always
-`.git`) before its watch is created; a new subdirectory event re-runs the same ignore test before
+**Mechanism:** The watcher walks the working tree breadth-first and opens one non-recursive
+`fs.watch` per retained directory. At each depth it gathers every candidate child, awaits one bulk
+`git check-ignore -z --stdin` query, prunes ignored children (and always `.git`), yields to the event
+loop, and only then descends; a new subdirectory event re-runs the same async ignore test before
 gaining a watch. A recursive root watch is not used — it would open a handle per directory inside
 ignored subtrees like `node_modules`. Runtime-created entries are classified with a guarded
 `lstatSync` — never `stat` — so a symlink (to `.git`, to an external tree, or to itself) is
@@ -227,15 +228,16 @@ directory watch, not a file watch, because git replaces HEAD by rename (HEAD.loc
 would break a file watch after the first switch. This handle lives outside `directoryWatchers`, so
 `watchedDirectories()` — the bounded-walk contract's observable — never reports it.
 
-**Generates:** Bounded watch-handle count on large projects; no filesystem-handle or memory growth
-from ignored subtrees; refreshes driven by relevant working-tree changes plus prompt branch
-reactivity on checkout/switch.
+**Generates:** Bounded watch-handle count on large projects; activation ignore-query subprocess
+count bounded by retained tree depth; no filesystem-handle or memory growth from ignored subtrees;
+refreshes driven by relevant working-tree changes plus prompt branch reactivity on checkout/switch.
 
-**Evidence:** `src/modules/git/GitWatcher.ts` (`walkAndWatch`, `filterIgnoredChildren`,
-`queryIgnoredNames`, `onDirectoryEvent`, `watchHead`); `no watch handle is ever opened inside an
+**Evidence:** `src/modules/git/GitWatcher.ts` (`walkAndWatchByLevel`,
+`filterIgnoredDirectories`, `queryIgnoredRelativePaths`, `onDirectoryEvent`,
+`establishHeadWatch`); `no watch handle is ever opened inside an
 ignored directory`, `a nested tracked change refreshes but a change inside an ignored directory does
 not`, and `a newly created nested directory is watched but a new ignored directory is not` in
-`src/modules/git/__tests__/GitWatcher.test.ts`; `a runtime-created symlink is never watched and
+`src/modules/git/GitWatcher.test.ts`; `a runtime-created symlink is never watched and
 never throws from the event callback` in the same file (all asserting `watchedDirectories()`, which excludes
 the HEAD handle).
 
@@ -245,11 +247,11 @@ runtime-created symlink gaining a watch (or recursively watching its target); an
 callback exception escaping and terminating the process. (A
 write to HEAD scheduling a refresh is the intended branch-reactivity path, not a violation.)
 
-**Verification:** `bun test src/modules/git/__tests__/GitWatcher.test.ts`
+**Verification:** `bun test src/modules/git/GitWatcher.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### Commit expansion is lazy and windowed
 
@@ -315,7 +317,7 @@ freshness for a viewed non-checked-out branch.
 **Evidence:** `src/modules/workspace/Workspace.ts` (`reconcileLogTip`, `createGitWatcher`,
 `showSidebarView`); `src/modules/git/GitWatcher.ts` (`flushRefresh`, `onReconciled` option);
 `src/modules/git/CommitLog.ts` (`loadedTipSha`, `reset`); `onReconciled fires after a completed
-background refresh and never after disposal` in `src/modules/git/__tests__/GitWatcher.test.ts`;
+background refresh and never after disposal` in `src/modules/git/GitWatcher.test.ts`;
 driven end-to-end by `scripts/smoke-git-log.sh` (external commit on HEAD and on the viewed
 branch, no in-app action).
 

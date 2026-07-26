@@ -178,7 +178,14 @@ check_equal "$(field workspaceTabPosition)" "left" "settings panel live-applied 
 SECOND_LEFT_COORDINATE="$(frame_coordinate "$SECOND_VERTICAL_LABEL")"
 SECOND_LEFT_COLUMN="${SECOND_LEFT_COORDINATE%% *}"
 SECOND_LEFT_ROW="${SECOND_LEFT_COORDINATE##* }"
-check_equal "$SECOND_LEFT_ROW" "1" "vertical strip stacks the second project on row 1"
+FIRST_LEFT_COORDINATE="$(frame_coordinate "${FIRST_NAME:0:17}")"
+FIRST_LEFT_ROW="${FIRST_LEFT_COORDINATE##* }"
+if [ "$SECOND_LEFT_ROW" -gt "$FIRST_LEFT_ROW" ]; then
+  echo "  PASS  vertical strip stacks the second project below the first ($FIRST_LEFT_ROW -> $SECOND_LEFT_ROW)"
+else
+  echo "  FAIL  vertical strip did not stack the second project below the first ($FIRST_LEFT_ROW -> $SECOND_LEFT_ROW)"
+  FAILURES=1
+fi
 if [ "$SECOND_LEFT_COLUMN" -lt 22 ]; then
   echo "  PASS  vertical strip moved to the left column ($SECOND_LEFT_COLUMN)"
 else

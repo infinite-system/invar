@@ -84,13 +84,21 @@ function makeRepository(): string {
 
   writeFileSync(join(cwd, '.gitignore'), 'node_modules/\n');
   mkdirSync(join(cwd, 'src', 'deep'), { recursive: true });
-  writeFileSync(join(cwd, 'src', 'deep', 'nested.ts'), 'export const value = 1;\n');
+  writeFileSync(
+    join(cwd, 'src', 'deep', 'nested.ts'),
+    'export const value = 1;\n',
+  );
   writeFileSync(join(cwd, 'root.txt'), 'root\n');
 
   // A large-ish ignored subtree: exactly the kind of thing a recursive root watch would open a
   // watch handle per directory for.
   for (let packageIndex = 0; packageIndex < 120; packageIndex++) {
-    const packageDirectory = join(cwd, 'node_modules', `package-${packageIndex}`, 'lib');
+    const packageDirectory = join(
+      cwd,
+      'node_modules',
+      `package-${packageIndex}`,
+      'lib',
+    );
     mkdirSync(packageDirectory, { recursive: true });
     writeFileSync(join(packageDirectory, 'index.js'), 'module.exports = {};\n');
   }
@@ -134,235 +142,322 @@ watchTest('watcher disposal cancels a pending refresh', async () => {
   }
 });
 
-watchTest('a runtime-created symlink is never watched and never throws from the event callback', async () => {
-  const cwd = makeRepository();
-  const externalTarget = mkdtempSync(join(tmpdir(), 'invar-git-symlink-target-'));
-  const repository = {
-    async refresh(): Promise<void> {},
-  } as unknown as GitRepository.Model;
+watchTest(
+  'a runtime-created symlink is never watched and never throws from the event callback',
+  async () => {
+    const cwd = makeRepository();
+    const externalTarget = mkdtempSync(
+      join(tmpdir(), 'invar-git-symlink-target-'),
+    );
+    const repository = {
+      async refresh(): Promise<void> {},
+    } as unknown as GitRepository.Model;
 
-  class TestGitWatcher extends GitWatcher.$Class {
-    simulateDirectoryEvent(directory: string, changedName: string): void {
-      this.onDirectoryEvent(directory, changedName);
-    }
-  }
-
-  const watcher = new TestGitWatcher(cwd, repository, { debounceMs: 5 });
-  try {
-    const watchedBefore = watcher.watchedDirectoryCount;
-
-    // A symlink to an EXTERNAL directory appears at runtime (the initial walk is not involved):
-    // the event path must reject it — stat() would follow it and recursively watch the target.
-    symlinkSync(externalTarget, join(cwd, 'external-alias'));
-    watcher.simulateDirectoryEvent(cwd, 'external-alias');
-    expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
-    expect(watcher.watchedDirectories().some((path) => path.includes('external-alias'))).toBe(false);
-
-    // A symlink to .git — following it would recursively watch the git dir itself.
-    symlinkSync(join(cwd, '.git'), join(cwd, 'git-alias'));
-    watcher.simulateDirectoryEvent(cwd, 'git-alias');
-    expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
-
-    // A SELF-referential symlink: stat() throws ELOOP — from an fs.watch callback that would have
-    // been an unhandled exception killing the process. lstat + callback guard must absorb it.
-    symlinkSync(join(cwd, 'self-loop'), join(cwd, 'self-loop'));
-    expect(() => watcher.simulateDirectoryEvent(cwd, 'self-loop')).not.toThrow();
-    expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
-    expect(watcher.active).toBe(true);
-
-    // Control: a REAL runtime-created directory still gains a watch through the same path.
-    mkdirSync(join(cwd, 'real-new-directory'));
-    watcher.simulateDirectoryEvent(cwd, 'real-new-directory');
-    expect(
-      watcher.watchedDirectories().some((path) => path.endsWith('real-new-directory')),
-    ).toBe(true);
-  } finally {
-    watcher.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-    rmSync(externalTarget, { recursive: true, force: true });
-  }
-});
-
-watchTest('onReconciled fires after a completed background refresh and never after disposal', async () => {
-  const cwd = mkdtempSync(join(tmpdir(), 'invar-git-watch-'));
-  let refreshCount = 0;
-  let reconciledCount = 0;
-  const repository = {
-    async refresh(): Promise<void> {
-      refreshCount++;
-    },
-  } as unknown as GitRepository.Model;
-
-  class TestGitWatcher extends GitWatcher.$Class {
-    trigger(): void {
-      this.scheduleRefresh();
-    }
-  }
-
-  const watcher = new TestGitWatcher(cwd, repository, {
-    debounceMs: 5,
-    onReconciled: () => {
-      reconciledCount++;
-    },
-  });
-  try {
-    watcher.trigger();
-    await waitUntil(() => reconciledCount === 1);
-    expect(refreshCount).toBe(1);
-
-    watcher.trigger();
-    watcher.dispose();
-    await wait(40);
-    expect(reconciledCount).toBe(1);
-  } finally {
-    watcher.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
-
-watchTest('reconcile floor refreshes after watcher failure and stops on disposal', async () => {
-  const cwd = makeRepository();
-  const repository = new GitRepository.Class(cwd);
-  await repository.refresh();
-  expect(repository.unstaged.value).toEqual([]);
-
-  let completedRefreshCount = 0;
-  const observingRepository = {
-    async refresh(options: GitRefreshOptions = {}): Promise<void> {
-      await repository.refresh(options);
-      completedRefreshCount++;
-    },
-  } as unknown as GitRepository.Model;
-
-  class TestGitWatcher extends GitWatcher.$Class {
-    failEveryDirectoryWatcher(): void {
-      const watchedDirectories = this.watchedDirectories();
-      if (watchedDirectories.length === 0) {
-        this.onWatcherError(this.cwd);
-        return;
-      }
-      for (const watchedDirectory of watchedDirectories) {
-        this.onWatcherError(watchedDirectory);
+    class TestGitWatcher extends GitWatcher.$Class {
+      simulateDirectoryEvent(
+        directory: string,
+        changedName: string,
+      ): Promise<void> {
+        return this.onDirectoryEvent(directory, changedName);
       }
     }
-  }
 
-  const watcher = new TestGitWatcher(cwd, observingRepository, {
-    debounceMs: 5,
-    reconcileIntervalMilliseconds: 30,
-  });
-  try {
-    watcher.failEveryDirectoryWatcher();
-    expect(watcher.watchedDirectoryCount).toBe(0);
+    const watcher = new TestGitWatcher(cwd, repository, { debounceMs: 5 });
+    try {
+      await watcher.whenWatchSetEstablished();
+      const watchedBefore = watcher.watchedDirectoryCount;
 
-    // Let the immediate error-triggered reconcile finish before changing the repository. With
-    // every filesystem watch closed, only the periodic pull can observe the later change.
-    await waitUntil(() => completedRefreshCount > 0);
-    completedRefreshCount = 0;
-    writeFileSync(join(cwd, 'root.txt'), 'changed without a watcher event\n');
+      // A symlink to an EXTERNAL directory appears at runtime (the initial walk is not involved):
+      // the event path must reject it — stat() would follow it and recursively watch the target.
+      symlinkSync(externalTarget, join(cwd, 'external-alias'));
+      await watcher.simulateDirectoryEvent(cwd, 'external-alias');
+      expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
+      expect(
+        watcher
+          .watchedDirectories()
+          .some((path) => path.includes('external-alias')),
+      ).toBe(false);
 
-    await waitUntil(
-      () =>
-        completedRefreshCount > 0
-        && repository.unstaged.value.some((record) => record.path === 'root.txt'),
-    );
-    expect(completedRefreshCount).toBeGreaterThan(0);
+      // A symlink to .git — following it would recursively watch the git dir itself.
+      symlinkSync(join(cwd, '.git'), join(cwd, 'git-alias'));
+      await watcher.simulateDirectoryEvent(cwd, 'git-alias');
+      expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
 
-    watcher.dispose();
-    const refreshCountAfterDisposal = completedRefreshCount;
-    await wait(80);
-    expect(completedRefreshCount).toBe(refreshCountAfterDisposal);
-  } finally {
-    watcher.dispose();
-    repository.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
+      // A SELF-referential symlink: stat() throws ELOOP — from an fs.watch callback that would have
+      // been an unhandled exception killing the process. lstat + callback guard must absorb it.
+      symlinkSync(join(cwd, 'self-loop'), join(cwd, 'self-loop'));
+      await expect(
+        watcher.simulateDirectoryEvent(cwd, 'self-loop'),
+      ).resolves.toBeUndefined();
+      expect(watcher.watchedDirectoryCount).toBe(watchedBefore);
+      expect(watcher.active).toBe(true);
 
-watchTest('no watch handle is ever opened inside an ignored directory', () => {
-  const cwd = makeRepository();
-  const repository = {
-    async refresh(): Promise<void> {},
-  } as unknown as GitRepository.Model;
+      // Control: a REAL runtime-created directory still gains a watch through the same path.
+      mkdirSync(join(cwd, 'real-new-directory'));
+      await watcher.simulateDirectoryEvent(cwd, 'real-new-directory');
+      expect(
+        watcher
+          .watchedDirectories()
+          .some((path) => path.endsWith('real-new-directory')),
+      ).toBe(true);
+    } finally {
+      watcher.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(externalTarget, { recursive: true, force: true });
+    }
+  },
+);
 
-  const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 15 });
-  try {
-    const watchedDirectories = watcher.watchedDirectories();
-    // The root and the tracked src subtree are watched.
-    expect(watchedDirectories).toContain(cwd);
-    expect(watchedDirectories).toContain(join(cwd, 'src'));
-    expect(watchedDirectories).toContain(join(cwd, 'src', 'deep'));
-    // The ignored node_modules subtree — 120 packages, 240+ directories — is watched by NOTHING.
-    expect(watchedDirectories.some((path) => path.includes('node_modules'))).toBe(false);
-    // A recursive watch would open a handle per directory (250+); the walk opens only a handful.
-    expect(watcher.watchedDirectoryCount).toBeLessThan(10);
-  } finally {
-    watcher.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
+watchTest(
+  'onReconciled fires after a completed background refresh and never after disposal',
+  async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'invar-git-watch-'));
+    let refreshCount = 0;
+    let reconciledCount = 0;
+    const repository = {
+      async refresh(): Promise<void> {
+        refreshCount++;
+      },
+    } as unknown as GitRepository.Model;
 
-watchTest('a nested tracked change refreshes but a change inside an ignored directory does not', async () => {
-  const cwd = makeRepository();
-  let refreshCount = 0;
-  const repository = {
-    async refresh(): Promise<void> {
-      refreshCount++;
-    },
-  } as unknown as GitRepository.Model;
+    class TestGitWatcher extends GitWatcher.$Class {
+      trigger(): void {
+        this.scheduleRefresh();
+      }
+    }
 
-  const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 20 });
-  try {
-    // A change INSIDE the ignored node_modules subtree must NOT trigger a refresh.
-    writeFileSync(
-      join(cwd, 'node_modules', 'package-0', 'lib', 'index.js'),
-      'module.exports = { changed: true };\n',
-    );
-    await wait(120);
-    expect(refreshCount).toBe(0);
+    const watcher = new TestGitWatcher(cwd, repository, {
+      debounceMs: 5,
+      onReconciled: () => {
+        reconciledCount++;
+      },
+    });
+    try {
+      watcher.trigger();
+      await waitUntil(() => reconciledCount === 1);
+      expect(refreshCount).toBe(1);
 
-    // A change to a NESTED tracked file must trigger exactly one debounced refresh.
-    writeFileSync(join(cwd, 'src', 'deep', 'nested.ts'), 'export const value = 2;\n');
-    await wait(120);
-    expect(refreshCount).toBe(1);
-  } finally {
-    watcher.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
+      watcher.trigger();
+      watcher.dispose();
+      await wait(40);
+      expect(reconciledCount).toBe(1);
+    } finally {
+      watcher.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);
 
-watchTest('a newly created nested directory is watched but a new ignored directory is not', async () => {
-  const cwd = makeRepository();
-  let refreshCount = 0;
-  const repository = {
-    async refresh(): Promise<void> {
-      refreshCount++;
-    },
-  } as unknown as GitRepository.Model;
+watchTest(
+  'reconcile floor refreshes after watcher failure and stops on disposal',
+  async () => {
+    const cwd = makeRepository();
+    const repository = new GitRepository.Class(cwd);
+    await repository.refresh();
+    expect(repository.unstaged.value).toEqual([]);
 
-  const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 20 });
-  try {
-    // A brand-new tracked subdirectory appears and then gains a file: the walk must have added a
-    // watch for it, so the nested change refreshes.
-    const freshDirectory = join(cwd, 'src', 'feature');
-    mkdirSync(freshDirectory, { recursive: true });
-    await wait(120);
-    refreshCount = 0;
-    expect(watcher.watchedDirectories()).toContain(freshDirectory);
+    let completedRefreshCount = 0;
+    const observingRepository = {
+      async refresh(options: GitRefreshOptions = {}): Promise<void> {
+        await repository.refresh(options);
+        completedRefreshCount++;
+      },
+    } as unknown as GitRepository.Model;
 
-    writeFileSync(join(freshDirectory, 'thing.ts'), 'export const thing = 1;\n');
-    await wait(120);
-    expect(refreshCount).toBe(1);
+    class TestGitWatcher extends GitWatcher.$Class {
+      failEveryDirectoryWatcher(): void {
+        const watchedDirectories = this.watchedDirectories();
+        if (watchedDirectories.length === 0) {
+          this.onWatcherError(this.cwd);
+          return;
+        }
+        for (const watchedDirectory of watchedDirectories) {
+          this.onWatcherError(watchedDirectory);
+        }
+      }
+    }
 
-    // A brand-new IGNORED directory (under node_modules) must never gain a watch.
-    const ignoredDirectory = join(cwd, 'node_modules', 'package-new');
-    mkdirSync(ignoredDirectory, { recursive: true });
-    await wait(120);
-    expect(watcher.watchedDirectories().some((path) => path.includes('node_modules'))).toBe(
-      false,
-    );
-  } finally {
-    watcher.dispose();
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
+    const watcher = new TestGitWatcher(cwd, observingRepository, {
+      debounceMs: 5,
+      reconcileIntervalMilliseconds: 30,
+    });
+    try {
+      await watcher.whenWatchSetEstablished();
+      watcher.failEveryDirectoryWatcher();
+      expect(watcher.watchedDirectoryCount).toBe(0);
+
+      // Let the immediate error-triggered reconcile finish before changing the repository. With
+      // every filesystem watch closed, only the periodic pull can observe the later change.
+      await waitUntil(() => completedRefreshCount > 0);
+      completedRefreshCount = 0;
+      writeFileSync(join(cwd, 'root.txt'), 'changed without a watcher event\n');
+
+      await waitUntil(
+        () =>
+          completedRefreshCount > 0 &&
+          repository.unstaged.value.some(
+            (record) => record.path === 'root.txt',
+          ),
+      );
+      expect(completedRefreshCount).toBeGreaterThan(0);
+
+      watcher.dispose();
+      const refreshCountAfterDisposal = completedRefreshCount;
+      await wait(80);
+      expect(completedRefreshCount).toBe(refreshCountAfterDisposal);
+    } finally {
+      watcher.dispose();
+      repository.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);
+
+watchTest(
+  'watch-set establishment waits for the supplied view-paint barrier',
+  async () => {
+    const workingDirectory = makeRepository();
+    const repository = {
+      async refresh(): Promise<void> {},
+    } as unknown as GitRepository.Model;
+    let markViewPainted: () => void = () => {};
+    const viewPainted = new Promise<void>((resolve) => {
+      markViewPainted = resolve;
+    });
+    const watcher = new GitWatcher.Class(workingDirectory, repository, {
+      viewPainted,
+    });
+
+    try {
+      await Promise.resolve();
+      expect(watcher.activationCompleted).toBe(false);
+      expect(watcher.activationIgnoreQuerySubprocesses).toBe(0);
+      expect(watcher.watchedDirectoryCount).toBe(0);
+
+      markViewPainted();
+      await watcher.whenWatchSetEstablished();
+      expect(watcher.activationCompleted).toBe(true);
+      expect(watcher.activationIgnoreQuerySubprocesses).toBe(2);
+      expect(watcher.activationWatchedDirectories).toBe(3);
+    } finally {
+      watcher.dispose();
+      rmSync(workingDirectory, { recursive: true, force: true });
+    }
+  },
+);
+
+watchTest(
+  'no watch handle is ever opened inside an ignored directory',
+  async () => {
+    const cwd = makeRepository();
+    const repository = {
+      async refresh(): Promise<void> {},
+    } as unknown as GitRepository.Model;
+
+    const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 15 });
+    try {
+      expect(watcher.activationCompleted).toBe(false);
+      expect(watcher.activationIgnoreQuerySubprocesses).toBe(0);
+      await watcher.whenWatchSetEstablished();
+      const watchedDirectories = watcher.watchedDirectories();
+      // The root and the tracked src subtree are watched.
+      expect(watchedDirectories).toContain(cwd);
+      expect(watchedDirectories).toContain(join(cwd, 'src'));
+      expect(watchedDirectories).toContain(join(cwd, 'src', 'deep'));
+      // The ignored node_modules subtree — 120 packages, 240+ directories — is watched by NOTHING.
+      expect(
+        watchedDirectories.some((path) => path.includes('node_modules')),
+      ).toBe(false);
+      // A recursive watch would open a handle per directory (250+); the walk opens only a handful.
+      expect(watcher.watchedDirectoryCount).toBeLessThan(10);
+      // The root and src levels each issue one query regardless of the ignored subtree's size.
+      expect(watcher.activationIgnoreQuerySubprocesses).toBe(2);
+      expect(watcher.activationWatchedDirectories).toBe(3);
+      expect(watcher.activationCompleted).toBe(true);
+    } finally {
+      watcher.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);
+
+watchTest(
+  'a nested tracked change refreshes but a change inside an ignored directory does not',
+  async () => {
+    const cwd = makeRepository();
+    let refreshCount = 0;
+    const repository = {
+      async refresh(): Promise<void> {
+        refreshCount++;
+      },
+    } as unknown as GitRepository.Model;
+
+    const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 20 });
+    try {
+      await watcher.whenWatchSetEstablished();
+      // A change INSIDE the ignored node_modules subtree must NOT trigger a refresh.
+      writeFileSync(
+        join(cwd, 'node_modules', 'package-0', 'lib', 'index.js'),
+        'module.exports = { changed: true };\n',
+      );
+      await wait(120);
+      expect(refreshCount).toBe(0);
+
+      // A change to a NESTED tracked file must trigger exactly one debounced refresh.
+      writeFileSync(
+        join(cwd, 'src', 'deep', 'nested.ts'),
+        'export const value = 2;\n',
+      );
+      await wait(120);
+      expect(refreshCount).toBe(1);
+    } finally {
+      watcher.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);
+
+watchTest(
+  'a newly created nested directory is watched but a new ignored directory is not',
+  async () => {
+    const cwd = makeRepository();
+    let refreshCount = 0;
+    const repository = {
+      async refresh(): Promise<void> {
+        refreshCount++;
+      },
+    } as unknown as GitRepository.Model;
+
+    const watcher = new GitWatcher.Class(cwd, repository, { debounceMs: 20 });
+    try {
+      await watcher.whenWatchSetEstablished();
+      // A brand-new tracked subdirectory appears and then gains a file: the walk must have added a
+      // watch for it, so the nested change refreshes.
+      const freshDirectory = join(cwd, 'src', 'feature');
+      mkdirSync(freshDirectory, { recursive: true });
+      await wait(120);
+      refreshCount = 0;
+      expect(watcher.watchedDirectories()).toContain(freshDirectory);
+
+      writeFileSync(
+        join(freshDirectory, 'thing.ts'),
+        'export const thing = 1;\n',
+      );
+      await wait(120);
+      expect(refreshCount).toBe(1);
+
+      // A brand-new IGNORED directory (under node_modules) must never gain a watch.
+      const ignoredDirectory = join(cwd, 'node_modules', 'package-new');
+      mkdirSync(ignoredDirectory, { recursive: true });
+      await wait(120);
+      expect(
+        watcher
+          .watchedDirectories()
+          .some((path) => path.includes('node_modules')),
+      ).toBe(false);
+    } finally {
+      watcher.dispose();
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  },
+);

@@ -14,8 +14,8 @@
 // invariant: The git panel converges without watcher notifications (src/modules/git/git.invariants.md)
 // invariant: The watcher never watches inside an ignored directory (src/modules/git/git.invariants.md)
 import { watch, readdirSync, lstatSync, type FSWatcher } from 'node:fs';
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
+import { basename, join, relative } from 'node:path';
+import { Processes } from '../system/Processes';
 import type { GitRepository } from './GitRepository';
 
 class $GitWatcher {
@@ -32,6 +32,11 @@ class $GitWatcher {
   protected readonly debounceMilliseconds: number;
   protected readonly reconcileIntervalMilliseconds: number;
   protected readonly onReconciled: (() => void) | null;
+  protected readonly onWatchSetEstablished: (() => void) | null;
+  protected activationIgnoreQuerySubprocessCount = 0;
+  protected activationWatchedDirectoryCount = 0;
+  protected watchSetEstablished = false;
+  protected readonly watchSetEstablishmentPromise: Promise<void>;
 
   constructor(
     readonly cwd: string,
@@ -39,11 +44,19 @@ class $GitWatcher {
     options: GitWatcherOptions = {},
   ) {
     this.onReconciled = options.onReconciled ?? null;
+    this.onWatchSetEstablished = options.onWatchSetEstablished ?? null;
     this.debounceMilliseconds = Math.max(0, options.debounceMs ?? 80);
-    this.reconcileIntervalMilliseconds = Math.max(1, options.reconcileIntervalMilliseconds ?? 5_000);
-    this.start();
-    this.startReconcileFloor();
-    this.watchHead();
+    this.reconcileIntervalMilliseconds = Math.max(
+      1,
+      options.reconcileIntervalMilliseconds ?? 5_000,
+    );
+    this.watchSetEstablishmentPromise = this.establishWatchSet(
+      options.viewPainted,
+    );
+  }
+
+  protected get Processes() {
+    return Processes.Class;
   }
 
   /** Watch HEAD so a `git checkout`/`switch` refreshes the branch even when the working tree does not
@@ -53,15 +66,15 @@ class $GitWatcher {
    * worktree's own git dir (the linked-worktree dir for a worktree, `<root>/.git` for the main
    * checkout), resolved via `rev-parse --absolute-git-dir`.
    */
-  protected watchHead(): void {
+  protected async establishHeadWatch(): Promise<void> {
     if (this.disposed) {
       return;
     }
-    const result = spawnSync('git', ['-C', this.cwd, 'rev-parse', '--absolute-git-dir'], {
-      encoding: 'utf8',
-      timeout: 2000,
-    });
-    if (result.status !== 0) {
+    const result = await this.Processes.run(
+      ['git', 'rev-parse', '--absolute-git-dir'],
+      this.cwd,
+    );
+    if (this.disposed || !result.ok) {
       return;
     }
 
@@ -99,52 +112,106 @@ class $GitWatcher {
     return this.directoryWatchers.size;
   }
 
+  get activationIgnoreQuerySubprocesses(): number {
+    return this.activationIgnoreQuerySubprocessCount;
+  }
+
+  get activationWatchedDirectories(): number {
+    return this.activationWatchedDirectoryCount;
+  }
+
+  get activationCompleted(): boolean {
+    return this.watchSetEstablished;
+  }
+
   /** The absolute paths of every watched directory (for verification that ignored subtrees such as
    * `node_modules` were never watched). */
   watchedDirectories(): string[] {
     return [...this.directoryWatchers.keys()];
   }
 
-  start(): boolean {
-    if (this.disposed || this.directoryWatchers.size > 0) {
-      return this.active;
+  whenWatchSetEstablished(): Promise<void> {
+    return this.watchSetEstablishmentPromise;
+  }
+
+  protected async establishWatchSet(
+    viewPainted?: Promise<void>,
+  ): Promise<void> {
+    // Leave construction immediately so workspace activation can paint before any repository walk or
+    // Git subprocess begins.
+    await (viewPainted ?? this.yieldToEventLoop());
+    if (this.disposed) {
+      return;
     }
+
+    this.startReconcileFloor();
+    await Promise.all([
+      this.establishWorkingTreeWatchSet(this.cwd, true),
+      this.establishHeadWatch(),
+    ]);
+    if (this.disposed) {
+      return;
+    }
+    this.activationWatchedDirectoryCount = this.directoryWatchers.size;
+    this.watchSetEstablished = true;
+    this.onWatchSetEstablished?.();
+  }
+
+  protected async establishWorkingTreeWatchSet(
+    rootDirectory: string,
+    countsTowardActivation: boolean,
+  ): Promise<void> {
     try {
-      this.walkAndWatch(this.cwd);
+      await this.walkAndWatchByLevel(rootDirectory, countsTowardActivation);
     } catch {
       // Catastrophic walk failure (unreadable root): fall back to a single non-recursive watch on
       // the root so top-level changes still refresh, rather than watching nothing.
       this.scheduleRefresh();
-      this.watchDirectory(this.cwd);
+      this.watchDirectory(rootDirectory);
     }
-    return this.active;
   }
 
-  /** Establish a non-recursive watch on `directory`, then recurse into each child directory git
-   * does not ignore (and that is not `.git`). Symlinked directories are not followed. */
-  protected walkAndWatch(directory: string): void {
-    if (this.disposed) {
-      return;
-    }
-    if (!this.watchDirectory(directory)) {
-      return;
-    }
+  /** Establish non-recursive watches breadth-first. Every level contributes one bulk ignore query,
+   * so subprocess cost follows tree depth rather than the number of visited directories. */
+  protected async walkAndWatchByLevel(
+    rootDirectory: string,
+    countsTowardActivation: boolean,
+  ): Promise<void> {
+    let currentLevelDirectories = [rootDirectory];
+    while (!this.disposed && currentLevelDirectories.length > 0) {
+      const candidateChildDirectories: DirectoryCandidate[] = [];
+      for (const directory of currentLevelDirectories) {
+        if (!this.watchDirectory(directory)) {
+          continue;
+        }
+        try {
+          for (const entry of readdirSync(directory, {
+            withFileTypes: true,
+          })) {
+            if (entry.isDirectory() && entry.name !== '.git') {
+              const absolutePath = join(directory, entry.name);
+              candidateChildDirectories.push({
+                absolutePath,
+                relativePath: relative(this.cwd, absolutePath),
+              });
+            }
+          }
+        } catch {
+          this.scheduleRefresh();
+        }
+      }
+      if (candidateChildDirectories.length === 0) {
+        break;
+      }
 
-    let childDirectoryNames: string[];
-    try {
-      childDirectoryNames = readdirSync(directory, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name !== '.git')
-        .map((entry) => entry.name);
-    } catch {
-      this.scheduleRefresh();
-      return;
-    }
-    if (childDirectoryNames.length === 0) {
-      return;
-    }
-
-    for (const childName of this.filterIgnoredChildren(directory, childDirectoryNames)) {
-      this.walkAndWatch(join(directory, childName));
+      // invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
+      currentLevelDirectories = (
+        await this.filterIgnoredDirectories(
+          candidateChildDirectories,
+          countsTowardActivation,
+        )
+      ).map((candidateDirectory) => candidateDirectory.absolutePath);
+      await this.yieldToEventLoop();
     }
   }
 
@@ -153,8 +220,10 @@ class $GitWatcher {
       return false;
     }
     try {
-      const watcher = watch(directory, (_eventType, changedName) =>
-        this.onDirectoryEvent(directory, changedName),
+      const watcher = watch(
+        directory,
+        (_eventType, changedName) =>
+          void this.onDirectoryEvent(directory, changedName),
       );
       watcher.on('error', () => this.onWatcherError(directory));
       this.directoryWatchers.set(directory, watcher);
@@ -178,59 +247,66 @@ class $GitWatcher {
   }
 
   // invariant: The watcher never watches inside an ignored directory (src/modules/git/git.invariants.md)
-  protected filterIgnoredChildren(
-    parentDirectory: string,
-    childDirectoryNames: string[],
-  ): string[] {
-    const ignoredDirectoryNames = this.queryIgnoredNames(parentDirectory, childDirectoryNames);
-    if (ignoredDirectoryNames === null) {
+  protected async filterIgnoredDirectories(
+    candidateDirectories: DirectoryCandidate[],
+    countsTowardActivation: boolean,
+  ): Promise<DirectoryCandidate[]> {
+    const ignoredRelativePaths = await this.queryIgnoredRelativePaths(
+      candidateDirectories.map(
+        (candidateDirectory) => candidateDirectory.relativePath,
+      ),
+      countsTowardActivation,
+    );
+    if (ignoredRelativePaths === null) {
       const gitWatcherClass = this.constructor as typeof $GitWatcher;
-      return childDirectoryNames.filter(
-        (childName) => !gitWatcherClass.fallbackIgnoredDirectoryNames.has(childName),
+      return candidateDirectories.filter(
+        (candidateDirectory) =>
+          !gitWatcherClass.fallbackIgnoredDirectoryNames.has(
+            basename(candidateDirectory.absolutePath),
+          ),
       );
     }
-    return childDirectoryNames.filter(
-      (childName) => !ignoredDirectoryNames.has(childName),
+    return candidateDirectories.filter(
+      (candidateDirectory) =>
+        !ignoredRelativePaths.has(candidateDirectory.relativePath),
     );
   }
 
-  /** Ask git which of `childDirectoryNames` (relative to `parentDirectory`) are ignored. `git check-ignore`
-   * exits 0 when at least one path is ignored, 1 when none are, and otherwise fails (not a
-   * repository, git missing) — a failure returns null so the caller can fall back. */
-  protected queryIgnoredNames(
-    parentDirectory: string,
-    childDirectoryNames: string[],
-  ): Set<string> | null {
-    let result: ReturnType<typeof spawnSync>;
-    try {
-      result = spawnSync('git', ['check-ignore', '-z', '--stdin'], {
-        cwd: parentDirectory,
-        input: childDirectoryNames.join('\0'),
-        encoding: 'utf8',
-      });
-    } catch {
-      return null;
+  /** Ask git which working-tree-relative paths are ignored. `git check-ignore` exits 0 when at
+   * least one path is ignored, 1 when none are, and otherwise fails. */
+  protected async queryIgnoredRelativePaths(
+    relativePaths: string[],
+    countsTowardActivation: boolean,
+  ): Promise<Set<string> | null> {
+    const result = await this.Processes.run(
+      ['git', 'check-ignore', '-z', '--stdin'],
+      this.cwd,
+      relativePaths.join('\0'),
+    );
+    if (countsTowardActivation && result.code !== -1) {
+      this.activationIgnoreQuerySubprocessCount += 1;
     }
-    if (result.error) {
-      return null;
-    }
-    if (result.status !== 0 && result.status !== 1) {
+    if (result.code !== 0 && result.code !== 1) {
       return null;
     }
 
-    const ignoredDirectoryNames = new Set<string>();
-    for (const ignoredDirectoryName of String(result.stdout).split('\0')) {
-      if (ignoredDirectoryName.length > 0) {
-        ignoredDirectoryNames.add(ignoredDirectoryName);
+    const ignoredRelativePaths = new Set<string>();
+    for (const ignoredRelativePath of result.stdout.split('\0')) {
+      if (ignoredRelativePath.length > 0) {
+        ignoredRelativePaths.add(ignoredRelativePath);
       }
     }
-    return ignoredDirectoryNames;
+    return ignoredRelativePaths;
   }
 
-  protected onDirectoryEvent(
+  protected yieldToEventLoop(): Promise<void> {
+    return new Promise((resolve) => setImmediate(resolve));
+  }
+
+  protected async onDirectoryEvent(
     directory: string,
     changedName: string | Buffer | null,
-  ): void {
+  ): Promise<void> {
     // Nothing in this body may THROW: fs.watch invokes it outside any caller's try/catch, so an
     // escaped exception (e.g. a filesystem race) would take down the whole process.
     try {
@@ -245,7 +321,8 @@ class $GitWatcher {
       if (!changedName) {
         return;
       }
-      const childName = typeof changedName === 'string' ? changedName : changedName.toString();
+      const childName =
+        typeof changedName === 'string' ? changedName : changedName.toString();
       if (childName.length === 0 || childName === '.git') {
         return;
       }
@@ -260,13 +337,24 @@ class $GitWatcher {
       // throw ELOOP. lstat reports the link itself; a symlink is rejected regardless of its target.
       // invariant: The watcher never watches inside an ignored directory (src/modules/git/git.invariants.md)
       const childStats = lstatSync(childPath, { throwIfNoEntry: false });
-      if (!childStats || childStats.isSymbolicLink() || !childStats.isDirectory()) {
+      if (
+        !childStats ||
+        childStats.isSymbolicLink() ||
+        !childStats.isDirectory()
+      ) {
         return;
       }
-      if (this.filterIgnoredChildren(directory, [childName]).length === 0) {
+      const candidateDirectory = {
+        absolutePath: childPath,
+        relativePath: relative(this.cwd, childPath),
+      };
+      if (
+        (await this.filterIgnoredDirectories([candidateDirectory], false))
+          .length === 0
+      ) {
         return;
       }
-      this.walkAndWatch(childPath);
+      await this.establishWorkingTreeWatchSet(childPath, false);
     } catch {
       // A raced/vanished path or unreadable entry: the refresh above (or the reconcile floor)
       // still converges git state — never let the watcher callback throw.
@@ -341,9 +429,21 @@ export namespace GitWatcher {
 export interface GitWatcherOptions {
   debounceMs?: number;
   reconcileIntervalMilliseconds?: number;
+  /** Resolves after the workspace's newly active view has painted. No watch traversal or Git process
+   * starts before this barrier. */
+  viewPainted?: Promise<void>;
   /** Called after each COMPLETED background reconcile (debounced event flush or the periodic
    * floor). The owner hangs cheap follow-up checks here — e.g. the commit-log tip-SHA staleness
    * probe — so they ride the existing reconcile cadence instead of owning a second timer. Never
    * called after dispose(). */
   onReconciled?: () => void;
+  /** Called once after the breadth-first working-tree watch set and the dedicated HEAD watch have
+   * settled. The workspace uses it to publish activation counters without making this resource
+   * owner reactive. */
+  onWatchSetEstablished?: () => void;
+}
+
+interface DirectoryCandidate {
+  absolutePath: string;
+  relativePath: string;
 }

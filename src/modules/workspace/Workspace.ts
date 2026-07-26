@@ -47,6 +47,8 @@ import type {
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 
 class $Workspace {
+  constructor(protected readonly options: WorkspaceOptions = {}) {}
+
   /** The project name for a root: the basename of the parent of the git COMMON dir — shared by the
    *  main checkout and every linked worktree of the same repository. `--git-common-dir` resolves to
    *  `<checkout>/.git` for the main checkout and to `<project>/.git` for a worktree, so its parent is
@@ -561,15 +563,27 @@ class $Workspace {
   }
   // Watches the working tree so EXTERNAL changes (editor saves elsewhere, other processes, branch
   // switches, on-disk edits) live-refresh the git panel + tree decorations — not just our own actions.
-  protected createGitWatcher(root: string, repository: GitRepository.Instance) {
+  protected createGitWatcher(
+    root: string,
+    repository: GitRepository.Instance,
+    viewPainted: Promise<void>,
+  ) {
     // After every completed reconcile (event flush or the 5s floor), probe the commit log's tip —
     // the cheap SHA compare that keeps the HISTORY list following external commits/pulls/rebases.
     // invariant: The commit log follows repository reality (src/modules/git/git.invariants.md)
-    return new GitWatcher.Class(root, repository, {
+    let gitWatcher: GitWatcher.Model;
+    gitWatcher = new GitWatcher.Class(root, repository, {
       onReconciled: () => void this.reconcileLogTip(),
+      onWatchSetEstablished: () =>
+        this.onGitWatcherWatchSetEstablished(gitWatcher),
+      viewPainted,
     });
+    return gitWatcher;
   }
   protected gitWatcher: GitWatcher.Model | null = null;
+  protected get gitWatcherStatusRevision() {
+    return ref(0);
+  }
   // The workspace-owned current-line blame cache (bounded LRU; see GitBlameCache). Created in
   // open(), dropped on suspend/dispose, recreated on resume — blame memory follows the live
   // workspace, never the process lifetime.
@@ -592,6 +606,52 @@ class $Workspace {
 
   get hasLiveGitWatcher(): boolean {
     return this.gitWatcher !== null;
+  }
+
+  get gitWatcherActivationIgnoreQuerySubprocessCount(): number {
+    void this.gitWatcherStatusRevision.value;
+    return this.gitWatcher?.activationIgnoreQuerySubprocesses ?? 0;
+  }
+
+  get gitWatcherActivationWatchedDirectoryCount(): number {
+    void this.gitWatcherStatusRevision.value;
+    return this.gitWatcher?.activationWatchedDirectories ?? 0;
+  }
+
+  get gitWatcherActivationCompleted(): boolean {
+    void this.gitWatcherStatusRevision.value;
+    return this.gitWatcher?.activationCompleted ?? false;
+  }
+
+  protected onGitWatcherWatchSetEstablished(
+    gitWatcher: GitWatcher.Model,
+  ): void {
+    if (this.gitWatcher === gitWatcher) {
+      this.gitWatcherStatusRevision.value += 1;
+    }
+  }
+
+  protected activateGitResources(
+    root: string,
+    repository: GitRepository.Instance,
+  ): void {
+    this.gitWatcher?.dispose();
+    const viewPainted = this.awaitNextViewPaint();
+    const gitWatcher = this.createGitWatcher(root, repository, viewPainted);
+    this.gitWatcher = gitWatcher;
+    // invariant: Workspace activation is view-only (workspace.invariants.md)
+    void viewPainted.then(() => {
+      if (this.gitWatcher === gitWatcher) {
+        void repository.refresh();
+      }
+    });
+  }
+
+  protected awaitNextViewPaint(): Promise<void> {
+    return (
+      this.options.awaitNextViewPaint?.() ??
+      new Promise((resolve) => setImmediate(resolve))
+    );
   }
 
   // Optional live settings source: when attached, the vertical scroll-momentum profile reads its
@@ -710,14 +770,12 @@ class $Workspace {
         : null;
     this.tree.open(root);
     this.focus.value = 'files';
-    // Live-wire git: create the repository + log for this root and kick a non-blocking refresh.
+    // Live-wire git: create the repository + log for this root, then activate their deferred
+    // resource work after the view-only open path returns.
     this.git.value = this.createGit(root);
     this.commitLog.value = this.createCommitLog(root);
     this.commitExpansion.value = this.createCommitExpansion(root);
-    void this.git.value.refresh();
-    // Watch the working tree so external changes refresh the panel WITHOUT any in-app action.
-    this.gitWatcher?.dispose();
-    this.gitWatcher = this.createGitWatcher(root, this.git.value);
+    this.activateGitResources(root, this.git.value);
     // Current-line blame: a bounded, THIS-workspace-owned cache (disposed when the workspace goes
     // cold — blame memory tracks the actively observed set, never every file ever visited).
     this.blameCacheInstance?.dispose();
@@ -745,8 +803,7 @@ class $Workspace {
   resumeOwnedResources(): void {
     this.buffers.reactivate();
     if (this.root && this.git.value && !this.gitWatcher) {
-      this.gitWatcher = this.createGitWatcher(this.root, this.git.value);
-      void this.git.value.refresh();
+      this.activateGitResources(this.root, this.git.value);
     }
     if (this.root && !this.blameCacheInstance) {
       this.blameCacheInstance = this.createGitBlameCache(this.root);
@@ -1618,6 +1675,10 @@ export interface DiagnosticLineMark {
 export interface HoverDiagnostic {
   severity: 1 | 2 | 3 | 4;
   message: string;
+}
+
+export interface WorkspaceOptions {
+  awaitNextViewPaint?: () => Promise<void>;
 }
 
 /** The two full-text SIDES of a side-by-side diff shown by the DiffView (token forces a rebuild). */

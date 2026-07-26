@@ -30,7 +30,8 @@ class $WorkspaceSet {
   }
 
   get liveGitWatcherCount(): number {
-    return this.entries.value.filter((workspace) => workspace.hasLiveGitWatcher).length;
+    return this.entries.value.filter((workspace) => workspace.hasLiveGitWatcher)
+      .length;
   }
 
   tabs(): WorkspaceTab[] {
@@ -73,7 +74,8 @@ class $WorkspaceSet {
     ) {
       return;
     }
-    if (this.activeWorkspaceIndex.value >= 0) this.active.suspendOwnedResources();
+    if (this.activeWorkspaceIndex.value >= 0)
+      this.active.suspendOwnedResources();
     this.activeWorkspaceIndex.value = workspaceIndex;
     this.active.resumeOwnedResources();
   }
@@ -81,7 +83,9 @@ class $WorkspaceSet {
   cycle(workspaceDelta: number): void {
     if (this.count === 0) return;
     const nextWorkspaceIndex =
-      ((this.activeWorkspaceIndex.value + workspaceDelta) % this.count + this.count) % this.count;
+      (((this.activeWorkspaceIndex.value + workspaceDelta) % this.count) +
+        this.count) %
+      this.count;
     this.activate(nextWorkspaceIndex);
   }
 
@@ -90,14 +94,19 @@ class $WorkspaceSet {
     if (this.count <= 1) return false;
     const workspace = this.entries.value[workspaceIndex];
     if (!workspace) return false;
-    const closingActiveWorkspace = workspaceIndex === this.activeWorkspaceIndex.value;
+    const closingActiveWorkspace =
+      workspaceIndex === this.activeWorkspaceIndex.value;
     workspace.dispose();
     this.entries.value = this.entries.value.filter(
-      (_workspace, candidateWorkspaceIndex) => candidateWorkspaceIndex !== workspaceIndex,
+      (_workspace, candidateWorkspaceIndex) =>
+        candidateWorkspaceIndex !== workspaceIndex,
     );
 
     if (closingActiveWorkspace) {
-      this.activeWorkspaceIndex.value = Math.min(workspaceIndex, this.entries.value.length - 1);
+      this.activeWorkspaceIndex.value = Math.min(
+        workspaceIndex,
+        this.entries.value.length - 1,
+      );
       this.active.resumeOwnedResources();
     } else if (workspaceIndex < this.activeWorkspaceIndex.value) {
       this.activeWorkspaceIndex.value -= 1;
@@ -116,7 +125,12 @@ class $WorkspaceSet {
   }
 
   protected createWorkspace(): Workspace.Instance {
-    return this.options.createWorkspace?.() ?? new Workspace.Class();
+    return (
+      this.options.createWorkspace?.() ??
+      new Workspace.Class({
+        awaitNextViewPaint: this.options.awaitNextViewPaint,
+      })
+    );
   }
 }
 
@@ -128,6 +142,7 @@ export namespace WorkspaceSet {
 
 export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
+  awaitNextViewPaint?: () => Promise<void>;
 }
 
 export interface WorkspaceTab {
