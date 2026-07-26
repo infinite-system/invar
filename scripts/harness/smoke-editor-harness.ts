@@ -530,7 +530,8 @@ try {
     );
     if (Number(openStatus.bufferTabCount) >= targetTabCount) break;
     if (openStatus.focus !== 'files') {
-      driver.sendRawInputWithoutFrameExpectation('\t');
+      // Tab indents in the editor now (#91); the host focus chord is Ctrl+Shift+J.
+      driver.sendKeysWithoutFrameExpectation('Control+Shift+j');
       await awaitStatusPublication(
         statusPath,
         "status condition: status.focus === 'files'",
