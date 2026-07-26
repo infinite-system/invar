@@ -17,8 +17,25 @@ import {
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
-const firstRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-first-'));
-const secondRoot = mkdtempSync(join(tmpdir(), 'tui-workspace-second-'));
+// Both roots are SIBLINGS INSIDE THEIR OWN PARENT, never directly in the system
+// temp directory. The project picker prefills the parent of the current root and
+// fuzzy-scores that parent's entries, so rooting the fixture at tmpdir() made this
+// smoke's cost depend on how many entries the whole machine happens to have in
+// /tmp. That is an environmental dependency masquerading as a test: it was ~1-in-3
+// flaky in the morning and ~2-in-3 by evening purely because the day's worktrees,
+// gate logs, and failure directories grew /tmp to 3,752 entries, and
+// retry-once-on-timeout kept rescuing it so the gate still reported green. With a
+// dedicated parent the scan sees exactly these two directories on any machine.
+const fixtureParentRoot = mkdtempSync(
+  join(tmpdir(), 'tui-workspace-tabs-fixture-'),
+);
+// The long prefixes are load-bearing, not decoration: a later assertion requires the
+// workspace tab name to be CAPPED WITH AN ELLIPSIS, which only happens for a name this
+// long, and another slices 17 characters off it.
+const firstRoot = mkdtempSync(join(fixtureParentRoot, 'tui-workspace-first-'));
+const secondRoot = mkdtempSync(
+  join(fixtureParentRoot, 'tui-workspace-second-'),
+);
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-workspace-tabs-harness-home-'),
 );
@@ -309,5 +326,6 @@ try {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(firstRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(secondRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(fixtureParentRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }
