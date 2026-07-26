@@ -11,6 +11,30 @@ export interface LanguageProvider {
   readonly completionTriggerCharacters: readonly string[];
 }
 
+/** Provider-neutral intent rewrite surface consumed by the editor. */
+export interface RewriteProvider {
+  readonly available: boolean;
+  rewrite(
+    request: RewriteRequest,
+    signal: AbortSignal,
+  ): Promise<readonly RewriteCandidate[]>;
+  dispose(): void;
+}
+
+export interface RewriteRequest {
+  readonly documentPath: string;
+  readonly documentText: string;
+  readonly editRegion: LanguageRange;
+  readonly cursor: LanguagePosition;
+  readonly languageId: string;
+}
+
+export interface RewriteCandidate {
+  readonly region: LanguageRange;
+  readonly replacementText: string;
+  readonly rationale: string;
+}
+
 /** Process-launch seam used only by LanguageClient. */
 export interface LanguageServerProvider {
   readonly id: string;

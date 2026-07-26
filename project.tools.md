@@ -18,9 +18,10 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
 Per-frame glide behaviour on the real app through the PTY. Reports, per gesture: moving frame count,
-total distance, max/mean frame delta, peak velocity, fps, and bytes per frame. Reads the lowest
-visible fixture line out of every completed synchronized frame, so each sample IS that frame's
-scrollTop with no publish race.
+total distance, input-write-to-first-frame latency, max/mean frame delta, peak velocity, fps, and
+bytes per frame. Reads the lowest visible fixture line out of every completed synchronized frame, so
+each sample IS that frame's scrollTop with no publish race. Runs under the machine-wide
+quiet-exclusive lock.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: a fling runs 19-23 fps against a declared 30; and the same gesture yields ~48 rows
@@ -36,6 +37,20 @@ items, plus provider request counts and popup match-preparation counts.
 USE IT WHEN: a list feels slow, or when changing popup filtering/painting.
 KNOWN RESULTS: key latency ~14 ms and wheel ~85 ms, both FLAT in item count. The counts are the part
 people forget — they prove zero language-server requests and zero re-filters during movement.
+
+### `INVAR_REAL_CODEX_INLINE_REWRITE=1 bun scripts/harness/measure-inline-rewrite-codex.ts`
+One billed, real-Codex inline-rewrite drive through the PTY. It reports request-now-chord-to-visible
+latency and writes `artifacts/inline-rewrite-codex-latency.json`. A 350 ms mock run happens first as
+the positive control: the instrument refuses to trust a latency meter that cannot observe that known
+delay.
+USE IT WHEN: changing the rewrite prompt, Codex CLI flags, model choice, cancellation, or proposal
+arrival plumbing. It proves the installed Codex CLI reaches the same provider-neutral editor path as
+the gate's deterministic mock.
+KNOWN RESULT (2026-07-26): Spark at low effort produced a visible proposal in 5,439.8 ms from the
+request-now chord; the injected 350 ms positive control measured 1,607.9 ms over the same full-app
+boundary.
+CAUTION: it consumes Codex quota and can take up to three minutes. It is deliberately opt-in and is
+never registered in the merge gate.
 
 ### `bun scripts/report-graphics-capabilities.ts`
 What OpenTUI reports about the CURRENT terminal, the tier Invar derives from it, and — critically —

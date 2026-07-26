@@ -209,3 +209,20 @@ Where a chord cannot round-trip, the reason is the encoder's, and it is stated r
 `TerminalKeys.encode` returns `''` for any key it has no canonical VT encoding for (function keys,
 `Ctrl+Shift+<letter>`), and an unencodable key is swallowed rather than leaking to the editor
 beneath.
+
+## 7. Inline rewrite chords
+
+Inline rewrite is owned by the focused editor, so none of its chords is host-reserved:
+
+| Chord | Action | Reason |
+| --- | --- | --- |
+| `Ctrl+Shift+R` | request now | Mnemonic R; the xterm `modifyOtherKeys` form reaches both OpenTUI parsers. |
+| `Ctrl+Alt+Right` | accept | A modified arrow has a legacy xterm encoding and does not spend Tab or completion's unmodified Enter. |
+| `Escape` | reject | Guarded by `inlineRewriteVisible`, so the existing editor Escape behavior remains authoritative otherwise. |
+| `Ctrl+Alt+Up` / `Ctrl+Alt+Down` | previous / next variation | The arrow pair expresses ordered movement and does not collide with editor `Ctrl+Up/Down` or completion's plain arrows. |
+
+Tab is intentionally absent: the editor owns Tab as indentation. Completion consumes only
+UNMODIFIED Up, Down, Enter, Tab, Escape, and Backspace, so these modified rewrite arrows reach the
+keybinding table even if a completion popup was open. The driven PTY smoke sends every rewrite
+chord through `HarnessInput` and observes the resulting proposal state/document mutation; this is
+the deliverability proof, not a table-only claim.

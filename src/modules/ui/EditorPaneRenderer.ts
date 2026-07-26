@@ -17,6 +17,8 @@ import {
   fg,
   bg,
   bold,
+  dim,
+  italic,
   underline,
   type TextChunk,
 } from '@opentui/core';
@@ -157,7 +159,20 @@ class $EditorPaneRenderer {
       lineIndex: number,
       windowStartGrapheme = 0,
       windowSpans: readonly Span[] | null = null,
+      inlineRewriteDecoration = false,
     ): void => {
+      if (inlineRewriteDecoration) {
+        codeChunks.push(
+          dim(
+            italic(
+              bg(palette.inlineRewriteBackground)(
+                fg(palette.inlineRewriteForeground)(windowText),
+              ),
+            ),
+          ),
+        );
+        return;
+      }
       const lineMatches =
         sourceFindEngine?.matches.value.filter(
           (match) => match.line === lineIndex,
@@ -381,7 +396,11 @@ class $EditorPaneRenderer {
           gutterChunks.push(fg(palette.dim)(' '.repeat(lineNumberWidth + 2)));
           gutterHoverLabelsByRow.push([]);
         }
-        const lineText = editor.document.line(row.lineIndex);
+        const sourceLineText = editor.document.line(row.lineIndex);
+        const projectedLineText = editor.inlineRewriteProjectedLine(
+          row.lineIndex,
+        );
+        const lineText = projectedLineText ?? sourceLineText;
         let segmentSpans: Span[] | null = null;
         if (!plainForeground) {
           if (row.lineIndex !== tokenizedLineIndex) {
@@ -411,6 +430,7 @@ class $EditorPaneRenderer {
           row.lineIndex,
           row.segment.startGrapheme,
           segmentSpans,
+          projectedLineText !== null,
         );
         if (
           row.foldedRange &&
@@ -439,7 +459,9 @@ class $EditorPaneRenderer {
     const viewportWidth = context.viewportWidth;
     visualRowsWindow.forEach((row, visibleIndex) => {
       const lineNumber = row.lineIndex;
-      const text = editor.document.line(lineNumber);
+      const sourceText = editor.document.line(lineNumber);
+      const projectedText = editor.inlineRewriteProjectedLine(lineNumber);
+      const text = projectedText ?? sourceText;
       const isCurrentLine = lineNumber === currentLineIndex;
       const lineNumberText = String(lineNumber + 1).padStart(
         lineNumberWidth,
@@ -493,6 +515,7 @@ class $EditorPaneRenderer {
         lineNumber,
         windowStartGrapheme,
         lineWindowSpans,
+        projectedText !== null,
       );
       if (row.foldedRange) {
         codeChunks.push(fg(palette.dim)(` ${context.foldClosedGlyph}`));

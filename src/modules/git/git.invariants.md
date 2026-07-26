@@ -290,6 +290,66 @@ collapse racing its own fetch and re-expanding from a stale result.
 
 **Last refined:** 2026-07-21
 
+### Git row decoration stays within one row
+
+**Invariant:** If the git pane decorates a file row for hover or selection, then every decorated
+cell stays within that row and the following row remains byte-identical.
+
+**Scope:** Change-file rows and their hover, selection, and action-button decoration in
+`GitPaneRenderer`.
+
+**Mechanism:** `GitPaneRenderer.render` composes the clipped file label, eight action cells, and
+scrollbar cells to exactly `innerWidth` before appending an undecorated newline.
+
+**Generates:** One terminal row per change-file item; action buttons that cannot wrap paint into
+the following item or filler row.
+
+**Evidence:** `src/modules/git/GitPaneRenderer.ts`; the staging-hover drive in
+`scripts/harness/smoke-selection-harness.ts`.
+
+**Impossible if true:** Hovering one staged or unstaged file changes any text, foreground, or
+background cell in the following terminal row.
+
+**Verification:** `bun scripts/harness/smoke-selection-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
+### Commit selection previews without focus transfer
+
+**Invariant:** If a commit header or its changed-file row is selected by arrows or a single
+click, then the comparison preview updates while source control retains focus; only Enter or a
+double-click transfers focus to the comparison.
+
+**Scope:** Commit-log selection and activation in `GitPaneContent`, `GitPlugin`, and
+`GitWorkspace`. Change-file rows in the working-tree Changes region retain their existing
+open-on-click behavior.
+
+**Mechanism:** Selection routes through `GitWorkspace.previewLogRow`, which expands a commit and
+shows its first changed-file comparison without calling `Workspace.focusEditor`. Activation
+routes through `activateLogRow`, which shows the same comparison with focus transfer.
+
+**Generates:** Continuous commit browsing by keyboard and pointer; a live comparison preview;
+Enter and double-click as explicit comparison activation.
+
+**Rejected alternatives:** Open then restore focus — focus watchers fire twice and the user sees
+flicker. Make selection activate — the first preview steals the remaining arrow keys.
+
+**Evidence:** `src/modules/git/GitWorkspace.ts`; `src/modules/git/GitPaneContent.ts`;
+`src/modules/git/GitPlugin.ts`; the three-commit drive in
+`scripts/harness/smoke-git-log-harness.ts`.
+
+**Impossible if true:** An arrow or single click on a commit-log row publishing focus outside
+source control; Enter or double-click on a selected commit file leaving focus in source control;
+a preview that does not update as selection crosses commits.
+
+**Verification:** `bun scripts/harness/smoke-git-log-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### The commit log follows repository reality
 
 **Invariant:** If the git panel is visible and the VIEWED ref's tip commit changes by any means

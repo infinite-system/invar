@@ -520,6 +520,34 @@ class $KeybindingDefaults {
         action: 'editor.completion',
         context: 'editor',
       },
+      // Intent rewrites are editor-context actions. Tab remains indentation. Modified arrows have a
+      // legacy xterm encoding and do not collide with completion's unmodified navigation keys.
+      {
+        chord: { key: 'r', ctrl: true, shift: true },
+        action: 'inlineRewrite.request',
+        context: 'editor',
+      },
+      {
+        chord: { key: 'right', ctrl: true, alt: true },
+        action: 'inlineRewrite.accept',
+        context: 'editor',
+      },
+      {
+        chord: { key: 'escape' },
+        action: 'inlineRewrite.reject',
+        context: 'editor',
+        when: 'inlineRewriteVisible',
+      },
+      {
+        chord: { key: 'down', ctrl: true, alt: true },
+        action: 'inlineRewrite.next',
+        context: 'editor',
+      },
+      {
+        chord: { key: 'up', ctrl: true, alt: true },
+        action: 'inlineRewrite.previous',
+        context: 'editor',
+      },
       // TAB INDENTS. The editor surface owns Tab because it holds focus and Tab is CONTENT here — the
       // previous global `Tab → focus.toggle` was the host claiming an unmodified key it had no warrant
       // for (#91). With a selection: indent/outdent every selected line; without: one indent unit at
