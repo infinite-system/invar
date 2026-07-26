@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 
@@ -71,6 +72,25 @@ export async function awaitStatusPublication(
     await Bun.sleep(5);
   }
   throw new Error(`Timed out waiting for ${description} at ${statusPath}`);
+}
+
+/** The tab bar paints the dirty marker in the single cell that follows the tab's ` label ` run
+ *  (`TabBarRenderer`), so the marker is addressed by that GEOMETRY — never by hunting the ● glyph as
+ *  text, which would also match a bullet inside the document. Shared by every smoke that reads the
+ *  marker so the geometry lives in one place. */
+export function activeTabHasDirtyMarker(
+  snapshot: HarnessSnapshot.Model,
+  bufferPath: string,
+): boolean {
+  const tabLabel = ` ${basename(bufferPath)} `;
+  for (let row = 0; row < snapshot.rows; row++) {
+    const labelColumn = snapshot.rowText(row).indexOf(tabLabel);
+    if (labelColumn < 0) continue;
+    return (
+      snapshot.cell(row, labelColumn + tabLabel.length)?.characters !== ' '
+    );
+  }
+  throw new Error(`Active tab label is not visible: ${tabLabel}`);
 }
 
 export function markerPosition(

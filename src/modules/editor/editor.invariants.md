@@ -76,6 +76,81 @@ by pure reads (`line`, `slice`, `text`).
 
 **Last refined:** 2026-07-21
 
+### The dirty marker is derived from content, never asserted
+
+**Invariant:** If the buffer's content is byte-identical to the content that was last saved or
+loaded, then the document reports NOT dirty and the tab paints no `●` — whatever sequence of edits
+produced that state and whether or not undo was involved; and the answer is computed from the
+content itself, never asserted by a mutator.
+
+**Scope:** `TextDocument.dirty` / `matchesSaved()` / `captureSavedBaseline()` and every mutator on
+it; `Editor.dirty` and `Editor.title`; the `dirty` field of `OpenBufferSet.tabs()` (and through it
+the never-dehydrate-a-dirty-buffer rule), `TabBarRenderer`'s marker cell, and the `dirty` field
+`AppStatusProjection` publishes. Per open document. Out of scope: git's modified-versus-HEAD gutter
+markers, which compare against a COMMIT, not against the file on disk.
+
+**Mechanism:** `dirty` is a plain derived getter with no setter: it answers
+`!matchesSaved()`, where `matchesSaved()` compares the current content with the baseline
+`captureSavedBaseline()` snapshotted on load AND on save (so "original" means LAST SAVED). Cost is
+the design: the baseline is three facts checked cheapest-first — line count, then Σ line length
+(maintained incrementally inside `replaceLineRange`, so an edit pays O(edited lines) and no query
+ever rescans), and only when BOTH match — i.e. clean is actually plausible — the order-sensitive
+FNV-1a content signature. The answer is memoized on the pair (`revision`, `savedBaselineVersion`),
+which are also the two refs the getter reads, so a per-frame read at unchanged keys is two integer
+comparisons and cannot go stale: content changes bump `revision`, a moved baseline bumps
+`savedBaselineVersion`, and nothing else can change the answer. `markSaved()` deliberately bumps
+only the baseline version — bumping `revision` would tell the async consumers of *Async results are
+revision-stamped and stale results discarded* that the text changed when it did not. While typing
+forward the length always differs from the baseline, so the hash is never reached; it runs at the
+one moment the answer can flip back to clean.
+
+**Generates:** the tab-strip `●`; the `name ●` window title; the never-dehydrate-while-dirty rule
+in `OpenBufferSet`; the `dirty` field the harness asserts; the absence of any `dirty` write
+anywhere in the codebase.
+
+**Evidence:** `TextDocument.ts` — `get dirty()` (derived, no setter), `matchesSaved()`
+(cheap-reject ladder), `captureSavedBaseline()`, `rebuildContentLength()` and the incremental delta
+in `replaceLineRange`; `Editor.ts` `get dirty()` and `get title()` read it; no assignment to
+`dirty` exists (`grep -rn 'dirty\.value *=' src` is empty). The record was written after the eager
+flag it replaces was found wrong in exactly the user-visible way: it dirtied on every mutation and
+reconsidered ONLY in `performUndo`/`performRedo`, so type-then-backspace left `●` lit on a buffer
+identical to disk.
+
+**Impossible if true:** a buffer byte-identical to the file on disk that displays the dirty marker
+(or refuses to dehydrate); a marker that depends on HOW the content was reached — undo depth, edit
+count, or which mutator ran; a per-frame marker read that costs a document hash.
+
+**Rejected alternatives:** (1) The eager flag with undo/redo reconsideration — the state this
+record replaces; every non-undo path back to the saved content (backspace, retype, cut-then-paste,
+any two cancelling edits) is a false positive, and no test caught it because the two paths that were
+checked were the two that were fixed. (2) Undo-depth or edit-count equality — the same defect one
+level up: it asks how the user got here, not what the buffer says. (3) Comparing the joined text
+(`document.text === savedText`) — correct but allocates the whole document per query, so it can
+never be read per frame. (4) A per-line hash array folded into a document signature (O(edited
+lines) per edit) — measured unnecessary: the cheap-reject ladder already makes the common path
+free, the fold has an order-sensitivity trap (XOR or a plain sum calls two swapped lines clean), and
+a 20k-line array of per-line hashes is memory spent to speed up a query that runs once per edit at
+worst. (5) Keying the memo on `revision` alone — `markSaved()` moves the baseline without changing
+content, so the memo would report the pre-save answer forever; keying on the baseline version too is
+what makes staleness impossible without corrupting revision semantics.
+
+**Verification:** `bun test src/modules/editor/TextDocument.test.ts src/modules/editor/Editor.test.ts`
+— an edit sequence that cancels out (type/backspace, delete-a-line/retype, cut/paste-in-place) reads
+clean; two swapped lines (identical line count AND length) read DIRTY, which proves the check is
+order-sensitive rather than merely cheap; `markSaved()` rebaselines without bumping `revision`; and,
+on a 20,000-line document, a counting subclass asserts 10,000 per-frame reads while typing perform
+ZERO content hashes and the read that lands back on the baseline length performs exactly ONE
+(positive control: the count does move, so the instrument can fail). Driven:
+`bun scripts/harness/smoke-dirty-marker-harness.ts` types a character and BACKSPACES it with no undo,
+asserting the published `dirty` field and the tab's marker cell both clear; then deletes and retypes a
+line; then saves mid-session and shows the ORIGINAL loaded content now reads dirty while the SAVED
+content reads clean. Negative control (2026-07-26): the same smoke against the pre-fix eager flag
+fails at the backspace step.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Undo records deltas not whole-document snapshots
 
 **Invariant:** If an edit is recorded for undo, then the stored cost is proportional to the edit

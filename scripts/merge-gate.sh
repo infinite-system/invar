@@ -442,6 +442,9 @@ if [ "${FAST:-0}" != "1" ]; then
   # 4) Driving SMOKES — the real user paths.
   parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
   parallel_safe_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
+  # The dirty marker is content-derived: typing then BACKSPACING (no undo) must clear the marker, a
+  # deleted-and-retyped line must read clean, and a mid-session save must move the baseline.
+  parallel_safe_smoke "smoke: dirty-marker harness" bun scripts/harness/smoke-dirty-marker-harness.ts
   parallel_safe_smoke "smoke: horizontal extent harness" bun scripts/harness/smoke-horizontal-extent-harness.ts
   # Move-line / duplicate-line (pure model op): drive the palette commands, assert the document reordered
   # + cursor followed + one undo restored (via the probe, not the frame).

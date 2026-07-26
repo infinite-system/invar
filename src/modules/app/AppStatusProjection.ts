@@ -58,7 +58,7 @@ class $AppStatusProjection {
       lspSizeSuppressed:
         ports.workspaceSet.active.languageSizeNotice() !== null,
       bufferRevision: editor.document.revision.value,
-      dirty: editor.document.dirty.value,
+      dirty: editor.document.dirty,
       cursor: editor.hasDocument.value
         ? { line: editor.cursor.line.value, col: editor.cursor.col.value }
         : null,

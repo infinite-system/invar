@@ -18,7 +18,7 @@ test('insertText inserts at cursor and advances it', () => {
   editor.insertText('a');
   expect(editor.document.line(0)).toBe('abc');
   expect(editor.cursor.col.value).toBe(1);
-  expect(editor.document.dirty.value).toBe(true);
+  expect(editor.document.dirty).toBe(true);
 });
 
 test('completion applies the exact text edit as one undoable mutation', () => {
@@ -107,11 +107,11 @@ test('deletePreviousWord at line start deletes only the newline', () => {
 test('save writes the buffer and clears dirty', () => {
   const editor = openWith('x');
   editor.insertText('y');
-  expect(editor.document.dirty.value).toBe(true);
+  expect(editor.document.dirty).toBe(true);
   // no path write here (loadFromText path is 'test.ts', relative) — use in-memory assertion:
   // markSaved is exercised via document
   editor.document.markSaved();
-  expect(editor.document.dirty.value).toBe(false);
+  expect(editor.document.dirty).toBe(false);
 });
 
 test('undo reverts an edit; redo re-applies it', () => {
@@ -129,12 +129,40 @@ test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-d
   const editor = openWith('a'); // loaded content "a" is the clean baseline
   editor.cursor.set(0, 1);
   editor.insertText('b'); // "ab"
-  expect(editor.document.dirty.value).toBe(true);
+  expect(editor.document.dirty).toBe(true);
   editor.performUndo(); // back to "a" — exactly the loaded content
   expect(editor.document.line(0)).toBe('a');
-  expect(editor.document.dirty.value).toBe(false); // matches the baseline → not dirty
+  expect(editor.document.dirty).toBe(false); // matches the baseline → not dirty
   editor.performRedo(); // "ab" again — differs from the baseline
-  expect(editor.document.dirty.value).toBe(true);
+  expect(editor.document.dirty).toBe(true);
+});
+
+test('typing then backspacing clears dirty with NO undo used (content-derived)', () => {
+  const editor = openWith('alpha');
+  editor.cursor.set(0, 5);
+
+  editor.insertText('x');
+  expect(editor.dirty).toBe(true);
+  editor.backspace();
+
+  expect(editor.document.line(0)).toBe('alpha');
+  expect(editor.dirty).toBe(false);
+  expect(editor.title).toBe('test.ts');
+});
+
+test('two edits with one undone stay dirty', () => {
+  let time = 1000;
+  Clock.Class.freeze(() => time);
+  const editor = openWith('alpha');
+  editor.cursor.set(0, 5);
+  editor.insertText('1');
+  time += 1000; // beyond the undo coalesce window: two separate steps
+  editor.insertText('2');
+
+  editor.performUndo();
+
+  expect(editor.document.line(0)).toBe('alpha1');
+  expect(editor.dirty).toBe(true);
 });
 
 test('markSaved rebaselines: matchesSaved tracks the last saved content, not the original', () => {

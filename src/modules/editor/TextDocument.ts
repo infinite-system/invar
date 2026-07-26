@@ -4,6 +4,7 @@
 //
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Async results are revision-stamped and stale results discarded (project.invariants.md)
+// invariant: The dirty marker is derived from content, never asserted (editor.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { Files } from '../system/Files';
@@ -18,21 +19,64 @@ class $TextDocument {
   protected maximumLineWidthValue = 0;
   protected maximumLineWidthLineIndex = -1;
   protected _eol: '\n' | '\r\n' = '\n';
-  // Signature of the content as it was last SAVED/LOADED (the clean baseline). Lets undo/redo clear
-  // the dirty flag when the buffer returns to exactly the on-disk content, instead of staying dirty
-  // forever after the first edit. Line-count + FNV-1a hash: a false "clean" would need a hash
-  // collision AND a matching line count for different text — negligible, and only costs a missing dot.
+  // The content as it was last SAVED/LOADED (the clean baseline), held as three facts ordered
+  // cheapest-first. Line count and total length are O(1) integer comparisons that reject a changed
+  // buffer without touching a character; the FNV-1a signature is consulted ONLY when both match, so
+  // "clean" is already plausible. A false "clean" would need a hash collision AND a matching line
+  // count AND a matching length — negligible, and it only costs a missing dot.
+  protected savedLineCount = 0;
+  protected savedContentLength = 0;
   protected savedSignature = '';
+  // Σ of the lines' UTF-16 lengths, maintained incrementally by every edit (never rescanned per
+  // query). This is what makes forward typing free: the length differs from the baseline on the very
+  // first inserted character, so the dirty answer is DIRTY without hashing.
+  protected contentLengthValue = 0;
+  // Memo of the derived answer, keyed on BOTH reactive keys it was computed from: revision (content)
+  // and savedBaselineVersion (the baseline). Repeated per-frame reads at an unchanged key pair are
+  // two integer comparisons.
+  protected dirtyEvaluationRevision = -1;
+  protected dirtyEvaluationBaselineVersion = -1;
+  protected dirtyEvaluationResult = false;
 
-  // Reactive signals: revision (bumped on any change) and dirty flag.
+  constructor() {
+    // A never-loaded document is its own baseline: an empty buffer has no unsaved edits.
+    this.captureSavedBaseline();
+  }
+
+  // Reactive signals: revision (bumped on any content change) and the saved-baseline version.
   get revision() {
     return ref(0);
   }
-  get dirty() {
-    return ref(false);
+
+  /** Bumped when the clean baseline MOVES (load/save) without the content changing. `revision` must
+   *  not carry that — it means "the lines changed" to the async stale-drop consumers — so the derived
+   *  dirty answer observes (and is keyed on) this second signal as well. */
+  get savedBaselineVersion() {
+    return ref(0);
   }
+
   get binary() {
     return ref(false);
+  }
+
+  /** DERIVED from the content on every path — typing, deletion, paste, indent, multi-cursor, undo,
+   *  redo — never assigned. There is no setter, so no mutator can leave the marker claiming edits a
+   *  buffer that is byte-identical to disk does not have. Cost: two integer comparisons when the memo
+   *  is warm (the per-frame read), two more when it is cold and the content differs in line count or
+   *  length (the typing case), one full signature only at the moment clean becomes plausible. */
+  get dirty(): boolean {
+    const revision = this.revision.value;
+    const baselineVersion = this.savedBaselineVersion.value;
+    if (
+      this.dirtyEvaluationRevision === revision &&
+      this.dirtyEvaluationBaselineVersion === baselineVersion
+    ) {
+      return this.dirtyEvaluationResult;
+    }
+    this.dirtyEvaluationResult = !this.matchesSaved();
+    this.dirtyEvaluationRevision = revision;
+    this.dirtyEvaluationBaselineVersion = baselineVersion;
+    return this.dirtyEvaluationResult;
   }
 
   loadFromFile(path: string): void {
@@ -42,7 +86,6 @@ class $TextDocument {
       this.rebuildMaximumLineWidth();
       this._eol = '\n';
       this.binary.value = true;
-      this.dirty.value = false;
       this.captureSavedBaseline();
       this.revision.value++;
       return;
@@ -53,7 +96,6 @@ class $TextDocument {
     if (this._lines.length === 0) this._lines = [''];
     this.rebuildMaximumLineWidth();
     this.binary.value = false;
-    this.dirty.value = false;
     this.captureSavedBaseline();
     this.revision.value++;
   }
@@ -65,7 +107,6 @@ class $TextDocument {
     if (this._lines.length === 0) this._lines = [''];
     this.rebuildMaximumLineWidth();
     this.binary.value = false;
-    this.dirty.value = false;
     this.captureSavedBaseline();
     this.revision.value++;
   }
@@ -104,14 +145,13 @@ class $TextDocument {
   replaceAll(lines: string[]): void {
     this._lines = lines.length ? lines : [''];
     this.rebuildMaximumLineWidth();
-    this.dirty.value = true;
+    this.rebuildContentLength();
     this.revision.value++;
   }
 
   setLine(index: number, text: string): void {
     if (index < 0 || index >= this._lines.length) return;
     this.replaceLineRange(index, 1, [text]);
-    this.dirty.value = true;
     this.revision.value++;
   }
 
@@ -119,7 +159,6 @@ class $TextDocument {
     this.replaceLineRange(Math.max(0, Math.min(index, this._lines.length)), 0, [
       text,
     ]);
-    this.dirty.value = true;
     this.revision.value++;
   }
 
@@ -127,26 +166,35 @@ class $TextDocument {
     if (this._lines.length <= 1) {
       this._lines = [''];
       this.rebuildMaximumLineWidth();
+      this.rebuildContentLength();
     } else if (index >= 0 && index < this._lines.length) {
       this.replaceLineRange(index, 1, []);
     }
-    this.dirty.value = true;
     this.revision.value++;
   }
 
   markSaved(): void {
-    this.dirty.value = false;
     this.captureSavedBaseline();
   }
 
-  /** Snapshot the current content as the clean baseline (called on load + save). */
+  /** Snapshot the current content as the clean baseline (called on load + save), and resync the
+   *  incrementally maintained length from the lines so the baseline facts are exact by construction
+   *  and any accumulated drift is healed at every load and save. */
   protected captureSavedBaseline(): void {
+    this.rebuildContentLength();
+    this.savedLineCount = this._lines.length;
+    this.savedContentLength = this.contentLengthValue;
     this.savedSignature = this.contentSignature();
+    this.savedBaselineVersion.value++;
   }
 
-  /** True when the current content is byte-identical to the last saved/loaded baseline — so an undo
-   *  (or redo) that lands back on the on-disk content reads as UNCHANGED, not dirty. */
+  /** True when the current content is byte-identical to the last saved/loaded baseline. Cheapest
+   *  facts first: a differing line count or total length settles the answer without hashing, which is
+   *  why forward typing never pays for a signature; the hash runs only when both facts match — the
+   *  one moment the answer might flip back to clean. */
   matchesSaved(): boolean {
+    if (this._lines.length !== this.savedLineCount) return false;
+    if (this.contentLengthValue !== this.savedContentLength) return false;
     return this.contentSignature() === this.savedSignature;
   }
 
@@ -162,6 +210,16 @@ class $TextDocument {
       hash = Math.imul(hash ^ 0x0a, 0x01000193); // newline separator
     }
     return `${this._lines.length}:${(hash >>> 0).toString(36)}`;
+  }
+
+  /** Rescan Σ line lengths. Only wholesale line-array assignments pay this (load, replaceAll, restore,
+   *  baseline capture); localized edits adjust the running total inside `replaceLineRange` instead. */
+  protected rebuildContentLength(): void {
+    let totalLength = 0;
+    for (let lineIndex = 0; lineIndex < this._lines.length; lineIndex += 1) {
+      totalLength += this._lines[lineIndex]!.length;
+    }
+    this.contentLengthValue = totalLength;
   }
 
   // invariant: Geometry aggregates match their consumers (editor.invariants.md)
@@ -217,6 +275,25 @@ class $TextDocument {
       deletedLineCount > 0 &&
       previousMaximumLineWidthLineIndex >= startLineIndex &&
       previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
+    // The running content length is adjusted from the lines this edit touches — O(edited lines), the
+    // cost this op already pays — so no query ever rescans the document to learn its length.
+    let lengthDelta = 0;
+    for (
+      let deletedLineOffset = 0;
+      deletedLineOffset < deletedLineCount;
+      deletedLineOffset += 1
+    ) {
+      lengthDelta -=
+        this._lines[startLineIndex + deletedLineOffset]?.length ?? 0;
+    }
+    for (
+      let replacementLineOffset = 0;
+      replacementLineOffset < replacementLines.length;
+      replacementLineOffset += 1
+    ) {
+      lengthDelta += replacementLines[replacementLineOffset]?.length ?? 0;
+    }
+    this.contentLengthValue += lengthDelta;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
 
     if (maximumLineWasDeleted) {
@@ -264,7 +341,6 @@ class $TextDocument {
     this.replaceLineRange(line, 1, [
       currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset),
     ]);
-    this.dirty.value = true;
     this.revision.value++;
     return graphemeColumn + EditorCoordinates.Class.graphemeCount(text);
   }
@@ -279,7 +355,6 @@ class $TextDocument {
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
     this.replaceLineRange(line, 1, [before, after]);
-    this.dirty.value = true;
     this.revision.value++;
     return { line: line + 1, col: 0 };
   }
@@ -303,7 +378,6 @@ class $TextDocument {
       this.replaceLineRange(line, 1, [
         currentLine.slice(0, start) + currentLine.slice(end),
       ]);
-      this.dirty.value = true;
       this.revision.value++;
       return { line, col: graphemeColumn - 1 };
     }
@@ -311,7 +385,6 @@ class $TextDocument {
       const previousLine = this.line(line - 1);
       const newColumn = EditorCoordinates.Class.graphemeCount(previousLine);
       this.replaceLineRange(line - 1, 2, [previousLine + currentLine]);
-      this.dirty.value = true;
       this.revision.value++;
       return { line: line - 1, col: newColumn };
     }
@@ -337,11 +410,9 @@ class $TextDocument {
       this.replaceLineRange(line, 1, [
         currentLine.slice(0, start) + currentLine.slice(end),
       ]);
-      this.dirty.value = true;
       this.revision.value++;
     } else if (line < this._lines.length - 1) {
       this.replaceLineRange(line, 2, [currentLine + this.line(line + 1)]);
-      this.dirty.value = true;
       this.revision.value++;
     }
     return { line, col: column };
@@ -402,7 +473,6 @@ class $TextDocument {
         head + tail,
       ]);
     }
-    this.dirty.value = true;
     this.revision.value++;
     return { line: start.line, col: start.col };
   }
@@ -432,7 +502,6 @@ class $TextDocument {
       ...middle,
       lastPart + after,
     ]);
-    this.dirty.value = true;
     this.revision.value++;
     return {
       line: line + parts.length - 1,
@@ -467,7 +536,6 @@ class $TextDocument {
       end.line - start.line + 1,
       replacementLines,
     );
-    this.dirty.value = true;
     this.revision.value++;
     return replacementParts.length === 1
       ? {
@@ -485,10 +553,12 @@ class $TextDocument {
     return this._lines.slice();
   }
 
-  /** Restore from a snapshot without marking dirty state itself (caller sets it). */
+  /** Restore from a snapshot (undo/redo). Nothing asserts a dirty state here or anywhere else — the
+   *  restored content answers for itself against the saved baseline. */
   restore(lines: string[]): void {
     this._lines = lines.length ? lines.slice() : [''];
     this.rebuildMaximumLineWidth();
+    this.rebuildContentLength();
     this.revision.value++;
   }
 }

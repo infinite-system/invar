@@ -19,6 +19,7 @@ import type {
 //
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
+// invariant: The dirty marker is derived from content, never asserted (editor.invariants.md)
 class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
@@ -141,9 +142,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // released; on re-activation the set recreates the buffer and restores the handle. A DIRTY tab is
   // never dehydrated, so its unsaved edits survive.
 
-  /** Dirty = the document has unsaved edits (drives the tab's dirty dot + the never-dehydrate rule). */
+  /** Dirty = the document's content differs from the last saved/loaded content (drives the tab's
+   *  dirty dot + the never-dehydrate rule). Content-derived on EVERY path: no mutator asserts it, so
+   *  an edit sequence that cancels out — type then backspace, delete a line and retype it, cut then
+   *  paste back — reads as clean with no undo involved. */
   get dirty(): boolean {
-    return this.document.dirty.value;
+    return this.document.dirty;
   }
 
   /** Capture the resumable cursor + scroll position so this buffer can be dehydrated. */
@@ -485,9 +489,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const target = this.undo.undo(current);
     if (!target) return;
     this.document.restore(target.lines);
-    // Content-aware dirty: an undo/redo that lands back on the saved content reads as UNCHANGED, not
-    // dirty. (A normal edit always dirties eagerly; only undo/redo can return to the clean baseline.)
-    this.document.dirty.value = !this.document.matchesSaved();
     this.placeCursor(target.cursor.line, target.cursor.col);
     this.cursor.clearSelection();
     this.scrollLineIntoView(target.cursor.line);
@@ -503,9 +504,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const target = this.undo.redo(current);
     if (!target) return;
     this.document.restore(target.lines);
-    // Content-aware dirty: an undo/redo that lands back on the saved content reads as UNCHANGED, not
-    // dirty. (A normal edit always dirties eagerly; only undo/redo can return to the clean baseline.)
-    this.document.dirty.value = !this.document.matchesSaved();
     this.placeCursor(target.cursor.line, target.cursor.col);
     this.cursor.clearSelection();
     this.scrollLineIntoView(target.cursor.line);
@@ -523,7 +521,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const name = this.document.path
       ? Files.Class.basename(this.document.path)
       : 'untitled';
-    return this.document.dirty.value ? `${name} ●` : name;
+    return this.document.dirty ? `${name} ●` : name;
   }
 
   // --- movement (extend = shift-select) -------------------------------------

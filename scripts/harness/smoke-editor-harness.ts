@@ -7,9 +7,10 @@
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import {
+  activeTabHasDirtyMarker,
   awaitStatusPublication,
   dragBetweenCells,
   pass,
@@ -17,21 +18,6 @@ import {
 } from './HarnessSmokeSupport';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
-
-function activeTabHasDirtyDot(
-  snapshot: HarnessSnapshot.Model,
-  activeBufferPath: string,
-): boolean {
-  const tabMarker = ` ${basename(activeBufferPath)} `;
-  for (let row = 0; row < snapshot.rows; row++) {
-    const markerColumn = snapshot.rowText(row).indexOf(tabMarker);
-    if (markerColumn < 0) continue;
-    return (
-      snapshot.cell(row, markerColumn + tabMarker.length)?.characters !== ' '
-    );
-  }
-  throw new Error(`Active tab marker not visible: ${tabMarker}`);
-}
 
 function gutterNumber(
   snapshot: HarnessSnapshot.Model,
@@ -164,10 +150,10 @@ try {
   pass('buffer is dirty after typing');
   snapshot = await driver.awaitGridCondition(
     'the active tab paints its dirty dot',
-    (candidate) => activeTabHasDirtyDot(candidate, activeBufferPath),
+    (candidate) => activeTabHasDirtyMarker(candidate, activeBufferPath),
   );
   requireCondition(
-    activeTabHasDirtyDot(snapshot, activeBufferPath),
+    activeTabHasDirtyMarker(snapshot, activeBufferPath),
     'active tab paints the dirty dot',
   );
   for (let undoAttempt = 1; undoAttempt <= 5; undoAttempt++) {
@@ -188,10 +174,10 @@ try {
   pass('undo cleared the dirty flag');
   snapshot = await driver.awaitGridCondition(
     'undo clears the active tab dirty dot',
-    (candidate) => !activeTabHasDirtyDot(candidate, activeBufferPath),
+    (candidate) => !activeTabHasDirtyMarker(candidate, activeBufferPath),
   );
   requireCondition(
-    !activeTabHasDirtyDot(snapshot, activeBufferPath),
+    !activeTabHasDirtyMarker(snapshot, activeBufferPath),
     'undo cleared the rendered dirty dot',
   );
   driver.sendText('X');

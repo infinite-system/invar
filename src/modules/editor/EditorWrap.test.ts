@@ -411,7 +411,7 @@ test('toggling word wrap NEVER mutates the document (pure view mapping)', () => 
   editor.toggleWordWrap();
   expect(editor.document.revision.value).toBe(revisionBefore);
   expect(editor.document.text).toBe(textBefore);
-  expect(editor.document.dirty.value).toBe(false);
+  expect(editor.document.dirty).toBe(false);
 });
 
 test('enabling wrap forces scrollLeft to 0 and keeps it inert', () => {
