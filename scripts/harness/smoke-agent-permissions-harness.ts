@@ -14,13 +14,34 @@ async function submitPrompt(
   statusPath: string,
   prompt: string,
 ): Promise<void> {
+  // The pending-permission wait must be UNREACHABLE FROM THE PREVIOUS PROMPT'S STATE.
+  // `agentPendingPermissionTool` is 'Bash' for EVERY gated command, so after an earlier
+  // prompt is answered this predicate could still read 'Bash' from the prior turn: the
+  // status wait then passed on stale state and the grid wait below spent its full timeout
+  // waiting for a prompt that had not been requested yet. That is why this smoke failed at
+  // `second-gated-command` on one attempt and `fourth-gated-command` on the next — the
+  // failure lands on whichever prompt the stale read happens to precede, which is the
+  // signature of a race rather than a defect. It was the third-worst flake in the gate-log
+  // census (4 masked retries).
+  //
+  // Requiring NO pending permission before sending makes the following 'Bash' necessarily
+  // belong to this command.
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'no permission is pending before this command is sent',
+    (status) =>
+      status.agentPendingPermissionTool === null ||
+      status.agentPendingPermissionTool === undefined ||
+      status.agentPendingPermissionTool === '',
+  );
   driver.sendText(prompt);
   await driver.awaitSnapshot((snapshot) => snapshot.findText(prompt) !== null);
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.agentPendingPermissionTool === 'Bash'",
+    `a permission is pending for ${prompt}`,
     (status) => status.agentPendingPermissionTool === 'Bash',
   );
   await driver.awaitGridCondition(
