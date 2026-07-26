@@ -387,7 +387,12 @@ is exactly what a reading-phase builder produces. Two reds tonight looked identi
 causes — `smoke-workspace-tabs` failed 1-of-2 SOLO at load 0.28 (intrinsic, a fixture reading the
 machine's /tmp), while `smoke-editor-harness` timed out twice with a builder mid-verification
 (contention, my scheduling). So: HOLD gating while any builder is alive, then drain the gate queue
-back-to-back on a quiet machine. Serial gates on a quiet machine beat overlapped gates end-to-end,
+back-to-back on a quiet machine — UNLESS a contention red would still be DIAGNOSTIC (e.g. the known
+flakes are already fixed and you want a realistic-load validation), in which case take the exception
+deliberately and state the reason. Never gate blind while builders verify. And note the reframe: a quiet
+machine is a CRUTCH that hides fragility — a smoke that cannot survive load is not robust, it has merely
+not been asked. Load is the discriminator (fails only under load = clock/existence-bound assertion;
+fails idle = real race or defect; survives both = genuinely poolable). Serial gates on a quiet machine beat overlapped gates end-to-end,
 because a re-run costs five minutes and a wait usually costs less.
 
 Diagnosis discriminator: before attributing a timeout-class red to a defect, ask what else was running,
