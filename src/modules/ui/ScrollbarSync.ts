@@ -1,10 +1,12 @@
 import {
   type BoxRenderable,
   type CliRenderer,
+  type ColorInput,
   type ScrollBarRenderable,
 } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { EditorWrap } from '../editor/EditorWrap';
+import { Logging } from '../system/Logging';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
@@ -26,6 +28,10 @@ class $ScrollbarSync {
       identifier: string,
       orientation: 'vertical' | 'horizontal',
       onChange: (position: number) => void,
+      trackOptions?: {
+        backgroundColor: ColorInput;
+        foregroundColor: ColorInput;
+      },
     ): ScrollBarRenderable =>
       new SolidThumbScrollBar.Class(dependencies.renderer, {
         id: identifier,
@@ -35,6 +41,7 @@ class $ScrollbarSync {
           ? { width: dependencies.scrollbarThicknessCells() }
           : { height: dependencies.scrollbarThicknessCells() }),
         showArrows: false,
+        ...(trackOptions ? { trackOptions } : {}),
         onChange: (position) => {
           if (!this.applying) onChange(position);
         },
@@ -61,6 +68,10 @@ class $ScrollbarSync {
           position,
         );
       },
+      {
+        backgroundColor: dependencies.theme.palette.bg,
+        foregroundColor: dependencies.theme.palette.accent,
+      },
     );
     this.treeVerticalBar = makeBar(
       'tree-scrollbar-v',
@@ -82,6 +93,10 @@ class $ScrollbarSync {
           this.treeHorizontalBar,
           position,
         );
+      },
+      {
+        backgroundColor: dependencies.theme.palette.panel,
+        foregroundColor: dependencies.theme.palette.accent,
       },
     );
     dependencies.editorArea.add(this.editorVerticalBar);
@@ -163,6 +178,17 @@ class $ScrollbarSync {
       this.applying = false;
     }
     this.barScales.set(bar, geometry.reportedToTrueScale);
+    if (process.env.TUI_DEBUG_BARS === '1') {
+      Logging.Class.info(
+        `bar ${bar.id}: scrollSize=${scroll.scrollSize} ` +
+          `viewportSize=${scroll.viewportSize} ` +
+          `scrollPosition=${scroll.scrollPosition} thickness=${thickness} ` +
+          `trackLeft=${geometry.trackLeft} -> left=${bar.left} top=${bar.top} ` +
+          `laidX=${bar.x} laidY=${bar.y} laidW=${bar.width} laidH=${bar.height} ` +
+          `sliderViewPort=${bar.slider.viewPortSize} sliderMax=${bar.slider.max} ` +
+          `sliderValue=${bar.slider.value} sliderH=${bar.slider.height}`,
+      );
+    }
   }
 
   syncPaneViewportGeometry(): boolean {

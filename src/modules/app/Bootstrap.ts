@@ -254,6 +254,7 @@ class $Bootstrap {
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
+      primaryDockHost.blur();
       rightDockHost.blur();
       const visibleTerminal = panelHost.visibleContentOfKind('terminal');
       if (visibleTerminal) panelHost.toggleContent(visibleTerminal.id);
@@ -263,6 +264,7 @@ class $Bootstrap {
     // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
+      primaryDockHost.blur();
       rightDockHost.blur();
       const visibleAgent = panelHost.visibleContentOfKind('agent');
       if (visibleAgent) panelHost.toggleContent(visibleAgent.id);
@@ -618,6 +620,7 @@ class $Bootstrap {
       connectTerminalFollow();
     };
     const addPanelContent = (kind: PanelContentKind): void => {
+      primaryDockHost.blur();
       rightDockHost.blur();
       const content =
         kind === 'terminal' ? createTerminal(true) : createAgent(true);

@@ -53,7 +53,7 @@ export interface PaneContent {
    *  positive = toward newer/down); magnitude is the settings-sourced step. True if it was consumed. */
   onWheel?(rowDelta: number, context?: PaneWheelContext): boolean;
   /** Optional horizontal-wheel counterpart, in signed content columns. */
-  onHorizontalWheel?(columnDelta: number): boolean;
+  onHorizontalWheel?(columnDelta: number, context?: PaneWheelContext): boolean;
   /** Advance content-owned scroll momentum for one frame. True keeps the demand-driven frame loop live. */
   tickScroll?(deltaSeconds: number): boolean;
   /** Optional scroll projection. The host supplies settings-derived physics and paints the shared bar. */

@@ -37,14 +37,15 @@ class $Sidebar {
         );
       const backward = direction === 'left' || direction === 'up';
       const content = primaryDockHost.activeContent;
+      const context = {
+        column: localColumn(event.x),
+        row: localRow(event.y),
+        modifiers: event.modifiers,
+      };
       if (horizontal) {
-        content?.onHorizontalWheel?.((backward ? -1 : 1) * step);
+        content?.onHorizontalWheel?.((backward ? -1 : 1) * step, context);
       } else {
-        content?.onWheel?.((direction === 'up' ? -1 : 1) * step, {
-          column: localColumn(event.x),
-          row: localRow(event.y),
-          modifiers: event.modifiers,
-        });
+        content?.onWheel?.((direction === 'up' ? -1 : 1) * step, context);
       }
       renderer.requestRender();
     };

@@ -294,8 +294,10 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
         workspace.activationWatchedDirectoryCount,
       gitWatcherActivationCompleted: workspace.activationCompleted,
       changesScrollTop: workspace.panel.changesScrollTop.value,
+      changesScrollLeft: workspace.panel.changesScrollLeft.value,
       gitChangesIndex: workspace.panel.changesIndex.value,
       gitLogScrollTop: workspace.panel.logScrollTop.value,
+      gitLogScrollLeft: workspace.panel.logScrollLeft.value,
       gitLogIndex: workspace.panel.logIndex.value,
       gitLogLoaded: workspace.commitLog.value?.loadedCount ?? 0,
       gitLogExpanded:

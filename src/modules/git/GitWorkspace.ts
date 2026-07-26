@@ -736,6 +736,8 @@ class $GitWorkspace
     void this.panel.logIndex.value;
     void this.panel.logScrollTop.value;
     void this.panel.changesScrollTop.value;
+    void this.panel.logScrollLeft.value;
+    void this.panel.changesScrollLeft.value;
     void this.panel.changesHovered.value;
     void this.panel.logHovered.value;
     void this.panel.confirmDiscard.value;

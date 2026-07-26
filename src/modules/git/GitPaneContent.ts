@@ -127,8 +127,13 @@ class $GitPaneContent implements PaneContent {
     return true;
   }
 
-  onHorizontalWheel(columnDelta: number): boolean {
-    this.activeWorkspace().impulseChangesHorizontal(columnDelta);
+  onHorizontalWheel(columnDelta: number, context?: PaneWheelContext): boolean {
+    const workspace = this.activeWorkspace();
+    if ((context?.row ?? 0) < this.geometry.dividerRow) {
+      workspace.impulseChangesHorizontal(columnDelta);
+    } else {
+      workspace.impulseLogHorizontal(columnDelta);
+    }
     return true;
   }
 
@@ -164,7 +169,10 @@ class $GitPaneContent implements PaneContent {
     const hit = this.rowAt(row);
     if (!hit) return false;
     if (hit.region === 'logHeader') {
-      this.openLogBranchMenu(column, row);
+      this.openLogBranchMenu(
+        context?.screenColumn ?? column,
+        context?.screenRow ?? row,
+      );
       return true;
     }
     if (hit.region === 'log') {
@@ -205,6 +213,42 @@ class $GitPaneContent implements PaneContent {
   onResize(columns: number, rows: number): void {
     this.viewportColumns = Math.max(1, columns);
     this.viewportRows = Math.max(1, rows);
+    const workspace = this.activeWorkspace();
+    const scrollbarThickness = Math.max(
+      1,
+      Math.round(this.application.settings.scrollbarThickness.value),
+    );
+    const viewportWidth = Math.max(
+      1,
+      this.viewportColumns - scrollbarThickness,
+    );
+    const changeRows = workspace.currentChangeRows();
+    workspace.panel.setChangesHorizontalExtent(
+      GitPaneRenderer.Class.changesContentWidth(
+        changeRows,
+        this.application.theme.checkboxIcons,
+      ),
+      viewportWidth,
+    );
+    workspace.panel.setLogHorizontalExtent(
+      GitPaneRenderer.Class.logContentWidth(workspace),
+      viewportWidth,
+    );
+    const changesRegionHeight = Math.max(
+      1,
+      Math.max(2, Math.floor(this.viewportRows * workspace.splitRatio)) - 1,
+    );
+    const logRegionHeight = Math.max(
+      1,
+      this.viewportRows -
+        changesRegionHeight -
+        2 -
+        (workspace.commitLog.value ? 1 : 0),
+    );
+    workspace.panel.setVerticalViewportHeights(
+      changesRegionHeight,
+      logRegionHeight,
+    );
   }
 
   splitters(): readonly PaneContentSplitter[] {
