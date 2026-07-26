@@ -903,3 +903,59 @@ measured with the app's own width authority — emoji and full-width plus are TW
 diff bar, and powerline chevron already carry meaning. Taste picks among the survivors; measurement
 decides who survives. Generalizes to any request where the decision is aesthetic: mechanism is yours,
 vocabulary is theirs, and the disqualification rules belong to physics.
+
+## 2026-07-26 01:25 — an absence found by grep is a HYPOTHESIS, not a mechanism
+The user reported images rendering at the half-block floor. Their capability probe showed
+`kitty_graphics` false for twelve replies then true on the thirteenth, so detection was correct but
+LATE. I grepped for a watcher on `reportedGraphics`, found none, and briefed that as the cause: no
+watcher means no `requestRender`, and under enforced idle-quiescence the upgrade cannot reach the
+screen. Structurally tidy, and WRONG. The builder tried to reproduce the fail-before state and refused
+to fake it:
+
+> "With only the new smoke added and no production fix, the test already passed… `Bootstrap.ts`'s
+> single coarse `$watchEffect` calls `paint()` → `view.update()`, which reads `reportedGraphics.value`,
+> so Vue already tracks the ref transitively."
+
+A transitive dependency is invisible to a search for the explicit form. The rule: **an absence proves
+that a MECHANISM is missing only after a driven counterfactual shows the alleged missing edge matters.**
+Before briefing "X is not wired" as a cause, either make the edge matter (break it and watch the symptom
+appear) or rank it as a hypothesis among others.
+
+What saved the task from the wrong diagnosis: the brief listed THREE defects with independent evidence
+and demanded proof-of-fail-before for the primary one. The wrong hypothesis collapsed cheaply while the
+adjacent defect — `detectGraphicsTier` overriding a POSITIVE kitty answer with an env guess, which
+contradicted its own doc-comment's stated precedence — still landed and is the probable real cause,
+since the user's Invar runs inside cmux while their probe ran in a plain shell. Ranking several
+candidates by independent evidence is cheap insurance against confident single-cause reasoning.
+
+## 2026-07-26 01:25 — a pattern match against a command line matches ARGUMENTS, not programs
+`pgrep -f "merge-gate.sh"` reported two gates running. Neither existed: the matches were my own shell
+command and a builder whose PROMPT TEXT contains "do not run `scripts/merge-gate.sh`". A brief that
+names a command makes every agent carrying that brief match a search for it. Identify a running program
+by its cwd, its parent, its elapsed time, or the artifact it writes — never by a string that can appear
+in an argument. Third instance of the same class this week (`pgrep -f` self-match, `git push | tail`
+swallowing the exit code, `getent` succeeding where `ssh` could not resolve).
+
+## 2026-07-26 01:25 — I fixed the instance right after criticising the class
+The icon-vocabulary swap needed every hardcoded `⌕` gone. I searched for `'⌕'`, fixed what it found,
+and shipped — then the gate went red on `findText('⌕ file-073')` and `findText('⌕ branch-011')`, which
+my quoted pattern could not match. This was minutes after I had written a brief telling a builder that
+"a test that finds a control by its appearance re-breaks on every vocabulary change". Knowing the class
+does not exempt you from sweeping it. After any vocabulary or identifier swap, search for the BARE
+token with no quoting assumption and re-run until the search returns nothing.
+
+## 2026-07-26 01:25 — four smokes, one missing lock
+bounded-list-popup, scrollbars, mode-coherence, and image-preview each failed under gate load tonight
+and each passed solo on a quiet machine. That is not four flaky smokes; it is one absent machine-wide
+quiet lock, and the retry-once mechanism converts it into noise that reads like four separate defects.
+Rank the lock above the individual smokes — and note the retry tally printed a job that retried AND
+STILL FAILED under "PASSED ONLY ON RETRY", live, on the icon gate, which is exactly the instrument bug
+this commit fixes: it recorded the retry ATTEMPT rather than its OUTCOME.
+
+## 2026-07-26 01:25 — search for the CONCEPT, not for a guessed spelling
+I told the user no keyboard acceleration existed anywhere. They corrected me: it does — `movementRun` /
+`movementAcceleration` in `Bootstrap.ts` feeding `ScrollPhysics.Class.keyAcceleration`, with an
+invariant recorded for it. My grep had asked for `heldKey|repeatRate|keyRepeat|accelerationCurve`; the
+code says `accelerationRun`. Searching for guessed identifier spellings is how you prove a false
+absence. Ask for the STEM (`acceler`) and read the invariants file, which named the thing outright. A
+user correcting a claim about the absence of their own feature is almost always right.

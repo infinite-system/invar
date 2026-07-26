@@ -427,3 +427,24 @@ serial runs had missed.
   `bun install` before any instrument.
 - Machine hygiene is gate hygiene: full swap or a memory-hungry neighbour produces exactly the
   timeout-class red signature. Check `free -h` and the top RSS consumers before blaming a branch.
+
+## Diagnosis rules earned 2026-07-26
+
+- **An absence found by grep is a HYPOTHESIS, not a mechanism.** "Nothing watches this ref, therefore the
+  update never repaints" was tidy and false: a coarse effect read the ref and Vue tracked it
+  transitively. Before briefing "X is not wired" as the CAUSE, either break the alleged edge and watch
+  the symptom appear, or rank it as one candidate among several with independent evidence. Brief the
+  candidates, demand proof-of-fail-before for the primary one, and let the wrong one collapse cheaply.
+- **Search for the CONCEPT stem, not a guessed identifier spelling.** `heldKey|repeatRate|keyRepeat`
+  found nothing and I declared a feature absent that exists as `accelerationRun`. Ask for `acceler`, and
+  read the invariants file — it names features outright. A user correcting a claim that their own feature
+  does not exist is almost always right.
+- **A `-f` pattern match hits ARGUMENTS, not programs.** `pgrep -f "merge-gate.sh"` matched a builder
+  whose brief text says "do not run merge-gate.sh". Identify a running program by cwd, parent, elapsed
+  time, or the artifact it writes.
+- **Knowing a class does not exempt you from sweeping it.** After any vocabulary or identifier swap,
+  search for the BARE token with no quoting assumption and re-run until the search returns nothing —
+  `'⌕'` missed `'⌕ file-073'` minutes after I briefed a builder about exactly that coupling.
+- **Several smokes flaking under load is ONE finding, not several.** Four distinct smokes failed in gate
+  runs tonight and all four passed solo on a quiet machine. Rank the machine-wide quiet lock above the
+  individual smokes, and never let retry-once turn one missing lock into four phantom defects.

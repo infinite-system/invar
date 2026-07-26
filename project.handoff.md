@@ -29,9 +29,12 @@ barrier. If it needs a membrane concept, it was told to STOP and report rather t
    floor only when the probe stays silent. Workaround given: `TUI_GRAPHICS_TIER=kitty`. Awaiting their run
    of `bun scripts/report-graphics-capabilities.ts` INSIDE cmux — capabilities are a property of the live
    terminal and CANNOT be observed from another shell.
-2. **#68 glyph vocabulary.** Mechanism landed (`b5f3e9e`); current glyphs deliberately preserved; three
-   candidate sets rendered at all three tiers in `/tmp/icon-vocabulary-previews.txt` for them to pick. A
-   pick is now a one-line data edit.
+2. **#68 glyph vocabulary — DECIDED, not pending.** The user reviewed every one-cell candidate per slot
+   and approved: `☰` tree (U+2630), `⑂` git (U+2442), `⊞` plugins, `⚲` search (U+26B2), `⚙` settings,
+   heading `+ ↗ ↙ ×`. The builder on `feat-icon-vocabulary-a` was briefed with Candidate A, whose
+   `▤`/`⎇`/`⌕` are SUPERSEDED — apply the three swaps on top of its commit before landing. Full record
+   with codepoints and reasoning: `/tmp/conductor-icons-approved-vocabulary.md` (copy it into the repo
+   if it must survive a /tmp wipe).
 
 **GATE:** ~2m11-2m30s (was 5m01s). Pool ~52 jobs/0m38-0m56s, tail ~4 jobs/1m23s. Known wording bug to fix:
 the retry tally lists a job that retried AND STILL FAILED under "PASSED ONLY ON RETRY", because the pool

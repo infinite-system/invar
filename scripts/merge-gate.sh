@@ -90,9 +90,11 @@ step() {
   # shared git object store) is the starvation class the quiet-machine doctrine reruns by hand.
   # Only 'Timed out' failures retry, exactly once, after a settle pause; any other failure — and a
   # second timeout — is a defect and blocks. Both attempts' full logs are preserved.
+  local serial_step_retried=0
   if grep -q 'Timed out' "$step_log"; then
     cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
     echo "  RETRY $name — timeout-class failure; one quiet retry (attempt 1 log preserved)"
+    serial_step_retried=1
     sleep 10
     if "$@" >"$step_log" 2>&1; then
       echo "  OK    $name (clean on retry; first attempt was starvation-class)"
@@ -100,12 +102,12 @@ step() {
       # counted, so a serial or quiet-tail step that passed only on its retry left no
       # trace but a line buried mid-log — which is how smoke-workspace-tabs stayed
       # 1-in-3 to 2-in-3 flaky for a whole day while every gate reported green.
-      retried_smoke_names+=("$name")
-      retried_smoke_counts+=(1)
+      retried_pass_smoke_names+=("$name")
       rm -f "$step_log"
       return
     fi
   fi
+  if [ "$serial_step_retried" -eq 1 ]; then retried_fail_smoke_names+=("$name"); fi
   cp "$step_log" "$failure_log_directory/$failure_slug.log"
   echo "  FAIL  $name (full log: $failure_log_directory/$failure_slug.log)"
   tail -25 "$step_log" | sed 's/^/    | /'
@@ -159,8 +161,13 @@ declare -a parallel_smoke_sources=()
 declare -a quiet_smoke_names=()
 declare -a quiet_smoke_commands=()
 declare -a quiet_smoke_sources=()
-declare -a retried_smoke_names=()
-declare -a retried_smoke_counts=()
+# TWO POPULATIONS, NOT ONE. A retry has two possible outcomes and they mean opposite things: a retried
+# PASS is a masked intermittent (the dangerous one — it is invisible in a green run), while a retried
+# FAIL is already visible in the FAIL list and only needs its timeout-class provenance recorded. The
+# first version of this tally recorded the retry ATTEMPT, so a job that retried and still failed was
+# printed under "PASSED ONLY ON RETRY" — an instrument failing in the direction of reassurance.
+declare -a retried_pass_smoke_names=()
+declare -a retried_fail_smoke_names=()
 
 quoted_command() {
   local command_text=""
@@ -221,12 +228,12 @@ execute_registered_smoke_job() {
   local step_log="/tmp/merge-gate-step.$$.${phase_name}.${job_number}.log"
   local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
   local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
-  local retry_count_file="/tmp/merge-gate-retries.$$.${phase_name}.${job_number}"
+  local retry_outcome_file="/tmp/merge-gate-retry-outcome.$$.${phase_name}.${job_number}"
   local failure_slug
   failure_slug="$(echo "$smoke_name" | tr -cs 'a-zA-Z0-9' '-')"
 
   : >"$summary_log"
-  echo 0 >"$retry_count_file"
+  echo none >"$retry_outcome_file"
   echo "== merge-gate: $smoke_name ==" >>"$summary_log"
   if bash -c "$smoke_command" >"$step_log" 2>&1; then
     echo "  OK    $smoke_name" >>"$summary_log"
@@ -237,11 +244,12 @@ execute_registered_smoke_job() {
 
   if grep -q 'Timed out' "$step_log"; then
     cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
-    echo 1 >"$retry_count_file"
+    echo failed >"$retry_outcome_file"
     echo "  RETRY $smoke_name — timeout-class failure; one quiet retry (attempt 1 log preserved)" >>"$summary_log"
     sleep 10
     if bash -c "$smoke_command" >"$step_log" 2>&1; then
       echo "  OK    $smoke_name (clean on retry; first attempt was starvation-class)" >>"$summary_log"
+      echo passed >"$retry_outcome_file"
       echo 0 >"$result_file"
       rm -f "$step_log"
       return
@@ -261,9 +269,9 @@ collect_registered_smoke_job() {
   local smoke_name="$3"
   local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
   local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
-  local retry_count_file="/tmp/merge-gate-retries.$$.${phase_name}.${job_number}"
+  local retry_outcome_file="/tmp/merge-gate-retry-outcome.$$.${phase_name}.${job_number}"
   local job_result=1
-  local retry_count=0
+  local retry_outcome=none
 
   if [ -f "$summary_log" ]; then
     sed -n '1,$p' "$summary_log"
@@ -272,13 +280,11 @@ collect_registered_smoke_job() {
     echo "  FAIL  $smoke_name (worker produced no summary)"
   fi
   if [ -f "$result_file" ]; then job_result="$(cat "$result_file")"; fi
-  if [ -f "$retry_count_file" ]; then retry_count="$(cat "$retry_count_file")"; fi
+  if [ -f "$retry_outcome_file" ]; then retry_outcome="$(cat "$retry_outcome_file")"; fi
   if [ "$job_result" -ne 0 ]; then fail=1; fi
-  if [ "$retry_count" -gt 0 ]; then
-    retried_smoke_names+=("$smoke_name")
-    retried_smoke_counts+=("$retry_count")
-  fi
-  rm -f "$summary_log" "$result_file" "$retry_count_file"
+  if [ "$retry_outcome" = passed ]; then retried_pass_smoke_names+=("$smoke_name"); fi
+  if [ "$retry_outcome" = failed ]; then retried_fail_smoke_names+=("$smoke_name"); fi
+  rm -f "$summary_log" "$result_file" "$retry_outcome_file"
 }
 
 run_parallel_smoke_pool() {
@@ -597,22 +603,30 @@ if [ "${FULL_TMUX_SKIPPED:-0}" -gt 0 ]; then
 fi
 
 echo ""
-if [ "${#retried_smoke_names[@]}" -eq 0 ]; then
+if [ "${#retried_fail_smoke_names[@]}" -gt 0 ]; then
+  echo "RETRY TALLY: ${#retried_fail_smoke_names[@]} step(s) RETRIED AND STILL FAILED — the retry did"
+  echo "RETRY TALLY: not rescue them, so these are timeout-class REDS, not hidden flakes. Both"
+  echo "RETRY TALLY: attempts' logs are in $failure_log_directory (attempt1 + final)."
+  for retry_number in "${!retried_fail_smoke_names[@]}"; do
+    echo "RETRY TALLY:   ${retried_fail_smoke_names[$retry_number]}"
+  done
+fi
+if [ "${#retried_pass_smoke_names[@]}" -eq 0 ]; then
   # Only claim a clean GREEN when the run actually passed. Printing "this run's green
   # is a clean green" under FAILURES (as it did on the first failing run after the
   # tally landed) is a false reassurance in the exact place a reader looks for the
   # verdict — the tally reports RETRIES, so when the gate is red it must say only that.
   if [ "$fail" = 0 ]; then
-    echo "RETRY TALLY: no steps retried — this run's green is a clean green"
+    echo "RETRY TALLY: no step passed only on retry — this run's green is a clean green"
   else
-    echo "RETRY TALLY: no steps retried — the failures below are real, not flakes"
+    echo "RETRY TALLY: no step passed only on retry — nothing green here was propped up by a rerun"
   fi
 else
-  echo "RETRY TALLY: ${#retried_smoke_names[@]} step(s) PASSED ONLY ON RETRY — a retried"
+  echo "RETRY TALLY: ${#retried_pass_smoke_names[@]} step(s) PASSED ONLY ON RETRY — a retried"
   echo "RETRY TALLY: pass is a FLAKE, not a green. Each line below is an intermittent"
   echo "RETRY TALLY: failure the retry hid; fix or reclassify it, do not skim past it."
-  for retry_number in "${!retried_smoke_names[@]}"; do
-    echo "RETRY TALLY:   ${retried_smoke_names[$retry_number]} = ${retried_smoke_counts[$retry_number]}"
+  for retry_number in "${!retried_pass_smoke_names[@]}"; do
+    echo "RETRY TALLY:   ${retried_pass_smoke_names[$retry_number]}"
   done
 fi
 gate_elapsed_seconds="$(( $(date +%s) - gate_started_seconds ))"
