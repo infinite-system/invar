@@ -1,5 +1,6 @@
 import type { CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
+import { CompletionItemKinds } from '../lsp/CompletionItemKinds';
 import type {
   LanguageCompletionItem,
   LanguageCompletionList,
@@ -28,7 +29,7 @@ class $CompletionPopup {
   protected prefixValue = '';
   protected sourceIsIncompleteValue = false;
 
-  constructor(dependencies: CompletionPopupDependencies) {
+  constructor(protected readonly dependencies: CompletionPopupDependencies) {
     this.popup = new BoundedListPopup.Class({
       renderer: dependencies.renderer,
       settings: dependencies.settings,
@@ -162,8 +163,16 @@ class $CompletionPopup {
       .map(({ item }) => item);
   }
 
+  // The mark comes from the SAME authority the file tree resolves through: the item's kind becomes a
+  // symbol class, the theme's one table turns that class into a mark. The tier's whole mark row is
+  // read ONCE per rebuild, so marking five thousand items costs five thousand property reads and no
+  // per-item theme resolution — and nothing at all on a movement or wheel frame, which paints only
+  // the visible window from rows that already carry their mark.
+  // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
+  // invariant: List interactions inspect only visible rows (src/modules/ui/ui.invariants.md)
   protected popupItems(prefix: string): readonly BoundedListPopupItem[] {
     this.completionItemsByIdentifier.clear();
+    const symbolMarks = this.dependencies.theme.symbolMarks;
     return $CompletionPopup
       .filterItems(this.sourceItems, prefix)
       .map((item) => {
@@ -172,6 +181,9 @@ class $CompletionPopup {
         return {
           identifier,
           label: item.label,
+          icon: symbolMarks[
+            CompletionItemKinds.Class.symbolClassFor(item.kind)
+          ],
         };
       });
   }

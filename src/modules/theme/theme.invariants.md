@@ -95,7 +95,7 @@ scripts/harness/smoke-pixel-preview-harness.ts`
 ### Appearance comes only from theme data
 
 **Invariant:** If a rendered cell carries a color or glyph, then that value was read from the
-active theme (a `Palette` field or a semantic `GlyphSlot` / `IconSet` / `ActionIconSet` /
+active theme (a `Palette` field or a semantic `GlyphSlot` / `SymbolClass` / `ActionIconSet` /
 `CheckboxIconSet` entry resolved through `Theme.Class`), never written as a literal hex or glyph at
 the drawing site — the `theme` module is the single source of appearance.
 
@@ -104,21 +104,24 @@ activity-bar and panel-heading control glyphs and the file-type marks the file t
 breadcrumb popup share. The sole home for color and glyph literals is `src/modules/theme`; consumers
 pull tokens or name semantic slots, they do not mint appearance.
 
-**Mechanism:** `Theme` exposes `palette`, `icons`, `actionIcons`, `checkboxIcons`, and `icon()`
-as plain getters that re-derive from `PALETTES` and the icon tables on read. Its
+**Mechanism:** `Theme` exposes `palette`, `symbolMarks`, `actionIcons`, `checkboxIcons`,
+`symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the mark table on
+read. Its
 `glyphVocabulary`/`glyph` surfaces resolve stable semantic slots through
 `$interfaceGlyphVocabularies`; because the data is reactive selection, a palette, vocabulary, or
 capability change reaches every consumer without changing behavior or copying appearance.
 
 **Generates:** *The palette ladder quantizes color without leaving the palette*; *The glyph ladder
-degrades icons single-cell and legible*; theme/icon-set plugin extension points; a single grep
-boundary for auditing hard-coded appearance.
+degrades icons single-cell and legible*; *One table resolves every symbol mark*; theme/icon-set
+plugin extension points; a single grep boundary for auditing hard-coded appearance.
 
-**Evidence:** `src/modules/theme/Theme.ts` (`palette`, `icons`, `actionIcons`, `checkboxIcons`,
-`glyphVocabulary`, `glyph`, and `icon`); the color literals live only in `ThemePalettes.ts` and the
-glyph literals only in `ThemeIcons.ts`; `src/modules/ui/BreadcrumbPicker.ts` resolves its row marks
-through `Theme.icon` rather than restating the tree's table; `ThemeIcons.test.ts` verifies the
-semantic slot ladder.
+**Evidence:** `src/modules/theme/Theme.ts` (`palette`, `symbolMarks`, `actionIcons`,
+`checkboxIcons`, `glyphVocabulary`, `glyph`, `symbolMark`, and `icon`); the color literals live only
+in `ThemePalettes.ts` and the glyph literals only in `ThemeIcons.ts`; `src/modules/ui/BreadcrumbPicker.ts`
+and `src/modules/ui/CompletionPopup.ts` both resolve their row marks through the theme rather than
+restating a table; `ThemeIcons.test.ts` verifies the semantic slot ladder. The one known breach is
+`src/modules/ui/TabBarRenderer.ts`, which writes the dirty/active tab marker `●` as a literal instead
+of naming a slot.
 
 **Impossible if true:** A rendering component outside `src/modules/theme` naming a `#rrggbb`
 color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
@@ -126,6 +129,75 @@ vocabulary swap requiring edits to activity switching or heading-control actions
 
 **Verification:** `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.ts | grep -v modules/theme` returns
 no drawing-site literal; `bun test src/modules/theme src/modules/ui/PanelHeading.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
+### One table resolves every symbol mark
+
+**Invariant:** If a surface paints a mark for a CLASSIFIED THING — a file-tree row, a breadcrumb
+popup row, a completion item — then it classifies that thing into a `SymbolClass` and reads the mark
+from the one per-tier table `ThemeIcons.$symbolMarks`; no consumer carries a second mark table, and no
+consumer maps its own domain vocabulary (a file extension, an LSP `CompletionItemKind`) straight to a
+glyph.
+
+**Scope:** `ThemeIcons.$symbolMarks`, `$symbolClassesByFileExtension`, `symbolMarksFor`,
+`symbolMarkFor`, `symbolClassForFileEntry`, and `iconFor`; the `Theme.symbolMarks` / `symbolMark` /
+`icon` surfaces; `CompletionItemKinds.symbolClassFor`; and the three consumers — the file tree through
+`Theme.icon`, `BreadcrumbPicker`, and `CompletionPopup`. Excludes the CONTROL vocabularies
+(`InterfaceGlyphVocabulary`, `ActionIconSet`, `CheckboxIconSet`, `FindIconSet`), whose slots name
+affordances rather than classified things and are governed by *Appearance comes only from theme data*.
+
+**Mechanism:** Both consumers ask one question — *given a classified thing, what one-cell mark
+represents it at the terminal's current capability tier* — so the shared authority is not the
+file-shaped `iconFor(set, name, isDirectory, open)` signature, which is one consumer's classifier
+fused to the resolver. Splitting the two leaves a single total table `Record<GlyphLevel,
+Record<SymbolClass, string>>` plus two classifiers, each in the module that owns its domain: extension
+and directory shape → class in `theme`, LSP kind number → class in `lsp`. `iconFor` becomes the
+composition of the filesystem classifier with the resolver, so the tree's call-site shape survives
+while its table does not. Because `SymbolClass` is a closed union and the table is a `Record` over it,
+TypeScript makes an unmarked class unwritable rather than merely untested. The kinds that ARE
+filesystem things (`File`, `Folder`) classify to the classes the tree already uses, so a path
+completion and the row it would open carry one mark by construction.
+
+**Generates:** A completion popup that gets kind marks as a wire-up rather than a vocabulary;
+appearance changes that reach every list at once; the family grouping (callable / type / value /
+module / syntax / unclassified) as data a reader can audit in one place; per-item cost that is one
+property read on a rebuild and zero on a paint frame, because the tier's whole mark row is read once
+per rebuild.
+
+**Rejected alternatives:** A `CompletionItemKind → glyph` switch inside the popup — two vocabularies
+that drift on the first theme change, and the exact thing the user ruled out by asking for icons
+"resolved the same way the list tree resolves them". Keeping the extension-keyed `IconSet` and
+deriving marks from it — an extension key cannot express a code symbol, so completion would still
+need its own table. Adding an optional kind parameter to `iconFor` — filesystem arguments carried by a
+caller that has no filesystem, and the fused resolver stays fused. Folding the LSP kind table into
+`theme` — the theme would then own protocol numbers it cannot verify, and the classifier belongs with
+the client that receives them.
+
+**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`, `symbolMarkFor`,
+`symbolClassForFileEntry`, `iconFor`); `src/modules/lsp/CompletionItemKinds.ts` (all 25 protocol kinds
+→ symbol classes, choosing no glyph); `src/modules/ui/CompletionPopup.ts` (`popupItems` reads
+`theme.symbolMarks` once, then one lookup per item); `the symbol-mark table resolves every class at
+every tier` and `a filesystem entry classifies before any mark is chosen` in
+`src/modules/theme/ThemeIcons.test.ts`; `a path completion carries the mark the file tree paints for
+that path` in `src/modules/lsp/CompletionItemKinds.test.ts` (the cross-consumer claim: the tree's mark
+is fetched through the tree's own entry point, so a second resolver would break agreement);
+`scripts/harness/smoke-completion-harness.ts` reads the marks out of the emulator grid beside a real
+tsgo member access, with the expectations resolved through the classifier and the theme rather than
+pasted.
+
+**Impossible if true:** A file extension, directory flag, or `CompletionItemKind` mapped straight to a
+glyph outside `$symbolMarks`; a second per-tier mark table anywhere in the product; a completion item
+whose kind resolves to no mark, or to a mark for one tier only; an LSP `File` or `Folder` completion
+marked differently from the tree row for the same thing; a per-item theme resolution on the popup's
+paint path.
+
+**Verification:** `bun test src/modules/theme/ThemeIcons.test.ts
+src/modules/lsp/CompletionItemKinds.test.ts src/modules/ui/BreadcrumbPicker.test.ts && bun
+scripts/harness/smoke-completion-harness.ts`; `grep -rn 'symbolMarkFor\|symbolMarksFor' src --include=*.ts`
+shows every mark read passing through `ThemeIcons`.
 
 **Status:** provisional
 
@@ -166,47 +238,64 @@ a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex s
 
 ### The glyph ladder degrades icons single-cell and legible
 
-**Invariant:** If an icon, action button, or checkbox glyph is resolved, then it is selected from
-the set for the active glyph level (`nerd` → `unicode` → `ascii`); the `ascii` rung is always a
-printable single-cell marker, and every action/checkbox glyph at every level is exactly one cell
-so the git-panel hit-columns stay aligned; an unknown file extension resolves to `set.file`,
-never empty or undefined.
+**Invariant:** If a symbol mark, action button, or checkbox glyph is resolved, then it is selected from
+the row for the active glyph level (`nerd` → `unicode` → `ascii`); the `ascii` rung is always a
+printable single-cell marker, and every action/checkbox glyph and every CODE-SYMBOL mark at every level
+is exactly one cell — the git-panel hit columns and the completion popup's mark column both depend on
+it — and an unknown file extension or completion kind resolves to a printable class, never to empty or
+undefined.
 
-**Scope:** `ThemeIcons.iconSetFor`, `actionIconsFor`, `checkboxIconsFor`,
-`interfaceGlyphVocabularyFor`, `glyphFor`, and `iconFor`, plus the `Theme` getters that call them.
-Covers file-tree and breadcrumb-popup file icons, git changes-row action buttons, staging checkboxes,
-activity-bar items, and panel-heading controls.
+**Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`, `symbolClassForFileEntry`, `iconFor`,
+`actionIconsFor`, `checkboxIconsFor`, `interfaceGlyphVocabularyFor`, and `glyphFor`, plus the
+`Theme` getters that call them. Covers file-tree, breadcrumb-popup, and completion-popup marks, git
+changes-row action buttons, staging checkboxes, activity-bar items, and panel-heading controls.
 
-**Mechanism:** The `SETS`, `ACTION_ICONS`, and `CHECKBOX_ICONS` tables are keyed by `GlyphLevel`,
-and `$interfaceGlyphVocabularies` maps every `GlyphSlot` at each level, so selection is a total
-lookup with no missing rung. The `ascii` entries remain printable; action, checkbox, activity, and
-panel-control glyphs are authored as one cell each, as are the `folderOpen`, `folderClosed`, and
-`file` defaults; `iconFor` falls back through `set.ext[extension] ?? set.file` so it always returns
-a printable string. The unicode EXTENSION map deliberately keeps wide pictographs (`🔒`, `🖼`), so a
-consumer that puts icons in a column sizes that column to the widest icon in its item set instead of
-assuming one cell.
+**Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed by `GlyphLevel`, and
+`$symbolMarks` and `$interfaceGlyphVocabularies` each map EVERY key at each level, so selection is a
+total lookup with no missing rung — a `Record<SymbolClass, string>` makes a missing mark a type error
+rather than an undefined cell. The `ascii` entries remain printable; action, checkbox, activity,
+panel-control, directory, file, and code-symbol marks are authored as one cell each; the classifiers
+fall back (`?? 'file'`, `?? 'unclassified'`) so a resolve always returns a printable string. The unicode
+FILE-TYPE marks deliberately keep wide pictographs (`🔒`, `🖼`), so a consumer that puts marks in a
+column sizes that column to the widest mark in its item set instead of assuming one cell; the
+code-symbol marks are one cell precisely so a completion list never widens that column.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button
-and checkbox columns never shift width between capability levels.
+and checkbox columns never shift width between capability levels; a completion mark column of exactly
+one cell at every tier.
 
-**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$sets`, `$actionIcons`, `$checkboxIcons`,
-`$interfaceGlyphVocabularies`, `iconSetFor`, `glyphFor`, `iconFor`); `icon fallback ladder`,
+**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`, `$actionIcons`, `$checkboxIcons`,
+`$interfaceGlyphVocabularies`, `symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`,
 `unicode icon set resolves known extension and falls back for unknown`, `checkbox icons ladder`,
-`git action icons ladder`, and `semantic interface glyph slots resolve through every capability
-tier` in `src/modules/theme/ThemeIcons.test.ts`.
+`git action icons ladder`, `semantic interface glyph slots resolve through every capability tier`,
+`every code-symbol mark is one display cell at every tier`, `the code-symbol families stay pairwise
+distinct including at the ascii rung`, and `every symbol mark the app measures agrees with the terminal
+that renders it` in `src/modules/theme/ThemeIcons.test.ts` — the last of which compares the app's width
+authority (`EditorCoordinates.lineWidth`, OpenTUI's table) against an INDEPENDENT one (`@xterm/headless`
+behind `TerminalEmulator`), and carries a wide-glyph positive control so it can fail toward two.
 
 **Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
-action/checkbox glyph wider than one cell at any level; a `folderOpen`, `folderClosed`, or `file`
-default wider than one cell; `iconFor` returning empty or undefined for an unknown extension; an
-activity or panel control choosing its glyph literal in behavior code; two activity or panel slots
-resolving to the same glyph at one tier; an activity glyph colliding with a reserved diff, dirty,
-separator, or overview mark.
+action/checkbox glyph or a code-symbol mark wider than one cell at any level; a `directoryOpen`,
+`directoryClosed`, or `file` mark wider than one cell; `iconFor` or `symbolMarkFor` returning empty or
+undefined for an unknown extension or kind; an activity or panel control choosing its glyph literal in
+behavior code; two activity or panel slots resolving to the same glyph at one tier; an activity glyph
+colliding with a reserved diff, dirty, separator, or overview mark; a NEW mark whose app-measured width
+disagrees with the width the terminal renders.
 
 **Open question:** The unicode extension map paints `●` for `.js`/`.jsx`, which is also the reserved
 DIRTY marker, and `⑂` for git files, which is also the Source Control activity glyph. Neither pair
 shares a column today, so no row is ambiguous, but the reserved-mark table does not record either
 conflict. Pre-existing in the tree's icon set; inherited unchanged when the breadcrumb popup started
-reusing that set on 2026-07-26.
+reusing that set on 2026-07-26, and by the completion popup on 2026-07-26.
+
+Second, and measured rather than suspected: the two wide pictographs are the ONLY marks in the table
+where the app's width authority and the terminal's disagree — `lineWidth` measures `🔒` (U+1F512) and
+`🖼` (U+1F5BC) at two cells while `@xterm/headless` renders each in one. The app therefore reserves a
+column the terminal does not use, so a tree or breadcrumb list containing a lock or image file is one
+column wider than its content. The disagreement is now ENUMERATED by `every symbol mark the app
+measures agrees with the terminal that renders it`, so a third one fails the gate; choosing which
+authority is right (narrow text-presentation pictographs, or emoji-presentation width) is a separate
+change because it moves the tree's layout.
 
 **Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
 scripts/harness/smoke-activitybar-harness.ts`

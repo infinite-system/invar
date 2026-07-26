@@ -102,23 +102,32 @@ language-specific launch choices do not cross that boundary.
 **Mechanism:** `LanguageClient` implements `LanguageProvider`, converts positions at the UTF-16
 boundary, maps completion-list fields into compact domain records, and exposes trigger characters
 from initialized server capabilities. `TypeScriptProvider` remains only a server-launch provider.
+`item.kind` stays a protocol NUMBER on the domain record, and `CompletionItemKinds` — in this module,
+beside the client that receives it — is the only place that interprets it, answering with a symbol
+class rather than a glyph. So the popup names no kind number and no provider's vocabulary, and a
+provider that sends kinds the table has not seen still classifies.
 
 **Generates:** One editor and popup path for TypeScript, a mock Rust provider, and future providers;
-revision-stamped completion responses; exact `textEdit` application through one document mutation.
+revision-stamped completion responses; exact `textEdit` application through one document mutation;
+kind marks that a new provider gets for free by sending standard kind numbers.
 
 **Evidence:** `src/modules/lsp/LanguageProvider.interface.ts`;
 `src/modules/lsp/LanguageClient.ts`; `src/modules/lsp/LanguageClient.test.ts`;
-`src/modules/ui/CompletionPopup.test.ts`; `src/modules/editor/Editor.test.ts`.
+`src/modules/lsp/CompletionItemKinds.ts` and `CompletionItemKinds.test.ts` (the kind → symbol-class
+classifier, which chooses no appearance); `src/modules/ui/CompletionPopup.test.ts`;
+`src/modules/editor/Editor.test.ts`.
 
 **Impossible if true:** A TypeScript condition in editor input routing; raw LSP completion fields in
-the popup; an accepted completion implemented as two revisions or two undo entries.
+the popup; a `CompletionItemKind` number interpreted outside `CompletionItemKinds`; an accepted
+completion implemented as two revisions or two undo entries.
 
 **Verification:** `bun test src/modules/lsp/LanguageClient.test.ts
-src/modules/ui/CompletionPopup.test.ts src/modules/editor/Editor.test.ts`
+src/modules/lsp/CompletionItemKinds.test.ts src/modules/ui/CompletionPopup.test.ts
+src/modules/editor/Editor.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### The LSP attaches only to documents within the size budget
 

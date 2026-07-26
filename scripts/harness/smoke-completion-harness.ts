@@ -5,14 +5,81 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: Completion is provider-neutral (src/modules/lsp/lsp.invariants.md)
 // invariant: Completion reuses bounded popup geometry (src/modules/ui/ui.invariants.md)
-import { mkdtempSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { CompletionItemKinds } from '../../src/modules/lsp/CompletionItemKinds';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import { ScrollPhysics } from '../../src/modules/ui/ScrollPhysics';
 import { HarnessSmoke } from './HarnessSmoke';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const repositoryRoot = process.cwd();
+
+// The glyph tier is FORCED so the expected mark is derivable rather than guessed: a PTY without LANG
+// would otherwise detect the ascii rung. The expectations below are still resolved through the theme
+// and the kind classifier, never pasted — a vocabulary change must not re-break this drive.
+const forcedGlyphMode = 'unicode';
+
+// The kind NUMBERS are protocol facts about what a TypeScript server answers for a member access, not
+// appearance. Everything visual comes from the two authorities the app itself uses.
+const methodCompletionItemKind = 2;
+const fieldCompletionItemKind = 5;
+const propertyCompletionItemKind = 10;
+
+function expectedMarkForCompletionItemKind(completionItemKind: number): string {
+  return ThemeIcons.Class.symbolMarkFor(
+    forcedGlyphMode,
+    CompletionItemKinds.Class.symbolClassFor(completionItemKind),
+  );
+}
+
+interface CompletionPopupGeometry {
+  listLeft: number;
+  listTop: number;
+  listColumns: number;
+  listRows: number;
+  listIconColumns: number;
+  firstVisible: number;
+}
+
+async function writeForcedGlyphModeSettings(
+  homeDirectory: string,
+): Promise<void> {
+  mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+  await Bun.write(
+    join(homeDirectory, '.config', 'invar', 'settings.json'),
+    JSON.stringify({ glyphMode: forcedGlyphMode }),
+  );
+}
+
+function completionPopupGeometry(
+  status: Record<string, unknown>,
+): CompletionPopupGeometry {
+  return status.completionGeometry as unknown as CompletionPopupGeometry;
+}
+
+// A row is located by its item TEXT, and the label must begin at the ONE label column the popup
+// publishes for every row. That second half is the width proof on the real path: if the terminal had
+// rendered the mark in a different number of cells than the app reserved for the icon column, the
+// label would not start at this column.
+function completionRowMarkForLabel(
+  snapshot: HarnessSnapshot.Model,
+  geometry: CompletionPopupGeometry,
+  label: string,
+): string | null {
+  const labelColumn =
+    geometry.listIconColumns > 0 ? 2 + geometry.listIconColumns : 1;
+  for (let visibleRow = 0; visibleRow < geometry.listRows; visibleRow++) {
+    const rowText = Array.from(snapshot.rowText(geometry.listTop + visibleRow))
+      .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+      .join('');
+    if (rowText.slice(labelColumn).trimEnd() !== label) continue;
+    return rowText.slice(1, 1 + geometry.listIconColumns).trim();
+  }
+  return null;
+}
 
 async function openOnlyFile(
   driver: PtyTestDriver.Model,
@@ -49,6 +116,7 @@ async function driveMockProvider(): Promise<void> {
     join(tmpdir(), 'tui-completion-rust-home-'),
   );
   const statusPath = join(homeDirectory, 'status.json');
+  await writeForcedGlyphModeSettings(homeDirectory);
   await Bun.write(
     join(fixtureRoot, 'main.rs'),
     [
@@ -104,6 +172,18 @@ async function driveMockProvider(): Promise<void> {
         Number(openStatus.completionGeometry?.listRows) <
           Number(openStatus.completionItemCount),
       'large completion rendering stays bounded to the popup viewport',
+    );
+    const largeListGeometry = completionPopupGeometry(openStatus);
+    HarnessSmoke.Class.requireCondition(
+      largeListGeometry.listIconColumns === 1,
+      'a five-thousand-item completion list reserves exactly one cell for the mark column ' +
+        `(published listIconColumns ${largeListGeometry.listIconColumns})`,
+    );
+    await driver.awaitGridCondition(
+      'grid condition: the mock provider row for push_str carries the resolved callable mark',
+      (snapshot) =>
+        completionRowMarkForLabel(snapshot, largeListGeometry, 'push_str') ===
+        expectedMarkForCompletionItemKind(methodCompletionItemKind),
     );
     const completionRequestCountBeforeMovement = Number(
       openStatus.completionRequestCount,
@@ -323,6 +403,7 @@ async function driveTsgo(): Promise<void> {
     join(tmpdir(), 'tui-completion-tsgo-home-'),
   );
   const statusPath = join(homeDirectory, 'status.json');
+  await writeForcedGlyphModeSettings(homeDirectory);
   symlinkSync(
     join(repositoryRoot, 'node_modules'),
     join(fixtureRoot, 'node_modules'),
@@ -362,12 +443,70 @@ async function driveTsgo(): Promise<void> {
     );
     driver.sendKeys('Control+End');
     driver.sendText('.');
-    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    const memberAccessStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
       statusPath,
       'status condition: status.completionOpen === true',
       (status) => status.completionOpen === true,
       30_000,
+    );
+    // A member access is the caret where kinds genuinely differ: `this.` answers with a method AND
+    // with data members. Both marks are resolved through the kind classifier and the theme, and both
+    // are then read out of the emulator grid — a mapping table alone would not prove the popup paints
+    // them.
+    const memberAccessGeometry = completionPopupGeometry(memberAccessStatus);
+    const expectedCallableMark = expectedMarkForCompletionItemKind(
+      methodCompletionItemKind,
+    );
+    const expectedValueMark = expectedMarkForCompletionItemKind(
+      fieldCompletionItemKind,
+    );
+    HarnessSmoke.Class.requireCondition(
+      expectedValueMark ===
+        expectedMarkForCompletionItemKind(propertyCompletionItemKind),
+      'a field and a property resolve to one value-family mark, so this claim holds whichever of ' +
+        'the two kinds the server chooses for a class member',
+    );
+    HarnessSmoke.Class.requireCondition(
+      expectedCallableMark !== expectedValueMark,
+      'the callable family and the value family do not share a mark, so the grid comparison below ' +
+        'can distinguish them',
+    );
+    const markedSnapshot = await driver.awaitGridCondition(
+      'grid condition: the member-access rows carry the callable mark beside method and the value ' +
+        'mark beside a data member',
+      (snapshot) =>
+        completionRowMarkForLabel(snapshot, memberAccessGeometry, 'method') ===
+          expectedCallableMark &&
+        completionRowMarkForLabel(
+          snapshot,
+          memberAccessGeometry,
+          'property',
+        ) === expectedValueMark,
+      30_000,
+    );
+    for (
+      let visibleRow = 0;
+      visibleRow < memberAccessGeometry.listRows;
+      visibleRow++
+    ) {
+      console.log(
+        `  grid row ${memberAccessGeometry.listTop + visibleRow}: ` +
+          JSON.stringify(
+            Array.from(
+              markedSnapshot.rowText(memberAccessGeometry.listTop + visibleRow),
+            )
+              .slice(
+                memberAccessGeometry.listLeft,
+                memberAccessGeometry.listLeft +
+                  memberAccessGeometry.listColumns,
+              )
+              .join(''),
+          ),
+      );
+    }
+    HarnessSmoke.Class.pass(
+      'a real TypeScript member access paints a different mark for a callable than for a value',
     );
     driver.sendText('p');
     await HarnessSmoke.Class.awaitStatusWithoutFrame(

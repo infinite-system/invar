@@ -465,21 +465,25 @@ and `Bootstrap` requests a next-turn render when dismissal races the still-queue
 the closed state reaches both the terminal and `status.completionOpen`.
 
 **Generates:** Caret-relative downward placement with upward flipping, O(viewport) paint, wrapped
-selection with reveal, continuous editor typing, and exact text-edit acceptance.
+selection with reveal, continuous editor typing, exact text-edit acceptance, and kind marks for free —
+the popup's items carry an `icon`, so the shared row generator already sizes and paints a mark column
+that every bounded-list consumer got at once.
 
-**Evidence:** `src/modules/ui/CompletionPopup.ts`; `src/modules/ui/BoundedListPopup.ts`;
-`src/modules/ui/RootView.ts`; `src/modules/app/Bootstrap.ts`.
+**Evidence:** `src/modules/ui/CompletionPopup.ts`; `src/modules/ui/BoundedListPopup.ts`
+(`itemRowText`, `itemSetIconColumns`, and the published `listIconColumns`, which a driven contract
+addresses instead of counting cells); `src/modules/ui/RootView.ts`; `src/modules/app/Bootstrap.ts`.
 
 **Impossible if true:** A second completion-specific popup geometry implementation; a completion
-search row; an invisible modal backdrop that steals editor input; full-list work during repaint;
-Escape closing the model while `status.completionOpen` remains true.
+search row; a completion-specific mark column measured outside the shared row generator; an invisible
+modal backdrop that steals editor input; full-list work during repaint; Escape closing the model while
+`status.completionOpen` remains true.
 
 **Verification:** `bun test src/modules/ui/CompletionPopup.test.ts
 src/modules/ui/BoundedListPopup.test.ts` and `bun scripts/harness/smoke-completion-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Splitter paint and hit testing share one geometry
 
