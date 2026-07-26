@@ -63,3 +63,25 @@ a known-bad input it must flag before its silence about real input is trusted. T
 after a gate guard called `rg` (not installed), swallowed the error, and printed OK for 14 runs while
 inspecting nothing; the same defect was later found in a second script. If you add an instrument here,
 add its control.
+
+## `scripts/harness/stress-openpty-descriptors.ts` — does a PTY descriptor get stolen?
+
+**Question it answers:** are `OpenPty` instances corrupting each other's file descriptors? Keeps a
+window of instances alive, disposes the oldest while constructing a new one, and requires every
+survivor's descriptor to still be usable.
+
+`bun scripts/harness/stress-openpty-descriptors.ts <treeRoot> [rounds] [liveCount]`
+
+**Known results (2026-07-26, Bun 1.3.14 Linux arm64).** Against the unfixed tree: **8 failures in
+400 rounds** — `F_SETFL errno 9`, `F_GETFL errno 9`, and one `openpty failed (result=-1)`. After
+giving the read stream a private `dup()`: **0 in 400 and 0 in 800.**
+
+**Why it is an instrument and not a gate test:** detection is PROBABILISTIC — roughly 2% of rounds
+hit on broken code, so a short run can pass while the defect is present. A gate test with that
+property could only fail toward "pass", which is the decoration class. Run it deliberately when
+touching descriptor lifetime, and read the COUNT rather than the exit code.
+
+**Gotcha:** the victim is a *different* instance than the one being disposed, so a probe that
+constructs and closes one instance at a time finds nothing. The overlap is the whole experiment —
+`liveCount` must stay above 1. It takes `<treeRoot>` so the same probe can measure two trees
+back to back, which is how the before/after pair above was produced.
