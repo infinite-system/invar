@@ -209,10 +209,16 @@ fi
 "$HARNESS" send "$DELETE_SESSION" Down >/dev/null
 "$HARNESS" send "$DELETE_SESSION" Home >/dev/null
 "$HARNESS" send "$DELETE_SESSION" BSpace >/dev/null
-if wait_for_marker "$DELETE_SESSION" 'gamma' '▁' '219,75,75,255'; then
-  echo '  PASS  removed line paints the deleted-colored ▁ hint on the following line'
+# ▎ not ▁: a57daa8 reserved the gutter for bar-shaped source-control marks, so the deletion hint
+# became the same bar in the deleted colour. Both `diff.invariants.md` and
+# `workspace.invariants.md` now name "a deletion painted as `_` or `▁`" as impossible-if-true — so
+# this line was asserting the presence of the exact glyph the contract forbids. The harness twin
+# (scripts/harness/smoke-gutter-diff-harness.ts) was swept at the time and this shell smoke was not,
+# because it only runs under INVAR_FULL_TMUX=1 and the gate skips it by default.
+if wait_for_marker "$DELETE_SESSION" 'gamma' '▎' '219,75,75,255'; then
+  echo '  PASS  removed line paints the deleted-colored ▎ bar on the following line'
 else
-  echo '  FAIL  removed line lacks the deleted-colored ▁ hint on the following line'
+  echo '  FAIL  removed line lacks the deleted-colored ▎ bar on the following line'
   fail=1
 fi
 
