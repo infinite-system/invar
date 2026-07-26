@@ -311,6 +311,22 @@ LOAD-BEARING, user-facing behavior that no smoke drives?* If so, ratchet it in. 
   surface. Only load-bearing, user-relied-on behaviors earn a smoke — not every internal detail. An
   unrunnably-slow gate destroys the doubt-elimination it exists to provide.
 
+**Optional instruments are indexed in `project.tools.md` — point builders at it.** Some questions no
+assertion can answer: does scrolling FEEL smooth, does popup latency grow with item count, what
+graphics tier does this terminal actually negotiate, which reactive reads are unobserved. Those live
+as standalone measuring scripts that are deliberately NOT in the gate (they are load-bound, or they
+answer a judgement call the gate cannot make). An instrument nobody knows about gets re-invented
+badly, so: every instrument gets a row in `project.tools.md` naming its question, its known results
+and its gotcha; every brief that asks for a measurement names the instrument to use; and
+`AGENTS.md` points at the index so a cold builder finds it without being told.
+
+Two rules that belong with the instruments themselves:
+- **A check that can only fail toward "pass" is a decoration.** Give every instrument a positive
+  control — plant the defect it claims to detect and require a red — before trusting a green.
+- **Normalise a load-bound metric before tolerating it.** A metric measured per FRAME is a function
+  of machine load by construction; widening the tolerance to absorb that hides the signal. Convert
+  to a load-independent quantity first (per unit time, not per frame), then set the tolerance.
+
 **Harness blind spot.** The tmux/SGR harness proves LOGIC but cannot exercise terminal-SPECIFIC paths —
 a terminal's mouse protocol (SGR-1006 vs X10, the 223-col clamp), glyph tier, or escape-sequence support.
 A real user "break" that won't reproduce in-harness is often such a path (the macOS Terminal.app mouse
