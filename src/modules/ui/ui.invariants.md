@@ -124,19 +124,22 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Invariant:** If a bottom-panel heading paints Add, Expand/Restore, or Close controls, then one
 `PanelHeadingProjection` determines both the displayed control segments and the screen columns that
-activate their actions.
+activate their actions, while each segment carries its tooltip label and hover projection.
 
 **Scope:** `PanelHeading`, the generic headed panel cells in `RootView`, and the `PanelAddPopup`
 adapter. The contents-list row controls and status-bar buttons are outside this heading rule.
 
 **Mechanism:** `PanelHeading.project` clips the title around three right-aligned control segments and
-returns their exact half-open column ranges with the `StyledText`; `controlAtColumn` resolves pointer
-input only from those ranges. RootView retains that projection for each painted cell. Add opens the
-shared `BoundedListPopup` with Terminal and Agent items, Expand toggles the host layout override, and
-Close removes that cell's owned content.
+returns their exact half-open column ranges, semantic glyph slots, tooltip labels, and `StyledText`;
+`controlSegmentAtColumn` resolves pointer input and hover only from those ranges. RootView retains that
+projection for each painted cell and points the shared `Tooltip` at the segment. Hover uses
+`palette.cursorLine`, the same background affordance as breadcrumb segments; Close uses `palette.fg`,
+not `palette.error`. Add opens the shared `BoundedListPopup` with Terminal and Agent items, Expand
+toggles the host layout override, and Close removes that cell's owned content.
 
 **Generates:** Right-edge controls that survive cell resizing; identical paint and pointer
-boundaries; one shared dropdown implementation; a close action attached to each visible region.
+boundaries; tooltips and hover highlights for every control; one shared dropdown implementation; a
+non-destructive-looking close action attached to each visible region.
 
 **Evidence:** `src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
@@ -144,7 +147,8 @@ boundaries; one shared dropdown implementation; a close action attached to each 
 
 **Impossible if true:** A painted control column invoking a neighboring action; a narrow heading
 leaving an invisible clickable control; Add reimplementing popup placement or row-hit math; Close
-targeting whichever content happens to be active instead of the headed region.
+targeting whichever content happens to be active instead of the headed region; a hovered control
+changing an un-hovered sibling; Close painting in the theme error color.
 
 **Verification:** `bun test src/modules/ui/PanelHeading.test.ts
 src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-harness.ts`

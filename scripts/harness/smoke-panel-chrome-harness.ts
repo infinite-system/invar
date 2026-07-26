@@ -4,6 +4,8 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // invariant: Panel heading controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: Each panel instance owns one independent session (src/modules/terminal/terminal.invariants.md)
 // invariant: Expanded panel overrides only the editor center rows (src/modules/layout/layout.invariants.md)
@@ -24,6 +26,13 @@ interface Rectangle {
   visible?: boolean;
 }
 
+interface HeadingControlLocation {
+  readonly action: 'add' | 'expand' | 'restore' | 'close';
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+  readonly row: number;
+}
+
 function clickCell(
   driver: PtyTestDriver.Model,
   column: number,
@@ -38,6 +47,127 @@ function rectangle(status: StatusSnapshot, slot: string): Rectangle {
   const resolved = slots?.[slot];
   if (!resolved) throw new Error(`Missing layout slot: ${slot}`);
   return resolved;
+}
+
+function headingControlLocations(
+  snapshot: HarnessSnapshot.Model,
+  toggleLabel: 'EXPAND' | 'RESTORE',
+): Record<'add' | 'toggle' | 'close', HeadingControlLocation> {
+  const togglePosition = snapshot.findText(` ${toggleLabel} `);
+  if (!togglePosition) {
+    throw new Error(`Missing panel heading toggle: ${toggleLabel}`);
+  }
+  const rowText = snapshot.rowText(togglePosition.row);
+  const addStartColumn = rowText.lastIndexOf(' + ', togglePosition.column - 1);
+  const closeStartColumn = rowText.indexOf(
+    ' X ',
+    togglePosition.column + toggleLabel.length,
+  );
+  if (addStartColumn < 0 || closeStartColumn < 0) {
+    throw new Error(`Missing panel heading sibling around ${toggleLabel}`);
+  }
+  return {
+    add: {
+      action: 'add',
+      startColumn: addStartColumn,
+      endColumnExclusive: addStartColumn + 3,
+      row: togglePosition.row,
+    },
+    toggle: {
+      action: toggleLabel === 'EXPAND' ? 'expand' : 'restore',
+      startColumn: togglePosition.column,
+      endColumnExclusive: togglePosition.column + toggleLabel.length + 2,
+      row: togglePosition.row,
+    },
+    close: {
+      action: 'close',
+      startColumn: closeStartColumn,
+      endColumnExclusive: closeStartColumn + 3,
+      row: togglePosition.row,
+    },
+  };
+}
+
+function controlAttributes(
+  snapshot: HarnessSnapshot.Model,
+  control: HeadingControlLocation,
+): string {
+  return JSON.stringify(
+    snapshot
+      .rowCells(control.row)
+      .slice(control.startColumn, control.endColumnExclusive)
+      .map((cell) => ({
+        foreground: cell.foreground,
+        background: cell.background,
+        isForegroundDefault: cell.isForegroundDefault,
+        isForegroundRgb: cell.isForegroundRgb,
+        isBackgroundDefault: cell.isBackgroundDefault,
+        isBackgroundRgb: cell.isBackgroundRgb,
+        isBold: cell.isBold,
+        isDim: cell.isDim,
+        isUnderline: cell.isUnderline,
+        isInverse: cell.isInverse,
+      })),
+  );
+}
+
+async function hoverHeadingControl(
+  driver: PtyTestDriver.Model,
+  restingSnapshot: HarnessSnapshot.Model,
+  control: HeadingControlLocation,
+  unchangedSibling: HeadingControlLocation,
+  tooltipText: string,
+): Promise<HarnessSnapshot.Model> {
+  const restingControlAttributes = controlAttributes(restingSnapshot, control);
+  const restingSiblingAttributes = controlAttributes(
+    restingSnapshot,
+    unchangedSibling,
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column:
+      control.startColumn +
+      Math.floor((control.endColumnExclusive - control.startColumn) / 2),
+    row: control.row,
+    button: 'none',
+  });
+  const hoveredSnapshot = await driver.awaitGridCondition(
+    `${control.action} heading control highlights and names itself while ${unchangedSibling.action} stays unchanged`,
+    (candidate) =>
+      candidate.findText(tooltipText) !== null &&
+      controlAttributes(candidate, control) !== restingControlAttributes &&
+      controlAttributes(candidate, unchangedSibling) ===
+        restingSiblingAttributes,
+  );
+  HarnessSmoke.Class.requireCondition(
+    hoveredSnapshot.findText(tooltipText) !== null,
+    `${control.action} tooltip names the control as ${tooltipText}`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    controlAttributes(hoveredSnapshot, control) !== restingControlAttributes,
+    `${control.action} control cells change attributes on hover`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    controlAttributes(hoveredSnapshot, unchangedSibling) ===
+      restingSiblingAttributes,
+    `${unchangedSibling.action} sibling cells stay unchanged in the ${control.action} hover frame`,
+  );
+  return hoveredSnapshot;
+}
+
+function requireOrdinaryCloseForeground(
+  snapshot: HarnessSnapshot.Model,
+  closeControl: HeadingControlLocation,
+): void {
+  const closeCells = snapshot
+    .rowCells(closeControl.row)
+    .slice(closeControl.startColumn, closeControl.endColumnExclusive);
+  HarnessSmoke.Class.requireCondition(
+    closeCells.every(
+      (cell) => cell.isForegroundRgb && cell.foreground === 0xa9b1d6,
+    ),
+    'Close uses the ordinary theme foreground and never the error red',
+  );
 }
 
 function splitterRectangle(status: StatusSnapshot): Rectangle {
@@ -59,8 +189,8 @@ async function clickHeadingAction(
   marker: 'EXPAND' | 'RESTORE',
   action: 'add' | 'expand',
 ): Promise<void> {
-  await driver.awaitQuiescence();
-  const snapshot = await driver.awaitSnapshot(
+  const snapshot = await driver.awaitGridCondition(
+    `the ${marker} panel heading control is visible before activation`,
     (candidate) => candidate.findText(marker) !== null,
   );
   const position = snapshot.findText(marker);
@@ -261,7 +391,8 @@ async function driveSecondSize(): Promise<void> {
       'the compact panel is expanded',
       (status) => status.panelExpanded === true,
     );
-    const expandedSnapshot = await driver.awaitSnapshot(
+    const expandedSnapshot = await driver.awaitGridCondition(
+      'the compact expanded panel heading paints Restore',
       (snapshot) => snapshot.findText('RESTORE') !== null,
     );
     requireExpandedGeometry(
@@ -319,6 +450,73 @@ try {
       status.panelActiveContent === 'terminal' &&
       Array.isArray(status.panelContentLabels) &&
       status.panelContentLabels.join(',') === 'Terminal',
+  );
+
+  console.log(
+    '== harness panel-chrome: every heading control explains and highlights itself ==',
+  );
+  const restingHeadingSnapshot = await driver.awaitGridCondition(
+    'the resting Terminal heading paints Add Expand and Close controls',
+    (candidate) => {
+      try {
+        headingControlLocations(candidate, 'EXPAND');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  const restingHeadingControls = headingControlLocations(
+    restingHeadingSnapshot,
+    'EXPAND',
+  );
+  requireOrdinaryCloseForeground(
+    restingHeadingSnapshot,
+    restingHeadingControls.close,
+  );
+  await hoverHeadingControl(
+    driver,
+    restingHeadingSnapshot,
+    restingHeadingControls.add,
+    restingHeadingControls.toggle,
+    'Add panel',
+  );
+  await hoverHeadingControl(
+    driver,
+    restingHeadingSnapshot,
+    restingHeadingControls.toggle,
+    restingHeadingControls.close,
+    'Expand panel',
+  );
+  await hoverHeadingControl(
+    driver,
+    restingHeadingSnapshot,
+    restingHeadingControls.close,
+    restingHeadingControls.add,
+    'Close panel',
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: Math.max(0, restingHeadingControls.add.startColumn - 2),
+    row: restingHeadingControls.add.row,
+    button: 'none',
+  });
+  await driver.awaitGridCondition(
+    'all heading controls return to rest after the pointer leaves them',
+    (candidate) =>
+      controlAttributes(candidate, restingHeadingControls.add) ===
+        controlAttributes(restingHeadingSnapshot, restingHeadingControls.add) &&
+      controlAttributes(candidate, restingHeadingControls.toggle) ===
+        controlAttributes(
+          restingHeadingSnapshot,
+          restingHeadingControls.toggle,
+        ) &&
+      controlAttributes(candidate, restingHeadingControls.close) ===
+        controlAttributes(
+          restingHeadingSnapshot,
+          restingHeadingControls.close,
+        ) &&
+      candidate.findText('Close panel') === null,
   );
 
   console.log(
@@ -420,7 +618,10 @@ try {
   HarnessSmoke.Class.pass('Agent instances select and close through the list');
 
   const agentPosition = await driver
-    .awaitSnapshot((snapshot) => snapshot.findText('Claude') !== null)
+    .awaitGridCondition(
+      'the Agent heading is visible before its Close action',
+      (snapshot) => snapshot.findText('Claude') !== null,
+    )
     .then((snapshot) => snapshot.findText('Claude'));
   if (!agentPosition) throw new Error('Missing Claude agent heading');
   const agentHeadingText = driver.snapshot().rowText(agentPosition.row);
@@ -457,7 +658,8 @@ try {
     'the 120x40 panel is expanded',
     (candidate) => candidate.panelExpanded === true,
   );
-  const expandedSnapshot = await driver.awaitSnapshot(
+  const expandedSnapshot = await driver.awaitGridCondition(
+    'the expanded panel heading paints Restore',
     (snapshot) => snapshot.findText('RESTORE') !== null,
   );
   requireExpandedGeometry(
@@ -465,6 +667,17 @@ try {
     regularStatus,
     expandedSnapshot,
     '120x40',
+  );
+  const expandedHeadingControls = headingControlLocations(
+    expandedSnapshot,
+    'RESTORE',
+  );
+  await hoverHeadingControl(
+    driver,
+    expandedSnapshot,
+    expandedHeadingControls.toggle,
+    expandedHeadingControls.add,
+    'Restore panel',
   );
 
   await clickHeadingAction(driver, 'RESTORE', 'expand');

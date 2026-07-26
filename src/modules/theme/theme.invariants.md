@@ -87,37 +87,38 @@ tier-precedence list outside `detectGraphicsTier`.
 ### Appearance comes only from theme data
 
 **Invariant:** If a rendered cell carries a color or glyph, then that value was read from the
-active theme (a `Palette` field or an `IconSet` / `ActionIconSet` / `CheckboxIconSet` entry
-resolved through `Theme.Class`), never written as a literal hex or glyph at the drawing site —
-the `theme` module is the single source of appearance.
+active theme (a `Palette` field or a semantic `GlyphSlot` / `IconSet` / `ActionIconSet` /
+`CheckboxIconSet` entry resolved through `Theme.Class`), never written as a literal hex or glyph at
+the drawing site — the `theme` module is the single source of appearance.
 
-**Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations. The
-sole home for color and glyph literals is `src/modules/theme`; consumers pull tokens, they do not
-mint them.
+**Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
+activity-bar and panel-heading control glyphs. The sole home for color and glyph literals is
+`src/modules/theme`; consumers pull tokens or name semantic slots, they do not mint appearance.
 
 **Mechanism:** `Theme` exposes `palette`, `icons`, `actionIcons`, `checkboxIcons`, and `icon()`
-as plain getters that re-derive from `PALETTES` and the icon `SETS` on read; because the data is
-reactive selection, a palette or capability change reaches every consumer without any component
-caching or copying its own colors.
+as plain getters that re-derive from `PALETTES` and the icon tables on read. Its
+`glyphVocabulary`/`glyph` surfaces resolve stable semantic slots through
+`$interfaceGlyphVocabularies`; because the data is reactive selection, a palette, vocabulary, or
+capability change reaches every consumer without changing behavior or copying appearance.
 
 **Generates:** *The palette ladder quantizes color without leaving the palette*; *The glyph ladder
 degrades icons single-cell and legible*; theme/icon-set plugin extension points; a single grep
 boundary for auditing hard-coded appearance.
 
 **Evidence:** `src/modules/theme/Theme.ts` (`palette`, `icons`, `actionIcons`, `checkboxIcons`,
-`icon` getters); the color literals live only in `ThemePalettes.ts` (`DARK`, `LIGHT`) and the
-glyph literals only in `ThemeIcons.ts` (`NERD`, `UNICODE`, `ASCII`, `ACTION_ICONS`,
-`CHECKBOX_ICONS`).
+`glyphVocabulary`, `glyph`, and `icon`); the color literals live only in `ThemePalettes.ts` and the
+glyph literals only in `ThemeIcons.ts`; `ThemeIcons.test.ts` verifies the semantic slot ladder.
 
 **Impossible if true:** A rendering component outside `src/modules/theme` naming a `#rrggbb`
-color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`.
+color or a nerd/unicode glyph literal to draw with instead of reading it from `Theme.Class`; a
+vocabulary swap requiring edits to activity switching or heading-control actions.
 
 **Verification:** `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.ts | grep -v modules/theme` returns
-no drawing-site literal; `bun test src/modules/theme`.
+no drawing-site literal; `bun test src/modules/theme src/modules/ui/PanelHeading.test.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### The palette ladder quantizes color without leaving the palette
 
@@ -160,29 +161,33 @@ printable single-cell marker, and every action/checkbox glyph at every level is 
 so the git-panel hit-columns stay aligned; an unknown file extension resolves to `set.file`,
 never empty or undefined.
 
-**Scope:** `ThemeIcons.iconSetFor`, `actionIconsFor`, `checkboxIconsFor`, and `iconFor`, plus the
-`Theme` getters that call them. Covers file-tree icons, git changes-row action buttons, and
-staging checkboxes.
+**Scope:** `ThemeIcons.iconSetFor`, `actionIconsFor`, `checkboxIconsFor`,
+`interfaceGlyphVocabularyFor`, `glyphFor`, and `iconFor`, plus the `Theme` getters that call them.
+Covers file-tree icons, git changes-row action buttons, staging checkboxes, activity-bar items, and
+panel-heading controls.
 
 **Mechanism:** The `SETS`, `ACTION_ICONS`, and `CHECKBOX_ICONS` tables are keyed by `GlyphLevel`,
-so selection is a total lookup with no missing rung; the `ascii` entries are letters and
-`+`/`-`/space/`x`; action and checkbox glyphs are authored as one code point each; `iconFor`
-falls back through `set.ext[extension] ?? set.file` so it always returns a printable string.
+and `$interfaceGlyphVocabularies` maps every `GlyphSlot` at each level, so selection is a total
+lookup with no missing rung. The `ascii` entries remain printable; action, checkbox, and activity
+glyphs are authored as one cell each; `iconFor` falls back through
+`set.ext[extension] ?? set.file` so it always returns a printable string.
 
 **Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button
 and checkbox columns never shift width between capability levels.
 
-**Evidence:** `src/modules/theme/ThemeIcons.ts` (`SETS`, `ACTION_ICONS`, `CHECKBOX_ICONS`,
-`$iconSetFor`, `$actionIconsFor`, `$checkboxIconsFor`, `$iconFor`); `icon fallback ladder`,
+**Evidence:** `src/modules/theme/ThemeIcons.ts` (`$sets`, `$actionIcons`, `$checkboxIcons`,
+`$interfaceGlyphVocabularies`, `iconSetFor`, `glyphFor`, `iconFor`); `icon fallback ladder`,
 `unicode icon set resolves known extension and falls back for unknown`, `checkbox icons ladder`,
-and `git action icons ladder` in `src/modules/theme/__tests__/theme.test.ts`.
+`git action icons ladder`, and `semantic interface glyph slots resolve through every capability
+tier` in `src/modules/theme/ThemeIcons.test.ts`.
 
 **Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
 action/checkbox glyph wider than one cell at any level; `iconFor` returning empty or undefined for
-an unknown extension.
+an unknown extension; an activity or panel control choosing its glyph literal in behavior code.
 
-**Verification:** `bun test src/modules/theme -t "ladder"`
+**Verification:** `bun test src/modules/theme/ThemeIcons.test.ts && bun
+scripts/harness/smoke-activitybar-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25

@@ -792,30 +792,38 @@ binding; no modal state gates insertion.
 ### Appearance is data with a capability fallback
 
 **Invariant:** If the UI shows color or icons, then they come from swappable data (palettes,
-icon sets), never hard-coded, and each resolves through a capability fallback ladder.
+semantic glyph slots, icon sets), never hard-coded, and each resolves through a capability
+fallback ladder; changing a glyph vocabulary never changes input or projection behavior.
 
-**Scope:** Themes, file-type icons, syntax colors, git/diagnostic decorations, gutter.
+**Scope:** Themes, file-type icons, syntax colors, git/diagnostic decorations, gutter, activity-bar
+items, and panel-heading controls. Text content that is not an icon or control glyph is outside the
+glyph-slot rule.
 
 **Mechanism:** Stands on *Terminal color and glyph support varies*. `theme.palettes.ts` /
-`theme.icons.ts` are semantic-token data; `TerminalCapabilities` drives truecolor→256→16 and
-nerd→unicode→ascii resolution; the active theme is a reactive selection; themes/icons are
-contribution-plugin extension points.
+`ThemeIcons.ts` are semantic-token data; `InterfaceGlyphVocabulary` gives behavior a stable slot
+name while `$interfaceGlyphVocabularies` supplies the nerd→unicode→ascii values.
+`TerminalCapabilities` also drives truecolor→256→16 resolution; the active theme is a reactive
+selection; themes/icons are contribution-plugin extension points.
 
 **Generates:** The `theme` module; semantic color tokens pulled by ui/editor/syntax/diagnostics;
-theme/icon plugin contributions.
+theme/icon plugin contributions; activity and heading consumers that name slots instead of glyphs.
 
 **Evidence:** The brief's diagnostic undercurl→underline→gutter fallback; the `theme` module
-lands M2.
+lands M2; `src/modules/theme/ThemeIcons.ts`; `src/modules/ui/ActivityBar.ts`;
+`src/modules/ui/PanelHeading.ts`; `src/modules/theme/ThemeIcons.test.ts`;
+`scripts/harness/smoke-activitybar-harness.ts`.
 
 **Impossible if true:** A hard-coded truecolor/nerd-glyph that breaks legibility on a limited
-terminal; a component that colors itself without going through the theme.
+terminal; a component that colors itself without going through the theme; changing an activity or
+heading glyph requiring a behavior edit or changing a hit target.
 
-**Verification:** A harness test forcing 16-color / no-nerd-font and asserting legible output;
-grep for hard-coded colors/glyphs outside `theme`.
+**Verification:** `bun test src/modules/theme/ThemeIcons.test.ts
+src/modules/ui/PanelHeading.test.ts && bun scripts/harness/smoke-activitybar-harness.ts`; grep for
+hard-coded colors/glyphs outside `theme`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-25
 
 ### Completion is proven not declared
 

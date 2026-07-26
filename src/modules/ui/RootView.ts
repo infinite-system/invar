@@ -75,7 +75,11 @@ import { Momentum } from '../system/Momentum';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
 import { PanelContentsList } from './PanelContentsList';
-import { PanelHeading, type PanelHeadingProjection } from './PanelHeading';
+import {
+  PanelHeading,
+  type PanelHeadingAction,
+  type PanelHeadingProjection,
+} from './PanelHeading';
 import {
   LayoutModel,
   type LayoutPreset,
@@ -593,6 +597,7 @@ class $RootView {
       };
       readonly splitterElement: SplitterElement.Model | null;
       headingProjection: PanelHeadingProjection | null;
+      hoveredHeadingAction: PanelHeadingAction | null;
     }
     const panelCellViews: PanelCellView[] = [];
     let mountedPanelCellCount = -1;
@@ -693,6 +698,34 @@ class $RootView {
           panelHost.removeContent(content.id);
         }
         renderer.requestRender();
+      };
+      // invariant: A tooltip never intercepts input (src/modules/ui/ui.invariants.md)
+      heading.onMouseMove = (event) => {
+        const view = panelCellViews[index];
+        const control = view?.headingProjection
+          ? PanelHeading.Class.controlSegmentAtColumn(
+              view.headingProjection,
+              Number(event.x) - Number(heading.x),
+            )
+          : null;
+        const nextHoveredHeadingAction = control?.action ?? null;
+        if (view && view.hoveredHeadingAction !== nextHoveredHeadingAction) {
+          view.hoveredHeadingAction = nextHoveredHeadingAction;
+          renderer.requestRender();
+        }
+        if (control) {
+          tooltip.point(control.tooltip, Number(event.x), Number(event.y));
+        } else {
+          tooltip.clear();
+        }
+      };
+      heading.onMouseOut = () => {
+        const view = panelCellViews[index];
+        if (view?.hoveredHeadingAction) {
+          view.hoveredHeadingAction = null;
+          renderer.requestRender();
+        }
+        tooltip.clear();
       };
       body.onMouseDown = (event: MouseEvent) => {
         panelHost.focus();
@@ -827,6 +860,7 @@ class $RootView {
         verticalScrollBarState,
         splitterElement,
         headingProjection: null,
+        hoveredHeadingAction: null,
       };
       panelCellViews[index] = view;
       return view;
@@ -1494,6 +1528,8 @@ class $RootView {
             icon: span.content.icon,
             focused: cellFocused,
             expanded: panelHost.expanded.value,
+            hoveredAction: view.hoveredHeadingAction,
+            glyphVocabulary: theme.glyphVocabulary,
             palette,
           });
           view.heading.content = view.headingProjection.text;

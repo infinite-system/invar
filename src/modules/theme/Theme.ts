@@ -2,14 +2,14 @@
 // capability fallback ladders. Consumed by ui, editor, syntax, diagnostics.
 //
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
-import { Reactive } from "ivue";
-import { ref } from "vue";
+import { Reactive } from 'ivue';
+import { ref } from 'vue';
 import {
   TerminalCapabilities,
   type ColorDepth,
   type GlyphLevel,
-} from "./TerminalCapabilities";
-import { ThemePalettes, type Palette } from "./ThemePalettes";
+} from './TerminalCapabilities';
+import { ThemePalettes, type Palette } from './ThemePalettes';
 import {
   ThemeIcons,
   type IconSet,
@@ -17,7 +17,9 @@ import {
   type CheckboxIconSet,
   type ActivityIconSet,
   type FindIconSet,
-} from "./ThemeIcons";
+  type GlyphSlot,
+  type InterfaceGlyphVocabulary,
+} from './ThemeIcons';
 
 class $Theme {
   get paletteName() {
@@ -70,6 +72,9 @@ class $Theme {
   get activityIcons(): ActivityIconSet {
     return ThemeIcons.Class.activityIconsFor(this.glyphLevel.value);
   }
+  get glyphVocabulary(): InterfaceGlyphVocabulary {
+    return ThemeIcons.Class.interfaceGlyphVocabularyFor(this.glyphLevel.value);
+  }
   /** Find-bar action-button glyphs (prev/next/replace/replace-all/mode) at the current glyph level. */
   get findIcons(): FindIconSet {
     return ThemeIcons.Class.findIconsFor(this.glyphLevel.value);
@@ -77,6 +82,10 @@ class $Theme {
   /** Alert glyph (⚠ ladder) painted in the warning colour to flag an un-openable path. */
   get alertIcon(): string {
     return ThemeIcons.Class.alertIconFor(this.glyphLevel.value);
+  }
+
+  glyph(slot: GlyphSlot): string {
+    return ThemeIcons.Class.glyphFor(this.glyphLevel.value, slot);
   }
 
   icon(name: string, isDir: boolean, open = false): string {
@@ -89,7 +98,7 @@ class $Theme {
   toggleDark(): void {
     this.paletteName.value =
       this.paletteName.value === ThemePalettes.Class.dark.name
-        ? "invar-light"
+        ? 'invar-light'
         : ThemePalettes.Class.dark.name;
   }
   setColorDepth(d: ColorDepth): void {
