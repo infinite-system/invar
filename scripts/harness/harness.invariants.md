@@ -263,6 +263,13 @@ frames.
 
 **Scope:** `PtyTestDriver`, every `scripts/harness/smoke-*-harness.ts` port, and shared harness
 helpers. Frame counts may diagnose output volume, but they never identify the state a waiter expects.
+A WAIT MUST BE A CONDITION, and three shapes fail that requirement, not just the frame-ordinal one:
+(a) a target frame ordinal; (b) a predicate the PRE-ACTION state already satisfies — existence and type
+checks like `typeof status.field === 'number'` or `field !== undefined`, since a field that exists before
+the action still exists after it; (c) a fixed sleep between an action and an assertion, which is a wait
+with no predicate at all. Legitimate exceptions, both narrow: at BOOT an existence check is a real
+`undefined -> value` transition, and a short sleep INSIDE a polling loop that has its own deadline is
+that loop's poll interval.
 
 **Mechanism:** `PtyTestDriver.awaitGridCondition` flushes and checks the current emulator grid first,
 then checks again after each future synchronized-frame completion event. `awaitQuiescence` waits on a
@@ -280,11 +287,22 @@ and an action whose target is already rendered may emit no frame.
 
 **Evidence:** `scripts/harness/PtyTestDriver.ts`; the recorded-stream cases in
 `scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
-`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+`scripts/harness/smoke-agent-pane-ux-harness.ts`. The COST of the two shapes this record did not
+originally forbid, measured 2026-07-25: both produced ~50% flakes that `retry-once-on-timeout` then hid,
+so the gate reported green for a full day while degrading. `smoke-editor-harness` waited on
+`typeof status.pendingCloseTab === 'number'`, which the "nothing pending" sentinel already satisfied —
+sampling stale skipped a confirmation keystroke and then waited forever for a tab count that could not
+drop (fixed: 6-of-6 green against 3 failures in 4 attempts). `smoke-pixel-preview` still carries fixed
+sleeps of 250 ms and 750 ms and took a timeout retry under load 3.5. The principle here was already
+correct; its impossibility set was too narrow to make either mistake unwritable, which is how a true
+invariant with a thin negative space protects nothing.
 
 **Impossible if true:** A transition timeout that names a target frame ordinal; a satisfied grid
 predicate waiting for another frame; two coalesced invalidations requiring two completed frames; a
-visual assertion sampling the grid after only status publication or output quiescence.
+visual assertion sampling the grid after only status publication or output quiescence; a post-action
+wait whose predicate the pre-action state already satisfied (so the wait returns immediately and the
+next step races); a bare `Bun.sleep` standing between a drive and the assertion that verifies it.
+
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
 scripts/harness/SynchronizedOutputQuiescence.test.ts`
