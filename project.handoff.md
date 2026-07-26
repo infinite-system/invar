@@ -3,16 +3,29 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~08:55) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-26 ~13:25) — READ FIRST ON A COLD START
 
-Main @ `b0ff3ea`, pushed, clean. **TWENTY-FIVE commits landed this session.**
+Main @ `0ec98bd`, pushed, clean. Landed since the 08:55 anchor: the KEYBOARD INVARIANT (#91 Tab
+indents / #93 F-keys retired with driven arrival proof / #101 pass-through, `0b7ad0a`), the PLUGIN
+TAXONOMY (#103: contributor/provider/hosted-runtime, one authority per boundary contract,
+`ApplicationContributor` rename, `80a1559`), and the FILE TREE AS A PLUGIN (#85, `2f28f53` — includes
+the sync-flush focus-projection fix; the extraction EXPOSED a latent stale-dock bit that had been
+harmless only because the old pane had no keybindingContext; the exposer is not the culprit).
 
-**THE FLEET IS DEAD AND CANNOT BE RESTARTED YET.** At ~06:45 all three builders were killed
-simultaneously by an org monthly spend limit (`/usage-credits` — the user must raise it). A new agent
-fails the same way. Their work was preserved as WIP commits on their branches before anything else.
-The ten-minute liveness cron was DELETED (no builders to watch, and each fire spends budget that ran
-out); the hourly loop remains. Re-arm the ten-minute one from the verbatim prompt in
-`.claude/skills/conductor/SKILL.md` once the limit is raised.
+**THE FLEET IS CODEX AGAIN (user, ~09:50: "use codexes from now on instead of claude sub agents" —
+23% quota + a free reset; the Anthropic org spend limit is still hard-blocked for subagents).**
+Dispatch pattern: brief file in /tmp, `nohup setsid codex exec --dangerously-bypass-approvals-and-sandbox
+-C <worktree> "Read <brief> and execute" > /tmp/<name>-codex.log 2>&1 &`, then a Monitor keyed on
+COMMIT-COUNT-OR-SILENCE (fires when `rev-list --count` reaches the target with a clean tree, or when
+the log goes silent 15-20 min). The ten-minute liveness cron is still DELETED; the hourly loop plus
+per-builder monitors replaced it.
+
+**IN FLIGHT:** #100 plugin settings/keybindings contribution (`feat-plugin-manifest`,
+`/tmp/conductor-manifest`, brief `/tmp/TASK-plugin-manifest.md`). Acceptance test: the repository
+panel's Tab-to-leave gesture returns THROUGH the plugin-binding layer with the keybindings
+source-control ratchet ≤ 13. QUEUE after it: #84 quiet lock → #97 folding → #98 inline AI →
+#102 markdown tables → #59 prettier LAST. Open findings parked: #105 unrun smokes, #106 residual
+~1.7 ms latency, #107 emoji width, #108 gear-mark owners, #75, #86, #90, #94, #99.
 
 **LANDED AFTER THE FLEET DIED (b0ff3ea, conductor-verified):** both PTY bugs, which two builders found
 independently and neither lived to verify.
