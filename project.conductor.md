@@ -770,3 +770,55 @@ Also: a liveness probe that can only fail toward "dead" needs a positive control
 wrongly reported two healthy builders as having written nothing; `-mmin` showed 576 and 588 touched
 files. The 10-minute heartbeat greps worktree writes exactly this way, so a bad probe there invites a
 takeover of work that is fine.
+
+## 2026-07-25 21:20 — the night run: the gate's real reliability, and four fragility classes
+**Census first, always.** Every gate log of the day was still on disk, and every `RETRY` line in one
+marks an intermittent that `retry-once-on-timeout` rescued. One grep: **121 runs, 97 green, 33 retries**
+— roughly a QUARTER of runs carried a masked flake, so a ~27%-flaky suite read as healthy. Ranked:
+workspace-tabs 12 (+5 hard fails), pixel-preview 4, agent-permissions 4, paste 3, editor 3 (+1 fail),
+move-line 2 (+2 fails). I had already fixed the 1st and 5th before running the census — because they
+BLOCKED me, not because I knew. The census would have pointed at the same targets hours earlier.
+
+**This reframes "make the gate faster".** Parallelism was never the bottleneck; TRUSTWORTHINESS was.
+Each flake costs a five-minute re-run AND conceals itself, so the suite decays invisibly. Load
+independence and poolability are the same property, which means robustness work and speed work are one
+change, not a trade.
+
+**Four fragility classes, all one defect in different costumes — A WAIT THAT IS NOT A CONDITION:**
+1. Clock-bound ABSENCE windows (`assertNoCompleteFrameEmittedFor`). Load-sensitive in BOTH directions:
+   passes vacuously when nothing was rendering, fails when a legitimate awaited repaint lands inside the
+   window. Fix = content invariance (capture the region that must hold still, run a condition-terminated
+   action, assert it is byte-identical while the region expected to change did change).
+2. VACUOUS PREDICATES — a wait the pre-action state already satisfies. `typeof status.pendingCloseTab
+   === 'number'` was true before Ctrl+W was ever sent, so sampling stale skipped a confirmation
+   keystroke and then waited forever. ~50% flaky. Fix = a predicate unreachable without the action.
+3. BARE SLEEPS between a drive and its assertion — a wait with no predicate. 21 sites across 11 smokes.
+   Fixed three in pixel-preview with a new `awaitOutputCondition` (kitty/sixel bytes are not bounded by
+   a synchronized frame, so `awaitGridCondition` cannot see them).
+4. BACKPRESSURE — new tonight. `smoke-paste` runs in 2s solo but stalled ~4.5 minutes at 0% CPU inside
+   a loaded pool: it writes 64KB into a much smaller PTY buffer, so if the app drains slowly the WRITE
+   blocks and both sides idle. Same branch, two runs: pool phase 0m52s idle vs 5m53s loaded. May be a
+   PRODUCT bug, not a harness bug — a real large paste on a busy machine would stall identically.
+
+The invariant `Harness waits observe conditions not frame ordinals` already had the right principle and
+a negative space too thin to enforce it (it forbade only the frame-ordinal shape), so shapes 2 and 3
+stayed writable and both were written. Widened to forbid all three, with the two legitimate exceptions
+named (a BOOT existence check is a real undefined-to-value transition; a short sleep INSIDE a polling
+loop is that loop's interval). Lesson: an invariant whose positive content is right but whose
+impossibility set is narrow protects nothing — the mistakes it fails to forbid are the ones people make.
+
+**The tail COMPOUNDS.** The wheel fix's new per-overlay drives settle on frame silence, so the
+structural guard correctly moved `smoke-overlay-dialog` from the pool into the quiet tail (buckets
+32/21 -> 32/24). Every feature that adds a silence assertion grows the serial tail, which is why the
+class must be fixed at the generator rather than by reclassifying smokes one at a time.
+
+**Conductor errors worth not repeating.** (a) A quiet gate log is NOT a hung gate — the pool reaps in
+REGISTRATION ORDER, so silence means the first unfinished job is still running. I read four minutes of
+silence as a deadlock, killed the straggler, and destroyed that job's evidence while a Monitor was
+already armed. Never intervene in a run you are monitoring. (b) `pgrep -f <pattern>` self-matches when
+the pattern appears in your own command line; I read that output as builder liveness TWICE tonight
+after writing the rule myself. Verify by parent process. (c) I attributed an intrinsic red to
+contention; the discriminator is a solo re-run on an idle machine and costs about a minute. (d) A
+fixture "fix" that shortened a directory prefix silently deleted the PRECONDITION of an ellipsis
+assertion — the assertion still ran and could no longer fail, which is a ratchet hole a counter cannot
+see.
