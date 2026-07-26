@@ -71,6 +71,7 @@ class $BoundedListPopup {
   protected searchVisibleValue = true;
   protected backdropVisibleValue = true;
   protected itemsAlreadyFilteredValue = false;
+  protected availableBottomExclusiveValue: number | undefined = undefined;
   protected filteredMatchesValue: readonly BoundedListPopupMatch[] = [];
   protected enabledNavigationValue: BoundedListPopupEnabledNavigation = {
     enabledFilteredIndices: [],
@@ -254,7 +255,10 @@ class $BoundedListPopup {
       $BoundedListPopup.verticalFrameRows + chromeRows + naturalListRows;
     const safeBottomExclusive = Math.max(
       1,
-      screenHeight - $BoundedListPopup.reservedBottomRows,
+      Math.min(
+        screenHeight - $BoundedListPopup.reservedBottomRows,
+        input.availableBottomExclusive ?? screenHeight,
+      ),
     );
     const downwardTop = Math.max(0, Math.floor(input.anchor.row) + 1);
     const downwardCapacity = Math.max(0, safeBottomExclusive - downwardTop);
@@ -345,6 +349,7 @@ class $BoundedListPopup {
     this.searchVisibleValue = options.searchVisible ?? true;
     this.backdropVisibleValue = options.showBackdrop ?? true;
     this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
+    this.availableBottomExclusiveValue = options.availableBottomExclusive;
     this.minimumWidthValue =
       options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
     this.titleValue = options.title ?? '';
@@ -518,6 +523,7 @@ class $BoundedListPopup {
       iconColumns: this.iconColumnsValue,
       scrollbarThickness,
       firstVisible: this.viewport.scrollTop,
+      availableBottomExclusive: this.availableBottomExclusiveValue,
     });
     const geometry = this.currentGeometry;
     const palette = this.dependencies.theme.palette;
@@ -960,6 +966,7 @@ export interface BoundedListPopupOpenOptions {
   searchVisible?: boolean;
   showBackdrop?: boolean;
   itemsAlreadyFiltered?: boolean;
+  availableBottomExclusive?: number;
   navigateBackwardHandler?: () => void;
 }
 
@@ -989,6 +996,7 @@ export interface BoundedListPopupGeometryInput {
   iconColumns: number;
   scrollbarThickness: number;
   firstVisible: number;
+  availableBottomExclusive?: number;
 }
 
 export interface BoundedListPopupGeometry {

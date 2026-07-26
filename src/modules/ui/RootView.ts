@@ -1902,6 +1902,20 @@ class $RootView {
       }
       return headings;
     };
+    const focusedPanelCaretAnchor = (): {
+      column: number;
+      row: number;
+    } | null => {
+      if (!panelHost.visible.value || !panelHost.focused.value) return null;
+      const focusedIndex = panelHost.focusedIndex.value;
+      const body = panelCellViews[focusedIndex]?.body;
+      const caret = panelHost.focusedContent?.caret?.() ?? null;
+      if (!body || !caret) return null;
+      return {
+        column: Number(body.x) + caret.column,
+        row: Number(body.y) + caret.row,
+      };
+    };
     update();
     return {
       update,
@@ -1947,6 +1961,7 @@ class $RootView {
       panelViewportColumns,
       panelViewportRows,
       panelContainsPoint,
+      focusedPanelCaretAnchor,
       panelHeadingGeometry,
       panelContentsListRegion: () => ({
         left:
@@ -2075,6 +2090,7 @@ export interface RootView {
   panelViewportRows(): number;
   /** True when the screen cell (x,y) falls inside the visible panel box (focus-follows-click). */
   panelContainsPoint(x: number, y: number): boolean;
+  focusedPanelCaretAnchor(): { column: number; row: number } | null;
   panelHeadingGeometry(): readonly PanelHeadingGeometry[];
   panelContentsListRegion(): {
     left: number;

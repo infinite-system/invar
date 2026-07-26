@@ -12,6 +12,7 @@
 // invariant: Stream inactivity is visible and non-destructive (src/modules/agent/agent.invariants.md)
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
 // invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
+// invariant: Every agent backend session begins from the IBR foundation (src/modules/agent/agent.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { AgentBackend } from './AgentBackend.interface';
@@ -25,6 +26,7 @@ import type {
 import type { ResolvedEngine } from './AgentProviderRegistry';
 import { AgentPromptResolver } from './AgentPromptResolver';
 import { TranscriptContextSerializer } from './TranscriptContextSerializer';
+import type { AgentIbrFoundationResolution } from './AgentIbrFoundation';
 
 class $AgentSession {
   /** The one append-only transcript. Mutated only by fold()/send()/swapBackend() here; read-only
@@ -60,6 +62,8 @@ class $AgentSession {
    *  pendingPermission getter never re-walks it. Monotonic; valid because the transcript is append-only
    *  and a pointer entry only flips pending→resolved. */
   protected pendingPermissionScanFrom = 0;
+  /** False only while a fresh Codex backend still needs IBR at prompt position zero. */
+  protected ibrFoundationDeliveredToBackend = true;
 
   /** The engine currently answering — the registry's RESOLVED engine, passed by the factory at
    *  construction and updated on every swap. Stamped onto each assistant/permission entry as it opens,
@@ -71,6 +75,7 @@ class $AgentSession {
     protected backend: AgentBackend,
     activeEngine: ResolvedEngine = 'claude',
     protected readonly workspaceRoot: string = process.cwd(),
+    protected readonly ibrFoundation: AgentIbrFoundationResolution | null = null,
   ) {
     this.currentEngine = activeEngine;
     this.wireBackend();
@@ -79,6 +84,24 @@ class $AgentSession {
   /** The engine currently answering (the pane title + greeting read this when no engine port is bound). */
   get activeEngine(): ResolvedEngine {
     return this.currentEngine;
+  }
+
+  /** The per-workspace foundation decision retained for backend parity and observability. */
+  get ibrFoundationState(): AgentIbrFoundationState {
+    if (this.ibrFoundation === null) return 'unavailable';
+    if (this.backend.ibrFoundationDelivery === 'append-system-prompt') {
+      return 'append-system-prompt';
+    }
+    if (this.backend.ibrFoundationDelivery === 'prepend-every-prompt') {
+      return 'prepend-every-prompt';
+    }
+    return this.ibrFoundationDeliveredToBackend
+      ? 'prepend-prompt-sent'
+      : 'prepend-prompt-pending';
+  }
+
+  get ibrFoundationPath(): string | null {
+    return this.ibrFoundation?.path ?? null;
   }
 
   /** Bumped on every folded event — the reactive paint signal the frame effect observes so async
@@ -100,6 +123,10 @@ class $AgentSession {
   /** Read-only view of the transcript — the projection surface every UI reads. */
   get transcript(): readonly TranscriptEntry[] {
     return this.entries;
+  }
+
+  get workspaceDirectory(): string {
+    return this.workspaceRoot;
   }
 
   /** True while a user-visible turn is in flight. Every projection reads this one predicate. */
@@ -379,6 +406,9 @@ class $AgentSession {
 
   protected wireBackend(): void {
     this.backendGeneration += 1;
+    this.ibrFoundationDeliveredToBackend =
+      this.ibrFoundation === null ||
+      this.backend.ibrFoundationDelivery === 'append-system-prompt';
     const connectedBackend = this.backend;
     const connectedGeneration = this.backendGeneration;
     connectedBackend.onEvent((event) => {
@@ -448,7 +478,7 @@ class $AgentSession {
       this.workspaceRoot,
       prompt,
     );
-    this.backend.send(this.promptWithPendingContext(resolvedPrompt));
+    this.backend.send(this.promptForCurrentBackend(resolvedPrompt));
   }
 
   protected recordBackendActivity(): void {
@@ -484,12 +514,22 @@ class $AgentSession {
     this.inactivityTimerHandle = null;
   }
 
-  protected promptWithPendingContext(prompt: string): string {
-    const promptWithContext = this.pendingContextPreamble
-      ? `${this.pendingContextPreamble}\n\n${prompt}`
-      : prompt;
+  protected promptForCurrentBackend(prompt: string): string {
+    const promptParts: string[] = [];
+    if (
+      (!this.ibrFoundationDeliveredToBackend ||
+        this.backend.ibrFoundationDelivery === 'prepend-every-prompt') &&
+      this.ibrFoundation !== null
+    ) {
+      promptParts.push(this.ibrFoundation.content);
+      this.ibrFoundationDeliveredToBackend = true;
+    }
+    if (this.pendingContextPreamble) {
+      promptParts.push(this.pendingContextPreamble);
+    }
+    promptParts.push(prompt);
     this.pendingContextPreamble = null;
-    return promptWithContext;
+    return promptParts.join('\n\n');
   }
 
   protected static get maximumPendingContextCharacters(): number {
@@ -519,3 +559,10 @@ export namespace AgentSession {
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;
 }
+
+export type AgentIbrFoundationState =
+  | 'unavailable'
+  | 'append-system-prompt'
+  | 'prepend-every-prompt'
+  | 'prepend-prompt-pending'
+  | 'prepend-prompt-sent';

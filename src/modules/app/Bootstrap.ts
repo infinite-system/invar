@@ -67,6 +67,7 @@ import {
 } from '../agent/AgentPaneContent';
 import { AgentProviderRegistry } from '../agent/AgentProviderRegistry';
 import { AgentTerminalFollow } from '../agent/AgentTerminalFollow';
+import { AgentSkillPopup } from '../agent/AgentSkillPopup';
 import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend.interface';
 import { NarrationProjection } from '../narration/NarrationProjection';
@@ -173,6 +174,12 @@ class $Bootstrap {
       theme,
       scrollPhysics,
     });
+    const agentSkillPopup = new AgentSkillPopup.Class({
+      renderer,
+      settings,
+      theme,
+      scrollPhysics,
+    });
     let completionRequestGeneration = 0;
     const dismissCompletion = (): void => {
       completionRequestGeneration++;
@@ -258,6 +265,7 @@ class $Bootstrap {
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
+      agentSkillPopup.close();
       primaryDockHost.blur();
       rightDockHost.blur();
       const visibleTerminal = panelHost.visibleContentOfKind('terminal');
@@ -268,6 +276,7 @@ class $Bootstrap {
     // The native agent pane owns its own headed region in the bottom-panel layout. Opening it while the
     // terminal is visible places both regions side by side; closing it leaves the terminal untouched.
     const toggleAgent = (): void => {
+      agentSkillPopup.close();
       primaryDockHost.blur();
       rightDockHost.blur();
       const visibleAgent = panelHost.visibleContentOfKind('agent');
@@ -275,6 +284,7 @@ class $Bootstrap {
       else panelHost.showContent(ensureAgent().id);
     };
     const toggleRightDock = (): void => {
+      agentSkillPopup.close();
       // invariant: Right dock command and mouse affordance share one toggle (src/modules/ui/ui.invariants.md)
       rightDockHost.toggle();
       if (rightDockHost.visible.value) panelHost.blur();
@@ -359,6 +369,25 @@ class $Bootstrap {
       return visibleContent instanceof AgentPaneContent.Class
         ? visibleContent
         : agentPaneContent;
+    };
+    const synchronizeAgentSkillPopup = (
+      pane: AgentPaneContent.Model | null = panelHost.focusedContent instanceof
+      AgentPaneContent.Class
+        ? panelHost.focusedContent
+        : null,
+    ): void => {
+      if (!pane || !panelHost.visible.value || !panelHost.focused.value) {
+        agentSkillPopup.close();
+        return;
+      }
+      agentSkillPopup.synchronize(
+        pane.id,
+        pane.agentSession.workspaceDirectory,
+        pane.skillInvocation(),
+        view.focusedPanelCaretAnchor(),
+        (invocation, skillName) =>
+          pane.acceptSkillInvocation(invocation, skillName),
+      );
     };
     let terminalFollowController: AgentTerminalFollow.Model | null = null;
     const cycleTerminalFollowMode = (): void => {
@@ -473,6 +502,7 @@ class $Bootstrap {
     // ONE transcript-search action, shared by Ctrl+F and the pane's clickable search icon. Overlay
     // exclusivity stays host-owned; the pane only invokes this port.
     const openAgentTranscriptSearch = (): void => {
+      agentSkillPopup.close();
       const targetAgent = currentAgentPane();
       if (!targetAgent) return;
       const transcriptFindTarget = targetAgent.findTarget();
@@ -764,6 +794,7 @@ class $Bootstrap {
       contextMenu,
       boundedListPopup,
       completionPopup,
+      agentSkillPopup,
       shortcutHelp,
       tooltip,
       panelHost,
@@ -792,6 +823,7 @@ class $Bootstrap {
       view.update();
       boundedListPopup.update();
       completionPopup.update();
+      agentSkillPopup.update();
       AppStatusProjection.Class.publish(statusProjectionPorts);
       renderer.requestRender();
     };
@@ -852,6 +884,7 @@ class $Bootstrap {
       void boundedListPopup.hoveredIndex.value;
       void boundedListPopup.paintRevision.value;
       void completionPopup.paintRevision.value;
+      void agentSkillPopup.paintRevision.value;
       void tooltip.visible.value;
       void tooltip.text.value;
       void tooltip.anchorX.value;
@@ -985,6 +1018,7 @@ class $Bootstrap {
       });
       animating = boundedListPopup.tick(deltaTimeSeconds) || animating;
       animating = completionPopup.tick(deltaTimeSeconds) || animating;
+      animating = agentSkillPopup.tick(deltaTimeSeconds) || animating;
       animating = view.tickOverlayScroll(deltaTimeSeconds) || animating;
       syncAnimationLiveness(animating);
       // Converge the viewport size with the LAID-OUT layout (gutter width changes when a file opens
@@ -1076,6 +1110,7 @@ class $Bootstrap {
       view.dispose();
       boundedListPopup.dispose();
       completionPopup.dispose();
+      agentSkillPopup.dispose();
       app.dispose();
       options.onQuit?.();
     };
@@ -1247,6 +1282,7 @@ class $Bootstrap {
       const focusedContent = panelHost.focusedContent;
       if (focusedContent instanceof AgentPaneContent.Class) {
         focusedContent.applyComposerInputAction(action);
+        synchronizeAgentSkillPopup(focusedContent);
       }
     };
 
@@ -1279,9 +1315,18 @@ class $Bootstrap {
         overlayCoordinator.openExclusiveOverlay('quickOpen', () =>
           quickOpen.showWorkspacePath(workspaceSet.active.root),
         ),
-      'workspace.close': () => workspaceSet.closeActive(),
-      'workspace.next': () => workspaceSet.cycle(1),
-      'workspace.previous': () => workspaceSet.cycle(-1),
+      'workspace.close': () => {
+        agentSkillPopup.close();
+        workspaceSet.closeActive();
+      },
+      'workspace.next': () => {
+        agentSkillPopup.close();
+        workspaceSet.cycle(1);
+      },
+      'workspace.previous': () => {
+        agentSkillPopup.close();
+        workspaceSet.cycle(-1);
+      },
       'palette.open': () =>
         overlayCoordinator.openExclusiveOverlay('commandPalette', () =>
           commands.openPalette(),
@@ -1586,12 +1631,30 @@ class $Bootstrap {
       // terminal button runs, so chord and click are one action.
       'panel.toggleTerminal': toggleTerminal,
       'panel.toggleAgent': toggleAgent,
-      'panel.toggleSplit': togglePanelSplit,
-      'panel.contentsPrevious': () => focusPanelContent(-1),
-      'panel.contentsNext': () => focusPanelContent(1),
-      'panel.contentsMoveUp': () => movePanelContent(-1),
-      'panel.contentsMoveDown': () => movePanelContent(1),
-      'panel.contentsClose': closeActivePanelContent,
+      'panel.toggleSplit': () => {
+        agentSkillPopup.close();
+        togglePanelSplit();
+      },
+      'panel.contentsPrevious': () => {
+        agentSkillPopup.close();
+        focusPanelContent(-1);
+      },
+      'panel.contentsNext': () => {
+        agentSkillPopup.close();
+        focusPanelContent(1);
+      },
+      'panel.contentsMoveUp': () => {
+        agentSkillPopup.close();
+        movePanelContent(-1);
+      },
+      'panel.contentsMoveDown': () => {
+        agentSkillPopup.close();
+        movePanelContent(1);
+      },
+      'panel.contentsClose': () => {
+        agentSkillPopup.close();
+        closeActivePanelContent();
+      },
       'menu.previous': () => contextMenu.moveSelection(-1),
       'menu.next': () => contextMenu.moveSelection(1),
       'menu.run': () => contextMenu.runSelected(),
@@ -1770,6 +1833,24 @@ class $Bootstrap {
         // uses; Esc closes it and keys fall back to the composer. Everything else goes to the pane.
         const focusedContent = panelHost.focusedContent;
         if (focusedContent instanceof AgentPaneContent.Class) {
+          if (agentSkillPopup.open.value) {
+            if (key.name === 'escape') {
+              agentSkillPopup.dismiss();
+              return;
+            }
+            if (key.name === 'up') {
+              agentSkillPopup.moveSelection(-1);
+              return;
+            }
+            if (key.name === 'down') {
+              agentSkillPopup.moveSelection(1);
+              return;
+            }
+            if (key.name === 'return') {
+              agentSkillPopup.runSelected();
+              return;
+            }
+          }
           if (
             findBar.open.value &&
             findBar.target?.identifier ===
@@ -1808,6 +1889,7 @@ class $Bootstrap {
             agentResolution.action?.startsWith('textInput.')
           ) {
             dispatchAction(agentResolution.action, key);
+            synchronizeAgentSkillPopup(focusedContent);
             return;
           }
         }
@@ -1840,6 +1922,11 @@ class $Bootstrap {
           }
         }
         panelHost.handleKey(key);
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          synchronizeAgentSkillPopup(focusedContent);
+        } else {
+          agentSkillPopup.close();
+        }
         return;
       }
       if (
@@ -2116,6 +2203,12 @@ class $Bootstrap {
       if (!text) return;
       if (panelHost.visible.value && panelHost.focused.value) {
         panelHost.handlePaste(text);
+        const focusedContent = panelHost.focusedContent;
+        if (focusedContent instanceof AgentPaneContent.Class) {
+          synchronizeAgentSkillPopup(focusedContent);
+        } else {
+          agentSkillPopup.close();
+        }
         return; // a focused panel owns paste even if its pane has no sink — never leak to the editor
       }
       if (rightDockHost.visible.value && rightDockHost.focused.value) {
@@ -2204,6 +2297,16 @@ class $Bootstrap {
               event.y < geometry.boxTop + geometry.boxHeight;
             if (!insideCompletion) dismissCompletion();
           }
+          if (event.type === 'down' && agentSkillPopup.open.value) {
+            const geometry = agentSkillPopup.geometry;
+            const insideAgentSkillPopup =
+              geometry !== null &&
+              event.x >= geometry.boxLeft &&
+              event.x < geometry.boxLeft + geometry.boxWidth &&
+              event.y >= geometry.boxTop &&
+              event.y < geometry.boxTop + geometry.boxHeight;
+            if (!insideAgentSkillPopup) agentSkillPopup.close();
+          }
           // A click hides the hover card UNLESS it lands ON the card (engaged): a down on the card begins a
           // drag-select and must not dismiss it; a down anywhere else closes it.
           if (event.type === 'down') view.dismissHoverSoft();
@@ -2259,6 +2362,7 @@ class $Bootstrap {
           // accompanies a tab-return) then re-lay-out + full-repaint. render() → processResize forces a
           // full repaint on a genuine size change; a same-size return is handled by onFocus above.
           TerminalSession.Class.enterAppModes(writeSequence);
+          agentSkillPopup.close();
           void render();
         },
         () => renderer.requestRender(),

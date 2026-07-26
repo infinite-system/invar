@@ -89,6 +89,12 @@ describe('AppStatusProjection', () => {
       itemCount: 0,
       geometry: null,
     };
+    const agentSkillPopup = {
+      open: ref(false),
+      items: [],
+      selectedIdentifier: null,
+      geometry: null,
+    };
     const shortcutHelp = new ShortcutHelp.Class(keybindings, commands);
     const tooltip = new Tooltip.Class();
     const panelHost = new PanelHost.Class();
@@ -120,6 +126,7 @@ describe('AppStatusProjection', () => {
       contextMenu,
       boundedListPopup,
       completionPopup,
+      agentSkillPopup,
       shortcutHelp,
       tooltip,
       panelHost,

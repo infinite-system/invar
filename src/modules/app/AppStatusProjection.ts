@@ -2,6 +2,7 @@
 // StatusChannel snapshot consumed by the driven verification harness.
 import { Static } from 'ivue/extras';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
+import type { AgentSkillPopup } from '../agent/AgentSkillPopup';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { BracketMatch } from '../editor/BracketMatch';
 import { NarrationProjection } from '../narration/NarrationProjection';
@@ -172,6 +173,13 @@ class $AppStatusProjection {
       completionSelectedLabel: ports.completionPopup.selectedLabel,
       completionItemCount: ports.completionPopup.itemCount,
       completionGeometry: ports.completionPopup.geometry,
+      agentSkillPopupOpen: ports.agentSkillPopup.open.value,
+      agentSkillPopupItemIdentifiers: ports.agentSkillPopup.items.map(
+        (item) => item.identifier,
+      ),
+      agentSkillPopupSelectedIdentifier:
+        ports.agentSkillPopup.selectedIdentifier,
+      agentSkillPopupGeometry: ports.agentSkillPopup.geometry,
       tooltipVisible: ports.tooltip.visible.value,
       // Whichever contributed surface occupies the editor column, by its own stable identifier —
       // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
@@ -416,6 +424,10 @@ export interface AppStatusProjectionPorts {
   readonly completionPopup: Pick<
     InstanceType<typeof CompletionPopup.Class>,
     'open' | 'selectedLabel' | 'itemCount' | 'geometry'
+  >;
+  readonly agentSkillPopup: Pick<
+    AgentSkillPopup.Model,
+    'open' | 'items' | 'selectedIdentifier' | 'geometry'
   >;
   readonly shortcutHelp: Pick<
     InstanceType<typeof ShortcutHelp.Class>,

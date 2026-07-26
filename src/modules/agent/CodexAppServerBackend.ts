@@ -20,6 +20,7 @@
 //
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
+// invariant: Every agent backend session begins from the IBR foundation (src/modules/agent/agent.invariants.md)
 import type { AgentBackend } from './AgentBackend.interface';
 import { AgentPermissions } from './AgentPermissions';
 import type { AgentEvent, PermissionDecision } from './AgentEvents.interface';
@@ -37,6 +38,7 @@ import {
 
 class $CodexAppServerBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
+  readonly ibrFoundationDelivery = 'prepend-prompt';
 
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
   protected child: CodexAppServerProcess | null = null;
