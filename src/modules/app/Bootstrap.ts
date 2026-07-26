@@ -826,6 +826,7 @@ class $Bootstrap {
       void editor.viewport.scrollTop.value;
       void editor.viewport.scrollLeft.value;
       void editor.wordWrap.value;
+      void editor.foldRevision.value;
       // Contributed editor surfaces subscribe their own paint signals.
       editorSurfaceContents.observePaintSignals();
       void settings.workspaceTabPosition.value;

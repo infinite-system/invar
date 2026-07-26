@@ -272,7 +272,7 @@ class $RootView {
       // is a MODE handled ABOVE this layer: wrap-OFF renders one file line per visual row (long
       // lines clip; horizontal scroll covers the rest); wrap-ON feeds pre-wrapped SEGMENT rows from
       // the pure mapping layer (EditorWrap.ts), so this stays 'none' in both modes.
-      // invariant: One file line is one visual row when word wrap is off (ui.invariants.md)
+      // invariant: One visible file line is one visual row when word wrap is off (ui.invariants.md)
       wrapMode: 'none',
     });
     editorArea.add(gutterBody);
@@ -1148,30 +1148,16 @@ class $RootView {
       const editor = workspaceSet.active.editor;
       if (!editor.hasDocument.value || workspaceSet.active.activeFileIsImage)
         return null;
-      if (editor.wordWrap.value) {
-        const position = editorController.wrapVisualPosition(
-          editor.cursor.line.value,
-          editor.cursor.col.value,
-        );
-        return position && typeof position === 'object'
-          ? {
-              column: codeBody.x + position.column,
-              row: codeBody.y + position.rowIndex,
-            }
-          : null;
-      }
-      const cursorDisplayColumn = EditorCoordinates.Class.displayColumn(
-        editor.document.line(editor.cursor.line.value),
+      const position = editorController.visualPosition(
+        editor.cursor.line.value,
         editor.cursor.col.value,
       );
-      return {
-        column:
-          codeBody.x + cursorDisplayColumn - editor.viewport.scrollLeft.value,
-        row:
-          codeBody.y +
-          editor.cursor.line.value -
-          editor.viewport.scrollTop.value,
-      };
+      return position && typeof position === 'object'
+        ? {
+            column: codeBody.x + position.column,
+            row: codeBody.y + position.rowIndex,
+          }
+        : null;
     };
     /** Grapheme-safe window over display columns; never splits a wide glyph at either edge. */
     // displayColumnWindow / padToDisplayWidth now live on EditorCoordinates (the display-column-math
@@ -1705,71 +1691,18 @@ class $RootView {
       // editor is focused, has a document, no palette overlay, and the cursor line is on screen.
       // invariant: The caret renders at the cursor display column (ui.invariants.md)
       const editor = workspaceSet.active.editor;
-      const scrollTop = editor.viewport.scrollTop.value;
-      const viewportHeight = editorViewportHeight();
       const cursorLine = editor.cursor.line.value;
-      if (editor.wordWrap.value) {
-        // Wrap mode: the caret cell comes from the SAME logical↔visual mapping the render used —
-        // no scrollLeft subtraction (horizontal scroll is inert); the visual-row offset replaces
-        // the logical-row offset. Same 1-based ANSI +1 as the wrap-off path; still verified against
-        // tmux's own #{cursor_x},#{cursor_y}.
-        // invariant: The caret renders at the cursor display column (ui.invariants.md)
-        const caretPosition =
-          editor.hasDocument.value &&
-          !activeFileIsImage &&
-          workspaceSet.active.focus.value === 'editor' &&
-          workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
-          !commands.open.value
-            ? editorController.wrapVisualPosition(
-                cursorLine,
-                editor.cursor.col.value,
-              )
-            : null;
-        if (caretPosition && typeof caretPosition === 'object') {
-          const caretCellX = codeBody.x + caretPosition.column;
-          const caretCellY = codeBody.y + caretPosition.rowIndex;
-          renderer.setCursorPosition(caretCellX + 1, caretCellY + 1, true);
-        } else {
-          renderer.setCursorPosition(0, 0, false);
-        }
-        return;
-      }
-      const caretVisibleHorizontally =
-        EditorCoordinates.Class.displayColumn(
-          editor.document.line(
-            Math.min(cursorLine, editor.document.lineCount - 1),
-          ),
-          editor.cursor.col.value,
-        ) >= editor.viewport.scrollLeft.value &&
-        EditorCoordinates.Class.displayColumn(
-          editor.document.line(
-            Math.min(cursorLine, editor.document.lineCount - 1),
-          ),
-          editor.cursor.col.value,
-        ) <
-          editor.viewport.scrollLeft.value + editorViewportWidth();
-      if (
+      const caretPosition =
         editor.hasDocument.value &&
         !activeFileIsImage &&
         workspaceSet.active.focus.value === 'editor' &&
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
-        !commands.open.value &&
-        cursorLine >= scrollTop &&
-        cursorLine < scrollTop + viewportHeight &&
-        caretVisibleHorizontally
-      ) {
-        const cursorDisplayColumn = EditorCoordinates.Class.displayColumn(
-          editor.document.line(cursorLine),
-          editor.cursor.col.value,
-        );
-        // Anchor the caret to the code renderable's ACTUAL laid-out screen cell (codeBody.x/y from
-        // yoga), not hand-derived layout constants — the constants drifted from the real layout (the
-        // human-QA off-by-one) and would break again when the sidebar becomes draggable.
-        const caretScrollLeft = editor.viewport.scrollLeft.value;
-        const caretCellX = codeBody.x + (cursorDisplayColumn - caretScrollLeft);
-        const caretCellY = codeBody.y + (cursorLine - scrollTop);
-        // The native terminal cursor is 1-BASED (ANSI CUP): +1 on both axes — OpenTUI's own
-        // renderCursor does `screenX + visualCol + 1`.
+        !commands.open.value
+          ? editorController.visualPosition(cursorLine, editor.cursor.col.value)
+          : null;
+      if (caretPosition && typeof caretPosition === 'object') {
+        const caretCellX = codeBody.x + caretPosition.column;
+        const caretCellY = codeBody.y + caretPosition.rowIndex;
         renderer.setCursorPosition(caretCellX + 1, caretCellY + 1, true);
       } else {
         renderer.setCursorPosition(0, 0, false);
@@ -1779,13 +1712,8 @@ class $RootView {
     // onMouseScroll (events bubble to the box). Each scrollable pane mutates only its own window
     // (scrollTop / selection), never materializing the whole list — the frame effect observes those
     // signals and repaints. invariant: Cost tracks the actively observed set (project.invariants.md)
-    // Vertical scroll of the editor window. Wrap mode: scrollTop stays a LOGICAL line index, but
-    // tall (wrapped) lines mean the logical clamp `lineCount - height` could strand tail rows below
-    // the fold — so the clamp relaxes to let the LAST line reach the top of the window.
-    // Wrap-mode vertical wheel + drag-edge auto-scroll step directly (rows), NOT through the momentum
-    // regime: wrap mode's scroll bound is lineCount-1 (a wrapped line occupies many visual rows), which
-    // the momentum regime's scrollBy clamp (lineCount - height) does not model. Non-wrap wheel goes
-    // through momentum (impulse) below.
+    // The editor's vertical scroll coordinate is always a visual-row offset. Wrap contributes extra
+    // rows and folding contributes zero-row bodies through the one EditorWrap extent.
     // Is the configured scroll modifier held on this wheel event? 'none' is never held (the control is
     // off, not misleading). Single source: the modifier comes from Settings, never hardcoded.
     const scrollModifierHeld = (

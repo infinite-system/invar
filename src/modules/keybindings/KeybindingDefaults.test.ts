@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { parseKeypress } from '@opentui/core';
 import { KeybindingDefaults } from './KeybindingDefaults';
 import { KeybindingRegistry } from './KeybindingRegistry';
 
@@ -11,6 +12,73 @@ test('canonical bindings are cached and contain the universal quit floor', () =>
       (binding) => binding.action === 'app.quit' && binding.chord?.ctrl,
     ),
   ).toBe(true);
+});
+
+test('fold chords preserve the workspace bracket bindings without collision', () => {
+  const registry = registryWithCanonicalLayer();
+  const modifiedBracket = {
+    ctrl: true,
+    shift: true,
+    option: false,
+    super: false,
+  };
+  expect(
+    registry.resolve({ ...modifiedBracket, name: '[' }, 'editor', 0).action,
+  ).toBe('workspace.previous');
+  expect(
+    registry.resolve({ ...modifiedBracket, name: ']' }, 'editor', 0).action,
+  ).toBe('workspace.next');
+
+  const controlK = {
+    name: 'k',
+    ctrl: true,
+    shift: false,
+    option: false,
+    super: false,
+  };
+  const plainBracket = {
+    name: '[',
+    ctrl: false,
+    shift: false,
+    option: false,
+    super: false,
+  };
+  expect(registry.resolve(controlK, 'editor', 1).chordPending).toBe(true);
+  expect(registry.resolve(plainBracket, 'editor', 2).action).toBe(
+    'editor.fold',
+  );
+  const controlL = { ...controlK, name: 'l' };
+  expect(registry.resolve(controlL, 'editor', 3).chordPending).toBe(true);
+  expect(
+    registry.resolve({ ...plainBracket, name: ']' }, 'editor', 4).action,
+  ).toBe('editor.unfold');
+});
+
+test('fold chord bytes arrive through both OpenTUI parsers', () => {
+  const decodedSteps = (
+    inputBytes: readonly string[],
+    useKittyKeyboard: boolean,
+  ) =>
+    inputBytes.map((input) => {
+      const event = parseKeypress(input, { useKittyKeyboard });
+      if (!event) throw new Error(`Parser rejected ${JSON.stringify(input)}`);
+      return {
+        name: event.name,
+        ctrl: event.ctrl,
+        shift: event.shift,
+        option: event.option,
+      };
+    });
+  for (const useKittyKeyboard of [false, true]) {
+    expect(decodedSteps(['\x0b', '['], useKittyKeyboard)).toEqual([
+      { name: 'k', ctrl: true, shift: false, option: false },
+      { name: '[', ctrl: false, shift: false, option: false },
+    ]);
+    expect(decodedSteps(['\x0c', ']'], useKittyKeyboard)).toEqual([
+      { name: 'l', ctrl: true, shift: false, option: false },
+      { name: ']', ctrl: false, shift: false, option: false },
+    ]);
+  }
 });
 
 // --- focus owns the keystroke -------------------------------------------------------------------

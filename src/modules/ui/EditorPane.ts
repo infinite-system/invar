@@ -28,10 +28,10 @@ import type { FindBar } from '../search/FindBar';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 class $EditorPane {
-  // Wrap-mode view geometry of the last-rendered frame: the visual rows the window showed, written by
-  // renderEditor and read by the caret block, applySelection, and the mouse hit-test — so all
-  // consumers agree on what is where. Empty when wrap is off.
-  protected wrapRowsWindow: VisualRow[] = [];
+  // View geometry of the last-rendered frame in both wrap modes: the visual rows the window showed,
+  // written by renderEditor and read by the caret block, applySelection, and the mouse hit-test — so
+  // all consumers agree on what is where.
+  protected visualRowsWindow: VisualRow[] = [];
   protected gutterHoverLabelsByRow: readonly (readonly string[])[] = [];
   protected readonly drag: SelectionDragBehavior.Model;
   // Multi-click selection state: successive clicks at the same spot within the window escalate
@@ -83,12 +83,14 @@ class $EditorPane {
       showIndentGuides: settings.showIndentGuides.value,
       // Box-drawing bar in nerd/unicode tiers; plain pipe where only ascii glyphs render.
       indentGuideGlyph: theme.glyphLevel.value === 'ascii' ? '|' : '│',
+      foldOpenGlyph: theme.glyph('foldOpen'),
+      foldClosedGlyph: theme.glyph('foldClosed'),
       bracketHighlights: bracketMatch
         ? [bracketMatch.bracket, bracketMatch.match]
         : [],
     });
     if (!result) return null;
-    this.wrapRowsWindow = result.wrapRowsWindow;
+    this.visualRowsWindow = result.visualRowsWindow;
     this.gutterHoverLabelsByRow = result.gutterHoverLabelsByRow;
     return { gutter: result.gutter, code: result.code };
   }
@@ -96,10 +98,10 @@ class $EditorPane {
   tickDrag(deltaTimeSeconds: number): boolean {
     return this.drag.tick(deltaTimeSeconds);
   }
-  // Map a document (line, column) to its wrap-mode viewport cell (row within the window + local
-  // display column), or 'before'/'after' when it is off the window on that side. Public: the caret
-  // block in RootView's update() reads it too, to place the native terminal cursor in wrap mode.
-  wrapVisualPosition(
+  // Map a document (line, column) to its viewport cell (row within the shared window + local display
+  // column), or 'before'/'after' when it is off the window on that side. Public: the caret block in
+  // RootView's update() reads it too, to place the native terminal cursor in either wrap mode.
+  visualPosition(
     line: number,
     column: number,
   ):
@@ -110,14 +112,22 @@ class $EditorPane {
     | 'before'
     | 'after' {
     const { workspaceSet } = this.deps;
-    const firstRow = this.wrapRowsWindow[0];
-    const lastRow = this.wrapRowsWindow[this.wrapRowsWindow.length - 1];
+    const firstRow = this.visualRowsWindow[0];
+    const lastRow = this.visualRowsWindow[this.visualRowsWindow.length - 1];
     if (!firstRow || !lastRow) return 'before';
     const lineText = workspaceSet.active.editor.document.line(line);
-    const segments = EditorWrap.Class.wrapLine(
-      lineText,
-      workspaceSet.active.editor.wrapWidth(),
-    );
+    const segments = workspaceSet.active.editor.wordWrap.value
+      ? EditorWrap.Class.wrapLine(
+          lineText,
+          workspaceSet.active.editor.wrapWidth(),
+        )
+      : [
+          {
+            startGrapheme: 0,
+            endGrapheme: EditorCoordinates.Class.graphemeCount(lineText),
+            startDisplayColumn: 0,
+          },
+        ];
     const segmentIndex = EditorWrap.Class.segmentIndexForCursor(
       segments,
       column,
@@ -132,7 +142,7 @@ class $EditorPane {
       (line === lastRow.lineIndex && segmentIndex > lastRow.segmentIndex)
     )
       return 'after';
-    const rowIndex = this.wrapRowsWindow.findIndex(
+    const rowIndex = this.visualRowsWindow.findIndex(
       (row) => row.lineIndex === line && row.segmentIndex === segmentIndex,
     );
     if (rowIndex < 0) return 'after';
@@ -141,95 +151,53 @@ class $EditorPane {
       rowIndex,
       column:
         EditorCoordinates.Class.displayColumn(lineText, column) -
-        (segment?.startDisplayColumn ?? 0),
+        (segment?.startDisplayColumn ?? 0) -
+        (workspaceSet.active.editor.wordWrap.value
+          ? 0
+          : workspaceSet.active.editor.viewport.scrollLeft.value),
     };
   }
   // Drive OpenTUI's native selection on the code renderable from the model selection, mapped into
   // code-local coords (x = display column, y = visible-line index). Clamps to the visible window.
   // invariant: The selected range renders with a background (src/modules/ui/ui.invariants.md)
   applySelection(): void {
-    const {
-      workspaceSet,
-      codeBody,
-      editorViewportHeight,
-      editorViewportWidth,
-    } = this.deps;
+    const { workspaceSet, codeBody, editorViewportWidth } = this.deps;
     const editor = workspaceSet.active.editor;
     const selection = editor.hasDocument.value
       ? editor.cursor.selectionRange()
       : null;
-    const top = editor.viewport.scrollTop.value;
-    const viewportHeight = editorViewportHeight();
-    if (editor.wordWrap.value) {
-      // Wrap mode: the native selection coords are viewport-local VISUAL rows — map both ends through
-      // the ONE logical↔visual layer, clamping off-window ends to the window edges.
-      if (!selection || this.wrapRowsWindow.length === 0) {
-        codeBody.clearSelectionRange();
-        return;
-      }
-      const startPosition = this.wrapVisualPosition(
-        selection.start.line,
-        selection.start.col,
-      );
-      const endPosition = this.wrapVisualPosition(
-        selection.end.line,
-        selection.end.col,
-      );
-      if (startPosition === 'after' || endPosition === 'before') {
-        codeBody.clearSelectionRange();
-        return;
-      }
-      const anchorCell =
-        startPosition === 'before' ? { rowIndex: 0, column: 0 } : startPosition;
-      const focusCell =
-        endPosition === 'after'
-          ? {
-              rowIndex: this.wrapRowsWindow.length - 1,
-              column: editorViewportWidth(),
-            }
-          : endPosition;
-      codeBody.setSelectionRange(
-        Math.max(0, anchorCell.column),
-        anchorCell.rowIndex,
-        Math.max(0, focusCell.column),
-        focusCell.rowIndex,
-      );
-      return;
-    }
-    if (
-      !selection ||
-      selection.end.line < top ||
-      selection.start.line >= top + viewportHeight
-    ) {
+    // Selection coordinates are viewport-local VISUAL rows in both wrap modes. Folding can remove
+    // logical rows in either mode, so the old line-minus-scrollTop shortcut is never authoritative.
+    if (!selection || this.visualRowsWindow.length === 0) {
       codeBody.clearSelectionRange();
       return;
     }
-    const selectionScrollLeft = editor.viewport.scrollLeft.value;
-    const anchorY = Math.max(0, selection.start.line - top);
-    const anchorX =
-      selection.start.line >= top
-        ? EditorCoordinates.Class.displayColumn(
-            editor.document.line(selection.start.line),
-            selection.start.col,
-          )
-        : 0;
-    const focusY = Math.min(viewportHeight - 1, selection.end.line - top);
-    const focusX =
-      selection.end.line < top + viewportHeight
-        ? EditorCoordinates.Class.displayColumn(
-            editor.document.line(selection.end.line),
-            selection.end.col,
-          )
-        : EditorCoordinates.Class.lineWidth(
-            editor.document.line(
-              Math.min(top + viewportHeight - 1, editor.document.lineCount - 1),
-            ),
-          );
+    const startPosition = this.visualPosition(
+      selection.start.line,
+      selection.start.col,
+    );
+    const endPosition = this.visualPosition(
+      selection.end.line,
+      selection.end.col,
+    );
+    if (startPosition === 'after' || endPosition === 'before') {
+      codeBody.clearSelectionRange();
+      return;
+    }
+    const anchorCell =
+      startPosition === 'before' ? { rowIndex: 0, column: 0 } : startPosition;
+    const focusCell =
+      endPosition === 'after'
+        ? {
+            rowIndex: this.visualRowsWindow.length - 1,
+            column: editorViewportWidth(),
+          }
+        : endPosition;
     codeBody.setSelectionRange(
-      Math.max(0, anchorX - selectionScrollLeft),
-      anchorY,
-      Math.max(0, focusX - selectionScrollLeft),
-      focusY,
+      Math.max(0, anchorCell.column),
+      anchorCell.rowIndex,
+      Math.max(0, focusCell.column),
+      focusCell.rowIndex,
     );
   }
   // Public so RootView/HoverCard can map a screen cell to a document position (mirrors wrapVisualPosition).
@@ -242,52 +210,39 @@ class $EditorPane {
   } | null {
     const { workspaceSet, codeBody } = this.deps;
     if (!workspaceSet.active.editor.hasDocument.value) return null;
-    if (workspaceSet.active.editor.wordWrap.value) {
-      // Wrap mode: a viewport row is a VISUAL row — resolve it through the rendered window, then
-      // hit-test the display column WITHIN that row's segment (clamped into the segment so a click
-      // past a wrapped row's end lands on its last grapheme, not the next row's first).
-      if (this.wrapRowsWindow.length === 0) return null;
-      const rowIndex = Math.max(
-        0,
-        Math.min(cellY - codeBody.y, this.wrapRowsWindow.length - 1),
-      );
-      const row = this.wrapRowsWindow[rowIndex];
-      if (!row) return null;
-      const lineText = workspaceSet.active.editor.document.line(row.lineIndex);
-      const segments = EditorWrap.Class.wrapLine(
-        lineText,
-        workspaceSet.active.editor.wrapWidth(),
-      );
-      const lastSegmentOfLine = row.segmentIndex === segments.length - 1;
-      const hitColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
-        lineText,
-        row.segment.startDisplayColumn + Math.max(0, cellX - codeBody.x),
-      );
-      const maxColumn = lastSegmentOfLine
-        ? row.segment.endGrapheme
-        : Math.max(row.segment.startGrapheme, row.segment.endGrapheme - 1);
-      return {
-        line: row.lineIndex,
-        column: Math.max(
-          row.segment.startGrapheme,
-          Math.min(hitColumn, maxColumn),
-        ),
-      };
-    }
-    const line = Math.max(
+    if (this.visualRowsWindow.length === 0) return null;
+    const rowIndex = Math.max(
       0,
-      Math.min(
-        workspaceSet.active.editor.viewport.scrollTop.value +
-          (cellY - codeBody.y),
-        workspaceSet.active.editor.document.lineCount - 1,
+      Math.min(cellY - codeBody.y, this.visualRowsWindow.length - 1),
+    );
+    const row = this.visualRowsWindow[rowIndex];
+    if (!row) return null;
+    const lineText = workspaceSet.active.editor.document.line(row.lineIndex);
+    const segments = workspaceSet.active.editor.wordWrap.value
+      ? EditorWrap.Class.wrapLine(
+          lineText,
+          workspaceSet.active.editor.wrapWidth(),
+        )
+      : [row.segment];
+    const lastSegmentOfLine = row.segmentIndex === segments.length - 1;
+    const hitColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+      lineText,
+      row.segment.startDisplayColumn +
+        Math.max(0, cellX - codeBody.x) +
+        (workspaceSet.active.editor.wordWrap.value
+          ? 0
+          : workspaceSet.active.editor.viewport.scrollLeft.value),
+    );
+    const maxColumn = lastSegmentOfLine
+      ? row.segment.endGrapheme
+      : Math.max(row.segment.startGrapheme, row.segment.endGrapheme - 1);
+    return {
+      line: row.lineIndex,
+      column: Math.max(
+        row.segment.startGrapheme,
+        Math.min(hitColumn, maxColumn),
       ),
-    );
-    const column = EditorCoordinates.Class.graphemeAtDisplayColumn(
-      workspaceSet.active.editor.document.line(line),
-      workspaceSet.active.editor.viewport.scrollLeft.value +
-        (cellX - codeBody.x),
-    );
-    return { line, column };
+    };
   }
   // True when the pointer cell sits on an actual text glyph (not the clamped-past-end position
   // documentPositionAtCell returns for empty space, and not inter-token whitespace). Gates hover
@@ -317,20 +272,14 @@ class $EditorPane {
   protected scrollEditorVertically(delta: number): void {
     const editor = this.deps.workspaceSet.active.editor;
     const editorViewport = editor.viewport;
-    if (editor.wordWrap.value) {
-      // scrollTop is a VISUAL-row offset; clamp to the wrapped extent so the last visual row is reachable.
-      const maxTop = Math.max(
-        0,
-        EditorWrap.Class.totalVisualRows(editor.document, editor.wrapWidth()) -
-          editorViewport.height.value,
-      );
-      editorViewport.scrollTop.value = Math.max(
-        0,
-        Math.min(editorViewport.scrollTop.value + delta, maxTop),
-      );
-    } else {
-      editorViewport.scrollBy(delta, editor.document.lineCount);
-    }
+    const maxTop = Math.max(
+      0,
+      editor.totalVisualRows() - editorViewport.height.value,
+    );
+    editorViewport.scrollTop.value = Math.max(
+      0,
+      Math.min(editorViewport.scrollTop.value + delta, maxTop),
+    );
   }
   // One shared drag/autoscroll behavior serves this editor and DiffView. The hosts differ only in
   // coordinate mapping and scroll storage; pointer lifecycle, edge zones, rate, and re-extension are
@@ -521,6 +470,21 @@ class $EditorPane {
     // Pointer leaves the code pane entirely (to the sidebar, a tab, etc.): also a "left the symbol"
     // signal — a shown card idles out rather than hanging around, but is not hard-killed mid-move.
     codeBody.onMouseOut = () => hover.pointerOffSymbol();
+    gutterBody.onMouseDown = (event) => {
+      if (event.button !== 0 || !workspaceSet.active.editor.hasDocument.value)
+        return;
+      const lineNumberWidth =
+        String(workspaceSet.active.editor.document.lineCount).length + 1;
+      const foldControlColumn = Number(gutterBody.x) + lineNumberWidth;
+      if (event.x !== foldControlColumn) return;
+      const visibleRowIndex = event.y - Number(gutterBody.y);
+      const row = this.visualRowsWindow[visibleRowIndex];
+      if (!row?.firstOfLine) return;
+      if (workspaceSet.active.editor.toggleFoldAtLine(row.lineIndex)) {
+        workspaceSet.active.focusEditor();
+        tooltip.clear();
+      }
+    };
     gutterBody.onMouseMove = (event) => {
       const visibleRowIndex = event.y - Number(gutterBody.y);
       const hoverLabels = this.gutterHoverLabelsByRow[visibleRowIndex] ?? [];

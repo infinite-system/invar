@@ -478,6 +478,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: scrollbars harness" bun scripts/harness/smoke-scrollbars-harness.ts
   parallel_safe_full_tmux_smoke "smoke: wrap"        bash scripts/smoke-wrap.sh
   parallel_safe_smoke "smoke: wrap harness" bun scripts/harness/smoke-wrap-harness.ts
+  parallel_safe_smoke "smoke: code folding harness" bun scripts/harness/smoke-code-folding-harness.ts
   parallel_safe_full_tmux_smoke "smoke: comment-styling" bash scripts/smoke-comment-styling.sh
   parallel_safe_smoke "smoke: comment-styling harness" bun scripts/harness/smoke-comment-styling-harness.ts
   parallel_safe_full_tmux_smoke "smoke: git-watch"   bash scripts/smoke-git-watch.sh

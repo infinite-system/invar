@@ -121,6 +121,20 @@ class $CommandDefaults {
         run: () => getEditor().toggleWordWrap(),
       },
       {
+        id: 'editor.fold',
+        title: 'Editor: Fold Region',
+        category: 'Editor',
+        when: hasDocument,
+        run: () => getEditor().foldAtCursor(),
+      },
+      {
+        id: 'editor.unfold',
+        title: 'Editor: Unfold Region',
+        category: 'Editor',
+        when: hasDocument,
+        run: () => getEditor().unfoldAtCursor(),
+      },
+      {
         id: 'view.toggleActivityBar',
         title: 'View: Toggle Activity Bar',
         category: 'View',

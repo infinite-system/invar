@@ -6,40 +6,45 @@ import {
 } from '../workspace/GutterDecorations';
 
 // invariant: The editor overview derives from the decoration snapshot (ui.invariants.md)
+// invariant: One generator owns document-line-to-visual-row (src/modules/editor/editor.invariants.md)
 class $OverviewRuler {
   protected cachedSnapshot: EditorDecorationSnapshot | null = null;
-  protected cachedDocumentLineCount = -1;
+  protected cachedVisualProjectionKey = '';
   protected cachedTrackLength = -1;
   protected cachedMarks: readonly OverviewRulerMark[] = [];
   protected recomputationCountValue = 0;
 
   project(
     snapshot: EditorDecorationSnapshot,
-    documentLineCount: number,
+    visualProjection: {
+      readonly key: string;
+      readonly rowCount: number;
+      rowOfLine(lineIndex: number): number;
+    },
     trackLength: number,
   ): readonly OverviewRulerMark[] {
     if (
       this.cachedSnapshot === snapshot &&
-      this.cachedDocumentLineCount === documentLineCount &&
+      this.cachedVisualProjectionKey === visualProjection.key &&
       this.cachedTrackLength === trackLength
     ) {
       return this.cachedMarks;
     }
 
     this.cachedSnapshot = snapshot;
-    this.cachedDocumentLineCount = documentLineCount;
+    this.cachedVisualProjectionKey = visualProjection.key;
     this.cachedTrackLength = trackLength;
     this.recomputationCountValue += 1;
-    if (documentLineCount <= 0 || trackLength <= 0) {
+    if (visualProjection.rowCount <= 0 || trackLength <= 0) {
       this.cachedMarks = [];
       return this.cachedMarks;
     }
 
     const decorationsByTrackOffset = new Map<number, EditorLineDecoration[]>();
     for (const [lineIndex, decorations] of snapshot.byLine) {
-      const trackOffset = this.trackOffsetForLine(
-        lineIndex,
-        documentLineCount,
+      const trackOffset = this.trackOffsetForVisualRow(
+        visualProjection.rowOfLine(lineIndex),
+        visualProjection.rowCount,
         trackLength,
       );
       const aggregatedDecorations =
@@ -78,18 +83,18 @@ class $OverviewRuler {
     return this.recomputationCountValue;
   }
 
-  protected trackOffsetForLine(
-    lineIndex: number,
-    documentLineCount: number,
+  protected trackOffsetForVisualRow(
+    visualRow: number,
+    visualRowCount: number,
     trackLength: number,
   ): number {
-    if (documentLineCount <= 1 || trackLength <= 1) return 0;
-    const clampedLineIndex = Math.max(
+    if (visualRowCount <= 1 || trackLength <= 1) return 0;
+    const clampedVisualRow = Math.max(
       0,
-      Math.min(lineIndex, documentLineCount - 1),
+      Math.min(visualRow, visualRowCount - 1),
     );
     return Math.round(
-      (clampedLineIndex / (documentLineCount - 1)) * (trackLength - 1),
+      (clampedVisualRow / (visualRowCount - 1)) * (trackLength - 1),
     );
   }
 }

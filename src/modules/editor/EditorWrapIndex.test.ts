@@ -57,7 +57,11 @@ describe('EditorWrap cumulative index', () => {
     // The per-frame calls: extent + a locate + a line bridge — all off the index, no line reads.
     expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(expected);
     EditorWrap.Class.firstVisualRowOfLine(document, 150, 10);
-    EditorWrap.Class.lineSegmentAtVisualRow(document, Math.floor(expected / 2), 10);
+    EditorWrap.Class.lineSegmentAtVisualRow(
+      document,
+      Math.floor(expected / 2),
+      10,
+    );
     expect(document.lineReads).toBe(0);
   });
 
@@ -69,8 +73,14 @@ describe('EditorWrap cumulative index', () => {
     expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(expected);
     // Bridge and inverse are mutually consistent at every line boundary around the edit.
     for (const lineIndex of [0, 59, 60, 61, 119]) {
-      const firstRow = EditorWrap.Class.firstVisualRowOfLine(document, lineIndex, 10);
-      expect(EditorWrap.Class.lineSegmentAtVisualRow(document, firstRow, 10)).toEqual({
+      const firstRow = EditorWrap.Class.firstVisualRowOfLine(
+        document,
+        lineIndex,
+        10,
+      );
+      expect(
+        EditorWrap.Class.lineSegmentAtVisualRow(document, firstRow, 10),
+      ).toEqual({
         lineIndex,
         segmentIndex: 0,
       });
@@ -81,13 +91,24 @@ describe('EditorWrap cumulative index', () => {
     const document = new IndexProbeDocument(makeLines(100));
     EditorWrap.Class.totalVisualRows(document, 10);
     document.insertLine(5, 'word '.repeat(9));
-    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(naiveTotal(document, 10));
+    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(
+      naiveTotal(document, 10),
+    );
     document.removeLine(50);
     document.removeLine(0);
-    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(naiveTotal(document, 10));
+    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(
+      naiveTotal(document, 10),
+    );
     const lastLine = document.lineCount - 1;
-    const lastFirstRow = EditorWrap.Class.firstVisualRowOfLine(document, lastLine, 10);
-    expect(EditorWrap.Class.lineSegmentAtVisualRow(document, lastFirstRow, 10).lineIndex).toBe(lastLine);
+    const lastFirstRow = EditorWrap.Class.firstVisualRowOfLine(
+      document,
+      lastLine,
+      10,
+    );
+    expect(
+      EditorWrap.Class.lineSegmentAtVisualRow(document, lastFirstRow, 10)
+        .lineIndex,
+    ).toBe(lastLine);
   });
 
   test('a width change rebuilds the index for the new width', () => {
@@ -96,14 +117,18 @@ describe('EditorWrap cumulative index', () => {
     const atForty = EditorWrap.Class.totalVisualRows(document, 40);
     expect(atForty).toBe(naiveTotal(document, 40));
     expect(atForty).toBeLessThan(atTen); // wider viewport, fewer rows
-    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(naiveTotal(document, 10)); // back again
+    expect(EditorWrap.Class.totalVisualRows(document, 10)).toBe(
+      naiveTotal(document, 10),
+    ); // back again
   });
 
   test('past-the-end locate clamps to the last visual row (true-last-row reachability)', () => {
     const document = new IndexProbeDocument(['short', 'word '.repeat(10)]);
     const total = EditorWrap.Class.totalVisualRows(document, 10);
     const lastRowCount = EditorWrap.Class.wrapLine(document.line(1), 10).length;
-    expect(EditorWrap.Class.lineSegmentAtVisualRow(document, total + 100, 10)).toEqual({
+    expect(
+      EditorWrap.Class.lineSegmentAtVisualRow(document, total + 100, 10),
+    ).toEqual({
       lineIndex: 1,
       segmentIndex: lastRowCount - 1,
     });
@@ -112,10 +137,69 @@ describe('EditorWrap cumulative index', () => {
   test('a revision-free document (test double) still answers correctly across mutations', () => {
     // No revision signal → every query resyncs via the identity sweep; answers stay exact.
     const lines = ['alpha beta gamma', 'delta'];
-    const document = { lineCount: lines.length, line: (index: number) => lines[index] ?? '' };
+    const document = {
+      lineCount: lines.length,
+      line: (index: number) => lines[index] ?? '',
+    };
     const before = EditorWrap.Class.totalVisualRows(document, 6);
     lines[1] = 'delta epsilon zeta eta theta';
     const after = EditorWrap.Class.totalVisualRows(document, 6);
     expect(after).toBeGreaterThan(before);
+  });
+
+  test('folding contributes zero-row hidden lines to the same cumulative index', () => {
+    const document = new IndexProbeDocument([
+      'function value() {',
+      '  const first = 1;',
+      '  const second = 2;',
+      '}',
+      'after();',
+    ]);
+    const foldedRanges = [
+      { startLine: 0, endLine: 3, kind: 'delimiter' as const },
+    ];
+
+    expect(EditorWrap.Class.totalVisualRows(document, null, foldedRanges)).toBe(
+      2,
+    );
+    expect(
+      EditorWrap.Class.visualRowsFromOffset(
+        document,
+        0,
+        null,
+        10,
+        foldedRanges,
+      ).map((row) => row.lineIndex),
+    ).toEqual([0, 4]);
+    expect(
+      EditorWrap.Class.lineSegmentAtVisualRow(document, 1, null, foldedRanges),
+    ).toEqual({ lineIndex: 4, segmentIndex: 0 });
+    expect(
+      EditorWrap.Class.visualRowOfLine(document, 2, null, foldedRanges),
+    ).toBe(0);
+    expect(
+      EditorWrap.Class.visualRowOfLine(document, 4, null, foldedRanges),
+    ).toBe(1);
+  });
+
+  test('past-the-end folding clamps to the last line that contributes a row', () => {
+    const document = new IndexProbeDocument([
+      'before();',
+      'function value() {',
+      '  const hidden = true;',
+      '}',
+    ]);
+    const foldedRanges = [
+      { startLine: 1, endLine: 3, kind: 'delimiter' as const },
+    ];
+
+    expect(
+      EditorWrap.Class.lineSegmentAtVisualRow(
+        document,
+        100,
+        null,
+        foldedRanges,
+      ),
+    ).toEqual({ lineIndex: 1, segmentIndex: 0 });
   });
 });

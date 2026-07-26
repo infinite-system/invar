@@ -156,6 +156,8 @@ overview and is outside this vocabulary.
 | `▎` in `palette.deleted` | Deleted block placed on the line below, or the final real line at end of file | Source-control plugin | Diff gutter |
 | Underline in `palette.error` / `warning` / `info` (hint shares info color) | Diagnostic range and severity | Language diagnostics | Code body |
 | `•` (`.` at ASCII tier) in the matching semantic color | Whole-document location of any diff or diagnostic mark | `GutterDecorations` contributors | Editor vertical scrollbar track |
+| `foldOpen` theme slot | The line starts an expanded foldable region | Editor host | Number-gutter edge |
+| `foldClosed` theme slot | The line starts a collapsed foldable region | Editor host | Number-gutter edge and folded-line indicator |
 
 All glyph tiers resolve the diff mark to `▎`; the overview pip resolves through
 `Theme.glyph('overviewMark')`; diagnostic underlines are cell styles and need no glyph fallback.
@@ -165,22 +167,25 @@ All glyph tiers resolve the diff mark to `▎`; the overview pip resolves throug
 underline; both enter `OverviewRuler`. `EditorPaneRenderer` filters the union by owner before
 painting the gutter.
 
-**Generates:** A diff-only gutter; diagnostic-only body underlines; a recorded reservation check
-before any future mark is added.
+**Generates:** A diff-only diff column; fold controls at the number-gutter edge; diagnostic-only
+body underlines; a recorded reservation check before any future mark is added.
 
 **Rejected alternatives:** Diagnostic marks in the diff gutter — a red diagnostic and a red
 deletion occupied the same column and forced users to guess which meaning one mark carried.
 
 **Evidence:** `src/modules/workspace/GutterDecorations.ts`; `src/modules/ui/EditorPaneRenderer.ts`;
-`src/modules/git/GitDocumentState.ts`; `src/modules/workspace/GutterDecorations.test.ts`;
-`scripts/harness/smoke-diagnostics-harness.ts`.
+`src/modules/git/GitDocumentState.ts`; `src/modules/theme/ThemeIcons.ts`;
+`src/modules/workspace/GutterDecorations.test.ts`; `scripts/harness/smoke-diagnostics-harness.ts`;
+`scripts/harness/smoke-code-folding-harness.ts`.
 
-**Impossible if true:** A diagnostic glyph in the gutter; a deletion drawn as `_` or `▁`; one
-gutter shape meaning both version control and language diagnostics.
+**Impossible if true:** A diagnostic glyph in the gutter; a fold control in the diff column; a
+deletion drawn as `_` or `▁`; one gutter shape meaning both version control and language
+diagnostics.
 
 **Verification:** `bun test src/modules/workspace/GutterDecorations.test.ts
-src/modules/git/GitDocumentState.test.ts src/modules/ui/OverviewRuler.test.ts && bun
-scripts/harness/smoke-diagnostics-harness.ts`
+src/modules/git/GitDocumentState.test.ts src/modules/ui/OverviewRuler.test.ts
+src/modules/theme/ThemeIcons.test.ts && bun scripts/harness/smoke-diagnostics-harness.ts && bun
+scripts/harness/smoke-code-folding-harness.ts`
 
 **Status:** provisional
 

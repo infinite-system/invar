@@ -11,6 +11,11 @@ const documentLineCount = 20_000;
 const diagnosticLineCount = 10_000;
 const trackLength = 60;
 const measurementIterations = 25;
+const identityVisualProjection = {
+  key: `identity:${documentLineCount}`,
+  rowCount: documentLineCount,
+  rowOfLine: (lineIndex: number) => lineIndex,
+};
 const documentText = Array.from(
   { length: documentLineCount },
   (_unusedValue, lineIndex) => `const line${lineIndex} = ${lineIndex};`,
@@ -71,7 +76,7 @@ const initialProjectionMilliseconds = measure(() => {
   const overviewRuler = new OverviewRuler.Class();
   overviewRuler.project(
     decorations.snapshotFor(handle),
-    document.lineCount,
+    identityVisualProjection,
     trackLength,
   );
 });
@@ -93,18 +98,30 @@ const measuredOverviewRuler = new OverviewRuler.Class();
 const decorationRecomputeMilliseconds = measure(() => {
   diagnosticRevision += 1;
   const snapshot = measuredDecorations.snapshotFor(measuredHandle);
-  measuredOverviewRuler.project(snapshot, documentLineCount, trackLength);
+  measuredOverviewRuler.project(
+    snapshot,
+    identityVisualProjection,
+    trackLength,
+  );
 });
 const cachedReadIterations = 100_000;
 const cachedSnapshot = measuredDecorations.snapshotFor(measuredHandle);
-measuredOverviewRuler.project(cachedSnapshot, documentLineCount, trackLength);
+measuredOverviewRuler.project(
+  cachedSnapshot,
+  identityVisualProjection,
+  trackLength,
+);
 const cachedReadsStartedAtMilliseconds = performance.now();
 for (
   let cachedReadIndex = 0;
   cachedReadIndex < cachedReadIterations;
   cachedReadIndex += 1
 ) {
-  measuredOverviewRuler.project(cachedSnapshot, documentLineCount, trackLength);
+  measuredOverviewRuler.project(
+    cachedSnapshot,
+    identityVisualProjection,
+    trackLength,
+  );
 }
 const cachedReadMicroseconds =
   ((performance.now() - cachedReadsStartedAtMilliseconds) * 1_000) /

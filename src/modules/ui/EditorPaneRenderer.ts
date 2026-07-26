@@ -3,11 +3,13 @@
 // RootView's closure so the editor render lives with its own contracts (smoke-editor, smoke-wrap,
 // smoke-gutter-diff, smoke-find) instead of inside the god-view.
 //
-// Wrap mode produces the VISUAL-ROW WINDOW (wrapRowsWindow) that the caret block, applySelection,
+// The shared mapping produces the VISUAL-ROW WINDOW (visualRowsWindow) that the caret block, selection,
 // and the mouse hit-test all read, so — like the other pane renderers — render() RETURNS that window
 // and RootView stores it (the shared source of truth). No closure capture, no state held here.
 //
 // invariant: Word wrap is a pure view mapping (src/modules/editor/editor.invariants.md)
+// invariant: One generator owns document-line-to-visual-row (src/modules/editor/editor.invariants.md)
+// invariant: One mark has one reserved meaning (src/modules/workspace/workspace.invariants.md)
 // invariant: The editor gutter reflects HEAD changes (src/modules/diff/diff.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 import {
@@ -72,7 +74,16 @@ class $EditorPaneRenderer {
     const language = LanguageRegistry.Class.forPath(editor.document.path);
     const height = context.viewportHeight;
     const top = editor.viewport.scrollTop.value;
-    const visibleLines = editor.document.slice(top, height);
+    const visualRowsWindow = EditorWrap.Class.visualRowsFromOffset(
+      editor.document,
+      top,
+      editor.visualWrapWidth(),
+      height,
+      editor.collapsedFoldRanges,
+    );
+    const foldRangesByStartLine = new Map(
+      editor.foldRanges().map((range) => [range.startLine, range]),
+    );
     const lineNumberWidth = String(editor.document.lineCount).length + 1;
     const currentLineIndex = editor.cursor.line.value;
     const focused = workspace.focus.value === 'editor';
@@ -86,6 +97,15 @@ class $EditorPaneRenderer {
     const gutterChunks: TextChunk[] = [];
     const codeChunks: TextChunk[] = [];
     const gutterHoverLabelsByRow: string[][] = [];
+    const foldMarkerFor = (lineIndex: number): string => {
+      if (
+        foldRangesByStartLine.has(lineIndex) &&
+        editor.foldState.value.collapsedLineStarts.has(lineIndex)
+      ) {
+        return context.foldClosedGlyph;
+      }
+      return foldRangesByStartLine.has(lineIndex) ? context.foldOpenGlyph : ' ';
+    };
     const decorationColor = (color: EditorDecorationColor): string => {
       if (color === 'added') return palette.added;
       if (color === 'modified') return palette.modified;
@@ -338,19 +358,13 @@ class $EditorPaneRenderer {
       // rows; the gutter numbers only a line's FIRST visual row (continuation rows are blank, VS
       // Code-style); each row's code is the segment's grapheme-safe slice. `top` is a VISUAL-row offset
       // in wrap mode, so the window can start MID-LINE. The walk is O(window) — never materialized.
-      const wrapRowsWindow = EditorWrap.Class.visualRowsFromOffset(
-        editor.document,
-        top,
-        editor.wrapWidth(),
-        height,
-      );
       // Token spans come from the FULL logical line, computed once per line and SLICED per visual
       // row — a continuation row inherits the roles its text has on the logical line (a wrapped
       // `// ...` comment stays comment-coloured past the first row). Consecutive rows of the same
       // line share the one tokenization.
       let tokenizedLineIndex = -1;
       let tokenizedLineSpans: Span[] = [];
-      wrapRowsWindow.forEach((row, rowIndex) => {
+      visualRowsWindow.forEach((row, rowIndex) => {
         const isCurrentLine = row.lineIndex === currentLineIndex;
         if (row.firstOfLine) {
           const lineNumberText = String(row.lineIndex + 1).padStart(
@@ -359,7 +373,7 @@ class $EditorPaneRenderer {
           );
           gutterChunks.push(
             fg(isCurrentLine ? palette.accent : palette.dim)(
-              `${lineNumberText} `,
+              `${lineNumberText}${foldMarkerFor(row.lineIndex)}`,
             ),
           );
           pushGutterMarker(row.lineIndex, isCurrentLine);
@@ -398,7 +412,14 @@ class $EditorPaneRenderer {
           row.segment.startGrapheme,
           segmentSpans,
         );
-        if (rowIndex < wrapRowsWindow.length - 1) {
+        if (
+          row.foldedRange &&
+          row.segmentIndex ===
+            EditorWrap.Class.wrapLine(lineText, editor.wrapWidth()).length - 1
+        ) {
+          codeChunks.push(fg(palette.dim)(` ${context.foldClosedGlyph}`));
+        }
+        if (rowIndex < visualRowsWindow.length - 1) {
           gutterChunks.push(fg(palette.fg)('\n'));
           codeChunks.push(fg(palette.fg)('\n'));
         }
@@ -406,7 +427,7 @@ class $EditorPaneRenderer {
       return {
         gutter: new StyledText(gutterChunks),
         code: new StyledText(codeChunks),
-        wrapRowsWindow,
+        visualRowsWindow,
         gutterHoverLabelsByRow,
       };
     }
@@ -416,15 +437,18 @@ class $EditorPaneRenderer {
     // delimiter), while slicing the logical spans preserves that role through horizontal scroll.
     const scrollLeft = editor.viewport.scrollLeft.value;
     const viewportWidth = context.viewportWidth;
-    visibleLines.forEach((text, visibleIndex) => {
-      const lineNumber = top + visibleIndex;
+    visualRowsWindow.forEach((row, visibleIndex) => {
+      const lineNumber = row.lineIndex;
+      const text = editor.document.line(lineNumber);
       const isCurrentLine = lineNumber === currentLineIndex;
       const lineNumberText = String(lineNumber + 1).padStart(
         lineNumberWidth,
         ' ',
       );
       gutterChunks.push(
-        fg(isCurrentLine ? palette.accent : palette.dim)(`${lineNumberText} `),
+        fg(isCurrentLine ? palette.accent : palette.dim)(
+          `${lineNumberText}${foldMarkerFor(lineNumber)}`,
+        ),
       );
       pushGutterMarker(lineNumber, isCurrentLine);
       let windowText = text;
@@ -470,7 +494,10 @@ class $EditorPaneRenderer {
         windowStartGrapheme,
         lineWindowSpans,
       );
-      if (visibleIndex < visibleLines.length - 1) {
+      if (row.foldedRange) {
+        codeChunks.push(fg(palette.dim)(` ${context.foldClosedGlyph}`));
+      }
+      if (visibleIndex < visualRowsWindow.length - 1) {
         gutterChunks.push(fg(palette.fg)('\n'));
         codeChunks.push(fg(palette.fg)('\n'));
       }
@@ -478,7 +505,7 @@ class $EditorPaneRenderer {
     return {
       gutter: new StyledText(gutterChunks),
       code: new StyledText(codeChunks),
-      wrapRowsWindow: [],
+      visualRowsWindow,
       gutterHoverLabelsByRow,
     };
   }
@@ -498,6 +525,9 @@ export interface EditorPaneRenderContext {
   showIndentGuides: boolean;
   /** The guide glyph at the current glyph tier — box-drawing bar `│` degrading to ascii `|`. */
   indentGuideGlyph: string;
+  /** One-cell fold controls resolved by the active theme vocabulary. */
+  foldOpenGlyph: string;
+  foldClosedGlyph: string;
   /** Cells (line, grapheme column) to paint with the bracket-match background — the cursor's bracket
    *  and its balanced partner. Off-screen cells are never in a rendered line, so "highlight only when
    *  visible" is automatic. Empty/omitted when the cursor is not on a bracket. */
@@ -506,8 +536,8 @@ export interface EditorPaneRenderContext {
 export interface EditorPaneRender {
   gutter: StyledText;
   code: StyledText;
-  /** Wrap-mode visual-row window (empty in no-wrap mode); RootView stores it for caret/hit-test. */
-  wrapRowsWindow: VisualRow[];
+  /** Shared visual-row window for rendering, caret, selection, and pointer hit-testing. */
+  visualRowsWindow: VisualRow[];
   /** Hover text for each visible gutter row; only version-control marks can populate it. */
   gutterHoverLabelsByRow: readonly (readonly string[])[];
 }

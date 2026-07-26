@@ -140,6 +140,9 @@ class $AppStatusProjection {
       editorScrollTop: editor.viewport.scrollTop.value,
       editorScrollLeft: editor.viewport.scrollLeft.value,
       wordWrap: editor.wordWrap.value,
+      foldedLineStarts: [...editor.foldState.value.collapsedLineStarts].sort(
+        (firstLine, secondLine) => firstLine - secondLine,
+      ),
       showActivityBar: ports.settings.showActivityBar.value,
       contextMenuOpen: ports.contextMenu.open.value,
       boundedListPopupOpen: ports.boundedListPopup.open.value,

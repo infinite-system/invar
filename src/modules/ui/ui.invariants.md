@@ -1278,42 +1278,43 @@ bounded by viewport height.
 
 **Last refined:** 2026-07-21
 
-### One file line is one visual row when word wrap is off
+### One visible file line is one visual row when word wrap is off
 
-**Invariant:** If word wrap is OFF (the default), then one file line renders as exactly one visual
-row — long lines clip at the right edge and horizontal scroll covers the rest — so the gutter
-(which numbers file lines), the caret Y, selection rows, and click hit-testing all share the same
-trivial row mapping. When word wrap is ON, this record does not apply: the row mapping is the
-editor's pure logical↔visual layer instead (*Word wrap is a pure view mapping*,
-src/modules/editor/editor.invariants.md), and the gutter numbers only a line's FIRST visual row
-(continuation rows blank).
+**Invariant:** If word wrap is OFF (the default), then each visible file line renders as exactly one
+visual row — long lines clip at the right edge and horizontal scroll covers the rest — while lines
+inside a collapsed fold contribute zero rows. The gutter, caret Y, selection rows, and click
+hit-testing all read that same mapping. When word wrap is ON, a visible file line may contribute
+multiple segments, and the gutter numbers only its FIRST visual row (continuation rows blank).
 
-**Scope:** the editor gutter + code renderables in `RootView`, wrap-OFF mode only. (Historically
-this was recorded as unconditional — "an editor pane NEVER soft-wraps"; word wrap becoming a MODE
-on 2026-07-21 scoped it honestly.)
+**Scope:** the editor gutter + code renderables in `RootView`, wrap-OFF mode. (Historically this was
+recorded as unconditional — "an editor pane NEVER soft-wraps"; word wrap becoming a mode on
+2026-07-21 and folding contributing zero-row lines on 2026-07-26 scoped it honestly.)
 
-**Mechanism:** the code renderable is `wrapMode: 'none'` in BOTH modes — the renderable itself
-never wraps; wrap-ON feeds pre-wrapped SEGMENT rows from the mapping layer, so row identity is
-always decided ABOVE the renderable, never by widget wrapping heuristics.
+**Mechanism:** the code renderable is `wrapMode: 'none'` in BOTH modes — the renderable itself never
+wraps. `EditorWrap.visualRowsFromOffset` feeds the rows in both modes: wrap-OFF contributes one
+segment for a visible line, wrap-ON contributes pre-wrapped segments, and a folded body contributes
+zero. Row identity is always decided ABOVE the renderable, never by widget wrapping heuristics.
 
-**Generates:** the consecutive-gutter smoke check (wrap-off); the trivial `docLine − scrollTop`
-row math every wrap-off consumer uses; the guarantee that toggling wrap OFF restores today's
-pixel-identical behavior.
+**Generates:** the consecutive-gutter smoke check for unfolded content; one shared visual-row window
+for render, caret, selection, and pointer hit-testing; the guarantee that toggling wrap OFF restores
+one row per visible line without reviving folded bodies.
 
 **Evidence:** human-QA regression (a wrapped tail once desynced every gutter number below it);
-`smoke-editor.sh` "no soft-wrap" check — consecutive rows carry consecutive gutter numbers;
-`RootView` codeBody options keep `wrapMode: 'none'`.
+`smoke-editor.sh` "no soft-wrap" check — consecutive unfolded rows carry consecutive gutter
+numbers; `RootView` codeBody options keep `wrapMode: 'none'`;
+`scripts/harness/smoke-code-folding-harness.ts`.
 
-**Impossible if true:** with wrap off, a file line occupying two visual rows, or a gutter number
-that disagrees with the file line beside it; in either mode, the OpenTUI renderable (rather than
-the row source) deciding where a line breaks.
+**Impossible if true:** with wrap off, a visible file line occupying two visual rows, a folded body
+occupying any visual row, or a gutter number disagreeing with the file line beside it; in either
+mode, the OpenTUI renderable (rather than the row source) deciding where a line breaks.
 
-**Verification:** `smoke-editor.sh` consecutive-gutter check (wrap-off); the wrap-mode inversion
-lives with the wrap record (continuation rows have BLANK gutters).
+**Verification:** `smoke-editor.sh` consecutive-gutter check (wrap-off);
+`bun scripts/harness/smoke-code-folding-harness.ts`; the wrap-mode inversion lives with the wrap
+record (continuation rows have BLANK gutters).
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
 
 ### The caret renders at the cursor display column
 
@@ -1512,8 +1513,10 @@ that feeds the gutter and body, without changing the scrollbar track or thumb ge
 normal-editor overview marks.
 
 **Mechanism:** `GutterDecorations.snapshotFor` keeps one stable snapshot identity until a
-contribution or document revision changes. `OverviewRuler.project` caches by that identity,
-document line count, and track length, then maps logical lines proportionally onto track cells.
+contribution or document revision changes. `OverviewRuler.project` caches by that identity, the
+`EditorWrap` visual-projection key, and track length, then maps each decorated line through
+`EditorWrap.visualRowOfLine`: a visible line uses its first segment and a hidden body uses its fold
+header. The resulting visual rows are projected proportionally onto track cells.
 When multiple marks map to one track cell, the winning color order is error > warning > info > hint
 > modified > added > deleted, while every aggregated hover label remains available.
 `SolidThumbScrollBar` paints one trailing-cell semantic pip over the already-selected track or thumb
@@ -1535,9 +1538,10 @@ drag contract, so marks remain paint-only.
 `OverviewRuler.test.ts` and `SolidThumbScrollBar.test.ts`;
 `scripts/harness/smoke-diagnostics-harness.ts`.
 
-**Impossible if true:** A diagnostic 900 lines below the viewport with no overview pip; an unchanged
-snapshot triggering overview aggregation on every frame; marks changing track width or the thumb
-rectangle; warning winning a shared track cell that also contains an error.
+**Impossible if true:** A diagnostic 900 lines below the viewport with no overview pip; a folded
+body mark projected by a raw document-line ratio instead of its visible header row; an unchanged
+snapshot and visual projection triggering overview aggregation on every frame; marks changing track
+width or the thumb rectangle; warning winning a shared track cell that also contains an error.
 
 **Verification:** `bun test src/modules/ui/OverviewRuler.test.ts
 src/modules/ui/SolidThumbScrollBar.test.ts && bun scripts/harness/smoke-diagnostics-harness.ts &&

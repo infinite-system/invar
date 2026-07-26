@@ -289,7 +289,7 @@ document content.
 **Scope:** `Editor` (the `wordWrap` mode ref, `placeCursor`, `moveVertical`, the wrapped reveal),
 `EditorWrap.ts` (the mapping layer), and `ui/RootView`'s wrap-mode branches (render, caret,
 `applySelection`, `documentPositionAtCell`). Wrap OFF is out of scope — that mode keeps the
-clip+h-scroll behavior governed by *One file line is one visual row when word wrap is off*
+clip+h-scroll behavior governed by *One visible file line is one visual row when word wrap is off*
 (ui.invariants.md).
 
 **Mechanism:** `EditorWrap` (Static capability) wraps a line into `{startGrapheme, endGrapheme,
@@ -362,22 +362,60 @@ is the single `setSize` edge, asserted not to run inside the frame effect.
 
 **Last refined:** 2026-07-21
 
+### One generator owns document-line-to-visual-row
+
+**Invariant:** If document lines are projected into editor visual rows, then the `EditorWrap`
+cumulative index is the only mapping authority, with wrapping contributing segment counts and
+folding contributing zero-row hidden lines.
+
+**Scope:** Editor rendering, caret placement, vertical and horizontal line-crossing movement,
+selection projection, mouse hit-testing, wheel and drag scrolling, scrollbar extent, gutter fold
+controls, and programmatic navigation.
+
+**Mechanism:** `CodeFolding.ranges` computes one revision-keyed structural snapshot and `Editor`
+selects its collapsed ranges. `EditorWrap.syncWrapIndex` combines wrap segments and collapsed ranges
+into one `rowCounts` and `prefix` index; `visualRowsFromOffset` returns the window that
+`EditorPaneRenderer`, `EditorPane`, and `RootView` share.
+
+**Generates:** Folded rows that every consumer skips; one scroll extent for wrap and folding; one
+rendered window for gutter, code, caret, selection, and pointer mapping.
+
+**Rejected alternatives:** Apply folding after wrap projection — different consumers can consult
+different maps and disagree about the same document position.
+
+**Evidence:** `src/modules/editor/EditorWrap.ts`; `src/modules/editor/CodeFolding.ts`;
+`src/modules/editor/EditorWrapIndex.test.ts`; `src/modules/editor/Editor.test.ts`;
+`scripts/harness/smoke-code-folding-harness.ts`.
+
+**Impossible if true:** Two disagreeing document-line-to-visual-row mappings consulted by different
+consumers; a caret, selection endpoint, gutter marker, mouse hit, scrollbar, or rendered row naming
+different visual rows for one document position.
+
+**Verification:** `bun test src/modules/editor/CodeFolding.test.ts
+src/modules/editor/EditorWrapIndex.test.ts src/modules/editor/Editor.test.ts && bun
+scripts/harness/smoke-code-folding-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Geometry aggregates match their consumers
 
 **Invariant:** If a geometry aggregate supplies a consumer, then it is computed exactly at that
 consumer boundary and not computed where nothing consumes it.
 
 **Scope:** Editor scroll extents and scrollbar proportions. The no-wrap horizontal clamp consumes
-the exact full-document maximum display width. The wrap vertical clamp consumes the exact visual-row
-extent. The vertical thumb consumes that same exact total together with the exact layout viewport;
+the exact full-document maximum display width. The vertical clamp in both wrap modes consumes the
+exact visual-row extent after folding. The vertical thumb consumes that same exact total together
+with the exact layout viewport;
 only its final projection onto whole terminal cells is quantized.
 
 **Components:**
 - *Exact hard boundaries* — `TextDocument.maximumLineWidth` is the true full-document display
   width for the no-wrap horizontal clamp, and `EditorWrap.totalVisualRows` is the true visual-row
-  count for the wrap vertical clamp.
+  count for the vertical clamp after wrapping and folding contribute their row counts.
 - *Exact proportional inputs* — a vertical thumb ratio uses the exact layout viewport rows and the
-  exact logical or wrapped total rows. Its whole-cell length is quantized from that
+  exact visual-row total. Its whole-cell length is quantized from that
   position-independent ratio, never from independently rounded moving endpoints.
 - *Absent unused aggregate* — an aggregate with no consumer in its owning surface is not
   computed or incrementally maintained.
@@ -387,12 +425,12 @@ lines whose two-columns-per-code-unit upper bound cannot beat the champion, and 
 only surviving candidates; tab lines always survive to exact measurement. Local edits compare only
 replacements unless the champion shrinks or disappears, which reruns the same prefilter. The no-wrap
 horizontal consumers read that exact width. `ScrollbarSync` supplies the vertical bar with
-`TextDocument.lineCount` or `EditorWrap.totalVisualRows` and the live layout viewport; the solid
-thumb rasterizer derives one whole-cell length from those constant inputs and moves only its start.
+`EditorWrap.totalVisualRows` and the live layout viewport in both wrap modes; the solid thumb
+rasterizer derives one whole-cell length from those constant inputs and moves only its start.
 
 **Generates:** one full-document horizontal extent authority for momentum, drag auto-scroll, and
-the horizontal scrollbar; one exact wrap visual-row extent for momentum, paging, and the vertical
-scrollbar; a stable thumb while vertically scrolling unchanged content.
+the horizontal scrollbar; one exact visual-row extent for wrapping, folding, momentum, paging, and
+the vertical scrollbar; a stable thumb while vertically scrolling unchanged content.
 
 **Rejected alternatives:** Recompute width from visible lines — the clamp and thumb change when
 the viewport moves although document geometry did not. Use logical-line count for the wrap clamp —
@@ -418,7 +456,7 @@ scripts/harness/smoke-scrollbars-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### A structural line edit is one atomic undo step that keeps the cursor on the moved line
 

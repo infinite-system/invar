@@ -76,6 +76,8 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'panelRestore',
     'panelClose',
     'overviewMark',
+    'foldOpen',
+    'foldClosed',
   ] as const;
   const expectedVocabularies = {
     nerd: [
@@ -89,9 +91,11 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f066}',
       '\u{f00d}',
       '•',
+      '⌄',
+      '›',
     ],
-    unicode: ['≡', '⑂', '⧫', '⌕', '⚙', '+', '↗', '↙', '×', '•'],
-    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '.'],
+    unicode: ['≡', '⑂', '⧫', '⌕', '⚙', '+', '↗', '↙', '×', '•', '⌄', '›'],
+    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '.', 'v', ']'],
   } as const;
 
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
@@ -438,6 +442,13 @@ test('every symbol mark the app measures agrees with the terminal that renders i
         expect(renderedWidth).toBe(measuredWidth);
         expect(renderedWidth).toBe(1);
       }
+      for (const slot of ['foldOpen', 'foldClosed'] as const) {
+        const mark = ThemeIcons.Class.glyphFor(level, slot);
+        expect(await renderedWidthOf(mark)).toBe(
+          EditorCoordinates.Class.lineWidth(mark),
+        );
+        expect(await renderedWidthOf(mark)).toBe(1);
+      }
     }
   } finally {
     emulator.dispose();
@@ -477,6 +488,8 @@ test('every semantic interface icon is one display cell and avoids reserved mark
     'panelRestore',
     'panelClose',
     'overviewMark',
+    'foldOpen',
+    'foldClosed',
   ] as const;
   const reservedMarkers = new Set(['▎', '●', '❯']);
 
@@ -487,4 +500,30 @@ test('every semantic interface icon is one display cell and avoids reserved mark
       expect(reservedMarkers.has(glyph)).toBe(false);
     }
   }
+});
+
+test('fold controls avoid every reserved unicode mark', () => {
+  const reservedMarkers = new Set([
+    '▎',
+    '●',
+    '❯',
+    '•',
+    '↗',
+    '↙',
+    '+',
+    '×',
+    '◉',
+    '≡',
+    '⑂',
+    '⌕',
+    '⚙',
+    '⧫',
+  ]);
+  const foldMarks = [
+    ThemeIcons.Class.glyphFor('unicode', 'foldOpen'),
+    ThemeIcons.Class.glyphFor('unicode', 'foldClosed'),
+  ];
+
+  expect(new Set(foldMarks).size).toBe(2);
+  expect(foldMarks.every((mark) => !reservedMarkers.has(mark))).toBe(true);
 });

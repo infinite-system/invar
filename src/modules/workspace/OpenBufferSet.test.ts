@@ -4,6 +4,7 @@ import {
   type LiveBuffer,
   type BufferPosition,
 } from './OpenBufferSet';
+import type { DocumentHandle } from './DocumentHandle';
 
 // A fake live buffer: records dispose, carries a mutable dirty flag + position.
 class FakeBuffer implements LiveBuffer {
@@ -30,11 +31,13 @@ class FakeBuffer implements LiveBuffer {
 
 function makeSet() {
   const created: FakeBuffer[] = [];
+  const createdHandles: DocumentHandle.Model[] = [];
   const disposed: FakeBuffer[] = [];
   const set = new OpenBufferSet.Class({
-    createBuffer: (path) => {
+    createBuffer: (path, documentHandle) => {
       const buffer = new FakeBuffer(path);
       created.push(buffer);
+      createdHandles.push(documentHandle);
       return buffer;
     },
     disposeBuffer: (buffer) => {
@@ -42,7 +45,7 @@ function makeSet() {
       disposed.push(buffer as FakeBuffer);
     },
   });
-  return { set, created, disposed };
+  return { set, created, createdHandles, disposed };
 }
 
 describe('open / focus', () => {
@@ -88,6 +91,27 @@ describe('flyweight: N tabs are NOT N live documents', () => {
     const rehydrated = created[created.length - 1] as FakeBuffer;
     expect(rehydrated.snapshotPosition().cursorLine).toBe(42);
     expect(rehydrated.snapshotPosition().scrollTop).toBe(30);
+  });
+
+  test('document fold state survives rehydration and is dropped on close', () => {
+    const { set, createdHandles } = makeSet();
+    set.open('a.ts');
+    const firstHandle = createdHandles.at(-1);
+    expect(firstHandle).toBeDefined();
+    firstHandle?.foldState.collapsedLineStarts.add(4);
+
+    set.open('b.ts');
+    set.activate(0);
+    expect(createdHandles.at(-1)).toBe(firstHandle);
+    expect(createdHandles.at(-1)?.foldState.collapsedLineStarts.has(4)).toBe(
+      true,
+    );
+
+    set.close(0);
+    set.open('a.ts');
+    const reopenedHandle = createdHandles.at(-1);
+    expect(reopenedHandle).not.toBe(firstHandle);
+    expect(reopenedHandle?.foldState.collapsedLineStarts.size).toBe(0);
   });
 
   test('a DIRTY background buffer is retained (never dehydrated — edits must survive)', () => {

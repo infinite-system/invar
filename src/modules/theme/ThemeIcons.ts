@@ -204,6 +204,8 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
       { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
       { mark: unicodeVocabulary.overviewMark, owner: 'the overview pip' },
+      { mark: unicodeVocabulary.foldOpen, owner: 'the open fold control' },
+      { mark: unicodeVocabulary.foldClosed, owner: 'the closed fold control' },
       {
         mark: this.$tabSeparators.unicode,
         owner: 'the buffer-tab separator',
@@ -400,6 +402,8 @@ class $ThemeIcons {
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
         overviewMark: '•',
+        foldOpen: '⌄',
+        foldClosed: '›',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -426,6 +430,8 @@ class $ThemeIcons {
         panelRestore: '↙',
         panelClose: '×',
         overviewMark: '•',
+        foldOpen: '⌄',
+        foldClosed: '›',
       },
       ascii: {
         activityFiles: 'F',
@@ -439,6 +445,8 @@ class $ThemeIcons {
         panelRestore: '<',
         panelClose: 'x',
         overviewMark: '.',
+        foldOpen: 'v',
+        foldClosed: ']',
       },
     });
   }
@@ -791,6 +799,8 @@ export interface InterfaceGlyphVocabulary {
   panelRestore: string;
   panelClose: string;
   overviewMark: string;
+  foldOpen: string;
+  foldClosed: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

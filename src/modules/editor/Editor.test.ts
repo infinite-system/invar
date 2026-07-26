@@ -125,6 +125,48 @@ test('undo reverts an edit; redo re-applies it', () => {
   expect(editor.document.line(0)).toBe('ab');
 });
 
+test('folded rows are skipped and direct navigation unfolds their region', () => {
+  const editor = openWith(
+    [
+      'function value() {',
+      '  const first = 1;',
+      '  const second = 2;',
+      '}',
+      'after();',
+    ].join('\n'),
+  );
+  expect(editor.toggleFoldAtLine(0)).toBe(true);
+  expect(editor.collapsedFoldRanges).toEqual([
+    { startLine: 0, endLine: 3, kind: 'delimiter' },
+  ]);
+
+  editor.moveVertical(1, true);
+  expect(editor.cursor.line.value).toBe(4);
+  expect(editor.cursor.selectionRange()?.end.line).toBe(4);
+
+  editor.moveWordHorizontal(-1, true);
+  expect(editor.cursor.line.value).toBe(0);
+  editor.moveToLineEnd();
+  editor.moveWordHorizontal(1, true);
+  expect(editor.cursor.line.value).toBe(4);
+
+  editor.placeCursor(2, 2);
+  expect(editor.cursor.line.value).toBe(2);
+  expect(editor.collapsedFoldRanges).toEqual([]);
+});
+
+test('fold state can be attached to a stable document handle', () => {
+  const foldState = { collapsedLineStarts: new Set<number>() };
+  const firstEditor = openWith('const value = {\n  answer: 42,\n};');
+  firstEditor.attachFoldState(foldState);
+  firstEditor.toggleFoldAtLine(0);
+  expect([...foldState.collapsedLineStarts]).toEqual([0]);
+
+  const rehydratedEditor = openWith('const value = {\n  answer: 42,\n};');
+  rehydratedEditor.attachFoldState(foldState);
+  expect(rehydratedEditor.collapsedFoldRanges).toHaveLength(1);
+});
+
 test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-dirties)', () => {
   const editor = openWith('a'); // loaded content "a" is the clean baseline
   editor.cursor.set(0, 1);

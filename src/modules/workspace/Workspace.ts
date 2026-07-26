@@ -11,7 +11,6 @@ import { ImageDecoders } from '../image/ImageDecoders';
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { EditorWrap } from '../editor/EditorWrap';
 import { Logging } from '../system/Logging';
 import {
   LanguageClient,
@@ -134,8 +133,9 @@ class $Workspace {
     return new OpenBufferSet.Class({
       // The set only ever holds Editors (this seam is the sole creator), so `editor` below can treat
       // activeBuffer as an Editor.
-      createBuffer: (path) => {
+      createBuffer: (path, documentHandle) => {
         const editor = this.createEditor();
+        editor.attachFoldState(documentHandle.foldState);
         editor.openFile(path);
         return editor;
       },
@@ -615,9 +615,7 @@ class $Workspace {
       // In wrap mode scrollTop is a VISUAL-row offset, so the momentum glide clamps to the wrapped
       // extent (totalVisualRows) — reaching the true last visual row, same engine as non-wrap.
       const editor = this.editor;
-      const totalRows = editor.wordWrap.value
-        ? EditorWrap.Class.totalVisualRows(editor.document, editor.wrapWidth())
-        : editor.document.lineCount;
+      const totalRows = editor.totalVisualRows();
       editorViewport.scrollBy(editorVerticalStep.rows, totalRows);
     }
 

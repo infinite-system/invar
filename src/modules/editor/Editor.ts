@@ -1,10 +1,11 @@
 import { Reactive } from 'ivue';
-import { ref, type Ref } from 'vue';
+import { ref, shallowRef, type Ref } from 'vue';
 import { Viewport } from './Viewport';
 import { EditorCoordinates } from './EditorCoordinates';
 import { EditorIndent } from './EditorIndent';
 import { TextEditing } from './TextEditing';
 import { EditorWrap } from './EditorWrap';
+import { CodeFolding, type FoldRange } from './CodeFolding';
 import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
 import { UndoStore, type EditKind } from '../storage/UndoStore';
 import { Files } from '../system/Files';
@@ -14,6 +15,7 @@ import type {
   LanguageCompletionItem,
   LanguageRange,
 } from '../lsp/LanguageProvider.interface';
+import { LanguageRegistry } from '../syntax/LanguageRegistry';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -59,10 +61,122 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   get localWordWrap() {
     return ref(false);
   }
+  get foldState() {
+    return shallowRef<EditorFoldState>({
+      collapsedLineStarts: new Set<number>(),
+    });
+  }
+  get foldRevision() {
+    return ref(0);
+  }
+
+  attachFoldState(foldState: EditorFoldState): void {
+    this.foldState.value = foldState;
+    this.foldRevision.value++;
+  }
+
+  foldRanges(): readonly FoldRange[] {
+    if (!this.hasDocument.value) return [];
+    return CodeFolding.Class.ranges(
+      this.document,
+      LanguageRegistry.Class.forPath(this.document.path),
+    );
+  }
+
+  get collapsedFoldRanges(): readonly FoldRange[] {
+    void this.foldRevision.value;
+    const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    return this.foldRanges().filter((range) =>
+      collapsedLineStarts.has(range.startLine),
+    );
+  }
+
+  foldRangeAtLine(lineIndex: number): FoldRange | null {
+    return (
+      this.foldRanges().find((range) => range.startLine === lineIndex) ?? null
+    );
+  }
+
+  toggleFoldAtLine(lineIndex: number): boolean {
+    const range = this.foldRangeAtLine(lineIndex);
+    if (!range) return false;
+    const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    if (collapsedLineStarts.delete(lineIndex)) {
+      this.foldRevision.value++;
+      this.revealCursor();
+      return true;
+    }
+    collapsedLineStarts.add(lineIndex);
+    this.foldRevision.value++;
+    if (
+      this.cursor.line.value > range.startLine &&
+      this.cursor.line.value <= range.endLine
+    ) {
+      this.cursor.clearSelection();
+      this.placeCursor(
+        range.startLine,
+        EditorCoordinates.Class.clampCol(
+          this.document.line(range.startLine),
+          this.cursor.col.value,
+        ),
+      );
+    } else {
+      this.revealCursor();
+    }
+    return true;
+  }
+
+  foldAtCursor(): void {
+    const cursorLine = this.cursor.line.value;
+    const range =
+      this.foldRangeAtLine(cursorLine) ??
+      [...this.foldRanges()]
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.startLine < cursorLine && candidate.endLine >= cursorLine,
+        );
+    if (!range) return;
+    if (this.foldState.value.collapsedLineStarts.has(range.startLine)) return;
+    this.toggleFoldAtLine(range.startLine);
+  }
+
+  unfoldAtCursor(): void {
+    const cursorLine = this.cursor.line.value;
+    const range = this.collapsedFoldRanges.find(
+      (candidate) =>
+        candidate.startLine === cursorLine ||
+        (candidate.startLine < cursorLine && candidate.endLine >= cursorLine),
+    );
+    if (range) this.toggleFoldAtLine(range.startLine);
+  }
+
+  protected unfoldToRevealLine(lineIndex: number): void {
+    const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    let changed = false;
+    for (const range of this.collapsedFoldRanges) {
+      if (range.startLine < lineIndex && range.endLine >= lineIndex) {
+        changed = collapsedLineStarts.delete(range.startLine) || changed;
+      }
+    }
+    if (changed) this.foldRevision.value++;
+  }
 
   /** The display-column width visual rows wrap at (the laid-out code viewport width). */
   wrapWidth(): number {
     return Math.max(1, this.viewport.width.value);
+  }
+
+  visualWrapWidth(): number | null {
+    return this.wordWrap.value ? this.wrapWidth() : null;
+  }
+
+  totalVisualRows(): number {
+    return EditorWrap.Class.totalVisualRows(
+      this.document,
+      this.visualWrapWidth(),
+      this.collapsedFoldRanges,
+    );
   }
 
   toggleWordWrap(): void {
@@ -70,7 +184,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (!this.hasDocument.value) return;
     if (this.wordWrap.value) {
       this.viewport.scrollLeft.value = 0; // horizontal scroll is inert in wrap mode
-      this.revealCursorWrapped();
+      this.revealCursorMapped();
     } else {
       // Restore the absolute display-column goal and the caret-following horizontal scroll.
       this.placeCursor(this.cursor.line.value, this.cursor.col.value);
@@ -82,12 +196,23 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // the scrollbar reads visual extent), so the reveal is the plain min/max on the cursor's ABSOLUTE
   // visual row = (first visual row of its line) + (its segment within the line). This is what makes the
   // scroll reach the true last visual row: no logical-line quantization.
-  protected revealCursorWrapped(): void {
-    const width = this.wrapWidth();
-    const segments = EditorWrap.Class.wrapLine(
-      this.document.line(this.cursor.line.value),
-      width,
-    );
+  protected revealCursorMapped(): void {
+    const wrapWidth = this.visualWrapWidth();
+    const segments =
+      wrapWidth === null
+        ? [
+            {
+              startGrapheme: 0,
+              endGrapheme: EditorCoordinates.Class.graphemeCount(
+                this.document.line(this.cursor.line.value),
+              ),
+              startDisplayColumn: 0,
+            },
+          ]
+        : EditorWrap.Class.wrapLine(
+            this.document.line(this.cursor.line.value),
+            wrapWidth,
+          );
     const segmentIndex = EditorWrap.Class.segmentIndexForCursor(
       segments,
       this.cursor.col.value,
@@ -96,14 +221,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       EditorWrap.Class.firstVisualRowOfLine(
         this.document,
         this.cursor.line.value,
-        width,
+        wrapWidth,
+        this.collapsedFoldRanges,
       ) + segmentIndex;
     const height = this.viewport.height.value;
     const top = this.viewport.scrollTop.value;
-    const maximumTop = Math.max(
-      0,
-      EditorWrap.Class.totalVisualRows(this.document, width) - height,
-    );
+    const maximumTop = Math.max(0, this.totalVisualRows() - height);
     let next = top;
     if (cursorVisualRow < top) next = cursorVisualRow;
     else if (cursorVisualRow >= top + height)
@@ -111,10 +234,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.viewport.scrollTop.value = Math.max(0, Math.min(next, maximumTop));
   }
 
-  /** Mode-aware vertical reveal: wrapped visual-row walk when wrap is on, logical otherwise. */
+  /** Reveal through the shared visual-row projection in both wrap modes. */
   protected scrollLineIntoView(line: number): void {
-    if (this.wordWrap.value) this.revealCursorWrapped();
-    else this.viewport.scrollToLine(line, this.document.lineCount);
+    void line;
+    this.revealCursorMapped();
   }
 
   /**
@@ -235,6 +358,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    */
   override placeCursor(line: number, column: number): void {
     this.viewport.haltScrollMomentum(); // precise cursor move adopts authority, stops wheel glide
+    this.unfoldToRevealLine(line);
     const lineText = this.document.line(line);
     const absoluteDisplayColumn = EditorCoordinates.Class.displayColumn(
       lineText,
@@ -249,7 +373,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
         column,
         absoluteDisplayColumn - (segment?.startDisplayColumn ?? 0),
       );
-      this.revealCursorWrapped();
+      this.revealCursorMapped();
       return;
     }
     this.cursor.set(line, column, absoluteDisplayColumn);
@@ -637,35 +761,22 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   moveVertical(delta: number, extend = false): void {
     this.beginMove(extend);
-    if (this.wordWrap.value) {
-      // Wrap mode: vertical movement steps VISUAL rows; the goal is the visual column within the
-      // wrapped row (set by placeCursor) and survives the run.
-      const target = EditorWrap.Class.moveByVisualRows(
-        this.document,
-        { line: this.cursor.line.value, col: this.cursor.col.value },
-        this.cursor.goalColumn.value,
-        delta,
-        this.wrapWidth(),
-      );
-      this.cursor.moveToLineKeepingGoal(target.line, target.col);
-      this.revealCursorWrapped();
-      return;
-    }
-    const target = this.cursor.line.value + delta;
-    const maxLine = this.document.lineCount - 1;
-    const clamped = Math.max(0, Math.min(target, maxLine));
-    const landingColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
-      this.document.line(clamped),
+    const target = EditorWrap.Class.moveByVisualRows(
+      this.document,
+      { line: this.cursor.line.value, col: this.cursor.col.value },
       this.cursor.goalColumn.value,
+      delta,
+      this.visualWrapWidth(),
+      this.collapsedFoldRanges,
     );
-    this.cursor.moveToLineKeepingGoal(clamped, landingColumn);
+    this.cursor.moveToLineKeepingGoal(target.line, target.col);
     this.viewport.scrollToColumn(
       EditorCoordinates.Class.displayColumn(
-        this.document.line(clamped),
-        landingColumn,
+        this.document.line(target.line),
+        target.col,
       ),
     );
-    this.scrollLineIntoView(clamped);
+    this.scrollLineIntoView(target.line);
   }
 
   moveHorizontal(delta: number, extend = false): void {
@@ -674,7 +785,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     let column = this.cursor.col.value + delta;
     if (column < 0) {
       if (line > 0) {
-        line -= 1;
+        line = this.previousVisibleLine(line);
         column = EditorCoordinates.Class.graphemeCount(
           this.document.line(line),
         );
@@ -683,7 +794,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       }
     } else if (column > this.currentLineLength()) {
       if (line < this.document.lineCount - 1) {
-        line += 1;
+        line = this.nextVisibleLine(line);
         column = 0;
       } else {
         column = this.currentLineLength();
@@ -691,6 +802,26 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     }
     this.placeCursor(line, column);
     this.scrollLineIntoView(line);
+  }
+
+  protected previousVisibleLine(lineIndex: number): number {
+    let candidate = Math.max(0, lineIndex - 1);
+    for (const range of this.collapsedFoldRanges) {
+      if (range.startLine < lineIndex && range.endLine >= candidate) {
+        candidate = range.startLine;
+      }
+    }
+    return candidate;
+  }
+
+  protected nextVisibleLine(lineIndex: number): number {
+    const foldedRange = this.collapsedFoldRanges.find(
+      (range) => range.startLine === lineIndex,
+    );
+    return Math.min(
+      this.document.lineCount - 1,
+      foldedRange ? foldedRange.endLine + 1 : lineIndex + 1,
+    );
   }
 
   /** Ctrl+Left/Right: jump to the previous/next word start (grapheme-safe). */
@@ -713,7 +844,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     let lineClusters = clusters();
     if (column >= lineClusters.length) {
       if (line >= this.document.lineCount - 1) return;
-      line += 1;
+      line = this.nextVisibleLine(line);
       column = 0;
       lineClusters = clusters();
     } else {
@@ -748,8 +879,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       this.cursor.col.value,
     );
     const currentPrefix = currentLineText.slice(0, currentPrefixEndUtf16Offset);
+    const previousLineIndex =
+      currentLineIndex > 0
+        ? this.previousVisibleLine(currentLineIndex)
+        : currentLineIndex;
     const previousLineText =
-      currentLineIndex > 0 ? this.document.line(currentLineIndex - 1) : '';
+      currentLineIndex > 0 ? this.document.line(previousLineIndex) : '';
     const currentLineStart =
       currentLineIndex > 0
         ? EditorCoordinates.Class.graphemeCount(previousLineText) + 1
@@ -764,7 +899,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       : TextEditing.Class.wordLeft(localText, localCursor);
 
     if (currentLineIndex > 0 && localStart < currentLineStart) {
-      return { line: currentLineIndex - 1, col: localStart };
+      return { line: previousLineIndex, col: localStart };
     }
     return { line: currentLineIndex, col: localStart - currentLineStart };
   }
@@ -818,4 +953,8 @@ export namespace Editor {
   export const $Class = $Editor;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
+}
+
+export interface EditorFoldState {
+  readonly collapsedLineStarts: Set<number>;
 }

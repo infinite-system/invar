@@ -1,4 +1,5 @@
 import { Static } from 'ivue/extras';
+import type { FoldRange } from './CodeFolding';
 import { EditorCoordinates } from './EditorCoordinates';
 import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 
@@ -18,6 +19,7 @@ import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 // last segment.
 //
 // invariant: Word wrap is a pure view mapping (editor.invariants.md)
+// invariant: One generator owns document-line-to-visual-row (editor.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Wrapped surfaces share one break generator (project.invariants.md)
 class $EditorWrap {
@@ -146,6 +148,20 @@ class $EditorWrap {
     return this.wrapLine(lineText, wrapWidth).length;
   }
 
+  protected static segmentsForLine(
+    lineText: string,
+    wrapWidth: number | null,
+  ): WrapSegment[] {
+    if (wrapWidth !== null) return this.wrapLine(lineText, wrapWidth);
+    return [
+      {
+        startGrapheme: 0,
+        endGrapheme: this.EditorCoordinates.graphemeCount(lineText),
+        startDisplayColumn: 0,
+      },
+    ];
+  }
+
   /**
    * The segment a cursor grapheme column belongs to. A column equal to a wrap boundary belongs to
    * the NEXT segment (renders at visual column 0 of the following row); end-of-line belongs to the
@@ -175,30 +191,14 @@ class $EditorWrap {
     wrapWidth: number,
     height: number,
   ): VisualRow[] {
-    const rows: VisualRow[] = [];
     const firstLine = Math.max(0, scrollTop);
-    for (
-      let lineIndex = firstLine;
-      lineIndex < document.lineCount && rows.length < height;
-      lineIndex++
-    ) {
-      const segments = this.wrapLine(document.line(lineIndex), wrapWidth);
-      for (
-        let segmentIndex = 0;
-        segmentIndex < segments.length && rows.length < height;
-        segmentIndex++
-      ) {
-        const segment = segments[segmentIndex];
-        if (!segment) break;
-        rows.push({
-          lineIndex,
-          segmentIndex,
-          segment,
-          firstOfLine: segmentIndex === 0,
-        });
-      }
-    }
-    return rows;
+    if (firstLine >= document.lineCount) return [];
+    return this.visualRowsFromOffset(
+      document,
+      this.firstVisualRowOfLine(document, firstLine, wrapWidth),
+      wrapWidth,
+      height,
+    );
   }
 
   /**
@@ -212,54 +212,48 @@ class $EditorWrap {
     position: { line: number; col: number },
     goalVisualColumn: number,
     deltaRows: number,
-    wrapWidth: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
   ): { line: number; col: number } {
-    let lineIndex = Math.max(
+    const lineIndex = Math.max(
       0,
       Math.min(position.line, document.lineCount - 1),
     );
-    let segments = this.wrapLine(document.line(lineIndex), wrapWidth);
-    let segmentIndex = this.segmentIndexForCursor(segments, position.col);
-    let remaining = deltaRows;
-    while (remaining > 0) {
-      if (segmentIndex + 1 < segments.length) {
-        segmentIndex += 1;
-      } else if (lineIndex < document.lineCount - 1) {
-        lineIndex += 1;
-        segments = this.wrapLine(document.line(lineIndex), wrapWidth);
-        segmentIndex = 0;
-      } else {
-        break;
-      }
-      remaining -= 1;
-    }
-    while (remaining < 0) {
-      if (segmentIndex > 0) {
-        segmentIndex -= 1;
-      } else if (lineIndex > 0) {
-        lineIndex -= 1;
-        segments = this.wrapLine(document.line(lineIndex), wrapWidth);
-        segmentIndex = segments.length - 1;
-      } else {
-        break;
-      }
-      remaining += 1;
-    }
-    const segment = segments[segmentIndex];
-    if (!segment) return { line: lineIndex, col: 0 };
-    const lineText = document.line(lineIndex);
+    const segments = this.segmentsForLine(document.line(lineIndex), wrapWidth);
+    const segmentIndex = this.segmentIndexForCursor(segments, position.col);
+    const currentVisualRow =
+      this.firstVisualRowOfLine(document, lineIndex, wrapWidth, foldedRanges) +
+      segmentIndex;
+    const totalRows = this.totalVisualRows(document, wrapWidth, foldedRanges);
+    const targetVisualRow = Math.max(
+      0,
+      Math.min(currentVisualRow + deltaRows, totalRows - 1),
+    );
+    const target = this.lineSegmentAtVisualRow(
+      document,
+      targetVisualRow,
+      wrapWidth,
+      foldedRanges,
+    );
+    const targetSegments = this.segmentsForLine(
+      document.line(target.lineIndex),
+      wrapWidth,
+    );
+    const segment = targetSegments[target.segmentIndex];
+    if (!segment) return { line: target.lineIndex, col: 0 };
+    const lineText = document.line(target.lineIndex);
     const landing = this.EditorCoordinates.graphemeAtDisplayColumn(
       lineText,
       segment.startDisplayColumn + Math.max(0, goalVisualColumn),
     );
     // Clamp INTO the row: on a non-last segment the boundary column belongs to the next row, so the
     // landing stays one grapheme short of it (the movement remains visually one-row-per-step).
-    const lastSegment = segmentIndex === segments.length - 1;
+    const lastSegment = target.segmentIndex === targetSegments.length - 1;
     const maxColumn = lastSegment
       ? segment.endGrapheme
       : Math.max(segment.startGrapheme, segment.endGrapheme - 1);
     return {
-      line: lineIndex,
+      line: target.lineIndex,
       col: Math.max(segment.startGrapheme, Math.min(landing, maxColumn)),
     };
   }
@@ -321,23 +315,36 @@ class $EditorWrap {
    *  reference compares + O(n) prefix additions — no grapheme work for untouched lines). */
   protected static syncWrapIndex(
     document: WrappableDocument,
-    wrapWidth: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
   ): DocumentWrapIndex {
-    const width = Math.max(1, Math.floor(wrapWidth));
+    const width =
+      wrapWidth === null ? null : Math.max(1, Math.floor(wrapWidth));
+    const foldSignature = foldedRanges
+      .map((range) => `${range.startLine}:${range.endLine}`)
+      .join(',');
     const revision = document.revision ? document.revision.value : -1;
     const lineCount = document.lineCount;
     let index = this.$wrapIndexByDocument.get(document);
 
-    if (!index || index.width !== width) {
+    if (
+      !index ||
+      index.width !== width ||
+      index.foldSignature !== foldSignature
+    ) {
       const lineTexts: string[] = new Array(lineCount);
       const rowCounts: number[] = new Array(lineCount);
+      const hiddenLines = this.hiddenLinesFor(foldedRanges);
       for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = document.line(lineIndex);
         lineTexts[lineIndex] = lineText;
-        rowCounts[lineIndex] = this.wrapLine(lineText, width).length;
+        rowCounts[lineIndex] = hiddenLines.has(lineIndex)
+          ? 0
+          : this.segmentsForLine(lineText, width).length;
       }
       index = {
         width,
+        foldSignature,
         revision,
         lineTexts,
         rowCounts,
@@ -376,22 +383,28 @@ class $EditorWrap {
 
     const lineTexts: string[] = new Array(lineCount);
     const rowCounts: number[] = new Array(lineCount);
+    const hiddenLines = this.hiddenLinesFor(foldedRanges);
     for (let lineIndex = 0; lineIndex < head; lineIndex++) {
       lineTexts[lineIndex] = previousTexts[lineIndex] as string;
-      rowCounts[lineIndex] = previousCounts[lineIndex] as number;
+      rowCounts[lineIndex] = hiddenLines.has(lineIndex)
+        ? 0
+        : (previousCounts[lineIndex] as number);
     }
     for (let lineIndex = head; lineIndex < lineCount - tail; lineIndex++) {
       const lineText = document.line(lineIndex);
       lineTexts[lineIndex] = lineText;
-      rowCounts[lineIndex] = this.wrapLine(lineText, width).length; // the DELTA — only edited lines wrap
+      rowCounts[lineIndex] = hiddenLines.has(lineIndex)
+        ? 0
+        : this.segmentsForLine(lineText, width).length;
     }
     for (let offsetFromEnd = 1; offsetFromEnd <= tail; offsetFromEnd++) {
       lineTexts[lineCount - offsetFromEnd] = previousTexts[
         previousCount - offsetFromEnd
       ] as string;
-      rowCounts[lineCount - offsetFromEnd] = previousCounts[
-        previousCount - offsetFromEnd
-      ] as number;
+      const lineIndex = lineCount - offsetFromEnd;
+      rowCounts[lineIndex] = hiddenLines.has(lineIndex)
+        ? 0
+        : (previousCounts[previousCount - offsetFromEnd] as number);
     }
 
     index.revision = revision;
@@ -409,9 +422,10 @@ class $EditorWrap {
    */
   static totalVisualRows(
     document: WrappableDocument,
-    wrapWidth: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
   ): number {
-    const index = this.syncWrapIndex(document, wrapWidth);
+    const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     return Math.max(1, index.prefix[index.prefix.length - 1] ?? 1);
   }
 
@@ -423,11 +437,34 @@ class $EditorWrap {
   static firstVisualRowOfLine(
     document: WrappableDocument,
     lineIndex: number,
-    wrapWidth: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
   ): number {
-    const index = this.syncWrapIndex(document, wrapWidth);
+    const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const clamped = Math.max(0, Math.min(lineIndex, document.lineCount));
     return index.prefix[clamped] ?? index.prefix[index.prefix.length - 1] ?? 0;
+  }
+
+  /**
+   * The visible visual row representing a document line. Visible lines map to their first segment;
+   * a line hidden by a collapsed region maps to that region's visible header. Whole-document
+   * projections such as the overview ruler use this instead of inventing a document-line ratio.
+   */
+  static visualRowOfLine(
+    document: WrappableDocument,
+    lineIndex: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
+  ): number {
+    const containingFold = foldedRanges.find(
+      (range) => range.startLine < lineIndex && range.endLine >= lineIndex,
+    );
+    return this.firstVisualRowOfLine(
+      document,
+      containingFold?.startLine ?? lineIndex,
+      wrapWidth,
+      foldedRanges,
+    );
   }
 
   /**
@@ -439,19 +476,27 @@ class $EditorWrap {
   static lineSegmentAtVisualRow(
     document: WrappableDocument,
     visualOffset: number,
-    wrapWidth: number,
+    wrapWidth: number | null,
+    foldedRanges: readonly FoldRange[] = [],
   ): { lineIndex: number; segmentIndex: number } {
-    const index = this.syncWrapIndex(document, wrapWidth);
+    const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const prefix = index.prefix;
     const total = prefix[prefix.length - 1] ?? 0;
     const lineCount = document.lineCount;
     if (lineCount === 0) return { lineIndex: 0, segmentIndex: 0 };
     if (visualOffset >= total) {
-      // Past the end: clamp to the last visual row of the last line.
-      const lastLine = lineCount - 1;
+      // Past the end: clamp to the last line that actually contributes a visual row. A collapsed
+      // fold may hide the document's physical final line.
+      let lastVisibleLine = lineCount - 1;
+      while (
+        lastVisibleLine > 0 &&
+        (index.rowCounts[lastVisibleLine] ?? 0) === 0
+      ) {
+        lastVisibleLine--;
+      }
       return {
-        lineIndex: lastLine,
-        segmentIndex: Math.max(0, (index.rowCounts[lastLine] ?? 1) - 1),
+        lineIndex: lastVisibleLine,
+        segmentIndex: Math.max(0, (index.rowCounts[lastVisibleLine] ?? 1) - 1),
       };
     }
     const target = Math.max(0, visualOffset);
@@ -474,13 +519,19 @@ class $EditorWrap {
   static visualRowsFromOffset(
     document: WrappableDocument,
     visualOffset: number,
-    wrapWidth: number,
+    wrapWidth: number | null,
     height: number,
+    foldedRanges: readonly FoldRange[] = [],
   ): VisualRow[] {
     const start = this.lineSegmentAtVisualRow(
       document,
       visualOffset,
       wrapWidth,
+      foldedRanges,
+    );
+    const hiddenLines = this.hiddenLinesFor(foldedRanges);
+    const foldedRangeByStart = new Map(
+      foldedRanges.map((range) => [range.startLine, range]),
     );
     const rows: VisualRow[] = [];
     for (
@@ -488,7 +539,11 @@ class $EditorWrap {
       lineIndex < document.lineCount && rows.length < height;
       lineIndex++
     ) {
-      const segments = this.wrapLine(document.line(lineIndex), wrapWidth);
+      if (hiddenLines.has(lineIndex)) continue;
+      const segments = this.segmentsForLine(
+        document.line(lineIndex),
+        wrapWidth,
+      );
       const firstSegment =
         lineIndex === start.lineIndex ? start.segmentIndex : 0;
       for (
@@ -503,10 +558,33 @@ class $EditorWrap {
           segmentIndex,
           segment,
           firstOfLine: segmentIndex === 0,
+          foldedRange: foldedRangeByStart.get(lineIndex),
         });
       }
     }
     return rows;
+  }
+
+  protected static hiddenLinesFor(
+    foldedRanges: readonly FoldRange[],
+  ): ReadonlySet<number> {
+    const hiddenLines = new Set<number>();
+    const orderedRanges = [...foldedRanges].sort(
+      (firstRange, secondRange) =>
+        firstRange.startLine - secondRange.startLine ||
+        secondRange.endLine - firstRange.endLine,
+    );
+    for (const range of orderedRanges) {
+      if (hiddenLines.has(range.startLine)) continue;
+      for (
+        let lineIndex = range.startLine + 1;
+        lineIndex <= range.endLine;
+        lineIndex++
+      ) {
+        hiddenLines.add(lineIndex);
+      }
+    }
+    return hiddenLines;
   }
 
   // Stateless capability class (project.conventions.md new-file rule): every operation is a pure
@@ -542,10 +620,14 @@ export interface VisualRow {
   segment: WrapSegment;
   /** True on a logical line's FIRST visual row (the only row that shows the line number). */
   firstOfLine: boolean;
+  /** Present on every visual segment of a collapsed range's visible first line. */
+  foldedRange?: FoldRange;
 }
 
 export interface DocumentWrapIndex {
-  width: number;
+  width: number | null;
+  /** Collapsed ranges contributing zero-row hidden lines to this mapping. */
+  foldSignature: string;
   /** The document revision this index was synced at (-1 = unknown, resync on every query). */
   revision: number;
   /** The exact line-string references seen at last sync (identity = unchanged, never re-wrapped). */

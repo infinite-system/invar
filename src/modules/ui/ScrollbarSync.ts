@@ -242,10 +242,29 @@ class $ScrollbarSync {
       return;
     }
 
+    const document = handle.document;
     const snapshot = workspace.gutterDecorations.snapshotFor(handle);
+    const editor = workspace.editor;
+    const wrapWidth = editor.visualWrapWidth();
+    const foldedRanges = editor.collapsedFoldRanges;
+    const visualRowCount = editor.totalVisualRows();
     const marks = this.editorOverviewRuler.project(
       snapshot,
-      handle.document.lineCount,
+      {
+        key: [
+          document.revision.value,
+          wrapWidth ?? 'none',
+          editor.foldRevision.value,
+        ].join(':'),
+        rowCount: visualRowCount,
+        rowOfLine: (lineIndex) =>
+          EditorWrap.Class.visualRowOfLine(
+            document,
+            lineIndex,
+            wrapWidth,
+            foldedRanges,
+          ),
+      },
       trackLength,
     );
     this.editorOverviewMarks = marks;
@@ -309,14 +328,7 @@ class $ScrollbarSync {
       height: editorHeight,
     };
     this.applyBar(this.editorVerticalBar, 'vertical', editorRegion, {
-      scrollSize: editor.hasDocument.value
-        ? editor.wordWrap.value
-          ? EditorWrap.Class.totalVisualRows(
-              editor.document,
-              editor.wrapWidth(),
-            )
-          : editor.document.lineCount
-        : 0,
+      scrollSize: editor.hasDocument.value ? editor.totalVisualRows() : 0,
       viewportSize: editorHeight,
       scrollPosition: editor.viewport.scrollTop.value,
     });

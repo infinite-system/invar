@@ -651,6 +651,19 @@ class $KeybindingDefaults {
         action: 'editor.toggleWordWrap',
         context: 'editor',
       },
+      // Ctrl+Shift+[/] are deliverable through both input parsers, but already cycle WORKSPACES.
+      // Folding keeps the bracket mnemonic without colliding: Ctrl+K then [ folds; Ctrl+L then ]
+      // unfolds. Both are editor-context step-list data, so a focused child keeps every byte.
+      {
+        steps: [{ key: 'k', ctrl: true }, { key: '[' }],
+        action: 'editor.fold',
+        context: 'editor',
+      },
+      {
+        steps: [{ key: 'l', ctrl: true }, { key: ']' }],
+        action: 'editor.unfold',
+        context: 'editor',
+      },
       {
         chord: { key: 'z', ctrl: true, shift: false },
         action: 'editor.undo',

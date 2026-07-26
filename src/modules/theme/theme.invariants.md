@@ -100,9 +100,9 @@ active theme (a `Palette` field or a semantic `GlyphSlot` / `SymbolClass` / `Act
 the drawing site — the `theme` module is the single source of appearance.
 
 **Scope:** All styled output across ui, editor, syntax, diagnostics, and git decorations, including
-activity-bar and panel-heading control glyphs and the file-type marks the file tree and the
-breadcrumb popup share. The sole home for color and glyph literals is `src/modules/theme`; consumers
-pull tokens or name semantic slots, they do not mint appearance.
+activity-bar, panel-heading, and editor-fold control glyphs and the file-type marks the file tree and
+the breadcrumb popup share. The sole home for color and glyph literals is `src/modules/theme`;
+consumers pull tokens or name semantic slots, they do not mint appearance.
 
 **Mechanism:** `Theme` exposes `palette`, `symbolMarks`, `actionIcons`, `checkboxIcons`,
 `symbolMark()`, and `icon()` as plain getters that re-derive from `PALETTES` and the mark table on
@@ -238,17 +238,18 @@ a color emitted at `16` depth that is outside the ANSI-16 set; a truecolor hex s
 
 ### The glyph ladder degrades icons single-cell and legible
 
-**Invariant:** If a symbol mark, action button, or checkbox glyph is resolved, then it is selected from
-the row for the active glyph level (`nerd` → `unicode` → `ascii`); the `ascii` rung is always a
-printable single-cell marker, and every action/checkbox glyph and every CODE-SYMBOL mark at every level
-is exactly one cell — the git-panel hit columns and the completion popup's mark column both depend on
-it — and an unknown file extension or completion kind resolves to a printable class, never to empty or
-undefined.
+**Invariant:** If a symbol mark, action button, checkbox glyph, or fold control is resolved, then it
+is selected from the row for the active glyph level (`nerd` → `unicode` → `ascii`); the `ascii` rung
+is always a printable single-cell marker, and every action/checkbox glyph, fold control, and every
+CODE-SYMBOL mark at every level is exactly one cell — the git-panel and fold-control hit columns and
+the completion popup's mark column depend on it — and an unknown file extension or completion kind
+resolves to a printable class, never to empty or undefined.
 
 **Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`, `symbolClassForFileEntry`, `iconFor`,
 `actionIconsFor`, `checkboxIconsFor`, `interfaceGlyphVocabularyFor`, and `glyphFor`, plus the
 `Theme` getters that call them. Covers file-tree, breadcrumb-popup, and completion-popup marks, git
-changes-row action buttons, staging checkboxes, activity-bar items, and panel-heading controls.
+changes-row action buttons, staging checkboxes, activity-bar items, panel-heading controls, and
+editor fold controls.
 
 **Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed by `GlyphLevel`, and
 `$symbolMarks` and `$interfaceGlyphVocabularies` each map EVERY key at each level, so selection is a
@@ -258,19 +259,22 @@ panel-control, directory, file, and code-symbol marks are authored as one cell e
 fall back (`?? 'file'`, `?? 'unclassified'`) so a resolve always returns a printable string. The unicode
 FILE-TYPE marks deliberately keep wide pictographs (`🔒`, `🖼`), so a consumer that puts marks in a
 column sizes that column to the widest mark in its item set instead of assuming one cell; the
-code-symbol marks are one cell precisely so a completion list never widens that column.
+code-symbol marks are one cell precisely so a completion list never widens that column. The
+`foldOpen` and `foldClosed` interface slots are also one cell at every tier because the number-gutter
+edge is one exact mouse hit column.
 Which mark a slot may take is decided by `$markOwnerships` — the marks that can meet, each paired with
 the surface that means something by it, derived from the vocabularies that paint them — under the rule
 that a mark may be shared only by owners meaning the SAME thing.
 
-**Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button
-and checkbox columns never shift width between capability levels; a completion mark column of exactly
-one cell at every tier.
+**Generates:** Legible output on a no-nerd-font terminal; stable click hit-zones because button,
+checkbox, and fold-control columns never shift width between capability levels; a completion mark
+column of exactly one cell at every tier.
 
 **Evidence:** `src/modules/theme/ThemeIcons.ts` (`$symbolMarks`, `$actionIcons`, `$checkboxIcons`,
 `$interfaceGlyphVocabularies`, `symbolMarkFor`, `glyphFor`, `iconFor`); `icon fallback ladder`,
 `unicode icon set resolves known extension and falls back for unknown`, `checkbox icons ladder`,
 `git action icons ladder`, `semantic interface glyph slots resolve through every capability tier`,
+`fold controls agree on one cell across app and terminal width authorities`,
 `every code-symbol mark is one display cell at every tier`, `the code-symbol families stay pairwise
 distinct including at the ascii rung`, `every shared mark is declared, and every declaration is still
 real`, `the mark-sharing detector reports a collision when one exists` (the synthetic-list positive
@@ -280,7 +284,8 @@ authority (`EditorCoordinates.lineWidth`, OpenTUI's table) against an INDEPENDEN
 behind `TerminalEmulator`), and carries a wide-glyph positive control so it can fail toward two.
 
 **Impossible if true:** An `ascii`-level render emitting a nerd or multi-cell glyph; an
-action/checkbox glyph or a code-symbol mark wider than one cell at any level; a `directoryOpen`,
+action/checkbox glyph, fold control, or code-symbol mark wider than one cell at any level; a
+`directoryOpen`,
 `directoryClosed`, or `file` mark wider than one cell; `iconFor` or `symbolMarkFor` returning empty or
 undefined for an unknown extension or kind; an activity or panel control choosing its glyph literal in
 behavior code; two activity or panel slots resolving to the same glyph at one tier; a mark carried by two
