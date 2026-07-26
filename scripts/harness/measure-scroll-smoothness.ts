@@ -34,7 +34,19 @@ const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
 );
 if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
-const FIXTURE_LINE_COUNT = 4000;
+const FIXTURE_LINE_COUNTS = (
+  process.env.SMOOTHNESS_LINE_COUNTS ?? '2000,26635,100000'
+)
+  .split(',')
+  .map((lineCountText) => Number(lineCountText.trim()))
+  .filter((lineCount) => Number.isInteger(lineCount) && lineCount >= 100);
+const SURFACES = (process.env.SMOOTHNESS_SURFACES ?? 'editor,diff')
+  .split(',')
+  .map((surfaceText) => surfaceText.trim())
+  .filter(
+    (surfaceText): surfaceText is ScrollSurface =>
+      surfaceText === 'editor' || surfaceText === 'diff',
+  );
 // A SATURATING burst: twelve notches is more than the ten a from-rest gain ramp needs to reach the
 // velocity ceiling, so the glide spends most of its life at the top speed the app declares and the
 // per-frame step size is then a direct reading of the frame cadence. Overridable because a shorter
@@ -55,6 +67,8 @@ const EDITOR_WHEEL_ROW = 12;
 // dropped the moment every animation settles. The window only has to exceed one frame interval at
 // `targetFps` (33ms) by enough margin that a loaded machine cannot fake quiescence.
 const FRAME_ARRIVAL_TIMEOUT_MILLISECONDS = 700;
+
+type ScrollSurface = 'editor' | 'diff';
 
 interface GestureFrameSample {
   readonly completedFrameCount: number;
@@ -81,6 +95,12 @@ interface GestureMeasurement {
   // "fewer, larger steps" outside the harness, where the emulator is not free.
   readonly meanFrameByteCount: number;
   readonly maximumFrameByteCount: number;
+}
+
+interface SurfaceMeasurement {
+  readonly surface: ScrollSurface;
+  readonly fixtureLineCount: number;
+  readonly gestures: readonly GestureMeasurement[];
 }
 
 async function awaitStatusCondition(
@@ -115,7 +135,7 @@ async function awaitStatusCondition(
 function visibleTopLineIndex(snapshot: HarnessSnapshot.Model): number | null {
   let lowestVisibleIndex: number | null = null;
   for (let row = 0; row < snapshot.rows; row++) {
-    const match = /line (\d{4}) content/.exec(snapshot.rowText(row));
+    const match = /line (\d{6}) content/.exec(snapshot.rowText(row));
     if (!match) continue;
     const lineIndex = Number(match[1]);
     if (lowestVisibleIndex === null || lineIndex < lowestVisibleIndex) {
@@ -302,110 +322,264 @@ async function measureOneGesture(
   return summarize(samples, inputWrittenTimestampMilliseconds);
 }
 
-const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
-const homeDirectory = mkdtempSync(
-  join(tmpdir(), 'tui-scroll-smoothness-home-'),
-);
-const statusPath = join(homeDirectory, 'status.json');
-await Bun.write(
-  join(fixtureRoot, 'glide.txt'),
-  Array.from(
-    { length: FIXTURE_LINE_COUNT },
-    (_unused, lineIndex) =>
-      `line ${String(lineIndex).padStart(4, '0')} content\n`,
-  ).join(''),
-);
+function runGit(repositoryRoot: string, commandArguments: string[]): void {
+  const result = Bun.spawnSync(['git', ...commandArguments], {
+    cwd: repositoryRoot,
+    stdout: 'ignore',
+    stderr: 'pipe',
+    env: Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([environmentVariableName, environmentVariableValue]) =>
+          environmentVariableValue !== undefined &&
+          !environmentVariableName.startsWith('GIT_'),
+      ),
+    ) as Record<string, string>,
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `git ${commandArguments.join(' ')} failed: ` +
+        new TextDecoder().decode(result.stderr),
+    );
+  }
+}
 
-const driver = new PtyTestDriver.Class({
-  workspaceRoot: fixtureRoot,
-  columns: TERMINAL_COLUMNS,
-  rows: TERMINAL_ROWS,
-  homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath },
-});
+function fixtureLines(fixtureLineCount: number): string[] {
+  // Short plain-text rows keep terminal-byte cost below the 30 FPS budget. Every third indentation
+  // transition still produces a fold range, so editor frames exercise document-scale fold metadata.
+  return Array.from({ length: fixtureLineCount }, (_unusedValue, lineIndex) => {
+    const lineMarker = `line ${String(lineIndex).padStart(6, '0')} content`;
+    return lineIndex % 3 === 1 ? ` ${lineMarker}` : lineMarker;
+  });
+}
 
-try {
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('glide.txt') !== null,
-    20_000,
-  );
-  driver.sendKeysWithoutFrameExpectation('Enter');
+async function buildFixture(
+  fixtureRoot: string,
+  fixtureLineCount: number,
+  surface: ScrollSurface,
+): Promise<string> {
+  const fixtureFileName = `glide-${String(fixtureLineCount).padStart(6, '0')}.txt`;
+  const fixturePath = join(fixtureRoot, fixtureFileName);
+  const lines = fixtureLines(fixtureLineCount);
+  await Bun.write(fixturePath, `${lines.join('\n')}\n`);
+  if (surface === 'editor') return fixtureFileName;
+
+  runGit(fixtureRoot, ['init', '-q']);
+  runGit(fixtureRoot, ['config', 'user.name', 'scroll-smoothness']);
+  runGit(fixtureRoot, [
+    'config',
+    'user.email',
+    'scroll-smoothness@example.test',
+  ]);
+  runGit(fixtureRoot, ['add', fixtureFileName]);
+  runGit(fixtureRoot, ['commit', '-qm', 'base']);
+  // Regularly separated edits make the diff carry up to 1,000 change blocks at 100k lines. The
+  // comparison still opens quickly, while per-frame ruler or active-block scans remain observable.
+  for (
+    let changedLineIndex = 5;
+    changedLineIndex < fixtureLineCount;
+    changedLineIndex += 100
+  ) {
+    lines[changedLineIndex] = `${lines[changedLineIndex]} changed`;
+  }
+  await Bun.write(fixturePath, `${lines.join('\n')}\n`);
+  return fixtureFileName;
+}
+
+async function openSurface(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  fixtureFileName: string,
+  surface: ScrollSurface,
+): Promise<void> {
   await driver.awaitGridCondition(
-    'the glide fixture renders its first line in the editor',
-    (snapshot) => snapshot.findText('line 0000 content') !== null,
-    20_000,
+    `${fixtureFileName} is visible before opening the ${surface} surface`,
+    (snapshot) => snapshot.findText(fixtureFileName) !== null,
+    60_000,
   );
-  // Focus the editor pane: a wheel over an unfocused editor can be swallowed before the glide
-  // starts, which would measure the absence of a gesture rather than its smoothness.
-  driver.sendMouseWithoutFrameExpectation({
-    kind: 'press',
-    column: EDITOR_WHEEL_COLUMN,
-    row: EDITOR_WHEEL_ROW,
-    button: 'left',
-  });
-  driver.sendMouseWithoutFrameExpectation({
-    kind: 'release',
-    column: EDITOR_WHEEL_COLUMN,
-    row: EDITOR_WHEEL_ROW,
-    button: 'left',
-  });
-  // The precondition the measurement actually needs is not "a focus field says editor" — it is that
-  // the editor CONSUMES wheel input. Prove exactly that by moving the viewport with one notch, which
-  // is a condition every build publishes, then return to the top for the first trial.
-  driver.sendMouseWithoutFrameExpectation({
-    kind: 'wheel',
-    column: EDITOR_WHEEL_COLUMN,
-    row: EDITOR_WHEEL_ROW,
-    direction: 'down',
-  });
+  if (surface === 'editor') {
+    driver.sendKeysWithoutFrameExpectation('Enter');
+    await driver.awaitGridCondition(
+      'the glide fixture renders its first line in the editor',
+      (snapshot) => snapshot.findText('line 000000 content') !== null,
+      60_000,
+    );
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: EDITOR_WHEEL_COLUMN,
+      row: EDITOR_WHEEL_ROW,
+      button: 'left',
+    });
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: EDITOR_WHEEL_COLUMN,
+      row: EDITOR_WHEEL_ROW,
+      button: 'left',
+    });
+    return;
+  }
+
+  driver.sendKeysWithoutFrameExpectation('Control+g');
   await awaitStatusCondition(
     statusPath,
-    'the editor to consume wheel input before the glide is measured',
-    (status) => Number(status.editorScrollTop) > 0,
+    'the Git pane to own focus before opening the diff',
+    (status) => status.focus === 'git',
+    60_000,
   );
+  driver.sendKeysWithoutFrameExpectation('o');
+  await awaitStatusCondition(
+    statusPath,
+    'the side-by-side diff to become active',
+    (status) => status.showingDiff === true,
+    60_000,
+  );
+  await driver.awaitGridCondition(
+    'the side-by-side diff renders both versions of the first fixture line',
+    (snapshot) =>
+      snapshot.findText('Base (HEAD)') !== null &&
+      snapshot.findText('Current (working)') !== null &&
+      snapshot.findText('line 000000 content') !== null,
+    60_000,
+  );
+}
 
-  const measurements: GestureMeasurement[] = [];
-  for (
-    let gestureIndex = 0;
-    gestureIndex < GESTURE_REPEAT_COUNT;
-    gestureIndex++
-  ) {
-    // Each gesture starts from a KNOWN resting position so trials are comparable: return to the top,
-    // observe that the viewport IS at the top, and drain to quiescence so the next fling starts from
-    // rest rather than inheriting the previous trial's velocity.
+function scrollStatusField(surface: ScrollSurface): string {
+  return surface === 'editor' ? 'editorScrollTop' : 'diffScrollTop';
+}
+
+function wheelInput(direction: 'up' | 'down', notchCount: number): string {
+  return Array.from({ length: notchCount }, () =>
+    HarnessInput.Class.mouse({
+      kind: 'wheel',
+      column: EDITOR_WHEEL_COLUMN,
+      row: EDITOR_WHEEL_ROW,
+      direction,
+    }),
+  ).join('');
+}
+
+async function driveSurfaceToTop(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  surface: ScrollSurface,
+): Promise<void> {
+  const statusField = scrollStatusField(surface);
+  if (surface === 'editor') {
     driver.sendKeysWithoutFrameExpectation('Control+Home');
     await awaitStatusCondition(
       statusPath,
-      'the viewport to be back at the top before the next gesture',
-      (status) => Number(status.editorScrollTop) === 0,
+      'the editor viewport to return to the top before the next gesture',
+      (status) => Number(status[statusField]) === 0,
     );
-    await drainToQuiescence(driver);
-    measurements.push(await measureOneGesture(driver));
+    return;
   }
-
-  const report = {
-    commit: (await Bun.$`git rev-parse --short HEAD`.quiet().text()).trim(),
-    wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
-    gestures: measurements,
-  };
-  console.log(JSON.stringify(report, null, 2));
-  for (const [gestureIndex, measurement] of measurements.entries()) {
-    console.error(
-      `gesture ${gestureIndex + 1}: frames=${measurement.observedFrameCount} ` +
-        `firstFrame=${measurement.inputToFirstFrameMilliseconds.toFixed(3)}ms ` +
-        `moving=${measurement.movingFrameCount} ` +
-        `distance=${measurement.totalDistanceRows} ` +
-        `maxDelta=${measurement.maximumFrameDeltaRows} ` +
-        `meanDelta=${measurement.meanMovingFrameDeltaRows.toFixed(2)} ` +
-        `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
-        `fps=${measurement.framesPerSecond.toFixed(1)} ` +
-        `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
-        `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
-        `maxBytes=${measurement.maximumFrameByteCount}`,
-    );
+  for (let driveAttempt = 1; driveAttempt <= 20; driveAttempt++) {
+    driver.sendRawInputWithoutFrameExpectation(wheelInput('up', 12));
+    try {
+      await awaitStatusCondition(
+        statusPath,
+        'the diff viewport to return to the top before the next gesture',
+        (status) => Number(status[statusField]) === 0,
+        1_000,
+      );
+      return;
+    } catch (error) {
+      if (driveAttempt === 20) throw error;
+    }
   }
-} finally {
-  await driver.dispose();
-  rmSync(fixtureRoot, { recursive: true, force: true });
-  rmSync(homeDirectory, { recursive: true, force: true });
 }
+
+async function measureSurface(
+  surface: ScrollSurface,
+  fixtureLineCount: number,
+): Promise<SurfaceMeasurement> {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-scroll-smoothness-home-'),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  const fixtureFileName = await buildFixture(
+    fixtureRoot,
+    fixtureLineCount,
+    surface,
+  );
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: TERMINAL_COLUMNS,
+    rows: TERMINAL_ROWS,
+    homeDirectory,
+    environment: { TUI_STATUS_PATH: statusPath },
+  });
+  try {
+    await openSurface(driver, statusPath, fixtureFileName, surface);
+    const statusField = scrollStatusField(surface);
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: EDITOR_WHEEL_COLUMN,
+      row: EDITOR_WHEEL_ROW,
+      direction: 'down',
+    });
+    await awaitStatusCondition(
+      statusPath,
+      `the ${surface} surface to consume wheel input before measurement`,
+      (status) => Number(status[statusField]) > 0,
+      60_000,
+    );
+
+    const gestures: GestureMeasurement[] = [];
+    for (
+      let gestureIndex = 0;
+      gestureIndex < GESTURE_REPEAT_COUNT;
+      gestureIndex++
+    ) {
+      await driveSurfaceToTop(driver, statusPath, surface);
+      await drainToQuiescence(driver);
+      gestures.push(await measureOneGesture(driver));
+    }
+    return { surface, fixtureLineCount, gestures };
+  } finally {
+    await driver.dispose();
+    rmSync(fixtureRoot, { recursive: true, force: true });
+    rmSync(homeDirectory, { recursive: true, force: true });
+  }
+}
+
+if (FIXTURE_LINE_COUNTS.length === 0) {
+  throw new Error('SMOOTHNESS_LINE_COUNTS must name at least one line count');
+}
+if (SURFACES.length === 0) {
+  throw new Error('SMOOTHNESS_SURFACES must name editor, diff, or both');
+}
+
+const surfaceMeasurements: SurfaceMeasurement[] = [];
+for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
+  for (const surface of SURFACES) {
+    const surfaceMeasurement = await measureSurface(surface, fixtureLineCount);
+    surfaceMeasurements.push(surfaceMeasurement);
+    for (const [
+      gestureIndex,
+      measurement,
+    ] of surfaceMeasurement.gestures.entries()) {
+      console.error(
+        `${surface} ${fixtureLineCount} lines gesture ${gestureIndex + 1}: ` +
+          `frames=${measurement.observedFrameCount} ` +
+          `firstFrame=${measurement.inputToFirstFrameMilliseconds.toFixed(3)}ms ` +
+          `moving=${measurement.movingFrameCount} ` +
+          `distance=${measurement.totalDistanceRows} ` +
+          `maxDelta=${measurement.maximumFrameDeltaRows} ` +
+          `meanDelta=${measurement.meanMovingFrameDeltaRows.toFixed(2)} ` +
+          `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
+          `fps=${measurement.framesPerSecond.toFixed(1)} ` +
+          `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
+          `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
+          `maxBytes=${measurement.maximumFrameByteCount}`,
+      );
+    }
+  }
+}
+
+const report = {
+  commit: (await Bun.$`git rev-parse --short HEAD`.quiet().text()).trim(),
+  wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
+  cases: surfaceMeasurements,
+};
+console.log(JSON.stringify(report, null, 2));

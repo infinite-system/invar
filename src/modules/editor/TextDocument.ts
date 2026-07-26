@@ -137,6 +137,14 @@ class $TextDocument {
     return this._lines.join(this._eol);
   }
 
+  /** Serialized UTF-16 length without joining the document. */
+  get contentLength(): number {
+    return (
+      this.contentLengthValue +
+      Math.max(0, this._lines.length - 1) * this._eol.length
+    );
+  }
+
   get eol(): '\n' | '\r\n' {
     return this._eol;
   }

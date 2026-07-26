@@ -281,8 +281,11 @@ symbol outline, markdown tokens — every high-cardinality dataset.
 **Mechanism:** The ivue flyweight pattern (`../ivue` flyweight-grid): columnar ground truth +
 disposable per-render facades + a two-tier sparse revision overlay (fine per-item, coarse
 per-block refs) with explicit eviction; a single frame effect pulls only the visible window
-through tracked accessors, subscribing to exactly the version refs it touches. Measured
-4.7 bytes/cell at 20M cells, +0.3 MB after 30 viewports.
+through tracked accessors, subscribing to exactly the version refs it touches. Full-document
+aggregates that a frame consumes are revision-keyed snapshots or incrementally maintained scalars:
+fold ranges have line and collapsed-range indexes, serialized document length is a running count,
+and diff overview projection is cached by immutable alignment plus track height. Measured 4.7
+bytes/cell at 20M cells, +0.3 MB after 30 viewports.
 
 **Generates:** The flyweight architecture; viewport rendering; packed highlight spans and
 `ScreenBuffer`; hot/warm/cold/disposed tiers; lazy LSP; `evict*` paths.
@@ -300,14 +303,16 @@ cost, which the gate step watches.
 **Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold
 workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size.
 
-**Verification:** A benchmark opening a 100k-line file / 20M-cell grid asserting bytes/visible
-scale and observed-effect count O(viewport); idle CPU ~0 after activity. Continuous (time axis):
-the per-gate byte-flush latency step (campaign wave 1) — a spike names the commit that broke the
-bound.
+**Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` generates and drives 2k,
+26,635, and 100k-line editor and diff fixtures; the behavioral contract requires both 100k
+surfaces to sustain at least 28 FPS. Unit cost ratchets in `CodeFolding.test.ts`, `Editor.test.ts`,
+and `DiffView.test.ts` prove unchanged-frame lookups do not rescan their document-scale inputs.
+Idle CPU remains ~0 after activity. Continuous (time axis): the per-gate byte-flush latency step
+(campaign wave 1) — a spike names the commit that broke the bound.
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-26
 
 ### Held key movement accelerates within a ceiling
 

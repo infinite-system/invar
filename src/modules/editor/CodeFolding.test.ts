@@ -62,6 +62,31 @@ describe('CodeFolding', () => {
     CodeFolding.Class.ranges(document, 'typescript');
     expect(lineReads).toBeGreaterThan(readsAfterFirstComputation);
   });
+
+  test('indexes fold lookup by line without rescanning an unchanged document', () => {
+    const lines = ['heading', '  first', '  second', 'tail'];
+    const revision = { value: 0 };
+    let lineReads = 0;
+    const document = {
+      lineCount: lines.length,
+      revision,
+      line(index: number): string {
+        lineReads++;
+        return lines[index] ?? '';
+      },
+    };
+
+    expect(CodeFolding.Class.rangeAtLine(document, 'plain', 0)).toEqual({
+      startLine: 0,
+      endLine: 2,
+      kind: 'indentation',
+    });
+    const readsAfterDiscovery = lineReads;
+    for (let readNumber = 0; readNumber < 10_000; readNumber++) {
+      CodeFolding.Class.rangeAtLine(document, 'plain', readNumber % 4);
+    }
+    expect(lineReads).toBe(readsAfterDiscovery);
+  });
 });
 
 function documentFrom(lines: readonly string[]) {

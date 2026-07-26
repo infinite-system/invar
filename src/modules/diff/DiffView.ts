@@ -58,6 +58,21 @@ import {
 // invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
 // invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
 class $DiffView {
+  protected static get $overviewKindsByAlignment(): WeakMap<
+    DiffAlignmentResult,
+    Map<number, readonly (AlignedRowKind | null)[]>
+  > {
+    const overviewKindsByAlignment = new WeakMap<
+      DiffAlignmentResult,
+      Map<number, readonly (AlignedRowKind | null)[]>
+    >();
+    Object.defineProperty(this, '$overviewKindsByAlignment', {
+      configurable: true,
+      value: overviewKindsByAlignment,
+    });
+    return overviewKindsByAlignment;
+  }
+
   protected get DiffAlignment() {
     return DiffAlignment.Class;
   }
@@ -174,25 +189,46 @@ class $DiffView {
     const normalizedTrackHeight = Math.max(0, Math.floor(trackHeight));
     const totalAlignedRows = alignment.alignedRows.length;
     if (normalizedTrackHeight === 0 || totalAlignedRows === 0) return [];
-    return Array.from(
+    let overviewKindsByHeight = this.$overviewKindsByAlignment.get(alignment);
+    if (!overviewKindsByHeight) {
+      overviewKindsByHeight = new Map();
+      this.$overviewKindsByAlignment.set(alignment, overviewKindsByHeight);
+    }
+    const cachedOverviewKinds = overviewKindsByHeight.get(
+      normalizedTrackHeight,
+    );
+    if (cachedOverviewKinds) return [...cachedOverviewKinds];
+
+    let changeBlockIndex = 0;
+    const overviewKinds = Array.from(
       { length: normalizedTrackHeight },
-      (_unused, trackRowIndex) => {
+      (_unusedValue, trackRowIndex) => {
         const bandStartAlignedRow =
           (trackRowIndex / normalizedTrackHeight) * totalAlignedRows;
         const bandEndAlignedRow =
           ((trackRowIndex + 1) / normalizedTrackHeight) * totalAlignedRows;
-        const overlappingChangeBlock = alignment.changeBlocks.find(
-          (changeBlock) =>
-            changeBlock.startAlignedRowIndex < bandEndAlignedRow &&
-            changeBlock.endAlignedRowIndexExclusive > bandStartAlignedRow,
-        );
-        if (!overlappingChangeBlock) return null;
+        while (
+          changeBlockIndex < alignment.changeBlocks.length &&
+          (alignment.changeBlocks[changeBlockIndex]
+            ?.endAlignedRowIndexExclusive ?? 0) <= bandStartAlignedRow
+        ) {
+          changeBlockIndex++;
+        }
+        const overlappingChangeBlock = alignment.changeBlocks[changeBlockIndex];
+        if (
+          !overlappingChangeBlock ||
+          overlappingChangeBlock.startAlignedRowIndex >= bandEndAlignedRow
+        ) {
+          return null;
+        }
         return (
           alignment.alignedRows[overlappingChangeBlock.startAlignedRowIndex]
             ?.kind ?? null
         );
       },
     );
+    overviewKindsByHeight.set(normalizedTrackHeight, overviewKinds);
+    return [...overviewKinds];
   }
 
   readonly alignment: DiffAlignmentResult;
@@ -1551,30 +1587,42 @@ class $DiffView {
       return;
     }
     const alignedRowIndex = this.alignedRowScrollOffset.value;
-    const containingChangeBlockNumber =
-      this.changeBlockNumberAt(alignedRowIndex);
-    if (containingChangeBlockNumber !== null) {
-      this.activeChangeBlockNumber.value = containingChangeBlockNumber;
-      return;
-    }
-    const followingChangeBlockIndex = this.alignment.changeBlocks.findIndex(
-      (changeBlock) => changeBlock.startAlignedRowIndex > alignedRowIndex,
-    );
+    const followingChangeBlockIndex =
+      this.changeBlockIndexAtOrAfter(alignedRowIndex);
     this.activeChangeBlockNumber.value =
-      followingChangeBlockIndex >= 0
+      followingChangeBlockIndex < this.alignment.changeBlocks.length
         ? followingChangeBlockIndex + 1
         : this.alignment.changeBlocks.length;
   }
 
   changeBlockNumberAt(alignedRowIndex: number): number | null {
-    const containingChangeBlockIndex = this.alignment.changeBlocks.findIndex(
-      (changeBlock) =>
-        alignedRowIndex >= changeBlock.startAlignedRowIndex &&
-        alignedRowIndex < changeBlock.endAlignedRowIndexExclusive,
-    );
-    return containingChangeBlockIndex < 0
-      ? null
-      : containingChangeBlockIndex + 1;
+    const candidateChangeBlockIndex =
+      this.changeBlockIndexAtOrAfter(alignedRowIndex);
+    const candidateChangeBlock =
+      this.alignment.changeBlocks[candidateChangeBlockIndex];
+    return candidateChangeBlock &&
+      alignedRowIndex >= candidateChangeBlock.startAlignedRowIndex &&
+      alignedRowIndex < candidateChangeBlock.endAlignedRowIndexExclusive
+      ? candidateChangeBlockIndex + 1
+      : null;
+  }
+
+  protected changeBlockIndexAtOrAfter(alignedRowIndex: number): number {
+    let lowerBoundIndex = 0;
+    let upperBoundIndex = this.alignment.changeBlocks.length;
+    while (lowerBoundIndex < upperBoundIndex) {
+      const middleIndex = Math.floor((lowerBoundIndex + upperBoundIndex) / 2);
+      const middleChangeBlock = this.alignment.changeBlocks[middleIndex];
+      if (
+        middleChangeBlock &&
+        middleChangeBlock.endAlignedRowIndexExclusive <= alignedRowIndex
+      ) {
+        lowerBoundIndex = middleIndex + 1;
+      } else {
+        upperBoundIndex = middleIndex;
+      }
+    }
+    return lowerBoundIndex;
   }
 
   dispose(): void {

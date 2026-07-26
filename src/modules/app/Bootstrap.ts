@@ -1057,7 +1057,10 @@ class $Bootstrap {
         animationFrameCadenceTimer = null;
         nextAnimationFrameDeadlineMilliseconds += frameIntervalMilliseconds;
         const animating = advanceAnimationFrame();
-        renderer.requestRender();
+        // Animation steps mutate reactive projection inputs. Let the one coarse paint effect run
+        // before requesting the synchronized frame; otherwise the final settling tick can serialize
+        // the previous projection and then stop the cadence with no post-effect frame remaining.
+        queueMicrotask(() => renderer.requestRender());
         if (animating) scheduleAnimationFrame();
       }, delayMilliseconds);
     };

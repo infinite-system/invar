@@ -1063,7 +1063,8 @@ visibly choppy and its effective velocity is lower.
 horizontal regimes, the file tree, the agent transcript, each git region, terminal scrollback, and
 any future scroll animation on the same offsets. It governs the CADENCE of the write; *One writer per
 scroll regime per frame* governs who writes and *The wheel gesture resolves through one
-settings-sourced step* governs how the gesture is measured first.
+settings-sourced step* governs how the gesture is measured first. The sustained-fast floor applies
+at document scale: both editor and diff must hold it at 100k lines, not merely on a small fixture.
 
 **Mechanism:** three properties together bound the step size. `Momentum.stepMomentum` carries the
 fractional row `residual` inside the momentum value between frames, so a whole-row write never
@@ -1086,9 +1087,11 @@ count, the per-frame delta distribution, the peak velocity and the distance. Dri
 six commits spanning 24 hours of history (`40d244b~1` through `e6450c6`), a 12-notch fling was carried
 by 17 to 19 moving frames with a largest single-frame step of 7 rows at every one of them. The
 `glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, moving-frame
-floor, travel floor, 28 FPS sustained-fast cadence, and follow-on travel parity. After replacing the
-recursive live-loop delay with the absolute-deadline cadence on 2026-07-26, the standard gesture ran
-at 29.9 to 30.1 sustained-fast FPS with 3,107 mean bytes per frame.
+floor, travel floor, 28 FPS sustained-fast cadence, follow-on travel parity, and the same 28 FPS floor
+for both editor and diff on runtime-generated 100k-line fixtures. After replacing the recursive
+live-loop delay with the absolute-deadline cadence on 2026-07-26, the standard gesture ran at 29.9
+to 30.1 sustained-fast FPS; after removing document-scale frame work, a six-case 2k/26,635/100k
+editor+diff matrix ran every sustained-fast segment at 29.8 FPS or faster.
 
 **Impossible if true:** a fling that covers its distance in a handful of large jumps; a renderer that
 writes a quantized copy of the momentum integrator's position back into the viewport each frame (that

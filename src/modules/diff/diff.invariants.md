@@ -180,8 +180,12 @@ marks every block's proportional position on the vertical scroll axis without re
 mounted by `RootView.syncDiffView`.
 
 **Mechanism:** `DiffView.overviewKinds` projects the existing `DiffAlignmentResult.changeBlocks`
-intervals onto the vertical scrollbar's track rows. It reads the first aligned row kind in each
-overlapping block and uses the same `Palette.added`, `modified`, and `deleted` colors as the gutters.
+intervals onto the vertical scrollbar's track rows in one monotonic pass, then caches that projection
+by the immutable alignment and track height. Every unchanged scroll frame reads the cached
+viewport-sized result. Active-change tracking independently locates its block with a binary search,
+so neither ruler nor toolbar scans all change blocks while gliding. The ruler reads the first aligned
+row kind in each overlapping block and uses the same `Palette.added`, `modified`, and `deleted`
+colors as the gutters.
 
 **Generates:** a one-cell overview ruler beside the scrollbar; visible top-to-bottom change
 distribution; no second diff or scroll authority.
@@ -189,8 +193,9 @@ distribution; no second diff or scroll authority.
 **Rejected alternatives:** Recomputing line differences for the ruler — `DiffAlignment.changeBlocks`
 already is the single change-region authority.
 
-**Evidence:** `src/modules/diff/DiffView.test.ts`; `scripts/smoke-diff-overview.sh`; live mount
-`RootView.syncDiffView` to `DiffView.synchronizeOverviewRuler`.
+**Evidence:** `src/modules/diff/DiffView.test.ts`, including the 100k-row/1,000-block cache cost
+ratchet; `scripts/smoke-diff-overview.sh`; live mount `RootView.syncDiffView` to
+`DiffView.synchronizeOverviewRuler`.
 
 **Impossible if true:** a separated top, middle, or bottom change block existing with no matching
 colored ruler cell; an unchanged ruler band painted as a change when it overlaps no change block.
@@ -199,7 +204,7 @@ colored ruler cell; an unchanged ruler band painted as a change when it overlaps
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
 
 ### The diff pane split stays draggable and persistent
 

@@ -91,6 +91,23 @@ test('TextDocument maintains the full-document display width through localized e
   expect(document.maximumLineWidth).toBe(8);
 });
 
+test('TextDocument maintains serialized content length without joining its lines', () => {
+  const document = new TextDocument.Class();
+  document.loadFromText('alpha\r\nbeta\r\ngamma');
+  expect(document.contentLength).toBe('alpha\r\nbeta\r\ngamma'.length);
+
+  document.setLine(1, 'a much longer beta');
+  expect(document.contentLength).toBe(
+    'alpha\r\na much longer beta\r\ngamma'.length,
+  );
+  document.insertLine(1, 'inserted');
+  expect(document.contentLength).toBe(
+    'alpha\r\ninserted\r\na much longer beta\r\ngamma'.length,
+  );
+  document.removeLine(2);
+  expect(document.contentLength).toBe('alpha\r\ninserted\r\ngamma'.length);
+});
+
 test('TextDocument measures only viable full-document width candidates', () => {
   const document = new CountingTextDocument();
   const lines = Array.from({ length: 500 }, (_unused, lineIndex) =>

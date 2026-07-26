@@ -28,8 +28,10 @@ without mutating model state, so the effect never self-triggers. The frame tick 
 workspace and panel scroll momentum are exactly at rest before settling the status frame, giving
 driven verification condition endpoints without a clock. `viewport.setSize` (a
 projection→model write) is kept OUTSIDE the effect, on boot + resize only. Input handlers mutate
-model state and nothing else — the effect repaints. Realizes *Data flows one way* (the
-reactive-invalidation half).
+model state and nothing else — the effect repaints. An animation deadline that mutates projection
+inputs queues its render request in a microtask, after the coarse reactive effect has projected those
+mutations; this includes the final settling deadline, which has no later cadence tick to repair a
+stale frame. Realizes *Data flows one way* (the reactive-invalidation half).
 
 **Generates:** async repaint for git/LSP/diagnostics without input; the single coarse effect (not
 effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling `$stopEffects()`.
@@ -42,8 +44,9 @@ effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling 
 the real terminal via the side channel.
 
 **Impossible if true:** an async result (LSP diagnostic, git refresh) that changes model state but
-does not repaint until the next keystroke; a render pass that mutates model state; an
-effect-per-item render graph.
+does not repaint until the next keystroke; a final animation tick publishing stale focus, panel,
+or scroll projection because its synchronized frame preceded the reactive paint; a render pass that
+mutates model state; an effect-per-item render graph.
 
 **Verification:** the headless test above; plus the tmux smoke `scripts/smoke-editor.sh`
 (input → edit → repaint → side-channel, ALL-PASS). Async-producer (no-keypress) repaint is
@@ -51,7 +54,7 @@ exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Owned resources release in reverse order
 

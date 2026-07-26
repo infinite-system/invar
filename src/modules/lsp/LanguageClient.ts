@@ -196,11 +196,11 @@ class $LanguageClient implements LanguageProvider {
     return Number.isFinite(limit) && limit > 0 ? limit : 0;
   }
 
-  /** True when `document`'s text is larger than the configured budget (and a budget is set). Uses
-   *  `text.length / 1024` — the same cheap measure the server would otherwise ingest whole. */
+  /** True when `document`'s text is larger than the configured budget (and a budget is set). The
+   *  document maintains this UTF-16 length so the guard never joins the whole buffer to measure it. */
   protected documentExceedsSizeLimit(document: TextDocumentModel): boolean {
     const limit = this.currentFileSizeLimitKb();
-    return limit > 0 && document.text.length / 1024 > limit;
+    return limit > 0 && document.contentLength / 1024 > limit;
   }
 
   /** Recompute `document`'s suppression against the current budget, updating the tracked set and
@@ -230,7 +230,7 @@ class $LanguageClient implements LanguageProvider {
    *  never a silent no-op. */
   sizeSuppressionNotice(document: TextDocumentModel): string | null {
     if (!this.isSizeSuppressed(document)) return null;
-    const kilobytes = Math.round(document.text.length / 1024);
+    const kilobytes = Math.round(document.contentLength / 1024);
     return `Large file — language features off (${kilobytes} KB > ${this.currentFileSizeLimitKb()} KB limit)`;
   }
 

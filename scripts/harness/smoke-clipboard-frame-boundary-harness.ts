@@ -209,7 +209,7 @@ try {
     direction: 'up' | 'down',
     notchCount: number,
   ): void => {
-    for (let notch = 0; notch < notchCount; notch += 1) {
+    for (let notchNumber = 0; notchNumber < notchCount; notchNumber += 1) {
       driver.sendMouseWithoutFrameExpectation({
         kind: 'wheel',
         column: transcriptPosition.column,
@@ -218,13 +218,32 @@ try {
       });
     }
   };
+  const driveTranscriptToAnchor = async (
+    direction: 'up' | 'down',
+    conditionDescription: string,
+    predicate: (status: StatusSnapshot) => boolean,
+  ): Promise<void> => {
+    let observationFinished = false;
+    const observation = HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      conditionDescription,
+      predicate,
+      20_000,
+    ).finally(() => {
+      observationFinished = true;
+    });
+    while (!observationFinished) {
+      transcriptWheelTrain(direction, 3);
+      await Bun.sleep(50);
+    }
+    await observation;
+  };
   // Deterministic anchor: clamp the transcript at the TOP of its scrollback (a known state), so a
   // round alternation of down/up trains always has room to move — no drift-into-clamp dead rounds.
   const anchorTranscriptAtScrollbackTop = async (): Promise<void> => {
-    transcriptWheelTrain('up', 12);
-    await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
+    await driveTranscriptToAnchor(
+      'up',
       'the transcript reaches the top scrollback anchor',
       (status) => Number(status.agentScrollTop) === 0,
     );
@@ -257,10 +276,8 @@ try {
   await copySelectionRepeatedly('ACTIVE-COMPOSER', idleCopyRunCount, 'idle');
   // The active phases anchored the transcript at scrollback TOP; the newest message lives at the
   // bottom — return there before selecting it.
-  transcriptWheelTrain('down', 12);
-  await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
+  await driveTranscriptToAnchor(
+    'down',
     'the transcript returns to its bottom anchor',
     (status) => status.agentStuckToBottom === true,
   );

@@ -49,8 +49,23 @@ class $CodeFolding {
       language,
       lineCount: document.lineCount,
       ranges,
+      rangesByStartLine: new Map(
+        ranges.map((range) => [range.startLine, range]),
+      ),
     });
     return ranges;
+  }
+
+  static rangeAtLine(
+    document: FoldableDocument,
+    language: LangId,
+    lineIndex: number,
+  ): FoldRange | null {
+    this.ranges(document, language);
+    return (
+      this.$rangesByDocument.get(document)?.rangesByStartLine.get(lineIndex) ??
+      null
+    );
   }
 
   protected static computeRanges(
@@ -195,4 +210,5 @@ export interface FoldRangeSnapshot {
   readonly language: LangId;
   readonly lineCount: number;
   readonly ranges: readonly FoldRange[];
+  readonly rangesByStartLine: ReadonlyMap<number, FoldRange>;
 }

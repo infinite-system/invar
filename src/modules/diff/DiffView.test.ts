@@ -60,4 +60,45 @@ describe('DiffView overview ruler projection', () => {
     ]);
     expect(DiffView.$Class.overviewKinds(alignment, 0)).toEqual([]);
   });
+
+  test('large overview projection is linear once and cached across frames', () => {
+    const alignedRows: DiffAlignmentResult['alignedRows'] = Array.from(
+      { length: 100_000 },
+      (_unusedValue, alignedRowIndex) => ({
+        kind: alignedRowIndex % 100 === 0 ? 'modified' : 'equal',
+        leftLineNumber: alignedRowIndex + 1,
+        rightLineNumber: alignedRowIndex + 1,
+      }),
+    );
+    const rawChangeBlocks: DiffAlignmentResult['changeBlocks'] = Array.from(
+      { length: 1_000 },
+      (_unusedValue, changeBlockIndex) => ({
+        startAlignedRowIndex: changeBlockIndex * 100,
+        endAlignedRowIndexExclusive: changeBlockIndex * 100 + 1,
+      }),
+    );
+    let indexedChangeBlockReads = 0;
+    const changeBlocks = new Proxy(rawChangeBlocks, {
+      get(target, property, receiver) {
+        if (typeof property === 'string' && /^\d+$/.test(property)) {
+          indexedChangeBlockReads++;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const alignment: DiffAlignmentResult = {
+      alignedRows,
+      changeBlocks,
+    };
+
+    const firstProjection = DiffView.$Class.overviewKinds(alignment, 40);
+    const readsAfterFirstProjection = indexedChangeBlockReads;
+    const secondProjection = DiffView.$Class.overviewKinds(alignment, 40);
+
+    expect(firstProjection).toEqual(secondProjection);
+    expect(readsAfterFirstProjection).toBeLessThanOrEqual(
+      rawChangeBlocks.length + 80,
+    );
+    expect(indexedChangeBlockReads).toBe(readsAfterFirstProjection);
+  });
 });

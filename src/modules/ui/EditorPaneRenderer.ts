@@ -83,9 +83,6 @@ class $EditorPaneRenderer {
       height,
       editor.collapsedFoldRanges,
     );
-    const foldRangesByStartLine = new Map(
-      editor.foldRanges().map((range) => [range.startLine, range]),
-    );
     const lineNumberWidth = String(editor.document.lineCount).length + 1;
     const currentLineIndex = editor.cursor.line.value;
     const focused = workspace.focus.value === 'editor';
@@ -100,13 +97,14 @@ class $EditorPaneRenderer {
     const codeChunks: TextChunk[] = [];
     const gutterHoverLabelsByRow: string[][] = [];
     const foldMarkerFor = (lineIndex: number): string => {
+      const foldRange = editor.foldRangeAtLine(lineIndex);
       if (
-        foldRangesByStartLine.has(lineIndex) &&
+        foldRange &&
         editor.foldState.value.collapsedLineStarts.has(lineIndex)
       ) {
         return context.foldClosedGlyph;
       }
-      return foldRangesByStartLine.has(lineIndex) ? context.foldOpenGlyph : ' ';
+      return foldRange ? context.foldOpenGlyph : ' ';
     };
     const decorationColor = (color: EditorDecorationColor): string => {
       if (color === 'added') return palette.added;

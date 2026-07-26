@@ -372,10 +372,12 @@ folding contributing zero-row hidden lines.
 selection projection, mouse hit-testing, wheel and drag scrolling, scrollbar extent, gutter fold
 controls, and programmatic navigation.
 
-**Mechanism:** `CodeFolding.ranges` computes one revision-keyed structural snapshot and `Editor`
-selects its collapsed ranges. `EditorWrap.syncWrapIndex` combines wrap segments and collapsed ranges
-into one `rowCounts` and `prefix` index; `visualRowsFromOffset` returns the window that
-`EditorPaneRenderer`, `EditorPane`, and `RootView` share.
+**Mechanism:** `CodeFolding.ranges` computes one revision-keyed structural snapshot with an O(1)
+start-line index, and `Editor` memoizes the collapsed subset by document revision plus fold
+revision. An unchanged frame therefore performs only viewport-many fold lookups; it never rebuilds
+a map or filters every discovered range. `EditorWrap.syncWrapIndex` combines wrap segments and
+collapsed ranges into one `rowCounts` and `prefix` index; `visualRowsFromOffset` returns the window
+that `EditorPaneRenderer`, `EditorPane`, and `RootView` share.
 
 **Generates:** Folded rows that every consumer skips; one scroll extent for wrap and folding; one
 rendered window for gutter, code, caret, selection, and pointer mapping.
@@ -385,7 +387,8 @@ different maps and disagree about the same document position.
 
 **Evidence:** `src/modules/editor/EditorWrap.ts`; `src/modules/editor/CodeFolding.ts`;
 `src/modules/editor/EditorWrapIndex.test.ts`; `src/modules/editor/Editor.test.ts`;
-`scripts/harness/smoke-code-folding-harness.ts`.
+`scripts/harness/smoke-code-folding-harness.ts`; the 100k cost ratchets in
+`CodeFolding.test.ts` and `Editor.test.ts`.
 
 **Impossible if true:** Two disagreeing document-line-to-visual-row mappings consulted by different
 consumers; a caret, selection endpoint, gutter marker, mouse hit, scrollbar, or rendered row naming

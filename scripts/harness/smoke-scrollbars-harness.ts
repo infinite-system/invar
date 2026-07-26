@@ -1360,7 +1360,9 @@ try {
     '== harness scrollbars: prove the vertical thumb from cell backgrounds ==',
   );
   let snapshot = await overflowDriver.awaitSnapshot(
-    (candidate) => verticalScrollBarProof(candidate) !== null,
+    (candidate) =>
+      verticalScrollBarProof(candidate) !== null &&
+      horizontalScrollBarRowCount(candidate) === 1,
     15_000,
   );
   const initialThumb = verticalScrollBarProof(snapshot);
@@ -1489,7 +1491,7 @@ try {
     .awaitGridCondition(
       'the deep widest line is visible during the wheel drive',
       (candidate) => candidate.findText('DEEP-WIDEST-END-MARKER') !== null,
-      15_000,
+      60_000,
     )
     .then((candidate) => {
       deepWidestLineSnapshot = candidate;
@@ -1510,6 +1512,68 @@ try {
       direction: 'down',
     });
     await Bun.sleep(20);
+    if (
+      Number(HarnessSmoke.Class.readStatus(statusPath).editorScrollTop) >= 340
+    ) {
+      break;
+    }
+  }
+  if (deepWidestLineSnapshot === null) {
+    // A sustained gained fling can cross the narrow line-400 observation window between completed
+    // terminal frames. Halt through the real editor pointer path, then approach that same window
+    // with settled one-notch wheel steps. The visual assertion remains the oracle.
+    overflowDriver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: 80,
+      row: 10,
+      button: 'left',
+    });
+    overflowDriver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: 80,
+      row: 10,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      overflowDriver,
+      statusPath,
+      'the coarse deep-line wheel drive is halted before precision approach',
+      (status) => status.workspaceScrollMomentumAtRest === true,
+    );
+    for (
+      let precisionWheelEventNumber = 1;
+      precisionWheelEventNumber <= 80 && deepWidestLineSnapshot === null;
+      precisionWheelEventNumber++
+    ) {
+      const currentScrollTop = Number(
+        HarnessSmoke.Class.readStatus(statusPath).editorScrollTop,
+      );
+      const widestLineTailIsPartiallyVisible =
+        overflowDriver.snapshot().findText('DEEP-WID') !== null;
+      overflowDriver.sendMouseWithoutFrameExpectation({
+        kind: 'wheel',
+        column: 80,
+        row: 10,
+        direction: widestLineTailIsPartiallyVisible
+          ? 'right'
+          : currentScrollTop < 385
+            ? 'down'
+            : 'up',
+        alt: widestLineTailIsPartiallyVisible,
+      });
+      await HarnessSmoke.Class.awaitStatus(
+        overflowDriver,
+        statusPath,
+        'a precision wheel step starts before observing the deep widest line',
+        (status) => status.workspaceScrollMomentumAtRest === false,
+      );
+      await HarnessSmoke.Class.awaitStatus(
+        overflowDriver,
+        statusPath,
+        'a precision wheel step settles before the next approach step',
+        (status) => status.workspaceScrollMomentumAtRest === true,
+      );
+    }
   }
   snapshot = await deepWidestLineObservation;
   requireCondition(

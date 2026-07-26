@@ -17,17 +17,22 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 ## The instruments
 
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
-Per-frame glide behaviour on the real app through the PTY. Reports, per gesture: moving frame count,
-total distance, input-write-to-first-frame latency, max/mean frame delta, peak velocity, whole-glide
-fps, sustained-fast fps, and bytes per frame. Reads the lowest visible fixture line out of every
-completed synchronized frame, so each sample IS that frame's scrollTop with no publish race. Runs
-under the machine-wide quiet-exclusive lock.
+Per-frame glide behaviour on the real app through the PTY. Generates 2k, 26,635, and 100k-line
+fixtures at run time (nothing large is committed), then measures both the bare editor and side-by-side
+diff. Reports, per surface and gesture: moving frame count, total distance,
+input-write-to-first-frame latency, max/mean frame delta, peak velocity, whole-glide fps,
+sustained-fast fps, and bytes per frame. Reads the lowest visible fixture line out of every completed
+synchronized frame, so each sample IS that frame's scrollTop with no publish race. Runs under the
+machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACES`,
+`SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: before the 2026-07-26 cadence and gesture-gain repair, a fling ran 19-23 whole-glide
-fps and the same gesture yielded ~48 rows from idle but ~36 after a previous fling. Afterward,
-identical gestures yield 48 rows and the sustained-fast segment runs 29.9-30.1 fps with 3,107 mean
-bytes per frame.
+fps and the same gesture yielded ~48 rows from idle but ~36 after a previous fling. The scale
+investigation then found fold lookup/filter rebuilds and a whole-document status join in editor
+frames, plus whole-change-set ruler and active-block scans in diff frames. After caching/indexing
+those document aggregates, the six-case 2k/26,635/100k editor+diff matrix sustains 29.8-32.4 FPS;
+100k editor and diff measured 29.8 and 31.5 FPS respectively.
 CAUTION: send a gesture as ONE PTY write. Split across 12 writes the identical gesture lands on one
 of three quantized outcomes ±35%, because the chunk boundary decides whether one physical gesture
 straddles input frames. Whole-glide fps includes the slow tail, where sub-two-row movement naturally

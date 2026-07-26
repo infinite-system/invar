@@ -118,7 +118,9 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 # was reported as "choppier, and the velocity is less when going fast", the `gain` assertion was
 # byte-identical in gate logs from both sides of the reported change. Smoothness is a DIFFERENT NUMBER
 # and needs its own assertion, so this contract gates the per-frame step distribution of one fast
-# fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts.
+# fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts. The instrument
+# generates 2k, 26,635, and 100k-line fixtures at run time and drives both the editor and diff
+# surfaces, so cadence is compared at scale without storing giant fixtures in the repository.
 #
 # THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
 #  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
@@ -141,14 +143,37 @@ echo "== CONTRACT glide-smoothness: a fast fling is many small row crossings, no
 SMOOTH_JSON="$ROOT/artifacts/scroll-smoothness.json"
 SMOOTH_LOG="$ROOT/artifacts/scroll-smoothness.log"
 mkdir -p "$ROOT/artifacts"
-if SMOOTHNESS_GESTURES=2 bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+if SMOOTHNESS_GESTURES=2 \
+   SMOOTHNESS_LINE_COUNTS=2000,26635,100000 \
+   SMOOTHNESS_SURFACES=editor,diff \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$SMOOTH_JSON" 2>"$SMOOTH_LOG"; then
   read -r smooth_frames smooth_max_step smooth_travel \
     smooth_from_rest_travel smooth_follow_on_min_travel \
     smooth_follow_on_max_travel smooth_follow_on_within_tolerance \
-    smooth_fast_cadence_floor_passes smooth_minimum_fast_fps <<<"$(python3 -c "
+    smooth_fast_cadence_floor_passes smooth_minimum_fast_fps \
+    smooth_100k_surface_count smooth_100k_cadence_floor_passes \
+    smooth_100k_minimum_fast_fps <<<"$(python3 -c "
 import json
-gestures = json.load(open('$SMOOTH_JSON'))['gestures']
+cases = json.load(open('$SMOOTH_JSON'))['cases']
+baseline = next(
+    case for case in cases
+    if case['surface'] == 'editor' and case['fixtureLineCount'] == 2000
+)
+gestures = baseline['gestures']
+all_gestures = [
+    gesture
+    for case in cases
+    for gesture in case['gestures']
+]
+large_cases = [
+    case for case in cases if case['fixtureLineCount'] == 100000
+]
+large_gestures = [
+    gesture
+    for case in large_cases
+    for gesture in case['gestures']
+]
 from_rest_travel = gestures[0]['totalDistanceRows']
 follow_on_travel = [gesture['totalDistanceRows'] for gesture in gestures[1:]]
 follow_on_within_tolerance = all(
@@ -156,17 +181,23 @@ follow_on_within_tolerance = all(
     for travel in follow_on_travel
 )
 minimum_fast_fps = min(
-    gesture['sustainedFastFramesPerSecond'] for gesture in gestures
+    gesture['sustainedFastFramesPerSecond'] for gesture in all_gestures
 )
-print(min(g['movingFrameCount'] for g in gestures),
-      max(g['maximumFrameDeltaRows'] for g in gestures),
-      max(g['totalDistanceRows'] for g in gestures),
+minimum_100k_fast_fps = min(
+    gesture['sustainedFastFramesPerSecond'] for gesture in large_gestures
+)
+print(min(g['movingFrameCount'] for g in all_gestures),
+      max(g['maximumFrameDeltaRows'] for g in all_gestures),
+      max(g['totalDistanceRows'] for g in all_gestures),
       from_rest_travel,
       min(follow_on_travel),
       max(follow_on_travel),
       int(follow_on_within_tolerance),
       int(minimum_fast_fps >= 28),
-      f'{minimum_fast_fps:.1f}')
+      f'{minimum_fast_fps:.1f}',
+      len(large_cases),
+      int(len(large_cases) == 2 and minimum_100k_fast_fps >= 28),
+      f'{minimum_100k_fast_fps:.1f}')
 ")"
   if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
     smooth_step_message="no glide frame jumps more than two frame budgets"
@@ -218,6 +249,19 @@ print(min(g['movingFrameCount'] for g in gestures),
     fast_cadence_message+=" (slowest=${smooth_minimum_fast_fps}fps,"
     fast_cadence_message+=" floor 28)"
     bad "$fast_cadence_message"
+  fi
+  if [ "${smooth_100k_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
+    large_cadence_message="100k editor and diff glides sustain declared cadence"
+    large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
+    large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
+    large_cadence_message+=" floor 28)"
+    pass "$large_cadence_message"
+  else
+    large_cadence_message="100k editor/diff cadence regressed"
+    large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
+    large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
+    large_cadence_message+=" floor 28)"
+    bad "$large_cadence_message"
   fi
 else
   bad "glide-smoothness instrument did not complete — see $SMOOTH_LOG"

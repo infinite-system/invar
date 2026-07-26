@@ -213,7 +213,9 @@ through a `fileSizeLimitKb` getter (mirroring how `preferredTypeScriptServer` is
 attachment path recomputes suppression against the current text length before remembering or syncing
 the document; the one place text actually reaches the server returns early for an oversized document,
 so no attach path can leak it. Suppressed URIs are tracked in a set with a reactive revision signal
-the active-file notice reads.
+the active-file notice reads. That notice derives its KB label from `TextDocument.contentLength`,
+an incrementally maintained scalar, rather than joining the whole document during every status
+projection.
 
 **Generates:** The `documentExceedsSizeLimit` / `refreshSizeSuppression` guard; the early returns in
 `openDocument` and `syncDocument`; the load-bearing skip in `sendLatestDocument`; the

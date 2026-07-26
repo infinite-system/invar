@@ -209,6 +209,30 @@ test('fold state can be attached to a stable document handle', () => {
   expect(rehydratedEditor.collapsedFoldRanges).toHaveLength(1);
 });
 
+test('collapsed fold projection is cached until document or fold state changes', () => {
+  class CountingEditor extends Editor.$Class {
+    foldRangeReads = 0;
+
+    override foldRanges() {
+      this.foldRangeReads++;
+      return super.foldRanges();
+    }
+  }
+  const editor = new CountingEditor();
+  editor.document.loadFromText('const value = {\n  answer: 42,\n};', 'test.ts');
+  editor.hasDocument.value = true;
+  editor.toggleFoldAtLine(0);
+
+  for (let readNumber = 0; readNumber < 10_000; readNumber++) {
+    expect(editor.collapsedFoldRanges).toHaveLength(1);
+  }
+  expect(editor.foldRangeReads).toBe(1);
+
+  editor.document.setLine(1, '  answer: 43,');
+  expect(editor.collapsedFoldRanges).toHaveLength(1);
+  expect(editor.foldRangeReads).toBe(2);
+});
+
 test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-dirties)', () => {
   const editor = openWith('a'); // loaded content "a" is the clean baseline
   editor.cursor.set(0, 1);
