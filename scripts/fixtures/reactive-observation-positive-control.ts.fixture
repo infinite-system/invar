@@ -1,0 +1,39 @@
+// Positive control for scripts/check-reactive-observation.ts. Every construct
+// here is deliberately wrong in the one way that checker exists to see: a value
+// that must be read live is captured once. If the checker stops flagging any of
+// them it is inspecting nothing, and it fails instead of printing OK.
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
+
+const sharedScrollTop = ref(0);
+// module-scope-captured-reactive-read: frozen for the life of the process.
+const capturedSharedScrollTop = sharedScrollTop.value;
+
+class $FrozenScrollProbe {
+  protected capturedScrollTop = 0;
+  get scrollTop() {
+    return ref(0);
+  }
+  get visibleRows() {
+    return shallowRef<string[]>([]);
+  }
+  constructor() {
+    // construction-captured-reactive-read: reportedScrollTop() can only ever
+    // report what the constructor happened to see.
+    this.capturedScrollTop = this.scrollTop.value;
+  }
+  reportedScrollTop(): number {
+    return this.capturedScrollTop + capturedSharedScrollTop;
+  }
+  appendVisibleRow(row: string): void {
+    // shallow-payload-mutation: shallowRef tracks the binding, so this write
+    // notifies no observer.
+    this.visibleRows.value.push(row);
+  }
+}
+
+export namespace FrozenScrollProbe {
+  export const $Class = $FrozenScrollProbe;
+  export let Class = Reactive($Class);
+  export type Instance = typeof Class.Instance;
+}

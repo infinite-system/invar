@@ -425,6 +425,12 @@ step "invariant contracts --refs (annotations resolve)" node .claude/skills/inva
 #     counts against the merge base must be declared in coverage-deltas.md, which turns a deletion into
 #     a reviewable diff instead of an invisible one.
 step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverage-ratchet.ts
+# 1d) DROPPED REACTIVE OBSERVATIONS. Report-only for repository code — the findings are candidates a
+#     reviewer must trace along the observation path, and a checker that cried wolf here would be
+#     ignored inside a day. What this step DOES block is a broken instrument: it fails if its
+#     positive-control fixture stops being flagged, or if it inspects zero files. Both failure modes
+#     really happened in this repo (a gate guard called a missing binary and printed OK for 14 runs).
+step "dropped reactive observations (report-only findings, gated instrument)" bun scripts/check-reactive-observation.ts
 # 2) Unit tests.
 step "unit tests (bun test)" bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
