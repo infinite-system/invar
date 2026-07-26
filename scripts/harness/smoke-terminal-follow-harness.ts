@@ -7,6 +7,7 @@
 import {
   mkdirSync as makeDirectorySync,
   mkdtempSync as makeTemporaryDirectorySync,
+  symlinkSync as createSymbolicLinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
@@ -219,6 +220,10 @@ class $SmokeTerminalFollowHarness {
       this.driver = null;
     }
     await this.runHeuristicOnErrorScenario();
+    await this.runSpinnerGuaranteeScenario();
+    await this.runBackendTerminalScenario('/bin/false', 'error');
+    await this.runBackendTerminalScenario('/bin/echo', 'completed');
+    await this.runExitedTerminalScenario();
   }
 
   protected static prepareSettings(): void {
@@ -300,6 +305,372 @@ class $SmokeTerminalFollowHarness {
       await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
       this.driver = null;
     }
+  }
+
+  protected static async runSpinnerGuaranteeScenario(): Promise<void> {
+    this.homeDirectory = makeTemporaryDirectorySync(
+      join(temporaryDirectory(), 'invar-terminal-follow-spinner-harness-'),
+    );
+    this.statusPath = join(this.homeDirectory, 'status.json');
+    this.prepareSettings();
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: join(this.repositoryRoot, 'fixtures'),
+      repositoryRoot: this.repositoryRoot,
+      columns: 160,
+      rows: 44,
+      homeDirectory: this.homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: this.statusPath,
+        INVAR_AGENT_BACKEND: 'echo',
+        INVAR_AGENT_ECHO_DELAY_MS: '700',
+      },
+    });
+    this.driver = driver;
+    try {
+      console.log(
+        '== harness terminal-follow: injected turns cannot strand the spinner ==',
+      );
+      await this.awaitStatus(
+        'the delayed echo spinner scenario is ready',
+        (status) =>
+          status.ready === true && status.terminalFollowMode === 'follow-all',
+      );
+      driver.sendKeys('F9');
+      await this.awaitStatus(
+        'the delayed echo spinner scenario opens both panes',
+        (status) =>
+          Array.isArray(status.panelCellIds) &&
+          status.panelCellIds.join(',') === 'agent,terminal',
+      );
+
+      await this.startObservedCommand(
+        "printf 'INJECTED_NORMAL\\n'",
+        'a normal injected observation starts a turn',
+      );
+      await this.assertThinkingIndicatorRunning(
+        'the positive control sees the indicator during the normal injected turn',
+      );
+      await this.assertTurnSettled(
+        'normal injected completion leaves no turn and no indicator',
+      );
+
+      const injectedFirstBaseline = await this.assistantEntryCount(
+        'assistant count is published before injected then user ordering',
+      );
+      await this.startObservedCommand(
+        "printf 'INJECTED_BEFORE_USER\\n'",
+        'the injected turn starts before the user follow-up',
+      );
+      await this.focusPanelCell(
+        'agent',
+        'the agent is focused while the injected turn is running',
+      );
+      driver.sendText('USER_AFTER_INJECTED');
+      driver.sendKeys('Enter');
+      await this.awaitStatus(
+        'the user turn queues behind the injected turn',
+        (status) => Number(status.queuedMessageCount) === 1,
+      );
+      await this.awaitStatus(
+        'the queued user turn starts after the injected turn settles',
+        (status) =>
+          Number(status.agentAssistantEntryCount) >=
+            injectedFirstBaseline + 2 &&
+          status.agentBusy === true &&
+          Number(status.queuedMessageCount) === 0,
+      );
+      await this.assertTurnSettled(
+        'injected then user ordering leaves no turn and no indicator',
+      );
+
+      const userFirstBaseline = await this.assistantEntryCount(
+        'assistant count is published before user then injected ordering',
+      );
+      await this.focusPanelCell(
+        'agent',
+        'the agent is focused before the user-first turn',
+      );
+      driver.sendText('USER_BEFORE_INJECTED');
+      driver.sendKeys('Enter');
+      await this.awaitStatus(
+        'the user-first turn is in flight',
+        (status) =>
+          status.agentBusy === true &&
+          Number(status.agentAssistantEntryCount) >= userFirstBaseline + 1,
+      );
+      await this.startObservedCommand(
+        "printf 'INJECTED_AFTER_USER\\n'",
+        'the terminal observation arrives while the user turn is busy',
+      );
+      await this.awaitStatus(
+        'the injected turn starts after the user-first turn settles',
+        (status) =>
+          Number(status.agentAssistantEntryCount) >= userFirstBaseline + 2 &&
+          status.agentBusy === true,
+      );
+      await this.assertTurnSettled(
+        'user then injected ordering leaves no turn and no indicator',
+      );
+
+      const doubleInjectedBaseline = await this.assistantEntryCount(
+        'assistant count is published before two injected turns',
+      );
+      await this.startObservedCommand(
+        "printf 'INJECTED_BUSY_ONE\\n'",
+        'the first injected turn starts',
+      );
+      await this.startObservedCommand(
+        "printf 'INJECTED_BUSY_TWO\\n'",
+        'the second observation arrives while the first is busy',
+      );
+      await this.awaitStatus(
+        'the second injected turn starts only after the first settles',
+        (status) =>
+          Number(status.agentAssistantEntryCount) >=
+            doubleInjectedBaseline + 2 && status.agentBusy === true,
+      );
+      await this.assertTurnSettled(
+        'two injected turns while busy leave no turn and no indicator',
+      );
+
+      await this.startObservedCommand(
+        "printf 'INJECTED_CANCEL\\n'",
+        'the injected turn starts before Escape cancellation',
+      );
+      await this.assertThinkingIndicatorRunning(
+        'the indicator is running before injected-turn cancellation',
+      );
+      await this.focusPanelCell(
+        'agent',
+        'the agent is focused before canceling the injected turn',
+      );
+      driver.sendKeys('Escape');
+      await this.assertTurnSettled(
+        'Escape cancellation leaves no turn and no indicator',
+        'canceled',
+      );
+      driver.sendKeys('Control+q');
+    } finally {
+      await driver.dispose();
+      HarnessSmoke.Class.pass('spinner-guarantee harness process disposed');
+      await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
+      this.driver = null;
+    }
+  }
+
+  protected static async runBackendTerminalScenario(
+    executablePath: string,
+    expectedEndReason: 'completed' | 'error',
+  ): Promise<void> {
+    this.homeDirectory = makeTemporaryDirectorySync(
+      join(
+        temporaryDirectory(),
+        `invar-terminal-follow-backend-${expectedEndReason}-harness-`,
+      ),
+    );
+    this.statusPath = join(this.homeDirectory, 'status.json');
+    this.prepareSettings();
+    const binaryDirectory = join(this.homeDirectory, 'bin');
+    makeDirectorySync(binaryDirectory, { recursive: true });
+    createSymbolicLinkSync(executablePath, join(binaryDirectory, 'claude'));
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: join(this.repositoryRoot, 'fixtures'),
+      repositoryRoot: this.repositoryRoot,
+      columns: 160,
+      rows: 44,
+      homeDirectory: this.homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: this.statusPath,
+        INVAR_AGENT_PROVIDER: 'claude',
+        INVAR_AGENT_BACKEND: 'cli',
+        PATH: `${binaryDirectory}:${process.env.PATH ?? ''}`,
+      },
+    });
+    this.driver = driver;
+    try {
+      console.log(
+        `== harness terminal-follow: injected backend ${expectedEndReason} is terminal ==`,
+      );
+      await this.awaitStatus(
+        `the injected backend ${expectedEndReason} scenario is ready`,
+        (status) =>
+          status.ready === true && status.terminalFollowMode === 'follow-all',
+      );
+      driver.sendKeys('F9');
+      await this.awaitStatus(
+        `the injected backend ${expectedEndReason} scenario opens both panes`,
+        (status) =>
+          Array.isArray(status.panelCellIds) &&
+          status.panelCellIds.join(',') === 'agent,terminal',
+      );
+      await this.startObservedCommand(
+        `printf 'INJECTED_BACKEND_${expectedEndReason.toUpperCase()}\\n'`,
+        `the observation reaches the ${expectedEndReason} backend`,
+        false,
+      );
+      await this.assertTurnSettled(
+        `backend ${expectedEndReason} leaves no turn and no indicator`,
+      );
+      driver.sendKeys('Control+q');
+    } finally {
+      await driver.dispose();
+      HarnessSmoke.Class.pass(
+        `backend-${expectedEndReason} harness process disposed`,
+      );
+      await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
+      this.driver = null;
+    }
+  }
+
+  protected static async runExitedTerminalScenario(): Promise<void> {
+    this.homeDirectory = makeTemporaryDirectorySync(
+      join(temporaryDirectory(), 'invar-terminal-follow-exited-harness-'),
+    );
+    this.statusPath = join(this.homeDirectory, 'status.json');
+    this.prepareSettings();
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: join(this.repositoryRoot, 'fixtures'),
+      repositoryRoot: this.repositoryRoot,
+      columns: 160,
+      rows: 44,
+      homeDirectory: this.homeDirectory,
+      environment: {
+        TUI_STATUS_PATH: this.statusPath,
+        INVAR_AGENT_BACKEND: 'echo',
+        INVAR_AGENT_ECHO_DELAY_MS: '700',
+      },
+    });
+    this.driver = driver;
+    try {
+      console.log(
+        '== harness terminal-follow: terminal exit cannot strand an injected turn ==',
+      );
+      await this.awaitStatus(
+        'the exited-terminal scenario is ready',
+        (status) =>
+          status.ready === true && status.terminalFollowMode === 'follow-all',
+      );
+      driver.sendKeys('F9');
+      await this.awaitStatus(
+        'the exited-terminal scenario opens both panes',
+        (status) =>
+          Array.isArray(status.panelCellIds) &&
+          status.panelCellIds.join(',') === 'agent,terminal',
+      );
+      const baselineStatus = await this.awaitStatus(
+        'terminal and agent state are published before immediate exit',
+        (status) =>
+          typeof status.terminalObservedEventCount === 'number' &&
+          status.agentBusy === false,
+      );
+      const observedEventCount = Number(
+        baselineStatus.terminalObservedEventCount,
+      );
+      await this.focusPanelCell(
+        'terminal',
+        'the terminal is focused before immediate exit',
+      );
+      driver.sendText("printf 'INJECTED_TERMINAL_EXIT\\n'; exec /bin/false");
+      driver.sendKeys('Enter');
+      await this.awaitStatus(
+        'the terminal session reports the immediate process exit',
+        (status) =>
+          status.terminalExited === true &&
+          Number(status.terminalExitCode) !== 0,
+      );
+      await this.awaitStatus(
+        'an exited terminal without a complete command boundary injects no turn',
+        (status) =>
+          Number(status.terminalObservedEventCount) === observedEventCount &&
+          status.agentBusy === false &&
+          status.agentTurnState === 'idle',
+      );
+      await this.assertTurnSettled(
+        'terminal exit leaves no injected turn and no indicator',
+      );
+      driver.sendKeys('Control+q');
+    } finally {
+      await driver.dispose();
+      HarnessSmoke.Class.pass('exited-terminal harness process disposed');
+      await HarnessSmoke.Class.removeTemporaryDirectory(this.homeDirectory);
+      this.driver = null;
+    }
+  }
+
+  protected static async startObservedCommand(
+    command: string,
+    label: string,
+    requireBusy = true,
+  ): Promise<void> {
+    const baselineStatus = await this.awaitStatus(
+      `terminal observation count is published before ${label}`,
+      (status) =>
+        typeof status.terminalObservedEventCount === 'number' &&
+        status.agentBusy === false,
+    );
+    const observedEventCount = Number(
+      baselineStatus.terminalObservedEventCount,
+    );
+    await this.focusPanelCell(
+      'terminal',
+      `the terminal is focused before ${label}`,
+    );
+    this.requiredDriver.sendText(command);
+    this.requiredDriver.sendKeys('Enter');
+    await this.awaitStatus(
+      label,
+      (status) =>
+        Number(status.terminalObservedEventCount) > observedEventCount &&
+        (!requireBusy || status.agentBusy === true),
+    );
+  }
+
+  protected static async assistantEntryCount(label: string): Promise<number> {
+    const status = await this.awaitStatus(
+      label,
+      (candidate) => typeof candidate.agentAssistantEntryCount === 'number',
+    );
+    return Number(status.agentAssistantEntryCount);
+  }
+
+  protected static async assertThinkingIndicatorRunning(
+    label: string,
+  ): Promise<void> {
+    await this.awaitStatus(
+      `${label} with a session turn in flight`,
+      (status) => status.agentBusy === true,
+    );
+    await this.requiredDriver.awaitGridCondition(label, (snapshot) =>
+      this.thinkingIndicatorVisible(snapshot.textRows()),
+    );
+    HarnessSmoke.Class.pass(label);
+  }
+
+  protected static async assertTurnSettled(
+    label: string,
+    expectedTurnState = 'idle',
+  ): Promise<void> {
+    await this.awaitStatus(
+      `${label} in session state`,
+      (status) =>
+        status.agentBusy === false &&
+        status.agentTurnState === expectedTurnState,
+    );
+    await this.requiredDriver.awaitGridCondition(
+      `${label} in the rendered pane`,
+      (snapshot) => !this.thinkingIndicatorVisible(snapshot.textRows()),
+    );
+    HarnessSmoke.Class.pass(label);
+  }
+
+  protected static thinkingIndicatorVisible(rows: readonly string[]): boolean {
+    return rows.some((row) =>
+      this.spinnerGlyphs.some((glyph) => row.includes(glyph)),
+    );
+  }
+
+  protected static get spinnerGlyphs(): readonly string[] {
+    return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
   }
 
   protected static async runTerminalCommand(

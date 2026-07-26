@@ -24,6 +24,7 @@ describe('AgentSession', () => {
     ]);
     expect(session.status.value).toBe('streaming');
     expect(session.busy).toBe(true);
+    expect(session.turnInFlight).toBe(true);
   });
 
   test('an empty or whitespace-only prompt is ignored (no turn, no entry)', () => {
@@ -104,10 +105,12 @@ describe('AgentSession', () => {
     backend.emit({ kind: 'session-end', reason: 'completed' });
     expect(session.status.value).toBe('idle');
     expect(session.busy).toBe(false);
+    expect(session.turnInFlight).toBe(false);
 
     session.send('again');
     backend.emit({ kind: 'session-end', reason: 'error' });
     expect(session.status.value).toBe('ended');
+    expect(session.turnInFlight).toBe(false);
   });
 
   test('an error event appends an error entry without derailing the transcript', () => {
@@ -161,6 +164,7 @@ describe('AgentSession', () => {
     expect(session.interrupt()).toBe(true);
     expect(session.turnState.value).toBe('canceled');
     expect(session.busy).toBe(false);
+    expect(session.turnInFlight).toBe(false);
     expect(session.transcript).toContainEqual({
       role: 'system',
       text: 'canceled',
@@ -216,6 +220,41 @@ describe('AgentSession', () => {
     session.interrupt(); // busy → interrupts
     expect(backend.interrupted).toBe(true);
     expect(session.status.value).toBe('idle');
+  });
+
+  test('external observations queue behind user turns and each other', () => {
+    const { session, backend } = makeSession();
+    session.send('user-first');
+    session.requestExternalResponse('observation-one');
+    session.requestExternalResponse('observation-two');
+
+    expect(backend.sent).toEqual(['user-first']);
+    expect(session.turnInFlight).toBe(true);
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(backend.sent).toEqual(['user-first', 'observation-one']);
+    expect(session.turnInFlight).toBe(true);
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(backend.sent).toEqual([
+      'user-first',
+      'observation-one',
+      'observation-two',
+    ]);
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(session.turnInFlight).toBe(false);
+  });
+
+  test('a user turn queues behind an injected observation', () => {
+    const { session, backend } = makeSession();
+    session.requestExternalResponse('observation-first');
+    session.send('user-second');
+
+    expect(backend.sent).toEqual(['observation-first']);
+    expect(session.queuedMessageCount).toBe(1);
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(backend.sent).toEqual(['observation-first', 'user-second']);
+    expect(session.queuedMessageCount).toBe(0);
+    backend.emit({ kind: 'session-end', reason: 'completed' });
+    expect(session.turnInFlight).toBe(false);
   });
 
   test('dispose tears down the backend', () => {

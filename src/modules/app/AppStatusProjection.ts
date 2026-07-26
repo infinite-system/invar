@@ -343,6 +343,8 @@ class $AppStatusProjection {
       terminalFollowMode: ports.settings.agentTerminalFollowMode.value,
       terminalObservedEventCount:
         ports.terminalPaneContent?.observedEventCount ?? 0,
+      terminalExited: ports.terminalPaneContent?.terminalExited ?? false,
+      terminalExitCode: ports.terminalPaneContent?.terminalExitCode ?? null,
       terminalLastObservedBoundarySource:
         ports.terminalPaneContent?.lastObservedBoundarySource ?? null,
       terminalScrollTop: ports.terminalPaneContent?.scrollTop ?? 0,
@@ -507,6 +509,8 @@ export interface AppStatusProjectionPorts {
   readonly terminalPaneContent: Pick<
     TerminalPaneContent.Model,
     | 'observedEventCount'
+    | 'terminalExited'
+    | 'terminalExitCode'
     | 'lastObservedBoundarySource'
     | 'scrollTop'
     | 'scrollContentRows'

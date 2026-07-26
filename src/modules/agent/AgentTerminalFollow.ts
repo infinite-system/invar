@@ -13,8 +13,8 @@ class $AgentTerminalFollow {
     readonly mode: Ref<AgentTerminalFollowMode>,
     protected readonly onModeChanged: () => void = () => {},
   ) {
-    this.stopObservation = this.observationPort.onTerminalObservation(
-      (event) => this.observe(event),
+    this.stopObservation = this.observationPort.onTerminalObservation((event) =>
+      this.observe(event),
     );
   }
 
@@ -23,22 +23,23 @@ class $AgentTerminalFollow {
   }
 
   cycle(): AgentTerminalFollowMode {
-    const agentTerminalFollowClass = this.constructor as typeof $AgentTerminalFollow;
+    const agentTerminalFollowClass = this
+      .constructor as typeof $AgentTerminalFollow;
     this.mode.value = agentTerminalFollowClass.nextMode(this.mode.value);
     this.onModeChanged();
     return this.mode.value;
   }
 
   label(): string {
-    const agentTerminalFollowClass = this.constructor as typeof $AgentTerminalFollow;
+    const agentTerminalFollowClass = this
+      .constructor as typeof $AgentTerminalFollow;
     return agentTerminalFollowClass.labelFor(this.mode.value);
   }
 
   static nextMode(mode: AgentTerminalFollowMode): AgentTerminalFollowMode {
     const currentIndex = this.modeOrder.indexOf(mode);
-    const nextIndex = currentIndex < 0
-      ? 0
-      : (currentIndex + 1) % this.modeOrder.length;
+    const nextIndex =
+      currentIndex < 0 ? 0 : (currentIndex + 1) % this.modeOrder.length;
     return this.modeOrder[nextIndex]!;
   }
 
@@ -62,7 +63,7 @@ class $AgentTerminalFollow {
   }
 
   protected observe(event: AgentTerminalObservation): void {
-    if (this.disposed) return;
+    if (this.disposed || this.observationPort.terminalExited) return;
     const modeAtCommandBoundary = this.mode.value;
     if (modeAtCommandBoundary === 'off') return;
     const message = this.observationMessage(event);
@@ -71,8 +72,8 @@ class $AgentTerminalFollow {
       return;
     }
     if (
-      modeAtCommandBoundary === 'on-error'
-      && (event.exitCode === null || event.exitCode === 0)
+      modeAtCommandBoundary === 'on-error' &&
+      (event.exitCode === null || event.exitCode === 0)
     ) {
       return;
     }
@@ -118,6 +119,8 @@ export namespace AgentTerminalFollow {
 }
 
 export interface AgentTerminalObservationPort {
+  /** Read at delivery time so output parsed after process death cannot start a misleading turn. */
+  readonly terminalExited: boolean;
   onTerminalObservation(
     callback: (event: AgentTerminalObservation) => void,
   ): () => void;

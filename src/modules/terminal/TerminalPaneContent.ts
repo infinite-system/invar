@@ -8,6 +8,7 @@
 // invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
 // invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
+// invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
@@ -202,6 +203,14 @@ class $TerminalPaneContent implements PaneContent {
 
   get observedEventCount(): number {
     return this.instance.observedEventCount;
+  }
+
+  get terminalExited(): boolean {
+    return this.instance.exited.value;
+  }
+
+  get terminalExitCode(): number | null {
+    return this.instance.exitCode.value;
   }
 
   get lastObservedBoundarySource(): 'osc133' | 'heuristic' | null {

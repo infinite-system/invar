@@ -60,6 +60,17 @@ class $AgentTerminalFollowTest {
         driven.session.dispose();
       });
 
+      test('an observation parsed after terminal exit starts no agent turn', () => {
+        const driven = this.create('follow-all');
+        driven.terminalExited.value = true;
+        driven.emit(this.event('late-output', 17));
+        expect(driven.backend.sent).toEqual([]);
+        expect(driven.session.turnInFlight).toBe(false);
+        expect(driven.session.transcript).toEqual([]);
+        driven.follow.dispose();
+        driven.session.dispose();
+      });
+
       test('cycle order is follow then on-error then on-request then off', () => {
         const driven = this.create('follow-all');
         expect(driven.follow.cycle()).toBe('on-error');
@@ -77,15 +88,20 @@ class $AgentTerminalFollowTest {
     session: AgentSession.Model;
     follow: AgentTerminalFollow.Model;
     mode: Ref<AgentTerminalFollowMode>;
+    terminalExited: Ref<boolean>;
     emit: (event: AgentTerminalObservation) => void;
   } {
     let callback: ((event: AgentTerminalObservation) => void) | null = null;
     const backend = new MockAgentBackend.Class();
     const session = new AgentSession.Class(backend);
     const mode = ref<AgentTerminalFollowMode>(modeValue);
+    const terminalExited = ref(false);
     const follow = new AgentTerminalFollow.Class(
       session,
       {
+        get terminalExited() {
+          return terminalExited.value;
+        },
         onTerminalObservation: (nextCallback) => {
           callback = nextCallback;
           return () => {
@@ -100,6 +116,7 @@ class $AgentTerminalFollowTest {
       session,
       follow,
       mode,
+      terminalExited,
       emit: (event) => callback?.(event),
     };
   }

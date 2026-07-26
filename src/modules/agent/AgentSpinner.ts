@@ -1,5 +1,7 @@
 import { Reactive } from 'ivue';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+
+// invariant: Thinking indicator follows turn state (src/modules/agent/agent.invariants.md)
 
 class $AgentSpinner {
   protected static get frameIntervalMilliseconds(): number {
@@ -26,8 +28,11 @@ class $AgentSpinner {
   protected startMilliseconds = 0;
   protected readonly scheduler: SpinnerScheduler;
   protected readonly intervalMilliseconds: number;
+  protected readonly stopRunningWatch: () => void;
+  protected disposed = false;
 
   constructor(
+    protected readonly shouldRun: () => boolean,
     scheduler?: SpinnerScheduler,
     intervalMilliseconds?: number,
   ) {
@@ -35,6 +40,11 @@ class $AgentSpinner {
     this.scheduler = scheduler ?? agentSpinnerClass.$defaultScheduler;
     this.intervalMilliseconds =
       intervalMilliseconds ?? agentSpinnerClass.frameIntervalMilliseconds;
+    this.stopRunningWatch = watch(
+      () => this.running,
+      (running) => this.synchronizeTimer(running),
+      { immediate: true, flush: 'sync' },
+    );
   }
 
   /** The current animation frame index — fused into the pane's render revision so a tick repaints. */
@@ -42,15 +52,19 @@ class $AgentSpinner {
     return ref(0);
   }
 
-  /** True while the timer is armed. */
-  get running() {
-    return ref(false);
+  /** A pure projection of the owning pane's live turn and visibility state. */
+  get running(): boolean {
+    return !this.disposed && this.shouldRun();
+  }
+
+  protected synchronizeTimer(running: boolean): void {
+    if (running) this.armTimer();
+    else this.disarmTimer();
   }
 
   /** Arm the ~10 Hz timer (idempotent). Each tick advances `frame`, driving the repaint. */
-  start(): void {
-    if (this.running.value) return;
-    this.running.value = true;
+  protected armTimer(): void {
+    if (this.timerHandle !== null) return;
     this.startMilliseconds = this.scheduler.now();
     this.timerHandle = this.scheduler.setInterval(() => {
       this.frame.value += 1;
@@ -59,8 +73,11 @@ class $AgentSpinner {
 
   /** Whole seconds elapsed since the busy spell began (0 at rest). Re-read each frame off the clock. */
   elapsedSeconds(): number {
-    if (!this.running.value) return 0;
-    return Math.max(0, Math.floor((this.scheduler.now() - this.startMilliseconds) / 1000));
+    if (!this.running) return 0;
+    return Math.max(
+      0,
+      Math.floor((this.scheduler.now() - this.startMilliseconds) / 1000),
+    );
   }
 
   /** The current wall-clock ms (the same injected clock) — for surfaces timing their own sub-intervals
@@ -70,9 +87,7 @@ class $AgentSpinner {
   }
 
   /** Tear the timer down and reset the frame so the next busy spell starts clean (idempotent). */
-  stop(): void {
-    if (!this.running.value) return;
-    this.running.value = false;
+  protected disarmTimer(): void {
     if (this.timerHandle !== null) {
       this.scheduler.clearInterval(this.timerHandle);
       this.timerHandle = null;
@@ -81,7 +96,9 @@ class $AgentSpinner {
   }
 
   dispose(): void {
-    this.stop();
+    this.disposed = true;
+    this.stopRunningWatch();
+    this.disarmTimer();
   }
 }
 

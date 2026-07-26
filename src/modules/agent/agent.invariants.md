@@ -160,6 +160,43 @@ remaining visually indistinguishable from an active turn after the threshold.
 
 **Last refined:** 2026-07-25
 
+### Thinking indicator follows turn state
+
+**Invariant:** If an agent pane is visible, then its thinking indicator is running if and only if
+`AgentSession.turnInFlight` is true.
+
+**Scope:** `AgentSession.turnInFlight`, `AgentSpinner`, and the thinking-indicator projection in
+`AgentPaneContent`. Hidden panes do not animate even when their session has a turn in flight; hiding
+changes projection cost, not session state.
+
+**Mechanism:** `AgentSession.turnInFlight` derives only from `turnState`. `AgentPaneContent` passes
+`session.turnInFlight && paneVisible` to `AgentSpinner`, whose `running` member is a plain getter over
+that source and whose timer watcher only maintains the derived animation resource. The pane renders
+`AgentThinkingIndicator` from the same `turnInFlight` predicate. No caller can start or stop the
+indicator imperatively.
+
+**Generates:** One turn-liveness predicate for titles, indicator projection, and timer ownership;
+immediate indicator teardown at every terminal turn state; hidden-pane idle quiescence.
+
+**Rejected alternatives:** Start at send and stop in completion handlers — every new completion,
+cancellation, replacement, or injection path becomes another place that can forget teardown.
+
+**Evidence:** `src/modules/agent/AgentSpinner.ts`;
+`src/modules/agent/AgentSpinner.test.ts`; `src/modules/agent/AgentPaneContent.ts`;
+`src/modules/agent/AgentPaneContent.test.ts`;
+`scripts/harness/smoke-terminal-follow-harness.ts`.
+
+**Impossible if true:** No sequence of injected, user, cancelled, superseded, or failed turns can
+leave the indicator running with no turn in flight.
+
+**Verification:** `bun test src/modules/agent/AgentSpinner.test.ts
+src/modules/agent/AgentPaneContent.test.ts src/modules/agent/AgentSession.test.ts && bun
+scripts/harness/smoke-terminal-follow-harness.ts && bash scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Queued agent messages preserve order
 
 **Invariant:** If the user submits messages while an agent turn is active, then those messages
@@ -318,44 +355,49 @@ execution permission; one backend missing scrollback read or replace while anoth
 
 ### Terminal follow obeys the live user mode
 
-**Invariant:** If a terminal command completion reaches `AgentTerminalFollow`, then the follow mode
-read at that command boundary alone determines delivery: `follow-all` requests a response,
-`on-error` requests one only for a known nonzero exit, `on-request` adds silent context, and `off`
-delivers nothing.
+**Invariant:** If a terminal command completion reaches `AgentTerminalFollow` while the terminal is
+alive, then the follow mode read at that command boundary alone determines delivery: `follow-all`
+requests a response, `on-error` requests one only for a known nonzero exit, `on-request` adds silent
+context, and `off` delivers nothing; if the terminal has exited before delivery, no turn is sent.
 
 **Scope:** `AgentTerminalFollow`, `AgentSession` external context and response methods, the agent
 footer control, `agentTerminalFollowMode` setting, `agent.cycleTerminalFollowMode` command and
 keybinding, and the status projection. Terminal event construction and redaction remain governed by
-`terminal.invariants.md`.
+`terminal.invariants.md`. A command completion delivered before a later terminal exit remains
+truthful at its own boundary.
 
 **Components:**
 - Live boundary read — mode changes affect the next completed command without rebuilding the session.
 - Known failure — `on-error` requires `exitCode !== 0 && exitCode !== null`, so heuristic boundaries
   never trigger it.
+- Live terminal — `terminalExited` is read at delivery, so buffered output parsed after process death
+  starts no observation turn.
 - One mode cell — footer clicks, F6, the command palette, Settings, delivery, and status all read or
   mutate `Settings.agentTerminalFollowMode`.
 
 **Mechanism:** `AgentTerminalFollow` subscribes once to the terminal observation port and reads the
 mode ref inside each event callback. It calls `AgentSession.requestExternalResponse` for response
 modes and `AgentSession.ingestContext` for `on-request`; the footer port and every command path cycle
-the same setting ref.
+the same setting ref. Before either delivery path, the controller reads
+`AgentTerminalObservationPort.terminalExited`; an exited terminal makes the event non-deliverable.
 
 **Generates:** Activity-paced agent turns; silent on-request context; a visible footer indicator;
-mouse, keybinding, palette, and Settings parity; follow mode and event-count probe fields.
+mouse, keybinding, palette, and Settings parity; follow mode and event-count probe fields; no
+misleading turn from output that arrives after terminal death.
 
 **Evidence:** `src/modules/agent/AgentTerminalFollow.ts`;
 `src/modules/agent/AgentTerminalFollow.test.ts`; `src/modules/agent/AgentPaneContent.test.ts`;
 `scripts/harness/smoke-terminal-follow-harness.ts`.
 
 **Impossible if true:** `on-error` responding to exit code zero or null; `on-request` starting an
-agent turn; `off` adding context or transcript entries; footer, Settings, and status reporting
-different modes.
+agent turn; `off` adding context or transcript entries; a command observation starting a turn after
+the terminal reports exited; footer, Settings, and status reporting different modes.
 
 **Verification:** `bun test src/modules/agent/AgentTerminalFollow.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-terminal-follow-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Agent events cross exactly one backend seam
 

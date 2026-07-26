@@ -102,11 +102,16 @@ class $AgentSession {
     return this.entries;
   }
 
-  /** True while a turn is in flight (no new turn may start until it settles). */
-  get busy(): boolean {
+  /** True while a user-visible turn is in flight. Every projection reads this one predicate. */
+  get turnInFlight(): boolean {
     return (
       this.turnState.value === 'running' || this.turnState.value === 'stalled'
     );
+  }
+
+  /** Compatibility vocabulary for queueing and non-indicator consumers. */
+  get busy(): boolean {
+    return this.turnInFlight;
   }
 
   /** Count is derived from transcript delivery state, so no parallel queue tally can drift. */

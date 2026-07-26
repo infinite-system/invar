@@ -1,5 +1,5 @@
 import type { StyledText, KeyEvent } from '@opentui/core';
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import type {
   PaneContent,
   PaneRenderContext,
@@ -39,6 +39,7 @@ import type { AgentTerminalFollowMode } from '../settings/Settings';
 // invariant: The agent pane is a PaneContent citizen, not a special case (src/modules/agent/agent.invariants.md)
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
+// invariant: Thinking indicator follows turn state (src/modules/agent/agent.invariants.md)
 // invariant: Stream inactivity is visible and non-destructive (src/modules/agent/agent.invariants.md)
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
 // invariant: Agent transcript scroll extent is position independent (src/modules/agent/agent.invariants.md)
@@ -89,10 +90,8 @@ class $AgentPaneContent implements PaneContent {
   protected readonly revision: Ref<number>;
   /** Bumped on scroll/collapse/selection changes (which carry no session/composer change) so they repaint. */
   protected readonly viewRevision = ref(0);
-  /** The spinner animator — ticks only while the session is busy (idle quiescence at rest). */
-  protected readonly spinner = new AgentSpinner.Class();
-  /** Stops the status→spinner watcher on dispose. */
-  protected readonly stopStatusWatch: () => void;
+  /** The spinner animator derives from the session's turn predicate and pane visibility. */
+  protected readonly spinner: AgentSpinner.Model;
   /** True while the pane is actually painted (host-reported) — gates the spinner timer. */
   protected readonly paneVisible = ref(false);
 
@@ -165,6 +164,9 @@ class $AgentPaneContent implements PaneContent {
   ) {
     this.id = identity.identifier ?? 'agent';
     this.instanceLabel = identity.label ?? 'Agent';
+    this.spinner = new AgentSpinner.Class(
+      () => this.session.turnInFlight && this.paneVisible.value,
+    );
     // MONOTONIC fuse: read every repaint source, then return a strictly increasing counter. An
     // arithmetic SUM here could cancel (spinner-stop −1 + session-bump +1 = net 0 → a finished turn
     // stuck rendering "working…", the reviewed repaint bug); a recompute now ALWAYS yields a new value.
@@ -174,7 +176,7 @@ class $AgentPaneContent implements PaneContent {
       void this.session.renderRevision.value;
       void this.composer.text.value;
       void this.spinner.frame.value;
-      void this.spinner.running.value;
+      void this.spinner.running;
       void this.viewRevision.value;
       void this.permissionMode?.value;
       void this.terminalFollowPort?.mode.value;
@@ -193,17 +195,6 @@ class $AgentPaneContent implements PaneContent {
       fuseCounter += 1;
       return fuseCounter;
     });
-    // The spinner timer lives only while BUSY *AND VISIBLE*: a hidden pane awaiting a permission
-    // (busy indefinitely) must not keep a 10 Hz timer alive — a resource lives only while observed
-    // (the reviewed hidden-animation breach). Re-showing a busy pane re-arms it.
-    this.stopStatusWatch = watch(
-      () => this.session.busy && this.paneVisible.value,
-      (shouldSpin) => {
-        if (shouldSpin) this.spinner.start();
-        else this.spinner.stop();
-      },
-      { immediate: true, flush: 'sync' }, // a timer gate must arm/disarm exactly on the flip
-    );
   }
 
   /** The host reports whether this pane is actually on screen (panel visible AND the agent is a visible
@@ -213,7 +204,7 @@ class $AgentPaneContent implements PaneContent {
   }
   /** True while the spinner timer is armed (tests + the visibility-gate smoke read this). */
   get spinnerActive(): boolean {
-    return this.spinner.running.value;
+    return this.spinner.running;
   }
 
   get agentSession(): AgentSession.Instance {
@@ -227,7 +218,7 @@ class $AgentPaneContent implements PaneContent {
     const label = AgentProviderRegistry.Class.displayLabel(
       this.enginePort?.provider ?? this.session.activeEngine,
     );
-    return this.session.busy ? `${label} (working…)` : label;
+    return this.session.turnInFlight ? `${label} (working…)` : label;
   }
   get renderRevision(): Ref<number> {
     return this.revision;
@@ -362,13 +353,13 @@ class $AgentPaneContent implements PaneContent {
     this.lastHeight = context.height;
     this.lastWidth = context.width;
     this.lastGlyphLevel = context.glyphLevel;
-    const busy = this.session.busy;
+    const turnInFlight = this.session.turnInFlight;
 
     // The animated thinking indicator (busy) + the calm waiting-note (≥1 pending tool). The note adds a
     // blank gap + its own row, so the indicator block is 1 or 3 rows.
-    const thinking = busy ? this.composeTurnIndicator(context) : null;
-    const waitingNote = busy ? this.composeWaitingNote(context) : null;
-    const indicatorRows = busy ? (waitingNote ? 3 : 1) : 0;
+    const thinking = turnInFlight ? this.composeTurnIndicator(context) : null;
+    const waitingNote = turnInFlight ? this.composeWaitingNote(context) : null;
+    const indicatorRows = turnInFlight ? (waitingNote ? 3 : 1) : 0;
 
     // Layout top→bottom: transcript body (flex, padded L/R) · thinking · [blank · note] · blank · blank ·
     // rule · composer (1..cap) · rule · mode line · blank(bottom pad). Chrome takes fixed rows; body flexes.
@@ -1029,7 +1020,6 @@ class $AgentPaneContent implements PaneContent {
     /* no-op */
   }
   dispose(): void {
-    this.stopStatusWatch();
     this.spinner.dispose();
     this.session.dispose();
   }

@@ -49,6 +49,8 @@ afterEach(() => {
     agentPendingPermissionTool: '',
     agentEngine: '',
     agentTitle: '',
+    terminalExited: false,
+    terminalExitCode: null,
   });
 });
 
@@ -95,6 +97,8 @@ describe('AppStatusProjection', () => {
     let agentPaneContent: AgentPaneContent.Model | null = null;
     let terminalPaneContent: {
       observedEventCount: number;
+      terminalExited: boolean;
+      terminalExitCode: number | null;
       lastObservedBoundarySource: 'osc133' | 'heuristic' | null;
       scrollTop: number;
       scrollContentRows: number;
@@ -215,6 +219,8 @@ describe('AppStatusProjection', () => {
     } as unknown as AgentPaneContent.Model;
     terminalPaneContent = {
       observedEventCount: 7,
+      terminalExited: true,
+      terminalExitCode: 17,
       lastObservedBoundarySource: 'heuristic',
       scrollTop: 19,
       scrollContentRows: 43,
@@ -233,6 +239,8 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.agentAssistantEntryCount).toBe(0);
     expect(publishedSnapshot.agentLastAssistantText).toBe('');
     expect(publishedSnapshot.terminalObservedEventCount).toBe(7);
+    expect(publishedSnapshot.terminalExited).toBe(true);
+    expect(publishedSnapshot.terminalExitCode).toBe(17);
     expect(publishedSnapshot.terminalLastObservedBoundarySource).toBe(
       'heuristic',
     );
