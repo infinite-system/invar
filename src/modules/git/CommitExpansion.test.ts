@@ -61,6 +61,25 @@ describe('CommitExpansion', () => {
     expect(expansion.entries.value[0]!.files).toEqual(filesFor('sha1'));
   });
 
+  test('a repeated expand awaits the shared in-flight fetch', async () => {
+    const calls: string[] = [];
+    const { fetch, release } = deferredFetch(calls);
+    const expansion = new CommitExpansion.Class('/repo', { fetch });
+    const firstExpansion = expansion.expand(1, 'sha1');
+    let repeatedExpansionCompleted = false;
+    const repeatedExpansion = expansion.expand(1, 'sha1').then(() => {
+      repeatedExpansionCompleted = true;
+    });
+
+    await Promise.resolve();
+    expect(repeatedExpansionCompleted).toBe(false);
+    expect(calls).toEqual(['sha1']);
+
+    release('sha1');
+    await Promise.all([firstExpansion, repeatedExpansion]);
+    expect(repeatedExpansionCompleted).toBe(true);
+  });
+
   test('a collapse BEFORE the fetch returns discards the stale result', async () => {
     const calls: string[] = [];
     const { fetch, release } = deferredFetch(calls);
