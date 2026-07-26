@@ -706,10 +706,10 @@ class $BoundedListPopup {
     return navigation.enabledFilteredIndices[wrappedEnabledPosition] ?? -1;
   }
 
-  // One row-text generator for paint, exact box width, and the label column every row shares. The
-  // icon column is as wide as the WIDEST icon in the item set, so a deliberately wide pictograph
-  // (the unicode image and lock marks) widens that one shared column instead of pushing a single
-  // row's label out of the column the rows above it established.
+  // One row-text generator for paint, exact box width, and the label column
+  // every row shares. The icon column is derived once from the widest supplied
+  // mark, so every row keeps the same label column even when a contributed item
+  // does not use the theme's one-cell vocabulary.
   // invariant: Bounded list popups share paint and hit geometry (src/modules/ui/ui.invariants.md)
   static itemRowText(item: BoundedListPopupItem, iconColumns: number): string {
     if (iconColumns <= 0) return ` ${item.label}`;
