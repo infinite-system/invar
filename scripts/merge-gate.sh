@@ -487,8 +487,11 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: shortcut-help" bash scripts/smoke-shortcut-help.sh
   # The keystroke-ownership contract (#91/#93/#101): Tab/Shift+Tab indentation, the arrival of
   # every chord that replaced an F-key, the terminal pass-through sent-vs-received sweep, and the
-  # reserved set still overriding a focused terminal. An instrument nobody runs is not a gate.
-  parallel_safe_full_tmux_smoke "smoke: keyboard invariant" bash scripts/smoke-keyboard-invariant.sh
+  # reserved set still overriding a focused terminal. An instrument nobody runs is not a gate — and
+  # the full_tmux bucket IS the bucket nobody runs (#105: a stale glyph rotted there for a day while
+  # every gate stayed green). This smoke is the only proof that the chords replacing the F-keys
+  # actually arrive, so it runs by DEFAULT rather than behind INVAR_FULL_TMUX.
+  parallel_safe_smoke "smoke: keyboard invariant" bash scripts/smoke-keyboard-invariant.sh
   parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
   parallel_safe_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
