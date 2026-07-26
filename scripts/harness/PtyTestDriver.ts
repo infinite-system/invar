@@ -123,7 +123,16 @@ class $PtyTestDriver {
       env: this.childEnvironment(options),
     });
     this.openPty.releaseSlaveFileDescriptor();
-    void this.child.exited.then((exitCode) => {
+    void this.child.exited.then(async (exitCode) => {
+      if (this.disposed) return;
+      // DRAIN BEFORE REPORTING. The exit event can win the race against the first read
+      // completing, in which case the tail is EMPTY and the report says "output tail:
+      // \"\"" — which reads as "the application wrote nothing" when it may only mean
+      // "we never got to look". That is the least useful message in exactly the case
+      // that needs it most, and it is what this instrumentation produced when the crash
+      // class it was built for finally reproduced (2026-07-25, under gate contention).
+      // One event-loop turn is enough for pending PTY reads to land.
+      await new Promise((resolveDrain) => setTimeout(resolveDrain, 0));
       if (this.disposed) return;
       // The child's stdout AND STDERR are the PTY slave, so an uncaught exception's dump is already
       // in the RETAINED tail — the old message threw that evidence away and reported only the exit
@@ -131,10 +140,20 @@ class $PtyTestDriver {
       // reason at all. The bounded tail is exactly what a crash report needs: the last bytes.
       this.quiescence.fail(
         new Error(
-          `Invar exited before the awaited frame (exit ${exitCode}); output tail: ` +
+          `Invar exited before the awaited frame (exit ${exitCode}); ` +
+            `${this.observedOutput.length} byte(s) observed` +
+            (this.discardedOutputLength > 0
+              ? `, ${this.discardedOutputLength} discarded`
+              : '') +
+            `; output tail: ` +
             JSON.stringify(
               this.observedOutput.slice(-$PtyTestDriver.exitEvidenceTailLength),
-            ),
+            ) +
+            (this.observedOutput.length === 0
+              ? ' — NO bytes reached the harness at all, so the failure is before or' +
+                ' during process startup (PTY allocation, interpreter start, or an' +
+                ' immediate exec failure), not a crash inside a rendered frame'
+              : ''),
         ),
       );
     });
