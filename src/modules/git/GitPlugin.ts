@@ -22,6 +22,7 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Status text is assembled from ordered contributions (src/modules/ui/ui.invariants.md)
+// invariant: Commit selection previews without focus transfer (src/modules/git/git.invariants.md)
 class $GitPlugin
   implements
     ApplicationContributor,
@@ -230,6 +231,7 @@ class $GitPlugin
       workspace.haltLogScroll();
       workspace.panel.moveLogSelection(rowDelta, workspace.logFlatEnd());
       workspace.ensureLogWindow(workspace.panel.logScrollTop.value);
+      workspace.previewLogRow(workspace.panel.logIndex.value);
     };
     const moveChanges = (direction: -1 | 1): void => {
       const workspace = active();
@@ -244,6 +246,7 @@ class $GitPlugin
         workspace.panel.moveChangesSelection(nextIndex);
       } else if (direction === 1) {
         workspace.panel.region.value = 'log';
+        workspace.previewLogRow(workspace.panel.logIndex.value);
       }
     };
 
@@ -344,7 +347,7 @@ class $GitPlugin
           const row = workspace.logRowAt(workspace.panel.logIndex.value);
           if (row?.kind !== 'commit') return;
           if (row.expanded) moveLog(1);
-          else workspace.activateLogRow(workspace.panel.logIndex.value);
+          else workspace.expandLogRow(workspace.panel.logIndex.value);
         },
       },
       {

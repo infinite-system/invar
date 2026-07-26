@@ -10,7 +10,11 @@ import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function commit(repositoryRoot: string, subject: string, allowEmpty = false): void {
+function commit(
+  repositoryRoot: string,
+  subject: string,
+  allowEmpty = false,
+): void {
   HarnessSmoke.Class.runGit(repositoryRoot, [
     '-c',
     'user.email=a@b.c',
@@ -54,11 +58,15 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness git-log: checked-out branch history ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('base.txt') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('base.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('Control+g');
   let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('history: main') !== null
-      && candidate.findText('main-only-B') !== null,
+    (candidate) =>
+      candidate.findText('history: main') !== null &&
+      candidate.findText('main-only-B') !== null,
   );
   HarnessSmoke.Class.pass('log header names the followed branch');
   HarnessSmoke.Class.pass("main's own commit renders");
@@ -74,11 +82,21 @@ try {
   );
   HarnessSmoke.Class.pass('viewer follows HEAD');
 
-  console.log('== harness git-log: external main commit appears without app input ==');
+  console.log(
+    '== harness git-log: external main commit appears without app input ==',
+  );
   commit(fixtureRoot, 'ext-tip-C', true);
-  const externalMainTip = HarnessSmoke.Class.runGit(fixtureRoot, ['rev-parse', 'HEAD']);
-  await driver.awaitSnapshot((candidate) => candidate.findText('ext-tip-C') !== null, 12_000);
-  HarnessSmoke.Class.pass('external commit reached the history pane within the reconcile window');
+  const externalMainTip = HarnessSmoke.Class.runGit(fixtureRoot, [
+    'rev-parse',
+    'HEAD',
+  ]);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('ext-tip-C') !== null,
+    12_000,
+  );
+  HarnessSmoke.Class.pass(
+    'external commit reached the history pane within the reconcile window',
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -87,12 +105,15 @@ try {
   );
   HarnessSmoke.Class.pass('displayed tip SHA matches the real tip');
 
-  console.log('== harness git-log: b switches to the read-only feature view ==');
+  console.log(
+    '== harness git-log: b switches to the read-only feature view ==',
+  );
   driver.sendKeys('b');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('history: feature') !== null
-      && candidate.findText('view only') !== null
-      && candidate.findText('feat-only-2') !== null,
+    (candidate) =>
+      candidate.findText('history: feature') !== null &&
+      candidate.findText('view only') !== null &&
+      candidate.findText('feat-only-2') !== null,
   );
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -108,7 +129,9 @@ try {
     'main-only commits do not render on the feature view',
   );
 
-  console.log('== harness git-log: external commit on the viewed ref appears ==');
+  console.log(
+    '== harness git-log: external commit on the viewed ref appears ==',
+  );
   const featureExternalCommit = HarnessSmoke.Class.runGit(fixtureRoot, [
     '-c',
     'user.email=a@b.c',
@@ -121,11 +144,15 @@ try {
     '-m',
     'feat-ext-D',
   ]);
-  HarnessSmoke.Class.runGit(
-    fixtureRoot,
-    ['update-ref', 'refs/heads/feature', featureExternalCommit],
+  HarnessSmoke.Class.runGit(fixtureRoot, [
+    'update-ref',
+    'refs/heads/feature',
+    featureExternalCommit,
+  ]);
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('feat-ext-D') !== null,
+    12_000,
   );
-  await driver.awaitSnapshot((candidate) => candidate.findText('feat-ext-D') !== null, 12_000);
   HarnessSmoke.Class.pass('viewed-branch external commit reached the pane');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -135,32 +162,161 @@ try {
   );
   HarnessSmoke.Class.pass('viewed tip SHA tracks the viewed ref');
 
-  console.log('== harness git-log: viewed-branch commit expands and opens by SHA ==');
-  driver.sendKeys('Down', 'Enter');
+  console.log(
+    '== harness git-log: selection previews and activation transfers focus ==',
+  );
+  HarnessSmoke.Class.clickText(driver, snapshot, 'feat-only-2');
+  snapshot = await driver.awaitSnapshot(
+    (candidate) =>
+      candidate.findText('feat2 content line') !== null &&
+      candidate.findText('Current (working) — feat2.txt') !== null,
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.gitLogExpanded === 1",
-    (status) => status.gitLogExpanded === 1,
+    'the commit click keeps focus in Git while its preview is visible',
+    (status) => status.focus === 'git' && status.showingDiff === true,
   );
-  HarnessSmoke.Class.pass('commit on the viewed branch expanded inline');
-  await driver.awaitSnapshot((candidate) => candidate.findText('feat2.txt') !== null);
-  HarnessSmoke.Class.pass("the expanded commit's changed file renders");
-  driver.sendKeys('Down', 'Enter');
+  HarnessSmoke.Class.pass(
+    'single-clicked commit previews without moving focus',
+  );
+
+  const selectedCommitPosition = snapshot.findText('feat-only-2');
+  if (!selectedCommitPosition) throw new Error('Selected commit vanished');
+  const selectedCommitFileRow = selectedCommitPosition.row + 1;
+  const selectedCommitFileColumn = snapshot
+    .rowText(selectedCommitFileRow)
+    .indexOf('feat2.txt');
+  if (selectedCommitFileColumn < 0) {
+    throw new Error('Expanded commit file vanished');
+  }
+  const commitFileRowBeforeClick = JSON.stringify(
+    snapshot.rowCells(selectedCommitFileRow),
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: selectedCommitFileColumn,
+    row: selectedCommitFileRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: selectedCommitFileColumn,
+    row: selectedCommitFileRow,
+    button: 'left',
+  });
+  await driver.awaitGridCondition(
+    'the clicked commit file becomes the selected log row',
+    (candidate) =>
+      JSON.stringify(candidate.rowCells(selectedCommitFileRow)) !==
+      commitFileRowBeforeClick,
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.showingDiff === true",
-    (status) => status.showingDiff === true,
+    'the commit file click keeps focus in Git',
+    (status) => status.focus === 'git' && status.showingDiff === true,
   );
-  HarnessSmoke.Class.pass('file diff of a non-checked-out commit opened');
-  await driver.awaitSnapshot((candidate) => candidate.findText('feat2 content line') !== null);
-  HarnessSmoke.Class.pass('the diff shows the commit content resolved by SHA');
+  HarnessSmoke.Class.pass('single-clicked commit file keeps focus in Git');
+
+  driver.sendKeys('Down');
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Current (working) — feat1.txt') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second commit preview keeps focus in Git',
+    (status) => status.focus === 'git' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass('arrow-selected second commit updates the preview');
+
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the second commit file preview keeps focus in Git',
+    (status) => status.focus === 'git' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass('arrow-selected second commit file keeps browsing');
+
+  driver.sendKeys('Down');
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Current (working) — base.txt') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the third commit preview keeps focus in Git',
+    (status) => status.focus === 'git' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass('arrow-selected third commit updates the preview');
+
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the third commit file preview keeps focus in Git',
+    (status) => status.focus === 'git' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass('arrow-selected third commit file keeps browsing');
+
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'explicit commit-file activation transfers focus to the comparison',
+    (status) => status.focus === 'editor' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass('Enter transfers focus to the opened comparison');
+
+  driver.sendKeys('Control+g');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'source control regains focus before double-click activation',
+    (status) => status.focus === 'git',
+  );
+  snapshot = driver.snapshot();
+  const rootCommitPosition = snapshot.findText('root-subject-A');
+  if (!rootCommitPosition) throw new Error('Root commit vanished');
+  const rootCommitFileRow = rootCommitPosition.row + 1;
+  const rootCommitFileColumn = snapshot
+    .rowText(rootCommitFileRow)
+    .indexOf('base.txt');
+  if (rootCommitFileColumn < 0) throw new Error('Root commit file vanished');
+  for (let clickNumber = 0; clickNumber < 2; clickNumber += 1) {
+    driver.sendMouse({
+      kind: 'press',
+      column: rootCommitFileColumn,
+      row: rootCommitFileRow,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: rootCommitFileColumn,
+      row: rootCommitFileRow,
+      button: 'left',
+    });
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'double-click activation transfers focus to the comparison',
+    (status) => status.focus === 'editor' && status.showingDiff === true,
+  );
+  HarnessSmoke.Class.pass(
+    'double-click transfers focus to the opened comparison',
+  );
 
   console.log('== harness git-log: Escape returns the viewer to HEAD ==');
   driver.sendKeys('Control+g');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.focus === 'git'",
-                                                           (status) => status.focus === 'git');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.focus === 'git'",
+    (status) => status.focus === 'git',
+  );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -169,8 +325,9 @@ try {
     (status) => status.gitLogBranch === '',
   );
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('history: main') !== null
-      && candidate.findText('ext-tip-C') !== null,
+    (candidate) =>
+      candidate.findText('history: main') !== null &&
+      candidate.findText('ext-tip-C') !== null,
   );
   HarnessSmoke.Class.pass('Esc returned the viewer to HEAD-following');
   HarnessSmoke.Class.pass('header follows HEAD and main history renders again');
@@ -197,7 +354,10 @@ try {
       break;
     }
   }
-  HarnessSmoke.Class.requireCondition(featureMenuPosition !== null, 'feature menu item is visible');
+  HarnessSmoke.Class.requireCondition(
+    featureMenuPosition !== null,
+    'feature menu item is visible',
+  );
   if (!featureMenuPosition) throw new Error('Feature menu position vanished');
   driver.sendMouse({
     kind: 'press',
@@ -219,12 +379,17 @@ try {
   );
   HarnessSmoke.Class.pass('menu click re-sourced the viewer to feature');
   driver.sendKeys('Escape');
-  await HarnessSmoke.Class.awaitStatus(driver, statusPath, "status condition: status.gitLogBranch === ''",
-                                                           (status) => status.gitLogBranch === '');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    "status condition: status.gitLogBranch === ''",
+    (status) => status.gitLogBranch === '',
+  );
 
   console.log('== harness git-log: read-only guarantee ==');
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.runGit(fixtureRoot, ['branch', '--show-current']) === 'main',
+    HarnessSmoke.Class.runGit(fixtureRoot, ['branch', '--show-current']) ===
+      'main',
     'checked-out branch is still main',
   );
   HarnessSmoke.Class.requireCondition(
@@ -232,7 +397,8 @@ try {
     'working tree and index are clean',
   );
   HarnessSmoke.Class.requireCondition(
-    HarnessSmoke.Class.runGit(fixtureRoot, ['rev-parse', 'HEAD']) === externalMainTip,
+    HarnessSmoke.Class.runGit(fixtureRoot, ['rev-parse', 'HEAD']) ===
+      externalMainTip,
     'HEAD SHA is byte-identical',
   );
 

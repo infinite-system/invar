@@ -211,6 +211,45 @@ try {
       candidate.findText('commit-14') !== null,
     15_000,
   );
+  const parkedPointerPosition = markerPosition(snapshot, 'file-10.txt');
+  driver.sendMouse({
+    kind: 'move',
+    column: parkedPointerPosition.column,
+    row: parkedPointerPosition.row,
+    button: 'none',
+  });
+  const hoverBaselineSnapshot = await driver.awaitGridCondition(
+    'the staging hover parks on file-10 before the row comparison',
+    (candidate) =>
+      markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
+  );
+  const changesHoverTarget = markerPosition(
+    hoverBaselineSnapshot,
+    'file-05.txt',
+  );
+  const hoverTargetRowBefore = JSON.stringify(
+    hoverBaselineSnapshot.rowCells(changesHoverTarget.row),
+  );
+  const rowAfterHoverTargetBefore = JSON.stringify(
+    hoverBaselineSnapshot.rowCells(changesHoverTarget.row + 1),
+  );
+  driver.sendMouse({
+    kind: 'move',
+    column: changesHoverTarget.column,
+    row: changesHoverTarget.row,
+    button: 'none',
+  });
+  snapshot = await driver.awaitGridCondition(
+    'the staging hover decorates its target row',
+    (candidate) =>
+      JSON.stringify(candidate.rowCells(changesHoverTarget.row)) !==
+      hoverTargetRowBefore,
+  );
+  requireCondition(
+    JSON.stringify(snapshot.rowCells(changesHoverTarget.row + 1)) ===
+      rowAfterHoverTargetBefore,
+    'staging hover leaves the following row byte-identical',
+  );
   clickMarker(driver, snapshot, 'file-10.txt');
   snapshot = await driver.awaitSnapshot((candidate) =>
     markerHasBackground(candidate, 'file-10.txt', unfocusedSelectionColor),
