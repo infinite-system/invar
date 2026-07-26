@@ -978,3 +978,39 @@ pick the disjoint one, even if it is further down the queue. That is how #89 (co
 `CompletionPopup.ts` + `theme/` + `lsp/`, none of them dirty) got started ahead of the plugin-kinds
 items that sit right on top of the refactor. Queue order encodes value; conflict surface encodes
 cost — schedule on both, and say in the brief exactly which files are off-limits and why.
+
+## 2026-07-26 06:25 — three impossible errnos at one call site: the message was the bug
+`OpenPty F_SETFL failed with errno 9` twice, then `errno 11` once, all at the same line, all vanishing
+on isolated re-run. It was written off as an infrastructure flake twice — once by another builder, once
+by me. The errnos are what break it open: `EAGAIN` (11) cannot be returned by `fcntl(F_SETFL)` at all,
+and `EBADF` (9) contradicts the `F_GETFL` on the same descriptor a few synchronous statements earlier.
+**Two mutually incompatible impossible values at one site means the reported value does not belong to
+the failing call.** Everything diagnosed from it was diagnosed against a lie. The leading hypothesis is
+now that `fcntl` is variadic and is being called through `bun:ffi` with a fixed signature, which on
+AArch64 passes the flags in a register the callee reads from the stack — predicting exactly the observed
+asymmetry (`F_GETFL` reliable because it ignores the third argument, `F_SETFL` unreliable because it
+consumes it) and, worse, predicting silent success with garbage flags. Generalisation: when a diagnostic
+is SELF-CONTRADICTORY, suspect the instrument before the system, and stop reasoning from its number.
+
+## 2026-07-26 06:25 — you cannot demand a quiet machine you are not providing
+My latency brief said "measure on a quiet machine" while I was running two other builders whose test
+suites swing the load average between 0.5 and 2.5. That instruction was mine to fix, not the builder's
+to work around. The correct method when the effect (~3 ms) is the same size as ambient noise: measure
+the candidate and a FIXED reference commit back to back, alternating, and judge on the within-pair
+DELTA. Load that inflates the candidate inflates its paired reference too. Two bonuses: the requirement
+weakens from "the absolute populations must not overlap" to "the paired delta must separate from zero",
+which is both weaker and the correct claim; and the reference's own readings across the session become a
+load-calibration trace, which is exactly what a trend detector needs to know before it can call a shift
+real. Sequential sampling under varying load does not merely add noise — it INVERTS bisect steps, and an
+inverted step sends the search confidently down the wrong half.
+
+## 2026-07-26 06:25 — landing on a red gate, honestly
+Two landings tonight went in over a red gate, and the accounting matters more than the decision. Each
+red was proven PRE-EXISTING rather than caused by the branch: the intermittent `bun test` failure passed
+1489/1489 isolated and had already appeared on an unrelated branch hours earlier; `smoke-mode-coherence`
+passed 3/3 isolated; the latency FAIL was documented in `.perf-history` as predating the branch by a day,
+including a run on plain `main` that passed by 0.067 ms. Blocking user-directed work on a defect already
+sitting on main is not rigour, it is hostage-taking. But the rule that keeps this honest is narrow:
+prove pre-existence with evidence from BEFORE the branch existed, name it in the report, and file the
+defect as its own task with the evidence attached — never "re-run until green", which is the same action
+with none of the accounting.

@@ -320,6 +320,31 @@ LOAD-BEARING, user-facing behavior that no smoke drives?* If so, ratchet it in. 
   surface. Only load-bearing, user-relied-on behaviors earn a smoke — not every internal detail. An
   unrunnably-slow gate destroys the doubt-elimination it exists to provide.
 
+**When a diagnostic is SELF-CONTRADICTORY, suspect the instrument, not the system.** A value that
+cannot occur — an errno the syscall never returns, a count that contradicts a check made two lines
+earlier, two mutually exclusive impossible values at one call site — means the number does not belong
+to the event it is attached to. Stop reasoning from it immediately; every conclusion drawn downstream
+is drawn against a lie. This is how `OpenPty F_SETFL failed with errno 9 / errno 11` survived two
+write-offs as an "infrastructure flake" on 2026-07-26: `EAGAIN` is impossible for `F_SETFL`, and
+`EBADF` contradicted a successful `F_GETFL` on the same descriptor in the same synchronous function.
+The contradiction was the finding.
+
+**You cannot demand a quiet machine you are not providing.** When the effect being measured is the
+same size as what fleet load adds, do NOT brief "measure on a quiet machine" while running builders —
+brief PAIRED sampling: measure the candidate and a fixed reference back to back, alternating, and judge
+on the within-pair delta. Load that inflates the candidate inflates its paired reference too. This also
+weakens the requirement from "the absolute populations must not overlap" to "the paired delta must
+separate from zero", which is the correct claim anyway, and the reference's own readings become a
+load-calibration trace. Sequential sampling under varying load does not merely add noise: it INVERTS
+bisect steps, and an inverted step sends the search confidently down the wrong half of the range.
+
+**Landing over a red gate — the narrow rule.** Permitted only when the red is proven PRE-EXISTING with
+evidence from before the branch existed (an isolated re-run passing, the same failure on an unrelated
+branch earlier, a perf-history row predating the branch). Then: name it in the landing report, and file
+the defect as its own task with the evidence attached. Blocking user-directed work on a defect already
+sitting on main is hostage-taking, not rigour — but "re-run until green" is the same action with none of
+the accounting, and is never acceptable.
+
 **Optional instruments are indexed in `project.tools.md` — point builders at it.** Some questions no
 assertion can answer: does scrolling FEEL smooth, does popup latency grow with item count, what
 graphics tier does this terminal actually negotiate, which reactive reads are unobserved. Those live

@@ -3,23 +3,55 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~05:20) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-26 ~06:16) — READ FIRST ON A COLD START
 
-Main @ `b945acb`, pushed, clean. **NINETEEN commits landed this session.** Durable lessons are in the
-memory store (auto-loaded) — newest: `feedback-measure-before-briefing-a-cause`,
-`feedback-gate-what-humans-cannot-see`, `feedback-never-search-to-kill`.
+Main @ `90fc2d3`, pushed, clean. **TWENTY-TWO commits landed this session.** Durable lessons are in the
+memory store (auto-loaded) — newest: `feedback-find-mmin-not-newermt`,
+`feedback-measure-before-briefing-a-cause`, `feedback-gate-what-humans-cannot-see`,
+`feedback-never-search-to-kill`.
 
 **BOTH CRON LOOPS ARE SESSION-ONLY AND DIE ON RESTART.** Re-arm from the verbatim prompts in
 `.claude/skills/conductor/SKILL.md` (hourly `7 * * * *`, ten-minute `3,13,23,...`) and VERIFY with
 `CronList`. Never trust this file that they are live.
 
-**NEW: `project.tools.md`** indexes the optional instruments (scroll smoothness, completion latency,
+**`project.tools.md`** indexes the optional instruments (scroll smoothness, completion latency,
 graphics capabilities, reactive census) with their known results and gotchas. Three builders rebuilt
 measurement machinery that already existed; check that file before writing a new measurement script.
+It is now referenced from `AGENTS.md` and the conductor skill, not only from here — this file is a
+CURSOR and gets rewritten, so anything reachable only from here is lost at the next anchor.
 
-**IN FLIGHT:** one agent on `refactor-workspace-pure-canvas` (`/tmp/conductor-canvas`, 3 commits) —
-diff is already OUT of the host (`grep -icE diff` = 0 in Workspace.ts and app), markdown extraction and
-the command-contract action fields in progress. Its census landed as `project.canvas-census.md`.
+**#96 IS DONE AND LANDED.** Workspace is a pure canvas: `grep -icE "diff|markdown"` returns 0 for
+`Workspace.ts` and 0 across `src/modules/app`; 43 mode checks became 2 capability questions. The
+plugin boundary check now also scans `src/modules/keybindings` (it held 19 plugin names while the
+gate said PASS). Two bugs the extraction found, both by driving: a capability↔claim cycle, then a
+claim reading the aggregate it feeds (boot-time stack overflow; unit tests missed it,
+`smoke-markdown` caught it). Recorded as impossible-if-true: *a claim may not derive its occupancy
+from the aggregate it feeds.*
+
+**THE IMPORTANT OPEN THING — #106, keystroke latency roughly doubled.**
+`.perf-history/input-byte-flush.ndjson` holds the evidence and nothing ever read it: p50 2.326 (07-24)
+and 3.766 (07-25) against a reviewed baseline of 2.970, then TWELVE consecutive elevated samples on
+07-26 at 5.3–6.2. The FAIL line is 5.940, so the new distribution straddles it and the gate's
+ambient-noise retry ("a real regression fails twice") has been reading the passes as noise. A gate run
+on plain `main` passed by 0.067 ms. A deliberately-quiet re-measure (load 0.49) still gave 4.219, the
+lowest of the twelve and still a WARN. **Main already carries this.** Being bisected on
+`fix-input-latency-regression`; paired/interleaved sampling against a fixed pre-regression reference,
+because the effect (~3 ms) is the same size as what load can add and sequential sampling inverts steps.
+
+**IN FLIGHT (three builders, at cap):**
+- `feat-completion-kind-glyphs` (`/tmp/conductor-kindglyphs`) — 2 commits: kind glyphs through the one
+  icon-resolution authority, plus *a mark may be shared only by owners that mean the same thing*. Also
+  carries the user's 06:00 request to replace the oversized `⬢` extensions glyph (recommended `⧫`
+  U+29EB — narrow by classification, solid so no thin detail to lose; `⊞` was already user-rejected and
+  `❖`/`⬡` are taken by the css/wasm file icons).
+- `feat-keyboard-invariant` (`/tmp/conductor-keyboard`) — #91 + #93 + #101 as one reduction: focused
+  surface owns the keystroke, Tab indents, F-keys retired with driven arrival proof, pass-through table.
+- `fix-input-latency-regression` (`/tmp/conductor-latency`) — #106 above.
+
+**BRIEFED AND WAITING FOR A SLOT:** `/tmp/TASK-filetree-plugin.md` (#85). Its first question is the
+real one: if the tree becomes a plugin, a zero-plugin app has an empty sidebar and no way to open a
+file — so either the canvas claim is literal, or the tree splits into host-owned document-opening plus
+a plugin-owned view. A reasoned "it is host furniture" is an acceptable answer.
 
 **LANDED TONIGHT (headline):** plugin canvas with the host owning zero git names; the 65-defect harness
 wait sweep; content-derived dirty marker (setter deleted); dropdown flyweight + held-key acceleration;
