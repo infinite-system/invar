@@ -6,6 +6,11 @@
 // invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import {
+  InputByteFlushTrend,
+  type InputByteFlushBaseline,
+  type InputByteFlushHistorySample,
+} from './InputByteFlushTrend';
 import { QuietLock } from './QuietLock';
 
 const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
@@ -13,15 +18,6 @@ const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
   import.meta.path,
 );
 if (quietLockExitCode !== null) process.exit(quietLockExitCode);
-
-interface InputByteFlushBaseline {
-  metric: 'input-byte-flush';
-  p50Milliseconds: number;
-  boundary: string;
-  warningMultiplier: number;
-  failureMultiplier: number;
-  baselineChangePolicy: string;
-}
 
 interface SessionMeasurement {
   p50Milliseconds: number;
@@ -166,6 +162,7 @@ if (p50Milliseconds > failureThresholdMilliseconds) {
       `p95 ${p95Milliseconds.toFixed(3)} ms`,
   );
 }
+reportHistoryTrend(historyPath, baseline);
 if (p50Milliseconds > failureThresholdMilliseconds) {
   console.error(
     `input-byte-flush-gate: FAIL p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +
@@ -198,6 +195,10 @@ function readBaseline(baselinePath: string): InputByteFlushBaseline {
     !Number.isFinite(parsedBaseline.p50Milliseconds) ||
     !Number.isFinite(parsedBaseline.warningMultiplier) ||
     !Number.isFinite(parsedBaseline.failureMultiplier) ||
+    !Number.isInteger(parsedBaseline.trendWindowSampleCount) ||
+    parsedBaseline.trendWindowSampleCount < 2 ||
+    !Number.isFinite(parsedBaseline.trendWarningMultiplier) ||
+    parsedBaseline.trendWarningMultiplier <= 1 ||
     !parsedBaseline.boundary ||
     !parsedBaseline.baselineChangePolicy
   ) {
@@ -206,6 +207,63 @@ function readBaseline(baselinePath: string): InputByteFlushBaseline {
     );
   }
   return parsedBaseline;
+}
+
+function reportHistoryTrend(
+  historyPath: string,
+  baseline: InputByteFlushBaseline,
+): void {
+  try {
+    const historySamples = readHistorySamples(historyPath);
+    const trendResult = InputByteFlushTrend.Class.detect(
+      historySamples,
+      baseline,
+    );
+    if (trendResult) {
+      console.warn(InputByteFlushTrend.Class.warningMessage(trendResult));
+      return;
+    }
+    const comparableSampleCount = historySamples.filter(
+      (historySample) => historySample.boundary === baseline.boundary,
+    ).length;
+    if (comparableSampleCount < baseline.trendWindowSampleCount) {
+      console.log(
+        `input-byte-flush-gate: trend history collecting ` +
+          `${comparableSampleCount}/${baseline.trendWindowSampleCount} ` +
+          `comparable samples`,
+      );
+      return;
+    }
+    console.log(`input-byte-flush-gate: no sustained trailing-window shift`);
+  } catch (error) {
+    console.warn(
+      `input-byte-flush-gate: TREND WARN history could not be ` +
+        `evaluated: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+function readHistorySamples(
+  historyPath: string,
+): InputByteFlushHistorySample[] {
+  return readFileSync(historyPath, 'utf8')
+    .split('\n')
+    .filter((historyLine) => historyLine.trim().length > 0)
+    .map((historyLine, historyLineIndex) => {
+      const parsedSample = JSON.parse(
+        historyLine,
+      ) as InputByteFlushHistorySample;
+      if (
+        typeof parsedSample.sha !== 'string' ||
+        typeof parsedSample.timestamp !== 'string' ||
+        !Number.isFinite(parsedSample.p50Milliseconds) ||
+        !Number.isFinite(parsedSample.p95Milliseconds) ||
+        typeof parsedSample.boundary !== 'string'
+      ) {
+        throw new Error(`history line ${historyLineIndex + 1} is incomplete`);
+      }
+      return parsedSample;
+    });
 }
 
 function parseSessionMeasurement(standardOutput: string): SessionMeasurement {

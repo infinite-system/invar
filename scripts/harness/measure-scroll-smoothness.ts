@@ -15,16 +15,24 @@
 // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-// Only `PtyTestDriver` is imported from the harness: this instrument has to run UNCHANGED at older
-// commits to attribute a regression, and `HarnessSmoke`'s status helpers changed signature in the
-// window under study, so a call through them would fail at the very commits that need measuring. The
-// status poll below is therefore local and depends on nothing but the published file.
+// invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+// Only the PTY driver, input encoder, snapshot type, and quiet lock are imported from the harness.
+// `HarnessSmoke`'s status helpers changed signature in the historical window, so the status poll
+// below stays local and depends on nothing but the published file. Historical measurements port the
+// one missing completed-frame snapshot method into the disposable reference tree.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+import { QuietLock } from './QuietLock';
+
+const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+  'measure-scroll-smoothness',
+  import.meta.path,
+);
+if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const FIXTURE_LINE_COUNT = 4000;
 // A SATURATING burst: twelve notches is more than the ten a from-rest gain ramp needs to reach the
@@ -57,6 +65,7 @@ interface GestureFrameSample {
 
 interface GestureMeasurement {
   readonly positions: readonly number[];
+  readonly inputToFirstFrameMilliseconds: number;
   readonly movingFrameCount: number;
   readonly observedFrameCount: number;
   readonly totalDistanceRows: number;
@@ -115,7 +124,10 @@ function visibleTopLineIndex(snapshot: HarnessSnapshot.Model): number | null {
   return lowestVisibleIndex;
 }
 
-function summarize(samples: readonly GestureFrameSample[]): GestureMeasurement {
+function summarize(
+  samples: readonly GestureFrameSample[],
+  inputWrittenTimestampMilliseconds: number,
+): GestureMeasurement {
   const positions = samples.map((sample) => sample.scrollTop);
   const frameDeltas: number[] = [];
   let peakVelocityRowsPerSecond = 0;
@@ -151,6 +163,11 @@ function summarize(samples: readonly GestureFrameSample[]): GestureMeasurement {
       : 0;
   return {
     positions,
+    inputToFirstFrameMilliseconds:
+      samples.length === 0
+        ? 0
+        : samples[0]!.byteArrivalTimestampMilliseconds -
+          inputWrittenTimestampMilliseconds,
     movingFrameCount: movingFrameDeltas.length,
     observedFrameCount: samples.length,
     totalDistanceRows:
@@ -223,6 +240,7 @@ async function measureOneGesture(
   // outcomes differing by ~35% in both distance and peak velocity. That spread is a property of how
   // the bytes happened to split, not of the build under test, so a single write removes it and the
   // measurement compares builds instead of comparing PTY chunk boundaries.
+  const inputWrittenTimestampMilliseconds = performance.now();
   driver.sendRawInputWithoutFrameExpectation(
     Array.from({ length: WHEEL_NOTCHES_PER_GESTURE }, () =>
       HarnessInput.Class.mouse({
@@ -262,7 +280,7 @@ async function measureOneGesture(
       FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
     );
   }
-  return summarize(samples);
+  return summarize(samples, inputWrittenTimestampMilliseconds);
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
@@ -355,6 +373,7 @@ try {
   for (const [gestureIndex, measurement] of measurements.entries()) {
     console.error(
       `gesture ${gestureIndex + 1}: frames=${measurement.observedFrameCount} ` +
+        `firstFrame=${measurement.inputToFirstFrameMilliseconds.toFixed(3)}ms ` +
         `moving=${measurement.movingFrameCount} ` +
         `distance=${measurement.totalDistanceRows} ` +
         `maxDelta=${measurement.maximumFrameDeltaRows} ` +

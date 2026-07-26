@@ -217,7 +217,8 @@ scripts/merge-gate.sh`
 **Invariant:** If the merge gate measures input byte flush latency, then it runs five independent
 sessions, records their median p50 and p95 at the named byte-arrival boundary, appends the result to
 ignored NDJSON history, warns above the reviewed p50 baseline times 1.3, and fails above baseline
-times 2.
+times 2. It also reports a loud non-blocking trend warning when the median of five trailing
+comparable history samples exceeds the reviewed baseline era by 1.15 times.
 
 **Scope:** `scripts/harness/input-byte-flush-gate.ts`, its unskipped `scripts/merge-gate.sh` step,
 the machine-readable block in `project.performance-baselines.md`, and
@@ -227,23 +228,35 @@ hard latency check.
 **Mechanism:** `input-byte-flush-gate.ts` launches
 `scripts/harness/measure-input-byte-flush.ts` five times, rejects a boundary mismatch, takes the
 median of session p50 and p95 values, reads thresholds from the reviewed JSON block, appends one
-history object, and returns non-zero above the failure threshold. `reporting_step` preserves its
-successful p50, p95, and boundary output in the merge-gate log.
+history object, and returns non-zero above the failure threshold. `InputByteFlushTrend` filters
+history to the same boundary, takes the configured trailing-window median, and names its sample span
+when it exceeds the reviewed era by the configured sustained-shift multiplier. The trend verdict is
+report-only. `reporting_step` preserves the successful p50, p95, boundary, and trend output in the
+merge-gate log.
 
 **Generates:** an always-run latency regression signal under `SKIP_PERF` and `FAST`; commit-addressed
-history; a non-blocking warning band; an explicit landing diff whenever the baseline changes.
+history; a non-blocking warning band; a sustained-shift warning before an individual run reaches the
+warning band; an explicit landing diff whenever the baseline changes.
 
 **Rejected alternatives:** Update the baseline from measurement history — lets the tested commit
 move its own threshold and makes regressions self-ratifying.
 
 **Evidence:** `scripts/harness/input-byte-flush-gate.ts`; `scripts/merge-gate.sh`;
-`project.performance-baselines.md` `Input byte flush merge-gate baseline`.
+`scripts/harness/InputByteFlushTrend.ts`; `scripts/harness/InputByteFlushTrend.test.ts`;
+`project.performance-baselines.md` `Input byte flush merge-gate baseline`. Re-reviewed 2026-07-26:
+ten history samples from inline drain through task base have median p50 4.928 ms; a fresh quiet-lock
+five-session median was 4.794 ms. Sample-interleaved comparison against fixed reference `0005fa0`
+measured task base `d61124d` at +0.552 ms, and replacing the whole queued `OpenPty` write seam with
+the reference implementation left +0.477 ms. The apparent sequential residual was session
+bimodality, not queued work.
 
 **Impossible if true:** `SKIP_PERF=1` bypassing the latency check; a p50 above baseline times 2
 leaving the gate green; a history line without sha, timestamp, p50, p95, and boundary; a successful
-gate log omitting the measurement boundary.
+gate log omitting the measurement boundary; five synthetically shifted comparable history samples
+producing no warning that names their sustained span.
 
-**Verification:** `bun scripts/harness/input-byte-flush-gate.ts &&
+**Verification:** `bun test scripts/harness/InputByteFlushTrend.test.ts && bun
+scripts/harness/input-byte-flush-gate.ts &&
 (INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS=0 bun scripts/harness/input-byte-flush-gate.ts; test $?
 -ne 0)`
 
@@ -517,7 +530,8 @@ quiet-exclusive lock while ordinary gate load runs under the loud-shared lock.
 `scripts/merge-gate.sh`; direct runs of `scripts/behavioral-contracts.sh`,
 `scripts/smoke-agent-pane-ux.sh`, `scripts/smoke-settings-applied.sh`,
 `scripts/perf-baselines.sh`,
-`scripts/harness/smoke-terminal-stage-harness.ts`, and the input-byte-flush
+`scripts/harness/smoke-terminal-stage-harness.ts`,
+`scripts/harness/measure-scroll-smoothness.ts`, and the input-byte-flush
 measurement. `INVAR_QUIET_LOCK=0` deliberately suspends this guarantee for
 debugging.
 
