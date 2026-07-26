@@ -3,7 +3,50 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-25 ~21:00, overnight run)
+## RESUME ANCHOR (2026-07-26 ~00:40) — READ THIS FIRST ON A COLD START
+
+Main @ `7238584`, pushed, user's checkout synced. TWELVE landings overnight. The durable lessons are in
+the memory store (`~/.claude/projects/-home-parallels-dev-ibr/memory/`, auto-loaded) — most importantly
+`feedback-a-wait-must-be-a-condition`, `feedback-instrument-must-fail-loudly`,
+`feedback-surface-the-ordering`, `reference-invar-gate-state`, `reference-openpty-blocking-write`.
+
+**BOTH LOOPS ARE SESSION-ONLY AND DIED WITH THE RESTART.** Re-arm from the verbatim prompts in
+`.claude/skills/conductor/SKILL.md` (hourly `7 * * * *`, ten-minute `3,13,23,33,43,53 * * * *`) and VERIFY
+with `CronList` — never trust this file that they are live. That exact failure happened once already.
+
+**IN FLIGHT:** `refactor-plugin-canvas-git` (#34, USER-DIRECTED) in `/tmp/conductor-ctxmenu`, brief at
+`/tmp/TASK-plugin-canvas-git.md`, log `/tmp/plugincanvas-codex.log`. Had 16 files changed and no commit at
+00:36. Done-test is mechanical: grep `Workspace` for git → NOTHING, then gate-enforce it. Must NOT regress
+0.145 ms activation, the O(depth) ignore-query walk, the N-workspaces≠N-watchers bound, or the paint
+barrier. If it needs a membrane concept, it was told to STOP and report rather than invent half of #33.
+
+**TWO THINGS WAITING ON THE USER, both unblocked by anything else:**
+1. **Image tier regression (user-reported, UNRESOLVED).** They see half-block instead of kitty/sixel in
+   **cmux**. `TerminalCapabilities.detectGraphicsTier` blanket-downgrades to halfblock for ANY detected
+   multiplexer even when `kitty_graphics` is true. That rule is OLD (`6503f13`), not an overnight
+   regression — do not assume our changes caused it. Proposed fix: TRUST THE PROBE over the env guess,
+   since a probe reply arriving THROUGH the multiplexer is evidence passthrough works; keep the halfblock
+   floor only when the probe stays silent. Workaround given: `TUI_GRAPHICS_TIER=kitty`. Awaiting their run
+   of `bun scripts/report-graphics-capabilities.ts` INSIDE cmux — capabilities are a property of the live
+   terminal and CANNOT be observed from another shell.
+2. **#68 glyph vocabulary.** Mechanism landed (`b5f3e9e`); current glyphs deliberately preserved; three
+   candidate sets rendered at all three tiers in `/tmp/icon-vocabulary-previews.txt` for them to pick. A
+   pick is now a one-line data edit.
+
+**GATE:** ~2m11-2m30s (was 5m01s). Pool ~52 jobs/0m38-0m56s, tail ~4 jobs/1m23s. Known wording bug to fix:
+the retry tally lists a job that retried AND STILL FAILED under "PASSED ONLY ON RETRY", because the pool
+records a retry ATTEMPT rather than a success.
+
+**LANDED OVERNIGHT:** modal occlusion (#70), breadcrumb picker (#66), workspace activation O(depth) (#78,
+280 ms → 0.145 ms), overlay wheel scroll (#79), code-aware wrap (#72), icon mechanism (#68 mechanism),
+OpenPty non-blocking (#81), content invariance (#76), coverage ratchet + retry tally + widened wait
+invariant, two flake fixes, the classification-guard repair, and doc/lesson commits.
+
+**NEXT, in order:** land #34 when it reports; then the image-tier fix once measured; then #80's 18 remaining
+bare sleeps and the ranked flakes (mode-coherence and overlay-dialog both failed under load tonight);
+then #77; #59 prettier LAST because it touches every file.
+
+## PRIOR ANCHOR (2026-07-25 ~21:00, overnight run)
 
 Main @ 0bfef8d. The user is ASLEEP with a standing goal: land everything, log it, reduce/distill the
 lessons, make the testing gate fast, refine continuously. Two loops are armed (hourly :07 orchestration,
