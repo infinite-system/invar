@@ -1014,3 +1014,35 @@ sitting on main is not rigour, it is hostage-taking. But the rule that keeps thi
 prove pre-existence with evidence from BEFORE the branch existed, name it in the report, and file the
 defect as its own task with the evidence attached — never "re-run until green", which is the same action
 with none of the accounting.
+
+## 2026-07-26 08:52 — "nothing asynchronous ran in between" does not mean nothing changed
+I argued the `F_SETFL` failure was impossible because `F_GETFL` had succeeded on the same descriptor a
+few SYNCHRONOUS statements earlier, and JavaScript is single-threaded, so nothing could have closed it.
+Every step of that was true and the conclusion was still wrong. The closer was Bun's read stream,
+running on an I/O THREAD: `createReadStream` closes the descriptor it holds even with
+`autoClose: false`. The master had two closers; the loser closed a NUMBER that a later allocation
+already owned, so the victim was a DIFFERENT `OpenPty` than the one being disposed. My own reasoning is
+what made me treat the evidence as noise twice.
+
+Two durable pieces. **Single-threaded-therefore-safe is only valid for state no other thread can
+touch, and a file descriptor is shared process-wide** — the moment the resource is an OS handle, the JS
+event loop stops being the whole story. And the diagnostic tell was sitting in the data all along:
+`F_GETFL` failed as often as `F_SETFL`, and `F_GETFL` ignores the third argument, which refutes the
+argument-passing hypothesis I briefed with some confidence. **When a rival hypothesis is cheap to
+separate, find the observation that separates them BEFORE writing the brief**, not after.
+
+The brief still worked, because it demanded a probe before belief and named the rivals to reconstruct.
+That is the difference between briefing a confident cause and briefing an experiment — the second one
+survives being wrong.
+
+## 2026-07-26 08:52 — a probe that constructs one instance at a time cannot see a theft
+The reason this defect resisted three encounters: the victim is never the object under test. A probe
+that creates one `OpenPty`, exercises it, and closes it finds nothing, because the corruption requires
+a close to overlap a LATER allocation. The experiment has to hold a window of instances alive and
+dispose the oldest while constructing a new one. `liveCount > 1` is not a tuning parameter, it is the
+whole hypothesis. Generalisation: for any lifetime or ownership defect, the probe must contain at least
+two participants, or it is measuring a different question than the one being asked.
+
+Landed as an opt-in instrument rather than a gate test, deliberately: detection is ~2% per round, so a
+short gate test could only fail toward "pass". 8 failures in 400 rounds unfixed, 0 in 400 and 0 in 800
+fixed.

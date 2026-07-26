@@ -329,6 +329,28 @@ write-offs as an "infrastructure flake" on 2026-07-26: `EAGAIN` is impossible fo
 `EBADF` contradicted a successful `F_GETFL` on the same descriptor in the same synchronous function.
 The contradiction was the finding.
 
+**"Nothing asynchronous ran in between" does not mean nothing changed.** Single-threaded-therefore-safe
+is valid only for state no other thread can touch. The moment the resource is an OS handle — a file
+descriptor, a lock, a shared mapping — the JS event loop is not the whole story, and a runtime's own
+I/O threads can mutate it between two synchronous statements. On 2026-07-26 this reasoning made me
+dismiss a real descriptor-theft bug as an "infrastructure flake" twice: `F_GETFL` succeeded and
+`F_SETFL` failed a few statements later, which I called impossible. The closer was Bun's read stream on
+an I/O thread, and the victim was a DIFFERENT object than the one being disposed. **Using a valid
+argument to declare an observation impossible is how you end up rejecting the evidence instead of the
+model.**
+
+Corollary for briefs: **when a rival hypothesis is cheap to separate, find the separating observation
+BEFORE writing the brief.** The tell was already in the data — `F_GETFL` fails as often as `F_SETFL`,
+and `F_GETFL` ignores the argument my hypothesis blamed. What saved the task was briefing an EXPERIMENT
+(probe before belief, named rivals to reconstruct, "say so plainly if the number comes out zero")
+rather than a confident cause. A brief written as an experiment survives being wrong; one written as a
+diagnosis does not.
+
+Corollary for probes: **a lifetime or ownership defect needs at least two participants in the
+experiment.** A probe that creates one object, exercises it, and disposes it cannot see a theft, because
+the corruption requires a close to overlap a LATER allocation. Concurrency in the probe is not a tuning
+parameter, it is the hypothesis.
+
 **You cannot demand a quiet machine you are not providing.** When the effect being measured is the
 same size as what fleet load adds, do NOT brief "measure on a quiet machine" while running builders —
 brief PAIRED sampling: measure the candidate and a fixed reference back to back, alternating, and judge

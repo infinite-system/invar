@@ -3,9 +3,38 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~06:16) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-26 ~08:55) — READ FIRST ON A COLD START
 
-Main @ `90fc2d3`, pushed, clean. **TWENTY-TWO commits landed this session.** Durable lessons are in the
+Main @ `b0ff3ea`, pushed, clean. **TWENTY-FIVE commits landed this session.**
+
+**THE FLEET IS DEAD AND CANNOT BE RESTARTED YET.** At ~06:45 all three builders were killed
+simultaneously by an org monthly spend limit (`/usage-credits` — the user must raise it). A new agent
+fails the same way. Their work was preserved as WIP commits on their branches before anything else.
+The ten-minute liveness cron was DELETED (no builders to watch, and each fire spends budget that ran
+out); the hourly loop remains. Re-arm the ten-minute one from the verbatim prompt in
+`.claude/skills/conductor/SKILL.md` once the limit is raised.
+
+**LANDED AFTER THE FLEET DIED (b0ff3ea, conductor-verified):** both PTY bugs, which two builders found
+independently and neither lived to verify.
+- **Descriptor theft.** `createReadStream` closes the descriptor it holds even with `autoClose: false`,
+  from an I/O THREAD. The master had two closers; the loser closed a NUMBER a later allocation already
+  owned, so the victim was a different `OpenPty`. That is why `EBADF` appeared for a descriptor valid
+  one synchronous statement earlier. Fix: the read stream gets a private `dup()`. Verified with
+  `scripts/harness/stress-openpty-descriptors.ts` (opt-in, indexed in `project.tools.md`): **8 failures
+  in 400 rounds before, 0 in 400 and 0 in 800 after.** My briefed variadic-ABI hypothesis was WRONG and
+  the data refuted it — `F_GETFL` fails as often as `F_SETFL`, and it ignores the argument I blamed.
+- **Keystroke latency, PARTIALLY.** `setTimeout(…, 0)` is clamped to a whole millisecond, so every
+  keystroke's write waited a timer turn. Draining inline recovers **~1.2 ms**, measured paired against
+  unfixed main (6.158→4.763, 5.759→4.594, 5.708→4.633, load steady ~0.5). **This does NOT restore the
+  2.970 ms baseline — roughly 1.7 ms remains unexplained and #106 stays OPEN.**
+
+**UNFINISHED, PRESERVED, NEEDS A BUILDER:** `feat-keyboard-invariant` (#91/#93/#101) at
+`/tmp/conductor-keyboard`, two commits, 24 KB report at `/tmp/keyboard-invariant-READY.md`. Killed
+while amending for a clean three-round verification matrix, so **its verification is INCOMPLETE — do
+not land it on the strength of that report.** Note it also modified `scripts/merge-gate.sh`, unreviewed.
+
+**NEW FLAKE, UNDIAGNOSED:** the b0ff3ea gate went ALL-PASS but `smoke: agent-permissions harness`
+passed ONLY ON RETRY. Per the tally's own doctrine a retried pass is a flake, not a green. Durable lessons are in the
 memory store (auto-loaded) — newest: `feedback-find-mmin-not-newermt`,
 `feedback-measure-before-briefing-a-cause`, `feedback-gate-what-humans-cannot-see`,
 `feedback-never-search-to-kill`.

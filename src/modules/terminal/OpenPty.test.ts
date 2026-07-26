@@ -5,6 +5,49 @@ test('the PTY resource publishes its plain construction seam', () => {
   expect(OpenPty.Class).toBe(OpenPty.$Class);
 });
 
+// The regression this pins: queueing every write behind `setTimeout(…, 0)` put
+// a whole clamped millisecond between a keystroke and the bytes leaving the
+// process, on both the integrated-terminal and harness PTY write paths. An
+// empty queue on return is the observable form of "no timer turn was needed".
+test('a keystroke write needs no timer turn', async () => {
+  const childSource = String.raw`
+    import { OpenPty } from './src/modules/terminal/OpenPty';
+
+    class QueueObservingOpenPty extends OpenPty.$Class {
+      get pendingWriteCount(): number {
+        return this.writeQueue.length;
+      }
+    }
+
+    const openPty = new QueueObservingOpenPty();
+    const echoChild = Bun.spawn(['bash', '-c', 'stty raw -echo; cat'], {
+      stdio: [
+        openPty.slaveFileDescriptor,
+        openPty.slaveFileDescriptor,
+        openPty.slaveFileDescriptor,
+      ],
+    });
+    openPty.releaseSlaveFileDescriptor();
+    await Bun.sleep(100);
+    openPty.write('\x1b[C');
+    console.log('PENDING_AFTER_WRITE=' + openPty.pendingWriteCount);
+    echoChild.kill();
+    openPty.close();
+    await echoChild.exited;
+  `;
+  const child = Bun.spawn([process.execPath, '--eval', childSource], {
+    cwd: process.cwd(),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const exitCode = await child.exited;
+  const standardOutput = await new Response(child.stdout).text();
+  const standardError = await new Response(child.stderr).text();
+
+  expect(exitCode, standardError).toBe(0);
+  expect(standardOutput).toContain('PENDING_AFTER_WRITE=0');
+});
+
 test('a saturated PTY write leaves the event loop responsive', async () => {
   const childSource = String.raw`
       import { OpenPty } from './src/modules/terminal/OpenPty';
