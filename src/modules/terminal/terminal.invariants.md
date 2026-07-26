@@ -223,38 +223,43 @@ descriptor that the shared allocator does not own.
 ### Shared PTY writes never block the event loop
 
 **Invariant:** If `OpenPty.write` accepts bytes for a PTY master descriptor, then delivery never
-blocks the JavaScript event loop that must also read the descriptor and render the resulting output.
+blocks the JavaScript event loop that must also read the descriptor and render the resulting output,
+and never costs a timer turn for bytes the descriptor can accept immediately.
 
 **Scope:** The shared `OpenPty` master descriptor and write path used by `OpenPtyBackend` and
 `PtyTestDriver`. Child read policy and application output generation are outside this rule.
 
 **Mechanism:** `OpenPty` preserves the descriptor status flags, applies `O_NONBLOCK` with `fcntl`
 before each write drain, and restores the blocking state needed by Bun's async PTY read stream after
-the drain. `write` copies bytes into one ordered queue and returns; an event-loop drain writes at most
-16 KB per turn. A partial write advances the queue, `EAGAIN` or `EWOULDBLOCK` schedules a later retry,
-and every other errno throws. A drain timer exists only while queued bytes remain and is cleared on
-close; a read restart is scheduled only if a read races the non-blocking write window and reports
-`EAGAIN`.
+the drain. `write` copies bytes into one ordered queue and drains it inline; the drain writes at most
+16 KB per turn, so an accepting descriptor takes the bytes in the calling tick and a saturated one
+reports `EAGAIN` without waiting. A partial write advances the queue, `EAGAIN` or `EWOULDBLOCK`
+schedules a later retry, and every other errno is rethrown on a later turn so a keystroke never
+receives a write failure it cannot handle. A drain already scheduled owns the queue, so an inline
+drain defers to it and chunk order is preserved. A drain timer exists only while queued bytes remain
+and is cleared on close; a read restart is scheduled only if a read races the non-blocking write
+window and reports `EAGAIN`.
 
 **Generates:** Responsive large terminal paste into a stopped or slow child; deadlock-free harness
 input while Invar renders output; ordered chunk delivery; idle quiescence with no write polling at
-rest.
+rest; integrated-terminal and harness keystrokes that reach the descriptor without a timer clamp.
 
 **Evidence:** `src/modules/terminal/OpenPty.ts`; `src/modules/terminal/OpenPty.test.ts` `a saturated
-PTY write leaves the event loop responsive` and `a genuine asynchronous PTY write failure names its
-errno`; `scripts/harness/smoke-terminal-backpressure-harness.ts`.
+PTY write leaves the event loop responsive`, `a genuine asynchronous PTY write failure names its
+errno`, and `a keystroke write needs no timer turn`;
+`scripts/harness/smoke-terminal-backpressure-harness.ts`.
 
 **Impossible if true:** A large master write preventing a scheduled timer or UI keystroke from
 running; the harness and application each waiting for the other to drain the same PTY; an
 `EAGAIN`/`EWOULDBLOCK` being raised as a terminal failure; a write retry timer firing while the queue
-is empty.
+is empty; a keystroke-sized payload still queued when `write` returns.
 
 **Verification:** `bun test src/modules/terminal/OpenPty.test.ts && bun
 scripts/harness/smoke-terminal-backpressure-harness.ts && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Terminal bytes cross exactly one backend seam
 

@@ -217,7 +217,30 @@ class $OpenPty {
       typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data);
     if (buffer.length === 0) return;
     this.writeQueue.push({ buffer, writtenByteCount: 0 });
-    this.scheduleWriteDrain();
+    this.drainWriteQueueImmediately();
+  }
+
+  // Bytes the descriptor can accept right now must not wait for a timer turn.
+  // `setTimeout(…, 0)` is clamped to a whole millisecond, and a keystroke
+  // forwarded to a PTY master is a handful of bytes that the kernel buffer
+  // accepts on the first try — so deferring the common case spent about a
+  // millisecond of keystroke latency to serve the saturated case. Draining
+  // inline stays non-blocking: `O_NONBLOCK` makes a full buffer report
+  // `EAGAIN` immediately, and the queue plus its retry timer carry the
+  // remainder exactly as before. A drain already scheduled owns the queue, so
+  // this defers to it and preserves chunk order.
+  protected drainWriteQueueImmediately(): void {
+    if (this.closed || this.writeDrainTimer) return;
+    try {
+      this.drainWriteQueue();
+    } catch (error) {
+      // A genuine errno stays an asynchronous failure: it must not surface as a
+      // throw out of the caller's keystroke, which never had a way to handle
+      // it.
+      setTimeout(() => {
+        throw error;
+      }, 0);
+    }
   }
 
   protected establishNonBlockingWrites(): void {
