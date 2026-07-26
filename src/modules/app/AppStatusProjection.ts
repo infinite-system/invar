@@ -234,6 +234,7 @@ class $AppStatusProjection {
       ),
       panelExpanded: ports.panelHost.expanded.value,
       panelListVisible: ports.panelHost.panelListVisible,
+      panelHeadingGeometry: ports.view.panelHeadingGeometry(),
       panelListGeometry: ports.view.panelContentsListRegion(),
       terminalColumns: ports.view.panelViewportColumns(),
       terminalRows: ports.view.panelViewportRows(),
@@ -477,6 +478,7 @@ export interface AppStatusProjectionPorts {
     | 'activeMarkdownSplitView'
     | 'panelViewportColumns'
     | 'panelViewportRows'
+    | 'panelHeadingGeometry'
     | 'panelContentsListRegion'
     | 'rightDockViewportColumns'
     | 'rightDockViewportRows'

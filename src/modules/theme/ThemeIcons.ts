@@ -137,15 +137,15 @@ class $ThemeIcons {
     return this.cache('$interfaceGlyphVocabularies', {
       nerd: {
         activityFiles: '\u{f07b}',
-        activitySourceControl: '\u{f126}',
-        activityExtensions: '\u{f12e}',
+        activitySourceControl: '\u{e702}',
+        activityExtensions: '\u{f487}',
         activitySearch: '\u{f002}',
         activitySettings: '\u{f013}',
         activityAccentBar: '▎',
-        panelAdd: '+',
-        panelExpand: 'EXPAND',
-        panelRestore: 'RESTORE',
-        panelClose: 'X',
+        panelAdd: '\u{f067}',
+        panelExpand: '\u{f065}',
+        panelRestore: '\u{f066}',
+        panelClose: '\u{f00d}',
       },
       unicode: {
         activityFiles: '▤',
@@ -155,9 +155,9 @@ class $ThemeIcons {
         activitySettings: '⚙',
         activityAccentBar: '▎',
         panelAdd: '+',
-        panelExpand: 'EXPAND',
-        panelRestore: 'RESTORE',
-        panelClose: 'X',
+        panelExpand: '↗',
+        panelRestore: '↙',
+        panelClose: '×',
       },
       ascii: {
         activityFiles: 'F',
@@ -167,9 +167,9 @@ class $ThemeIcons {
         activitySettings: '*',
         activityAccentBar: '|',
         panelAdd: '+',
-        panelExpand: 'EXPAND',
-        panelRestore: 'RESTORE',
-        panelClose: 'X',
+        panelExpand: '>',
+        panelRestore: '<',
+        panelClose: 'x',
       },
     });
   }

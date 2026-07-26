@@ -121,6 +121,20 @@ describe('AppStatusProjection', () => {
         activeMarkdownSplitView: () => null,
         panelViewportColumns: () => 80,
         panelViewportRows: () => 24,
+        panelHeadingGeometry: () => [
+          {
+            contentId: 'terminal',
+            row: 22,
+            hoveredAction: 'expand',
+            controls: [
+              {
+                action: 'expand',
+                startColumn: 74,
+                endColumnExclusive: 77,
+              },
+            ],
+          },
+        ],
         panelContentsListRegion: () => ({
           left: 0,
           top: 0,
@@ -226,6 +240,20 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.terminalScrollContentRows).toBe(43);
     expect(publishedSnapshot.terminalScrollViewportRows).toBe(24);
     expect(publishedSnapshot.terminalWheelForwardedToChild).toBe(true);
+    expect(publishedSnapshot.panelHeadingGeometry).toEqual([
+      {
+        contentId: 'terminal',
+        row: 22,
+        hoveredAction: 'expand',
+        controls: [
+          {
+            action: 'expand',
+            startColumn: 74,
+            endColumnExclusive: 77,
+          },
+        ],
+      },
+    ]);
     expect(StatusChannel.Class.snapshot.agentTitle).toBe('Codex (working…)');
 
     panelHost.dispose();

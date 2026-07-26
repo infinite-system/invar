@@ -10,7 +10,7 @@
 // invariant: Each panel instance owns one independent session (src/modules/terminal/terminal.invariants.md)
 // invariant: Expanded panel overrides only the editor center rows (src/modules/layout/layout.invariants.md)
 // invariant: An unexpanded bottom panel leaves one editor row (src/modules/layout/layout.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
@@ -27,10 +27,21 @@ interface Rectangle {
 }
 
 interface HeadingControlLocation {
-  readonly action: 'add' | 'expand' | 'restore' | 'close';
+  readonly contentId: string;
+  readonly action: 'add' | 'expand' | 'close';
   readonly startColumn: number;
   readonly endColumnExclusive: number;
   readonly row: number;
+}
+
+interface HeadingGeometry {
+  readonly contentId: string;
+  readonly row: number;
+  readonly hoveredAction: 'add' | 'expand' | 'close' | null;
+  readonly controls: readonly Omit<
+    HeadingControlLocation,
+    'contentId' | 'row'
+  >[];
 }
 
 function clickCell(
@@ -42,6 +53,18 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+async function forceGlyphLevel(
+  homeDirectory: string,
+  glyphLevel: 'unicode' | 'ascii',
+): Promise<void> {
+  const settingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    `${JSON.stringify({ glyphMode: glyphLevel })}\n`,
+  );
+}
+
 function rectangle(status: StatusSnapshot, slot: string): Rectangle {
   const slots = status.layoutSlots as Record<string, Rectangle> | undefined;
   const resolved = slots?.[slot];
@@ -49,43 +72,37 @@ function rectangle(status: StatusSnapshot, slot: string): Rectangle {
   return resolved;
 }
 
-function headingControlLocations(
-  snapshot: HarnessSnapshot.Model,
-  toggleLabel: 'EXPAND' | 'RESTORE',
-): Record<'add' | 'toggle' | 'close', HeadingControlLocation> {
-  const togglePosition = snapshot.findText(` ${toggleLabel} `);
-  if (!togglePosition) {
-    throw new Error(`Missing panel heading toggle: ${toggleLabel}`);
-  }
-  const rowText = snapshot.rowText(togglePosition.row);
-  const addStartColumn = rowText.lastIndexOf(' + ', togglePosition.column - 1);
-  const closeStartColumn = rowText.indexOf(
-    ' X ',
-    togglePosition.column + toggleLabel.length,
+function headingGeometries(status: StatusSnapshot): readonly HeadingGeometry[] {
+  const geometry = status.panelHeadingGeometry;
+  if (!Array.isArray(geometry)) return [];
+  return geometry as unknown as readonly HeadingGeometry[];
+}
+
+function headingControls(
+  status: StatusSnapshot,
+  contentId?: string,
+): readonly HeadingControlLocation[] {
+  const heading = headingGeometries(status).find(
+    (candidate) => contentId === undefined || candidate.contentId === contentId,
   );
-  if (addStartColumn < 0 || closeStartColumn < 0) {
-    throw new Error(`Missing panel heading sibling around ${toggleLabel}`);
-  }
-  return {
-    add: {
-      action: 'add',
-      startColumn: addStartColumn,
-      endColumnExclusive: addStartColumn + 3,
-      row: togglePosition.row,
-    },
-    toggle: {
-      action: toggleLabel === 'EXPAND' ? 'expand' : 'restore',
-      startColumn: togglePosition.column,
-      endColumnExclusive: togglePosition.column + toggleLabel.length + 2,
-      row: togglePosition.row,
-    },
-    close: {
-      action: 'close',
-      startColumn: closeStartColumn,
-      endColumnExclusive: closeStartColumn + 3,
-      row: togglePosition.row,
-    },
-  };
+  if (!heading) return [];
+  return heading.controls.map((control) => ({
+    ...control,
+    contentId: heading.contentId,
+    row: heading.row,
+  }));
+}
+
+function headingControl(
+  status: StatusSnapshot,
+  action: 'add' | 'expand' | 'close',
+  contentId?: string,
+): HeadingControlLocation | null {
+  return (
+    headingControls(status, contentId).find(
+      (control) => control.action === action,
+    ) ?? null
+  );
 }
 
 function controlAttributes(
@@ -113,15 +130,17 @@ function controlAttributes(
 
 async function hoverHeadingControl(
   driver: PtyTestDriver.Model,
+  statusPath: string,
   restingSnapshot: HarnessSnapshot.Model,
   control: HeadingControlLocation,
-  unchangedSibling: HeadingControlLocation,
+  headingControlLocations: readonly HeadingControlLocation[],
   tooltipText: string,
 ): Promise<HarnessSnapshot.Model> {
-  const restingControlAttributes = controlAttributes(restingSnapshot, control);
-  const restingSiblingAttributes = controlAttributes(
-    restingSnapshot,
-    unchangedSibling,
+  const expectedChangedColumns = Array.from(
+    {
+      length: control.endColumnExclusive - control.startColumn,
+    },
+    (_unusedValue, columnOffset) => control.startColumn + columnOffset,
   );
   driver.sendMouse({
     kind: 'move',
@@ -131,28 +150,73 @@ async function hoverHeadingControl(
     row: control.row,
     button: 'none',
   });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${control.action} is the published hovered heading action`,
+    (status) =>
+      headingGeometries(status).find(
+        (heading) => heading.contentId === control.contentId,
+      )?.hoveredAction === control.action,
+  );
   const hoveredSnapshot = await driver.awaitGridCondition(
-    `${control.action} heading control highlights and names itself while ${unchangedSibling.action} stays unchanged`,
+    `${control.action} heading control highlights exactly its published span and names itself`,
     (candidate) =>
       candidate.findText(tooltipText) !== null &&
-      controlAttributes(candidate, control) !== restingControlAttributes &&
-      controlAttributes(candidate, unchangedSibling) ===
-        restingSiblingAttributes,
+      JSON.stringify(
+        changedHeadingControlColumns(
+          restingSnapshot,
+          candidate,
+          headingControlLocations,
+        ),
+      ) === JSON.stringify(expectedChangedColumns),
   );
   HarnessSmoke.Class.requireCondition(
     hoveredSnapshot.findText(tooltipText) !== null,
     `${control.action} tooltip names the control as ${tooltipText}`,
   );
   HarnessSmoke.Class.requireCondition(
-    controlAttributes(hoveredSnapshot, control) !== restingControlAttributes,
-    `${control.action} control cells change attributes on hover`,
-  );
-  HarnessSmoke.Class.requireCondition(
-    controlAttributes(hoveredSnapshot, unchangedSibling) ===
-      restingSiblingAttributes,
-    `${unchangedSibling.action} sibling cells stay unchanged in the ${control.action} hover frame`,
+    JSON.stringify(
+      changedHeadingControlColumns(
+        restingSnapshot,
+        hoveredSnapshot,
+        headingControlLocations,
+      ),
+    ) === JSON.stringify(expectedChangedColumns),
+    `${control.action} hover highlight occupies exactly its own published column span`,
   );
   return hoveredSnapshot;
+}
+
+function changedHeadingControlColumns(
+  restingSnapshot: HarnessSnapshot.Model,
+  candidateSnapshot: HarnessSnapshot.Model,
+  controls: readonly HeadingControlLocation[],
+): number[] {
+  const firstColumn = Math.min(
+    ...controls.map((control) => control.startColumn),
+  );
+  const endColumnExclusive = Math.max(
+    ...controls.map((control) => control.endColumnExclusive),
+  );
+  const row = controls[0]?.row ?? 0;
+  const changedColumns: number[] = [];
+  for (let column = firstColumn; column < endColumnExclusive; column += 1) {
+    const singleCellControl: HeadingControlLocation = {
+      contentId: controls[0]?.contentId ?? '',
+      action: controls[0]?.action ?? 'add',
+      startColumn: column,
+      endColumnExclusive: column + 1,
+      row,
+    };
+    if (
+      controlAttributes(restingSnapshot, singleCellControl) !==
+      controlAttributes(candidateSnapshot, singleCellControl)
+    ) {
+      changedColumns.push(column);
+    }
+  }
+  return changedColumns;
 }
 
 function requireOrdinaryCloseForeground(
@@ -186,19 +250,27 @@ function contentsListRectangle(status: StatusSnapshot): Rectangle {
 
 async function clickHeadingAction(
   driver: PtyTestDriver.Model,
-  marker: 'EXPAND' | 'RESTORE',
-  action: 'add' | 'expand',
+  statusPath: string,
+  action: 'add' | 'expand' | 'close',
+  contentId?: string,
 ): Promise<void> {
-  const snapshot = await driver.awaitGridCondition(
-    `the ${marker} panel heading control is visible before activation`,
-    (candidate) => candidate.findText(marker) !== null,
+  const status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `the ${action} panel heading action has published geometry before activation`,
+    (candidate) => headingControl(candidate, action, contentId) !== null,
   );
-  const position = snapshot.findText(marker);
-  if (!position) throw new Error(`Missing panel heading marker: ${marker}`);
+  const control = headingControl(status, action, contentId);
+  if (!control) {
+    throw new Error(
+      `Missing panel heading action geometry: ${contentId ?? 'first heading'} ${action}`,
+    );
+  }
   clickCell(
     driver,
-    action === 'add' ? position.column - 3 : position.column,
-    position.row,
+    control.startColumn +
+      Math.floor((control.endColumnExclusive - control.startColumn) / 2),
+    control.row,
   );
 }
 
@@ -245,7 +317,7 @@ async function openAddPopup(
 ): ReturnType<typeof awaitPopup> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await clickHeadingAction(driver, 'EXPAND', 'add');
+    await clickHeadingAction(driver, statusPath, 'add');
     try {
       return await awaitPopup(driver, statusPath, 2_500);
     } catch (error) {
@@ -325,8 +397,8 @@ function requireExpandedGeometry(
     dockGeometry(status) === dockGeometry(regularStatus),
     `${label} expansion leaves both dock rectangles byte-identical`,
   );
-  const restorePosition = snapshot.findText('RESTORE');
-  const paintedTopRow = (restorePosition?.row ?? 0) - 1;
+  const expandControl = headingControl(status, 'expand');
+  const paintedTopRow = (expandControl?.row ?? 0) - 1;
   const topLeftCell = snapshot.cell(paintedTopRow, expandedPanel.left);
   const bottomLeftCell = snapshot.cell(
     paintedTopRow + expandedPanel.height - 1,
@@ -345,6 +417,7 @@ async function driveSecondSize(): Promise<void> {
     join(tmpdir(), 'invar-panel-chrome-compact-'),
   );
   const statusPath = join(homeDirectory, 'status.json');
+  await forceGlyphLevel(homeDirectory, 'unicode');
   const driver = new PtyTestDriver.Class({
     workspaceRoot: join(process.cwd(), 'fixtures'),
     columns: 88,
@@ -384,16 +457,30 @@ async function driveSecondSize(): Promise<void> {
         status.terminalVisible === true &&
         status.panelActiveContent === 'terminal',
     );
-    await clickHeadingAction(driver, 'EXPAND', 'expand');
+    await clickHeadingAction(driver, statusPath, 'expand');
     const expandedStatus = await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
       'the compact panel is expanded',
       (status) => status.panelExpanded === true,
     );
+    const expandedPanel = rectangle(expandedStatus, 'bottomPanel');
+    const expandedControl = headingControl(expandedStatus, 'expand');
+    if (!expandedControl) {
+      throw new Error('Missing compact expanded heading geometry');
+    }
+    const paintedTopRow = expandedControl.row - 1;
     const expandedSnapshot = await driver.awaitGridCondition(
-      'the compact expanded panel heading paints Restore',
-      (snapshot) => snapshot.findText('RESTORE') !== null,
+      'the compact expanded panel paints both slot edges',
+      (snapshot) =>
+        Boolean(
+          snapshot.cell(paintedTopRow, expandedPanel.left)?.characters.trim(),
+        ) &&
+        Boolean(
+          snapshot
+            .cell(paintedTopRow + expandedPanel.height - 1, expandedPanel.left)
+            ?.characters.trim(),
+        ),
     );
     requireExpandedGeometry(
       expandedStatus,
@@ -407,9 +494,133 @@ async function driveSecondSize(): Promise<void> {
   }
 }
 
+async function driveAsciiHeadingControls(): Promise<void> {
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), 'invar-panel-chrome-ascii-'),
+  );
+  const statusPath = join(homeDirectory, 'status.json');
+  await forceGlyphLevel(homeDirectory, 'ascii');
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: join(process.cwd(), 'fixtures'),
+    columns: 100,
+    rows: 30,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier application is ready with its panel hidden',
+      (status) => status.ready === true && status.terminalVisible === false,
+      15_000,
+    );
+    driver.sendKeys('F8');
+    const restingStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier panel publishes all heading control geometry',
+      (status) =>
+        status.panelActiveContent === 'terminal' &&
+        headingControls(status).length === 3,
+    );
+    const restingControls = headingControls(restingStatus);
+    const restingSnapshot = await driver.awaitGridCondition(
+      'the ascii-tier heading paints every published control span',
+      (candidate) =>
+        restingControls.every((control) => {
+          const centerColumn =
+            control.startColumn +
+            Math.floor((control.endColumnExclusive - control.startColumn) / 2);
+          return Boolean(
+            candidate.cell(control.row, centerColumn)?.characters.trim(),
+          );
+        }),
+    );
+    for (const [action, tooltipText] of [
+      ['add', 'Add panel'],
+      ['expand', 'Expand panel'],
+      ['close', 'Close panel'],
+    ] as const) {
+      const control = headingControl(restingStatus, action);
+      if (!control) throw new Error(`Missing ascii-tier ${action} control`);
+      await hoverHeadingControl(
+        driver,
+        statusPath,
+        restingSnapshot,
+        control,
+        restingControls,
+        tooltipText,
+      );
+    }
+
+    await clickHeadingAction(driver, statusPath, 'add');
+    await awaitPopup(driver, statusPath);
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier Add popup closes before expanding',
+      (status) => status.boundedListPopupOpen === false,
+    );
+
+    await clickHeadingAction(driver, statusPath, 'expand');
+    const expandedStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier Expand action expands the panel',
+      (status) =>
+        status.panelExpanded === true &&
+        headingControl(status, 'expand') !== null,
+    );
+    const expandedControls = headingControls(expandedStatus);
+    const expandedControl = headingControl(expandedStatus, 'expand');
+    if (!expandedControl) {
+      throw new Error('Missing ascii-tier Restore action geometry');
+    }
+    const expandedSnapshot = driver.snapshot();
+    await hoverHeadingControl(
+      driver,
+      statusPath,
+      expandedSnapshot,
+      expandedControl,
+      expandedControls,
+      'Restore panel',
+    );
+    await clickHeadingAction(driver, statusPath, 'expand');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier Restore action restores the panel',
+      (status) => status.panelExpanded === false,
+    );
+
+    await clickHeadingAction(driver, statusPath, 'close', 'terminal');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the ascii-tier Close action closes its panel content',
+      (status) =>
+        status.terminalVisible === false &&
+        Array.isArray(status.panelCellIds) &&
+        status.panelCellIds.length === 0,
+    );
+    console.log(
+      'panel heading tier ascii: hover spans + tooltips + add/expand/restore/close ALL-PASS',
+    );
+  } finally {
+    driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
 console.log('== harness panel-chrome: boot and prove the quiet baseline ==');
 const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-panel-chrome-'));
 const statusPath = join(homeDirectory, 'status.json');
+await forceGlyphLevel(homeDirectory, 'unicode');
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
   columns: 120,
@@ -442,81 +653,87 @@ try {
       'F8 opens the panel while the top application chrome stays fixed',
     performAction: () => driver.sendKeys('F8'),
   });
-  await HarnessSmoke.Class.awaitStatus(
+  const restingHeadingStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Terminal 1 is visible',
+    'Terminal 1 is visible with action-addressed heading geometry',
     (status) =>
       status.panelActiveContent === 'terminal' &&
       Array.isArray(status.panelContentLabels) &&
-      status.panelContentLabels.join(',') === 'Terminal',
+      status.panelContentLabels.join(',') === 'Terminal' &&
+      headingControls(status).length === 3,
   );
+  const restingHeadingControls = headingControls(restingHeadingStatus);
 
   console.log(
     '== harness panel-chrome: every heading control explains and highlights itself ==',
   );
   const restingHeadingSnapshot = await driver.awaitGridCondition(
-    'the resting Terminal heading paints Add Expand and Close controls',
-    (candidate) => {
-      try {
-        headingControlLocations(candidate, 'EXPAND');
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    'the resting Terminal heading paints every published action span',
+    (candidate) =>
+      restingHeadingControls.every((control) => {
+        const centerColumn =
+          control.startColumn +
+          Math.floor((control.endColumnExclusive - control.startColumn) / 2);
+        return Boolean(
+          candidate.cell(control.row, centerColumn)?.characters.trim(),
+        );
+      }),
   );
-  const restingHeadingControls = headingControlLocations(
-    restingHeadingSnapshot,
-    'EXPAND',
-  );
-  requireOrdinaryCloseForeground(
-    restingHeadingSnapshot,
-    restingHeadingControls.close,
-  );
+  const restingAddControl = headingControl(restingHeadingStatus, 'add');
+  const restingExpandControl = headingControl(restingHeadingStatus, 'expand');
+  const restingCloseControl = headingControl(restingHeadingStatus, 'close');
+  if (!restingAddControl || !restingExpandControl || !restingCloseControl) {
+    throw new Error('Missing resting Terminal heading controls');
+  }
+  requireOrdinaryCloseForeground(restingHeadingSnapshot, restingCloseControl);
   await hoverHeadingControl(
     driver,
+    statusPath,
     restingHeadingSnapshot,
-    restingHeadingControls.add,
-    restingHeadingControls.toggle,
+    restingAddControl,
+    restingHeadingControls,
     'Add panel',
   );
   await hoverHeadingControl(
     driver,
+    statusPath,
     restingHeadingSnapshot,
-    restingHeadingControls.toggle,
-    restingHeadingControls.close,
+    restingExpandControl,
+    restingHeadingControls,
     'Expand panel',
   );
   await hoverHeadingControl(
     driver,
+    statusPath,
     restingHeadingSnapshot,
-    restingHeadingControls.close,
-    restingHeadingControls.add,
+    restingCloseControl,
+    restingHeadingControls,
     'Close panel',
   );
   driver.sendMouse({
     kind: 'move',
-    column: Math.max(0, restingHeadingControls.add.startColumn - 2),
-    row: restingHeadingControls.add.row,
+    column: Math.max(0, restingAddControl.startColumn - 2),
+    row: restingAddControl.row,
     button: 'none',
   });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the published heading hover action clears after pointer exit',
+    (candidate) =>
+      headingGeometries(candidate).every(
+        (heading) => heading.hoveredAction === null,
+      ),
+  );
   await driver.awaitGridCondition(
     'all heading controls return to rest after the pointer leaves them',
     (candidate) =>
-      controlAttributes(candidate, restingHeadingControls.add) ===
-        controlAttributes(restingHeadingSnapshot, restingHeadingControls.add) &&
-      controlAttributes(candidate, restingHeadingControls.toggle) ===
-        controlAttributes(
-          restingHeadingSnapshot,
-          restingHeadingControls.toggle,
-        ) &&
-      controlAttributes(candidate, restingHeadingControls.close) ===
-        controlAttributes(
-          restingHeadingSnapshot,
-          restingHeadingControls.close,
-        ) &&
-      candidate.findText('Close panel') === null,
+      restingHeadingControls.every(
+        (control) =>
+          controlAttributes(candidate, control) ===
+          controlAttributes(restingHeadingSnapshot, control),
+      ) && candidate.findText('Close panel') === null,
   );
 
   console.log(
@@ -617,23 +834,7 @@ try {
   );
   HarnessSmoke.Class.pass('Agent instances select and close through the list');
 
-  const agentPosition = await driver
-    .awaitGridCondition(
-      'the Agent heading is visible before its Close action',
-      (snapshot) => snapshot.findText('Claude') !== null,
-    )
-    .then((snapshot) => snapshot.findText('Claude'));
-  if (!agentPosition) throw new Error('Missing Claude agent heading');
-  const agentHeadingText = driver.snapshot().rowText(agentPosition.row);
-  const agentCloseColumn = agentHeadingText.indexOf(
-    ' X ',
-    agentPosition.column,
-  );
-  HarnessSmoke.Class.requireCondition(
-    agentCloseColumn >= 0,
-    'Agent heading paints its own close control',
-  );
-  clickCell(driver, agentCloseColumn + 1, agentPosition.row);
+  await clickHeadingAction(driver, statusPath, 'close', 'agent');
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -644,23 +845,39 @@ try {
       Array.isArray(candidate.panelCellIds) &&
       candidate.panelCellIds.join(',') === 'terminal',
   );
-  HarnessSmoke.Class.pass('heading X closes its own content region');
+  HarnessSmoke.Class.pass(
+    'heading Close action removes its own content region',
+  );
 
   console.log(
     '== harness panel-chrome: Expand overrides only center rows and restores ==',
   );
   const regularStatus = status;
   const regularPanel = rectangle(regularStatus, 'bottomPanel');
-  await clickHeadingAction(driver, 'EXPAND', 'expand');
+  await clickHeadingAction(driver, statusPath, 'expand');
   const expandedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the 120x40 panel is expanded',
-    (candidate) => candidate.panelExpanded === true,
+    'the 120x40 panel is expanded with restored action geometry',
+    (candidate) =>
+      candidate.panelExpanded === true &&
+      headingControls(candidate).length === 3,
   );
+  const expandedPanel = rectangle(expandedStatus, 'bottomPanel');
+  const expandedControl = headingControl(expandedStatus, 'expand');
+  if (!expandedControl) throw new Error('Missing expanded heading action');
+  const paintedTopRow = expandedControl.row - 1;
   const expandedSnapshot = await driver.awaitGridCondition(
-    'the expanded panel heading paints Restore',
-    (snapshot) => snapshot.findText('RESTORE') !== null,
+    'the expanded panel paints both slot edges',
+    (snapshot) =>
+      Boolean(
+        snapshot.cell(paintedTopRow, expandedPanel.left)?.characters.trim(),
+      ) &&
+      Boolean(
+        snapshot
+          .cell(paintedTopRow + expandedPanel.height - 1, expandedPanel.left)
+          ?.characters.trim(),
+      ),
   );
   requireExpandedGeometry(
     expandedStatus,
@@ -668,19 +885,17 @@ try {
     expandedSnapshot,
     '120x40',
   );
-  const expandedHeadingControls = headingControlLocations(
-    expandedSnapshot,
-    'RESTORE',
-  );
+  const expandedHeadingControls = headingControls(expandedStatus);
   await hoverHeadingControl(
     driver,
+    statusPath,
     expandedSnapshot,
-    expandedHeadingControls.toggle,
-    expandedHeadingControls.add,
+    expandedControl,
+    expandedHeadingControls,
     'Restore panel',
   );
 
-  await clickHeadingAction(driver, 'RESTORE', 'expand');
+  await clickHeadingAction(driver, statusPath, 'expand');
   const restoredStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -743,8 +958,16 @@ try {
     '== harness panel-chrome: repeat exact expansion edges at 88x24 ==',
   );
   await driveSecondSize();
-  console.log('smoke-panel-chrome-harness: ALL-PASS');
+  console.log(
+    'panel heading tier unicode: hover spans + tooltips + add/expand/restore/close ALL-PASS',
+  );
 } finally {
   driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }
+
+console.log(
+  '== harness panel-chrome: repeat every heading interaction at the ascii tier ==',
+);
+await driveAsciiHeadingControls();
+console.log('smoke-panel-chrome-harness: ALL-PASS');

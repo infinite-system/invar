@@ -48,7 +48,7 @@ test('heading projection keeps add expand and close paint and hit geometry ident
     .map((chunk) => chunk.text)
     .join('');
   expect(renderedText).toContain('Terminal 2');
-  expect(renderedText).toContain('EXPAND');
+  expect(renderedText).toContain('>');
   expect(projection.controls.map((control) => control.action)).toEqual([
     'add',
     'expand',
@@ -76,7 +76,7 @@ test('expanded heading replaces the toggle label without moving close from the r
   );
 
   expect(projection.text.chunks.map((chunk) => chunk.text).join('')).toContain(
-    'RESTORE',
+    '<',
   );
   expect(close?.endColumn).toBe(32);
 });
@@ -133,6 +133,6 @@ test('close uses the ordinary foreground instead of the error color', () => {
   });
 
   const closeChunk = projection.text.chunks.at(-1);
-  expect(closeChunk?.fg).toEqual(fg(palette.fg)(' X ').fg);
-  expect(closeChunk?.fg).not.toEqual(fg(palette.error)(' X ').fg);
+  expect(closeChunk?.fg).toEqual(fg(palette.fg)(' x ').fg);
+  expect(closeChunk?.fg).not.toEqual(fg(palette.error)(' x ').fg);
 });

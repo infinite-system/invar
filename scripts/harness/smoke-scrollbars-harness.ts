@@ -50,6 +50,16 @@ interface AgentThumbFrame {
   readonly paintedThumbRows: number;
 }
 
+interface PanelHeadingGeometryStatus {
+  readonly contentId: string;
+  readonly row: number;
+  readonly controls: readonly {
+    readonly action: 'add' | 'expand' | 'close';
+    readonly startColumn: number;
+    readonly endColumnExclusive: number;
+  }[];
+}
+
 function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
@@ -469,6 +479,56 @@ function bottomPanelSlot(status: StatusSnapshot): Rectangle {
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
   return bottomPanel;
+}
+
+async function clickPanelHeadingAction(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  action: 'add' | 'expand' | 'close',
+  contentId?: string,
+): Promise<void> {
+  const status = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `the ${action} panel heading action has published geometry before the scrollbar drive`,
+    (candidate) => {
+      const headings = candidate.panelHeadingGeometry;
+      if (!Array.isArray(headings)) return false;
+      return (
+        headings as unknown as readonly PanelHeadingGeometryStatus[]
+      ).some(
+        (heading) =>
+          (contentId === undefined || heading.contentId === contentId) &&
+          heading.controls.some((control) => control.action === action),
+      );
+    },
+  );
+  const headings =
+    status.panelHeadingGeometry as unknown as readonly PanelHeadingGeometryStatus[];
+  const heading = headings.find(
+    (candidate) => contentId === undefined || candidate.contentId === contentId,
+  );
+  const control = heading?.controls.find(
+    (candidate) => candidate.action === action,
+  );
+  if (!heading || !control) {
+    throw new Error(`Missing ${action} panel heading geometry`);
+  }
+  const column =
+    control.startColumn +
+    Math.floor((control.endColumnExclusive - control.startColumn) / 2);
+  driver.sendMouse({
+    kind: 'press',
+    column,
+    row: heading.row,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column,
+    row: heading.row,
+    button: 'left',
+  });
 }
 
 function agentThumbRowCount(
@@ -1327,12 +1387,12 @@ try {
       candidate.panelActiveContent === 'agent' &&
       Number(candidate.agentViewportRows) > 0,
   );
-  const agentOpenedSnapshot = await overflowDriver.awaitSnapshot(
-    (candidate) =>
-      candidate.findText('✦ Claude') !== null &&
-      candidate.findText('EXPAND') !== null,
+  await clickPanelHeadingAction(
+    overflowDriver,
+    statusPath,
+    'expand',
+    String(agentStatus.panelActiveContent),
   );
-  HarnessSmoke.Class.clickText(overflowDriver, agentOpenedSnapshot, 'EXPAND');
   const expandedAgentStatus = await HarnessSmoke.Class.awaitStatus(
     overflowDriver,
     statusPath,

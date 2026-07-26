@@ -2002,6 +2002,31 @@ class $RootView {
       gitPanelGeometry: () => gitPanelGeometry,
       gitChangeRowsNow,
     });
+    const panelHeadingGeometry = (): readonly PanelHeadingGeometry[] => {
+      if (!panelHost.visible.value) return [];
+      const spans = panelHost.cellSpans(panelViewportColumns());
+      let headingColumn =
+        Number(layoutCanvas.x) + layoutSlotGeometry.bottomPanel.left + 1;
+      const headings: PanelHeadingGeometry[] = [];
+      for (const [index, span] of spans.entries()) {
+        const view = panelCellViews[index];
+        if (view?.headingProjection) {
+          headings.push({
+            contentId: span.content.id,
+            row:
+              Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanel.top + 1,
+            hoveredAction: view.hoveredHeadingAction,
+            controls: view.headingProjection.controls.map((control) => ({
+              action: control.action,
+              startColumn: headingColumn + control.startColumn,
+              endColumnExclusive: headingColumn + control.endColumn,
+            })),
+          });
+        }
+        headingColumn += span.columns + (index < spans.length - 1 ? 1 : 0);
+      }
+      return headings;
+    };
     update();
     return {
       update,
@@ -2050,6 +2075,7 @@ class $RootView {
       panelViewportColumns,
       panelViewportRows,
       panelContainsPoint,
+      panelHeadingGeometry,
       panelContentsListRegion: () => ({
         left:
           Number(panelBox.x) +
@@ -2163,6 +2189,7 @@ export interface RootView {
   panelViewportRows(): number;
   /** True when the screen cell (x,y) falls inside the visible panel box (focus-follows-click). */
   panelContainsPoint(x: number, y: number): boolean;
+  panelHeadingGeometry(): readonly PanelHeadingGeometry[];
   panelContentsListRegion(): {
     left: number;
     top: number;
@@ -2185,4 +2212,17 @@ export interface RootView {
     }
   >;
   dispose(): void;
+}
+
+export interface PanelHeadingGeometry {
+  readonly contentId: string;
+  readonly row: number;
+  readonly hoveredAction: PanelHeadingAction | null;
+  readonly controls: readonly PanelHeadingControlGeometry[];
+}
+
+export interface PanelHeadingControlGeometry {
+  readonly action: PanelHeadingAction;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
 }

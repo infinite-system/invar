@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { ThemeIcons } from './ThemeIcons';
 
 test('icon fallback ladder: nerd has glyphs, ascii uses markers', () => {
@@ -65,13 +66,59 @@ test('git action icons ladder: real glyphs on nerd/unicode, letters as the ascii
 });
 
 test('semantic interface glyph slots resolve through every capability tier', () => {
-  expect(ThemeIcons.Class.glyphFor('nerd', 'activityFiles')).toBe('\u{f07b}');
-  expect(ThemeIcons.Class.glyphFor('unicode', 'activityFiles')).toBe('▤');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'activityFiles')).toBe('F');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'activitySearch')).toBe('/');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'activitySettings')).toBe('*');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'panelAdd')).toBe('+');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'panelExpand')).toBe('EXPAND');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'panelRestore')).toBe('RESTORE');
-  expect(ThemeIcons.Class.glyphFor('ascii', 'panelClose')).toBe('X');
+  const candidateGlyphSlots = [
+    'activityFiles',
+    'activitySourceControl',
+    'activityExtensions',
+    'activitySearch',
+    'activitySettings',
+    'panelAdd',
+    'panelExpand',
+    'panelRestore',
+    'panelClose',
+  ] as const;
+  const expectedVocabularies = {
+    nerd: [
+      '\u{f07b}',
+      '\u{e702}',
+      '\u{f487}',
+      '\u{f002}',
+      '\u{f013}',
+      '\u{f067}',
+      '\u{f065}',
+      '\u{f066}',
+      '\u{f00d}',
+    ],
+    unicode: ['▤', '⎇', '⊞', '⌕', '⚙', '+', '↗', '↙', '×'],
+    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x'],
+  } as const;
+
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    expect(
+      candidateGlyphSlots.map((slot) => ThemeIcons.Class.glyphFor(level, slot)),
+    ).toEqual([...expectedVocabularies[level]]);
+  }
+});
+
+test('every semantic interface icon is one display cell and avoids reserved markers', () => {
+  const candidateGlyphSlots = [
+    'activityFiles',
+    'activitySourceControl',
+    'activityExtensions',
+    'activitySearch',
+    'activitySettings',
+    'panelAdd',
+    'panelExpand',
+    'panelRestore',
+    'panelClose',
+  ] as const;
+  const reservedMarkers = new Set(['▎', '●', '❯']);
+
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    for (const slot of candidateGlyphSlots) {
+      const glyph = ThemeIcons.Class.glyphFor(level, slot);
+      expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+      expect(reservedMarkers.has(glyph)).toBe(false);
+    }
+  }
 });

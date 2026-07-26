@@ -122,8 +122,8 @@ try {
   );
   await driveActivityGlyphTier(fixtureRoot, 'nerd', [
     '\u{f07b}',
-    '\u{f126}',
-    '\u{f12e}',
+    '\u{e702}',
+    '\u{f487}',
   ]);
   await driveActivityGlyphTier(fixtureRoot, 'unicode', ['▤', '⎇', '⊞']);
 
