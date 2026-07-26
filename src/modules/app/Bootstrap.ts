@@ -726,6 +726,12 @@ class $Bootstrap {
           primaryDockHost.blur();
         }
       },
+      // A sidebar click can synchronously focus its pane and then open a file, returning Workspace
+      // focus to `editor` in the same input turn. The default queued watcher coalesces that
+      // editor→primaryPane→editor round trip to "no change" and leaves PanelHost.focused stale, so
+      // the dock steals the next context-bound key. Focus projection is ownership transfer, not
+      // deferred enrichment: observe every transition before input routing can see split state.
+      { flush: 'sync' },
     );
     // Word wrap toggling (command OR settings panel) switches viewport.scrollTop between LOGICAL-line and
     // VISUAL-row units. Re-anchoring on the cursor sets a valid scrollTop in the new units — no fragile
