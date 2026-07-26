@@ -974,48 +974,62 @@ diff panes track one aligned-row index while each underlying pane stays independ
 
 ### Coverage may fall but never silently
 
-**Invariant:** If the assertion or wait count of any test or harness smoke drops below its count at
-the merge base, then that drop is named in `coverage-deltas.md`, or the gate fails.
+**Invariant:** If the assertion or wait coverage of any test or harness smoke changes relative to
+the merge base, then every count decrease is declared with exact before and after counts or the gate
+fails, and every assertion-text replacement is reported for review.
 
-**Scope:** Deletion of whole assertions, whole waits, and whole test or smoke files, in `*.test.ts`
-and `scripts/harness/smoke-*.ts`, measured against the merge base. Deliberately NOT in scope:
-weakening an assertion in place (`expect(actual)` becoming `expect(true)`) and padding a deletion
-with a trivial addition, since both keep the count and no counter can see them — those need mutation
-probing, which is a separate instrument. This gates disclosure, not justification: it cannot judge
-whether a declared reason is honest, only that a reason was recorded where a reviewer will meet it.
+**Scope:** Counts and normalized assertion-expression text in `*.test.ts` and
+`scripts/harness/smoke-*.ts`, measured against the merge base, including whole-file removal.
+Count decreases block unless the newest row for that path in `coverage-deltas.md` states matching
+`assertions A → B, waits C → D` figures. Count-neutral assertion replacements are report-only.
+Mutation probing and judging whether a declared reason is honest remain outside this instrument;
+this gates disclosure, not justification.
 
 **Mechanism:** Every other gate step answers "does the suite pass?"; none answered "is the suite still
 as strong as it was?". `scripts/check-coverage-ratchet.ts` walks the TypeScript AST of every
 `*.test.ts` and `scripts/harness/smoke-*.ts` at both HEAD and the merge base, counts calls that prove
 (`requireCondition`, `expect`, `pass`, `assertContentInvariantAcrossAction`) and calls that wait for an
 observed condition (`awaitStatus`, `awaitGridCondition`, `awaitSnapshot`, `it`, `test`), and fails on
-any decrease that `coverage-deltas.md` does not name. Growth needs no bookkeeping. Counting walks the
-AST rather than matching text so a mention in a comment or a string can never inflate a floor that
-honest code then cannot meet. This is a ratchet with an auditable unlock, not a prohibition: removal
-stays possible — assertions do become unsound and features do get deleted — but it becomes a diff to a
-file named for exactly that purpose.
+any decrease whose newest `coverage-deltas.md` row is absent, malformed, or numerically stale. It
+also compares normalized assertion-expression token sets and prints disappeared and appeared texts
+as an informational census. A known-count positive-control fixture must count correctly before the
+comparison, and inspecting zero coverage-bearing files fails. Growth needs no bookkeeping. Counting
+walks the AST rather than matching text so a mention in a comment or a string can never inflate a
+floor that honest code then cannot meet. This is a ratchet with an auditable unlock, not a
+prohibition: removal stays possible — assertions do become unsound and features do get deleted — but
+it becomes a diff to a file named for exactly that purpose.
 
 **Generates:** A visible record of every claim the suite has ever given up, with its reason; a gate
 that resists the one cheap move available to an agent under pressure to go green; symmetric detection
 of the opposite failure, where a builder's fixes never land and the assertion count silently drops.
 
-**Evidence:** `scripts/check-coverage-ratchet.ts`; `scripts/check-coverage-ratchet.test.ts` (counting
-through the namespace seam, comments and strings excluded, every occurrence counted rather than every
-distinct name); the gate's `coverage ratchet` step. Drive-verified 2026-07-25 with negative controls in
-both directions: deleting one `requireCondition` from the git-blame smoke failed with
+**Evidence:** `scripts/check-coverage-ratchet.ts`;
+`scripts/fixtures/coverage-ratchet-positive-control.ts.fixture`;
+`scripts/check-coverage-ratchet.test.ts` (counting through the namespace seam, comments and strings
+excluded, every occurrence counted rather than every distinct name, exact declaration figures,
+normalized replacement census, positive control); the gate's `coverage ratchet` step.
+Drive-verified 2026-07-25 with negative controls in both directions: deleting one
+`requireCondition` from the git-blame smoke failed with
 `7 assertions / 10 waits -> 6 assertions / 10 waits`; removing `RelativeTime.test.ts` entirely failed
 with `(FILE REMOVED) 14 assertions / 8 waits -> 0 assertions / 0 waits`; declaring either in
-`coverage-deltas.md` passed; a clean tree passed.
+`coverage-deltas.md` passed; a clean tree passed. Re-verified 2026-07-26 with a temporary committed
+real assertion deletion and a wrong-numbered declaration; the checker rejected the declared figures
+against the actual figures.
 
 **Impossible if true:** An agent turning a red gate green by deleting the failing assertion; a smoke
 whose fixes were never committed passing review because the gate ran a dirtier worktree; a whole test
 file disappearing in a refactor with no record; a removed claim whose reason exists only in a commit
-message nobody re-reads.
+message nobody re-reads; a stale path-only or wrong-numbered declaration authorizing a later decrease;
+a count-neutral assertion replacement remaining invisible; the checker reporting success after its
+positive control fails or after it inspects zero files.
 
 **Verification:** `bun scripts/check-coverage-ratchet.ts` on a clean tree exits 0; delete any single
-assertion and it exits 1 naming the file and the count delta; add the file to `coverage-deltas.md` and
-it exits 0. `bun test scripts/check-coverage-ratchet.test.ts` covers the counter itself.
+assertion and it exits 1 naming the file and count delta; add matching figures to
+`coverage-deltas.md` and it exits 0; make either figure stale and it exits 1 naming declared and
+actual figures. Replace an assertion without changing the count and inspect the informational census.
+Remove or corrupt the positive-control fixture, or supply a base with zero coverage files, and the
+checker exits 1. `bun test scripts/check-coverage-ratchet.test.ts` covers the counter itself.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26

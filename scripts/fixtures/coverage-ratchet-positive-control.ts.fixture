@@ -1,0 +1,5 @@
+test('coverage counter positive control', async () => {
+  expect('counted assertion').toBe('counted assertion');
+  requireCondition(true, 'counted condition');
+  await awaitStatus('counted wait');
+});
