@@ -95,28 +95,39 @@ unpaired real line still exists on the opposite side.
 ### Diff rendering stays viewport bounded
 
 **Invariant:** If aligned content exceeds the visible diff body, then each pane highlights and
-materializes only the aligned rows and display columns inside the shared viewport.
+materializes only the aligned rows and display columns inside the shared viewport, while horizontal
+scrollbar geometry depends only on the comparison revision's full-content width and the live
+viewport.
 
-**Scope:** `DiffView.renderPane`, `DiffView.sliceLineWindow`, and horizontal scrollbar sizing.
+**Scope:** `DiffView.renderPane`, `DiffView.sliceLineWindow`, `DiffView.contentWidth`, horizontal
+scroll clamping, and horizontal scrollbar sizing.
 
 **Mechanism:** `renderPane` slices `alignment.alignedRows` by `alignedRowScrollOffset` and
 `viewportAlignedRowCount`; `sliceLineWindow` crops each real line before `Highlighter` receives it.
-Horizontal range measurement walks only the visible aligned-row slice.
+Each read-only side loads through `TextDocument`, whose `maximumLineWidth` is computed once per
+document revision. `DiffView` takes the maximum of those two caches once when the comparison request
+constructs it; a refreshed request constructs a new cache after an edit.
 
 **Generates:** render work bounded by terminal rows and columns; viewport-local syntax
-highlighting; horizontal scroll sized from visible content.
+highlighting; one stable full-comparison horizontal extent; a horizontal scrollbar row that cannot
+repaint merely because vertical scrolling exposes different lines.
 
-**Evidence:** `DiffView.ts` `renderPane`, `sliceLineWindow`, and `widestVisibleLineWidth`.
+**Evidence:** `DiffView.ts` `renderPane`, `sliceLineWindow`, and `contentWidth`;
+`TextDocument.ts` `maximumLineWidth`; `scripts/harness/smoke-scrollbars-harness.ts` compares the
+complete horizontal scrollbar row across synchronized vertical-scroll frames and lengthens the
+widest line through the editor as a refresh positive control.
 
 **Impossible if true:** one frame highlighting every line in a large diff or tokenizing the full
-length of an off-screen line to display one viewport.
+length of an off-screen line to display one viewport; the horizontal scrollbar row changing while
+only the vertical scroll position changes; a refreshed diff retaining the old bar after an edit
+lengthens the widest line.
 
-**Verification:** inspection that every `Highlighter.Class.highlightLine` call receives text from
-`sliceLineWindow` inside the `visibleAlignedRows` loop.
+**Verification:** `bun test src/modules/diff src/modules/editor/TextDocument.test.ts && bun
+scripts/harness/smoke-scrollbars-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
 
 ### The editor gutter reflects HEAD changes
 

@@ -42,7 +42,6 @@ import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import {
   DiffAlignment,
-  type AlignedRow,
   type AlignedRowKind,
   type DiffAlignmentResult,
 } from './DiffAlignment';
@@ -199,6 +198,7 @@ class $DiffView {
   readonly alignment: DiffAlignmentResult;
   readonly previousVersionLines: readonly string[];
   readonly currentVersionLines: readonly string[];
+  readonly contentWidth: number;
   readonly rootRenderable: BoxRenderable;
   protected readonly headerRenderable: TextRenderable;
   protected readonly bodyRenderable: BoxRenderable;
@@ -294,6 +294,10 @@ class $DiffView {
     this.currentTextBuffer = this.createReadOnlyTextBuffer(
       options.currentVersionPath ?? 'current version',
       options.currentVersionText,
+    );
+    this.contentWidth = Math.max(
+      this.previousTextBuffer.document.maximumLineWidth,
+      this.currentTextBuffer.document.maximumLineWidth,
     );
     this.rootRenderable = this.createBoxRenderable({
       id: 'diff-view',
@@ -985,11 +989,11 @@ class $DiffView {
       this.horizontalScrollbarRenderable,
       'horizontal',
       this.ScrollbarGeometry.scrollbarGeometry('horizontal', region, {
-        scrollSize: this.widestVisibleLineWidth(),
+        scrollSize: this.contentWidth,
         viewportSize: this.sharedCodeViewportWidth(),
         scrollPosition: this.horizontalScrollOffset.value,
       }),
-      this.widestVisibleLineWidth(),
+      this.contentWidth,
     );
   }
 
@@ -1519,35 +1523,6 @@ class $DiffView {
     return this.LanguageRegistry.forPath(path ?? 'diff.txt');
   }
 
-  widestVisibleLineWidth(): number {
-    const visibleAlignedRows = this.alignment.alignedRows.slice(
-      this.alignedRowScrollOffset.value,
-      this.alignedRowScrollOffset.value + this.viewportAlignedRowCount(),
-    );
-    let widestLineWidth = 0;
-    for (const alignedRow of visibleAlignedRows) {
-      widestLineWidth = Math.max(
-        widestLineWidth,
-        this.lineWidthForAlignedRow(alignedRow, 'previous'),
-        this.lineWidthForAlignedRow(alignedRow, 'current'),
-      );
-    }
-    return widestLineWidth;
-  }
-
-  lineWidthForAlignedRow(
-    alignedRow: AlignedRow,
-    side: 'previous' | 'current',
-  ): number {
-    const lineNumber =
-      side === 'previous'
-        ? alignedRow.leftLineNumber
-        : alignedRow.rightLineNumber;
-    return lineNumber === null
-      ? 0
-      : this.EditorCoordinates.lineWidth(this.lineForSide(side, lineNumber));
-  }
-
   clampAlignedRowOffset(alignedRowIndex: number): number {
     const maximumAlignedRowOffset = Math.max(
       0,
@@ -1562,7 +1537,7 @@ class $DiffView {
   clampHorizontalOffset(displayColumnIndex: number): number {
     const maximumHorizontalOffset = Math.max(
       0,
-      this.widestVisibleLineWidth() - this.sharedCodeViewportWidth(),
+      this.contentWidth - this.sharedCodeViewportWidth(),
     );
     return Math.max(
       0,
