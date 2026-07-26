@@ -96,7 +96,13 @@ class $GitCommands {
         filePath,
       ]);
     }
-    return this.run(workingDirectory, ['diff', '--no-ext-diff', '--no-color', '--', filePath]);
+    return this.run(workingDirectory, [
+      'diff',
+      '--no-ext-diff',
+      '--no-color',
+      '--',
+      filePath,
+    ]);
   }
 
   /**
@@ -126,7 +132,10 @@ class $GitCommands {
     return this.run(workingDirectory, ['restore', '--', filePath]);
   }
 
-  static show(workingDirectory: string, ref: string): Promise<GitCommandResult> {
+  static show(
+    workingDirectory: string,
+    ref: string,
+  ): Promise<GitCommandResult> {
     return this.run(workingDirectory, [
       'show',
       '--no-ext-diff',
@@ -204,7 +213,9 @@ class $GitCommands {
     return this.run(workingDirectory, ['show', `${ref}:${filePath}`]);
   }
 
-  static branchShowCurrent(workingDirectory: string): Promise<GitCommandResult> {
+  static branchShowCurrent(
+    workingDirectory: string,
+  ): Promise<GitCommandResult> {
     return this.run(workingDirectory, ['branch', '--show-current']);
   }
 
@@ -226,7 +237,12 @@ class $GitCommands {
     workingDirectory: string,
     ref: string,
   ): Promise<GitCommandResult> {
-    return this.run(workingDirectory, ['rev-parse', '--verify', '--quiet', ref]);
+    return this.run(workingDirectory, [
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      ref,
+    ]);
   }
 
   /**
@@ -240,7 +256,13 @@ class $GitCommands {
     workingDirectory: string,
     filePath: string,
   ): Promise<GitCommandResult> {
-    return this.run(workingDirectory, ['blame', '--porcelain', '-w', '--', filePath]);
+    return this.run(workingDirectory, [
+      'blame',
+      '--porcelain',
+      '-w',
+      '--',
+      filePath,
+    ]);
   }
 
   static stage(

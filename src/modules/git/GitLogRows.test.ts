@@ -22,7 +22,10 @@ function record(index: number): CommitRecord {
   };
 }
 
-function expandedWithFiles(commitIndex: number, fileCount: number): ExpandedCommit {
+function expandedWithFiles(
+  commitIndex: number,
+  fileCount: number,
+): ExpandedCommit {
   return {
     commitIndex,
     sha: `sha-${commitIndex}`,
@@ -51,7 +54,9 @@ test('expansion arithmetic: sizes, offsets, and totals', () => {
   expect(commitFlatIndex(expanded, 2)).toBe(2); // expansion inserts AFTER the header
   expect(commitFlatIndex(expanded, 3)).toBe(6); // shifted past 3 file rows
   expect(totalFlatRows(expanded, 10)).toBe(14);
-  expect(totalFlatRows(expanded, Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY);
+  expect(totalFlatRows(expanded, Number.POSITIVE_INFINITY)).toBe(
+    Number.POSITIVE_INFINITY,
+  );
 });
 
 test('commitIndexAtFlatRow inverts commitFlatIndex and maps file rows to their commit', () => {
@@ -67,7 +72,9 @@ test('commitIndexAtFlatRow inverts commitFlatIndex and maps file rows to their c
   expect(commitIndexAtFlatRow(expanded, 10)).toBe(6);
   for (let flatIndex = 0; flatIndex < 12; flatIndex++) {
     const commitIndex = commitIndexAtFlatRow(expanded, flatIndex);
-    expect(commitFlatIndex(expanded, commitIndex)).toBeLessThanOrEqual(flatIndex);
+    expect(commitFlatIndex(expanded, commitIndex)).toBeLessThanOrEqual(
+      flatIndex,
+    );
   }
 });
 
@@ -75,8 +82,15 @@ test('commitIndexAtFlatRow inverts commitFlatIndex and maps file rows to their c
 
 test('a window with no expansion is one commit row per flat row', () => {
   const rows = commitLogRows(3, 4, [], record, Number.POSITIVE_INFINITY);
-  expect(rows.map((row) => row.kind)).toEqual(['commit', 'commit', 'commit', 'commit']);
-  expect(rows.map((row) => (row.kind === 'commit' ? row.commitIndex : -1))).toEqual([3, 4, 5, 6]);
+  expect(rows.map((row) => row.kind)).toEqual([
+    'commit',
+    'commit',
+    'commit',
+    'commit',
+  ]);
+  expect(
+    rows.map((row) => (row.kind === 'commit' ? row.commitIndex : -1)),
+  ).toEqual([3, 4, 5, 6]);
 });
 
 test('an expanded commit contributes its header plus indented file rows inside the window', () => {
@@ -85,8 +99,20 @@ test('an expanded commit contributes its header plus indented file rows inside t
   expect(rows).toMatchObject([
     { kind: 'commit', commitIndex: 0, expanded: false },
     { kind: 'commit', commitIndex: 1, expanded: true },
-    { kind: 'commitFile', commitIndex: 1, sha: 'sha-1', path: 'file-1-0.ts', glyph: 'M' },
-    { kind: 'commitFile', commitIndex: 1, sha: 'sha-1', path: 'file-1-1.ts', glyph: 'M' },
+    {
+      kind: 'commitFile',
+      commitIndex: 1,
+      sha: 'sha-1',
+      path: 'file-1-0.ts',
+      glyph: 'M',
+    },
+    {
+      kind: 'commitFile',
+      commitIndex: 1,
+      sha: 'sha-1',
+      path: 'file-1-1.ts',
+      glyph: 'M',
+    },
     { kind: 'commit', commitIndex: 2, expanded: false },
     { kind: 'commit', commitIndex: 3, expanded: false },
   ]);
@@ -107,11 +133,22 @@ test('windowing ENDS mid-expansion: the window truncates the file rows, never ov
   const expanded = [expandedWithFiles(1, 5)];
   const rows = commitLogRows(0, 4, expanded, record, Number.POSITIVE_INFINITY);
   expect(rows).toHaveLength(4);
-  expect(rows.map((row) => row.kind)).toEqual(['commit', 'commit', 'commitFile', 'commitFile']);
+  expect(rows.map((row) => row.kind)).toEqual([
+    'commit',
+    'commit',
+    'commitFile',
+    'commitFile',
+  ]);
 });
 
 test('a loading expansion renders exactly one placeholder row until the fetch lands', () => {
-  const rows = commitLogRows(0, 4, [loadingAt(1)], record, Number.POSITIVE_INFINITY);
+  const rows = commitLogRows(
+    0,
+    4,
+    [loadingAt(1)],
+    record,
+    Number.POSITIVE_INFINITY,
+  );
   expect(rows).toMatchObject([
     { kind: 'commit', commitIndex: 0 },
     { kind: 'commit', commitIndex: 1, expanded: true },
@@ -121,7 +158,13 @@ test('a loading expansion renders exactly one placeholder row until the fetch la
 });
 
 test('an expanded EMPTY commit keeps its header and adds no rows', () => {
-  const rows = commitLogRows(0, 3, [expandedWithFiles(1, 0)], record, Number.POSITIVE_INFINITY);
+  const rows = commitLogRows(
+    0,
+    3,
+    [expandedWithFiles(1, 0)],
+    record,
+    Number.POSITIVE_INFINITY,
+  );
   expect(rows).toMatchObject([
     { kind: 'commit', commitIndex: 0 },
     { kind: 'commit', commitIndex: 1, expanded: true },
@@ -130,14 +173,13 @@ test('an expanded EMPTY commit keeps its header and adds no rows', () => {
 });
 
 test('rows stop at knownEnd and unfetched records surface as undefined (placeholder headers)', () => {
-  const sparse = (commitIndex: number) => (commitIndex === 1 ? undefined : record(commitIndex));
+  const sparse = (commitIndex: number) =>
+    commitIndex === 1 ? undefined : record(commitIndex);
   const rows = commitLogRows(0, 10, [], sparse, 3);
   expect(rows).toHaveLength(3);
-  expect(rows.map((row) => (row.kind === 'commit' ? row.record?.shortSha : ''))).toEqual([
-    's0',
-    undefined,
-    's2',
-  ]);
+  expect(
+    rows.map((row) => (row.kind === 'commit' ? row.record?.shortSha : '')),
+  ).toEqual(['s0', undefined, 's2']);
 });
 
 test('a rename file row carries the new path plus its originalPath', () => {

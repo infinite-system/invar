@@ -5,16 +5,25 @@
 // put; clicking (setSelection) leaves the window put; keyboard (moveSelection) reveals minimally.
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import { FileTree } from './FileTree';
-import { mkdtempSync as makeTemporaryDirectorySync, rmSync as removeSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync as makeTemporaryDirectorySync,
+  rmSync as removeSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 
 let treeRoot = '';
 
 beforeEach(() => {
-  treeRoot = makeTemporaryDirectorySync(join(temporaryDirectory(), 'invar-tree-scroll-'));
+  treeRoot = makeTemporaryDirectorySync(
+    join(temporaryDirectory(), 'invar-tree-scroll-'),
+  );
   for (let fileNumber = 0; fileNumber < 20; fileNumber += 1) {
-    writeFileSync(join(treeRoot, `file-${String(fileNumber).padStart(2, '0')}.txt`), 'x');
+    writeFileSync(
+      join(treeRoot, `file-${String(fileNumber).padStart(2, '0')}.txt`),
+      'x',
+    );
   }
 });
 afterEach(() => removeSync(treeRoot, { recursive: true, force: true }));
@@ -73,7 +82,10 @@ describe('FileTree independent scroll window', () => {
 
   test('horizontal scrolling uses the tree content width and live viewport width', () => {
     const tree = new FileTree.Class();
-    writeFileSync(join(treeRoot, 'a-very-long-file-name-that-overflows-the-tree.txt'), 'x');
+    writeFileSync(
+      join(treeRoot, 'a-very-long-file-name-that-overflows-the-tree.txt'),
+      'x',
+    );
     tree.open(treeRoot);
     tree.viewportWidth.value = 18;
 

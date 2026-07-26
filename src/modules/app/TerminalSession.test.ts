@@ -13,7 +13,9 @@ test('reenterTerminalModes suspends, resumes, then re-enters the APP modes (2004
     resume: () => calls.push('resume'),
   };
 
-  TerminalSession.Class.reenterTerminalModes(control, (sequence) => calls.push(sequence));
+  TerminalSession.Class.reenterTerminalModes(control, (sequence) =>
+    calls.push(sequence),
+  );
 
   // Order matters: suspend records mouse state + tears down; resume re-applies OpenTUI's modes;
   // the app-owned bundle (focus reporting + bracketed paste) comes back LAST — this is the
@@ -41,12 +43,19 @@ test('the focus-in handler re-enters the terminal setup and forces a repaint', (
   };
   const onFocus = () => {
     HandlerGuard.Class.run('focus', () => {
-      TerminalSession.Class.reenterTerminalModes(renderer, (sequence) => events.push(sequence));
+      TerminalSession.Class.reenterTerminalModes(renderer, (sequence) =>
+        events.push(sequence),
+      );
       events.push('repaint');
     });
   };
 
   onFocus();
 
-  expect(events).toEqual(['suspend', 'resume', '\x1b[?1004h\x1b[?2004h', 'repaint']);
+  expect(events).toEqual([
+    'suspend',
+    'resume',
+    '\x1b[?1004h\x1b[?2004h',
+    'repaint',
+  ]);
 });

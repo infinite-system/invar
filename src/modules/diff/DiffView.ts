@@ -1327,6 +1327,13 @@ class $DiffView {
     };
   }
 
+  /** Select the whole of whichever read-only side currently owns the selection. No side selected yet
+   *  means there is nothing to select all OF, so it is a no-op rather than an arbitrary choice.
+   *  invariant: Diff panes keep independent find state (src/modules/diff/diff.invariants.md) */
+  selectAllInActivePane(): void {
+    this.activeSelectionBuffer?.selectAll();
+  }
+
   async copySelection(): Promise<number> {
     return this.activeSelectionBuffer?.copySelection() ?? 0;
   }

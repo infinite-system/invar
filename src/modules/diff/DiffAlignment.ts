@@ -102,8 +102,7 @@ class $DiffAlignment {
         frontier,
         previousDiagonal,
       );
-      const previousRightLineIndex =
-        previousLeftLineIndex - previousDiagonal;
+      const previousRightLineIndex = previousLeftLineIndex - previousDiagonal;
 
       while (
         leftLineIndex > previousLeftLineIndex &&
@@ -207,11 +206,7 @@ class $DiffAlignment {
         }
         operationIndex++;
       }
-      this.appendChangedHunk(
-        alignedRows,
-        deletedLineNumbers,
-        addedLineNumbers,
-      );
+      this.appendChangedHunk(alignedRows, deletedLineNumbers, addedLineNumbers);
     }
 
     return alignedRows;
@@ -263,8 +258,7 @@ class $DiffAlignment {
   ): number | null {
     return (
       changeBlocks.find(
-        (changeBlock) =>
-          changeBlock.startAlignedRowIndex > alignedRowIndex,
+        (changeBlock) => changeBlock.startAlignedRowIndex > alignedRowIndex,
       )?.startAlignedRowIndex ?? null
     );
   }

@@ -72,6 +72,72 @@ scripts/smoke-diagnostics.sh`.
 
 **Last refined:** 2026-07-26
 
+### The editor surface answers capabilities, not plugin modes
+
+**Invariant:** If host behaviour depends on what occupies the editor surface, then the host asks the
+occupying contribution a CAPABILITY question it can answer without being named — never "which plugin
+surface is showing"; and a contribution that occupies the surface releases its own state, which the
+host never writes.
+
+**Scope:** `EditorSurfaceClaims` and every host site whose behaviour changed while a transient
+surface was up: the six language-intelligence requests, the content-type router
+(`Workspace.activeFileIsImage`, and the markdown plugin's own `previewToggleAvailable`),
+`Workspace.editor`, the source-editor paint and chrome (`EditorPaneRenderer`, `EditorPane` bracket
+match, the buffer tab strip and breadcrumb, `AppStatusProjection` bracket fields), and
+editor-context key routing in `Bootstrap`. Excludes what the surface itself paints, which is
+`EditorSurfaceContents`' business, and which marks it may paint there, which is *One mark has one
+reserved meaning*.
+
+**Components:**
+- *Presentation* — `activeDocumentIsPresented`: is the active tab's document still the text on
+  screen? A comparison answers no; a source|preview split answers YES, because the real editor is
+  embedded in its left pane.
+- *Keyboard ownership* — `activeDocumentIsKeyboardTarget`: does the active tab's editor own the keys
+  and the caret? Omitted answers the same as presentation. Its two consumers are the comparison
+  (which omits it and so takes the keyboard with the text) and the Markdown split (which answers by
+  which of its own panes has focus) — the second was IDENTIFIED before the question was added and
+  landed with the Markdown extraction. Were a future refactor to leave it with one consumer again,
+  fold it back into presentation rather than keep a question only one surface can answer.
+
+**Mechanism:** Contributions register an `EditorSurfaceClaim` on `Workspace.editorSurfaces`. Both
+aggregate getters default to TRUE with no claim up, so a plugin-free canvas keeps every capability.
+Host guards read the aggregate; dismissal (`openFileInTab`, `activateTab`, `cycleTab`, a surface's
+own Escape) calls `releaseOccupying()`, and each claim tears down its own transient state.
+
+**Generates:** One question where fourteen `showingDiff` mode checks stood; a surface that occupies
+the column WITHOUT suppressing language intelligence (impossible to express while the question was
+"is a diff showing"); a document-less editor shared by the empty state and any presenting surface,
+replacing two identical empty editors; plugin state the host cannot write.
+
+**Rejected alternatives:** Keep the mode flag and rename it (`activePaneIsDiff ||
+activePaneIsMarkdownPreview`) — the same defect with more names, and every new surface edits every
+caller. Split presentation and language intelligence into separate questions now — no current
+customer distinguishes them, so it would be a port with no second answer; the image router will be
+the site that decides it.
+
+**Evidence:** `EditorSurfaceClaims.ts`; `EditorSurfaceClaims.test.ts` (the embedding claim reported
+as presented while occupying, the omitted-answer default, release touching only occupying claims);
+`MarkdownWorkspace.ts` + `MarkdownWorkspace.test.ts` (the embedding claim in the real tree: presented
+while occupying, keyboard answer following the focused pane, and a release that keeps its per-tab
+state because the claim is DERIVED from the active tab rather than stored);
+`Workspace.ts` (the six language guards, both content-type routers, `get editor`, the three
+dismissal sites); `Workspace.test.ts` "opening a real file releases a contributed surface";
+`GitWorkspace.ts` (the comparison claim); `GitComparisonContent.test.ts` (Escape releases the claim
+rather than mutating host state).
+
+**Impossible if true:** A host guard naming a plugin's surface; a plugin's transient state written
+by the host; a claim whose occupancy is computed FROM the aggregate it feeds (self-referential, and
+caught as a real recursion when the Markdown claim first tried it); a surface that embeds the real
+editor losing completions, hover, or diagnostics; a newly contributed surface requiring an edit to
+any language-request guard.
+
+**Verification:** `bun test src/modules/workspace/EditorSurfaceClaims.test.ts
+src/modules/workspace/Workspace.test.ts src/modules/git/GitComparisonContent.test.ts && bash scripts/conventions-gate.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### One mark has one reserved meaning
 
 **Invariant:** If an editor mark occupies a reserved visual position, then its shape, meaning,

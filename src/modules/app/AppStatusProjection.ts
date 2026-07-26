@@ -31,8 +31,6 @@ class $AppStatusProjection {
 
   static snapshot(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
     const editor = ports.workspaceSet.active.editor;
-    const diffView = ports.view.activeDiffView();
-    const markdownSplitView = ports.view.activeMarkdownSplitView();
     const openInputOverlays = [
       ...(ports.findBar.open.value ? ['findBar'] : []),
       ...(ports.quickOpen.open.value ? ['quickOpen'] : []),
@@ -92,11 +90,6 @@ class $AppStatusProjection {
       sourceFindQuery: editor.hasDocument.value
         ? (ports.findBar.engineFor(`source:${editor.document.path}`)?.query
             .value ?? '')
-        : '',
-      markdownPreviewFindQuery: markdownSplitView
-        ? (ports.findBar.engineFor(
-            markdownSplitView.previewFindTargetIdentifier(),
-          )?.query.value ?? '')
         : '',
       quickOpenOpen: ports.quickOpen.open.value,
       quickOpenSelected: ports.quickOpen.selectedIndex.value,
@@ -171,21 +164,12 @@ class $AppStatusProjection {
       completionItemCount: ports.completionPopup.itemCount,
       completionGeometry: ports.completionPopup.geometry,
       tooltipVisible: ports.tooltip.visible.value,
-      // A diff is shown OVER the editor tabs (transient). Lets a driven contract confirm the diff
-      // pane actually mounted, so pane-independence (editor extent survives the swap) is real-verified.
-      showingDiff: ports.workspaceSet.active.showingDiff.value,
-      diffScrollTop: diffView?.alignedRowScrollOffset.value ?? 0,
-      diffSelectionChars: diffView?.selectionCharacterCount() ?? 0,
-      diffSelection: diffView?.selectionRange() ?? null,
-      diffSplitRatio: ports.settings.diffSplitRatio.value,
-      markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
-      markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
-      markdownSplitRatio: ports.settings.markdownSplitRatio.value,
-      markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
-      markdownPreviewSelectionChars:
-        markdownSplitView?.selectionCharacterCount() ?? 0,
-      markdownHoveredReference:
-        markdownSplitView?.hoveredReferencePath.value ?? null,
+      // Whichever contributed surface occupies the editor column, by its own stable identifier —
+      // empty while the active buffer's editor owns it. A surface's OWN projection fields come from
+      // its plugin's status snapshot; the app core no longer knows what those surfaces are.
+      editorSurfaceIdentifier:
+        ports.workspaceSet.active.editorSurfaces.occupyingClaim?.identifier ??
+        '',
       settingsOpen: ports.settingsPanel.open.value,
       settingsSelected: ports.settingsPanel.selectedIndex.value,
       shortcutHelpOpen: ports.shortcutHelp.open.value,
@@ -249,7 +233,7 @@ class $AppStatusProjection {
       matchingBracketLine: (() => {
         if (
           !editor.hasDocument.value ||
-          ports.workspaceSet.active.showingDiff.value
+          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
         )
           return -1;
         return (
@@ -264,7 +248,7 @@ class $AppStatusProjection {
       matchingBracketColumn: (() => {
         if (
           !editor.hasDocument.value ||
-          ports.workspaceSet.active.showingDiff.value
+          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
         )
           return -1;
         return (
@@ -380,8 +364,6 @@ export interface AppStatusProjectionPorts {
     | 'agentNarrationVoice'
     | 'agentNarrationRate'
     | 'showActivityBar'
-    | 'diffSplitRatio'
-    | 'markdownSplitRatio'
     | 'sidebarWidth'
     | 'rightDockWidth'
     | 'agentAudioNarration'
@@ -465,8 +447,6 @@ export interface AppStatusProjectionPorts {
   >;
   readonly view: Pick<
     RootView,
-    | 'activeDiffView'
-    | 'activeMarkdownSplitView'
     | 'panelViewportColumns'
     | 'panelViewportRows'
     | 'panelHeadingGeometry'

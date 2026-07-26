@@ -2,7 +2,11 @@ import { test, expect } from 'bun:test';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { MarkdownDocument } from './MarkdownDocument';
-import type { BlockRecord, MarkdownParseResult, MarkdownParser } from './MarkdownParser';
+import type {
+  BlockRecord,
+  MarkdownParseResult,
+  MarkdownParser,
+} from './MarkdownParser';
 
 const waitForTaskTurn = () =>
   new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -26,12 +30,17 @@ class DeferredParser {
   parse(_sourceText: string, revision = 0): MarkdownParseResult {
     return { revision, blocks: [] };
   }
-  parseAsync(_sourceText: string, revision: number): Promise<MarkdownParseResult> {
+  parseAsync(
+    _sourceText: string,
+    revision: number,
+  ): Promise<MarkdownParseResult> {
     this.parseCount++;
     return new Promise((resolve) => this.pending.push({ revision, resolve }));
   }
   settle(revision: number, blocks: BlockRecord[]): void {
-    this.pending.find((entry) => entry.revision === revision)!.resolve({ revision, blocks });
+    this.pending
+      .find((entry) => entry.revision === revision)!
+      .resolve({ revision, blocks });
   }
   dispose(): void {
     this.disposeCount++;
@@ -125,7 +134,9 @@ test('discards a stale parse whose revision no longer matches the source', async
   expect(document.revision.value).toBe(2);
   expect(document.blocks.value.map((block) => block.text)).toEqual(['FRESH']);
   // the stale block never reached the model
-  expect(document.blocks.value.some((block) => block.text === 'STALE')).toBe(false);
+  expect(document.blocks.value.some((block) => block.text === 'STALE')).toBe(
+    false,
+  );
 });
 
 // invariant: Closing releases all preview work (src/modules/markdown/markdown.invariants.md)

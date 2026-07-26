@@ -20,7 +20,9 @@ import {
   type WorkspaceTabBarSegment,
   type WorkspaceTabBarHover,
   type BreadcrumbBarSegment,
+  type EditorTitleAction,
 } from './TabBarRenderer';
+import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import type { TabStrip } from './TabStrip';
@@ -42,7 +44,7 @@ class $TabBar {
   protected bufferSegments: TabBarSegment[] = [];
   protected bufferHover: TabBarHover = null;
   protected arrowPressed: 'arrowLeft' | 'arrowRight' | null = null;
-  protected previewPressed = false;
+  protected pressedTitleActionIndex: number | null = null;
   protected closePressed: number | null = null; // index of the tab whose ✕ is being pressed
   protected lastRevealedActiveIndex = -1;
   protected breadcrumbSegments: BreadcrumbBarSegment[] = [];
@@ -72,6 +74,26 @@ class $TabBar {
     this.lastRevealedWorkspaceIndex = result.revealedIndex;
     return result.text;
   }
+  /** The contributed editor-title affordances, projected from the ONE command registry: every
+   *  command that declared an icon and whose guard holds, in registration order. The tab bar learns
+   *  no plugin's name — a command that can be clicked is still just a command.
+   *  invariant: Every action dispatches through the one registry (src/modules/commands/commands.invariants.md) */
+  protected editorTitleActions(): readonly EditorTitleAction[] {
+    const { commands, theme } = this.dependencies;
+    const actions: EditorTitleAction[] = [];
+    for (const command of commands.editorTitleActions()) {
+      const iconName = command.editorTitleIcon;
+      if (!iconName) continue; // unreachable: the registry filters on it, but keeps the type honest
+      actions.push({
+        commandId: command.id,
+        title: command.title,
+        icon: theme.actionIcons[iconName] ?? '',
+        toggled: command.toggled?.() ?? false,
+      });
+    }
+    return actions;
+  }
+
   /** Render the buffer strip; keeps the reveal index + hit-test segments. */
   renderBuffer(): StyledText {
     const { bufferTabStrip, tabBar, workspaceSet, theme, readPalette } =
@@ -82,12 +104,10 @@ class $TabBar {
       barWidth: tabBar.width as number,
       hover: this.bufferHover,
       closePressed: this.closePressed,
-      previewPressed: this.previewPressed,
+      pressedTitleActionIndex: this.pressedTitleActionIndex,
       arrowPressed: this.arrowPressed,
       lastRevealedIndex: this.lastRevealedActiveIndex,
-      activeFileIsMarkdown: workspaceSet.active.activeFileIsMarkdown,
-      showingMarkdownPreview: workspaceSet.active.showingMarkdownPreview,
-      previewIcon: theme.actionIcons.preview,
+      editorTitleActions: this.editorTitleActions(),
       projectRoot: workspaceSet.active.root,
       // The between-tab powerline separator comes from the theme's ladder — no inline glyph ladder.
       // invariant: Appearance is data with a capability fallback (project.invariants.md)
@@ -284,7 +304,7 @@ class $TabBar {
     };
   }
   protected wireBufferHandlers(): void {
-    const { tabBar, workspaceSet, tooltip, keybindings, renderer } =
+    const { tabBar, workspaceSet, tooltip, keybindings, commands, renderer } =
       this.dependencies;
     tabBar.onMouseDown = (event) => {
       tooltip.clear();
@@ -299,10 +319,13 @@ class $TabBar {
         } else workspaceSet.active.activateTab(segment.index);
       } else if (segment.kind === 'badge') {
         this.openTabDropdown(segment.start);
-      } else if (segment.kind === 'previewToggle') {
-        this.previewPressed = true;
-        workspaceSet.active.toggleMarkdownPreview();
-        renderer.requestRender();
+      } else if (segment.kind === 'titleAction') {
+        const action = this.editorTitleActions()[segment.index];
+        if (action) {
+          this.pressedTitleActionIndex = segment.index;
+          commands.run(action.commandId);
+          renderer.requestRender();
+        }
       } else {
         this.arrowPressed = segment.kind; // pressed colour shows until release
         if (segment.kind === 'arrowLeft') this.scrollTabsLeft();
@@ -313,11 +336,11 @@ class $TabBar {
     tabBar.onMouseUp = () => {
       if (
         this.arrowPressed ||
-        this.previewPressed ||
+        this.pressedTitleActionIndex !== null ||
         this.closePressed !== null
       ) {
         this.arrowPressed = null;
-        this.previewPressed = false;
+        this.pressedTitleActionIndex = null;
         this.closePressed = null;
         renderer.requestRender();
       }
@@ -334,16 +357,19 @@ class $TabBar {
       } else if (segment) {
         next = { kind: segment.kind, index: -1 };
       }
-      if (segment?.kind === 'previewToggle') {
-        const bindingHint = keybindings.bindingHint(
-          'markdown.togglePreview',
-          'editor',
-        );
-        tooltip.point(
-          `Toggle Markdown preview${bindingHint ? ` (${bindingHint})` : ''}`,
-          event.x,
-          event.y,
-        );
+      if (segment?.kind === 'titleAction') {
+        const action = this.editorTitleActions()[segment.index];
+        if (action) {
+          const bindingHint = keybindings.bindingHint(
+            action.commandId,
+            'editor',
+          );
+          tooltip.point(
+            `${action.title}${bindingHint ? ` (${bindingHint})` : ''}`,
+            event.x,
+            event.y,
+          );
+        }
       } else if (
         segment?.kind === 'arrowLeft' ||
         segment?.kind === 'arrowRight'
@@ -363,12 +389,12 @@ class $TabBar {
       if (
         this.bufferHover ||
         this.arrowPressed ||
-        this.previewPressed ||
+        this.pressedTitleActionIndex !== null ||
         this.closePressed !== null
       ) {
         this.bufferHover = null;
         this.arrowPressed = null;
-        this.previewPressed = false;
+        this.pressedTitleActionIndex = null;
         this.closePressed = null;
         tooltip.clear();
         renderer.requestRender();
@@ -380,7 +406,7 @@ class $TabBar {
       this.dependencies;
     const controlsShown = (): boolean =>
       workspaceSet.active.editor.hasDocument.value &&
-      !workspaceSet.active.showingDiff.value;
+      workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
     breadcrumbBar.onMouseDown = (event) => {
       if (!controlsShown()) return;
       tooltip.clear();
@@ -469,5 +495,6 @@ export interface TabBarDependencies {
   boundedListPopup: BoundedListPopup.Instance;
   quickOpen: QuickOpen.Instance;
   keybindings: KeybindingRegistry.Instance;
+  commands: CommandRegistry.Instance;
   readPalette: () => Palette;
 }

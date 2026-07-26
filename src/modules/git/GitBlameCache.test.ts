@@ -66,11 +66,17 @@ describe('GitBlameCache', () => {
       blame: async () => PORCELAIN_FOR('Ada'),
       mtime: () => 1,
     });
-    for (let fileIndex = 0; fileIndex < GitBlameCache.$Class.maximumBlamedFiles + 5; fileIndex++) {
+    for (
+      let fileIndex = 0;
+      fileIndex < GitBlameCache.$Class.maximumBlamedFiles + 5;
+      fileIndex++
+    ) {
       cache.lineBlame(`/repo/file-${fileIndex}.ts`, 0);
       await wait(1);
     }
-    expect(cache.cachedFileCount).toBeLessThanOrEqual(GitBlameCache.$Class.maximumBlamedFiles);
+    expect(cache.cachedFileCount).toBeLessThanOrEqual(
+      GitBlameCache.$Class.maximumBlamedFiles,
+    );
   });
 
   test('the stat probe is memoized within a paint tick (two same-frame queries, one stat)', async () => {
@@ -93,7 +99,8 @@ describe('GitBlameCache', () => {
   test('disposal drops the maps and makes an in-flight load inert', async () => {
     let releaseBlame: ((porcelain: string) => void) | null = null;
     const cache = new GitBlameCache.Class('/repo', {
-      blame: () => new Promise<string | null>((resolve) => (releaseBlame = resolve)),
+      blame: () =>
+        new Promise<string | null>((resolve) => (releaseBlame = resolve)),
       mtime: () => 1,
     });
     cache.lineBlame('/repo/file.ts', 0); // load starts and hangs

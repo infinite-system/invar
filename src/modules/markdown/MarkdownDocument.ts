@@ -1,6 +1,10 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { MarkdownParser, type BlockRecord, type MarkdownParseResult } from './MarkdownParser';
+import {
+  MarkdownParser,
+  type BlockRecord,
+  type MarkdownParseResult,
+} from './MarkdownParser';
 import { StatusChannel } from '../system/StatusChannel';
 
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
@@ -107,7 +111,9 @@ class $MarkdownDocument {
   }
 
   protected readSourceText(): string {
-    return typeof this.source.text === 'function' ? this.source.text() : this.source.text;
+    return typeof this.source.text === 'function'
+      ? this.source.text()
+      : this.source.text;
   }
 
   protected onSourceRevision(revision: number): void {
@@ -131,8 +137,13 @@ class $MarkdownDocument {
   }
 
   // invariant: Applied blocks match the current revision (src/modules/markdown/markdown.invariants.md)
-  protected async startParse(revision: number, generation: number, requestId: number): Promise<void> {
-    if (!this.isCurrent(revision, generation, requestId) || !this.parser) return;
+  protected async startParse(
+    revision: number,
+    generation: number,
+    requestId: number,
+  ): Promise<void> {
+    if (!this.isCurrent(revision, generation, requestId) || !this.parser)
+      return;
 
     const sourceText = this.readSourceText();
     try {
@@ -142,11 +153,18 @@ class $MarkdownDocument {
       if (!this.isCurrent(revision, generation, requestId)) return;
       this.error.value = error instanceof Error ? error.message : String(error);
       this.parsing.value = false;
-      StatusChannel.Class.update({ markdownParsing: false, markdownError: this.error.value });
+      StatusChannel.Class.update({
+        markdownParsing: false,
+        markdownError: this.error.value,
+      });
     }
   }
 
-  protected applyResult(result: MarkdownParseResult, generation: number, requestId: number): void {
+  protected applyResult(
+    result: MarkdownParseResult,
+    generation: number,
+    requestId: number,
+  ): void {
     if (!this.isCurrent(result.revision, generation, requestId)) return;
 
     this.blocks.value = result.blocks;
@@ -162,7 +180,11 @@ class $MarkdownDocument {
     });
   }
 
-  protected isCurrent(revision: number, generation: number, requestId: number): boolean {
+  protected isCurrent(
+    revision: number,
+    generation: number,
+    requestId: number,
+  ): boolean {
     return (
       this.opened.value &&
       generation === this.lifecycleGeneration &&

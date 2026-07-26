@@ -55,7 +55,10 @@ class $TerminalSession {
    * current state. The app-owned modes are NOT in OpenTUI's routine, so they are re-entered here
    * too — recovery restores the COMPLETE bundle or paste dies silently until restart.
    */
-  static reenterTerminalModes(control: TerminalControl, write: (sequence: string) => void): void {
+  static reenterTerminalModes(
+    control: TerminalControl,
+    write: (sequence: string) => void,
+  ): void {
     control.suspend();
     control.resume();
     this.enterAppModes(write);

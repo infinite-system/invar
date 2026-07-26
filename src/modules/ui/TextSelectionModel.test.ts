@@ -17,7 +17,10 @@ describe('TextSelectionModel', () => {
     const selection = model();
     selection.begin({ line: 3, column: 4 });
     selection.extend({ line: 1, column: 2 }); // dragged UP/backward
-    expect(selection.normalized()).toEqual([{ line: 1, column: 2 }, { line: 3, column: 4 }]);
+    expect(selection.normalized()).toEqual([
+      { line: 1, column: 2 },
+      { line: 3, column: 4 },
+    ]);
   });
 
   test('finish drops a bare click (anchor === focus)', () => {
@@ -47,10 +50,18 @@ describe('TextSelectionModel', () => {
 
   test('selectedText walks covered lines through the INJECTED resolver (surface owns slice + join)', () => {
     const lines = ['first line', 'second line', 'third line'];
-    const resolver = (line: number, startCell: number, endCell: number | null) => {
+    const resolver = (
+      line: number,
+      startCell: number,
+      endCell: number | null,
+    ) => {
       const text = lines[line];
       if (text === undefined) return null;
-      return WrapText.Class.sliceByDisplayCells(text, startCell, endCell ?? Number.MAX_SAFE_INTEGER);
+      return WrapText.Class.sliceByDisplayCells(
+        text,
+        startCell,
+        endCell ?? Number.MAX_SAFE_INTEGER,
+      );
     };
     const single = model();
     single.begin({ line: 0, column: 0 });
@@ -67,10 +78,18 @@ describe('TextSelectionModel', () => {
 
   test('selectedText is grapheme-safe over wide/combined text through the shared slicer (é / emoji)', () => {
     const lines = ['éx', '😀x'];
-    const resolver = (line: number, startCell: number, endCell: number | null) => {
+    const resolver = (
+      line: number,
+      startCell: number,
+      endCell: number | null,
+    ) => {
       const text = lines[line];
       if (text === undefined) return null;
-      return WrapText.Class.sliceByDisplayCells(text, startCell, endCell ?? Number.MAX_SAFE_INTEGER);
+      return WrapText.Class.sliceByDisplayCells(
+        text,
+        startCell,
+        endCell ?? Number.MAX_SAFE_INTEGER,
+      );
     };
     const accent = model();
     accent.begin({ line: 0, column: 0 });

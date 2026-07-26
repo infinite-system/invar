@@ -35,7 +35,10 @@ class $RelativeTime {
     return 365 * this.dayMilliseconds;
   }
 
-  protected static agoPhrase(elapsedMilliseconds: number, unitName: string): string {
+  protected static agoPhrase(
+    elapsedMilliseconds: number,
+    unitName: string,
+  ): string {
     const unitValue = Math.max(1, Math.round(elapsedMilliseconds));
     return `${unitValue} ${unitName}${unitValue === 1 ? '' : 's'} ago`;
   }
@@ -48,19 +51,31 @@ class $RelativeTime {
       return 'just now';
     }
     if (elapsedMilliseconds < 45 * this.minuteMilliseconds) {
-      return this.agoPhrase(elapsedMilliseconds / this.minuteMilliseconds, 'minute');
+      return this.agoPhrase(
+        elapsedMilliseconds / this.minuteMilliseconds,
+        'minute',
+      );
     }
     if (elapsedMilliseconds < 24 * this.hourMilliseconds) {
-      return this.agoPhrase(elapsedMilliseconds / this.hourMilliseconds, 'hour');
+      return this.agoPhrase(
+        elapsedMilliseconds / this.hourMilliseconds,
+        'hour',
+      );
     }
     if (elapsedMilliseconds < 7 * this.dayMilliseconds) {
       return this.agoPhrase(elapsedMilliseconds / this.dayMilliseconds, 'day');
     }
     if (elapsedMilliseconds < 30 * this.dayMilliseconds) {
-      return this.agoPhrase(elapsedMilliseconds / this.weekMilliseconds, 'week');
+      return this.agoPhrase(
+        elapsedMilliseconds / this.weekMilliseconds,
+        'week',
+      );
     }
     if (elapsedMilliseconds < 365 * this.dayMilliseconds) {
-      return this.agoPhrase(elapsedMilliseconds / this.monthMilliseconds, 'month');
+      return this.agoPhrase(
+        elapsedMilliseconds / this.monthMilliseconds,
+        'month',
+      );
     }
     return this.agoPhrase(elapsedMilliseconds / this.yearMilliseconds, 'year');
   }

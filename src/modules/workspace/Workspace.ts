@@ -28,6 +28,7 @@ import type {
   LanguageCompletionList,
 } from '../lsp/LanguageProvider.interface';
 import { DocumentLifecycle } from './DocumentLifecycle';
+import { EditorSurfaceClaims } from './EditorSurfaceClaims';
 import {
   GutterDecorations,
   type EditorLineDecoration,
@@ -70,16 +71,18 @@ class $Workspace {
   buffers = this.createBufferSet();
   documentLifecycle = new DocumentLifecycle.Class();
   gutterDecorations = new GutterDecorations.Class();
+  // Contributions claim the editor surface here and the host asks them capability questions. It
+  // never learns which surface is up.
+  editorSurfaces = new EditorSurfaceClaims.Class();
   protected readonly contributions: WorkspaceContribution[] = [];
   // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
-  // from the tree / quick-open / a hover or Markdown reference) records the location left AND the
+  // from the tree / quick-open / a hover or a rendered reference) records the location left AND the
   // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
   // enabled/disabled affordances.
   navigationHistory = this.createNavigationHistory();
-  // A persistent, reused editor for read-only comparisons. A comparison is transient and does
-  // NOT become a file tab (editable side-by-side diff is item 14), so it never clobbers a tab.
-  protected diffEditor = this.createEditor();
-  // The empty-state editor shown when no tab is open (hasDocument stays false).
+  // The document-less editor shown whenever the active buffer is not the subject of the editor
+  // surface: no tab open, or a contributed surface presenting something else. One instance serves
+  // both — they were two identical empty editors, and "empty" is the whole of either's behaviour.
   protected emptyEditor = this.createEditor();
 
   protected createTree() {
@@ -88,8 +91,8 @@ class $Workspace {
   protected createEditor() {
     const editor = new Editor.Class();
     // Word wrap is global: every editor reads the SAME settings.wordWrap when settings are attached, so
-    // the mode is consistent across tabs + the diff/empty editors. Editors made before attachSettings
-    // (diffEditor/emptyEditor) are retro-attached there.
+    // the mode is consistent across tabs and the empty editor. Editors made before attachSettings
+    // (emptyEditor) are retro-attached there.
     if (this.settingsSource)
       editor.attachWordWrap(this.settingsSource.wordWrap);
     return editor;
@@ -215,9 +218,9 @@ class $Workspace {
 
   /** Push the active buffer's current text to the language server (revision-idempotent full-text
    *  didChange). Driven by the document-revision watch in Bootstrap; no-op before any client
-   *  exists or while a transient diff is shown. */
+   *  exists, or while the active document is not the subject of the editor surface. */
   syncActiveDocumentWithLanguageServer(): void {
-    if (this.showingDiff.value) return;
+    if (!this.editorSurfaces.activeDocumentIsPresented) return;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path) return;
     this.languageClientInstance?.syncDocument(editor.document);
@@ -230,7 +233,7 @@ class $Workspace {
    * invariant: The LSP attaches only to documents within the size budget (src/modules/lsp/lsp.invariants.md)
    */
   languageSizeNotice(): string | null {
-    if (this.showingDiff.value) return null;
+    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     const client = this.languageClientInstance;
     if (
@@ -253,7 +256,7 @@ class $Workspace {
    * invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
    */
   async goToDefinition(position?: TextPosition): Promise<boolean> {
-    if (this.showingDiff.value) return false;
+    if (!this.editorSurfaces.activeDocumentIsPresented) return false;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path)
       return false;
@@ -312,7 +315,7 @@ class $Workspace {
    * invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
    */
   async hoverAt(position: TextPosition): Promise<LanguageHover | null> {
-    if (this.showingDiff.value) return null;
+    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path)
       return null;
@@ -325,7 +328,9 @@ class $Workspace {
     position: TextPosition,
     context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
-    if (this.showingDiff.value) return { items: [], isIncomplete: false };
+    if (!this.editorSurfaces.activeDocumentIsPresented) {
+      return { items: [], isIncomplete: false };
+    }
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path) {
       return { items: [], isIncomplete: false };
@@ -347,7 +352,7 @@ class $Workspace {
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     const client = this.languageClientInstance;
     if (
-      this.showingDiff.value ||
+      !this.editorSurfaces.activeDocumentIsPresented ||
       !client ||
       !editor ||
       !editor.hasDocument.value
@@ -405,32 +410,14 @@ class $Workspace {
     return true;
   }
 
-  /** True while a transient comparison is displayed over the tabs. */
-  get showingDiff() {
-    return ref(false);
-  }
-  /** File paths whose tabs currently show the Markdown source | preview split. A set keeps the mode
-   * per tab, so switching away and back does not silently discard the user's view choice. */
-  get markdownPreviewPaths() {
-    return shallowRef<ReadonlySet<string>>(new Set());
-  }
-
-  get activeFileIsMarkdown(): boolean {
-    return (
-      !this.showingDiff.value &&
-      this.editor.hasDocument.value &&
-      Files.Class.extname(this.editor.document.path).toLowerCase() === '.md'
-    );
-  }
-
   /** The active buffer is a previewable image — any extension the ImageDecoders registry supports
    *  (.png/.jpg/.jpeg today; the registry is the ONE source of truth, no extension list here) —
-   *  RootView renders it as half-block cells instead of the binary-file text. Never true during a
-   *  diff or with no document open. */
+   *  RootView renders it as half-block cells instead of the binary-file text. Never true with no
+   *  document open, or while a contributed surface presents something other than this buffer. */
   // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
   get activeFileIsImage(): boolean {
     return (
-      !this.showingDiff.value &&
+      this.editorSurfaces.activeDocumentIsPresented &&
       this.editor.hasDocument.value &&
       ImageDecoders.Class.supports(
         Files.Class.extname(this.editor.document.path),
@@ -438,38 +425,11 @@ class $Workspace {
     );
   }
 
-  get showingMarkdownPreview(): boolean {
-    return (
-      this.activeFileIsMarkdown &&
-      this.markdownPreviewPaths.value.has(this.editor.document.path)
-    );
-  }
-
-  toggleMarkdownPreview(): void {
-    if (!this.activeFileIsMarkdown) return;
-    const path = this.editor.document.path;
-    const nextPaths = new Set(this.markdownPreviewPaths.value);
-    if (nextPaths.has(path)) nextPaths.delete(path);
-    else nextPaths.add(path);
-    this.markdownPreviewPaths.value = nextPaths;
-    this.focus.value = 'editor';
-  }
-  // The two sides of the currently shown comparison, or null. The token forces the view host to
-  // rebuild because the comparison view reconstructs per request.
-  get diffRequest() {
-    return shallowRef<DiffRequest | null>(null);
-  }
-  protected diffRequestToken = 0;
-  showComparison(request: Omit<DiffRequest, 'token'>): void {
-    this.diffRequest.value = { token: ++this.diffRequestToken, ...request };
-    this.showingDiff.value = true;
-    this.focus.value = 'editor';
-  }
-
-  /** The editor currently visible in the pane — a comparison while drilling, else the active tab's
-   *  buffer, else the empty-state editor. All movement/render/edit target this one. */
+  /** The editor whose text is the subject of the editor surface: the active tab's buffer, else the
+   *  document-less empty editor — which is also what a contributed surface presenting something
+   *  else leaves behind. All movement/render/edit target this one. */
   get editor(): Editor.Instance {
-    if (this.showingDiff.value) return this.diffEditor;
+    if (!this.editorSurfaces.activeDocumentIsPresented) return this.emptyEditor;
     // Safe cast: createBufferSet's seam is the only buffer creator and always makes an Editor.
     return (
       (this.buffers.activeBuffer as Editor.Instance | null) ?? this.emptyEditor
@@ -492,9 +452,8 @@ class $Workspace {
   protected settingsSource: Settings.Instance | null = null;
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
-    // Retro-attach the global wordWrap source to editors already built (field-init diff/empty editors +
+    // Retro-attach the global wordWrap source to editors already built (the field-init empty editor +
     // any live buffers from session restore). Future editors get it in createEditor.
-    this.diffEditor.attachWordWrap(settings.wordWrap);
     this.emptyEditor.attachWordWrap(settings.wordWrap);
     for (const entry of this.buffers.entries.value) {
       (entry.buffer as Editor.Instance | null)?.attachWordWrap(
@@ -715,7 +674,7 @@ class $Workspace {
 
   // --- editor buffer tabs (item 10a) ---------------------------------------
   // Opening a file ADDS or FOCUSES a tab (never replaces). The buffer set owns the flyweight/dispose
-  // discipline; Workspace just leaves diff view and keeps the active buffer's dirty flag fresh.
+  // discipline; Workspace just releases any contributed surface and keeps the dirty flag fresh.
 
   // --- navigation history (Go Back / Go Forward) ---------------------------
   // A programmatic back()/forward() restore MUST NOT itself record a new location, or the stack
@@ -737,7 +696,7 @@ class $Workspace {
   }
 
   /** Snapshot the visible editor's current location into the history (no-op without a real
-   *  document — the empty-state and read-only diff editors carry no navigable path). */
+   *  document — the empty-state editor carries no navigable path). */
   recordCurrentLocation(): void {
     const editor = this.editor;
     if (!editor.hasDocument.value || !editor.document.path) return;
@@ -776,15 +735,16 @@ class $Workspace {
    *  history, unless recording is suppressed (a history restore, or a jump that records itself). */
   openFileInTab(path: string): void {
     if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we were, before we leave
-    this.showingDiff.value = false; // a real file replaces the transient diff view
-    this.diffRequest.value = null;
+    this.editorSurfaces.releaseOccupying(); // a real file replaces any transient surface
     this.buffers.open(path);
     if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we arrived
   }
 
-  /** Resolve a rendered Markdown reference through the existing workspace confinement boundary.
-   * External URLs and directories are deliberately not editor targets. */
-  // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
+  /** Resolve a textual reference to a real file inside this workspace, or null. Pure path
+   *  confinement: strip a fragment or query, reject any `scheme:` URL and any malformed escape, then
+   *  try the reference against the workspace root and against the active document's directory,
+   *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
+   *  knows what produced the reference; rendered documents are simply its first caller. */
   resolveFileReference(reference: string): string | null {
     const withoutFragment =
       reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
@@ -829,8 +789,7 @@ class $Workspace {
 
   /** Activate an already-open tab by index (tab click / cycle). */
   activateTab(index: number): void {
-    this.showingDiff.value = false;
-    this.diffRequest.value = null;
+    this.editorSurfaces.releaseOccupying();
     this.buffers.activate(index);
     this.focus.value = 'editor';
   }
@@ -838,8 +797,7 @@ class $Workspace {
   /** Cycle tabs by `delta`, wrapping (Ctrl+Tab / Ctrl+PageUp-Down). */
   cycleTab(delta: number): void {
     if (this.buffers.count === 0) return;
-    this.showingDiff.value = false;
-    this.diffRequest.value = null;
+    this.editorSurfaces.releaseOccupying();
     this.buffers.cycle(delta);
     this.focus.value = 'editor';
   }
@@ -913,13 +871,4 @@ export interface HoverDiagnostic {
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;
   plugins?: readonly WorkspacePlugin[];
-}
-
-/** The two full-text SIDES of a side-by-side diff shown by the DiffView (token forces a rebuild). */
-export interface DiffRequest {
-  token: number;
-  previousVersionText: string;
-  currentVersionText: string;
-  previousVersionPath: string;
-  currentVersionPath: string;
 }

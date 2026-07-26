@@ -19,8 +19,8 @@ class $CoreStatusBarSegments {
     }
     if (workspace.focus.value === 'files') {
       segments.push('[Files]');
-    } else if (context.markdownPreviewFocused) {
-      segments.push('[Markdown Preview]');
+    } else if (context.focusedSurfaceTitle) {
+      segments.push(`[${context.focusedSurfaceTitle}]`);
     } else if (workspace.focus.value === 'primaryPane') {
       const title = context.primaryDockHost.activeContent?.title;
       if (title) segments.push(`[${title}]`);

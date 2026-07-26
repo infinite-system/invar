@@ -107,4 +107,3 @@ export interface PlaceholderRow {
   label: string;
 }
 export type ChangeRow = HeaderRow | FileRow | PlaceholderRow;
-

@@ -21,12 +21,16 @@ class $HandlerGuard {
     try {
       handler();
     } catch (error) {
-      Logging.Class.error(`${label} handler threw (isolated, render loop kept alive): ${String(error)}`);
+      Logging.Class.error(
+        `${label} handler threw (isolated, render loop kept alive): ${String(error)}`,
+      );
       if (recover) {
         try {
           recover();
         } catch (recoverError) {
-          Logging.Class.error(`${label} recover threw (ignored): ${String(recoverError)}`);
+          Logging.Class.error(
+            `${label} recover threw (ignored): ${String(recoverError)}`,
+          );
         }
       }
     }

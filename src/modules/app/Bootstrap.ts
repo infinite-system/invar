@@ -74,6 +74,7 @@ import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
 import type { ApplicationPlugin } from './ApplicationPlugin.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
+import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 
@@ -225,6 +226,10 @@ class $Bootstrap {
     const statusBarSegments = new StatusBarSegments.Class();
     const statusProjectionContributions =
       new StatusProjectionContributions.Class();
+    // Contributed occupants of the editor column register here. Created BEFORE plugin activation
+    // (which runs before buildRootView), so a provider registers early and its content is built
+    // lazily at mount time from a view-supplied context.
+    const editorSurfaceContents = new EditorSurfaceContents.Class();
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     );
@@ -241,6 +246,7 @@ class $Bootstrap {
         overlayCoordinator,
         statusBarSegments,
         statusProjectionContributions,
+        editorSurfaceContents,
         registerPrimaryDockContent: (content) =>
           primaryDockHost.register(content),
         requestRender: () => renderer.requestRender(),
@@ -276,7 +282,7 @@ class $Bootstrap {
       if (rightDockHost.visible.value) panelHost.blur();
     };
 
-    // Reveal through the bound pane target: source, Markdown preview, and each diff side keep their own
+    // Reveal through the bound pane target: the source editor and every contributed surface's panes keep their own
     // scroll/selection writer while FindBar retains independent engines for all of them.
     const revealFindMatch = (): void => {
       const match = findBar.engine?.currentMatch;
@@ -327,6 +333,7 @@ class $Bootstrap {
       primaryDockHost,
       rightDockHost,
       statusBarSegments,
+      editorSurfaceContents,
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
@@ -806,8 +813,8 @@ class $Bootstrap {
       void editor.viewport.scrollTop.value;
       void editor.viewport.scrollLeft.value;
       void editor.wordWrap.value;
-      void settings.diffSplitRatio.value;
-      void settings.markdownSplitRatio.value;
+      // Contributed editor surfaces subscribe their own paint signals.
+      editorSurfaceContents.observePaintSignals();
       void settings.workspaceTabPosition.value;
       void workspaceSet.entries.value;
       void workspaceSet.activeWorkspaceIndex.value;
@@ -817,7 +824,6 @@ class $Bootstrap {
       // The breadcrumb's ‹ › history buttons re-colour (enabled/disabled) as the trail moves.
       void workspaceSet.active.navigationHistory.currentIndex.value;
       void workspaceSet.active.navigationHistory.entries.value;
-      void workspaceSet.active.markdownPreviewPaths.value;
       void workspaceSet.active.tree.selectedIndex.value;
       void workspaceSet.active.tree.hoveredIndex.value;
       // Overlay models: the context menu and tooltip repaint on any of their display state.
@@ -948,8 +954,8 @@ class $Bootstrap {
       // Drag-edge auto-scroll: while a selection drag holds at a pane edge, keep scrolling +
       // extending the selection.
       animating = view.tickDragAutoScroll(deltaTimeSeconds) || animating;
-      animating = view.tickDiffMomentum(deltaTimeSeconds) || animating; // the open diff's fling glide
-      animating = view.tickMarkdownPreview(deltaTimeSeconds) || animating;
+      // The mounted contributed surface advances its own glide + settle-repaint.
+      animating = view.tickContributedSurface(deltaTimeSeconds) || animating;
       // Tooltip dwell: the frame tick advances the timer; it's just another animation source, so it
       // folds into the SAME single-live-request model (holds a frame while counting, false at rest).
       animating = tooltip.tick(deltaTimeSeconds) || animating;
@@ -1070,11 +1076,6 @@ class $Bootstrap {
         ),
       quit: () => void shutdown(),
       requestRender: () => app.requestRender(),
-      hasOpenDiff: () =>
-        workspaceSet.active.showingDiff.value && view.activeDiffView() !== null,
-      nextDiffChange: () => view.activeDiffView()?.jumpToNextChange(),
-      previousDiffChange: () => view.activeDiffView()?.jumpToPreviousChange(),
-      toggleMarkdownPreview: () => workspaceSet.active.toggleMarkdownPreview(),
       toggleActivityBar: () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
         app.requestRender();
@@ -1089,10 +1090,6 @@ class $Bootstrap {
       movePanelContentDown: () => movePanelContent(1),
       closeActivePanelContent,
       cycleTerminalFollowMode,
-      hasHoveredMarkdownReference: () =>
-        Boolean(view.activeMarkdownSplitView()?.hoveredReferencePath.value),
-      openHoveredMarkdownReference: () =>
-        view.activeMarkdownSplitView()?.openHoveredReference(),
       openShortcutHelp: () =>
         overlayCoordinator.openExclusiveOverlay('shortcutHelp', () =>
           shortcutHelp.show(),
@@ -1106,7 +1103,7 @@ class $Bootstrap {
     // invariant: Terminals report key repeat not key up (project.invariants.md)
     const movementAcceleration = (
       key: KeyEvent,
-      movementScope: 'editor' | 'markdownPreview',
+      movementScope: 'editor' | 'editorSurface',
     ): number =>
       scrollPhysics.keyAccelerationFor(`${movementScope}:${key.name}`);
     const isTypedCharacter = (key: KeyEvent): boolean => {
@@ -1328,13 +1325,6 @@ class $Bootstrap {
       'buffer.close': () => workspaceSet.active.closeActiveTab(),
       'buffer.next': () => workspaceSet.active.cycleTab(1),
       'buffer.previous': () => workspaceSet.active.cycleTab(-1),
-      'diff.nextChange': () => view.activeDiffView()?.jumpToNextChange(),
-      'diff.previousChange': () =>
-        view.activeDiffView()?.jumpToPreviousChange(),
-      'markdown.togglePreview': () =>
-        workspaceSet.active.toggleMarkdownPreview(),
-      'markdown.openHoveredReference': () =>
-        view.activeMarkdownSplitView()?.openHoveredReference(),
       // F12 parity with Ctrl/Cmd+click: definition of the symbol AT THE CURSOR.
       'go.definition': () => void workspaceSet.active.goToDefinition(),
       // Browser-style Go Back / Go Forward through the navigation trail (Alt+[ / Alt+]). Safe no-ops
@@ -1377,12 +1367,15 @@ class $Bootstrap {
         )
           workspaceSet.active.activate();
       },
+      // Movement arrives through the REBINDABLE command, not a raw-key intercept, so a remapped
+      // chord still drives whichever surface owns the keyboard.
       'editor.moveUp': (key) => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused)
-          markdownSplitView.moveByKeyboardRows(
-            -movementAcceleration(key, 'markdownPreview'),
-          );
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view
+            .contributedEditorSurface()
+            ?.scrollFocusedPaneByRows(
+              -movementAcceleration(key, 'editorSurface'),
+            );
         else
           workspaceSet.active.editor.moveVertical(
             -movementAcceleration(key, 'editor'),
@@ -1391,11 +1384,12 @@ class $Bootstrap {
       },
       'editor.completion': () => requestCompletion('invoked'),
       'editor.moveDown': (key) => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused)
-          markdownSplitView.moveByKeyboardRows(
-            movementAcceleration(key, 'markdownPreview'),
-          );
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view
+            .contributedEditorSurface()
+            ?.scrollFocusedPaneByRows(
+              movementAcceleration(key, 'editorSurface'),
+            );
         else
           workspaceSet.active.editor.moveVertical(
             movementAcceleration(key, 'editor'),
@@ -1403,7 +1397,7 @@ class $Bootstrap {
           );
       },
       'editor.moveLeft': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused) {
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget) {
           workspaceSet.active.editor.moveHorizontal(
             -movementAcceleration(key, 'editor'),
             key.shift,
@@ -1411,7 +1405,7 @@ class $Bootstrap {
         }
       },
       'editor.moveRight': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused) {
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget) {
           workspaceSet.active.editor.moveHorizontal(
             movementAcceleration(key, 'editor'),
             key.shift,
@@ -1419,111 +1413,106 @@ class $Bootstrap {
         }
       },
       'editor.pageUp': (key) => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused)
-          markdownSplitView.pageByKeyboard(-1);
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view.contributedEditorSurface()?.pageFocusedPane(-1);
         else workspaceSet.active.editor.pageUp(key.shift);
       },
       'editor.pageDown': (key) => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused)
-          markdownSplitView.pageByKeyboard(1);
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view.contributedEditorSurface()?.pageFocusedPane(1);
         else workspaceSet.active.editor.pageDown(key.shift);
       },
       'editor.lineStart': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveToLineStart(key.shift);
       },
       'editor.lineEnd': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveToLineEnd(key.shift);
       },
       'editor.jumpUp': (key) =>
-        view.activeMarkdownSplitView()?.previewFocused
+        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
           ? view
-              .activeMarkdownSplitView()
-              ?.moveByKeyboardRows(
-                -scrollPhysics.jumpRowsFor(`markdownPreview:${key.name}`),
+              .contributedEditorSurface()
+              ?.scrollFocusedPaneByRows(
+                -scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
               )
           : workspaceSet.active.editor.moveVertical(
               -scrollPhysics.jumpRowsFor(`editor:${key.name}`),
               key.shift,
             ),
       'editor.jumpDown': (key) =>
-        view.activeMarkdownSplitView()?.previewFocused
+        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
           ? view
-              .activeMarkdownSplitView()
-              ?.moveByKeyboardRows(
-                scrollPhysics.jumpRowsFor(`markdownPreview:${key.name}`),
+              .contributedEditorSurface()
+              ?.scrollFocusedPaneByRows(
+                scrollPhysics.jumpRowsFor(`editorSurface:${key.name}`),
               )
           : workspaceSet.active.editor.moveVertical(
               scrollPhysics.jumpRowsFor(`editor:${key.name}`),
               key.shift,
             ),
       'editor.wordLeft': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveWordHorizontal(-1, key.shift);
       },
       'editor.wordRight': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveWordHorizontal(1, key.shift);
       },
       'editor.documentStart': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveDocumentStart(key.shift);
       },
       'editor.documentEnd': (key) => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.moveDocumentEnd(key.shift);
       },
       'editor.newline': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.insertNewline();
       },
       'editor.backspace': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.backspace();
       },
       'editor.delete': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.deleteChar();
       },
       'editor.deleteToLineStart': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.deleteToLineStart();
       },
       'edit.deletePreviousWord': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           commands.run('edit.deletePreviousWord');
       },
       'editor.escape': () => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused) markdownSplitView.focusSource();
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view.contributedEditorSurface()?.yieldKeyboardToSourceEditor();
         else if (workspaceSet.active.editor.hasSelection)
           workspaceSet.active.editor.cursor.clearSelection();
         else workspaceSet.active.focusFiles();
       },
       'editor.save': () => workspaceSet.active.saveActiveFile(),
       'editor.selectAll': () => {
-        const markdownSplitView = view.activeMarkdownSplitView();
-        if (markdownSplitView?.previewFocused) markdownSplitView.selectAll();
+        if (!workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
+          view.contributedEditorSurface()?.selectAllInFocusedPane();
         else workspaceSet.active.editor.selectAll();
       },
       'editor.copy': () => {
         // Publish how many characters landed on the clipboard — the observable proof that copy
         // actually copied (the human-QA "cannot copy" bug's verification channel).
-        const diffView = workspaceSet.active.showingDiff.value
-          ? view.activeDiffView()
-          : null;
-        const markdownSplitView = view.activeMarkdownSplitView();
-        // An engaged hover card with a selection owns Ctrl+C — copy ITS text, not the editor's beneath.
+        // An engaged hover card with a selection owns Ctrl+C — copy ITS text, not the editor's
+        // beneath. Otherwise the mounted contributed surface is asked whether it owns a selection;
+        // a null answer falls through to the source editor.
+        const contributedSurfaceCopy =
+          view.contributedEditorSurface()?.copySelection() ?? null;
         const copyPromise = view.hoverHasSelection()
           ? view.hoverCopySelection()
-          : diffView
-            ? diffView.copySelection()
-            : markdownSplitView?.previewFocused
-              ? markdownSplitView.copySelection()
-              : workspaceSet.active.editor.copySelection();
+          : (contributedSurfaceCopy ??
+            workspaceSet.active.editor.copySelection());
         void copyPromise.then((copiedCharacters) => {
           if (copiedCharacters > 0) {
             app.copyNotice.value = `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
@@ -1587,19 +1576,19 @@ class $Bootstrap {
       'terminal.wordRight': (key) => panelHost.handleKey(key),
       'terminal.deletePreviousWord': (key) => panelHost.handleKey(key),
       'editor.cut': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           void workspaceSet.active.editor.cutSelection();
       },
       'editor.paste': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           void workspaceSet.active.editor.pasteClipboard();
       },
       'editor.undo': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.performUndo();
       },
       'editor.redo': () => {
-        if (!view.activeMarkdownSplitView()?.previewFocused)
+        if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
           workspaceSet.active.editor.performRedo();
       },
       'editor.toggleWordWrap': () =>
@@ -1647,7 +1636,7 @@ class $Bootstrap {
     ]);
 
     // The find/replace bar's key handling, shared VERBATIM by the two routes that reach it — the global
-    // 'find' context (editor / markdown preview / diff targets) and the focused agent pane's interception
+    // 'find' context (the source editor and every contributed surface's own targets) and the focused agent pane's interception
     // (the transcript target) — so transcript search speaks the ONE find vocabulary: type = live query,
     // Enter/Shift+Enter cycle + reveal, Tab switches field, Esc closes (returning keys to whatever owns
     // them beneath — the editor there, the agent composer here).
@@ -2065,7 +2054,7 @@ class $Bootstrap {
       // which is harmless because Ctrl+E was unbound.) Driven-verified against the real byte streams.
       if (
         context === 'editor' &&
-        !view.activeMarkdownSplitView()?.previewFocused &&
+        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
         renderer.useKittyKeyboard &&
         key.ctrl &&
         key.name === 'a' &&
@@ -2075,50 +2064,15 @@ class $Bootstrap {
         return;
       }
 
-      // A diff is open OVER the tabs: editor-context keys drive the DiffView (synced aligned-row panes),
-      // not the hidden buffer. n/p jump changes, Enter promotes to a real editable tab, Esc closes.
-      if (context === 'editor' && workspaceSet.active.showingDiff.value) {
-        const diff = view.activeDiffView();
-        if (diff) {
-          switch (key.name) {
-            case 'up':
-              diff.moveByKeyboardAlignedRows(-1);
-              return;
-            case 'down':
-              diff.moveByKeyboardAlignedRows(1);
-              return;
-            case 'pageup':
-              diff.pageByKeyboard(-1);
-              return;
-            case 'pagedown':
-              diff.pageByKeyboard(1);
-              return;
-            case 'left':
-              diff.moveByKeyboardColumns(-1);
-              return;
-            case 'right':
-              diff.moveByKeyboardColumns(1);
-              return;
-            case 'n':
-              diff.jumpToNextChange();
-              return;
-            case 'p':
-              diff.jumpToPreviousChange();
-              return;
-            case 'return':
-              if (!key.ctrl) {
-                diff.openFull();
-                return;
-              }
-              break;
-            case 'escape':
-              workspaceSet.active.showingDiff.value = false;
-              workspaceSet.active.diffRequest.value = null;
-              return;
-            default:
-              break;
-          }
-        }
+      // A contributed surface occupies the editor column: it consumes editor-context keys before the
+      // keybinding registry, so its own panes move instead of the hidden buffer. The host does not
+      // know which keys those are — the surface answers true when it handled one.
+      if (
+        context === 'editor' &&
+        !workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
+        view.contributedEditorSurface()?.handleKey(key)
+      ) {
+        return;
       }
 
       const resolution = keybindings.resolve(
@@ -2140,7 +2094,7 @@ class $Bootstrap {
       else if (
         context === 'editor' &&
         isTypedCharacter(key) &&
-        !view.activeMarkdownSplitView()?.previewFocused
+        workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
       ) {
         workspaceSet.active.editor.insertText(key.sequence);
         if (
@@ -2206,7 +2160,7 @@ class $Bootstrap {
         contextMenu.open.value
       )
         return;
-      if (!view.activeMarkdownSplitView()?.previewFocused)
+      if (workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget)
         workspaceSet.active.editor.pasteText(text);
     };
     const onPaste = (event: { bytes: Uint8Array }): void => {

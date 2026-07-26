@@ -75,7 +75,10 @@ class $GitRepository {
   // invariant: Only the newest Git request mutates state (src/modules/git/git.invariants.md)
   async refresh(options: GitRefreshOptions = {}): Promise<void> {
     const background = options.background === true;
-    if (background && (this.backgroundRefreshInFlight || this.refreshing.value)) {
+    if (
+      background &&
+      (this.backgroundRefreshInFlight || this.refreshing.value)
+    ) {
       return;
     }
     if (background) {
@@ -89,7 +92,9 @@ class $GitRepository {
     }
 
     try {
-      const statusResult = await this.GitCommands.statusPorcelainV2Branch(this.cwd);
+      const statusResult = await this.GitCommands.statusPorcelainV2Branch(
+        this.cwd,
+      );
       if (requestId !== this.refreshRequestId) {
         return;
       }
@@ -98,7 +103,9 @@ class $GitRepository {
         return;
       }
 
-      const status = GitParsers.Class.parseStatusPorcelainV2(statusResult.stdout);
+      const status = GitParsers.Class.parseStatusPorcelainV2(
+        statusResult.stdout,
+      );
       if (requestId !== this.refreshRequestId) {
         return;
       }
@@ -153,12 +160,14 @@ class $GitRepository {
     }
     return currentRecords.every((currentRecord, recordIndex) => {
       const nextRecord = nextRecords[recordIndex];
-      return nextRecord !== undefined
-        && currentRecord.path === nextRecord.path
-        && currentRecord.xy === nextRecord.xy
-        && currentRecord.x === nextRecord.x
-        && currentRecord.y === nextRecord.y
-        && currentRecord.originalPath === nextRecord.originalPath;
+      return (
+        nextRecord !== undefined &&
+        currentRecord.path === nextRecord.path &&
+        currentRecord.xy === nextRecord.xy &&
+        currentRecord.x === nextRecord.x &&
+        currentRecord.y === nextRecord.y &&
+        currentRecord.originalPath === nextRecord.originalPath
+      );
     });
   }
 
@@ -185,7 +194,10 @@ class $GitRepository {
         return [];
       }
 
-      const commits = GitParsers.Class.parseLog(historyResult.stdout).slice(0, limit);
+      const commits = GitParsers.Class.parseLog(historyResult.stdout).slice(
+        0,
+        limit,
+      );
       if (requestId !== this.historyRequestId) {
         return [];
       }
@@ -217,7 +229,9 @@ class $GitRepository {
   }
 
   async stageAll(): Promise<boolean> {
-    return this.stage(this.uniquePaths([...this.unstaged.value, ...this.untracked.value]));
+    return this.stage(
+      this.uniquePaths([...this.unstaged.value, ...this.untracked.value]),
+    );
   }
 
   async unstageAll(): Promise<boolean> {

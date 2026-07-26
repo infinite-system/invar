@@ -64,7 +64,8 @@ class $EditorPane {
     // track them, so it recomputes on a move/edit and clears when the cursor leaves a bracket). The
     // renderer paints only the cells that fall in a visible line.
     const bracketMatch =
-      editor.hasDocument.value && !workspaceSet.active.showingDiff.value
+      editor.hasDocument.value &&
+      workspaceSet.active.editorSurfaces.activeDocumentIsPresented
         ? BracketMatch.Class.findInDocument(
             editor.document,
             editor.cursor.line.value,
@@ -394,7 +395,7 @@ class $EditorPane {
       codeBody,
       workspaceSet,
       settings,
-      focusMarkdownSource,
+      focusSourceEditor,
       hover,
       tooltip,
     } = this.deps;
@@ -434,7 +435,7 @@ class $EditorPane {
       }
     };
     codeBody.onMouseDown = (event) => {
-      focusMarkdownSource();
+      focusSourceEditor();
       if (process.env.TUI_DEBUG_MOUSE === '1') {
         Logging.Class.info(
           `mouseDown (${event.x},${event.y}) hit=${JSON.stringify(this.documentPositionAtCell(event.x, event.y))}`,
@@ -550,8 +551,9 @@ export interface EditorPaneDeps {
   readPalette: () => Palette;
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;
-  /** Focus the markdown split's source pane on an editor click (no-op when no split is mounted). */
-  focusMarkdownSource: () => void;
+  /** Hand the keyboard back to the source editor — a click in the source pane while a contributed
+   *  surface's own pane holds it (no-op when no surface is mounted). */
+  focusSourceEditor: () => void;
   /** The LSP hover-card handle: a mouse-move over a symbol points it; leaving the code clears it. */
   hover: {
     pointAt(

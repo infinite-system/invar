@@ -81,7 +81,13 @@ class $FileTree {
     const walk = (directory: string, depth: number): void => {
       for (const entry of this.list(directory)) {
         const expanded = entry.isDir && this.expanded.has(entry.path);
-        rows.push({ name: entry.name, path: entry.path, isDir: entry.isDir, depth, expanded });
+        rows.push({
+          name: entry.name,
+          path: entry.path,
+          isDir: entry.isDir,
+          depth,
+          expanded,
+        });
         if (expanded) walk(entry.path, depth + 1);
       }
     };
@@ -103,14 +109,24 @@ class $FileTree {
   get contentWidth(): number {
     return this.rows.reduce(
       (widestWidth, row) =>
-        Math.max(widestWidth, 1 + row.depth * 2 + 1 + 1 + EditorCoordinates.Class.lineWidth(row.name)),
+        Math.max(
+          widestWidth,
+          1 +
+            row.depth * 2 +
+            1 +
+            1 +
+            EditorCoordinates.Class.lineWidth(row.name),
+        ),
       0,
     );
   }
 
   // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
   get maxScrollLeft(): number {
-    return Math.max(0, this.contentWidth - Math.max(1, this.viewportWidth.value));
+    return Math.max(
+      0,
+      this.contentWidth - Math.max(1, this.viewportWidth.value),
+    );
   }
 
   get selected(): TreeRow | null {
@@ -128,7 +144,10 @@ class $FileTree {
   /** Scroll the window by whole rows (wheel/momentum), clamped. Does NOT move the selection. */
   scrollBy(delta: number): void {
     const maxTop = Math.max(0, this.rows.length - this.viewportHeight.value);
-    this.scrollTop.value = Math.max(0, Math.min(this.scrollTop.value + delta, maxTop));
+    this.scrollTop.value = Math.max(
+      0,
+      Math.min(this.scrollTop.value + delta, maxTop),
+    );
   }
 
   /** Horizontal wheel/scrollbar: move the column window within this tree's own content extent. */
@@ -140,7 +159,10 @@ class $FileTree {
   }
 
   clampHorizontalScroll(): void {
-    this.scrollLeft.value = Math.max(0, Math.min(this.scrollLeft.value, this.maxScrollLeft));
+    this.scrollLeft.value = Math.max(
+      0,
+      Math.min(this.scrollLeft.value, this.maxScrollLeft),
+    );
   }
 
   /** Bring the selection into view with the MINIMUM scroll (only when it is off-screen). */
@@ -148,7 +170,8 @@ class $FileTree {
     const height = this.viewportHeight.value;
     const index = this.selectedIndex.value;
     if (index < this.scrollTop.value) this.scrollTop.value = index;
-    else if (index >= this.scrollTop.value + height) this.scrollTop.value = index - height + 1;
+    else if (index >= this.scrollTop.value + height)
+      this.scrollTop.value = index - height + 1;
   }
 
   moveSelection(delta: number): void {

@@ -7,34 +7,40 @@
 import { Static } from 'ivue/extras';
 import type { ScrollModifier, Settings } from '../settings/Settings';
 class $ScrollGesture {
-    public static modifierHeld(event: WheelModifiers, modifier: ScrollModifier): boolean {
-        switch (modifier) {
-            case 'alt':
-                return event.modifiers.alt;
-            case 'shift':
-                return event.modifiers.shift;
-            case 'ctrl':
-                return event.modifiers.ctrl;
-            default:
-                return false; // 'none'
-        }
+  public static modifierHeld(
+    event: WheelModifiers,
+    modifier: ScrollModifier,
+  ): boolean {
+    switch (modifier) {
+      case 'alt':
+        return event.modifiers.alt;
+      case 'shift':
+        return event.modifiers.shift;
+      case 'ctrl':
+        return event.modifiers.ctrl;
+      default:
+        return false; // 'none'
     }
-    public static wheelStep(event: WheelModifiers, settings: Settings.Instance): number {
-        const notch = Math.max(1, Math.round(settings.linesPerNotch.value));
-        const fast = this.modifierHeld(event, settings.fastScrollModifier.value)
-            ? Math.max(1, Math.round(settings.fastScrollMultiplier.value))
-            : 1;
-        return notch * fast;
-    }
+  }
+  public static wheelStep(
+    event: WheelModifiers,
+    settings: Settings.Instance,
+  ): number {
+    const notch = Math.max(1, Math.round(settings.linesPerNotch.value));
+    const fast = this.modifierHeld(event, settings.fastScrollModifier.value)
+      ? Math.max(1, Math.round(settings.fastScrollMultiplier.value))
+      : 1;
+    return notch * fast;
+  }
 }
 export namespace ScrollGesture {
-    export const $Class = $ScrollGesture;
-    export const Class = Static($ScrollGesture);
+  export const $Class = $ScrollGesture;
+  export const Class = Static($ScrollGesture);
 }
 export interface WheelModifiers {
-    modifiers: {
-        alt: boolean;
-        shift: boolean;
-        ctrl: boolean;
-    };
+  modifiers: {
+    alt: boolean;
+    shift: boolean;
+    ctrl: boolean;
+  };
 }

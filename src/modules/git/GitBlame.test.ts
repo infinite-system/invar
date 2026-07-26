@@ -42,8 +42,17 @@ const PORCELAIN = [
 
 test('parses each line to its author, time (ms), and summary', () => {
   const map = GitBlame.Class.parsePorcelain(PORCELAIN);
-  expect(map.get(1)).toMatchObject({ author: 'Alice', summary: 'Initial commit', authorTimeMs: 1700000000000, uncommitted: false });
-  expect(map.get(3)).toMatchObject({ author: 'Bob', summary: 'Add y logic', uncommitted: false });
+  expect(map.get(1)).toMatchObject({
+    author: 'Alice',
+    summary: 'Initial commit',
+    authorTimeMs: 1700000000000,
+    uncommitted: false,
+  });
+  expect(map.get(3)).toMatchObject({
+    author: 'Bob',
+    summary: 'Add y logic',
+    uncommitted: false,
+  });
 });
 
 test('a repeated sha reuses the commit metadata sent on its first hunk', () => {

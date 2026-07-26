@@ -1,0 +1,34 @@
+# PLUGIN CANVAS BOUNDARY — the shrinking allowlist for host-core references to a plugin domain.
+#
+# Read by scripts/conventions-gate.sh step 11. Format (tab- or space-separated):
+#
+#   <domain>  <host-core path>  <maximum matching lines>
+#
+# The gate FAILS when a listed path exceeds its maximum, or when a host-core path with any match is
+# not listed at all. That makes NEW coupling impossible to add quietly while an in-flight extraction
+# still has known sites. A decrease never fails; it prints BOUNDARY RATCHET SLACK so the number can
+# be tightened in the same commit that earned it. THE NUMBERS ONLY EVER GO DOWN, and a domain with
+# no rows left is promoted to the zero-tolerance list in the gate itself (as `source-control` was
+# after task #34).
+#
+# Ordering and reasoning for driving these to zero live in project.canvas-census.md
+# ("Extraction order"). Do not add a domain here without adding it to that census.
+
+# --- source control, the panel: EXTRACTED by task #34 ------------------------------------------
+# Zero rows for Workspace.ts and src/modules/app, so ANY reference there fails. The keybinding
+# defaults still carry its chord DATA (13 action identifiers + the 'git' keybinding context), which
+# is a different extraction — issue #100 — and is allowlisted here, not silently tolerated.
+source-control	src/modules/keybindings/KeybindingDefaults.ts	13
+source-control	src/modules/keybindings/KeybindingRegistry.ts	1
+
+# --- source control, comparison view: EXTRACTED 2026-07-26 -------------------------------------
+# Was 27 (Workspace.ts) + 17 (Bootstrap.ts) + 10 (AppStatusProjection.ts) = 54 lines, now 0 in all
+# three, so they carry no rows and one reference there fails. Its two chords remain in the keybinding
+# defaults (issue #100).
+comparison	src/modules/keybindings/KeybindingDefaults.ts	2
+
+# --- markdown: EXTRACTED 2026-07-26 ------------------------------------------------------------
+# Was 13 (Workspace.ts) + 60 (Bootstrap.ts, the 29-site previewFocused fan-out plus command wiring)
+# + 13 (AppStatusProjection.ts) = 86 lines, now 0 in all three, so they carry no rows and one
+# reference there fails. Its three chords remain in the keybinding defaults (issue #100).
+markdown	src/modules/keybindings/KeybindingDefaults.ts	3

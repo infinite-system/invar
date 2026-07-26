@@ -16,7 +16,9 @@ let workspaceDirectory = '';
 const filePaths: string[] = [];
 
 beforeEach(() => {
-  workspaceDirectory = makeTemporaryDirectorySync(join(temporaryDirectory(), 'tui-tabs-'));
+  workspaceDirectory = makeTemporaryDirectorySync(
+    join(temporaryDirectory(), 'tui-tabs-'),
+  );
   filePaths.length = 0;
   for (let index = 1; index <= 4; index += 1) {
     const path = join(workspaceDirectory, `file${index}.txt`);
@@ -107,11 +109,29 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.buffers.liveCount).toBe(2); // active (1) + dirty background (0)
   });
 
-  test('opening a real file leaves diff view; the visible editor becomes the active tab', () => {
+  // invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+  test('opening a real file releases a contributed surface; the visible editor becomes the active tab', () => {
     const workspace = new Workspace.Class();
-    workspace.showingDiff.value = true; // pretend a git diff is displayed over the tabs
+    // A contribution shaped like a read-only comparison: it occupies the surface and replaces the
+    // active buffer's text. The host never learns what it is.
+    const surface = {
+      identifier: 'test.comparison',
+      occupyingEditorSurface: true,
+      get activeDocumentIsPresented() {
+        return !surface.occupyingEditorSurface;
+      },
+      release() {
+        surface.occupyingEditorSurface = false;
+      },
+    };
+    workspace.editorSurfaces.register(surface);
+    // While it occupies the surface the active document is NOT the subject, so the visible editor is
+    // the document-less one — which is what every language guard now keys off.
+    expect(workspace.editorSurfaces.activeDocumentIsPresented).toBe(false);
+    expect(workspace.editor.hasDocument.value).toBe(false);
     workspace.openFileInTab(filePaths[0]!);
-    expect(workspace.showingDiff.value).toBe(false);
+    expect(surface.occupyingEditorSurface).toBe(false);
+    expect(workspace.editorSurfaces.activeDocumentIsPresented).toBe(true);
     expect(workspace.editor.document.path).toBe(filePaths[0]!);
   });
 
@@ -120,7 +140,10 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     const sourceDirectory = join(workspaceDirectory, 'guides');
     const sourcePath = join(sourceDirectory, 'guide.md');
     const sourceRelativeTarget = join(sourceDirectory, 'details.md');
-    const rootRelativeTarget = join(workspaceDirectory, 'project.invariants.md');
+    const rootRelativeTarget = join(
+      workspaceDirectory,
+      'project.invariants.md',
+    );
     makeDirectorySync(sourceDirectory);
     writeFileSync(sourcePath, '# Guide\n');
     writeFileSync(sourceRelativeTarget, '# Details\n');
@@ -130,9 +153,15 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     workspace.root = workspaceDirectory;
     workspace.openFileInTab(sourcePath);
 
-    expect(workspace.resolveFileReference('details.md')).toBe(sourceRelativeTarget);
-    expect(workspace.resolveFileReference('project.invariants.md#record')).toBe(rootRelativeTarget);
-    expect(workspace.resolveFileReference('https://example.com/file.md')).toBeNull();
+    expect(workspace.resolveFileReference('details.md')).toBe(
+      sourceRelativeTarget,
+    );
+    expect(workspace.resolveFileReference('project.invariants.md#record')).toBe(
+      rootRelativeTarget,
+    );
+    expect(
+      workspace.resolveFileReference('https://example.com/file.md'),
+    ).toBeNull();
     expect(workspace.resolveFileReference('../outside.md')).toBeNull();
     expect(workspace.resolveFileReference('missing.md')).toBeNull();
 

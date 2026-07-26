@@ -66,7 +66,9 @@ class $MarkdownParser {
       }
 
       if (this.isHorizontalRule(lines[lineIndex]!.text)) {
-        blocks.push(this.createBlock('hr', '─', lineIndex, lineIndex + 1, lines));
+        blocks.push(
+          this.createBlock('hr', '─', lineIndex, lineIndex + 1, lines),
+        );
         lineIndex++;
         continue;
       }
@@ -89,7 +91,10 @@ class $MarkdownParser {
     return { revision, blocks };
   }
 
-  async parseAsync(text: string, revision: number): Promise<MarkdownParseResult> {
+  async parseAsync(
+    text: string,
+    revision: number,
+  ): Promise<MarkdownParseResult> {
     await Promise.resolve();
     return this.parse(text, revision);
   }
@@ -123,20 +128,33 @@ class $MarkdownParser {
     startLine: number,
     blocks: BlockRecord[],
   ): number {
-    const opening = lines[startLine]!.text.match(/^\s*(`{3,}|~{3,})\s*([^\s`]*)\s*$/);
+    const opening = lines[startLine]!.text.match(
+      /^\s*(`{3,}|~{3,})\s*([^\s`]*)\s*$/,
+    );
     if (!opening) return startLine;
 
     const fence = opening[1]!;
-    const closingExpression = new RegExp(`^\\s*${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`);
+    const closingExpression = new RegExp(
+      `^\\s*${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`,
+    );
     const content: string[] = [];
     let endLine = startLine + 1;
-    while (endLine < lines.length && !closingExpression.test(lines[endLine]!.text)) {
+    while (
+      endLine < lines.length &&
+      !closingExpression.test(lines[endLine]!.text)
+    ) {
       content.push(lines[endLine]!.text);
       endLine++;
     }
     if (endLine < lines.length) endLine++;
 
-    const block = this.createBlock('code', content.join('\n'), startLine, endLine, lines);
+    const block = this.createBlock(
+      'code',
+      content.join('\n'),
+      startLine,
+      endLine,
+      lines,
+    );
     block.language = opening[2] || undefined;
     blocks.push(block);
     return endLine;
@@ -166,7 +184,15 @@ class $MarkdownParser {
       endLine++;
     }
 
-    blocks.push(this.createInlineBlock('table', rows.join('\n'), startLine, endLine, lines));
+    blocks.push(
+      this.createInlineBlock(
+        'table',
+        rows.join('\n'),
+        startLine,
+        endLine,
+        lines,
+      ),
+    );
     return endLine;
   }
 
@@ -177,7 +203,13 @@ class $MarkdownParser {
   ): number {
     const atx = lines[startLine]!.text.match(/^\s*(#{1,6})\s+(.+?)\s*#*\s*$/);
     if (atx) {
-      const block = this.createInlineBlock('heading', atx[2]!, startLine, startLine + 1, lines);
+      const block = this.createInlineBlock(
+        'heading',
+        atx[2]!,
+        startLine,
+        startLine + 1,
+        lines,
+      );
       block.level = atx[1]!.length;
       blocks.push(block);
       return startLine + 1;
@@ -215,7 +247,15 @@ class $MarkdownParser {
       content.push(lines[endLine]!.text.replace(/^\s*>\s?/, ''));
       endLine++;
     }
-    blocks.push(this.createInlineBlock('blockquote', content.join('\n'), startLine, endLine, lines));
+    blocks.push(
+      this.createInlineBlock(
+        'blockquote',
+        content.join('\n'),
+        startLine,
+        endLine,
+        lines,
+      ),
+    );
     return endLine;
   }
 
@@ -231,7 +271,13 @@ class $MarkdownParser {
     while (endLine < lines.length) {
       const item = this.matchListItem(lines[endLine]!.text);
       if (!item) break;
-      const block = this.createInlineBlock('listitem', item.text, endLine, endLine + 1, lines);
+      const block = this.createInlineBlock(
+        'listitem',
+        item.text,
+        endLine,
+        endLine + 1,
+        lines,
+      );
       block.level = Math.floor(item.indent.length / 2) + 1;
       block.marker = /^\d/.test(item.marker) ? item.marker : '•';
       items.push(block);
@@ -256,11 +302,22 @@ class $MarkdownParser {
       content.push(lines[endLine]!.text.trim());
       endLine++;
     }
-    blocks.push(this.createInlineBlock('paragraph', content.join(' '), startLine, endLine, lines));
+    blocks.push(
+      this.createInlineBlock(
+        'paragraph',
+        content.join(' '),
+        startLine,
+        endLine,
+        lines,
+      ),
+    );
     return endLine;
   }
 
-  protected startsBlock(lines: readonly SourceLine[], lineIndex: number): boolean {
+  protected startsBlock(
+    lines: readonly SourceLine[],
+    lineIndex: number,
+  ): boolean {
     const text = lines[lineIndex]!.text;
     return (
       /^\s*(#{1,6})\s+/.test(text) ||
@@ -268,7 +325,9 @@ class $MarkdownParser {
       /^\s*>/.test(text) ||
       Boolean(this.matchListItem(text)) ||
       this.isHorizontalRule(text) ||
-      (lineIndex + 1 < lines.length && text.includes('|') && this.isTableSeparator(lines[lineIndex + 1]!.text))
+      (lineIndex + 1 < lines.length &&
+        text.includes('|') &&
+        this.isTableSeparator(lines[lineIndex + 1]!.text))
     );
   }
 
@@ -280,7 +339,15 @@ class $MarkdownParser {
     lines: readonly SourceLine[],
   ): BlockRecord {
     const inline = this.parseInline(sourceText);
-    return this.createBlock(kind, inline.text, startLine, endLine, lines, inline.spans, inline.links);
+    return this.createBlock(
+      kind,
+      inline.text,
+      startLine,
+      endLine,
+      lines,
+      inline.spans,
+      inline.links,
+    );
   }
 
   protected createBlock(
@@ -317,7 +384,9 @@ class $MarkdownParser {
     const inlineStyles = parserClass.inlineStyles;
 
     while (sourceIndex < source.length) {
-      const linkMatch = source.slice(sourceIndex).match(/^\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/);
+      const linkMatch = source
+        .slice(sourceIndex)
+        .match(/^\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/);
       if (linkMatch) {
         const start = output.length;
         output += linkMatch[1]!;
@@ -345,7 +414,9 @@ class $MarkdownParser {
         continue;
       }
 
-      const emphasisMatch = source.slice(sourceIndex).match(/^(\*|_)([^*_\n]+?)\1/);
+      const emphasisMatch = source
+        .slice(sourceIndex)
+        .match(/^(\*|_)([^*_\n]+?)\1/);
       if (emphasisMatch) {
         const start = output.length;
         output += emphasisMatch[2]!;
@@ -367,9 +438,13 @@ class $MarkdownParser {
     return { text: output, spans, links };
   }
 
-  protected matchListItem(text: string): { indent: string; marker: string; text: string } | null {
+  protected matchListItem(
+    text: string,
+  ): { indent: string; marker: string; text: string } | null {
     const match = text.match(/^(\s*)([-+*]|\d+[.)])\s+(.+)$/);
-    return match ? { indent: match[1]!, marker: match[2]!, text: match[3]! } : null;
+    return match
+      ? { indent: match[1]!, marker: match[2]!, text: match[3]! }
+      : null;
   }
 
   protected isTableSeparator(text: string): boolean {
@@ -377,7 +452,12 @@ class $MarkdownParser {
   }
 
   protected normalizeTableRow(text: string): string {
-    return text.trim().replace(/^\||\|$/g, '').split('|').map((cell) => cell.trim()).join(' │ ');
+    return text
+      .trim()
+      .replace(/^\||\|$/g, '')
+      .split('|')
+      .map((cell) => cell.trim())
+      .join(' │ ');
   }
 
   protected isHorizontalRule(text: string): boolean {

@@ -43,7 +43,12 @@ test('statusPorcelainV2Branch assembles stable porcelain-v2 args', async () => {
 });
 
 test('log clamps count, supports skip paging, and passes the branch ref', async () => {
-  await TestGitCommands.log({ cwd: '/tmp/repo', skip: 5, branch: 'feature/log', limit: 500 });
+  await TestGitCommands.log({
+    cwd: '/tmp/repo',
+    skip: 5,
+    branch: 'feature/log',
+    limit: 500,
+  });
   expect(commandInvocations).toEqual([
     {
       workingDirectory: '/tmp/repo',
@@ -108,7 +113,13 @@ test('diffFile dispatches per bucket', async () => {
     },
     {
       workingDirectory: '/tmp/repo',
-      commandArguments: ['diff', '--no-ext-diff', '--no-color', '--', 'foo.txt'],
+      commandArguments: [
+        'diff',
+        '--no-ext-diff',
+        '--no-color',
+        '--',
+        'foo.txt',
+      ],
     },
   ]);
 });

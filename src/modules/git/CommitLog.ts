@@ -93,7 +93,12 @@ class $CommitLog {
     if (this.options.fetch) {
       return this.options.fetch(skip, limit, branch);
     }
-    const result = await GitCommands.Class.log({ cwd: this.cwd, branch, skip, limit });
+    const result = await GitCommands.Class.log({
+      cwd: this.cwd,
+      branch,
+      skip,
+      limit,
+    });
     if (result.code !== 0) {
       return null;
     }
@@ -106,7 +111,11 @@ class $CommitLog {
    * call per row), evict cache entries outside the keep-margin, and — since a stale fetch is
    * discarded — never let an out-of-date page overwrite newer state.
    */
-  async ensureRange(start: number, count: number, keepMargin = count): Promise<void> {
+  async ensureRange(
+    start: number,
+    count: number,
+    keepMargin = count,
+  ): Promise<void> {
     const loadToken = ++this.loadId;
     const gaps = GitWindow.Class.missingRanges(
       new Set(this.cache.value.keys()),
@@ -176,4 +185,3 @@ export interface CommitLogOptions {
   branch?: string;
   fetch?: CommitPageFetch;
 }
-

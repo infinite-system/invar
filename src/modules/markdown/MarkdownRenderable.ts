@@ -23,7 +23,8 @@ class $MarkdownRenderable extends BoxRenderable {
   readonly bodyRenderable: SelectableText.Model;
   protected visibleRowsSnapshot: PreviewRow[] = [];
   protected hoveredReferenceKey: string | null = null;
-  protected findEngineProvider: (() => FindInBuffer.Instance | null) | null = null;
+  protected findEngineProvider: (() => FindInBuffer.Instance | null) | null =
+    null;
 
   constructor(
     renderer: CliRenderer,
@@ -66,7 +67,10 @@ class $MarkdownRenderable extends BoxRenderable {
     this.pullVisibleRows();
   }
 
-  positionAtCell(screenColumn: number, screenRow: number): { line: number; column: number } | null {
+  positionAtCell(
+    screenColumn: number,
+    screenRow: number,
+  ): { line: number; column: number } | null {
     const visibleRowIndex = screenRow - this.bodyRenderable.y;
     const row = this.visibleRowsSnapshot[visibleRowIndex];
     if (!row) return null;
@@ -80,7 +84,10 @@ class $MarkdownRenderable extends BoxRenderable {
     };
   }
 
-  referenceAtCell(screenColumn: number, screenRow: number): MarkdownReferenceHit | null {
+  referenceAtCell(
+    screenColumn: number,
+    screenRow: number,
+  ): MarkdownReferenceHit | null {
     const visibleRowIndex = screenRow - this.bodyRenderable.y;
     const row = this.visibleRowsSnapshot[visibleRowIndex];
     if (!row?.block) return null;
@@ -89,19 +96,27 @@ class $MarkdownRenderable extends BoxRenderable {
       rowText,
       Math.max(0, screenColumn - this.bodyRenderable.x),
     );
-    const rowUtf16Offset = EditorCoordinates.Class.graphemeToU16(rowText, rowGraphemeColumn);
+    const rowUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+      rowText,
+      rowGraphemeColumn,
+    );
     const blockUtf16Offset = row.textStart + rowUtf16Offset - row.prefix.length;
-    for (let spanIndex = 0; spanIndex < row.block.spans.length; spanIndex += 4) {
+    for (
+      let spanIndex = 0;
+      spanIndex < row.block.spans.length;
+      spanIndex += 4
+    ) {
       const spanStart = row.block.spans[spanIndex]!;
       const spanEnd = row.block.spans[spanIndex + 1]!;
       const inlineStyle = row.block.spans[spanIndex + 2]!;
       const linkIndexPlusOne = row.block.spans[spanIndex + 3]!;
       if (blockUtf16Offset < spanStart || blockUtf16Offset >= spanEnd) continue;
-      const target = inlineStyle === MarkdownParser.Class.inlineStyles.link
-        ? row.block.links[linkIndexPlusOne - 1]
-        : inlineStyle === MarkdownParser.Class.inlineStyles.code
-          ? row.block.text.slice(spanStart, spanEnd)
-          : undefined;
+      const target =
+        inlineStyle === MarkdownParser.Class.inlineStyles.link
+          ? row.block.links[linkIndexPlusOne - 1]
+          : inlineStyle === MarkdownParser.Class.inlineStyles.code
+            ? row.block.text.slice(spanStart, spanEnd)
+            : undefined;
       if (!target) return null;
       return {
         key: this.referenceKey(row.blockIndex, spanStart, spanEnd, inlineStyle),
@@ -111,8 +126,18 @@ class $MarkdownRenderable extends BoxRenderable {
     return null;
   }
 
-  setSelectionRange(anchorColumn: number, anchorRow: number, focusColumn: number, focusRow: number): void {
-    this.bodyRenderable.setSelectionRange(anchorColumn, anchorRow, focusColumn, focusRow);
+  setSelectionRange(
+    anchorColumn: number,
+    anchorRow: number,
+    focusColumn: number,
+    focusRow: number,
+  ): void {
+    this.bodyRenderable.setSelectionRange(
+      anchorColumn,
+      anchorRow,
+      focusColumn,
+      focusRow,
+    );
   }
 
   clearSelectionRange(): void {
@@ -146,7 +171,12 @@ class $MarkdownRenderable extends BoxRenderable {
     this.backgroundColor = palette.bg;
   }
 
-  protected appendRow(chunks: TextChunk[], row: PreviewRow, visibleRowIndex: number, palette: Palette): void {
+  protected appendRow(
+    chunks: TextChunk[],
+    row: PreviewRow,
+    visibleRowIndex: number,
+    palette: Palette,
+  ): void {
     if (row.role === 'spacer') {
       chunks.push(fg(palette.fg)(''));
       return;
@@ -156,7 +186,11 @@ class $MarkdownRenderable extends BoxRenderable {
       return;
     }
     if (row.role === 'rule' || row.role === 'codeBorder') {
-      chunks.push(fg(row.role === 'rule' ? palette.dim : palette.border)(row.overrideText ?? ''));
+      chunks.push(
+        fg(row.role === 'rule' ? palette.dim : palette.border)(
+          row.overrideText ?? '',
+        ),
+      );
       return;
     }
 
@@ -178,7 +212,10 @@ class $MarkdownRenderable extends BoxRenderable {
     const spans = block.spans;
     const findEngine = this.findEngineProvider?.() ?? null;
     const renderedRowIndex = this.preview.scrollTop.value + visibleRowIndex;
-    const findMatches = findEngine?.matches.value.filter((match) => match.line === renderedRowIndex) ?? [];
+    const findMatches =
+      findEngine?.matches.value.filter(
+        (match) => match.line === renderedRowIndex,
+      ) ?? [];
     const rowText = this.preview.textForRow(row);
     while (position < row.textEnd) {
       let nextBoundary = row.textEnd;
@@ -203,9 +240,16 @@ class $MarkdownRenderable extends BoxRenderable {
 
       let findHighlighted = false;
       for (const match of findMatches) {
-        const matchStartUtf16 = EditorCoordinates.Class.graphemeToU16(rowText, match.startColumn);
-        const matchEndUtf16 = EditorCoordinates.Class.graphemeToU16(rowText, match.endColumn);
-        const blockMatchStart = row.textStart + matchStartUtf16 - row.prefix.length;
+        const matchStartUtf16 = EditorCoordinates.Class.graphemeToU16(
+          rowText,
+          match.startColumn,
+        );
+        const matchEndUtf16 = EditorCoordinates.Class.graphemeToU16(
+          rowText,
+          match.endColumn,
+        );
+        const blockMatchStart =
+          row.textStart + matchStartUtf16 - row.prefix.length;
         const blockMatchEnd = row.textStart + matchEndUtf16 - row.prefix.length;
         if (blockMatchStart <= position && blockMatchEnd > position) {
           findHighlighted = true;
@@ -216,25 +260,38 @@ class $MarkdownRenderable extends BoxRenderable {
       }
 
       const text = block.text.slice(position, nextBoundary);
-      const referenceKey = activeSpanStart >= 0
-        ? this.referenceKey(row.blockIndex, activeSpanStart, activeSpanEnd, activeStyle)
-        : null;
-      chunks.push(this.decorateText(
-        text,
-        block,
-        row,
-        activeStyle,
-        activeLink,
-        findHighlighted,
-        referenceKey !== null && referenceKey === this.hoveredReferenceKey,
-        palette,
-      ));
+      const referenceKey =
+        activeSpanStart >= 0
+          ? this.referenceKey(
+              row.blockIndex,
+              activeSpanStart,
+              activeSpanEnd,
+              activeStyle,
+            )
+          : null;
+      chunks.push(
+        this.decorateText(
+          text,
+          block,
+          row,
+          activeStyle,
+          activeLink,
+          findHighlighted,
+          referenceKey !== null && referenceKey === this.hoveredReferenceKey,
+          palette,
+        ),
+      );
       position = nextBoundary;
     }
   }
 
-  protected decoratePrefix(text: string, row: PreviewRow, palette: Palette): TextChunk {
-    if (row.role === 'codeContent') return bg(palette.panel)(fg(palette.border)(text));
+  protected decoratePrefix(
+    text: string,
+    row: PreviewRow,
+    palette: Palette,
+  ): TextChunk {
+    if (row.role === 'codeContent')
+      return bg(palette.panel)(fg(palette.border)(text));
     if (row.role === 'quote') return bold(fg(palette.accent)(text));
     if (row.role === 'table') return fg(palette.border)(text);
     return fg(palette.accent)(text);
@@ -275,7 +332,11 @@ class $MarkdownRenderable extends BoxRenderable {
     return chunk;
   }
 
-  protected blockColor(kind: BlockRecord['kind'], row: PreviewRow, palette: Palette): string {
+  protected blockColor(
+    kind: BlockRecord['kind'],
+    row: PreviewRow,
+    palette: Palette,
+  ): string {
     if (kind === 'heading') return palette.accent;
     if (row.role === 'quote') return palette.dim;
     if (row.role === 'table') return palette.fg;
@@ -283,7 +344,12 @@ class $MarkdownRenderable extends BoxRenderable {
     return palette.fg;
   }
 
-  protected referenceKey(blockIndex: number, spanStart: number, spanEnd: number, inlineStyle: number): string {
+  protected referenceKey(
+    blockIndex: number,
+    spanStart: number,
+    spanEnd: number,
+    inlineStyle: number,
+  ): string {
     return `${blockIndex}:${spanStart}:${spanEnd}:${inlineStyle}`;
   }
 }

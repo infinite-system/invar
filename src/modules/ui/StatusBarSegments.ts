@@ -32,5 +32,7 @@ export interface StatusBarSegmentContext {
   readonly workspaceSet: WorkspaceSet.Instance;
   readonly app: App.Instance;
   readonly primaryDockHost: PanelHost.Instance;
-  readonly markdownPreviewFocused: boolean;
+  /** Name of the focused pane of whatever contributed surface occupies the editor column, or null
+   *  when the source editor owns it (or the surface labels its own panes). */
+  readonly focusedSurfaceTitle: string | null;
 }

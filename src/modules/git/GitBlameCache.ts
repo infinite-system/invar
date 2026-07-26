@@ -91,7 +91,8 @@ class $GitBlameCache {
     if (
       this.statMemo !== null &&
       this.statMemo.documentPath === documentPath &&
-      nowMs - this.statMemo.checkedAtMs < gitBlameCacheClass.statMemoWindowMilliseconds
+      nowMs - this.statMemo.checkedAtMs <
+        gitBlameCacheClass.statMemoWindowMilliseconds
     ) {
       return this.statMemo.mtimeMs;
     }
@@ -141,9 +142,10 @@ class $GitBlameCache {
       if (this.disposed) {
         return;
       }
-      const lines = porcelain === null
-        ? new Map<number, BlameLine>()
-        : GitBlame.Class.parsePorcelain(porcelain);
+      const lines =
+        porcelain === null
+          ? new Map<number, BlameLine>()
+          : GitBlame.Class.parsePorcelain(porcelain);
       this.storeBounded(documentPath, { mtimeMs, lines });
     } catch {
       if (!this.disposed) {
@@ -164,8 +166,8 @@ class $GitBlameCache {
     if (this.options.blame) {
       return this.options.blame(documentPath);
     }
-    return GitCommands.Class.blamePorcelain(this.cwd, documentPath).then((result) =>
-      result.code === 0 ? result.stdout : null,
+    return GitCommands.Class.blamePorcelain(this.cwd, documentPath).then(
+      (result) => (result.code === 0 ? result.stdout : null),
     );
   }
 }

@@ -24,7 +24,9 @@ test('sections appear only when non-empty, with counts and glyphed files', () =>
 });
 
 test('clean tree yields the placeholder row', () => {
-  expect(GitRows.Class.buildChangeRows([], [], [])).toEqual([{ kind: 'placeholder', label: '(no changes)' }]);
+  expect(GitRows.Class.buildChangeRows([], [], [])).toEqual([
+    { kind: 'placeholder', label: '(no changes)' },
+  ]);
 });
 
 test('statusGlyph picks the bucket-relevant porcelain side', () => {
@@ -36,7 +38,11 @@ test('statusGlyph picks the bucket-relevant porcelain side', () => {
 });
 
 test('nextFileRow skips headers both directions and returns -1 at the ends', () => {
-  const rows = GitRows.Class.buildChangeRows([file('a.ts', 'M.')], [file('b.ts', '.M')], []);
+  const rows = GitRows.Class.buildChangeRows(
+    [file('a.ts', 'M.')],
+    [file('b.ts', '.M')],
+    [],
+  );
   // rows: 0 header, 1 file a, 2 header, 3 file b
   expect(GitRows.Class.nextFileRow(rows, -1, 1)).toBe(1); // first file from the top
   expect(GitRows.Class.nextFileRow(rows, 1, 1)).toBe(3); // skips the Changes header

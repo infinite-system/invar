@@ -34,11 +34,17 @@ const immediateFetch =
 describe('CommitExpansion', () => {
   test('expand fetches lazily, ONLY the expanded sha, and files land in the entry', async () => {
     const calls: string[] = [];
-    const expansion = new CommitExpansion.Class('/repo', { fetch: immediateFetch(calls) });
+    const expansion = new CommitExpansion.Class('/repo', {
+      fetch: immediateFetch(calls),
+    });
     await expansion.expand(3, 'sha3');
     expect(calls).toEqual(['sha3']); // never a pre-fetch of neighbors
     expect(expansion.entries.value).toEqual([
-      { commitIndex: 3, sha: 'sha3', files: [{ status: 'M', path: 'sha3/changed.ts' }] },
+      {
+        commitIndex: 3,
+        sha: 'sha3',
+        files: [{ status: 'M', path: 'sha3/changed.ts' }],
+      },
     ]);
   });
 
@@ -47,7 +53,9 @@ describe('CommitExpansion', () => {
     const { fetch, release } = deferredFetch(calls);
     const expansion = new CommitExpansion.Class('/repo', { fetch });
     const expanding = expansion.expand(1, 'sha1');
-    expect(expansion.entries.value).toEqual([{ commitIndex: 1, sha: 'sha1', files: null }]);
+    expect(expansion.entries.value).toEqual([
+      { commitIndex: 1, sha: 'sha1', files: null },
+    ]);
     release('sha1');
     await expanding;
     expect(expansion.entries.value[0]!.files).toEqual(filesFor('sha1'));
@@ -67,7 +75,9 @@ describe('CommitExpansion', () => {
 
   test('toggle expands then collapses (collapse evicts the cached files)', async () => {
     const calls: string[] = [];
-    const expansion = new CommitExpansion.Class('/repo', { fetch: immediateFetch(calls) });
+    const expansion = new CommitExpansion.Class('/repo', {
+      fetch: immediateFetch(calls),
+    });
     expansion.toggle(2, 'sha2');
     await Bun.sleep(0);
     expect(expansion.isExpanded('sha2')).toBe(true);
@@ -89,18 +99,26 @@ describe('CommitExpansion', () => {
       await expansion.expand(commitIndex, `sha${commitIndex}`);
     }
     expect(expansion.entries.value.length).toBe(3);
-    expect(expansion.entries.value.map((entry) => entry.sha)).toEqual(['sha2', 'sha3', 'sha4']);
+    expect(expansion.entries.value.map((entry) => entry.sha)).toEqual([
+      'sha2',
+      'sha3',
+      'sha4',
+    ]);
     expect(expansion.isExpanded('sha0')).toBe(false);
     expect(expansion.isExpanded('sha1')).toBe(false);
   });
 
   test('entries stay sorted by commitIndex regardless of expansion order', async () => {
     const calls: string[] = [];
-    const expansion = new CommitExpansion.Class('/repo', { fetch: immediateFetch(calls) });
+    const expansion = new CommitExpansion.Class('/repo', {
+      fetch: immediateFetch(calls),
+    });
     await expansion.expand(7, 'sha7');
     await expansion.expand(2, 'sha2');
     await expansion.expand(5, 'sha5');
-    expect(expansion.entries.value.map((entry) => entry.commitIndex)).toEqual([2, 5, 7]);
+    expect(expansion.entries.value.map((entry) => entry.commitIndex)).toEqual([
+      2, 5, 7,
+    ]);
   });
 
   test('reset drops all expansions and makes in-flight fetches inert', async () => {

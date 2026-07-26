@@ -19,7 +19,12 @@ function captureStderr(): { written: string[]; restore: () => void } {
     written.push(String(chunk));
     return true;
   }) as typeof process.stderr.write;
-  return { written, restore: () => { process.stderr.write = original; } };
+  return {
+    written,
+    restore: () => {
+      process.stderr.write = original;
+    },
+  };
 }
 
 test('a boot failure routes through handleFatal: stderr first, exit(1), never a rethrow', async () => {
@@ -65,7 +70,11 @@ test('handleFatal writes stderr even when file logging is unavailable', () => {
 
 test('rootArgument maps argv[2] to the boot root', () => {
   const originalArgv = process.argv;
-  process.argv = [originalArgv[0] as string, originalArgv[1] as string, '/some/project'];
+  process.argv = [
+    originalArgv[0] as string,
+    originalArgv[1] as string,
+    '/some/project',
+  ];
   try {
     expect(AppLoader.Class.rootArgument()).toBe('/some/project');
   } finally {
