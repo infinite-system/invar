@@ -59,8 +59,8 @@ class $ThemeIcons {
         jpg: '🖼',
         svg: '🖼',
         gif: '🖼',
-        git: '⎇',
-        gitignore: '⎇',
+        git: '⑂',
+        gitignore: '⑂',
         toml: '⚙',
         yaml: '⚙',
         yml: '⚙',
@@ -148,10 +148,10 @@ class $ThemeIcons {
         panelClose: '\u{f00d}',
       },
       unicode: {
-        activityFiles: '▤',
-        activitySourceControl: '⎇',
+        activityFiles: '☰',
+        activitySourceControl: '⑂',
         activityExtensions: '⊞',
-        activitySearch: '⌕',
+        activitySearch: '⚲',
         activitySettings: '⚙',
         activityAccentBar: '▎',
         panelAdd: '+',
@@ -242,7 +242,7 @@ class $ThemeIcons {
         toggleMode: '\u{f0ec}',
       }, // fa search / up / down / refresh / step-forward / exchange
       unicode: {
-        search: '⌕',
+        search: '⚲',
         previous: '↑',
         next: '↓',
         replace: '⟳',

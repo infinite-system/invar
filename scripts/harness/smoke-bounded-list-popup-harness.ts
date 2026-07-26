@@ -10,6 +10,12 @@ import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+
+// The search glyph comes from the SAME vocabulary the app paints from, never a literal. A smoke that
+// hunts for a hardcoded glyph re-breaks on every vocabulary change, which contradicts the invariant
+// that makes appearance data (the panel-heading smokes were decoupled the same way).
+const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
 
 interface PopupGeometryStatus {
   boxLeft: number;
@@ -244,7 +250,7 @@ try {
   );
   snapshot = await driver.awaitSnapshot(
     (candidate) =>
-      candidate.findText('⌕') !== null &&
+      candidate.findText(themedSearchGlyph) !== null &&
       candidate.findText('file-001.txt') !== null,
   );
   HarnessSmoke.Class.pass(

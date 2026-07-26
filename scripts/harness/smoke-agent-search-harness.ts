@@ -10,6 +10,12 @@ import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+
+// The search glyph comes from the SAME vocabulary the app paints from, never a literal. A smoke that
+// hunts for a hardcoded glyph re-breaks on every vocabulary change, which contradicts the invariant
+// that makes appearance data (the panel-heading smokes were decoupled the same way).
+const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
 
 function runProjectionUnitTests(repositoryRoot: string): void {
   const result = Bun.spawnSync(
@@ -126,14 +132,14 @@ try {
   let snapshot = await driver.awaitGridCondition(
     'the themed search icon paints in the agent engine mode line',
     (candidate) => {
-      const candidateSearchIconPosition = candidate.findText('⌕');
+      const candidateSearchIconPosition = candidate.findText(themedSearchGlyph);
       return (
         candidateSearchIconPosition !== null &&
         candidate.rowText(candidateSearchIconPosition.row).includes('engine:')
       );
     },
   );
-  const searchIconPosition = snapshot.findText('⌕');
+  const searchIconPosition = snapshot.findText(themedSearchGlyph);
   HarnessSmoke.Class.requireCondition(
     searchIconPosition !== null &&
       snapshot.rowText(searchIconPosition.row).includes('engine:'),

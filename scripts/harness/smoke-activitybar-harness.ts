@@ -125,7 +125,7 @@ try {
     '\u{e702}',
     '\u{f487}',
   ]);
-  await driveActivityGlyphTier(fixtureRoot, 'unicode', ['▤', '⎇', '⊞']);
+  await driveActivityGlyphTier(fixtureRoot, 'unicode', ['☰', '⑂', '⊞']);
 
   console.log(
     '== harness activitybar: fallback glyph tier renders every view ==',
