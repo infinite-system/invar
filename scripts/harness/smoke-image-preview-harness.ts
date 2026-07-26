@@ -15,10 +15,14 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 function halfBlockCount(snapshot: HarnessSnapshot.Model): number {
-  return snapshot.textRows().reduce(
-    (count, rowText) => count + Array.from(rowText).filter((character) => character === '▀').length,
-    0,
-  );
+  return snapshot
+    .textRows()
+    .reduce(
+      (count, rowText) =>
+        count +
+        Array.from(rowText).filter((character) => character === '▀').length,
+      0,
+    );
 }
 
 function distinctImageColors(snapshot: HarnessSnapshot.Model): {
@@ -34,7 +38,10 @@ function distinctImageColors(snapshot: HarnessSnapshot.Model): {
       if (cell?.isBackgroundRgb) backgrounds.add(cell.background);
     }
   }
-  return { foregroundCount: foregrounds.size, backgroundCount: backgrounds.size };
+  return {
+    foregroundCount: foregrounds.size,
+    backgroundCount: backgrounds.size,
+  };
 }
 
 function dominantColorRows(snapshot: HarnessSnapshot.Model): string[] {
@@ -65,10 +72,12 @@ async function openThroughQuickOpen(
   query: string,
 ): Promise<void> {
   driver.sendKeys('Control+p');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Go to File') !== null);
-  driver.sendText(query);
   await driver.awaitSnapshot(
-    (snapshot) => snapshot.textRows().some((rowText) => rowText.includes(query)),
+    (snapshot) => snapshot.findText('Go to File') !== null,
+  );
+  driver.sendText(query);
+  await driver.awaitSnapshot((snapshot) =>
+    snapshot.textRows().some((rowText) => rowText.includes(query)),
   );
   driver.sendKeys('Enter');
 }
@@ -84,10 +93,15 @@ const unitResult = Bun.spawnSync(
   [process.execPath, 'test', 'src/modules/image/'],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
-HarnessSmoke.Class.requireCondition(unitResult.exitCode === 0, 'image module unit tests');
+HarnessSmoke.Class.requireCondition(
+  unitResult.exitCode === 0,
+  'image module unit tests',
+);
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-image-preview-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-image-preview-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-image-preview-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 copyFileSync(pngPath, join(fixtureRoot, 'picture.png'));
 await Bun.write(
@@ -102,12 +116,16 @@ await Bun.write(
 const jpegWidth = 600;
 const jpegHeight = 399;
 const jpegPixels = new Uint8Array(jpegWidth * jpegHeight * 4);
-const bandColors = [[255, 0, 0], [0, 255, 0], [0, 0, 255]] as const;
+const bandColors = [
+  [255, 0, 0],
+  [0, 255, 0],
+  [0, 0, 255],
+] as const;
 for (let row = 0; row < jpegHeight; row++) {
   const bandIndex = Math.min(2, Math.floor(row / (jpegHeight / 3)));
   const bandColor = bandColors[bandIndex] ?? bandColors[2];
   for (let column = 0; column < jpegWidth; column++) {
-    const pixelOffset = ((row * jpegWidth) + column) * 4;
+    const pixelOffset = (row * jpegWidth + column) * 4;
     jpegPixels[pixelOffset] = bandColor[0];
     jpegPixels[pixelOffset + 1] = bandColor[1];
     jpegPixels[pixelOffset + 2] = bandColor[2];
@@ -116,11 +134,14 @@ for (let row = 0; row < jpegHeight; row++) {
 }
 await Bun.write(
   join(fixtureRoot, 'photo.jpg'),
-  encodeJpeg({ data: jpegPixels, width: jpegWidth, height: jpegHeight }, 95).data,
+  encodeJpeg({ data: jpegPixels, width: jpegWidth, height: jpegHeight }, 95)
+    .data,
 );
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
-console.log('== harness image-preview: independent real-file decode cross-checks ==');
+console.log(
+  '== harness image-preview: independent real-file decode cross-checks ==',
+);
 const decodedPng = PngDecoder.Class.decode(
   new Uint8Array(await Bun.file(pngPath).arrayBuffer()),
 );
@@ -131,40 +152,44 @@ for (
   pixelOffset += 4
 ) {
   pngDistinctColors.add(
-    `${decodedPng.rgba[pixelOffset]},${decodedPng.rgba[pixelOffset + 1]},`
-      + `${decodedPng.rgba[pixelOffset + 2]}`,
+    `${decodedPng.rgba[pixelOffset]},${decodedPng.rgba[pixelOffset + 1]},` +
+      `${decodedPng.rgba[pixelOffset + 2]}`,
   );
 }
 HarnessSmoke.Class.requireCondition(
-  decodedPng.width > 0
-    && decodedPng.height > 0
-    && decodedPng.rgba.length === decodedPng.width * decodedPng.height * 4
-    && pngDistinctColors.size >= 2,
+  decodedPng.width > 0 &&
+    decodedPng.height > 0 &&
+    decodedPng.rgba.length === decodedPng.width * decodedPng.height * 4 &&
+    pngDistinctColors.size >= 2,
   `real PNG decodes to ${decodedPng.width}x${decodedPng.height} varied RGBA pixels`,
 );
 const jpegDecoder = ImageDecoders.Class.decoderFor('.jpg');
-HarnessSmoke.Class.requireCondition(jpegDecoder !== null, 'registry supplies the .jpg decoder');
+HarnessSmoke.Class.requireCondition(
+  jpegDecoder !== null,
+  'registry supplies the .jpg decoder',
+);
 if (!jpegDecoder) throw new Error('FAIL .jpg decoder disappeared');
 const decodedJpeg = jpegDecoder(
   new Uint8Array(await Bun.file(join(fixtureRoot, 'photo.jpg')).arrayBuffer()),
 );
 function jpegBandPixelOffset(bandIndex: number): number {
-  const row = Math.floor(jpegHeight / 6) + (bandIndex * Math.floor(jpegHeight / 3));
-  return ((row * jpegWidth) + Math.floor(jpegWidth / 2)) * 4;
+  const row =
+    Math.floor(jpegHeight / 6) + bandIndex * Math.floor(jpegHeight / 3);
+  return (row * jpegWidth + Math.floor(jpegWidth / 2)) * 4;
 }
 const redBandOffset = jpegBandPixelOffset(0);
 const greenBandOffset = jpegBandPixelOffset(1);
 const blueBandOffset = jpegBandPixelOffset(2);
 HarnessSmoke.Class.requireCondition(
-  decodedJpeg.width === jpegWidth
-    && decodedJpeg.height === jpegHeight
-    && decodedJpeg.rgba.length === jpegWidth * jpegHeight * 4
-    && Number(decodedJpeg.rgba[redBandOffset]) > 200
-    && Number(decodedJpeg.rgba[redBandOffset + 1]) < 60
-    && Number(decodedJpeg.rgba[greenBandOffset + 1]) > 200
-    && Number(decodedJpeg.rgba[greenBandOffset]) < 60
-    && Number(decodedJpeg.rgba[blueBandOffset + 2]) > 200
-    && Number(decodedJpeg.rgba[blueBandOffset]) < 60,
+  decodedJpeg.width === jpegWidth &&
+    decodedJpeg.height === jpegHeight &&
+    decodedJpeg.rgba.length === jpegWidth * jpegHeight * 4 &&
+    Number(decodedJpeg.rgba[redBandOffset]) > 200 &&
+    Number(decodedJpeg.rgba[redBandOffset + 1]) < 60 &&
+    Number(decodedJpeg.rgba[greenBandOffset + 1]) > 200 &&
+    Number(decodedJpeg.rgba[greenBandOffset]) < 60 &&
+    Number(decodedJpeg.rgba[blueBandOffset + 2]) > 200 &&
+    Number(decodedJpeg.rgba[blueBandOffset]) < 60,
   'generated JPEG registry decode preserves dimensions and red/green/blue bands',
 );
 
@@ -180,11 +205,13 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness image-preview: PNG renders a varied half-block projection ==');
+  console.log(
+    '== harness image-preview: PNG renders a varied half-block projection ==',
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.ready === true && status.activeFileIsImage === false",
+    'status condition: status.ready === true && status.activeFileIsImage === false',
     (status) => status.ready === true && status.activeFileIsImage === false,
     15_000,
   );
@@ -193,50 +220,79 @@ try {
     driver,
     statusPath,
     "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/picture.png')",
-    (status) => status.activeFileIsImage === true
-      && String(status.activeBuffer).endsWith('/picture.png'),
+    (status) =>
+      status.activeFileIsImage === true &&
+      String(status.activeBuffer).endsWith('/picture.png'),
   );
-  HarnessSmoke.Class.pass(`quick-open selected ${String(pngStatus.activeBuffer).split('/').at(-1)}`);
-  let snapshot = await driver.awaitSnapshot((candidate) => halfBlockCount(candidate) > 500);
-  HarnessSmoke.Class.pass(`PNG paints ${halfBlockCount(snapshot)} half-block cells`);
+  HarnessSmoke.Class.pass(
+    `quick-open selected ${String(pngStatus.activeBuffer).split('/').at(-1)}`,
+  );
+  let snapshot = await driver.awaitSnapshot(
+    (candidate) => halfBlockCount(candidate) > 500,
+  );
+  HarnessSmoke.Class.pass(
+    `PNG paints ${halfBlockCount(snapshot)} half-block cells`,
+  );
   const pngColors = distinctImageColors(snapshot);
   HarnessSmoke.Class.requireCondition(
     pngColors.foregroundCount > 15 && pngColors.backgroundCount > 15,
     `PNG carries varied cell colors (fg=${pngColors.foregroundCount}, bg=${pngColors.backgroundCount})`,
   );
 
-  console.log('== harness image-preview: text and binary routing remain distinct ==');
+  console.log(
+    '== harness image-preview: text and binary routing remain distinct ==',
+  );
   await openThroughQuickOpen(driver, 'sample');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/sample.ts')",
-    (status) => status.activeFileIsImage === false
-      && String(status.activeBuffer).endsWith('/sample.ts'),
+    (status) =>
+      status.activeFileIsImage === false &&
+      String(status.activeBuffer).endsWith('/sample.ts'),
   );
-  await driver.awaitSnapshot((candidate) => candidate.findText('answer') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('answer') !== null,
+  );
   HarnessSmoke.Class.pass('text file renders as source after the image');
 
-  console.log('== harness image-preview: JPEG preserves expected band colors ==');
+  console.log(
+    '== harness image-preview: JPEG preserves expected band colors ==',
+  );
   await openThroughQuickOpen(driver, 'photo');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: status.activeFileIsImage === true && String(status.activeBuffer).endsWith('/photo.jpg')",
-    (status) => status.activeFileIsImage === true
-      && String(status.activeBuffer).endsWith('/photo.jpg'),
+    (status) =>
+      status.activeFileIsImage === true &&
+      String(status.activeBuffer).endsWith('/photo.jpg'),
   );
-  snapshot = await driver.awaitSnapshot((candidate) => halfBlockCount(candidate) > 500);
+  // AWAIT THE BANDS, not a cell count. `halfBlockCount(candidate) > 500` is an ADJACENT fact: a
+  // partially painted JPEG can exceed 500 half-block cells while the bottom third is still blank, so
+  // the assertion below then reads two bands instead of three. That is exactly how this failed inside a
+  // gate on 2026-07-26 ("9/8/0 rows") while passing solo at 9/8/8. The wait now evaluates the SAME
+  // predicate the claim asserts, through one shared helper so the two cannot drift apart.
+  const bandsArePainted = (candidate: HarnessSnapshot.Model): boolean => {
+    const rows = dominantColorRows(candidate);
+    return (
+      [...new Set(rows)].join(',') === 'red,green,blue' &&
+      rows.filter((color) => color === 'red').length >= 4 &&
+      rows.filter((color) => color === 'green').length >= 4 &&
+      rows.filter((color) => color === 'blue').length >= 4
+    );
+  };
+  snapshot = await driver.awaitSnapshot(bandsArePainted);
   const dominantRows = dominantColorRows(snapshot);
   const dominantOrder = [...new Set(dominantRows)].join(',');
   const redRows = dominantRows.filter((color) => color === 'red').length;
   const greenRows = dominantRows.filter((color) => color === 'green').length;
   const blueRows = dominantRows.filter((color) => color === 'blue').length;
   HarnessSmoke.Class.requireCondition(
-    dominantOrder === 'red,green,blue'
-      && redRows >= 4
-      && greenRows >= 4
-      && blueRows >= 4,
+    dominantOrder === 'red,green,blue' &&
+      redRows >= 4 &&
+      greenRows >= 4 &&
+      blueRows >= 4,
     `JPEG bands render red/green/blue in order (${redRows}/${greenRows}/${blueRows} rows)`,
   );
 
@@ -245,10 +301,13 @@ try {
     driver,
     statusPath,
     "status condition: status.activeFileIsImage === false && String(status.activeBuffer).endsWith('/data.bin')",
-    (status) => status.activeFileIsImage === false
-      && String(status.activeBuffer).endsWith('/data.bin'),
+    (status) =>
+      status.activeFileIsImage === false &&
+      String(status.activeBuffer).endsWith('/data.bin'),
   );
-  await driver.awaitSnapshot((candidate) => candidate.findText('(binary file not shown)') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('(binary file not shown)') !== null,
+  );
   HarnessSmoke.Class.pass('non-image binary still uses the binary guard');
 
   driver.sendKeys('Control+q');
