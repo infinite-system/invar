@@ -11,7 +11,7 @@
 //
 // So this checker does not forbid removal. It compares assertion and wait counts
 // against the merge base and requires every DECREASE to be declared in
-// coverage-deltas.md by file path and exact before/after counts. Growth needs no
+// project.coverage-deltas.md by file path and exact before/after counts. Growth needs no
 // bookkeeping. Shrinkage becomes a diff to a file named for exactly that purpose,
 // which a reviewer sees at a glance and an agent cannot perform silently.
 //
@@ -95,7 +95,7 @@ const WAIT_CALL_NAMES: ReadonlySet<string> = new Set([
   'test',
 ]);
 
-const DECLARATION_FILE_NAME = 'coverage-deltas.md';
+const DECLARATION_FILE_NAME = 'project.coverage-deltas.md';
 const DECLARATION_GRAMMAR = 'assertions A → B, waits C → D';
 const POSITIVE_CONTROL_FILE_PATH =
   'fixtures/coverage-ratchet-positive-control.ts.fixture';

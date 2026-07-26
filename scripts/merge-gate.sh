@@ -422,7 +422,7 @@ step "invariant contracts --refs (annotations resolve)" node .claude/skills/inva
 #     file could be removed with every gate step still green. That is not hypothetical — it happened
 #     here on 2026-07-25, and only a sentence in a commit message distinguished it from cheating.
 #     This step does not forbid removal; it forbids SILENT removal. Any drop in assertion or wait
-#     counts against the merge base must be declared in coverage-deltas.md, which turns a deletion into
+#     counts against the merge base must be declared in project.coverage-deltas.md, which turns a deletion into
 #     a reviewable diff instead of an invisible one.
 step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverage-ratchet.ts
 # 1d) DROPPED REACTIVE OBSERVATIONS. Report-only for repository code — the findings are candidates a
