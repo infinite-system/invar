@@ -25,6 +25,7 @@ function halfBlockCount(snapshot: HarnessSnapshot.Model): number {
 
 async function openThroughQuickOpen(
   driver: PtyTestDriver.Model,
+  statusPath: string,
   query: string,
 ): Promise<void> {
   driver.sendKeys('Control+p');
@@ -32,8 +33,11 @@ async function openThroughQuickOpen(
     (snapshot) => snapshot.findText('Go to File') !== null,
   );
   driver.sendText(query);
-  await driver.awaitSnapshot((snapshot) =>
-    snapshot.textRows().some((rowText) => rowText.includes(query)),
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `Quick Open publishes the exact ${query} query before Enter`,
+    (status) => status.quickOpenQuery === query,
   );
   driver.sendKeys('Enter');
 }
@@ -152,7 +156,7 @@ async function driveLateKittyCapabilityUpgrade(): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
-    await openThroughQuickOpen(driver, 'picture');
+    await openThroughQuickOpen(driver, statusPath, 'picture');
     await awaitImageStatus(driver, statusPath);
     const halfBlockSnapshot = await driver.awaitGridCondition(
       'the unforced image paints at the half-block floor before the capability answer',
@@ -275,7 +279,7 @@ async function driveKittyTier(): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
-    await openThroughQuickOpen(driver, 'picture');
+    await openThroughQuickOpen(driver, statusPath, 'picture');
     await awaitImageStatus(driver, statusPath);
     await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
@@ -517,7 +521,7 @@ async function driveKittyTier(): Promise<void> {
       'shortcut backdrop dismissal restores the withdrawn kitty placement',
     );
 
-    await openThroughQuickOpen(driver, 'sample');
+    await openThroughQuickOpen(driver, statusPath, 'sample');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -534,7 +538,7 @@ async function driveKittyTier(): Promise<void> {
       driver.outputSequenceCount('\x1b_Ga=d,d=I') > 0,
       'kitty placement delete is emitted on buffer switch',
     );
-    await openThroughQuickOpen(driver, 'picture');
+    await openThroughQuickOpen(driver, statusPath, 'picture');
     await awaitImageStatus(driver, statusPath);
     driver.sendKeys('Control+q');
     HarnessSmoke.Class.requireCondition(
@@ -576,7 +580,7 @@ async function driveSixelTier(): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
-    await openThroughQuickOpen(driver, 'picture');
+    await openThroughQuickOpen(driver, statusPath, 'picture');
     await awaitImageStatus(driver, statusPath);
     await driver.awaitOutputCondition(
       'the sixel DCS introducer and raster attributes reach the raw PTY stream',
@@ -632,7 +636,7 @@ async function driveHalfBlockFloor(): Promise<void> {
       (status) => status.ready === true,
       15_000,
     );
-    await openThroughQuickOpen(driver, 'picture');
+    await openThroughQuickOpen(driver, statusPath, 'picture');
     await awaitImageStatus(driver, statusPath);
     const snapshot = await driver.awaitSnapshot(
       (candidate) => halfBlockCount(candidate) > 500,
@@ -646,7 +650,7 @@ async function driveHalfBlockFloor(): Promise<void> {
         driver.outputSequenceCount('\x1bP0;1;0q') === 0,
       'half-block tier emits no graphics placement escape',
     );
-    await openThroughQuickOpen(driver, 'data');
+    await openThroughQuickOpen(driver, statusPath, 'data');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
