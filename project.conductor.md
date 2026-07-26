@@ -1097,3 +1097,16 @@ and what looked like one diffuse population has split into two: load flakes (poo
 the tail or tolerated) and genuine intermittents that load was CAMOUFLAGING. The lock is as much a
 classifier as a scheduler: it removes the excuse, and whatever still flakes under it is a real defect
 with nowhere to hide. Filed as #109 with today's three preserved attempt-1 logs.
+
+## 2026-07-26 18:25 — the user's veto is a gate the harness cannot replace
+The scroll-feel branch passed its own verification 3x and the follow-on/cadence numbers hit every
+acceptance bar — and its landing gate still went red on four OTHER smokes (one deterministic), and
+the user's live testing surfaced a huge-file regression neither the branch nor the gate had a fixture
+for. Two lessons. (1) A pacing change is a GLOBAL change: altering when frames are produced perturbs
+every smoke that waits on frame-coupled state, so a render-loop edit needs the full gate BEFORE the
+conductor celebrates numbers from the branch's own three smokes. (2) The performance fixture set must
+span the SIZE AXIS: every scroll instrument ran on small fixtures, so O(document-length) per-frame
+costs were invisible to every contract while being the dominant felt cost on real repos. The user's
+26k-line package-lock.json found in one minute what eight green gates missed. Fixture axes are part
+of coverage: when a metric can scale with an input dimension, the contract needs a point at the far
+end of that dimension.
