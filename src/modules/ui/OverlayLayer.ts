@@ -796,6 +796,33 @@ class $OverlayLayer {
       contextMenu: this.contextMenuViewport.scrollTop,
     };
   }
+  viewportExtents(): Record<
+    string,
+    { contentRows: number; viewportRows: number }
+  > {
+    return {
+      commandPalette: {
+        contentRows: this.commandPaletteContentRows,
+        viewportRows: this.commandPaletteViewportRows,
+      },
+      quickOpen: {
+        contentRows: this.quickOpenContentRows,
+        viewportRows: this.quickOpenViewportRows,
+      },
+      settingsPanel: {
+        contentRows: this.settingsContentRows,
+        viewportRows: this.settingsViewportRows,
+      },
+      shortcutHelp: {
+        contentRows: this.shortcutHelpContentRows,
+        viewportRows: this.shortcutHelpVisibleRows,
+      },
+      contextMenu: {
+        contentRows: this.contextMenuContentRows,
+        viewportRows: this.contextMenuViewportRows,
+      },
+    };
+  }
   tick(deltaSeconds: number): boolean {
     let animating = false;
     if (this.dependencies.commands.open.value)

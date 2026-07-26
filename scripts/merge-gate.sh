@@ -513,7 +513,7 @@ if [ "${FAST:-0}" != "1" ]; then
   quiet_serial_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   quiet_serial_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
-  parallel_safe_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
+  quiet_serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="

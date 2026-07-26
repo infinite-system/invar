@@ -8,7 +8,8 @@
 // invariant: Overlay dialogs stay inside the terminal (src/modules/ui/ui.invariants.md)
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 // invariant: Modal outside presses dismiss and consume (src/modules/ui/ui.invariants.md)
-import { mkdtempSync } from 'node:fs';
+// invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
@@ -153,10 +154,169 @@ function dialogBounds(
   return boundsByDialog?.[dialogName] ?? null;
 }
 
+function layoutSlotBounds(
+  status: HarnessStatus,
+  slotName: string,
+): DialogBounds | null {
+  const layoutSlots = status.layoutSlots as
+    Record<string, DialogBounds> | undefined;
+  return layoutSlots?.[slotName] ?? null;
+}
+
+function markerPositionWithinBoundsOrNull(
+  snapshot: HarnessSnapshot.Model,
+  bounds: DialogBounds,
+  marker: string,
+): { column: number; row: number } | null {
+  for (
+    let row = bounds.top;
+    row < Math.min(snapshot.rows, bounds.top + bounds.height);
+    row++
+  ) {
+    const rowText = snapshot.rowText(row);
+    const markerColumn = rowText.indexOf(marker, bounds.left);
+    if (
+      markerColumn >= bounds.left &&
+      markerColumn + marker.length <= bounds.left + bounds.width
+    ) {
+      return { column: markerColumn, row };
+    }
+  }
+  return null;
+}
+
 function scrollPosition(status: HarnessStatus, dialogName: string): number {
   const positions = status.overlayScrollPositions as
     Record<string, number> | undefined;
   return Number(positions?.[dialogName] ?? 0);
+}
+
+function viewportExtent(
+  status: HarnessStatus,
+  dialogName: string,
+): { contentRows: number; viewportRows: number } | null {
+  const extents = status.overlayViewportExtents as
+    Record<string, { contentRows: number; viewportRows: number }> | undefined;
+  return extents?.[dialogName] ?? null;
+}
+
+function dialogContentRowText(
+  snapshot: HarnessSnapshot.Model,
+  bounds: DialogBounds,
+  contentRowOffset: number,
+): string {
+  return snapshot
+    .rowText(bounds.top + contentRowOffset)
+    .slice(bounds.left + 1, bounds.left + bounds.width - 2);
+}
+
+function dialogVerticalScrollbarIsPainted(
+  snapshot: HarnessSnapshot.Model,
+  bounds: DialogBounds,
+): boolean {
+  const scrollbarColumn = bounds.left + bounds.width - 2;
+  for (let row = bounds.top + 1; row < bounds.top + bounds.height - 1; row++) {
+    const scrollbarCell = snapshot.cell(row, scrollbarColumn);
+    const adjacentContentCell = snapshot.cell(row, scrollbarColumn - 1);
+    if (
+      scrollbarCell?.characters === ' ' &&
+      scrollbarCell.isBackgroundRgb &&
+      adjacentContentCell?.isBackgroundRgb &&
+      scrollbarCell.background !== adjacentContentCell.background
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function requireWheelScrollsOverlay(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  label: string,
+  dialogName: string,
+  contentRowOffset: number,
+  wheelRowOffset: number = contentRowOffset,
+): Promise<HarnessStatus> {
+  let status = await awaitStatusPublication(
+    statusPath,
+    `${label} is open, scrollable, and at its top before wheel input`,
+    (candidate) => {
+      const extent = viewportExtent(candidate, dialogName);
+      return (
+        dialogBounds(candidate, dialogName) !== null &&
+        extent !== null &&
+        extent.contentRows > extent.viewportRows &&
+        scrollPosition(candidate, dialogName) === 0
+      );
+    },
+  );
+  const bounds = dialogBounds(status, dialogName);
+  requireCondition(bounds !== null, `${label} publishes its dialog bounds`);
+
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: bounds.left + Math.floor(bounds.width / 2),
+    row: bounds.top + wheelRowOffset,
+    button: 'none',
+  });
+  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  pass(`${label} emits no frames while idle before wheel input`);
+  const settledBeforeWheelSnapshot = driver.snapshot();
+  requireCondition(
+    dialogVerticalScrollbarIsPainted(settledBeforeWheelSnapshot, bounds),
+    `${label} paints a scrollbar before wheel input`,
+  );
+  const extent = viewportExtent(status, dialogName);
+  requireCondition(
+    extent !== null && extent.contentRows > extent.viewportRows,
+    `${label} content exceeds its visible viewport before wheel input`,
+  );
+  requireCondition(
+    scrollPosition(status, dialogName) === 0,
+    `${label} viewport is at the top before wheel input`,
+  );
+  const originalContent = dialogContentRowText(
+    settledBeforeWheelSnapshot,
+    bounds,
+    contentRowOffset,
+  );
+  requireCondition(
+    originalContent.trim().length > 0,
+    `${label} has observed content on the comparison row`,
+  );
+
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'wheel',
+    column: bounds.left + Math.floor(bounds.width / 2),
+    row: bounds.top + wheelRowOffset,
+    direction: 'down',
+  });
+  await HarnessSmoke.Class.awaitFrameSilence(driver);
+  const settledAfterWheelSnapshot = driver.snapshot();
+  const settledContent = dialogContentRowText(
+    settledAfterWheelSnapshot,
+    bounds,
+    contentRowOffset,
+  );
+  if (settledContent === originalContent) {
+    const diagnosticStatus = await awaitStatusPublication(
+      statusPath,
+      `${label} publishes diagnostic state after an unchanged wheel row`,
+      () => true,
+    );
+    throw new Error(
+      `FAIL ${label} wheel left its observed row unchanged ` +
+        `(scrollTop=${scrollPosition(diagnosticStatus, dialogName)}, ` +
+        `row=${JSON.stringify(originalContent)}, ` +
+        `mouse=${JSON.stringify(diagnosticStatus.mouse)})`,
+    );
+  }
+  requireCondition(
+    settledContent !== originalContent,
+    `${label} wheel moves the original content off its observed row after settling`,
+  );
+  return status;
 }
 
 function boundedPopupBounds(status: HarnessStatus): DialogBounds | null {
@@ -380,6 +540,214 @@ async function closeSettingsWithEscape(
   pass(`bare Escape closes Settings from ${focusLabel} focus`);
 }
 
+async function driveContextMenuWheelAndBranchCoverage(
+  fixtureRoot: string,
+): Promise<void> {
+  const contextMenuHomeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-overlay-context-menu-home-'),
+  );
+  const contextMenuStatusPath = join(contextMenuHomeDirectory, 'status.json');
+  mkdirSync(join(contextMenuHomeDirectory, '.config', 'invar'), {
+    recursive: true,
+  });
+  await Bun.write(
+    join(contextMenuHomeDirectory, '.config', 'invar', 'settings.json'),
+    '{"glyphMode":"ascii"}\n',
+  );
+  const contextMenuDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 100,
+    rows: 36,
+    homeDirectory: contextMenuHomeDirectory,
+    retainFullOutput: true,
+    environment: {
+      TUI_STATUS_PATH: contextMenuStatusPath,
+      COLORTERM: 'truecolor',
+    },
+  });
+
+  try {
+    console.log(
+      '== harness overlays: context menu wheels from a real Git row ==',
+    );
+    let snapshot = await contextMenuDriver.awaitGridCondition(
+      'the ASCII Source Control glyph and fixture tree are visible',
+      (candidate) =>
+        candidate.findText('G') !== null &&
+        candidate.findText('other.txt') !== null,
+      15_000,
+    );
+    const sourceControlPosition = markerPosition(snapshot, 'G');
+    contextMenuDriver.sendMouse({
+      kind: 'press',
+      column: Math.max(0, sourceControlPosition.column - 1),
+      row: sourceControlPosition.row,
+      button: 'left',
+    });
+    contextMenuDriver.sendMouse({
+      kind: 'release',
+      column: Math.max(0, sourceControlPosition.column - 1),
+      row: sourceControlPosition.row,
+      button: 'left',
+    });
+    await contextMenuDriver.awaitGridCondition(
+      'Source Control paints its active accent and Git panel',
+      (candidate) =>
+        candidate.cell(sourceControlPosition.row, 0)?.characters === '|' &&
+        candidate.findText('Git') !== null,
+    );
+    let status = await awaitStatusPublication(
+      contextMenuStatusPath,
+      'Source Control opens for context-menu coverage',
+      (candidate) =>
+        candidate.sidebarView === 'git' &&
+        layoutSlotBounds(candidate, 'sidebar') !== null,
+    );
+    const contextMenuSidebarBounds = layoutSlotBounds(status, 'sidebar');
+    requireCondition(
+      contextMenuSidebarBounds !== null,
+      'the sidebar publishes bounds for the context-menu opener',
+    );
+    snapshot = await contextMenuDriver.awaitGridCondition(
+      'the single-token history anchor identifies the branch adapter control',
+      (candidate) => candidate.findText('history:') !== null,
+    );
+    const historyPosition = markerPosition(snapshot, 'history:');
+    clickCell(
+      contextMenuDriver,
+      historyPosition.column + 'history:'.length,
+      historyPosition.row,
+    );
+    status = await awaitStatusPublication(
+      contextMenuStatusPath,
+      'the branch adapter opens with published bounds',
+      (candidate) =>
+        candidate.boundedListPopupOpen === true &&
+        boundedPopupBounds(candidate) !== null,
+    );
+    await dismissOutsideAndRequireConsumed(
+      contextMenuDriver,
+      contextMenuStatusPath,
+      'Branch selector adapter',
+      status,
+      boundedPopupBounds(status),
+      (candidate) => candidate.boundedListPopupOpen === false,
+    );
+    snapshot = await contextMenuDriver.awaitGridCondition(
+      'the single-token history anchor remains available for an interior branch action',
+      (candidate) => candidate.findText('history:') !== null,
+    );
+    const reopenedHistoryPosition = markerPosition(snapshot, 'history:');
+    clickCell(
+      contextMenuDriver,
+      reopenedHistoryPosition.column + 'history:'.length,
+      reopenedHistoryPosition.row,
+    );
+    status = await awaitStatusPublication(
+      contextMenuStatusPath,
+      'the branch adapter reopens for its interior branch action',
+      (candidate) =>
+        candidate.boundedListPopupOpen === true &&
+        boundedPopupBounds(candidate) !== null,
+    );
+    snapshot = await contextMenuDriver.awaitGridCondition(
+      'the single-token branch-alpha anchor identifies an interior branch row',
+      (candidate) =>
+        boundedPopupItemPositionOrNull(candidate, status, 'branch-alpha') !==
+        null,
+    );
+    const branchPosition = boundedPopupItemPosition(
+      snapshot,
+      status,
+      'branch-alpha',
+    );
+    clickCell(contextMenuDriver, branchPosition.column, branchPosition.row);
+    await awaitStatusPublication(
+      contextMenuStatusPath,
+      'the interior branch row changes the viewed history branch',
+      (candidate) =>
+        candidate.boundedListPopupOpen === false &&
+        candidate.gitLogBranch === 'branch-alpha',
+    );
+    pass('Branch selector retains its interior branch action');
+    contextMenuDriver.sendRawInputWithoutFrameExpectation('\x1b');
+    await awaitStatusPublication(
+      contextMenuStatusPath,
+      'Escape returns the history viewer to the current branch',
+      (candidate) => candidate.gitLogBranch === '',
+    );
+
+    snapshot = await contextMenuDriver.awaitGridCondition(
+      'the changed other.txt row is visible inside the Git primary dock',
+      (candidate) =>
+        markerPositionWithinBoundsOrNull(
+          candidate,
+          contextMenuSidebarBounds,
+          'other.txt',
+        ) !== null,
+    );
+    const dirtyFilePosition = markerPositionWithinBoundsOrNull(
+      snapshot,
+      contextMenuSidebarBounds,
+      'other.txt',
+    );
+    requireCondition(
+      dirtyFilePosition !== null,
+      'the changed other.txt row is discovered inside the Git primary dock',
+    );
+    contextMenuDriver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: dirtyFilePosition.column,
+      row: dirtyFilePosition.row,
+      button: 'right',
+    });
+    status = await awaitStatusPublication(
+      contextMenuStatusPath,
+      'the Git change context menu opens with published bounds',
+      (candidate) =>
+        candidate.contextMenuOpen === true &&
+        dialogBounds(candidate, 'contextMenu') !== null,
+    );
+    contextMenuDriver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: dirtyFilePosition.column,
+      row: dirtyFilePosition.row,
+      button: 'right',
+    });
+    contextMenuDriver.resize(54, 5);
+    await awaitStatusPublication(
+      contextMenuStatusPath,
+      'the context menu becomes scrollable in the constrained terminal',
+      (candidate) => {
+        const bounds = dialogBounds(candidate, 'contextMenu');
+        return (
+          candidate.contextMenuOpen === true &&
+          bounds !== null &&
+          bounds.left + bounds.width <= 54 &&
+          bounds.top + bounds.height <= 5 &&
+          scrollPosition(candidate, 'contextMenu') === 0
+        );
+      },
+    );
+    await requireWheelScrollsOverlay(
+      contextMenuDriver,
+      contextMenuStatusPath,
+      'Context Menu',
+      'contextMenu',
+      1,
+    );
+    contextMenuDriver.sendRawInputWithoutFrameExpectation('\x1b');
+    await awaitStatusPublication(
+      contextMenuStatusPath,
+      'Escape closes the context menu after its wheel proof',
+      (candidate) => candidate.contextMenuOpen === false,
+    );
+  } finally {
+    await contextMenuDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(contextMenuHomeDirectory);
+  }
+}
+
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-overlay-dialog-harness-'));
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-overlay-dialog-harness-home-'),
@@ -387,6 +755,15 @@ const homeDirectory = mkdtempSync(
 const statusPath = join(homeDirectory, 'status.json');
 await Bun.write(join(fixtureRoot, 'document.txt'), 'alpha\nbeta\ngamma\n');
 await Bun.write(join(fixtureRoot, 'other.txt'), 'other\n');
+for (let fixtureFileIndex = 0; fixtureFileIndex < 30; fixtureFileIndex++) {
+  await Bun.write(
+    join(
+      fixtureRoot,
+      `scroll-fixture-${String(fixtureFileIndex).padStart(2, '0')}.txt`,
+    ),
+    `scroll fixture ${fixtureFileIndex}\n`,
+  );
+}
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
 HarnessSmoke.Class.runGit(fixtureRoot, [
@@ -402,6 +779,8 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
 for (const branchName of ['branch-alpha', 'branch-beta']) {
   HarnessSmoke.Class.runGit(fixtureRoot, ['branch', branchName]);
 }
+await Bun.write(join(fixtureRoot, 'other.txt'), 'other changed on disk\n');
+await driveContextMenuWheelAndBranchCoverage(fixtureRoot);
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,
@@ -429,7 +808,7 @@ try {
   await awaitStatusPublication(
     statusPath,
     'the fixture document is active',
-    (status) => String(status.activeBuffer).endsWith('/document.txt'),
+    (candidate) => String(candidate.activeBuffer).endsWith('/document.txt'),
   );
   driver.sendKeys('Control+,');
   await awaitStatusPublication(
@@ -524,23 +903,45 @@ try {
     'Settings remains open when its captured thumb drag leaves the dialog',
   );
   pass('an inside-started Settings scrollbar drag may leave without dismissal');
-  driver.sendMouse({
-    kind: 'wheel',
-    column: settingsBounds.left + 2,
-    row: settingsBounds.top + 2,
-    direction: 'down',
-  });
+  clickCell(driver, settingsClosePosition.column, settingsClosePosition.row);
+  await awaitStatusPublication(
+    statusPath,
+    'Settings closes before its top-position wheel proof',
+    (candidate) => candidate.settingsOpen === false,
+  );
+  driver.sendKeys('Control+,');
   status = await awaitStatusPublication(
     statusPath,
-    'the Settings wheel stays on the shared viewport',
+    'Settings reopens at the top for wheel input',
     (candidate) =>
-      scrollPosition(candidate, 'settingsPanel') >= scrollAfterThumb,
+      candidate.settingsOpen === true &&
+      dialogBounds(candidate, 'settingsPanel') !== null &&
+      scrollPosition(candidate, 'settingsPanel') === 0,
   );
-  requireCondition(
-    scrollPosition(status, 'settingsPanel') >= scrollAfterThumb,
-    'Settings wheel uses the same scroll authority',
+  settingsBounds = dialogBounds(status, 'settingsPanel');
+  requireBoundsInside(settingsBounds, 54, 12, 'Settings');
+  status = await requireWheelScrollsOverlay(
+    driver,
+    statusPath,
+    'Settings',
+    'settingsPanel',
+    1,
   );
-  clickCell(driver, settingsClosePosition.column, settingsClosePosition.row);
+  snapshot = await driver.awaitGridCondition(
+    'Settings close control remains visible after its settled wheel',
+    (candidate) =>
+      candidate.findText('Settings') !== null &&
+      candidate.findText('✕') !== null,
+  );
+  const wheelSettingsClosePosition = discoveredClosePosition(
+    snapshot,
+    'Settings',
+  );
+  clickCell(
+    driver,
+    wheelSettingsClosePosition.column,
+    wheelSettingsClosePosition.row,
+  );
   await awaitStatusPublication(
     statusPath,
     'the discovered Settings close control closes the dialog',
@@ -559,11 +960,20 @@ try {
   );
   const shortcutBounds = dialogBounds(status, 'shortcutHelp');
   requireBoundsInside(shortcutBounds, 54, 12, 'Keyboard Shortcuts');
+  status = await requireWheelScrollsOverlay(
+    driver,
+    statusPath,
+    'Keyboard Shortcuts',
+    'shortcutHelp',
+    2,
+  );
+  const shortcutWheelPosition = scrollPosition(status, 'shortcutHelp');
   driver.sendKeys('PageDown');
   status = await awaitStatusPublication(
     statusPath,
     'shortcut PageDown advances the shared viewport',
-    (candidate) => scrollPosition(candidate, 'shortcutHelp') > 0,
+    (candidate) =>
+      scrollPosition(candidate, 'shortcutHelp') > shortcutWheelPosition,
   );
   requireCondition(
     Number(status.shortcutHelpScrollTop) ===
@@ -587,6 +997,50 @@ try {
     (candidate) => candidate.shortcutHelpOpen === false,
   );
   pass('Keyboard Shortcuts top-edge close control closes through its model');
+
+  driver.sendKeys('F1');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Command Palette opens at the top for wheel input',
+    (candidate) =>
+      candidate.paletteOpen === true &&
+      dialogBounds(candidate, 'commandPalette') !== null,
+  );
+  await requireWheelScrollsOverlay(
+    driver,
+    statusPath,
+    'Command Palette',
+    'commandPalette',
+    2,
+  );
+  driver.sendKeys('Escape');
+  await awaitStatusPublication(
+    statusPath,
+    'Command Palette closes after its wheel proof',
+    (candidate) => candidate.paletteOpen === false,
+  );
+
+  driver.sendKeys('Control+p');
+  status = await awaitStatusPublication(
+    statusPath,
+    'Quick Open opens at the top for wheel input',
+    (candidate) =>
+      candidate.quickOpenOpen === true &&
+      dialogBounds(candidate, 'quickOpen') !== null,
+  );
+  await requireWheelScrollsOverlay(
+    driver,
+    statusPath,
+    'Quick Open',
+    'quickOpen',
+    2,
+  );
+  driver.sendKeys('Escape');
+  await awaitStatusPublication(
+    statusPath,
+    'Quick Open closes after its wheel proof',
+    (candidate) => candidate.quickOpenOpen === false,
+  );
 
   console.log('== harness overlays: modal outside presses are consumed ==');
   driver.resize(100, 32);
@@ -1052,95 +1506,12 @@ try {
     'Default',
   );
   clickCell(driver, defaultPresetPosition.column, defaultPresetPosition.row);
-  await awaitStatusPublication(
+  status = await awaitStatusPublication(
     statusPath,
     'the Default preset restores the primary dock for branch coverage',
     (candidate) =>
       candidate.boundedListPopupOpen === false &&
       candidate.primaryDockVisible === true,
-  );
-
-  snapshot = await driver.awaitGridCondition(
-    'the single-token Source Control glyph is visible before branch coverage',
-    (candidate) =>
-      candidate.findText('⎇') !== null || candidate.findText('G') !== null,
-  );
-  const sourceControlPosition =
-    snapshot.findText('⎇') ?? markerPosition(snapshot, 'G');
-  clickCell(driver, sourceControlPosition.column, sourceControlPosition.row);
-  await awaitStatusPublication(
-    statusPath,
-    'the discovered Source Control control opens the Git sidebar',
-    (candidate) => candidate.sidebarView === 'git',
-  );
-  snapshot = await driver.awaitGridCondition(
-    'the single-token history anchor identifies the branch adapter control',
-    (candidate) => candidate.findText('history:') !== null,
-  );
-  const historyPosition = markerPosition(snapshot, 'history:');
-  clickCell(
-    driver,
-    historyPosition.column + 'history:'.length,
-    historyPosition.row,
-  );
-  status = await awaitStatusPublication(
-    statusPath,
-    'the branch adapter opens with published bounds',
-    (candidate) =>
-      candidate.boundedListPopupOpen === true &&
-      boundedPopupBounds(candidate) !== null,
-  );
-  await dismissOutsideAndRequireConsumed(
-    driver,
-    statusPath,
-    'Branch selector adapter',
-    status,
-    boundedPopupBounds(status),
-    (candidate) => candidate.boundedListPopupOpen === false,
-  );
-  snapshot = await driver.awaitGridCondition(
-    'the single-token history anchor remains available for an interior branch action',
-    (candidate) => candidate.findText('history:') !== null,
-  );
-  const reopenedHistoryPosition = markerPosition(snapshot, 'history:');
-  clickCell(
-    driver,
-    reopenedHistoryPosition.column + 'history:'.length,
-    reopenedHistoryPosition.row,
-  );
-  status = await awaitStatusPublication(
-    statusPath,
-    'the branch adapter reopens for its interior branch action',
-    (candidate) =>
-      candidate.boundedListPopupOpen === true &&
-      boundedPopupBounds(candidate) !== null,
-  );
-  snapshot = await driver.awaitGridCondition(
-    'the single-token branch-alpha anchor identifies an interior branch row',
-    (candidate) =>
-      boundedPopupItemPositionOrNull(candidate, status, 'branch-alpha') !==
-      null,
-  );
-  const branchPosition = boundedPopupItemPosition(
-    snapshot,
-    status,
-    'branch-alpha',
-  );
-  clickCell(driver, branchPosition.column, branchPosition.row);
-  await awaitStatusPublication(
-    statusPath,
-    'the interior branch row changes the viewed history branch',
-    (candidate) =>
-      candidate.boundedListPopupOpen === false &&
-      candidate.gitLogBranch === 'branch-alpha',
-  );
-  pass('Branch selector retains its interior branch action');
-
-  driver.sendRawInputWithoutFrameExpectation('\x1b');
-  await awaitStatusPublication(
-    statusPath,
-    'Escape returns the history viewer to the current branch',
-    (candidate) => candidate.gitLogBranch === '',
   );
 
   console.log('smoke-overlay-dialog-harness: ALL-PASS');

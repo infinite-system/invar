@@ -751,6 +751,42 @@ scripts/harness/smoke-terminal-harness.ts`.
 
 **Last refined:** 2026-07-25
 
+### Wheel impulses start their own frame sequence
+
+**Invariant:** If `ScrollableTextViewport.handleWheel` adds a momentum impulse, then the shared
+viewport requests the first frame itself and its consumers do not request that frame separately.
+
+**Scope:** Wheel input handled by `ScrollableTextViewport` in overlays, `HoverCard`,
+`BoundedListPopup` and its `CompletionPopup` adapter, and the agent transcript. Direct-step
+`PaneContent` wheel routes and the independently generated Markdown preview momentum are outside
+this rule.
+
+**Mechanism:** `ScrollableTextViewport.handleWheel` records whether it added a vertical or
+horizontal `Momentum` impulse and calls its injected `renderer.requestRender()` only in that case.
+The requested frame reaches `tick`, which advances the impulse and keeps requesting frames while
+momentum remains active. `reconcileExtent` clamps offsets that became invalid without halting a
+fresh impulse merely because its valid starting offset is at the top boundary. `onScroll` remains
+the notification for an offset that actually changed.
+
+**Generates:** One wheel-to-first-frame obligation for every shared viewport consumer; consumer
+handlers that only call `handleWheel`; a demand-driven loop that remains stopped when no impulse was
+added.
+
+**Evidence:** `src/modules/ui/ScrollableTextViewport.ts`;
+`scripts/harness/smoke-overlay-dialog-harness.ts`; the `idle-quiescence` contract in
+`scripts/behavioral-contracts.sh`.
+
+**Impossible if true:** A wheel impulse queued while the app is at rest with no frame to advance it;
+a consumer calling `requestRender()` immediately after `ScrollableTextViewport.handleWheel`; a
+`handleWheel` call that adds no impulse starting the frame loop.
+
+**Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts && bash
+scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### A context menu is modal and single-consumer
 
 **Invariant:** If a context menu is open, then every pointer and keyboard event belongs to the menu

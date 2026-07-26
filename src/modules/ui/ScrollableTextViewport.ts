@@ -8,6 +8,7 @@
 // disableHorizontal + followBottom tail-anchor).
 //
 // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
+// invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import {
   type ScrollBarRenderable,
@@ -141,6 +142,7 @@ class $ScrollableTextViewport {
       event,
       this.deps.settings.horizontalScrollModifier.value,
     );
+    let impulseAdded = false;
     // Wrap mode: the content has no horizontal overflow, so a horizontal wheel is meaningless — treat
     // every wheel as vertical (never fling sideways).
     const horizontal =
@@ -153,6 +155,7 @@ class $ScrollableTextViewport {
         (backward ? -1 : 1) * step,
         Momentum.Class.defaultOptions,
       );
+      impulseAdded = true;
     } else if (!horizontal) {
       // An upward wheel releases the tail-anchor IMMEDIATELY (before any momentum step), so
       // followContentTail() stops snapping the glide back to the bottom.
@@ -163,8 +166,12 @@ class $ScrollableTextViewport {
         (direction === 'up' ? -1 : 1) * step,
         this.verticalMomentumOptions(),
       );
+      impulseAdded = true;
     }
-    this.deps.onScroll();
+    if (impulseAdded) {
+      // invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
+      this.deps.renderer.requestRender();
+    }
   }
   /** Advance both momenta + the drag edge-autoscroll one frame. True keeps the demand-driven loop
    *  alive (a glide is still decaying, or a drag is auto-scrolling). */
@@ -250,8 +257,21 @@ class $ScrollableTextViewport {
   /** Re-clamp retained offsets after content or viewport geometry changes (notably a live resize).
    *  Unlike a user scroll this preserves any in-flight momentum unless the new extent reaches a bound. */
   reconcileExtent(): void {
-    this.setScrollTop(this.scrollTopValue);
-    this.setScrollLeft(this.scrollLeftValue);
+    const maximumScrollTop = this.maximumScrollTop();
+    if (this.scrollTopValue > maximumScrollTop) {
+      this.setScrollTop(maximumScrollTop);
+    } else if (maximumScrollTop === 0) {
+      this.verticalMomentum = Momentum.Class.halt();
+    } else if (this.deps.followBottom) {
+      this.followBottomActive = this.scrollTopValue >= maximumScrollTop;
+    }
+
+    const maximumScrollLeft = this.maximumScrollLeft();
+    if (this.scrollLeftValue > maximumScrollLeft) {
+      this.setScrollLeft(maximumScrollLeft);
+    } else if (maximumScrollLeft === 0) {
+      this.horizontalMomentum = Momentum.Class.halt();
+    }
   }
   /** Hide both bars (host not visible). */
   hideBars(): void {

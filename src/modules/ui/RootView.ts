@@ -787,7 +787,6 @@ class $RootView {
       body.onMouseScroll = (event) => {
         if (agentAtCell()) {
           agentScrollViewport.handleWheel(event);
-          renderer.requestRender();
           return;
         }
         const content = panelHost.resolvedCells[index]?.content;
@@ -1993,6 +1992,7 @@ class $RootView {
       tickOverlayScroll: (dtSeconds: number) => overlayLayer.tick(dtSeconds),
       overlayDialogBounds: () => overlayLayer.dialogBounds(),
       overlayScrollPositions: () => overlayLayer.scrollPositions(),
+      overlayViewportExtents: () => overlayLayer.viewportExtents(),
       modalOverlayOwnsScreen: () => overlayLayer.modalOverlayOwnsScreen,
       tickHover: (dtSeconds: number) => hoverCard.tick(dtSeconds),
       tickPanelScroll(dtSeconds: number): boolean {
@@ -2097,6 +2097,11 @@ export interface RootView {
   >;
   /** Scroll offsets owned by each overlay's shared viewport. */
   overlayScrollPositions(): Record<string, number>;
+  /** Content and visible row counts for each overlay viewport. */
+  overlayViewportExtents(): Record<
+    string,
+    { contentRows: number; viewportRows: number }
+  >;
   /** True while a modal overlay owns the screen above host-terminal projections. */
   modalOverlayOwnsScreen(): boolean;
   /** Frame-tick hook: advance the LSP hover-card dwell; true while counting or a request is in flight. */
