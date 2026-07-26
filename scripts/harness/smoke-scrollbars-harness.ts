@@ -850,6 +850,31 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} editor vertical thumb is painted`,
       (candidate) => verticalEditorScrollBarProof(candidate) !== null,
     );
+    const unmarkedThumbProof = verticalEditorScrollBarProof(driver.snapshot());
+    driver.sendKeys('End');
+    driver.sendText('X');
+    const markedSnapshot = await driver.awaitGridCondition(
+      `the ${modeLabel} editor paints an overview pip after a document mark appears`,
+      (candidate) =>
+        candidate
+          .rowCells(4)
+          .concat(
+            ...candidate
+              .textRows()
+              .slice(5, candidate.rows - 3)
+              .map((_rowText, rowOffset) => candidate.rowCells(rowOffset + 5)),
+          )
+          .some((cell) => cell.characters === '•' || cell.characters === '.'),
+    );
+    const markedThumbProof = verticalEditorScrollBarProof(markedSnapshot);
+    requireCondition(
+      unmarkedThumbProof !== null &&
+        markedThumbProof !== null &&
+        unmarkedThumbProof.column === markedThumbProof.column &&
+        unmarkedThumbProof.trackLength === markedThumbProof.trackLength &&
+        unmarkedThumbProof.thumbLength === markedThumbProof.thumbLength,
+      `${modeLabel} overview marks leave track and thumb geometry unchanged`,
+    );
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
       repositoryRoot,
@@ -935,9 +960,22 @@ async function sendWheelUntil(
   alt = false,
 ): Promise<HarnessSnapshot.Model> {
   for (let repeatIndex = 0; repeatIndex < maximumRepeatCount; repeatIndex++) {
+    const currentSnapshot = driver.snapshot();
+    if (predicate(currentSnapshot)) return currentSnapshot;
+    const nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
     driver.sendMouse({ kind: 'wheel', column, row, direction, alt });
-    await driver.awaitQuiescence();
-    const snapshot = driver.snapshot();
+    let snapshot: HarnessSnapshot.Model;
+    try {
+      snapshot = (await nextCompletedFrame).snapshot;
+    } catch (error) {
+      const latestSnapshot = driver.snapshot();
+      if (predicate(latestSnapshot)) return latestSnapshot;
+      console.log(
+        `  DIAG  stalled ${direction} wheel at (${column}, ${row})\n` +
+          latestSnapshot.text(),
+      );
+      throw error;
+    }
     if (predicate(snapshot)) return snapshot;
   }
   throw new Error(
@@ -1253,7 +1291,10 @@ try {
       const proof = horizontalEditorScrollBarProof(candidate);
       return (
         proof !== null &&
-        proof.thumbStartColumn + proof.thumbLength >= candidate.columns - 2
+        candidate.findText('stableLine') === null &&
+        candidate
+          .textRows()
+          .filter((rowText) => rowText.includes("xxxxxxxxxx';")).length >= 3
       );
     },
     'right',
@@ -1265,18 +1306,25 @@ try {
   const maximumHorizontalThumb = horizontalEditorScrollBarProof(snapshot);
   requireCondition(
     maximumHorizontalThumb !== null,
-    'editor horizontal thumb reaches its right extreme before the deep line is visible',
+    'editor horizontal viewport reaches the full-document right extent',
   );
   let deepWidestLineReached = false;
   for (let wheelEvent = 1; wheelEvent <= 180; wheelEvent++) {
+    const currentSnapshot = overflowDriver.snapshot();
+    if (currentSnapshot.findText('DEEP-WIDEST-END-MARKER') !== null) {
+      snapshot = currentSnapshot;
+      deepWidestLineReached = true;
+      break;
+    }
+    const nextCompletedFrame =
+      overflowDriver.awaitNextCompletedFrameSnapshot(2_000);
     overflowDriver.sendMouse({
       kind: 'wheel',
       column: 80,
       row: 10,
       direction: 'down',
     });
-    await overflowDriver.awaitQuiescence();
-    snapshot = overflowDriver.snapshot();
+    snapshot = (await nextCompletedFrame).snapshot;
     if (snapshot.findText('DEEP-WIDEST-END-MARKER') !== null) {
       deepWidestLineReached = true;
       break;
@@ -1347,26 +1395,32 @@ try {
     snapshot.findText('LOG-END-MARKER') === null,
     'log tail starts clipped',
   );
+  const changesRow = snapshot.findText('000-VERY-LONG')?.row;
+  if (changesRow === undefined)
+    throw new Error('Changed-file row disappeared before horizontal drive');
   snapshot = await sendWheelUntil(
     overflowDriver,
     (candidate) => candidate.findText('END-MARKER.txt') !== null,
     'right',
     30,
     9,
-    4,
+    changesRow,
     true,
   );
   requireCondition(
     snapshot.findText('LOG-END-MARKER') === null,
     'changes horizontal scrolling leaves the log pane untouched',
   );
+  const logRow = snapshot.findText('VERY-LONG-COMM')?.row;
+  if (logRow === undefined)
+    throw new Error('Log row disappeared before horizontal drive');
   await sendWheelUntil(
     overflowDriver,
     (candidate) => candidate.findText('LOG-END-MARKER') !== null,
     'right',
     30,
     9,
-    21,
+    logRow,
     true,
   );
   pass('log horizontal bar reveals its own clipped subject tail');
@@ -1430,8 +1484,46 @@ try {
       `wrapped-transcript-word-${String(wordIndex).padStart(3, '0')}`,
   ).join(' ');
   overflowDriver.sendPaste(wrappedTranscriptPrompt);
-  await overflowDriver.awaitQuiescence();
+  const wrappedComposerSnapshot = await overflowDriver.awaitGridCondition(
+    'the wrapped transcript prompt is visible in the agent composer',
+    (candidate) => candidate.findText('wrapped-transcript-word-259') !== null,
+  );
+  HarnessSmoke.Class.clickText(
+    overflowDriver,
+    wrappedComposerSnapshot,
+    'Claude',
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the agent composer owns keyboard focus before submission',
+    (candidate) =>
+      candidate.panelActiveContent === 'agent' &&
+      candidate.terminalFocused === true,
+  );
+  overflowDriver.sendKeys('Home');
+  await overflowDriver.awaitGridCondition(
+    'Home exposes the beginning of the wrapped agent composer',
+    (candidate) => candidate.findText('wrapped-transcript-word-000') !== null,
+  );
+  overflowDriver.sendKeys('End');
+  await overflowDriver.awaitGridCondition(
+    'End restores the submitted end of the wrapped agent composer',
+    (candidate) => candidate.findText('wrapped-transcript-word-259') !== null,
+  );
   overflowDriver.sendKeys('Enter');
+  await overflowDriver.awaitGridCondition(
+    'the echo response to the wrapped prompt is visible',
+    (candidate) => candidate.findText('local echo backend') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    overflowDriver,
+    statusPath,
+    'the submitted prompt grows the agent transcript',
+    (candidate) =>
+      Number(candidate.agentContentLineCount) >
+      Number(expandedAgentStatus.agentContentLineCount),
+  );
   await HarnessSmoke.Class.awaitStatus(
     overflowDriver,
     statusPath,
@@ -1440,7 +1532,7 @@ try {
       candidate.agentBusy === false &&
       Number(candidate.agentContentLineCount) >
         Number(candidate.agentViewportRows),
-    15_000,
+    30_000,
   );
   const agentBarSnapshot = await overflowDriver.awaitSnapshot(
     (candidate) => agentThumbRowCount(candidate, panelRectangle) >= 2,

@@ -705,6 +705,8 @@ class $RootView {
       // small manual drag), grabbing pointer capture so the drag routes here wherever it travels; a BARE
       // click (no drag) toggles a collapsed tool row on mouse-up. Other panes keep the click hit-test.
       heading.onMouseDown = (event) => {
+        primaryDockHost.blur();
+        rightDockHost.blur();
         panelHost.focus();
         panelHost.focusCell(index);
         const view = panelCellViews[index];
@@ -756,6 +758,8 @@ class $RootView {
         tooltip.clear();
       };
       body.onMouseDown = (event: MouseEvent) => {
+        primaryDockHost.blur();
+        rightDockHost.blur();
         panelHost.focus();
         panelHost.focusCell(index);
         const agent = agentAtCell();
@@ -1893,11 +1897,13 @@ class $RootView {
     const editorController = new EditorPane.Class({
       renderer,
       editorArea,
+      gutterBody,
       codeBody,
       workspaceSet,
       findBar,
       settings,
       theme,
+      tooltip,
       readPalette,
       editorViewportHeight,
       editorViewportWidth,

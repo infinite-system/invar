@@ -92,15 +92,29 @@ class $GitPaneContent implements PaneContent {
   }
 
   render(context: PaneRenderContext): StyledText {
+    const workspace = this.activeWorkspace();
+    const scrollbarThickness = Math.max(
+      1,
+      Math.round(this.application.settings.scrollbarThickness.value),
+    );
+    const viewportWidth = Math.max(1, context.width - scrollbarThickness);
+    workspace.panel.setChangesHorizontalExtent(
+      GitPaneRenderer.Class.changesContentWidth(
+        workspace.currentChangeRows(),
+        this.application.theme.checkboxIcons,
+      ),
+      viewportWidth,
+    );
+    workspace.panel.setLogHorizontalExtent(
+      GitPaneRenderer.Class.logContentWidth(workspace),
+      viewportWidth,
+    );
     const result = GitPaneRenderer.Class.render({
-      workspace: this.activeWorkspace(),
+      workspace,
       palette: context.palette,
       innerWidth: Math.max(1, context.width),
       bodyHeight: Math.max(1, context.height),
-      scrollbarThickness: Math.max(
-        1,
-        Math.round(this.application.settings.scrollbarThickness.value),
-      ),
+      scrollbarThickness,
       gitActionAreaWidth: 8,
       actionIcons: this.application.theme.actionIcons,
       checkboxIcons: this.application.theme.checkboxIcons,

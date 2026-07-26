@@ -184,6 +184,10 @@ class $GitWorkspace
     this.documentStates.delete(handle);
   }
 
+  revision(handle: DocumentHandle.Model): unknown {
+    return this.documentStates.get(handle)?.decorationRevision ?? 0;
+  }
+
   byLine(handle: DocumentHandle.Model) {
     return this.documentStates.get(handle)?.decorationsByLine() ?? new Map();
   }

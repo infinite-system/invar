@@ -42,29 +42,81 @@ src/modules/workspace/OpenBufferSet.test.ts`.
 
 ### Gutter marks come from document scoped contributions
 
-**Invariant:** If a line mark is painted in the editor gutter or as an underline, then it was
-contributed for the visible document's stable handle through `GutterDecorations`.
+**Invariant:** If a line mark is painted in the editor gutter, body, or overview, then it came from
+one cached `GutterDecorations` snapshot for the visible document's stable handle.
 
 **Scope:** The editor gutter contribution registry, repository diff marks, language diagnostics,
-and `EditorPaneRenderer`.
+`EditorPaneRenderer`, `OverviewRuler`, and `ScrollbarSync`.
 
 **Mechanism:** `Workspace` registers language diagnostics and plugins register their own
-`GutterDecorationContribution`; the renderer requests the combined projection using only
-`Workspace.activeDocumentHandle`.
+`GutterDecorationContribution`. `GutterDecorations.snapshotFor` combines them once per contribution
+or document revision and returns the same snapshot identity until either changes; the gutter,
+in-body underline, and overview renderers project that snapshot instead of recomputing marks.
 
-**Generates:** One per-document decoration vocabulary for both source-control changes and language
-diagnostics; deterministic priority when marks share a line.
+**Generates:** One per-document decoration vocabulary for source-control changes and language
+diagnostics; one recompute shared by the visible-row and whole-document projections.
 
 **Evidence:** `GutterDecorations.ts`; `Workspace.ts` `languageDecorationsByLine`;
-`GitDocumentState.ts`; `EditorPaneRenderer.ts`.
+`GitDocumentState.ts`; `EditorPaneRenderer.ts`; `OverviewRuler.ts`; snapshot identity tests in
+`GutterDecorations.test.ts` and `OverviewRuler.test.ts`.
 
-**Impossible if true:** The renderer reaching into either a repository-specific diff map or an
-LSP-specific diagnostics map; a contribution returning marks without a document handle.
+**Impossible if true:** The gutter and overview computing separate line-mark maps; a contributor
+returning marks without a document handle; unchanged marks causing a whole-document aggregation on
+every frame.
 
 **Verification:** `bun test src/modules/workspace/GutterDecorations.test.ts
-src/modules/git/GitDocumentState.test.ts && bash scripts/smoke-gutter-diff.sh`.
+src/modules/git/GitDocumentState.test.ts src/modules/ui/OverviewRuler.test.ts && bash
+scripts/smoke-diagnostics.sh`.
 
 **Status:** established
+
+**Last refined:** 2026-07-26
+
+### One mark has one reserved meaning
+
+**Invariant:** If an editor mark occupies a reserved visual position, then its shape, meaning,
+owner, and column match exactly one row in the reserved-mark table below.
+
+**Scope:** Normal editor diff marks, language diagnostics, the gutter marker cell, code-body
+underlines, and the editor vertical scrollbar overview column. `DiffView` has its own aligned-pane
+overview and is outside this vocabulary.
+
+**Components:**
+
+| Mark | Meaning | Owner | Column |
+| --- | --- | --- | --- |
+| `▎` in `palette.added` | Line added against HEAD | Source-control plugin | Diff gutter |
+| `▎` in `palette.modified` | Real line modified against HEAD | Source-control plugin | Diff gutter |
+| `▎` in `palette.deleted` | Deleted block placed on the line below, or the final real line at end of file | Source-control plugin | Diff gutter |
+| Underline in `palette.error` / `warning` / `info` (hint shares info color) | Diagnostic range and severity | Language diagnostics | Code body |
+| `•` (`.` at ASCII tier) in the matching semantic color | Whole-document location of any diff or diagnostic mark | `GutterDecorations` contributors | Editor vertical scrollbar track |
+
+All glyph tiers resolve the diff mark to `▎`; the overview pip resolves through
+`Theme.glyph('overviewMark')`; diagnostic underlines are cell styles and need no glyph fallback.
+
+**Mechanism:** `EditorLineDecoration` is a discriminated union. Only
+`VersionControlLineDecoration` has a gutter projection; only `DiagnosticLineDecoration` has an
+underline; both enter `OverviewRuler`. `EditorPaneRenderer` filters the union by owner before
+painting the gutter.
+
+**Generates:** A diff-only gutter; diagnostic-only body underlines; a recorded reservation check
+before any future mark is added.
+
+**Rejected alternatives:** Diagnostic marks in the diff gutter — a red diagnostic and a red
+deletion occupied the same column and forced users to guess which meaning one mark carried.
+
+**Evidence:** `src/modules/workspace/GutterDecorations.ts`; `src/modules/ui/EditorPaneRenderer.ts`;
+`src/modules/git/GitDocumentState.ts`; `src/modules/workspace/GutterDecorations.test.ts`;
+`scripts/harness/smoke-diagnostics-harness.ts`.
+
+**Impossible if true:** A diagnostic glyph in the gutter; a deletion drawn as `_` or `▁`; one
+gutter shape meaning both version control and language diagnostics.
+
+**Verification:** `bun test src/modules/workspace/GutterDecorations.test.ts
+src/modules/git/GitDocumentState.test.ts src/modules/ui/OverviewRuler.test.ts && bun
+scripts/harness/smoke-diagnostics-harness.ts`
+
+**Status:** provisional
 
 **Last refined:** 2026-07-26
 

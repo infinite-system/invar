@@ -76,6 +76,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'panelExpand',
     'panelRestore',
     'panelClose',
+    'overviewMark',
   ] as const;
   const expectedVocabularies = {
     nerd: [
@@ -88,9 +89,10 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f065}',
       '\u{f066}',
       '\u{f00d}',
+      '•',
     ],
-    unicode: ['≡', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×'],
-    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x'],
+    unicode: ['≡', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×', '•'],
+    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '.'],
   } as const;
 
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
@@ -178,6 +180,7 @@ test('every semantic interface icon is one display cell and avoids reserved mark
     'panelExpand',
     'panelRestore',
     'panelClose',
+    'overviewMark',
   ] as const;
   const reservedMarkers = new Set(['▎', '●', '❯']);
 

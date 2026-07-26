@@ -149,7 +149,19 @@ try {
     'edited existing line paints the modified-colored ▎ glyph',
   );
 
+  await HarnessSmoke.Class.awaitStatus(
+    editDriver,
+    editStatusPath,
+    'the edited tracked buffer publishes dirty === true',
+    (status) => status.dirty === true,
+  );
   editDriver.sendKeys('Control+s');
+  await HarnessSmoke.Class.awaitStatus(
+    editDriver,
+    editStatusPath,
+    'the saved tracked buffer publishes dirty === false',
+    (status) => status.dirty === false,
+  );
   // AWAIT THE DISK, not the marker. The marker assertion above already passed BEFORE this save — the
   // buffer was modified either way — so waiting on it again is a vacuous predicate that the pre-action
   // state already satisfies. What the git commands below actually depend on is the file CONTENT being
@@ -225,12 +237,32 @@ try {
   });
   await openTrackedFile(deleteDriver, deleteStatusPath, trackedPath);
   deleteDriver.sendKeys('Down', 'Home', 'Backspace');
-  await deleteDriver.awaitSnapshot((snapshot) =>
-    markerHasForeground(snapshot, 'gamma', '▁', deletedColor),
+  const deletionSnapshot = await deleteDriver.awaitSnapshot((snapshot) =>
+    markerHasForeground(snapshot, 'gamma', '▎', deletedColor),
+  );
+  HarnessSmoke.Class.requireCondition(
+    !markerHasForeground(deletionSnapshot, 'gamma', '▁', deletedColor),
+    'removed line never paints the ambiguous underline gutter shape',
   );
   HarnessSmoke.Class.pass(
-    'removed line paints the deleted-colored ▁ hint on the following line',
+    'removed line paints the deleted-colored ▎ bar on the following line',
   );
+  const gammaPosition = deletionSnapshot.findText('gamma');
+  if (!gammaPosition) throw new Error('Deletion placement line disappeared');
+  deleteDriver.sendMouse({
+    kind: 'move',
+    column: gammaPosition.column - 1,
+    row: gammaPosition.row,
+    button: 'none',
+  });
+  await deleteDriver.awaitSnapshot(
+    (snapshot) =>
+      snapshot
+        .textRows()
+        .some((rowText) => rowText.includes('1 line deleted above')),
+    10_000,
+  );
+  HarnessSmoke.Class.pass('deletion gutter hover names the deleted-line count');
 
   deleteDriver.sendKeys('Control+q');
   console.log('smoke-gutter-diff-harness: ALL-PASS');

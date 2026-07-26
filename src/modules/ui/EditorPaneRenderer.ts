@@ -28,9 +28,11 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
 import type { FindInBuffer } from '../search/FindInBuffer';
 import type {
+  DiagnosticLineDecoration,
   EditorDecorationColor,
   EditorLineDecoration,
 } from '../workspace/GutterDecorations';
+import { GutterDecorations } from '../workspace/GutterDecorations';
 class $EditorPaneRenderer {
   protected static get indentGuideTabWidth() {
     return 4;
@@ -74,11 +76,15 @@ class $EditorPaneRenderer {
     const currentLineIndex = editor.cursor.line.value;
     const focused = workspace.focus.value === 'editor';
     const documentHandle = workspace.activeDocumentHandle;
-    const decorationsByLine = documentHandle
-      ? workspace.gutterDecorations.byLine(documentHandle)
+    const decorationSnapshot = documentHandle
+      ? workspace.gutterDecorations.snapshotFor(documentHandle)
+      : null;
+    const decorationsByLine = decorationSnapshot
+      ? decorationSnapshot.byLine
       : new Map<number, EditorLineDecoration[]>();
     const gutterChunks: TextChunk[] = [];
     const codeChunks: TextChunk[] = [];
+    const gutterHoverLabelsByRow: string[][] = [];
     const decorationColor = (color: EditorDecorationColor): string => {
       if (color === 'added') return palette.added;
       if (color === 'modified') return palette.modified;
@@ -87,25 +93,32 @@ class $EditorPaneRenderer {
       if (color === 'warning') return palette.warning;
       return palette.info;
     };
-    // invariant: TS diagnostics render as a gutter mark and an underline (src/modules/ui/ui.invariants.md)
+    // invariant: TS diagnostics render as an underline and overview mark (src/modules/ui/ui.invariants.md)
     const pushGutterMarker = (
       lineIndex: number,
       isCurrentLine: boolean,
     ): void => {
-      const decoration = decorationsByLine
-        .get(lineIndex)
-        ?.toSorted(
-          (first, second) => second.gutter.priority - first.gutter.priority,
-        )[0];
+      const versionControlDecorations = (decorationsByLine.get(lineIndex) ?? [])
+        .filter((decoration) => decoration.owner === 'versionControl')
+        .toSorted(
+          (firstDecoration, secondDecoration) =>
+            GutterDecorations.Class.priorityFor(secondDecoration) -
+            GutterDecorations.Class.priorityFor(firstDecoration),
+        );
+      const decoration = versionControlDecorations[0];
       if (!decoration) {
         gutterChunks.push(
           fg(palette.accent)(isCurrentLine && focused ? '▏' : ' '),
         );
+        gutterHoverLabelsByRow.push([]);
         return;
       }
       gutterChunks.push(
-        fg(decorationColor(decoration.gutter.color))(
-          decoration.gutter.glyph === 'underline' ? '▁' : '▎',
+        fg(decorationColor(GutterDecorations.Class.colorFor(decoration)))('▎'),
+      );
+      gutterHoverLabelsByRow.push(
+        versionControlDecorations.map(
+          (versionControlDecoration) => versionControlDecoration.hoverLabel,
         ),
       );
     };
@@ -128,8 +141,9 @@ class $EditorPaneRenderer {
         sourceFindEngine?.matches.value.filter(
           (match) => match.line === lineIndex,
         ) ?? [];
-      const lineUnderlines = (decorationsByLine.get(lineIndex) ?? []).flatMap(
-        (decoration) => (decoration.underline ? [decoration.underline] : []),
+      const lineUnderlines = (decorationsByLine.get(lineIndex) ?? []).filter(
+        (decoration): decoration is DiagnosticLineDecoration =>
+          decoration.owner === 'diagnostics',
       );
       const windowGraphemeCount =
         EditorCoordinates.Class.graphemeCount(windowText);
@@ -185,7 +199,7 @@ class $EditorPaneRenderer {
             0,
             Math.min(
               windowGraphemeCount,
-              lineUnderline.startColumn - windowStartGrapheme,
+              lineUnderline.underline.startColumn - windowStartGrapheme,
             ),
           ),
         );
@@ -194,7 +208,7 @@ class $EditorPaneRenderer {
             0,
             Math.min(
               windowGraphemeCount,
-              lineUnderline.endColumn - windowStartGrapheme,
+              lineUnderline.underline.endColumn - windowStartGrapheme,
             ),
           ),
         );
@@ -225,15 +239,19 @@ class $EditorPaneRenderer {
         absoluteStart: number,
         absoluteEnd: number,
       ): EditorDecorationColor | null => {
+        let highestPriorityUnderline: DiagnosticLineDecoration | null = null;
         for (const lineUnderline of lineUnderlines) {
           if (
-            lineUnderline.startColumn < absoluteEnd &&
-            lineUnderline.endColumn > absoluteStart
+            lineUnderline.underline.startColumn < absoluteEnd &&
+            lineUnderline.underline.endColumn > absoluteStart &&
+            (highestPriorityUnderline === null ||
+              GutterDecorations.Class.priorityFor(lineUnderline) >
+                GutterDecorations.Class.priorityFor(highestPriorityUnderline))
           ) {
-            return lineUnderline.color;
+            highestPriorityUnderline = lineUnderline;
           }
         }
-        return null;
+        return highestPriorityUnderline?.severity ?? null;
       };
       const orderedBoundaries = [...boundaries].sort(
         (first, second) => first - second,
@@ -346,6 +364,7 @@ class $EditorPaneRenderer {
           pushGutterMarker(row.lineIndex, isCurrentLine);
         } else {
           gutterChunks.push(fg(palette.dim)(' '.repeat(lineNumberWidth + 2)));
+          gutterHoverLabelsByRow.push([]);
         }
         const lineText = editor.document.line(row.lineIndex);
         let segmentSpans: Span[] | null = null;
@@ -387,6 +406,7 @@ class $EditorPaneRenderer {
         gutter: new StyledText(gutterChunks),
         code: new StyledText(codeChunks),
         wrapRowsWindow,
+        gutterHoverLabelsByRow,
       };
     }
     // COLUMN virtualization (the horizontal twin of the line flyweight): each visible logical line is
@@ -458,6 +478,7 @@ class $EditorPaneRenderer {
       gutter: new StyledText(gutterChunks),
       code: new StyledText(codeChunks),
       wrapRowsWindow: [],
+      gutterHoverLabelsByRow,
     };
   }
 }
@@ -486,4 +507,6 @@ export interface EditorPaneRender {
   code: StyledText;
   /** Wrap-mode visual-row window (empty in no-wrap mode); RootView stores it for caret/hit-test. */
   wrapRowsWindow: VisualRow[];
+  /** Hover text for each visible gutter row; only version-control marks can populate it. */
+  gutterHoverLabelsByRow: readonly (readonly string[])[];
 }

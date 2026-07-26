@@ -8,20 +8,29 @@ import { Reactive } from 'ivue';
 import { EditorWrap } from '../editor/EditorWrap';
 import { Logging } from '../system/Logging';
 import type { Theme } from '../theme/Theme';
+import type { Palette } from '../theme/ThemePalettes';
+import type { EditorDecorationColor } from '../workspace/GutterDecorations';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
+import { OverviewRuler, type OverviewRulerMark } from './OverviewRuler';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import type { Tooltip } from './Tooltip';
 
 // invariant: A scrollbar track is derived per frame from its region rect (ui.invariants.md)
 // invariant: One writer per scroll regime per frame (ui.invariants.md)
+// invariant: The editor overview derives from the decoration snapshot (ui.invariants.md)
 class $ScrollbarSync {
   protected readonly barScales = new Map<object, number>();
   protected applying = false;
-  protected readonly editorVerticalBar: ScrollBarRenderable;
-  protected readonly editorHorizontalBar: ScrollBarRenderable;
-  protected readonly treeVerticalBar: ScrollBarRenderable;
-  protected readonly treeHorizontalBar: ScrollBarRenderable;
+  protected readonly editorVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly editorHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly treeVerticalBar: SolidThumbScrollBar.Model;
+  protected readonly treeHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly editorOverviewRuler = new OverviewRuler.Class();
+  protected editorOverviewMarks: readonly OverviewRulerMark[] = [];
+  protected paintedEditorOverviewMarks: readonly OverviewRulerMark[] | null =
+    null;
+  protected paintedEditorOverviewPaletteSignature = '';
 
   constructor(protected readonly dependencies: ScrollbarSyncDependencies) {
     const makeBar = (
@@ -32,7 +41,7 @@ class $ScrollbarSync {
         backgroundColor: ColorInput;
         foregroundColor: ColorInput;
       },
-    ): ScrollBarRenderable =>
+    ): SolidThumbScrollBar.Model =>
       new SolidThumbScrollBar.Class(dependencies.renderer, {
         id: identifier,
         orientation,
@@ -112,6 +121,22 @@ class $ScrollbarSync {
         );
       bar.onMouseOut = () => dependencies.tooltip.clear();
     }
+    this.editorVerticalBar.onMouseMove = (event) => {
+      const trackOffset = event.y - Number(this.editorVerticalBar.y);
+      const mark = this.editorOverviewMarks.find(
+        (candidate) => candidate.trackOffset === trackOffset,
+      );
+      if (mark) {
+        dependencies.tooltip.point(
+          mark.hoverLabels.join(' · '),
+          event.x,
+          event.y,
+        );
+      } else {
+        dependencies.tooltip.clear();
+      }
+    };
+    this.editorVerticalBar.onMouseOut = () => dependencies.tooltip.clear();
   }
 
   protected truePosition(
@@ -125,7 +150,7 @@ class $ScrollbarSync {
   }
 
   protected applyBar(
-    bar: ScrollBarRenderable,
+    bar: SolidThumbScrollBar.Model,
     orientation: 'vertical' | 'horizontal',
     region: { top: number; left: number; width: number; height: number },
     scroll: {
@@ -191,6 +216,64 @@ class $ScrollbarSync {
     }
   }
 
+  protected decorationColor(
+    color: EditorDecorationColor,
+    palette: Palette,
+  ): string {
+    if (color === 'added') return palette.added;
+    if (color === 'modified') return palette.modified;
+    if (color === 'deleted') return palette.deleted;
+    if (color === 'error') return palette.error;
+    if (color === 'warning') return palette.warning;
+    return palette.info;
+  }
+
+  protected synchronizeEditorOverview(trackLength: number): void {
+    const workspace = this.dependencies.workspaceSet.active;
+    const handle = workspace.activeDocumentHandle;
+    if (!this.editorVerticalBar.visible || !handle || !handle.document) {
+      this.editorOverviewMarks = [];
+      this.editorVerticalBar.setOverviewMarks([]);
+      this.paintedEditorOverviewMarks = null;
+      this.paintedEditorOverviewPaletteSignature = '';
+      return;
+    }
+
+    const snapshot = workspace.gutterDecorations.snapshotFor(handle);
+    const marks = this.editorOverviewRuler.project(
+      snapshot,
+      handle.document.lineCount,
+      trackLength,
+    );
+    this.editorOverviewMarks = marks;
+    const palette = this.dependencies.theme.palette;
+    const overviewMarkGlyph = this.dependencies.theme.glyph('overviewMark');
+    const paletteSignature = [
+      palette.added,
+      palette.modified,
+      palette.deleted,
+      palette.error,
+      palette.warning,
+      palette.info,
+      overviewMarkGlyph,
+    ].join(':');
+    if (
+      this.paintedEditorOverviewMarks === marks &&
+      this.paintedEditorOverviewPaletteSignature === paletteSignature
+    ) {
+      return;
+    }
+    this.editorVerticalBar.setOverviewMarks(
+      marks.map((mark) => ({
+        trackOffset: mark.trackOffset,
+        color: this.decorationColor(mark.color, palette),
+        glyph: overviewMarkGlyph,
+      })),
+    );
+    this.paintedEditorOverviewMarks = marks;
+    this.paintedEditorOverviewPaletteSignature = paletteSignature;
+  }
+
   syncPaneViewportGeometry(): boolean {
     if (this.dependencies.primaryDockHost.activeContent?.id !== 'files') {
       return false;
@@ -241,6 +324,11 @@ class $ScrollbarSync {
       viewportSize: editorHeight,
       scrollPosition: editor.viewport.scrollTop.value,
     });
+    this.synchronizeEditorOverview(
+      this.editorVerticalBar.visible
+        ? Number(this.editorVerticalBar.height)
+        : 0,
+    );
     this.applyBar(this.editorHorizontalBar, 'horizontal', editorRegion, {
       scrollSize:
         editor.hasDocument.value && !editor.wordWrap.value

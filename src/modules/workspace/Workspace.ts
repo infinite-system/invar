@@ -51,6 +51,7 @@ class $Workspace {
       closed: (handle) => this.closeLanguageDocument(handle),
     });
     this.gutterDecorations.register({
+      revision: (handle) => this.languageDecorationRevision(handle),
       byLine: (handle) => this.languageDecorationsByLine(handle),
     });
     for (const plugin of options.plugins ?? []) {
@@ -193,21 +194,23 @@ class $Workspace {
                 : 'hint';
         const decorations = decorationsByLine.get(lineIndex) ?? [];
         decorations.push({
-          gutter: {
-            glyph: 'bar',
-            color,
-            priority: 500 - diagnostic.severity,
-          },
+          owner: 'diagnostics',
+          severity: color,
+          hoverLabel: color,
           underline: {
             startColumn,
             endColumn: Math.max(startColumn, endColumn),
-            color,
           },
         });
         decorationsByLine.set(lineIndex, decorations);
       }
     }
     return decorationsByLine;
+  }
+
+  protected languageDecorationRevision(handle: DocumentHandle.Model): number {
+    if (!handle.document || !this.languageClientInstance) return 0;
+    return this.languageClientInstance.diagnosticsRevision.value;
   }
 
   /** Push the active buffer's current text to the language server (revision-idempotent full-text

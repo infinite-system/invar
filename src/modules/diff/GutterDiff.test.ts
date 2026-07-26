@@ -4,43 +4,94 @@ import { GutterDiff } from './GutterDiff';
 
 describe('GutterDiff', () => {
   test('equal text has no gutter statuses', () => {
-    expect(GutterDiff.Class.statusByLine('one\ntwo', 'one\ntwo')).toEqual(new Map());
+    expect(GutterDiff.Class.marksByLine('one\ntwo', 'one\ntwo')).toEqual(
+      new Map(),
+    );
   });
 
   test('a replaced line is modified', () => {
-    expect(GutterDiff.Class.statusByLine('one\nold\nthree', 'one\nnew\nthree')).toEqual(
-      new Map([[1, 'modified']]),
-    );
+    expect(
+      GutterDiff.Class.marksByLine('one\nold\nthree', 'one\nnew\nthree'),
+    ).toEqual(new Map([[1, [{ kind: 'modified', hoverLabel: 'modified' }]]]));
   });
 
   test('an inserted line is added', () => {
-    expect(GutterDiff.Class.statusByLine('one\nthree', 'one\ntwo\nthree')).toEqual(
-      new Map([[1, 'added']]),
-    );
+    expect(
+      GutterDiff.Class.marksByLine('one\nthree', 'one\ntwo\nthree'),
+    ).toEqual(new Map([[1, [{ kind: 'added', hoverLabel: 'added' }]]]));
   });
 
   test('a deleted run marks the following buffer line', () => {
     expect(
-      GutterDiff.Class.statusByLine(
+      GutterDiff.Class.marksByLine(
         'one\nremoved one\nremoved two\nfour',
         'one\nfour',
       ),
-    ).toEqual(new Map([[1, 'deleted']]));
+    ).toEqual(
+      new Map([
+        [
+          1,
+          [
+            {
+              kind: 'deleted',
+              hoverLabel: '2 lines deleted above',
+              deletedLineCount: 2,
+            },
+          ],
+        ],
+      ]),
+    );
   });
 
   test('an untracked file marks every buffer line as added', () => {
-    expect(GutterDiff.Class.statusByLine('', 'one\ntwo\nthree')).toEqual(
+    expect(GutterDiff.Class.marksByLine('', 'one\ntwo\nthree')).toEqual(
       new Map([
-        [0, 'added'],
-        [1, 'added'],
-        [2, 'added'],
+        [0, [{ kind: 'added', hoverLabel: 'added' }]],
+        [1, [{ kind: 'added', hoverLabel: 'added' }]],
+        [2, [{ kind: 'added', hoverLabel: 'added' }]],
       ]),
     );
   });
 
   test('a deletion at end of file marks the last buffer line', () => {
-    expect(GutterDiff.Class.statusByLine('one\ntwo\nremoved', 'one\ntwo')).toEqual(
-      new Map([[1, 'deleted']]),
+    expect(
+      GutterDiff.Class.marksByLine('one\ntwo\nremoved', 'one\ntwo'),
+    ).toEqual(
+      new Map([
+        [
+          1,
+          [
+            {
+              kind: 'deleted',
+              hoverLabel: '1 line deleted at end of file',
+              deletedLineCount: 1,
+            },
+          ],
+        ],
+      ]),
+    );
+  });
+
+  test('a modified placement line keeps its nearby deletion recoverable', () => {
+    expect(
+      GutterDiff.Class.marksByLine(
+        'one\nremoved one\nremoved two\nold four',
+        'one\nnew four',
+      ),
+    ).toEqual(
+      new Map([
+        [
+          1,
+          [
+            { kind: 'modified', hoverLabel: 'modified' },
+            {
+              kind: 'deleted',
+              hoverLabel: '2 lines deleted above',
+              deletedLineCount: 2,
+            },
+          ],
+        ],
+      ]),
     );
   });
 
@@ -56,8 +107,8 @@ describe('GutterDiff', () => {
       }
     }
 
-    expect(TestGutterDiff.statusByLine('', 'one\ntwo')).toEqual(
-      new Map([[0, 'added']]),
+    expect(TestGutterDiff.marksByLine('', 'one\ntwo')).toEqual(
+      new Map([[0, [{ kind: 'added', hoverLabel: 'added' }]]]),
     );
   });
 });
