@@ -44,7 +44,7 @@ describe('WorkspaceSet project-layer flyweight', () => {
   test('N open workspaces keep exactly one live GitWatcher', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {
-      plugins: [plugin],
+      contributors: [plugin],
     });
     for (const workspaceRoot of workspaceRoots)
       workspaceSet.open(workspaceRoot);
@@ -90,7 +90,7 @@ describe('WorkspaceSet project-layer flyweight', () => {
   test('closing disposes one workspace and activates a stable neighbour', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {
-      plugins: [plugin],
+      contributors: [plugin],
     });
     for (const workspaceRoot of workspaceRoots)
       workspaceSet.open(workspaceRoot);

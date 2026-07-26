@@ -1,7 +1,7 @@
 import type { KeyEvent, StyledText } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { computed } from 'vue';
-import type { ApplicationPluginContext } from '../app/ApplicationPlugin.interface';
+import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type {
   PaneContent,
   PaneRenderContext,
@@ -14,7 +14,7 @@ import { TreePaneRenderer } from './TreePaneRenderer';
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 class $FileTreePaneContent implements PaneContent {
   constructor(
-    protected readonly application: ApplicationPluginContext,
+    protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => FileTreeWorkspace.Model,
   ) {}
 

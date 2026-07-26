@@ -5,4 +5,5 @@ test('extensions plugin declares and activates its primary dock contribution', (
   const plugin = new ExtensionsPlugin.Class();
   expect(plugin.primaryDockContentIdentifiers).toEqual(['extensions']);
   expect(plugin.activateApplication).toBeFunction();
+  expect('workspaceContributor' in plugin).toBe(false);
 });

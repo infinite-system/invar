@@ -2,7 +2,9 @@ import { expect, test } from 'bun:test';
 import { GitPlugin } from './GitPlugin';
 
 test('plugin publishes workspace and application contribution seams', () => {
-  expect(new GitPlugin.Class().primaryDockContentIdentifiers).toEqual(['git']);
-  expect(GitPlugin.Class.prototype.attachWorkspace).toBeFunction();
-  expect(GitPlugin.Class.prototype.activateApplication).toBeFunction();
+  const plugin = new GitPlugin.Class();
+  expect(plugin.primaryDockContentIdentifiers).toEqual(['git']);
+  expect(plugin.workspaceContributor).toBe(plugin);
+  expect(plugin.attachWorkspace).toBeFunction();
+  expect(plugin.activateApplication).toBeFunction();
 });

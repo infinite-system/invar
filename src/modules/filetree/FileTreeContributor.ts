@@ -1,23 +1,30 @@
 import type {
-  ApplicationPlugin,
-  ApplicationPluginContext,
-} from '../app/ApplicationPlugin.interface';
+  ApplicationContributionContext,
+  ApplicationContributor,
+} from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+import type {
+  WorkspaceContribution,
+  WorkspaceContributor,
+} from '../workspace/WorkspaceContributor.interface';
 import { FileTreePaneContent } from './FileTreePaneContent';
 import { FileTreeWorkspace } from './FileTreeWorkspace';
 
 // invariant: The host canvas is complete without plugins (project.invariants.md)
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: The file tree is a pane content citizen (src/modules/ui/ui.invariants.md)
-class $FileTreePlugin implements ApplicationPlugin {
+class $FileTreeContributor
+  implements ApplicationContributor, WorkspaceContributor
+{
   readonly primaryDockContentIdentifiers = ['files'] as const;
   readonly primaryDockFallbackContentIdentifier = 'files';
+  readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
     FileTreeWorkspace.Model
   >();
-  protected application: ApplicationPluginContext | null = null;
+  protected application: ApplicationContributionContext | null = null;
   protected paneContent: FileTreePaneContent.Model | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
 
@@ -27,7 +34,7 @@ class $FileTreePlugin implements ApplicationPlugin {
     return fileTreeWorkspace;
   }
 
-  activateApplication(context: ApplicationPluginContext): void {
+  activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
     this.paneContent = this.createPaneContent(context);
     context.registerPrimaryDockContent(this.paneContent);
@@ -46,7 +53,7 @@ class $FileTreePlugin implements ApplicationPlugin {
   }
 
   protected createPaneContent(
-    context: ApplicationPluginContext,
+    context: ApplicationContributionContext,
   ): FileTreePaneContent.Model {
     return new FileTreePaneContent.Class(context, () => this.activeWorkspace());
   }
@@ -75,7 +82,7 @@ class $FileTreePlugin implements ApplicationPlugin {
     return this.controllerFor(application.workspaceSet.active);
   }
 
-  protected registerCommands(context: ApplicationPluginContext): void {
+  protected registerCommands(context: ApplicationContributionContext): void {
     const active = () => this.activeWorkspace();
     const show = (): void => {
       context.primaryDockHost.showContent('files');
@@ -171,8 +178,8 @@ class $FileTreePlugin implements ApplicationPlugin {
   }
 }
 
-export namespace FileTreePlugin {
-  export const $Class = $FileTreePlugin;
-  export let Class = $FileTreePlugin;
+export namespace FileTreeContributor {
+  export const $Class = $FileTreeContributor;
+  export let Class = $FileTreeContributor;
   export type Model = InstanceType<typeof Class>;
 }

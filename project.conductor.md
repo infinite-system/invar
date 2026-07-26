@@ -1046,3 +1046,22 @@ two participants, or it is measuring a different question than the one being ask
 Landed as an opt-in instrument rather than a gate test, deliberately: detection is ~2% per round, so a
 short gate test could only fail toward "pass". 8 failures in 400 rounds unfixed, 0 in 400 and 0 in 800
 fixed.
+
+## 2026-07-26 11:30 — the failure that looked like a mystery was the feature working
+The keyboard landing's two gate reds looked like an unexplained focus regression — one smoke sent raw
+Escape and I could not connect the failure to the diff, so I backed the merge out and refused to land.
+Right call, wrong theory: the failing site was three hundred lines later, sending a raw `\t` BYTE that
+my `sendKeys('Tab')` grep could not see. Both failures were smokes pressing Tab while the EDITOR held
+focus — where Tab now indents, which is exactly what the user asked for. The smokes were asserting the
+old world. Two lessons. When sweeping a retired input, grep for the BYTE and the raw string forms, not
+just the API spelling — the same class as the quoted-glyph miss (`'⌕'` vs bare), third instance this
+week. And the builder's own design contained the discriminator my analysis missed: it deliberately KEPT
+Tab-to-leave in the files context, so "Tab from the tree passes, Tab from the editor breaks" was the
+signature of the change working, not of a mystery.
+
+## 2026-07-26 11:30 — fleet flip number three; the rule is the flip, not the fleet
+Builders are codex again (user: 23% left plus a free reset; the Anthropic org limit is hard-blocked and
+a fresh Agent spawn dies the same way). This is the third quota-driven flip in three days. The durable
+rule is not "use codex" or "use opus": it is that WHICH fleet is a quota fact the user owns — act on
+their latest statement, expect it to flip again, and when several builders die simultaneously with the
+same API error, treat it as a quota event and preserve worktrees as WIP commits before anything else.

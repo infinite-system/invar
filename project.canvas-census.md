@@ -47,18 +47,19 @@ recorded as `GUESS` and must not be built.
    `StatusProjectionContributions` and `CommandRegistry.registerAll` as the plugin's own command
    channel. Customers: terminal, agent, file tree, source-control panel, extensions panel.
 
-Plus the plugin lifecycle itself: `WorkspacePlugin.attachWorkspace` →
+Plus the plugin lifecycle itself: `WorkspaceContributor.attachWorkspace` →
 `WorkspaceContribution{opened, settingsAttached?, suspended, resumed, disposed, tickScroll?,
-tabDetail?, worktreeName?, projectName?}` and `ApplicationPlugin.activateApplication(context)`.
+tabDetail?, worktreeName?, projectName?}` and
+`ApplicationContributor.activateApplication(context)`.
 
 Ports 5 and 6, added 2026-07-26 by extraction step 1:
 
 5. **Editor-surface capability answers** — `EditorSurfaceClaims` (workspace). Customers: the
    source-control comparison (answers "not presented"), a source|preview split (answers
    "presented"). Governed by the record *The editor surface answers capabilities, not plugin modes*.
-6. **Editor-column occupant** — `EditorSurfaceContents` (ui) + `ApplicationPluginContext.
-   editorSurfaceContents`. Customers: the source-control comparison today; the Markdown split is
-   step 3's customer.
+6. **Editor-column occupant** — `EditorSurfaceContents` (ui) +
+   `ApplicationContributionContext.editorSurfaceContents`. Customers: the source-control comparison
+   today; the Markdown split is step 3's customer.
 
 **Still no port for:** **default keybindings** (Gap C). Gap D was resolved without a port — see
 below.
@@ -125,14 +126,14 @@ cover it) and leave the six request methods as the host's single provider until 
 ## Domain 2 — FILE TREE — **DONE**
 
 The host has zero file-tree model, construction, command-dispatch, status-projection, or scrollbar
-sites. `FileTreePlugin` owns the application contribution; `FileTreeWorkspace` owns one tree and
+sites. `FileTreeContributor` owns the application contribution; `FileTreeWorkspace` owns one tree and
 its two momentum lanes per workspace; `FileTreePaneContent` owns rendering, pointer/keyboard
 context, and generic scroll projection. A selected leaf calls the host-owned
 `Workspace.openFileInTab` capability.
 
 No new sidebar port was added: `registerPrimaryDockContent` carries the view unchanged. Two narrow
 fields completed existing many-customer contracts:
-`ApplicationPlugin.primaryDockFallbackContentIdentifier` lets the plugin nominate `files` without
+`ApplicationContributor.primaryDockFallbackContentIdentifier` lets the contributor nominate `files` without
 the host naming it, and `PaneContent`'s horizontal-scroll projection lets `ScrollbarSync` drive any
 primary-dock content without an identity branch. With no plugins the primary dock stays hidden and
 the document canvas remains usable through Quick Open.
@@ -339,8 +340,8 @@ Shape (subset of the existing `PaneContent` contract, which is the precedent —
 vocabulary*): `identifier`, `active()`, `create(context)` given a definite-size container plus
 `{renderer, theme, settings, findBar, keybindings, tooltip}`, then `update()`, `tick(dt)`,
 `handleKey(key)`, `findTarget()`, `copySelection()`, `caret()`, `dispose()`, and the capability
-answers below. `ApplicationPluginContext` is built *before* `buildRootView`, so the registry must
-be created early and the surface **created lazily at mount time** with a view-supplied context.
+answers below. `ApplicationContributionContext` is built *before* `buildRootView`, so the registry
+must be created early and the surface **created lazily at mount time** with a view-supplied context.
 
 ### Gap B — capability answers about the visible editor surface — **BUILT 2026-07-26** (`workspace/EditorSurfaceClaims.ts`)
 
@@ -368,11 +369,11 @@ by design, not overlooked — see step 3 below.
 
 `keybindings/KeybindingDefaults.ts:273-293` holds the default bindings for `diff.previousChange`,
 `diff.nextChange`, `markdown.togglePreview`, `markdown.openHoveredReference` in host core;
-`ApplicationPluginContext` has no `keybindings` member at all. Note the *existing* git plugin got
-away without this only because its commands are reached from its pane, not from a default chord.
+`ApplicationContributionContext` has no `keybindings` member at all. Note the *existing* git plugin
+got away without this only because its commands are reached from its pane, not from a default chord.
 Customers: source control (2 diff chords) and markdown (2 chords). → one-field extension:
-expose `keybindings` on `ApplicationPluginContext` (or a `defaultKeybindings` array on
-`ApplicationPlugin`).
+expose `keybindings` on `ApplicationContributionContext` (or a `defaultKeybindings` array on
+`ApplicationContributor`).
 
 ### Gap D — editor-title action cluster — **RESOLVED 2026-07-26 without a new port**
 
@@ -418,10 +419,10 @@ header.
 ## Contract consequences
 
 `project.invariants.md` → **The host canvas is complete without plugins** now distinguishes generic
-document opening from contributed discovery/presentation. Markdown and the file-tree view were
-struck from its host-capability enumeration because both ship as default plugins; the mechanism
-already allowed that composition. Language intelligence remains explicitly host-owned until the
-owner renegotiates it.
+file opening from contributed discovery and presentation. Markdown, language intelligence, and the
+file-tree view were struck from its host-capability enumeration: all three are plugins, while the
+canvas retains their generic contribution and provider ports. Markdown and the file tree ship as
+defaults; language remains in `Workspace` only until its separate extraction task.
 
 `src/modules/diff/diff.invariants.md:218` names `Workspace.showingDiff` in the *Scope* of
 **Diff selection reuses shared drag behavior**; `src/modules/markdown/markdown.invariants.md:227`
@@ -476,18 +477,18 @@ Cheap, and it validates the port with a third customer.
 ### 5. FILE TREE → file-tree plugin — **DONE**
 
 **Fifth: no new port needed.** The view registers through `registerPrimaryDockContent`; the
-fallback identity is a field on `ApplicationPlugin`, and horizontal scrollbar state is an optional
+fallback identity is a field on `ApplicationContributor`, and horizontal scrollbar state is an optional
 projection on `PaneContent`. Host focus is now only `editor | primaryPane`; no host type or default
 names `files`.
 
-### 6. LANGUAGE → language plugin — **BLOCKED, needs the owner**
+### 6. LANGUAGE → provider plugin — **READY, extraction is separate**
 
-**Last, and gated on a contract decision, not on effort.** It is the largest (18 sites, 6 request
-methods, a vendor workaround) and the only one a recorded invariant currently *assigns to the
-host*. Ports 1 and 2 already carry its lifecycle; the six request methods need a semantic-request
-port that has **one** customer today, so building it now would be a guess. Extract the client
-lifecycle behind the existing ports; leave the request methods until either the owner renegotiates
-*The host canvas is complete without plugins* or a second intelligence provider exists.
+**Last because it is the largest (18 sites, 6 request methods, a vendor workaround).** Task 103
+supplied the missing owner decision: language is a provider plugin, not host canvas. Ports 1 and 2
+already carry its lifecycle. The extraction task should move the client lifecycle first, then make
+the six host requests consume the existing `LanguageProvider` boundary, broadening that domain
+contract only for the questions the host already asks. Task 103 names this path but deliberately
+does not perform it.
 
 ## Scoreboard
 
@@ -498,7 +499,7 @@ lifecycle behind the existing ports; leave the request methods until either the 
 | markdown | **0** | **0** | Gap A+B built; Gap D resolved by field addition | **done** 2026-07-26 |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
 | file tree | **0** | **0** | dock-fallback field **built** | **done** 2026-07-26 |
-| language | 61 | 18 | semantic-request port = **GUESS** | **blocked on the owner** — a contract renegotiation |
+| language | 61 | 18 | broaden `LanguageProvider` from existing host questions | **ready** — separate extraction |
 
 Guard collapse: **14 diff mode checks → 1 capability question**; **29 markdown mode checks → the
 second question**. Both done: 43 mode checks became 2 questions.

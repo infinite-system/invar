@@ -11,7 +11,7 @@ import type {
   PaneWheelContext,
 } from '../ui/PaneContent.interface';
 import { SplitterElement } from '../ui/SplitterElement';
-import type { ApplicationPluginContext } from '../app/ApplicationPlugin.interface';
+import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { FileRow } from './GitRows';
 import { GitPaneRenderer, type GitPanelGeometry } from './GitPaneRenderer';
 import type { GitWorkspace } from './GitWorkspace';
@@ -19,7 +19,7 @@ import type { GitWorkspace } from './GitWorkspace';
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 class $GitPaneContent implements PaneContent {
   constructor(
-    protected readonly application: ApplicationPluginContext,
+    protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => GitWorkspace.Model,
   ) {
     this.splitter = new SplitterElement.Class({

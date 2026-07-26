@@ -1,7 +1,7 @@
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import { FileTree } from './FileTree';
 
 // invariant: The file tree costs only what is expanded and visible (filetree.invariants.md)

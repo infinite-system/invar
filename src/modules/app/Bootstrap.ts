@@ -71,7 +71,7 @@ import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend.interface';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
-import type { ApplicationPlugin } from './ApplicationPlugin.interface';
+import type { ApplicationContributor } from './ApplicationContributor.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
@@ -122,7 +122,11 @@ class $Bootstrap {
         new Promise<void>((resolve) => {
           renderer.once('frame', () => resolve());
         }),
-      plugins: options.plugins,
+      contributors: (options.plugins ?? []).flatMap((contributor) =>
+        contributor.workspaceContributor
+          ? [contributor.workspaceContributor]
+          : [],
+      ),
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -221,8 +225,8 @@ class $Bootstrap {
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     );
-    for (const plugin of options.plugins ?? []) {
-      plugin.activateApplication({
+    for (const contributor of options.plugins ?? []) {
+      contributor.activateApplication({
         renderer,
         workspaceSet,
         settings,
@@ -239,7 +243,7 @@ class $Bootstrap {
           primaryDockHost.register(content),
         requestRender: () => renderer.requestRender(),
       });
-      app.onDispose(() => plugin.disposeApplication?.());
+      app.onDispose(() => contributor.disposeApplication?.());
     }
     const primaryDockFallbackContentIdentifier = (options.plugins ?? []).find(
       (plugin) => plugin.primaryDockFallbackContentIdentifier !== undefined,
@@ -2290,7 +2294,7 @@ export namespace Bootstrap {
 export interface BootOptions {
   root?: string;
   onQuit?: () => void;
-  plugins?: readonly ApplicationPlugin[];
+  plugins?: readonly ApplicationContributor[];
 }
 
 export interface BootedApp {

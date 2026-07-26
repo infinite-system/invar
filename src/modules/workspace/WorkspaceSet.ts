@@ -2,7 +2,7 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Workspace } from './Workspace';
 import type { Settings } from '../settings/Settings';
-import type { WorkspacePlugin } from './WorkspacePlugin.interface';
+import type { WorkspaceContributor } from './WorkspaceContributor.interface';
 
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
@@ -125,7 +125,7 @@ class $WorkspaceSet {
       this.options.createWorkspace?.() ??
       new Workspace.Class({
         awaitNextViewPaint: this.options.awaitNextViewPaint,
-        plugins: this.options.plugins,
+        contributors: this.options.contributors,
       })
     );
   }
@@ -140,7 +140,7 @@ export namespace WorkspaceSet {
 export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
   awaitNextViewPaint?: () => Promise<void>;
-  plugins?: readonly WorkspacePlugin[];
+  contributors?: readonly WorkspaceContributor[];
 }
 
 export interface WorkspaceTab {

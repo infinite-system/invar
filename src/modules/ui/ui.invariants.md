@@ -1777,8 +1777,8 @@ scripts/harness/smoke-layout-harness.ts`
 **Scope:** `FileTreePaneContent`, the primary-dock `PanelHost`, `Sidebar`, and the primary dock slot
 resolved by `LayoutModel`. Git and Extensions extraction into `PaneContent` is outside this wave.
 
-**Mechanism:** `FileTreePlugin` constructs and registers `FileTreePaneContent` through the
-application-plugin context. `RootView` asks the host for its active content and calls
+**Mechanism:** `FileTreeContributor` constructs and registers `FileTreePaneContent` through the
+application-contribution context. `RootView` asks the host for its active content and calls
 `PaneContent.render`, while `Sidebar` forwards pointer and wheel events through the optional pane
 methods. The adapter delegates rendering to `TreePaneRenderer` and mutations to the active
 `FileTreeWorkspace`, which invokes the host's generic document-opening capability for a leaf.
@@ -1787,7 +1787,7 @@ methods. The adapter delegates rendering to `TreePaneRenderer` and mutations to 
 momentum, and scrollbar behavior in left and right primary-dock positions; no file-tree renderer
 call in `RootView`.
 
-**Evidence:** `src/modules/filetree/FileTreePlugin.ts`;
+**Evidence:** `src/modules/filetree/FileTreeContributor.ts`;
 `src/modules/filetree/FileTreePaneContent.ts`;
 `src/modules/filetree/FileTreePaneContent.test.ts`; `src/modules/app/Bootstrap.ts`;
 `scripts/harness/smoke-layout-harness.ts`.

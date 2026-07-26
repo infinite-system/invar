@@ -3,7 +3,7 @@ import { shallowRef } from 'vue';
 import { Files } from '../system/Files';
 import type { Settings } from '../settings/Settings';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 
 // Markdown's per-workspace contribution: which tabs are showing the source | preview split, and the

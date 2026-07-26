@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 /** Provider-neutral semantic surface consumed by editor features. */
 export interface LanguageProvider {
   completion(
