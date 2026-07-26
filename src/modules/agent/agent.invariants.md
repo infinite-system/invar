@@ -197,11 +197,12 @@ token, and hard-break an unbreakable token by whole graphemes only as the overfl
 columns at its right edge in addition to its two-column prompt gutter. Collapsed one-line tool and
 permission summaries remain clipped chrome rather than wrapped prose.
 
-**Mechanism:** `AgentWordWrap` consumes `TextSegmentation.words` and grapheme clusters while measuring
-every candidate with the existing `WrapText` display-cell authority. `AgentTranscriptProjection` and
-`AgentComposer` both call that seam; the composer retains its source grapheme ranges for caret,
-selection, and editing geometry while its protected static right-padding getter reduces the wrap
-budget by two columns.
+**Mechanism:** `AgentWordWrap` consumes `TextSegmentation` word and grapheme segments and asks
+`WrapBreakOpportunity` for prose-profile whitespace classification and hyphen boundaries while
+measuring every candidate with the existing `WrapText` display-cell authority.
+`AgentTranscriptProjection` and `AgentComposer` both call that seam; the composer retains its
+source grapheme ranges for caret, selection, and editing geometry while its protected static
+right-padding getter reduces the wrap budget by two columns.
 
 **Generates:** Whole ordinary words on rendered rows; hyphen-first fallback for over-width compounds;
 grapheme-safe hard fallback for CJK, emoji, and unbreakable tokens; matching transcript and composer

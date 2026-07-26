@@ -1,5 +1,6 @@
-import { Static } from "ivue/extras";
-import { EditorCoordinates } from "./EditorCoordinates";
+import { Static } from 'ivue/extras';
+import { EditorCoordinates } from './EditorCoordinates';
+import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 
 // Word-wrap mapping layer — a PURE logical↔visual projection over the coordinate model.
 // When word wrap is ON, one logical line renders as one or more VISUAL rows; this module is the
@@ -18,6 +19,7 @@ import { EditorCoordinates } from "./EditorCoordinates";
 //
 // invariant: Word wrap is a pure view mapping (editor.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
+// invariant: Wrapped surfaces share one break generator (project.invariants.md)
 class $EditorWrap {
   protected static get tabWidth(): number {
     return 4;
@@ -29,7 +31,7 @@ class $EditorWrap {
 
   protected static get $wrapMemo(): Map<string, WrapSegment[]> {
     const wrapMemo = new Map<string, WrapSegment[]>();
-    Object.defineProperty(this, "$wrapMemo", {
+    Object.defineProperty(this, '$wrapMemo', {
       configurable: true,
       value: wrapMemo,
     });
@@ -44,7 +46,7 @@ class $EditorWrap {
       WrappableDocument,
       DocumentWrapIndex
     >();
-    Object.defineProperty(this, "$wrapIndexByDocument", {
+    Object.defineProperty(this, '$wrapIndexByDocument', {
       configurable: true,
       value: wrapIndexByDocument,
     });
@@ -55,17 +57,13 @@ class $EditorWrap {
     return EditorCoordinates.Class;
   }
 
-  protected static isBreakableAfter(cluster: string): boolean {
-    return cluster === " " || cluster === "\t";
-  }
-
   /**
    * Wrap one logical line at `wrapWidth` display columns into segment descriptors. Breaks prefer
-   * word boundaries (AFTER a whitespace run, so trailing spaces stay on the earlier row); an
-   * unbroken run longer than the width hard-breaks mid-word. Grapheme-safe by construction — the
-   * walk is over grapheme clusters, so a cluster (emoji, CJK, base+combining) is never split. A
-   * single cluster wider than the width still gets a row of its own (it overflows; it cannot split).
-   * An empty line yields one empty segment.
+   * the shared code profile's whitespace, separator, bracket, camelCase, and operator boundaries;
+   * an unbroken run longer than the width hard-breaks mid-token. Grapheme-safe by construction —
+   * the walk is over grapheme clusters, so a cluster (emoji, CJK, base+combining) is never split.
+   * A single cluster wider than the width still gets a row of its own (it overflows; it cannot
+   * split). An empty line yields one empty segment.
    */
   static wrapLine(lineText: string, wrapWidth: number): WrapSegment[] {
     const width = Math.max(1, Math.floor(wrapWidth));
@@ -86,10 +84,10 @@ class $EditorWrap {
       const columns: number[] = new Array(clusters.length + 1);
       columns[0] = 0;
       for (let index = 0; index < clusters.length; index++) {
-        const cluster = clusters[index] ?? "";
+        const cluster = clusters[index] ?? '';
         const previousColumn = columns[index] ?? 0;
         const clusterWidth =
-          cluster === "\t"
+          cluster === '\t'
             ? this.tabWidth - (previousColumn % this.tabWidth)
             : this.EditorCoordinates.graphemeWidth(cluster);
         columns[index + 1] = previousColumn + clusterWidth;
@@ -115,14 +113,14 @@ class $EditorWrap {
           });
           break;
         }
-        // Prefer a word break: the LAST position in (segmentStart, fitEnd] right after whitespace.
-        let breakAt = fitEnd;
-        for (let candidate = fitEnd; candidate > segmentStart; candidate--) {
-          if (this.isBreakableAfter(clusters[candidate - 1] ?? "")) {
-            breakAt = candidate;
-            break;
-          }
-        }
+        const preferredBreak =
+          WrapBreakOpportunity.Class.previousBreakOpportunity(
+            clusters,
+            segmentStart,
+            fitEnd,
+            'code',
+          );
+        const breakAt = preferredBreak > segmentStart ? preferredBreak : fitEnd;
         segments.push({
           startGrapheme: segmentStart,
           endGrapheme: breakAt,

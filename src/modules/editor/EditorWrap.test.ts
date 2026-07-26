@@ -1,4 +1,4 @@
-// Word-wrap mapping layer: the pure logical↔visual projection (editor.wrap.ts) plus the editor's
+// Word-wrap mapping layer: the pure EditorWrap logical↔visual projection plus the editor's
 // wrap MODE behavior. Covers the editor invariant "Word wrap is a pure view mapping".
 import { test, expect } from 'bun:test';
 import {
@@ -20,35 +20,57 @@ import { TextDocument } from './TextDocument';
 import { Editor } from './Editor';
 
 function documentFromLines(lines: string[]): WrappableDocument {
-  return { lineCount: lines.length, line: (index: number) => lines[index] ?? '' };
+  return {
+    lineCount: lines.length,
+    line: (index: number) => lines[index] ?? '',
+  };
 }
 
 /** Structural soundness: segments partition [0, graphemeCount); columns agree with displayColumn. */
-function assertSegmentsSound(lineText: string, width: number, segments: WrapSegment[]): void {
+function assertSegmentsSound(
+  lineText: string,
+  width: number,
+  segments: WrapSegment[],
+): void {
   expect(segments.length).toBeGreaterThan(0);
   expect(segments[0]!.startGrapheme).toBe(0);
-  expect(segments[segments.length - 1]!.endGrapheme).toBe(EditorCoordinates.Class.graphemeCount(lineText));
+  expect(segments[segments.length - 1]!.endGrapheme).toBe(
+    EditorCoordinates.Class.graphemeCount(lineText),
+  );
   for (let index = 0; index < segments.length; index++) {
     const segment = segments[index]!;
-    if (index > 0) expect(segment.startGrapheme).toBe(segments[index - 1]!.endGrapheme);
-    expect(segment.startDisplayColumn).toBe(EditorCoordinates.Class.displayColumn(lineText, segment.startGrapheme));
+    if (index > 0)
+      expect(segment.startGrapheme).toBe(segments[index - 1]!.endGrapheme);
+    expect(segment.startDisplayColumn).toBe(
+      EditorCoordinates.Class.displayColumn(lineText, segment.startGrapheme),
+    );
     // The slice at grapheme boundaries never splits a cluster (no lone surrogates).
     const sliced = lineText.slice(
       EditorCoordinates.Class.graphemeToU16(lineText, segment.startGrapheme),
       EditorCoordinates.Class.graphemeToU16(lineText, segment.endGrapheme),
     );
-    expect(sliced).toBe(EditorCoordinates.Class.graphemes(lineText).slice(segment.startGrapheme, segment.endGrapheme).join(''));
+    expect(sliced).toBe(
+      EditorCoordinates.Class.graphemes(lineText)
+        .slice(segment.startGrapheme, segment.endGrapheme)
+        .join(''),
+    );
   }
 }
 
 test('wrapLine: empty line yields one empty segment', () => {
-  expect(wrapLine('', 10)).toEqual([{ startGrapheme: 0, endGrapheme: 0, startDisplayColumn: 0 }]);
+  expect(wrapLine('', 10)).toEqual([
+    { startGrapheme: 0, endGrapheme: 0, startDisplayColumn: 0 },
+  ]);
 });
 
 test('wrapLine: a line within the width is a single segment', () => {
   const segments = wrapLine('hello world', 20);
   expect(segments).toHaveLength(1);
-  expect(segments[0]).toEqual({ startGrapheme: 0, endGrapheme: 11, startDisplayColumn: 0 });
+  expect(segments[0]).toEqual({
+    startGrapheme: 0,
+    endGrapheme: 11,
+    startDisplayColumn: 0,
+  });
 });
 
 test('wrapLine: exact-width line stays a single row; one more wraps', () => {
@@ -70,7 +92,9 @@ test('wrapLine: an unbroken 500-char run hard-breaks at exactly the width', () =
   const segments = wrapLine(run, 80);
   expect(segments).toHaveLength(Math.ceil(500 / 80)); // 7
   for (let index = 0; index < segments.length - 1; index++) {
-    expect(segments[index]!.endGrapheme - segments[index]!.startGrapheme).toBe(80);
+    expect(segments[index]!.endGrapheme - segments[index]!.startGrapheme).toBe(
+      80,
+    );
   }
   assertSegmentsSound(run, 80, segments);
 });
@@ -86,12 +110,49 @@ test('wrapLine: word breaks preferred over hard breaks in mixed text', () => {
   assertSegmentsSound(text, 9, segments);
 });
 
+test('wrapLine: code profile preserves readable separators and token parts', () => {
+  const examples = [
+    {
+      text: 'repositoryalpha/repositorybravo.repositorycharlie',
+      width: 20,
+      expectedRows: [
+        'repositoryalpha/',
+        'repositorybravo.',
+        'repositorycharlie',
+      ],
+    },
+    {
+      text: 'calculateIntegratedTerminalWorkspace',
+      width: 18,
+      expectedRows: ['calculate', 'IntegratedTerminal', 'Workspace'],
+    },
+    {
+      text: 'alphaoperand===bravooperand&&charlieoperand',
+      width: 18,
+      expectedRows: ['alphaoperand===', 'bravooperand&&', 'charlieoperand'],
+    },
+    {
+      text: 'call(alpha,beta)',
+      width: 8,
+      expectedRows: ['call(', 'alpha,', 'beta)'],
+    },
+  ] as const;
+  for (const example of examples) {
+    const graphemes = EditorCoordinates.Class.graphemes(example.text);
+    const observedRows = wrapLine(example.text, example.width).map((segment) =>
+      graphemes.slice(segment.startGrapheme, segment.endGrapheme).join(''),
+    );
+    expect(observedRows).toEqual([...example.expectedRows]);
+  }
+});
+
 test('wrapLine: CJK wide glyphs never split and never overflow the width', () => {
   const text = '中文字符测试中文字符测试'; // 12 clusters, 2 columns each
   const segments = wrapLine(text, 7); // 3 glyphs (6 cols) fit; a 4th (8) would overflow
   for (const segment of segments) {
     const segmentWidth =
-      EditorCoordinates.Class.displayColumn(text, segment.endGrapheme) - segment.startDisplayColumn;
+      EditorCoordinates.Class.displayColumn(text, segment.endGrapheme) -
+      segment.startDisplayColumn;
     expect(segmentWidth).toBeLessThanOrEqual(7);
   }
   expect(segments[0]!.endGrapheme).toBe(3);
@@ -122,7 +183,9 @@ test('wrapLine: a single cluster wider than the width gets its own row (no split
   const segments = wrapLine('中中中', 1); // each glyph is 2 columns wide
   expect(segments).toHaveLength(3);
   for (let index = 0; index < 3; index++) {
-    expect(segments[index]!.endGrapheme - segments[index]!.startGrapheme).toBe(1);
+    expect(segments[index]!.endGrapheme - segments[index]!.startGrapheme).toBe(
+      1,
+    );
   }
 });
 
@@ -132,7 +195,9 @@ test('wrapLine: tabs expand on the LOGICAL line column axis', () => {
   assertSegmentsSound(text, 6, segments);
   // Tab (cols 0-3) + "ab" fills width 6; break is tab-aware, not char-count based.
   expect(segments[0]!.startDisplayColumn).toBe(0);
-  expect(segments[1]!.startDisplayColumn).toBe(EditorCoordinates.Class.displayColumn(text, segments[1]!.startGrapheme));
+  expect(segments[1]!.startDisplayColumn).toBe(
+    EditorCoordinates.Class.displayColumn(text, segments[1]!.startGrapheme),
+  );
 });
 
 test('wrapLine: memoized — repeated calls return the identical array', () => {
@@ -173,7 +238,7 @@ test('visualRowsForWindow: a long line contributes multiple rows; the window is 
   expect(rows[2]!.firstOfLine).toBe(false);
 });
 
-test('visualRowsForWindow: starts at scrollTop\'s FIRST visual row and walks only the window', () => {
+test("visualRowsForWindow: starts at scrollTop's FIRST visual row and walks only the window", () => {
   const documentWindow = documentFromLines(['x'.repeat(100), 'a', 'b', 'c']);
   const rows = visualRowsForWindow(documentWindow, 1, 10, 3);
   expect(rows.map((row) => row.lineIndex)).toEqual([1, 2, 3]);
@@ -189,7 +254,13 @@ test('visualRowsForWindow: clamps a negative scrollTop and survives an empty doc
 test('moveByVisualRows: down within one wrapped line keeps the row-relative goal', () => {
   const documentWindow = documentFromLines(['a'.repeat(30)]);
   // Start at col 3 (row 0, visual col 3); one row down lands at visual col 3 of row 1 = col 13.
-  const landing = moveByVisualRows(documentWindow, { line: 0, col: 3 }, 3, 1, 10);
+  const landing = moveByVisualRows(
+    documentWindow,
+    { line: 0, col: 3 },
+    3,
+    1,
+    10,
+  );
   expect(landing).toEqual({ line: 0, col: 13 });
 });
 
@@ -205,42 +276,74 @@ test('moveByVisualRows: crosses logical lines through wrapped rows in BOTH direc
 
 test('moveByVisualRows: a long goal clamps INSIDE a non-final row (stays visually one row per step)', () => {
   const documentWindow = documentFromLines(['a'.repeat(30)]);
-  const landing = moveByVisualRows(documentWindow, { line: 0, col: 0 }, 999, 1, 10);
+  const landing = moveByVisualRows(
+    documentWindow,
+    { line: 0, col: 0 },
+    999,
+    1,
+    10,
+  );
   // Row 1 is [10,20); col 20 would render on row 2, so the landing clamps to 19.
   expect(landing).toEqual({ line: 0, col: 19 });
-  const lastRowLanding = moveByVisualRows(documentWindow, { line: 0, col: 0 }, 999, 2, 10);
+  const lastRowLanding = moveByVisualRows(
+    documentWindow,
+    { line: 0, col: 0 },
+    999,
+    2,
+    10,
+  );
   expect(lastRowLanding).toEqual({ line: 0, col: 30 }); // final row may hold the line end
 });
 
-test('moveByVisualRows: clamps at the document\'s first and last visual rows', () => {
+test("moveByVisualRows: clamps at the document's first and last visual rows", () => {
   const documentWindow = documentFromLines(['aaa', 'b'.repeat(15)]);
-  expect(moveByVisualRows(documentWindow, { line: 0, col: 1 }, 1, -5, 10)).toEqual({ line: 0, col: 1 });
-  const bottom = moveByVisualRows(documentWindow, { line: 1, col: 12 }, 2, 5, 10);
+  expect(
+    moveByVisualRows(documentWindow, { line: 0, col: 1 }, 1, -5, 10),
+  ).toEqual({ line: 0, col: 1 });
+  const bottom = moveByVisualRows(
+    documentWindow,
+    { line: 1, col: 12 },
+    2,
+    5,
+    10,
+  );
   expect(bottom.line).toBe(1);
   expect(bottom.col).toBeGreaterThanOrEqual(10); // stays on the last visual row
 });
 
 test('moveByVisualRows: wide-glyph landing is grapheme-aligned (never half a glyph)', () => {
   const documentWindow = documentFromLines(['abcdefghij', '中中中中中']);
-  const landing = moveByVisualRows(documentWindow, { line: 0, col: 5 }, 5, 1, 10);
+  const landing = moveByVisualRows(
+    documentWindow,
+    { line: 0, col: 5 },
+    5,
+    1,
+    10,
+  );
   expect(landing.line).toBe(1);
   // Goal column 5 falls INSIDE the third wide glyph (cols 4-5) -> grapheme index 2.
   expect(landing.col).toBe(2);
 });
 
 test('scrollTopToRevealCursor: above the window snaps to the cursor line', () => {
-  const documentWindow = documentFromLines(Array.from({ length: 50 }, () => 'line'));
+  const documentWindow = documentFromLines(
+    Array.from({ length: 50 }, () => 'line'),
+  );
   expect(scrollTopToRevealCursor(documentWindow, 20, 5, 0, 10, 10)).toBe(5);
 });
 
 test('scrollTopToRevealCursor: keeps the top when the cursor row is already visible', () => {
-  const documentWindow = documentFromLines(Array.from({ length: 50 }, () => 'line'));
+  const documentWindow = documentFromLines(
+    Array.from({ length: 50 }, () => 'line'),
+  );
   expect(scrollTopToRevealCursor(documentWindow, 3, 7, 0, 10, 10)).toBe(3);
 });
 
 test('scrollTopToRevealCursor: tall wrapped lines advance the top far enough (visual-row aware)', () => {
   // Lines 0..4 each wrap into 3 visual rows at width 10; height 5.
-  const documentWindow = documentFromLines(Array.from({ length: 5 }, () => 'z'.repeat(25)));
+  const documentWindow = documentFromLines(
+    Array.from({ length: 5 }, () => 'z'.repeat(25)),
+  );
   // Cursor on line 2's LAST row: rows(0..2) = 3+3+3 = 9 > 5 -> top must advance past line 1.
   const top = scrollTopToRevealCursor(documentWindow, 0, 2, 2, 10, 5);
   expect(top).toBe(2); // rows(line 2 through its 3rd row) = 3 <= 5, and top=1 would need 6
@@ -276,7 +379,9 @@ test('property: segments partition, respect the width, and never split clusters'
       assertSegmentsSound(sample, width, segments);
       for (const segment of segments) {
         const clusterCount = segment.endGrapheme - segment.startGrapheme;
-        const segmentWidth = EditorCoordinates.Class.displayColumn(sample, segment.endGrapheme) - segment.startDisplayColumn;
+        const segmentWidth =
+          EditorCoordinates.Class.displayColumn(sample, segment.endGrapheme) -
+          segment.startDisplayColumn;
         // Width respected unless the segment is a single oversized cluster (which cannot split).
         if (clusterCount > 1) expect(segmentWidth).toBeLessThanOrEqual(width);
       }
@@ -286,7 +391,11 @@ test('property: segments partition, respect the width, and never split clusters'
 
 // --- editor MODE behavior (the contract's impossibles) --------------------------------------
 
-function editorWithText(text: string, width: number, height: number): Editor.Instance {
+function editorWithText(
+  text: string,
+  width: number,
+  height: number,
+): Editor.Instance {
   const editor = new Editor.Class();
   editor.document.loadFromText(text, '/tmp/wrap-fixture.txt');
   editor.hasDocument.value = true;

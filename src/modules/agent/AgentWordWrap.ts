@@ -1,25 +1,29 @@
 import { Static } from 'ivue/extras';
+import { WrapBreakOpportunity } from '../editor/WrapBreakOpportunity';
 import { TextSegmentation } from '../system/TextSegmentation';
-import { WrapText, type WrapSegment, type VisualPosition } from '../ui/WrapText';
+import {
+  WrapText,
+  type WrapSegment,
+  type VisualPosition,
+} from '../ui/WrapText';
 
 // invariant: Agent text wraps at word boundaries (src/modules/agent/agent.invariants.md)
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
+// invariant: Wrapped surfaces share one break generator (project.invariants.md)
 class $AgentWordWrap {
-  protected static get hyphen(): string {
-    return '-';
-  }
-
   protected static cellWidthOf(grapheme: string): number {
-    return grapheme === '\t'
-      ? 1
-      : WrapText.Class.displayWidth(grapheme);
+    return grapheme === '\t' ? 1 : WrapText.Class.displayWidth(grapheme);
   }
 
   protected static tokenRuns(text: string): AgentWordWrapToken[] {
     const tokens: AgentWordWrapToken[] = [];
     for (const wordSegment of TextSegmentation.Class.words(text)) {
       const isWhitespace =
-        wordSegment.text.length > 0 && wordSegment.text.trim().length === 0;
+        WrapBreakOpportunity.Class.breakKindBetween(
+          wordSegment.text,
+          undefined,
+          'prose',
+        ) === 'whitespace';
       const previousToken = tokens[tokens.length - 1];
       if (previousToken?.isWhitespace === isWhitespace) {
         previousToken.text += wordSegment.text;
@@ -30,10 +34,7 @@ class $AgentWordWrap {
     return tokens;
   }
 
-  protected static wordChunks(
-    word: string,
-    width: number,
-  ): string[] {
+  protected static wordChunks(word: string, width: number): string[] {
     const graphemes = TextSegmentation.Class.graphemes(word);
     const wordWidth = WrapText.Class.displayWidth(word);
     if (wordWidth <= width) return [word];
@@ -43,11 +44,13 @@ class $AgentWordWrap {
     while (graphemeStart < graphemes.length) {
       let graphemeEnd = graphemeStart;
       let displayWidth = 0;
-      let lastHyphenEnd = -1;
       while (graphemeEnd < graphemes.length) {
         const grapheme = graphemes[graphemeEnd]!;
         const graphemeWidth = this.cellWidthOf(grapheme);
-        if (graphemeEnd > graphemeStart && displayWidth + graphemeWidth > width) {
+        if (
+          graphemeEnd > graphemeStart &&
+          displayWidth + graphemeWidth > width
+        ) {
           break;
         }
         if (graphemeEnd === graphemeStart && graphemeWidth > width) {
@@ -56,14 +59,19 @@ class $AgentWordWrap {
         }
         displayWidth += graphemeWidth;
         graphemeEnd += 1;
-        if (grapheme === this.hyphen) lastHyphenEnd = graphemeEnd;
       }
 
-      if (
-        graphemeEnd < graphemes.length
-        && lastHyphenEnd > graphemeStart
-      ) {
-        graphemeEnd = lastHyphenEnd;
+      if (graphemeEnd < graphemes.length) {
+        const preferredBreak =
+          WrapBreakOpportunity.Class.previousBreakOpportunity(
+            graphemes,
+            graphemeStart,
+            graphemeEnd,
+            'prose',
+          );
+        if (preferredBreak > graphemeStart) {
+          graphemeEnd = preferredBreak;
+        }
       }
       chunks.push(graphemes.slice(graphemeStart, graphemeEnd).join(''));
       graphemeStart = graphemeEnd;
@@ -78,15 +86,17 @@ class $AgentWordWrap {
     width: number,
   ): AgentWordWrapSegment[] {
     if (logicalLine.length === 0) {
-      return [{
-        text: '',
-        sourceText: '',
-        logicalLine: logicalLineIndex,
-        isLogicalLineStart: true,
-        graphemeStart: graphemeOffset,
-        graphemeCount: 0,
-        displayWidth: 0,
-      }];
+      return [
+        {
+          text: '',
+          sourceText: '',
+          logicalLine: logicalLineIndex,
+          isLogicalLineStart: true,
+          graphemeStart: graphemeOffset,
+          graphemeCount: 0,
+          displayWidth: 0,
+        },
+      ];
     }
 
     const segments: AgentWordWrapSegment[] = [];
@@ -107,7 +117,8 @@ class $AgentWordWrap {
         graphemeCount: TextSegmentation.Class.graphemes(rowSourceText).length,
         displayWidth: rowDisplayWidth,
       });
-      rowGraphemeStart += TextSegmentation.Class.graphemes(rowSourceText).length;
+      rowGraphemeStart +=
+        TextSegmentation.Class.graphemes(rowSourceText).length;
       rowText = '';
       rowSourceText = '';
       rowDisplayWidth = 0;
@@ -123,7 +134,10 @@ class $AgentWordWrap {
     const appendTrailingWhitespace = (whitespace: string): void => {
       for (const grapheme of TextSegmentation.Class.graphemes(whitespace)) {
         const graphemeWidth = this.cellWidthOf(grapheme);
-        if (rowSourceText.length > 0 && rowDisplayWidth + graphemeWidth > width) {
+        if (
+          rowSourceText.length > 0 &&
+          rowDisplayWidth + graphemeWidth > width
+        ) {
           flushRow();
         }
         appendVisible(grapheme);
@@ -137,13 +151,12 @@ class $AgentWordWrap {
       }
 
       const tokenWidth = WrapText.Class.displayWidth(token.text);
-      const pendingWhitespaceWidth = WrapText.Class.displayWidth(
-        pendingWhitespace,
-      );
+      const pendingWhitespaceWidth =
+        WrapText.Class.displayWidth(pendingWhitespace);
       if (
-        rowSourceText.length > 0
-        && tokenWidth <= width
-        && rowDisplayWidth + pendingWhitespaceWidth + tokenWidth <= width
+        rowSourceText.length > 0 &&
+        tokenWidth <= width &&
+        rowDisplayWidth + pendingWhitespaceWidth + tokenWidth <= width
       ) {
         appendVisible(pendingWhitespace);
         pendingWhitespace = '';
@@ -164,11 +177,7 @@ class $AgentWordWrap {
       }
 
       const chunks = this.wordChunks(token.text, width);
-      for (
-        let chunkIndex = 0;
-        chunkIndex < chunks.length;
-        chunkIndex += 1
-      ) {
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
         appendVisible(chunks[chunkIndex]!);
         if (chunkIndex < chunks.length - 1) flushRow();
       }

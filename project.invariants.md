@@ -487,6 +487,47 @@ consumers all exercise its core, differing only in peripheral flags.
 
 **Last refined:** 2026-07-24
 
+### Wrapped surfaces share one break generator
+
+**Invariant:** If an Invar surface searches for semantic soft-wrap positions, then it obtains
+every legal break from `WrapBreakOpportunity` through an explicit prose or code profile.
+
+**Scope:** Editor word-wrap mode, agent transcript bodies, the agent composer, and every future
+surface that prefers semantic break opportunities before its width fallback. Width-only
+grapheme wrapping in generic geometry or terminal emulation and clipped one-line chrome are
+outside this rule.
+
+**Mechanism:** `WrapBreakOpportunity.previousBreakOpportunity` scans backward over an
+already-segmented grapheme array and returns the latest fitting boundary. The prose profile
+admits whitespace and post-hyphen boundaries. The code profile extends that set with
+post-separator, post-opening-bracket, pre-closing-bracket, lowercase-to-uppercase, and
+around-operator-run boundaries. `EditorWrap` and `AgentWordWrap` supply the profile; neither
+defines its own boundary character set.
+
+**Generates:** One legal-break vocabulary across wrapped surfaces; prose that keeps ordinary
+words whole; code that prefers readable identifier, path, bracket, punctuation, and operator seams;
+profile differences without duplicated scanners.
+
+**Rejected alternatives:** A wrapper-specific boundary predicate — the agent and editor drift as
+soon as either surface adds a new break rule.
+
+**Evidence:** `src/modules/editor/WrapBreakOpportunity.ts`;
+`src/modules/editor/WrapBreakOpportunity.test.ts`; consumers in
+`src/modules/editor/EditorWrap.ts` and `src/modules/agent/AgentWordWrap.ts`;
+`scripts/harness/smoke-wrap-harness.ts`.
+
+**Impossible if true:** The editor and agent owning independent lists of legal break characters; a
+semantic wrapper adding a boundary rule without expressing it as a shared profile; prose and code
+using different scanners for the same boundary profile.
+
+**Verification:** `bun test src/modules/editor/WrapBreakOpportunity.test.ts
+src/modules/editor/EditorWrap.test.ts src/modules/agent/AgentWordWrap.test.ts && bun
+scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-25
+
 ### Editable text fields share one input model
 
 **Invariant:** If Invar owns an editable one-logical-line text field, then its text, grapheme caret,

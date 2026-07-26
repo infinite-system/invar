@@ -25,6 +25,13 @@ describe('AgentWordWrap', () => {
     ]);
   });
 
+  test('keeps code-only separators out of the prose profile', () => {
+    expect(AgentWordWrap.Class.wrap('alpha_beta', 7)).toEqual([
+      'alpha_b',
+      'eta',
+    ]);
+  });
+
   test('keeps CJK emoji and combining graphemes whole while measuring display cells', () => {
     const rows = AgentWordWrap.Class.wrap('界界界 😀😀 e\u0301e\u0301', 4);
     expect(rows).toEqual(['界界', '界', '😀😀', 'e\u0301e\u0301']);

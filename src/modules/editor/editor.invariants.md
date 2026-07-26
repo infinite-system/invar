@@ -207,33 +207,35 @@ than the editor for the same text and cursor position.
 ### Word wrap is a pure view mapping
 
 **Invariant:** If word wrap is on, then rendering, the caret, selection, mouse hit-testing, and
-vertical movement all route through ONE logical↔visual mapping layer (`editor.wrap.ts`), and the
+vertical movement all route through ONE logical↔visual mapping layer (`EditorWrap.ts`), and the
 document model is untouched — wrap segments are descriptors over each line's grapheme axis, never
 document content.
 
 **Scope:** `Editor` (the `wordWrap` mode ref, `placeCursor`, `moveVertical`, the wrapped reveal),
-`editor.wrap.ts` (the mapping layer), and `ui/RootView`'s wrap-mode branches (render, caret,
+`EditorWrap.ts` (the mapping layer), and `ui/RootView`'s wrap-mode branches (render, caret,
 `applySelection`, `documentPositionAtCell`). Wrap OFF is out of scope — that mode keeps the
 clip+h-scroll behavior governed by *One file line is one visual row when word wrap is off*
 (ui.invariants.md).
 
 **Mechanism:** `EditorWrap` (Static capability) wraps a line into `{startGrapheme, endGrapheme,
-startDisplayColumn}` segments — word breaks preferred, grapheme-safe (a cluster never splits),
-tab/wide-aware via the coordinate model, memoized by width+content (content-keyed =
-revision-proof). `visualRowsForWindow` is the O(window) flyweight walk (scrollTop stays a LOGICAL
-line index; the window starts at that line's first visual row). Every consumer converts through
-this one layer: the goal column becomes row-relative, `moveVertical` steps visual rows via
-`moveByVisualRows`, the reveal via `scrollTopToRevealCursor`, and the view maps cells with
-`wrapVisualPosition`. Horizontal scroll is inert (`scrollLeft` forced 0 on enable; wheel/edge
-X-scroll guarded off). Stands on *A cursor position resolves to three distinct coordinates*.
+startDisplayColumn}` segments and asks `WrapBreakOpportunity` for code-profile boundaries.
+Segments remain grapheme-safe (a cluster never splits), tab/wide-aware via the coordinate model,
+and memoized by width+content (content-keyed = revision-proof). `visualRowsForWindow` is the
+O(window) flyweight walk (scrollTop stays a LOGICAL line index; the window starts at that line's
+first visual row). Every consumer converts through this one layer: the goal column becomes
+row-relative, `moveVertical` steps visual rows via `moveByVisualRows`, the reveal via
+`scrollTopToRevealCursor`, and the view maps cells with `wrapVisualPosition`. Horizontal scroll is
+inert (`scrollLeft` forced 0 on enable; wheel/edge X-scroll guarded off). Stands on *A cursor
+position resolves to three distinct coordinates*.
 
 **Generates:** the wrap render branch (continuation rows with blank gutters); a caret cell correct
 against tmux's own cursor in wrap mode; wrapped-row selection mapping; visual-row vertical
 movement and paging; the wrap test matrix (`EditorWrap.test.ts`).
 
-**Evidence:** `editor.wrap.ts` computes only descriptors (no document writes — the module imports
-no mutation surface); `EditorWrap.test.ts` asserts toggling wrap twice leaves `revision`, `text`, and
-`dirty` untouched; `RootView` wrap branches all read through `wrapRowsWindow` +
+**Evidence:** `EditorWrap.ts` computes only descriptors (no document writes — the module imports
+no mutation surface); `WrapBreakOpportunity.test.ts` and `EditorWrap.test.ts` cover profiled
+boundaries and segment geometry; `EditorWrap.test.ts` asserts toggling wrap twice leaves `revision`,
+`text`, and `dirty` untouched; `RootView` wrap branches all read through `wrapRowsWindow` +
 `wrapVisualPosition` (one mapping, no second wrap computation path).
 
 **Impossible if true:** a document mutation caused by toggling wrap; a caret cell that disagrees
@@ -245,11 +247,12 @@ slice, while the mapping expands tabs on the logical line's continuous column ax
 crosses a wrap boundary can render a different width than the mapping assumes (same class of edge
 as the wrap-off column-virtualization slice; revisit if human QA hits it).
 
-**Verification:** `EditorWrap.test.ts` (segment partition/width/cluster-safety properties, CJK/emoji/tab
-boundaries, exact-width lines, 500-char unbroken runs, O(height) reveal walk, mode toggling purity)
-+ the live tmux pass: wrapped long line occupies multiple rows with the gutter number only on the
-first, caret cell == tmux `#{cursor_x},#{cursor_y}` mid-wrapped-line, toggle OFF restores the
-wrap-off smoke (`smoke-editor.sh` ALL-PASS).
+**Verification:** `bun test src/modules/editor/WrapBreakOpportunity.test.ts
+src/modules/editor/EditorWrap.test.ts` (profile boundaries, segment partition/width/cluster-safety,
+CJK/emoji/tab boundaries, exact-width lines, 500-char unbroken runs, O(height) reveal walk, mode
+toggling purity) plus `bun scripts/harness/smoke-wrap-harness.ts`: every fixture line exceeds the
+observed viewport, readable tokens stay whole, the final visual row reaches the logical end, the
+caret cell matches the native cursor, and toggling wrap off restores consecutive logical rows.
 
 **Status:** provisional
 
