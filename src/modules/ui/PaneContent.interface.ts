@@ -27,6 +27,12 @@ export interface PaneContent {
   readonly title: string;
   /** Optional switcher glyph. */
   readonly icon?: string;
+  /** Optional command identifier taught by an activity-bar affordance. */
+  readonly activityAction?: string;
+  /** Optional compact activity badge. Zero hides it. */
+  readonly activityBadge?: number;
+  /** Optional keybinding context owned by this content while its host has focus. */
+  readonly keybindingContext?: string;
   /** A ref bumped whenever the content's projection changes (observed by the frame effect so an
    *  async change repaints without a keypress). */
   readonly renderRevision: Ref<number>;
@@ -58,7 +64,11 @@ export interface PaneContent {
   onPointerOut?(): void;
   /** Optional: a pointer-down inside this cell at content-local (column, row) — for click hit-testing
    *  (e.g. toggling a collapsed row). True if it was consumed (a repaint is requested for it). */
-  onPointerDown?(column: number, row: number): boolean;
+  onPointerDown?(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean;
   /** Optional continuation/end of a pointer drag begun inside this content. */
   onPointerDrag?(column: number, row: number): boolean;
   onPointerUp?(column: number, row: number): boolean;
@@ -94,6 +104,17 @@ export interface PaneWheelContext {
   /** Content-local cell under the wheel event. */
   readonly column: number;
   readonly row: number;
+  readonly modifiers: {
+    readonly alt: boolean;
+    readonly shift: boolean;
+    readonly ctrl: boolean;
+  };
+}
+
+export interface PanePointerContext {
+  readonly screenColumn: number;
+  readonly screenRow: number;
+  readonly button: number;
   readonly modifiers: {
     readonly alt: boolean;
     readonly shift: boolean;

@@ -94,6 +94,9 @@ describe('AppStatusProjection', () => {
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class();
+    const statusProjectionContributions = {
+      snapshot: () => ({}),
+    };
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
@@ -122,6 +125,7 @@ describe('AppStatusProjection', () => {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      statusProjectionContributions,
       view: {
         activeDiffView: () => null,
         activeMarkdownSplitView: () => null,

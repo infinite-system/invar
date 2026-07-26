@@ -30,7 +30,6 @@ import type { Palette } from '../theme/ThemePalettes';
 import { Files } from '../system/Files';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { CommandBar } from './CommandBar';
-import { GitPaneRenderer } from './GitPaneRenderer';
 import { StatusBar } from './StatusBar';
 import { TabBar } from './TabBar';
 import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
@@ -54,7 +53,6 @@ import { EditorWrap } from '../editor/EditorWrap';
 import { DiffView } from '../diff/DiffView';
 import { MarkdownSplitView } from '../markdown/MarkdownSplitView';
 import { SelectableText } from './SelectableText';
-import { GitRows, type ChangeRow, type FileRow } from '../git/GitRows';
 import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import type { PaneContent, PaneScrollPort } from './PaneContent.interface';
@@ -85,6 +83,7 @@ import {
   type LayoutPreset,
   type LayoutSlotGeometry,
 } from '../layout/LayoutModel';
+import type { StatusBarSegments } from './StatusBarSegments';
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $RootView {
   public static buildRootView(
@@ -107,6 +106,7 @@ class $RootView {
     panelHost: PanelHost.Instance,
     primaryDockHost: PanelHost.Instance,
     rightDockHost: PanelHost.Instance,
+    statusBarSegments: StatusBarSegments.Model,
     toggleTerminal: () => void,
     toggleAgent: () => void,
     openPanelAddPopup: (anchor: { column: number; row: number }) => void,
@@ -297,8 +297,6 @@ class $RootView {
     const paneSplitters = new PaneSplitters.Class({
       renderer,
       settings,
-      workspaceSet,
-      sidebar,
     });
     const sidebarDivider = paneSplitters.sidebar.renderable;
     const rightDockSplitter = new SplitterElement.Class({
@@ -328,10 +326,10 @@ class $RootView {
     // its keybindings switch the per-workspace Workspace.sidebarView through Workspace.showSidebarView.
     const activityBar = new ActivityBar.Class({
       renderer,
-      workspaceSet,
-      theme,
+      primaryDockHost,
       tooltip,
       keybindings,
+      commands,
     });
     layoutCanvas.add(activityBar.bar);
     layoutCanvas.add(sidebar);
@@ -398,6 +396,8 @@ class $RootView {
       settingsPanel,
       panelHost,
       rightDockHost,
+      primaryDockHost,
+      statusBarSegments,
       toggleTerminal,
       toggleAgent,
       toggleRightDock,
@@ -1102,13 +1102,6 @@ class $RootView {
     // programmatic writes too, and treating those as user thumb-drags halted the momentum glide on
     // every paint (the 'wheel not smooth since scrollbars' regression). onChange handlers must act
     // only on USER-initiated changes — a real thumb drag then halts momentum and adopts authority.
-    // Draggable git changes↔log divider: a 1-row grab strip over the divider glyph row (git view only).
-    // Dragging sets settings.gitSplitRatio LIVE via workspaceSet.active.setGitSplit — the SAME persisted value the
-    // settings panel writes (single source). Capture-on-mousedown (captureDragTarget) so this thin strip
-    // survives the drag exactly like the sidebar divider; the ratio is the pointer's row within the
-    // sidebar body, so it tracks the cursor directly.
-    const gitSplitDivider = paneSplitters.git;
-    sidebar.add(gitSplitDivider.renderable);
     // Interior height of a bordered box = box height - 2 (top+bottom border).
     // invariant: A scrollable pane height is an input not an output (ui.invariants.md)
     const editorViewportHeight = () =>
@@ -1156,10 +1149,6 @@ class $RootView {
     // the call sites terse.
     const displayColumnWindow = EditorCoordinates.Class.displayColumnWindow;
     const padToDisplayWidth = EditorCoordinates.Class.padToDisplayWidth;
-    // The git row formatters (changeRowText/commitLogRowText) and content-width helpers now live on
-    // GitPaneRenderer with the git-pane render itself; RootView calls the width helpers for scrollbar
-    // geometry (below) and delegates the render (renderGitPanel).
-    const gitActionAreaWidth = 9;
     /**
      * Converge layout-derived pane inputs AFTER Yoga has laid out the frame. This is deliberately
      * outside update(): render stays model -> view only, while each pane model owns its live extent.
@@ -1173,21 +1162,12 @@ class $RootView {
       '   Ctrl+Q or F10  quit   (VS Code: Ctrl+X then Ctrl+C)',
       '',
     ].join('\n');
-    // The Extensions activity view is a placeholder for now (the pane switches, the content is a
-    // coming-soon note). The bar item + its Ctrl+Shift+X chord are live; the marketplace is future work.
-    const EXTENSIONS_PLACEHOLDER = [
-      '',
-      '   Extensions',
-      '',
-      '   Coming soon.',
-      '',
-    ].join('\n');
     // Gutter width in cells for the current document: "NN " (line number + space) + 1 marker cell.
     const gutterWidth = () =>
       String(workspaceSet.active.editor.document.lineCount).length + 1 + 2;
     // Wrap-mode view geometry of the last-rendered frame: the visual rows the window showed, written
     // by renderEditor and read by the caret block, applySelection, and the mouse hit-test — so all
-    // consumers agree on what is where (same pattern as gitPanelGeometry). Presentation state only.
+    // consumers agree on what is where. Presentation state only.
     // Empty when wrap is off.
     // wrapVisualPosition / documentPositionAtCell / applySelection / the selection drag now live in the
     // EditorPane controller (below) with the wrap window they read.
@@ -1249,38 +1229,6 @@ class $RootView {
     // Drive OpenTUI's native selection on the code renderable from the model selection, mapped into
     // code-local coords (x = display column, y = visible-line index). Clamps to the visible window.
     // invariant: The selected range renders with a background (ui.invariants.md)
-    // The git sidebar: a changes region (staged/unstaged/untracked + branch header) over a
-    // VIRTUALIZED commit log (only the visible window is materialized, via CommitLog.rows). Split by
-    // gitPanel.splitRatio. Keyboard-driven for now; mouse + drill-down + drag layer on next.
-    // invariant: Cost tracks the actively observed set (project.invariants.md)
-    // Layout geometry of the last-rendered git panel, for mouse hit-testing — the renderer writes
-    // it, the click/hover/wheel handlers read it, so both always agree on what is where.
-    let gitPanelGeometry = {
-      changesTop: 0, // first screen row (sidebar-relative, border-inclusive) of the changes list
-      changesRows: 0, // visible change rows
-      dividerRow: 0,
-      logHeaderRow: -1, // branch-selector header row of the log region (-1 = none rendered)
-      logTop: 0,
-      logRows: 0,
-    };
-    function renderGitPanel(): StyledText {
-      // The git-pane render lives in GitPaneRenderer; RootView supplies palette + geometry + the theme
-      // icon sets and the active workspace, then applies the geometry the renderer returns (it is the
-      // hit-testers' source of truth). Behaviour identical.
-      const innerWidth = sidebarWidth() - 2;
-      const result = GitPaneRenderer.Class.render({
-        workspace: workspaceSet.active,
-        palette: readPalette(),
-        innerWidth,
-        bodyHeight: Math.max(1, (sidebar.height as number) - 2),
-        scrollbarThickness: scrollbarThicknessCells(),
-        gitActionAreaWidth,
-        actionIcons: theme.actionIcons,
-        checkboxIcons: theme.checkboxIcons,
-      });
-      gitPanelGeometry = result.geometry;
-      return result.text;
-    }
     // renderStatus moved into the StatusBar controller (it composes the same parts from workspace/app
     // state + the markdown-preview-focused flag RootView passes to statusBar.update).
     // The editor content-area MOUNT controller owns what occupies the editor column (plain editor /
@@ -1335,10 +1283,6 @@ class $RootView {
       synchronizePanelMount();
       editorContentMount.sync();
       column.backgroundColor = palette.bg;
-      const sidebarViewValue = workspaceSet.active.sidebarView.value;
-      const gitView = sidebarViewValue === 'git';
-      const extensionsView = sidebarViewValue === 'extensions';
-      // The activity bar reflects sidebarView (active-item accent) + the git badge each frame.
       activityBar.setVisible(
         primaryDockHost.visible.value && settings.showActivityBar.value,
       );
@@ -1346,10 +1290,9 @@ class $RootView {
       commandBar.update();
       activityBar.update(palette);
       sidebar.backgroundColor = palette.panel;
-      // Files/git are focusable panels (bright border when their focus owns them); extensions is a
-      // display-only placeholder, so it stays dim.
       const sidebarViewFocused =
-        workspaceSet.active.focus.value === 'files' || gitView;
+        workspaceSet.active.focus.value === 'files' ||
+        workspaceSet.active.focus.value === 'primaryPane';
       sidebar.borderColor = sidebarViewFocused
         ? palette.borderActive
         : palette.border;
@@ -1358,7 +1301,7 @@ class $RootView {
       panelSplitter.updateAppearance(palette);
       rightDockSplitter.updateAppearance(palette);
       sidebar.titleColor = sidebarViewFocused ? palette.accent : palette.dim;
-      sidebar.title = gitView ? 'Git' : extensionsView ? 'Extensions' : 'Files';
+      sidebar.title = primaryDockHost.activeContent?.title ?? '';
       editorArea.backgroundColor = palette.bg;
       const sourcePaneFocused =
         workspaceSet.active.focus.value === 'editor' &&
@@ -1384,20 +1327,16 @@ class $RootView {
       workspaceTabBar.content = tabBarController.renderWorkspace();
       workspaceTabBar.fg = palette.fg;
       const primaryDockContent = primaryDockHost.activeContent;
-      sidebarBody.content = gitView
-        ? renderGitPanel()
-        : extensionsView
-          ? EXTENSIONS_PLACEHOLDER
-          : primaryDockContent
-            ? primaryDockContent.render({
-                width: Math.max(1, sidebarWidth() - 2),
-                height: Math.max(1, Number(sidebar.height) - 2),
-                palette,
-                glyphLevel: theme.glyphLevel.value,
-                colorDepth: theme.colorDepth.value,
-                focused: workspaceSet.active.focus.value === 'files',
-              })
-            : '';
+      sidebarBody.content = primaryDockContent
+        ? primaryDockContent.render({
+            width: Math.max(1, sidebarWidth() - 2),
+            height: Math.max(1, Number(sidebar.height) - 2),
+            palette,
+            glyphLevel: theme.glyphLevel.value,
+            colorDepth: theme.colorDepth.value,
+            focused: primaryDockHost.focused.value,
+          })
+        : '';
       sidebarBody.fg = palette.fg;
       // When the active buffer is an image, the code body shows the half-block preview (no gutter, no
       // syntax text). Non-image files are untouched — the editor render path below is unchanged.
@@ -1841,41 +1780,12 @@ class $RootView {
         paneViewportGeometryChanged
       );
     }
-    // Sidebar clicks: focus follows the click (files or git view), and a click on a tree row SELECTS
-    // it — clicking the already-selected row ACTIVATES it (open file / toggle folder). Keyboard
-    // parity holds: everything here is also reachable via arrows/Enter.
-    // Hover highlight (enhancement only — selection/activation stay on click/keys). The hovered row
-    // is model view-state so the frame effect repaints when it changes; cost is one marker cell.
-    // Map a sidebar-relative screen row to a git-panel target using the SAME geometry the renderer
-    // wrote (changes row / divider / log row).
-    const gitChangeRowsNow = () => {
-      const git = workspaceSet.active.git.value;
-      return git
-        ? GitRows.Class.buildChangeRows(
-            git.staged.value,
-            git.unstaged.value,
-            git.untracked.value,
-          )
-        : [];
-    };
-    // The sidebar input CONTROLLER owns the tree+git mouse behaviour (wheel/move/out/down + git
-    // hit-testers). RootView keeps rendering the sidebar and owns the geometry the hit-tests read, so
-    // it passes those in as accessors — the controller reads the SAME geometry the renderer wrote.
     const sidebarController = new Sidebar.Class({
       renderer,
       sidebar,
-      workspaceSet,
       tooltip,
-      overlayCoordinator,
-      contextMenu,
-      boundedListPopup,
       settings,
-      gitPanelGeometry: () => gitPanelGeometry,
-      treeContent: () => primaryDockHost.activeContent,
-      gitChangeRowsNow,
-      sidebarWidth,
-      scrollbarThicknessCells,
-      gitActionAreaWidth,
+      primaryDockHost,
     });
     void sidebarController;
     // Right-click on a changes FILE row: normalize the selection (an unselected row becomes THE
@@ -1995,14 +1905,12 @@ class $RootView {
       editorArea,
       codeBody,
       sidebar,
-      gitSplitDivider,
+      primaryDockHost,
       tooltip,
       editorViewportHeight,
       editorViewportWidth,
       sidebarWidth,
       scrollbarThicknessCells,
-      gitPanelGeometry: () => gitPanelGeometry,
-      gitChangeRowsNow,
     });
     const panelHeadingGeometry = (): readonly PanelHeadingGeometry[] => {
       if (!panelHost.visible.value) return [];
@@ -2097,7 +2005,6 @@ class $RootView {
       layoutGeometry: () => layoutSlotGeometry,
       splitterRegions: () => ({
         sidebar: renderableRegion(paneSplitters.sidebar.renderable),
-        git: renderableRegion(paneSplitters.git.renderable),
         bottomPanel: renderableRegion(panelSplitter.renderable),
         rightDock: renderableRegion(rightDockSplitter.renderable),
       }),
@@ -2204,7 +2111,7 @@ export interface RootView {
   rightDockContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<
-    'sidebar' | 'git' | 'bottomPanel' | 'rightDock',
+    'sidebar' | 'bottomPanel' | 'rightDock',
     {
       left: number;
       top: number;

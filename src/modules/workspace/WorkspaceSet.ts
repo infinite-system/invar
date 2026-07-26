@@ -2,6 +2,7 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Workspace } from './Workspace';
 import type { Settings } from '../settings/Settings';
+import type { WorkspacePlugin } from './WorkspacePlugin.interface';
 
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
@@ -27,11 +28,6 @@ class $WorkspaceSet {
     const workspace = this.entries.value[this.activeWorkspaceIndex.value];
     if (!workspace) throw new Error('WorkspaceSet has no active workspace');
     return workspace;
-  }
-
-  get liveGitWatcherCount(): number {
-    return this.entries.value.filter((workspace) => workspace.hasLiveGitWatcher)
-      .length;
   }
 
   tabs(): WorkspaceTab[] {
@@ -129,6 +125,7 @@ class $WorkspaceSet {
       this.options.createWorkspace?.() ??
       new Workspace.Class({
         awaitNextViewPaint: this.options.awaitNextViewPaint,
+        plugins: this.options.plugins,
       })
     );
   }
@@ -143,6 +140,7 @@ export namespace WorkspaceSet {
 export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
   awaitNextViewPaint?: () => Promise<void>;
+  plugins?: readonly WorkspacePlugin[];
 }
 
 export interface WorkspaceTab {

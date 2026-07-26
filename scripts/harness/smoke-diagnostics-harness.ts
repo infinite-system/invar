@@ -11,9 +11,10 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function diagnosticColorCounts(
-  snapshot: HarnessSnapshot.Model,
-): { gutter: number; range: number } {
+function diagnosticColorCounts(snapshot: HarnessSnapshot.Model): {
+  gutter: number;
+  range: number;
+} {
   const errorLinePosition = snapshot.findText('badValue');
   if (!errorLinePosition) return { gutter: 0, range: 0 };
   let gutter = 0;
@@ -22,9 +23,9 @@ function diagnosticColorCounts(
     if (!cell.isForegroundRgb || cell.foreground !== 0xdb4b4b) continue;
     const codePoint = cell.characters.codePointAt(0) ?? 0;
     if (
-      cell.characters === '▎'
-      || cell.characters === '▁'
-      || codePoint >= 0x10000
+      cell.characters === '▎' ||
+      cell.characters === '▁' ||
+      codePoint >= 0x10000
     ) {
       gutter++;
     } else if (cell.characters.trim()) {
@@ -35,13 +36,27 @@ function diagnosticColorCounts(
 }
 
 function diagnosticCardVisible(snapshot: HarnessSnapshot.Model): boolean {
-  return snapshot.textRows().some(
-    (rowText) => rowText.includes('│')
-      && (
-        rowText.toLowerCase().includes('error:')
-        || rowText.includes('not assignable')
-      ),
-  );
+  return snapshot
+    .textRows()
+    .some(
+      (rowText) =>
+        rowText.includes('│') &&
+        (rowText.toLowerCase().includes('error:') ||
+          rowText.includes('not assignable')),
+    );
+}
+
+function modifiedGutterVisible(snapshot: HarnessSnapshot.Model): boolean {
+  const linePosition = snapshot.findText('okValue');
+  if (!linePosition) return false;
+  return snapshot
+    .rowCells(linePosition.row)
+    .some(
+      (cell) =>
+        cell.characters === '▎' &&
+        cell.isForegroundRgb &&
+        cell.foreground === 0x6183bb,
+    );
 }
 
 async function runServerCase(
@@ -50,27 +65,47 @@ async function runServerCase(
   serverBinary: string,
 ): Promise<void> {
   if (!Bun.file(serverBinary).size) {
-    console.log(`SKIP  ${serverName} not installed (${serverBinary}) — diagnostics case skipped`);
+    console.log(
+      `SKIP  ${serverName} not installed (${serverBinary}) — diagnostics case skipped`,
+    );
     return;
   }
-  const fixtureRoot = mkdtempSync(join(tmpdir(), `tui-diagnostics-${serverName}-harness-`));
-  const homeDirectory = mkdtempSync(join(tmpdir(), `tui-diagnostics-${serverName}-home-`));
+  const fixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-diagnostics-${serverName}-harness-`),
+  );
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-diagnostics-${serverName}-home-`),
+  );
   const statusPath = join(homeDirectory, 'status.json');
   mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
   await Bun.write(
     join(homeDirectory, '.config', 'invar', 'settings.json'),
     JSON.stringify({ typescriptServer: serverName }),
   );
-  symlinkSync(join(repositoryRoot, 'node_modules'), join(fixtureRoot, 'node_modules'));
+  symlinkSync(
+    join(repositoryRoot, 'node_modules'),
+    join(fixtureRoot, 'node_modules'),
+  );
   await Bun.write(
     join(fixtureRoot, 'tsconfig.json'),
-    '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", '
-      + '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
+    '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
+      '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
   );
   await Bun.write(
     join(fixtureRoot, 'e.ts'),
     'const okValue: number = 42;\nconst badValue: number = "not a number";\n',
   );
+  HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+  HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'e.ts', 'tsconfig.json']);
+  HarnessSmoke.Class.runGit(fixtureRoot, [
+    '-c',
+    'user.email=diagnostics@example.test',
+    '-c',
+    'user.name=Diagnostics Smoke',
+    'commit',
+    '-qm',
+    'fixture',
+  ]);
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
     repositoryRoot,
@@ -88,11 +123,15 @@ async function runServerCase(
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
-      "status condition: status.ready === true",
+      'status condition: status.ready === true',
       (status) => status.ready === true,
       20_000,
     );
-    driver.sendKeys('Down', 'Enter');
+    const treeSnapshot = await driver.awaitSnapshot(
+      (candidate) => candidate.findText('e.ts') !== null,
+      15_000,
+    );
+    HarnessSmoke.Class.clickText(driver, treeSnapshot, 'e.ts');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -106,14 +145,10 @@ async function runServerCase(
       (status) => Number(status.diagnosticsCount) > 0,
       55_000,
     );
-    const snapshot = await driver.awaitSnapshot(
-      (candidate) => {
-        const counts = diagnosticColorCounts(candidate);
-        return counts.gutter >= 1
-          && counts.range >= 1;
-      },
-      55_000,
-    );
+    const snapshot = await driver.awaitSnapshot((candidate) => {
+      const counts = diagnosticColorCounts(candidate);
+      return counts.gutter >= 1 && counts.range >= 1;
+    }, 55_000);
     const counts = diagnosticColorCounts(snapshot);
     HarnessSmoke.Class.requireCondition(
       counts.gutter >= 1,
@@ -122,6 +157,20 @@ async function runServerCase(
     HarnessSmoke.Class.requireCondition(
       counts.range >= 1,
       `[${serverName}] colored diagnostic range paints`,
+    );
+
+    driver.sendKeys('Home');
+    driver.sendText('x');
+    await driver.awaitSnapshot((candidate) => {
+      const combinedCounts = diagnosticColorCounts(candidate);
+      return (
+        modifiedGutterVisible(candidate) &&
+        combinedCounts.gutter >= 1 &&
+        combinedCounts.range >= 1
+      );
+    }, 30_000);
+    HarnessSmoke.Class.pass(
+      `[${serverName}] repository diff and diagnostic marks share one document`,
     );
 
     const errorPosition = snapshot.findText('badValue');
@@ -133,7 +182,9 @@ async function runServerCase(
       button: 'none',
     });
     await driver.awaitSnapshot(diagnosticCardVisible, 30_000);
-    HarnessSmoke.Class.pass(`[${serverName}] hover card surfaces the diagnostic message`);
+    HarnessSmoke.Class.pass(
+      `[${serverName}] hover card surfaces the diagnostic message`,
+    );
     driver.sendKeys('Control+q');
   } finally {
     await driver.dispose();
@@ -143,7 +194,10 @@ async function runServerCase(
 }
 
 const repositoryRoot = process.cwd();
-if (!Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json')).size) {
+if (
+  !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
+    .size
+) {
   console.log('SKIP  typescript not installed — diagnostics smoke skipped');
   process.exit(0);
 }

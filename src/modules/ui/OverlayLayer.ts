@@ -10,7 +10,6 @@
 // invariant: A context menu is modal and single-consumer (src/modules/ui/ui.invariants.md)
 // invariant: The shortcut sheet lists the effective bindings (src/modules/ui/ui.invariants.md)
 // invariant: A tooltip never intercepts input (src/modules/ui/ui.invariants.md)
-// invariant: Destructive working-tree operations require confirmation (src/modules/git/git.invariants.md)
 import {
   BoxRenderable,
   TextRenderable,
@@ -71,8 +70,6 @@ class $OverlayLayer {
       this.dependencies.boundedListPopup.open.value ||
       this.dependencies.settingsPanel.open.value ||
       this.dependencies.shortcutHelp.open.value ||
-      this.dependencies.workspaceSet.active.gitPanel.confirmDiscard.value !==
-        null ||
       this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0
     );
   }
@@ -614,8 +611,6 @@ class $OverlayLayer {
     viewport?.hideBars();
   }
   protected cancelConfirmation(): void {
-    if (this.dependencies.workspaceSet.active.gitPanel.confirmDiscard.value)
-      this.dependencies.workspaceSet.active.cancelDiscard();
     if (this.dependencies.workspaceSet.active.pendingCloseTabIndex.value >= 0)
       this.dependencies.workspaceSet.active.cancelCloseTab();
   }
@@ -1031,30 +1026,9 @@ class $OverlayLayer {
       this.previousQuickOpenSelectedIndex = -1;
     }
     this.previousQuickOpenOpen = quickOpen.open.value;
-    // Confirmation overlay (discard changes / close a dirty tab).
-    const pendingDiscard = workspaceSet.active.gitPanel.confirmDiscard.value;
+    // Confirmation overlay for closing a dirty tab.
     const pendingCloseTabIndex = workspaceSet.active.pendingCloseTabIndex.value;
-    if (pendingDiscard) {
-      this.updateOverlayDialog(
-        this.confirmBox,
-        this.confirmationDismissal,
-        palette,
-        {
-          dialogName: 'confirmation',
-          title: 'Confirm',
-          desiredTop: 4,
-          desiredWidth: Math.max(1, Math.floor(renderer.width * 0.6)),
-          desiredHeight: 3,
-          borderColor: palette.deleted,
-          titleColor: palette.deleted,
-        },
-      );
-      this.confirmText.content =
-        pendingDiscard.paths.length === 1
-          ? ` Discard changes to ${pendingDiscard.paths[0]}?  [y/N]`
-          : ` Discard changes to ${pendingDiscard.paths.length} files (${pendingDiscard.paths.join(', ').slice(0, 60)}…)?  [y/N]`;
-      this.confirmText.fg = palette.fg;
-    } else if (pendingCloseTabIndex >= 0) {
+    if (pendingCloseTabIndex >= 0) {
       const tabPath =
         workspaceSet.active.buffers.tabs()[pendingCloseTabIndex]?.path ?? '';
       this.updateOverlayDialog(

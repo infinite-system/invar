@@ -42,6 +42,63 @@ a FrameProbe check that rendered-row count stays bounded while wheel-scrolling a
 
 ## Chosen invariants
 
+### Status text is assembled from ordered contributions
+
+**Invariant:** If text appears in the status bar, then it comes from an ordered
+`StatusBarSegmentContribution`; the status host joins segments without naming their domains.
+
+**Scope:** `StatusBarSegments`, `CoreStatusBarSegments`, the source-control blame segment, and
+`StatusBar`.
+
+**Mechanism:** Core registers its ordinary workspace/editor segments and plugins register their
+segments during application activation. `StatusBar` supplies a generic context and joins the
+registry result.
+
+**Generates:** Existing non-plugin status text and plugin-owned blame text through one projection
+surface.
+
+**Evidence:** `StatusBarSegments.ts`; `CoreStatusBarSegments.ts`; `StatusBar.ts`;
+`GitPlugin.ts` `segments`.
+
+**Impossible if true:** `StatusBar` importing or querying a concrete plugin controller; plugin
+status text requiring a new host field or rendering branch.
+
+**Verification:** `bun test src/modules/ui/StatusBarSegments.test.ts
+src/modules/ui/CoreStatusBarSegments.test.ts src/modules/git/GitPlugin.test.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-07-26
+
+### Plugin panes use the shared pane and popup hosts
+
+**Invariant:** If a plugin contributes a pane or bounded selection popup, then it registers
+`PaneContent` with `PanelHost` and uses `BoundedListPopup` or `ContextMenu`; the root view and input
+router remain domain-agnostic.
+
+**Scope:** The primary dock, `PaneContent`, `PanelHost`, `BoundedListPopup`, `ContextMenu`, the file
+tree pane, and the source-control pane and branch selector.
+
+**Mechanism:** `ActivityBar`, `Sidebar`, and `RootView` project and route only the active
+`PaneContent`. `GitPaneContent` owns its rendering and pointer behavior and asks the existing popup
+hosts for branch and row actions.
+
+**Generates:** File-tree and plugin panes on one host; buffer selection and branch selection on one
+bounded-popup implementation; no parallel plugin pane stack.
+
+**Evidence:** `PaneContent.interface.ts`; `PanelHost.ts`; `RootView.ts`; `Sidebar.ts`;
+`FileTreePaneContent.ts`; `GitPaneContent.ts`.
+
+**Impossible if true:** A plugin pane requiring a domain-specific branch in `RootView`, `Sidebar`,
+or `ActivityBar`; a plugin implementing independent popup placement, filtering, and row hit tests.
+
+**Verification:** `bun test src/modules/ui/PanelHost.test.ts
+src/modules/git/GitPaneContent.test.ts && bash scripts/smoke-activitybar.sh`.
+
+**Status:** established
+
+**Last refined:** 2026-07-26
+
 ### Bounded list popups share paint and hit geometry
 
 **Invariant:** If a bounded list popup is drawn and accepts pointer input, then one
@@ -478,32 +535,23 @@ terminal column.
 ### The active activity item determines the sidebar content
 
 **Invariant:** If the activity bar shows an item as ACTIVE (its left accent bar `▎` is drawn), then
-the sidebar renders exactly that item's view, and switching the active item — by clicking its button
-OR pressing its shortcut (Ctrl+Shift+E Explorer / Ctrl+Shift+G Source Control / Ctrl+Shift+X
-Extensions) — switches the sidebar content to the same view, per workspace. Exactly one item is
-active at a time.
+the sidebar renders exactly that registered `PaneContent`; clicking its button or invoking its
+activity action switches the same `PanelHost` selection. Exactly one item is active at a time.
 
-**Scope:** `ActivityBar` (the far-left view-switcher pane), `Workspace.sidebarView` +
-`Workspace.showSidebarView` (the per-workspace active view and its single writer), and the sidebar
-content branch in `RootView.update` (`renderTree` / `renderGitPanel` / the extensions placeholder).
+**Scope:** `ActivityBar`, the primary `PanelHost`, registered file-tree and plugin pane contents,
+and the sidebar projection in `RootView.update`.
 
-**Mechanism:** the active view is a SINGLE ref, `Workspace.sidebarView` — one ref holds one value, so
-"exactly one active" is true by representation, not by bookkeeping. Both input paths (the bar's
-`onMouseDown` and the `view.show*` keybinding/palette actions) funnel through the one writer
-`Workspace.showSidebarView(view)`; nothing else sets the accent independently. `RootView.update`
-reads that same ref to pick BOTH the sidebar title/content AND (via `ActivityBar.update`) which item
-draws the accent, so the highlight and the rendered pane are derived from one value in one frame and
-cannot diverge. The activity bar owns no active-view state of its own.
+**Mechanism:** `PanelHost.activeId` is the single active identity. `ActivityBar` derives its rows
+from `PanelHost.orderedContents`, calls `showContent`, and highlights only `activeId`.
+`RootView.update` renders `PanelHost.activeContent`, so accent and content cannot diverge.
 
 **Generates:** a clickable, self-explaining view switcher (button + name/shortcut tooltip + palette
 entry) that satisfies the product north star's visible-affordance rule; per-workspace view memory;
 keyboard parity that can never disagree with what the bar shows.
 
-**Evidence:** `src/modules/ui/ActivityBar.ts` (projects `sidebarView`, routes clicks through
-`showSidebarView`); `src/modules/workspace/Workspace.ts` (`sidebarView` single ref +
-`showSidebarView` single writer); `src/modules/ui/RootView.ts` (title/content + `activityBar.update`
-from the one ref); `src/modules/keybindings/keybindings.defaults.ts` + `src/modules/app/Bootstrap.ts`
-(`view.show*` actions call the same writer); `scripts/smoke-activitybar.sh`.
+**Evidence:** `src/modules/ui/ActivityBar.ts`; `src/modules/ui/PanelHost.ts`;
+`src/modules/ui/RootView.ts`; `src/modules/ui/FileTreePaneContent.ts`;
+`src/modules/git/GitPaneContent.ts`; `scripts/smoke-activitybar.sh`.
 
 **Impossible if true:** the bar highlighting one view while the sidebar shows another; two items
 active at once; a click or chord that moves the accent without switching the rendered sidebar content
@@ -515,7 +563,7 @@ assert the same switch; confirm a glyph renders in the default (no-Nerd-Font) fa
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-26
 
 ### Indent guides mark leading whitespace without shifting columns
 

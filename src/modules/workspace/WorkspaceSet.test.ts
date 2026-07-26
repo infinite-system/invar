@@ -9,17 +9,22 @@ import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import { Settings, type SettingsFileSystem } from '../settings/Settings';
 import { WorkspaceSet } from './WorkspaceSet';
+import { GitPlugin } from '../git/GitPlugin';
 
 let temporaryRoot = '';
 let workspaceRoots: string[] = [];
 
 beforeEach(() => {
-  temporaryRoot = makeTemporaryDirectorySync(join(temporaryDirectory(), 'workspace-set-'));
-  workspaceRoots = ['first-project', 'second-project', 'third-project'].map((directoryName) => {
-    const workspaceRoot = join(temporaryRoot, directoryName);
-    makeDirectorySync(workspaceRoot);
-    return workspaceRoot;
-  });
+  temporaryRoot = makeTemporaryDirectorySync(
+    join(temporaryDirectory(), 'workspace-set-'),
+  );
+  workspaceRoots = ['first-project', 'second-project', 'third-project'].map(
+    (directoryName) => {
+      const workspaceRoot = join(temporaryRoot, directoryName);
+      makeDirectorySync(workspaceRoot);
+      return workspaceRoot;
+    },
+  );
 });
 
 afterEach(() => {
@@ -37,25 +42,27 @@ function createSettings(): Settings.Instance {
 
 describe('WorkspaceSet project-layer flyweight', () => {
   test('N open workspaces keep exactly one live GitWatcher', () => {
-    const workspaceSet = new WorkspaceSet.Class(createSettings());
-    for (const workspaceRoot of workspaceRoots) workspaceSet.open(workspaceRoot);
+    const plugin = new GitPlugin.Class();
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      plugins: [plugin],
+    });
+    for (const workspaceRoot of workspaceRoots)
+      workspaceSet.open(workspaceRoot);
 
     expect(workspaceSet.count).toBe(3);
     expect(workspaceSet.activeWorkspaceIndex.value).toBe(2);
-    expect(workspaceSet.liveGitWatcherCount).toBe(1);
-    expect(workspaceSet.entries.value.map((workspace) => workspace.hasLiveGitWatcher)).toEqual([
-      false,
-      false,
-      true,
-    ]);
+    expect(
+      workspaceSet.entries.value.map(
+        (workspace) => plugin.controllerFor(workspace).hasLiveWatcher,
+      ),
+    ).toEqual([false, false, true]);
 
     workspaceSet.activate(0);
-    expect(workspaceSet.liveGitWatcherCount).toBe(1);
-    expect(workspaceSet.entries.value.map((workspace) => workspace.hasLiveGitWatcher)).toEqual([
-      true,
-      false,
-      false,
-    ]);
+    expect(
+      workspaceSet.entries.value.map(
+        (workspace) => plugin.controllerFor(workspace).hasLiveWatcher,
+      ),
+    ).toEqual([true, false, false]);
     workspaceSet.dispose();
   });
 
@@ -81,19 +88,22 @@ describe('WorkspaceSet project-layer flyweight', () => {
   });
 
   test('closing disposes one workspace and activates a stable neighbour', () => {
-    const workspaceSet = new WorkspaceSet.Class(createSettings());
-    for (const workspaceRoot of workspaceRoots) workspaceSet.open(workspaceRoot);
+    const plugin = new GitPlugin.Class();
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      plugins: [plugin],
+    });
+    for (const workspaceRoot of workspaceRoots)
+      workspaceSet.open(workspaceRoot);
 
     expect(workspaceSet.close(1)).toBe(true);
-    expect(workspaceSet.tabs().map((workspaceTab) => workspaceTab.name)).toEqual([
-      'first-project',
-      'third-project',
-    ]);
+    expect(
+      workspaceSet.tabs().map((workspaceTab) => workspaceTab.name),
+    ).toEqual(['first-project', 'third-project']);
     expect(workspaceSet.active.root).toBe(workspaceRoots[2]!);
     expect(workspaceSet.closeActive()).toBe(true);
     expect(workspaceSet.count).toBe(1);
     expect(workspaceSet.closeActive()).toBe(false);
-    expect(workspaceSet.liveGitWatcherCount).toBe(1);
+    expect(plugin.controllerFor(workspaceSet.active).hasLiveWatcher).toBe(true);
     workspaceSet.dispose();
   });
 });

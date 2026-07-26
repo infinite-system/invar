@@ -5,7 +5,7 @@ import type { Theme } from '../theme/Theme';
 
 // Default command set — the core is complete without plugins, so every essential action is
 // registered here. Plugins (M7) contribute additional commands to the same registry.
-// invariant: The core is complete without plugins (project.invariants.md)
+// invariant: The host canvas is complete without plugins (project.invariants.md)
 class $CommandDefaults {
   static registerDefaultCommands(
     registry: CommandRegistry.Instance,
@@ -113,24 +113,11 @@ class $CommandDefaults {
         when: hasDocument,
         run: () => context.workspaceSet.active.focusEditor(),
       },
-      // Activity-bar view switchers, palette-discoverable (same single writer as the bar + its chords).
       {
         id: 'view.showFiles',
         title: 'View: Show Explorer',
         category: 'View',
-        run: () => context.workspaceSet.active.showSidebarView('files'),
-      },
-      {
-        id: 'view.showSourceControl',
-        title: 'View: Show Source Control',
-        category: 'View',
-        run: () => context.workspaceSet.active.showSidebarView('git'),
-      },
-      {
-        id: 'view.showExtensions',
-        title: 'View: Show Extensions',
-        category: 'View',
-        run: () => context.workspaceSet.active.showSidebarView('extensions'),
+        run: () => context.workspaceSet.active.focusFiles(),
       },
       {
         id: 'view.toggleTheme',

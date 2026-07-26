@@ -36,7 +36,6 @@ import { StatusChannel } from '../system/StatusChannel';
 import { FrameProbe } from '../system/FrameProbe';
 import { ScrollPhysics } from '../ui/ScrollPhysics';
 import { Clipboard } from '../system/Clipboard';
-import { GitRows } from '../git/GitRows';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
 import { KeybindingMac } from '../keybindings/KeybindingMac';
@@ -73,6 +72,10 @@ import { TtsFactory } from '../narration/TtsFactory';
 import type { TtsBackend } from '../narration/TtsBackend.interface';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { dirname, join } from 'node:path';
+import type { ApplicationPlugin } from './ApplicationPlugin.interface';
+import { StatusProjectionContributions } from './StatusProjectionContributions';
+import { StatusBarSegments } from '../ui/StatusBarSegments';
+import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 
 class $Bootstrap {
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
@@ -119,6 +122,7 @@ class $Bootstrap {
         new Promise<void>((resolve) => {
           renderer.once('frame', () => resolve());
         }),
+      plugins: options.plugins,
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -217,6 +221,27 @@ class $Bootstrap {
       completionPopup: dismissCompletion,
       shortcutHelp: () => shortcutHelp.close(),
     });
+    const statusBarSegments = new StatusBarSegments.Class();
+    const statusProjectionContributions =
+      new StatusProjectionContributions.Class();
+    for (const plugin of options.plugins ?? []) {
+      plugin.activateApplication({
+        renderer,
+        workspaceSet,
+        settings,
+        theme,
+        commands,
+        primaryDockHost,
+        contextMenu,
+        boundedListPopup,
+        overlayCoordinator,
+        statusBarSegments,
+        statusProjectionContributions,
+        requestRender: () => renderer.requestRender(),
+      });
+      app.onDispose(() => plugin.disposeApplication?.());
+    }
+    statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;
 
     // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J/Ctrl+`/F8)
@@ -293,6 +318,7 @@ class $Bootstrap {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      statusBarSegments,
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
@@ -662,6 +688,19 @@ class $Bootstrap {
           position === 'left' ? 'vertical' : 'horizontal',
         ),
     );
+    app.$watch(
+      () => workspaceSet.activeWorkspaceIndex.value,
+      () =>
+        primaryDockHost.activate(
+          workspaceSet.active.primaryPaneContentIdentifier.value,
+        ),
+    );
+    app.$watch(
+      () => workspaceSet.active.focus.value,
+      (focus) => {
+        if (focus !== 'primaryPane') primaryDockHost.blur();
+      },
+    );
     // Word wrap toggling (command OR settings panel) switches viewport.scrollTop between LOGICAL-line and
     // VISUAL-row units. Re-anchoring on the cursor sets a valid scrollTop in the new units — no fragile
     // conversion — so the cursor stays on screen. This MUST be a TARGETED watch on settings.wordWrap, NOT
@@ -671,15 +710,6 @@ class $Bootstrap {
     app.$watch(
       () => settings.wordWrap.value,
       () => workspaceSet.active.editor.revealCursor(),
-    );
-    // Refresh the active HEAD blob when HEAD actually MOVES — key on the head SHA, never on
-    // lastRefreshAt: the reconcile floor bumps the timestamp every 5s even when nothing changed,
-    // which made this watcher spawn a redundant `git show HEAD:<file>` per tick (~12/min at idle).
-    // HEAD:<path> can only change when the head sha changes; tab switches and saves refresh through
-    // their own refreshActiveHeadText call sites.
-    app.$watch(
-      () => workspaceSet.active.git.value?.head.value ?? null,
-      () => void workspaceSet.active.refreshActiveHeadText(),
     );
     // Language-server document sync: every edit bumps document.revision; this targeted watch pushes
     // the new text as a revision-idempotent full-text didChange (LanguageClient skips versions it
@@ -710,6 +740,7 @@ class $Bootstrap {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      statusProjectionContributions,
       view,
       get mouse() {
         return lastMouse;
@@ -747,8 +778,8 @@ class $Bootstrap {
     };
 
     // The single coarse reactive frame effect: observe the load-bearing signals and repaint on ANY
-    // change — keyboard input OR an async producer (syntax/LSP/git). This is what lets a git refresh
-    // or an LSP diagnostic repaint the screen without a keypress.
+    // change — keyboard input OR an async producer. This lets contributed state or an LSP
+    // diagnostic repaint the screen without a keypress.
     // invariant: Rendering is one coarse frame effect (app.invariants.md)
     app.$watchEffect(() => {
       const editor = workspaceSet.active.editor;
@@ -773,45 +804,12 @@ class $Bootstrap {
       void workspaceTabStrip.scrollOffset.value;
       void bufferTabStrip.scrollOffset.value;
       void workspaceSet.active.focus.value;
-      void workspaceSet.active.sidebarView.value;
       // The breadcrumb's ‹ › history buttons re-colour (enabled/disabled) as the trail moves.
       void workspaceSet.active.navigationHistory.currentIndex.value;
       void workspaceSet.active.navigationHistory.entries.value;
       void workspaceSet.active.markdownPreviewPaths.value;
       void workspaceSet.active.tree.selectedIndex.value;
       void workspaceSet.active.tree.hoveredIndex.value;
-      // Git state is produced asynchronously (refresh/log outlive boot); observe it so the sidebar
-      // repaints — and the status side-channel flushes — when git data arrives.
-      const git = workspaceSet.active.git.value;
-      if (git) {
-        void git.branch.value;
-        void git.staged.value;
-        void git.unstaged.value;
-        void git.untracked.value;
-        void git.refreshing.value;
-      }
-      // Inline commit expansion is produced asynchronously (the lazy name-status fetch lands after
-      // Enter); observe the entries so the loading row is replaced by file rows without a keypress.
-      void workspaceSet.active.commitExpansion.value?.entries.value;
-      // The commit log's sparse cache, end marker, and viewed branch are also async producers (page
-      // fetches + the tip-SHA reconcile land after the fact) — observe them so an EXTERNAL commit or
-      // a branch-viewer switch repaints the history list without any keypress.
-      const commitLogWindow = workspaceSet.active.commitLog.value;
-      if (commitLogWindow) {
-        void commitLogWindow.cache.value;
-        void commitLogWindow.knownEnd.value;
-        void commitLogWindow.branch.value;
-      }
-      const gitPanel = workspaceSet.active.gitPanel;
-      void gitPanel.changesIndex.value;
-      void gitPanel.logIndex.value;
-      void gitPanel.logScrollTop.value;
-      void gitPanel.changesScrollTop.value;
-      void gitPanel.changesHovered.value;
-      void gitPanel.logHovered.value;
-      void gitPanel.confirmDiscard.value;
-      void gitPanel.splitRatio.value;
-      void gitPanel.selectedPaths.value;
       // Overlay models: the context menu and tooltip repaint on any of their display state.
       void contextMenu.open.value;
       void contextMenu.items.value;
@@ -928,7 +926,7 @@ class $Bootstrap {
             );
       lastFrameMilliseconds = nowMilliseconds;
       let animating = false;
-      // All pane wheel-momentum regimes (git log, editor V/H, tree, git changes) step here and each
+      // All pane wheel-momentum regimes step here and each
       // settles to EXACTLY zero, so `animating` returns to false at rest — quiescence preserved.
       const workspaceScrollMomentumIsActive =
         workspaceSet.active.tickScrollAnimations(deltaTimeSeconds);
@@ -1207,49 +1205,6 @@ class $Bootstrap {
     // Keyboard: ONE decode layer (OpenTUI) -> registry resolution (pure data lookup) -> action
     // dispatch. No chord conditionals live here — bindings are data in keybindings.defaults/mac.
     // invariant: Bindings are intent addressed (src/modules/keybindings/keybindings.invariants.md)
-    // Git-panel helpers shared by the git action handlers (region-aware continuous flow).
-    const currentChangeRows = () => {
-      const git = workspaceSet.active.git.value;
-      return git
-        ? GitRows.Class.buildChangeRows(
-            git.staged.value,
-            git.unstaged.value,
-            git.untracked.value,
-          )
-        : [];
-    };
-    const normalizeChangesIndex = (): void => {
-      const rows = currentChangeRows();
-      if (
-        rows[workspaceSet.active.gitPanel.changesIndex.value]?.kind !== 'file'
-      ) {
-        const firstFile = GitRows.Class.nextFileRow(rows, -1, 1);
-        if (firstFile >= 0)
-          workspaceSet.active.gitPanel.moveChangesSelection(firstFile);
-      }
-    };
-    // Up/Down walk the FLAT log rows (commit headers AND expanded file rows are both selectable) —
-    // logIndex is a flat-row index over the same row model the renderer draws.
-    const moveLog = (delta: number): void => {
-      const gitPanel = workspaceSet.active.gitPanel;
-      workspaceSet.active.haltGitLogScroll(); // keyboard is precise — adopt-and-stop any glide (One-Writer)
-      const end = workspaceSet.active.logFlatEnd();
-      gitPanel.moveLogSelection(delta, end);
-      workspaceSet.active.ensureLogWindow(gitPanel.logScrollTop.value);
-    };
-    const moveChanges = (direction: 1 | -1): void => {
-      const gitPanel = workspaceSet.active.gitPanel;
-      workspaceSet.active.haltGitChangesScroll(); // keyboard is precise — adopt-and-stop wheel glide
-      const rows = currentChangeRows();
-      const next = GitRows.Class.nextFileRow(
-        rows,
-        gitPanel.changesIndex.value,
-        direction,
-      );
-      if (next >= 0) gitPanel.moveChangesSelection(next);
-      else if (direction === 1) gitPanel.region.value = 'log'; // flow into the log
-    };
-
     const applyTextInputAction = (action: TextInputAction): void => {
       if (findBar.open.value) {
         findBar.applyInputAction(action);
@@ -1371,119 +1326,16 @@ class $Bootstrap {
       // at the ends of the history.
       'navigation.back': () => workspaceSet.active.navigateBack(),
       'navigation.forward': () => workspaceSet.active.navigateForward(),
-      'git.togglePanel': () => {
-        workspaceSet.active.toggleGit();
-        if (workspaceSet.active.focus.value === 'git') {
-          // Status first, THEN the tip probe (panel-open catch-up for history that moved while the
-          // panel was hidden) — reconcileLogTip reads git.head, so it runs after the refresh lands.
-          void workspaceSet.active.git.value
-            ?.refresh()
-            .then(() => workspaceSet.active.reconcileLogTip());
-          void workspaceSet.active.commitLog.value?.ensureRange(0, 50);
-        }
+      'view.showFiles': () => {
+        primaryDockHost.showContent('files');
+        workspaceSet.active.focusFiles();
       },
-      // Activity-bar view switchers (Ctrl+Shift+E/G/X) — the SAME single writer the bar's clicks call.
-      'view.showFiles': () => workspaceSet.active.showSidebarView('files'),
-      'view.showSourceControl': () =>
-        workspaceSet.active.showSidebarView('git'),
-      'view.showExtensions': () =>
-        workspaceSet.active.showSidebarView('extensions'),
       // Ctrl+Shift+B shows/hides the whole activity bar (same setting-flip the palette command runs).
       'view.toggleActivityBar': () => {
         settings.showActivityBar.value = !settings.showActivityBar.value;
         app.requestRender();
       },
       'view.toggleRightDock': toggleRightDock,
-      'git.up': () => {
-        normalizeChangesIndex();
-        if (workspaceSet.active.gitPanel.region.value === 'changes')
-          moveChanges(-1);
-        else if (workspaceSet.active.gitPanel.logIndex.value === 0) {
-          workspaceSet.active.haltGitChangesScroll();
-          workspaceSet.active.gitPanel.region.value = 'changes'; // flow back up into the changes
-          const rows = currentChangeRows();
-          const last = GitRows.Class.nextFileRow(rows, rows.length, -1);
-          if (last >= 0)
-            workspaceSet.active.gitPanel.moveChangesSelection(last);
-        } else moveLog(-1);
-      },
-      'git.down': () => {
-        normalizeChangesIndex();
-        if (workspaceSet.active.gitPanel.region.value === 'changes')
-          moveChanges(1);
-        else moveLog(1);
-      },
-      'git.pageUp': () => {
-        if (workspaceSet.active.gitPanel.region.value === 'log') moveLog(-10);
-      },
-      'git.pageDown': () => {
-        if (workspaceSet.active.gitPanel.region.value === 'log') moveLog(10);
-      },
-      'git.stageToggle': () => {
-        // Enter in the LOG region activates the flat row: commit header = toggle inline expansion
-        // (lazy fetch); file row = open that file's diff for that commit.
-        if (workspaceSet.active.gitPanel.region.value === 'log') {
-          workspaceSet.active.activateLogRow(
-            workspaceSet.active.gitPanel.logIndex.value,
-          );
-          return;
-        }
-        normalizeChangesIndex();
-        void workspaceSet.active.toggleStageAtRow(
-          workspaceSet.active.gitPanel.changesIndex.value,
-        );
-      },
-      'git.openFile': () => {
-        if (workspaceSet.active.gitPanel.region.value === 'log') {
-          workspaceSet.active.activateLogRow(
-            workspaceSet.active.gitPanel.logIndex.value,
-          );
-          return;
-        }
-        normalizeChangesIndex();
-        void workspaceSet.active.openChangeAtRow(
-          workspaceSet.active.gitPanel.changesIndex.value,
-        );
-      },
-      'git.expandRight': () => {
-        // Right on a collapsed commit expands it; on an expanded one steps into its first file row
-        // (tree parity). No-op outside the log region.
-        if (workspaceSet.active.gitPanel.region.value !== 'log') return;
-        const row = workspaceSet.active.logRowAt(
-          workspaceSet.active.gitPanel.logIndex.value,
-        );
-        if (row?.kind !== 'commit') return;
-        if (row.expanded) moveLog(1);
-        else
-          workspaceSet.active.activateLogRow(
-            workspaceSet.active.gitPanel.logIndex.value,
-          );
-      },
-      'git.collapseLeft': () => {
-        if (workspaceSet.active.gitPanel.region.value === 'log')
-          workspaceSet.active.collapseLogRow(
-            workspaceSet.active.gitPanel.logIndex.value,
-          );
-      },
-      'git.discard': () => {
-        normalizeChangesIndex();
-        workspaceSet.active.requestDiscardAtRow(
-          workspaceSet.active.gitPanel.changesIndex.value,
-        );
-      },
-      // Esc unwinds modally: viewing another branch's history returns to HEAD first; a second Esc
-      // leaves the panel. Mirrors overlay dismissal (innermost transient state closes first).
-      'git.leave': () => {
-        const activeWorkspace = workspaceSet.active;
-        if (activeWorkspace.commitLog.value?.branch.value !== undefined) {
-          activeWorkspace.selectLogBranch(null);
-          return;
-        }
-        activeWorkspace.focusFiles();
-      },
-      // 'b' cycles WHICH branch's history the log shows (read-only viewer — never a checkout);
-      // wraps through every local branch, landing on the checked-out one = back to following HEAD.
-      'git.cycleLogBranch': () => void workspaceSet.active.cycleLogBranch(),
       'tree.up': () => {
         workspaceSet.active.haltTreeScroll();
         workspaceSet.active.tree.moveSelection(-1);
@@ -1763,6 +1615,11 @@ class $Bootstrap {
       'listPopup.close': () => boundedListPopup.close(),
       'listPopup.erase': () => boundedListPopup.eraseQueryCharacter(),
     };
+    const dispatchAction = (action: string, key: KeyEvent): void => {
+      const handler = actionHandlers[action];
+      if (handler) handler(key);
+      else commands.run(action);
+    };
 
     const inputOverlayOpeningActionIdentifiers = new Set([
       'find.open',
@@ -1795,7 +1652,7 @@ class $Bootstrap {
         Date.now(),
       );
       if (findResolution.action) {
-        actionHandlers[findResolution.action]?.(key);
+        dispatchAction(findResolution.action, key);
         return;
       }
       if (key.name === 'escape') {
@@ -1847,14 +1704,7 @@ class $Bootstrap {
         super: key.super,
       });
       if (reservedGlobalAction) {
-        actionHandlers[reservedGlobalAction]?.(key);
-        return;
-      }
-      // Destructive-confirm overlay is MODAL: y confirms, anything else cancels — the context's
-      // residual, not a binding.
-      if (workspaceSet.active.gitPanel.confirmDiscard.value) {
-        if (key.name === 'y') void workspaceSet.active.confirmDiscard();
-        else workspaceSet.active.cancelDiscard();
+        dispatchAction(reservedGlobalAction, key);
         return;
       }
       // Same MODAL contract for closing a tab with unsaved edits.
@@ -1870,6 +1720,33 @@ class $Bootstrap {
       // Settings remained open even though OpenTUI had decoded and delivered the bare Escape correctly.
       // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
       const modalOverlayOwnsScreen = view.modalOverlayOwnsScreen();
+
+      if (
+        !modalOverlayOwnsScreen &&
+        primaryDockHost.visible.value &&
+        primaryDockHost.focused.value
+      ) {
+        const content = primaryDockHost.focusedContent;
+        const contentContext = content?.keybindingContext;
+        if (contentContext) {
+          const resolution = keybindings.resolve(
+            {
+              name: key.name,
+              ctrl: key.ctrl,
+              shift: key.shift,
+              option: key.option || key.meta,
+              super: key.super,
+            },
+            contentContext,
+            Date.now(),
+          );
+          if (resolution.action) {
+            dispatchAction(resolution.action, key);
+            return;
+          }
+        }
+        if (content?.handleKey(key)) return;
+      }
 
       // A focused bottom panel (the terminal) owns the keyboard: every non-reserved key is encoded to
       // terminal bytes and delivered to the active PaneContent's handleKey. Reserved globals (quit, panel
@@ -1893,7 +1770,7 @@ class $Bootstrap {
           Date.now(),
         );
         if (panelResolution.action?.startsWith('panel.contents')) {
-          actionHandlers[panelResolution.action]?.(key);
+          dispatchAction(panelResolution.action, key);
           return;
         }
         // The focused agent pane resolves a FEW bindings before its composer swallows the key: Ctrl+C /
@@ -1927,7 +1804,7 @@ class $Bootstrap {
             agentResolution.action === 'agent.copy' &&
             focusedContent.hasSelection()
           ) {
-            actionHandlers['agent.copy']?.(key);
+            dispatchAction('agent.copy', key);
             return;
           }
           if (
@@ -1941,7 +1818,7 @@ class $Bootstrap {
             agentResolution.action?.startsWith('agent.') ||
             agentResolution.action?.startsWith('textInput.')
           ) {
-            actionHandlers[agentResolution.action]?.(key);
+            dispatchAction(agentResolution.action, key);
             return;
           }
         }
@@ -1961,15 +1838,15 @@ class $Bootstrap {
             terminalResolution.action === 'terminal.copy' &&
             focusedContent.hasSelection()
           ) {
-            actionHandlers['terminal.copy']?.(key);
+            dispatchAction('terminal.copy', key);
             return;
           }
           if (terminalResolution.action?.startsWith('terminal.word')) {
-            actionHandlers[terminalResolution.action]?.(key);
+            dispatchAction(terminalResolution.action, key);
             return;
           }
           if (terminalResolution.action === 'terminal.deletePreviousWord') {
-            actionHandlers[terminalResolution.action]?.(key);
+            dispatchAction(terminalResolution.action, key);
             return;
           }
         }
@@ -2002,12 +1879,12 @@ class $Bootstrap {
           Date.now(),
         );
         if (menuResolution.action?.startsWith('menu.'))
-          actionHandlers[menuResolution.action]?.(key);
+          dispatchAction(menuResolution.action, key);
         else if (
           menuResolution.action &&
           inputOverlayOpeningActionIdentifiers.has(menuResolution.action)
         ) {
-          actionHandlers[menuResolution.action]?.(key);
+          dispatchAction(menuResolution.action, key);
         } else contextMenu.close();
         return;
       }
@@ -2027,12 +1904,12 @@ class $Bootstrap {
           Date.now(),
         );
         if (listPopupResolution.action?.startsWith('listPopup.')) {
-          actionHandlers[listPopupResolution.action]?.(key);
+          dispatchAction(listPopupResolution.action, key);
         } else if (
           listPopupResolution.action &&
           inputOverlayOpeningActionIdentifiers.has(listPopupResolution.action)
         ) {
-          actionHandlers[listPopupResolution.action]?.(key);
+          dispatchAction(listPopupResolution.action, key);
         } else if (isTypedCharacter(key)) {
           boundedListPopup.appendQuery(key.sequence);
         }
@@ -2119,7 +1996,7 @@ class $Bootstrap {
           Date.now(),
         );
         if (quickOpenResolution.action) {
-          actionHandlers[quickOpenResolution.action]?.(key);
+          dispatchAction(quickOpenResolution.action, key);
           return;
         }
         if (key.name === 'escape') {
@@ -2232,7 +2109,7 @@ class $Bootstrap {
       );
       app.quitChordArmed.value = resolution.chordPending; // status-bar hint mirrors the pending chord
       if (resolution.action) {
-        actionHandlers[resolution.action]?.(key);
+        dispatchAction(resolution.action, key);
         return;
       }
       if (resolution.chordPending) return;
@@ -2461,6 +2338,7 @@ export namespace Bootstrap {
 export interface BootOptions {
   root?: string;
   onQuit?: () => void;
+  plugins?: readonly ApplicationPlugin[];
 }
 
 export interface BootedApp {

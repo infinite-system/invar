@@ -20,7 +20,7 @@ import type { Tooltip } from './Tooltip';
 import type { Theme } from '../theme/Theme';
 import type { SettingsPanel } from '../settings/SettingsPanel';
 import type { PanelHost } from './PanelHost';
-import { RelativeTime } from '../git/RelativeTime';
+import type { StatusBarSegments } from './StatusBarSegments';
 class $StatusBar {
   /** The status-bar box; RootView mounts this into the layout column. */
   readonly bar: BoxRenderable;
@@ -322,62 +322,15 @@ class $StatusBar {
       row < top + Number(renderable.height)
     );
   }
-  /** The ` <author> · <relative date> · <summary>` blame part for the cursor line, or '' when the
-   *  document is not git-tracked / not yet blamed. Summary is truncated so the bar stays compact. */
-  protected currentLineBlamePart(): string {
-    const { workspaceSet } = this.deps;
-    // ONE query surface: the workspace-owned bounded blame cache (same read the status
-    // side-channel makes — its stat memo dedupes the two same-frame queries to one stat).
-    const blame = workspaceSet.active.activeLineBlame;
-    if (!blame) return '';
-    const when = blame.uncommitted
-      ? 'uncommitted'
-      : RelativeTime.Class.format(blame.authorTimeMs, Date.now());
-    const summary =
-      blame.summary.length > 40
-        ? `${blame.summary.slice(0, 39)}…`
-        : blame.summary;
-    return summary
-      ? `${blame.author} · ${when} · ${summary}`
-      : `${blame.author} · ${when}`;
-  }
   protected renderStatus(markdownPreviewFocused: boolean): string {
-    const { workspaceSet, app } = this.deps;
-    const editor = workspaceSet.active.editor;
-    const parts: string[] = [` ${workspaceSet.active.name.value || '—'}`];
-    if (editor.hasDocument.value) {
-      parts.push(editor.title);
-      parts.push(
-        `Ln ${editor.cursor.line.value + 1}, Col ${editor.cursor.col.value + 1}`,
-      );
-      parts.push(`${editor.document.lineCount} lines`);
-      // Current-line git blame (GitLens parity): who last touched the CURSOR line. A pure cache lookup
-      // per cursor move; the underlying git spawn happens once per file and repaints when it lands. No
-      // blame part for a non-git or unsaved document.
-      const blamePart = this.currentLineBlamePart();
-      if (blamePart) parts.push(blamePart);
-    }
-    // Focus indicator only for the NON-default panes; editing the source is the implicit state, so no
-    // ever-present '[Editor Source]' label (it read as noise — it never told you anything new).
-    const focusLabel =
-      workspaceSet.active.focus.value === 'files'
-        ? '[Files]'
-        : markdownPreviewFocused
-          ? '[Markdown Preview]'
-          : null;
-    if (focusLabel) parts.push(focusLabel);
-    if (workspaceSet.active.focus.value === 'git')
-      parts.push('checkbox/Space stage · row/o open · d discard');
-    if (app.copyNotice.value) parts.push(app.copyNotice.value);
-    // A large file whose LSP is size-suppressed says so here — the guard is never a silent no-op.
-    const languageSizeNotice = workspaceSet.active.languageSizeNotice();
-    if (languageSizeNotice) parts.push(languageSizeNotice);
-    parts.push(
-      app.quitChordArmed.value
-        ? 'Ctrl+X armed — Ctrl+C quits'
-        : 'Ctrl+Q/F10 quit',
-    );
-    return parts.join('  ·  ');
+    return this.deps.statusBarSegments
+      .segments({
+        workspaceSet: this.deps.workspaceSet,
+        app: this.deps.app,
+        primaryDockHost: this.deps.primaryDockHost,
+        markdownPreviewFocused,
+      })
+      .join('  ·  ');
   }
   /** Re-sync the bar from the model each frame. `markdownPreviewFocused` is composer state RootView owns. */
   update(palette: Palette, markdownPreviewFocused: boolean): void {
@@ -443,6 +396,8 @@ export interface StatusBarDeps {
   /** The bottom panel; the terminal button reads its `visible` state to light up when open. */
   panelHost: PanelHost.Instance;
   rightDockHost: PanelHost.Instance;
+  primaryDockHost: PanelHost.Instance;
+  statusBarSegments: StatusBarSegments.Model;
   /** Lazy-inits the terminal + toggles the bottom panel — the SAME closure the panel.toggleTerminal
    *  keybinding runs, so the button and the chord are one action (no divergent toggle paths). */
   toggleTerminal: () => void;

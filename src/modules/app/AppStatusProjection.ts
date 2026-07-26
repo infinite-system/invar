@@ -20,6 +20,7 @@ import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { TerminalPaneContent } from '../terminal/TerminalPaneContent';
+import type { StatusProjectionContributions } from './StatusProjectionContributions';
 
 class $AppStatusProjection {
   static publish(ports: AppStatusProjectionPorts): Partial<StatusSnapshot> {
@@ -50,17 +51,6 @@ class $AppStatusProjection {
       activeWorkspaceIndex: ports.workspaceSet.activeWorkspaceIndex.value,
       activeWorkspaceRoot: ports.workspaceSet.active.root,
       workspaceCount: ports.workspaceSet.count,
-      liveGitWatcherCount: ports.workspaceSet.liveGitWatcherCount,
-      workspaceLiveGitWatchers: ports.workspaceSet.entries.value.map(
-        (workspaceEntry) => workspaceEntry.hasLiveGitWatcher,
-      ),
-      gitWatcherActivationIgnoreQuerySubprocessCount:
-        ports.workspaceSet.active
-          .gitWatcherActivationIgnoreQuerySubprocessCount,
-      gitWatcherActivationWatchedDirectoryCount:
-        ports.workspaceSet.active.gitWatcherActivationWatchedDirectoryCount,
-      gitWatcherActivationCompleted:
-        ports.workspaceSet.active.gitWatcherActivationCompleted,
       workspaceTabPosition: ports.settings.workspaceTabPosition.value,
       activeBuffer: editor.hasDocument.value ? editor.document.path : null,
       // The active file's LSP size-suppression state — the authoritative channel a driven gate reads
@@ -133,9 +123,7 @@ class $AppStatusProjection {
       narrationVoice: ports.settings.agentNarrationVoice.value,
       narrationRate: ports.settings.agentNarrationRate.value,
       focus: ports.workspaceSet.active.focus.value,
-      // The activity bar's active view (files/git/extensions) — the authoritative channel a driven
-      // contract reads to assert a click/chord switched the sidebar (paired with FrameProbe for the accent).
-      sidebarView: ports.workspaceSet.active.sidebarView.value,
+      sidebarView: ports.primaryDockHost.activeId.value,
       treeRows: ports.workspaceSet.active.tree.rows.length,
       treeSelected: ports.workspaceSet.active.tree.selectedIndex.value,
       treeScrollTop: ports.workspaceSet.active.tree.scrollTop.value,
@@ -144,25 +132,6 @@ class $AppStatusProjection {
       editorScrollLeft: editor.viewport.scrollLeft.value,
       wordWrap: editor.wordWrap.value,
       showActivityBar: ports.settings.showActivityBar.value,
-      changesScrollTop:
-        ports.workspaceSet.active.gitPanel.changesScrollTop.value,
-      gitChangesIndex: ports.workspaceSet.active.gitPanel.changesIndex.value,
-      gitLogScrollTop: ports.workspaceSet.active.gitPanel.logScrollTop.value,
-      gitLogIndex: ports.workspaceSet.active.gitPanel.logIndex.value,
-      gitLogLoaded: ports.workspaceSet.active.commitLog.value?.loadedCount ?? 0,
-      gitLogExpanded:
-        ports.workspaceSet.active.commitExpansion.value?.entries.value.length ??
-        0,
-      // The read-only branch VIEWER ('' = following HEAD) and the tip SHA the log DISPLAYS —
-      // driven contracts assert external-commit freshness and branch re-sourcing through these.
-      gitLogBranch:
-        ports.workspaceSet.active.commitLog.value?.branch.value ?? '',
-      gitLogTipSha:
-        ports.workspaceSet.active.commitLog.value?.loadedTipSha ?? '',
-      gitRegion: ports.workspaceSet.active.gitPanel.region.value,
-      gitSelectedPaths: [
-        ...ports.workspaceSet.active.gitPanel.selectedPaths.value,
-      ],
       contextMenuOpen: ports.contextMenu.open.value,
       boundedListPopupOpen: ports.boundedListPopup.open.value,
       boundedListPopupQuery: ports.boundedListPopup.query.value,
@@ -192,7 +161,6 @@ class $AppStatusProjection {
       markdownPreviewOpen: ports.workspaceSet.active.showingMarkdownPreview,
       markdownPaneFocus: markdownSplitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: ports.settings.markdownSplitRatio.value,
-      gitSplitRatio: ports.settings.gitSplitRatio.value,
       markdownPreviewScrollTop: markdownSplitView?.preview.scrollTop.value ?? 0,
       markdownPreviewSelectionChars:
         markdownSplitView?.selectionCharacterCount() ?? 0,
@@ -211,16 +179,6 @@ class $AppStatusProjection {
       leftDockVerticalSpan: ports.settings.leftDockVerticalSpan.value,
       rightDockVerticalSpan: ports.settings.rightDockVerticalSpan.value,
       rightDockWidth: ports.settings.rightDockWidth.value,
-      // Total working-tree changes — proves the GitWatcher live-refreshes on EXTERNAL fs changes.
-      gitChangedCount: (() => {
-        const repository = ports.workspaceSet.active.git.value;
-        if (!repository) return 0;
-        return (
-          repository.staged.value.length +
-          repository.unstaged.value.length +
-          repository.untracked.value.length
-        );
-      })(),
       // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
       // tabCount (only the active + any dirty background buffer holds a live document).
       bufferTabCount: ports.workspaceSet.active.buffers.count,
@@ -266,11 +224,6 @@ class $AppStatusProjection {
       splitterRegions: ports.view.splitterRegions(),
       // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
       activeFileIsImage: ports.workspaceSet.active.activeFileIsImage,
-      // Current-line git blame author (GitLens parity) — the driving smoke reads this to prove a tracked
-      // line shows its author and a non-git file shows none. '' when no document / not blamed.
-      // Same single query surface the status bar uses (workspace-owned bounded cache).
-      currentLineBlameAuthor:
-        ports.workspaceSet.active.activeLineBlame?.author ?? '',
       // Bracket match: the matched partner cell for the cursor's bracket (line,col 0-based), or -1/-1
       // when the cursor is not on a bracket — the driving smoke reads this alongside the frame bg.
       matchingBracketLine: (() => {
@@ -375,6 +328,7 @@ class $AppStatusProjection {
         }
         return '';
       })(),
+      ...ports.statusProjectionContributions.snapshot(),
     };
   }
 }
@@ -394,12 +348,7 @@ export interface AppStatusMouseEvent {
 export interface AppStatusProjectionPorts {
   readonly workspaceSet: Pick<
     InstanceType<typeof WorkspaceSet.Class>,
-    | 'active'
-    | 'tabs'
-    | 'activeWorkspaceIndex'
-    | 'count'
-    | 'liveGitWatcherCount'
-    | 'entries'
+    'active' | 'tabs' | 'activeWorkspaceIndex' | 'count' | 'entries'
   >;
   readonly settings: Pick<
     InstanceType<typeof Settings.Class>,
@@ -413,7 +362,6 @@ export interface AppStatusProjectionPorts {
     | 'showActivityBar'
     | 'diffSplitRatio'
     | 'markdownSplitRatio'
-    | 'gitSplitRatio'
     | 'sidebarWidth'
     | 'rightDockWidth'
     | 'agentAudioNarration'
@@ -477,7 +425,11 @@ export interface AppStatusProjectionPorts {
   >;
   readonly primaryDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,
-    'visible'
+    'visible' | 'activeId'
+  >;
+  readonly statusProjectionContributions: Pick<
+    StatusProjectionContributions.Model,
+    'snapshot'
   >;
   readonly rightDockHost: Pick<
     InstanceType<typeof PanelHost.Class>,

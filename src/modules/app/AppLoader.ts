@@ -12,6 +12,7 @@
 import { Static } from 'ivue/extras';
 import { Bootstrap, type BootedApp } from './Bootstrap';
 import { Logging } from '../system/Logging';
+import { DefaultPlugins } from '../plugins/DefaultPlugins';
 
 class $AppLoader {
   /** Boot the app from process state: argv → options, wire the signal handlers, and route any boot
@@ -30,6 +31,7 @@ class $AppLoader {
   static bootApp(): Promise<BootedApp> {
     return Bootstrap.Class.boot({
       root: AppLoader.Class.rootArgument(),
+      plugins: DefaultPlugins.Class.create(),
       // Give the renderer a tick to restore the terminal, then exit.
       onQuit: () => setTimeout(() => AppLoader.Class.exitProcess(0), 20),
     });

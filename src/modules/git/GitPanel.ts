@@ -59,7 +59,10 @@ class $GitPanel {
   // Pending destructive confirmation (discard) — rendered as a y/N overlay; null = none.
   // paths: one or many (collective discard lists them all).
   get confirmDiscard() {
-    return shallowRef<{ paths: string[]; buckets: Map<string, 'staged' | 'unstaged' | 'untracked'> } | null>(null);
+    return shallowRef<{
+      paths: string[];
+      buckets: Map<string, 'staged' | 'unstaged' | 'untracked'>;
+    } | null>(null);
   }
 
   // MULTI-SELECTION of change files, keyed by PATH (survives rows reshuffling between sections
@@ -123,7 +126,10 @@ class $GitPanel {
     );
   }
 
-  setVerticalViewportHeights(changesViewportHeight: number, logViewportHeight: number): void {
+  setVerticalViewportHeights(
+    changesViewportHeight: number,
+    logViewportHeight: number,
+  ): void {
     this.changesViewportHeight.value = Math.max(1, changesViewportHeight);
     this.logViewportHeight.value = Math.max(1, logViewportHeight);
   }
@@ -161,7 +167,10 @@ class $GitPanel {
     const lastIndex = Number.isFinite(onePastLastIndex)
       ? Math.max(0, onePastLastIndex - 1)
       : this.logIndex.value + Math.max(0, delta);
-    this.logIndex.value = Math.max(0, Math.min(this.logIndex.value + delta, lastIndex));
+    this.logIndex.value = Math.max(
+      0,
+      Math.min(this.logIndex.value + delta, lastIndex),
+    );
     this.revealLogSelection();
   }
 
@@ -177,14 +186,24 @@ class $GitPanel {
 
   // invariant: A pane is a self-contained scrollable viewport (project.invariants.md)
   get changesMaxScrollLeft(): number {
-    return Math.max(0, this.changesContentWidth.value - Math.max(1, this.changesViewportWidth.value));
+    return Math.max(
+      0,
+      this.changesContentWidth.value -
+        Math.max(1, this.changesViewportWidth.value),
+    );
   }
 
   get logMaxScrollLeft(): number {
-    return Math.max(0, this.logContentWidth.value - Math.max(1, this.logViewportWidth.value));
+    return Math.max(
+      0,
+      this.logContentWidth.value - Math.max(1, this.logViewportWidth.value),
+    );
   }
 
-  setChangesHorizontalExtent(contentWidth: number, viewportWidth: number): void {
+  setChangesHorizontalExtent(
+    contentWidth: number,
+    viewportWidth: number,
+  ): void {
     this.changesContentWidth.value = Math.max(0, contentWidth);
     this.changesViewportWidth.value = Math.max(1, viewportWidth);
     this.changesScrollLeft.value = Math.max(
@@ -196,13 +215,19 @@ class $GitPanel {
   setLogHorizontalExtent(contentWidth: number, viewportWidth: number): void {
     this.logContentWidth.value = Math.max(0, contentWidth);
     this.logViewportWidth.value = Math.max(1, viewportWidth);
-    this.logScrollLeft.value = Math.max(0, Math.min(this.logScrollLeft.value, this.logMaxScrollLeft));
+    this.logScrollLeft.value = Math.max(
+      0,
+      Math.min(this.logScrollLeft.value, this.logMaxScrollLeft),
+    );
   }
 
   scrollChangesByColumns(deltaColumns: number): void {
     this.changesScrollLeft.value = Math.max(
       0,
-      Math.min(this.changesScrollLeft.value + deltaColumns, this.changesMaxScrollLeft),
+      Math.min(
+        this.changesScrollLeft.value + deltaColumns,
+        this.changesMaxScrollLeft,
+      ),
     );
   }
 
@@ -212,7 +237,6 @@ class $GitPanel {
       Math.min(this.logScrollLeft.value + deltaColumns, this.logMaxScrollLeft),
     );
   }
-
 }
 
 export namespace GitPanel {

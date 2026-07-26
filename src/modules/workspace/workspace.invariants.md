@@ -10,6 +10,64 @@ a referenced resource stays alive) rather than adding its own._
 
 ## Chosen invariants
 
+### Document identity survives document instance replacement
+
+**Invariant:** If a logical open document is dehydrated and later rehydrated, then every document
+lifecycle event carries the same stable `DocumentHandle`; contributions key document state by that
+handle, never by one workspace-global active-document slot.
+
+**Scope:** `OpenBufferSet`, `DocumentHandle`, `DocumentLifecycle`, the language-client document
+sync contribution, and the source-control head-text contribution.
+
+**Mechanism:** Each `BufferEntry` creates one `DocumentHandle` that outlives its replaceable editor
+document. Hydration attaches the current document instance, deactivation detaches it, and
+`DocumentLifecycle` broadcasts opened, became-active, and closed with the handle.
+
+**Generates:** Per-document contribution state that survives flyweight replacement; one lifecycle
+vocabulary shared by language sync and repository head tracking.
+
+**Evidence:** `DocumentHandle.ts`; `DocumentLifecycle.ts`; `OpenBufferSet.ts`;
+`GitDocumentState.ts`; `GitDocumentState.test.ts`; the compile-time unkeyed-projection rejection
+in `GitWorkspace.test.ts`.
+
+**Impossible if true:** The stale-head cross-document bug class: a head-text result stored in one
+workspace-global active slot and then projected onto a different document after a tab switch.
+
+**Verification:** `bun test src/modules/git/GitDocumentState.test.ts
+src/modules/workspace/OpenBufferSet.test.ts`.
+
+**Status:** established
+
+**Last refined:** 2026-07-26
+
+### Gutter marks come from document scoped contributions
+
+**Invariant:** If a line mark is painted in the editor gutter or as an underline, then it was
+contributed for the visible document's stable handle through `GutterDecorations`.
+
+**Scope:** The editor gutter contribution registry, repository diff marks, language diagnostics,
+and `EditorPaneRenderer`.
+
+**Mechanism:** `Workspace` registers language diagnostics and plugins register their own
+`GutterDecorationContribution`; the renderer requests the combined projection using only
+`Workspace.activeDocumentHandle`.
+
+**Generates:** One per-document decoration vocabulary for both source-control changes and language
+diagnostics; deterministic priority when marks share a line.
+
+**Evidence:** `GutterDecorations.ts`; `Workspace.ts` `languageDecorationsByLine`;
+`GitDocumentState.ts`; `EditorPaneRenderer.ts`.
+
+**Impossible if true:** The renderer reaching into either a repository-specific diff map or an
+LSP-specific diagnostics map; a contribution returning marks without a document handle.
+
+**Verification:** `bun test src/modules/workspace/GutterDecorations.test.ts
+src/modules/git/GitDocumentState.test.ts && bash scripts/smoke-gutter-diff.sh`.
+
+**Status:** established
+
+**Last refined:** 2026-07-26
+
 ### Workspace and file navigation are separate layers
 
 **Invariant:** If the user navigates, then project/worktree navigation (the outer layer) and
@@ -44,18 +102,19 @@ workspace that loses that workspace's open file and cursor state.
 **Invariant:** If N project workspaces are open, then only the active workspace owns a live
 `GitWatcher`; inactive workspaces keep resumable model state without filesystem watch handles.
 
-**Scope:** `WorkspaceSet` activation, switching, closing, and disposal; each owned `Workspace` and
-its `GitWatcher`. Dirty editor buffers are governed separately by the document flyweight record.
+**Scope:** `WorkspaceSet` activation, switching, closing, and disposal; the source-control
+workspace contribution and its `GitWatcher`. Dirty editor buffers are governed separately by the
+document flyweight record.
 
-**Mechanism:** `WorkspaceSet.activate` calls `Workspace.suspendOwnedResources` before changing the
-active index and `Workspace.resumeOwnedResources` afterward. Suspension disposes and clears the
-watcher; resumption constructs one watcher for the newly active root.
+**Mechanism:** `WorkspaceSet.activate` calls generic workspace suspension before changing the
+active index and generic resumption afterward. `GitWorkspace.suspended` disposes and clears its
+watcher; `GitWorkspace.resumed` constructs one watcher for the newly active root.
 
 **Generates:** one live project watcher; cold inactive workspace roots; watcher disposal on project
 switch and close.
 
-**Evidence:** `WorkspaceSet.ts`; `Workspace.ts` `suspendOwnedResources` and
-`resumeOwnedResources`; `WorkspaceSet.test.ts` "N open workspaces keep exactly one live GitWatcher";
+**Evidence:** `WorkspaceSet.ts`; `Workspace.ts` contribution lifecycle; `GitWorkspace.ts`;
+`WorkspaceSet.test.ts` "N open workspaces keep exactly one live GitWatcher";
 `scripts/smoke-workspace-tabs.sh` `liveGitWatcherCount` assertions.
 
 **Impossible if true:** two open workspaces both reporting a live `GitWatcher`; an inactive root
@@ -73,9 +132,10 @@ retaining filesystem watch handles after a workspace-tab switch.
 size: it does not await the `GitWatcher` walk or `GitRepository.refresh`, and activation ignore-query
 subprocesses scale with retained directory depth rather than directory count.
 
-**Scope:** `WorkspaceSet.activate`, `Workspace.resumeOwnedResources`, the initial watch-set
-establishment in `GitWatcher`, and the active workspace counters published by
-`AppStatusProjection`. Runtime-created directory events are outside the activation counters.
+**Scope:** `WorkspaceSet.activate`, generic workspace contribution resumption,
+`GitWorkspace.activateResources`, the initial watch-set establishment in `GitWatcher`, and the
+source-control status projection. Runtime-created directory events are outside the activation
+counters.
 
 **Components:**
 - *The switched view paints first* — watcher traversal and repository refresh begin only after the
@@ -84,7 +144,7 @@ establishment in `GitWatcher`, and the active workspace counters published by
   `git check-ignore -z --stdin` subprocess, regardless of that level's width.
 
 **Mechanism:** `Bootstrap` supplies `WorkspaceSet.awaitNextViewPaint`, a promise resolved by the
-renderer's next completed frame. `Workspace.activateGitResources` gives that same barrier to
+renderer's next completed frame. `GitWorkspace.activateResources` gives that same barrier to
 `GitWatcher` and awaits it before `GitRepository.refresh`. After the barrier,
 `walkAndWatchByLevel` gathers all candidate children at one depth, awaits one bulk
 `Processes.run` ignore query, prunes ignored directories, and yields before descending.
@@ -97,7 +157,7 @@ renderer's next completed frame. `Workspace.activateGitResources` gives that sam
 the one-live-watcher resource bound. Move the old walk to a worker — retains directory-count work
 and forces watcher events across a message boundary.
 
-**Evidence:** `src/modules/workspace/Workspace.ts` (`activateGitResources`);
+**Evidence:** `src/modules/git/GitWorkspace.ts` (`activateResources`);
 `src/modules/git/GitWatcher.ts` (`establishWatchSet`, `walkAndWatchByLevel`);
 `src/modules/git/GitWatcher.test.ts` activation counters; the tiny-versus-wide fixture and
 first-frame assertion in `scripts/harness/smoke-workspace-tabs-harness.ts`.

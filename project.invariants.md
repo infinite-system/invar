@@ -774,29 +774,36 @@ latest-revision results are applied.
 
 **Last refined:** 2026-07-21
 
-### The core is complete without plugins
+### The host canvas is complete without plugins
 
-**Invariant:** If a feature is essential (per the brief's scope), then it works with all plugins
-disabled; plugins extend a complete product, they never supply a basic.
+**Invariant:** If all plugins are disabled, then the host canvas still opens workspaces, files,
+editing, language intelligence, Markdown, panes, popups, commands, and status contributions;
+shipped domain capabilities may be default plugins but may not require host-core knowledge.
 
-**Scope:** All core surfaces: workspaces, files, editing, git, LSP, markdown, palette.
+**Scope:** The workspace and application hosts, their contribution ports, and the default plugin
+composition. Whether a domain capability ships enabled by default is a product-composition choice,
+not a reason to couple it into the host.
 
-**Mechanism:** Core features live in core modules; the plugin system adds contributions and
-kernel compositions on top.
+**Mechanism:** Core modules own the canvas and contribution registries. `DefaultPlugins` composes
+shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only generic plugin
+and contribution contracts.
 
-**Generates:** The two-tier plugin architecture; "no essential feature requires a plugin"; the
-demonstration plugins are additive.
+**Generates:** A usable plugin-free editor canvas; default shipped capabilities without
+host-to-domain imports; plugins that carry their own behavior.
 
-**Evidence:** The brief's Plugin-Architecture ("plugins extend a complete product"). Verified by
-the M7 all-plugins-disabled run.
+**Evidence:** `src/modules/plugins/DefaultPlugins.ts`;
+`src/modules/workspace/WorkspacePlugin.interface.ts`;
+`src/modules/app/ApplicationPlugin.interface.ts`; the conventions gate's core-boundary check.
 
-**Impossible if true:** An essential feature that only works with a plugin enabled.
+**Impossible if true:** Disabling plugins prevents opening or editing a file; `Workspace` or app
+core importing, constructing, or typing a concrete plugin implementation.
 
-**Verification:** A run with all plugins disabled exercising every Definition-of-Done capability.
+**Verification:** `bun test && bash scripts/conventions-gate.sh`; inspect a boot with
+`plugins: []` and the default boot with `DefaultPlugins.Class.create()`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
 
 ### No action requires a memorized motion
 

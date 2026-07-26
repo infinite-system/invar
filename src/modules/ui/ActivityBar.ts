@@ -1,15 +1,3 @@
-// The VS-Code-style ACTIVITY BAR: a ~4-column vertical view-switcher pinned to the far left of the
-// layout. One 4×2-cell button per view (a terminal cell is ~1:2 w:h, so 4w×2h reads visually square):
-// a single centred glyph, a left accent bar `▎` on the ACTIVE item, an optional corner badge digit
-// (git change count), and a hover tooltip carrying the view's name + its shortcut.
-//
-// This is a pane CONTROLLER in the StatusBar idiom — a Reactive class holding plain non-reactive
-// renderable/hover fields: RootView constructs it, mounts `bar` at the far-left of the main row, and
-// calls update() each frame. It OWNS no active-view state: the active view is Workspace.sidebarView
-// (one ref per workspace, so exactly one item is active), which its click/keys switch through the
-// single writer Workspace.showSidebarView. The bar only PROJECTS that state and routes the gesture.
-//
-// invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
 import {
   BoxRenderable,
   TextRenderable,
@@ -19,210 +7,132 @@ import {
   type CliRenderer,
 } from '@opentui/core';
 import { Reactive } from 'ivue';
-import type { Palette } from '../theme/ThemePalettes';
-import type { WorkspaceSet } from '../workspace/WorkspaceSet';
-import type { SidebarView } from '../workspace/Workspace';
-import type { Theme } from '../theme/Theme';
-import type { GlyphSlot } from '../theme/ThemeIcons';
-import type { Tooltip } from './Tooltip';
+import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
+import type { Palette } from '../theme/ThemePalettes';
+import type { PanelHost } from './PanelHost';
+import type { Tooltip } from './Tooltip';
+
+// invariant: The active activity item determines the sidebar content (ui.invariants.md)
 class $ActivityBar {
-  protected get ActivityBar() {
-    return ActivityBar.Class as unknown as typeof $ActivityBar;
-  }
-  protected static get $activityItems(): ActivityItem[] {
-    const activityItemsValue: ActivityItem[] = [
-      {
-        view: 'files',
-        label: 'Explorer',
-        action: 'view.showFiles',
-        glyphSlot: 'activityFiles',
-      },
-      {
-        view: 'git',
-        label: 'Source Control',
-        action: 'view.showSourceControl',
-        glyphSlot: 'activitySourceControl',
-      },
-      {
-        view: 'extensions',
-        label: 'Extensions',
-        action: 'view.showExtensions',
-        glyphSlot: 'activityExtensions',
-      },
-    ];
-    Object.defineProperty(this, '$activityItems', {
-      configurable: true,
-      value: activityItemsValue,
-    });
-    return activityItemsValue;
-  }
-  protected get activityItems(): ActivityItem[] {
-    return this.ActivityBar.$activityItems;
-  }
-  protected static get buttonWidth() {
-    return 4;
-  }
-  protected get buttonWidth() {
-    return this.ActivityBar.buttonWidth;
-  }
-  protected static get buttonRows() {
-    return 2;
-  }
-  protected get buttonRows() {
-    return this.ActivityBar.buttonRows;
-  }
-  /** The activity-bar box; RootView mounts this at the far-left of the main row. */
   readonly bar: BoxRenderable;
   protected readonly body: TextRenderable;
-  /** View-only hover state (which item the pointer rests on), plain field like StatusBar.hover. */
   protected hoveredItemIndex = -1;
-  constructor(protected readonly deps: ActivityBarDeps) {
-    const { renderer } = deps;
-    this.bar = new BoxRenderable(renderer, {
+
+  constructor(protected readonly dependencies: ActivityBarDependencies) {
+    this.bar = new BoxRenderable(dependencies.renderer, {
       id: 'activity-bar',
-      width: this.buttonWidth,
+      width: 4,
       height: '100%',
-      flexShrink: 0, // never let flex squeeze the 4-col bar away
+      flexShrink: 0,
       flexDirection: 'column',
     });
-    this.body = new TextRenderable(renderer, {
+    this.body = new TextRenderable(dependencies.renderer, {
       id: 'activity-bar-body',
       content: '',
-      width: this.buttonWidth,
+      width: 4,
       height: '100%',
       wrapMode: 'none',
-      selectable: false, // a click only switches views, never starts a text selection
+      selectable: false,
     });
     this.bar.add(this.body);
     this.wireHandlers();
   }
-  /** The activity item under a screen row, or null (empty space below the last button). */
-  protected itemAtRow(screenY: number): {
-    index: number;
-    item: ActivityItem;
-  } | null {
-    const index = Math.floor((screenY - this.bar.y) / this.buttonRows);
-    const item = this.activityItems[index];
-    return index >= 0 && item ? { index, item } : null;
+
+  protected itemAtRow(screenRow: number) {
+    const index = Math.floor((screenRow - this.bar.y) / 2);
+    const content = this.dependencies.primaryDockHost.orderedContents[index];
+    return index >= 0 && content ? { index, content } : null;
   }
+
   protected wireHandlers(): void {
-    const { renderer, workspaceSet, tooltip, keybindings } = this.deps;
+    const { renderer, primaryDockHost, tooltip, keybindings, commands } =
+      this.dependencies;
     this.bar.onMouseDown = (event) => {
       const hit = this.itemAtRow(event.y);
       if (!hit) return;
-      // Switch through the single writer — the same path the Ctrl+Shift+E/G/X chords take.
-      workspaceSet.active.showSidebarView(hit.item.view);
+      primaryDockHost.showContent(hit.content.id);
+      if (hit.content.activityAction) {
+        commands.run(hit.content.activityAction);
+      }
       tooltip.clear();
       renderer.requestRender();
     };
     this.bar.onMouseMove = (event) => {
       const hit = this.itemAtRow(event.y);
-      const nextHovered = hit ? hit.index : -1;
-      if (nextHovered !== this.hoveredItemIndex) {
-        this.hoveredItemIndex = nextHovered;
-        renderer.requestRender();
-      }
+      this.hoveredItemIndex = hit?.index ?? -1;
       if (hit) {
-        // Tooltip = full name + the view's EFFECTIVE shortcut, so the bar teaches its own keys.
-        const chordHint = keybindings.bindingHint(hit.item.action, 'global');
+        const action = hit.content.activityAction;
+        const chordHint = action
+          ? keybindings.bindingHint(action, 'global')
+          : '';
         tooltip.point(
-          chordHint ? `${hit.item.label} (${chordHint})` : hit.item.label,
+          chordHint ? `${hit.content.title} (${chordHint})` : hit.content.title,
           event.x,
           event.y,
         );
       } else {
         tooltip.clear();
       }
+      renderer.requestRender();
     };
     this.bar.onMouseOut = () => {
-      if (this.hoveredItemIndex !== -1) {
-        this.hoveredItemIndex = -1;
-        renderer.requestRender();
-      }
+      this.hoveredItemIndex = -1;
       tooltip.clear();
+      renderer.requestRender();
     };
   }
-  /** The git working-tree change count for the Source Control badge (0 hides the badge). */
-  protected gitChangedCount(): number {
-    const repository = this.deps.workspaceSet.active.git.value;
-    if (!repository) return 0;
-    return (
-      repository.staged.value.length +
-      repository.unstaged.value.length +
-      repository.untracked.value.length
-    );
-  }
-  /** Re-sync the bar from model state each frame. Realizes *Renderables hold no model state*: it
-   *  reads sidebarView / git / theme / hover and writes only presentation. */
+
   update(palette: Palette): void {
     this.bar.backgroundColor = palette.panel;
-    const activeView = this.deps.workspaceSet.active.sidebarView.value;
-    const changedCount = this.gitChangedCount();
+    const activeIdentifier = this.dependencies.primaryDockHost.activeId.value;
     const chunks: TextChunk[] = [];
-    this.activityItems.forEach((item, index) => {
-      const isActive = activeView === item.view;
-      const isHovered = this.hoveredItemIndex === index;
-      const glyphColor = isActive
-        ? palette.accent
-        : isHovered
-          ? palette.fg
-          : palette.dim;
-      // Top row (4 cols): ONLY the count/flag badge, at col 1 (one cell in from the edge) so it reads a
-      // bit closer to the icon below — which is centred at col 2 — rather than jammed against the left
-      // edge. Layout [pad][badge][pad][pad] = 4 cols. A placeholder row ABOVE the icon; today only
-      // Source Control fills it (the working-tree change count).
-      const badge =
-        item.view === 'git' && changedCount > 0
-          ? changedCount > 9
-            ? '+'
-            : String(changedCount)
-          : ' ';
-      chunks.push(fg(palette.fg)(' '));
-      chunks.push(fg(palette.accent)(badge));
-      chunks.push(fg(palette.fg)('  '));
-      chunks.push(fg(palette.fg)('\n'));
-      // Bottom row (4 cols): the active-item accent bar and the ICON on the SAME row (aligned) — accent
-      // at the left edge (col 0, one cell per active item), then ` icon `. The accent reads as the
-      // selection highlight for the icon, at the icon's level.
-      chunks.push(
-        fg(palette.accent)(
-          isActive ? this.deps.theme.glyph('activityAccentBar') : ' ',
-        ),
-      );
-      chunks.push(fg(glyphColor)(` ${this.deps.theme.glyph(item.glyphSlot)} `));
-      if (index < this.activityItems.length - 1)
-        chunks.push(fg(palette.fg)('\n'));
-    });
+    this.dependencies.primaryDockHost.orderedContents.forEach(
+      (content, index) => {
+        const isActive = activeIdentifier === content.id;
+        const isHovered = this.hoveredItemIndex === index;
+        const badge =
+          (content.activityBadge ?? 0) > 0
+            ? (content.activityBadge ?? 0) > 9
+              ? '+'
+              : String(content.activityBadge)
+            : ' ';
+        chunks.push(fg(palette.fg)(' '));
+        chunks.push(fg(palette.accent)(badge));
+        chunks.push(fg(palette.fg)('  \n'));
+        chunks.push(fg(palette.accent)(isActive ? '▎' : ' '));
+        chunks.push(
+          fg(isActive ? palette.accent : isHovered ? palette.fg : palette.dim)(
+            ` ${content.icon ?? '·'} `,
+          ),
+        );
+        if (
+          index <
+          this.dependencies.primaryDockHost.orderedContents.length - 1
+        ) {
+          chunks.push(fg(palette.fg)('\n'));
+        }
+      },
+    );
     this.body.content = new StyledText(chunks);
   }
-  /** Show or hide the bar (the View: Toggle Activity Bar command). Collapsing the width to 0 returns
-   *  the 4 columns to the sidebar/editor so hiding it truly reclaims the space, not just blanks it. */
+
   setVisible(visible: boolean): void {
     this.bar.visible = visible;
-    this.bar.width = visible ? this.buttonWidth : 0;
+    this.bar.width = visible ? 4 : 0;
   }
 }
+
 export namespace ActivityBar {
   export const $Class = $ActivityBar;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
-/** One activity item: the view it switches to, its full name (tooltip), the keybinding action whose
- *  effective chord the tooltip advertises, and which semantic glyph slot draws it. */
-interface ActivityItem {
-  view: SidebarView;
-  label: string;
-  action: string;
-  glyphSlot: Extract<
-    GlyphSlot,
-    'activityFiles' | 'activitySourceControl' | 'activityExtensions'
-  >;
-}
-export interface ActivityBarDeps {
+
+export interface ActivityBarDependencies {
   renderer: CliRenderer;
-  workspaceSet: WorkspaceSet.Instance;
-  theme: Theme.Instance;
+  primaryDockHost: PanelHost.Instance;
   tooltip: Tooltip.Instance;
   keybindings: KeybindingRegistry.Instance;
+  commands: CommandRegistry.Instance;
 }

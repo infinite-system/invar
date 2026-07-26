@@ -496,5 +496,6 @@ class $TextDocument {
 export namespace TextDocument {
   export const $Class = $TextDocument;
   export let Class = Reactive($Class);
+  export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }

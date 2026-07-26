@@ -25,6 +25,14 @@ class $FileTreePaneContent implements PaneContent {
     return this.dependencies.icon('', true, true);
   }
 
+  get activityAction(): string {
+    return 'view.showFiles';
+  }
+
+  get activityBadge(): number {
+    return 0;
+  }
+
   get renderRevision() {
     return ref(0);
   }
@@ -130,10 +138,6 @@ export namespace FileTreePaneContent {
 
 export interface FileTreePaneContentDependencies {
   workspaceSet: WorkspaceSet.Instance;
-  icon: (
-    name: string,
-    isDirectory: boolean,
-    expanded: boolean,
-  ) => string;
+  icon: (name: string, isDirectory: boolean, expanded: boolean) => string;
   scrollbarThicknessCells: () => number;
 }

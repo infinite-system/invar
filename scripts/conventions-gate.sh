@@ -141,5 +141,16 @@ if ! bash "$(dirname "$0")/check-map-coherence.sh" >/tmp/conventions-gate-mapcoh
 fi
 rm -f /tmp/conventions-gate-mapcoh.$$.log
 
+# 11) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
+#     name a concrete plugin, import its module, or dispatch its domain command identifiers.
+plugin_core_references=$(rg -n --glob '*.ts' --glob '!*.test.ts' \
+  "(from ['\"]\\.\\./git/|\\bGit[A-Z]|['\"]git\\.|['\"]git['\"])" \
+  src/modules/workspace/Workspace.ts src/modules/app || true)
+if [ -n "$plugin_core_references" ]; then
+  echo "CONVENTIONS FAIL: host core names the source-control plugin:"
+  echo "$plugin_core_references"
+  fail=1
+fi
+
 [ "$fail" = 0 ] && echo "conventions-gate: PASS"
 exit "$fail"

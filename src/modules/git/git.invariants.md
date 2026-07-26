@@ -170,7 +170,7 @@ event storm accumulating one debounce timer per event.
 then `GitRepository` refreshes from Git ground truth within one reconcile interval plus the
 debounce interval.
 
-**Scope:** The live `GitWatcher` created by `Workspace.createGitWatcher` for one working directory,
+**Scope:** The live `GitWatcher` created by `GitWorkspace.activateResources` for one working directory,
 including watcher setup failure, runtime watcher errors, and silent notification loss.
 
 **Mechanism:** One slow interval calls the same `GitWatcher.scheduleRefresh` debounce used by
@@ -186,8 +186,8 @@ unchanged periodic result.
 `onWatcherError`, `dispose`); `reconcile floor refreshes after watcher failure and stops on disposal`
 in `src/modules/git/GitWatcher.test.ts`; `src/modules/git/GitRepository.ts` (`refresh`,
 `fileRecordsMatch`); `an unchanged background refresh preserves quiescent Git refs` in
-`src/modules/git/__tests__/GitRepository.test.ts`; `src/modules/workspace/Workspace.ts`
-(`createGitWatcher`).
+`src/modules/git/__tests__/GitRepository.test.ts`; `src/modules/git/GitWorkspace.ts`
+(`activateResources`).
 
 **Impossible if true:** A tracked filesystem change remaining absent from `GitRepository` beyond
 one reconcile interval plus debounce solely because watcher setup, delivery, or runtime failed; or
@@ -261,8 +261,8 @@ expanded set (expanding past the capacity collapses the oldest expansion, and co
 files), and only the flat rows inside the visible window are ever rendered or consulted.
 
 **Scope:** `CommitExpansion` (expanded set + lazy fetch + eviction), the flat row model in
-`git.log-rows.ts`, and every consumer of it: `RootView.renderGitPanel`'s log region,
-`Workspace.logRowAt`/`ensureLogWindow`/`activateLogRow`, and the log hit-tester/keyboard indices.
+`git.log-rows.ts`, and every consumer of it: `GitPaneRenderer.render`'s log region,
+`GitWorkspace.logRowAt`/`ensureLogWindow`/`activateLogRow`, and the log hit-tester/keyboard indices.
 
 **Mechanism:** `CommitExpansion.expand` fetches one sha only after the user expands it, shows a
 loading row until the fetch lands, and discards a result superseded by collapse/reset (per-sha
@@ -297,9 +297,9 @@ collapse racing its own fetch and re-expanding from a stale result.
 history list drops its cached pages and refetches the visible window within one reconcile cycle —
 and while the panel is hidden the tip check spawns no subprocess at all.
 
-**Scope:** `Workspace.reconcileLogTip` and its call sites: the `GitWatcher.onReconciled` hook
+**Scope:** `GitWorkspace.reconcileLogTip` and its call sites: the `GitWatcher.onReconciled` hook
 (every completed background reconcile — debounced event flush or the 5s floor) and the panel-open
-catch-up in `Workspace.showSidebarView` / Bootstrap's `git.togglePanel`.
+catch-up in `GitWorkspace.show` / Bootstrap's `git.togglePanel`.
 
 **Mechanism:** Poll the cheap invariant, never the expensive projection: the check compares the
 viewed ref's real tip SHA against `CommitLog.loadedTipSha` (cache index 0 — what the pane
@@ -314,7 +314,7 @@ panel-open catch-up.
 no per-interval `git log` when nothing moved; no polling cost while the panel is hidden; the same
 freshness for a viewed non-checked-out branch.
 
-**Evidence:** `src/modules/workspace/Workspace.ts` (`reconcileLogTip`, `createGitWatcher`,
+**Evidence:** `src/modules/git/GitWorkspace.ts` (`reconcileLogTip`, `activateResources`,
 `showSidebarView`); `src/modules/git/GitWatcher.ts` (`flushRefresh`, `onReconciled` option);
 `src/modules/git/CommitLog.ts` (`loadedTipSha`, `reset`); `onReconciled fires after a completed
 background refresh and never after disposal` in `src/modules/git/GitWatcher.test.ts`;
@@ -338,7 +338,7 @@ view was produced by read commands parameterized on the ref (`log`, `show`, `rev
 `for-each-ref`) through the SAME virtualized log pipeline — the working tree, index, and HEAD are
 never modified, and the non-HEAD view is always visibly labeled with a return path to HEAD.
 
-**Scope:** `CommitLog.branch`/`setBranch`, `Workspace.selectLogBranch`/`cycleLogBranch`/
+**Scope:** `CommitLog.branch`/`setBranch`, `GitWorkspace.selectLogBranch`/`cycleLogBranch`/
 `localLogBranches`, the `history: <branch>` header in `GitPaneRenderer`, and the branch menu +
 header hit-target in `Sidebar`.
 
@@ -356,7 +356,7 @@ check applying to the viewed ref.
 
 **Evidence:** `src/modules/git/CommitLog.ts` (`branch`, `setBranch`, `fetchPage`);
 `src/modules/git/GitCommands.ts` (`localBranches`, `revParse` — read-only argv, no mutation
-verbs); `src/modules/workspace/Workspace.ts` (`selectLogBranch`, `cycleLogBranch`);
+verbs); `src/modules/git/GitWorkspace.ts` (`selectLogBranch`, `cycleLogBranch`);
 `src/modules/ui/GitPaneRenderer.ts` (the log header row); `src/modules/ui/Sidebar.ts`
 (`openLogBranchMenu`); `setBranch re-sources the SAME pipeline` in
 `src/modules/git/CommitLog.test.ts`; `scripts/smoke-git-log.sh` asserts `branch --show-current`,
@@ -389,7 +389,7 @@ delegation rule that deletions never ride in an automated pass.
 **Generates:** safe exploration of the git panel; a reusable confirm pattern for later destructive
 actions.
 
-**Evidence:** `Workspace.requestDiscardAtRow` (arms) vs `Workspace.confirmDiscard` (executes);
+**Evidence:** `GitWorkspace.requestDiscardAtRow` (arms) vs `GitWorkspace.confirmDiscard` (executes);
 Bootstrap's modal intercept; live-verified n-cancels / y-discards on a scratch repository.
 
 **Impossible if true:** a single gesture that irreversibly destroys uncommitted work; a discard
@@ -405,7 +405,7 @@ repo only).
 ### Current-line blame is a cached lookup, not a per-move git spawn
 
 **Invariant:** Blaming a file is a git subprocess, but moving the cursor is a pure map lookup. The
-WORKSPACE-OWNED `GitBlameCache` blames a tracked file ONCE and caches the per-line authorship map
+PLUGIN-OWNED `GitBlameCache` blames a tracked file ONCE and caches the per-line authorship map
 keyed on the file's on-disk mtime; a cursor move on an already-blamed file spawns nothing. A save
 (mtime change) invalidates the entry and re-blames; a repeated non-tracked result is cached (empty
 map) so it never re-spawns every frame. The cache is BOUNDED (LRU over at most `MAX_BLAMED_FILES`
@@ -414,8 +414,8 @@ DISPOSED with its workspace (suspend/close), making any in-flight load inert. Th
 memoized within one paint tick, so the status bar and the status side-channel querying in the same
 frame cost one stat.
 
-**Scope:** `GitBlameCache` (the instance `Workspace` creates in `open()` and disposes in
-`suspendOwnedResources`/`dispose`), `Workspace.activeLineBlame` (the single query surface),
+**Scope:** `GitBlameCache` (the instance `GitWorkspace` creates and disposes through the generic
+workspace contribution lifecycle), `GitWorkspace.activeLineBlame` (the single query surface),
 `GitBlame.parsePorcelain` (pure parsing), `GitCommands.blamePorcelain`, `Files.mtimeMs`.
 
 **Mechanism:** `lineBlame` reads the memoized mtime; a cache hit (same mtime) returns
@@ -434,7 +434,7 @@ its workspace.
 `statMemoizedMtime`); `src/modules/git/GitBlameCache.test.ts` (cache hit spawns nothing, mtime
 invalidation, negative caching, LRU bound, stat memo, disposal inertness);
 `src/modules/git/GitBlame.test.ts` (the porcelain parser: metadata reused across a commit's hunks,
-1-based line map); `src/modules/workspace/Workspace.ts` (`createGitBlameCache`, `activeLineBlame`,
+1-based line map); `src/modules/git/GitWorkspace.ts` (`activeLineBlame`,
 the suspend/dispose wiring); `scripts/smoke-git-blame.sh` (cursor on a committed line shows its
 author in the status bar; the git spawn happens once and later moves are instant).
 
@@ -455,13 +455,12 @@ blame state hiding behind a Static facade.
 buffer with no path on disk — shows NO blame part and never raises an error. `git blame` exiting nonzero
 is data (an empty cached map), not an exception.
 
-**Scope:** `GitBlameCache.lineBlame`/`loadBlame`, and the `StatusBar` blame part that omits itself on a null
-result.
+**Scope:** `GitBlameCache.lineBlame`/`loadBlame`, and the `GitPlugin` status contribution that
+omits itself on a null result.
 
 **Mechanism:** `lineBlame` returns null when the cache is disposed, the path is empty, or the file is not on
 disk (`mtimeMs === 0`). `loadBlame` caches an empty map on a nonzero git exit or any thrown error, so
-the negative result is remembered. `StatusBar.currentLineBlamePart` returns `''` for a null blame and
-pushes no part.
+the negative result is remembered. `GitPlugin.segments` pushes no part for a null blame.
 
 **Generates:** a status bar identical to today's for non-git and scratch files; a feature that is purely
 additive where git applies and invisible where it does not.
@@ -486,7 +485,7 @@ a thrown exception from a failed `git blame`.
 future/equal instant reads "just now" (clock skew never yields a negative age). It is pure: the caller
 supplies `nowMs`, so there is no ambient clock and the output is deterministic.
 
-**Scope:** `RelativeTime.format` (pure), its one caller `StatusBar.currentLineBlamePart`.
+**Scope:** `RelativeTime.format` (pure), its one caller `GitPlugin.segments`.
 
 **Mechanism:** `format(fromMs, nowMs)` computes `nowMs - fromMs` and returns the first bucket it fits,
 rounding to a whole count of that unit (minimum 1) and pluralizing on `!== 1`. A negative elapsed falls

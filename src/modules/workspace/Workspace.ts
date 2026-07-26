@@ -1,6 +1,5 @@
 import { Reactive } from 'ivue';
-import { computed, ref, shallowRef } from 'vue';
-import { spawnSync } from 'node:child_process';
+import { ref, shallowRef } from 'vue';
 import { FileTree } from './FileTree';
 import { Editor } from '../editor/Editor';
 import { OpenBufferSet } from './OpenBufferSet';
@@ -10,23 +9,11 @@ import {
 } from '../navigation/NavigationHistory';
 import { Files } from '../system/Files';
 import { ImageDecoders } from '../image/ImageDecoders';
-import { GitRepository } from '../git/GitRepository';
-import { GitWatcher } from '../git/GitWatcher';
-import { GitBlameCache } from '../git/GitBlameCache';
-import type { BlameLine } from '../git/GitBlame';
-import { CommitLog } from '../git/CommitLog';
-import { CommitExpansion } from '../git/CommitExpansion';
-import { GitPanel } from './GitPanel';
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
-import { GitRows } from '../git/GitRows';
-import { GitLogRows, type CommitLogRow } from '../git/GitLogRows';
-import { GitCommands } from '../git/GitCommands';
-import { GitParsers } from '../git/GitParsers';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { EditorWrap } from '../editor/EditorWrap';
 import { Logging } from '../system/Logging';
-import { GutterDiff, type GutterDiffStatus } from '../diff/GutterDiff';
 import {
   LanguageClient,
   type LanguageHover,
@@ -40,6 +27,16 @@ import type {
   LanguageCompletionContext,
   LanguageCompletionList,
 } from '../lsp/LanguageProvider.interface';
+import { DocumentLifecycle } from './DocumentLifecycle';
+import {
+  GutterDecorations,
+  type EditorLineDecoration,
+} from './GutterDecorations';
+import type { DocumentHandle } from './DocumentHandle';
+import type {
+  WorkspaceContribution,
+  WorkspacePlugin,
+} from './WorkspacePlugin.interface';
 
 // A workspace: one project root with its file tree, an editor, and which pane has focus.
 // WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -47,34 +44,20 @@ import type {
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 
 class $Workspace {
-  constructor(protected readonly options: WorkspaceOptions = {}) {}
-
-  /** The project name for a root: the basename of the parent of the git COMMON dir — shared by the
-   *  main checkout and every linked worktree of the same repository. `--git-common-dir` resolves to
-   *  `<checkout>/.git` for the main checkout and to `<project>/.git` for a worktree, so its parent is
-   *  the project root in both cases. Returns '' when the root is not a git repository (caller falls
-   *  back to the folder name). One synchronous git call, in open() only — never a hot path. */
-  protected static projectNameForRoot(absoluteRoot: string): string {
-    const result = spawnSync(
-      'git',
-      [
-        '-C',
-        absoluteRoot,
-        'rev-parse',
-        '--path-format=absolute',
-        '--git-common-dir',
-      ],
-      { encoding: 'utf8', timeout: 2000 },
-    );
-    if (result.status !== 0) return '';
-    const commonDirectory = result.stdout.trim();
-    return commonDirectory
-      ? Files.Class.basename(Files.Class.dirname(commonDirectory))
-      : '';
-  }
-
-  protected get GitCommands() {
-    return GitCommands.Class;
+  constructor(protected readonly options: WorkspaceOptions = {}) {
+    this.documentLifecycle.register({
+      opened: (handle) => this.openLanguageDocument(handle),
+      becameActive: (handle) => this.activateLanguageDocument(handle),
+      closed: (handle) => this.closeLanguageDocument(handle),
+    });
+    this.gutterDecorations.register({
+      byLine: (handle) => this.languageDecorationsByLine(handle),
+    });
+    for (const plugin of options.plugins ?? []) {
+      this.contributions.push(
+        plugin.attachWorkspace(this as unknown as Workspace.Model),
+      );
+    }
   }
 
   root = '';
@@ -84,13 +67,15 @@ class $Workspace {
   // tab, never replaces. Flyweight — only the active buffer (and any dirty background buffer) holds a
   // live document; clean background tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
-  gitPanel = this.createGitPanel();
+  documentLifecycle = new DocumentLifecycle.Class();
+  gutterDecorations = new GutterDecorations.Class();
+  protected readonly contributions: WorkspaceContribution[] = [];
   // Browser-style Go Back / Go Forward: every meaningful jump (go-to-definition, opening a file
   // from the tree / quick-open / a hover or Markdown reference) records the location left AND the
   // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
   // enabled/disabled affordances.
   navigationHistory = this.createNavigationHistory();
-  // A persistent, REUSED editor for read-only git diffs (drill-down). A diff is transient and does
+  // A persistent, reused editor for read-only comparisons. A comparison is transient and does
   // NOT become a file tab (editable side-by-side diff is item 14), so it never clobbers a tab.
   protected diffEditor = this.createEditor();
   // The empty-state editor shown when no tab is open (hasDocument stays false).
@@ -108,9 +93,6 @@ class $Workspace {
       editor.attachWordWrap(this.settingsSource.wordWrap);
     return editor;
   }
-  protected createGitPanel() {
-    return new GitPanel.Class();
-  }
   protected createNavigationHistory() {
     return new NavigationHistory.Class();
   }
@@ -121,22 +103,21 @@ class $Workspace {
       createBuffer: (path) => {
         const editor = this.createEditor();
         editor.openFile(path);
-        // Every live buffer (fresh open AND flyweight rehydration) registers with the language
-        // client here — one choke point. Client construction is cheap; the server subprocess
-        // starts only for supported files.
-        // invariant: LSP activation follows semantic demand (src/modules/lsp/lsp.invariants.md)
-        if (editor.hasDocument.value)
-          this.ensureLanguageClient().openDocument(editor.document);
         return editor;
       },
       disposeBuffer: (buffer) => {
         const editor = buffer as Editor.Instance;
-        // Mirror of the openDocument above: dehydration/close/disposeAll all release the
-        // server-side document through this one seam.
-        if (editor.hasDocument.value && editor.document.path) {
-          this.languageClientInstance?.closeDocument(editor.document);
-        }
         editor.dispose();
+      },
+      opened: (handle, buffer) => {
+        const editor = buffer as Editor.Instance;
+        handle.attach(editor.document);
+        this.documentLifecycle.opened(handle);
+      },
+      becameActive: (handle) => this.documentLifecycle.becameActive(handle),
+      closed: (handle, buffer) => {
+        this.documentLifecycle.closed(handle);
+        handle.detach((buffer as Editor.Instance).document);
       },
     });
   }
@@ -162,6 +143,71 @@ class $Workspace {
     if (!this.languageClientInstance)
       this.languageClientInstance = this.createLanguageClient();
     return this.languageClientInstance;
+  }
+
+  protected openLanguageDocument(handle: DocumentHandle.Model): void {
+    const document = handle.document;
+    if (document) this.ensureLanguageClient().openDocument(document);
+  }
+
+  protected activateLanguageDocument(handle: DocumentHandle.Model): void {
+    const document = handle.document;
+    if (!document) return;
+    this.ensureLanguageClient().openDocument(document);
+    this.languageClientInstance?.syncDocument(document);
+  }
+
+  protected closeLanguageDocument(handle: DocumentHandle.Model): void {
+    const document = handle.document;
+    if (document) this.languageClientInstance?.closeDocument(document);
+  }
+
+  protected languageDecorationsByLine(
+    handle: DocumentHandle.Model,
+  ): Map<number, EditorLineDecoration[]> {
+    const document = handle.document;
+    const client = this.languageClientInstance;
+    if (!document || !client) return new Map();
+    void client.diagnosticsRevision.value;
+    void document.revision.value;
+    const total = client.diagnosticCountFor(document);
+    const decorationsByLine = new Map<number, EditorLineDecoration[]>();
+    for (const diagnostic of client.diagnosticSlice(document, 0, total)) {
+      const firstLine = diagnostic.range.start.line;
+      const lastLine = diagnostic.range.end.line;
+      for (let lineIndex = firstLine; lineIndex <= lastLine; lineIndex += 1) {
+        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
+        const startColumn =
+          lineIndex === firstLine ? diagnostic.range.start.column : 0;
+        const endColumn =
+          lineIndex === lastLine
+            ? diagnostic.range.end.column
+            : EditorCoordinates.Class.graphemeCount(document.line(lineIndex));
+        const color =
+          diagnostic.severity === 1
+            ? 'error'
+            : diagnostic.severity === 2
+              ? 'warning'
+              : diagnostic.severity === 3
+                ? 'info'
+                : 'hint';
+        const decorations = decorationsByLine.get(lineIndex) ?? [];
+        decorations.push({
+          gutter: {
+            glyph: 'bar',
+            color,
+            priority: 500 - diagnostic.severity,
+          },
+          underline: {
+            startColumn,
+            endColumn: Math.max(startColumn, endColumn),
+            color,
+          },
+        });
+        decorationsByLine.set(lineIndex, decorations);
+      }
+    }
+    return decorationsByLine;
   }
 
   /** Push the active buffer's current text to the language server (revision-idempotent full-text
@@ -356,7 +402,7 @@ class $Workspace {
     return true;
   }
 
-  /** True while a git diff is displayed over the tabs (transient view). */
+  /** True while a transient comparison is displayed over the tabs. */
   get showingDiff() {
     return ref(false);
   }
@@ -405,147 +451,19 @@ class $Workspace {
     this.markdownPreviewPaths.value = nextPaths;
     this.focus.value = 'editor';
   }
-  // The two SIDES of the currently-shown side-by-side diff (the rich DiffView), or null. Set by
-  // openChangeAtRow / openCommitFileDiff, cleared when a real tab replaces it. The token forces the
-  // view host to rebuild (DiffView has no re-open — it reconstructs per file).
+  // The two sides of the currently shown comparison, or null. The token forces the view host to
+  // rebuild because the comparison view reconstructs per request.
   get diffRequest() {
     return shallowRef<DiffRequest | null>(null);
   }
   protected diffRequestToken = 0;
-  // Newest-click-wins token for the ASYNC diff-open entry points (openChangeAtRow /
-  // openCommitFileDiff): allocated before their awaits, verified before openDiffView, so
-  // completion order can never override click order.
-  protected diffOpenRequestToken = 0;
-  // Full text of a file at a git ref ('HEAD', '<sha>', '<sha>^', '' = index) — empty when absent at that
-  // ref (added/untracked/root-commit file = the empty diff side).
-  protected async gitFileText(ref: string, filePath: string): Promise<string> {
-    const result = await this.GitCommands.fileAtRef(this.root, ref, filePath);
-    return result.code === 0 ? result.stdout : '';
-  }
-
-  // The active file's git HEAD side. Buffer edits never refetch it; the cached blob changes only
-  // when the active document changes, a git reconciliation completes, or the file is saved.
-  get activeHeadText() {
-    return shallowRef('');
-  }
-  get activeHeadDocumentPath() {
-    return shallowRef('');
-  }
-  protected activeHeadTextRequestToken = 0;
-
-  // DiffAlignment is deliberately cached behind computed(): alignment is document-sized work, while
-  // cursor and selection repaints are frequent and must reuse the same map until HEAD/text changes.
-  get gutterDiffByLine() {
-    return computed<Map<number, GutterDiffStatus>>(() => {
-      const editor = this.editor;
-      void editor.document.revision.value;
-      if (this.showingDiff.value || !editor.hasDocument.value) return new Map();
-      if (this.activeHeadDocumentPath.value !== editor.document.path)
-        return new Map();
-      return GutterDiff.Class.statusByLine(
-        this.activeHeadText.value,
-        editor.document.text,
-      );
-    });
-  }
-
-  // Language-server diagnostics for the active document, projected to per-line column ranges: the
-  // editor renders a severity-coloured gutter mark AND a coloured underline over each range. Cached
-  // behind computed(), recomputed only when the diagnostics revision or the document changes.
-  get diagnosticsByLine() {
-    return computed<Map<number, DiagnosticLineMark[]>>(() => {
-      const editor = this.editor;
-      const client = this.languageClientInstance;
-      if (this.showingDiff.value || !editor.hasDocument.value || !client)
-        return new Map();
-      void client.diagnosticsRevision.value; // reactivity: repaint when diagnostics change
-      void editor.document.revision.value;
-      const total = client.diagnosticCountFor(editor.document);
-      if (total === 0) return new Map();
-      const byLine = new Map<number, DiagnosticLineMark[]>();
-      for (const diagnostic of client.diagnosticSlice(
-        editor.document,
-        0,
-        total,
-      )) {
-        const firstLine = diagnostic.range.start.line;
-        const lastLine = diagnostic.range.end.line;
-        for (let line = firstLine; line <= lastLine; line += 1) {
-          if (line < 0 || line >= editor.document.lineCount) continue;
-          const startColumn =
-            line === firstLine ? diagnostic.range.start.column : 0;
-          const endColumn =
-            line === lastLine
-              ? diagnostic.range.end.column
-              : EditorCoordinates.Class.graphemeCount(
-                  editor.document.line(line),
-                );
-          const marks = byLine.get(line) ?? [];
-          marks.push({
-            startColumn,
-            endColumn: Math.max(startColumn, endColumn),
-            severity: diagnostic.severity,
-          });
-          byLine.set(line, marks);
-        }
-      }
-      return byLine;
-    });
-  }
-
-  // invariant: The editor gutter reflects HEAD changes (src/modules/diff/diff.invariants.md)
-  async refreshActiveHeadText(): Promise<void> {
-    const requestToken = ++this.activeHeadTextRequestToken;
-    this.activeHeadDocumentPath.value = '';
-    const editor = this.editor;
-    if (
-      this.showingDiff.value ||
-      !editor.hasDocument.value ||
-      !editor.document.path
-    ) {
-      this.activeHeadText.value = '';
-      return;
-    }
-
-    const documentPath = editor.document.path;
-    if (Files.Class.confineToRoot(this.root, documentPath) === null) {
-      this.activeHeadText.value = '';
-      return;
-    }
-    const workspaceRelativePath = Files.Class.relative(this.root, documentPath);
-    const headText = await this.gitFileText('HEAD', workspaceRelativePath);
-    // invariant: Async results are revision-stamped and stale results discarded (project.invariants.md)
-    if (
-      requestToken === this.activeHeadTextRequestToken &&
-      !this.showingDiff.value &&
-      this.editor.hasDocument.value &&
-      this.editor.document.path === documentPath
-    ) {
-      this.activeHeadText.value = headText;
-      this.activeHeadDocumentPath.value = documentPath;
-    }
-  }
-  protected workingFileText(filePath: string): string {
-    const absolute = Files.Class.join(this.root, filePath);
-    // Git lists an untracked DIRECTORY (e.g. node_modules/, including a symlink-to-dir — statSync
-    // follows symlinks) as a single entry that GitRows classifies as kind:'file'. Reading it as a file
-    // throws EISDIR, and the throw escapes through OpenTUI's mouse dispatch and crashes the app. Guard
-    // the read against directories, and try/catch so any non-regular file (fifo/socket/broken symlink)
-    // degrades to an empty diff instead of taking the app down.
-    if (!Files.Class.exists(absolute) || Files.Class.isDir(absolute)) return '';
-    try {
-      return Files.Class.read(absolute);
-    } catch {
-      return '';
-    }
-  }
-  protected openDiffView(request: Omit<DiffRequest, 'token'>): void {
+  showComparison(request: Omit<DiffRequest, 'token'>): void {
     this.diffRequest.value = { token: ++this.diffRequestToken, ...request };
-    this.showingDiff.value = true; // the DiffView shows OVER the tabs (transient view)
-    this.focus.value = 'editor'; // keyboard to the diff; sidebarView stays 'git'
+    this.showingDiff.value = true;
+    this.focus.value = 'editor';
   }
 
-  /** The editor currently VISIBLE in the pane — a git diff while drilling, else the active tab's
+  /** The editor currently visible in the pane — a comparison while drilling, else the active tab's
    *  buffer, else the empty-state editor. All movement/render/edit target this one. */
   get editor(): Editor.Instance {
     if (this.showingDiff.value) return this.diffEditor;
@@ -554,100 +472,11 @@ class $Workspace {
       (this.buffers.activeBuffer as Editor.Instance | null) ?? this.emptyEditor
     );
   }
-  // Git repository + commit log need the root, so they are created in open() (not field-init).
-  protected createGit(root: string) {
-    return new GitRepository.Class(root);
-  }
-  protected createCommitLog(root: string) {
-    return new CommitLog.Class(root);
-  }
-  // Watches the working tree so EXTERNAL changes (editor saves elsewhere, other processes, branch
-  // switches, on-disk edits) live-refresh the git panel + tree decorations — not just our own actions.
-  protected createGitWatcher(
-    root: string,
-    repository: GitRepository.Instance,
-    viewPainted: Promise<void>,
-  ) {
-    // After every completed reconcile (event flush or the 5s floor), probe the commit log's tip —
-    // the cheap SHA compare that keeps the HISTORY list following external commits/pulls/rebases.
-    // invariant: The commit log follows repository reality (src/modules/git/git.invariants.md)
-    let gitWatcher: GitWatcher.Model;
-    gitWatcher = new GitWatcher.Class(root, repository, {
-      onReconciled: () => void this.reconcileLogTip(),
-      onWatchSetEstablished: () =>
-        this.onGitWatcherWatchSetEstablished(gitWatcher),
-      viewPainted,
-    });
-    return gitWatcher;
-  }
-  protected gitWatcher: GitWatcher.Model | null = null;
-  protected get gitWatcherStatusRevision() {
-    return ref(0);
-  }
-  // The workspace-owned current-line blame cache (bounded LRU; see GitBlameCache). Created in
-  // open(), dropped on suspend/dispose, recreated on resume — blame memory follows the live
-  // workspace, never the process lifetime.
-  protected blameCacheInstance: GitBlameCache.Model | null = null;
-  protected createGitBlameCache(root: string) {
-    return new GitBlameCache.Class(root);
-  }
 
-  /** The blame for the ACTIVE editor's cursor line, or null (no document / not blamed yet / not
-   *  tracked). The ONE query the status bar and the status side-channel both read — a single
-   *  implementation, and the cache's stat memo makes the second same-frame read stat-free. */
-  get activeLineBlame(): BlameLine | null {
-    const blameCache = this.blameCacheInstance;
-    if (!blameCache || this.git.value === null || this.showingDiff.value)
-      return null;
-    const editor = this.editor;
-    if (!editor.hasDocument.value || !editor.document.path) return null;
-    return blameCache.lineBlame(editor.document.path, editor.cursor.line.value);
+  get activeDocumentHandle(): DocumentHandle.Model | null {
+    return this.buffers.activeDocumentHandle;
   }
-
-  get hasLiveGitWatcher(): boolean {
-    return this.gitWatcher !== null;
-  }
-
-  get gitWatcherActivationIgnoreQuerySubprocessCount(): number {
-    void this.gitWatcherStatusRevision.value;
-    return this.gitWatcher?.activationIgnoreQuerySubprocesses ?? 0;
-  }
-
-  get gitWatcherActivationWatchedDirectoryCount(): number {
-    void this.gitWatcherStatusRevision.value;
-    return this.gitWatcher?.activationWatchedDirectories ?? 0;
-  }
-
-  get gitWatcherActivationCompleted(): boolean {
-    void this.gitWatcherStatusRevision.value;
-    return this.gitWatcher?.activationCompleted ?? false;
-  }
-
-  protected onGitWatcherWatchSetEstablished(
-    gitWatcher: GitWatcher.Model,
-  ): void {
-    if (this.gitWatcher === gitWatcher) {
-      this.gitWatcherStatusRevision.value += 1;
-    }
-  }
-
-  protected activateGitResources(
-    root: string,
-    repository: GitRepository.Instance,
-  ): void {
-    this.gitWatcher?.dispose();
-    const viewPainted = this.awaitNextViewPaint();
-    const gitWatcher = this.createGitWatcher(root, repository, viewPainted);
-    this.gitWatcher = gitWatcher;
-    // invariant: Workspace activation is view-only (workspace.invariants.md)
-    void viewPainted.then(() => {
-      if (this.gitWatcher === gitWatcher) {
-        void repository.refresh();
-      }
-    });
-  }
-
-  protected awaitNextViewPaint(): Promise<void> {
+  nextViewPaint(): Promise<void> {
     return (
       this.options.awaitNextViewPaint?.() ??
       new Promise((resolve) => setImmediate(resolve))
@@ -669,6 +498,9 @@ class $Workspace {
         settings.wordWrap,
       );
     }
+    for (const contribution of this.contributions) {
+      contribution.settingsAttached?.(settings);
+    }
   }
   protected get flingMomentum(): MomentumOptions {
     const settings = this.settingsSource;
@@ -680,116 +512,38 @@ class $Workspace {
       stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
     };
   }
-  // SINGLE SOURCE of the git changes/log split: settings.gitSplitRatio when settings are attached
-  // (so the panel control + the draggable divider + persistence all agree), else the panel-local
-  // ratio (unit tests, no-settings). Every reader — the renderer AND the scroll geometry here — must
-  // read THIS, never gitPanel.splitRatio directly, or the two diverge.
-  get gitSplitRatio(): number {
-    const settings = this.settingsSource;
-    return settings
-      ? settings.gitSplitRatio.value
-      : this.gitPanel.splitRatio.value;
-  }
-  // Clamp + write the split LIVE (a divider drag tick). Updates the reactive settings.gitSplitRatio in
-  // memory so the split moves smoothly; the panel-local ratio stays mirrored. Does NOT persist — save()
-  // is a synchronous disk write and must never run at mouse-move frequency (frame stall). Call
-  // persistGitSplit() ONCE on drag end.
-  setGitSplit(ratio: number): void {
-    const clamped = Math.max(0.15, Math.min(0.85, ratio));
-    this.gitPanel.setSplit(clamped);
-    if (this.settingsSource) this.settingsSource.gitSplitRatio.value = clamped;
-  }
-  /** Persist the split once, on drag release (never per tick). */
-  persistGitSplit(): void {
-    this.settingsSource?.save();
-  }
-  protected createCommitExpansion(root: string) {
-    return new CommitExpansion.Class(root);
-  }
-
   get focus() {
     return ref<Focus>('files');
   }
-  // WHICH panel the sidebar shows — decoupled from keyboard focus, so opening a diff from the git
-  // panel keeps the panel visible while the editor takes focus (VS Code behavior). ONE ref holds ONE
-  // value, so "exactly one activity item is active per workspace" is true by representation.
-  get sidebarView() {
-    return ref<SidebarView>('files');
+  get primaryPaneContentIdentifier() {
+    return ref('files');
   }
   get name() {
     return ref('');
   }
-  /** The linked-worktree name when the root is a linked git worktree — its `.git` is a gitdir-pointer
-   *  FILE, not a directory — else null. The name is the worktree root's folder name. */
   get worktreeName() {
     return ref<string | null>(null);
   }
-  /** The second tab-strip line for this project: the checked-out BRANCH, live-reactive so a
-   *  `git checkout`/`switch` updates it (GitWatcher watches HEAD). git reports a detached HEAD as
-   *  the literal branch "(detached)"; show the short HEAD SHA instead, which actually identifies it.
-   *  Empty until git first reports, or when the root is not a repository. */
   get tabDetail(): string {
-    const branch = this.git.value?.branch.value ?? '';
-    if (branch === '(detached)') {
-      const head = this.git.value?.head.value ?? '';
-      return head ? head.slice(0, 7) : '(detached)';
+    for (const contribution of this.contributions) {
+      const detail = contribution.tabDetail;
+      if (detail) return detail;
     }
-    return branch;
-  }
-  // The repository + commit-log window for the current root (null until open()).
-  get git() {
-    return shallowRef<GitRepository.Instance | null>(null);
-  }
-  get commitLog() {
-    return shallowRef<CommitLog.Instance | null>(null);
-  }
-  get commitExpansion() {
-    return shallowRef<CommitExpansion.Instance | null>(null);
+    return '';
   }
 
   open(root: string): void {
     this.root = root;
-    // Name is the actual folder name, never "." — resolve to the absolute path first so a root of "."
-    // (or a trailing-slash path) still yields the real directory name.
     const absoluteRoot = Files.Class.absolute(root);
-    // Line 1 is the PROJECT name, shared by the main checkout AND all its linked worktrees, so every
-    // worktree tab reads as the same project (its branch on line 2 tells them apart). The project root
-    // is the parent of the git COMMON dir: for the main checkout that is `<root>/.git` -> <root>; for a
-    // linked worktree it is `<project>/.git` -> <project>. Falls back to the folder name off-repo.
-    const workspaceClass = this.constructor as typeof $Workspace;
-    this.name.value =
-      workspaceClass.projectNameForRoot(absoluteRoot) ||
-      Files.Class.basename(absoluteRoot) ||
-      absoluteRoot;
-    // A linked git worktree keeps `.git` as a pointer FILE ("gitdir: …"), never a directory — the
-    // main checkout's `.git` is a directory. The worktree's own name is its root folder name.
-    const gitPointerPath = Files.Class.join(absoluteRoot, '.git');
-    this.worktreeName.value =
-      Files.Class.exists(gitPointerPath) && !Files.Class.isDir(gitPointerPath)
-        ? Files.Class.basename(absoluteRoot) || null
-        : null;
+    this.name.value = Files.Class.basename(absoluteRoot) || absoluteRoot;
     this.tree.open(root);
     this.focus.value = 'files';
-    // Live-wire git: create the repository + log for this root, then activate their deferred
-    // resource work after the view-only open path returns.
-    this.git.value = this.createGit(root);
-    this.commitLog.value = this.createCommitLog(root);
-    this.commitExpansion.value = this.createCommitExpansion(root);
-    this.activateGitResources(root, this.git.value);
-    // Current-line blame: a bounded, THIS-workspace-owned cache (disposed when the workspace goes
-    // cold — blame memory tracks the actively observed set, never every file ever visited).
-    this.blameCacheInstance?.dispose();
-    this.blameCacheInstance = this.createGitBlameCache(root);
+    for (const contribution of this.contributions) contribution.opened(root);
   }
 
-  // invariant: N open workspaces do not cost N live GitWatchers (workspace.invariants.md)
   /** Release per-root live resources while preserving this workspace's resumable model state. */
   suspendOwnedResources(): void {
-    this.gitWatcher?.dispose();
-    this.gitWatcher = null;
-    // Blame maps are per-file memory — a cold workspace drops them; resume re-blames on demand.
-    this.blameCacheInstance?.dispose();
-    this.blameCacheInstance = null;
+    for (const contribution of this.contributions) contribution.suspended();
     // A suspended (background) workspace holds no language-server subprocess; resuming recreates
     // the client lazily through the buffer seams / the next semantic request.
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
@@ -798,26 +552,15 @@ class $Workspace {
     this.buffers.deactivate();
   }
 
-  // invariant: N open workspaces do not cost N live GitWatchers (workspace.invariants.md)
   /** Recreate per-root live resources when this workspace becomes the observed project again. */
   resumeOwnedResources(): void {
     this.buffers.reactivate();
-    if (this.root && this.git.value && !this.gitWatcher) {
-      this.activateGitResources(this.root, this.git.value);
-    }
-    if (this.root && !this.blameCacheInstance) {
-      this.blameCacheInstance = this.createGitBlameCache(this.root);
-    }
+    for (const contribution of this.contributions) contribution.resumed();
   }
 
-  /** Tear down owned resources with effects/handles (the working-tree watcher, the language
-   *  client's subprocess, and the open buffers). */
+  /** Tear down owned resources with effects, handles, or subprocesses. */
   dispose(): void {
-    this.activeHeadTextRequestToken += 1;
-    this.gitWatcher?.dispose();
-    this.gitWatcher = null;
-    this.blameCacheInstance?.dispose();
-    this.blameCacheInstance = null;
+    for (const contribution of this.contributions) contribution.disposed();
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
     void this.languageClientInstance?.dispose();
     this.languageClientInstance = null;
@@ -832,269 +575,14 @@ class $Workspace {
     this.focus.value = 'editor';
   }
   focusFiles(): void {
+    this.primaryPaneContentIdentifier.value = 'files';
     this.focus.value = 'files';
-    this.sidebarView.value = 'files';
   }
-  focusGit(): void {
-    this.focus.value = 'git';
-  }
-  /**
-   * Switch the sidebar to an activity-bar view (a bar click OR the Ctrl+Shift+E/G/X chord). This is
-   * the SINGLE writer the activity bar and its keybindings both call, so the active view is one
-   * decision per workspace. Focus follows the view for the interactive panels (files/git) so their
-   * keyboard navigation is live immediately; the extensions placeholder is display-only, so it leaves
-   * keyboard focus where it is. Switching TO git kicks the same non-blocking refresh Ctrl+G does.
-   *
-   * invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
-   */
-  showSidebarView(view: SidebarView): void {
-    this.sidebarView.value = view;
-    if (view === 'files') {
-      this.focus.value = 'files';
-    } else if (view === 'git') {
-      this.focus.value = 'git';
-      // Status first, THEN the tip probe: reconcileLogTip reads git.head, so it must run after the
-      // refresh lands — this is the panel-open catch-up for history that moved while it was hidden.
-      void this.git.value?.refresh().then(() => this.reconcileLogTip());
-      void this.commitLog.value?.ensureRange(0, 50);
+  focusPrimaryPane(contentIdentifier?: string): void {
+    if (contentIdentifier) {
+      this.primaryPaneContentIdentifier.value = contentIdentifier;
     }
-  }
-
-  /** Cycle the sidebar between the files tree and the git panel (Ctrl+G style toggle). */
-  toggleGit(): void {
-    const entering = this.focus.value !== 'git';
-    this.focus.value = entering ? 'git' : 'files';
-    this.sidebarView.value = entering ? 'git' : 'files';
-  }
-
-  // invariant: Cost tracks the actively observed set (project.invariants.md)
-  /**
-   * Scroll the commit-log WINDOW by `delta` rows (mouse wheel / paging). Moves `logScrollTop` only
-   * (not the selection), clamps to `[0, knownEnd)`, and asks the CommitLog to ensure the new window
-   * is loaded — the sparse cache fetches the entered pages and evicts the exited ones, so scrolling
-   * a huge log never materializes more than the observed window.
-   */
-  scrollGitLog(delta: number): void {
-    const gitPanel = this.gitPanel;
-    const end = this.logFlatEnd();
-    const maxScrollTop = Number.isFinite(end)
-      ? Math.max(0, end - 1)
-      : gitPanel.logScrollTop.value + Math.max(0, delta);
-    gitPanel.logScrollTop.value = Math.max(
-      0,
-      Math.min(gitPanel.logScrollTop.value + delta, maxScrollTop),
-    );
-    this.ensureLogWindow(gitPanel.logScrollTop.value);
-  }
-
-  // --- commit-log flat rows (inline commit expansion) ------------------------------------------
-  // The log region scrolls/selects over FLAT rows: a collapsed commit is 1 row; an expanded one is
-  // 1 + fileCount (or 1 + a loading row while its lazy fetch is in flight). The pure model lives in
-  // git.log-rows.ts and is shared with the renderer/hit-tester.
-  // invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
-
-  protected expandedEntries() {
-    return this.commitExpansion.value?.entries.value ?? [];
-  }
-
-  /** One past the last flat log row (Infinity until the end of history is discovered). */
-  logFlatEnd(): number {
-    const end =
-      this.commitLog.value?.knownEnd.value ?? Number.POSITIVE_INFINITY;
-    return GitLogRows.Class.totalFlatRows(this.expandedEntries(), end);
-  }
-
-  /** The flat log row at `flatIndex` (commit header / commit file / loading), or null. O(window). */
-  logRowAt(flatIndex: number): CommitLogRow | null {
-    const commitLog = this.commitLog.value;
-    if (!commitLog || flatIndex < 0) return null;
-    const rows = GitLogRows.Class.commitLogRows(
-      flatIndex,
-      1,
-      this.expandedEntries(),
-      (commitIndex) => commitLog.rows(commitIndex, 1)[0],
-      commitLog.knownEnd.value,
-    );
-    return rows[0] ?? null;
-  }
-
-  /** Ensure the COMMIT pages behind the flat window `[flatTop, flatTop+count)` are loaded —
-   *  expansion only shrinks how many commits a window shows, so `count` commits always cover it. */
-  ensureLogWindow(flatTop: number, count = 50): void {
-    const commitLog = this.commitLog.value;
-    if (!commitLog) return;
-    const firstCommitIndex = GitLogRows.Class.commitIndexAtFlatRow(
-      this.expandedEntries(),
-      Math.max(0, flatTop),
-    );
-    void commitLog.ensureRange(firstCommitIndex, count);
-  }
-
-  // --- commit-log tip staleness + the read-only branch VIEWER --------------------------------
-  // invariant: The commit log follows repository reality (src/modules/git/git.invariants.md)
-  // invariant: The log branch viewer is read-only (src/modules/git/git.invariants.md)
-
-  /**
-   * Poll the cheap invariant, refresh the expensive projection only when it moved: compare the
-   * VIEWED ref's real tip SHA against the tip the log window displays; on a mismatch (external
-   * commit, pull, ff-push, rebase, amend — any history movement) drop the cached pages + inline
-   * expansions and refetch the current window. Runs from the watcher's reconcile completions and
-   * from panel-open catch-up. ONLY while the git panel is visible — a hidden panel spawns nothing
-   * (cost tracks the actively observed set). Following HEAD costs zero extra subprocesses (the tip
-   * rides the status reconcile); a viewed non-HEAD branch costs one local `rev-parse`. LOCAL refs
-   * only — never a network fetch on a timer.
-   */
-  // Stale-supersession token for the tip probe: a new probe OR a branch-viewer switch invalidates
-  // any probe still awaiting its rev-parse, so a late result can never reset the newly viewed
-  // branch's cache or force the viewer back to HEAD (the viewed ref moved on while it slept).
-  protected logTipProbeToken = 0;
-
-  async reconcileLogTip(): Promise<void> {
-    if (this.sidebarView.value !== 'git') return;
-    const git = this.git.value;
-    const commitLog = this.commitLog.value;
-    if (!git || !commitLog) return;
-    const probeToken = ++this.logTipProbeToken;
-    const viewedBranch = commitLog.branch.value;
-    let actualTipSha = '';
-    if (viewedBranch === undefined) {
-      actualTipSha = git.head.value; // fresh from the status reconcile that just landed — free
-    } else {
-      const result = await this.GitCommands.revParse(
-        commitLog.cwd,
-        `refs/heads/${viewedBranch}`,
-      );
-      // Recheck EVERYTHING captured before the await: a newer probe, a viewer switch (token bump),
-      // a replaced log instance (workspace reopen), a changed viewed branch, or a hidden panel all
-      // make this result stale — apply nothing.
-      if (
-        probeToken !== this.logTipProbeToken ||
-        this.commitLog.value !== commitLog ||
-        commitLog.branch.value !== viewedBranch ||
-        this.sidebarView.value !== 'git'
-      ) {
-        return;
-      }
-      if (result.code !== 0) {
-        this.selectLogBranch(null); // the STILL-viewed branch vanished externally — fall back to HEAD
-        return;
-      }
-      actualTipSha = result.stdout.trim();
-    }
-    if (!actualTipSha) return; // no repository / detached probe failure — nothing to compare
-    const loadedTipSha = commitLog.loadedTipSha;
-    if (loadedTipSha === null || loadedTipSha === actualTipSha) return;
-    // History moved: commit indices shifted, so cached pages AND index-keyed expansions are stale.
-    this.commitExpansion.value?.reset();
-    commitLog.reset();
-    this.ensureLogWindow(this.gitPanel.logScrollTop.value);
-  }
-
-  /** Local branch names for the log-branch selector — fetched on demand (a click or cycle), never
-   *  polled. Empty outside a repository. */
-  async localLogBranches(): Promise<string[]> {
-    const commitLog = this.commitLog.value;
-    if (!commitLog) return [];
-    const result = await this.GitCommands.localBranches(commitLog.cwd);
-    if (result.code !== 0) return [];
-    return GitParsers.Class.parseLocalBranches(result.stdout);
-  }
-
-  /**
-   * Point the commit-log VIEWER at another local branch's history (null = return to following
-   * HEAD). READ-ONLY viewing: this re-sources the same virtualized log pipeline from another ref —
-   * it NEVER runs `git switch`/`checkout`, so the working tree, index, and HEAD are untouched.
-   * Selecting the checked-out branch normalizes to HEAD-following (they are the same history).
-   */
-  selectLogBranch(branchName: string | null): void {
-    const commitLog = this.commitLog.value;
-    if (!commitLog) return;
-    const checkedOutBranch = this.git.value?.branch.value ?? '';
-    const normalizedBranch =
-      branchName === null || branchName === checkedOutBranch
-        ? undefined
-        : branchName;
-    if (commitLog.branch.value === normalizedBranch) return;
-    this.logTipProbeToken++; // a viewer switch supersedes any tip probe still awaiting its rev-parse
-    this.commitExpansion.value?.reset(); // expansion is commit-INDEX keyed — stale across refs
-    commitLog.setBranch(normalizedBranch);
-    this.gitPanel.region.value = 'log';
-    this.gitPanel.logIndex.value = 0;
-    this.gitPanel.logScrollTop.value = 0;
-    this.ensureLogWindow(0);
-  }
-
-  /** Cycle the log viewer through the local branches (wraps; landing on the checked-out branch
-   *  returns to HEAD-following). Keyboard mirror of the header's branch menu. */
-  async cycleLogBranch(): Promise<void> {
-    const branchNames = await this.localLogBranches();
-    if (branchNames.length === 0) return;
-    const checkedOutBranch = this.git.value?.branch.value ?? '';
-    const viewedBranch = this.commitLog.value?.branch.value ?? checkedOutBranch;
-    const viewedIndex = branchNames.indexOf(viewedBranch);
-    const nextBranch = branchNames[(viewedIndex + 1) % branchNames.length];
-    if (nextBranch !== undefined) this.selectLogBranch(nextBranch);
-  }
-
-  /** Enter/click on a flat log row: a commit header toggles its LAZY expansion (fetch on demand,
-   *  loading row until it lands); a file row opens that file's diff for that commit. */
-  activateLogRow(flatIndex: number): void {
-    const row = this.logRowAt(flatIndex);
-    const expansion = this.commitExpansion.value;
-    if (!row || !expansion) return;
-    if (row.kind === 'commit') {
-      if (row.record) expansion.toggle(row.commitIndex, row.record.sha);
-    } else if (row.kind === 'commitFile') {
-      void this.openCommitFileDiff(row.sha, row.path);
-    }
-  }
-
-  /** Left on a flat log row: collapse the expanded commit (from its header OR any of its file
-   *  rows), keeping the selection on the commit's header row. */
-  collapseLogRow(flatIndex: number): void {
-    const row = this.logRowAt(flatIndex);
-    const expansion = this.commitExpansion.value;
-    if (!row || !expansion) return;
-    const sha = row.kind === 'commit' ? row.record?.sha : row.sha;
-    if (!sha || !expansion.isExpanded(sha)) return;
-    expansion.collapse(sha);
-    const headerFlatIndex = GitLogRows.Class.commitFlatIndex(
-      expansion.entries.value,
-      row.commitIndex,
-    );
-    this.gitPanel.logIndex.value = headerFlatIndex;
-    if (this.gitPanel.logScrollTop.value > headerFlatIndex) {
-      this.gitPanel.logScrollTop.value = headerFlatIndex;
-    }
-  }
-
-  /** Open ONE file's diff as of ONE commit: `git diff <sha>^ <sha> -- <path>` (a root commit has
-   *  no parent — fall back to the commit's own patch). Read-only diff document in the editor; the
-   *  sidebar stays on the git panel (mirrors openChangeAtRow). */
-  async openCommitFileDiff(sha: string, filePath: string): Promise<void> {
-    // Newest CLICK wins, not newest completion: a slow older open must never overwrite a faster
-    // newer one, so the token is taken BEFORE the awaits and re-verified before the view applies.
-    const requestToken = ++this.diffOpenRequestToken;
-    // The two SIDES as of the commit: parent (empty on a root commit) vs the commit itself.
-    const previousVersionText = await this.gitFileText(`${sha}^`, filePath);
-    const currentVersionText = await this.gitFileText(sha, filePath);
-    if (requestToken !== this.diffOpenRequestToken) return; // a newer diff open superseded this one
-    this.openDiffView({
-      previousVersionText,
-      currentVersionText,
-      previousVersionPath: `${filePath} @ ${sha.slice(0, 7)}^`,
-      currentVersionPath: filePath,
-    });
-  }
-
-  /** A wheel notch: add a momentum impulse (the frame loop then glides the log). Every scroll regime,
-   *  both axes, uses the one settings-tuned fling profile so no axis feels slower than another. */
-  impulseGitLog(deltaRows: number): void {
-    this.gitPanel.logMomentum.value = Momentum.Class.addImpulse(
-      this.gitPanel.logMomentum.value,
-      deltaRows,
-      this.flingMomentum,
-    );
+    this.focus.value = 'primaryPane';
   }
 
   impulseEditorVerticalScroll(deltaRows: number): void {
@@ -1131,33 +619,6 @@ class $Workspace {
     );
   }
 
-  impulseGitChangesScroll(deltaRows: number): void {
-    this.gitPanel.changesMomentum.value = Momentum.Class.addImpulse(
-      this.gitPanel.changesMomentum.value,
-      deltaRows,
-      this.flingMomentum,
-    );
-  }
-
-  impulseGitChangesHorizontalScroll(deltaColumns: number): void {
-    this.gitPanel.changesHorizontalMomentum.value = Momentum.Class.addImpulse(
-      this.gitPanel.changesHorizontalMomentum.value,
-      deltaColumns,
-    );
-  }
-
-  impulseGitLogHorizontalScroll(deltaColumns: number): void {
-    this.gitPanel.logHorizontalMomentum.value = Momentum.Class.addImpulse(
-      this.gitPanel.logHorizontalMomentum.value,
-      deltaColumns,
-    );
-  }
-
-  /** Halt the log glide immediately (keyboard paging / a jump — One-Writer-Per-Regime). */
-  haltGitLogScroll(): void {
-    this.gitPanel.logMomentum.value = Momentum.Class.halt();
-  }
-
   haltTreeScroll(): void {
     this.tree.selectionMomentum.value = Momentum.Class.halt();
   }
@@ -1166,51 +627,10 @@ class $Workspace {
     this.tree.horizontalScrollMomentum.value = Momentum.Class.halt();
   }
 
-  haltGitChangesScroll(): void {
-    this.gitPanel.changesMomentum.value = Momentum.Class.halt();
-  }
-
-  haltGitChangesHorizontalScroll(): void {
-    this.gitPanel.changesHorizontalMomentum.value = Momentum.Class.halt();
-  }
-
-  haltGitLogHorizontalScroll(): void {
-    this.gitPanel.logHorizontalMomentum.value = Momentum.Class.halt();
-  }
-
-  /**
-   * Stage/unstage the FILE row at `rowIndex` of the changes row model (headers no-op):
-   * staged → unstage; unstaged/untracked → stage. Refreshes status after.
-   */
-  async toggleStageAtRow(rowIndex: number): Promise<void> {
-    const git = this.git.value;
-    if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(
-      git.staged.value,
-      git.unstaged.value,
-      git.untracked.value,
-    );
-    const row = rows[rowIndex];
-    if (row?.kind !== 'file') return;
-    if (row.bucket === 'staged') await git.unstage([row.path]);
-    else await git.stage([row.path]);
-    await git.refresh();
-  }
-
   // invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
   /** Advance every wheel glide by one frame and report whether another frame is required. */
   tickScrollAnimations(dtSeconds: number): boolean {
-    const gitPanel = this.gitPanel;
     const editorViewport = this.editor.viewport;
-
-    // Every regime, both axes, steps with the one settings-tuned fling profile.
-    const gitLogStep = Momentum.Class.stepMomentum(
-      gitPanel.logMomentum.value,
-      dtSeconds,
-      this.flingMomentum,
-    );
-    gitPanel.logMomentum.value = gitLogStep.momentum;
-    if (gitLogStep.rows !== 0) this.scrollGitLog(gitLogStep.rows);
 
     const editorVerticalStep = Momentum.Class.stepMomentum(
       editorViewport.verticalScrollMomentum.value,
@@ -1251,7 +671,7 @@ class $Workspace {
     );
     this.tree.selectionMomentum.value = treeStep.momentum;
     // Wheel scrolls the tree WINDOW (independent offset), not the selection — so the list scrolls as
-    // one uniform surface and the selection highlight travels with its row (git-changes behaviour).
+    // one uniform surface and the selection highlight travels with its row.
     if (treeStep.rows !== 0) this.tree.scrollBy(treeStep.rows);
 
     const treeHorizontalStep = Momentum.Class.stepMomentum(
@@ -1263,191 +683,19 @@ class $Workspace {
     if (treeHorizontalStep.rows !== 0)
       this.tree.scrollByColumns(treeHorizontalStep.rows);
 
-    const changesStep = Momentum.Class.stepMomentum(
-      gitPanel.changesMomentum.value,
-      dtSeconds,
-      this.flingMomentum,
+    const contributionIsMoving = this.contributions.some(
+      (contribution) => contribution.tickScroll?.(dtSeconds) ?? false,
     );
-    gitPanel.changesMomentum.value = changesStep.momentum;
-    if (changesStep.rows !== 0) {
-      const git = this.git.value;
-      const changeRows = git
-        ? GitRows.Class.buildChangeRows(
-            git.staged.value,
-            git.unstaged.value,
-            git.untracked.value,
-          )
-        : [];
-      const changesRegionHeight = Math.max(
-        1,
-        Math.max(
-          2,
-          Math.floor(editorViewport.height.value * this.gitSplitRatio),
-        ) - 1,
-      );
-      const maximumChangesScrollTop = Math.max(
-        0,
-        changeRows.length - changesRegionHeight,
-      );
-      gitPanel.changesScrollTop.value = Math.max(
-        0,
-        Math.min(
-          gitPanel.changesScrollTop.value + changesStep.rows,
-          maximumChangesScrollTop,
-        ),
-      );
-    }
 
-    const changesHorizontalStep = Momentum.Class.stepMomentum(
-      gitPanel.changesHorizontalMomentum.value,
-      dtSeconds,
+    return (
+      [
+        editorVerticalStep.momentum,
+        editorHorizontalStep.momentum,
+        treeStep.momentum,
+        treeHorizontalStep.momentum,
+      ].some((momentum) => Momentum.Class.isMoving(momentum)) ||
+      contributionIsMoving
     );
-    gitPanel.changesHorizontalMomentum.value = changesHorizontalStep.momentum;
-    if (changesHorizontalStep.rows !== 0)
-      gitPanel.scrollChangesByColumns(changesHorizontalStep.rows);
-
-    const logHorizontalStep = Momentum.Class.stepMomentum(
-      gitPanel.logHorizontalMomentum.value,
-      dtSeconds,
-    );
-    gitPanel.logHorizontalMomentum.value = logHorizontalStep.momentum;
-    if (logHorizontalStep.rows !== 0)
-      gitPanel.scrollLogByColumns(logHorizontalStep.rows);
-
-    return [
-      gitLogStep.momentum,
-      editorVerticalStep.momentum,
-      editorHorizontalStep.momentum,
-      treeStep.momentum,
-      treeHorizontalStep.momentum,
-      changesStep.momentum,
-      changesHorizontalStep.momentum,
-      logHorizontalStep.momentum,
-    ].some((momentum) => Momentum.Class.isMoving(momentum));
-  }
-
-  /** Open the DIFF of the file at a changes-row (row click / 'o'): the git panel STAYS in the
-   *  sidebar, the editor shows the change vs its previous state, read-only, diff-colored. */
-  async openChangeAtRow(rowIndex: number): Promise<void> {
-    const git = this.git.value;
-    if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(
-      git.staged.value,
-      git.unstaged.value,
-      git.untracked.value,
-    );
-    const row = rows[rowIndex];
-    if (row?.kind !== 'file') return;
-    // Newest CLICK wins (shared token with openCommitFileDiff — the two entry points race each
-    // other too): taken before the awaits, re-verified before the view applies.
-    const requestToken = ++this.diffOpenRequestToken;
-    // The two SIDES per bucket: staged = HEAD vs index; unstaged = index vs worktree; untracked = ∅ vs worktree.
-    let previousVersionText = '';
-    let currentVersionText = '';
-    if (row.bucket === 'staged') {
-      previousVersionText = await this.gitFileText('HEAD', row.path);
-      currentVersionText = await this.gitFileText('', row.path); // ':path' = the index version
-    } else if (row.bucket === 'unstaged') {
-      previousVersionText = await this.gitFileText('', row.path);
-      currentVersionText = this.workingFileText(row.path);
-    } else {
-      currentVersionText = this.workingFileText(row.path); // untracked: no previous side
-    }
-    if (requestToken !== this.diffOpenRequestToken) return; // a newer diff open superseded this one
-    this.openDiffView({
-      previousVersionText,
-      currentVersionText,
-      previousVersionPath: row.path,
-      currentVersionPath: row.path,
-    });
-  }
-
-  /** Request a discard — DESTRUCTIVE, so it only arms the confirmation overlay (y confirms).
-   *  invariant: Destructive working-tree operations require confirmation (src/modules/git/git.invariants.md) */
-  requestDiscardAtRow(rowIndex: number): void {
-    const git = this.git.value;
-    if (!git) return;
-    const rows = GitRows.Class.buildChangeRows(
-      git.staged.value,
-      git.unstaged.value,
-      git.untracked.value,
-    );
-    const row = rows[rowIndex];
-    if (row?.kind !== 'file') return;
-    this.gitPanel.confirmDiscard.value = {
-      paths: [row.path],
-      buckets: new Map([[row.path, row.bucket]]),
-    };
-  }
-
-  /** The file rows for the current multi-selection (empty when none). */
-  protected selectedFileRows(): Array<{
-    path: string;
-    bucket: 'staged' | 'unstaged' | 'untracked';
-  }> {
-    const git = this.git.value;
-    if (!git) return [];
-    const selected = this.gitPanel.selectedPaths.value;
-    const rows = GitRows.Class.buildChangeRows(
-      git.staged.value,
-      git.unstaged.value,
-      git.untracked.value,
-    );
-    const out: Array<{
-      path: string;
-      bucket: 'staged' | 'unstaged' | 'untracked';
-    }> = [];
-    for (const row of rows)
-      if (row.kind === 'file' && selected.has(row.path)) out.push(row);
-    return out;
-  }
-
-  /** Collective actions over the multi-selection (context menu). */
-  async stageSelected(): Promise<void> {
-    const git = this.git.value;
-    const targets = this.selectedFileRows().filter(
-      (row) => row.bucket !== 'staged',
-    );
-    if (!git || targets.length === 0) return;
-    await git.stage(targets.map((row) => row.path));
-    await git.refresh();
-  }
-
-  async unstageSelected(): Promise<void> {
-    const git = this.git.value;
-    const targets = this.selectedFileRows().filter(
-      (row) => row.bucket === 'staged',
-    );
-    if (!git || targets.length === 0) return;
-    await git.unstage(targets.map((row) => row.path));
-    await git.refresh();
-  }
-
-  /** Arms the y/N confirm listing every selected file (destructive — never immediate). */
-  requestDiscardSelected(): void {
-    const targets = this.selectedFileRows();
-    if (targets.length === 0) return;
-    this.gitPanel.confirmDiscard.value = {
-      paths: targets.map((row) => row.path),
-      buckets: new Map(targets.map((row) => [row.path, row.bucket])),
-    };
-  }
-
-  async confirmDiscard(): Promise<void> {
-    const pending = this.gitPanel.confirmDiscard.value;
-    const git = this.git.value;
-    this.gitPanel.confirmDiscard.value = null;
-    if (!pending || !git) return;
-    for (const filePath of pending.paths) {
-      const bucket = pending.buckets.get(filePath);
-      if (bucket) await this.GitCommands.discard(this.root, filePath, bucket);
-    }
-    this.gitPanel.clearSelectedPaths();
-    await git.refresh();
-  }
-
-  cancelDiscard(): void {
-    this.gitPanel.confirmDiscard.value = null;
   }
 
   /** Activate the current tree selection: open a file (adds/focuses a tab) or toggle a dir. */
@@ -1528,7 +776,6 @@ class $Workspace {
     this.showingDiff.value = false; // a real file replaces the transient diff view
     this.diffRequest.value = null;
     this.buffers.open(path);
-    void this.refreshActiveHeadText();
     if (!this.suppressLocationRecording) this.recordCurrentLocation(); // where we arrived
   }
 
@@ -1583,7 +830,6 @@ class $Workspace {
     this.diffRequest.value = null;
     this.buffers.activate(index);
     this.focus.value = 'editor';
-    void this.refreshActiveHeadText();
   }
 
   /** Cycle tabs by `delta`, wrapping (Ctrl+Tab / Ctrl+PageUp-Down). */
@@ -1593,7 +839,6 @@ class $Workspace {
     this.diffRequest.value = null;
     this.buffers.cycle(delta);
     this.focus.value = 'editor';
-    void this.refreshActiveHeadText();
   }
 
   /** Pending dirty-tab-close confirmation: the tab index awaiting y/N, or -1 when none. */
@@ -1610,16 +855,12 @@ class $Workspace {
   closeTab(index: number): void {
     this.buffers.close(index);
     if (this.buffers.count === 0) this.focus.value = 'files';
-    void this.refreshActiveHeadText();
   }
 
-  /** Save the active file and refresh its HEAD-side cache through the same workspace seam. */
+  /** Save the active file and update its tab's dirty state. */
   saveActiveFile(): boolean {
     const saved = this.editor.save();
-    if (saved) {
-      this.buffers.syncActiveDirty();
-      void this.refreshActiveHeadText();
-    }
+    if (saved) this.buffers.syncActiveDirty();
     return saved;
   }
 
@@ -1654,22 +895,11 @@ class $Workspace {
 export namespace Workspace {
   export const $Class = $Workspace;
   export let Class = Reactive($Class);
+  export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
 
-export type Focus = 'files' | 'editor' | 'git';
-
-/** Which panel the activity bar shows in the sidebar for this workspace. 'extensions' is a
- *  placeholder view for now. Persisted per workspace (it is model state on the Workspace). */
-export type SidebarView = 'files' | 'git' | 'extensions';
-
-/** One diagnostic's span on a single line: grapheme columns [startColumn, endColumn) and its severity
- *  (1 = error, 2 = warning, 3 = info, 4 = hint). A multi-line diagnostic yields one mark per line. */
-export interface DiagnosticLineMark {
-  startColumn: number;
-  endColumn: number;
-  severity: 1 | 2 | 3 | 4;
-}
+export type Focus = 'files' | 'editor' | 'primaryPane';
 
 /** A diagnostic surfaced in the hover card: its severity and message text. */
 export interface HoverDiagnostic {
@@ -1679,6 +909,7 @@ export interface HoverDiagnostic {
 
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;
+  plugins?: readonly WorkspacePlugin[];
 }
 
 /** The two full-text SIDES of a side-by-side diff shown by the DiffView (token forces a rebuild). */

@@ -4,7 +4,7 @@
 //
 // invariant: No action requires a memorized motion (project.invariants.md)
 //   — everything is in the palette, discoverable and rebindable.
-// invariant: The core is complete without plugins (project.invariants.md)
+// invariant: The host canvas is complete without plugins (project.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from './CommandScoring';
