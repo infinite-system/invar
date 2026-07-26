@@ -959,3 +959,22 @@ invariant recorded for it. My grep had asked for `heldKey|repeatRate|keyRepeat|a
 code says `accelerationRun`. Searching for guessed identifier spellings is how you prove a false
 absence. Ask for the STEM (`acceler`) and read the invariants file, which named the thing outright. A
 user correcting a claim about the absence of their own feature is almost always right.
+
+## 2026-07-26 05:35 — an instrument nobody can find is not tooling (user correction)
+I wrote `project.tools.md` to index the optional measuring scripts, and the only pointer to it was
+inside `project.handoff.md` — a file that gets REWRITTEN at every anchor. The user caught it: "maybe
+tools should be mentioned also in AGENTS.md or in project.conductor.md… and in conductor skill?"
+Correct, and the general form is sharper than the fix: **a durable artifact must be referenced from a
+durable place.** The handoff is a cursor, not an index; anything reachable only from the cursor is
+lost at the next rewrite. Pointers now live in `AGENTS.md` (which every builder loads on entry, codex
+included), in this file, and in the conductor SKILL's *Verify by driving* section. The test for any
+new project doc: name the file that will still point at it after three handoff rewrites.
+
+## 2026-07-26 05:35 — pick the second builder by CONFLICT SURFACE, not by queue order
+With a sweeping refactor in flight (28 `ui/` files, plus git/markdown/app/commands/plugins), the next
+task off the queue is usually the wrong one to start — it will spend its last hour in a rebase. The
+cheap move is to diff the in-flight worktree's dirty set against the candidate task's file set and
+pick the disjoint one, even if it is further down the queue. That is how #89 (completion kind glyphs:
+`CompletionPopup.ts` + `theme/` + `lsp/`, none of them dirty) got started ahead of the plugin-kinds
+items that sit right on top of the refactor. Queue order encodes value; conflict surface encodes
+cost — schedule on both, and say in the brief exactly which files are off-limits and why.

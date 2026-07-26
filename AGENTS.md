@@ -15,8 +15,17 @@ framework and conventions before writing code.
 - **`.claude/skills/invariants/`** — the contract layer + checker (`node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`). Load when adding/altering behavior in a contract-governed module; run the checker before every READY.
 - **`.claude/skills/ast-query/SKILL.md`** — parse-don't-grep structural search (`bun scripts/ast-query.ts`). Use for ANY code-structure question (call sites, constructions, censuses).
 - **`.claude/skills/generator-audit/SKILL.md`** — the independent review-as-reduction procedure. Use when asked to review/audit the codebase or a module.
-- **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).** They live as skills in this repo — read them,
-don't work from a second-hand summary:
+- **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).
+
+## Instruments index — `project.tools.md`
+Optional measuring tools exist that are NOT wired into the gate: scroll-smoothness, completion-list
+latency, graphics-capability probing, reactive-observation audit. They answer questions no assertion
+can (feel, latency curves, terminal capability). **Read `project.tools.md` before hand-rolling a
+measurement** — it names each instrument, the question it answers, its known results, and the gotcha
+that will otherwise cost you an hour. Adding an instrument means adding its row there; an instrument
+nobody can find is not tooling.
+
+These skills live in this repo — read them, don't work from a second-hand summary:
 
 >  **`.claude/skills/ibr/IBR.md`** — the Invariant-Based Reasoning framework that governs this
 >  codebase (this is the file to inject via `--append-system-prompt-file` for claude agents).

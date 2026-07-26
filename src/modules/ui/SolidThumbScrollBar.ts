@@ -23,11 +23,14 @@
 // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
 import {
   ScrollBarRenderable,
+  RGBA,
   type ScrollBarOptions,
   type OptimizedBuffer,
   type RenderContext,
 } from '@opentui/core';
 class $SolidThumbScrollBar extends ScrollBarRenderable {
+  protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
+
   constructor(context: RenderContext, options: ScrollBarOptions) {
     super(context, options);
     const slider = this.slider;
@@ -74,8 +77,46 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
         thumbRect.height,
         slider.foregroundColor,
       );
+      for (const overviewMark of this.overviewMarks) {
+        if (
+          overviewMark.trackOffset < 0 ||
+          overviewMark.trackOffset >=
+            (slider.orientation === 'vertical' ? slider.height : slider.width)
+        ) {
+          continue;
+        }
+        const markColumn =
+          slider.orientation === 'vertical'
+            ? slider.x + Math.max(0, slider.width - 1)
+            : slider.x + overviewMark.trackOffset;
+        const markRow =
+          slider.orientation === 'vertical'
+            ? slider.y + overviewMark.trackOffset
+            : slider.y + Math.max(0, slider.height - 1);
+        const markOverlapsThumb =
+          markColumn >= thumbRect.x &&
+          markColumn < thumbRect.x + thumbRect.width &&
+          markRow >= thumbRect.y &&
+          markRow < thumbRect.y + thumbRect.height;
+        buffer.setCell(
+          markColumn,
+          markRow,
+          overviewMark.glyph,
+          overviewMark.color,
+          markOverlapsThumb ? slider.foregroundColor : slider.backgroundColor,
+        );
+      }
     };
   }
+
+  setOverviewMarks(marks: readonly ScrollbarOverviewColorInput[]): void {
+    this.overviewMarks = marks.map((mark) => ({
+      trackOffset: mark.trackOffset,
+      color: RGBA.fromHex(mark.color),
+      glyph: mark.glyph,
+    }));
+  }
+
   protected static stableThumbAxis(
     virtualThumbStart: number,
     virtualThumbSize: number,
@@ -135,4 +176,16 @@ interface SliderThumbRect {
 interface ThumbAxis {
   start: number;
   length: number;
+}
+
+interface ScrollbarOverviewMark {
+  readonly trackOffset: number;
+  readonly color: RGBA;
+  readonly glyph: string;
+}
+
+export interface ScrollbarOverviewColorInput {
+  readonly trackOffset: number;
+  readonly color: string;
+  readonly glyph: string;
 }

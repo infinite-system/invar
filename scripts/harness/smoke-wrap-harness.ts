@@ -48,6 +48,38 @@ function gutterRow(
   );
 }
 
+// The wrapped line lives in the CODE BODY's cells only. The editor's vertical scrollbar owns the
+// columns just inside the pane's right border, and — being painted as a whole-cell BACKGROUND fill —
+// its cells never carry the code body's background, which is what distinguishes them here. Reading up
+// to the border instead swept the bar in: it read as blank while the track was empty, so trimEnd()
+// erased it, and the moment the overview ruler painted a semantic pip on the track's trailing cell the
+// `last visual row reaches <token>` claim started reading the PIP as the row's last character. The
+// claim is unchanged; this only stops it reading a neighbouring widget. Walking in from the border
+// (rather than subtracting a constant) keeps it correct when scrollbarThickness is not 1, and when the
+// bar is hidden the first column already carries the body background so the window is the full width.
+function codeBodyEndColumnExclusive(
+  snapshot: HarnessSnapshot.Model,
+  bodyStartRow: number,
+  bodyEndRowExclusive: number,
+  codeBodyBackground: number,
+): number {
+  let endColumnExclusive = snapshot.columns - 1;
+  while (endColumnExclusive > 0) {
+    const candidateColumn = endColumnExclusive - 1;
+    let everyBodyRowIsBarBackground = true;
+    for (let row = bodyStartRow; row < bodyEndRowExclusive; row += 1) {
+      const cell = snapshot.cell(row, candidateColumn);
+      if (!cell || cell.background === codeBodyBackground) {
+        everyBodyRowIsBarBackground = false;
+        break;
+      }
+    }
+    if (!everyBodyRowIsBarBackground) break;
+    endColumnExclusive = candidateColumn;
+  }
+  return endColumnExclusive;
+}
+
 function wrappedRowsForFixtureLine(
   snapshot: HarnessSnapshot.Model,
   lineNumber: number,
@@ -58,12 +90,23 @@ function wrappedRowsForFixtureLine(
   if (lineStartPosition === null || followingLineRow <= lineStartPosition.row) {
     return null;
   }
+  const codeBodyBackground = snapshot.cell(
+    lineStartPosition.row,
+    lineStartPosition.column,
+  )?.background;
+  if (codeBodyBackground === undefined) return null;
+  const endColumnExclusive = codeBodyEndColumnExclusive(
+    snapshot,
+    lineStartPosition.row,
+    followingLineRow,
+    codeBodyBackground,
+  );
   const wrappedRows: string[] = [];
   for (let row = lineStartPosition.row; row < followingLineRow; row += 1) {
     wrappedRows.push(
       snapshot
         .rowText(row)
-        .slice(lineStartPosition.column, snapshot.columns - 1)
+        .slice(lineStartPosition.column, endColumnExclusive)
         .trimEnd(),
     );
   }

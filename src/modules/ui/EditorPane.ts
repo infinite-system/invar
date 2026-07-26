@@ -6,7 +6,12 @@
 //
 // RootView still constructs + mounts the renderables and owns the editor viewport geometry (it is in
 // RootView's public interface) and the diff/markdown mount; those come in as accessors.
-import type { BoxRenderable, CliRenderer, StyledText } from '@opentui/core';
+import type {
+  BoxRenderable,
+  CliRenderer,
+  StyledText,
+  TextRenderable,
+} from '@opentui/core';
 import { Reactive } from 'ivue';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
@@ -27,6 +32,7 @@ class $EditorPane {
   // renderEditor and read by the caret block, applySelection, and the mouse hit-test — so all
   // consumers agree on what is where. Empty when wrap is off.
   protected wrapRowsWindow: VisualRow[] = [];
+  protected gutterHoverLabelsByRow: readonly (readonly string[])[] = [];
   protected readonly drag: SelectionDragBehavior.Model;
   // Multi-click selection state: successive clicks at the same spot within the window escalate
   // single → double (word) → triple (line).
@@ -83,6 +89,7 @@ class $EditorPane {
     });
     if (!result) return null;
     this.wrapRowsWindow = result.wrapRowsWindow;
+    this.gutterHoverLabelsByRow = result.gutterHoverLabelsByRow;
     return { gutter: result.gutter, code: result.code };
   }
   /** Advance the selection-drag auto-scroll; true while it still needs frames. */
@@ -384,11 +391,13 @@ class $EditorPane {
   protected wireHandlers(): void {
     const {
       editorArea,
+      gutterBody,
       codeBody,
       workspaceSet,
       settings,
       focusSourceEditor,
       hover,
+      tooltip,
     } = this.deps;
     editorArea.onMouseScroll = (event) => {
       if (!workspaceSet.active.editor.hasDocument.value) return;
@@ -512,6 +521,16 @@ class $EditorPane {
     // Pointer leaves the code pane entirely (to the sidebar, a tab, etc.): also a "left the symbol"
     // signal — a shown card idles out rather than hanging around, but is not hard-killed mid-move.
     codeBody.onMouseOut = () => hover.pointerOffSymbol();
+    gutterBody.onMouseMove = (event) => {
+      const visibleRowIndex = event.y - Number(gutterBody.y);
+      const hoverLabels = this.gutterHoverLabelsByRow[visibleRowIndex] ?? [];
+      if (hoverLabels.length > 0) {
+        tooltip.point(hoverLabels.join(' · '), event.x, event.y);
+      } else {
+        tooltip.clear();
+      }
+    };
+    gutterBody.onMouseOut = () => tooltip.clear();
   }
 }
 export namespace EditorPane {
@@ -522,17 +541,18 @@ export namespace EditorPane {
 export interface EditorPaneDeps {
   renderer: CliRenderer;
   editorArea: BoxRenderable;
+  gutterBody: TextRenderable;
   codeBody: SelectableText.Model;
   workspaceSet: WorkspaceSet.Instance;
   findBar: FindBar.Instance;
   settings: Settings.Instance;
   theme: Theme.Instance;
+  tooltip: import('./Tooltip').Tooltip.Instance;
   readPalette: () => Palette;
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;
-  /** Focus the markdown split's source pane on an editor click (no-op when no split is mounted). */
   /** Hand the keyboard back to the source editor — a click in the source pane while a contributed
-   *  surface's own pane holds it. */
+   *  surface's own pane holds it (no-op when no surface is mounted). */
   focusSourceEditor: () => void;
   /** The LSP hover-card handle: a mouse-move over a symbol points it; leaving the code clears it. */
   hover: {

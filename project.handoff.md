@@ -3,7 +3,47 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~00:40) — READ THIS FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-26 ~05:20) — READ FIRST ON A COLD START
+
+Main @ `b945acb`, pushed, clean. **NINETEEN commits landed this session.** Durable lessons are in the
+memory store (auto-loaded) — newest: `feedback-measure-before-briefing-a-cause`,
+`feedback-gate-what-humans-cannot-see`, `feedback-never-search-to-kill`.
+
+**BOTH CRON LOOPS ARE SESSION-ONLY AND DIE ON RESTART.** Re-arm from the verbatim prompts in
+`.claude/skills/conductor/SKILL.md` (hourly `7 * * * *`, ten-minute `3,13,23,...`) and VERIFY with
+`CronList`. Never trust this file that they are live.
+
+**NEW: `project.tools.md`** indexes the optional instruments (scroll smoothness, completion latency,
+graphics capabilities, reactive census) with their known results and gotchas. Three builders rebuilt
+measurement machinery that already existed; check that file before writing a new measurement script.
+
+**IN FLIGHT:** one agent on `refactor-workspace-pure-canvas` (`/tmp/conductor-canvas`, 3 commits) —
+diff is already OUT of the host (`grep -icE diff` = 0 in Workspace.ts and app), markdown extraction and
+the command-contract action fields in progress. Its census landed as `project.canvas-census.md`.
+
+**LANDED TONIGHT (headline):** plugin canvas with the host owning zero git names; the 65-defect harness
+wait sweep; content-derived dirty marker (setter deleted); dropdown flyweight + held-key acceleration;
+one painter for single-line fields (caret + three tones + word ops); marks/overview ruler; DOS-style
+`..` row; glyphs `≡ ⑂ ⬢ ⌕ ⚙`; gate stop-by-identity; boundary check that can actually fail; coverage
+declarations with verified counts; `project.coverage-deltas.md` rename.
+
+**WAITING ON THE USER, not on work:**
+- kitty images still need the env flag → #99 (persisted setting; no detection can rescue a silent probe)
+- scroll FEEL decisions: #86 (85 ms wheel-to-frame constant) and the 45% consecutive-fling deficit —
+  both measured, both pre-existing, both product calls.
+
+**QUEUE, ordered:** #96 diff/markdown (in flight) → #103 name the three plugin kinds → #100 plugin
+manifest for settings+keybindings → #85 file tree as plugin → #91 Tab belongs to the focused surface →
+#93 F-key retirement (NOTE: its proposed `Ctrl+Shift+T` collides with "new tab" in most terminals) →
+#101 reserved-chord set + terminal pass-through → #84 quiet lock → #97 folding → #98 inline AI edits
+(depends on #91) → #102 markdown tables. #59 prettier LAST — it touches every file.
+
+**KNOWN AND DELIBERATE:** #104 monotonicity is DEFERRED (user decision — monitor manually; trigger is
+the next time a bisect is needed). Residual gate flakiness is DIFFUSE (15 smokes, 1-2 retries each),
+which means a shared cause — that is #84, not fifteen defects.
+
+## PRIOR ANCHOR (2026-07-26 ~00:40)
+
 
 Main @ `7238584`, pushed, user's checkout synced. TWELVE landings overnight. The durable lessons are in
 the memory store (`~/.claude/projects/-home-parallels-dev-ibr/memory/`, auto-loaded) — most importantly

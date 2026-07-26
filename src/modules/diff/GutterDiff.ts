@@ -11,20 +11,20 @@ class $GutterDiff {
     return DiffAlignment.Class;
   }
 
-  static statusByLine(
+  static marksByLine(
     headText: string,
     bufferText: string,
-  ): Map<number, GutterDiffStatus> {
-    const statusByLine = new Map<number, GutterDiffStatus>();
-    if (headText === bufferText) return statusByLine;
+  ): Map<number, GutterDiffMark[]> {
+    const marksByLine = new Map<number, GutterDiffMark[]>();
+    if (headText === bufferText) return marksByLine;
 
     if (headText === '') {
       this.DiffAlignment.splitLines(bufferText).forEach(
         (_lineText, lineIndex) => {
-          statusByLine.set(lineIndex, 'added');
+          marksByLine.set(lineIndex, [{ kind: 'added', hoverLabel: 'added' }]);
         },
       );
-      return statusByLine;
+      return marksByLine;
     }
 
     const { alignedRows } = this.DiffAlignment.align(headText, bufferText);
@@ -33,7 +33,12 @@ class $GutterDiff {
         alignedRow.rightLineNumber !== null &&
         (alignedRow.kind === 'added' || alignedRow.kind === 'modified')
       ) {
-        statusByLine.set(alignedRow.rightLineNumber - 1, alignedRow.kind);
+        marksByLine.set(alignedRow.rightLineNumber - 1, [
+          {
+            kind: alignedRow.kind,
+            hoverLabel: alignedRow.kind,
+          },
+        ]);
       }
     }
 
@@ -43,6 +48,7 @@ class $GutterDiff {
       alignedRowIndex += 1
     ) {
       if (alignedRows[alignedRowIndex]?.kind !== 'deleted') continue;
+      const firstDeletedRowIndex = alignedRowIndex;
       while (
         alignedRowIndex + 1 < alignedRows.length &&
         alignedRows[alignedRowIndex + 1]?.kind === 'deleted'
@@ -59,18 +65,38 @@ class $GutterDiff {
         followingBufferLineNumber === null
           ? this.DiffAlignment.splitLines(bufferText).length - 1
           : followingBufferLineNumber - 1;
-      if (bufferLineIndex >= 0 && !statusByLine.has(bufferLineIndex)) {
-        statusByLine.set(bufferLineIndex, 'deleted');
+      if (bufferLineIndex >= 0) {
+        const deletedLineCount = alignedRowIndex - firstDeletedRowIndex + 1;
+        const marks = marksByLine.get(bufferLineIndex) ?? [];
+        const deletionSitsWithChangedLine = marks.length > 0;
+        marks.push({
+          kind: 'deleted',
+          hoverLabel: `${deletedLineCount} ${
+            deletedLineCount === 1 ? 'line' : 'lines'
+          } deleted ${
+            followingBufferLineNumber === null && !deletionSitsWithChangedLine
+              ? 'at end of file'
+              : 'above'
+          }`,
+          deletedLineCount,
+        });
+        marksByLine.set(bufferLineIndex, marks);
       }
     }
 
-    return statusByLine;
+    return marksByLine;
   }
 }
 
 export namespace GutterDiff {
   export const $Class = $GutterDiff;
   export const Class = Static($GutterDiff);
+}
+
+export interface GutterDiffMark {
+  readonly kind: GutterDiffStatus;
+  readonly hoverLabel: string;
+  readonly deletedLineCount?: number;
 }
 
 export type GutterDiffStatus = 'added' | 'modified' | 'deleted';

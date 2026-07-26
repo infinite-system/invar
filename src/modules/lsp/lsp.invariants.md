@@ -449,7 +449,8 @@ not answer. Pulling without a debounce — one request per keystroke during typi
 `scheduleDiagnosticPull`, the `initialize` capability advertisement, and the
 `workspace/diagnostic/refresh` handler. Driven against BOTH real servers by
 `scripts/smoke-diagnostics.sh`: tsgo (pull) and typescript-language-server (push) each paint the
-red gutter mark + red underline on the error line.
+red in-body underline and red whole-document overview mark for the error. The gutter is deliberately
+absent from this evidence because it is reserved for source-control diff marks.
 
 **Impossible if true:** A reported diagnostic visible under one server model but not the other for
 the same error; a `textDocument/diagnostic` request sent to a server that never advertised
@@ -462,4 +463,4 @@ absent), `bun test src/modules/lsp -t "diagnostics are pulled via textDocument/d
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-26

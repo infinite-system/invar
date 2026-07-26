@@ -1010,7 +1010,7 @@ fails, and every assertion-text replacement is reported for review.
 
 **Scope:** Counts and normalized assertion-expression text in `*.test.ts` and
 `scripts/harness/smoke-*.ts`, measured against the merge base, including whole-file removal.
-Count decreases block unless the newest row for that path in `coverage-deltas.md` states matching
+Count decreases block unless the newest row for that path in `project.coverage-deltas.md` states matching
 `assertions A → B, waits C → D` figures. Count-neutral assertion replacements are report-only.
 Mutation probing and judging whether a declared reason is honest remain outside this instrument;
 this gates disclosure, not justification.
@@ -1020,7 +1020,7 @@ as strong as it was?". `scripts/check-coverage-ratchet.ts` walks the TypeScript 
 `*.test.ts` and `scripts/harness/smoke-*.ts` at both HEAD and the merge base, counts calls that prove
 (`requireCondition`, `expect`, `pass`, `assertContentInvariantAcrossAction`) and calls that wait for an
 observed condition (`awaitStatus`, `awaitGridCondition`, `awaitSnapshot`, `it`, `test`), and fails on
-any decrease whose newest `coverage-deltas.md` row is absent, malformed, or numerically stale. It
+any decrease whose newest `project.coverage-deltas.md` row is absent, malformed, or numerically stale. It
 also compares normalized assertion-expression token sets and prints disappeared and appeared texts
 as an informational census. A known-count positive-control fixture must count correctly before the
 comparison, and inspecting zero coverage-bearing files fails. Growth needs no bookkeeping. Counting
@@ -1042,7 +1042,7 @@ Drive-verified 2026-07-25 with negative controls in both directions: deleting on
 `requireCondition` from the git-blame smoke failed with
 `7 assertions / 10 waits -> 6 assertions / 10 waits`; removing `RelativeTime.test.ts` entirely failed
 with `(FILE REMOVED) 14 assertions / 8 waits -> 0 assertions / 0 waits`; declaring either in
-`coverage-deltas.md` passed; a clean tree passed. Re-verified 2026-07-26 with a temporary committed
+`project.coverage-deltas.md` passed; a clean tree passed. Re-verified 2026-07-26 with a temporary committed
 real assertion deletion and a wrong-numbered declaration; the checker rejected the declared figures
 against the actual figures.
 
@@ -1055,7 +1055,7 @@ positive control fails or after it inspects zero files.
 
 **Verification:** `bun scripts/check-coverage-ratchet.ts` on a clean tree exits 0; delete any single
 assertion and it exits 1 naming the file and count delta; add matching figures to
-`coverage-deltas.md` and it exits 0; make either figure stale and it exits 1 naming declared and
+`project.coverage-deltas.md` and it exits 0; make either figure stale and it exits 1 naming declared and
 actual figures. Replace an assertion without changing the count and inspect the informational census.
 Remove or corrupt the positive-control fixture, or supply a base with zero coverage files, and the
 checker exits 1. `bun test scripts/check-coverage-ratchet.test.ts` covers the counter itself.

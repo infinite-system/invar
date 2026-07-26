@@ -36,23 +36,26 @@ class $GitDocumentState {
     this.hasHeadText.value = false;
   }
 
+  get decorationRevision(): string {
+    return `${this.requestGeneration}:${this.hasHeadText.value ? 1 : 0}`;
+  }
+
   decorationsByLine(): Map<number, EditorLineDecoration[]> {
     const document = this.handle.document;
     if (!document || !this.hasHeadText.value) return new Map();
     const decorationsByLine = new Map<number, EditorLineDecoration[]>();
-    for (const [lineIndex, status] of GutterDiff.Class.statusByLine(
+    for (const [lineIndex, marks] of GutterDiff.Class.marksByLine(
       this.headText.value,
       document.text,
     )) {
-      decorationsByLine.set(lineIndex, [
-        {
-          gutter: {
-            glyph: status === 'deleted' ? 'underline' : 'bar',
-            color: status,
-            priority: 10,
-          },
-        },
-      ]);
+      decorationsByLine.set(
+        lineIndex,
+        marks.map((mark) => ({
+          owner: 'versionControl',
+          kind: mark.kind,
+          hoverLabel: mark.hoverLabel,
+        })),
+      );
     }
     return decorationsByLine;
   }

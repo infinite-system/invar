@@ -121,35 +121,44 @@ length of an off-screen line to display one viewport.
 ### The editor gutter reflects HEAD changes
 
 **Invariant:** If a normal editor buffer has a git HEAD comparison, then each logical line's first
-visual row shows its added, modified, or nearby-deletion status and the markers converge after
-buffer edits, saves, active-document changes, and git reconciliation.
+visual row shows its added, modified, or nearby-deletion status as the same `▎` shape, and the
+markers converge after buffer edits, saves, active-document changes, and git reconciliation.
 
-**Scope:** The normal editor in `RootView.renderEditor`, `Workspace.activeHeadText`, and
-`GutterDiff.statusByLine`. Excludes the empty editor and `DiffView`, which already renders a diff.
+**Scope:** The normal editor in `EditorPaneRenderer`, `GitDocumentState`, and
+`GutterDiff.marksByLine`. Excludes the empty editor and `DiffView`, which already renders a diff.
 
-**Mechanism:** `Workspace.refreshActiveHeadText` loads the active path through the existing
-`gitFileText('HEAD', path)` seam and rejects stale completions. `GutterDiff.statusByLine` projects
-`DiffAlignment.align` rows into a cached buffer-line map. `RootView.renderEditor` paints that map in
-the existing one-cell gutter marker slot with the theme's `added`, `modified`, and `deleted` colors.
+**Mechanism:** `GitWorkspace.refreshDocumentHead` loads the active path through
+`GitCommands.fileAtRef` and rejects stale completions. `GutterDiff.marksByLine` projects
+`DiffAlignment.align` rows into a buffer-line map. A deleted run is placed on the following real
+line, or the final real line at end of file. When that line is also modified, modified color wins
+(`modified` priority exceeds `deleted`) and the gutter hover retains both `modified` and the deleted
+line count.
 
 **Generates:** visible working-tree status beside edited lines; one diff algorithm and one git
-watcher path for both the side-by-side diff and gutter decorations.
+watcher path for both the side-by-side diff and gutter decorations; one diff-column shape whose
+color alone selects added, modified, or deleted.
 
 **Rejected alternatives:** A separate line-diff algorithm or filesystem watcher — either creates a
-second authority that can disagree with `DiffAlignment` or `GitWatcher`.
+second authority that can disagree with `DiffAlignment` or `GitWatcher`. An underline for deleted
+blocks — it collides with the diagnostic underline vocabulary and makes one gutter column carry two
+meanings.
 
-**Evidence:** `src/modules/diff/GutterDiff.test.ts`; `scripts/smoke-gutter-diff.sh`; live caller path
-`Workspace.gutterDiffByLine` to `RootView.renderEditor`.
+**Evidence:** `src/modules/diff/GutterDiff.test.ts`; `src/modules/git/GitDocumentState.test.ts`;
+`scripts/harness/smoke-gutter-diff-harness.ts`; live caller path from `GitWorkspace` through
+`GutterDecorations` to `EditorPaneRenderer`.
 
 **Impossible if true:** a continuation row carrying a duplicate marker; an edited tracked line with
 no modified-colored gutter glyph after settling; a git reconciliation leaving markers based on the
-previous HEAD; the normal gutter diff appearing over `DiffView`.
+previous HEAD; a deletion painted as `_` or `▁`; a co-located deletion disappearing from the hover
+because modified color won; the normal gutter diff appearing over `DiffView`.
 
-**Verification:** `bun test src/modules/diff/GutterDiff.test.ts && bash scripts/smoke-gutter-diff.sh`.
+**Verification:** `bun test src/modules/diff/GutterDiff.test.ts
+src/modules/git/GitDocumentState.test.ts && bun
+scripts/harness/smoke-gutter-diff-harness.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-26
 
 ### The overview ruler locates every change block
 

@@ -1008,6 +1008,55 @@ scripts/behavioral-contracts.sh`
 
 **Last refined:** 2026-07-25
 
+### A fast glide crosses rows in many small steps
+
+**Invariant:** If a wheel gesture puts a pane's momentum regime into a fast glide, then the travel
+arrives as MANY SMALL per-frame row crossings and never as a few large jumps: no completed frame
+advances the offset by more than two frame budgets at the configured velocity ceiling, and the glide
+is carried by at least ten moving frames. Total displacement is NOT this property — the identical
+distance delivered in fewer, larger steps satisfies every displacement contract while the motion is
+visibly choppy and its effective velocity is lower.
+
+**Scope:** every wheel-momentum glide that writes a scroll offset — the editor's vertical and
+horizontal regimes, the file tree, the agent transcript, each git region, terminal scrollback, and
+any future scroll animation on the same offsets. It governs the CADENCE of the write; *One writer per
+scroll regime per frame* governs who writes and *The wheel gesture resolves through one
+settings-sourced step* governs how the gesture is measured first.
+
+**Mechanism:** three properties together bound the step size. `Momentum.stepMomentum` carries the
+fractional row `residual` inside the momentum value between frames, so a whole-row write never
+discards sub-row progress and no consumer may round the integrator's position. `Bootstrap`'s frame
+tick holds ONE live render request for as long as any glide is active, so a glide's frames are
+produced at `targetFps` instead of on demand. And `dtSeconds` is clamped to
+`MAXIMUM_DELTA_TIME_SECONDS`, so a resumed clock advances one frame's worth rather than the whole
+idle gap. Per-frame travel is therefore velocity ÷ cadence, and BOTH factors are declared values
+(`Settings.verticalFlingCeiling`, `createCliRenderer`'s `targetFps`) — which is what makes the bound
+computable from the app rather than fitted to an observation.
+
+**Generates:** motion that reads as continuous rather than as a sequence of jumps; a hard bound on how
+far one frame may teleport a viewport; a smoothness figure that is independent of displacement, so a
+refactor cannot trade one for the other unnoticed.
+
+**Evidence:** `scripts/harness/measure-scroll-smoothness.ts` reads the top visible fixture line of
+every completed synchronized frame of one fast gesture at the real PTY, and reports the moving-frame
+count, the per-frame delta distribution, the peak velocity and the distance. Driven on 2026-07-26 at
+six commits spanning 24 hours of history (`40d244b~1` through `e6450c6`), a 12-notch fling was carried
+by 17 to 19 moving frames with a largest single-frame step of 7 rows at every one of them. The
+`glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, the cadence floor
+and the travel floor.
+
+**Impossible if true:** a fling that covers its distance in a handful of large jumps; a renderer that
+writes a quantized copy of the momentum integrator's position back into the viewport each frame (that
+rounding both enlarges the steps and loses velocity, while leaving total displacement intact); a glide
+whose frames are produced on demand instead of held live.
+
+**Verification:** `bash scripts/behavioral-contracts.sh` (the `glide-smoothness` contract); `bun
+scripts/harness/measure-scroll-smoothness.ts` for the raw per-frame distribution.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### A context menu is modal and single-consumer
 
 **Invariant:** If a context menu is open, then every pointer and keyboard event belongs to the menu
@@ -1448,6 +1497,52 @@ scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-termina
 
 **Last refined:** 2026-07-25
 
+### The editor overview derives from the decoration snapshot
+
+**Invariant:** If an active document has diff or diagnostic decorations, then the editor vertical
+scrollbar paints their whole-document positions from the same cached `GutterDecorations` snapshot
+that feeds the gutter and body, without changing the scrollbar track or thumb geometry.
+
+**Scope:** The normal editor's vertical `SolidThumbScrollBar`, `GutterDecorations.snapshotFor`,
+`OverviewRuler`, and `ScrollbarSync`. Horizontal, tree, panel, and `DiffView` scrollbars carry no
+normal-editor overview marks.
+
+**Mechanism:** `GutterDecorations.snapshotFor` keeps one stable snapshot identity until a
+contribution or document revision changes. `OverviewRuler.project` caches by that identity,
+document line count, and track length, then maps logical lines proportionally onto track cells.
+When multiple marks map to one track cell, the winning color order is error > warning > info > hint
+> modified > added > deleted, while every aggregated hover label remains available.
+`SolidThumbScrollBar` paints one trailing-cell semantic pip over the already-selected track or thumb
+background after the unchanged thumb rect is computed; it never changes width, height, scroll state,
+or `getThumbRect`.
+
+**Generates:** Off-screen errors and changes visible at a glance; O(mark count) aggregation only on
+decoration, document, or track-size change; O(track marks) paint; unchanged native drag and
+track-click behavior.
+
+**Rejected alternatives:** A second diagnostic or diff scan in `ScrollbarSync` — it creates a
+second mark authority. A sibling ruler renderable — it changes layout width and risks thumb
+oscillation. A mark-specific click handler — it would replace the slider's existing track-click and
+drag contract, so marks remain paint-only.
+
+**Evidence:** `src/modules/workspace/GutterDecorations.ts`;
+`src/modules/ui/OverviewRuler.ts`; `src/modules/ui/ScrollbarSync.ts`;
+`src/modules/ui/SolidThumbScrollBar.ts`; cache, aggregation, and geometry tests in
+`OverviewRuler.test.ts` and `SolidThumbScrollBar.test.ts`;
+`scripts/harness/smoke-diagnostics-harness.ts`.
+
+**Impossible if true:** A diagnostic 900 lines below the viewport with no overview pip; an unchanged
+snapshot triggering overview aggregation on every frame; marks changing track width or the thumb
+rectangle; warning winning a shared track cell that also contains an error.
+
+**Verification:** `bun test src/modules/ui/OverviewRuler.test.ts
+src/modules/ui/SolidThumbScrollBar.test.ts && bun scripts/harness/smoke-diagnostics-harness.ts &&
+bun scripts/harness/smoke-scrollbars-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### A scrollbar thumb is painted as background fill, never block glyphs
 
 **Invariant:** Every scrollbar thumb (and track) renders as BACKGROUND colour on blank cells — no
@@ -1535,39 +1630,41 @@ there; different list panes disagreeing on the selection model.
 
 **Last refined:** 2026-07-22
 
-### TS diagnostics render as a gutter mark and an underline
+### TS diagnostics render as an underline and overview mark
 
-**Invariant:** If the language server reports a diagnostic for the active document, then every visible
-line it covers shows (a) a severity-coloured gutter mark (the same `▎` shape as the git-change marks,
-coloured error/warning/info) and (b) a severity-coloured underline over the diagnostic's column range;
-the gutter diagnostic mark takes precedence over the git-change mark on that line.
+**Invariant:** If the language server reports a diagnostic for the active document, then every
+visible range has a severity-coloured in-body underline and every covered logical line has a
+severity-coloured whole-document overview mark, while the diff gutter carries no diagnostic.
 
-**Scope:** the editor gutter + code rendering in `EditorPaneRenderer` (`pushGutterMarker` +
-`pushCodeChunks`), fed by `Workspace.diagnosticsByLine` (projected from `LanguageClient.diagnosticSlice`).
+**Scope:** Language diagnostics contributed through `Workspace.languageDecorationsByLine`, the code
+body in `EditorPaneRenderer`, and the editor overview in `ScrollbarSync`. The source-control diff
+gutter is explicitly outside the diagnostic projection.
 
-**Mechanism:** `Workspace.diagnosticsByLine` is a `computed` that reads `diagnosticsRevision` and
-projects each diagnostic to per-line `{startColumn, endColumn, severity}` marks (a multi-line
-diagnostic yields one mark per line). `pushGutterMarker` paints the most-severe line's mark before the
-git-change branch; `pushCodeChunks` adds the diagnostic ranges as segment boundaries and paints those
-segments with `underline(fg(severityColor))`. The data is populated source-agnostically — a PUSH
-server (typescript-language-server) via `publishDiagnostics`, and the PULL-model tsgo native-preview
-default (which never publishes) via `textDocument/diagnostic`, both funnelled into one store (see
-*Diagnostics reach the store by push or pull*, `src/modules/lsp/lsp.invariants.md`) — so the marks
-appear under BOTH servers.
+**Mechanism:** `Workspace.languageDecorationsByLine` creates only
+`DiagnosticLineDecoration`, whose discriminated shape contains a severity and underline but no
+gutter member. `EditorPaneRenderer` paints its code range; `OverviewRuler` projects the same cached
+`GutterDecorations` snapshot over the whole document. Push diagnostics from
+typescript-language-server and pull diagnostics from tsgo still funnel through the same store.
 
-**Generates:** at-a-glance error/warning location in the gutter + inline, matching the git-change idiom.
+**Generates:** Red error, yellow warning, and info/hint underlines under code; matching pips at
+proportional scrollbar positions; a gutter whose red can only mean a source-control deletion.
 
-**Evidence:** `scripts/smoke-diagnostics.sh` runs the SAME assertion against both real servers — tsgo
-(pull) and typescript-language-server (push) — introducing a type error and asserting a red gutter
-mark + red underline cells on the error line for each.
+**Rejected alternatives:** Keep the diagnostic gutter mark — it collided with the red deletion mark
+in the same column, which is the user-visible ambiguity that refined this record.
 
-**Impossible if true:** a reported diagnostic with no gutter mark and no underline on its visible range.
+**Evidence:** `src/modules/workspace/Workspace.ts`; `src/modules/ui/EditorPaneRenderer.ts`;
+`src/modules/ui/OverviewRuler.ts`; `scripts/harness/smoke-diagnostics-harness.ts` drives both real
+TypeScript servers and observes the underline, overview, and absent diagnostic gutter mark.
 
-**Verification:** `scripts/smoke-diagnostics.sh` (wired into merge-gate).
+**Impossible if true:** A diagnostic glyph of any shape in the gutter; a far-below-viewport
+diagnostic with no proportional overview pip; an on-screen error range without its red underline.
+
+**Verification:** `bun test src/modules/ui/OverviewRuler.test.ts && bun
+scripts/harness/smoke-diagnostics-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-26
 
 ### Settings are editable by mouse per widget kind
 

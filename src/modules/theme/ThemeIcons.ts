@@ -146,6 +146,7 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
+        overviewMark: '•',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -163,6 +164,7 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
+        overviewMark: '•',
       },
       ascii: {
         activityFiles: 'F',
@@ -175,6 +177,7 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
+        overviewMark: '.',
       },
     });
   }
@@ -465,6 +468,7 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
+  overviewMark: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;
