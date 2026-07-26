@@ -570,7 +570,12 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
   parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
   parallel_safe_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
-  parallel_safe_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
+  # Moved to the quiet tail 2026-07-26: the two repeat offenders in the retry tally (agent-permissions
+  # passed-only-on-retry twice today, overlay-dialog retried-and-still-failed twice) both pass 3/3
+  # isolated — the load-flake signature. They cannot take quiet-exclusive INSIDE the pool (the gate
+  # holds loud-shared around the pool, so a pool job wanting exclusive would only hit the 120 s
+  # degrade); the tail is where timing-sensitive work belongs, and the classification guard agrees.
+  quiet_serial_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
   parallel_safe_smoke "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
   parallel_safe_smoke "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
   parallel_safe_smoke "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
@@ -596,7 +601,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
-  parallel_safe_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
+  quiet_serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
