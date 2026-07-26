@@ -400,7 +400,7 @@ try {
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) =>
-      candidate.findText('⌕ file-073') !== null &&
+      candidate.findText(`${themedSearchGlyph} file-073`) !== null &&
       geometry !== null &&
       popupListContains(candidate, geometry, 'file-073.txt') &&
       !popupListContains(candidate, geometry, 'file-072.txt'),
@@ -762,7 +762,7 @@ try {
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitSnapshot(
     (candidate) =>
-      candidate.findText('⌕ branch-011') !== null &&
+      candidate.findText(`${themedSearchGlyph} branch-011`) !== null &&
       geometry !== null &&
       popupListContains(candidate, geometry, 'branch-011') &&
       !popupListContains(candidate, geometry, 'branch-010'),
