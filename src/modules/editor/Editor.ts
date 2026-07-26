@@ -149,6 +149,10 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   get collapsedFoldRanges(): readonly FoldRange[] {
+    // openFile places the cursor before activating the freshly loaded document. That placement
+    // consults folding so it can reveal a requested line, but a document-less projection is not a
+    // valid revision snapshot and must not seed the cache used after activation.
+    if (!this.hasDocument.value) return [];
     const documentRevision = this.document.revision.value;
     const foldRevision = this.foldRevision.value;
     if (
