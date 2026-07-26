@@ -15,6 +15,15 @@ ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
 export PATH="$HOME/.bun/bin:$PATH"
 gate_started_seconds="$(date +%s)"
+# THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
+# `pkill -f merge-gate.sh` killed two BUILDER agents on 2026-07-26: every builder brief contains the
+# string "do NOT run scripts/merge-gate.sh", so the builders' command lines matched a pattern meant for
+# the gate, and one lost ~25 minutes of uncommitted work. A search over command lines matches ARGUMENTS,
+# not programs. With a pid file, `scripts/stop-merge-gate.sh` kills exactly one known process and can
+# refuse anything it cannot positively identify.
+gate_pid_file="/tmp/merge-gate.$(echo "$ROOT" | tr -c 'a-zA-Z0-9' '-').pid"
+echo "$$" > "$gate_pid_file"
+trap 'rm -f "$gate_pid_file"' EXIT
 # Hermetic git for the WHOLE gate. When invoked from the pre-commit hook, git exports
 # GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE / … into the environment; any `git` a test, smoke, or
 # fixture spawns would then operate on the PARENT repo instead of its own temp fixture — a

@@ -842,9 +842,13 @@ async function proveVerticalEditorThumbStability(
       driver.sendKeys('Alt+z');
       await driver.awaitQuiescence();
     }
-    requireCondition(
-      verticalEditorScrollBarProof(driver.snapshot()) !== null,
-      `editor vertical thumb is present with ${modeLabel}`,
+    // AWAIT THE THUMB, not the file text. The wait above observes the document's content; this claim
+    // reads the SCROLLBAR THUMB, which the debug-bars probe paints in a later frame under load. Sampling
+    // here failed a gate on 2026-07-26 (`editor vertical thumb is present with wrap-off`) while passing
+    // solo, and it fails HARD rather than timing out, so retry-once cannot even mask it.
+    await driver.awaitGridCondition(
+      `the ${modeLabel} editor vertical thumb is painted`,
+      (candidate) => verticalEditorScrollBarProof(candidate) !== null,
     );
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
@@ -893,6 +897,17 @@ async function proveVerticalDiffThumbStability(
       (candidate) =>
         candidate.findText('Base (HEAD)') !== null &&
         candidate.findText('Current (working)') !== null,
+    );
+    // AWAIT THE DIFF BAR before collecting frames. The wait above observes the diff HEADERS ("Base
+    // (HEAD)" / "Current (working)"), which appear before the pane has its scrollbar column — so the
+    // collector could capture an early frame in which column 119 still holds diff TEXT, and then the
+    // present-in-every-frame claim fails on a frame that predates the bar rather than on a bar that
+    // vanished. Observed twice inside gates on 2026-07-26 (diagnostics showed text glyphs, not bar
+    // cells) while passing solo. The claim itself is unchanged and still strict: once the bar exists, it
+    // must be in EVERY subsequent scroll frame.
+    await driver.awaitGridCondition(
+      'the diff pane vertical thumb is painted before frame collection begins',
+      (candidate) => verticalDiffScrollBarProof(candidate) !== null,
     );
     const thumbFrames = await collectVerticalThumbFrames(
       driver,
@@ -1179,6 +1194,12 @@ try {
     (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
   );
 
+  // Same correction as the vertical thumb above: await the thumb the claim reads, never the file text
+  // that merely precedes it.
+  snapshot = await overflowDriver.awaitGridCondition(
+    'the editor horizontal thumb is painted',
+    (candidate) => horizontalEditorScrollBarProof(candidate) !== null,
+  );
   const initialHorizontalThumb = horizontalEditorScrollBarProof(snapshot);
   requireCondition(
     initialHorizontalThumb !== null,

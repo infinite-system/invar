@@ -151,6 +151,29 @@ This delegate-when-blocked rule is wired into the hourly orchestration loop.
 - **Untracked files don't travel with `git merge`.** Before merging an agent branch,
   `git status` its worktree + `git add -A` — a SKIP is not a PASS.
 
+## NEVER SEARCH FOR A PROCESS YOU INTEND TO KILL (cost two builders on 2026-07-26)
+
+`pkill -f "merge-gate.sh"` — meant to stop one gate — killed two BUILDER agents, because every builder
+brief contains the sentence "do NOT run `scripts/merge-gate.sh`", so their command lines matched. One
+builder lost ~25 minutes of uncommitted work. **An agent carrying instructions ABOUT a tool is
+indistinguishable from that tool to a text search over command lines.**
+
+The rule, and it is absolute:
+
+- **NEVER `pkill`/`killall`/`pgrep -f` with a pattern that could appear in a brief, a prompt, or an
+  argument.** Every tool name we write about appears in some agent's arguments.
+- **Stop a gate with `bash scripts/stop-merge-gate.sh [worktree]`.** The gate publishes its pid; the
+  script positively identifies the process (cmdline AND cwd) before signalling, kills the process GROUP
+  derived from that pid so the worker pool goes with it, and **refuses, killing nothing, if it cannot
+  identify a gate.** A refusal is always cheaper than destroying work.
+- **To stop a builder, resolve the pid from its working directory** and kill only that:
+  `for p in $(pgrep -f "^codex exec"); do [ "$(readlink /proc/$p/cwd)" = "/tmp/conductor-X" ] && kill "$p"; done`
+  — the cwd is the identity; the command line is not.
+- Before any kill, state which of the two reasons applies: killing to SEQUENCE (legitimate) or killing to
+  DIAGNOSE (never — it destroys the evidence you were about to read).
+- A builder killed mid-flight loses everything uncommitted. Restarting it is not free and the work is not
+  recoverable, so treat a kill as a destructive operation with the same care as `git branch -D`.
+
 ## Never destroy recovery points (branches, worktrees, files)
 Destructive git ops are irreversible and have already caused real data loss here (a
 `git worktree remove --force` on an uncommitted tree discarded a whole task). **Preservation is

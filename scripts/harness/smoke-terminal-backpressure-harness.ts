@@ -100,11 +100,13 @@ try {
     stoppedChildStateObserved,
     'the integrated terminal foreground child is stopped in raw mode',
   );
-  await driver.awaitQuiescence();
-  const terminalSnapshot = driver.snapshot();
-  HarnessSmoke.Class.requireCondition(
-    terminalSnapshot.findText('bash') !== null,
-    'the terminal heading is visible before the backpressured paste',
+  // AWAIT THE HEADING, do not sample after quiescence and hope. Quiescence means "no frame is
+  // pending", which is NOT the condition this assertion reads: under gate load the shell can still be
+  // starting, so the heading has not been painted yet and the sample finds nothing. This exact line
+  // failed a gate on 2026-07-26 while passing solo — the wait must observe what the assertion reads.
+  await driver.awaitGridCondition(
+    'the terminal heading names the running shell before the backpressured paste',
+    (candidate) => candidate.findText('bash') !== null,
   );
 
   console.log(
