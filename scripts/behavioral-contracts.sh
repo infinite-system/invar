@@ -103,12 +103,19 @@ open_file "$S"
 tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12M')"; tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12m')"; sleep 0.2  # focus
 tmux send-keys -t "$S" -l "$(printf '\033[<65;60;12M')"   # ONE wheel-down
 sleep 0.12; wearly="$("$H" field "$S" editorScrollTop)"
-sleep 1.4; "$H" settle "$S" >/dev/null 2>&1; wsettled="$("$H" field "$S" editorScrollTop)"
+sleep 1.4; "$H" settle "$S" >/dev/null 2>&1; wsingle="$("$H" field "$S" editorScrollTop)"
+sleep 0.6; wsingle_rest="$("$H" field "$S" editorScrollTop)"
+for _ in 1 2 3 4 5; do tmux send-keys -t "$S" -l "$(printf '\033[<65;60;12M')"; done
+sleep 1.6; "$H" settle "$S" >/dev/null 2>&1; wramped="$("$H" field "$S" editorScrollTop)"
 sleep 0.6; wrest="$("$H" field "$S" editorScrollTop)"
-if [ "${wsettled:-0}" -gt 1 ] 2>/dev/null && [ "${wsettled:-0}" -ge "${wearly:-0}" ] 2>/dev/null && [ "${wrest:-0}" = "${wsettled:-0}" ]; then
-  pass "wrap-mode glide-then-decay (early=$wearly settled=$wsettled rest=$wrest)"
+wgain=$((wramped - wsingle_rest))
+if [ "${wsingle:-0}" -ge 1 ] 2>/dev/null \
+   && [ "${wsingle_rest:-0}" = "${wsingle:-0}" ] 2>/dev/null \
+   && [ "${wgain:-0}" -gt "$((wsingle * 2))" ] 2>/dev/null \
+   && [ "${wrest:-0}" = "${wramped:-0}" ]; then
+  pass "wrap-mode five notches accelerate then decay to rest (gain=$wgain vs single=$wsingle, rest=$wrest; early=$wearly)"
 else
-  bad "wrap-mode NO glide/decay (early=$wearly settled=$wsettled rest=$wrest)"
+  bad "wrap-mode NO progressive gain/decay (gain=$wgain single=$wsingle singleRest=$wsingle_rest ramped=$wramped rest=$wrest early=$wearly)"
 fi
 # Extent: PageDown to the end reaches a visual-row scrollTop that EXCEEDS the 200 logical lines (a
 # logical-line extent would cap near lineCount-height ~162; visual rows go much further).

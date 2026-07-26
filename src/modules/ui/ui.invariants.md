@@ -872,9 +872,10 @@ two consumers can drift apart.
 
 **Mechanism:** `ScrollGesture.Class.wheelStep(event, settings)` and `.modifierHeld(event, modifier)`
 are the sole definitions; a handler NEVER re-derives notch size, the fast multiplier, or the
-horizontal-modifier test locally. One expression feeds both the wrap-mode direct step and the
-non-wrap momentum impulse. Pairs with *One writer per scroll regime per frame* (that governs who
-WRITES the offset; this governs how the gesture is MEASURED before the write).
+horizontal-modifier test locally. `EditorPane` routes every vertical wheel gesture through one
+`Workspace.impulseEditorVerticalScroll` call; wrap mode differs only in the visual-row extent used
+when that shared momentum is applied. Pairs with *One writer per scroll regime per frame* (that
+governs who WRITES the offset; this governs how the gesture is MEASURED before the write).
 
 **Generates:** uniform, configurable scroll feel across every pane from one settings source.
 
@@ -889,7 +890,7 @@ scripts/harness/smoke-terminal-harness.ts`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-26
 
 ### Wheel impulses start their own frame sequence
 
