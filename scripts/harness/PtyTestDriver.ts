@@ -56,6 +56,10 @@ export interface HarnessGridRegion {
 class $PtyTestDriver {
   /** How many trailing recorded characters accompany an unexpected-exit failure. Long enough to hold
    *  a runtime's uncaught-exception dump with its stack, short enough to stay readable in a gate log. */
+  protected static get outputConditionPollIntervalMilliseconds(): number {
+    return 10;
+  }
+
   protected static get exitEvidenceTailLength(): number {
     return 2000;
   }
@@ -379,6 +383,35 @@ class $PtyTestDriver {
         );
       }
       await this.emulator.flush();
+    }
+  }
+
+  /**
+   * Await a predicate over OBSERVED RAW OUTPUT rather than the grid. Terminal graphics
+   * protocols (kitty, sixel) are byte streams that are not necessarily bounded by a
+   * synchronized frame, so `awaitGridCondition` cannot see them arrive and smokes reached
+   * for a bare `Bun.sleep` before asserting on `outputSequenceCount` — which is a wait with
+   * no predicate, adequate or not depending on the machine, and the reason
+   * smoke-pixel-preview took timeout retries under load.
+   *
+   * The sleep below is this wait's POLL INTERVAL, which the harness wait invariant permits;
+   * what it forbids is a bare sleep standing between a drive and the assertion that
+   * verifies it, which is exactly what this method exists to replace.
+   */
+  async awaitOutputCondition(
+    predicateDescription: string,
+    predicate: () => boolean,
+    timeoutMilliseconds = 15_000,
+  ): Promise<void> {
+    const deadline = performance.now() + timeoutMilliseconds;
+    while (true) {
+      if (predicate()) return;
+      if (performance.now() >= deadline) {
+        throw new Error(
+          `Timed out waiting for output condition: ${predicateDescription}`,
+        );
+      }
+      await Bun.sleep($PtyTestDriver.outputConditionPollIntervalMilliseconds);
     }
   }
 

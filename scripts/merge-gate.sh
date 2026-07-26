@@ -608,7 +608,15 @@ fi
 
 echo ""
 if [ "${#retried_smoke_names[@]}" -eq 0 ]; then
-  echo "RETRY TALLY: no steps retried — this run's green is a clean green"
+  # Only claim a clean GREEN when the run actually passed. Printing "this run's green
+  # is a clean green" under FAILURES (as it did on the first failing run after the
+  # tally landed) is a false reassurance in the exact place a reader looks for the
+  # verdict — the tally reports RETRIES, so when the gate is red it must say only that.
+  if [ "$fail" = 0 ]; then
+    echo "RETRY TALLY: no steps retried — this run's green is a clean green"
+  else
+    echo "RETRY TALLY: no steps retried — the failures below are real, not flakes"
+  fi
 else
   echo "RETRY TALLY: ${#retried_smoke_names[@]} step(s) PASSED ONLY ON RETRY — a retried"
   echo "RETRY TALLY: pass is a FLAKE, not a green. Each line below is an intermittent"

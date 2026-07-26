@@ -141,7 +141,12 @@ async function driveKittyTier(): Promise<void> {
       'status condition: status.activeFileIsImage === true',
       (status) => status.activeFileIsImage === true,
     );
-    await Bun.sleep(250);
+    await driver.awaitOutputCondition(
+      'the kitty transmit-and-place sequence reaches the raw PTY stream',
+      () =>
+        driver.outputSequenceCount('\x1b_Ga=T') > 0 &&
+        driver.outputSequenceCount('i=70') > 0,
+    );
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1b_Ga=T') > 0 &&
         driver.outputSequenceCount('i=70') > 0,
@@ -193,6 +198,14 @@ async function driveKittyTier(): Promise<void> {
       'Settings remains painted after resize',
       (candidate) => candidate.findText('Settings') !== null,
     );
+    // This sleep STAYS, and the distinction matters. The three converted above were
+    // POSITIVE claims (a sequence must arrive), where a sleep races the arrival and a
+    // condition wait is strictly better. This one is an ABSENCE claim — no NEW placement
+    // may appear while Settings is open — and for absence a longer wait is the SAFER
+    // direction, so converting it to a condition wait would be meaningless (the condition
+    // is "nothing happened"). Its real weakness is that it passes whenever graphics are
+    // broken entirely; the fix is the liveness anchoring tracked in the content-invariance
+    // work, not a different wait here.
     await Bun.sleep(100);
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1b_Ga=T') === placementCountWithoutOverlay,
@@ -377,7 +390,10 @@ async function driveKittyTier(): Promise<void> {
         status.activeFileIsImage === false &&
         String(status.activeBuffer).endsWith('/sample.ts'),
     );
-    await Bun.sleep(100);
+    await driver.awaitOutputCondition(
+      'the kitty placement delete reaches the raw PTY stream',
+      () => driver.outputSequenceCount('\x1b_Ga=d,d=I') > 0,
+    );
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1b_Ga=d,d=I') > 0,
       'kitty placement delete is emitted on buffer switch',
@@ -426,7 +442,10 @@ async function driveSixelTier(): Promise<void> {
     );
     await openThroughQuickOpen(driver, 'picture');
     await awaitImageStatus(driver, statusPath);
-    await Bun.sleep(750);
+    await driver.awaitOutputCondition(
+      'the sixel DCS introducer and raster attributes reach the raw PTY stream',
+      () => driver.outputSequenceCount('\x1bP0;1;0q"1;1;') > 0,
+    );
     HarnessSmoke.Class.requireCondition(
       driver.outputSequenceCount('\x1bP0;1;0q"1;1;') > 0,
       'sixel DCS introducer and raster attributes reached the raw PTY stream',
