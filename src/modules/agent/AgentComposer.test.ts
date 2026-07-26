@@ -64,6 +64,33 @@ describe('AgentComposer — editing', () => {
   });
 });
 
+describe('AgentComposer — skill invocation token', () => {
+  test('recognizes a slash prefix only at a token boundary', () => {
+    const model = composer();
+    model.insert('ask /iv');
+    expect(model.skillInvocation()).toEqual({
+      prefix: 'iv',
+      start: 4,
+      end: 7,
+    });
+
+    model.clear();
+    model.insert('ask/iv');
+    expect(model.skillInvocation()).toBeNull();
+  });
+
+  test('replaces only the active slash token and leaves following text', () => {
+    const model = composer();
+    model.insert('ask /iv later');
+    for (let step = 0; step < 6; step += 1) model.moveLeft();
+    const invocation = model.skillInvocation();
+    expect(invocation).not.toBeNull();
+    model.replaceSkillInvocation(invocation!, 'ivue');
+    expect(model.value).toBe('ask /ivue  later');
+    expect(model.cursor).toBe(10);
+  });
+});
+
 describe('AgentComposer — selection + copy (no phantom newlines across wrap)', () => {
   test('selectedText reconstructs the buffer substring across a wrap boundary', () => {
     const model = composer();

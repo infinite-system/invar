@@ -569,6 +569,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: layout harness" bun scripts/harness/smoke-layout-harness.ts
   # wave 3
   parallel_safe_smoke "smoke: agent harness" bun scripts/harness/smoke-agent-harness.ts
+  parallel_safe_smoke "smoke: agent skill popup harness" bun scripts/harness/smoke-agent-skill-popup-harness.ts
   parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
   parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
   parallel_safe_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts

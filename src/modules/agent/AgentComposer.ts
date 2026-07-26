@@ -13,6 +13,7 @@ import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 // invariant: Editable text fields share one input model (project.invariants.md)
 // invariant: Composer editing uses the input model (src/modules/agent/agent.invariants.md)
 // invariant: Agent text wraps at word boundaries (src/modules/agent/agent.invariants.md)
+// invariant: Agent skill invocations use the composer popup (src/modules/agent/agent.invariants.md)
 
 class $AgentComposer {
   static get maxRows(): number {
@@ -58,6 +59,50 @@ class $AgentComposer {
   /** The cursor's grapheme index (for tests / assertions). */
   get cursor(): number {
     return this.input.caret.value;
+  }
+
+  skillInvocation(): AgentSkillInvocation | null {
+    const textBeforeCaret = this.input.value.slice(
+      0,
+      EditorCoordinates.Class.graphemeToU16(
+        this.input.value,
+        this.clampCursor(),
+      ),
+    );
+    const match = /(?:^|\s)\/([A-Za-z0-9_-]*)$/.exec(textBeforeCaret);
+    if (!match) return null;
+    const prefix = match[1] ?? '';
+    const slashUtf16Offset = textBeforeCaret.length - prefix.length - 1;
+    return {
+      prefix,
+      start: EditorCoordinates.Class.graphemeCount(
+        textBeforeCaret.slice(0, slashUtf16Offset),
+      ),
+      end: this.clampCursor(),
+    };
+  }
+
+  replaceSkillInvocation(
+    invocation: AgentSkillInvocation,
+    skillName: string,
+  ): void {
+    const startUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+      this.input.value,
+      invocation.start,
+    );
+    const endUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+      this.input.value,
+      invocation.end,
+    );
+    const replacement = `/${skillName} `;
+    this.input.setValue(
+      this.input.value.slice(0, startUtf16Offset) +
+        replacement +
+        this.input.value.slice(endUtf16Offset),
+    );
+    this.input.caret.value =
+      invocation.start + EditorCoordinates.Class.graphemeCount(replacement);
+    this.selection.clear();
   }
 
   protected graphemeCount(): number {
@@ -372,4 +417,10 @@ export interface ComposerLayout {
   readonly rowCount: number;
   readonly caretRow: number;
   readonly caretColumn: number;
+}
+
+export interface AgentSkillInvocation {
+  readonly prefix: string;
+  readonly start: number;
+  readonly end: number;
 }

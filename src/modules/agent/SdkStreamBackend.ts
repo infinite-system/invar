@@ -20,11 +20,13 @@
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
 // invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
+// invariant: Every agent backend session begins from the IBR foundation (src/modules/agent/agent.invariants.md)
 import {
   createSdkMcpServer,
   query,
   tool,
   type Query,
+  type Options,
   type PermissionResult,
 } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
@@ -43,6 +45,7 @@ import {
 
 class $SdkStreamBackend implements AgentBackend {
   readonly supportsPermissionPrompts = true;
+  readonly ibrFoundationDelivery = 'append-system-prompt';
 
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
   protected activeQuery: Query | null = null;
@@ -101,27 +104,33 @@ class $SdkStreamBackend implements AgentBackend {
         : null;
     let turn: Query;
     try {
-      turn = query({
-        prompt,
-        options: {
-          cwd: this.options.cwd,
-          settingSources: ['user', 'project'],
-          model: this.options.model || undefined,
-          resume: this.sessionId ?? undefined,
-          ...(terminalToolServer
-            ? { mcpServers: { 'invar-terminal': terminalToolServer } }
-            : {}),
-          ...(bypass
-            ? {
-                permissionMode: 'bypassPermissions' as const,
-                allowDangerouslySkipPermissions: true,
-              }
-            : {
-                permissionMode: 'default' as const,
-                canUseTool: (toolName, input) =>
-                  this.gateToolCall(toolName, input),
-              }),
-        },
+      turn = this.createQuery(prompt, {
+        cwd: this.options.cwd,
+        settingSources: ['user', 'project'],
+        ...(this.options.ibrFoundationContent !== undefined
+          ? {
+              systemPrompt: {
+                type: 'preset' as const,
+                preset: 'claude_code' as const,
+                append: this.options.ibrFoundationContent,
+              },
+            }
+          : {}),
+        model: this.options.model || undefined,
+        resume: this.sessionId ?? undefined,
+        ...(terminalToolServer
+          ? { mcpServers: { 'invar-terminal': terminalToolServer } }
+          : {}),
+        ...(bypass
+          ? {
+              permissionMode: 'bypassPermissions' as const,
+              allowDangerouslySkipPermissions: true,
+            }
+          : {
+              permissionMode: 'default' as const,
+              canUseTool: (toolName, input) =>
+                this.gateToolCall(toolName, input),
+            }),
       });
     } catch (error) {
       this.emit({
@@ -133,6 +142,10 @@ class $SdkStreamBackend implements AgentBackend {
     }
     this.activeQuery = turn;
     void this.pump(turn);
+  }
+
+  protected createQuery(prompt: string, options: Options): Query {
+    return query({ prompt, options });
   }
 
   /** The SDK's canUseTool: pause the gated call as a 'permission-request' event until respond() answers.
@@ -248,6 +261,7 @@ export namespace SdkStreamBackend {
 
 export interface SdkStreamOptions {
   cwd?: string;
+  ibrFoundationContent?: string;
   skipPermissions?: boolean | (() => boolean);
   model?: string;
   terminalTools?: AgentTerminalToolPort;
