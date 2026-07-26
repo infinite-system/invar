@@ -207,6 +207,7 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.terminalLastObservedBoundarySource).toBeNull();
     expect(initialSnapshot.boundedListPopupTitle).toBe('');
     expect(initialSnapshot.boundedListPopupItemIdentifiers).toEqual([]);
+    expect(initialSnapshot.boundedListPopupMatchIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupSelectedIdentifier).toBeNull();
     expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
       'git',

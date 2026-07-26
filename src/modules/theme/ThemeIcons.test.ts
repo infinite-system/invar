@@ -76,7 +76,6 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'panelExpand',
     'panelRestore',
     'panelClose',
-    'popupNavigateBackward',
   ] as const;
   const expectedVocabularies = {
     nerd: [
@@ -89,10 +88,9 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f065}',
       '\u{f066}',
       '\u{f00d}',
-      '\u{f062}',
     ],
-    unicode: ['☰', '⑂', '⊞', '⚲', '⚙', '+', '↗', '↙', '×', '↑'],
-    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x', '^'],
+    unicode: ['☰', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×'],
+    ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x'],
   } as const;
 
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
@@ -102,25 +100,71 @@ test('semantic interface glyph slots resolve through every capability tier', () 
   }
 });
 
-test('popup backward control is one display cell and avoids reserved markers', () => {
-  const reservedMarkers = new Set([
+test('the extensions glyph is one cell and avoids every reserved mark', () => {
+  // The user could not recognize ⊞ at terminal size, so the slot moved to ⬢. The reserved table is
+  // every mark another surface already owns: diff bar, dirty dot, tab separator, overview pip, the
+  // panel controls, the sibling activity glyphs, and ⬡ (the wasm file icon, which is why the
+  // outline hexagon was NOT an acceptable fallback).
+  const reservedMarks = new Set([
     '▎',
     '●',
     '❯',
+    '•',
     '↗',
     '↙',
+    '+',
+    '×',
     '☰',
     '⑂',
-    '⊞',
-    '⚲',
+    '⌕',
     '⚙',
+    '⬡',
   ]);
 
   for (const level of ['nerd', 'unicode', 'ascii'] as const) {
-    const glyph = ThemeIcons.Class.glyphFor(level, 'popupNavigateBackward');
+    const glyph = ThemeIcons.Class.glyphFor(level, 'activityExtensions');
     expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
-    expect(reservedMarkers.has(glyph)).toBe(false);
+    expect(reservedMarks.has(glyph)).toBe(false);
   }
+});
+
+test('activity and panel control glyphs stay pairwise distinct at every tier', () => {
+  const distinctGlyphSlots = [
+    'activityFiles',
+    'activitySourceControl',
+    'activityExtensions',
+    'activitySearch',
+    'activitySettings',
+    'panelAdd',
+    'panelExpand',
+    'panelRestore',
+    'panelClose',
+  ] as const;
+
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    const glyphs = distinctGlyphSlots.map((slot) =>
+      ThemeIcons.Class.glyphFor(level, slot),
+    );
+    expect(new Set(glyphs).size).toBe(distinctGlyphSlots.length);
+  }
+});
+
+test('file icon sets keep folder and file marks one cell at every tier', () => {
+  // The breadcrumb popup now shows the tree's icons, so its label column is aligned by the widest
+  // icon in the set. Folder and file defaults must stay one cell; the unicode extension map still
+  // carries deliberately wide pictographs (🔒 for lock, 🖼 for images), which widen that shared
+  // column for every row rather than breaking one row's alignment.
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    const iconSet = ThemeIcons.Class.iconSetFor(level);
+    expect(EditorCoordinates.Class.lineWidth(iconSet.folderClosed)).toBe(1);
+    expect(EditorCoordinates.Class.lineWidth(iconSet.folderOpen)).toBe(1);
+    expect(EditorCoordinates.Class.lineWidth(iconSet.file)).toBe(1);
+  }
+  expect(
+    EditorCoordinates.Class.lineWidth(
+      ThemeIcons.Class.iconSetFor('unicode').ext.png ?? '',
+    ),
+  ).toBe(2);
 });
 
 test('every semantic interface icon is one display cell and avoids reserved markers', () => {

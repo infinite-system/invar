@@ -146,20 +146,20 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
-        popupNavigateBackward: '\u{f062}',
       },
       unicode: {
         activityFiles: '☰',
         activitySourceControl: '⑂',
-        activityExtensions: '⊞',
-        activitySearch: '⚲',
+        // ⬢ BLACK HEXAGON is the module/package convention and stays legible at terminal size,
+        // where ⊞'s thin internal cross disappeared for the user who reported it.
+        activityExtensions: '⬢',
+        activitySearch: '⌕',
         activitySettings: '⚙',
         activityAccentBar: '▎',
         panelAdd: '+',
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
-        popupNavigateBackward: '↑',
       },
       ascii: {
         activityFiles: 'F',
@@ -172,7 +172,6 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
-        popupNavigateBackward: '^',
       },
     });
   }
@@ -245,7 +244,7 @@ class $ThemeIcons {
         toggleMode: '\u{f0ec}',
       }, // fa search / up / down / refresh / step-forward / exchange
       unicode: {
-        search: '⚲',
+        search: '⌕',
         previous: '↑',
         next: '↓',
         replace: '⟳',
@@ -463,7 +462,6 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
-  popupNavigateBackward: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

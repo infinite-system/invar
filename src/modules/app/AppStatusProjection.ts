@@ -151,6 +151,12 @@ class $AppStatusProjection {
       boundedListPopupItemIdentifiers: ports.boundedListPopup.items.value.map(
         (item) => item.identifier,
       ),
+      // The rows actually offered right now. The item list carries the pinned `..` entry at all
+      // times; only this projection shows whether the active query is hiding it.
+      boundedListPopupMatchIdentifiers:
+        ports.boundedListPopup.filteredMatches.map(
+          (match) => match.item.identifier,
+        ),
       boundedListPopupSelectedIdentifier:
         ports.boundedListPopup.filteredMatches[
           ports.boundedListPopup.selectedIndex.value

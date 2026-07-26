@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ref } from 'vue';
+import { ThemeIcons } from '../theme/ThemeIcons';
 import type {
   BoundedListPopupItem,
   BoundedListPopupOpenOptions,
@@ -11,11 +12,20 @@ import type {
 import { Breadcrumb } from './Breadcrumb';
 import { BreadcrumbPicker } from './BreadcrumbPicker';
 
-test('directories drill without dismissal and backward navigation reselects the child', () => {
+// The picker under test resolves marks through the SAME resolver the file tree paints with, so the
+// stub forwards to `ThemeIcons` instead of inventing glyphs a second time.
+const unicodeIconSet = ThemeIcons.Class.iconSetFor('unicode');
+const themeIconStub = {
+  icon: (name: string, isDirectory: boolean, open = false): string =>
+    ThemeIcons.Class.iconFor(unicodeIconSet, name, isDirectory, open),
+};
+
+test('the parent row and Left share one upward generator', () => {
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'breadcrumb-picker-'));
   const sourceDirectory = join(workspaceRoot, 'source');
   const nestedDirectory = join(sourceDirectory, 'nested');
   mkdirSync(nestedDirectory, { recursive: true });
+  writeFileSync(join(sourceDirectory, 'module.ts'), 'export {};\n');
   writeFileSync(join(sourceDirectory, 'peer.txt'), 'peer\n');
   writeFileSync(join(nestedDirectory, 'target.txt'), 'target\n');
 
@@ -63,6 +73,7 @@ test('directories drill without dismissal and backward navigation reselects the 
     workspaceSet: {
       active: activeWorkspace,
     } as never,
+    theme: themeIconStub,
   });
 
   try {
@@ -75,27 +86,57 @@ test('directories drill without dismissal and backward navigation reselects the 
 
     picker.show(sourceSegment, { column: 4, row: 2 });
     expect(openedItems.map((item) => item.label)).toEqual([
-      'nested/',
+      '..',
+      'nested',
+      'module.ts',
       'peer.txt',
     ]);
+    // The icon carries the directory distinction, so no label repeats it with a trailing slash.
+    expect(openedItems.every((item) => !item.label.includes('/'))).toBe(true);
+    expect(openedItems.map((item) => item.icon)).toEqual([
+      unicodeIconSet.folderClosed,
+      unicodeIconSet.folderClosed,
+      unicodeIconSet.ext.ts,
+      unicodeIconSet.file,
+    ]);
+    expect(openedItems[0]?.identifier).toBe(
+      BreadcrumbPicker.Class.parentDirectoryItemIdentifier,
+    );
+    expect(openedItems[0]?.pinnedWhileQueryEmpty).toBe(true);
+    expect(openedItems[0]?.keepOpenOnSelect).toBe(true);
     expect(openOptions.selectedItemIdentifier).toBe(nestedDirectory);
-    expect(openOptions.navigateBackwardAvailable?.()).toBe(true);
 
     activatePopupItem(openedItems[0]!);
-    expect(replacements.at(-1)?.items.map((item) => item.label)).toEqual([
-      'target.txt',
+    const parentRowReplacement = replacements.at(-1);
+    expect(parentRowReplacement?.selectedItemIdentifier).toBe(sourceDirectory);
+    expect(parentRowReplacement?.items.map((item) => item.label)).toEqual([
+      'source',
     ]);
-    expect(replacements.at(-1)?.options.resetQuery).toBe(true);
+    expect(parentRowReplacement?.options.resetQuery).toBe(true);
 
-    openOptions.navigateBackwardHandler?.();
-    expect(replacements.at(-1)?.selectedItemIdentifier).toBe(nestedDirectory);
+    activatePopupItem(parentRowReplacement?.items[0]!);
     expect(replacements.at(-1)?.items.map((item) => item.label)).toEqual([
-      'nested/',
+      '..',
+      'nested',
+      'module.ts',
       'peer.txt',
     ]);
-    expect(openOptions.navigateBackwardAvailable?.()).toBe(true);
 
-    activatePopupItem(replacements.at(-2)?.items[0]!);
+    openOptions.navigateBackwardHandler?.();
+    expect(replacements.at(-1)?.selectedItemIdentifier).toBe(
+      parentRowReplacement?.selectedItemIdentifier,
+    );
+    expect(replacements.at(-1)?.items.map((item) => item.label)).toEqual(
+      parentRowReplacement?.items.map((item) => item.label) ?? [],
+    );
+
+    activatePopupItem(replacements.at(-1)!.items[0]!);
+    activatePopupItem(
+      replacements.at(-1)!.items.find((item) => item.label === 'nested')!,
+    );
+    activatePopupItem(
+      replacements.at(-1)!.items.find((item) => item.label === 'target.txt')!,
+    );
     expect(openedFile).toBe(join(nestedDirectory, 'target.txt'));
     expect(activeWorkspace.focus.value).toBe('editor');
   } finally {
@@ -103,14 +144,14 @@ test('directories drill without dismissal and backward navigation reselects the 
   }
 });
 
-test('workspace root reports backward navigation unavailable', () => {
+test('the workspace root offers no parent row', () => {
   const workspaceRoot = mkdtempSync(join(tmpdir(), 'breadcrumb-picker-root-'));
   writeFileSync(join(workspaceRoot, 'root-file.txt'), 'root\n');
-  let openOptions: BoundedListPopupOpenOptions = {};
+  let openedItems: readonly BoundedListPopupItem[] = [];
   const picker = new BreadcrumbPicker.Class({
     popup: {
-      openAt: (_items, _anchor, _handler, options) => {
-        openOptions = options ?? {};
+      openAt: (items) => {
+        openedItems = items;
       },
       replaceItems: () => {},
     },
@@ -124,6 +165,7 @@ test('workspace root reports backward navigation unavailable', () => {
         openFileInTab: () => {},
       },
     } as never,
+    theme: themeIconStub,
   });
 
   try {
@@ -135,7 +177,14 @@ test('workspace root reports backward navigation unavailable', () => {
     if (!rootSegment) return;
 
     picker.show(rootSegment, { column: 4, row: 2 });
-    expect(openOptions.navigateBackwardAvailable?.()).toBe(false);
+    expect(openedItems.map((item) => item.label)).toEqual(['root-file.txt']);
+    expect(
+      openedItems.some(
+        (item) =>
+          item.identifier ===
+          BreadcrumbPicker.Class.parentDirectoryItemIdentifier,
+      ),
+    ).toBe(false);
   } finally {
     rmSync(workspaceRoot, { recursive: true, force: true });
   }

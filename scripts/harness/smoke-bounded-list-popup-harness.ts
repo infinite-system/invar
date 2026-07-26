@@ -11,6 +11,7 @@ import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { BreadcrumbPicker } from '../../src/modules/ui/BreadcrumbPicker';
 
 // The search glyph comes from the SAME vocabulary the app paints from, never a literal. A smoke that
 // hunts for a hardcoded glyph re-breaks on every vocabulary change, which contradicts the invariant
@@ -25,10 +26,10 @@ interface PopupGeometryStatus {
   bottomRow: number;
   opensUpward: boolean;
   searchRow: number | null;
-  navigateBackwardControl: { column: number; row: number } | null;
   listLeft: number;
   listTop: number;
   listColumns: number;
+  listIconColumns: number;
   listRows: number;
   firstVisible: number;
 }
@@ -36,7 +37,53 @@ interface PopupGeometryStatus {
 interface PopupPublishedState {
   title: string;
   itemIdentifiers: readonly string[];
+  matchIdentifiers: readonly string[];
   selectedIdentifier: string | null;
+}
+
+// The parent row is addressed by PUBLISHED geometry: the pinned row is filtered index 0, its icon
+// sits in the published icon column, and its label starts at the column every sibling row shares.
+// Its identifier comes from the picker itself, never a literal copy.
+const parentRowIdentifier =
+  BreadcrumbPicker.Class.parentDirectoryItemIdentifier;
+
+function popupRowLabelColumn(geometry: PopupGeometryStatus): number {
+  return geometry.listIconColumns > 0 ? 2 + geometry.listIconColumns : 1;
+}
+
+function popupRowText(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+  filteredIndex: number,
+): string {
+  const row = geometry.listTop + (filteredIndex - geometry.firstVisible);
+  return Array.from(snapshot.rowText(row))
+    .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+    .join('');
+}
+
+function popupRowIcon(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+  filteredIndex: number,
+): string {
+  return popupRowText(snapshot, geometry, filteredIndex)
+    .slice(1, 1 + geometry.listIconColumns)
+    .trim();
+}
+
+function popupRowLabel(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+  filteredIndex: number,
+): string {
+  return popupRowText(snapshot, geometry, filteredIndex)
+    .slice(popupRowLabelColumn(geometry))
+    .trimEnd();
+}
+
+function statusIdentifiers(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.map((entry) => String(entry)) : [];
 }
 
 function popupGeometry(status: StatusSnapshot): PopupGeometryStatus | null {
@@ -44,12 +91,12 @@ function popupGeometry(status: StatusSnapshot): PopupGeometryStatus | null {
 }
 
 function popupPublishedState(status: StatusSnapshot): PopupPublishedState {
-  const publishedItemIdentifiers = status.boundedListPopupItemIdentifiers;
   return {
     title: String(status.boundedListPopupTitle ?? ''),
-    itemIdentifiers: Array.isArray(publishedItemIdentifiers)
-      ? publishedItemIdentifiers.map((identifier) => String(identifier))
-      : [],
+    itemIdentifiers: statusIdentifiers(status.boundedListPopupItemIdentifiers),
+    matchIdentifiers: statusIdentifiers(
+      status.boundedListPopupMatchIdentifiers,
+    ),
     selectedIdentifier:
       typeof status.boundedListPopupSelectedIdentifier === 'string'
         ? status.boundedListPopupSelectedIdentifier
@@ -534,6 +581,34 @@ try {
     join(pickerDeeperDirectory, 'deeper-file.txt'),
     'deeper file\n',
   );
+  // Two more extensions so the popup's icon column is driven with a folder mark, a plain-file mark,
+  // and two extension-specific marks. Every icon in this fixture measures one cell, which is what
+  // lets the drive index painted columns by code point.
+  await Bun.write(
+    join(pickerNestedDirectory, 'picker-module.ts'),
+    'export {};\n',
+  );
+  await Bun.write(join(pickerNestedDirectory, 'picker-notes.md'), '# notes\n');
+  const pickerNestedRowLabels = [
+    '..',
+    'deeper',
+    'breadcrumb-active.txt',
+    'breadcrumb-target.txt',
+    'picker-module.ts',
+    'picker-notes.md',
+  ] as const;
+  const pickerNestedMatchIdentifiers = [
+    parentRowIdentifier,
+    pickerDeeperDirectory,
+    join(pickerNestedDirectory, 'breadcrumb-active.txt'),
+    join(pickerNestedDirectory, 'breadcrumb-target.txt'),
+    join(pickerNestedDirectory, 'picker-module.ts'),
+    join(pickerNestedDirectory, 'picker-notes.md'),
+  ] as const;
+  const pickerDeeperMatchIdentifiers = [
+    parentRowIdentifier,
+    join(pickerDeeperDirectory, 'deeper-file.txt'),
+  ] as const;
 
   driver.sendKeys('Control+p');
   await driver.awaitGridCondition(
@@ -619,11 +694,11 @@ try {
     'the source-level popup paints its directory and file entries',
     (candidate) =>
       geometry !== null &&
-      popupListContains(candidate, geometry, 'picker-nested/') &&
+      popupListContains(candidate, geometry, 'picker-nested') &&
       popupListContains(candidate, geometry, 'source-peer.txt'),
   );
   const nestedDirectoryItemPosition = geometry
-    ? popupItemPosition(snapshot, geometry, 'picker-nested/')
+    ? popupItemPosition(snapshot, geometry, 'picker-nested')
     : null;
   const sourcePeerItemPosition = geometry
     ? popupItemPosition(snapshot, geometry, 'source-peer.txt')
@@ -635,22 +710,36 @@ try {
         cellAttributeSignature(snapshot, sourcePeerItemPosition),
     'the current child directory opens pre-selected in observed cells',
   );
+  HarnessSmoke.Class.requireCondition(
+    statusIdentifiers(popupStatus.boundedListPopupMatchIdentifiers)[0] ===
+      parentRowIdentifier,
+    'the parent row leads the offered rows while the query is empty',
+  );
 
   driver.sendText('picker-nest');
-  await HarnessSmoke.Class.awaitStatus(
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the source-level breadcrumb query is published',
+    'the source-level breadcrumb query is published without the parent row',
     (status) =>
       status.boundedListPopupQuery === 'picker-nest' &&
-      status.boundedListPopupMatches === 1,
+      status.boundedListPopupMatches === 1 &&
+      !statusIdentifiers(status.boundedListPopupMatchIdentifiers).includes(
+        parentRowIdentifier,
+      ),
   );
   snapshot = await driver.awaitGridCondition(
     'the source-level query filters observed popup cells',
     (candidate) =>
       geometry !== null &&
-      popupListContains(candidate, geometry, 'picker-nested/') &&
+      popupListContains(candidate, geometry, 'picker-nested') &&
       !popupListContains(candidate, geometry, 'source-peer.txt'),
+  );
+  HarnessSmoke.Class.requireCondition(
+    !statusIdentifiers(popupStatus.boundedListPopupMatchIdentifiers).includes(
+      parentRowIdentifier,
+    ),
+    'a typed query hides the parent row instead of fuzzy-matching it',
   );
   HarnessSmoke.Class.pass('typing filters the current breadcrumb level');
 
@@ -662,19 +751,103 @@ try {
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
-      status.boundedListPopupMatches === 3,
+      JSON.stringify(
+        statusIdentifiers(status.boundedListPopupMatchIdentifiers),
+      ) === JSON.stringify([...pickerNestedMatchIdentifiers]),
   );
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitGridCondition(
     'the drilled directory paints its real children',
     (candidate) =>
       geometry !== null &&
-      popupListContains(candidate, geometry, 'deeper/') &&
+      popupListContains(candidate, geometry, 'deeper') &&
       popupListContains(candidate, geometry, 'breadcrumb-active.txt') &&
       popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
   );
   HarnessSmoke.Class.pass(
     'Enter re-roots the shared popup without dismissing it',
+  );
+
+  console.log(
+    '== bounded popup: breadcrumb rows carry tree icons in one aligned column ==',
+  );
+  const nestedRowGeometry = geometry;
+  if (!nestedRowGeometry || nestedRowGeometry.firstVisible !== 0) {
+    throw new Error('Nested breadcrumb list geometry vanished');
+  }
+  snapshot = await driver.awaitGridCondition(
+    'every nested breadcrumb row paints an icon and its label at the shared label column',
+    (candidate) =>
+      pickerNestedRowLabels.every(
+        (label, filteredIndex) =>
+          popupRowLabel(candidate, nestedRowGeometry, filteredIndex) ===
+            label &&
+          popupRowIcon(candidate, nestedRowGeometry, filteredIndex).length > 0,
+      ),
+  );
+  HarnessSmoke.Class.requireCondition(
+    nestedRowGeometry.listIconColumns === 1,
+    'the nested breadcrumb icon column is one published cell wide',
+  );
+  HarnessSmoke.Class.requireCondition(
+    pickerNestedRowLabels.every(
+      (label, filteredIndex) =>
+        popupRowLabel(snapshot, nestedRowGeometry, filteredIndex) === label,
+    ),
+    'every painted row label starts at the same published label column',
+  );
+  HarnessSmoke.Class.requireCondition(
+    pickerNestedRowLabels.every(
+      (_label, filteredIndex) =>
+        !popupRowText(snapshot, nestedRowGeometry, filteredIndex).includes('/'),
+    ),
+    'no breadcrumb row label carries a trailing slash once the icon marks folders',
+  );
+  const parentRowIcon = popupRowIcon(snapshot, nestedRowGeometry, 0);
+  const directoryRowIcon = popupRowIcon(snapshot, nestedRowGeometry, 1);
+  const plainFileRowIcon = popupRowIcon(snapshot, nestedRowGeometry, 2);
+  const typescriptRowIcon = popupRowIcon(snapshot, nestedRowGeometry, 4);
+  HarnessSmoke.Class.requireCondition(
+    directoryRowIcon !== plainFileRowIcon,
+    'a folder row and a file row paint different marks',
+  );
+  HarnessSmoke.Class.requireCondition(
+    typescriptRowIcon !== plainFileRowIcon,
+    'the extension-specific mark comes from the same set the file tree uses',
+  );
+  HarnessSmoke.Class.requireCondition(
+    parentRowIcon === directoryRowIcon,
+    'the parent row wears the same folder mark as its sibling directories',
+  );
+  driver.sendText('module');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the label-text query still filters the icon-bearing rows',
+    (status) =>
+      status.boundedListPopupQuery === 'module' &&
+      JSON.stringify(
+        statusIdentifiers(status.boundedListPopupMatchIdentifiers),
+      ) === JSON.stringify([join(pickerNestedDirectory, 'picker-module.ts')]),
+  );
+  HarnessSmoke.Class.pass(
+    'icons mark folders and file types without moving the label column or the filter',
+  );
+  for (
+    let queryCharacterIndex = 0;
+    queryCharacterIndex < 6;
+    queryCharacterIndex++
+  ) {
+    driver.sendKeys('Backspace');
+  }
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'clearing the query restores the parent row at the head of the nested rows',
+    (status) =>
+      status.boundedListPopupQuery === '' &&
+      statusIdentifiers(status.boundedListPopupMatchIdentifiers)[0] ===
+        parentRowIdentifier,
   );
 
   driver.sendKeys('Right');
@@ -685,57 +858,34 @@ try {
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
-      status.boundedListPopupMatches === 1 &&
       String(status.boundedListPopupTitle).endsWith(
         'picker-source/picker-nested/deeper',
       ) &&
-      popupGeometry(status)?.navigateBackwardControl !== null,
+      JSON.stringify(
+        statusIdentifiers(status.boundedListPopupMatchIdentifiers),
+      ) === JSON.stringify([...pickerDeeperMatchIdentifiers]),
   );
   geometry = popupGeometry(popupStatus);
   HarnessSmoke.Class.pass(
     'Right drills into the selected directory without dismissing',
   );
 
-  driver.sendText('deep');
+  console.log(
+    '== bounded popup: Enter, Left, and a click on the parent row are one operation ==',
+  );
+  driver.sendKeys('Up');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the two-level-deep query is published before upward navigation',
+    'Up selects the parent row of the two-level-deep popup',
     (status) =>
-      status.boundedListPopupQuery === 'deep' &&
-      status.boundedListPopupMatches === 1,
+      status.boundedListPopupSelectedIdentifier === parentRowIdentifier,
   );
-  geometry = popupGeometry(popupStatus);
-  const navigateBackwardControl = geometry?.navigateBackwardControl ?? null;
-  HarnessSmoke.Class.requireCondition(
-    navigateBackwardControl !== null,
-    'two-level-deep popup publishes its upward control geometry',
-  );
-  if (!navigateBackwardControl) {
-    throw new Error('Popup upward control geometry vanished');
-  }
-  snapshot = await driver.awaitGridCondition(
-    'the published upward control cell paints a visible affordance',
-    (candidate) =>
-      Boolean(
-        candidate
-          .cell(navigateBackwardControl.row, navigateBackwardControl.column)
-          ?.characters.trim(),
-      ),
-  );
-  HarnessSmoke.Class.requireCondition(
-    Boolean(
-      snapshot
-        .cell(navigateBackwardControl.row, navigateBackwardControl.column)
-        ?.characters.trim(),
-    ),
-    'published upward control geometry contains a visible cell',
-  );
-  clickPosition(driver, navigateBackwardControl);
+  driver.sendKeys('Enter');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'clicking published upward geometry re-roots without dismissal and clears the old-directory query',
+    'Enter on the parent row re-roots upward and clears the old-directory query',
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
@@ -743,21 +893,22 @@ try {
         'picker-source/picker-nested',
       ) &&
       status.boundedListPopupSelectedIdentifier === pickerDeeperDirectory &&
-      Array.isArray(status.boundedListPopupItemIdentifiers) &&
-      status.boundedListPopupItemIdentifiers.length === 3,
+      JSON.stringify(
+        statusIdentifiers(status.boundedListPopupMatchIdentifiers),
+      ) === JSON.stringify([...pickerNestedMatchIdentifiers]),
   );
-  const clickedUpwardState = popupPublishedState(popupStatus);
+  const parentRowEnterState = popupPublishedState(popupStatus);
   geometry = popupGeometry(popupStatus);
   snapshot = await driver.awaitGridCondition(
-    'clicking the upward control paints the parent directory cells',
+    'Enter on the parent row paints the parent directory cells',
     (candidate) =>
       geometry !== null &&
-      popupListContains(candidate, geometry, 'deeper/') &&
+      popupListContains(candidate, geometry, 'deeper') &&
       popupListContains(candidate, geometry, 'breadcrumb-active.txt') &&
       popupListContains(candidate, geometry, 'breadcrumb-target.txt'),
   );
   HarnessSmoke.Class.pass(
-    'clicking published geometry drills upward without dismissing',
+    'Enter on the parent row drills upward without dismissing',
   );
 
   driver.sendKeys('Right');
@@ -768,7 +919,6 @@ try {
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
-      status.boundedListPopupMatches === 1 &&
       String(status.boundedListPopupTitle).endsWith(
         'picker-source/picker-nested/deeper',
       ),
@@ -777,18 +927,67 @@ try {
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Left publishes the exact folder item set and selection produced by the upward click',
+    'Left publishes the exact folder, row, and selection state the parent row produced',
     (status) =>
       status.boundedListPopupOpen === true &&
       JSON.stringify(popupPublishedState(status)) ===
-        JSON.stringify(clickedUpwardState),
+        JSON.stringify(parentRowEnterState),
   );
   HarnessSmoke.Class.requireCondition(
     JSON.stringify(popupPublishedState(popupStatus)) ===
-      JSON.stringify(clickedUpwardState),
-    'Left and the upward click publish identical folder item and selection state',
+      JSON.stringify(parentRowEnterState),
+    'Left and Enter on the parent row publish identical state',
   );
   HarnessSmoke.Class.pass('Left drills back out one filesystem level');
+
+  driver.sendKeys('Right');
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Right re-enters the child and offers the parent row first before it is clicked',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      String(status.boundedListPopupTitle).endsWith(
+        'picker-source/picker-nested/deeper',
+      ) &&
+      statusIdentifiers(status.boundedListPopupMatchIdentifiers)[0] ===
+        parentRowIdentifier &&
+      popupGeometry(status)?.firstVisible === 0,
+  );
+  const clickedRowGeometry = popupGeometry(popupStatus);
+  if (!clickedRowGeometry) {
+    throw new Error('Two-level-deep popup geometry vanished');
+  }
+  snapshot = await driver.awaitGridCondition(
+    'the published first list row paints the parent label',
+    (candidate) => popupRowLabel(candidate, clickedRowGeometry, 0) === '..',
+  );
+  HarnessSmoke.Class.requireCondition(
+    popupRowLabel(snapshot, clickedRowGeometry, 0) === '..',
+    'the first list row after the search input is the `..` parent row',
+  );
+  clickPosition(driver, {
+    column:
+      clickedRowGeometry.listLeft + popupRowLabelColumn(clickedRowGeometry),
+    row: clickedRowGeometry.listTop,
+  });
+  popupStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'clicking the parent row publishes the state Enter on that row produced',
+    (status) =>
+      status.boundedListPopupOpen === true &&
+      JSON.stringify(popupPublishedState(status)) ===
+        JSON.stringify(parentRowEnterState),
+  );
+  HarnessSmoke.Class.requireCondition(
+    JSON.stringify(popupPublishedState(popupStatus)) ===
+      JSON.stringify(parentRowEnterState),
+    'clicking the parent row and Enter on it publish identical state',
+  );
+  HarnessSmoke.Class.pass(
+    'clicking the parent row is the same upward operation',
+  );
 
   geometry = popupGeometry(popupStatus);
   driver.sendText('target');
@@ -840,25 +1039,42 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the source breadcrumb popup reopens before workspace-root navigation',
+    'the source breadcrumb popup reopens offering its parent row',
     (status) =>
       status.boundedListPopupOpen === true &&
-      popupGeometry(status)?.navigateBackwardControl !== null,
+      statusIdentifiers(status.boundedListPopupMatchIdentifiers)[0] ===
+        parentRowIdentifier,
   );
   driver.sendKeys('Left');
   popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the workspace-root popup stays open and publishes no upward control',
+    'the workspace-root popup stays open and offers no parent row',
     (status) =>
       status.boundedListPopupOpen === true &&
       status.boundedListPopupQuery === '' &&
       status.boundedListPopupTitle === `Browse ${basename(fixtureRoot)}` &&
-      popupGeometry(status)?.navigateBackwardControl === null,
+      !statusIdentifiers(status.boundedListPopupItemIdentifiers).includes(
+        parentRowIdentifier,
+      ),
+  );
+  const rootPopupGeometry = popupGeometry(popupStatus);
+  HarnessSmoke.Class.requireCondition(
+    !statusIdentifiers(popupStatus.boundedListPopupItemIdentifiers).includes(
+      parentRowIdentifier,
+    ),
+    'the workspace root omits the parent row instead of offering a dead one',
+  );
+  if (!rootPopupGeometry) throw new Error('Root popup geometry vanished');
+  snapshot = await driver.awaitGridCondition(
+    'the workspace-root popup paints a real entry in its first list row',
+    (candidate) =>
+      popupRowLabel(candidate, rootPopupGeometry, 0).length > 0 &&
+      popupRowLabel(candidate, rootPopupGeometry, 0) !== '..',
   );
   HarnessSmoke.Class.requireCondition(
-    popupGeometry(popupStatus)?.navigateBackwardControl === null,
-    'workspace root omits the upward control instead of publishing a dead action',
+    popupRowLabel(snapshot, rootPopupGeometry, 0) !== '..',
+    'the workspace-root first list row is a real entry, not a parent row',
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(
