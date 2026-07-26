@@ -19,7 +19,8 @@ echo "== launch + open 8 tabs (overflows the strip -> arrows appear) =="
 "$H" ready "$S" 20 >/dev/null || { echo "  FAIL boot"; exit 1; }
 for _ in $(seq 1 30); do
   [ "$(f bufferTabCount)" -ge 8 ] 2>/dev/null && break
-  [ "$(f focus)" = "files" ] || "$H" send "$S" Tab >/dev/null
+  # Ctrl+Shift+J, not Tab: Tab now INDENTS in the editor (the editor surface owns it).
+  [ "$(f focus)" = "files" ] || "$H" chord "$S" Control+Shift+j >/dev/null
   "$H" send "$S" Down >/dev/null; "$H" send "$S" Enter >/dev/null
 done
 "$H" settle "$S" >/dev/null 2>&1

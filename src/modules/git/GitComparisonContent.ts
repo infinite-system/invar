@@ -79,6 +79,16 @@ class $GitComparisonContent implements EditorSurfaceContent {
   // Editor-context keys drive the comparison's synced aligned-row panes, not the hidden buffer:
   // n/p jump changes, Enter promotes the working side to a real editable tab, Esc closes.
   handleKey(key: EditorSurfaceKeyEvent): boolean {
+    // Ctrl+Shift+Up/Down jump CHANGES (what F7 / Shift+F7 used to do). The chord belongs to this
+    // SURFACE, not to the host's binding floor: the surface holds the editor column, so it owns the
+    // key, and outside a comparison the very same chord stays the editor's jump-with-extend. Arrows
+    // carry the direction and the ESC [ 1;6A form decodes on legacy terminals as well as under kitty.
+    // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
+    if (key.ctrl && key.shift && (key.name === 'up' || key.name === 'down')) {
+      if (key.name === 'up') this.view.jumpToPreviousChange();
+      else this.view.jumpToNextChange();
+      return true;
+    }
     switch (key.name) {
       case 'up':
         this.view.moveByKeyboardAlignedRows(-1);

@@ -521,7 +521,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # Voice picker + mouse-editable settings: seeded voices dir → dynamic-enum picker (keyboard + mouse),
   # rate stepper, boolean toggle, Test-Voice command. No audio (mock TTS).
   parallel_safe_full_tmux_smoke "smoke: voice-picker" bash scripts/smoke-voice-picker.sh
-  # Bottom-panel SPLIT (experiment-panel-split): drives F9 to split the panel into two side-by-side
+  # Bottom-panel SPLIT (experiment-panel-split): drives Ctrl+Shift+S to split the panel into two side-by-side
   # cells and asserts independent sub-region render, per-cell focus routing, divider re-flow, un-split.
   parallel_safe_full_tmux_smoke "smoke: activitybar" bash scripts/smoke-activitybar.sh
   parallel_safe_full_tmux_smoke "smoke: panel-split" bash scripts/smoke-panel-split.sh

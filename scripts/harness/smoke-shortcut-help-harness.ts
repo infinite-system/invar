@@ -13,7 +13,9 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function advertisedQuickOpenKey(snapshot: HarnessSnapshot.Model): string | null {
+function advertisedQuickOpenKey(
+  snapshot: HarnessSnapshot.Model,
+): string | null {
   for (const rowText of snapshot.textRows()) {
     const match = rowText.match(/(\S+)\s{2,}Go to File/);
     if (!match) continue;
@@ -43,39 +45,46 @@ async function scrollUntilVisible(
   throw new Error(`FAIL shortcut sheet never showed ${marker}`);
 }
 
-async function scrollToTop(driver: PtyTestDriver.Model, statusPath: string): Promise<void> {
+async function scrollToTop(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<void> {
   for (let scrollAttempt = 0; scrollAttempt < 8; scrollAttempt++) {
     driver.sendKeysWithoutFrameExpectation('PageUp');
   }
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.shortcutHelpScrollTop === 0",
+    'status condition: status.shortcutHelpScrollTop === 0',
     (status) => status.shortcutHelpScrollTop === 0,
   );
 }
 
-async function openWithShiftF1(
+async function openWithHelpChord(
   driver: PtyTestDriver.Model,
   statusPath: string,
 ): Promise<void> {
   for (let deliveryAttempt = 0; deliveryAttempt < 3; deliveryAttempt++) {
-    driver.sendKeysWithoutFrameExpectation('Shift+F1');
+    driver.sendKeysWithoutFrameExpectation('Control+Shift+h');
     try {
       await HarnessSmoke.Class.awaitStatusWithoutFrame(
         driver,
         statusPath,
-        "status condition: status.shortcutHelpOpen === true",
+        'status condition: status.shortcutHelpOpen === true',
         (status) => status.shortcutHelpOpen === true,
         750,
       );
-      await driver.awaitSnapshot((snapshot) => snapshot.findText('Keyboard Shortcuts') !== null);
+      await driver.awaitSnapshot(
+        (snapshot) => snapshot.findText('Keyboard Shortcuts') !== null,
+      );
       return;
     } catch {
       await Bun.sleep(200);
     }
   }
-  throw new Error('FAIL Shift+F1 did not open the shortcut sheet after three PTY deliveries');
+  throw new Error(
+    'FAIL Ctrl+Shift+H did not open the shortcut sheet after three PTY deliveries',
+  );
 }
 
 async function assertSheetStatus(
@@ -87,15 +96,18 @@ async function assertSheetStatus(
     driver,
     statusPath,
     "status condition: status.shortcutHelpOpen === true && status.inputOverlay === 'shortcutHelp' && status.inputOverlayCount === 1",
-    (status) => status.shortcutHelpOpen === true
-      && status.inputOverlay === 'shortcutHelp'
-      && status.inputOverlayCount === 1,
+    (status) =>
+      status.shortcutHelpOpen === true &&
+      status.inputOverlay === 'shortcutHelp' &&
+      status.inputOverlayCount === 1,
   );
   HarnessSmoke.Class.pass(`${label}: shortcut sheet is the only input overlay`);
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-shortcut-help-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-shortcut-help-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-shortcut-help-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 await Bun.write(join(fixtureRoot, 'document.txt'), 'alpha\nbeta\ngamma\n');
 const driver = new PtyTestDriver.Class({
@@ -107,7 +119,9 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness shortcut-help: status-bar question mark opens effective bindings ==');
+  console.log(
+    '== harness shortcut-help: status-bar question mark opens effective bindings ==',
+  );
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('document.txt') !== null,
     15_000,
@@ -125,7 +139,10 @@ try {
   );
   const statusBarRow = snapshot.rows - 1;
   const helpButtonColumn = snapshot.rowText(statusBarRow).lastIndexOf('?');
-  HarnessSmoke.Class.requireCondition(helpButtonColumn >= 0, 'status-bar question-mark button is visible');
+  HarnessSmoke.Class.requireCondition(
+    helpButtonColumn >= 0,
+    'status-bar question-mark button is visible',
+  );
   driver.sendMouse({
     kind: 'press',
     column: helpButtonColumn,
@@ -138,72 +155,90 @@ try {
     row: statusBarRow,
     button: 'left',
   });
-  snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('Keyboard Shortcuts') !== null);
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Keyboard Shortcuts') !== null,
+  );
   await assertSheetStatus(driver, statusPath, 'click');
-  HarnessSmoke.Class.requireCondition(snapshot.findText('Quit') !== null, 'sheet shows the Quit action');
+  HarnessSmoke.Class.requireCondition(
+    snapshot.findText('Quit') !== null,
+    'sheet shows the Quit action',
+  );
   snapshot = await scrollUntilVisible(driver, 'Go to File');
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('Ctrl+P') !== null,
     'Go to File row shows its effective Ctrl+P binding',
   );
   await scrollToTop(driver, statusPath);
-  await scrollUntilVisible(driver, 'Shift+F1');
-  HarnessSmoke.Class.pass('sheet scroll window lists its own Shift+F1 binding');
+  await scrollUntilVisible(driver, 'Ctrl+Shift+H');
+  HarnessSmoke.Class.pass(
+    'sheet scroll window lists its own Ctrl+Shift+H binding',
+  );
 
-  console.log('== harness shortcut-help: Escape closes and Shift+F1 reopens ==');
+  console.log(
+    '== harness shortcut-help: Escape closes and Ctrl+Shift+H reopens ==',
+  );
   driver.sendKeys('Escape');
   // Waits on rendered cells and the semantic status projection separately: the status file is
   // written asynchronously after the frame, so sampling it once after the grid wait races, and a
   // grid-frame-driven predicate would never observe a status flip that arrives without a frame.
-  await driver.awaitSnapshot((candidate) => candidate.findText('Keyboard Shortcuts') === null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Keyboard Shortcuts') === null,
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.shortcutHelpOpen === false",
+    'status condition: status.shortcutHelpOpen === false',
     (status) => status.shortcutHelpOpen === false,
   );
   HarnessSmoke.Class.pass('Escape closes the sheet in state and cells');
-  await openWithShiftF1(driver, statusPath);
-  await assertSheetStatus(driver, statusPath, 'Shift+F1');
+  await openWithHelpChord(driver, statusPath);
+  await assertSheetStatus(driver, statusPath, 'Ctrl+Shift+H');
 
-  console.log('== harness shortcut-help: advertised binding delivers through the exclusive slot ==');
+  console.log(
+    '== harness shortcut-help: advertised binding delivers through the exclusive slot ==',
+  );
   snapshot = await scrollUntilVisible(driver, 'Go to File');
   const advertisedKey = advertisedQuickOpenKey(snapshot);
   HarnessSmoke.Class.requireCondition(
     advertisedKey !== null,
     'sheet advertises a chord for Go to File',
   );
-  if (!advertisedKey) throw new Error('FAIL advertised Go to File chord disappeared');
+  if (!advertisedKey)
+    throw new Error('FAIL advertised Go to File chord disappeared');
   driver.sendKeys(advertisedKey);
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: candidate.quickOpenOpen === true && candidate.shortcutHelpOpen === false",
-    (candidate) => candidate.quickOpenOpen === true
-      && candidate.shortcutHelpOpen === false,
+    'status condition: candidate.quickOpenOpen === true && candidate.shortcutHelpOpen === false',
+    (candidate) =>
+      candidate.quickOpenOpen === true && candidate.shortcutHelpOpen === false,
   );
   await driver.awaitGridCondition(
     'Quick Open replaces the shortcut sheet in the exclusive overlay slot',
-    (candidate) => candidate.findText('Go to File') !== null
-      && candidate.findText('Keyboard Shortcuts') === null,
+    (candidate) =>
+      candidate.findText('Go to File') !== null &&
+      candidate.findText('Keyboard Shortcuts') === null,
   );
   HarnessSmoke.Class.requireCondition(
     status.quickOpenOpen === true && status.shortcutHelpOpen === false,
     'advertised chord opens Quick Open and closes the sheet',
   );
-  await openWithShiftF1(driver, statusPath);
+  await openWithHelpChord(driver, statusPath);
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false",
-    (candidate) => candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false,
+    'status condition: candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false',
+    (candidate) =>
+      candidate.shortcutHelpOpen === true && candidate.quickOpenOpen === false,
   );
   HarnessSmoke.Class.pass('reopening the sheet closes Quick Open');
 
-  console.log('== harness shortcut-help: reserved Ctrl+Q quits inside the sheet ==');
+  console.log(
+    '== harness shortcut-help: reserved Ctrl+Q quits inside the sheet ==',
+  );
   driver.sendKeys('Control+q');
   HarnessSmoke.Class.requireCondition(
-    await driver.exitCode() === 0,
+    (await driver.exitCode()) === 0,
     'reserved Ctrl+Q quits from inside the shortcut sheet',
   );
   console.log('smoke-shortcut-help-harness: ALL-PASS');

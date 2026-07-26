@@ -249,7 +249,7 @@ class $Workspace {
 
   /**
    * VS-Code-style go-to-definition: resolve the symbol at `position` (Ctrl/Cmd+click) or at the
-   * cursor (F12) through the language client, then open the target file as a tab and land the
+   * cursor (Ctrl+]) through the language client, then open the target file as a tab and land the
    * cursor on the declaration. Resolves false — never throws — when no definition is available
    * (no document, unsupported file, server missing, or the server finds nothing).
    *

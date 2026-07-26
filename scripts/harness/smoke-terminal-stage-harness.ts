@@ -154,7 +154,7 @@ async function driveAnimatedTerminalTools(
     console.log(
       '== harness terminal-stage: clean themed prompt and live header ==',
     );
-    driver.sendKeys('F8');
+    driver.sendKeys('Control+j');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,
@@ -631,7 +631,7 @@ async function driveTerminalCleanPromptDisabled(
       'status condition: status.ready === true',
       (status) => status.ready === true,
     );
-    driver.sendKeys('F8');
+    driver.sendKeys('Control+j');
     await HarnessSmoke.Class.awaitStatus(
       driver,
       statusPath,

@@ -2,12 +2,12 @@
 # Bottom-panel SPLIT smoke. Proves the PanelHost split capability end to end with the TWO REAL citizens
 # — the AGENT pane on the LEFT and the terminal on the RIGHT — by DRIVING it, not measuring internals:
 #   A) deterministic PanelHost unit tests (split layout, focus routing, per-cell resize, divider re-flow).
-#   B) launch under tmux, open the panel (F8), then SPLIT it (F9) into two side-by-side cells and assert:
+#   B) launch under tmux, open the panel (Ctrl+J), then SPLIT it (Ctrl+Shift+S) into two side-by-side cells and assert:
 #        - two cells render (agent,terminal), each into its OWN sub-region (the terminal's `stty size`
 #          reports its sub-width — proof the per-cell onResize really sized the child);
 #        - keystrokes go ONLY to the focused cell, and click-to-focus moves the target;
 #        - dragging the intra-panel divider re-flows both cells' widths;
-#        - un-splitting (F9) restores the single full-width pane.
+#        - un-splitting (Ctrl+Shift+S) restores the single full-width pane.
 # The agent pane uses the hermetic echo backend (INVAR_AGENT_BACKEND=echo) so no real claude spawns.
 # Usage: scripts/smoke-panel-split.sh [fixture-dir]
 set -uo pipefail
@@ -44,8 +44,8 @@ if "$H" ready "$S" 20 >/dev/null; then echo "  PASS  boot: ready+quiescent"; els
 fi
 chk "panel hidden at boot" "$(f terminalVisible)" "false"
 
-echo "== open the panel (F8): one full-width cell (the degenerate single-pane case, the terminal) =="
-"$H" send "$S" F8 >/dev/null
+echo "== open the panel (Ctrl+J): one full-width cell (the degenerate single-pane case, the terminal) =="
+"$H" chord "$S" Control+j >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 chk "panel visible" "$(f terminalVisible)" "true"
 chk "single cell = terminal" "$(f panelCellIds)" "terminal"
@@ -54,8 +54,8 @@ full_cols="$(f panelCellColumns)"
 gt "single cell has real width" "$full_cols" "1"
 sleep 0.6; "$H" settle "$S" >/dev/null 2>&1   # let the shell print its first prompt
 
-echo "== SPLIT the panel (F9): agent on the LEFT, terminal on the RIGHT =="
-"$H" send "$S" F9 >/dev/null
+echo "== SPLIT the panel (Ctrl+Shift+S): agent on the LEFT, terminal on the RIGHT =="
+"$H" chord "$S" Control+Shift+s >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 chk "two cells, left-to-right" "$(f panelCellIds)" "agent,terminal"
 chk "left cell (agent) is focused" "$(f panelFocusedIndex)" "0"
@@ -124,8 +124,8 @@ else
   echo "  FAIL  divider drag did not re-flow (left $col0->$col0b, right $col1->$col1b)"; fail=1
 fi
 
-echo "== un-split (F9): back to one full-width cell =="
-"$H" send "$S" F9 >/dev/null
+echo "== un-split (Ctrl+Shift+S): back to one full-width cell =="
+"$H" chord "$S" Control+Shift+s >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 chk "single cell restored" "$(f panelCellIds)" "terminal"
 chk "focused cell index reset" "$(f panelFocusedIndex)" "0"

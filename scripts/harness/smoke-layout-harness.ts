@@ -775,7 +775,7 @@ try {
     'file-tree PaneContent opened a file from the left dock',
   );
 
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1178,7 +1178,7 @@ try {
     HarnessSmoke.Class.pass(
       'persisted justify migrates to center and boots cleanly',
     );
-    compactDriver.sendKeys('F8');
+    compactDriver.sendKeys('Control+j');
     const compactStatus = await HarnessSmoke.Class.awaitStatus(
       compactDriver,
       compactStatusPath,

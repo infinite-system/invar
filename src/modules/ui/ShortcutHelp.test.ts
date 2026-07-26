@@ -57,7 +57,7 @@ describe('ShortcutHelp', () => {
   test('the sheet lists itself — its own open chord is a row', () => {
     const { sheet } = buildSheet();
     const selfRow = bindingRowFor(sheet.rows(), 'help.shortcuts');
-    expect(selfRow?.chordLabel).toBe('Shift+F1');
+    expect(selfRow?.chordLabel).toBe('Ctrl+Shift+H');
     expect(selfRow?.label).toBe('Help: Keyboard Shortcuts');
   });
 

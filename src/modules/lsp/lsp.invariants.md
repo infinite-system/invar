@@ -285,14 +285,14 @@ LSP is missing, slow, or has died.
 
 ### A definition gesture jumps to the declaration
 
-**Invariant:** If the user Ctrl/Cmd+clicks a symbol in a supported document (or presses F12 at
+**Invariant:** If the user Ctrl/Cmd+clicks a symbol in a supported document (or presses Ctrl+] at
 the cursor), then the editor resolves the symbol through the language client's
 `textDocument/definition`, opens the declaring file as a tab, and lands the cursor on the
 declaration — and when no definition is available (no document, unsupported file, absent server,
 empty result) the gesture degrades to a silent no-op, never a crash.
 
 **Scope:** The `Workspace.goToDefinition` jump path, the Ctrl/Cmd+click branch of
-`codeBody.onMouseDown` in `RootView`, and the `go.definition` command/F12 binding. Not hover or
+`codeBody.onMouseDown` in `RootView`, and the `go.definition` command/Ctrl+] binding. Not hover or
 references, which reuse the same client but are wired separately.
 
 **Mechanism:** Stands on *LSP positions cross through UTF-16* and *Server failures remain
@@ -309,7 +309,7 @@ document-revision watch in Bootstrap pushes edits as revision-idempotent `didCha
 **Generates:** `Workspace.goToDefinition`/`rehopThroughImportSpecifier`/`jumpToLocation`; the
 lazy one-client-per-workspace ownership (`ensureLanguageClient`, disposed with the workspace);
 the consumed (never selection-starting) modifier-click branch; the `go.definition` command and
-its F12 floor binding.
+its Ctrl+] floor binding.
 
 **Rejected alternatives:** A separate navigation path for LSP jumps (parallel to
 `openFileInTab`) — two openers would drift on tab/diff/focus semantics. Treating the import
@@ -319,10 +319,10 @@ specifier result as final — lands the user on the import line instead of the d
 `rehopThroughImportSpecifier`, `jumpToLocation`, the buffer-seam `openDocument`/`closeDocument`
 registration); `src/modules/ui/RootView.ts` (`codeBody.onMouseDown` modifier branch);
 `src/modules/app/Bootstrap.ts` (`'go.definition'` action + the document-revision sync watch);
-`src/modules/keybindings/keybindings.defaults.ts` (F12 → `go.definition`). Driven against a real
+`src/modules/keybindings/KeybindingDefaults.ts` (Ctrl+] → `go.definition`). Driven against a real
 `typescript-language-server`: `scripts/smoke-goto-definition.sh` Ctrl+clicks a use site in
 `bar.ts` and asserts the editor shows `foo.ts` with the cursor on the declaration, then repeats
-the jump via F12.
+the jump via Ctrl+].
 
 **Impossible if true:** A Ctrl/Cmd+click on a resolvable symbol that starts a text selection
 instead of jumping; a jump that opens the declaring file but leaves the cursor away from the

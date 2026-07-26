@@ -53,9 +53,9 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.ready === true && status.terminalFollowMode === 'follow-all',
       );
-      driver.sendKeys('F9');
+      driver.sendKeys('Control+Shift+s');
       await this.awaitStatus(
-        'F9 opens the terminal and agent side by side',
+        'Ctrl+Shift+S opens the terminal and agent side by side',
         (status) =>
           Array.isArray(status.panelCellIds) &&
           status.panelCellIds.join(',') === 'agent,terminal' &&
@@ -81,7 +81,7 @@ class $SmokeTerminalFollowHarness {
       );
       await this.cycleModeByKeyboard(
         'on-error',
-        'F6 changes the live footer mode to on-error',
+        'Ctrl+Shift+M changes the live footer mode to on-error',
       );
       await this.runTerminalCommand(
         "printf 'ON_ERROR_PASS\\n'",
@@ -96,7 +96,7 @@ class $SmokeTerminalFollowHarness {
 
       await this.cycleModeByKeyboard(
         'on-request',
-        'F6 changes the live footer mode to on-request',
+        'Ctrl+Shift+M changes the live footer mode to on-request',
       );
       await this.runTerminalCommand(
         "printf 'ON_REQUEST_PASS\\n'",
@@ -118,7 +118,7 @@ class $SmokeTerminalFollowHarness {
 
       await this.cycleModeByKeyboard(
         'off',
-        'F6 changes the live footer mode to off',
+        'Ctrl+Shift+M changes the live footer mode to off',
       );
       await this.runTerminalCommand(
         "printf 'OFF_PASS\\n'",
@@ -282,7 +282,7 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.ready === true && status.terminalFollowMode === 'on-error',
       );
-      driver.sendKeys('F9');
+      driver.sendKeys('Control+Shift+s');
       await this.awaitStatus(
         'plain Bash and echo agent open side by side',
         (status) =>
@@ -338,7 +338,7 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.ready === true && status.terminalFollowMode === 'follow-all',
       );
-      driver.sendKeys('F9');
+      driver.sendKeys('Control+Shift+s');
       await this.awaitStatus(
         'the delayed echo spinner scenario opens both panes',
         (status) =>
@@ -499,7 +499,7 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.ready === true && status.terminalFollowMode === 'follow-all',
       );
-      driver.sendKeys('F9');
+      driver.sendKeys('Control+Shift+s');
       await this.awaitStatus(
         `the injected backend ${expectedEndReason} scenario opens both panes`,
         (status) =>
@@ -553,7 +553,7 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.ready === true && status.terminalFollowMode === 'follow-all',
       );
-      driver.sendKeys('F9');
+      driver.sendKeys('Control+Shift+s');
       await this.awaitStatus(
         'the exited-terminal scenario opens both panes',
         (status) =>
@@ -752,7 +752,7 @@ class $SmokeTerminalFollowHarness {
       'agent',
       `agent is focused before keyboard mode cycle to ${expectedMode}`,
     );
-    this.requiredDriver.sendKeys('F6');
+    this.requiredDriver.sendKeys('Control+Shift+m');
     await this.awaitStatus(
       label,
       (status) => status.terminalFollowMode === expectedMode,

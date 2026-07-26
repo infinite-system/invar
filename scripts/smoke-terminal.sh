@@ -47,8 +47,8 @@ chk "button click OPENS the terminal" "$(f terminalVisible)" "true"
 "$H" settle "$S" >/dev/null 2>&1
 chk "button click again HIDES the terminal" "$(f terminalVisible)" "false"
 
-echo "== toggle the terminal panel (F8 = deliverable alias for Ctrl+backtick) =="
-"$H" send "$S" F8 >/dev/null
+echo "== toggle the terminal panel (Ctrl+J = deliverable alias for Ctrl+backtick) =="
+"$H" chord "$S" Control+j >/dev/null
 "$H" settle "$S" >/dev/null 2>&1
 chk "terminalVisible after toggle" "$(f terminalVisible)" "true"
 chk "terminalFocused after toggle" "$(f terminalFocused)" "true"

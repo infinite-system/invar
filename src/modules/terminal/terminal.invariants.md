@@ -647,7 +647,7 @@ its own region; a resizable divider that reflows both neighbours; a single-pane 
 **Evidence:** `src/modules/ui/PanelHost.test.ts` (`split` layout + normalized shares, `cellSpans`
 per-cell widths reserving the divider column, `setViewportSize` resizes each cell independently,
 `moveDivider` re-flow + minimum clamp); `scripts/harness/smoke-panel-split-harness.ts` clicks the
-second status control and drives F9 to produce the same terminal | agent split, asserts both headings
+second status control and drives Ctrl+Shift+S to produce the same terminal | agent split, asserts both headings
 and distinct sub-widths, drags the divider, and restores the full-width pane.
 
 **Impossible if true:** a split cell rendered at the full slot width while another cell overlaps it; a

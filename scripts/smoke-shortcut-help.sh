@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Driven contract for the shortcut cheat-sheet (the status-bar `?` + Shift+F1 overlay).
+# Driven contract for the shortcut cheat-sheet (the status-bar `?` + Ctrl+Shift+H overlay).
 # Drives the REAL user path via tmux + FrameProbe: CLICK the status-bar `?` and assert the sheet
 # opens showing real binding rows (registry-derived, not constants); the bound chord also opens it;
 # Esc closes it; the sheet joins the exclusive overlay slot; the chord the sheet ADVERTISES for
@@ -182,8 +182,8 @@ else
   fail "no Go to File row anywhere in the sheet"
 fi
 scroll_sheet_top "$primary_session"
-if scroll_sheet_until "$primary_session" "Shift+F1"; then
-  pass "the sheet lists its own open chord (Shift+F1)"
+if scroll_sheet_until "$primary_session" "Ctrl+Shift+H"; then
+  pass "the sheet lists its own open chord (Ctrl+Shift+H)"
 else
   fail "the sheet does not list itself"
 fi
@@ -197,10 +197,10 @@ else
   fail "Esc did not close the sheet (open=$(field "$primary_session" shortcutHelpOpen))"
 fi
 
-echo "== the bound chord (Shift+F1) also opens it =="
-"$harness" send "$primary_session" S-F1 >/dev/null
+echo "== the bound chord (Ctrl+Shift+H) also opens it =="
+"$harness" chord "$primary_session" Control+Shift+h >/dev/null
 settle "$primary_session"
-assert_sheet_open "$primary_session" "Shift+F1"
+assert_sheet_open "$primary_session" "Ctrl+Shift+H"
 
 echo "== advertised = deliverable: pressing the chord the sheet SHOWS for Go to File opens Quick Open =="
 scroll_sheet_until "$primary_session" "Go to File" >/dev/null
@@ -220,7 +220,7 @@ else
 fi
 
 echo "== exclusive slot: reopening the sheet closes Quick Open =="
-"$harness" send "$primary_session" S-F1 >/dev/null
+"$harness" chord "$primary_session" Control+Shift+h >/dev/null
 settle "$primary_session"
 if [ "$(field "$primary_session" shortcutHelpOpen)" = "true" ] && [ "$(field "$primary_session" quickOpenOpen)" = "false" ]; then
   pass "opening the sheet closed Quick Open"
@@ -233,7 +233,7 @@ echo "== reserved Ctrl+Q still quits from inside the sheet =="
 "$harness" launch "$quit_session" 100x32 env TUI_FRAME_DUMP=1 bun run src/main.ts "$workspace_directory" >/dev/null
 "$harness" ready "$quit_session" 20 >/dev/null || { fail "quit-drive session did not become ready"; exit 1; }
 open_document "$quit_session" || { fail "quit-drive session did not open a document"; exit 1; }
-"$harness" send "$quit_session" S-F1 >/dev/null
+"$harness" chord "$quit_session" Control+Shift+h >/dev/null
 settle "$quit_session"
 if [ "$(field "$quit_session" shortcutHelpOpen)" != "true" ]; then
   fail "the sheet did not open before the quit drive"

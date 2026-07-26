@@ -268,7 +268,7 @@ try {
   await copySelectionRepeatedly('ACTIVE-TRANSCRIPT', idleCopyRunCount, 'idle');
 
   console.log('== clipboard boundary: idle terminal selection ==');
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   const terminalLayoutStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

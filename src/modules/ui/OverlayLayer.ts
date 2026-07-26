@@ -318,7 +318,7 @@ class $OverlayLayer {
         this.requestPaint();
       },
     );
-    // Shortcut cheat-sheet (Shift+F1 / status-bar `?`) + modal dismissal projection.
+    // Shortcut cheat-sheet (Ctrl+Shift+H / status-bar `?`) + modal dismissal projection.
     this.shortcutHelpBox = new BoxRenderable(renderer, {
       id: 'shortcut-help',
       position: 'absolute',

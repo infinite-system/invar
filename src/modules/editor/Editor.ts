@@ -2,6 +2,7 @@ import { Reactive } from 'ivue';
 import { ref, type Ref } from 'vue';
 import { Viewport } from './Viewport';
 import { EditorCoordinates } from './EditorCoordinates';
+import { EditorIndent } from './EditorIndent';
 import { TextEditing } from './TextEditing';
 import { EditorWrap } from './EditorWrap';
 import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
@@ -443,6 +444,108 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line + 1);
+  }
+
+  // --- indentation ----------------------------------------------------------
+  // Tab indents and Shift+Tab outdents because the EDITOR holds focus and Tab is content here — the
+  // key is not the host's to spend. Each gesture is ONE atomic undo step (kind 'other' never
+  // coalesces with a neighbouring typing run), and the indent unit is read from the document so the
+  // editor never fights a file's existing style.
+  // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
+
+  /** The indent unit this document uses (a tab, or the file's own space step). */
+  protected detectIndentUnit(): string {
+    return EditorIndent.Class.detectIndentUnit(
+      this.document.slice(0, EditorIndent.Class.detectionLineLimit),
+    );
+  }
+
+  /**
+   * Add one indent unit: to every line of the selection, or at the caret when there is none.
+   * Inserting AT THE CARET (rather than at column 0) is what makes Tab usable mid-line for alignment,
+   * and matches every IDE.
+   */
+  indent(): void {
+    if (this.readOnly.value || !this.hasDocument.value) return;
+    const indentUnit = this.detectIndentUnit();
+    const selectionRange = this.cursor.selectionRange();
+    this.captureBefore('other');
+    if (!selectionRange) {
+      const line = this.cursor.line.value;
+      const column = this.document.insertInline(
+        line,
+        this.cursor.col.value,
+        indentUnit,
+      );
+      this.placeCursor(line, column);
+      this.scrollLineIntoView(line);
+      return;
+    }
+    this.shiftLineRange(
+      selectionRange.start.line,
+      selectionRange.end.line,
+      indentUnit,
+      'indent',
+    );
+  }
+
+  /** Remove at most one indent unit from every selected line, or from the caret's line. */
+  outdent(): void {
+    if (this.readOnly.value || !this.hasDocument.value) return;
+    const indentUnit = this.detectIndentUnit();
+    const selectionRange = this.cursor.selectionRange();
+    this.captureBefore('other');
+    const firstLine = selectionRange
+      ? selectionRange.start.line
+      : this.cursor.line.value;
+    const lastLine = selectionRange
+      ? selectionRange.end.line
+      : this.cursor.line.value;
+    this.shiftLineRange(firstLine, lastLine, indentUnit, 'outdent');
+  }
+
+  /**
+   * Re-indent every line in `[firstLine, lastLine]`, then move the cursor and the selection anchor by
+   * the SAME per-line character delta, so the selection keeps covering exactly the lines it did (the
+   * gesture is repeatable: Tab Tab Tab keeps indenting the same block). Fully empty lines are left
+   * alone so indenting a block never plants trailing whitespace.
+   */
+  protected shiftLineRange(
+    firstLine: number,
+    lastLine: number,
+    indentUnit: string,
+    direction: 'indent' | 'outdent',
+  ): void {
+    const columnDeltaByLine = new Map<number, number>();
+    for (let line = firstLine; line <= lastLine; line += 1) {
+      const lineText = this.document.line(line);
+      if (direction === 'indent' && lineText.length === 0) continue;
+      const shiftedText =
+        direction === 'indent'
+          ? EditorIndent.Class.indentLine(lineText, indentUnit)
+          : EditorIndent.Class.outdentLine(lineText, indentUnit);
+      if (shiftedText === lineText) continue;
+      this.document.setLine(line, shiftedText);
+      columnDeltaByLine.set(line, shiftedText.length - lineText.length);
+    }
+    const anchorPosition = this.cursor.anchor.value;
+    if (anchorPosition) {
+      const anchorDelta = columnDeltaByLine.get(anchorPosition.line) ?? 0;
+      this.cursor.anchor.value = {
+        line: anchorPosition.line,
+        col: Math.max(0, anchorPosition.col + anchorDelta),
+      };
+    }
+    const cursorLine = this.cursor.line.value;
+    const cursorDelta = columnDeltaByLine.get(cursorLine) ?? 0;
+    this.placeCursor(
+      cursorLine,
+      EditorCoordinates.Class.clampCol(
+        this.document.line(cursorLine),
+        Math.max(0, this.cursor.col.value + cursorDelta),
+      ),
+    );
+    this.scrollLineIntoView(cursorLine);
   }
 
   // --- clipboard ------------------------------------------------------------

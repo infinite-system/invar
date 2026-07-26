@@ -70,7 +70,7 @@ class $StatusBar {
       selectable: false,
     });
     // Terminal-toggle affordance: a hit-tested single-cell glyph, LEFT of the gear. Click runs the SAME
-    // toggleTerminal closure the Ctrl+J/Ctrl+`/F8 chords run (lazy-init + show/hide the bottom panel);
+    // toggleTerminal closure the Ctrl+J / Ctrl+backtick chords run (lazy-init + show/hide the bottom panel);
     // it lights accent while the panel is open, so it doubles as a visible open/closed indicator.
     this.terminalButton = new TextRenderable(renderer, {
       id: 'status-terminal-button',

@@ -99,11 +99,13 @@ wait_for_ready() { # wait_for_ready <session> <timeout-seconds> ; 20ms poll grai
   return 1
 }
 
-ensure_files_focus() { # cycle Tab (focus.toggle) until the tree pane has focus
+ensure_files_focus() { # cycle Ctrl+Shift+J (focus.toggle) until the tree pane has focus
+  # Tab is the EDITOR's indentation key now, so the focus toggle is the host chord. tmux cannot name
+  # it, so the modifyOtherKeys bytes for Ctrl+Shift+J (codepoint 106) go through literally.
   local session="$1"
   for _ in 1 2 3; do
     [ "$(status_focus_of "$session")" = "files" ] && return 0
-    tmux send-keys -t "$session" Tab
+    tmux send-keys -t "$session" -l "$(printf '\033[27;6;106~')"
     sleep 0.3
   done
   [ "$(status_focus_of "$session")" = "files" ]

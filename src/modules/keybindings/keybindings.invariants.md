@@ -64,6 +64,67 @@ the renderer.
 
 ## Chosen invariants
 
+### Focus owns the keystroke
+
+**Invariant:** If a surface holds keyboard focus, then it owns every keystroke that arrives — the
+host may claim a chord away from it ONLY when that chord is in the reserved set, and a chord enters
+the reserved set only by passing the admission test: the ACTION must be frame-scoped (it changes
+which surfaces exist, are visible, or hold focus — never content inside a surface) AND must be
+either trap-avoiding (unreachable otherwise when the focused surface is a full-screen child that
+consumes every key) or the INVERSE of the gesture that put the user inside the surface; and the
+CHORD must carry a modifier (never an unmodified key), be proven deliverable through a real PTY, and
+not be one the child's shell/readline/TUI owns.
+
+**Scope:** every keystroke the app receives, in every focus state, on every platform. Governs
+`KeybindingDefaults.$canonicalBindings`, `KeybindingRegistry.resolveReservedGlobal`, and the key
+router in `Bootstrap.keyTick`.
+
+**Mechanism:** bindings carry a `context` naming the surface that owns them; a context-less binding
+is a host claim and must therefore be justified. `reserved: true` marks the claim as surviving a
+focused surface and requires a `reservedBecause` warrant string on the same binding, so the
+justification cannot be separated from the binding. The key router resolves reserved chords first
+and STATELESSLY, then hands the event to the focused surface — a focused panel returns before the
+global resolve is reached, so the host's non-reserved globals cannot reach a child process's keys.
+Unmodified keys are never reserved, which is what leaves `Tab` to whichever surface has focus:
+indentation in the editor, permission-mode cycling in the agent composer, `\t` to the child in the
+terminal.
+
+**Generates:** the Tab-belongs-to-the-editor fix (#91); the small reserved set instead of a growing
+list of host privileges; byte-for-byte pass-through to the terminal and agent panes (#101) as a
+consequence rather than a feature; the ability to say a proposed binding is WRONG before shipping it.
+
+**Rejected alternatives:** *"most specific binding wins"* — describes resolution but decides nothing:
+`Tab → focus.toggle` was global and unopposed, so specificity would have kept it. *"VS Code
+parity"* — a tie-breaker for chord choice, not a generator: it is silent exactly where the substrate
+differs (unencodable chords, a nested PTY that wants every key). *"host owns modified chords, surfaces
+own unmodified ones"* — rejected because it forbids a surface from binding a modified chord it
+legitimately needs (`Ctrl+S` in the editor, `Ctrl+C` as SIGINT in the terminal) and because the host
+does need SOME chords to survive a focused surface.
+
+**Evidence:** `src/modules/keybindings/KeybindingDefaults.ts` (`reservedBecause` warrants on every
+reserved binding; `Tab`/`Shift+Tab` bound in the `editor` context to indent/outdent);
+`src/modules/keybindings/KeybindingRegistry.ts` (`resolveReservedGlobal`, the `reservedBecause`
+field); `src/modules/app/Bootstrap.ts` (reserved-first router; the focused-panel early return);
+`project.keyboard.md` (the reduction and the admission test);
+`scripts/smoke-keyboard-invariant.sh` (drives Tab/Shift+Tab indentation, every retired F-key's
+replacement chord, and the terminal pass-through sweep);
+`src/modules/git/GitComparisonContent.ts` (a contributed surface owning its own Ctrl+Shift+Up/Down
+change navigation, rather than the host floor naming the plugin's actions).
+
+**Impossible if true:** the host binding an unmodified key globally; a reserved binding with no
+warrant; a chord that is advertised but never arrives; a non-reserved host chord firing while a
+terminal or agent pane holds focus; the same physical chord meaning different things on macOS and
+Linux.
+
+**Verification:** `bash scripts/smoke-keyboard-invariant.sh` (driven: indentation, every new chord's
+arrival, the pass-through sweep) plus
+`bun test src/modules/keybindings/ src/modules/editor/EditorIndent.test.ts` (the reserved set carries
+warrants; no unmodified reserved chord; no `F<n>` primary).
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Bindings are intent addressed
 
 **Invariant:** If a chord does something, then it does it by resolving to an ACTION ID through the
@@ -179,7 +240,10 @@ of consuming it. A reserved chord is a single chord (no multi-step), so the pass
 stateless and cannot disturb the in-flight chord resolver.
 
 **Scope:** `KeybindingRegistry.resolveReservedGlobal` and the top of the key router in
-`Bootstrap.ts` (checked before any modal/context branch). The reserved set today: Ctrl+Q, F10 (quit).
+`Bootstrap.ts` (checked before any modal/context branch). The reserved set today: Ctrl+Q and the F10
+fallback (quit), Ctrl+J / Ctrl+` (panel), Ctrl+Shift+A (agent pane), Ctrl+Shift+S (panel split),
+Ctrl+Alt+B (right dock). WHICH chords may join it is governed by *Focus owns the keystroke* above —
+this record governs how a reserved chord RESOLVES, that one governs what may be reserved at all.
 
 **Mechanism:** Reserved bindings carry a `reserved` flag in the binding data;
 `resolveReservedGlobal` matches a key against reserved single chords WITHOUT touching chord state,
@@ -190,7 +254,7 @@ the key. Printable + navigation keys still reach the focused input; only the res
 user can leave any mode; one reserved-set rule instead of per-modal quit handling.
 
 **Evidence:** `src/modules/keybindings/KeybindingRegistry.ts` (`resolveReservedGlobal`, the
-`reserved` field); `src/modules/keybindings/keybindings.defaults.ts` (Ctrl+Q / F10 marked
+`reserved` field); `src/modules/keybindings/KeybindingDefaults.ts` (Ctrl+Q / F10 marked
 `reserved: true`); `src/modules/app/Bootstrap.ts` (reserved check at the top of `keyTick`); the
 `focus-recovery` and quit drive-verification (Ctrl+Q / F10 quit from normal / find / quick-open).
 

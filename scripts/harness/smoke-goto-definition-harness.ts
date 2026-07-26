@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Byte-level real-LSP definition contract: Ctrl+click and F12 both jump from the use site to the
+// Byte-level real-LSP definition contract: Ctrl+click and Ctrl+] both jump from the use site to the
 // declaration, with active-buffer and cursor semantics read from the status channel.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
@@ -12,7 +12,9 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function useSitePosition(snapshot: HarnessSnapshot.Model): { row: number; column: number } | null {
+function useSitePosition(
+  snapshot: HarnessSnapshot.Model,
+): { row: number; column: number } | null {
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
     if (!rowText.includes('const message')) continue;
@@ -23,13 +25,14 @@ function useSitePosition(snapshot: HarnessSnapshot.Model): { row: number; column
 }
 
 function cursorPosition(status: { cursor?: unknown }): string {
-  const cursor = status.cursor as
-    | { line?: number; col?: number }
-    | undefined;
+  const cursor = status.cursor as { line?: number; col?: number } | undefined;
   return cursor ? `${cursor.line},${cursor.col}` : 'none';
 }
 
-function tabPosition(snapshot: HarnessSnapshot.Model, marker: string): { row: number; column: number } {
+function tabPosition(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): { row: number; column: number } {
   for (let row = 0; row < Math.min(snapshot.rows, 5); row++) {
     const column = snapshot.rowText(row).indexOf(marker);
     if (column >= 0) return { row, column: column + 2 };
@@ -38,10 +41,16 @@ function tabPosition(snapshot: HarnessSnapshot.Model, marker: string): { row: nu
 }
 
 const repositoryRoot = process.cwd();
-const serverBinary = join(repositoryRoot, 'node_modules', '.bin', 'typescript-language-server');
+const serverBinary = join(
+  repositoryRoot,
+  'node_modules',
+  '.bin',
+  'typescript-language-server',
+);
 if (
-  !Bun.file(serverBinary).size
-  || !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json')).size
+  !Bun.file(serverBinary).size ||
+  !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
+    .size
 ) {
   console.log(
     'SKIP  typescript-language-server/typescript not installed — goto-definition smoke skipped',
@@ -50,23 +59,28 @@ if (
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-goto-definition-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-goto-definition-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-goto-definition-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
-symlinkSync(join(repositoryRoot, 'node_modules'), join(fixtureRoot, 'node_modules'));
+symlinkSync(
+  join(repositoryRoot, 'node_modules'),
+  join(fixtureRoot, 'node_modules'),
+);
 await Bun.write(
   join(fixtureRoot, 'tsconfig.json'),
-  '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", '
-    + '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
+  '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
+    '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
 );
 await Bun.write(
   join(fixtureRoot, 'foo.ts'),
-  'export function greetWidget(name: string): string {\n'
-    + '  return `hello ${name}`;\n}\n',
+  'export function greetWidget(name: string): string {\n' +
+    '  return `hello ${name}`;\n}\n',
 );
 await Bun.write(
   join(fixtureRoot, 'bar.ts'),
-  "import { greetWidget } from './foo';\n\n"
-    + "const message = greetWidget('world');\nexport { message };\n",
+  "import { greetWidget } from './foo';\n\n" +
+    "const message = greetWidget('world');\nexport { message };\n",
 );
 
 const driver = new PtyTestDriver.Class({
@@ -83,7 +97,7 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.ready === true",
+    'status condition: status.ready === true',
     (status) => status.ready === true,
     20_000,
   );
@@ -102,7 +116,10 @@ try {
 
   console.log('== harness goto definition: Ctrl+click jumps ==');
   let usePosition = useSitePosition(snapshot);
-  HarnessSmoke.Class.requireCondition(usePosition !== null, 'greetWidget use site is visible');
+  HarnessSmoke.Class.requireCondition(
+    usePosition !== null,
+    'greetWidget use site is visible',
+  );
   if (!usePosition) throw new Error('Use site disappeared');
   driver.sendMouse({
     kind: 'press',
@@ -128,10 +145,13 @@ try {
     statusPath,
     "status condition: { const cursor = status.cursor as { line?: number; col?: number } | undefined; return String(status.activeBuffer).endsWith('/foo.ts') && cursor?.line === 0 && cursor.col === 16; }",
     (status) => {
-      const cursor = status.cursor as { line?: number; col?: number } | undefined;
-      return String(status.activeBuffer).endsWith('/foo.ts')
-        && cursor?.line === 0
-        && cursor.col === 16;
+      const cursor = status.cursor as
+        { line?: number; col?: number } | undefined;
+      return (
+        String(status.activeBuffer).endsWith('/foo.ts') &&
+        cursor?.line === 0 &&
+        cursor.col === 16
+      );
     },
     30_000,
   );
@@ -141,7 +161,7 @@ try {
   );
   HarnessSmoke.Class.pass('declaration line is visible after Ctrl+click');
 
-  console.log('== harness goto definition: return, plain-click, and F12 ==');
+  console.log('== harness goto definition: return, plain-click, and Ctrl+] ==');
   const barTabPosition = tabPosition(snapshot, 'bar.ts');
   driver.sendMouse({
     kind: 'press',
@@ -185,18 +205,21 @@ try {
     "status condition: { const cursor = status.cursor as { line?: number } | undefined; return String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2; }",
     (status) => {
       const cursor = status.cursor as { line?: number } | undefined;
-      return String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2;
+      return (
+        String(status.activeBuffer).endsWith('/bar.ts') && cursor?.line === 2
+      );
     },
   );
-  const plainClickCursor = plainClickStatus.cursor as { line?: number; col?: number } | undefined;
+  const plainClickCursor = plainClickStatus.cursor as
+    { line?: number; col?: number } | undefined;
   HarnessSmoke.Class.requireCondition(
-    String(plainClickStatus.activeBuffer).endsWith('/bar.ts')
-      && plainClickCursor?.line === 2,
+    String(plainClickStatus.activeBuffer).endsWith('/bar.ts') &&
+      plainClickCursor?.line === 2,
     'plain click places the cursor without jumping',
   );
-  driver.sendKeys('F12');
+  driver.sendKeys('Control+]');
   await driver.awaitGridCondition(
-    'F12 shows the greetWidget declaration',
+    'Ctrl+] shows the greetWidget declaration',
     (candidate) => candidate.findText('export function greetWidget') !== null,
     20_000,
   );
@@ -205,16 +228,19 @@ try {
     statusPath,
     "status condition: { const cursor = status.cursor as { line?: number; col?: number } | undefined; return String(status.activeBuffer).endsWith('/foo.ts') && cursor?.line === 0 && cursor.col === 16; }",
     (status) => {
-      const cursor = status.cursor as { line?: number; col?: number } | undefined;
-      return String(status.activeBuffer).endsWith('/foo.ts')
-        && cursor?.line === 0
-        && cursor.col === 16;
+      const cursor = status.cursor as
+        { line?: number; col?: number } | undefined;
+      return (
+        String(status.activeBuffer).endsWith('/foo.ts') &&
+        cursor?.line === 0 &&
+        cursor.col === 16
+      );
     },
     20_000,
   );
   HarnessSmoke.Class.requireCondition(
     cursorPosition(functionKeyStatus) === '0,16',
-    'F12 lands on the same declaration',
+    'Ctrl+] lands on the same declaration',
   );
 
   driver.sendKeys('Control+q');

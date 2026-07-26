@@ -13,6 +13,188 @@ test('canonical bindings are cached and contain the universal quit floor', () =>
   ).toBe(true);
 });
 
+// --- focus owns the keystroke -------------------------------------------------------------------
+// invariant: Focus owns the keystroke (keybindings.invariants.md)
+
+function registryWithCanonicalLayer(): KeybindingRegistry.Instance {
+  const registry = new KeybindingRegistry.Class();
+  registry.registerLayer(
+    'canonical',
+    KeybindingDefaults.Class.canonicalBindings,
+  );
+  return registry;
+}
+
+const unmodifiedEvent = {
+  ctrl: false,
+  shift: false,
+  option: false,
+  super: false,
+};
+
+test('every RESERVED binding carries a warrant and a modifier (or is a fallback F-key)', () => {
+  const registry = registryWithCanonicalLayer();
+  expect(registry.reservedSetProblems()).toEqual([]);
+});
+
+test('the reserved set is SMALL and holds only frame-scoped actions', () => {
+  const reservedActions = new Set(
+    KeybindingDefaults.Class.canonicalBindings
+      .filter((binding) => binding.reserved)
+      .map((binding) => binding.action),
+  );
+  expect([...reservedActions].sort()).toEqual([
+    'app.quit',
+    'panel.toggleAgent',
+    'panel.toggleSplit',
+    'panel.toggleTerminal',
+    'view.toggleRightDock',
+  ]);
+});
+
+test('the host claims no unmodified key globally — that is what freed Tab', () => {
+  const unmodifiedGlobalClaims = KeybindingDefaults.Class.canonicalBindings
+    .filter((binding) => (binding.context ?? 'global') === 'global')
+    .filter((binding) => {
+      const chord = binding.chord;
+      if (!chord) return false;
+      const hasModifier =
+        chord.ctrl || chord.alt || chord.super || chord.shift === true;
+      const isFunctionKey = /^f[0-9]{1,2}$/.test(chord.key);
+      return !hasModifier && !isFunctionKey;
+    })
+    .map((binding) => `${binding.chord?.key} -> ${binding.action}`);
+  expect(unmodifiedGlobalClaims).toEqual([]);
+});
+
+test('Tab and Shift+Tab are the EDITOR surface s indentation, not a focus move', () => {
+  const registry = registryWithCanonicalLayer();
+  expect(
+    registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'editor', 0).action,
+  ).toBe('editor.indent');
+  expect(
+    registry.resolve(
+      { ...unmodifiedEvent, name: 'tab', shift: true },
+      'editor',
+      0,
+    ).action,
+  ).toBe('editor.outdent');
+  // The tree surfaces spend Tab on leaving themselves — a SURFACE choice, not a host claim.
+  expect(
+    registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'files', 0).action,
+  ).toBe('focus.toggle');
+  // In a focused terminal or agent pane nothing resolves Tab, so it reaches the child.
+  expect(
+    registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'terminal', 0).action,
+  ).toBe(null);
+  expect(
+    registry.resolve({ ...unmodifiedEvent, name: 'tab' }, 'agent', 0).action,
+  ).toBe(null);
+});
+
+test('no F-key is the PRIMARY (last-listed) binding of any action', () => {
+  const registry = registryWithCanonicalLayer();
+  const functionKeyPrimaries: string[] = [];
+  for (const context of [
+    'global',
+    'editor',
+    'agent',
+    'files',
+    'git',
+  ] as const) {
+    for (const [action, binding] of registry.effectiveBindings(context)) {
+      if (binding.chord && /^f[0-9]{1,2}$/.test(binding.chord.key)) {
+        functionKeyPrimaries.push(`${action} (${context})`);
+      }
+    }
+  }
+  expect(functionKeyPrimaries).toEqual([]);
+});
+
+test('exactly two F-keys survive, both as retained fallback ALIASES', () => {
+  const functionKeyBindings = KeybindingDefaults.Class.canonicalBindings
+    .filter(
+      (binding) => binding.chord && /^f[0-9]{1,2}$/.test(binding.chord.key),
+    )
+    .map((binding) => `${binding.chord?.key} -> ${binding.action}`);
+  expect(functionKeyBindings.sort()).toEqual([
+    'f1 -> palette.open',
+    'f10 -> app.quit',
+  ]);
+});
+
+test('every retired F-key chord resolves to the replacement it was given', () => {
+  const registry = registryWithCanonicalLayer();
+  const resolveIn = (
+    context: string,
+    event: Partial<Parameters<typeof registry.resolve>[0]> & { name: string },
+  ): string | null =>
+    registry.resolve({ ...unmodifiedEvent, ...event }, context, 0).action;
+
+  expect(resolveIn('editor', { name: 'p', ctrl: true, shift: true })).toBe(
+    'palette.open',
+  );
+  expect(resolveIn('editor', { name: 'h', ctrl: true, shift: true })).toBe(
+    'help.shortcuts',
+  );
+  expect(resolveIn('agent', { name: 'm', ctrl: true, shift: true })).toBe(
+    'agent.cycleTerminalFollowMode',
+  );
+  expect(resolveIn('editor', { name: ']', ctrl: true })).toBe('go.definition');
+  expect(resolveIn('editor', { name: 'j', ctrl: true, shift: true })).toBe(
+    'focus.toggle',
+  );
+  // Reserved chords are matched statelessly ahead of every mode.
+  expect(
+    registry.resolveReservedGlobal({
+      ...unmodifiedEvent,
+      name: 's',
+      ctrl: true,
+      shift: true,
+    }),
+  ).toBe('panel.toggleSplit');
+  expect(
+    registry.resolveReservedGlobal({
+      ...unmodifiedEvent,
+      name: 'j',
+      ctrl: true,
+    }),
+  ).toBe('panel.toggleTerminal');
+  // Ctrl+J delivered as the bare C0 byte arrives named `linefeed`; the registry normalizes it back
+  // to the CHORD, which is what the panel toggle is addressed by.
+  expect(
+    registry.resolveReservedGlobal({ ...unmodifiedEvent, name: 'linefeed' }),
+  ).toBe('panel.toggleTerminal');
+  // Ctrl+Shift+J must NOT be swallowed by the reserved panel toggle.
+  expect(
+    registry.resolveReservedGlobal({
+      ...unmodifiedEvent,
+      name: 'j',
+      ctrl: true,
+      shift: true,
+    }),
+  ).toBe(null);
+});
+
+test('the host floor names NO contributed-surface action — the surface owns its keys', () => {
+  // Ctrl+Shift+Up/Down are the comparison surface's change-navigation chords (GitComparisonContent),
+  // and a contributed surface consumes editor keys BEFORE this table is consulted. In the host's
+  // floor the same chords must therefore keep their editor meaning, and no plugin action may appear.
+  const registry = registryWithCanonicalLayer();
+  const resolveArrow = (name: 'up' | 'down'): string | null =>
+    registry.resolve(
+      { ...unmodifiedEvent, name, ctrl: true, shift: true },
+      'editor',
+      0,
+    ).action;
+  expect(resolveArrow('up')).toBe('editor.jumpUp');
+  expect(resolveArrow('down')).toBe('editor.jumpDown');
+  const floorActions = KeybindingDefaults.Class.canonicalBindings.map(
+    (binding) => binding.action,
+  );
+  expect(floorActions.filter((action) => action.startsWith('diff.'))).toEqual([]);
+});
+
 test('every adopted text input receives the same complete binding table', () => {
   const contexts = ['palette', 'quickopen', 'find', 'agent'] as const;
   const signaturesByContext = contexts.map((context) =>

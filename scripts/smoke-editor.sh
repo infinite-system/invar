@@ -218,12 +218,18 @@ cursor_line="$(STATUS_FILE="$STATUSF" "$BUN" -e 'console.log(JSON.parse(require(
 case "$opened_buffer" in *greeter.ts) buffer_ok=1;; *) buffer_ok=0;; esac  # y=3 = greeter.ts (src expanded by the earlier click test)
 if [ "$buffer_ok" = 1 ] && [ "$cursor_line" = "0" ]; then echo "  PASS  tree click opened a file, cursor stayed at line 0 (no double-dispatch)"; else echo "  FAIL  double-dispatch? buffer=$opened_buffer cursorLine=$cursor_line"; fail=1; fi
 
-echo "== command palette (F1) =="
-# F1 opens the palette (Ctrl+P is now go-to-file; Ctrl+Shift+P is unencodable on this legacy pty and
-# intercepted by VS Code's terminal). F1 is the always-deliverable palette key.
-"$H" send "$S" F1 >/dev/null
-chk "palette overlay" "$(f overlay)" "palette"
+echo "== command palette: the PRIMARY chord Ctrl+Shift+P and the retained F1 fallback =="
+# Ctrl+Shift+P is the primary (Ctrl+P is go-to-file). It IS deliverable on a legacy pty in the xterm
+# modifyOtherKeys form, which is what the `chord` command sends — the earlier claim that it was
+# "unencodable on this legacy pty" was wrong and is why F1 had to carry the palette. F1 stays as the
+# fallback alias for a terminal that speaks neither modifyOtherKeys nor kitty, so BOTH are driven here.
+"$H" chord "$S" Control+Shift+p >/dev/null
+chk "Ctrl+Shift+P opened the palette" "$(f overlay)" "palette"
 echo "  info: paletteMatches=$(f paletteMatches)"
+"$H" send "$S" Escape >/dev/null
+chk "palette closed" "$(f overlay)" "null"
+"$H" send "$S" F1 >/dev/null
+chk "the retained F1 fallback still opens the palette" "$(f overlay)" "palette"
 "$H" send "$S" Escape >/dev/null
 chk "palette closed" "$(f overlay)" "null"
 
@@ -244,7 +250,8 @@ tabs_before="$(f bufferTabCount)"
 target=$(( ${tabs_before:-1} + 2 ))
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   [ "$(f bufferTabCount)" -ge "$target" ] 2>/dev/null && break
-  [ "$(f focus)" = "files" ] || "$H" send "$S" Tab >/dev/null
+  # Ctrl+Shift+J, not Tab: Tab now INDENTS in the editor (the editor surface owns it).
+  [ "$(f focus)" = "files" ] || "$H" chord "$S" Control+Shift+j >/dev/null
   "$H" send "$S" Down >/dev/null
   "$H" send "$S" Enter >/dev/null
   "$H" settle "$S" >/dev/null 2>&1

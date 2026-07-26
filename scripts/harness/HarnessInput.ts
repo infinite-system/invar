@@ -7,23 +7,23 @@ import { Static } from 'ivue/extras';
 export type HarnessMouseButton = 'left' | 'middle' | 'right' | 'none';
 export type HarnessMouseEvent =
   | {
-    kind: 'press' | 'release' | 'move';
-    column: number;
-    row: number;
-    button?: HarnessMouseButton;
-    shift?: boolean;
-    alt?: boolean;
-    control?: boolean;
-  }
+      kind: 'press' | 'release' | 'move';
+      column: number;
+      row: number;
+      button?: HarnessMouseButton;
+      shift?: boolean;
+      alt?: boolean;
+      control?: boolean;
+    }
   | {
-    kind: 'wheel';
-    column: number;
-    row: number;
-    direction: 'up' | 'down' | 'left' | 'right';
-    shift?: boolean;
-    alt?: boolean;
-    control?: boolean;
-  };
+      kind: 'wheel';
+      column: number;
+      row: number;
+      direction: 'up' | 'down' | 'left' | 'right';
+      shift?: boolean;
+      alt?: boolean;
+      control?: boolean;
+    };
 
 class $HarnessInput {
   static key = $key;
@@ -107,16 +107,26 @@ function $key(keyName: string): string {
   }
 
   if (baseKey.length === 1) {
-    if (hasAlt && !hasShift && !hasControl && (baseKey === '[' || baseKey === ']')) {
+    if (
+      hasAlt &&
+      !hasShift &&
+      !hasControl &&
+      (baseKey === '[' || baseKey === ']')
+    ) {
       return `\x1b[27;3;${baseKey.charCodeAt(0)}~`;
     }
     if (hasShift && hasControl && !hasAlt) {
-      return `\x1b[${baseKey.toLowerCase().charCodeAt(0)};6u`;
+      // xterm modifyOtherKeys form (CSI 27 ; <mods> ; <codepoint> ~) rather than the kitty CSI-u
+      // form: BOTH of OpenTUI's parsers decode this one, so a Ctrl+Shift+<key> drive proves the chord
+      // arrives on a LEGACY terminal too — the deliverability claim the F-key retirement rests on.
+      // The codepoint must be the UNSHIFTED key (lowercase): CSI 27;6;72~ decodes as name 'H', which
+      // no chord pattern matches. invariant: Advertised bindings are deliverable bindings
+      return `\x1b[27;6;${baseKey.toLowerCase().charCodeAt(0)}~`;
     }
     let sequence = hasShift ? baseKey.toUpperCase() : baseKey;
     if (hasControl && !canEncodeAsControlCharacter(sequence)) {
-      const modifierParameter = 1 + Number(hasShift) + (Number(hasAlt) * 2)
-        + (Number(hasControl) * 4);
+      const modifierParameter =
+        1 + Number(hasShift) + Number(hasAlt) * 2 + Number(hasControl) * 4;
       return `\x1b[${sequence.codePointAt(0)};${modifierParameter}u`;
     }
     if (hasControl) sequence = controlCharacter(sequence);
@@ -128,13 +138,21 @@ function $key(keyName: string): string {
     return hasAlt ? `\x1b${sequence}` : sequence;
   }
   if (baseKey === 'Tab' && hasShift && !hasAlt && !hasControl) return '\x1b[Z';
+  // A MODIFIED Tab (Ctrl+Tab = buffer.next, Ctrl+Shift+Tab = buffer.previous) has no legacy CSI form
+  // at all — xterm reports it through modifyOtherKeys, and both OpenTUI parsers decode that. Without
+  // this branch the harness simply THROWS on the chord, so those bindings could never be driven.
+  if (baseKey === 'Tab' && (hasControl || hasAlt)) {
+    const tabModifierParameter =
+      1 + Number(hasShift) + Number(hasAlt) * 2 + Number(hasControl) * 4;
+    return `\x1b[27;${tabModifierParameter};9~`;
+  }
   if (!hasShift && !hasAlt && !hasControl) {
     const sequence = namedKeySequences[baseKey];
     if (sequence !== undefined) return sequence;
   }
 
-  const modifierParameter = 1 + Number(hasShift) + (Number(hasAlt) * 2)
-    + (Number(hasControl) * 4);
+  const modifierParameter =
+    1 + Number(hasShift) + Number(hasAlt) * 2 + Number(hasControl) * 4;
   const finalByte = modifiedFinalKeys[baseKey];
   if (finalByte) return `\x1b[1;${modifierParameter}${finalByte}`;
   const tildeParameter = modifiedTildeKeys[baseKey];
@@ -143,22 +161,24 @@ function $key(keyName: string): string {
 }
 
 function $mouse(event: HarnessMouseEvent): string {
-  const modifierBits = (event.shift ? 4 : 0)
-    + (event.alt ? 8 : 0)
-    + (event.control ? 16 : 0);
+  const modifierBits =
+    (event.shift ? 4 : 0) + (event.alt ? 8 : 0) + (event.control ? 16 : 0);
   let buttonCode: number;
   let finalByte = 'M';
   if (event.kind === 'wheel') {
-    buttonCode = { up: 64, down: 65, left: 66, right: 67 }[event.direction]
-      + modifierBits;
+    buttonCode =
+      { up: 64, down: 65, left: 66, right: 67 }[event.direction] + modifierBits;
   } else {
     const button = event.button ?? (event.kind === 'move' ? 'none' : 'left');
-    buttonCode = { left: 0, middle: 1, right: 2, none: 3 }[button] + modifierBits;
+    buttonCode =
+      { left: 0, middle: 1, right: 2, none: 3 }[button] + modifierBits;
     if (event.kind === 'move') buttonCode += 32;
     if (event.kind === 'release') finalByte = 'm';
   }
-  return `\x1b[<${buttonCode};${Math.max(0, event.column) + 1};`
-    + `${Math.max(0, event.row) + 1}${finalByte}`;
+  return (
+    `\x1b[<${buttonCode};${Math.max(0, event.column) + 1};` +
+    `${Math.max(0, event.row) + 1}${finalByte}`
+  );
 }
 
 function $paste(text: string): string {

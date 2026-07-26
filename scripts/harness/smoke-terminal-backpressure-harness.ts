@@ -44,7 +44,7 @@ try {
     (status) => status.ready === true,
     15_000,
   );
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -113,11 +113,11 @@ try {
     '== harness terminal backpressure: a large paste cannot freeze later UI input ==',
   );
   driver.sendPaste('x'.repeat(65_536));
-  driver.sendKeys('F8');
+  driver.sendKeys('Control+j');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'F8 is processed after the paste and hides the backpressured terminal',
+    'Ctrl+J is processed after the paste and hides the backpressured terminal',
     (status) => status.terminalVisible === false,
     10_000,
   );
@@ -127,7 +127,7 @@ try {
     10_000,
   );
   HarnessSmoke.Class.pass(
-    'a subsequent F8 keystroke registers after the backpressured paste',
+    'a subsequent Ctrl+J keystroke registers after the backpressured paste',
   );
   HarnessSmoke.Class.pass(
     'the frame loop repaints after the backpressured terminal is hidden',

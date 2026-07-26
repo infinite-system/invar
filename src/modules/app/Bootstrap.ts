@@ -256,7 +256,7 @@ class $Bootstrap {
     statusBarSegments.register(CoreStatusBarSegments.Class);
     let panelAddPopup: PanelAddPopup.Instance | null = null;
 
-    // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J/Ctrl+`/F8)
+    // The ONE terminal-region action, shared by the panel.toggleTerminal chords (Ctrl+J / Ctrl+backtick)
     // AND the status-bar terminal button. Opening it beside an existing agent region creates the
     // visible split; closing it leaves the agent region intact.
     const toggleTerminal = (): void => {
@@ -647,7 +647,7 @@ class $Bootstrap {
       rightDockHost.dispose();
     });
 
-    // F9 is the accelerator for the same visible action as opening the second status-bar content item:
+    // Ctrl+Shift+S is the accelerator for the same visible action as opening the second status-bar content item:
     // add the missing terminal/agent region beside the current one, or collapse a split back to the
     // focused region.
     const togglePanelSplit = (): void => {
@@ -1325,7 +1325,7 @@ class $Bootstrap {
       'buffer.close': () => workspaceSet.active.closeActiveTab(),
       'buffer.next': () => workspaceSet.active.cycleTab(1),
       'buffer.previous': () => workspaceSet.active.cycleTab(-1),
-      // F12 parity with Ctrl/Cmd+click: definition of the symbol AT THE CURSOR.
+      // Ctrl+] parity with Ctrl/Cmd+click: definition of the symbol AT THE CURSOR.
       'go.definition': () => void workspaceSet.active.goToDefinition(),
       // Browser-style Go Back / Go Forward through the navigation trail (Alt+[ / Alt+]). Safe no-ops
       // at the ends of the history.
@@ -1596,6 +1596,8 @@ class $Bootstrap {
       'editor.moveLineUp': () => workspaceSet.active.editor.moveLineUp(),
       'editor.moveLineDown': () => workspaceSet.active.editor.moveLineDown(),
       'editor.duplicateLine': () => workspaceSet.active.editor.duplicateLine(),
+      'editor.indent': () => workspaceSet.active.editor.indent(),
+      'editor.outdent': () => workspaceSet.active.editor.outdent(),
       // Toggle the bottom panel (terminal). Reserved so it fires from ANY mode — including from within a
       // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
       // terminal button runs, so chord and click are one action.
