@@ -36,8 +36,8 @@ import {
 import type { DocumentHandle } from './DocumentHandle';
 import type {
   WorkspaceContribution,
-  WorkspacePlugin,
-} from './WorkspacePlugin.interface';
+  WorkspaceContributor,
+} from './WorkspaceContributor.interface';
 
 // A workspace: one project root with its file tree, an editor, and which pane has focus.
 // WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -55,9 +55,9 @@ class $Workspace {
       revision: (handle) => this.languageDecorationRevision(handle),
       byLine: (handle) => this.languageDecorationsByLine(handle),
     });
-    for (const plugin of options.plugins ?? []) {
+    for (const contributor of options.contributors ?? []) {
       this.contributions.push(
-        plugin.attachWorkspace(this as unknown as Workspace.Model),
+        contributor.attachWorkspace(this as unknown as Workspace.Model),
       );
     }
   }
@@ -870,5 +870,5 @@ export interface HoverDiagnostic {
 
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;
-  plugins?: readonly WorkspacePlugin[];
+  contributors?: readonly WorkspaceContributor[];
 }

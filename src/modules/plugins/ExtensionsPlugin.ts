@@ -1,24 +1,13 @@
 import type {
-  ApplicationPlugin,
-  ApplicationPluginContext,
-} from '../app/ApplicationPlugin.interface';
-import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+  ApplicationContributionContext,
+  ApplicationContributor,
+} from '../app/ApplicationContributor.interface';
 import { ExtensionsPaneContent } from './ExtensionsPaneContent';
 
-class $ExtensionsPlugin implements ApplicationPlugin {
+class $ExtensionsPlugin implements ApplicationContributor {
   readonly primaryDockContentIdentifiers = ['extensions'] as const;
 
-  attachWorkspace(_workspace: Workspace.Model): WorkspaceContribution {
-    return {
-      opened: () => {},
-      suspended: () => {},
-      resumed: () => {},
-      disposed: () => {},
-    };
-  }
-
-  activateApplication(context: ApplicationPluginContext): void {
+  activateApplication(context: ApplicationContributionContext): void {
     context.registerPrimaryDockContent(
       new ExtensionsPaneContent.Class(() =>
         context.theme.glyph('activityExtensions'),

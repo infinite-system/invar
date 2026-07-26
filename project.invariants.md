@@ -785,8 +785,8 @@ latest-revision results are applied.
 
 ### The host canvas is complete without plugins
 
-**Invariant:** If all plugins are disabled, then the host canvas still opens workspaces, files,
-editing, language intelligence, panes, popups, commands, and status contributions; shipped domain
+**Invariant:** If all contribution plugins are disabled, then the host canvas still opens
+workspaces, files, editing, panes, popups, commands, and status contribution ports; shipped domain
 capabilities may be default plugins but may not require host-core knowledge.
 
 **Scope:** The workspace and application hosts, their contribution ports, and the default plugin
@@ -794,23 +794,21 @@ composition. Whether a domain capability ships enabled by default is a product-c
 not a reason to couple it into the host.
 
 **Mechanism:** Core modules own the canvas and contribution registries. `DefaultPlugins` composes
-shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only generic plugin
-and contribution contracts.
+shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only
+`WorkspaceContributor`, `ApplicationContributor`, and contribution contracts.
 
-**Refined 2026-07-26 — Markdown struck from the enumeration.** It was listed as a host-canvas
-capability; the product owner directed that "markdown should also be separate markdown plugin", so
-it now ships as a default plugin like source control. This REFINES the record rather than violating
-it: the mechanism above already says a shipped capability may be a default plugin, and only the
-enumeration was stale. **`language intelligence` is deliberately still listed.** Extracting it is a
-renegotiation of this record — the owner's decision, not a refactor — and no direction for it
-exists; see project.canvas-census.md, extraction step 6.
+**Refined 2026-07-26 — Markdown and language struck from the enumeration.** The product owner
+directed that both are plugins. Markdown already ships as a default contribution plugin. Language
+still lives in `Workspace` because task 103 names its provider boundary but explicitly defers the
+larger extraction; that placement is migration state, not canvas authority. See
+`project.canvas-census.md`, extraction step 6.
 
 **Generates:** A usable plugin-free editor canvas; default shipped capabilities without
 host-to-domain imports; plugins that carry their own behavior.
 
 **Evidence:** `src/modules/plugins/DefaultPlugins.ts` (source control, Markdown, extensions);
-`src/modules/workspace/WorkspacePlugin.interface.ts`;
-`src/modules/app/ApplicationPlugin.interface.ts`;
+`src/modules/workspace/WorkspaceContributor.interface.ts`;
+`src/modules/app/ApplicationContributor.interface.ts`;
 `src/modules/workspace/EditorSurfaceClaims.ts` and `src/modules/ui/EditorSurfaceContents.ts` (the
 editor-column ports); the conventions gate's step-11 boundary check, whose matchers each carry a
 positive control and whose shrinking allowlist is `scripts/plugin-boundary-baseline.txt`.
@@ -820,6 +818,58 @@ core importing, constructing, or typing a concrete plugin implementation.
 
 **Verification:** `bun test && bash scripts/conventions-gate.sh`; inspect a boot with
 `plugins: []` and the default boot with `DefaultPlugins.Class.create()`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
+### Plugin boundaries grant one authority
+
+**Invariant:** If a capability crosses the host boundary as a plugin, then its contract grants
+exactly one authority: contributors register host projections, providers answer typed domain
+questions, and hosted runtimes exchange session events or bytes with one reactive owner.
+
+**Scope:** `ApplicationContributor`, `WorkspaceContributor`, `LanguageProvider`, `AgentBackend`, and
+`TerminalBackend`. The classification applies to the boundary contract, not to private
+implementation resources.
+
+**Components:**
+- *Contributors register projections* — they may attach workspace lifecycle state and register
+  panes, decorations, commands, title actions, or status segments; they do not answer document
+  position queries through the plugin boundary.
+- *Providers answer questions* — they accept domain inputs and return domain answers; they do not
+  register or paint host surfaces.
+- *Hosted runtimes exchange streams* — domain-specific `*Backend` contracts own external
+  process/stream lifetimes and deliver events or bytes to one reactive owner; they do not reach into
+  the reactive graph directly.
+
+**Mechanism:** `ApplicationContributor.workspaceContributor` opts a contributor into the narrower
+workspace lifecycle instead of making every application contributor fabricate it. The host calls
+`LanguageProvider` for semantic answers. `AgentSession` and `TerminalInstance` alone translate their
+injected backend streams into reactive state. Because authority comes from the outward contract,
+`LanguageClient` may privately own an LSP process without becoming a hosted-runtime plugin.
+
+**Generates:** Separate contribution, provider, and hosted-runtime seams; an application-only
+Extensions contributor; a language extraction path that wires `LanguageProvider` without giving it
+canvas access; process backends that remain below reactive owners.
+
+**Rejected alternatives:** One universal plugin interface — grants unused hooks and lets provider
+or runtime authority leak into the canvas. Classify by private resources — misclassifies
+`LanguageClient` as two kinds merely because its provider implementation owns an LSP process.
+Collapse providers and hosted runtimes — erases the request-answer versus owned-session boundary.
+
+**Evidence:** `src/modules/app/ApplicationContributor.interface.ts`;
+`src/modules/workspace/WorkspaceContributor.interface.ts`;
+`src/modules/lsp/LanguageProvider.interface.ts`; `src/modules/agent/AgentBackend.interface.ts`;
+`src/modules/terminal/TerminalBackend.interface.ts`; `src/modules/plugins/DefaultPlugins.test.ts`.
+
+**Impossible if true:** A provider painting or registering a pane; a contributor answering
+completion or definition queries through its contribution contract; a backend mutating ivue refs
+instead of delivering events or bytes to its owner; an application-only contributor implementing
+empty workspace lifecycle methods.
+
+**Verification:** `bunx tsc --noEmit && bun test src/modules/plugins/DefaultPlugins.test.ts
+src/modules/git/GitPlugin.test.ts && bash scripts/conventions-gate.sh`.
 
 **Status:** provisional
 

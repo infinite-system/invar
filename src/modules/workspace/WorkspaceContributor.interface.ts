@@ -2,7 +2,8 @@ import type { Ref } from 'vue';
 import type { Settings } from '../settings/Settings';
 import type { Workspace } from './Workspace';
 
-export interface WorkspacePlugin {
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
+export interface WorkspaceContributor {
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution;
 }
 

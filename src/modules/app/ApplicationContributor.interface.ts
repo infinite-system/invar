@@ -10,16 +10,18 @@ import type { PaneContent } from '../ui/PaneContent.interface';
 import type { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
-import type { WorkspacePlugin } from '../workspace/WorkspacePlugin.interface';
+import type { WorkspaceContributor } from '../workspace/WorkspaceContributor.interface';
 import type { StatusProjectionContributions } from './StatusProjectionContributions';
 
-export interface ApplicationPlugin extends WorkspacePlugin {
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
+export interface ApplicationContributor {
   readonly primaryDockContentIdentifiers?: readonly string[];
-  activateApplication(context: ApplicationPluginContext): void;
+  readonly workspaceContributor?: WorkspaceContributor;
+  activateApplication(context: ApplicationContributionContext): void;
   disposeApplication?(): void;
 }
 
-export interface ApplicationPluginContext {
+export interface ApplicationContributionContext {
   readonly renderer: CliRenderer;
   readonly workspaceSet: WorkspaceSet.Instance;
   readonly settings: Settings.Instance;

@@ -9,6 +9,7 @@
 // invariant: Agent events cross exactly one backend seam (src/modules/agent/agent.invariants.md)
 import type { AgentEvent } from './AgentEvents.interface';
 
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 /** A source of agent events. The single boundary between AgentSession and whatever produces the
  *  structured event stream (a real `claude` subprocess, the SDK, or a scripted test double). */
 export interface AgentBackend {
@@ -25,4 +26,3 @@ export interface AgentBackend {
    *  the mode line reads this through the session so it never promises prompts that cannot happen. */
   readonly supportsPermissionPrompts?: boolean;
 }
-

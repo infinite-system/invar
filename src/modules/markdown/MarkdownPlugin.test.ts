@@ -3,7 +3,7 @@ import { MarkdownPlugin } from './MarkdownPlugin';
 import { EditorSurfaceClaims } from '../workspace/EditorSurfaceClaims';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { CommandRegistry } from '../commands/CommandRegistry';
-import type { ApplicationPluginContext } from '../app/ApplicationPlugin.interface';
+import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { Workspace } from '../workspace/Workspace';
 
 function createHostWorkspace(path: string) {
@@ -29,7 +29,7 @@ function activate(path = '/project/notes.md') {
     editorSurfaceContents,
     settings: { markdownSplitRatio: { value: 0.5 } },
     statusProjectionContributions: { register: () => {} },
-  } as unknown as ApplicationPluginContext;
+  } as unknown as ApplicationContributionContext;
   plugin.activateApplication(context);
   return { plugin, workspace, commands, editorSurfaceContents };
 }

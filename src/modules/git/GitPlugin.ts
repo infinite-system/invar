@@ -1,10 +1,13 @@
 import type {
-  ApplicationPlugin,
-  ApplicationPluginContext,
-} from '../app/ApplicationPlugin.interface';
+  ApplicationContributionContext,
+  ApplicationContributor,
+} from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+import type {
+  WorkspaceContribution,
+  WorkspaceContributor,
+} from '../workspace/WorkspaceContributor.interface';
 import type {
   StatusBarSegmentContext,
   StatusBarSegmentContribution,
@@ -18,13 +21,19 @@ import { GitComparisonSurface } from './GitComparisonSurface';
 // invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Status text is assembled from ordered contributions (src/modules/ui/ui.invariants.md)
-class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
+class $GitPlugin
+  implements
+    ApplicationContributor,
+    WorkspaceContributor,
+    StatusBarSegmentContribution
+{
   readonly primaryDockContentIdentifiers = ['git'] as const;
+  readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
     GitWorkspace.Model
   >();
-  protected application: ApplicationPluginContext | null = null;
+  protected application: ApplicationContributionContext | null = null;
   protected paneContent: GitPaneContent.Model | null = null;
   protected comparisonSurface: GitComparisonSurface.Model | null = null;
   protected disposeComparisonSurface: (() => void) | null = null;
@@ -35,7 +44,7 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
     return gitWorkspace;
   }
 
-  activateApplication(context: ApplicationPluginContext): void {
+  activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
     this.paneContent = new GitPaneContent.Class(context, () =>
       this.activeWorkspace(),
@@ -109,7 +118,7 @@ class $GitPlugin implements ApplicationPlugin, StatusBarSegmentContribution {
     return segments;
   }
 
-  protected registerCommands(context: ApplicationPluginContext): void {
+  protected registerCommands(context: ApplicationContributionContext): void {
     const active = () => this.activeWorkspace();
     const show = (): void => {
       if (!this.paneContent) return;

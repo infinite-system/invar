@@ -47,18 +47,19 @@ recorded as `GUESS` and must not be built.
    `StatusProjectionContributions` and `CommandRegistry.registerAll` as the plugin's own command
    channel. Customers: terminal, agent, file tree, source-control panel, extensions panel.
 
-Plus the plugin lifecycle itself: `WorkspacePlugin.attachWorkspace` →
+Plus the plugin lifecycle itself: `WorkspaceContributor.attachWorkspace` →
 `WorkspaceContribution{opened, settingsAttached?, suspended, resumed, disposed, tickScroll?,
-tabDetail?, worktreeName?, projectName?}` and `ApplicationPlugin.activateApplication(context)`.
+tabDetail?, worktreeName?, projectName?}` and
+`ApplicationContributor.activateApplication(context)`.
 
 Ports 5 and 6, added 2026-07-26 by extraction step 1:
 
 5. **Editor-surface capability answers** — `EditorSurfaceClaims` (workspace). Customers: the
    source-control comparison (answers "not presented"), a source|preview split (answers
    "presented"). Governed by the record *The editor surface answers capabilities, not plugin modes*.
-6. **Editor-column occupant** — `EditorSurfaceContents` (ui) + `ApplicationPluginContext.
-   editorSurfaceContents`. Customers: the source-control comparison today; the Markdown split is
-   step 3's customer.
+6. **Editor-column occupant** — `EditorSurfaceContents` (ui) +
+   `ApplicationContributionContext.editorSurfaceContents`. Customers: the source-control comparison
+   today; the Markdown split is step 3's customer.
 
 **Still no port for:** **default keybindings** (Gap C). Gap D was resolved without a port — see
 below.
@@ -364,8 +365,8 @@ Shape (subset of the existing `PaneContent` contract, which is the precedent —
 vocabulary*): `identifier`, `active()`, `create(context)` given a definite-size container plus
 `{renderer, theme, settings, findBar, keybindings, tooltip}`, then `update()`, `tick(dt)`,
 `handleKey(key)`, `findTarget()`, `copySelection()`, `caret()`, `dispose()`, and the capability
-answers below. `ApplicationPluginContext` is built *before* `buildRootView`, so the registry must
-be created early and the surface **created lazily at mount time** with a view-supplied context.
+answers below. `ApplicationContributionContext` is built *before* `buildRootView`, so the registry
+must be created early and the surface **created lazily at mount time** with a view-supplied context.
 
 ### Gap B — capability answers about the visible editor surface — **BUILT 2026-07-26** (`workspace/EditorSurfaceClaims.ts`)
 
@@ -393,11 +394,11 @@ by design, not overlooked — see step 3 below.
 
 `keybindings/KeybindingDefaults.ts:273-293` holds the default bindings for `diff.previousChange`,
 `diff.nextChange`, `markdown.togglePreview`, `markdown.openHoveredReference` in host core;
-`ApplicationPluginContext` has no `keybindings` member at all. Note the *existing* git plugin got
-away without this only because its commands are reached from its pane, not from a default chord.
+`ApplicationContributionContext` has no `keybindings` member at all. Note the *existing* git plugin
+got away without this only because its commands are reached from its pane, not from a default chord.
 Customers: source control (2 diff chords) and markdown (2 chords). → one-field extension:
-expose `keybindings` on `ApplicationPluginContext` (or a `defaultKeybindings` array on
-`ApplicationPlugin`).
+expose `keybindings` on `ApplicationContributionContext` (or a `defaultKeybindings` array on
+`ApplicationContributor`).
 
 ### Gap D — editor-title action cluster — **RESOLVED 2026-07-26 without a new port**
 
@@ -442,14 +443,10 @@ header.
 
 ## Contract consequences
 
-`project.invariants.md` → **The host canvas is complete without plugins** currently asserts the host
-canvas provides "workspaces, files, editing, language intelligence, **Markdown**, panes, popups,
-commands, and status contributions".
-
-Extracting Markdown makes that sentence false as written. This is a **refines**, not a violation:
-the record's *mechanism* ("shipped domain capabilities may be default plugins but may not require
-host-core knowledge") already anticipates the move — only the enumeration is stale. Markdown must
-be struck from the list, and if language is ever extracted, so must "language intelligence".
+`project.invariants.md` → **The host canvas is complete without plugins** previously assigned both
+Markdown and language intelligence to the canvas. Markdown extraction and task 103's owner decision
+refined that enumeration: both are plugins, while the canvas retains their generic contribution and
+provider ports. Language remains in `Workspace` only until its separate extraction task.
 
 `src/modules/diff/diff.invariants.md:218` names `Workspace.showingDiff` in the *Scope* of
 **Diff selection reuses shared drag behavior**; `src/modules/markdown/markdown.invariants.md:227`
@@ -509,14 +506,14 @@ Cheap, and it validates the port with a third customer.
 `Bootstrap` and `RootView` — a wide, shallow change. Do it after the editor column is generic so
 both docks use one vocabulary.
 
-### 6. LANGUAGE → language plugin — **BLOCKED, needs the owner**
+### 6. LANGUAGE → provider plugin — **READY, extraction is separate**
 
-**Last, and gated on a contract decision, not on effort.** It is the largest (18 sites, 6 request
-methods, a vendor workaround) and the only one a recorded invariant currently *assigns to the
-host*. Ports 1 and 2 already carry its lifecycle; the six request methods need a semantic-request
-port that has **one** customer today, so building it now would be a guess. Extract the client
-lifecycle behind the existing ports; leave the request methods until either the owner renegotiates
-*The host canvas is complete without plugins* or a second intelligence provider exists.
+**Last because it is the largest (18 sites, 6 request methods, a vendor workaround).** Task 103
+supplied the missing owner decision: language is a provider plugin, not host canvas. Ports 1 and 2
+already carry its lifecycle. The extraction task should move the client lifecycle first, then make
+the six host requests consume the existing `LanguageProvider` boundary, broadening that domain
+contract only for the questions the host already asks. Task 103 names this path but deliberately
+does not perform it.
 
 ## Scoreboard
 
@@ -527,7 +524,7 @@ lifecycle behind the existing ports; leave the request methods until either the 
 | markdown | **0** | **0** | Gap A+B built; Gap D resolved by field addition | **done** 2026-07-26 |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
 | file tree | 33 | 8 (model + 2 momentum lanes) | dock-fallback flag | after the editor column |
-| language | 61 | 18 | semantic-request port = **GUESS** | **blocked on the owner** — a contract renegotiation |
+| language | 61 | 18 | broaden `LanguageProvider` from existing host questions | **ready** — separate extraction |
 
 Guard collapse: **14 diff mode checks → 1 capability question**; **29 markdown mode checks → the
 second question**. Both done: 43 mode checks became 2 questions.

@@ -6,6 +6,7 @@
 // implementations are interchangeable with zero change above the seam.
 //
 // invariant: Terminal bytes cross exactly one backend seam (src/modules/terminal/terminal.invariants.md)
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 
 /** A source of terminal I/O. The single boundary between the VT emulator and whatever produces the
  *  byte stream (a real PTY child, or a scripted test double). */

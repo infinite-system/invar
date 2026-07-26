@@ -1,10 +1,13 @@
 import type {
-  ApplicationPlugin,
-  ApplicationPluginContext,
-} from '../app/ApplicationPlugin.interface';
+  ApplicationContributionContext,
+  ApplicationContributor,
+} from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspacePlugin.interface';
+import type {
+  WorkspaceContribution,
+  WorkspaceContributor,
+} from '../workspace/WorkspaceContributor.interface';
 import { MarkdownPreviewSurface } from './MarkdownPreviewSurface';
 import { MarkdownWorkspace } from './MarkdownWorkspace';
 
@@ -15,12 +18,13 @@ import { MarkdownWorkspace } from './MarkdownWorkspace';
 //
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
-class $MarkdownPlugin implements ApplicationPlugin {
+class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
+  readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
     MarkdownWorkspace.Model
   >();
-  protected application: ApplicationPluginContext | null = null;
+  protected application: ApplicationContributionContext | null = null;
   protected surface: MarkdownPreviewSurface.Model | null = null;
   protected disposeSurface: (() => void) | null = null;
 
@@ -33,7 +37,7 @@ class $MarkdownPlugin implements ApplicationPlugin {
     return markdownWorkspace;
   }
 
-  activateApplication(context: ApplicationPluginContext): void {
+  activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
     this.surface = new MarkdownPreviewSurface.Class(
       () => this.workspaces.get(context.workspaceSet.active) ?? null,
@@ -69,7 +73,7 @@ class $MarkdownPlugin implements ApplicationPlugin {
     return this.controllerFor(application.workspaceSet.active);
   }
 
-  protected registerCommands(context: ApplicationPluginContext): void {
+  protected registerCommands(context: ApplicationContributionContext): void {
     context.commands.registerAll([
       {
         id: 'markdown.togglePreview',
