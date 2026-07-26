@@ -89,7 +89,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '\u{f066}',
       '\u{f00d}',
     ],
-    unicode: ['☰', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×'],
+    unicode: ['≡', '⑂', '⬢', '⌕', '⚙', '+', '↗', '↙', '×'],
     ascii: ['F', 'G', 'X', '/', '*', '+', '>', '<', 'x'],
   } as const;
 
@@ -114,7 +114,7 @@ test('the extensions glyph is one cell and avoids every reserved mark', () => {
     '↙',
     '+',
     '×',
-    '☰',
+    '≡',
     '⑂',
     '⌕',
     '⚙',

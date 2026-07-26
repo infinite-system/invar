@@ -148,7 +148,10 @@ class $ThemeIcons {
         panelClose: '\u{f00d}',
       },
       unicode: {
-        activityFiles: '☰',
+        // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
+        // renders ONE, so the active Explorer row shifted everything right of it one column left.
+        // U+2261 carries the same list-of-lines meaning at an unambiguous single cell.
+        activityFiles: '≡',
         activitySourceControl: '⑂',
         // ⬢ BLACK HEXAGON is the module/package convention and stays legible at terminal size,
         // where ⊞'s thin internal cross disappeared for the user who reported it.

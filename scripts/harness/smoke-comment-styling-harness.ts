@@ -17,9 +17,12 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-comment-styling-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-comment-styling-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-comment-styling-harness-home-'),
+);
 const statusPath = join(fixtureRoot, 'status.json');
-const filler = 'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike';
+const filler =
+  'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike';
 await Bun.write(
   join(fixtureRoot, 'comment.ts'),
   [
@@ -43,7 +46,10 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness comment styling: open the TypeScript fixture ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('comment.ts') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('comment.ts') !== null,
+    15_000,
+  );
   driver.sendKeys('Enter');
   let snapshot = await driver.awaitSnapshot(
     (candidate) => candidate.findText('leadcomment') !== null,
@@ -57,14 +63,28 @@ try {
   );
   pass('comment.ts opened with the editor focused');
 
-  console.log('== harness comment styling: JSDoc middle lines use the comment foreground ==');
+  console.log(
+    '== harness comment styling: JSDoc middle lines use the comment foreground ==',
+  );
+  // AWAIT THE MARKERS, and read the snapshot that PROVED them. Two defects were stacked here: the
+  // preceding waits observe FOCUS, while this claim reads SYNTAX MARKERS that arrive from an async
+  // highlight pass — and the three reads below used a `snapshot` captured BEFORE those waits ran, so
+  // they sampled a frame older than the state they assert. Under gate load the markers had not painted
+  // into that stale frame and the claim failed hard (it passed solo on a quiet machine).
+  snapshot = await driver.awaitGridCondition(
+    'the comment, code, and JSDoc markers are painted',
+    (candidate) =>
+      markerForeground(candidate, 'leadcomment') !== null &&
+      markerForeground(candidate, 'answer') !== null &&
+      markerForeground(candidate, 'docmid') !== null,
+  );
   const commentForeground = markerForeground(snapshot, 'leadcomment');
   const codeForeground = markerForeground(snapshot, 'answer');
   const documentationForeground = markerForeground(snapshot, 'docmid');
   requireCondition(
-    commentForeground !== null
-      && codeForeground !== null
-      && documentationForeground !== null,
+    commentForeground !== null &&
+      codeForeground !== null &&
+      documentationForeground !== null,
     'comment, code, and JSDoc markers are visible',
   );
   requireCondition(
@@ -76,11 +96,14 @@ try {
     'JSDoc middle line foreground equals line-comment foreground',
   );
 
-  console.log('== harness comment styling: horizontal slices preserve comment colour ==');
+  console.log(
+    '== harness comment styling: horizontal slices preserve comment colour ==',
+  );
   driver.sendKeys('End');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('hscrollcomment') !== null
-      && candidate.findText('hscrolldoc') !== null,
+    (candidate) =>
+      candidate.findText('hscrollcomment') !== null &&
+      candidate.findText('hscrolldoc') !== null,
   );
   await awaitStatusPublication(
     statusPath,
@@ -97,9 +120,13 @@ try {
     'horizontally sliced JSDoc tail keeps comment foreground',
   );
 
-  console.log('== harness comment styling: find boundary keeps the sliced tail colour ==');
+  console.log(
+    '== harness comment styling: find boundary keeps the sliced tail colour ==',
+  );
   driver.sendKeys('Control+f');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Find') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Find') !== null,
+  );
   await awaitStatusPublication(
     statusPath,
     'Find is published as open',
@@ -128,17 +155,22 @@ try {
     (status) => status.findOpen === false,
   );
   driver.sendKeys('End');
-  snapshot = await driver.awaitSnapshot((candidate) => candidate.findText('afterfind') !== null);
+  snapshot = await driver.awaitSnapshot(
+    (candidate) => candidate.findText('afterfind') !== null,
+  );
   requireCondition(
     markerForeground(snapshot, 'afterfind') === commentForeground,
     'post-find segment keeps comment foreground under horizontal scroll',
   );
 
-  console.log('== harness comment styling: wrap continuations keep comment colour ==');
+  console.log(
+    '== harness comment styling: wrap continuations keep comment colour ==',
+  );
   driver.sendKeys('Alt+z');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('zebramarker') !== null
-      && candidate.findText('docmid') !== null,
+    (candidate) =>
+      candidate.findText('zebramarker') !== null &&
+      candidate.findText('docmid') !== null,
   );
   await awaitStatusPublication(
     statusPath,
