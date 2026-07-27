@@ -391,10 +391,11 @@ if SMOOTHNESS_GESTURES=0 \
      >"$ACCUMULATION_RAPID_JSON" 2>"$ACCUMULATION_RAPID_LOG"; then
   read -r accumulation_positive_control_rejected \
     accumulation_rapid_positive_control_rejected \
-    accumulation_production_holds accumulation_default_peaks \
+    accumulation_separated_peaks_hold \
+    accumulation_rapid_travel_holds accumulation_default_peaks \
     accumulation_raised_peaks accumulation_default_sequences \
     accumulation_raised_sequences accumulation_delays \
-    accumulation_rapid_ceiling_frames accumulation_rapid_required_frames \
+    accumulation_rapid_travel_rows accumulation_rapid_travel_floor \
     accumulation_rapid_sequence \
     <<<"$(python3 -c "
 import json
@@ -455,38 +456,40 @@ rapid_row_crossings = [
     for earlier_position, later_position
     in zip(rapid_positions, rapid_positions[1:])
 ]
-rapid_ceiling_crossing_floor = math.floor(
+rapid_continuous_ceiling_travel = (
     rapid_report['verticalFlingCeiling']
-    / rapid_report['targetFramesPerSecond']
+    * rapid_report['maximumGlideDurationMilliseconds']
+    / 1000
 )
-rapid_required_ceiling_frames = (
-    rapid_report['wheelNotchesPerGesture'] - 3 * 12
+rapid_travel_floor = math.ceil(
+    rapid_continuous_ceiling_travel - 1
 )
-rapid_ceiling_frame_count = sum(
-    row_crossing >= rapid_ceiling_crossing_floor
-    for row_crossing in rapid_row_crossings
-)
+# This one-gesture drive starts at row zero. At the cap, Momentum may discard
+# only its sub-row residual, so the final visible row is total whole-row travel.
+rapid_total_travel_rows = rapid_positions[-1] if rapid_positions else 0
 decaying_positive_control = list(
-    range(rapid_ceiling_crossing_floor, 0, -1)
+    range(math.floor(
+        rapid_report['verticalFlingCeiling']
+        / rapid_report['targetFramesPerSecond']
+    ), 0, -1)
 )
 rapid_positive_control_rejected = (
-    sum(
-        row_crossing >= rapid_ceiling_crossing_floor
-        for row_crossing in decaying_positive_control
-    )
-    < rapid_required_ceiling_frames
+    sum(decaying_positive_control) < rapid_travel_floor
 )
-production_holds = (
+separated_peaks_hold = (
     climbs_with_headroom(default_peaks, default_budget)
     and climbs_with_headroom(raised_peaks, raised_budget)
     and len(default_delays) == 2
     and len(raised_delays) == 2
-    and rapid_ceiling_frame_count >= rapid_required_ceiling_frames
+)
+rapid_travel_holds = (
+    rapid_total_travel_rows >= rapid_travel_floor
 )
 print(
     int(positive_control_rejected),
     int(rapid_positive_control_rejected),
-    int(production_holds),
+    int(separated_peaks_hold),
+    int(rapid_travel_holds),
     ','.join(str(peak) for peak in default_peaks),
     ','.join(str(peak) for peak in raised_peaks),
     '/'.join(default_sequences),
@@ -495,8 +498,8 @@ print(
         f'{delay:.1f}'
         for delay in default_delays + raised_delays
     ),
-    rapid_ceiling_frame_count,
-    rapid_required_ceiling_frames,
+    rapid_total_travel_rows,
+    rapid_travel_floor,
     ','.join(str(rows) for rows in rapid_row_crossings),
 )
 ")"
@@ -511,33 +514,39 @@ print(
   else
     bad "glide-accumulation positive control accepted a decaying rapid burst"
   fi
-  if [ "${accumulation_production_holds:-0}" -eq 1 ] 2>/dev/null; then
-    accumulation_message="separated flick peaks climb and rapid input"
-    accumulation_message+=" sustains the ceiling"
+  if [ "${accumulation_separated_peaks_hold:-0}" -eq 1 ] 2>/dev/null; then
+    accumulation_message="separated flick peaks climb"
     accumulation_message+=" (default=$accumulation_default_peaks,"
     accumulation_message+=" raised=$accumulation_raised_peaks,"
     accumulation_message+=" delays=${accumulation_delays}ms,"
-    accumulation_message+=" rapidCeilingFrames="
-    accumulation_message+="$accumulation_rapid_ceiling_frames/"
-    accumulation_message+="$accumulation_rapid_required_frames,"
-    accumulation_message+=" rapidSequence=$accumulation_rapid_sequence,"
     accumulation_message+=" defaultSequences=$accumulation_default_sequences,"
     accumulation_message+=" raisedSequences=$accumulation_raised_sequences)"
     pass "$accumulation_message"
   else
-    accumulation_message="separated peaks or rapid ceiling duration failed"
+    accumulation_message="separated flick peaks failed to climb"
     accumulation_message+=" (default=${accumulation_default_peaks:-missing},"
     accumulation_message+=" raised=${accumulation_raised_peaks:-missing},"
     accumulation_message+=" delays=${accumulation_delays:-missing}ms,"
-    accumulation_message+=" rapidCeilingFrames="
-    accumulation_message+="${accumulation_rapid_ceiling_frames:-missing}/"
-    accumulation_message+="${accumulation_rapid_required_frames:-missing},"
-    accumulation_message+=" rapidSequence="
-    accumulation_message+="${accumulation_rapid_sequence:-missing},"
     accumulation_message+=" defaultSequences="
     accumulation_message+="${accumulation_default_sequences:-missing},"
     accumulation_message+=" raisedSequences="
     accumulation_message+="${accumulation_raised_sequences:-missing})"
+    bad "$accumulation_message"
+  fi
+  if [ "${accumulation_rapid_travel_holds:-0}" -eq 1 ] 2>/dev/null; then
+    accumulation_message="rapid input sustains the ceiling"
+    accumulation_message+=" (rapidTravelRows="
+    accumulation_message+="$accumulation_rapid_travel_rows/"
+    accumulation_message+="$accumulation_rapid_travel_floor,"
+    accumulation_message+=" rapidSequence=$accumulation_rapid_sequence)"
+    pass "$accumulation_message"
+  else
+    accumulation_message="rapid input ceiling travel failed"
+    accumulation_message+=" (rapidTravelRows="
+    accumulation_message+="${accumulation_rapid_travel_rows:-missing}/"
+    accumulation_message+="${accumulation_rapid_travel_floor:-missing},"
+    accumulation_message+=" rapidSequence="
+    accumulation_message+="${accumulation_rapid_sequence:-missing})"
     bad "$accumulation_message"
   fi
 else

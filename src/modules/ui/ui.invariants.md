@@ -1053,8 +1053,10 @@ banked. Once the true configured ceiling is available, excess
 physical velocity never exceeds the configured maximum. A separate physical
 impulse-event count opens that reserve only after 36 events, independent of
 lines-per-notch scaling; row-scaled impulse units continue to govern the
-landed envelope unchanged. The contrary-direction branch still halts before
-restarting.
+landed envelope unchanged. The cap may divide the same continuous travel
+across different completed frames, so the live contract measures total
+whole-row travel and permits only the sub-row residual that `stepMomentum`
+discards at rest. The contrary-direction branch still halts before restarting.
 
 **Generates:** One continuous motion whose speed grows across successive
 same-direction flicks; no hitch at a gesture boundary; dense input that
@@ -1095,9 +1097,11 @@ requires strictly increasing adjacent-four-frame peak row crossings in both
 rows. The four-frame window preserves the per-frame fingerprint while leaving
 enough integer cell-grid resolution for three levels under the default
 ceiling. The same contract drives a rapid 60-notch burst at the default
-ceiling and requires its 24 post-ceiling impulses to remain visible as at
-least 24 ceiling-budget completed frames. `glide-continuation` retains the
-delayed single-notch boundary check.
+ceiling and requires at least
+`ceil(verticalFlingCeiling * maximumGlideDurationMilliseconds / 1000 - 1)`
+whole rows of travel. This floor comes from capped velocity integrated over
+the configured tail, less the only sub-row residual that may be discarded.
+`glide-continuation` retains the delayed single-notch boundary check.
 
 **Status:** provisional
 
