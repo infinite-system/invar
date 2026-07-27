@@ -24,6 +24,13 @@ Your inner loop is **driving the real app in your own PTY** — `scripts/harness
 3. **Write the contract only AFTER the symptom is gone**, to lock in what you achieved.
 4. **One verification pass at the end.** Then report.
 
+**SCALE PARITY — drive SMALL and LARGE, always.** The app is named Invar because a 100,000-line
+file must feel identical to a 10-line one. Any change on a per-row / per-item / per-frame path is
+not verified until you have driven it at BOTH ends of the scale and they behave the same. A fix
+that only holds at small scale is not a fix; a cost that only appears at large scale is the defect
+this project exists to prevent. Use the shared scale fixtures (see `project.tools.md`) — do NOT
+hand-roll another generator, and do NOT commit large fixture files.
+
 **Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.** Judge by observing the real path.
 A test in your inner loop makes you optimize for making an assertion pass instead of making it
 right — and for felt qualities (smoothness, weight, responsiveness) the assertion is a lossy proxy,
