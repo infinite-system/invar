@@ -67,8 +67,19 @@ glyph. Do NOT fix them (scope creep destroys reviewability) and do NOT ignore th
 defect nobody records is lost evidence). Put them in a `## Bycatch` section of your READY report:
 one line each — what you saw, the exact steps/frame that showed it, and whether it reproduced a
 second time. If it costs under a minute, capture the reproduction (fixture, keys sent); if not,
-the observation alone is still owed. The conductor triages bycatch into tasks; yours is only to
-see and to say.
+the observation alone is still owed.
+
+A SMALL-AND-OBVIOUS fix is allowed — under all four conditions, and it is still reported:
+1. LOCAL: a few lines in one file you already understand, with an obvious correct form (a typo, an
+   off-by-one, a wrong glyph constant, a stale label). Never a shared seam, a contract file, a
+   binding layer, or anything another builder owns.
+2. SEPARATE COMMIT: the fix rides as its OWN commit with its own message — never folded into your
+   task's diff, so review stays clean and it can be reverted alone.
+3. BOUNDED: if it is not done in ~15 minutes or the edit starts spreading to a second file, STOP,
+   revert, and report it as ordinary bycatch instead. The spread is evidence it was not obvious.
+4. STILL REPORTED: it appears in `## Bycatch` marked FIXED, with the commit hash, so the conductor
+   reviews it instead of discovering it.
+Everything larger: the conductor triages bycatch into tasks; yours is to see and to say.
 
 ## Skills index (ALL agents — codex does not auto-see `.claude/skills/`; this list is your map)
 - **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
