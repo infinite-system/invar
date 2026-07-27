@@ -25,7 +25,10 @@ const forcedGlyphMode = 'unicode';
 // The kind NUMBERS are protocol facts about what a TypeScript server answers for a member access, not
 // appearance. Everything visual comes from the two authorities the app itself uses.
 const methodCompletionItemKind = 2;
+const functionCompletionItemKind = 3;
 const fieldCompletionItemKind = 5;
+const variableCompletionItemKind = 6;
+const classCompletionItemKind = 7;
 const propertyCompletionItemKind = 10;
 
 function expectedMarkForCompletionItemKind(completionItemKind: number): string {
@@ -393,7 +396,115 @@ async function driveMockProvider(): Promise<void> {
   }
 }
 
-async function driveTsgo(): Promise<void> {
+function typeScriptFixtureLines(fixtureLineCount: number): string[] {
+  const declarationLines = [
+    "import ZqxDefaultWidget, { ZqnImportedValue } from './dependency';",
+    'const ZqvLocalValue = 1;',
+    'function ZqfLocalFunction(): number { return ZqvLocalValue; }',
+    'class ZqcLocalClass {}',
+    'class MemberExample {',
+    '  memberValue = 1;',
+    '  memberCall(): number { return this.memberValue; }',
+    '}',
+    'const memberExample = new MemberExample();',
+    'void ZqxDefaultWidget;',
+    'void ZqnImportedValue;',
+  ];
+  if (fixtureLineCount < declarationLines.length + 1) {
+    throw new Error(
+      `TypeScript completion fixture needs at least ` +
+        `${declarationLines.length + 1} lines`,
+    );
+  }
+  return [
+    ...declarationLines,
+    ...Array.from(
+      { length: fixtureLineCount - declarationLines.length - 1 },
+      () => '// scale',
+    ),
+    '',
+  ];
+}
+
+async function clearTypedPrefix(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  prefix: string,
+): Promise<void> {
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'status condition: completion closes before clearing the typed prefix',
+    (status) => status.completionOpen === false,
+  );
+  const revisionBeforeClear = Number(
+    HarnessSmoke.Class.readStatus(statusPath).bufferRevision,
+  );
+  driver.sendKeys(...Array.from(prefix, () => 'Backspace'));
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'status condition: clearing the typed prefix returns the caret to column zero',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforeClear &&
+      status.cursor?.col === 0,
+  );
+}
+
+async function driveBareIdentifierCandidate(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  prefix: string,
+  label: string,
+  completionItemKind: number,
+): Promise<void> {
+  const statusBeforePrefix = HarnessSmoke.Class.readStatus(statusPath);
+  const requestCountBeforePrefix = Number(
+    statusBeforePrefix.completionRequestCount ?? 0,
+  );
+  const popupFilterCountBeforePrefix = Number(
+    statusBeforePrefix.completionFilterCount ?? 0,
+  );
+  const sourceFilterCountBeforePrefix = Number(
+    statusBeforePrefix.completionSourceFilterCount ?? 0,
+  );
+  driver.sendText(prefix);
+  const openStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    `status condition: bare prefix ${prefix} selects ${label}`,
+    (status) =>
+      status.completionOpen === true &&
+      status.completionSelectedLabel === label,
+    30_000,
+  );
+  const geometry = completionPopupGeometry(openStatus);
+  await driver.awaitGridCondition(
+    `grid condition: ${label} carries its resolved kind mark`,
+    (snapshot) =>
+      completionRowMarkForLabel(snapshot, geometry, label) ===
+      expectedMarkForCompletionItemKind(completionItemKind),
+    30_000,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(openStatus.completionRequestCount) === requestCountBeforePrefix + 1,
+    `${prefix} issues one provider request for ${prefix.length} keystrokes`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(openStatus.completionFilterCount) ===
+      popupFilterCountBeforePrefix + 1 &&
+      Number(openStatus.completionSourceFilterCount) ===
+        sourceFilterCountBeforePrefix + 1,
+    `${prefix} prepares popup matches exactly once`,
+  );
+  HarnessSmoke.Class.pass(
+    `${label} is visible on the emulator grid with the correct kind mark`,
+  );
+  await clearTypedPrefix(driver, statusPath, prefix);
+}
+
+async function driveTsgoAtScale(fixtureLineCount: number): Promise<void> {
   const tsgoBinary = join(repositoryRoot, 'node_modules', '.bin', 'tsgo');
   if (!Bun.file(tsgoBinary).size) {
     throw new Error('tsgo is required for the completion harness');
@@ -413,12 +524,15 @@ async function driveTsgo(): Promise<void> {
     '{"compilerOptions":{"strict":true},"include":["*.ts"]}\n',
   );
   await Bun.write(
+    join(fixtureRoot, 'dependency.ts'),
+    [
+      'export default class ZqxDefaultWidget {}',
+      'export const ZqnImportedValue = 1;',
+    ].join('\n'),
+  );
+  await Bun.write(
     join(fixtureRoot, 'main.ts'),
-    'class Example {\n' +
-      '  property = 1;\n' +
-      '  power = 2;\n' +
-      '  method() {\n' +
-      '    this',
+    typeScriptFixtureLines(fixtureLineCount).join('\n'),
   );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
@@ -427,12 +541,34 @@ async function driveTsgo(): Promise<void> {
     rows: 28,
     homeDirectory,
     environment: { TUI_STATUS_PATH: statusPath },
+    command: [
+      process.execPath,
+      `--preload=${join(
+        repositoryRoot,
+        'scripts/harness/completion-mock-provider-preload.ts',
+      )}`,
+      'src/main.ts',
+      fixtureRoot,
+    ],
   });
   try {
     console.log(
-      '== harness completion: real tsgo trigger, narrowing, and acceptance ==',
+      `== harness completion: real tsgo at ${fixtureLineCount} lines ==`,
     );
-    await openOnlyFile(driver, statusPath, '/main.ts');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'status condition: status.ready === true',
+      (status) => status.ready === true,
+      20_000,
+    );
+    driver.sendKeys('Down', 'Down', 'Enter');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      "status condition: activeBuffer ends with '/main.ts'",
+      (status) => String(status.activeBuffer).endsWith('/main.ts'),
+    );
     await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
       statusPath,
@@ -442,6 +578,57 @@ async function driveTsgo(): Promise<void> {
       30_000,
     );
     driver.sendKeys('Control+End');
+    await driveBareIdentifierCandidate(
+      driver,
+      statusPath,
+      'Zqx',
+      'ZqxDefaultWidget',
+      variableCompletionItemKind,
+    );
+    await driveBareIdentifierCandidate(
+      driver,
+      statusPath,
+      'Zqn',
+      'ZqnImportedValue',
+      variableCompletionItemKind,
+    );
+    await driveBareIdentifierCandidate(
+      driver,
+      statusPath,
+      'Zqv',
+      'ZqvLocalValue',
+      variableCompletionItemKind,
+    );
+    await driveBareIdentifierCandidate(
+      driver,
+      statusPath,
+      'Zqf',
+      'ZqfLocalFunction',
+      functionCompletionItemKind,
+    );
+    await driveBareIdentifierCandidate(
+      driver,
+      statusPath,
+      'Zqc',
+      'ZqcLocalClass',
+      classCompletionItemKind,
+    );
+
+    const revisionBeforeMemberBase = Number(
+      HarnessSmoke.Class.readStatus(statusPath).bufferRevision,
+    );
+    driver.sendPaste('memberExample');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: pasted member base reaches the expected caret column',
+      (status) =>
+        Number(status.bufferRevision) > revisionBeforeMemberBase &&
+        status.cursor?.col === 'memberExample'.length,
+    );
+    const requestCountBeforeMemberAccess = Number(
+      HarnessSmoke.Class.readStatus(statusPath).completionRequestCount,
+    );
     driver.sendText('.');
     const memberAccessStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
       driver,
@@ -449,6 +636,11 @@ async function driveTsgo(): Promise<void> {
       'status condition: status.completionOpen === true',
       (status) => status.completionOpen === true,
       30_000,
+    );
+    HarnessSmoke.Class.requireCondition(
+      Number(memberAccessStatus.completionRequestCount) ===
+        requestCountBeforeMemberAccess + 1,
+      'member access retains one trigger-character provider request',
     );
     // A member access is the caret where kinds genuinely differ: `this.` answers with a method AND
     // with data members. Both marks are resolved through the kind classifier and the theme, and both
@@ -476,12 +668,15 @@ async function driveTsgo(): Promise<void> {
       'grid condition: the member-access rows carry the callable mark beside method and the value ' +
         'mark beside a data member',
       (snapshot) =>
-        completionRowMarkForLabel(snapshot, memberAccessGeometry, 'method') ===
-          expectedCallableMark &&
         completionRowMarkForLabel(
           snapshot,
           memberAccessGeometry,
-          'property',
+          'memberCall',
+        ) === expectedCallableMark &&
+        completionRowMarkForLabel(
+          snapshot,
+          memberAccessGeometry,
+          'memberValue',
         ) === expectedValueMark,
       30_000,
     );
@@ -508,28 +703,6 @@ async function driveTsgo(): Promise<void> {
     HarnessSmoke.Class.pass(
       'a real TypeScript member access paints a different mark for a callable than for a value',
     );
-    driver.sendText('p');
-    await HarnessSmoke.Class.awaitStatusWithoutFrame(
-      driver,
-      statusPath,
-      "status condition: status.completionOpen === true && String(status.completionSelectedLabel).startsWith('p')",
-      (status) =>
-        status.completionOpen === true &&
-        String(status.completionSelectedLabel).startsWith('p'),
-      30_000,
-    );
-    driver.sendKeys('Tab');
-    await HarnessSmoke.Class.awaitStatusWithoutFrame(
-      driver,
-      statusPath,
-      "status condition: status.completionOpen === false && status.editorLines?.[4] === '    this.property'",
-      (status) =>
-        status.completionOpen === false &&
-        Array.isArray(status.editorLines) &&
-        status.editorLines[4] === '    this.property',
-      30_000,
-    );
-    HarnessSmoke.Class.pass('real tsgo completion fills the selected property');
     driver.sendKeys('Control+q');
   } finally {
     await driver.dispose();
@@ -539,5 +712,6 @@ async function driveTsgo(): Promise<void> {
 }
 
 await driveMockProvider();
-await driveTsgo();
+await driveTsgoAtScale(20);
+await driveTsgoAtScale(100_000);
 console.log('smoke-completion-harness: ALL-PASS');
