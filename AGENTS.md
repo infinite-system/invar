@@ -61,6 +61,15 @@ so a green suite and an unhappy user coexist comfortably.
 
 Never internal values: drive the path a user drives. Reproduce before diagnosing.
 
+**BYCATCH — report every bug you SEE, fix only the one you were SENT for.** Driving the real app
+means you will notice defects outside your task: a mispainted cell, a focus jump, a stall, a wrong
+glyph. Do NOT fix them (scope creep destroys reviewability) and do NOT ignore them (an observed
+defect nobody records is lost evidence). Put them in a `## Bycatch` section of your READY report:
+one line each — what you saw, the exact steps/frame that showed it, and whether it reproduced a
+second time. If it costs under a minute, capture the reproduction (fixture, keys sent); if not,
+the observation alone is still owed. The conductor triages bycatch into tasks; yours is only to
+see and to say.
+
 ## Skills index (ALL agents — codex does not auto-see `.claude/skills/`; this list is your map)
 - **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
 - **`.claude/skills/ivue/`** — the reactive substrate + namespace pattern. Load before touching `src/modules/**`.
