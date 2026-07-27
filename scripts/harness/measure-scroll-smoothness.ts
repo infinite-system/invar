@@ -1153,6 +1153,11 @@ async function measureSurface(
     fixtureLineCount === 2_000 &&
     fixtureShape === 'flat' &&
     codeFolding === 'on';
+  const shouldMeasureAccumulationPattern =
+    surface === 'editor' &&
+    fixtureShape === 'flat' &&
+    codeFolding === 'on' &&
+    ACCUMULATION_FLICK_COUNT > 0;
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -1245,13 +1250,13 @@ async function measureSurface(
         depthCheckpoints,
       );
     } else {
+      if (shouldMeasureAccumulationPattern) {
+        await driveSurfaceToTop(driver, statusPath, surface);
+        await drainToQuiescence(driver);
+        accumulationFlicks = await measureAccumulationPattern(driver);
+        printAccumulationPattern(surface, accumulationFlicks);
+      }
       if (shouldMeasureContinuationBoundaries) {
-        if (ACCUMULATION_FLICK_COUNT > 0) {
-          await driveSurfaceToTop(driver, statusPath, surface);
-          await drainToQuiescence(driver);
-          accumulationFlicks = await measureAccumulationPattern(driver);
-          printAccumulationPattern(surface, accumulationFlicks);
-        }
         for (const delayMilliseconds of CONTINUATION_DELAY_MILLISECONDS) {
           await driveSurfaceToTop(driver, statusPath, surface);
           await drainToQuiescence(driver);
