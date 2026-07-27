@@ -180,6 +180,28 @@ test("--all discovers nested contracts, skips local formats and node_modules", (
   cleanup();
 });
 
+test("--all and --refs ignore retired smoke files", () => {
+  const { dir, cleanup } = tmp();
+  const retiredSmokeDirectory = join(dir, "scripts/retired-smokes");
+  mkdirSync(retiredSmokeDirectory, { recursive: true });
+  writeFileSync(
+    join(dir, "demo.invariants.md"),
+    contract([record("A")], [record("B")]),
+  );
+  writeFileSync(
+    join(retiredSmokeDirectory, "stale.invariants.md"),
+    "not a valid contract",
+  );
+  writeFileSync(
+    join(retiredSmokeDirectory, "stale.js"),
+    "// invariant: Ghost (missing.invariants.md)\n",
+  );
+  const result = run(["--all", "--refs", dir]);
+  assert.equal(result.code, 0, result.stderr);
+  assert.doesNotMatch(result.stdout + result.stderr, /stale|Ghost/);
+  cleanup();
+});
+
 // ---------- --refs annotation drift ----------
 
 test("--refs resolves valid annotations, fails orphans, harvests local headings", () => {

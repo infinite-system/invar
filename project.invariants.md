@@ -1090,6 +1090,8 @@ fails, and every assertion-text replacement is reported for review.
 
 **Scope:** Counts and normalized assertion-expression text in `*.test.ts` and
 `scripts/harness/smoke-*.ts`, measured against the merge base, including whole-file removal.
+Files under `scripts/retired-smokes/` are outside the census after their
+mandatory retirement declaration.
 Count decreases block unless the newest row for that path in `project.coverage-deltas.md` states matching
 `assertions A → B, waits C → D` figures. Count-neutral assertion replacements are report-only.
 Mutation probing and judging whether a declared reason is honest remain outside this instrument;
@@ -1100,7 +1102,9 @@ as strong as it was?". `scripts/check-coverage-ratchet.ts` walks the TypeScript 
 `*.test.ts` and `scripts/harness/smoke-*.ts` at both HEAD and the merge base, counts calls that prove
 (`requireCondition`, `expect`, `pass`, `assertContentInvariantAcrossAction`) and calls that wait for an
 observed condition (`awaitStatus`, `awaitGridCondition`, `awaitSnapshot`, `it`, `test`), and fails on
-any decrease whose newest `project.coverage-deltas.md` row is absent, malformed, or numerically stale. It
+any decrease whose newest `project.coverage-deltas.md` row is absent, malformed, or numerically stale.
+It rejects the retired-smoke path prefix before classifying coverage-bearing
+filenames.
 also compares normalized assertion-expression token sets and prints disappeared and appeared texts
 as an informational census. A known-count positive-control fixture must count correctly before the
 comparison, and inspecting zero coverage-bearing files fails. Growth needs no bookkeeping. Counting
@@ -1116,8 +1120,9 @@ of the opposite failure, where a builder's fixes never land and the assertion co
 **Evidence:** `scripts/check-coverage-ratchet.ts`;
 `scripts/fixtures/coverage-ratchet-positive-control.ts.fixture`;
 `scripts/check-coverage-ratchet.test.ts` (counting through the namespace seam, comments and strings
-excluded, every occurrence counted rather than every distinct name, exact declaration figures,
-normalized replacement census, positive control); the gate's `coverage ratchet` step.
+excluded, every occurrence counted rather than every distinct name, exact
+declaration figures, normalized replacement census, positive control, and
+retired-path exclusion); the gate's `coverage ratchet` step.
 Drive-verified 2026-07-25 with negative controls in both directions: deleting one
 `requireCondition` from the git-blame smoke failed with
 `7 assertions / 10 waits -> 6 assertions / 10 waits`; removing `RelativeTime.test.ts` entirely failed
@@ -1129,9 +1134,11 @@ against the actual figures.
 **Impossible if true:** An agent turning a red gate green by deleting the failing assertion; a smoke
 whose fixes were never committed passing review because the gate ran a dirtier worktree; a whole test
 file disappearing in a refactor with no record; a removed claim whose reason exists only in a commit
-message nobody re-reads; a stale path-only or wrong-numbered declaration authorizing a later decrease;
-a count-neutral assertion replacement remaining invisible; the checker reporting success after its
-positive control fails or after it inspects zero files.
+message nobody re-reads; a stale path-only or wrong-numbered declaration
+authorizing a later decrease; a count-neutral assertion replacement remaining
+invisible; a retired test contributing assertions to the live floor; the
+checker reporting success after its positive control fails or after it
+inspects zero files.
 
 **Verification:** `bun scripts/check-coverage-ratchet.ts` on a clean tree exits 0; delete any single
 assertion and it exits 1 naming the file and count delta; add matching figures to
@@ -1142,4 +1149,4 @@ checker exits 1. `bun test scripts/check-coverage-ratchet.test.ts` covers the co
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27

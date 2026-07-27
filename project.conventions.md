@@ -158,6 +158,27 @@ a mechanical checker should not be able to see.
   even while the loop ticks because empty frames are cheap; a CPU-only spot check shipped a live idle
   loop as a false-green.)
 
+## Retiring smoke files
+- A retired smoke lives in `scripts/retired-smokes/`. Move it there with
+  `git mv`, preserving its original basename. Do not append `.parked` or any
+  other retirement suffix. One directory gives tooling one exclusion prefix
+  and readers one place to inspect; preserving the basename keeps searches and
+  `git log --follow` direct.
+- Every retirement requires a `project.coverage-deltas.md` declaration keyed
+  by the original live path. The declaration states why the smoke is retired,
+  names its replacement coverage, and includes exact before/after counts when
+  the coverage ratchet measures the file.
+- Retired content is evidence, not a live contract. No live invariant record,
+  script, smoke registration, or `project.*.md` file may cite a file beneath
+  the retirement directory. `scripts/check-retired-smoke-references.sh`
+  enforces this in the always-run conventions gate.
+- Rejected alternative: delete retired files because Git preserves their
+  content. That is technically sufficient for recoverability, unlike branch
+  deletion, but the project chooses visibility: a retired smoke is often the
+  starting point for its replacement, and a visible directory makes the debt
+  countable without Git archaeology. This is a judgement call, not a
+  technical necessity.
+
 ## Contracts (invariants)
 - Contract-first for new modules; records follow the /invariants schema (both section headings;
   Evidence + Impossible-if-true required; unnumbered declarative names; charset letters/digits/

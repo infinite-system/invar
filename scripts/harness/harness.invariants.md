@@ -212,7 +212,8 @@ named gated replacement and no-loss declaration.
 
 **Verification:** `bun test src/modules/terminal/TerminalEmulatorConformance.test.ts && ! rg
 "ring_step" scripts/merge-gate.sh && rg "full_tmux_step .*smoke: (wrap|git-log|terminal)"
-scripts/merge-gate.sh && rg "retired-smokes/.*\\.sh" project.coverage-deltas.md`
+scripts/merge-gate.sh && bash scripts/check-retired-smoke-references.sh && rg
+"RETIRED AND PARKED" project.coverage-deltas.md`
 
 **Status:** established
 

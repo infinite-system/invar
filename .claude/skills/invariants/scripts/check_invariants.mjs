@@ -36,7 +36,8 @@ import { join, relative, resolve, dirname, basename } from "node:path";
 import { execSync } from "node:child_process";
 import process from "node:process";
 
-const VERSION = "2.2.0"; // bump when schema fields or validation semantics change
+// Bump when schema fields or validation semantics change.
+const VERSION = "2.2.1";
 
 const REALITY = "## Reality-based invariants";
 const CHOSEN = "## Chosen invariants";
@@ -50,6 +51,7 @@ const OPTIONAL = ["Renegotiable at", "Components", "Generates", "Rejected altern
 const STATUSES = new Set(["established", "provisional"]);
 const DATE_RE = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", ".claude"]);
+const EXCLUDED_DIRECTORY_PATHS = new Set(["scripts/retired-smokes"]);
 const ANNOT_RE = /invariant:\s*([^(\n]+?)\s*\(([^)\n]*\.invariants\.md)\)/g;
 // annotation-shaped lines that DON'T parse (typo'd suffix, wrong brackets) — flagged, not silent
 const ANNOT_LOOSE_RE = /invariant:\s*\S[^\n]*?[([][^)\]\n]*\.(?:md|invariants)\b[^)\]\n]*[)\]]/i;
@@ -330,6 +332,8 @@ function* walk(dir, root = dir) {
     const p = join(dir, e.name);
     if (e.isSymbolicLink()) { SKIPPED_SYMLINKS.add(p); continue; }
     if (e.isDirectory()) {
+      const relativeDirectoryPath = relative(root, p).replaceAll("\\", "/");
+      if (EXCLUDED_DIRECTORY_PATHS.has(relativeDirectoryPath)) continue;
       // a nested directory with its own .git is another checkout (worktree/vendored
       // clone) — its files shadow this checkout's reality; skip it loudly
       if (existsSync(join(p, ".git"))) { SKIPPED_CHECKOUTS.add(p); continue; }
@@ -643,7 +647,7 @@ usage:
 ROOT defaults to the git toplevel of the current directory (printed as "root ...");
 pass it explicitly when outside a git checkout. Exit: 0 ok, 1 findings, 2 usage/IO.
 CRLF/BOM normalized; fenced code blocks and HTML comments are inert; nested checkouts,
-symlinks, and files over 2MB are skipped with a note.`;
+symlinks, files over 2MB, and scripts/retired-smokes are skipped.`;
 
 const KNOWN_FLAGS = new Set(["--all", "--refs", "--refs-for", "--strict", "--help", "-h", "--version", "--score"]);
 
