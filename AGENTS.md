@@ -83,6 +83,29 @@ A SMALL-AND-OBVIOUS fix is allowed — under all four conditions, and it is stil
    reviews it instead of discovering it.
 Everything larger: the conductor triages bycatch into tasks; yours is to see and to say.
 
+## Where durable knowledge goes — the REPO, never a private memory
+
+**NEVER write a lesson, convention, correction, or project fact into an agent's private memory
+store** (e.g. Claude Code's `~/.claude/projects/*/memory/`). Write it where a COLD START fetches
+it, which means a tracked file in this repo:
+
+| what | where |
+|---|---|
+| law every agent must load | `AGENTS.md` (this file; `CLAUDE.md` redirects here) |
+| operative conventions — the WHAT | `project.conventions.md` |
+| the WHY and history behind a convention | `project.decisions.md` |
+| orchestration/fleet lessons | `project.conductor.md`, distilled into `.claude/skills/conductor/SKILL.md` |
+| a domain's invariants | `<domain>.invariants.md` |
+| how to run an instrument | `project.tools.md` |
+
+**Why this is not a preference:** a private memory is invisible to codex builders, to any other
+agent, to the user, and to a fresh session on another machine. Most of the fleet here is codex,
+which cannot read Claude Code's memory at all — so a lesson stored there is a lesson the people
+who need it will never see. The repo travels; a home directory does not.
+
+If a fact seems too small for a tracked file, it is either not worth keeping or it belongs as one
+line in an existing section. Do not invent a new file for it.
+
 ## Reporting to the user
 
 - **Never cite a task number alone.** Write `#151 (dependency boot guard)`, never `#151`. The
