@@ -177,40 +177,46 @@ scripts/harness/TerminalOutputAudit.test.ts`
 ### The conformance corpus replaces the tmux ring
 
 **Invariant:** If the PTY harness uses `TerminalEmulator` as its screen oracle, then the blocking
-`bun test` phase proves that oracle directly from byte fixtures, while tmux originals run only in
-explicit `INVAR_FULL_TMUX=1` audits and never in the normal merge gate.
+`bun test` phase proves that oracle directly from byte fixtures, while distinct tmux originals run
+only in explicit `INVAR_FULL_TMUX=1` audits and never in the normal merge gate. A tmux smoke that is
+a proven strict subset of a gated harness twin is parked, not kept as a stale duplicate.
 
 **Scope:** Post-corpus (2026-07-24, user-approved after the 42/42 port campaign and sentinel-ring
-demotion): `TerminalEmulatorConformance.test.ts` is the normal-gate oracle proof. Every original tmux
-smoke stays registered through `full_tmux_step` for weekly or requested audits; originals are never
-edited to manufacture harness parity.
+demotion): `TerminalEmulatorConformance.test.ts` is the normal-gate oracle proof. Distinct original
+tmux smokes stay registered through `full_tmux_step` for weekly or requested audits. A strict-subset
+duplicate may be retired only when its gated harness replacement and no-loss reason are recorded in
+`project.coverage-deltas.md`; parked originals are never edited to manufacture harness parity.
 
 **Mechanism:** The corpus feeds exact bytes into the same `TerminalEmulator` used by the harness and
 asserts hand-authored expected grids, metadata, modes, write-boundary behavior, and recorded OpenTUI
 streams. This specifies the common dependency deterministically; a statistical second-emulator sample
-is no longer needed on every commit.
+is no longer needed on every commit. The coverage ratchet records the exceptional subset proof, so
+retirement cannot be mistaken for an unreviewed coverage deletion.
 
 **Generates:** a blocking sub-second oracle proof in `bun test`; no tmux sentinel time or flake in the
-normal gate; unchanged tmux originals available for explicit cross-stack audits.
+normal gate; unchanged distinct tmux originals available for explicit cross-stack audits; no
+gate-skipped duplicate left to rot after its complete property set moves into a gated harness.
 
 **Rejected alternatives:** Keep four non-blocking tmux sentinels — a red non-verdict adds time and
 indeterminism while the byte corpus states the expected result directly.
 
 **Evidence:** `src/modules/terminal/TerminalEmulatorConformance.test.ts`;
 `src/modules/terminal/terminal.invariants.md` `Terminal emulator behavior is specified by byte
-fixtures`; `scripts/merge-gate.sh` has no `ring_step` and keeps tmux smokes behind
-`full_tmux_step`.
+fixtures`; `scripts/merge-gate.sh` has no `ring_step` and keeps retained tmux smokes behind
+`full_tmux_step`; `project.coverage-deltas.md` names every parked strict-subset duplicate and its
+gated replacement.
 
 **Impossible if true:** the normal merge gate launching a tmux smoke; an emulator change bypassing
-the blocking byte corpus; deleting the original tmux audit paths.
+the blocking byte corpus; removing a distinct tmux audit path; parking a subset duplicate without a
+named gated replacement and no-loss declaration.
 
 **Verification:** `bun test src/modules/terminal/TerminalEmulatorConformance.test.ts && ! rg
-"ring_step" scripts/merge-gate.sh && rg "full_tmux_step .*smoke: (wrap|git-log|agent-pane-ux|terminal)"
-scripts/merge-gate.sh`
+"ring_step" scripts/merge-gate.sh && rg "full_tmux_step .*smoke: (wrap|git-log|terminal)"
+scripts/merge-gate.sh && rg "retired-smokes/.*\\.sh" project.coverage-deltas.md`
 
 **Status:** established
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-27
 
 ### Input byte latency uses a reviewed gate baseline
 
@@ -528,7 +534,7 @@ quiet-exclusive lock while ordinary gate load runs under the loud-shared lock.
 
 **Scope:** `scripts/quiet-lock.sh`; the quiet-serial tail in
 `scripts/merge-gate.sh`; direct runs of `scripts/behavioral-contracts.sh`,
-`scripts/smoke-agent-pane-ux.sh`, `scripts/perf-baselines.sh`,
+`scripts/perf-baselines.sh`,
 `scripts/harness/smoke-terminal-stage-harness.ts`,
 `scripts/harness/measure-scroll-smoothness.ts`, and the input-byte-flush
 measurement. `INVAR_QUIET_LOCK=0` deliberately suspends this guarantee for
@@ -560,7 +566,7 @@ serialize against one another; a crashed holder wedges acquisition forever.
 
 **Verification:** `bun test scripts/harness/QuietLock.test.ts && bash -n
 scripts/quiet-lock.sh scripts/merge-gate.sh scripts/behavioral-contracts.sh
-scripts/smoke-agent-pane-ux.sh scripts/perf-baselines.sh`
+scripts/perf-baselines.sh`
 
 **Status:** established
 

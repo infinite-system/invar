@@ -422,6 +422,9 @@ class $GitPlugin
       // `editorSurfaceIdentifier`.
       showingDiff: workspace.showingComparison.value,
       diffScrollTop: comparisonView?.alignedRowScrollOffset.value ?? 0,
+      diffHeaderGeometry: comparisonView?.headerGeometry() ?? [],
+      diffOverviewRulerGeometry:
+        comparisonView?.overviewRulerGeometry() ?? null,
       diffVerticalScrollImpulseCount:
         comparisonView?.verticalScrollMomentum.value
           .restEquivalentGestureImpulseCount ?? 0,

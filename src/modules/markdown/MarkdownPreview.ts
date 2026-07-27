@@ -5,8 +5,15 @@ import {
   type MarkdownDocumentOptions,
   type MarkdownSource,
 } from './MarkdownDocument';
-import type { BlockRecord, BlockKind } from './MarkdownParser';
+import type {
+  BlockRecord,
+  BlockKind,
+  TableCellRecord,
+  TableColumnAlignment,
+} from './MarkdownParser';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { StatusChannel } from '../system/StatusChannel';
+import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
@@ -113,7 +120,11 @@ class $MarkdownPreview {
   }
 
   // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
-  visibleRows(width: number, height: number): PreviewRow[] {
+  visibleRows(
+    width: number,
+    height: number,
+    tableBorders: TableBorderGlyphSet,
+  ): PreviewRow[] {
     const document = this.document.value;
     const rowWidth = Math.max(1, Math.floor(width));
     const rowLimit = Math.max(0, Math.floor(height));
@@ -130,12 +141,13 @@ class $MarkdownPreview {
       rowWidth,
       this.scrollTop.value,
       rowLimit,
+      tableBorders,
     );
   }
 
   /** Materialize the rendered text only for operations whose domain is the whole preview (find and
    * copy selection). Normal painting continues to call visibleRows and stays viewport bounded. */
-  allRows(width: number): PreviewRow[] {
+  allRows(width: number, tableBorders: TableBorderGlyphSet): PreviewRow[] {
     const document = this.document.value;
     const rowWidth = Math.max(1, Math.floor(width));
     if (!document) return [];
@@ -149,6 +161,7 @@ class $MarkdownPreview {
       rowWidth,
       0,
       Number.MAX_SAFE_INTEGER,
+      tableBorders,
     );
   }
 
@@ -164,15 +177,11 @@ class $MarkdownPreview {
     const document = this.document.value;
     if (!document) return 0;
     let rowCount = 0;
-    const emit: EmitRow = () => {
-      rowCount++;
-      return false;
-    };
-    this.visitBlocks(
-      document.blocks.value,
-      Math.max(1, Math.floor(width)),
-      emit,
-    );
+    const rowWidth = Math.max(1, Math.floor(width));
+    for (const block of document.blocks.value) {
+      if (block.kind === 'list') continue;
+      rowCount += this.rowCountForBlock(block, rowWidth) + 1;
+    }
     return rowCount;
   }
 
@@ -197,51 +206,90 @@ class $MarkdownPreview {
     width: number,
     firstVisible: number,
     visibleCount: number,
+    tableBorders: TableBorderGlyphSet,
   ): PreviewRow[] {
     const rows: PreviewRow[] = [];
     let rowIndex = 0;
     const endVisible = firstVisible + visibleCount;
-    const emit: EmitRow = (
-      block,
-      blockIndex,
-      textStart,
-      textEnd,
-      prefix,
-      suffix,
-      role,
-      overrideText,
-    ) => {
-      if (rowIndex >= firstVisible && rowIndex < endVisible) {
-        rows.push({
-          block,
-          blockIndex,
-          textStart,
-          textEnd,
-          prefix,
-          suffix,
-          role,
-          overrideText,
-        });
-      }
-      rowIndex++;
-      return rowIndex >= endVisible;
-    };
 
-    this.visitBlocks(blocks, width, emit);
-    return rows;
-  }
-
-  protected visitBlocks(
-    blocks: readonly BlockRecord[],
-    width: number,
-    emit: EmitRow,
-  ): void {
     for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
-      if (this.visitBlock(block, blockIndex, width, emit)) return;
-      if (emit(null, -1, 0, 0, '', '', 'spacer')) return;
+      const blockRowCount = this.rowCountForBlock(block, width);
+      const blockEndRow = rowIndex + blockRowCount;
+
+      if (blockEndRow > firstVisible && rowIndex < endVisible) {
+        if (block.kind === 'table') {
+          this.appendVisibleTableRows(
+            rows,
+            block,
+            blockIndex,
+            width,
+            Math.max(0, firstVisible - rowIndex),
+            Math.min(blockRowCount, endVisible - rowIndex),
+            tableBorders,
+          );
+        } else {
+          let blockLocalRow = 0;
+          const emit: EmitRow = (
+            emittedBlock,
+            emittedBlockIndex,
+            textStart,
+            textEnd,
+            prefix,
+            suffix,
+            role,
+            overrideText,
+          ) => {
+            const emittedRowIndex = rowIndex + blockLocalRow;
+            if (
+              emittedRowIndex >= firstVisible &&
+              emittedRowIndex < endVisible
+            ) {
+              rows.push({
+                block: emittedBlock,
+                blockIndex: emittedBlockIndex,
+                textStart,
+                textEnd,
+                prefix,
+                suffix,
+                role,
+                overrideText,
+              });
+            }
+            blockLocalRow++;
+            return emittedRowIndex + 1 >= endVisible;
+          };
+          this.visitBlock(block, blockIndex, width, emit);
+        }
+      }
+
+      rowIndex = blockEndRow;
+      if (rowIndex >= firstVisible && rowIndex < endVisible) {
+        rows.push({
+          block: null,
+          blockIndex: -1,
+          textStart: 0,
+          textEnd: 0,
+          prefix: '',
+          suffix: '',
+          role: 'spacer',
+        });
+      }
+      rowIndex++;
+      if (rowIndex >= endVisible) break;
     }
+    return rows;
+  }
+
+  protected rowCountForBlock(block: BlockRecord, width: number): number {
+    if (block.kind === 'table') return (block.table?.rows.length ?? 0) + 1;
+    let rowCount = 0;
+    this.visitBlock(block, -1, width, () => {
+      rowCount++;
+      return false;
+    });
+    return rowCount;
   }
 
   protected visitBlock(
@@ -264,15 +312,7 @@ class $MarkdownPreview {
           emit,
         );
       case 'table':
-        return this.visitWrapped(
-          block,
-          blockIndex,
-          width,
-          '│ ',
-          ' │',
-          'table',
-          emit,
-        );
+        return false;
       case 'hr':
         return emit(block, blockIndex, 0, 0, '', '', 'rule', '─'.repeat(width));
       case 'listitem': {
@@ -414,6 +454,176 @@ class $MarkdownPreview {
     return false;
   }
 
+  protected appendVisibleTableRows(
+    rows: PreviewRow[],
+    block: BlockRecord,
+    blockIndex: number,
+    width: number,
+    firstLocalRow: number,
+    endLocalRow: number,
+    tableBorders: TableBorderGlyphSet,
+  ): void {
+    // invariant: Markdown tables align by display cells (src/modules/markdown/markdown.invariants.md)
+    const table = block.table;
+    if (!table || table.rows.length === 0) return;
+    const contentWidths = this.tableContentWidths(
+      width,
+      table.alignments.length,
+    );
+
+    for (
+      let localRowIndex = firstLocalRow;
+      localRowIndex < endLocalRow;
+      localRowIndex++
+    ) {
+      if (localRowIndex === 1) {
+        rows.push(
+          this.tableSeparatorRow(
+            block,
+            blockIndex,
+            contentWidths,
+            tableBorders,
+          ),
+        );
+        continue;
+      }
+      const tableRowIndex = localRowIndex === 0 ? 0 : localRowIndex - 1;
+      const tableRow = table.rows[tableRowIndex];
+      if (!tableRow) continue;
+      rows.push(
+        this.tableContentRow(
+          block,
+          blockIndex,
+          tableRow,
+          tableRowIndex,
+          table.alignments,
+          contentWidths,
+          tableBorders,
+        ),
+      );
+    }
+  }
+
+  protected tableContentWidths(width: number, columnCount: number): number[] {
+    if (columnCount <= 0) return [];
+    const fixedBorderAndPaddingWidth = columnCount * 3 + 1;
+    const distributableWidth = Math.max(
+      columnCount,
+      width - fixedBorderAndPaddingWidth,
+    );
+    const baseContentWidth = Math.floor(distributableWidth / columnCount);
+    const extraColumns = distributableWidth % columnCount;
+    return Array.from(
+      { length: columnCount },
+      (_unused, columnIndex) =>
+        baseContentWidth + (columnIndex < extraColumns ? 1 : 0),
+    );
+  }
+
+  protected tableContentRow(
+    block: BlockRecord,
+    blockIndex: number,
+    cells: readonly TableCellRecord[],
+    tableRowIndex: number,
+    alignments: readonly TableColumnAlignment[],
+    contentWidths: readonly number[],
+    tableBorders: TableBorderGlyphSet,
+  ): PreviewRow {
+    let overrideText = tableBorders.vertical;
+    let nextCellColumn = 1;
+    const previewCells: PreviewTableCell[] = [];
+
+    for (
+      let columnIndex = 0;
+      columnIndex < contentWidths.length;
+      columnIndex++
+    ) {
+      const contentWidth = contentWidths[columnIndex]!;
+      const cell = cells[columnIndex]!;
+      const visibleText = EditorCoordinates.Class.displayColumnWindow(
+        cell.text,
+        0,
+        contentWidth,
+      );
+      const unusedWidth = Math.max(
+        0,
+        contentWidth - EditorCoordinates.Class.lineWidth(visibleText),
+      );
+      const alignment = alignments[columnIndex] ?? 'left';
+      const alignmentPadding = this.tableAlignmentPadding(
+        alignment,
+        unusedWidth,
+      );
+      const leadingPadding = ` ${' '.repeat(alignmentPadding.left)}`;
+      const trailingPadding = `${' '.repeat(alignmentPadding.right)} `;
+      const textStartDisplayColumn =
+        nextCellColumn + EditorCoordinates.Class.lineWidth(leadingPadding);
+
+      previewCells.push({
+        cell,
+        cellIndex: columnIndex,
+        visibleText,
+        leadingPadding,
+        trailingPadding,
+        textStartDisplayColumn,
+      });
+      overrideText +=
+        leadingPadding + visibleText + trailingPadding + tableBorders.vertical;
+      nextCellColumn += contentWidth + 3;
+    }
+
+    return {
+      block,
+      blockIndex,
+      textStart: 0,
+      textEnd: 0,
+      prefix: '',
+      suffix: '',
+      role: tableRowIndex === 0 ? 'tableHeader' : 'tableBody',
+      overrideText,
+      tableRowIndex,
+      tableCells: previewCells,
+      tableBorders,
+    };
+  }
+
+  protected tableAlignmentPadding(
+    alignment: TableColumnAlignment,
+    unusedWidth: number,
+  ): { left: number; right: number } {
+    if (alignment === 'right') return { left: unusedWidth, right: 0 };
+    if (alignment === 'center') {
+      const left = Math.floor(unusedWidth / 2);
+      return { left, right: unusedWidth - left };
+    }
+    return { left: 0, right: unusedWidth };
+  }
+
+  protected tableSeparatorRow(
+    block: BlockRecord,
+    blockIndex: number,
+    contentWidths: readonly number[],
+    tableBorders: TableBorderGlyphSet,
+  ): PreviewRow {
+    const segments = contentWidths.map((contentWidth) =>
+      tableBorders.horizontal.repeat(contentWidth + 2),
+    );
+    return {
+      block,
+      blockIndex,
+      textStart: 0,
+      textEnd: 0,
+      prefix: '',
+      suffix: '',
+      role: 'tableSeparator',
+      overrideText:
+        tableBorders.leftJunction +
+        segments.join(tableBorders.intersection) +
+        tableBorders.rightJunction,
+      tableBorders,
+    };
+  }
+
   protected statusRow(text: string): PreviewRow {
     return {
       block: null,
@@ -444,7 +654,9 @@ export type PreviewRowRole =
   | 'codeBorder'
   | 'codeContent'
   | 'quote'
-  | 'table'
+  | 'tableHeader'
+  | 'tableBody'
+  | 'tableSeparator'
   | 'rule'
   | 'spacer'
   | 'status';
@@ -459,6 +671,18 @@ export interface PreviewRow {
   suffix: string;
   role: PreviewRowRole;
   overrideText?: string;
+  tableRowIndex?: number;
+  tableCells?: readonly PreviewTableCell[];
+  tableBorders?: TableBorderGlyphSet;
+}
+
+export interface PreviewTableCell {
+  cell: TableCellRecord;
+  cellIndex: number;
+  visibleText: string;
+  leadingPadding: string;
+  trailingPadding: string;
+  textStartDisplayColumn: number;
 }
 
 type EmitRow = (

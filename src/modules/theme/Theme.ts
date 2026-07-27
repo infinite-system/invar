@@ -20,6 +20,7 @@ import {
   type InterfaceGlyphVocabulary,
   type SymbolClass,
   type SymbolMarkSet,
+  type TableBorderGlyphSet,
 } from './ThemeIcons';
 
 class $Theme {
@@ -78,6 +79,9 @@ class $Theme {
   }
   get glyphVocabulary(): InterfaceGlyphVocabulary {
     return ThemeIcons.Class.interfaceGlyphVocabularyFor(this.glyphLevel.value);
+  }
+  get tableBorders(): TableBorderGlyphSet {
+    return ThemeIcons.Class.tableBordersFor(this.glyphLevel.value);
   }
   /** Find-bar action-button glyphs (prev/next/replace/replace-all/mode) at the current glyph level. */
   get findIcons(): FindIconSet {

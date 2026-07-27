@@ -219,6 +219,59 @@ screen.
 
 **Last refined:** 2026-07-21
 
+### Markdown tables align by display cells
+
+**Invariant:** If a valid Markdown table is previewed, then its parsed cells share fixed
+display-cell column boundaries, use the declared left center and right alignments, and truncate
+inside a narrow pane without wrapping a cell or painting outside the pane.
+
+**Scope:** `MarkdownParser.readTable`, `MarkdownPreview.appendVisibleTableRows`,
+`MarkdownRenderable.appendTableRow`, and the `TableBorderGlyphSet` supplied by the active theme.
+Malformed tables and whole-preview find materialization use the fallback behavior described below.
+
+**Components:**
+- *Parsing owns table syntax* — `BlockRecord.table` carries rows, cells, and alignments; projection
+  never parses pipe syntax.
+- *Projection owns display geometry* — equal column shares come from pane width, and cell text is
+  measured, truncated, aligned, and padded through `EditorCoordinates`.
+- *Painting stays viewport bounded* — `totalRows` counts table rows without visiting cells, and
+  `visibleRows` materializes table rows only where they intersect the viewport.
+
+**Mechanism:** `MarkdownParser` validates one column count and stores compact plain cell records.
+`MarkdownPreview` distributes the available display cells without scanning body content and lays
+out only the requested row range. `MarkdownRenderable` paints those rows with the active
+theme's table-border vocabulary inside an overflow-hidden `SelectableText`.
+`MarkdownSplitView` materializes `allRows` only when find or selection needs the whole preview and
+caches that result by revision, width, and border vocabulary; ordinary update and scroll frames
+never take that path.
+
+**Generates:** aligned terminal tables; left center and right marker behavior; stable boundaries
+for CJK, emoji, and combining marks; viewport-independent cost for 10-row and 1000-row tables;
+raw visible paragraph fallback for a missing separator or ragged row.
+
+**Rejected alternatives:** Measure every body row to find natural widths — frame cost grows with
+table length. Reparse pipes in the painter — parser and projection can disagree about cells.
+
+**Evidence:** `MarkdownParser.test.ts` (`parses table cells and column alignment without painting
+syntax`, `malformed tables remain visible paragraph text`); `MarkdownPreview.test.ts` (`table
+columns align in display cells with left center and right content`, `table projection measures
+only visible rows at small and large scale`); `MarkdownSplitView.test.ts` (`unchanged frames do not
+materialize the whole preview document`); `scripts/harness/smoke-markdown-harness.ts`.
+
+**Impossible if true:** A valid table appearing as raw pipe rows; a CJK, emoji, or combining-mark
+cell shifting a later border; center or right markers painting as left alignment; a table row
+wrapping mid-cell; table output replacing a neighbouring pane cell; a 1000-row table measuring
+more cells per visible row than a 10-row table; malformed table text disappearing or crashing the
+preview; an ordinary unchanged frame materializing the whole preview document.
+
+**Verification:** `bun test src/modules/markdown/MarkdownParser.test.ts
+src/modules/markdown/MarkdownPreview.test.ts src/modules/markdown/MarkdownSplitView.test.ts
+src/modules/theme/ThemeIcons.test.ts && bun scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-27
+
 ### A Markdown file offers a live source preview split
 
 **Invariant:** If the active editor tab is a Markdown file and preview mode is enabled, then the

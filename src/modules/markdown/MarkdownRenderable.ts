@@ -14,6 +14,7 @@ import {
 import { MarkdownParser, type BlockRecord } from './MarkdownParser';
 import { MarkdownPreview, type PreviewRow } from './MarkdownPreview';
 import type { Palette } from '../theme/ThemePalettes';
+import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 import { SelectableText } from '../ui/SelectableText';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import type { FindInBuffer } from '../search/FindInBuffer';
@@ -92,9 +93,13 @@ class $MarkdownRenderable extends BoxRenderable {
     const row = this.visibleRowsSnapshot[visibleRowIndex];
     if (!row?.block) return null;
     const rowText = this.preview.textForRow(row);
+    const rowDisplayColumn = Math.max(0, screenColumn - this.bodyRenderable.x);
+    if (row.tableCells && row.tableRowIndex !== undefined) {
+      return this.tableReferenceAtDisplayColumn(row, rowDisplayColumn);
+    }
     const rowGraphemeColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
       rowText,
-      Math.max(0, screenColumn - this.bodyRenderable.x),
+      rowDisplayColumn,
     );
     const rowUtf16Offset = EditorCoordinates.Class.graphemeToU16(
       rowText,
@@ -158,7 +163,11 @@ class $MarkdownRenderable extends BoxRenderable {
     const palette = this.theme.palette;
     const width = Math.max(1, this.width);
     const height = Math.max(1, this.height);
-    const rows = this.preview.visibleRows(width, height);
+    const rows = this.preview.visibleRows(
+      width,
+      height,
+      this.theme.tableBorders,
+    );
     this.visibleRowsSnapshot = rows;
     const chunks: TextChunk[] = [];
 
@@ -185,12 +194,20 @@ class $MarkdownRenderable extends BoxRenderable {
       chunks.push(italic(fg(palette.dim)(row.overrideText ?? '')));
       return;
     }
-    if (row.role === 'rule' || row.role === 'codeBorder') {
+    if (
+      row.role === 'rule' ||
+      row.role === 'codeBorder' ||
+      row.role === 'tableSeparator'
+    ) {
       chunks.push(
         fg(row.role === 'rule' ? palette.dim : palette.border)(
           row.overrideText ?? '',
         ),
       );
+      return;
+    }
+    if (row.role === 'tableHeader' || row.role === 'tableBody') {
+      this.appendTableRow(chunks, row, palette);
       return;
     }
 
@@ -293,7 +310,6 @@ class $MarkdownRenderable extends BoxRenderable {
     if (row.role === 'codeContent')
       return bg(palette.panel)(fg(palette.border)(text));
     if (row.role === 'quote') return bold(fg(palette.accent)(text));
-    if (row.role === 'table') return fg(palette.border)(text);
     return fg(palette.accent)(text);
   }
 
@@ -306,6 +322,7 @@ class $MarkdownRenderable extends BoxRenderable {
     findHighlighted: boolean,
     referenceHovered: boolean,
     palette: Palette,
+    links: readonly string[] = block.links,
   ): TextChunk {
     const color = this.blockColor(block.kind, row, palette);
     let chunk = fg(color)(text);
@@ -321,14 +338,16 @@ class $MarkdownRenderable extends BoxRenderable {
       chunk = bold(chunk);
     } else if (inlineStyle === MarkdownParser.Class.inlineStyles.link) {
       chunk = underline(fg(palette.accent)(chunk));
-      const target = block.links[linkIndexPlusOne - 1];
+      const target = links[linkIndexPlusOne - 1];
       if (target) chunk = terminalLink(target)(chunk);
     }
 
     if (referenceHovered) chunk = bold(underline(fg(palette.accent)(chunk)));
     if (findHighlighted) chunk = bg(palette.cursorLine)(chunk);
 
-    if (block.kind === 'heading') chunk = bold(chunk);
+    if (block.kind === 'heading' || row.role === 'tableHeader') {
+      chunk = bold(chunk);
+    }
     return chunk;
   }
 
@@ -339,7 +358,9 @@ class $MarkdownRenderable extends BoxRenderable {
   ): string {
     if (kind === 'heading') return palette.accent;
     if (row.role === 'quote') return palette.dim;
-    if (row.role === 'table') return palette.fg;
+    if (row.role === 'tableHeader' || row.role === 'tableBody') {
+      return palette.fg;
+    }
     if (row.role === 'codeContent') return palette.string;
     return palette.fg;
   }
@@ -352,6 +373,155 @@ class $MarkdownRenderable extends BoxRenderable {
   ): string {
     return `${blockIndex}:${spanStart}:${spanEnd}:${inlineStyle}`;
   }
+
+  protected tableReferenceAtDisplayColumn(
+    row: PreviewRow,
+    rowDisplayColumn: number,
+  ): MarkdownReferenceHit | null {
+    if (!row.block || row.tableRowIndex === undefined || !row.tableCells) {
+      return null;
+    }
+    for (const previewCell of row.tableCells) {
+      const visibleTextWidth = EditorCoordinates.Class.lineWidth(
+        previewCell.visibleText,
+      );
+      if (
+        rowDisplayColumn < previewCell.textStartDisplayColumn ||
+        rowDisplayColumn >=
+          previewCell.textStartDisplayColumn + visibleTextWidth
+      ) {
+        continue;
+      }
+      const localDisplayColumn =
+        rowDisplayColumn - previewCell.textStartDisplayColumn;
+      const graphemeColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+        previewCell.visibleText,
+        localDisplayColumn,
+      );
+      const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+        previewCell.visibleText,
+        graphemeColumn,
+      );
+      for (
+        let spanIndex = 0;
+        spanIndex < previewCell.cell.spans.length;
+        spanIndex += 4
+      ) {
+        const spanStart = previewCell.cell.spans[spanIndex]!;
+        const spanEnd = previewCell.cell.spans[spanIndex + 1]!;
+        const inlineStyle = previewCell.cell.spans[spanIndex + 2]!;
+        const linkIndexPlusOne = previewCell.cell.spans[spanIndex + 3]!;
+        if (utf16Offset < spanStart || utf16Offset >= spanEnd) continue;
+        const target =
+          inlineStyle === MarkdownParser.Class.inlineStyles.link
+            ? previewCell.cell.links[linkIndexPlusOne - 1]
+            : inlineStyle === MarkdownParser.Class.inlineStyles.code
+              ? previewCell.cell.text.slice(spanStart, spanEnd)
+              : undefined;
+        if (!target) return null;
+        return {
+          key: this.tableReferenceKey(
+            row.blockIndex,
+            row.tableRowIndex,
+            previewCell.cellIndex,
+            spanStart,
+            spanEnd,
+            inlineStyle,
+          ),
+          target,
+        };
+      }
+    }
+    return null;
+  }
+
+  protected appendTableRow(
+    chunks: TextChunk[],
+    row: PreviewRow,
+    palette: Palette,
+  ): void {
+    // invariant: Markdown tables align by display cells (src/modules/markdown/markdown.invariants.md)
+    if (!row.block || !row.tableCells || !row.tableBorders) return;
+    chunks.push(fg(palette.border)(row.tableBorders.vertical));
+    for (const previewCell of row.tableCells) {
+      chunks.push(fg(palette.fg)(previewCell.leadingPadding));
+      this.appendTableCellText(chunks, row, previewCell, palette);
+      chunks.push(fg(palette.fg)(previewCell.trailingPadding));
+      chunks.push(fg(palette.border)(row.tableBorders.vertical));
+    }
+  }
+
+  protected appendTableCellText(
+    chunks: TextChunk[],
+    row: PreviewRow,
+    previewCell: NonNullable<PreviewRow['tableCells']>[number],
+    palette: Palette,
+  ): void {
+    if (!row.block || row.tableRowIndex === undefined) return;
+    let position = 0;
+    while (position < previewCell.visibleText.length) {
+      let nextBoundary = previewCell.visibleText.length;
+      let activeStyle = 0;
+      let activeLink = 0;
+      let activeSpanStart = -1;
+      let activeSpanEnd = -1;
+
+      for (
+        let spanIndex = 0;
+        spanIndex < previewCell.cell.spans.length;
+        spanIndex += 4
+      ) {
+        const spanStart = previewCell.cell.spans[spanIndex]!;
+        const spanEnd = previewCell.cell.spans[spanIndex + 1]!;
+        if (spanStart <= position && spanEnd > position) {
+          activeStyle = previewCell.cell.spans[spanIndex + 2]!;
+          activeLink = previewCell.cell.spans[spanIndex + 3]!;
+          activeSpanStart = spanStart;
+          activeSpanEnd = spanEnd;
+          nextBoundary = Math.min(nextBoundary, spanEnd);
+        } else if (spanStart > position) {
+          nextBoundary = Math.min(nextBoundary, spanStart);
+        }
+      }
+
+      const referenceKey =
+        activeSpanStart >= 0
+          ? this.tableReferenceKey(
+              row.blockIndex,
+              row.tableRowIndex,
+              previewCell.cellIndex,
+              activeSpanStart,
+              activeSpanEnd,
+              activeStyle,
+            )
+          : null;
+      chunks.push(
+        this.decorateText(
+          previewCell.visibleText.slice(position, nextBoundary),
+          row.block,
+          row,
+          activeStyle,
+          activeLink,
+          false,
+          referenceKey !== null && referenceKey === this.hoveredReferenceKey,
+          palette,
+          previewCell.cell.links,
+        ),
+      );
+      position = nextBoundary;
+    }
+  }
+
+  protected tableReferenceKey(
+    blockIndex: number,
+    tableRowIndex: number,
+    cellIndex: number,
+    spanStart: number,
+    spanEnd: number,
+    inlineStyle: number,
+  ): string {
+    return `${blockIndex}:${tableRowIndex}:${cellIndex}:${spanStart}:${spanEnd}:${inlineStyle}`;
+  }
 }
 
 export namespace MarkdownRenderable {
@@ -362,6 +532,7 @@ export namespace MarkdownRenderable {
 
 export interface MarkdownRenderableTheme {
   readonly palette: Palette;
+  readonly tableBorders: TableBorderGlyphSet;
 }
 
 export type MarkdownRenderableOptions = Omit<BoxOptions, 'flexDirection'>;

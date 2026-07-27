@@ -468,6 +468,38 @@ class $ThemeIcons {
     };
   }
 
+  // Markdown-table borders form one vocabulary because their joints must agree as a set. They stay
+  // separate from InterfaceGlyphVocabulary: these glyphs describe content geometry, not controls.
+  // invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
+  protected static get TABLE_BORDERS(): Record<
+    GlyphLevel,
+    TableBorderGlyphSet
+  > {
+    return {
+      nerd: {
+        vertical: '│',
+        horizontal: '─',
+        intersection: '┼',
+        leftJunction: '├',
+        rightJunction: '┤',
+      },
+      unicode: {
+        vertical: '│',
+        horizontal: '─',
+        intersection: '┼',
+        leftJunction: '├',
+        rightJunction: '┤',
+      },
+      ascii: {
+        vertical: '|',
+        horizontal: '-',
+        intersection: '+',
+        leftJunction: '+',
+        rightJunction: '+',
+      },
+    };
+  }
+
   protected static get $activityIcons(): Record<GlyphLevel, ActivityIconSet> {
     return this.cache('$activityIcons', {
       nerd: this.activityIconSetFrom(this.INTERFACE_GLYPH_VOCABULARIES.nerd),
@@ -601,6 +633,10 @@ class $ThemeIcons {
 
   static glyphFor(level: GlyphLevel, slot: GlyphSlot): string {
     return this.INTERFACE_GLYPH_VOCABULARIES[level][slot];
+  }
+
+  static tableBordersFor(level: GlyphLevel): TableBorderGlyphSet {
+    return this.TABLE_BORDERS[level];
   }
 
   static findIconsFor(level: GlyphLevel): FindIconSet {
@@ -814,6 +850,14 @@ export interface InterfaceGlyphVocabulary {
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;
+
+export interface TableBorderGlyphSet {
+  vertical: string;
+  horizontal: string;
+  intersection: string;
+  leftJunction: string;
+  rightJunction: string;
+}
 
 export interface FindIconSet {
   search: string;

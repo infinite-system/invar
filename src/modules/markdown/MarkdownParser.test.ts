@@ -74,11 +74,36 @@ test('parses a blockquote joining stripped lines', () => {
   expect(quote!.text).toBe('quoted line\nsecond quote');
 });
 
-test('parses a table into normalized rows', () => {
-  const [table] = parse('| a | b |\n| --- | --- |\n| 1 | 2 |');
+test('parses table cells and column alignment without painting syntax', () => {
+  const [table] = parse(
+    '| a | middle | z |\n| :--- | :---: | ---: |\n| 1 | `two` | 3 |',
+  );
   expect(table!.kind).toBe('table');
-  // header + body rows, separator row dropped, cells joined with a box divider
-  expect(table!.text).toBe('a │ b\n1 │ 2');
+  expect(table!.table?.alignments).toEqual(['left', 'center', 'right']);
+  expect(table!.table?.rows.map((row) => row.map((cell) => cell.text))).toEqual(
+    [
+      ['a', 'middle', 'z'],
+      ['1', 'two', '3'],
+    ],
+  );
+  expect(table!.table?.rows[1]![1]!.spans).toEqual([
+    0,
+    3,
+    MarkdownParser.Class.inlineStyles.code,
+    0,
+  ]);
+});
+
+test('malformed tables remain visible paragraph text', () => {
+  const [missingSeparator] = parse('| a | b |\n| one | two |');
+  expect(missingSeparator!.kind).toBe('paragraph');
+  expect(missingSeparator!.text).toContain('| a | b |');
+  expect(missingSeparator!.text).toContain('| one | two |');
+
+  const [ragged] = parse('| a | b |\n| --- | --- |\n| one | two | extra |');
+  expect(ragged!.kind).toBe('paragraph');
+  expect(ragged!.text).toContain('| --- | --- |');
+  expect(ragged!.text).toContain('| one | two | extra |');
 });
 
 test('parses a horizontal rule', () => {

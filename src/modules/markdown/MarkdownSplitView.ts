@@ -38,6 +38,9 @@ class $MarkdownSplitView {
   protected readonly splitRatioSetting: RegisteredSetting<number>;
   protected lastLaidOutWidth = -1;
   protected renderedPreviewText = '';
+  protected renderedPreviewRevision = -1;
+  protected renderedPreviewWidth = -1;
+  protected renderedPreviewBorderSignature = '';
 
   get focusedPane() {
     return ref<MarkdownSplitPane>('source');
@@ -253,7 +256,6 @@ class $MarkdownSplitView {
       this.hoveredReferenceKey.value,
     );
     this.previewRenderable.refresh();
-    this.synchronizeRenderedPreviewDocument();
     this.applyPreviewSelection();
   }
 
@@ -277,13 +279,7 @@ class $MarkdownSplitView {
     const laidOutWidth = Number(this.rootRenderable.width) || 0;
     const layoutChanged = laidOutWidth !== this.lastLaidOutWidth;
     if (layoutChanged) this.lastLaidOutWidth = laidOutWidth;
-    const documentChanged = this.synchronizeRenderedPreviewDocument();
-    if (
-      momentumStep.rows !== 0 ||
-      selectionAutoscrolling ||
-      layoutChanged ||
-      documentChanged
-    ) {
+    if (momentumStep.rows !== 0 || selectionAutoscrolling || layoutChanged) {
       this.update();
     }
     return (
@@ -308,10 +304,12 @@ class $MarkdownSplitView {
   }
 
   async copySelection(): Promise<number> {
+    this.synchronizeRenderedPreviewDocument();
     return this.previewTextBuffer.copySelection();
   }
 
   selectAll(): void {
+    this.synchronizeRenderedPreviewDocument();
     this.previewTextBuffer.selectAll();
     this.selectionRevision.value += 1;
     this.applyPreviewSelection();
@@ -344,10 +342,22 @@ class $MarkdownSplitView {
   }
 
   protected synchronizeRenderedPreviewDocument(): boolean {
+    const previewWidth = this.previewViewportWidth();
+    const borderSignature = Object.values(this.theme.tableBorders).join('');
+    if (
+      this.renderedPreviewRevision === this.preview.parsedRevision &&
+      this.renderedPreviewWidth === previewWidth &&
+      this.renderedPreviewBorderSignature === borderSignature
+    ) {
+      return false;
+    }
     const renderedText = this.preview
-      .allRows(this.previewViewportWidth())
+      .allRows(previewWidth, this.theme.tableBorders)
       .map((row) => this.preview.textForRow(row))
       .join('\n');
+    this.renderedPreviewRevision = this.preview.parsedRevision;
+    this.renderedPreviewWidth = previewWidth;
+    this.renderedPreviewBorderSignature = borderSignature;
     if (renderedText === this.renderedPreviewText) return false;
     this.renderedPreviewText = renderedText;
     this.previewTextBuffer.replaceText(renderedText);
@@ -412,6 +422,7 @@ class $MarkdownSplitView {
         this.options.openReference(resolvedReference.path);
         return;
       }
+      this.synchronizeRenderedPreviewDocument();
       this.previewSelectionDragBehavior.begin(event.x, event.y);
     };
     previewBody.onMouseDrag = (event) =>

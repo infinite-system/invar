@@ -5,10 +5,11 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 import { createHash } from 'node:crypto';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -32,17 +33,33 @@ interface DiffSelection {
   end: SelectionPosition;
 }
 
+interface DiffHeaderSegmentGeometry {
+  readonly kind: 'openFull' | 'nextChange' | 'previousChange';
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+interface DiffOverviewRulerGeometry {
+  readonly top: number;
+  readonly left: number;
+  readonly height: number;
+}
+
 const modifiedColor = 0x6183bb;
 const addedColor = 0x41a6b5;
 const deletedColor = 0xdb4b4b;
 const selectionColor = 0x2b2f41;
+const diffGlyphVocabulary =
+  ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
 
-function overviewProof(snapshot: HarnessSnapshot.Model): OverviewProof | null {
-  for (
-    let column = snapshot.columns - 1;
-    column >= Math.max(0, snapshot.columns - 8);
-    column--
-  ) {
+function overviewProof(
+  snapshot: HarnessSnapshot.Model,
+  geometry: DiffOverviewRulerGeometry,
+): OverviewProof | null {
+  const trackTop = geometry.top;
+  const trackBottom = geometry.top + geometry.height;
+  for (let column = geometry.left; column <= geometry.left; column++) {
     const modifiedRows: number[] = [];
     const addedRows: number[] = [];
     const deletedRows: number[] = [];
@@ -59,8 +76,6 @@ function overviewProof(snapshot: HarnessSnapshot.Model): OverviewProof | null {
       deletedRows.length === 0
     )
       continue;
-    const trackTop = 2;
-    const trackBottom = snapshot.rows - 2;
     const trackExtent = Math.max(1, trackBottom - trackTop);
     const modifiedPosition =
       ((modifiedRows[0] ?? trackBottom) - trackTop) / trackExtent;
@@ -86,6 +101,45 @@ function overviewProof(snapshot: HarnessSnapshot.Model): OverviewProof | null {
     }
   }
   return null;
+}
+
+function diffHeaderGeometry(
+  status: StatusSnapshot,
+): readonly DiffHeaderSegmentGeometry[] {
+  return Array.isArray(status.diffHeaderGeometry)
+    ? (status.diffHeaderGeometry as unknown as readonly DiffHeaderSegmentGeometry[])
+    : [];
+}
+
+function diffOverviewRulerGeometry(
+  status: StatusSnapshot,
+): DiffOverviewRulerGeometry | null {
+  const geometry = status.diffOverviewRulerGeometry;
+  if (!geometry || typeof geometry !== 'object') return null;
+  return geometry as DiffOverviewRulerGeometry;
+}
+
+function headerSegmentCenter(segment: DiffHeaderSegmentGeometry): {
+  readonly column: number;
+  readonly row: number;
+} {
+  return {
+    column: Math.floor(
+      (segment.startColumn + segment.endColumnExclusive - 1) / 2,
+    ),
+    row: segment.row,
+  };
+}
+
+function headerSegmentContainsGlyph(
+  snapshot: HarnessSnapshot.Model,
+  segment: DiffHeaderSegmentGeometry,
+  glyph: string,
+): boolean {
+  return snapshot
+    .rowCells(segment.row)
+    .slice(segment.startColumn, segment.endColumnExclusive)
+    .some((cell) => cell.characters === glyph);
 }
 
 function selectionPaintedRowCount(snapshot: HarnessSnapshot.Model): number {
@@ -154,6 +208,11 @@ const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-diff-overview-harness-home-'),
 );
 const statusPath = join(homeDirectory, 'status.json');
+mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+await Bun.write(
+  join(homeDirectory, '.config', 'invar', 'settings.json'),
+  JSON.stringify({ glyphMode: 'unicode' }),
+);
 const currentPath = join(fixtureRoot, 'long.txt');
 const originalLines = Array.from(
   { length: 120 },
@@ -196,14 +255,25 @@ try {
   );
   let snapshot = await openDiff(driver, statusPath);
   HarnessSmoke.Class.pass('git panel opened the changed file in DiffView');
+  const diffGeometryStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the visible diff publishes its header and overview-ruler geometry',
+    (status) =>
+      diffHeaderGeometry(status).length === 3 &&
+      Number(diffOverviewRulerGeometry(status)?.height) > 3,
+  );
+  const headerGeometry = diffHeaderGeometry(diffGeometryStatus);
+  const rulerGeometry = diffOverviewRulerGeometry(diffGeometryStatus);
+  if (!rulerGeometry) throw new Error('Diff ruler geometry disappeared');
 
   console.log(
     '== harness diff-overview: ruler locates top, middle, and bottom changes ==',
   );
   snapshot = await driver.awaitSnapshot(
-    (candidate) => overviewProof(candidate) !== null,
+    (candidate) => overviewProof(candidate, rulerGeometry) !== null,
   );
-  const rulerProof = overviewProof(snapshot);
+  const rulerProof = overviewProof(snapshot, rulerGeometry);
   if (!rulerProof) throw new Error('Overview proof vanished');
   HarnessSmoke.Class.pass(
     `ruler column ${rulerProof.column}: modified=${rulerProof.modifiedRows.join(',')}, ` +
@@ -217,33 +287,53 @@ try {
   const baseTitlePosition = snapshot.findText('Base (HEAD)');
   const currentTitlePosition = snapshot.findText('Current (working)');
   const openCurrentPosition = snapshot.findText('Open current');
-  const previousPosition = snapshot.findText('↑');
-  const nextPosition = snapshot.findText('↓');
+  const previousSegment = headerGeometry.find(
+    (segment) => segment.kind === 'previousChange',
+  );
+  const nextSegment = headerGeometry.find(
+    (segment) => segment.kind === 'nextChange',
+  );
+  const openCurrentSegment = headerGeometry.find(
+    (segment) => segment.kind === 'openFull',
+  );
   const changesRowPosition = snapshot.findText('Changes (1)');
   HarnessSmoke.Class.requireCondition(
     baseTitlePosition !== null &&
       currentTitlePosition !== null &&
       openCurrentPosition !== null &&
-      previousPosition !== null &&
-      nextPosition !== null &&
+      previousSegment !== undefined &&
+      nextSegment !== undefined &&
+      openCurrentSegment !== undefined &&
       changesRowPosition !== null &&
       currentTitlePosition.column > baseTitlePosition.column &&
       openCurrentPosition.column >= currentTitlePosition.column &&
-      previousPosition.row === openCurrentPosition.row &&
-      nextPosition.row === openCurrentPosition.row &&
-      previousPosition.column < nextPosition.column &&
-      nextPosition.column < openCurrentPosition.column &&
+      previousSegment.row === openCurrentSegment.row &&
+      nextSegment.row === openCurrentSegment.row &&
+      previousSegment.endColumnExclusive === nextSegment.startColumn &&
+      nextSegment.endColumnExclusive === openCurrentSegment.startColumn &&
+      headerSegmentContainsGlyph(
+        snapshot,
+        previousSegment,
+        diffGlyphVocabulary.diffPreviousChange,
+      ) &&
+      headerSegmentContainsGlyph(
+        snapshot,
+        nextSegment,
+        diffGlyphVocabulary.diffNextChange,
+      ) &&
       baseTitlePosition.row === changesRowPosition.row,
     'Base/current remain ordered, nav icons adjoin Open current, and the hidden tab row is reclaimed',
   );
   if (
     !currentTitlePosition ||
     !openCurrentPosition ||
-    !previousPosition ||
-    !nextPosition
+    !previousSegment ||
+    !nextSegment ||
+    !openCurrentSegment
   ) {
     throw new Error('Toolbar positions vanished');
   }
+  const nextPosition = headerSegmentCenter(nextSegment);
   driver.sendMouse({
     kind: 'move',
     column: nextPosition.column,
@@ -425,18 +515,30 @@ try {
   console.log(
     '== harness diff-overview: Open current opens the editable working file ==',
   );
-  const reopenedOpenCurrentPosition = snapshot.findText('Open current');
-  if (!reopenedOpenCurrentPosition)
-    throw new Error('Open current button missing');
+  const reopenedGeometryStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reopened diff publishes its Open current hit geometry',
+    (status) =>
+      diffHeaderGeometry(status).some((segment) => segment.kind === 'openFull'),
+  );
+  const reopenedOpenCurrentSegment = diffHeaderGeometry(
+    reopenedGeometryStatus,
+  ).find((segment) => segment.kind === 'openFull');
+  if (!reopenedOpenCurrentSegment)
+    throw new Error('Open current geometry missing');
+  const reopenedOpenCurrentPosition = headerSegmentCenter(
+    reopenedOpenCurrentSegment,
+  );
   driver.sendMouse({
     kind: 'press',
-    column: reopenedOpenCurrentPosition.column + 2,
+    column: reopenedOpenCurrentPosition.column,
     row: reopenedOpenCurrentPosition.row,
     button: 'left',
   });
   driver.sendMouse({
     kind: 'release',
-    column: reopenedOpenCurrentPosition.column + 2,
+    column: reopenedOpenCurrentPosition.column,
     row: reopenedOpenCurrentPosition.row,
     button: 'left',
   });

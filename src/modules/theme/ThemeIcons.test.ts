@@ -29,6 +29,7 @@ function themeGlyphEntriesFor(level: GlyphLevel): ThemeGlyphEntry[] {
       'interface',
       ThemeIcons.Class.interfaceGlyphVocabularyFor(level),
     ),
+    ...namedEntries('tableBorder', ThemeIcons.Class.tableBordersFor(level)),
     ...namedEntries('find', ThemeIcons.Class.findIconsFor(level)),
     ...namedEntries('agentTranscript', {
       caretCollapsed: agentTranscriptIcons.caretCollapsed,
@@ -636,4 +637,20 @@ test('fold controls avoid every reserved unicode mark', () => {
 
   expect(new Set(foldMarks).size).toBe(2);
   expect(foldMarks.every((mark) => !reservedMarkers.has(mark))).toBe(true);
+});
+
+test('markdown table borders are single-cell and unclaimed as semantic marks', () => {
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    for (const glyph of Object.values(
+      ThemeIcons.Class.tableBordersFor(level),
+    )) {
+      expect(EditorCoordinates.Class.lineWidth(glyph)).toBe(1);
+    }
+  }
+
+  for (const glyph of Object.values(
+    ThemeIcons.Class.tableBordersFor('unicode'),
+  )) {
+    expect(ThemeIcons.Class.markOwnersFor(glyph)).toEqual([]);
+  }
 });

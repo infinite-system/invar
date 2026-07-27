@@ -165,6 +165,7 @@ class $MarkdownParser {
     startLine: number,
     blocks: BlockRecord[],
   ): number {
+    // invariant: Markdown tables align by display cells (src/modules/markdown/markdown.invariants.md)
     if (
       startLine + 1 >= lines.length ||
       !lines[startLine]!.text.includes('|') ||
@@ -173,26 +174,45 @@ class $MarkdownParser {
       return startLine;
     }
 
-    const rows: string[] = [this.normalizeTableRow(lines[startLine]!.text)];
+    const separatorCells = this.splitTableCells(lines[startLine + 1]!.text);
+    const alignments = separatorCells.map((cell) =>
+      this.tableAlignmentFor(cell),
+    );
+    const sourceRows: string[][] = [
+      this.splitTableCells(lines[startLine]!.text),
+    ];
     let endLine = startLine + 2;
     while (
       endLine < lines.length &&
       !this.isBlank(lines[endLine]!.text) &&
       lines[endLine]!.text.includes('|')
     ) {
-      rows.push(this.normalizeTableRow(lines[endLine]!.text));
+      sourceRows.push(this.splitTableCells(lines[endLine]!.text));
       endLine++;
     }
 
-    blocks.push(
-      this.createInlineBlock(
-        'table',
-        rows.join('\n'),
-        startLine,
-        endLine,
-        lines,
-      ),
+    if (
+      alignments.some((alignment) => alignment === null) ||
+      sourceRows.some((row) => row.length !== alignments.length)
+    ) {
+      return startLine;
+    }
+
+    const rows = sourceRows.map((row) =>
+      row.map((cell) => this.parseTableCell(cell)),
     );
+    const block = this.createBlock(
+      'table',
+      rows.map((row) => row.map((cell) => cell.text).join(' ')).join('\n'),
+      startLine,
+      endLine,
+      lines,
+    );
+    block.table = {
+      alignments: alignments as TableColumnAlignment[],
+      rows,
+    };
+    blocks.push(block);
     return endLine;
   }
 
@@ -448,16 +468,60 @@ class $MarkdownParser {
   }
 
   protected isTableSeparator(text: string): boolean {
-    return /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(text);
+    const cells = this.splitTableCells(text);
+    return (
+      cells.length >= 2 &&
+      cells.every((cell) => this.tableAlignmentFor(cell) !== null)
+    );
   }
 
-  protected normalizeTableRow(text: string): string {
-    return text
-      .trim()
-      .replace(/^\||\|$/g, '')
-      .split('|')
-      .map((cell) => cell.trim())
-      .join(' │ ');
+  protected splitTableCells(text: string): string[] {
+    const trimmedText = text.trim();
+    const rowText = trimmedText.replace(/^\|/, '').replace(/(?<!\\)\|$/, '');
+    const cells: string[] = [];
+    let cellText = '';
+    let insideCode = false;
+
+    for (
+      let characterIndex = 0;
+      characterIndex < rowText.length;
+      characterIndex++
+    ) {
+      const character = rowText[characterIndex]!;
+      if (character === '\\' && characterIndex + 1 < rowText.length) {
+        cellText += character + rowText[characterIndex + 1]!;
+        characterIndex++;
+        continue;
+      }
+      if (character === '`') insideCode = !insideCode;
+      if (character === '|' && !insideCode) {
+        cells.push(cellText.trim());
+        cellText = '';
+        continue;
+      }
+      cellText += character;
+    }
+    cells.push(cellText.trim());
+    return cells;
+  }
+
+  protected tableAlignmentFor(cell: string): TableColumnAlignment | null {
+    const marker = cell.trim();
+    if (!/^:?-{3,}:?$/.test(marker)) return null;
+    const startsWithColon = marker.startsWith(':');
+    const endsWithColon = marker.endsWith(':');
+    if (startsWithColon && endsWithColon) return 'center';
+    if (endsWithColon) return 'right';
+    return 'left';
+  }
+
+  protected parseTableCell(sourceText: string): TableCellRecord {
+    const inline = this.parseInline(sourceText);
+    return {
+      text: inline.text,
+      spans: inline.spans,
+      links: inline.links,
+    };
   }
 
   protected isHorizontalRule(text: string): boolean {
@@ -515,7 +579,21 @@ export interface BlockRecord {
   text: string;
   spans: readonly number[];
   links: readonly string[];
+  table?: TableRecord;
   range: BlockRange;
+}
+
+export type TableColumnAlignment = 'left' | 'center' | 'right';
+
+export interface TableCellRecord {
+  text: string;
+  spans: readonly number[];
+  links: readonly string[];
+}
+
+export interface TableRecord {
+  alignments: readonly TableColumnAlignment[];
+  rows: readonly (readonly TableCellRecord[])[];
 }
 
 export interface MarkdownParseResult {

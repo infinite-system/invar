@@ -4,10 +4,11 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
@@ -47,6 +48,18 @@ interface Rectangle {
   height: number;
 }
 
+interface PanelHeadingGeometryStatus {
+  readonly contentId: string;
+  readonly row: number;
+}
+
+interface AgentFooterRegion {
+  readonly headingRow: number;
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
 interface ComposerScreenRow {
   readonly row: number;
   readonly contentStartColumn: number;
@@ -54,12 +67,75 @@ interface ComposerScreenRow {
   readonly content: string;
 }
 
+const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
+
 function bottomPanelSlot(status: StatusSnapshot): Rectangle {
   const layoutSlots = status.layoutSlots as
     Record<string, Rectangle> | undefined;
   const bottomPanel = layoutSlots?.bottomPanel;
   if (!bottomPanel) throw new Error('Bottom-panel slot geometry disappeared');
   return bottomPanel;
+}
+
+function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
+  const bottomPanel = (
+    status.layoutSlots as Record<string, Rectangle> | undefined
+  )?.bottomPanel;
+  const headings = status.panelHeadingGeometry;
+  const contentIdentifiers = status.panelCellIds;
+  const cellColumns = status.panelCellColumns;
+  if (
+    !bottomPanel ||
+    !Array.isArray(headings) ||
+    !Array.isArray(contentIdentifiers) ||
+    !Array.isArray(cellColumns)
+  ) {
+    return null;
+  }
+  const agentHeading = (
+    headings as unknown as readonly PanelHeadingGeometryStatus[]
+  ).find((heading) => heading.contentId === 'agent');
+  const contentIndex = contentIdentifiers.indexOf('agent');
+  const panelViewportRows = Number(status.terminalRows);
+  const contentColumns = Number(cellColumns[contentIndex]);
+  if (
+    !agentHeading ||
+    contentIndex < 0 ||
+    panelViewportRows <= 0 ||
+    contentColumns <= 0
+  ) {
+    return null;
+  }
+  let startColumn = bottomPanel.left + 1;
+  for (
+    let precedingIndex = 0;
+    precedingIndex < contentIndex;
+    precedingIndex += 1
+  ) {
+    startColumn += Number(cellColumns[precedingIndex]) + 1;
+  }
+  return {
+    headingRow: agentHeading.row,
+    row: agentHeading.row + panelViewportRows,
+    startColumn,
+    endColumnExclusive: startColumn + contentColumns,
+  };
+}
+
+function agentFooterSignature(
+  snapshot: HarnessSnapshot.Model,
+  footerRegion: AgentFooterRegion,
+): string | null {
+  const footerCells = snapshot
+    .rowCells(footerRegion.row)
+    .slice(footerRegion.startColumn, footerRegion.endColumnExclusive);
+  if (
+    !footerCells.some((cell) => cell.characters === themedSearchGlyph) ||
+    !footerCells.some((cell) => cell.characters.trim().length > 0)
+  ) {
+    return null;
+  }
+  return footerCells.map((cell) => cell.characters).join('\0');
 }
 
 function firstRowContaining(
@@ -285,6 +361,11 @@ const repositoryRoot = process.cwd();
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-pane-ux-harness-home-'),
 );
+mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+await Bun.write(
+  join(homeDirectory, '.config', 'invar', 'settings.json'),
+  JSON.stringify({ glyphMode: 'unicode' }),
+);
 const statusPath = join(homeDirectory, 'status.json');
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(repositoryRoot, 'fixtures'),
@@ -309,55 +390,66 @@ try {
     20_000,
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  let snapshot = await driver.awaitSnapshot((candidate) => {
-    const permissionPosition = candidate.findText('perm: bypass');
-    if (!permissionPosition) return false;
-    const discoveredFooterRow = candidate.rowText(permissionPosition.row);
-    return (
-      candidate.findText('──────────') !== null &&
-      discoveredFooterRow.includes('claude ⇄') &&
-      !discoveredFooterRow.includes('follow:') &&
-      candidate.findText('❯') !== null &&
-      candidate.findText('  Ask Claude') !== null
-    );
-  });
   const focusedPaneStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the agent pane opens focused with its panel geometry published',
     (status) =>
       status.terminalFocused === true &&
-      typeof status.layoutSlots === 'object' &&
-      status.layoutSlots !== null,
+      status.panelActiveContent === 'agent' &&
+      status.agentEngine === 'claude' &&
+      status.agentSkipPermissions === true &&
+      agentFooterRegion(status) !== null,
+  );
+  const footerRegion = agentFooterRegion(focusedPaneStatus);
+  if (!footerRegion) throw new Error('Agent footer geometry disappeared');
+  let snapshot = await driver.awaitGridCondition(
+    'the agent-owned footer and composer chrome are visibly settled',
+    (candidate) =>
+      agentFooterSignature(candidate, footerRegion) !== null &&
+      candidate.findText('──────────') !== null &&
+      candidate.findText('❯') !== null &&
+      candidate.findText('  Ask Claude') !== null,
   );
   HarnessSmoke.Class.pass(
     'agent pane opens focused with framed composer chrome',
   );
   const panelRectangle = bottomPanelSlot(focusedPaneStatus);
   HarnessSmoke.Class.requireCondition(
-    snapshot.findText('✦ Claude') !== null,
+    snapshot
+      .rowText(footerRegion.headingRow)
+      .slice(footerRegion.startColumn, footerRegion.endColumnExclusive)
+      .includes(String(focusedPaneStatus.agentTitle)),
     'agent pane owns a heading inside the shared panel border',
   );
-  HarnessSmoke.Class.pass(
+  HarnessSmoke.Class.requireCondition(
+    agentFooterSignature(snapshot, footerRegion) !== null,
     'the discovered footer row contains compact engine and permission segments',
   );
-  const permissionPosition = snapshot.findText('perm: bypass');
   HarnessSmoke.Class.requireCondition(
-    permissionPosition !== null &&
-      snapshot.rowText(permissionPosition.row + 1).includes('╰') &&
-      snapshot.rowCells(permissionPosition.row).every((cell) => !cell.isBold),
+    snapshot
+      .rowCells(footerRegion.row)
+      .slice(footerRegion.startColumn, footerRegion.endColumnExclusive)
+      .every((cell) => !cell.isBold),
     'the agent footer is flush with the pane bottom and never bold',
   );
-  const originalModeLine = snapshot
-    .textRows()
-    .find((rowText) => rowText.includes('perm:'));
+  const originalFooterSignature = agentFooterSignature(snapshot, footerRegion);
+  if (!originalFooterSignature)
+    throw new Error('Agent footer signature disappeared');
   driver.sendKeys('Shift+Tab');
-  snapshot = await driver.awaitSnapshot((candidate) => {
-    const modeLine = candidate
-      .textRows()
-      .find((rowText) => rowText.includes('perm:'));
-    return modeLine !== undefined && modeLine !== originalModeLine;
-  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Shift+Tab publishes ask-mode permission state',
+    (status) => status.agentSkipPermissions === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'Shift+Tab changes the agent-owned footer projection',
+    (candidate) => {
+      const signature = agentFooterSignature(candidate, footerRegion);
+      return signature !== null && signature !== originalFooterSignature;
+    },
+  );
   HarnessSmoke.Class.pass('Shift+Tab changes the permission mode line');
 
   console.log('== harness agent pane UX: animated busy and waiting state ==');
