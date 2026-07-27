@@ -144,7 +144,7 @@ class $GitLogRows {
 
 export namespace GitLogRows {
   export const $Class = Static($GitLogRows);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface ExpandedCommit {

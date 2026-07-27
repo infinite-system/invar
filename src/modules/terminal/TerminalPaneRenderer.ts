@@ -190,7 +190,7 @@ class $TerminalPaneRenderer {
 
 export namespace TerminalPaneRenderer {
   export const $Class = Static($TerminalPaneRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface TerminalPaneRenderContext {

@@ -317,5 +317,5 @@ class $EditorCoordinates {
 
 export namespace EditorCoordinates {
   export const $Class = Static($EditorCoordinates);
-  export const Class = $Class;
+  export let Class = $Class;
 }

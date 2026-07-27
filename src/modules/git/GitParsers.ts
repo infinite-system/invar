@@ -292,7 +292,7 @@ class $GitParsers {
 
 export namespace GitParsers {
   export const $Class = Static($GitParsers);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface GitFileRecord {

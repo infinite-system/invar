@@ -63,7 +63,7 @@ class $TreePaneRenderer {
 }
 export namespace TreePaneRenderer {
   export const $Class = Static($TreePaneRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 export interface TreePaneRenderContext {
   /** The active workspace's file-tree model (rows + selection/hover/scroll state). */

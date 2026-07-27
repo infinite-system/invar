@@ -141,7 +141,7 @@ class $HalfBlockRenderer {
 
 export namespace HalfBlockRenderer {
   export const $Class = Static($HalfBlockRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface HalfBlockRenderContext {

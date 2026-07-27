@@ -143,5 +143,5 @@ class $AgentTerminalFollowTest {
 
 export namespace AgentTerminalFollowTest {
   export const $Class = $AgentTerminalFollowTest;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }

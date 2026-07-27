@@ -297,7 +297,7 @@ class $CommandBar {
 
 export namespace CommandBar {
   export const $Class = Static($CommandBar);
-  export const Class = $Class;
+  export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

@@ -101,5 +101,5 @@ class $KeybindingMac {
 
 export namespace KeybindingMac {
   export const $Class = Static($KeybindingMac);
-  export const Class = $Class;
+  export let Class = $Class;
 }

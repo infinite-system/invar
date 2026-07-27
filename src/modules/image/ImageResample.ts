@@ -96,7 +96,7 @@ class $ImageResample {
 
 export namespace ImageResample {
   export const $Class = Static($ImageResample);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** A fitted size: the largest aspect-preserving fit of a source into a box, each dimension ≥ 1. */

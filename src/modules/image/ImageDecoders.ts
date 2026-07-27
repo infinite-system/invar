@@ -50,7 +50,7 @@ class $ImageDecoders {
 
 export namespace ImageDecoders {
   export const $Class = Static($ImageDecoders);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** A decoded raster image: dimensions plus a straight-alpha RGBA buffer of length width*height*4. */

@@ -542,7 +542,7 @@ class $EditorPaneRenderer {
 }
 export namespace EditorPaneRenderer {
   export const $Class = Static($EditorPaneRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 export interface EditorPaneRenderContext {
   workspace: Workspace.Instance;

@@ -564,7 +564,7 @@ class $Highlighter {
 
 export namespace Highlighter {
   export const $Class = Static($Highlighter);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type Role =

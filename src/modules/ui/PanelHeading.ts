@@ -145,7 +145,7 @@ class $PanelHeading {
 
 export namespace PanelHeading {
   export const $Class = Static($PanelHeading);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type PanelHeadingAction = 'add' | 'expand' | 'close';

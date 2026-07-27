@@ -41,7 +41,7 @@ class $PanelAddPopup {
 
 export namespace PanelAddPopup {
   export const $Class = Static($PanelAddPopup);
-  export const Class = $Class;
+  export let Class = $Class;
   export type Instance = InstanceType<typeof Class>;
 }
 

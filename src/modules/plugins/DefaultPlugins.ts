@@ -23,5 +23,5 @@ class $DefaultPlugins {
 
 export namespace DefaultPlugins {
   export const $Class = Static($DefaultPlugins);
-  export const Class = $Class;
+  export let Class = $Class;
 }

@@ -123,7 +123,7 @@ class $TextEditing {
 
 export namespace TextEditing {
   export const $Class = Static($TextEditing);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface PreviousWordDeletion {

@@ -283,7 +283,7 @@ class $DiffAlignment {
 
 export namespace DiffAlignment {
   export const $Class = Static($DiffAlignment);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type AlignedRowKind = 'equal' | 'modified' | 'added' | 'deleted';

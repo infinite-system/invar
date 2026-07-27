@@ -752,7 +752,7 @@ class $ThemeIcons {
 
 export namespace ThemeIcons {
   export const $Class = Static($ThemeIcons);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /**

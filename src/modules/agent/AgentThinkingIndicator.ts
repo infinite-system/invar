@@ -175,7 +175,7 @@ class $AgentThinkingIndicator {
 
 export namespace AgentThinkingIndicator {
   export const $Class = Static($AgentThinkingIndicator);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface ThinkingSegment {

@@ -75,8 +75,32 @@ describe('scroll-momentum', () => {
       frameCount++;
     }
 
+    // DERIVED, not snapshotted. This integer was hand-edited four times while
+    // tuning the easing window (181 -> 175 -> 164 -> 98), which is the tell that
+    // it was a copy of a computable quantity. The formula is the contract's own
+    // (scripts/behavioral-contracts.sh derives the rapid-travel floor the same
+    // way), so this stays a real assertion — it fails if the ramp integration is
+    // wrong — while surviving any future retune.
+    class $EasingProbe extends Momentum.$Class {
+      static get easingDurationMilliseconds(): number {
+        return this.GLIDE_CAP_EASING_DURATION_MILLISECONDS;
+      }
+    }
+    const options = Momentum.Class.verticalOptions;
+    const easingDurationMilliseconds = $EasingProbe.easingDurationMilliseconds;
+    const glideDurationMilliseconds =
+      options.maximumGlideDurationMilliseconds ?? 0;
+    // A linear ramp to zero over the final window removes half its area, so the
+    // effective full-speed time is the deadline minus half the easing window.
+    const analyticRowsTravelled =
+      (options.max *
+        (glideDurationMilliseconds - easingDurationMilliseconds / 2)) /
+      1000;
+
     expect(frameCount).toBe(27);
-    expect(rowsTravelled).toBe(98);
+    // Within one row: the integrator discards the sub-row residual at halt.
+    expect(rowsTravelled).toBeGreaterThan(analyticRowsTravelled - 2);
+    expect(rowsTravelled).toBeLessThanOrEqual(analyticRowsTravelled);
     expect(Momentum.Class.isMoving(currentMomentum)).toBe(false);
   });
 

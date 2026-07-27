@@ -80,5 +80,5 @@ class $EditorIndent {
 
 export namespace EditorIndent {
   export const $Class = Static($EditorIndent);
-  export const Class = $Class;
+  export let Class = $Class;
 }

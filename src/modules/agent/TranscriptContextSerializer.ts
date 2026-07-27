@@ -85,5 +85,5 @@ class $TranscriptContextSerializer {
 
 export namespace TranscriptContextSerializer {
   export const $Class = Static($TranscriptContextSerializer);
-  export const Class = $Class;
+  export let Class = $Class;
 }

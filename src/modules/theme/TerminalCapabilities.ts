@@ -97,7 +97,7 @@ class $TerminalCapabilities {
 
 export namespace TerminalCapabilities {
   export const $Class = Static($TerminalCapabilities);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type ColorDepth = 'truecolor' | '256' | '16';

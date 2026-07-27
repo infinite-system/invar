@@ -26,5 +26,5 @@ class $CommandScoring {
 
 export namespace CommandScoring {
   export const $Class = Static($CommandScoring);
-  export const Class = $Class;
+  export let Class = $Class;
 }

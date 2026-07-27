@@ -80,7 +80,7 @@ class $TerminalRcfile {
 
 export namespace TerminalRcfile {
   export const $Class = Static($TerminalRcfile);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface TerminalRcfileHandle {

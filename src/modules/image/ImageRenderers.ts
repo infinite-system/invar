@@ -87,7 +87,7 @@ class $ImageRenderers {
 
 export namespace ImageRenderers {
   export const $Class = Static($ImageRenderers);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** Everything a pixel-tier encoder may need to place one image into one screen rect. The mount fills

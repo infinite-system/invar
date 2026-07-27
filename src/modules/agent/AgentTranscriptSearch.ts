@@ -42,7 +42,7 @@ class $AgentTranscriptSearch {
 
 export namespace AgentTranscriptSearch {
   export const $Class = Static($AgentTranscriptSearch);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface TranscriptMatchHighlight {

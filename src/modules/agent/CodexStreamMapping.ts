@@ -93,5 +93,5 @@ class $CodexStreamMapping {
 
 export namespace CodexStreamMapping {
   export const $Class = Static($CodexStreamMapping);
-  export const Class = $Class;
+  export let Class = $Class;
 }

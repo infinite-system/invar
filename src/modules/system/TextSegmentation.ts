@@ -33,7 +33,7 @@ class $TextSegmentation {
 
 export namespace TextSegmentation {
   export const $Class = Static($TextSegmentation);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface TextWordSegment {

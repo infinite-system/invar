@@ -60,7 +60,7 @@ class $ScrollbarGeometry {
 }
 export namespace ScrollbarGeometry {
   export const $Class = Static($ScrollbarGeometry);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 export interface RegionRect {
   /** Content-box cells of the region the bar scrolls (relative to whatever frame the caller uses —

@@ -130,7 +130,7 @@ class $QuickOpenRenderer {
 }
 export namespace QuickOpenRenderer {
   export const $Class = Static($QuickOpenRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 export interface QuickOpenRenderContext {
   quickOpen: QuickOpen.Instance;

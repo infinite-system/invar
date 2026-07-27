@@ -249,5 +249,5 @@ class $PngDecoder {
 
 export namespace PngDecoder {
   export const $Class = Static($PngDecoder);
-  export const Class = $Class;
+  export let Class = $Class;
 }

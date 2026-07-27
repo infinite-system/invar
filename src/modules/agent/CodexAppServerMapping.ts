@@ -190,7 +190,7 @@ class $CodexAppServerMapping {
 
 export namespace CodexAppServerMapping {
   export const $Class = Static($CodexAppServerMapping);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** A JSON-RPC notification (method + params) as parsed off the app-server stdout. */

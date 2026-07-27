@@ -357,7 +357,7 @@ class $GitPaneRenderer {
 }
 export namespace GitPaneRenderer {
   export const $Class = Static($GitPaneRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 /** Sidebar-relative geometry the hit-testers and scrollbars read; produced by render(). */
 export interface GitPanelGeometry {

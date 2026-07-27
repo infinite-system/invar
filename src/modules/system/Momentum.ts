@@ -437,7 +437,7 @@ class $Momentum {
 
 export namespace Momentum {
   export const $Class = Static($Momentum);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface ScrollMomentum {

@@ -227,7 +227,7 @@ class $BracketMatch {
 
 export namespace BracketMatch {
   export const $Class = Static($BracketMatch);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** A cell position: 0-based line and 0-based grapheme column. */

@@ -80,7 +80,7 @@ class $AgentProviderRegistry {
 
 export namespace AgentProviderRegistry {
   export const $Class = Static($AgentProviderRegistry);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** A concrete, runnable engine (the echo is the always-available hermetic fallback). */

@@ -100,5 +100,5 @@ class $AgentToolSummary {
 
 export namespace AgentToolSummary {
   export const $Class = Static($AgentToolSummary);
-  export const Class = $Class;
+  export let Class = $Class;
 }

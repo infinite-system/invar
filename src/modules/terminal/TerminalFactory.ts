@@ -40,7 +40,7 @@ class $TerminalFactory {
 
 export namespace TerminalFactory {
   export const $Class = Static($TerminalFactory);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface TerminalCreateOptions {

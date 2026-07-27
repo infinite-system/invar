@@ -76,7 +76,7 @@ class $VoiceDiscovery {
 
 export namespace VoiceDiscovery {
   export const $Class = Static($VoiceDiscovery);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 /** One installed voice: its selectable NAME (the `.onnx` basename) and the absolute model path. */

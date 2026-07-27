@@ -383,7 +383,7 @@ class $AgentTranscriptProjection {
 
 export namespace AgentTranscriptProjection {
   export const $Class = Static($AgentTranscriptProjection);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface ProjectedLine {

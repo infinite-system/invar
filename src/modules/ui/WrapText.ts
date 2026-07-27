@@ -173,7 +173,7 @@ class $WrapText {
 }
 export namespace WrapText {
   export const $Class = Static($WrapText);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 /** One wrapped visual row, with the geometry that generated it. */
 export interface WrapSegment {

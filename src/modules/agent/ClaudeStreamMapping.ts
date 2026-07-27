@@ -97,5 +97,5 @@ class $ClaudeStreamMapping {
 
 export namespace ClaudeStreamMapping {
   export const $Class = Static($ClaudeStreamMapping);
-  export const Class = $Class;
+  export let Class = $Class;
 }

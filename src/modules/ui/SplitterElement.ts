@@ -144,7 +144,7 @@ class $SplitterElement {
 
 export namespace SplitterElement {
   export const $Class = Static($SplitterElement);
-  export const Class = $Class;
+  export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

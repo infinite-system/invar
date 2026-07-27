@@ -78,5 +78,5 @@ class $TerminalKeys {
 
 export namespace TerminalKeys {
   export const $Class = Static($TerminalKeys);
-  export const Class = $Class;
+  export let Class = $Class;
 }

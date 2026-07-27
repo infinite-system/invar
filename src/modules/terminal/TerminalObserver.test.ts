@@ -14,29 +14,33 @@ class $TerminalObserverTest {
         now: this.clock(1_000, 5_180),
       });
       try {
-        emulator.write(this.oscCommandStream(
-          'bun test src/modules/terminal',
-          ['first', 'last'],
-          1,
-          'file://fixture-host/home/user/project',
-        ));
+        emulator.write(
+          this.oscCommandStream(
+            'bun test src/modules/terminal',
+            ['first', 'last'],
+            1,
+            'file://fixture-host/home/user/project',
+          ),
+        );
         await emulator.flush();
-        expect(observer.snapshot()).toEqual([{
-          kind: 'command-completed',
-          command: 'bun test src/modules/terminal',
-          cwd: '/home/user/project',
-          exitCode: 1,
-          durationMs: 4_180,
-          output: {
-            headLines: ['first', 'last'],
-            tailLines: [],
-            totalLines: 2,
-            truncated: false,
-            byteCap: 8192,
+        expect(observer.snapshot()).toEqual([
+          {
+            kind: 'command-completed',
+            command: 'bun test src/modules/terminal',
+            cwd: '/home/user/project',
+            exitCode: 1,
+            durationMs: 4_180,
+            output: {
+              headLines: ['first', 'last'],
+              tailLines: [],
+              totalLines: 2,
+              truncated: false,
+              byteCap: 8192,
+            },
+            boundarySource: 'osc133',
+            timestamp: '1970-01-01T00:00:05.180Z',
           },
-          boundarySource: 'osc133',
-          timestamp: '1970-01-01T00:00:05.180Z',
-        }]);
+        ]);
         expect(observer.revision.value).toBe(1);
       } finally {
         observer.dispose();
@@ -74,7 +78,8 @@ class $TerminalObserverTest {
         { input: 'Password: hunter2', expected: '[REDACTED]' },
         { input: '[sudo] password for dev: hunter2', expected: '[REDACTED]' },
         {
-          input: "Enter passphrase for key '/home/dev/.ssh/id_ed25519': hunter2",
+          input:
+            "Enter passphrase for key '/home/dev/.ssh/id_ed25519': hunter2",
           expected: '[REDACTED]',
         },
         { input: 'API_TOKEN=fixture-token', expected: 'API_TOKEN=[REDACTED]' },
@@ -96,11 +101,9 @@ class $TerminalObserverTest {
             now: this.clock(0, 1),
           });
           try {
-            emulator.write(this.oscCommandStream(
-              'printf output',
-              [redactionCase.input],
-              0,
-            ));
+            emulator.write(
+              this.oscCommandStream('printf output', [redactionCase.input], 0),
+            );
             await emulator.flush();
             expect(observer.snapshot()[0]!.output.headLines).toEqual([
               redactionCase.expected,
@@ -118,15 +121,16 @@ class $TerminalObserverTest {
         now: this.clock(0, 1),
       });
       try {
-        emulator.write(this.oscCommandStream(
-          'API_TOKEN=fixture-token bun test',
-          [],
-          0,
-        ));
+        emulator.write(
+          this.oscCommandStream('API_TOKEN=fixture-token bun test', [], 0),
+        );
         await emulator.flush();
-        expect(observer.snapshot()[0]!.command)
-          .toBe('API_TOKEN=[REDACTED] bun test');
-        expect(JSON.stringify(observer.snapshot())).not.toContain('fixture-token');
+        expect(observer.snapshot()[0]!.command).toBe(
+          'API_TOKEN=[REDACTED] bun test',
+        );
+        expect(JSON.stringify(observer.snapshot())).not.toContain(
+          'fixture-token',
+        );
       } finally {
         observer.dispose();
         emulator.dispose();
@@ -207,7 +211,9 @@ class $TerminalObserverTest {
       });
       try {
         for (let commandIndex = 1; commandIndex <= 4; commandIndex += 1) {
-          emulator.write(this.oscCommandStream(`command-${commandIndex}`, [], 0));
+          emulator.write(
+            this.oscCommandStream(`command-${commandIndex}`, [], 0),
+          );
           await emulator.flush();
         }
         expect(observer.snapshot().map((event) => event.command)).toEqual([
@@ -230,11 +236,13 @@ class $TerminalObserverTest {
       });
       try {
         for (let commandIndex = 1; commandIndex <= 8; commandIndex += 1) {
-          emulator.write(this.oscCommandStream(
-            `command-${commandIndex}`,
-            [`output-${commandIndex}-${'x'.repeat(80)}`],
-            0,
-          ));
+          emulator.write(
+            this.oscCommandStream(
+              `command-${commandIndex}`,
+              [`output-${commandIndex}-${'x'.repeat(80)}`],
+              0,
+            ),
+          );
           await emulator.flush();
         }
         expect(observer.bufferedByteCount).toBeLessThanOrEqual(900);
@@ -248,19 +256,24 @@ class $TerminalObserverTest {
 
     test('the recorded shim shell stream is consumed process-free', async () => {
       const inputBase64 = await Bun.file(
-        new URL('./fixtures/terminal-observer-recorded-bash.base64', import.meta.url),
+        new URL(
+          './fixtures/terminal-observer-recorded-bash.base64',
+          import.meta.url,
+        ),
       ).text();
       const { emulator, observer } = this.createObserver({
         now: this.clock(100, 350),
       });
       try {
-        emulator.write(new Uint8Array(Buffer.from(inputBase64.trim(), 'base64')));
+        emulator.write(
+          new Uint8Array(Buffer.from(inputBase64.trim(), 'base64')),
+        );
         await emulator.flush();
         const event = observer.snapshot()[0]!;
         expect(event.boundarySource).toBe('osc133');
         expect(event.exitCode).toBe(7);
         expect(event.cwd).toBe('/tmp/invar-terminal-observer-fixture');
-        expect(event.command).toBe('printf \'alpha\\n\'; false; (exit 7)');
+        expect(event.command).toBe("printf 'alpha\\n'; false; (exit 7)");
         expect(event.output.headLines).toEqual(['alpha']);
       } finally {
         observer.dispose();
@@ -269,15 +282,15 @@ class $TerminalObserverTest {
     });
 
     test('the observer seam exposes no backend or PTY write capability', async () => {
-      const source = await Bun.file(new URL('./TerminalObserver.ts', import.meta.url)).text();
+      const source = await Bun.file(
+        new URL('./TerminalObserver.ts', import.meta.url),
+      ).text();
       expect(source).not.toContain('TerminalBackend');
       expect(source).not.toContain('.write(');
     });
   }
 
-  protected static createObserver(
-    options: TerminalObserverOptions,
-  ): {
+  protected static createObserver(options: TerminalObserverOptions): {
     emulator: TerminalEmulator.Model;
     observer: TerminalObserver.Model;
   } {
@@ -294,13 +307,19 @@ class $TerminalObserverTest {
     exitCode: number,
     currentWorkingDirectory = 'file://fixture-host/tmp/project',
   ): string {
-    const output = outputLines.length > 0 ? `${outputLines.join('\r\n')}\r\n` : '';
-    return '\x1b]7;' + currentWorkingDirectory + '\x07'
-      + '\x1b]133;A\x07$ \x1b]133;B\x07'
-      + command + '\r\n\x1b]133;C\x07'
-      + output
-      + `\x1b]133;D;${exitCode}\x07`
-      + '\x1b]133;A\x07$ \x1b]133;B\x07';
+    const output =
+      outputLines.length > 0 ? `${outputLines.join('\r\n')}\r\n` : '';
+    return (
+      '\x1b]7;' +
+      currentWorkingDirectory +
+      '\x07' +
+      '\x1b]133;A\x07$ \x1b]133;B\x07' +
+      command +
+      '\r\n\x1b]133;C\x07' +
+      output +
+      `\x1b]133;D;${exitCode}\x07` +
+      '\x1b]133;A\x07$ \x1b]133;B\x07'
+    );
   }
 
   protected static clock(...timestamps: number[]): () => number {
@@ -319,7 +338,7 @@ class $TerminalObserverTest {
 
 export namespace TerminalObserverTest {
   export const $Class = $TerminalObserverTest;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }
 
 interface RedactionCase {

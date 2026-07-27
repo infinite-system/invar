@@ -63,7 +63,7 @@ class $ModalOverlayDismissal {
 
 export namespace ModalOverlayDismissal {
   export const $Class = $ModalOverlayDismissal;
-  export const Class = $Class;
+  export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

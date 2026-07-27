@@ -204,7 +204,7 @@ class $ThemePalettes {
 
 export namespace ThemePalettes {
   export const $Class = Static($ThemePalettes);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface Palette {

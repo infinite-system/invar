@@ -2544,7 +2544,7 @@ class $Bootstrap {
 
 export namespace Bootstrap {
   export const $Class = Static($Bootstrap);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface BootOptions {

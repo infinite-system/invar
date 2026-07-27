@@ -99,7 +99,7 @@ class $GitBlame {
 
 export namespace GitBlame {
   export const $Class = Static($GitBlame);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface BlameLine {

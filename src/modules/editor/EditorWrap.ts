@@ -613,7 +613,7 @@ class $EditorWrap {
 
 export namespace EditorWrap {
   export const $Class = Static($EditorWrap);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface WrapSegment {

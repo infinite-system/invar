@@ -22,7 +22,7 @@ class $AgentIbrFoundation {
 
 export namespace AgentIbrFoundation {
   export const $Class = Static($AgentIbrFoundation);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type AgentIbrFoundationResolution = Readonly<{

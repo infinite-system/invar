@@ -48,5 +48,5 @@ class $LanguageRegistry {
 
 export namespace LanguageRegistry {
   export const $Class = Static($LanguageRegistry);
-  export const Class = $Class;
+  export let Class = $Class;
 }

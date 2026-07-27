@@ -97,7 +97,7 @@ class $AgentFactory {
 
 export namespace AgentFactory {
   export const $Class = Static($AgentFactory);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface AgentCreateOptions {

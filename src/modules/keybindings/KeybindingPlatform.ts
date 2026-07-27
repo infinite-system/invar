@@ -69,5 +69,5 @@ class $KeybindingPlatform {
 
 export namespace KeybindingPlatform {
   export const $Class = Static($KeybindingPlatform);
-  export const Class = $Class;
+  export let Class = $Class;
 }

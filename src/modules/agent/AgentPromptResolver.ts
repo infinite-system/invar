@@ -214,7 +214,7 @@ class $AgentPromptResolver {
 
 export namespace AgentPromptResolver {
   export const $Class = Static($AgentPromptResolver);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type AgentPromptSkill = Readonly<{

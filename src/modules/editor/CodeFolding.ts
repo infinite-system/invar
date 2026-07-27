@@ -188,7 +188,7 @@ class $CodeFolding {
 
 export namespace CodeFolding {
   export const $Class = Static($CodeFolding);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface FoldRange {

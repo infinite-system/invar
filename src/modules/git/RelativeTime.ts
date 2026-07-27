@@ -83,5 +83,5 @@ class $RelativeTime {
 
 export namespace RelativeTime {
   export const $Class = Static($RelativeTime);
-  export const Class = $Class;
+  export let Class = $Class;
 }

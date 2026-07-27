@@ -126,7 +126,7 @@ class $TextFieldPainter {
 
 export namespace TextFieldPainter {
   export const $Class = Static($TextFieldPainter);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type TextFieldState = 'idle' | 'focused' | 'hovered';

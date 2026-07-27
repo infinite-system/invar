@@ -74,6 +74,18 @@ if [ -n "$mutable_class_extends" ]; then
   fail=1
 fi
 
+# 1.9) THE Class SLOT STAYS MUTABLE: `Class` is the swappable slot — a test double, a Reactive
+#      wrapper, or a downstream customization replaces it in place. `const` freezes the slot and
+#      makes the class un-extensible, which contradicts the always-extensible invariant. The
+#      IMMUTABLE anchor is `$Class` (always `const`); `Class` is always `let`.
+frozen_class_slot=$(grep -rnE '^\s*(export )?const Class\b\s*=' src --include='*.ts' || true)
+if [ -n "$frozen_class_slot" ]; then
+  echo "CONVENTIONS FAIL: the Class slot is const — it must be \`export let Class = …\` so a"
+  echo "double, a Reactive wrapper, or a customization can replace it (\$Class stays const):"
+  echo "$frozen_class_slot"
+  fail=1
+fi
+
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding

@@ -65,5 +65,5 @@ class $CompletionItemKinds {
 
 export namespace CompletionItemKinds {
   export const $Class = Static($CompletionItemKinds);
-  export const Class = $Class;
+  export let Class = $Class;
 }

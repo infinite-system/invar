@@ -90,7 +90,7 @@ class $GutterDiff {
 
 export namespace GutterDiff {
   export const $Class = Static($GutterDiff);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface GutterDiffMark {

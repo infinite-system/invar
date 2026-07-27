@@ -707,7 +707,7 @@ class $KeybindingDefaults {
 
 export namespace KeybindingDefaults {
   export const $Class = Static($KeybindingDefaults);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export type TextInputBindingContext =

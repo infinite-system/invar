@@ -55,7 +55,7 @@ class $OverlayCloseButton {
 
 export namespace OverlayCloseButton {
   export const $Class = $OverlayCloseButton;
-  export const Class = $Class;
+  export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

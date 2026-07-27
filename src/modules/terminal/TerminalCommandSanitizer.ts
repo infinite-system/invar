@@ -18,5 +18,5 @@ class $TerminalCommandSanitizer {
 
 export namespace TerminalCommandSanitizer {
   export const $Class = Static($TerminalCommandSanitizer);
-  export const Class = $Class;
+  export let Class = $Class;
 }

@@ -65,7 +65,7 @@ class $FrameProbe {
 
 export namespace FrameProbe {
   export const $Class = Static($FrameProbe);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface FrameRow {

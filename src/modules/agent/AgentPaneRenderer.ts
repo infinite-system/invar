@@ -204,7 +204,7 @@ class $AgentPaneRenderer {
 
 export namespace AgentPaneRenderer {
   export const $Class = Static($AgentPaneRenderer);
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 export interface SelectionRange {

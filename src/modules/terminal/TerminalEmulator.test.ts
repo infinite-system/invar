@@ -30,5 +30,5 @@ class $TerminalEmulatorTest {
 
 export namespace TerminalEmulatorTest {
   export const $Class = $TerminalEmulatorTest;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }
