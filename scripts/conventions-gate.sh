@@ -128,17 +128,7 @@ if ! bash "$(dirname "$0")/check-unwired-capabilities.sh" >/tmp/conventions-gate
 fi
 rm -f /tmp/conventions-gate-unwired.$$.log
 
-# 9) SETTINGS APPLIED-EFFECT META-GATE: every Settings schema field MUST have an applied-effect drive in
-#    smoke-settings-applied.sh (the cheap enumeration check — no app launches). A NEW setting without a
-#    driving test fails here. The full drive suite runs at the merge gate; this is its enforcing spine.
-if ! bash "$(dirname "$0")/smoke-settings-applied.sh" --meta >/tmp/conventions-gate-settings.$$.log 2>&1; then
-  echo "CONVENTIONS FAIL: a Settings field has no applied-effect drive:"
-  cat /tmp/conventions-gate-settings.$$.log
-  fail=1
-fi
-rm -f /tmp/conventions-gate-settings.$$.log
-
-# 10) MAP-COHERENCE: records are territory — the governance contract + the derived lattice must stay
+# 9) MAP-COHERENCE: records are territory — the governance contract + the derived lattice must stay
 #    aligned with the actual invariant records. Fails if a governed module lacks its contract (shrinking
 #    allowlist) or a lattice link/dependency-map name doesn't resolve to a real ### record. Cheap
 #    (no launches), mechanical — same tier as the unwired-capability check.
@@ -149,7 +139,7 @@ if ! bash "$(dirname "$0")/check-map-coherence.sh" >/tmp/conventions-gate-mapcoh
 fi
 rm -f /tmp/conventions-gate-mapcoh.$$.log
 
-# 11) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
+# 10) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
 #     name a concrete plugin, import its module, or dispatch its domain command identifiers.
 #     THIS CHECK CALLED `rg`, WHICH IS NOT INSTALLED HERE, AND `|| true` SWALLOWED THE ERROR — so it
 #     passed unconditionally and the entire plugin-canvas boundary was unenforced. (Found twice

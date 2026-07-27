@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# PARKED: the normal-gate PTY harness supersedes these tmux drives. This file
+# remains only as historical evidence and is not a verification entry point.
 # SETTINGS APPLIED-EFFECT gate (audit P3): every Settings field is DRIVEN through its real path and its
 # OBSERVABLE effect asserted (status.json / FrameProbe) — the discipline the requirements doc prescribes
 # and the existing Settings.test (ref-only) does NOT provide. This is why 8 dead settings shipped.

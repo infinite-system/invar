@@ -170,21 +170,23 @@ activation-follows-demand invariant's meaning.
 `sendLatestDocument`; `src/modules/workspace/Workspace.ts` (`languageSizeNotice`, the
 `fileSizeLimitKb` threading in `createLanguageClient`); `src/modules/ui/StatusBar.ts` (the notice
 part); `src/modules/app/Bootstrap.ts` (`lspSizeSuppressed` published). Driven by
-`scripts/smoke-settings-applied.sh`: with `lspFileSizeLimitKb` 1 a >1 KB `.ts` file stays suppressed
-(no diagnostics, `lspSizeSuppressed` true) and the app survives; with the default budget the same
-file attaches and diagnostics arrive. Drive-verified against a real 3 MB / 100k-line file: with the
-guard on tsgo is never sent the file and its RSS stays stable; with the guard off tsgo balloons.
+`scripts/harness/smoke-settings-applied-harness.ts`: with
+`lspFileSizeLimitKb` 1 a >1 KB `.ts` file stays suppressed (no diagnostics,
+`lspSizeSuppressed` true) and the app survives; with the default budget the
+same file attaches and diagnostics arrive. Drive-verified against a real 3 MB
+/ 100k-line file: with the guard on tsgo is never sent the file and its RSS
+stays stable; with the guard off tsgo balloons.
 
 **Impossible if true:** A `textDocument/didOpen` or `didChange` sent for a document whose text
 exceeds the budget; a size-suppressed active file with no visible notice; the app crashing because a
 file larger than the budget was handed to the server.
 
-**Verification:** `bash scripts/smoke-settings-applied.sh` (the `lspFileSizeLimitKb` drive) and
-`bun test src/modules/lsp`.
+**Verification:** `bun scripts/harness/smoke-settings-applied-harness.ts`
+(the `lspFileSizeLimitKb` drive) and `bun test src/modules/lsp`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-27
 
 ### LSP activation follows semantic demand
 

@@ -528,8 +528,7 @@ quiet-exclusive lock while ordinary gate load runs under the loud-shared lock.
 
 **Scope:** `scripts/quiet-lock.sh`; the quiet-serial tail in
 `scripts/merge-gate.sh`; direct runs of `scripts/behavioral-contracts.sh`,
-`scripts/smoke-agent-pane-ux.sh`, `scripts/smoke-settings-applied.sh`,
-`scripts/perf-baselines.sh`,
+`scripts/smoke-agent-pane-ux.sh`, `scripts/perf-baselines.sh`,
 `scripts/harness/smoke-terminal-stage-harness.ts`,
 `scripts/harness/measure-scroll-smoothness.ts`, and the input-byte-flush
 measurement. `INVAR_QUIET_LOCK=0` deliberately suspends this guarantee for
@@ -561,9 +560,8 @@ serialize against one another; a crashed holder wedges acquisition forever.
 
 **Verification:** `bun test scripts/harness/QuietLock.test.ts && bash -n
 scripts/quiet-lock.sh scripts/merge-gate.sh scripts/behavioral-contracts.sh
-scripts/smoke-agent-pane-ux.sh scripts/smoke-settings-applied.sh
-scripts/perf-baselines.sh`
+scripts/smoke-agent-pane-ux.sh scripts/perf-baselines.sh`
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27

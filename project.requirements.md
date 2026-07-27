@@ -76,11 +76,12 @@ tests HIDE it. The craft is fine; wiring is the blind spot. These rules make it 
   test. Forward-milestones (LSP/Markdown) are allowlisted WITH a justification; the list only SHRINKS.
 - **SETTINGS APPLIED-EFFECT META-GATE (#2, SHIPPED and enforced):** every Settings field MUST have an
   e2e test that DRIVES its observable effect; the schema-enumeration meta-assertion in
-  `scripts/smoke-settings-applied.sh` fails the gate if any field lacks one — it enumerates the FULL
-  current schema (agent, narration, voice, appearance, all of it) and rides every merge-gate. (Origin
-  story: 8 dead settings once went unnoticed because tests only asserted the ref changed.) The
-  LSP/Markdown "forward-milestone" allowlist language above is likewise historical — both shipped
-  with live paths and driving smokes.
+  `scripts/harness/smoke-settings-applied-harness.ts` fails the gate if any
+  field lacks one — it enumerates the full runtime schema (agent, narration,
+  voice, appearance, all of it) and rides every normal merge-gate. (Origin
+  story: 8 dead settings once went unnoticed because tests only asserted the
+  ref changed.) The LSP/Markdown "forward-milestone" allowlist language above
+  is likewise historical — both shipped with live paths and driving smokes.
 
 ## Invariant-contract system (executable felt-invariants + the ratchet)
 

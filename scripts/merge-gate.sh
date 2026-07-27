@@ -406,8 +406,8 @@ validate_smoke_classification() {
   return 1
 }
 
-# 1) Fast inner gate: tsc + conventions + unwired-capability + settings-applied META.
-step "conventions-gate (tsc + conventions + unwired + settings-meta)" bash scripts/conventions-gate.sh
+# 1) Fast inner gate: tsc + conventions + unwired-capability.
+step "conventions-gate (tsc + conventions + unwired)" bash scripts/conventions-gate.sh
 # 1b) The INVARIANT CONTRACT LAYER — the lattice itself. --all: every *.invariants.md is structurally
 #     valid (both headings, required fields, non-empty Evidence). --refs: every `// invariant:` code
 #     annotation resolves to a real record (no dangling references) + coverage report. This was RED and
@@ -585,9 +585,6 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: diagnostics harness" bun scripts/harness/smoke-diagnostics-harness.ts
   parallel_safe_smoke "smoke: goto-definition harness" bun scripts/harness/smoke-goto-definition-harness.ts
   parallel_safe_smoke "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
-  # 5) The REAL settings applied-effect drives (every schema field, not just the --meta enumeration).
-  # diffSplitRatio is driven in smoke-diff-overview above through a real divider drag + second open.
-  quiet_serial_full_tmux_smoke "settings applied-effect (all schema fields driven)" bash scripts/smoke-settings-applied.sh
   # wave 4
   parallel_safe_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   parallel_safe_smoke "smoke: terminal backpressure harness" bun scripts/harness/smoke-terminal-backpressure-harness.ts
