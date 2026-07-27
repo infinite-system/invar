@@ -567,9 +567,9 @@ Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui
 
 (3) ONLY once the real backlog is drained AND the user is away — invent + execute ONE creative IDE-parity experiment: reduce a real user need to its invariant, build on an experiment-* branch off LATEST main, gate it. NEVER merge experiments to main (provenance decides main, not quality). If the user is actively present and directing, skip experiments — their direction IS the backlog.
 
-(4) Append lessons to /home/parallels/dev/tui-editor/project.conductor.md; when a lesson generalizes into doctrine, REFINE the /conductor SKILL.md and commit. If you change a cron prompt, recreate the cron AND update the skill's verbatim copy — the words are the durable artifact (crons are session-only and die on restart; this fire may be running on a restored cron proving exactly that).
+(4) Append lessons to /home/parallels/dev/tui-editor/project.conductor.md; when a lesson generalizes into doctrine, REFINE the /conductor SKILL.md and commit. If you change a cron prompt, recreate the cron AND update the skill's verbatim copy — the words are the durable artifact (crons are session-only and die on restart; this fire may be running on a restored cron proving exactly that). A cron prompt that names a RETIRED rule re-teaches it on every fire: check any rule you are about to cite by name against the skill before acting on it.
 
-(5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. ONE gate at a time across the fleet, and the conductor holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, timestamp first if the user is away.
+(5) Fleet hygiene: verify builders by evidence (worktree writes, gate logs, branch commits — never process counts; never kill user Invar instances). Cap builders ~2-3. NO GATE WHILE ANY BUILDER IS LIVE — a gate and a builder's verification phase are the same resource, and "looks quiet" is not idle (a reading-phase builder reaches its own tests minutes later, inside the gate's window). Gates MAY overlap each other; builders are the blocker. Remember a `git commit` launches a gate you did not type, so enumerate live builders by `/proc/<pid>/cwd` before committing too. Take the exception deliberately and write down why, or HOLD. The conductor also holds its OWN heavy work (tsc/tests/smokes) while any gate runs. Verify by DRIVING the real user path. Keep the user's checkout synced to origin/main (clean ff after each landing; rebase their local doc commits on top when present). Report concisely, and run `date` before stamping a time — do not invent one.
 ```
 
 ### RETIRED: the 10-minute liveness check (was `3,13,23,33,43,53 * * * *`)
@@ -585,6 +585,25 @@ the armable text was deliberately deleted from this file because a stale recorde
 than none — a restored cron would re-impose retired doctrine.
 
 ## Gate concurrency (superseding one-gate-at-a-time, as of 2026-07-25)
+
+**PRECONDITION — run this before launching ANY gate, including a `git commit` whose pre-commit
+hook gates.** The rule below has been broken three times in one night by a conductor who knew it
+and did not check. Prose did not fix that; a command might.
+
+```sh
+# live builders (a gate must not overlap ANY of these)
+for p in $(pgrep -x codex); do echo "BUILDER $(readlink /proc/$p/cwd)"; done
+# live gates (informational — overlap is allowed, builders are the blocker)
+for p in $(pgrep -f 'merge-gate\.sh'); do echo "GATE $(readlink /proc/$p/cwd)"; done
+```
+
+Two traps this closes. First, `pgrep -f merge-gate.sh` matches YOUR OWN shell, because its argv
+contains the pattern — resolve every hit through `/proc/<pid>/cwd` before believing it. Second, a
+`git commit` launches a gate you never typed, so "am I running a gate?" is the wrong question; the
+right one is "is anything about to run one?"
+
+If a builder is alive: either WAIT, or take the exception deliberately and write down why. What is
+forbidden is gating while builders verify and then reading the result as if it were clean.
 
 Two or more gates MAY now run simultaneously. The rule existed because of two shared-namespace
 collisions, both fixed in 9f6c617 — the pre-gate reaper killed every `/tmp/tui-*` app (executing a
