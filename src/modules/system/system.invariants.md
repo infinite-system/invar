@@ -23,8 +23,9 @@ OpenTUI. Local clipboard tools and clipboard reads are outside this output-order
 authority. `Clipboard.copy` constructs one complete `OSC 52 ; c ; base64 BEL` string and submits it
 through that binding, so no independent `process.stdout.write` can splice it into a renderer frame.
 
-**Generates:** One renderer-coordinated OSC 52 emission seam for terminal, agent transcript, and
-agent composer copy; complete canonical base64 payloads outside DEC 2026 frame markers.
+**Generates:** One renderer-coordinated OSC 52 emission seam for Settings, terminal, agent
+transcript, and agent composer copy; complete canonical base64 payloads outside DEC 2026 frame
+markers.
 
 **Rejected alternatives:** Write directly to `process.stdout` — OpenTUI owns the same byte stream
 and may flush a native-thread frame concurrently.
@@ -43,7 +44,7 @@ scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-27
 
 ### Capability classes are stateless and Static wrapped
 

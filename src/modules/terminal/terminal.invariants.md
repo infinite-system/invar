@@ -499,12 +499,13 @@ scripts/harness/smoke-terminal-stage-harness.ts`
 
 ### Copy reaches the host terminal
 
-**Invariant:** If the user copies selected text from the terminal pane, agent transcript, or agent
-composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so the host
-terminal receives it across cmux, SSH, or a VM boundary.
+**Invariant:** If the user copies selected text from Settings, the terminal pane, agent transcript,
+or agent composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so
+the host terminal receives it across cmux, SSH, or a VM boundary.
 
-**Scope:** `Clipboard.copy`, terminal-pane selection, agent-transcript selection, and agent-composer
-selection. Clipboard reads remain local-tool or in-app-buffer operations because OSC 52 is write-only.
+**Scope:** `Clipboard.copy`, Settings selection, terminal-pane selection, agent-transcript
+selection, and agent-composer selection. Clipboard reads remain local-tool or in-app-buffer
+operations because OSC 52 is write-only.
 
 **Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
 `Clipboard.copy` seam. That seam buffers in-app, submits one complete
@@ -523,8 +524,9 @@ machine clipboard and commonly fail across SSH or VM boundaries.
 `scripts/harness/smoke-clipboard-frame-boundary-harness.ts`.
 
 **Impossible if true:** A successful in-app copy status with no OSC 52 bytes crossing the app PTY;
-terminal selection sending Ctrl+C to the child instead of copying; copied Unicode being sliced by
-UTF-16 units; OSC 52 beginning inside another terminal control sequence or synchronized frame.
+Settings swallowing its registered copy action; terminal selection sending Ctrl+C to the child
+instead of copying; copied Unicode being sliced by UTF-16 units; OSC 52 beginning inside another
+terminal control sequence or synchronized frame.
 
 **Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun
 scripts/harness/smoke-agent-pane-ux-harness.ts && bun
@@ -532,7 +534,7 @@ scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-27
 
 ### Bracketed paste survives stream chunking
 

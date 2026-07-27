@@ -34,6 +34,18 @@ function detectWithEnvironment(
   return TerminalCapabilities.Class.detectGraphicsTier(reported);
 }
 
+function resolveWithEnvironment(
+  environment: Partial<Record<ManagedKey, string>>,
+  declared: 'auto' | GraphicsTier,
+  reported: ReportedGraphicsCapabilities | null,
+): GraphicsTier {
+  for (const key of managedKeys) {
+    if (environment[key] === undefined) delete process.env[key];
+    else process.env[key] = environment[key];
+  }
+  return TerminalCapabilities.Class.resolveGraphicsTier(declared, reported);
+}
+
 afterEach(() => {
   for (const [key, value] of originalValues) {
     if (value === undefined) delete process.env[key];
@@ -143,6 +155,27 @@ test('the environment override wins with and without a reported rich capability'
         TMUX: '/tmp/tmux-1000/default,123,0',
       },
       { ...reportedNone, multiplexer: 'tmux' },
+    ),
+  ).toBe('kitty');
+});
+
+test('the persisted declaration wins over automatic detection', () => {
+  expect(resolveWithEnvironment({}, 'halfblock', reportedAll)).toBe(
+    'halfblock',
+  );
+  expect(resolveWithEnvironment({}, 'kitty', reportedNone)).toBe('kitty');
+  expect(resolveWithEnvironment({}, 'sixel', reportedNone)).toBe('sixel');
+});
+
+test('auto follows the live report and the environment override remains highest', () => {
+  expect(resolveWithEnvironment({}, 'auto', reportedAll)).toBe('kitty');
+  expect(resolveWithEnvironment({}, 'auto', reportedSixelOnly)).toBe('sixel');
+  expect(resolveWithEnvironment({}, 'auto', reportedNone)).toBe('halfblock');
+  expect(
+    resolveWithEnvironment(
+      { TUI_GRAPHICS_TIER: 'kitty' },
+      'halfblock',
+      reportedNone,
     ),
   ).toBe('kitty');
 });

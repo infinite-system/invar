@@ -46,6 +46,7 @@ describe('Settings', () => {
     expect(settings.fastScrollMultiplier.value).toBe(3);
     expect(settings.scrollbarThickness.value).toBe(1);
     expect(settings.glyphMode.value).toBe('auto');
+    expect(settings.graphicsTier.value).toBe('auto');
     expect(settings.theme.value).toBe('dark');
     expect(settings.wordWrap.value).toBe(false);
     expect(settings.workspaceTabPosition.value).toBe('top');
@@ -70,12 +71,14 @@ describe('Settings', () => {
     const { settings } = makeStore({
       [USER_PATH]: JSON.stringify({
         theme: 'light',
+        graphicsTier: 'kitty',
         sidebarWidth: 40,
         wordWrap: true,
       }),
     });
     settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
     expect(settings.theme.value).toBe('light');
+    expect(settings.graphicsTier.value).toBe('kitty');
     expect(settings.sidebarWidth.value).toBe(40);
     expect(settings.wordWrap.value).toBe(true);
     // Untouched keys stay at their defaults.
@@ -108,6 +111,7 @@ describe('Settings', () => {
         theme: 'light', // valid, kept
         sidebarWidth: 'wide', // wrong type, dropped -> default 32
         glyphMode: 'bogus', // out of enum, dropped -> default 'auto'
+        graphicsTier: 'bogus', // out of enum, dropped -> default 'auto'
         typescriptServer: 'deno', // out of enum, dropped -> default 'tsgo'
         sidebarPosition: 'middle',
         panelAlignment: 'stretch',
@@ -122,6 +126,7 @@ describe('Settings', () => {
     expect(settings.theme.value).toBe('light');
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.glyphMode.value).toBe('auto');
+    expect(settings.graphicsTier.value).toBe('auto');
     expect(settings.typescriptServer.value).toBe('tsgo');
     expect(settings.sidebarPosition.value).toBe('left');
     expect(settings.panelAlignment.value).toBe('center');
@@ -172,6 +177,7 @@ describe('Settings', () => {
     const { settings, store } = makeStore();
     settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
     settings.set('theme', 'nord');
+    settings.set('graphicsTier', 'halfblock');
     settings.set('sidebarWidth', 48);
     const contributedRatio = settings.registerSetting({
       identifier: 'samplePluginRatio',
@@ -196,6 +202,7 @@ describe('Settings', () => {
     const written = store.get(USER_PATH);
     expect(written).toBeDefined();
     expect(JSON.parse(written as string).theme).toBe('nord');
+    expect(JSON.parse(written as string).graphicsTier).toBe('halfblock');
     expect(JSON.parse(written as string).sidebarWidth).toBe(48);
     expect(JSON.parse(written as string).samplePluginRatio).toBe(0.65);
     expect(JSON.parse(written as string).agentTerminalFollowMode).toBe(
@@ -235,6 +242,7 @@ describe('Settings', () => {
       },
     });
     expect(reloaded.theme.value).toBe('nord');
+    expect(reloaded.graphicsTier.value).toBe('halfblock');
     expect(reloaded.sidebarWidth.value).toBe(48);
     expect(reloadedRatio.value.value).toBe(0.65);
     expect(reloaded.agentTerminalFollowMode.value).toBe('on-request');

@@ -41,8 +41,13 @@ import { ModalOverlayDismissal } from './ModalOverlayDismissal';
 import { TextFieldPainter } from './TextFieldPainter';
 import {
   ScrollableTextViewport,
+  type ScrollableTextViewportDeps,
   type ViewportExtent,
 } from './ScrollableTextViewport';
+import { SelectableText } from './SelectableText';
+import { TextSelectionModel } from './TextSelectionModel';
+import { WrapText } from './WrapText';
+import { Clipboard } from '../system/Clipboard';
 import type { Palette } from '../theme/ThemePalettes';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { FindBar } from '../search/FindBar';
@@ -89,7 +94,7 @@ class $OverlayLayer {
   protected readonly confirmText: TextRenderable;
   protected readonly confirmationDismissal: ModalOverlayDismissal.Model;
   protected readonly settingsBox: BoxRenderable;
-  protected readonly settingsText: TextRenderable;
+  protected readonly settingsText: SelectableText.Model;
   protected readonly settingsDismissal: ModalOverlayDismissal.Model;
   protected readonly shortcutHelpBox: BoxRenderable;
   protected readonly shortcutHelpText: TextRenderable;
@@ -109,6 +114,7 @@ class $OverlayLayer {
   protected quickOpenViewportRows = 1;
   protected settingsContentRows = 0;
   protected settingsViewportRows = 1;
+  protected settingsViewportColumns = 1;
   protected shortcutHelpContentRows = 0;
   protected shortcutHelpVisibleRows = 1;
   protected contextMenuContentRows = 0;
@@ -122,6 +128,10 @@ class $OverlayLayer {
   protected previousShortcutHelpOpen = false;
   protected previousContextMenuOpen = false;
   protected previousContextMenuSelectedIndex = -1;
+  // invariant: A scrollable text surface is drag-selectable with edge auto-scroll (src/modules/ui/ui.invariants.md)
+  // invariant: Seams are drawn at the shared generator (project.invariants.md)
+  protected readonly settingsSelection = new TextSelectionModel.Class();
+  protected settingsRenderedLines: readonly SettingsRenderedLine[] = [];
   protected readonly dialogBoundsByName = new Map<
     OverlayDialogName,
     OverlayDialogBounds
@@ -293,9 +303,10 @@ class $OverlayLayer {
       visible: false,
       zIndex: 122,
     });
-    this.settingsText = new TextRenderable(renderer, {
+    this.settingsText = new SelectableText.Class(renderer, {
       id: 'settings-panel-text',
       content: '',
+      selectable: false,
     });
     this.settingsBox.add(this.settingsText);
     root.add(this.settingsBox);
@@ -316,6 +327,32 @@ class $OverlayLayer {
       }),
       () => {
         this.requestPaint();
+      },
+      {
+        positionAtCell: (screenColumn, screenRow) =>
+          this.settingsPositionAtCell(screenColumn, screenRow),
+        begin: (position) => {
+          this.settingsSelection.begin(position);
+          this.requestPaint();
+        },
+        extend: (position) => {
+          this.settingsSelection.extend(position);
+          this.requestPaint();
+        },
+        finish: () => {
+          this.settingsSelection.finish();
+          this.requestPaint();
+        },
+        viewportRectangle: () => ({
+          leftColumn: Number(this.settingsText.x),
+          rightColumn:
+            Number(this.settingsText.x) + this.settingsViewportColumns - 1,
+          topRow: Number(this.settingsText.y),
+          bottomRow:
+            Number(this.settingsText.y) + this.settingsViewportRows - 1,
+        }),
+        lineGraphemeCount: (lineIndex) =>
+          WrapText.Class.displayWidth(this.settingsLineText(lineIndex)),
       },
     );
     // Shortcut cheat-sheet (Ctrl+Shift+H / status-bar `?`) + modal dismissal projection.
@@ -455,6 +492,7 @@ class $OverlayLayer {
     // the pointer against the widget zones the renderer drew THIS frame (one geometry source).
     // invariant: Settings are editable by mouse per widget kind (src/modules/ui/ui.invariants.md)
     this.settingsText.onMouseDown = (event) => {
+      this.settingsViewport.beginDrag(event.x, event.y);
       const localRow = event.y - this.settingsText.y;
       const localColumn = event.x - this.settingsText.x;
       const zone = this.settingsWidgetZones.find(
@@ -469,6 +507,10 @@ class $OverlayLayer {
       else if (zone.action === 'inc') this.dependencies.settingsPanel.adjust(1);
       this.dependencies.renderer.requestRender();
     };
+    this.settingsText.onMouseDrag = (event: MouseEvent) =>
+      this.settingsViewport.dragTo(event.x, event.y);
+    this.settingsText.onMouseUp = () => this.settingsViewport.endDrag();
+    this.settingsText.onMouseDragEnd = () => this.settingsViewport.endDrag();
     this.commandPalette.onMouseScroll = (event: MouseEvent) =>
       this.commandPaletteViewport.handleWheel(event);
     this.commandPaletteInput.onMouseScroll = (event: MouseEvent) =>
@@ -538,6 +580,7 @@ class $OverlayLayer {
     parent: BoxRenderable,
     extent: () => ViewportExtent,
     onScroll: () => void,
+    selection?: ScrollableTextViewportDeps['selection'],
   ): ScrollableTextViewport.Instance {
     return new ScrollableTextViewport.Class({
       renderer: this.dependencies.renderer,
@@ -552,19 +595,22 @@ class $OverlayLayer {
         thumb: this.dependencies.theme.palette.dim,
       }),
       onScroll,
-      selection: {
-        positionAtCell: () => null,
-        begin: () => {},
-        extend: () => {},
-        finish: () => {},
-        viewportRectangle: () => ({
-          leftColumn: 0,
-          rightColumn: 0,
-          topRow: 0,
-          bottomRow: 0,
-        }),
-      },
+      selection: selection ?? this.inactiveOverlaySelection(),
     });
+  }
+  protected inactiveOverlaySelection(): ScrollableTextViewportDeps['selection'] {
+    return {
+      positionAtCell: () => null,
+      begin: () => {},
+      extend: () => {},
+      finish: () => {},
+      viewportRectangle: () => ({
+        leftColumn: 0,
+        rightColumn: 0,
+        topRow: 0,
+        bottomRow: 0,
+      }),
+    };
   }
   protected updateOverlayDialog(
     box: BoxRenderable,
@@ -698,6 +744,85 @@ class $OverlayLayer {
       lines.push({ chunks, zones, settingIndex: row.index });
     }
     return lines;
+  }
+  protected settingsLineText(lineIndex: number): string {
+    return (
+      this.settingsRenderedLines[lineIndex]?.chunks
+        .map((chunk) => chunk.text)
+        .join('') ?? ''
+    );
+  }
+  protected settingsPositionAtCell(
+    screenColumn: number,
+    screenRow: number,
+  ): { line: number; column: number } | null {
+    const localRow = screenRow - Number(this.settingsText.y);
+    const line = this.settingsViewport.scrollTop + localRow;
+    if (
+      localRow < 0 ||
+      localRow >= this.settingsViewportRows ||
+      line < 0 ||
+      line >= this.settingsRenderedLines.length
+    ) {
+      return null;
+    }
+    return {
+      line,
+      column: Math.max(0, screenColumn - Number(this.settingsText.x)),
+    };
+  }
+  protected paintSettingsSelection(): void {
+    const span = this.settingsSelection.normalized();
+    if (!span || !this.dependencies.settingsPanel.open.value) {
+      this.settingsText.clearSelectionRange();
+      return;
+    }
+    const [start, end] = span;
+    const windowStart = this.settingsViewport.scrollTop;
+    const windowEnd = windowStart + this.settingsViewportRows - 1;
+    if (end.line < windowStart || start.line > windowEnd) {
+      this.settingsText.clearSelectionRange();
+      return;
+    }
+    const anchorY = Math.max(
+      0,
+      Math.min(start.line - windowStart, this.settingsViewportRows - 1),
+    );
+    const anchorX =
+      start.line >= windowStart
+        ? Math.max(0, Math.min(start.column, this.settingsViewportColumns))
+        : 0;
+    const focusY = Math.max(
+      0,
+      Math.min(end.line - windowStart, this.settingsViewportRows - 1),
+    );
+    const focusX =
+      end.line <= windowEnd
+        ? Math.max(0, Math.min(end.column, this.settingsViewportColumns))
+        : this.settingsViewportColumns;
+    this.settingsText.setSelectionRange(anchorX, anchorY, focusX, focusY);
+  }
+  settingsHasSelection(): boolean {
+    return (
+      this.dependencies.settingsPanel.open.value &&
+      this.settingsSelection.hasSelection()
+    );
+  }
+  // invariant: Copy reaches the host terminal (src/modules/terminal/terminal.invariants.md)
+  async copySettingsSelection(): Promise<number> {
+    if (!this.settingsHasSelection()) return 0;
+    const text = this.settingsSelection.selectedText(
+      (line, startCell, endCell) =>
+        WrapText.Class.sliceByDisplayCells(
+          this.settingsLineText(line),
+          startCell,
+          endCell ?? Number.MAX_SAFE_INTEGER,
+        ),
+      '\n',
+    );
+    if (!text) return 0;
+    await Clipboard.Class.copy(text);
+    return text.length;
   }
   protected styledWindow(
     lines: readonly SettingsRenderedLine[],
@@ -1076,6 +1201,7 @@ class $OverlayLayer {
     if (settingsPanel.open.value) {
       const settingsRows = settingsPanel.rows();
       const settingsLines = this.settingsLines(palette, settingsRows);
+      this.settingsRenderedLines = settingsLines;
       this.settingsContentRows = settingsLines.length;
       const settingsGeometry = this.updateOverlayDialog(
         this.settingsBox,
@@ -1093,7 +1219,14 @@ class $OverlayLayer {
         1,
         settingsGeometry.interiorHeight - 1,
       );
-      if (!this.previousSettingsOpen) this.settingsViewport.reset();
+      this.settingsViewportColumns = Math.max(
+        1,
+        settingsGeometry.interiorWidth,
+      );
+      if (!this.previousSettingsOpen) {
+        this.settingsViewport.reset();
+        this.settingsSelection.clear();
+      }
       this.settingsViewport.reconcileExtent();
       const selectedSettingsIndex = settingsPanel.selectedIndex.value;
       if (selectedSettingsIndex !== this.previousSettingsSelectedIndex) {
@@ -1114,6 +1247,8 @@ class $OverlayLayer {
         this.settingsViewportRows,
       );
       this.settingsText.content = settingsWindow.text;
+      this.settingsText.selectionBg = palette.selection;
+      this.paintSettingsSelection();
       this.settingsWidgetZones = settingsWindow.zones;
       this.settingsViewport.updateScrollbars({
         top: 0,
@@ -1129,6 +1264,9 @@ class $OverlayLayer {
         this.settingsDismissal,
         this.settingsViewport,
       );
+      this.settingsText.clearSelectionRange();
+      this.settingsSelection.clear();
+      this.settingsRenderedLines = [];
       this.settingsWidgetZones = [];
       this.previousSettingsSelectedIndex = -1;
     }

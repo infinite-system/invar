@@ -1395,7 +1395,8 @@ class $RootView {
         // mount; the half-block floor (and every decode failure) renders through the cells exactly
         // as before. The ladder is one registry ask — no tier list lives here.
         // invariant: Graphics tier prefers the reported capability and degrades to cells (src/modules/theme/theme.invariants.md)
-        const graphicsTier = TerminalCapabilities.Class.detectGraphicsTier(
+        const graphicsTier = TerminalCapabilities.Class.resolveGraphicsTier(
+          settings.graphicsTier.value,
           reportedGraphics.value,
         );
         const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);
@@ -1976,6 +1977,7 @@ class $RootView {
       },
       hoverHasSelection: () => hoverCard.hasSelection(),
       hoverCopySelection: () => hoverCard.copySelection(),
+      settingsCopySelection: () => overlayLayer.copySettingsSelection(),
       observeHoverRepaint: () => {
         void hoverCard.paintRevision.value;
       },
@@ -2105,6 +2107,8 @@ export interface RootView {
   hoverHasSelection(): boolean;
   /** Copy the hover card's selected text to the clipboard; resolves to the character count copied. */
   hoverCopySelection(): Promise<number>;
+  /** Copy the Settings overlay's selected text through the shared clipboard authority. */
+  settingsCopySelection(): Promise<number>;
   /** Read the hover card's reactive paint signal inside the frame effect so an ASYNC hover landing
    *  (which no keypress/mouse-move accompanies) still triggers a repaint that projects the card. */
   observeHoverRepaint(): void;

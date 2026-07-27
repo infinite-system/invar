@@ -46,51 +46,67 @@ branch reads an env var or returns a literal default; no I/O or terminal round-t
 ### Graphics tier prefers the reported capability and degrades to cells
 
 **Invariant:** If the image preview resolves a graphics tier, then the precedence is fixed:
-`TUI_GRAPHICS_TIER` override → a positive OpenTUI graphics report, accepted even through a
-multiplexer → half-block when a report has no rich capability → a tmux floor and conservative
-env heuristics only when no report object exists → the half-block floor; and while OpenTUI
-reports no rich capability the preview stays at half-block until a positive answer arrives.
+`TUI_GRAPHICS_TIER` harness/CI override → the persisted `graphicsTier`
+declaration → automatic selection when the declaration is `auto`; automatic
+selection accepts a positive OpenTUI graphics report even through a
+multiplexer, uses half-block when a report has no rich capability, and uses a
+tmux floor plus conservative env heuristics only when no report object exists.
+While `auto` is selected and OpenTUI reports no rich capability, the preview
+stays at half-block until a positive answer arrives.
 
 **Scope:** `TerminalCapabilities.detectGraphicsTier` (the precedence), the `reportedGraphics`
-ref, `capabilities` event wiring, and tier ladder ask in `RootView` (the consumption), plus
-`PixelImageMount.sync` when the selected tier becomes richer. Unlike color depth and glyph
-level, the primary signal here is OpenTUI's in-band query result — graphics support is the
-capability terminals portably report (DA1 sixel flag, kitty graphics query), which is why
-this record is not an instance of *Terminal capability can only be inferred from the
-environment*.
+ref, host `graphicsTier` setting schema, `capabilities` event wiring,
+and tier ladder ask in `RootView` (the consumption), plus
+`PixelImageMount.sync` when the selected tier changes. Unlike color depth and
+glyph level, the primary automatic signal here is OpenTUI's in-band query
+result — graphics support is the capability terminals portably report (DA1
+sixel flag, kitty graphics query), which is why this record is not an instance
+of *Terminal capability can only be inferred from the environment*.
 
-**Mechanism:** `detectGraphicsTier(reported)` takes the report as a parameter (pure, testable);
-it accepts a positive kitty or sixel answer before applying the multiplexer floor because a
-reply received through a multiplexer proves passthrough worked. `RootView` holds the report
-in a `shallowRef`; the renderer's `capabilities` event updates the ref, runs `update()` so
-`PixelImageMount.sync` receives the new tier, and calls `renderer.requestRender()`. Env
-heuristics run only on a null report; the floor is `halfblock`, which every terminal renders.
+**Mechanism:** `Settings` defines `graphicsTier` as a host reactive field with
+`auto` as its default, sanitizer, persistence key, and Appearance-section panel
+descriptor. `RootView` reads that cell on every image projection.
+`resolveGraphicsTier(declared, reported)` keeps the environment override above
+that declaration and delegates `auto` to the same report-based detector. The
+detector accepts a positive kitty or sixel answer before applying the
+multiplexer floor because a reply received through a multiplexer proves
+passthrough worked. `RootView` holds the report in a `shallowRef`; the
+renderer's `capabilities` event updates the ref, runs `update()` so
+`PixelImageMount.sync` receives the new tier, and calls
+`renderer.requestRender()`. Env heuristics run only on a null report; the
+floor is `halfblock`, which every terminal renders.
 
 **Generates:** the kitty → sixel → half-block ladder in `ImageRenderers`; smokes that force any
-tier via `TUI_GRAPHICS_TIER`; an unforced late-answer smoke; zero risk of graphics escapes
-reaching a terminal after it has reported no graphics support.
+tier via `TUI_GRAPHICS_TIER`; a visible, persisted, live-applying declaration;
+an unforced late-answer smoke; zero risk of graphics escapes reaching a
+terminal after it has reported no graphics support.
 
 **Rejected alternatives:** Poll, use a timer, or recheck on keypress — the capability event
 already names the state transition, so those add latency and can leave an idle screen stale.
 
 **Evidence:** `src/modules/theme/GraphicsTier.test.ts` (positive report through a
-multiplexer, multiplexer silence, and override branches);
-`scripts/harness/smoke-pixel-preview-harness.ts` (unforced half-block first, matching late
-kitty reply, then placement without user input); `src/modules/ui/RootView.ts`
-(`capabilities` event → `update()` → `renderer.requestRender()`).
+multiplexer, multiplexer silence, persisted-declaration precedence, and
+override branches); `scripts/harness/smoke-pixel-preview-harness.ts` (unforced
+half-block first, matching late kitty reply, live downgrade, and same-HOME
+restart at small and large scale); `src/modules/settings/Settings.ts` and
+`SettingsPanel.ts` (host schema, persistence, and visible descriptor);
+`src/modules/ui/RootView.ts` (`capabilities` event → `update()` →
+`renderer.requestRender()`).
 
 **Impossible if true:** a kitty or sixel payload emitted because an env var guessed richer than
 the terminal's own negative report; a positive kitty or sixel answer discarded only because
 it arrived through a multiplexer; an image painted before the capability answer staying at
-the half-block floor once the positive answer arrives; a second tier-precedence list outside
-`detectGraphicsTier`.
+the half-block floor once the positive answer arrives while `auto` is selected;
+a saved explicit tier changing across restart; a live downgrade leaving the
+previous kitty placement on screen; a second tier-precedence list outside
+`TerminalCapabilities`.
 
 **Verification:** `bun test src/modules/theme/GraphicsTier.test.ts && bun
 scripts/harness/smoke-pixel-preview-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### Appearance comes only from theme data
 

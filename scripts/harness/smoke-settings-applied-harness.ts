@@ -29,6 +29,8 @@ const coveredSettingNames = new Set([
   'fastScrollMultiplier',
   'scrollbarThickness',
   'glyphMode',
+  // Real-image live apply, downgrade cleanup, and restart persistence live in the pixel smoke.
+  'graphicsTier',
   'theme',
   'wordWrap',
   'showActivityBar',

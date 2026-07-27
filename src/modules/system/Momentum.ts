@@ -50,6 +50,8 @@ class $Momentum {
       residual: 0,
       restEquivalentGestureVelocity: 0,
       restEquivalentGestureImpulseUnits: 0,
+      restEquivalentGestureImpulseCount: 0,
+      ceilingSustainingVelocity: 0,
     };
     Object.defineProperty(this, '$atRest', {
       configurable: true,
@@ -145,6 +147,9 @@ class $Momentum {
     const restEquivalentGestureImpulseUnits = gestureContinues
       ? (momentum.restEquivalentGestureImpulseUnits ?? 0)
       : 0;
+    const restEquivalentGestureImpulseCount = gestureContinues
+      ? (momentum.restEquivalentGestureImpulseCount ?? 0)
+      : 0;
     const gainScale =
       this.initialGainFraction +
       (1 - this.initialGainFraction) *
@@ -167,7 +172,12 @@ class $Momentum {
       restEquivalentGestureVelocityAfterImpulse - restEquivalentGestureVelocity;
     const restEquivalentGestureImpulseUnitsAfterImpulse =
       restEquivalentGestureImpulseUnits + Math.abs(deltaRows);
-    const velocityBeforeCeiling = momentum.velocity + gainedPhysicalVelocity;
+    const restEquivalentGestureImpulseCountAfterImpulse =
+      restEquivalentGestureImpulseCount + (deltaRows === 0 ? 0 : 1);
+    const velocityBeforeCeiling =
+      momentum.velocity +
+      (momentum.ceilingSustainingVelocity ?? 0) +
+      gainedPhysicalVelocity;
     const physicalVelocityCeiling = this.physicalVelocityCeiling(
       restEquivalentGestureImpulseUnitsAfterImpulse,
       options,
@@ -175,12 +185,22 @@ class $Momentum {
     const velocity =
       Math.sign(velocityBeforeCeiling) *
       Math.min(Math.abs(velocityBeforeCeiling), physicalVelocityCeiling);
+    const configuredCeilingWasAlreadyReached =
+      restEquivalentGestureImpulseCount >=
+      this.hardFlickImpulseUnits *
+        (this.followOnHardFlicksWithReservedHeadroom + 1);
+    const ceilingSustainingVelocity = configuredCeilingWasAlreadyReached
+      ? velocityBeforeCeiling - velocity
+      : 0;
     return {
       velocity,
       residual: momentum.residual,
       restEquivalentGestureVelocity: restEquivalentGestureVelocityAfterImpulse,
       restEquivalentGestureImpulseUnits:
         restEquivalentGestureImpulseUnitsAfterImpulse,
+      restEquivalentGestureImpulseCount:
+        restEquivalentGestureImpulseCountAfterImpulse,
+      ceilingSustainingVelocity,
       lastImpulseTimestampMilliseconds: currentTimestampMilliseconds,
     };
   }
@@ -223,10 +243,24 @@ class $Momentum {
     const advanced = momentum.residual + momentum.velocity * dtSec;
     const rows = Math.trunc(advanced);
     let residual = advanced - rows;
-    let velocity = momentum.velocity * Math.pow(options.decayPerSec, dtSec);
+    const decayedVelocity =
+      momentum.velocity * Math.pow(options.decayPerSec, dtSec);
+    const availableCeilingSustainingVelocity =
+      momentum.ceilingSustainingVelocity ?? 0;
+    const velocityLostToDecay = momentum.velocity - decayedVelocity;
+    const restoredVelocity =
+      Math.sign(availableCeilingSustainingVelocity) *
+      Math.min(
+        Math.abs(availableCeilingSustainingVelocity),
+        Math.abs(velocityLostToDecay),
+      );
+    let velocity = decayedVelocity + restoredVelocity;
+    let ceilingSustainingVelocity =
+      availableCeilingSustainingVelocity - restoredVelocity;
     if (Math.abs(velocity) < options.stopVelocity) {
       velocity = 0;
       residual = 0;
+      ceilingSustainingVelocity = 0;
     }
     return {
       momentum: {
@@ -235,6 +269,9 @@ class $Momentum {
         restEquivalentGestureVelocity: momentum.restEquivalentGestureVelocity,
         restEquivalentGestureImpulseUnits:
           momentum.restEquivalentGestureImpulseUnits,
+        restEquivalentGestureImpulseCount:
+          momentum.restEquivalentGestureImpulseCount,
+        ceilingSustainingVelocity,
         lastImpulseTimestampMilliseconds:
           momentum.lastImpulseTimestampMilliseconds,
       },
@@ -266,6 +303,13 @@ export interface ScrollMomentum {
   // Absolute impulse units accumulated by the same gesture. The physical ceiling envelope uses
   // these units to reserve visible velocity headroom for two follow-on hard flicks.
   restEquivalentGestureImpulseUnits?: number;
+  // Physical same-direction impulse events accumulated by the gesture. Unlike impulse units, this
+  // count is independent of lines-per-notch scaling and determines when true-ceiling overflow may
+  // sustain later frames.
+  restEquivalentGestureImpulseCount?: number;
+  // Same-direction impulse velocity received at the configured ceiling. It is spent only to replace
+  // frame decay, so dense input sustains capped speed without exceeding the configured maximum.
+  ceilingSustainingVelocity?: number;
   // Input cadence is the pre-motion continuation proxy. Live physical
   // motion is authoritative.
   lastImpulseTimestampMilliseconds?: number;
