@@ -44,22 +44,9 @@ Your task specified dev-only freezing. We shipped unconditional
    per-read) — statistically zero.
 3. Measured: frozen objects read no slower than unfrozen (see below).
 
-**SUPERSEDED 2026-07-27 — the freeze was removed as a defect in ivue 2.2.1.**
-The reasoning below described 2.2.0's unconditional shallow freeze, which
-crashed `StatusChannel.$state`'s `Object.assign` at boot and was reverted.
-As of 2.2.1 a `$`-cached value is NOT frozen: the `$` prefix promises stable
-identity per receiver and nothing more, and mutable memo tables
-(`$wrapMemo`, `$rangesByDocument`, `$snapshotByDocument`,
-`$entryProjectionCache`, `$overviewKindsByAlignment`, `StatusChannel.$state`)
-are legal and covered by upstream tests. Verified against installed 2.2.1:
-`Object.isFrozen` is false, `.set()` and `Object.assign` both succeed, and
-identity stays stable across reads. Retained for history:
-
-> Consequence for your migration: a consumer mutating a `$`-cached value
-> now throws in production too. That is the intended teeth ("cache-and-
-> freeze, or return-fresh — never cache-mutable"), but sweep with it in
-> mind: any site that mutates its cached template after the fact is a
-> pre-existing bug this will surface loudly.
+The freeze described above was removed as a defect in ivue 2.2.1. A `$`-cached value is NOT
+frozen: the `$` prefix promises stable identity per receiver and nothing more, and mutable memo
+tables are legal.
 
 ## Decision 2 — get-only stands; no setter, no injection API
 

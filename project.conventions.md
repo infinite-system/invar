@@ -18,17 +18,11 @@ Change a convention → change it HERE (and note the why in decisions.md).
   GitCommands.Class; }`.
 - **Name the state a thing establishes, not the steps it takes.** Mechanism names rot into lies, and
   a descriptive name is TRUSTED, so a stale one is worse than an abbreviation — an abbreviation makes
-  a reader look, a good name lets them assume. Lived case (2026-07-25): a harness helper called
-  `focusPanelOutsideDialog` did exactly that — clicked outside an open dialog to focus the pane
-  beneath. Then outside-press dismissal landed, that gesture became "close", and the name still read
-  perfectly while describing something impossible. Renamed `focusPanelBeforeOpeningDialog`, which
-  names the state it leaves behind and survives a change of gesture. Ask: if the implementation
-  changed tomorrow, would this name still be true? If not, it names the wrong thing.
+  a reader look, a good name lets them assume. TEST: if the implementation changed tomorrow, would
+  this name still be true? If not, it names the wrong thing.
 - **A rename sweep lands ALONE, and lands first.** A convention rename is a semantic conflict factory:
-  git merges it cleanly as text and the result does not compile. Lived case (2026-07-25): a builder
-  renamed `deps` → `dependencies` in `OverlayLayer` for this very convention while main separately
-  landed `createModalDismissal` using `this.deps`. Clean text merge, broken build. Never bundle a
-  sweep with feature work, and gate it against LATEST main immediately rather than letting it age.
+  git merges it cleanly as text and the result does not compile. Never bundle a sweep with feature
+  work, and gate it against LATEST main immediately rather than letting it age.
 
 ### Why explicit naming is load-bearing here (not style)
 An explicit name removes a LOOKUP. Both humans and delegated agents read from a window, not from the
@@ -50,10 +44,8 @@ a mechanical checker should not be able to see.
   class publishes through the same namespace seam.
 - NEW FILE RULE: exported STATELESS behavior is born as `class $X { static … }` + `export namespace
   X { export const $Class = Static($X); export let Class = $Class; }` — never a bare
-  `export function` bag. **The wrapper lives at the `$Class` ANCHOR, not at `Class`** (see the ivue
-  statics section below; the older `const Class = Static($X)` form is SUPERSEDED as of 2026-07-27,
-  because a wrapper on the mutable selection slot leaves inheritance pinned to a load-order-dependent
-  generation). State: Reactive domain models via `Reactive($X)` (mutable `let Class`);
+  `export function` bag. **The wrapper lives at the `$Class` ANCHOR, never at `Class`** — see the ivue
+  statics section below. State: Reactive domain models via `Reactive($X)` (mutable `let Class`);
   plain classes for algorithms/resources. Legacy bare bags are converted by the scheduled item-9
   pass; new code NEVER adds more. CHECK: conventions-gate grep for `^export function` in
   `src/modules/**`.
@@ -90,13 +82,8 @@ a mechanical checker should not be able to see.
   lower camel case. Instance getters remain lower camel case because a literal there is usually a
   per-instance knob. `$SCREAMING_SNAKE_CASE` is always invalid: a literal needs no cache. CHECK:
   `scripts/check-static-getter-naming.ts` in `scripts/conventions-gate.sh`.
-- ~~MANIFEST-ON-TOP~~ **SUPERSEDED (2026-07-24) by FILE GRAMMAR below.** The old layout kept
-  `$name` implementations as module-level function declarations below the manifest (hoisting made
-  it safe). Retired by user adjudication: detached functions are invisible to BOTH governing
-  systems — not on the seam (not overridable/stubbable/fork-reachable) and not on a `Reactive()`
-  prototype (can never join the graph). One grammar replaces two.
-- FILE GRAMMAR (2026-07-24, user-adjudicated; the AST checker enforcing it arrives with the
-  scheduled grammar sweep — the LAW applies to all NEW/EDITED code NOW, ahead of enforcement):
+- FILE GRAMMAR (applies to all new and edited code; AST enforcement is scheduled, the rule is
+  not):
   1. **Sequence:** imports → `// invariant:` annotations → the EPONYMOUS declaration → exported
      types → end of file. Nothing else at module level. The eponymous declaration is the class
      the file is named for (namespace-pattern manifest included); in `X.interface.ts` it is
@@ -125,9 +112,7 @@ a mechanical checker should not be able to see.
   top-level `new`/snapshot. Owned constructions go through overridable `createX()` seams.
 - `$stopEffects()` only on classes that OWN effects (it clears ref-getter state cells too).
 - `Static` is imported from the ivue package subpath: `import { Static } from 'ivue/extras'` (ivue
-  ≥ 2.1.0). This keeps the primary `ivue` entry at its ~1.1kb hero size; `Static` (~0.28kb) ships via
-  the `./extras` subpath. There is NO vendored copy — the old `src/modules/system/Static.ts` was
-  deleted when the migration completed.
+  ≥ 2.2.1), never from `ivue` and never vendored.
 
 ## Interaction & state discipline
 - One writer per scroll/animation regime per frame; a new authority (keyboard, thumb drag, jump)
@@ -172,9 +157,7 @@ green over a shrinking fraction of the population while still looking exhaustive
 defect as a smoke the gate never runs, one level up.
 
 **The tell in review:** a test file that opens with N sibling imports of the very modules it is
-asserting over. That is an enumeration wearing a test's clothes. Lived case (2026-07-27): the first
-`$`-cache contract landed with 36 explicit namespace imports — correct on the day, silently partial
-from the next commit onward.
+asserting over. That is an enumeration wearing a test's clothes.
 
 **The shape that works** (proven for the `$`-cache contract, detailed below): a cheap SOURCE SCAN
 selects candidate files, the test imports only those, then it asks each subject STRUCTURALLY at
@@ -235,88 +218,39 @@ statics-bearing class — no renaming, no declaration churn.
   identity does not. Consequence: a wrapped double and its raw class name are TWO RECEIVERS WITH TWO
   CACHES, so reference an installed double through `X.Class`, never by its own name.
 
-### The $-cache contract is a DISCOVERY TEST, not a checker and not a written-out list
-`$`-cache stability is a runtime property, so it rides `bun test`: for each class declaring
-`$`-static getters, read each `$`-property twice and assert the two reads are the same object. This
-asserts the PROPERTY (the cache works) rather than the MECHANISM (was `Static()` applied) — which
-matters because wrapping is not cleanly detectable at runtime: no marker symbol on the class, and
-`.name` is a minified wrapper.
+### The $-cache contract (a discovery test)
+`$`-cache stability is a runtime property, so it rides `bun test`, and it asserts the PROPERTY (the
+cache works) not the MECHANISM (was `Static()` applied) — wrapping is not reliably detectable at
+runtime: no marker symbol, and `.name` is a minified wrapper. The shape:
+1. **candidate files — broadest pattern**, `\bget \$` over non-test `src/**/*.ts`. Never assume the
+   modifier list: `static override get $X` does NOT contain `static get $X`.
+2. **import only those.** Importing all of `src` hangs — a module has a non-returning side effect.
+3. **select with `Static()`'s own criterion** — from `Object.getOwnPropertyDescriptors`, `$`-prefixed
+   names where `.get` is a function and `.set === undefined`. No second spec to drift.
+4. **capture descriptors BEFORE reading** — a cached read installs an own value property that shadows
+   the getter.
+5. prefer `$Class` over `Class` per namespace; read each twice; assert `Object.is`.
 
-**It DISCOVERS its subjects; nobody writes the list.** A hand-enumerated list of namespaces rots,
-and a rotted list reports green. The proven shape (measured on main: 36 files → 67 getters across
-36 classes, 67/67 stable, 0.14s wall, 92MB):
-1. source-scan for candidates — `grep -rlE 'static get \$' src/ --include='*.ts'`, minus `.test.ts`;
-2. dynamically `import()` **only those**, and take `$Class` per exported namespace (preferring it
-   over `Class` so one class is not counted twice);
-3. select getters with **`Static()`'s own criterion** — from `Object.getOwnPropertyDescriptors`,
-   names starting with `$` where `.get` is a function and `.set === undefined`. Reusing the
-   mechanism's selection rule means there is no separate spec to drift from it;
-4. capture descriptors **before** reading — a cached read installs an own value property that
-   shadows the getter;
-5. read each twice, assert identical.
+Guards: the independent count (per the population rule above — count with `static[^(]*get \$`, NOT
+the discovery pattern); non-empty; **and no primitive values**, since `'a' === 'a'` regardless of
+caching makes the identity tell vacuous. Assert EVERY `$`-property, not one per class: wrapping fails
+per-class, but `Static()` only transforms get-only accessors, so adding a setter to one silently stops
+THAT ONE caching while its siblings keep working. Also assert zero INSTANCE `$`-getters — a real
+convention question that must surface rather than vanish into a count mismatch.
 
-**Scan-then-import is load-bearing, not an optimisation.** Importing all of `src` to discover
-classes HANGS (killed at 120s) — some module has a non-returning module-level side effect.
-
-**The scan pattern must not assume the modifier list.** `static override get $X` does NOT contain
-the substring `static get $X`, so a strict `static get \$` grep silently drops it — measured, it
-misses 5 (67 strict vs 72 permissive across the tree). Today all 5 live in `.test.ts` doubles, which
-discovery excludes anyway, so non-test `src/` currently agrees at 67 across every pattern. That is
-LUCK, not construction: the first production subclass to override a parent's cached table
-disappears. Three separate pieces, each failing loudly on its own:
-1. **candidate FILE scan → broadest** — `\bget \$`. Makes no assumption about modifiers or their
-   order, so no combination escapes. Costs nothing: it selects the same 36 files today.
-2. **guard COUNT → static-permissive** — `static[^(]*get \$`, matching what discovery should
-   actually find. It must NOT reuse the strict pattern, and it must not reuse the broadest one
-   either: a guard sharing a blind spot with the thing it guards is not a guard, and a guard counting
-   instance getters would red falsely.
-3. **zero instance `$`-getters** — assert every `\bget \$` in non-test `src/` is also matched by
-   the static-permissive pattern (67 == 67 today). An instance `$`-getter is a real convention
-   question and must surface rather than vanish into a count mismatch.
-
-**Accessibility modifiers are handled, and `#`-private is FORBIDDEN.** This repo writes
-`protected static get $…` almost universally (66 of 67 on main; 0 plain `private`, 0 `public`), and
-the grep matches it because `protected static get $X` CONTAINS `static get $X`. There is no legal
-ordering that escapes: `tsc` rejects `static private` with TS1029 ("'private' modifier must precede
-'static' modifier"). TS `private`/`protected` are compile-time only, so all of them stay visible to
-`getOwnPropertyDescriptors` and all of them cache under `Static()` — verified.
-
-ES `#`-private is banned in capability classes, and this rule PRE-EXISTS — it was recorded as the
-"`Static()` `#private` caveat" in `project.skill-upgrades.md` and is promoted here because a
-limitation in a notes file is not a convention. **Native static `#private` rejects the
-selected-subclass receiver** — a `Static()` class is a SUBCLASS of `$Class`, and a `#` name is keyed
-to the exact class that declared it, so `this.#member` is rejected on the wrapped receiver, not
-merely uncached. Use TS `private`/`protected` or module-scope state for capability-class private
-data, never `this.#member`.
-
-For a `$`-getter specifically the consequence compounds: `static get #$FOO` is **not a property**, so
-no descriptor walk can see it and the discovery test is structurally blind to it. Zero instances in
-`src/` today (0 files use `#` members at all).
-
-Enforcement reuses the instrument we already have, not a grep: **`scripts/ast-query.ts
-private-members`** covers `private` + `#private`, and `ast-query.ts` is already gate-resident
-(`conventions-gate.sh` runs its `text-input-census --require-zero`), so this is a one-line addition
-in the same style. An AST query is the right tool here where grep is not — grep matches `#` inside
-comments and strings.
-
-Three guards, all required:
-- fail unless the DISCOVERED getter count equals the SOURCE-SCAN count. "Fail if zero" is too weak:
-  a walk that finds 4 of 36 also reports green, and since discovery rests on a grep, a `$`-getter
-  not written literally as `static get $` would otherwise vanish silently;
-- fail if it inspected ZERO classes;
-- fail on any `$`-property whose value is a PRIMITIVE — `'a' === 'a'` regardless of caching, so the
-  identity tell would be vacuous. Zero instances today; the guard exists because the line that opens
-  the hole (`static get $LABEL(): string`) looks harmless.
-
-Because it asserts the property and not the mechanism, this test is green BOTH before and after the
-`Static()` migration (hand-rolled `defineProperty` caches satisfy it too). Write it FIRST: it then
-acts as a ratchet ON the migration rather than a description of whatever the migration produced.
-
-Assert EVERY `$`-property, not one per class. Wrapping fails per-class, but `Static()` only
-transforms get-only `$`-accessors — so adding a setter to one, or making it a `static $field`,
-silently stops THAT ONE caching while its class stays wrapped and its siblings keep working.
-Positive control is free and structural: a raw class and a `Reactive`-only class both fail the
+Positive control is structural and free: a raw class and a `Reactive`-only class both fail the
 identity assertion.
+
+Because it asserts the property and not the mechanism, this test is green both before and after the
+`Static()` migration (hand-rolled `defineProperty` caches satisfy it too). Write it FIRST, so it
+ratchets a migration instead of describing whatever the migration produced.
+
+**ES `#`-private is forbidden in capability classes.** A `Static()` class is a SUBCLASS of `$Class`
+and a `#` name is keyed to its declaring class, so `this.#member` is REJECTED on the wrapped receiver
+— not merely uncached. Use TS `private`/`protected` or module-scope state. A `static get #$FOO` is
+additionally not a property, so no descriptor walk can see it. CHECK: `scripts/ast-query.ts
+private-members` (already gate-resident); an AST query, not a grep, which would match `#` in comments
+and strings.
 
 ## Retiring smoke files
 - A retired smoke lives in `scripts/retired-smokes/`. Move it there with

@@ -294,3 +294,29 @@ which only works because every measuring site spells it identically — and
 it should not be able to see.
 
 **Status:** adopted · **Logged:** 2026-07-25
+
+## Convention provenance (moved out of project.conventions.md, 2026-07-27)
+
+`project.conventions.md` is the canonical WHAT; these are the cases that produced its rules. They
+were inline there and made it read as a log.
+
+- **Name the state, not the steps** — a harness helper `focusPanelOutsideDialog` clicked outside an
+  open dialog to focus the pane beneath. Outside-press dismissal then landed, that gesture became
+  "close", and the name still read perfectly while describing something impossible. Renamed
+  `focusPanelBeforeOpeningDialog`, which names the state it leaves behind and survives a change of
+  gesture.
+- **A rename sweep lands alone** — a builder renamed `deps` → `dependencies` in `OverlayLayer` while
+  main separately landed `createModalDismissal` using `this.deps`. Clean text merge, broken build.
+- **MANIFEST-ON-TOP retired** (superseded by FILE GRAMMAR) — the old layout kept `$name`
+  implementations as module-level function declarations below the manifest, relying on hoisting.
+  Retired by user adjudication: detached functions are invisible to BOTH governing systems — not on
+  the seam (not overridable, stubbable, or fork-reachable) and not on a `Reactive()` prototype (can
+  never join the graph). One grammar replaces two.
+- **A population test discovers its population** — the first `$`-cache contract landed with 36
+  explicit namespace imports: correct on the day, silently partial from the next commit onward.
+- **The `$`-cache freeze was a defect, not a design** — ivue 2.2.0 shallow-froze `$`-caches
+  unconditionally, crashing `StatusChannel.$state`'s `Object.assign` at boot. Reverted in 2.2.1:
+  the `$` prefix promises stable identity per receiver and nothing more.
+- **Discovery measurements** (pre-migration main) — 36 candidate files, 67 `$`-getters across 36
+  classes, 67/67 identity-stable, 0 primitive, 0.14s wall, 92MB RSS. Importing all of `src` instead
+  of scan-selected candidates hangs past 120s.
