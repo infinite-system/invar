@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import {
   StyledText,
   TextRenderable,
@@ -295,8 +296,8 @@ class $CommandBar {
 }
 
 export namespace CommandBar {
-  export const $Class = $CommandBar;
-  export const Class = $CommandBar;
+  export const $Class = Static($CommandBar);
+  export const Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

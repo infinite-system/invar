@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
 import type {
   LanguageCapabilities,
@@ -17,10 +18,6 @@ class $TypeScriptProvider implements LanguageServerProvider {
       '.mjs',
       '.cjs',
     ]);
-    Object.defineProperty(this, '$typescriptExtensions', {
-      configurable: true,
-      value: typescriptExtensions,
-    });
     return typescriptExtensions;
   }
 
@@ -36,20 +33,12 @@ class $TypeScriptProvider implements LanguageServerProvider {
         args: ['--stdio'],
       },
     };
-    Object.defineProperty(this, '$serverCandidates', {
-      configurable: true,
-      value: serverCandidates,
-    });
     return serverCandidates;
   }
 
   /** Default preference order — tsgo primary, typescript-language-server fallback. */
   protected static get $defaultOrder(): readonly string[] {
     const defaultOrder = ['tsgo', 'typescript-language-server'];
-    Object.defineProperty(this, '$defaultOrder', {
-      configurable: true,
-      value: defaultOrder,
-    });
     return defaultOrder;
   }
 
@@ -112,7 +101,7 @@ class $TypeScriptProvider implements LanguageServerProvider {
 }
 
 export namespace TypeScriptProvider {
-  export const $Class = $TypeScriptProvider;
+  export const $Class = Static($TypeScriptProvider);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

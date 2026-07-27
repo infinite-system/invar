@@ -23,10 +23,6 @@ class $Momentum {
       stopVelocity: 3,
       maximumGlideDurationMilliseconds: 900,
     };
-    Object.defineProperty(this, '$defaultOptions', {
-      configurable: true,
-      value: defaultOptions,
-    });
     return defaultOptions;
   }
 
@@ -41,10 +37,6 @@ class $Momentum {
       stopVelocity: 3,
       maximumGlideDurationMilliseconds: 900,
     };
-    Object.defineProperty(this, '$verticalOptions', {
-      configurable: true,
-      value: verticalOptions,
-    });
     return verticalOptions;
   }
 
@@ -357,8 +349,8 @@ class $Momentum {
 }
 
 export namespace Momentum {
-  export const $Class = $Momentum;
-  export const Class = Static($Momentum);
+  export const $Class = Static($Momentum);
+  export const Class = $Class;
 }
 
 export interface ScrollMomentum {

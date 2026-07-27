@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import type { TtsBackend } from './TtsBackend.interface';
 import { VoiceDiscovery } from './VoiceDiscovery';
 import { Processes } from '../system/Processes';
@@ -287,7 +288,7 @@ class $SystemTtsBackend implements TtsBackend {
 }
 
 export namespace SystemTtsBackend {
-  export const $Class = $SystemTtsBackend;
+  export const $Class = Static($SystemTtsBackend);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

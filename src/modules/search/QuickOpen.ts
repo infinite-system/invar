@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { CommandScoring } from '../commands/CommandScoring';
@@ -433,7 +434,7 @@ class $QuickOpen {
 }
 
 export namespace QuickOpen {
-  export const $Class = $QuickOpen;
+  export const $Class = Static($QuickOpen);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

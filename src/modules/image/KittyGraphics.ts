@@ -59,8 +59,8 @@ class $KittyGraphics {
 }
 
 export namespace KittyGraphics {
-  export const $Class = $KittyGraphics;
-  export const Class = Static($KittyGraphics);
+  export const $Class = Static($KittyGraphics);
+  export const Class = $Class;
 }
 
 /** One kitty placement request: the decoded image scaled into a columns×rows cell rect as `imageId`. */

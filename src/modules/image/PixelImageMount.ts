@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import type { GraphicsTier } from '../theme/TerminalCapabilities';
 import type { DecodedImage } from './ImageDecoders';
 import type { PixelEncoder } from './ImageRenderers';
@@ -146,7 +147,7 @@ class $PixelImageMount {
 }
 
 export namespace PixelImageMount {
-  export const $Class = $PixelImageMount;
+  export const $Class = Static($PixelImageMount);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

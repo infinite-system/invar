@@ -57,6 +57,14 @@ if ! "$bun_binary" scripts/check-static-getter-naming.ts; then
   fail=1
 fi
 
+# 1.8) IMMUTABLE INHERITANCE ANCHOR: an extends clause must never snapshot the mutable Class slot.
+mutable_class_extends=$(grep -rnE 'extends [A-Za-z_][A-Za-z0-9_]*\.Class\b' src --include='*.ts' || true)
+if [ -n "$mutable_class_extends" ]; then
+  echo "CONVENTIONS FAIL: extends uses a mutable Class slot — extend the immutable \$Class anchor:"
+  echo "$mutable_class_extends"
+  fail=1
+fi
+
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding

@@ -29,12 +29,25 @@ class $FrameProbe {
         const laneBase = cell * 4; // fg/bg: 4 Uint16 lanes (r,g,b,a) per cell
         // `char` packs metadata (glyph width) in high bits; the codepoint is the low 21 bits.
         const codePoint = (char[cell] ?? 0) & 0x1fffff;
-        text += codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : ' ';
-        bgRow.push(`${bg[laneBase] ?? 0},${bg[laneBase + 1] ?? 0},${bg[laneBase + 2] ?? 0},${bg[laneBase + 3] ?? 0}`);
-        fgRow.push(`${fg[laneBase] ?? 0},${fg[laneBase + 1] ?? 0},${fg[laneBase + 2] ?? 0},${fg[laneBase + 3] ?? 0}`);
+        text +=
+          codePoint > 0 && codePoint <= 0x10ffff
+            ? String.fromCodePoint(codePoint)
+            : ' ';
+        bgRow.push(
+          `${bg[laneBase] ?? 0},${bg[laneBase + 1] ?? 0},${bg[laneBase + 2] ?? 0},${bg[laneBase + 3] ?? 0}`,
+        );
+        fgRow.push(
+          `${fg[laneBase] ?? 0},${fg[laneBase + 1] ?? 0},${fg[laneBase + 2] ?? 0},${fg[laneBase + 3] ?? 0}`,
+        );
         attrRow.push(attributes[cell] ?? 0);
       }
-      rows.push({ y, text: text.replace(/\s+$/, ''), bg: bgRow, fg: fgRow, attrs: attrRow });
+      rows.push({
+        y,
+        text: text.replace(/\s+$/, ''),
+        bg: bgRow,
+        fg: fgRow,
+        attrs: attrRow,
+      });
     }
     return { width, height, rows };
   }
@@ -51,8 +64,8 @@ class $FrameProbe {
 }
 
 export namespace FrameProbe {
-  export const $Class = $FrameProbe;
-  export const Class = Static($FrameProbe);
+  export const $Class = Static($FrameProbe);
+  export const Class = $Class;
 }
 
 export interface FrameRow {

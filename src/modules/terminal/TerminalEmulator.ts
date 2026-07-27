@@ -4,6 +4,7 @@
 // parsed write pulse fires onCellsChanged (the render-coalescing signal). A hand-rolled parser would
 // have to re-implement scrollback/wrap/alt-screen, so the library is the honest choice.
 //
+import { Static } from 'ivue/extras';
 import { Terminal, type IBufferCell } from '@xterm/headless';
 
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
@@ -452,7 +453,7 @@ class $TerminalEmulator {
 }
 
 export namespace TerminalEmulator {
-  export const $Class = $TerminalEmulator;
+  export const $Class = Static($TerminalEmulator);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

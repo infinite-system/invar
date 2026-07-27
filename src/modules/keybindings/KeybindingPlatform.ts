@@ -35,10 +35,6 @@ class $KeybindingPlatform {
       'workspace.next',
       'workspace.previous',
     ]);
-    Object.defineProperty(this, '$primaryModifierActions', {
-      configurable: true,
-      value: primaryModifierActions,
-    });
     return primaryModifierActions;
   }
 
@@ -72,6 +68,6 @@ class $KeybindingPlatform {
 }
 
 export namespace KeybindingPlatform {
-  export const $Class = $KeybindingPlatform;
-  export const Class = Static($KeybindingPlatform);
+  export const $Class = Static($KeybindingPlatform);
+  export const Class = $Class;
 }

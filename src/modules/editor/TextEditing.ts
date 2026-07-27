@@ -122,8 +122,8 @@ class $TextEditing {
 }
 
 export namespace TextEditing {
-  export const $Class = $TextEditing;
-  export const Class = Static($TextEditing);
+  export const $Class = Static($TextEditing);
+  export const Class = $Class;
 }
 
 export interface PreviousWordDeletion {

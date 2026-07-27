@@ -34,6 +34,6 @@ class $JpegDecoder {
 }
 
 export namespace JpegDecoder {
-  export const $Class = $JpegDecoder;
-  export const Class = Static($JpegDecoder);
+  export const $Class = Static($JpegDecoder);
+  export const Class = $Class;
 }

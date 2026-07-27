@@ -25,6 +25,6 @@ class $Environment {
 }
 
 export namespace Environment {
-  export const $Class = $Environment;
-  export let Class = Static($Environment);
+  export const $Class = Static($Environment);
+  export let Class = $Class;
 }

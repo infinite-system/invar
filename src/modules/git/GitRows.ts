@@ -84,8 +84,8 @@ class $GitRows {
 }
 
 export namespace GitRows {
-  export const $Class = $GitRows;
-  export const Class = Static($GitRows);
+  export const $Class = Static($GitRows);
+  export const Class = $Class;
 }
 
 export type ChangeBucket = 'staged' | 'unstaged' | 'untracked';

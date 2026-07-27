@@ -15,6 +15,7 @@
 // invariant: A split panel renders every visible cell into its own sub-region (src/modules/terminal/terminal.invariants.md)
 // invariant: A focused split panel routes keystrokes to the focused cell (src/modules/terminal/terminal.invariants.md)
 // invariant: Split arrangement follows panel content order (src/modules/layout/layout.invariants.md)
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import type { KeyEvent } from '@opentui/core';
@@ -620,7 +621,7 @@ class $PanelHost {
   }
 }
 export namespace PanelHost {
-  export const $Class = $PanelHost;
+  export const $Class = Static($PanelHost);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
