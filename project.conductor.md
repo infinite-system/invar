@@ -1110,3 +1110,584 @@ costs were invisible to every contract while being the dominant felt cost on rea
 26k-line package-lock.json found in one minute what eight green gates missed. Fixture axes are part
 of coverage: when a metric can scale with an input dimension, the contract needs a point at the far
 end of that dimension.
+
+
+## MIGRATED 2026-07-26 21:40 — the ibr `Skills/Orchestration Lessons.md` entries that lived only there
+
+USER CORRECTION: doctrine belongs in `project.conductor.md`, in the repo the work happens in — NOT in
+`ibr/Skills/Orchestration Lessons.md`. Both files were titled "Orchestration Lessons" and had been
+diverging for days, each holding lessons the other lacked, which is the same defect as two copies of a
+cron prompt: a record nobody can trust because a reader cannot tell which copy is current.
+
+**This file is now the single home.** The ibr file is superseded; do not append to it, regardless of
+what the hourly loop prompt says (that prompt still names the ibr path and is wrong — the target is
+this file). Everything below was ported VERBATIM, with original dates, after checking each entry
+had no counterpart here.
+
+Two items in the ibr file were deliberately NOT ported because they are obsolete — solved, not
+forgotten: the "we need a gate lock/queue" wish (built: the machine-wide quiet lock, #84) and the
+"we need a fleet heartbeat" wish (built: the pull heartbeat polling file-write progress). The
+worktree-`node_modules`-symlink stumble is likewise retired — worktrees now run
+`bun install --frozen-lockfile`.
+
+---
+## 2026-07-25 19:20 — a record of a loop is not the loop
+The user asked whether both crons were still in place. The conductor skill recorded two verbatim cron
+prompts — an hourly orchestration loop and a 10-minute liveness check — with a note that a previous
+session restart had killed the in-memory crons and that these copies restored them. `CronList` returned
+exactly one job. The 10-minute heartbeat had died in a restart and only the hourly was re-armed, so for
+an unknown span the floor under builder liveness was gone while the doc asserted it was there.
+
+The failure was silent BY CONSTRUCTION: a heartbeat that stops firing produces no output, and its
+absence is indistinguishable from a quiet, healthy fleet. Contrast a gate, which fails loudly. Any
+orchestration invariant whose violation is silence needs a runtime probe, not a prose record — so the
+loop's step 0 is now `CronList` before any other work, re-arming from the verbatim text in the same fire.
+And the arrival of one loop's fires says nothing about another's; they die independently.
+
+Second-order lesson: the recorded 10-minute prompt was also carrying a rule the fleet had already
+measured its way out of (one gate at a time). A stale verbatim prompt is worse than a missing one — a
+restore re-imposes a retired constraint with full authority. When doctrine changes, the recorded prompts
+are part of that change set, not a later chore.
+
+## 2026-07-25 19:25 — reviewing a change to the verification apparatus itself
+A builder delivered a 466-line rewrite of `merge-gate.sh` (parallel smoke pool + serial quiet tail). A
+green gate is NOT evidence for this class of change, because a gate that silently drops a smoke still
+reports ALL-PASS. The apparatus cannot testify about itself.
+
+What review actually requires here is coverage-preservation diffing against the pre-change script:
+extract the set of harness smoke filenames and the set of step labels from both versions and compare as
+SETS. Result: 53 smokes and 111 labels, identical, nothing dropped — a claim no amount of reading the
+diff would have established with the same confidence.
+
+Then the substantive defect, which the gate could never have surfaced. The builder's own guard,
+`validate_smoke_classification`, decides whether a smoke is timing-sensitive by grepping DOMAIN
+VOCABULARY (`Momentum|glide|awaitFrameSilence|assertNoCompleteFrameEmittedFor`). That is the same shape
+the user rejected earlier in the day for the `.value` lint: a syntactic pattern standing in for a
+semantic property. Here the failure direction is the harmful one — a false negative classifies a
+timing-sensitive smoke as parallel-safe, and the resulting coverage loss reports green.
+
+Empirically: `smoke-terminal-stage-harness.ts` asserts `elapsedMilliseconds < 1000` (reduced-motion
+takes the instant path) and `slowDuration > fastDuration + 400` across two SEPARATELY LAUNCHED app runs.
+Both are measurements of the machine; both sat in the parallel bucket, because the file says
+"animation" and "reducedMotion" rather than "momentum". The guard's vocabulary missed its own target.
+
+THE STRUCTURAL DISCRIMINATOR that replaces the vocabulary guess: a deadline loop ADDS to
+`performance.now()` and compares (load-robust — under load it merely waits longer); a measurement
+SUBTRACTS two readings. So `performance\.now\(\)\s*-` is the tell, and it is domain-independent.
+Verified against the two smokes that use clocks innocently (`agent-cancel`, `paste`): both only add and
+compare, and both are correctly parallel-safe.
+
+## 2026-07-25 19:30 — the tail was made of the wrong thing entirely
+Auditing WHY each of the 20 quiet-serial smokes was in the tail: every single one qualifies solely
+because it calls `assertNoCompleteFrameEmittedFor`/`awaitFrameSilence`. ZERO of them derive a duration.
+The classification was inverted with respect to the property that actually matters — the tail held 20
+absence assertions and excluded the one genuine measurement.
+
+Absence assertions do not need a quiet machine; they need a LIVENESS CONTROL. "No frame for N ms" is a
+claim about the program, and it becomes load-sensitive only because a slow machine satisfies it
+accidentally. Pair the window with a proof that a frame CAN arrive immediately after it (stimulus, then
+require a frame within M ms) and the assertion stops caring about load.
+
+The operational consequence is the vertical cut: do NOT edit 20 smokes. All 20 flow through ONE helper,
+so strengthening that helper to require its own paired liveness proof converts the entire class at the
+generator. The tail then collapses to what genuinely measures the machine — one smoke, the byte-arrival
+latency step, and the soft perf baselines, on the order of 30 seconds. That is the only thing a
+machine-wide quiet lock has to serialize, which turns "gates take turns for five minutes" into "gates
+take turns for thirty seconds".
+
+Refinement to the lock's scope: it must be acquirable by BUILDER verification runs too, not only by
+gates. A builder running `bun test` or a smoke loads the machine identically. The scope is machine-wide
+heavy work; keying it to gates would leave the hole open.
+
+## 2026-07-25 19:35 — three cheap operational rules earned in one stretch
+A LANDED WORKTREE IS A FREE BUILD SLOT. Disk hit 93% (9.5G free) and each fresh worktree costs ~350MB of
+`node_modules`. Sixteen `conductor-*` worktrees whose branches were already ancestors of main were
+sitting there with dependencies installed. Recycling two (`git checkout -B <new-branch> origin/main`)
+cost nothing and preserved the never-delete-a-branch rule, since only the checkout moves. Detect them
+with `git merge-base --is-ancestor <worktree HEAD> origin/main`. Note the trap: in a linked worktree
+`.git` is a FILE, so a `[ -d "$w/.git" ]` guard silently skips every candidate — use `-e`.
+
+NEVER EDIT A RUNNING BASH SCRIPT. Bash reads a script incrementally as it executes, so editing
+`merge-gate.sh` mid-run can change execution or corrupt it. Fixes to a gate script wait for GATE_EXIT,
+however obvious they are.
+
+A BUILDER'S FIRST TEN MINUTES ARE INVISIBLE TO A WORKTREE-WRITE HEARTBEAT. Two codex builders launched
+at 19:14 landed their first worktree write at 19:24 — ten minutes of reading the repo, during which
+their only liveness signal was their own log (1.0MB and 680KB of growth by minute six). A pull
+heartbeat keyed only on file writes would have declared them stalled and taken over work that was
+progressing fine. Early liveness lives in the agent's log; worktree writes are a mid-phase signal, and
+the heartbeat must accept either.
+
+But the FIRST version of this lesson cited invalid evidence, which is worth recording as its own trap:
+the "zero worktree writes" reading came from `find -newermt '-15 minutes'`, which did not select what I
+assumed. `find -mmin -20` on the same worktrees a few minutes later reported 576 and 588 touched files,
+and one builder had already committed. Use `-mmin`. The heartbeat cron greps worktree writes exactly
+this way, so a bad probe there does not report "probe broken" — it reports a healthy fleet as stalled
+and invites a takeover of work that is fine. A liveness probe that can only fail toward "dead" needs its
+own positive control: before trusting a zero, confirm the probe sees a file you know was just written.
+
+## 2026-07-25 20:20 — the lattice reviewed my design before I wrote the code
+I proposed converting absence assertions to frame ORDERING: record the frame count, apply a stimulus,
+require the next observed frame to be the stimulus frame. I stated it to the user with more confidence
+than it deserved. Then, reading the file I was about to change, I found an ESTABLISHED invariant —
+*Harness waits observe conditions not frame ordinals* — whose Rejected-alternatives section names the
+exact failure: repaint coalescing changes frame ordinals under load, and an action whose target is
+already rendered may emit NO frame. Its scope adds that frame counts may diagnose output volume but
+never identify the state a waiter expects.
+
+The design was dead on arrival and the record killed it for free. THAT is what an invariant lattice is
+for: it is a design review that already happened, written by whoever last understood the area. The
+operational rule: before changing a subsystem, read its invariants file — not for compliance, but
+because the Rejected-alternatives sections are a list of the plausible ideas that have already been
+tried and found wanting. Skipping that step means re-deriving other people's dead ends.
+
+The sound reduction was one level deeper: **absence-of-churn is invariance-of-content**. The claim
+behind "no frame for 600 ms" was never about frames — it was "the same thing stays on screen", which is
+assertable by comparing rendered content across a condition-terminated action, with no clock and no
+ordinals, immune to both load and coalescing. Two concerns had been conflated in ~20 places: "is the app
+wasting frames at rest" (belongs in ONE idle-quiescence contract that legitimately counts frames) and
+"does the UI stay stable across this action" (content invariance, per smoke). Twenty smokes each rolled
+a 600 ms window because they wanted the second and a clock was the only tool at hand.
+
+## 2026-07-25 20:30 — a retry that hides a flake is worse than a red
+`smoke-workspace-tabs` was 1-in-3 to 2-in-3 flaky for an ENTIRE DAY and every gate that touched it
+reported green, because retry-once-on-timeout kept rescuing it. The retry mechanism is worth keeping —
+genuine starvation exists — but it silently converts an intermittent failure into an invisible one, and
+the failure only became visible when it lost twice in a row and blocked an unrelated branch.
+
+The pool path already tallied its retries; the SERIAL `step()` path did not, so a quiet-tail or serial
+retry left no trace but one line buried mid-log. Fixed: serial retries feed the same tally, and the
+tally now states its interpretation instead of printing bare numbers — a retried pass is a FLAKE, not a
+green. Deliberately NOT made fatal: blocking on a retried pass would punish real starvation and would
+push the next person to delete the retry rather than fix the flake. Loud and countable beats fatal.
+
+Generalized: any mechanism that makes a failure survivable must also make it COUNTABLE. Recovery
+without accounting is indistinguishable from correctness.
+
+## 2026-07-25 20:30 — a fixture rooted in a shared directory imports the whole machine
+The mechanism behind that flake: the project picker prefills the parent of the current root and
+fuzzy-scores that parent's entries. Both fixture roots were created directly in `tmpdir()`, so the
+parent WAS `/tmp` — which a day of worktrees, gate logs, and failure directories had grown to 3,752
+entries. The wait for the typed path to appear therefore scaled with how full the machine's temp
+directory happened to be: ~1-in-3 in the morning, ~2-in-3 by evening. The fixture leaked an
+environmental dependency; the application was never at fault. Fix: both roots are siblings inside their
+own mkdtemp parent, so the scan sees exactly two entries on any machine.
+
+Rule: a fixture must own its parent directory, not share one with the machine. This is the same class as
+the earlier HOME-isolation rule (a smoke that mutates settings needs a per-run HOME) — one level up, and
+it explains why "works on my machine, flaky in CI" is usually neither the code nor the machine but a
+fixture that reads shared state.
+
+Three wrong hypotheses were eliminated by CHEAP EVIDENCE rather than argument, which is the part worth
+copying: (1) "the click-outside landing caused it" — bisected, 3 runs each side, 1-of-3 failing BEFORE
+it, so pre-existing; (2) "leftover temp roots poison later runs" — checked the cleanup, one of each on
+disk; (3) "my own selectionMovedByUser change" — read the setters, match updates assign selectedIndex
+directly and never through the flag-setting path. Each check cost under a minute. Arguing any of them
+would have cost longer and settled nothing.
+
+## 2026-07-25 20:30 — a coverage ratchet cannot see a deleted PRECONDITION
+My first fix shortened the fixture directory prefix (`tui-workspace-second-` became `second-`) and went
+0-for-5. Every failure was a later assertion requiring the workspace tab name to be CAPPED WITH AN
+ELLIPSIS — which only happens for a name that long. The assertion still existed and still ran; its
+PRECONDITION had silently vanished, so it was no longer testing anything it could fail on.
+
+This is a hole in the coverage ratchet landed hours earlier: it counts assertion and wait CALLS, so it
+sees deletion but is blind to an assertion made vacuous by a fixture change. Recorded against the
+ratchet's follow-up work as a distinct class from the two already known (vague records, padding) and
+from semantic weakening: here nothing about the assertion changed at all. The only defence that
+generalizes is a fixture comment stating WHY a magic value is load-bearing — now written at that call
+site — plus the discipline of reading which assertion broke rather than assuming a new bug.
+
+Operational note earned the hard way in the same minute: a commit message passed to `git commit -m`
+inside double quotes will have its backticks executed by the shell. Use `-F <file>`. The failure mode is
+loud and confusing (`fatal: /tmp is outside repository`, assembler errors) and wastes a cycle.
+
+## 2026-07-25 20:45 — the conductor must not compete with its own fleet
+Tonight's gate reds came in two flavours and telling them apart is the whole skill.
+
+`smoke-workspace-tabs` failed 1-of-2 SOLO on a machine at load 0.28. That is intrinsic — an
+environmental dependency in the fixture (see the /tmp entry-count lesson above), fixed at the fixture.
+
+`smoke-editor-harness` then timed out twice in a gate while a builder's log was growing continuously at
+5.9 MB — i.e. while that builder was running its own `bun test` and smokes. That is contention, and it
+is MY scheduling error, not a defect.
+
+The rule I had been applying was "launch a gate when the builders look quiet", and it is wrong twice
+over. A builder that is quiet at launch reaches its verification phase minutes later, inside the gate's
+5-minute window; and "looks quiet" is judged from log growth, which is exactly what a reading-phase
+builder produces. The correct rule is **the conductor's gate and a live builder's verification are the
+same resource, so they take turns**: hold gating while any builder is alive, and drain the gate queue
+back-to-back once the fleet reports. Serial gates on a quiet machine are FASTER end-to-end than
+overlapped gates that flake and need re-runs — a re-run costs 5 minutes, a wait usually costs less.
+
+This also sharpens the machine-wide quiet lock design already recorded for the gate: the lock must be
+acquirable by BUILDER verification runs, not only by gates. A lock that only gates respect leaves the
+biggest source of contention outside it.
+
+Corollary for diagnosis: before attributing a timeout-class red to a defect, ask what else was running.
+The cheap discriminator is a solo re-run on an idle machine — it separates intrinsic from contention in
+about a minute, and today it gave opposite answers for two smokes that failed the same way.
+
+## 2026-07-25 20:40 — a negative result worth keeping: don't parallelize the cheap checks
+Idea: the gate's static checks (conventions/tsc, file grammar, both invariant checkers, coverage
+ratchet, unit tests) run serially BEFORE the smoke pool, and none of them launches an app or measures
+timing, so they looked like free parallelism.
+
+Measured first: file grammar 0s, invariant checker 0s, coverage ratchet 1s. The cheap checks are already
+free — the static phase is dominated entirely by `tsc` and `bun test`. Parallelizing the three fast ones
+would add a background-job/reap harness to the most safety-critical script in the repo and save roughly
+nothing. Dropped.
+
+Two rules confirmed by the non-result. First, MEASURE BEFORE OPTIMIZING even when the structure looks
+obviously improvable — the shape of the win was real, the magnitude was zero. Second, the variant I
+almost built instead (overlap the static phase with the smoke POOL) would have been actively harmful:
+it adds CPU pressure to the phase that had just proven it times out under contention, trading ~90s of
+wall clock for more flaky reds. Reducing wall-clock by increasing flake rate is a loss, because a re-run
+costs more than the saving.
+
+What remains genuinely available, in order of value: (1) #76 content-invariance, which moves 21 smokes
+from the serial tail into the pool — that is minutes, not seconds; (2) only AFTER those smokes are
+load-robust, consider overlapping `tsc`/`bun test` with the pool, since the contention risk is what
+makes it unsafe today.
+
+## 2026-07-25 20:45 — contention is a TEST, not an excuse (refining tonight's own rule)
+An hour after writing "hold gating while any builder is alive", I took an exception to it deliberately,
+and the exception is the more useful rule.
+
+The doctrine's purpose is to stop MISATTRIBUTING contention reds and to stop wasting re-runs. Once the
+two intrinsic flakes were found and fixed, a red under contention became INFORMATIVE rather than
+confusing — so I gated the flake fixes with a builder still alive, on purpose, and said why. A rule
+whose exception condition is unstated gets violated silently; a rule that names it survives contact.
+
+Refined form: **hold gating while a builder is alive, UNLESS a contention red would still be
+diagnostic — and state the reason when you take the exception.** Never gate blind while builders verify.
+
+The deeper reframe, which I had backwards all day: a quiet machine is a CRUTCH that hides fragility. If
+a smoke cannot survive a loaded machine, it is not robust — it merely has not been asked yet. So load is
+the discriminator, not the enemy:
+- a smoke that fails ONLY under load has a clock-bound or existence-bound assertion (fix the assertion);
+- a smoke that fails on an idle machine has a real race or a real defect (fix the code or the fixture);
+- a smoke that survives both is actually load-independent, which is the property that lets it move into
+  the parallel pool and make the gate fast.
+
+This closes the loop with the earlier two-gate dividend: running the suite under deliberate load found a
+latent race that dozens of serial runs had missed. Protecting fragile smokes with quiet conditions
+preserves the fragility and hides the coverage loss. The goal is not a calm gate — it is a gate whose
+green means something under any conditions, which is also the only kind that can be parallelized.
+
+## 2026-07-25 20:50 — the flake census: 121 gate runs, 33 masked retries
+Every gate log of the day is still on disk, and every `RETRY` line in one marks an intermittent that
+`retry-once-on-timeout` rescued. Counting them turns "flakes are annoying" into a ranked, evidence-backed
+queue — and the number is worse than anyone would have guessed from watching greens go by:
+
+  121 gate runs, 97 ending green, **33 retries** — so roughly a QUARTER of all runs contained a masked
+  flake, invisible because the retry succeeded.
+
+Ranked (retries, then outright failures):
+  workspace tabs 12 (+5 fails) · pixel-preview 4 · agent-permissions 4 · paste 3 · editor 3 (+1 fail)
+  · move-line 2 (+2 fails) · completion 2 · tabs 1 · layout 1 · agent-engine-switch 1
+
+Two observations worth carrying.
+
+First, I fixed the right things by accident. The two smokes repaired tonight are ranked 1st and 5th, and
+I found them because they BLOCKED me, not because I knew they were the worst. A census costs one `grep`
+over logs that already exist and would have pointed at the same targets hours earlier. Do it FIRST when
+flakiness is suspected, not after.
+
+Second, this is the strongest possible argument for the retry TALLY landed tonight: the data was always
+there, but nothing aggregated it, so a 27%-flake suite read as a healthy one. Recovery without accounting
+is indistinguishable from correctness — and the accounting is nearly free.
+
+Remaining ranked queue after tonight's two fixes: pixel-preview (4 — bare sleeps of 250/750 ms before
+byte-count assertions, plan recorded), agent-permissions (4 — unexamined), paste (3 — has both bare
+sleeps and existence-only predicates), move-line (2 retries AND 2 hard fails — the fails make it the real
+priority despite the lower retry count).
+
+## 2026-07-25 21:03 — I killed a running smoke on a partial reading and destroyed the evidence
+The perf branch's gate went quiet for four minutes in the pool phase. I checked: one job left running
+(`smoke-paste-harness`), its app alive 267s at **0s CPU**, load 0.40 with six workers configured. I
+concluded the branch's new next-painted-frame barrier had deadlocked — a promise resolved only by a paint,
+awaited in a DEMAND-DRIVEN renderer that does not paint at rest, is a promise that can never settle — and
+I killed the smoke and its app.
+
+The gate had not hung. It completed the pool phase (`parallel-safe phase 5m53s`) and moved into the quiet
+tail. Paste was a STRAGGLER, not a deadlock, and my kill turned a stall into a FAIL, making that job's
+result unusable as evidence. I had a Monitor armed on GATE_EXIT and should have let it fire.
+
+Two rules, and the second is the one I keep re-learning:
+- **A quiet gate log is not a hung gate.** The pool reaps jobs IN REGISTRATION ORDER, so output stops at
+  the first unfinished job even when later jobs have completed. Silence means "job N is still running",
+  never "nothing is running". Check for live jobs before concluding anything, and remember that the phase
+  ends on the LAST job, not the noisiest one.
+- **Do not intervene in a run you are already monitoring.** The monitor exists so the run can finish
+  cleanly; acting early replaces real evidence with evidence about my own interference. Diagnose from a
+  finished run, or from a deliberate re-run — never from a run you disturbed.
+
+What SURVIVED my interference is the real finding: paste was stalled at 0% CPU for ~4.5 minutes BEFORE I
+touched it, and it alone stretched a pool phase whose baseline is ~54s into 5m53s. So there is a genuine
+multi-minute stall on this branch. The deadlock hypothesis is not dead either — it is merely not
+infinite: a 0-CPU wait of minutes is consistent with an await that only unblocks via some much later
+event (a 5s reconcile tick, a long internal timeout). The provenance test is the same cheap one that
+worked twice tonight: time the smoke on origin/main and on the branch, three runs each, and compare.
+
+## 2026-07-25 21:50 — 25 minutes at 1 second of CPU, and when aborting a run is correct
+The paste backpressure stall got worse the more the machine was loaded, and the final measurement is
+severe enough to change what the finding IS: **smoke and app both alive 1519 seconds having used 1
+second of CPU**, while a builder worked. Earlier in the evening the same stall was ~4.5 minutes. Alone,
+that smoke takes 2 SECONDS. Across four gate runs tonight it consumed roughly forty minutes of
+wall-clock — more than every other flake combined.
+
+At 25 minutes with no CPU this stops being a flake and becomes a hang, and it stops being primarily a
+harness problem. The smoke writes 64KB into a PTY whose buffer is far smaller; if the application does
+not drain it, the write blocks and both sides idle. An application that stops reading its PTY for 25
+minutes under load means a REAL USER pasting a large payload on a busy machine sees the editor freeze,
+not lag. The test may have found a product defect and been blamed for it. Investigate the app side
+first: is the PTY read on a path that rendering or another await can starve?
+
+**Refining tonight's own rule about not intervening.** Earlier I killed a straggler because I mistook
+pool silence for a deadlock — that was a misdiagnosis, it destroyed the job's evidence, and a Monitor
+was already armed. Later I killed this run deliberately and that was right. The two look identical from
+outside, so the distinguishing test has to be explicit:
+
+  **Does letting the run continue produce information I do not already have?**
+
+- Killing to DIAGNOSE: almost always wrong. The run's evidence is the diagnosis; ending it early
+  substitutes evidence about your own interference.
+- Killing to SEQUENCE: legitimate. Here the outcome was already known (paste stalls under contention,
+  measured three times), the fix existed on another branch, and the correct next action was to gate THAT
+  branch first so the stall stops recurring. Continuing would have burned another twenty minutes to
+  re-confirm a known fact.
+
+Say which one you are doing, and if it is the first, do not do it.
+
+**Sequencing insight worth keeping:** when a gate run is being dominated by a defect whose fix is
+already committed elsewhere, gate the FIX first. It is self-applying — the guard-fix branch carries the
+paste reclassification, so its own gate does not stall on paste, and every gate after it inherits the
+improvement. Ordering the queue by "which branch makes the queue faster" beats ordering it by age.
+
+## A silent builder holding no CPU may be blocked on YOUR serialization primitive
+
+A builder went 26 minutes without writing a line to its log while its process stayed alive. By the
+liveness heuristics that would read as a hang — the same shape as the paste stall above. It wasn't.
+A sibling builder held the machine-wide quiet lock for its exclusive scroll measurement, and the
+silent builder's verification harness was queued behind it, doing nothing by design.
+
+The lock is correct and I would not remove it: it exists so timing-sensitive measurements never
+overlap another gate's load, and it is what turned a population of "load flakes" into proven
+defects. But it has a consequence I had not priced in:
+
+  **A machine-wide exclusive lock converts parallel builders into partially serial ones, and the
+  serialization is invisible in every per-builder signal.**
+
+Log age, commit count, dirty-file count, and process liveness all look identical for "wedged" and
+"politely waiting its turn." The distinguishing evidence is not in the builder at all — it is in
+who holds the lock. So liveness diagnosis needs one more question, asked BEFORE anything else:
+
+  **Is something else holding the resource this builder needs?**
+
+Concretely, the check that resolved it in one command was listing processes for
+`quiet-lock.sh quiet-exclusive` and finding a sibling worktree's path in the holder's argv. The
+journal the lock already writes (`/tmp/invar-quiet-lock.journal`) is the better instrument and I
+should have consulted it first — I built it and then diagnosed around it.
+
+**The throughput consequence, stated honestly.** Three concurrent builders do not give three times
+the verification throughput when each one's verification needs the exclusive lock. Past roughly
+two builders whose work ends in timing-sensitive measurement, the added builder buys queue depth,
+not speed. The fan-out is still worth it when the builders' *authoring* phases overlap and only
+their *verification* phases contend — which is the usual case, since authoring is the long part.
+But the conductor should schedule with the lock in mind: stagger dispatch so verification phases
+do not collide, and do not read a lock-blocked builder's silence as a reason to intervene.
+
+**Generalization.** Any shared exclusive resource the fleet contends for — a lock, a port, a
+fixture directory, a display, a single GPU — produces this same blind spot: a per-worker health
+check cannot distinguish blocked-on-peer from broken. Every such resource needs a holder-visible
+instrument (a journal, a lockfile naming its owner), and the liveness routine must read it before
+concluding anything about the worker.
+
+## A liveness check that matches process ARGV will match your own briefs
+
+Checking whether a gate was running, I ran `pgrep -af "merge-gate.sh"` and got three hits, so I
+reported the gate as RUNNING. No gate was running. The hits were: two codex processes whose brief
+text contains the sentence "Do NOT run scripts/merge-gate.sh", and the pgrep command itself.
+
+This is the same defect that once made a `pkill -f` dangerous — builders matched their own brief
+text — except this time it produced a false POSITIVE on a status check rather than a wrong kill.
+Both come from one mistake:
+
+  **A process's argv is not a statement about what it does. For an agent, argv contains the
+  INSTRUCTIONS, including instructions about what NOT to do.**
+
+Any fleet where work is dispatched as a long prompt string has this property permanently: every
+tool name, script path, and forbidden action mentioned in a brief is searchable text in the process
+table. So argv matching is unreliable in exactly the environment that most needs process
+introspection.
+
+What to match instead, in order of preference:
+1. **The artifact, not the process** — a log file with a written exit sentinel, a pidfile, a commit
+   count. State that outlives the process beats state inferred from it.
+2. **An anchored, structural pattern** — the interpreter plus script position (`bash .*/merge-gate\.sh$`)
+   rather than a bare filename that could appear anywhere in a command line.
+3. **cwd-resolved pids** — resolve `/proc/<pid>/cwd` to the worktree, which brief text cannot forge.
+
+The generalization is a rule about instruments: **an instrument whose input channel also carries
+descriptions of the thing being measured cannot distinguish the thing from its description.** Same
+family as a smoke asserting a glyph an invariant forbids, and the harness reading a stale log line
+as a live one. When the signal and the talk-about-the-signal share a channel, separate the channels
+— don't sharpen the pattern.
+
+Cheap self-check before trusting any process query: **would this pattern match the text of my own
+command, or the brief of a worker that was told not to do it?** If yes, the query is unsound
+regardless of what it returned this time.
+
+## Smoke authoring
+
+- **Chained smoke steps carry state forward — compute cursor math from the ACTUAL carried state.**
+  (2026-07-23) The Open-Project wrap smoke's step 3 assumed the selection started at index 0, but step 2
+  had left it at index 20; 40 more Downs with wrap landed on `(20+40)%41 = 19`, not 40. The fix was to
+  assert the intermediate state (`quickOpenSelected == 20` after step 2) and count Downs from there.
+  Rule: after every step that moves a cursor/selection, assert where it landed before the next step
+  depends on it. A smoke that "passes" only because two off-by errors cancel is a trap.
+
+- **Assert what the user sees (frame capture), not just side-channel fields.** The strongest smoke lines
+  drive the real chord/click path and `grep` the rendered cells for the exact expected text (e.g. the
+  echoed reply). Side-channel probe fields (`panelActiveContent`, `terminalVisible`) are for state you
+  can't read off the frame; the visible round-trip is the proof.
+
+- **modifyOtherKeys is the reliable way to send modified chords in smokes.** `Ctrl+Shift+A` =
+  `printf '\033[27;6;97~'` via `tmux send-keys -l`. The `;6` = Ctrl+Shift, the final number = the
+  base-key codepoint (97 = 'a'). Precedent: `smoke-navigation-history.sh` (Alt+[ = `\033[27;3;91~`).
+
+## Building new modules
+
+- **Mirror an existing module 1:1 — it's the cheapest path to a correct new one.** (2026-07-23) The
+  native agent-harness module mirrored `terminal/` exactly: backend **seam** (interface) + **mock**
+  double + **reactive single-source** (`Reactive($Class)`, `get x() { return ref(v) }` = memoized
+  reactive field) + **PaneContent** citizen + **Static factory** + colocated **`*.invariants.md`** +
+  **unit test** + **driving smoke**. Reading four template files (`TerminalBackend`, `MockBackend`,
+  `TerminalPaneContent`, `TerminalFactory`) gave the entire grammar; the 8-file new module typechecked
+  first-try. When a contract doc (`project.agent-harness.md`) already names the file layout, follow it
+  verbatim — the file names are load-bearing (conventions gate: file-name-follows-class).
+
+- **A content-agnostic host means a new pane is near-zero host wiring.** `PanelHost` already switches an
+  arbitrary set of `PaneContent`s by id; registering a second one (the agent pane beside the terminal)
+  needed only a lazy `ensureAgent()` + a `toggleAgent` closure + one action-map entry + one keybinding.
+  No host changes. That's the seam paying off — the same reason the vision calls the seams "the plugin
+  API."
+
+## 2026-07-26 21:40 — a union merge without the BASE cannot tell "we added" from "they deleted"
+
+I resolved a merge conflict in `KeybindingDefaults.test.ts` as a union, and verified it — I thought
+rigorously — by extracting the test-name set from OURS and from THEIRS and checking the resolved
+file equalled their union with no omissions, no extras, no duplicates. It passed all three checks.
+The gate then went red: `bun test` and the keyboard-invariant smoke both failed on
+`Received: null`.
+
+The check was structurally incapable of finding the defect. A two-way comparison has exactly one
+reading for "in ours, absent in theirs" — *we added it*. But there is a second reading, and it was
+the true one: *they deleted it*. Main's inline-rewrite landing had MOVED those chords out of the
+canonical binding layer into the plugin contributor and deleted the now-meaningless canonical-layer
+test. My union resurrected it, pointed at a layer that no longer carries those bindings.
+
+  **A union is only defined against the BASE. Ours-vs-theirs is not a merge, it is a guess with a
+  set operation painted on it.**
+
+The correct classification needs three sets: for each element, `base` decides whether an asymmetry
+is an addition (absent in base, present in one side) or a deletion (present in base, absent in one
+side). A union is right for additions and WRONG for deletions — resurrecting deleted code is the
+signature failure, and it is silent at the text level because the file is syntactically fine.
+
+The corrected procedure, which found the real answer in one pass:
+```
+base   = names(merge-base)
+ours   = names(HEAD-before-merge)
+theirs = names(origin/main)
+deleted_by_them = base - theirs      # do NOT resurrect
+added_by_us     = ours - base        # DO keep
+```
+That immediately printed the two tests main had deleted and the one test we had genuinely added.
+
+**Second finding, from doing the check properly.** Of the two tests main deleted, only ONE had its
+assertion rehomed (chord resolution → `InlineRewriteContributor.test.ts`). The other — encoded
+bytes → parsed event through both OpenTUI parsers — was dropped with no replacement anywhere in the
+tree. That is parser-level, independent of where bindings are registered, and it guards the #93
+property that a chord must actually ARRIVE rather than merely resolve. So the right resolution was
+asymmetric: delete the superseded one, KEEP the dropped one. Restoring it costs nothing (it still
+passes) and recovers coverage the landing lost.
+
+Generalizes past merges: **whenever a landing MOVES a capability, check each of its assertions for
+a new home individually.** "The tests moved with the code" is a claim about the whole set that is
+usually true of most of it and quietly false of one or two — and the coverage ratchet reads a
+declared deletion as accounted-for, so it cannot distinguish rehomed from dropped either.
+
+## 2026-07-26 21:50 — a completion predicate keyed on EXISTENCE is satisfied before the work starts
+
+I armed a monitor whose done-condition was `[ -f /tmp/skill-dropdown-READY.md ] && clean tree &&
+commits >= 1`. It fired, and I started reading the report — which described a DIFFERENT task
+(#117), from a different worktree, written three hours and forty minutes earlier. The builder was
+still alive at that moment, mid post-commit verification. The report path was reused across tasks,
+so the file existed before the builder began, and the predicate was true on the monitor's first
+tick.
+
+  **A completion check that tests for the PRESENCE of an artifact, rather than for a FRESH one,
+  cannot distinguish "finished" from "never started."**
+
+This is the monitor-shaped version of the rule this repo already enforces for gates and smokes: an
+instrument that can only resolve one way is not an instrument. There the failure is a check that
+can only PASS; here it is a check that can only say DONE. Same defect, different surface — and this
+one is worse in one respect, because it makes the conductor act on a stale artifact as if it were
+this run's evidence.
+
+Three fixes, in order of preference:
+1. **Compare against a timestamp taken at dispatch** — `stat -c %Y <artifact>` must exceed the
+   dispatch epoch. Freshness, not existence.
+2. **Give each run a unique artifact path** (`<task>-READY-<run>.md`). Reuse across tasks is what
+   created the collision in the first place; the same reuse earlier tonight also put a codex into
+   the wrong worktree because `/tmp/conductor-skilldrop` already existed.
+3. **Key on state that cannot pre-exist at all**: process absence resolved through
+   `/proc/<pid>/cwd`, plus a commit count measured against `origin/main`. A process that is gone
+   and a commit that exists cannot both be left over from a previous run in the same worktree.
+
+The corrected monitor uses (3) as the trigger and reports (1) as a FIELD — `ready_fresh=yes/no` —
+so a stale report announces itself instead of masquerading as this run's output.
+
+**Wider rule for the conductor: reused scratch paths are shared mutable state across tasks.**
+`/tmp/<name>-READY.md`, `/tmp/conductor-<name>`, `/tmp/<name>-codex.log` are all name-collision
+surfaces, and every collision this session produced a wrong conclusion rather than an error — a
+codex on the wrong base, and a monitor reporting done on someone else's report. Namespace them per
+run, or verify freshness before believing them.
+
+## 2026-07-26 22:30 — the differential is cheap; run it before believing the load story
+
+The fold branch's gate went red on `behavioral-contracts` and `audio-narration`, with THREE steps
+in the retry tally and a 484s wall. Every surface feature said "loaded machine": the quiet-lock
+journal showed a 5m40s exclusive tail, the branch's own round-2 verification had been 3/3 green,
+and one of those green runs had itself spent 120s waiting on the lock. I ranked load first.
+
+Load was wrong. Re-running the contract SOLO on an idle machine failed again (exit 1), and a fresh
+probe worktree at clean `origin/main` ran the SAME contract ALL-PASS (exit 0). Two commands,
+maybe eight minutes, and the question was settled: the branch introduced it.
+
+  **A plausible load story and a real defect present identically. The only thing that separates
+  them is running the same command in two places.**
+
+The trap is that the load story is always AVAILABLE — this fleet always has contention, so there
+is always evidence for it. Evidence that is always present has no discriminating power, and
+treating it as an explanation is how a real red gets landed over as "just the machine."
+
+Cheapest discriminator, in order, and it is cheap enough that there is no excuse to skip it:
+1. **Re-run solo, idle.** Kills the load story outright if it still fails.
+2. **Probe the base.** A detached worktree at `origin/main` plus `bun install --frozen-lockfile`,
+   then the identical command. Green there and red here localizes to the branch with no reasoning
+   at all.
+3. Only then reason about mechanism.
+
+Corollary worth keeping: **prior green runs of the same branch are weak evidence.** Round 2 passed
+this contract 3/3 — and still shipped the defect, because the failing combination only appears in
+the merged tree or in a matrix position those runs did not hit. "It passed for the builder" is not
+a substitute for passing here, now, on this tree.
+
+Second-order note on the diagnosis itself: my first mechanism hypothesis (the fold-dense fixture's
+first line not containing the probe text) was refuted in one grep — the marker expands to
+`line 000000 content packages`, and the probe is a substring of it. Refuting your own favourite
+before briefing it is what keeps a builder from spending an hour on your wrong idea; the brief now
+names it as tested-and-refuted so the next reader does not re-derive it.

@@ -3,48 +3,50 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~20:45) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-27 ~23:45) — READ FIRST ON A COLD START
 
-Main @ `98a40d5` pushed+clean; ~100 commits landed today, all gated. Fleet = CODEX
-(`nohup setsid codex exec --dangerously-bypass-approvals-and-sandbox -C <worktree> "Read <brief>"`),
-monitors keyed on COMMIT-COUNT-OR-SILENCE. Crons: hourly loop + 30-min RECONCILIATION SWEEP
-(`11,41 * * * *`); the 10-min poll is RETIRED — do not re-arm (verbatim prompts in the conductor
-skill). USER IS ACTIVELY TESTING and filing findings faster than they land — their direction IS the
-backlog; no experiments.
+Main @ `e500748` pushed+clean. Fleet = CODEX. Crons: hourly loop + 30-min reconciliation sweep
+(`11,41 * * * *`); the 10-min poll is RETIRED — do not re-arm. USER IS ACTIVELY TESTING; their
+direction IS the backlog, so NO experiments while a user-requested task is unmerged.
 
-**LANDED TODAY (headline):** pure canvas → plugin taxonomy (contributor/provider/hosted-runtime) →
-file tree plugin → plugin manifest (settings+keybindings, host floor 13→0 source-control lines) →
-quiet lock (which turned out to be a CLASSIFIER: it stripped the load alibi from real intermittents)
-→ code folding → inline AI rewrites → keyboard invariant (Tab indents, F-keys retired with proven
-arrival, pass-through) → both PTY root causes (descriptor theft via I/O-thread close; setTimeout(0)
-clamp) → completion kind glyphs → diff h-scrollbar → icon uniformity (emoji-width class CLOSED,
-empty exception list) → scroll feel + 100k-line fix (48/48/48 rows, 30 FPS, 28 FPS floor at 100k
-gated) → agent-state intermittents (#124 publication race 16/20→20/20; #109 was a wait defect).
+**DOCTRINE HOME IS THIS REPO.** `ibr/Skills/Orchestration Lessons.md` is SUPERSEDED — never append
+there, even though the hourly loop prompt still names it. All lessons go to `project.conductor.md`.
 
-**IN FLIGHT:** fold-density perf + `editor.codeFolding` setting (`/tmp/conductor-foldperf`, brief
-`/tmp/TASK-fold-scroll-cost.md` — its ADDENDUM carries #129, the fold-click-jumps-viewport
-regression, to be dispatched as its round 2 in the SAME worktree); inline-rewrite plugin fix
-(`/tmp/conductor-inlinefix`, gate running at handoff — 3/3-failing reproductions of all three
-symptoms are in `/tmp/inline-rewrite-fix-READY.md`).
+**LANDED TONIGHT (after the earlier anchor):** inline-rewrite plugin fix (#126, `ac868f4`) →
+activity-bar persisted order + drag + Alt-arrow reorder (#113/#128, `318fdf1`) → skill-dropdown YAML
+block scalars + one-row ellipsis (#127, `de892f0`) → fold-dense scroll + `editor.codeFolding` +
+fold-click anchor + depth contract (#123 follow-on/#129/#132, `e500748`).
 
-**NEXT, IN ORDER:** #125 ivue-2.2.0 $-cached-statics sweep (SOLO slot — touches 35 files across
-every module; read `tmp/static-cached-getters-2.2.0-brief.md` first; the freeze is UNCONDITIONAL so
-a mutating site now throws in prod — report those, don't work around) → #113+#128 (activity-bar
-drag-reorder + agent-left default regression, one mechanism: order is a persisted property, not
-registration order) → #127 skill-dropdown (`>-` block-scalar parse + ellipsis) → #99 graphics tier
-→ #111 copyable panels → #115/#116/#119 chrome wave → #130 extend-$Class invariant → #114
-Terminal/Agent/LSP plugins (capsule-lite folded in: per-workspace agent+terminal, session RESUMES
-per folder) → #122 editor capstone (source-text view as the last contributor) → #102 tables →
-#59/#62 formatting sweeps LAST.
+**THE FOLD FINDING (headline):** fold-dense slowness was NEVER folding. `BracketMatch.findInDocument`
+rescanned and syntax-classified up to 100k cells BEFORE EVERY RENDER when the cursor sat on the root
+`{` — which real JSON guarantees. 13.8 → 29.7 FPS at 26k; 14.6 → 30.0 at 100k full-stack. Fold
+projection was 0.10 ms/frame. The base table's tell: fold-dense with folding OFF was also ~13 FPS.
 
-**OPEN INTERMITTENT:** overlay-dialog context-menu-wheel condition fails ~1/3 isolated on `4ad3287`
-too (proven pre-existing before landing over it) — next in the intermittent queue.
+**#128 VERDICT:** no code defect. `panelContentOrder` default IS `['agent','terminal']`; a stale
+persisted value in the live HOME explains terminal-first. Deliberately NOT auto-repaired (that would
+destroy a legitimately dragged order) — the profile needs ONE re-drag.
 
-**THE TWO FIXTURE-AXIS LESSONS (why the user out-found the gate twice today):** coverage needs
-points at the far end of every dimension a metric can scale on — SIZE (flat 100k missed fold-dense
-26k JSON) and CONTENT SHAPE/CONFIG (the inline-AI smoke never drove a git-dirty file with live
-gutter marks, which is where the typed text vanished). When a user finds something eight green gates
-missed, the fixture set is the defect.
+**INLINE AI, OPEN SCOPE QUESTION:** the plugin is REQUEST-TRIGGERED ONLY (Ctrl+Shift+R). There is no
+debounce/idle path anywhere in `src/modules/inline-rewrite` — the fix removed the auto path rather
+than debouncing it. That is a scope regression against #98 ("Copilot-style ghost text"). User was
+offered (a) restore automatic proposals with a real idle-debounce gated by idle-quiescence, or
+(b) keep request-only and make the chord discoverable. UNANSWERED — do not pick for them.
+
+**NEXT, IN ORDER:** #133 delete-time-from-predicates (convert the quiet tail to load-invariant work
+counts; containers/throttling REJECTED as the fix — we are inside a Parallels VM whose host
+scheduler we cannot see, so only removing wall-clock from predicates reaches zero) → #125 SOLO
+(ivue-2.2.0 `$`-cached-statics migration PAIRED with the new SCREAMING_SNAKE literal-getter
+convention; 56 sites now, not 53) → #99 graphics tier → #111 copyable panels → #115/#116/#119 chrome
+wave → #130 extend-`$Class` invariant → #114 Terminal/Agent/LSP plugins + capsule-lite → #122 editor
+capstone → #102 tables → #59/#62 formatting LAST.
+
+**OPEN INTERMITTENTS (all pre-existing, none introduced):** overlay-dialog context-menu-wheel,
+audio-narration barge-in, bounded-list-popup. Landed over them deliberately and said so each time.
+
+**FIVE INSTRUMENT DEFECTS FOUND TONIGHT — the pattern is the lesson:** a wait already true before the
+work happened; a union merge with no BASE resurrecting a deleted test; a monitor satisfied by a
+3h-stale READY file; `pgrep` matching a worker's own brief text; a timeout discarding the one fact
+needed to diagnose it. Every one failed toward "looks fine". Full write-ups in `project.conductor.md`.
 
 ## PRIOR ANCHOR (2026-07-26 ~13:25)
 
