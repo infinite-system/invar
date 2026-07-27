@@ -105,8 +105,15 @@ class $KeybindingRegistry {
     return 2;
   }
 
-  registerGuard(name: string, predicate: () => boolean): void {
+  registerGuard(name: string, predicate: () => boolean): () => void {
     this.guards.set(name, predicate);
+    return () => {
+      if (this.guards.get(name) === predicate) this.guards.delete(name);
+    };
+  }
+
+  hasGuard(name: string): boolean {
+    return this.guards.has(name);
   }
 
   protected patternMatches(pattern: ChordPattern, event: ChordEvent): boolean {

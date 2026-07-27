@@ -2,8 +2,6 @@
 // Deterministic provider-neutral inline rewrite drive through the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
-// invariant: Inline rewrite responses are revision-stamped and stale results discarded (src/modules/lsp/lsp.invariants.md)
-// invariant: An inline rewrite proposal never consumes an ordinary edit keystroke (src/modules/editor/editor.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +13,7 @@ const repositoryRoot = process.cwd();
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-inline-rewrite-'));
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-inline-rewrite-home-'));
 const statusPath = join(homeDirectory, 'status.json');
+const reproductionMode = process.env.INVAR_INLINE_REWRITE_REPRO ?? '';
 const inlineRewriteBackground = Number.parseInt(
   ThemePalettes.Class.dark.inlineRewriteBackground.slice(1),
   16,
@@ -22,8 +21,25 @@ const inlineRewriteBackground = Number.parseInt(
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
-  JSON.stringify({ 'inlineRewrite.enabled': true }),
+  JSON.stringify({
+    'inlineRewrite.enabled': reproductionMode !== 'disabled',
+  }),
 );
+await Bun.write(
+  join(fixtureRoot, 'rewrite.ts'),
+  'const value = calculate()\nconst label = original\n',
+);
+HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'rewrite.ts']);
+HarnessSmoke.Class.runGit(fixtureRoot, [
+  '-c',
+  'user.email=inline-rewrite@example.test',
+  '-c',
+  'user.name=Inline Rewrite Smoke',
+  'commit',
+  '-qm',
+  'fixture',
+]);
 await Bun.write(
   join(fixtureRoot, 'rewrite.ts'),
   'const value = calculate()\nconst label = value\n',
@@ -37,7 +53,8 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
-    INVAR_INLINE_REWRITE_SLOW_REQUEST_NUMBER: '4',
+    INVAR_INLINE_REWRITE_SLOW_REQUEST_NUMBER:
+      reproductionMode === 'typed' ? '1' : '4',
     INVAR_INLINE_REWRITE_SLOW_DELAY_MS: '3500',
   },
   command: [
@@ -58,6 +75,17 @@ function firstEditorLine(status: unknown): string {
   );
 }
 
+function lineHasGutterMarker(
+  snapshot: import('./HarnessSnapshot').HarnessSnapshot.Model,
+  lineText: string,
+): boolean {
+  const linePosition = snapshot.findText(lineText);
+  if (!linePosition || linePosition.column === 0) return false;
+  return (
+    snapshot.cell(linePosition.row, linePosition.column - 1)?.characters === '▎'
+  );
+}
+
 async function awaitInlineRewriteVisible(
   minimumRequestCount: number,
 ): Promise<void> {
@@ -72,7 +100,78 @@ async function awaitInlineRewriteVisible(
   );
 }
 
-try {
+async function measureSettledFrameCount(
+  durationMilliseconds: number,
+): Promise<{ before: number; after: number }> {
+  const before = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
+  let observedFrame = before;
+  let observedStatus = HarnessSmoke.Class.readStatus(statusPath);
+  const measurementStarted = performance.now();
+  const deadline = performance.now() + durationMilliseconds;
+  while (performance.now() < deadline) {
+    const status = HarnessSmoke.Class.readStatus(statusPath);
+    const frame = Number(status.frame);
+    if (frame !== observedFrame) {
+      const changedFields = Object.keys(status).filter(
+        (field) =>
+          field !== 'frame' &&
+          JSON.stringify(status[field]) !==
+            JSON.stringify(observedStatus[field]),
+      );
+      console.log(
+        `  FRAME ${observedFrame} -> ${frame} at ` +
+          `${Math.round(performance.now() - measurementStarted)}ms; ` +
+          `gitChangedCount=${String(status.gitChangedCount)}; ` +
+          `rewriteVisible=${String(status.inlineRewriteVisible)}; ` +
+          `rewriteInFlight=${String(status.inlineRewriteRequestInFlight)}; ` +
+          `changedFields=${changedFields.join(',')}`,
+      );
+      observedFrame = frame;
+      observedStatus = status;
+    }
+    await Bun.sleep(50);
+  }
+  return {
+    before,
+    after: Number(HarnessSmoke.Class.readStatus(statusPath).frame),
+  };
+}
+
+async function awaitSettledFrameCount(): Promise<void> {
+  const deadline = performance.now() + 15_000;
+  let stableSince = performance.now();
+  let observedFrame = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
+  while (performance.now() - stableSince < 2_000) {
+    if (performance.now() >= deadline) {
+      throw new Error('Timed out waiting for a stable frame count');
+    }
+    const frame = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
+    if (frame !== observedFrame) {
+      observedFrame = frame;
+      stableSince = performance.now();
+    }
+    await Bun.sleep(50);
+  }
+}
+
+async function awaitClockFreeFrameMeasurementStart(
+  measurementDurationMilliseconds: number,
+): Promise<void> {
+  const clockBoundarySafetyMilliseconds = 500;
+  const millisecondsUntilNextClockTick = 60_000 - (Date.now() % 60_000) + 50;
+  if (
+    millisecondsUntilNextClockTick >
+    measurementDurationMilliseconds + clockBoundarySafetyMilliseconds
+  ) {
+    return;
+  }
+  await Bun.sleep(
+    millisecondsUntilNextClockTick + clockBoundarySafetyMilliseconds,
+  );
+  await awaitSettledFrameCount();
+}
+
+smoke: try {
   console.log('== harness inline rewrite: open the fixture ==');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -88,6 +187,88 @@ try {
     'status condition: rewrite.ts is the active buffer',
     (status) => String(status.activeBuffer).endsWith('/rewrite.ts'),
   );
+  await driver.awaitGridCondition(
+    'the tracked dirty fixture paints its live gutter marker',
+    (snapshot) => lineHasGutterMarker(snapshot, 'const label = value'),
+    10_000,
+  );
+  if (reproductionMode === 'plugin-disabled') {
+    driver.sendKeys('Control+Shift+x', 'Down', 'Down', 'Down');
+    await driver.awaitGridCondition(
+      'Inline Rewrite is selected for plugin disable',
+      (snapshot) => snapshot.findText('› [x] Inline Rewrite') !== null,
+    );
+    driver.sendKeys('Space');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: plugin disable removes its setting schema',
+      (status) =>
+        !(status.settingsSections as string[] | undefined)?.includes(
+          'Inline Rewrite',
+        ),
+    );
+    driver.sendKeys('Control+Shift+j');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: editor focus returns after plugin disable',
+      (status) => status.focus === 'editor',
+    );
+    await awaitSettledFrameCount();
+    const disabledPluginWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
+    );
+    await awaitClockFreeFrameMeasurementStart(disabledPluginWindowMilliseconds);
+    const disabledPluginFrames = await measureSettledFrameCount(
+      disabledPluginWindowMilliseconds,
+    );
+    const disabledPluginStatus = HarnessSmoke.Class.readStatus(statusPath);
+    HarnessSmoke.Class.requireCondition(
+      Number(disabledPluginStatus.inlineRewriteMockRequestCount ?? 0) === 0 &&
+        disabledPluginFrames.after === disabledPluginFrames.before,
+      'disabled plugin owns zero requests and zero settled frames ' +
+        `(${disabledPluginFrames.before} -> ` +
+        `${disabledPluginFrames.after})`,
+    );
+    console.log('smoke-inline-rewrite-harness: ALL-PASS');
+    break smoke;
+  }
+  if (reproductionMode === 'disabled') {
+    HarnessSmoke.Class.requireCondition(
+      openedStatus.inlineRewriteEnabled === false,
+      'the inline rewrite setting is disabled',
+    );
+    driver.sendKeys('End');
+    driver.sendText(';');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: the disabled-feature edit lands',
+      (status) => firstEditorLine(status) === 'const value = calculate();',
+    );
+    await driver.awaitGridCondition(
+      'the disabled-feature edit and its gutter marker settle visibly',
+      (snapshot) => lineHasGutterMarker(snapshot, 'const value = calculate();'),
+    );
+    await awaitSettledFrameCount();
+    const disabledWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
+    );
+    await awaitClockFreeFrameMeasurementStart(disabledWindowMilliseconds);
+    const disabledFrames = await measureSettledFrameCount(
+      disabledWindowMilliseconds,
+    );
+    const disabledSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
+    HarnessSmoke.Class.requireCondition(
+      Number(disabledSettledStatus.inlineRewriteMockRequestCount ?? 0) === 0 &&
+        disabledFrames.after === disabledFrames.before,
+      'disabled inline rewrite owns zero requests and zero settled frames ' +
+        `(${disabledFrames.before} -> ${disabledFrames.after})`,
+    );
+    console.log('smoke-inline-rewrite-harness: ALL-PASS');
+    break smoke;
+  }
   HarnessSmoke.Class.requireCondition(
     openedStatus.inlineRewriteEnabled === true &&
       Array.isArray(openedStatus.settingsSections) &&
@@ -100,7 +281,32 @@ try {
   );
   driver.sendKeys('End');
   driver.sendText(';');
-  await awaitInlineRewriteVisible(1);
+  let expectedTypedLine = 'const value = calculate();';
+  let minimumVisibleRequestCount = 1;
+  if (reproductionMode === 'typed') {
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: the delayed first request is in flight',
+      (status) =>
+        status.inlineRewriteRequestInFlight === true &&
+        Number(status.inlineRewriteMockRequestCount) >= 1,
+    );
+    for (const typedCharacter of 'typed') {
+      const nextFrame = driver.awaitNextCompletedFrameSnapshot();
+      driver.sendText(typedCharacter);
+      expectedTypedLine += typedCharacter;
+      const { snapshot: typingSnapshot } = await nextFrame;
+      HarnessSmoke.Class.requireCondition(
+        typingSnapshot.findText(expectedTypedLine) !== null,
+        `typed text remains visible after ${typedCharacter}`,
+      );
+      await driver.awaitQuiescence();
+      await Bun.sleep(800);
+    }
+    minimumVisibleRequestCount = 2;
+  }
+  await awaitInlineRewriteVisible(minimumVisibleRequestCount);
   let snapshot = await driver.awaitGridCondition(
     'the first rewrite candidate is visible in the terminal grid',
     (candidateSnapshot) =>
@@ -124,6 +330,30 @@ try {
       snapshot.text().includes('Escape reject'),
     'the compact proposal hint names registry-derived accept and reject keys',
   );
+  if (reproductionMode === 'typed') {
+    HarnessSmoke.Class.requireCondition(
+      snapshot.findText(expectedTypedLine) !== null,
+      'every typed character remains visible while the proposal paints',
+    );
+    console.log('smoke-inline-rewrite-harness: ALL-PASS');
+    break smoke;
+  }
+  if (reproductionMode === 'idle') {
+    await awaitSettledFrameCount();
+    const idleWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_IDLE_WINDOW_MS ?? 12_000,
+    );
+    await awaitClockFreeFrameMeasurementStart(idleWindowMilliseconds);
+    const idleFrames = await measureSettledFrameCount(idleWindowMilliseconds);
+    const idleSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
+    HarnessSmoke.Class.requireCondition(
+      idleFrames.after === idleFrames.before,
+      'settled inline rewrite with live gutter marks emits zero frames ' +
+        `(${idleFrames.before} -> ${idleFrames.after})`,
+    );
+    console.log('smoke-inline-rewrite-harness: ALL-PASS');
+    break smoke;
+  }
 
   console.log('== harness inline rewrite: cycle and accept atomically ==');
   driver.sendKeys('Control+Alt+Down');

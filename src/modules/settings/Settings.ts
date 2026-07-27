@@ -363,7 +363,9 @@ class $Settings {
     const record = this.contributedSettings.get(identifier);
     if (!record) return;
     const sanitized = this.sanitizeContributedValue(record.contribution, value);
-    if (sanitized !== undefined) record.value.value = sanitized;
+    if (sanitized === undefined || sanitized === record.value.value) return;
+    record.value.value = sanitized;
+    record.contribution.changed?.(sanitized);
   }
 
   // invariant: Plugin settings live in contributed schema (settings.invariants.md)
@@ -384,7 +386,7 @@ class $Settings {
     const record: ContributedSettingRecord<Value> = { contribution, value };
     this.contributedSettings.set(
       contribution.identifier,
-      record as ContributedSettingRecord<SettingValue>,
+      record as unknown as ContributedSettingRecord<SettingValue>,
     );
     this.schemaRevision.value += 1;
     let registered = true;

@@ -271,6 +271,24 @@ describe('Settings', () => {
     expect(restored.value.value).toBe(true);
   });
 
+  test('setContributed notifies a plugin only when its value changes', () => {
+    const { settings } = makeStore();
+    const changedValues: boolean[] = [];
+    settings.registerSetting({
+      identifier: 'samplePluginEnabled',
+      label: 'Enabled',
+      section: 'Sample Plugin',
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+      changed: (value) => changedValues.push(value),
+    });
+
+    settings.setContributed('samplePluginEnabled', false);
+    settings.setContributed('samplePluginEnabled', false);
+
+    expect(changedValues).toEqual([false]);
+  });
+
   test('a reactive read re-runs when set() changes the value (live-apply)', () => {
     const { settings } = makeStore();
     const observed: string[] = [];

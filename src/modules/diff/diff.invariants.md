@@ -138,12 +138,15 @@ markers converge after buffer edits, saves, active-document changes, and git rec
 **Scope:** The normal editor in `EditorPaneRenderer`, `GitDocumentState`, and
 `GutterDiff.marksByLine`. Excludes the empty editor and `DiffView`, which already renders a diff.
 
-**Mechanism:** `GitWorkspace.refreshDocumentHead` loads the active path through
-`GitCommands.fileAtRef` and rejects stale completions. `GutterDiff.marksByLine` projects
-`DiffAlignment.align` rows into a buffer-line map. A deleted run is placed on the following real
-line, or the final real line at end of file. When that line is also modified, modified color wins
-(`modified` priority exceeds `deleted`) and the gutter hover retains both `modified` and the deleted
-line count.
+**Mechanism:** `GitWorkspace.refreshDocumentHead` loads the active path
+through `GitCommands.fileAtRef` and rejects stale completions.
+`GitDocumentState.beginHeadRequest` keeps the last applied HEAD text
+authoritative while that request is in flight, and applying identical text
+does not advance its decoration revision. `GutterDiff.marksByLine` projects
+`DiffAlignment.align` rows into a buffer-line map. A deleted run is placed on
+the following real line, or the final real line at end of file. When that line
+is also modified, modified color wins (`modified` priority exceeds `deleted`)
+and the gutter hover retains both `modified` and the deleted line count.
 
 **Generates:** visible working-tree status beside edited lines; one diff algorithm and one git
 watcher path for both the side-by-side diff and gutter decorations; one diff-column shape whose
@@ -160,8 +163,10 @@ meanings.
 
 **Impossible if true:** a continuation row carrying a duplicate marker; an edited tracked line with
 no modified-colored gutter glyph after settling; a git reconciliation leaving markers based on the
-previous HEAD; a deletion painted as `_` or `▁`; a co-located deletion disappearing from the hover
-because modified color won; the normal gutter diff appearing over `DiffView`.
+previous HEAD; a deletion painted as `_` or `▁`; a co-located deletion
+disappearing from the hover because modified color won; the normal gutter diff
+appearing over `DiffView`; an unchanged background HEAD refresh making a live
+gutter marker disappear and reappear.
 
 **Verification:** `bun test src/modules/diff/GutterDiff.test.ts
 src/modules/git/GitDocumentState.test.ts && bun

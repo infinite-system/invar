@@ -51,7 +51,7 @@ const statusPath = join(homeDirectory, 'status.json');
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
-  '{}\n',
+  JSON.stringify({ 'inlineRewrite.enabled': true }),
 );
 await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\n');
 await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
@@ -77,6 +77,15 @@ const driver = new PtyTestDriver.Class({
     TUI_STATUS_PATH: statusPath,
     COLORTERM: 'truecolor',
   },
+  command: [
+    process.execPath,
+    `--preload=${join(
+      process.cwd(),
+      'scripts/harness/inline-rewrite-mock-provider-preload.ts',
+    )}`,
+    'src/main.ts',
+    fixtureRoot,
+  ],
 });
 
 try {
@@ -98,6 +107,7 @@ try {
         sections?.includes('File Tree') === true &&
         sections.includes('Git') &&
         sections.includes('Markdown') &&
+        sections.includes('Inline Rewrite') &&
         Number(status.treeRows) > 2
       );
     },
@@ -239,7 +249,8 @@ try {
     (snapshot) =>
       snapshot.findText('[x] File Tree') !== null &&
       snapshot.findText('[x] Git') !== null &&
-      snapshot.findText('[x] Markdown') !== null,
+      snapshot.findText('[x] Markdown') !== null &&
+      snapshot.findText('[x] Inline Rewrite') !== null,
   );
   driver.sendKeys('Down');
   await driver.awaitGridCondition(
@@ -304,6 +315,67 @@ try {
     (status) => status.sidebarView === 'git' && status.focus === 'git',
   );
   HarnessSmoke.Class.pass('Extensions reinstall restores both registrations');
+
+  console.log(
+    '== plugin manifest: Inline Rewrite disable and re-enable are symmetric ==',
+  );
+  driver.sendKeys('Control+Shift+x', 'Down', 'Down');
+  await driver.awaitGridCondition(
+    'Inline Rewrite is selected in Extensions',
+    (snapshot) => snapshot.findText('› [x] Inline Rewrite') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall removes the Inline Rewrite setting schema',
+    (status) =>
+      !(status.settingsSections as string[] | undefined)?.includes(
+        'Inline Rewrite',
+      ),
+  );
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor with Inline Rewrite disabled',
+    (status) => status.focus === 'editor',
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+r');
+  await Bun.sleep(500);
+  HarnessSmoke.Class.requireCondition(
+    Number(
+      HarnessSmoke.Class.readStatus(statusPath).inlineRewriteMockRequestCount ??
+        0,
+    ) === 0,
+    'uninstall removes the Inline Rewrite command and keybinding',
+  );
+
+  driver.sendKeys('Control+Shift+x');
+  await driver.awaitGridCondition(
+    'the disabled Inline Rewrite row remains selected for reinstall',
+    (snapshot) => snapshot.findText('› [ ] Inline Rewrite') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the Inline Rewrite setting schema',
+    (status) =>
+      (status.settingsSections as string[] | undefined)?.includes(
+        'Inline Rewrite',
+      ) === true,
+  );
+  driver.sendKeys('Control+Shift+j', 'Control+Shift+r');
+  await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'reinstall restores the Inline Rewrite command and keybinding',
+    (status) => Number(status.inlineRewriteMockRequestCount) === 1,
+  );
+  HarnessSmoke.Class.pass(
+    'Extensions reinstall restores every Inline Rewrite registration',
+  );
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
