@@ -230,6 +230,22 @@ and a rotted list reports green. The proven shape (measured on main: 36 files �
 **Scan-then-import is load-bearing, not an optimisation.** Importing all of `src` to discover
 classes HANGS (killed at 120s) — some module has a non-returning module-level side effect.
 
+**The scan pattern must not assume the modifier list.** `static override get $X` does NOT contain
+the substring `static get $X`, so a strict `static get \$` grep silently drops it — measured, it
+misses 5 (67 strict vs 72 permissive across the tree). Today all 5 live in `.test.ts` doubles, which
+discovery excludes anyway, so non-test `src/` currently agrees at 67 across every pattern. That is
+LUCK, not construction: the first production subclass to override a parent's cached table
+disappears. Three separate pieces, each failing loudly on its own:
+1. **candidate FILE scan → broadest** — `\bget \$`. Makes no assumption about modifiers or their
+   order, so no combination escapes. Costs nothing: it selects the same 36 files today.
+2. **guard COUNT → static-permissive** — `static[^(]*get \$`, matching what discovery should
+   actually find. It must NOT reuse the strict pattern, and it must not reuse the broadest one
+   either: a guard sharing a blind spot with the thing it guards is not a guard, and a guard counting
+   instance getters would red falsely.
+3. **zero instance `$`-getters** — assert every `\bget \$` in non-test `src/` is also matched by
+   the static-permissive pattern (67 == 67 today). An instance `$`-getter is a real convention
+   question and must surface rather than vanish into a count mismatch.
+
 **Accessibility modifiers are handled, and `#`-private is FORBIDDEN.** This repo writes
 `protected static get $…` almost universally (66 of 67 on main; 0 plain `private`, 0 `public`), and
 the grep matches it because `protected static get $X` CONTAINS `static get $X`. There is no legal
