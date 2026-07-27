@@ -2613,3 +2613,44 @@ With no blocking verdict depending on the quiet lock, only the soft
 longer take loud-shared or quiet-exclusive locks, so lock degradation cannot
 produce `MEASUREMENT INVALID` in their path and concurrent gates can reach
 independent verdicts.
+
+## 2026-07-27 23:10 UTC — naming a thing by a proxy that merely usually coincides with it
+
+Four times in one session, across four different tools, a check addressed its subject by something
+that only *usually* matches it. Each one produced a confident wrong answer, and three of the four
+were aggravated by state I had created myself.
+
+| the check | what it actually matched | what it should have matched |
+| --- | --- | --- |
+| `until ! pgrep -f "codex … -C /tmp/conductor-foldperf"` | text in a command line — including its own | a process, resolved via `/proc/<pid>/cwd` |
+| `grep 'never fires'` in the conductor skill | MY phrasing of a rule | the rule's subject (`pgrep`, `/proc`) |
+| `sed 's/^    return 150;$/    return 900;/'` | a bare VALUE, which appeared twice | the value's identifier |
+| `merge-base origin/main HEAD` for a builder's commit count | a moving ref, stale because main was deliberately unpushed | the recorded cut commit |
+
+The consequences ranged from a waiter that spun 24 hours, to announcing that doctrine had been
+deleted when the builder had merely rephrased it, to silently rewriting
+`GESTURE_CONTINUATION_WINDOW_MILLISECONDS` from 150 to 900 while "restoring" the easing value, to a
+monitor reporting `+2 commits` from a builder that had made none — and naming MY OWN merge commit as
+its evidence.
+
+  **A name must identify. Content that usually coincides with the thing is not its name.**
+
+Three practical forms, each of which would have caught its case:
+
+- resolve processes through `/proc`, never through argv text;
+- to check whether a RULE survived a rewrite, grep the invariant subject and then READ the section —
+  never grep the sentence you wrote;
+- never reverse an edit by re-matching its content: `git checkout HEAD -- <file>` restores by
+  identity, and it is what actually saved the corrupted `Momentum.ts`;
+- anchor a branch's commit count to the RECORDED CUT COMMIT, not to `origin/main`, which drifts
+  whenever main is unpushed — exactly the state a held red creates.
+
+The self-referential one is worth keeping for its comedy and its lesson: the `pgrep` rule exists
+because a `-f` pattern matches text rather than identifying a process, and I verified that rule's
+survival with a grep that matched text rather than identifying a rule. The defect reproduces one
+level up from itself, which is the tell that it is a real class and not four coincidences.
+
+Corollary, learned the same night: when a single grep returns an alarming answer, READ THE FILE
+before announcing a loss. Looking costs one command; a false alarm spends the credibility that a
+real finding earns.
+
