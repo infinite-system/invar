@@ -17,6 +17,7 @@
 import { Reactive } from 'ivue';
 import { ref, watch, type Ref } from 'vue';
 import type { AgentSession } from '../agent/AgentSession';
+import { StatusChannel } from '../system/StatusChannel';
 import type { TtsBackend } from './TtsBackend.interface';
 import { SpeakableText } from './SpeakableText';
 
@@ -71,7 +72,11 @@ class $NarrationProjection {
       this.consideredThrough = entries.length;
       return;
     }
-    for (let index = this.consideredThrough; index < entries.length; index += 1) {
+    for (
+      let index = this.consideredThrough;
+      index < entries.length;
+      index += 1
+    ) {
       if (!this.isFinalized(index, entries.length)) break; // stop at the still-open trailing turn
       this.consideredThrough = index + 1;
       const entry = entries[index];
@@ -110,6 +115,12 @@ class $NarrationProjection {
   bargeIn(): void {
     this.tts.stop();
     this.bargeInCount.value += 1;
+    // Stopping audio changes no terminal cells, so there may be no settled
+    // frame to flush this semantic probe. Publish it at its mutation boundary.
+    StatusChannel.Class.update({
+      narrationBargeInCount: this.bargeInCount.value,
+    });
+    StatusChannel.Class.flush();
   }
 
   dispose(): void {
