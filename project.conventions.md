@@ -158,6 +158,28 @@ a mechanical checker should not be able to see.
   even while the loop ticks because empty frames are cheap; a CPU-only spot check shipped a live idle
   loop as a false-green.)
 
+### A population test DISCOVERS its population; it never enumerates it
+When a contract holds over a POPULATION — every namespace, every registered smoke, every mark owner,
+every settings descriptor, every `$`-getter — the test must FIND the members, not list them. A
+hand-written list rots the moment someone adds a member, and a rotted list does not fail: it reports
+green over a shrinking fraction of the population while still looking exhaustive. That is the same
+defect as a smoke the gate never runs, one level up.
+
+**The tell in review:** a test file that opens with N sibling imports of the very modules it is
+asserting over. That is an enumeration wearing a test's clothes. Lived case (2026-07-27): the first
+`$`-cache contract landed with 36 explicit namespace imports — correct on the day, silently partial
+from the next commit onward.
+
+**The shape that works** (proven for the `$`-cache contract, detailed below): a cheap SOURCE SCAN
+selects candidate files, the test imports only those, then it asks each subject STRUCTURALLY at
+runtime (descriptors, registries, manifests) rather than against a literal list.
+
+**And a discovery test needs a completeness guard, because discovery itself can silently under-find.**
+Assert the discovered count against an INDEPENDENT count of the same population — and the guard's
+source must not be the discovery mechanism itself. A guard that shares a blind spot with its subject
+is not a guard: both agree at a wrong number and the suite is green. "Fail if zero" is too weak; a
+walk that finds 4 of 36 also reports green.
+
 ### Where a check belongs: source text → script, runtime property → test
 A check's HOME follows its SUBJECT, not convenience:
 - **Subject is source text** (identifier shape, file layout, a forbidden syntactic form) → a script
