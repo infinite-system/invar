@@ -15,11 +15,11 @@ import type { OverlayCoordinator } from './OverlayCoordinator';
 class $BreadcrumbPicker {
   // The MS-DOS / Norton Commander parent row. Namespaced so it can never be confused with the
   // absolute filesystem paths every real entry uses as its identifier.
-  static get parentDirectoryItemIdentifier(): string {
+  static get PARENT_DIRECTORY_ITEM_IDENTIFIER(): string {
     return 'breadcrumb-picker:parent-directory';
   }
 
-  static get parentDirectoryItemLabel(): string {
+  static get PARENT_DIRECTORY_ITEM_LABEL(): string {
     return '..';
   }
 
@@ -78,10 +78,10 @@ class $BreadcrumbPicker {
     if (this.parentDirectoryOf(directoryPath) === null) return entryItems;
     return [
       {
-        identifier: $BreadcrumbPicker.parentDirectoryItemIdentifier,
-        label: $BreadcrumbPicker.parentDirectoryItemLabel,
+        identifier: $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER,
+        label: $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_LABEL,
         icon: this.dependencies.theme.icon(
-          $BreadcrumbPicker.parentDirectoryItemLabel,
+          $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_LABEL,
           true,
         ),
         keepOpenOnSelect: true,
@@ -92,7 +92,9 @@ class $BreadcrumbPicker {
   }
 
   protected activateItem(item: BoundedListPopupItem): void {
-    if (item.identifier === $BreadcrumbPicker.parentDirectoryItemIdentifier) {
+    if (
+      item.identifier === $BreadcrumbPicker.PARENT_DIRECTORY_ITEM_IDENTIFIER
+    ) {
       this.navigateBackward();
       return;
     }

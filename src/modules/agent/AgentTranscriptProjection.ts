@@ -1,12 +1,12 @@
-import { Static } from "ivue/extras";
-import type { Palette } from "../theme/ThemePalettes";
-import type { GlyphLevel } from "../theme/TerminalCapabilities";
-import { WrapText } from "../ui/WrapText";
-import { ThemeIcons } from "../theme/ThemeIcons";
-import { AgentToolSummary } from "./AgentToolSummary";
-import { AgentProviderRegistry } from "./AgentProviderRegistry";
-import type { TranscriptEntry } from "./AgentEvents.interface";
-import { AgentWordWrap } from "./AgentWordWrap";
+import { Static } from 'ivue/extras';
+import type { Palette } from '../theme/ThemePalettes';
+import type { GlyphLevel } from '../theme/TerminalCapabilities';
+import { WrapText } from '../ui/WrapText';
+import { ThemeIcons } from '../theme/ThemeIcons';
+import { AgentToolSummary } from './AgentToolSummary';
+import { AgentProviderRegistry } from './AgentProviderRegistry';
+import type { TranscriptEntry } from './AgentEvents.interface';
+import { AgentWordWrap } from './AgentWordWrap';
 
 // invariant: The transcript is the single source of agent session truth (src/modules/agent/agent.invariants.md)
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
@@ -21,7 +21,7 @@ class $AgentTranscriptProjection {
       TranscriptEntry,
       EntryProjectionCache
     >();
-    Object.defineProperty(this, "$entryProjectionCache", {
+    Object.defineProperty(this, '$entryProjectionCache', {
       configurable: true,
       value: entryProjectionCache,
     });
@@ -33,7 +33,7 @@ class $AgentTranscriptProjection {
   }
 
   protected static producerLabel(engine: string | undefined): string {
-    return AgentProviderRegistry.Class.displayLabel(engine ?? "claude");
+    return AgentProviderRegistry.Class.displayLabel(engine ?? 'claude');
   }
 
   protected static truncate(
@@ -53,16 +53,16 @@ class $AgentTranscriptProjection {
   }
 
   protected static toolInputPretty(input: unknown): string {
-    return typeof input === "string"
+    return typeof input === 'string'
       ? input
-      : (JSON.stringify(input, null, 2) ?? "");
+      : (JSON.stringify(input, null, 2) ?? '');
   }
 
   protected static stampOf(entry: TranscriptEntry): string {
-    if (entry.role === "assistant") return entry.text;
-    if (entry.role === "permission-request") return entry.status;
-    if (entry.role === "user") return entry.delivery ?? "";
-    return "";
+    if (entry.role === 'assistant') return entry.text;
+    if (entry.role === 'permission-request') return entry.status;
+    if (entry.role === 'user') return entry.delivery ?? '';
+    return '';
   }
 
   protected static projectEntry(
@@ -82,7 +82,7 @@ class $AgentTranscriptProjection {
     };
     const blank = (): void => {
       lines.push({
-        text: "",
+        text: '',
         color: palette.dim,
         bold: false,
         entryIndex: -1,
@@ -96,13 +96,13 @@ class $AgentTranscriptProjection {
       // their assistant. The blank is a real projected line, so it wraps/scrolls/selects with the content.
       if (
         entryIndex > 0 &&
-        (entry.role === "user" ||
-          entry.role === "error" ||
-          entry.role === "system")
+        (entry.role === 'user' ||
+          entry.role === 'error' ||
+          entry.role === 'system')
       )
         blank();
       switch (entry.role) {
-        case "system":
+        case 'system':
           // A dim, centered aside (e.g. an engine-switch banner) — "— <text> —", framed by em-dashes.
           for (const wrapped of this.wrap(`— ${entry.text} —`, width))
             lines.push({
@@ -114,11 +114,11 @@ class $AgentTranscriptProjection {
             });
           blank();
           break;
-        case "user":
+        case 'user':
           lines.push({
-            text: entry.delivery === "queued" ? "You  [queued]" : "You",
+            text: entry.delivery === 'queued' ? 'You  [queued]' : 'You',
             color:
-              entry.delivery === "queued" ? palette.warning : palette.accent,
+              entry.delivery === 'queued' ? palette.warning : palette.accent,
             bold: true,
             entryIndex,
             toggleable: false,
@@ -126,14 +126,14 @@ class $AgentTranscriptProjection {
           for (const wrapped of this.wrap(entry.text, width))
             lines.push({
               text: wrapped,
-              color: entry.delivery === "queued" ? palette.dim : palette.accent,
+              color: entry.delivery === 'queued' ? palette.dim : palette.accent,
               bold: false,
               entryIndex,
               toggleable: false,
             });
           blank(); // trailing space after the user's own turn
           break;
-        case "assistant":
+        case 'assistant':
           // The role label names the engine that PRODUCED this turn (entry-stamped): after a switch,
           // new turns say the new engine while history keeps the label of the engine that wrote it.
           lines.push({
@@ -152,9 +152,9 @@ class $AgentTranscriptProjection {
               toggleable: false,
             });
           break;
-        case "error":
+        case 'error':
           lines.push({
-            text: "! error",
+            text: '! error',
             color: palette.error,
             bold: true,
             entryIndex,
@@ -169,7 +169,7 @@ class $AgentTranscriptProjection {
               toggleable: false,
             });
           break;
-        case "tool-use": {
+        case 'tool-use': {
           const marker = expanded ? caret.expanded : caret.collapsed;
           const head = `${marker} ${transcriptIcons.tool} ${entry.name}`;
           if (!expanded) {
@@ -209,14 +209,14 @@ class $AgentTranscriptProjection {
           }
           break;
         }
-        case "permission-request": {
+        case 'permission-request': {
           // The interactive approval surface. PENDING = a highlighted two-line prompt (what + the keys);
           // RESOLVED = one compact record line. Human-readable via the same AgentToolSummary seam the
           // collapsed tool rows use — never raw JSON.
           const phrase =
             AgentToolSummary.Class.summarize(entry.toolName, entry.input) ||
             entry.toolName;
-          if (entry.status === "pending") {
+          if (entry.status === 'pending') {
             lines.push({
               text: this.truncate(
                 `? ${this.producerLabel(entry.engine)} wants to run  ${phrase}`,
@@ -230,7 +230,7 @@ class $AgentTranscriptProjection {
             });
             lines.push({
               text: this.truncate(
-                "  [y] allow · [n] deny · [a] always (session)",
+                '  [y] allow · [n] deny · [a] always (session)',
                 width,
                 glyphLevel,
               ),
@@ -240,13 +240,13 @@ class $AgentTranscriptProjection {
               toggleable: false,
             });
           } else {
-            const allowed = entry.status === "allowed";
+            const allowed = entry.status === 'allowed';
             const outcome = allowed
               ? transcriptIcons.resultOk
               : transcriptIcons.resultError;
             lines.push({
               text: this.truncate(
-                `${outcome} ${allowed ? "allowed" : "denied"}  ${phrase}`,
+                `${outcome} ${allowed ? 'allowed' : 'denied'}  ${phrase}`,
                 width,
                 glyphLevel,
               ),
@@ -258,7 +258,7 @@ class $AgentTranscriptProjection {
           }
           break;
         }
-        case "tool-result": {
+        case 'tool-result': {
           const marker = expanded ? caret.expanded : caret.collapsed;
           const outcome = entry.isError
             ? transcriptIcons.resultError

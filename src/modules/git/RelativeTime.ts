@@ -7,12 +7,12 @@
 import { Static } from 'ivue/extras';
 
 class $RelativeTime {
-  protected static get secondMilliseconds(): number {
+  protected static get SECOND_MILLISECONDS(): number {
     return 1000;
   }
 
   protected static get minuteMilliseconds(): number {
-    return 60 * this.secondMilliseconds;
+    return 60 * this.SECOND_MILLISECONDS;
   }
 
   protected static get hourMilliseconds(): number {
@@ -47,7 +47,7 @@ class $RelativeTime {
    * instant reads "just now" (a clock skew never produces a negative age). */
   static format(fromMs: number, nowMs: number): string {
     const elapsedMilliseconds = nowMs - fromMs;
-    if (elapsedMilliseconds < 45 * this.secondMilliseconds) {
+    if (elapsedMilliseconds < 45 * this.SECOND_MILLISECONDS) {
       return 'just now';
     }
     if (elapsedMilliseconds < 45 * this.minuteMilliseconds) {

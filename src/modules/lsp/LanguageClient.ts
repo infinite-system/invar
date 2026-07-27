@@ -38,11 +38,11 @@ class $LanguageClient implements LanguageProvider {
 
   /** Pull-diagnostics debounce windows. A freshly opened document pulls almost immediately (off the
    *  sync microtask); rapid typing coalesces to one pull ~350ms after the last keystroke. */
-  protected static get diagnosticPullOpenDelayMilliseconds(): number {
+  protected static get DIAGNOSTIC_PULL_OPEN_DELAY_MILLISECONDS(): number {
     return 50;
   }
 
-  protected static get diagnosticPullChangeDelayMilliseconds(): number {
+  protected static get DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS(): number {
     return 350;
   }
 
@@ -665,7 +665,7 @@ class $LanguageClient implements LanguageProvider {
       const languageClientClass = this.constructor as typeof $LanguageClient;
       this.scheduleDiagnosticPull(
         state,
-        languageClientClass.diagnosticPullOpenDelayMilliseconds,
+        languageClientClass.DIAGNOSTIC_PULL_OPEN_DELAY_MILLISECONDS,
       );
       return;
     }
@@ -677,7 +677,7 @@ class $LanguageClient implements LanguageProvider {
     const languageClientClass = this.constructor as typeof $LanguageClient;
     this.scheduleDiagnosticPull(
       state,
-      languageClientClass.diagnosticPullChangeDelayMilliseconds,
+      languageClientClass.DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS,
     );
   }
 
@@ -890,7 +890,7 @@ class $LanguageClient implements LanguageProvider {
       if (state.opened) {
         this.scheduleDiagnosticPull(
           state,
-          languageClientClass.diagnosticPullChangeDelayMilliseconds,
+          languageClientClass.DIAGNOSTIC_PULL_CHANGE_DELAY_MILLISECONDS,
         );
       }
     }

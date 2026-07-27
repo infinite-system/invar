@@ -23,11 +23,11 @@ import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Wrapped surfaces share one break generator (project.invariants.md)
 class $EditorWrap {
-  protected static get tabWidth(): number {
+  protected static get TAB_WIDTH(): number {
     return 4;
   }
 
-  protected static get wrapMemoCapacity(): number {
+  protected static get WRAP_MEMO_CAPACITY(): number {
     return 512;
   }
 
@@ -99,7 +99,7 @@ class $EditorWrap {
         const previousColumn = columns[index] ?? 0;
         const clusterWidth =
           cluster === '\t'
-            ? this.tabWidth - (previousColumn % this.tabWidth)
+            ? this.TAB_WIDTH - (previousColumn % this.TAB_WIDTH)
             : this.EditorCoordinates.graphemeWidth(cluster);
         columns[index + 1] = previousColumn + clusterWidth;
       }
@@ -141,11 +141,11 @@ class $EditorWrap {
       }
     }
 
-    if (this.$wrapMemo.size >= this.wrapMemoCapacity) {
+    if (this.$wrapMemo.size >= this.WRAP_MEMO_CAPACITY) {
       let dropped = 0;
       for (const key of this.$wrapMemo.keys()) {
         this.$wrapMemo.delete(key);
-        if (++dropped >= this.wrapMemoCapacity / 2) break;
+        if (++dropped >= this.WRAP_MEMO_CAPACITY / 2) break;
       }
     }
     this.$wrapMemo.set(memoKey, segments);

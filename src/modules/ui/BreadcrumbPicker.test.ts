@@ -100,7 +100,7 @@ test('the parent row and Left share one upward generator', () => {
       unicodeSymbolMarks.file,
     ]);
     expect(openedItems[0]?.identifier).toBe(
-      BreadcrumbPicker.Class.parentDirectoryItemIdentifier,
+      BreadcrumbPicker.Class.PARENT_DIRECTORY_ITEM_IDENTIFIER,
     );
     expect(openedItems[0]?.pinnedWhileQueryEmpty).toBe(true);
     expect(openedItems[0]?.keepOpenOnSelect).toBe(true);
@@ -182,7 +182,7 @@ test('the workspace root offers no parent row', () => {
       openedItems.some(
         (item) =>
           item.identifier ===
-          BreadcrumbPicker.Class.parentDirectoryItemIdentifier,
+          BreadcrumbPicker.Class.PARENT_DIRECTORY_ITEM_IDENTIFIER,
       ),
     ).toBe(false);
   } finally {

@@ -4,11 +4,11 @@
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 //   — the stack is bounded; the oldest states are evicted, not retained forever.
 class $UndoStore {
-  protected static get maximumDepth(): number {
+  protected static get MAXIMUM_DEPTH(): number {
     return 500;
   }
 
-  protected static get coalesceMilliseconds(): number {
+  protected static get COALESCE_MILLISECONDS(): number {
     return 400;
   }
 
@@ -43,7 +43,7 @@ class $UndoStore {
       previous.kind === state.kind &&
       (state.kind === 'insert' || state.kind === 'delete') &&
       now - previous.at <
-        (this.constructor as typeof $UndoStore).coalesceMilliseconds
+        (this.constructor as typeof $UndoStore).COALESCE_MILLISECONDS
     ) {
       // Keep the earlier pre-edit state; just refresh its timestamp so the run keeps coalescing.
       previous.at = now;
@@ -52,7 +52,7 @@ class $UndoStore {
     this.undoStack.push(state);
     if (
       this.undoStack.length >
-      (this.constructor as typeof $UndoStore).maximumDepth
+      (this.constructor as typeof $UndoStore).MAXIMUM_DEPTH
     ) {
       this.undoStack.shift();
     }

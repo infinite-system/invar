@@ -668,11 +668,11 @@ class $SmokeTerminalFollowHarness {
 
   protected static thinkingIndicatorVisible(rows: readonly string[]): boolean {
     return rows.some((row) =>
-      this.spinnerGlyphs.some((glyph) => row.includes(glyph)),
+      this.SPINNER_GLYPHS.some((glyph) => row.includes(glyph)),
     );
   }
 
-  protected static get spinnerGlyphs(): readonly string[] {
+  protected static get SPINNER_GLYPHS(): readonly string[] {
     return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
   }
 

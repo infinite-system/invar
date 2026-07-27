@@ -2,11 +2,14 @@ import { Static } from 'ivue/extras';
 import { TextSegmentation } from '../system/TextSegmentation';
 
 class $TerminalCommandTyping {
-  protected static get maximumDurationMilliseconds(): number {
+  protected static get MAXIMUM_DURATION_MILLISECONDS(): number {
     return 1_500;
   }
 
-  protected static characterWeight(character: string, randomValue: number): number {
+  protected static characterWeight(
+    character: string,
+    randomValue: number,
+  ): number {
     const jitterWeight = 0.75 + Math.max(0, Math.min(1, randomValue)) * 0.5;
     if (/\s/.test(character)) return jitterWeight * 1.25;
     if (/[.,;:!?]/.test(character)) return jitterWeight * 1.55;
@@ -21,14 +24,16 @@ class $TerminalCommandTyping {
     if (graphemes.length === 0) return [];
     const safeCharactersPerSecond = Math.max(1, charactersPerSecond);
     const targetDurationMilliseconds = Math.min(
-      this.maximumDurationMilliseconds,
+      this.MAXIMUM_DURATION_MILLISECONDS,
       (graphemes.length / safeCharactersPerSecond) * 1_000,
     );
     const weights = graphemes.map((grapheme) =>
       this.characterWeight(grapheme, random()),
     );
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-    return weights.map((weight) => (weight / totalWeight) * targetDurationMilliseconds);
+    return weights.map(
+      (weight) => (weight / totalWeight) * targetDurationMilliseconds,
+    );
   }
 
   static plan(

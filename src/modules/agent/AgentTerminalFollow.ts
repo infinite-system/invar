@@ -37,10 +37,10 @@ class $AgentTerminalFollow {
   }
 
   static nextMode(mode: AgentTerminalFollowMode): AgentTerminalFollowMode {
-    const currentIndex = this.modeOrder.indexOf(mode);
+    const currentIndex = this.MODE_ORDER.indexOf(mode);
     const nextIndex =
-      currentIndex < 0 ? 0 : (currentIndex + 1) % this.modeOrder.length;
-    return this.modeOrder[nextIndex]!;
+      currentIndex < 0 ? 0 : (currentIndex + 1) % this.MODE_ORDER.length;
+    return this.MODE_ORDER[nextIndex]!;
   }
 
   static labelFor(mode: AgentTerminalFollowMode): string {
@@ -107,7 +107,7 @@ class $AgentTerminalFollow {
     ].join('\n');
   }
 
-  protected static get modeOrder(): readonly AgentTerminalFollowMode[] {
+  protected static get MODE_ORDER(): readonly AgentTerminalFollowMode[] {
     return ['follow-all', 'on-error', 'on-request', 'off'];
   }
 }

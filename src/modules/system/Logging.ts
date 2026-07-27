@@ -7,18 +7,18 @@ import { dirname } from 'node:path';
 class $Logging {
   protected static prepared = false;
 
-  protected static get logPath(): string {
+  protected static get LOG_PATH(): string {
     return 'artifacts/tui.log';
   }
 
   static get path(): string {
-    return this.logPath;
+    return this.LOG_PATH;
   }
 
   static write(level: string, message: string): void {
     if (!this.prepared) {
       try {
-        mkdirSync(dirname(this.logPath), { recursive: true });
+        mkdirSync(dirname(this.LOG_PATH), { recursive: true });
       } catch {
         /* ignore */
       }
@@ -26,7 +26,7 @@ class $Logging {
     }
     const line = `${new Date().toISOString()} [${level}] ${message}\n`;
     try {
-      appendFileSync(this.logPath, line);
+      appendFileSync(this.LOG_PATH, line);
     } catch {
       /* logging must never crash the app */
     }

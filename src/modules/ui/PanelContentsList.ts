@@ -8,11 +8,11 @@ import { WrapText } from './WrapText';
 // invariant: Panel content order is one persisted sequence (src/modules/ui/ui.invariants.md)
 // invariant: The panel contents list mirrors open content (src/modules/ui/ui.invariants.md)
 class $PanelContentsList {
-  protected static get minimumWidth(): number {
+  protected static get MINIMUM_WIDTH(): number {
     return 16;
   }
 
-  protected static get maximumWidth(): number {
+  protected static get MAXIMUM_WIDTH(): number {
     return 24;
   }
 
@@ -47,8 +47,8 @@ class $PanelContentsList {
       0,
     );
     return Math.max(
-      $PanelContentsList.minimumWidth,
-      Math.min($PanelContentsList.maximumWidth, longestLabel),
+      $PanelContentsList.MINIMUM_WIDTH,
+      Math.min($PanelContentsList.MAXIMUM_WIDTH, longestLabel),
     );
   }
 

@@ -19,11 +19,11 @@ import { ImageResample } from './ImageResample';
 class $PixelImageMount {
   // The assumed cell size when the terminal reports none: 8×16 keeps the 1:2 cell aspect the
   // half-block fit also assumes, so tier switches do not change the letterbox shape.
-  protected static get fallbackCellPixelWidth(): number {
+  protected static get FALLBACK_CELL_PIXEL_WIDTH(): number {
     return 8;
   }
 
-  protected static get fallbackCellPixelHeight(): number {
+  protected static get FALLBACK_CELL_PIXEL_HEIGHT(): number {
     return 16;
   }
 
@@ -48,19 +48,15 @@ class $PixelImageMount {
     const normalized = hex.startsWith('#') ? hex.slice(1) : hex;
     const packed = Number.parseInt(normalized.slice(0, 6), 16);
     if (normalized.length < 6 || Number.isNaN(packed)) return [0, 0, 0];
-    return [
-      (packed >> 16) & 0xff,
-      (packed >> 8) & 0xff,
-      packed & 0xff,
-    ];
+    return [(packed >> 16) & 0xff, (packed >> 8) & 0xff, packed & 0xff];
   }
 
   /** Reconcile the on-screen placement with the requested one. Cheap when nothing changed. */
   sync(context: PixelMountContext): void {
     const pixelImageMountClass = this.constructor as typeof $PixelImageMount;
     const cell = this.terminal.cellPixelSize() ?? {
-      width: pixelImageMountClass.fallbackCellPixelWidth,
-      height: pixelImageMountClass.fallbackCellPixelHeight,
+      width: pixelImageMountClass.FALLBACK_CELL_PIXEL_WIDTH,
+      height: pixelImageMountClass.FALLBACK_CELL_PIXEL_HEIGHT,
     };
     const { region, image } = context;
     const boxPixelWidth = Math.max(1, region.columns) * cell.width;
@@ -103,7 +99,8 @@ class $PixelImageMount {
     // Centre the fitted rect in the pane; CUP is 1-based. Cursor save/restore brackets the emit so
     // the placement never moves the app's real cursor.
     const cursorRow = region.y + Math.floor((region.rows - fittedRows) / 2) + 1;
-    const cursorColumn = region.x + Math.floor((region.columns - fittedColumns) / 2) + 1;
+    const cursorColumn =
+      region.x + Math.floor((region.columns - fittedColumns) / 2) + 1;
 
     this.placementKey = key;
     const removeAll = context.encoder.removeAll();

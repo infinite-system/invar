@@ -15,7 +15,7 @@ const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-inline-rewrite-home-'));
 const statusPath = join(homeDirectory, 'status.json');
 const reproductionMode = process.env.INVAR_INLINE_REWRITE_REPRO ?? '';
 const inlineRewriteBackground = Number.parseInt(
-  ThemePalettes.Class.dark.inlineRewriteBackground.slice(1),
+  ThemePalettes.Class.DARK.inlineRewriteBackground.slice(1),
   16,
 );
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });

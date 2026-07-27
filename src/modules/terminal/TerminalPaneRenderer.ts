@@ -18,8 +18,22 @@ class $TerminalPaneRenderer {
   // 6×6×6 cube and the grayscale ramp — the standard xterm mapping — so real terminal colors render.
   protected static get $ansiPalette(): readonly string[] {
     const ansiPalette = [
-      '#000000', '#800000', '#008000', '#808000', '#000080', '#800080', '#008080', '#c0c0c0',
-      '#808080', '#ff0000', '#00ff00', '#ffff00', '#0000ff', '#ff00ff', '#00ffff', '#ffffff',
+      '#000000',
+      '#800000',
+      '#008000',
+      '#808000',
+      '#000080',
+      '#800080',
+      '#008080',
+      '#c0c0c0',
+      '#808080',
+      '#ff0000',
+      '#00ff00',
+      '#ffff00',
+      '#0000ff',
+      '#ff00ff',
+      '#00ffff',
+      '#ffffff',
     ];
     Object.defineProperty(this, '$ansiPalette', {
       configurable: true,
@@ -58,7 +72,10 @@ class $TerminalPaneRenderer {
   }
 
   /** The cell's background color as a hex string, or null when it is the default panel background. */
-  protected static backgroundHex(cell: TerminalCell, panelBackground: string): string | null {
+  protected static backgroundHex(
+    cell: TerminalCell,
+    panelBackground: string,
+  ): string | null {
     if (cell.isBackgroundRgb) return this.rgbToHex(cell.background);
     if (cell.isBackgroundPalette) return this.paletteToHex(cell.background);
     return panelBackground;
@@ -84,71 +101,93 @@ class $TerminalPaneRenderer {
     if (selected) background = palette.selection;
     let chunk = fg(foreground)(text);
     if (cell.isBold) chunk = bold(chunk);
-    if (background && background !== palette.panel) chunk = bg(background)(chunk);
+    if (background && background !== palette.panel)
+      chunk = bg(background)(chunk);
     return chunk;
   }
 
   static render(context: TerminalPaneRenderContext): StyledText {
-  const { instance, palette } = context;
-  const padColumns = Math.max(0, context.padColumns ?? 0);
-  const padRows = Math.max(0, context.padRows ?? 0);
-  // The emulator draws into the region INSIDE the gutter; the outer margin stays panel background.
-  const rows = Math.min(Math.max(0, context.height - 2 * padRows), instance.rows);
-  const columns = Math.min(Math.max(0, context.width - 2 * padColumns), instance.columns);
-  const leadingGutter = padColumns > 0 ? ' '.repeat(padColumns) : '';
-  // Build each emulator row's coalesced chunks, then frame with blank gutter rows + a left margin.
-  const rowChunkLists: TextChunk[][] = [];
-  for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
-    const rowChunks: TextChunk[] = [];
-    if (leadingGutter) rowChunks.push(fg(palette.fg)(leadingGutter));
-    let runText = '';
-    let runCell: TerminalCell | null = null;
-    let runSelected = false;
-    let runKey = '';
-    const flushRun = () => {
-      if (runCell && runText) {
-        rowChunks.push(this.chunkFor(runText, runCell, palette, runSelected));
-      }
-      runText = '';
-      runCell = null;
-      runKey = '';
-      runSelected = false;
-    };
-    let columnIndex = 0;
-    while (columnIndex < columns) {
-      const cell = instance.cell(rowIndex, columnIndex) ?? {
-        characters: ' ', foreground: 0, background: 0,
-        isForegroundDefault: true, isForegroundRgb: false, isForegroundPalette: false,
-        isBackgroundDefault: true, isBackgroundRgb: false, isBackgroundPalette: false,
-        isBold: false, isDim: false, isItalic: false, isUnderline: false, isBlink: false,
-        isInverse: false, isInvisible: false, isStrikethrough: false, isOverline: false, width: 1,
+    const { instance, palette } = context;
+    const padColumns = Math.max(0, context.padColumns ?? 0);
+    const padRows = Math.max(0, context.padRows ?? 0);
+    // The emulator draws into the region INSIDE the gutter; the outer margin stays panel background.
+    const rows = Math.min(
+      Math.max(0, context.height - 2 * padRows),
+      instance.rows,
+    );
+    const columns = Math.min(
+      Math.max(0, context.width - 2 * padColumns),
+      instance.columns,
+    );
+    const leadingGutter = padColumns > 0 ? ' '.repeat(padColumns) : '';
+    // Build each emulator row's coalesced chunks, then frame with blank gutter rows + a left margin.
+    const rowChunkLists: TextChunk[][] = [];
+    for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
+      const rowChunks: TextChunk[] = [];
+      if (leadingGutter) rowChunks.push(fg(palette.fg)(leadingGutter));
+      let runText = '';
+      let runCell: TerminalCell | null = null;
+      let runSelected = false;
+      let runKey = '';
+      const flushRun = () => {
+        if (runCell && runText) {
+          rowChunks.push(this.chunkFor(runText, runCell, palette, runSelected));
+        }
+        runText = '';
+        runCell = null;
+        runKey = '';
+        runSelected = false;
       };
-      const selectionRange = context.selectionRanges?.[rowIndex] ?? null;
-      const selected = selectionRange !== null
-        && columnIndex < selectionRange.end
-        && columnIndex + Math.max(1, cell.width) > selectionRange.start;
-      const key = this.styleKey(cell, selected);
-      if (runCell && key !== runKey) flushRun();
-      runText += cell.characters;
-      runCell = cell;
-      runKey = key;
-      runSelected = selected;
-      // A wide (2-cell) glyph occupies the next column with a 0-width spacer xterm returns as ''.
-      columnIndex += Math.max(1, cell.width);
+      let columnIndex = 0;
+      while (columnIndex < columns) {
+        const cell = instance.cell(rowIndex, columnIndex) ?? {
+          characters: ' ',
+          foreground: 0,
+          background: 0,
+          isForegroundDefault: true,
+          isForegroundRgb: false,
+          isForegroundPalette: false,
+          isBackgroundDefault: true,
+          isBackgroundRgb: false,
+          isBackgroundPalette: false,
+          isBold: false,
+          isDim: false,
+          isItalic: false,
+          isUnderline: false,
+          isBlink: false,
+          isInverse: false,
+          isInvisible: false,
+          isStrikethrough: false,
+          isOverline: false,
+          width: 1,
+        };
+        const selectionRange = context.selectionRanges?.[rowIndex] ?? null;
+        const selected =
+          selectionRange !== null &&
+          columnIndex < selectionRange.end &&
+          columnIndex + Math.max(1, cell.width) > selectionRange.start;
+        const key = this.styleKey(cell, selected);
+        if (runCell && key !== runKey) flushRun();
+        runText += cell.characters;
+        runCell = cell;
+        runKey = key;
+        runSelected = selected;
+        // A wide (2-cell) glyph occupies the next column with a 0-width spacer xterm returns as ''.
+        columnIndex += Math.max(1, cell.width);
+      }
+      flushRun();
+      rowChunkLists.push(rowChunks);
     }
-    flushRun();
-    rowChunkLists.push(rowChunks);
-  }
-  // Frame: padRows blank rows, then the gutter-indented content rows, then padRows blank rows.
-  const framedRows: TextChunk[][] = [];
-  for (let blank = 0; blank < padRows; blank += 1) framedRows.push([]);
-  for (const rowChunks of rowChunkLists) framedRows.push(rowChunks);
-  for (let blank = 0; blank < padRows; blank += 1) framedRows.push([]);
-  const chunks: TextChunk[] = [];
-  for (let rowIndex = 0; rowIndex < framedRows.length; rowIndex += 1) {
-    chunks.push(...(framedRows[rowIndex] as TextChunk[]));
-    if (rowIndex < framedRows.length - 1) chunks.push(fg(palette.fg)('\n'));
-  }
+    // Frame: padRows blank rows, then the gutter-indented content rows, then padRows blank rows.
+    const framedRows: TextChunk[][] = [];
+    for (let blank = 0; blank < padRows; blank += 1) framedRows.push([]);
+    for (const rowChunks of rowChunkLists) framedRows.push(rowChunks);
+    for (let blank = 0; blank < padRows; blank += 1) framedRows.push([]);
+    const chunks: TextChunk[] = [];
+    for (let rowIndex = 0; rowIndex < framedRows.length; rowIndex += 1) {
+      chunks.push(...(framedRows[rowIndex] as TextChunk[]));
+      if (rowIndex < framedRows.length - 1) chunks.push(fg(palette.fg)('\n'));
+    }
     return new StyledText(chunks);
   }
 }
