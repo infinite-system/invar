@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import {
@@ -20,10 +21,6 @@ import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 class $MarkdownPreview {
   protected static get $emptyBlocks(): readonly BlockRecord[] {
     const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
-    Object.defineProperty(this, '$emptyBlocks', {
-      configurable: true,
-      value: emptyBlocks,
-    });
     return emptyBlocks;
   }
 
@@ -639,7 +636,7 @@ class $MarkdownPreview {
 }
 
 export namespace MarkdownPreview {
-  export const $Class = $MarkdownPreview;
+  export const $Class = Static($MarkdownPreview);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

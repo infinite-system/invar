@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { resolve as resolvePath } from 'node:path';
@@ -28,10 +29,6 @@ class $LanguageClient implements LanguageProvider {
       hover: false,
       references: false,
       completion: false,
-    });
-    Object.defineProperty(this, '$noCapabilities', {
-      configurable: true,
-      value: noCapabilities,
     });
     return noCapabilities;
   }
@@ -1190,7 +1187,7 @@ class $LanguageClient implements LanguageProvider {
 }
 
 export namespace LanguageClient {
-  export const $Class = $LanguageClient;
+  export const $Class = Static($LanguageClient);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

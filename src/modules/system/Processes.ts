@@ -47,7 +47,11 @@ class $Processes {
    * Run `argumentVector` (no shell) in `cwd`, capturing output. Never throws on non-zero exit or a
    * missing binary — returns a RunResult with ok=false so callers degrade gracefully.
    */
-  static async run(argumentVector: string[], cwd?: string, input?: string): Promise<RunResult> {
+  static async run(
+    argumentVector: string[],
+    cwd?: string,
+    input?: string,
+  ): Promise<RunResult> {
     try {
       const subprocess = this.spawn(argumentVector, {
         cwd,
@@ -72,8 +76,8 @@ class $Processes {
 }
 
 export namespace Processes {
-  export const $Class = $Processes;
-  export let Class = Static($Processes);
+  export const $Class = Static($Processes);
+  export let Class = $Class;
 }
 
 export interface RunResult {

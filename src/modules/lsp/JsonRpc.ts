@@ -1,10 +1,7 @@
+import { Static } from 'ivue/extras';
 class $JsonRpc {
   protected static get $headerEnd(): Uint8Array {
     const headerEnd = new Uint8Array([13, 10, 13, 10]);
-    Object.defineProperty(this, '$headerEnd', {
-      configurable: true,
-      value: headerEnd,
-    });
     return headerEnd;
   }
 
@@ -201,7 +198,7 @@ class $JsonRpc {
 }
 
 export namespace JsonRpc {
-  export const $Class = $JsonRpc;
+  export const $Class = Static($JsonRpc);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

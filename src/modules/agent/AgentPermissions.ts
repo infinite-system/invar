@@ -11,6 +11,6 @@ class $AgentPermissions {
 }
 
 export namespace AgentPermissions {
-  export const $Class = $AgentPermissions;
-  export const Class = Static($AgentPermissions);
+  export const $Class = Static($AgentPermissions);
+  export const Class = $Class;
 }

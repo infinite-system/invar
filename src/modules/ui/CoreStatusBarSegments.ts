@@ -38,6 +38,6 @@ class $CoreStatusBarSegments {
 }
 
 export namespace CoreStatusBarSegments {
-  export const $Class = $CoreStatusBarSegments;
-  export const Class = Static($CoreStatusBarSegments);
+  export const $Class = Static($CoreStatusBarSegments);
+  export const Class = $Class;
 }

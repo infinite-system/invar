@@ -697,10 +697,6 @@ class $KeybindingDefaults {
         context: 'editor',
       },
     ];
-    Object.defineProperty(this, '$canonicalBindings', {
-      configurable: true,
-      value: canonicalBindings,
-    });
     return canonicalBindings;
   }
 
@@ -710,8 +706,8 @@ class $KeybindingDefaults {
 }
 
 export namespace KeybindingDefaults {
-  export const $Class = $KeybindingDefaults;
-  export const Class = Static($KeybindingDefaults);
+  export const $Class = Static($KeybindingDefaults);
+  export const Class = $Class;
 }
 
 export type TextInputBindingContext =

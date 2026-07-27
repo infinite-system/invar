@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
   type CliRenderer,
@@ -142,8 +143,8 @@ class $SplitterElement {
 }
 
 export namespace SplitterElement {
-  export const $Class = $SplitterElement;
-  export const Class = $SplitterElement;
+  export const $Class = Static($SplitterElement);
+  export const Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

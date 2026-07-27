@@ -21,6 +21,7 @@
 //
 // invariant: A scrollbar thumb is painted as background fill, never block glyphs (src/modules/ui/ui.invariants.md)
 // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
+import { Static } from 'ivue/extras';
 import {
   ScrollBarRenderable,
   RGBA,
@@ -154,7 +155,7 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
   }
 }
 export namespace SolidThumbScrollBar {
-  export const $Class = $SolidThumbScrollBar;
+  export const $Class = Static($SolidThumbScrollBar);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

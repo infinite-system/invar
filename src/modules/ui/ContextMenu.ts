@@ -6,6 +6,7 @@
 // opener-supplied handler: an action can never observe (or race with) an open menu.
 //
 // invariant: A context menu is modal and single-consumer (src/modules/ui/ui.invariants.md)
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 class $ContextMenu {
@@ -128,7 +129,7 @@ class $ContextMenu {
   }
 }
 export namespace ContextMenu {
-  export const $Class = $ContextMenu;
+  export const $Class = Static($ContextMenu);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

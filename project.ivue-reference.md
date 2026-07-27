@@ -6,12 +6,12 @@ in this repo. Companion: `project.decisions.md` (the 10 decisions), and `.claude
 
 ## Framing facts (get these right or you write bugs)
 
-> **2026-07-24 correction:** since ivue ≥ 2.1.0, **`Static()` ships in ivue itself** via the
+> **2026-07-27 correction:** since ivue ≥ 2.1.0, **`Static()` ships in ivue itself** via the
 > `ivue/extras` subpath (`import { Static } from 'ivue/extras'`) — the statements below that predate
-> this (no `Static` in ivue / raw `$Class` for static capabilities / a vendored
-> `src/modules/system/Static.ts`) are historical. The enforced convention (see
-> `project.conventions.md` "Class kinds") is: stateless capability → `Class = Static($X)`; reactive
-> model → `Reactive($X)`; plain stateful class → `Class = $X`. The vendored copy was deleted.
+> these are historical. In ivue 2.2.1, any class declaring statics publishes the wrapped anchor
+> `$Class = Static($X)`; a stateless capability selects `Class = $Class`, a statics-bearing reactive
+> model selects `Class = Reactive($Class)`, and a plain class without statics keeps `$Class = $X`.
+> The vendored copy was deleted.
 
 - **ivue's entire public runtime API is `Reactive()`** (plus type helpers). The engine is tiny
   and has zero deps of its own.
@@ -19,9 +19,8 @@ in this repo. Companion: `project.decisions.md` (the 10 decisions), and `.claude
   `watchEffect`, `effectScope`, `pauseTracking`/`resetTracking` all come from **`vue`** (installed),
   NOT from ivue. From `ivue` you import ONLY `Reactive`. The core is DOM-free and runs headless
   under Bun (proven: `scripts/ivue-smoke.ts`).
-- **`Static()` and the extensible kernel are NOT in the ivue package.** `Static()` is an
-  experiment; the kernel is example code. In this repo, a static-capability class is just a normal
-  class in a namespace with `let Class = $Class` (no wrapper) — see `src/modules/system/*`.
+- **`Static()` ships from `ivue/extras`; the extensible kernel remains example code.**
+  `Static()` grants stable static method binding and get-only `$`-accessor caching per receiver.
 
 ## 1. The three class kinds + the namespace pattern
 
@@ -57,8 +56,8 @@ export namespace Buffer {
 transports, engines, process handles). Same namespace, but `let Class = $Class` (no wrapper).
 
 **(c) Static capability class** — stateless backend ops (file/process/git wrappers). Class with
-`static` methods; namespace with `let Class = $Class`. Cross-module deps via **static getters**
-read late: `static get Db() { return Db.Class; }`.
+`static` methods; namespace with `$Class = Static($X)` and `let Class = $Class`. Cross-module deps
+via **static getters** read late: `static get Db() { return Db.Class; }`.
 
 ## 2. State primitives + the "nearly computed-free" rule
 
@@ -151,7 +150,7 @@ state → reset → re-register → seal → reconstruct. (This repo vendors/ada
 
 ## 6. Inheritance across the namespace
 
-Children `extends` the raw `$Class`, then export their own `Reactive` `Class`:
+Children `extends` the immutable `$Class` anchor, then export their own selected `Class`:
 ```ts
 class $SaleProduct extends Product.$Class {
   get total(): number { return super.total * (1 - this.discount.value); }

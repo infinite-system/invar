@@ -541,8 +541,8 @@ class $EditorPaneRenderer {
   }
 }
 export namespace EditorPaneRenderer {
-  export const $Class = $EditorPaneRenderer;
-  export const Class = Static($EditorPaneRenderer);
+  export const $Class = Static($EditorPaneRenderer);
+  export const Class = $Class;
 }
 export interface EditorPaneRenderContext {
   workspace: Workspace.Instance;

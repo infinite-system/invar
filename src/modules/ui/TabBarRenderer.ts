@@ -612,8 +612,8 @@ class $TabBarRenderer {
   }
 }
 export namespace TabBarRenderer {
-  export const $Class = $TabBarRenderer;
-  export const Class = Static($TabBarRenderer);
+  export const $Class = Static($TabBarRenderer);
+  export const Class = $Class;
 }
 export type WorkspaceTabBarSegment = {
   kind: 'tab' | 'panBackward' | 'panForward' | 'add';

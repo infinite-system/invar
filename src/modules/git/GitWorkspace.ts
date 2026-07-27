@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { spawnSync } from 'node:child_process';
@@ -880,7 +881,7 @@ class $GitWorkspace
 }
 
 export namespace GitWorkspace {
-  export const $Class = $GitWorkspace;
+  export const $Class = Static($GitWorkspace);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

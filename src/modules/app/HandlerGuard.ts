@@ -38,6 +38,6 @@ class $HandlerGuard {
 }
 
 export namespace HandlerGuard {
-  export const $Class = $HandlerGuard;
-  export let Class = Static($HandlerGuard);
+  export const $Class = Static($HandlerGuard);
+  export let Class = $Class;
 }

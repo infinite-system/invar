@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { ref, type Ref } from 'vue';
 import {
   TerminalEmulator,
@@ -465,7 +466,7 @@ class $TerminalObserver {
 }
 
 export namespace TerminalObserver {
-  export const $Class = $TerminalObserver;
+  export const $Class = Static($TerminalObserver);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

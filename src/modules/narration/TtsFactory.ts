@@ -37,8 +37,8 @@ class $TtsFactory {
 }
 
 export namespace TtsFactory {
-  export const $Class = $TtsFactory;
-  export const Class = Static($TtsFactory);
+  export const $Class = Static($TtsFactory);
+  export const Class = $Class;
 }
 
 export interface TtsCreateOptions {

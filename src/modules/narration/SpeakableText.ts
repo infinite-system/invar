@@ -254,8 +254,8 @@ class $SpeakableText {
 }
 
 export namespace SpeakableText {
-  export const $Class = $SpeakableText;
-  export const Class = Static($SpeakableText);
+  export const $Class = Static($SpeakableText);
+  export const Class = $Class;
 }
 
 export interface SpeakableTextPreparation {
