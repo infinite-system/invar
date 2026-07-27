@@ -263,12 +263,13 @@ kind resolves to a printable class, never to empty or undefined.
 **Scope:** `ThemeIcons.symbolMarksFor`, `symbolMarkFor`,
 `symbolClassForFileEntry`, `iconFor`, `actionIconsFor`, `checkboxIconsFor`,
 `activityIconsFor`, `interfaceGlyphVocabularyFor`, `glyphFor`, `findIconsFor`,
-the status-bar icon accessors, `alertIconFor`, `agentTranscriptIconsFor`, and
-`tabSeparatorFor`, plus the `Theme` getters that call them. Covers file-tree,
+`tableBordersFor`, the status-bar icon accessors, `alertIconFor`,
+`agentTranscriptIconsFor`, and `tabSeparatorFor`, plus the `Theme` getters that call them.
+Covers file-tree,
 breadcrumb-popup, and completion-popup marks, git changes-row action buttons,
 staging checkboxes, activity-bar items, panel-heading controls, editor fold
 controls, find controls, status affordances, agent transcript cells, alerts,
-and tab separators.
+tab separators, and Markdown table borders.
 
 **Mechanism:** `$symbolMarks`, `$actionIcons`, and `$checkboxIcons` are keyed
 by `GlyphLevel`, and `$symbolMarks` and `$interfaceGlyphVocabularies` each map
@@ -283,7 +284,8 @@ every tier, compares `EditorCoordinates.lineWidth` with the independent
 terminal-rendered double-cell glyph. There is no exception list: adding an
 emoji-presentation or wide mark fails the test immediately. The `foldOpen`
 and `foldClosed` interface slots are one cell because the number-gutter edge
-is one exact mouse hit column. Which mark a slot may take is decided by
+is one exact mouse hit column. `TableBorderGlyphSet` keeps the five matching
+table-border joints in one tiered vocabulary. Which mark a slot may take is decided by
 `$markOwnerships` — the marks that can meet, each paired with the surface that
 means something by it, derived from the vocabularies that paint them — under
 the rule that a mark may be shared only by owners meaning the SAME thing.
@@ -301,6 +303,7 @@ set resolves known extension and falls back for unknown`, `checkbox icons
 ladder`, `git action icons ladder`, `semantic interface glyph slots resolve
 through every capability tier`,
 `fold controls agree on one cell across app and terminal width authorities`,
+`markdown table borders are single-cell and unclaimed as semantic marks`,
 `every code-symbol mark is one display cell at every tier`, `the code-symbol
 families stay pairwise distinct including at the ascii rung`, `every shared
 mark is declared, and every declaration is still real`, `the mark-sharing

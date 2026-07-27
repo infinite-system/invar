@@ -7,6 +7,8 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -47,6 +49,33 @@ function previewHasMarker(
   return snapshot
     .textRows()
     .some((rowText) => rowText.indexOf(marker, previewPosition.column) >= 0);
+}
+
+function previewRowContaining(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): number {
+  const previewColumn = previewBorder(snapshot).column;
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (snapshot.rowText(row).slice(previewColumn).includes(marker)) return row;
+  }
+  throw new Error(`FAIL preview row missing: ${marker}\n${snapshot.text()}`);
+}
+
+function tableBoundaryColumns(
+  snapshot: HarnessSnapshot.Model,
+  row: number,
+): number[] {
+  const previewColumn = previewBorder(snapshot).column;
+  const verticalBorder = ThemeIcons.Class.tableBordersFor('unicode').vertical;
+  const verticalColumns = snapshot
+    .rowCells(row)
+    .filter(
+      (cell) =>
+        cell.column > previewColumn && cell.characters === verticalBorder,
+    )
+    .map((cell) => cell.column);
+  return verticalColumns.slice(0, -1);
 }
 
 function findPreviewButton(
@@ -91,6 +120,19 @@ const markdownLines = [
   '',
   'Rendered preview find term.',
   '',
+  '| Left | Center | Right |',
+  '| :--- | :---: | ---: |',
+  '| alpha | middle | 7 |',
+  '| 漢字 | 🙂 é | 42 |',
+  '| content wider than one cell can hold | centered | 9000 |',
+  '',
+  '| Missing | separator |',
+  '| remains | visible |',
+  '',
+  '| Ragged | header |',
+  '| --- | --- |',
+  '| row | has | extra |',
+  '',
 ];
 for (let sectionNumber = 1; sectionNumber < 90; sectionNumber++) {
   markdownLines.push(
@@ -114,7 +156,11 @@ const driver = new PtyTestDriver.Class({
   columns: 120,
   rows: 40,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath },
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    LANG: 'C.UTF-8',
+    NERD_FONT: '0',
+  },
 });
 
 try {
@@ -161,6 +207,112 @@ try {
       .startsWith('# '),
     'preview heading omits raw Markdown punctuation',
   );
+
+  console.log(
+    '== harness markdown: tables align by display cells and clip inside narrow panes ==',
+  );
+  const headerTableRow = previewRowContaining(snapshot, 'Left');
+  const asciiTableRow = previewRowContaining(snapshot, 'alpha');
+  const wideTableRow = previewRowContaining(snapshot, '漢');
+  const headerBoundaries = tableBoundaryColumns(snapshot, headerTableRow);
+  const asciiBoundaries = tableBoundaryColumns(snapshot, asciiTableRow);
+  const wideBoundaries = tableBoundaryColumns(snapshot, wideTableRow);
+  HarnessSmoke.Class.requireCondition(
+    headerBoundaries.length === 4 &&
+      JSON.stringify(asciiBoundaries) === JSON.stringify(headerBoundaries) &&
+      JSON.stringify(wideBoundaries) === JSON.stringify(headerBoundaries),
+    'ASCII CJK emoji and combining-mark rows share table cell boundaries',
+  );
+
+  const asciiRowText = snapshot.rowText(asciiTableRow);
+  const firstContentWidth = headerBoundaries[1]! - headerBoundaries[0]! - 3;
+  const secondContentWidth = headerBoundaries[2]! - headerBoundaries[1]! - 3;
+  const thirdContentWidth = headerBoundaries[3]! - headerBoundaries[2]! - 3;
+  HarnessSmoke.Class.requireCondition(
+    asciiRowText.indexOf('alpha', headerBoundaries[0]) ===
+      headerBoundaries[0]! + 2 &&
+      asciiRowText.indexOf('middle', headerBoundaries[1]) ===
+        headerBoundaries[1]! +
+          2 +
+          Math.floor(
+            (secondContentWidth - EditorCoordinates.Class.lineWidth('middle')) /
+              2,
+          ) &&
+      asciiRowText.indexOf('7', headerBoundaries[2]) ===
+        headerBoundaries[2]! +
+          2 +
+          thirdContentWidth -
+          EditorCoordinates.Class.lineWidth('7') &&
+      firstContentWidth >= EditorCoordinates.Class.lineWidth('alpha'),
+    'alignment markers place body cells left center and right',
+  );
+  const separatorRow = previewRowContaining(
+    snapshot,
+    ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
+  );
+  HarnessSmoke.Class.requireCondition(
+    tableBoundaryColumns(snapshot, separatorRow).length === 0 &&
+      snapshot
+        .rowText(separatorRow)
+        .includes(ThemeIcons.Class.tableBordersFor('unicode').intersection),
+    'the header separator is theme vocabulary rather than raw Markdown dashes',
+  );
+  const malformedRow = previewRowContaining(snapshot, '| Missing');
+  HarnessSmoke.Class.requireCondition(
+    snapshot
+      .rowText(malformedRow)
+      .slice(previewBorder(snapshot).column)
+      .includes('| Missing | separator |'),
+    'a missing table separator remains visible as raw paragraph text',
+  );
+  const raggedRow = previewRowContaining(snapshot, '| Ragged');
+  HarnessSmoke.Class.requireCondition(
+    snapshot
+      .rowText(raggedRow)
+      .slice(previewBorder(snapshot).column)
+      .includes('| Ragged | header |'),
+    'a ragged table keeps its raw header',
+  );
+  HarnessSmoke.Class.requireCondition(
+    previewHasMarker(snapshot, '| --- | --- |'),
+    'a ragged table keeps its raw separator',
+  );
+  HarnessSmoke.Class.requireCondition(
+    previewHasMarker(snapshot, '| row') &&
+      previewHasMarker(snapshot, '| has | extra |'),
+    'a ragged table keeps its raw extra cell',
+  );
+
+  driver.resize(60, 25);
+  const narrowSnapshot = await driver.awaitGridCondition(
+    'the aligned table repaints at the narrow terminal width',
+    (candidate) =>
+      candidate.columns === 60 &&
+      candidate.findText(
+        ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
+      ) !== null,
+  );
+  const narrowHeaderRow = previewRowContaining(
+    narrowSnapshot,
+    ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
+  );
+  HarnessSmoke.Class.requireCondition(
+    narrowSnapshot.cell(narrowHeaderRow, narrowSnapshot.columns - 1)
+      ?.characters === ThemeIcons.Class.tableBordersFor('unicode').vertical,
+    'a too-wide table leaves the preview pane outer border intact',
+  );
+  driver.resize(120, 40);
+  snapshot = await driver.awaitGridCondition(
+    'the aligned table returns to the default terminal width',
+    (candidate) =>
+      candidate.columns === 120 &&
+      findPreviewButton(candidate) !== null &&
+      (candidate.findText('╭─Preview')?.column ?? 0) > 60 &&
+      candidate.findText(
+        ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
+      ) !== null,
+  );
+
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);
   await HarnessSmoke.Class.awaitStatus(
