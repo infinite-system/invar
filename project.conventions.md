@@ -207,16 +207,41 @@ statics-bearing class — no renaming, no declaration churn.
   identity does not. Consequence: a wrapped double and its raw class name are TWO RECEIVERS WITH TWO
   CACHES, so reference an installed double through `X.Class`, never by its own name.
 
-### The $-cache contract is a TEST, not a checker
+### The $-cache contract is a DISCOVERY TEST, not a checker and not a written-out list
 `$`-cache stability is a runtime property, so it rides `bun test`: for each class declaring
 `$`-static getters, read each `$`-property twice and assert the two reads are the same object. This
 asserts the PROPERTY (the cache works) rather than the MECHANISM (was `Static()` applied) — which
 matters because wrapping is not cleanly detectable at runtime: no marker symbol on the class, and
-`.name` is a minified wrapper. Two guards, both required:
-- fail if it inspected ZERO classes (a walk over an empty list reports green);
+`.name` is a minified wrapper.
+
+**It DISCOVERS its subjects; nobody writes the list.** A hand-enumerated list of namespaces rots,
+and a rotted list reports green. The proven shape (measured on main: 36 files → 67 getters across
+36 classes, 67/67 stable, 0.14s wall, 92MB):
+1. source-scan for candidates — `grep -rlE 'static get \$' src/ --include='*.ts'`, minus `.test.ts`;
+2. dynamically `import()` **only those**, and take `$Class` per exported namespace (preferring it
+   over `Class` so one class is not counted twice);
+3. select getters with **`Static()`'s own criterion** — from `Object.getOwnPropertyDescriptors`,
+   names starting with `$` where `.get` is a function and `.set === undefined`. Reusing the
+   mechanism's selection rule means there is no separate spec to drift from it;
+4. capture descriptors **before** reading — a cached read installs an own value property that
+   shadows the getter;
+5. read each twice, assert identical.
+
+**Scan-then-import is load-bearing, not an optimisation.** Importing all of `src` to discover
+classes HANGS (killed at 120s) — some module has a non-returning module-level side effect.
+
+Three guards, all required:
+- fail unless the DISCOVERED getter count equals the SOURCE-SCAN count. "Fail if zero" is too weak:
+  a walk that finds 4 of 36 also reports green, and since discovery rests on a grep, a `$`-getter
+  not written literally as `static get $` would otherwise vanish silently;
+- fail if it inspected ZERO classes;
 - fail on any `$`-property whose value is a PRIMITIVE — `'a' === 'a'` regardless of caching, so the
   identity tell would be vacuous. Zero instances today; the guard exists because the line that opens
   the hole (`static get $LABEL(): string`) looks harmless.
+
+Because it asserts the property and not the mechanism, this test is green BOTH before and after the
+`Static()` migration (hand-rolled `defineProperty` caches satisfy it too). Write it FIRST: it then
+acts as a ratchet ON the migration rather than a description of whatever the migration produced.
 
 Assert EVERY `$`-property, not one per class. Wrapping fails per-class, but `Static()` only
 transforms get-only `$`-accessors — so adding a setter to one, or making it a `static $field`,
