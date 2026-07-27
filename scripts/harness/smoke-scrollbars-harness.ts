@@ -9,6 +9,7 @@ import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -1521,7 +1522,7 @@ try {
   if (deepWidestLineSnapshot === null) {
     // A sustained gained fling can cross the narrow line-400 observation window between completed
     // terminal frames. Halt through the real editor pointer path, then approach that same window
-    // with settled one-notch wheel steps. The visual assertion remains the oracle.
+    // with settled two-notch wheel gestures. The visual assertion remains the oracle.
     overflowDriver.sendMouseWithoutFrameExpectation({
       kind: 'press',
       column: 80,
@@ -1545,32 +1546,38 @@ try {
       precisionWheelEventNumber <= 80 && deepWidestLineSnapshot === null;
       precisionWheelEventNumber++
     ) {
-      const currentScrollTop = Number(
-        HarnessSmoke.Class.readStatus(statusPath).editorScrollTop,
+      const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+      const currentScrollTop = Number(currentStatus.editorScrollTop);
+      const widestLineNumber = 401;
+      const widestLineIsVerticallyVisible =
+        overflowDriver.snapshot().findText(`${widestLineNumber}  `) !== null;
+      const precisionDirection = widestLineIsVerticallyVisible
+        ? 'right'
+        : currentScrollTop < widestLineNumber - 1
+          ? 'down'
+          : 'up';
+      const precisionUsesHorizontalModifier = widestLineIsVerticallyVisible;
+      overflowDriver.sendRawInputWithoutFrameExpectation(
+        Array.from({ length: 2 }, () =>
+          HarnessInput.Class.mouse({
+            kind: 'wheel',
+            column: 80,
+            row: 10,
+            direction: precisionDirection,
+            alt: precisionUsesHorizontalModifier,
+          }),
+        ).join(''),
       );
-      const widestLineTailIsPartiallyVisible =
-        overflowDriver.snapshot().findText('DEEP-WID') !== null;
-      overflowDriver.sendMouseWithoutFrameExpectation({
-        kind: 'wheel',
-        column: 80,
-        row: 10,
-        direction: widestLineTailIsPartiallyVisible
-          ? 'right'
-          : currentScrollTop < 385
-            ? 'down'
-            : 'up',
-        alt: widestLineTailIsPartiallyVisible,
-      });
       await HarnessSmoke.Class.awaitStatus(
         overflowDriver,
         statusPath,
-        'a precision wheel step starts before observing the deep widest line',
+        'a precision wheel gesture starts before observing the deep widest line',
         (status) => status.workspaceScrollMomentumAtRest === false,
       );
       await HarnessSmoke.Class.awaitStatus(
         overflowDriver,
         statusPath,
-        'a precision wheel step settles before the next approach step',
+        'a precision wheel gesture settles before the next approach gesture',
         (status) => status.workspaceScrollMomentumAtRest === true,
       );
     }
