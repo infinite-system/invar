@@ -1355,6 +1355,22 @@ class $Bootstrap {
       }
     };
 
+    const publishCopyResult = (copyPromise: Promise<number>): void => {
+      void copyPromise.then((copiedCharacters) => {
+        if (copiedCharacters > 0) {
+          app.copyNotice.value =
+            `Copied ${copiedCharacters} chars ` +
+            `(${Clipboard.Class.lastBackend ?? 'no backend'})`;
+        }
+        StatusChannel.Class.update({
+          lastCopyChars: copiedCharacters,
+          lastCopyHash: Clipboard.Class.lastCopiedTextHash,
+          clipboardBackend: Clipboard.Class.lastBackend,
+        });
+        StatusChannel.Class.flush();
+      });
+    };
+
     // The ACTION TABLE: every binding's action id -> its handler. Handlers receive the raw KeyEvent
     // for parameters that compose (shift = extend; repeat runs = acceleration).
     const actionHandlers: Record<string, (key: KeyEvent) => void> = {
@@ -1449,6 +1465,7 @@ class $Bootstrap {
       'settings.down': () => settingsPanel.moveSelection(1),
       'settings.increase': () => settingsPanel.adjust(1),
       'settings.decrease': () => settingsPanel.adjust(-1),
+      'settings.copy': () => publishCopyResult(view.settingsCopySelection()),
       'buffer.close': () => workspaceSet.active.closeActiveTab(),
       'buffer.next': () => workspaceSet.active.cycleTab(1),
       'buffer.previous': () => workspaceSet.active.cycleTab(-1),
@@ -1610,17 +1627,7 @@ class $Bootstrap {
           ? view.hoverCopySelection()
           : (contributedSurfaceCopy ??
             workspaceSet.active.editor.copySelection());
-        void copyPromise.then((copiedCharacters) => {
-          if (copiedCharacters > 0) {
-            app.copyNotice.value = `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
-          }
-          StatusChannel.Class.update({
-            lastCopyChars: copiedCharacters,
-            lastCopyHash: Clipboard.Class.lastCopiedTextHash,
-            clipboardBackend: Clipboard.Class.lastBackend,
-          });
-          StatusChannel.Class.flush();
-        });
+        publishCopyResult(copyPromise);
       },
       // The focused agent pane owns Ctrl+C / Cmd+C: copy its transcript OR composer selection (whichever is
       // set) to the clipboard, publishing the same character-count proof channel as editor.copy.
@@ -1631,17 +1638,7 @@ class $Bootstrap {
             ? focusedContent
             : currentAgentPane();
         if (!pane) return;
-        void pane.copySelection().then((copiedCharacters) => {
-          if (copiedCharacters > 0) {
-            app.copyNotice.value = `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
-          }
-          StatusChannel.Class.update({
-            lastCopyChars: copiedCharacters,
-            lastCopyHash: Clipboard.Class.lastCopiedTextHash,
-            clipboardBackend: Clipboard.Class.lastBackend,
-          });
-          StatusChannel.Class.flush();
-        });
+        publishCopyResult(pane.copySelection());
       },
       'agent.cancelTurn': () => {
         const focusedContent = panelHost.focusedContent;
@@ -1657,17 +1654,7 @@ class $Bootstrap {
             ? focusedContent
             : currentTerminalPane();
         if (!pane) return;
-        void pane.copySelection().then((copiedCharacters) => {
-          if (copiedCharacters > 0) {
-            app.copyNotice.value = `Copied ${copiedCharacters} chars (${Clipboard.Class.lastBackend ?? 'no backend'})`;
-          }
-          StatusChannel.Class.update({
-            lastCopyChars: copiedCharacters,
-            lastCopyHash: Clipboard.Class.lastCopiedTextHash,
-            clipboardBackend: Clipboard.Class.lastBackend,
-          });
-          StatusChannel.Class.flush();
-        });
+        publishCopyResult(pane.copySelection());
       },
       'terminal.wordLeft': (key) => panelHost.handleKey(key),
       'terminal.wordRight': (key) => panelHost.handleKey(key),
