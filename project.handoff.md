@@ -3,7 +3,75 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-27 16:25 UTC) — USER PRESENT AND DIRECTING, READ FIRST
+## RESUME ANCHOR (2026-07-27 21:22 UTC) — READ FIRST
+
+**USER PRESENT AND DIRECTING.** Their live direction IS the backlog. No experiments.
+
+Main `e0f62c1`, clean, pushed. `ivue` requested ^2.2.1 / installed 2.2.1 — verify BOTH after any
+pull (see below).
+
+**IN FLIGHT:** #152 (glide stop too sudden) round 2, codex in `/tmp/conductor-glidestop` branch
+`fix-glide-soft-stop`, brief `/tmp/TASK-glide-soften-stop.md` (READ TO THE END — the ROUND 2
+section supersedes the original premise), report `/tmp/glidestop-READY.md`, monitor `bu1isn4qs`.
+
+### Today's outage, and the rule that came out of it
+
+The statics anchor migration (#125) made the app unusable TWICE. Cause was NOT the code: the
+conductor bumped `ivue` to ^2.2.1 and deleted all 55 hand-rolled `Object.defineProperty` caches,
+then said "pull and restart" WITHOUT `bun install`. node_modules kept 2.1.0, whose `Static()` is
+`if (typeof descriptor.value != "function") continue` — methods only, every `$`-getter skipped. All
+67 recomputed on every read: 69.4% CPU, 493MB RSS, ~3 hours across six refuted hypotheses.
+
+Landed as the durable fix: **#151 (capability boot guard)** `07bf4d1` — asserts the CAPABILITY
+(wrap a canary, read a `$`-getter twice, require identity) not the version, because ranges are
+flexible and the user develops ivue locally. Override `INVAR_SKIP_CAPABILITY_CHECK=1`.
+
+**A dependency-range change is not landed by committing it.** Run `bun install` in the consuming
+checkout and QUOTE the before/after installed version.
+
+### Open, ranked
+
+- **#152 (glide stop too sudden)** — IN FLIGHT. Hard 60-notch flick ends `…7,7,6` instead of
+  tapering; the 900 ms cap fires while velocity is still ~5 rows/s (decay needs 1023 ms). Fix is ONE
+  change: ease the cap, don't cut it. Builder must return 2–3 candidate easing shapes with driven
+  fingerprints — **the feel decision is the user's, the builder does not pick.**
+- **#153 (horizontal fling profile split)** — horizontal is ~2.75x faster in the editor (220) than
+  in overlays/popups/agent pane (80). `40d244b` ("one fling profile on both axes", the #50 fix)
+  reached Workspace+DiffView but NOT ScrollableTextViewport. `Momentum.ts:29-31`'s comment still
+  documents the pre-#50 intent and is what misled the conductor into a wrong #152 diagnosis. Needs
+  the user's feel call: unify, or document the split deliberately.
+- **The gate is only ~2/3 timeless.** `behavioral-contracts.sh` is 62 count-based vs 31 clock-based
+  references, but the gate still has ONE hard clock-gated blocking step —
+  `input byte flush measurement` (p50 4.928 / WARN 6.406 / FAIL 9.856 ms). That single step is why
+  the quiet lock (#84) exists, why contention yields `MEASUREMENT INVALID` (#147), and why gates
+  cannot overlap. Retiring it would retire the serialization rule with it.
+- #109 (agent-permissions quiet-tail flake), #124 (terminal-follow Escape intermittent),
+  #136 (shared scale fixtures), #140 (real-terminal freeze capture), #114/#122 (plugin capstones),
+  then parked: #105 #108 #90 #94 #86 #75 #31 #35 #46 #104.
+
+### Two rules the user gave TWICE — both now in AGENTS.md, not private memory
+
+1. **Never cite a bare task number** — write `#151 (capability boot guard)`. With 150+ tasks the
+   number transfers no information.
+2. **NEVER write to an agent's private memory store** — only to the repo, where a cold start
+   fetches it. Most of this fleet is codex, which cannot read Claude Code's memory at all.
+
+### Conductor self-discipline earned today (all in project.conductor.md)
+
+- **Five vacuous measurements in one day**, all mine: a headless boot of a PTY app; a path audit
+  that flagged a citation whose sentence said the file was deleted; a two-leg version comparison
+  whose legs loaded the same ivue; a `git ls-tree` glob matching nothing and printing `post=0`; and
+  a `bun` check that exited 127 (`command not found`) with stderr swallowed, reported as a
+  capability FAIL. **Always ask what the output would be if the thing were absent.**
+- **Read the wiring, not the declaration.** The #152 misdiagnosis came from reading
+  `Momentum.ts`'s profile definitions and assuming the call sites.
+- **A green gate names the COMMIT, not the branch** — re-check at landing time; diff with
+  `merge-base`, never `main..HEAD`.
+- **Stop a monitor in the action that consumes its result** (five expired on their own today).
+
+---
+
+## RESUME ANCHOR (2026-07-27 16:25 UTC) — SUPERSEDED by the anchor above
 
 **USER IS AWAKE AND IN THE LOOP.** Their live direction IS the backlog — no experiments, no
 autonomous scope choices. The overnight anchor below (02:20) is SUPERSEDED: it declares the user
