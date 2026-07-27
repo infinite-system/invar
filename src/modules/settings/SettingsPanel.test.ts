@@ -76,6 +76,33 @@ describe('SettingsPanel', () => {
     expect(contributedRatio.value.value).toBe(0.55);
   });
 
+  test('maximum glide duration is discoverable and persisted', () => {
+    const { settings, store } = makeSettings();
+    const panel = new SettingsPanel.Class(settings);
+    const descriptorIndex = indexOfKey(
+      panel,
+      'maximumGlideDurationMilliseconds',
+    );
+    const descriptor = panel.descriptors[descriptorIndex];
+    expect(descriptor).toMatchObject({
+      label: 'Maximum glide after input (ms)',
+      section: 'Scrolling',
+      spec: {
+        kind: 'number',
+        step: 50,
+        minimum: 100,
+        maximum: 2000,
+      },
+    });
+
+    panel.selectedIndex.value = descriptorIndex;
+    panel.adjust(1);
+    expect(settings.maximumGlideDurationMilliseconds.value).toBe(950);
+    expect(Object.values(store).join('\n')).toContain(
+      '"maximumGlideDurationMilliseconds": 950',
+    );
+  });
+
   test('contributed rows use their heading and disappear on dispose', () => {
     const { settings } = makeSettings();
     const panel = new SettingsPanel.Class(settings);

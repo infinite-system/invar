@@ -112,6 +112,18 @@ class $SettingsPanel {
         },
       },
       {
+        key: 'maximumGlideDurationMilliseconds',
+        label: 'Maximum glide after input (ms)',
+        section: 'Scrolling',
+        spec: {
+          kind: 'number',
+          step: 50,
+          minimum: 100,
+          maximum: 2000,
+          decimals: 0,
+        },
+      },
+      {
         key: 'linesPerNotch',
         label: 'Lines per wheel notch',
         section: 'Scrolling',

@@ -1,14 +1,16 @@
-// Pure momentum physics for smooth scrolling on a CELL GRID. A terminal cannot render sub-row
+// Shared momentum physics for smooth scrolling on a CELL GRID. A terminal cannot render sub-row
 // positions, so "smooth" means regular ROW-crossings at a steady cadence (the reparameterized
 // crossing-regularity invariant: device-pixel → cell-row). We model velocity (rows/sec) that
 // decays over time; a constant velocity emits row-crossings at a constant frame interval (regular),
 // and we HALT below a threshold rather than creep the last rows slowly (sub-row ticking is
 // impossible per the invariant — don't chase it). Frame time and impulse time are injectable, so
-// the physics remain unit-testable with no renderer.
+// the physics remain unit-testable with no renderer. Input queues plain impulses here; one animation
+// tick drains them and publishes momentum once, so a trackpad burst cannot synchronously repaint per
+// event.
 //
-// Stateless capability (project.conventions.md new-file rule): the physics are pure statics published
-// through the Static() seam like ScrollbarGeometry; the momentum VALUE (ScrollMomentum) is plain data
-// each caller holds in its own reactive cell.
+// Stateless capability (project.conventions.md new-file rule): the physics are statics published
+// through the Static() seam like ScrollbarGeometry; the momentum VALUE (ScrollMomentum), including
+// its plain pending-input queue, is data each caller owns.
 import { Static } from 'ivue/extras';
 
 // invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
@@ -19,6 +21,7 @@ class $Momentum {
       max: 80,
       decayPerSec: 0.015,
       stopVelocity: 3,
+      maximumGlideDurationMilliseconds: 900,
     };
     Object.defineProperty(this, '$defaultOptions', {
       configurable: true,
@@ -36,6 +39,7 @@ class $Momentum {
       max: 220,
       decayPerSec: 0.015,
       stopVelocity: 3,
+      maximumGlideDurationMilliseconds: 900,
     };
     Object.defineProperty(this, '$verticalOptions', {
       configurable: true,
@@ -44,20 +48,17 @@ class $Momentum {
     return verticalOptions;
   }
 
-  protected static get $atRest(): ScrollMomentum {
-    const atRest: ScrollMomentum = {
+  static get atRest(): ScrollMomentum {
+    return {
       velocity: 0,
       residual: 0,
       restEquivalentGestureVelocity: 0,
       restEquivalentGestureImpulseUnits: 0,
       restEquivalentGestureImpulseCount: 0,
       ceilingSustainingVelocity: 0,
+      millisecondsSinceLastImpulse: 0,
+      pendingImpulses: [],
     };
-    Object.defineProperty(this, '$atRest', {
-      configurable: true,
-      value: atRest,
-    });
-    return atRest;
   }
 
   static get defaultOptions(): MomentumOptions {
@@ -68,8 +69,17 @@ class $Momentum {
     return this.$verticalOptions;
   }
 
-  static get atRest(): ScrollMomentum {
-    return this.$atRest;
+  /** Queue an input impulse without publishing reactive momentum state. The animation tick drains
+   *  every event in order and becomes the sole reactive writer for the regime. */
+  static queueImpulse(
+    momentum: ScrollMomentum,
+    deltaRows: number,
+    currentTimestampMilliseconds = performance.now(),
+  ): void {
+    (momentum.pendingImpulses ??= []).push({
+      deltaRows,
+      timestampMilliseconds: currentTimestampMilliseconds,
+    });
   }
 
   /** Fraction of the impulse gain a notch lands with when the regime is AT REST. A lone notch is a
@@ -201,6 +211,8 @@ class $Momentum {
       restEquivalentGestureImpulseCount:
         restEquivalentGestureImpulseCountAfterImpulse,
       ceilingSustainingVelocity,
+      millisecondsSinceLastImpulse: 0,
+      pendingImpulses: momentum.pendingImpulses ?? [],
       lastImpulseTimestampMilliseconds: currentTimestampMilliseconds,
     };
   }
@@ -239,15 +251,44 @@ class $Momentum {
     dtSec: number,
     options: MomentumOptions = this.defaultOptions,
   ): { momentum: ScrollMomentum; rows: number } {
-    if (momentum.velocity === 0 || dtSec <= 0) return { momentum, rows: 0 };
-    const advanced = momentum.residual + momentum.velocity * dtSec;
+    const pendingImpulses = momentum.pendingImpulses ?? [];
+    let currentMomentum = momentum;
+    for (const pendingImpulse of pendingImpulses) {
+      currentMomentum = this.addImpulse(
+        currentMomentum,
+        pendingImpulse.deltaRows,
+        options,
+        pendingImpulse.timestampMilliseconds,
+      );
+    }
+    pendingImpulses.length = 0;
+    if (currentMomentum.velocity === 0 || dtSec <= 0) {
+      return { momentum: currentMomentum, rows: 0 };
+    }
+    const millisecondsSinceLastImpulse =
+      (currentMomentum.millisecondsSinceLastImpulse ?? 0) + dtSec * 1000;
+    const maximumGlideDurationMilliseconds =
+      options.maximumGlideDurationMilliseconds ?? Number.POSITIVE_INFINITY;
+    const availableDeltaTimeSeconds = Math.min(
+      dtSec,
+      Math.max(
+        0,
+        (maximumGlideDurationMilliseconds -
+          (currentMomentum.millisecondsSinceLastImpulse ?? 0)) /
+          1000,
+      ),
+    );
+    const advanced =
+      currentMomentum.residual +
+      currentMomentum.velocity * availableDeltaTimeSeconds;
     const rows = Math.trunc(advanced);
     let residual = advanced - rows;
     const decayedVelocity =
-      momentum.velocity * Math.pow(options.decayPerSec, dtSec);
+      currentMomentum.velocity *
+      Math.pow(options.decayPerSec, availableDeltaTimeSeconds);
     const availableCeilingSustainingVelocity =
-      momentum.ceilingSustainingVelocity ?? 0;
-    const velocityLostToDecay = momentum.velocity - decayedVelocity;
+      currentMomentum.ceilingSustainingVelocity ?? 0;
+    const velocityLostToDecay = currentMomentum.velocity - decayedVelocity;
     const restoredVelocity =
       Math.sign(availableCeilingSustainingVelocity) *
       Math.min(
@@ -257,7 +298,10 @@ class $Momentum {
     let velocity = decayedVelocity + restoredVelocity;
     let ceilingSustainingVelocity =
       availableCeilingSustainingVelocity - restoredVelocity;
-    if (Math.abs(velocity) < options.stopVelocity) {
+    if (
+      Math.abs(velocity) < options.stopVelocity ||
+      millisecondsSinceLastImpulse >= maximumGlideDurationMilliseconds
+    ) {
       velocity = 0;
       residual = 0;
       ceilingSustainingVelocity = 0;
@@ -266,14 +310,17 @@ class $Momentum {
       momentum: {
         velocity,
         residual,
-        restEquivalentGestureVelocity: momentum.restEquivalentGestureVelocity,
+        restEquivalentGestureVelocity:
+          currentMomentum.restEquivalentGestureVelocity,
         restEquivalentGestureImpulseUnits:
-          momentum.restEquivalentGestureImpulseUnits,
+          currentMomentum.restEquivalentGestureImpulseUnits,
         restEquivalentGestureImpulseCount:
-          momentum.restEquivalentGestureImpulseCount,
+          currentMomentum.restEquivalentGestureImpulseCount,
         ceilingSustainingVelocity,
+        millisecondsSinceLastImpulse,
+        pendingImpulses,
         lastImpulseTimestampMilliseconds:
-          momentum.lastImpulseTimestampMilliseconds,
+          currentMomentum.lastImpulseTimestampMilliseconds,
       },
       rows,
     };
@@ -285,7 +332,9 @@ class $Momentum {
   }
 
   static isMoving(momentum: ScrollMomentum): boolean {
-    return momentum.velocity !== 0;
+    return (
+      momentum.velocity !== 0 || (momentum.pendingImpulses?.length ?? 0) > 0
+    );
   }
 }
 
@@ -310,9 +359,19 @@ export interface ScrollMomentum {
   // Same-direction impulse velocity received at the configured ceiling. It is spent only to replace
   // frame decay, so dense input sustains capped speed without exceeding the configured maximum.
   ceilingSustainingVelocity?: number;
+  // Time since the latest input impulse. A configurable tail bound prevents banked ceiling energy
+  // from gliding for seconds after the user has stopped touching the wheel.
+  millisecondsSinceLastImpulse?: number;
+  // Input queues here without mutating the reactive ref. The animation tick drains it in order.
+  pendingImpulses?: ScrollMomentumImpulse[];
   // Input cadence is the pre-motion continuation proxy. Live physical
   // motion is authoritative.
   lastImpulseTimestampMilliseconds?: number;
+}
+
+export interface ScrollMomentumImpulse {
+  deltaRows: number;
+  timestampMilliseconds: number;
 }
 
 export interface MomentumOptions {
@@ -320,4 +379,5 @@ export interface MomentumOptions {
   max: number; // velocity cap (rows/sec)
   decayPerSec: number; // velocity multiplier applied per second (0..1); lower = shorter glide
   stopVelocity: number; // halt (and discard residual) once |velocity| drops below this
+  maximumGlideDurationMilliseconds?: number; // maximum animated tail after the latest impulse
 }

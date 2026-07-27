@@ -142,11 +142,7 @@ class $TerminalPaneContent implements PaneContent {
       this.instance.sendInput(this.sgrWheelSequence(rowDelta, context));
       return true;
     }
-    this.verticalMomentum = Momentum.Class.addImpulse(
-      this.verticalMomentum,
-      rowDelta,
-      this.scrollPort?.momentumOptions() ?? Momentum.Class.verticalOptions,
-    );
+    Momentum.Class.queueImpulse(this.verticalMomentum, rowDelta);
     this.scrollPort?.requestRender();
     return true;
   }

@@ -11,6 +11,7 @@ import {
   type KeyEvent,
 } from '@opentui/core';
 import { Static } from 'ivue/extras';
+import throttle from 'lodash.throttle';
 import { App } from './App';
 import { Kernel } from '../kernel/Kernel';
 import { Workspace } from '../workspace/Workspace';
@@ -859,6 +860,15 @@ class $Bootstrap {
       AppStatusProjection.Class.publish(statusProjectionPorts);
       renderer.requestRender();
     };
+    // A trackpad can publish about 150 wheel events per second. Each pane consumes every event as
+    // an impulse, but the root's bubbled mouse observer needs at most one projection pass per frame:
+    // the animation cadence owns subsequent scroll frames.
+    const requestFrameAfterWheelInput = throttle(
+      () => renderer.requestRender(),
+      1000 / renderer.targetFps,
+      { leading: true, trailing: false },
+    );
+    app.onDispose(() => requestFrameAfterWheelInput.cancel());
 
     // The editor viewport size derives from the rendered layout (non-reactive), so it is synced on
     // the external triggers (boot, resize) — NOT inside the frame effect, which would be a
@@ -2389,7 +2399,8 @@ class $Bootstrap {
           // A click hides the hover card UNLESS it lands ON the card (engaged): a down on the card begins a
           // drag-select and must not dismiss it; a down anywhere else closes it.
           if (event.type === 'down') view.dismissHoverSoft();
-          paint();
+          if (event.type === 'scroll') requestFrameAfterWheelInput();
+          else paint();
         },
         () => renderer.requestRender(),
       );

@@ -45,22 +45,19 @@ class $FileTreeWorkspace implements WorkspaceContribution {
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
       stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
     };
   }
 
   impulseVerticalScroll(deltaRows: number): void {
-    this.tree.selectionMomentum.value = Momentum.Class.addImpulse(
-      this.tree.selectionMomentum.value,
-      deltaRows,
-      this.flingMomentum,
-    );
+    Momentum.Class.queueImpulse(this.tree.selectionMomentum.value, deltaRows);
   }
 
   impulseHorizontalScroll(deltaColumns: number): void {
-    this.tree.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
+    Momentum.Class.queueImpulse(
       this.tree.horizontalScrollMomentum.value,
       deltaColumns,
-      this.flingMomentum,
     );
   }
 

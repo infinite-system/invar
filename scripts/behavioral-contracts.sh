@@ -775,6 +775,50 @@ else
   pass "render-progress positive control rejects a zero-frame input window"
 fi
 
+# ---- CONTRACT: real-rate wheel input joins one animation owner ----
+# A trackpad emits individual events at roughly 150/s, not twelve-event PTY chunks at 60/s. Every
+# event must survive as an impulse, while projection work is coalesced below the input count. The
+# same event/impulse fingerprint and row travel within one maximum-velocity frame must hold at 2k
+# and 100k lines on editor and diff.
+echo "== CONTRACT glide-input-coalescing: real-rate events join one animation =="
+GLIDE_INPUT_JSON="$ROOT/artifacts/glide-input-coalescing.json"
+GLIDE_INPUT_LOG="$ROOT/artifacts/glide-input-coalescing.log"
+if SMOOTHNESS_GESTURES=0 \
+   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+   SMOOTHNESS_LINE_COUNTS=2000,100000 \
+   SMOOTHNESS_SURFACES=editor,diff \
+   SMOOTHNESS_FIXTURES=fold-dense \
+   SMOOTHNESS_CODE_FOLDING=on \
+   SMOOTHNESS_BURST_DURATIONS=900 \
+   SMOOTHNESS_BURST_WINDOW=6 \
+   SMOOTHNESS_BURST_NOTCHES=1 \
+   SMOOTHNESS_MAXIMUM_GLIDE_DURATION=900 \
+   SMOOTHNESS_REQUIRE_INPUT_COALESCING=1 \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$GLIDE_INPUT_JSON" 2>"$GLIDE_INPUT_LOG"; then
+  python3 - "$GLIDE_INPUT_JSON" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+print(
+    "  | surface | lines | events | impulses | projections | rows |"
+)
+print("  | :--- | ---: | ---: | ---: | ---: | ---: |")
+for case in report["cases"]:
+    burst = case["continuousInputBursts"][0]
+    print(
+        f"  | {case['surface']} | {case['fixtureLineCount']} | "
+        f"{burst['inputEventCount']} | {burst['appliedImpulseCount']} | "
+        f"{burst['projectionPassCount']} | {burst['rowsTravelled']} |"
+    )
+PY
+  pass "150 real-rate events all join momentum; projection and scale counts hold"
+else
+  bad "real-rate wheel input jammed or changed with scale — see $GLIDE_INPUT_LOG"
+  sed -n '1,25p' "$GLIDE_INPUT_LOG"
+fi
+
 # ---- CONTRACT: wrap-mode momentum + visual-row extent (RATCHET: the "momentum gone in wrap" report) ----
 # Wrap mode feeds the SAME momentum engine in VISUAL-ROW units, so it glides like non-wrap AND reaches
 # the true last visual row (extent = wrapped visual rows, not logical lines). Both were user-felt gaps.

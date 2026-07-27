@@ -73,6 +73,9 @@ const APPLICATION_REPOSITORY_ROOT =
 const VERTICAL_FLING_CEILING = Number(
   process.env.SMOOTHNESS_VERTICAL_FLING_CEILING ?? '220',
 );
+const MAXIMUM_GLIDE_DURATION_MILLISECONDS = Number(
+  process.env.SMOOTHNESS_MAXIMUM_GLIDE_DURATION ?? '900',
+);
 // A hard human flick: twelve notches creates a sustained fast segment without relying on PTY write
 // splitting. The accumulation probe repeats this exact physical gesture; the ordinary smoothness
 // cases use it to expose per-frame cadence and distance. Overridable for shorter-ramp probes.
@@ -102,6 +105,8 @@ const CONTINUOUS_INPUT_NOTCHES_PER_WINDOW = Number(
 );
 const CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED =
   process.env.SMOOTHNESS_REQUIRE_FRAME_PROGRESS === '1';
+const CONTINUOUS_INPUT_COALESCING_REQUIRED =
+  process.env.SMOOTHNESS_REQUIRE_INPUT_COALESCING === '1';
 // Trials, not samples of one trial: the fling that follows an idle app and the fling that follows a
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
@@ -182,12 +187,118 @@ interface SurfaceMeasurement {
 interface ContinuousInputBurstMeasurement {
   readonly requestedDurationMilliseconds: number;
   readonly actualInputDurationMilliseconds: number;
+  readonly inputEventCount: number;
+  readonly appliedImpulseCount: number;
+  readonly inputEventsPerSecond: number;
+  readonly projectionPassCount: number;
+  readonly rowsTravelled: number;
   readonly inputWindowFrameCounts: readonly number[];
   readonly completedFrameGapSequenceMilliseconds: readonly number[];
   readonly maximumConsecutiveZeroFrameWindows: number;
   readonly maximumFrameStarvationMilliseconds: number;
   readonly inputToFirstCompletedFrameMilliseconds: number | null;
   readonly finalInputToNextCompletedFrameMilliseconds: number | null;
+}
+
+function continuousInputCoalescingFailure(
+  surfaceMeasurements: readonly SurfaceMeasurement[],
+): string | null {
+  const burstCases = surfaceMeasurements.filter(
+    (measurement) => measurement.continuousInputBursts.length === 1,
+  );
+  if (
+    burstCases.length !== 4 ||
+    new Set(burstCases.map((measurement) => measurement.surface)).size !== 2 ||
+    new Set(burstCases.map((measurement) => measurement.fixtureLineCount))
+      .size !== 2
+  ) {
+    return (
+      `rapid-input coalescing expected editor and diff at two scales; ` +
+      `received ${burstCases.length} cases`
+    );
+  }
+  for (const measurement of burstCases) {
+    const burst = measurement.continuousInputBursts[0]!;
+    if (burst.appliedImpulseCount !== burst.inputEventCount) {
+      return (
+        `${measurement.surface} ${measurement.fixtureLineCount}-line ` +
+        `rapid input applied ${burst.appliedImpulseCount}/` +
+        `${burst.inputEventCount} wheel impulses`
+      );
+    }
+    if (burst.projectionPassCount >= burst.inputEventCount) {
+      return (
+        `${measurement.surface} ${measurement.fixtureLineCount}-line ` +
+        `rapid input ran ${burst.projectionPassCount} projection passes ` +
+        `for ${burst.inputEventCount} wheel events`
+      );
+    }
+  }
+  for (const surface of ['editor', 'diff'] as const) {
+    const surfaceCases = burstCases
+      .filter((measurement) => measurement.surface === surface)
+      .sort(
+        (firstMeasurement, secondMeasurement) =>
+          firstMeasurement.fixtureLineCount -
+          secondMeasurement.fixtureLineCount,
+      );
+    const baselineBurst = surfaceCases[0]!.continuousInputBursts[0]!;
+    const largeBurst = surfaceCases[1]!.continuousInputBursts[0]!;
+    const maximumOneFrameTravelRows = Math.ceil(VERTICAL_FLING_CEILING / 30);
+    if (
+      Math.abs(baselineBurst.rowsTravelled - largeBurst.rowsTravelled) >
+      maximumOneFrameTravelRows
+    ) {
+      return (
+        `${surface} rapid-input travel changed with document scale: ` +
+        `${surfaceCases[0]!.fixtureLineCount} lines travelled ` +
+        `${baselineBurst.rowsTravelled} rows, ` +
+        `${surfaceCases[1]!.fixtureLineCount} lines travelled ` +
+        `${largeBurst.rowsTravelled} rows; one-frame budget is ` +
+        `${maximumOneFrameTravelRows} rows`
+      );
+    }
+  }
+  return null;
+}
+
+function proveContinuousInputCoalescingCanFail(): string {
+  const badBurst: ContinuousInputBurstMeasurement = {
+    requestedDurationMilliseconds: 1_050,
+    actualInputDurationMilliseconds: 1_050,
+    inputEventCount: 150,
+    appliedImpulseCount: 150,
+    inputEventsPerSecond: 142.9,
+    projectionPassCount: 150,
+    rowsTravelled: 384,
+    inputWindowFrameCounts: [],
+    completedFrameGapSequenceMilliseconds: [],
+    maximumConsecutiveZeroFrameWindows: 0,
+    maximumFrameStarvationMilliseconds: 0,
+    inputToFirstCompletedFrameMilliseconds: null,
+    finalInputToNextCompletedFrameMilliseconds: null,
+  };
+  const badCases = (['editor', 'diff'] as const).flatMap((surface) =>
+    [2_000, 100_000].map((fixtureLineCount): SurfaceMeasurement => ({
+      surface,
+      fixtureShape: 'fold-dense',
+      codeFolding: 'on',
+      indentGuides: true,
+      versionControlMarks: surface === 'editor',
+      fixtureLineCount,
+      gestures: [],
+      accumulationFlicks: [],
+      continuationBoundaries: [],
+      continuousInputBursts: [badBurst],
+      depthCheckpoints: [],
+      depthCheckpointWallClockMilliseconds: 0,
+    })),
+  );
+  const failure = continuousInputCoalescingFailure(badCases);
+  if (!failure) {
+    throw new Error('rapid-input coalescing positive control did not fail');
+  }
+  return failure;
 }
 
 interface AccumulationFlickMeasurement {
@@ -729,8 +840,20 @@ async function measureAccumulationPattern(
 
 async function measureContinuousInputBurst(
   driver: PtyTestDriver.Model,
+  statusPath: string,
+  surface: ScrollSurface,
   requestedDurationMilliseconds: number,
 ): Promise<ContinuousInputBurstMeasurement> {
+  const statusBefore = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const scrollTopBefore = Number(statusBefore[scrollStatusField(surface)] ?? 0);
+  const impulseCountField =
+    surface === 'editor'
+      ? 'editorVerticalScrollImpulseCount'
+      : 'diffVerticalScrollImpulseCount';
+  const frameAttributionBefore = readEditorFrameAttributionTotals(statusPath);
   const inputWindowCount = Math.ceil(
     requestedDurationMilliseconds / CONTINUOUS_INPUT_WINDOW_MILLISECONDS,
   );
@@ -797,6 +920,18 @@ async function measureContinuousInputBurst(
     }
   }
   await inputProducer;
+  const statusAfter = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const inputEventCount =
+    inputWindowCount * CONTINUOUS_INPUT_NOTCHES_PER_WINDOW;
+  const appliedImpulseCount = Number(statusAfter[impulseCountField] ?? 0);
+  const projectionPassCount =
+    readEditorFrameAttributionTotals(statusPath).completedFrameCount -
+    frameAttributionBefore.completedFrameCount;
+  const rowsTravelled =
+    Number(statusAfter[scrollStatusField(surface)] ?? 0) - scrollTopBefore;
 
   const inputStartTimestampMilliseconds = inputWindowStartsMilliseconds[0]!;
   const inputWindowFrameCounts = inputWindowStartsMilliseconds.map(
@@ -874,6 +1009,16 @@ async function measureContinuousInputBurst(
     requestedDurationMilliseconds,
     actualInputDurationMilliseconds:
       inputEndTimestampMilliseconds - inputStartTimestampMilliseconds,
+    inputEventCount,
+    appliedImpulseCount,
+    inputEventsPerSecond: Number(
+      (
+        (inputEventCount * 1000) /
+        (inputEndTimestampMilliseconds - inputStartTimestampMilliseconds)
+      ).toFixed(1),
+    ),
+    projectionPassCount,
+    rowsTravelled,
     inputWindowFrameCounts,
     completedFrameGapSequenceMilliseconds:
       completedFrameGapSequenceMilliseconds.map((gapMilliseconds) =>
@@ -1651,6 +1796,7 @@ async function measureSurface(
     JSON.stringify({
       'editor.codeFolding': codeFolding === 'on',
       verticalFlingCeiling: VERTICAL_FLING_CEILING,
+      maximumGlideDurationMilliseconds: MAXIMUM_GLIDE_DURATION_MILLISECONDS,
       showIndentGuides: true,
     }),
   );
@@ -1724,6 +1870,8 @@ async function measureSurface(
         await drainToQuiescence(driver);
         const continuousInputBurst = await measureContinuousInputBurst(
           driver,
+          statusPath,
+          surface,
           burstDurationMilliseconds,
         );
         continuousInputBursts.push(continuousInputBurst);
@@ -1747,6 +1895,11 @@ async function measureSurface(
           `${surface} ${fixtureShape} ${fixtureLineCount} lines ` +
             `${burstDurationMilliseconds}ms burst windows=` +
             `[${continuousInputBurst.inputWindowFrameCounts.join(',')}] ` +
+            `events=${continuousInputBurst.inputEventCount} ` +
+            `impulses=${continuousInputBurst.appliedImpulseCount} ` +
+            `rate=${continuousInputBurst.inputEventsPerSecond}/s ` +
+            `projections=${continuousInputBurst.projectionPassCount} ` +
+            `rows=${continuousInputBurst.rowsTravelled} ` +
             `gaps=[${completedFrameGapSequence}] starvation=` +
             `${continuousInputBurst.maximumFrameStarvationMilliseconds}ms`,
         );
@@ -1899,6 +2052,12 @@ console.error(
   `scale-invariance positive control RED (expected): ` +
     editorScaleInvariancePositiveControl,
 );
+const continuousInputCoalescingPositiveControl =
+  proveContinuousInputCoalescingCanFail();
+console.error(
+  `rapid-input coalescing positive control RED (expected): ` +
+    continuousInputCoalescingPositiveControl,
+);
 
 const measurementRunStartMilliseconds = performance.now();
 const surfaceMeasurements: SurfaceMeasurement[] = [];
@@ -1960,6 +2119,14 @@ const depthCheckpointWallClockMilliseconds = surfaceMeasurements.reduce(
   0,
 );
 const editorScaleInvariance = measureEditorScaleInvariance(surfaceMeasurements);
+const continuousInputCoalescingFailureMessage =
+  continuousInputCoalescingFailure(surfaceMeasurements);
+if (
+  CONTINUOUS_INPUT_COALESCING_REQUIRED &&
+  continuousInputCoalescingFailureMessage
+) {
+  throw new Error(continuousInputCoalescingFailureMessage);
+}
 if (editorScaleInvariance) {
   console.error(
     `scale-invariance counts: ` +
@@ -1998,6 +2165,7 @@ const report = {
   ).trim(),
   applicationRepositoryRoot: APPLICATION_REPOSITORY_ROOT,
   verticalFlingCeiling: VERTICAL_FLING_CEILING,
+  maximumGlideDurationMilliseconds: MAXIMUM_GLIDE_DURATION_MILLISECONDS,
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
   accumulationFlickCount: ACCUMULATION_FLICK_COUNT,
   accumulationPauseMilliseconds: ACCUMULATION_PAUSE_MILLISECONDS,
@@ -2007,6 +2175,9 @@ const report = {
   continuousInputNotchesPerWindow: CONTINUOUS_INPUT_NOTCHES_PER_WINDOW,
   continuousInputFrameProgressRequired:
     CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED,
+  continuousInputCoalescingRequired: CONTINUOUS_INPUT_COALESCING_REQUIRED,
+  continuousInputCoalescingPositiveControl,
+  continuousInputCoalescingFailure: continuousInputCoalescingFailureMessage,
   targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,

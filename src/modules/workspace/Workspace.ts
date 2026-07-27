@@ -518,6 +518,8 @@ class $Workspace {
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
       stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
     };
   }
   get focus() {
@@ -601,19 +603,17 @@ class $Workspace {
 
   impulseEditorVerticalScroll(deltaRows: number): void {
     const viewport = this.editor.viewport;
-    viewport.verticalScrollMomentum.value = Momentum.Class.addImpulse(
+    Momentum.Class.queueImpulse(
       viewport.verticalScrollMomentum.value,
       deltaRows,
-      this.flingMomentum,
     );
   }
 
   impulseEditorHorizontalScroll(deltaColumns: number): void {
     const viewport = this.editor.viewport;
-    viewport.horizontalScrollMomentum.value = Momentum.Class.addImpulse(
+    Momentum.Class.queueImpulse(
       viewport.horizontalScrollMomentum.value,
       deltaColumns,
-      this.flingMomentum,
     );
   }
 

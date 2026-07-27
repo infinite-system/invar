@@ -306,6 +306,8 @@ class $DiffView {
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
       stopVelocity: this.Momentum.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
     };
   }
   constructor(
@@ -527,18 +529,13 @@ class $DiffView {
   }
 
   impulseVerticalScroll(deltaRows: number): void {
-    this.verticalScrollMomentum.value = this.Momentum.addImpulse(
-      this.verticalScrollMomentum.value,
-      deltaRows,
-      this.flingMomentum,
-    );
+    this.Momentum.queueImpulse(this.verticalScrollMomentum.value, deltaRows);
   }
 
   impulseHorizontalScroll(deltaColumns: number): void {
-    this.horizontalScrollMomentum.value = this.Momentum.addImpulse(
+    this.Momentum.queueImpulse(
       this.horizontalScrollMomentum.value,
       deltaColumns,
-      this.flingMomentum,
     );
   }
 

@@ -40,6 +40,7 @@ describe('Settings', () => {
     expect(settings.verticalFlingCeiling.value).toBe(220);
     expect(settings.scrollAccelGain.value).toBe(34);
     expect(settings.scrollFriction.value).toBe(0.015);
+    expect(settings.maximumGlideDurationMilliseconds.value).toBe(900);
     expect(settings.linesPerNotch.value).toBe(1);
     expect(settings.horizontalScrollModifier.value).toBe('alt');
     expect(settings.fastScrollModifier.value).toBe('none');
@@ -74,6 +75,7 @@ describe('Settings', () => {
         graphicsTier: 'kitty',
         sidebarWidth: 40,
         wordWrap: true,
+        maximumGlideDurationMilliseconds: 1250,
       }),
     });
     settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
@@ -81,6 +83,7 @@ describe('Settings', () => {
     expect(settings.graphicsTier.value).toBe('kitty');
     expect(settings.sidebarWidth.value).toBe(40);
     expect(settings.wordWrap.value).toBe(true);
+    expect(settings.maximumGlideDurationMilliseconds.value).toBe(1250);
     // Untouched keys stay at their defaults.
     expect(settings.verticalFlingCeiling.value).toBe(220);
   });

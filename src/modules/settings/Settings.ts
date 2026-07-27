@@ -111,6 +111,9 @@ class $Settings {
   get scrollFriction(): Ref<number> {
     return ref(0.015);
   }
+  get maximumGlideDurationMilliseconds(): Ref<number> {
+    return ref(900);
+  }
   get linesPerNotch(): Ref<number> {
     return ref(1);
   }
@@ -218,6 +221,7 @@ class $Settings {
       verticalFlingCeiling: this.verticalFlingCeiling,
       scrollAccelGain: this.scrollAccelGain,
       scrollFriction: this.scrollFriction,
+      maximumGlideDurationMilliseconds: this.maximumGlideDurationMilliseconds,
       linesPerNotch: this.linesPerNotch,
       horizontalScrollModifier: this.horizontalScrollModifier,
       fastScrollModifier: this.fastScrollModifier,
@@ -520,6 +524,7 @@ class $Settings {
       verticalFlingCeiling: 220,
       scrollAccelGain: 34,
       scrollFriction: 0.015,
+      maximumGlideDurationMilliseconds: 900,
       linesPerNotch: 1,
       horizontalScrollModifier: 'alt',
       fastScrollModifier: 'none',
@@ -592,6 +597,7 @@ class $Settings {
     readNumber('verticalFlingCeiling');
     readNumber('scrollAccelGain');
     readNumber('scrollFriction');
+    readNumber('maximumGlideDurationMilliseconds');
     readNumber('linesPerNotch');
     readModifier('horizontalScrollModifier');
     readModifier('fastScrollModifier');
@@ -754,6 +760,7 @@ export interface SettingsValues {
   verticalFlingCeiling: number;
   scrollAccelGain: number;
   scrollFriction: number;
+  maximumGlideDurationMilliseconds: number;
   linesPerNotch: number;
   horizontalScrollModifier: ScrollModifier;
   fastScrollModifier: ScrollModifier;

@@ -602,6 +602,8 @@ class $RootView {
         max: settings.verticalFlingCeiling.value,
         decayPerSec: settings.scrollFriction.value,
         stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+        maximumGlideDurationMilliseconds:
+          settings.maximumGlideDurationMilliseconds.value,
       }),
       requestRender: () => renderer.requestRender(),
     };

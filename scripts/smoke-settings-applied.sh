@@ -46,7 +46,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 # same-HOME restart in smoke-activitybar-harness.ts.
 # graphicsTier is driven on a real image through live downgrade and same-HOME restart in
 # smoke-pixel-preview-harness.ts.
-COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode graphicsTier theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio primaryDockContentOrder panelContentOrder"
+COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction maximumGlideDurationMilliseconds linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode graphicsTier theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio primaryDockContentOrder panelContentOrder"
 
 # ---- schema-enumeration META-GATE (cheap; the enforcing check) -------------------------------------
 meta_gate() {
@@ -173,6 +173,12 @@ setk scrollFriction 0.001; a=$(scrolltop_after_fling sa$$-fric-a)
 setk scrollFriction 0.4; b=$(scrolltop_after_fling sa$$-fric-b)
 changed "$a" "$b" "scrollFriction changes the glide distance"
 setk scrollFriction 0.015
+
+echo "== maximumGlideDurationMilliseconds: longer tail travels further =="
+setk maximumGlideDurationMilliseconds 100; a=$(scrolltop_after_fling sa$$-duration-a)
+setk maximumGlideDurationMilliseconds 1200; b=$(scrolltop_after_fling sa$$-duration-b)
+check_gt "$b" "$a" "maximum glide duration 1200ms travels further than 100ms"
+setk maximumGlideDurationMilliseconds 900
 
 echo "== fastScrollModifier + fastScrollMultiplier: held modifier multiplies the step =="
 setk linesPerNotch 1; sets horizontalScrollModifier ctrl; sets fastScrollModifier none; setk fastScrollMultiplier 6

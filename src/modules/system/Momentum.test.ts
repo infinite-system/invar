@@ -20,12 +20,14 @@ describe('scroll-momentum', () => {
       max: 80,
       decayPerSec: 0.015,
       stopVelocity: 3,
+      maximumGlideDurationMilliseconds: 900,
     });
     expect(Momentum.Class.verticalOptions).toEqual({
       impulse: 34,
       max: 220,
       decayPerSec: 0.015,
       stopVelocity: 3,
+      maximumGlideDurationMilliseconds: 900,
     });
   });
 
@@ -34,6 +36,48 @@ describe('scroll-momentum', () => {
       Momentum.Class.stepMomentum(Momentum.Class.atRest, 1 / 30).rows,
     ).toBe(0);
     expect(Momentum.Class.isMoving(Momentum.Class.atRest)).toBe(false);
+  });
+
+  test('real-rate input queues every impulse for one animation write', () => {
+    const momentum = Momentum.Class.atRest;
+    for (let eventIndex = 0; eventIndex < 150; eventIndex++) {
+      Momentum.Class.queueImpulse(momentum, 1, eventIndex * 7);
+    }
+
+    expect(momentum.velocity).toBe(0);
+    expect(Momentum.Class.isMoving(momentum)).toBe(true);
+    const stepped = Momentum.Class.stepMomentum(
+      momentum,
+      1 / 30,
+      Momentum.Class.verticalOptions,
+    );
+    expect(stepped.momentum.restEquivalentGestureImpulseCount).toBe(150);
+    expect(stepped.momentum.pendingImpulses).toEqual([]);
+    expect(stepped.momentum.velocity).toBe(220);
+  });
+
+  test('the configured glide duration bounds the tail after input', () => {
+    const momentum = Momentum.Class.atRest;
+    for (let eventIndex = 0; eventIndex < 150; eventIndex++) {
+      Momentum.Class.queueImpulse(momentum, 1, eventIndex * 7);
+    }
+    let currentMomentum = momentum;
+    let frameCount = 0;
+    let rowsTravelled = 0;
+    while (Momentum.Class.isMoving(currentMomentum) && frameCount < 100) {
+      const stepped = Momentum.Class.stepMomentum(
+        currentMomentum,
+        1 / 30,
+        Momentum.Class.verticalOptions,
+      );
+      currentMomentum = stepped.momentum;
+      rowsTravelled += stepped.rows;
+      frameCount++;
+    }
+
+    expect(frameCount).toBe(27);
+    expect(rowsTravelled).toBe(197);
+    expect(Momentum.Class.isMoving(currentMomentum)).toBe(false);
   });
 
   test('an impulse sets velocity in the wheel direction and accumulates progressively', () => {

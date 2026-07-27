@@ -51,6 +51,10 @@ describe('Workspace scroll animation', () => {
     }
     expect(
       workspace.editor.viewport.verticalScrollMomentum.value.velocity,
+    ).toBe(0);
+    workspace.tickScrollAnimations(1 / 30);
+    expect(
+      workspace.editor.viewport.verticalScrollMomentum.value.velocity,
     ).toBe(600);
   });
 });

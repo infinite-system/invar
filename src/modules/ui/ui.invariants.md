@@ -959,16 +959,18 @@ Two writers in one frame silently eat input.
 **Scope:** every scroll offset — editor `viewport.scrollTop`, `gitPanel.logScrollTop`, tree
 selection window, agent transcript viewport, and terminal emulator `viewportY`.
 
-**Mechanism:** wheel routes through `Workspace.scrollGitLog` / `viewport.scrollBy`; keyboard through
-`moveLog` / tree `moveSelection`; each input event is the sole writer for that event. When the
-pending scroll animation lands, it must adopt-and-stop on any programmatic jump (see the paused-clock
-contract). Cross-substrate transfer from `VirtualScroller` ("One Writer Per Regime").
+**Mechanism:** Wheel handlers call `Momentum.queueImpulse`, which mutates only a plain pending-input
+queue. The animation tick drains every queued event through `Momentum.addImpulse` in order and
+publishes the reactive momentum and scroll offset once. Keyboard and programmatic jumps halt that
+momentum and discard its queue before adopting the current offset. Cross-substrate transfer from
+`VirtualScroller` ("One Writer Per Regime").
 
 **Generates:** deterministic scrolling; no lost wheel/keys.
 
-**Evidence:** `Momentum.addImpulse` deterministically restarts a contrary-direction gesture and
-programmatic jumps halt momentum; `scripts/harness/smoke-terminal-harness.ts` observes a contrary
-terminal notch reverse direction across synchronized frames.
+**Evidence:** `Momentum.queueImpulse` plus `stepMomentum`; the real-rate burst in
+`measure-scroll-smoothness.ts` proves 150 events become 150 impulses while projection passes remain
+below event count at 2k and 100k lines on editor and diff; programmatic jumps halt momentum;
+`scripts/harness/smoke-terminal-harness.ts` observes a contrary terminal notch reverse direction.
 
 **Impossible if true:** a frame in which two authorities both write the same scroll offset.
 
@@ -1025,12 +1027,13 @@ configured ceiling. Same-direction impulse velocity received at the configured
 ceiling is retained to replace subsequent frame decay, so rapid input sustains
 the ceiling instead of being discarded.
 
-**Scope:** `Momentum.addImpulse` for every horizontal and vertical
-wheel-momentum consumer. Contrary-direction input still halts and restarts,
+**Scope:** `Momentum.queueImpulse` and `Momentum.addImpulse` for every
+horizontal and vertical wheel-momentum consumer. Contrary-direction input still halts and restarts,
 direct or programmatic scroll still adopts and stops, and velocity may remain
 flat only after the configured ceiling is genuinely reached.
 
-**Mechanism:** `Momentum.addImpulse` treats velocity at or above
+**Mechanism:** `Momentum.queueImpulse` records every physical event without publishing reactive
+momentum. The animation tick drains that queue through `Momentum.addImpulse`, which treats velocity at or above
 `stopVelocity` as authoritative continuation and uses the 150 ms input-cadence
 window only before live motion can establish that fact. It preserves
 `restEquivalentGestureVelocity` across the glide, ramps gain over twenty

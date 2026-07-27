@@ -422,10 +422,9 @@ class $MarkdownSplitView {
       this.focusPreview();
       const direction = event.scroll?.direction;
       const rowImpulse = direction === 'up' || direction === 'left' ? -1 : 1;
-      this.verticalScrollMomentum.value = Momentum.Class.addImpulse(
+      Momentum.Class.queueImpulse(
         this.verticalScrollMomentum.value,
         rowImpulse,
-        Momentum.Class.verticalOptions,
       );
     };
     previewBody.onMouseMove = (event) => {

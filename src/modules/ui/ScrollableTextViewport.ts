@@ -131,6 +131,8 @@ class $ScrollableTextViewport {
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
       stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
     };
   }
   /** A wheel over the surface: routed through the SAME settings-sourced gesture as every pane —
@@ -150,10 +152,9 @@ class $ScrollableTextViewport {
       (direction === 'left' || direction === 'right' || modifierHorizontal);
     if (horizontal && this.maximumScrollLeft() > 0) {
       const backward = direction === 'left' || direction === 'up';
-      this.horizontalMomentum = Momentum.Class.addImpulse(
+      Momentum.Class.queueImpulse(
         this.horizontalMomentum,
         (backward ? -1 : 1) * step,
-        Momentum.Class.defaultOptions,
       );
       impulseAdded = true;
     } else if (!horizontal) {
@@ -161,10 +162,9 @@ class $ScrollableTextViewport {
       // followContentTail() stops snapping the glide back to the bottom.
       if (direction === 'up' && this.deps.followBottom)
         this.followBottomActive = false;
-      this.verticalMomentum = Momentum.Class.addImpulse(
+      Momentum.Class.queueImpulse(
         this.verticalMomentum,
         (direction === 'up' ? -1 : 1) * step,
-        this.verticalMomentumOptions(),
       );
       impulseAdded = true;
     }

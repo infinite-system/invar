@@ -364,6 +364,8 @@ class $GitWorkspace
       max: settings.verticalFlingCeiling.value,
       decayPerSec: settings.scrollFriction.value,
       stopVelocity: Momentum.Class.verticalOptions.stopVelocity,
+      maximumGlideDurationMilliseconds:
+        settings.maximumGlideDurationMilliseconds.value,
     };
   }
 
@@ -752,30 +754,22 @@ class $GitWorkspace
   }
 
   impulseLog(rowDelta: number): void {
-    this.panel.logMomentum.value = Momentum.Class.addImpulse(
-      this.panel.logMomentum.value,
-      rowDelta,
-      this.flingMomentum,
-    );
+    Momentum.Class.queueImpulse(this.panel.logMomentum.value, rowDelta);
   }
 
   impulseChanges(rowDelta: number): void {
-    this.panel.changesMomentum.value = Momentum.Class.addImpulse(
-      this.panel.changesMomentum.value,
-      rowDelta,
-      this.flingMomentum,
-    );
+    Momentum.Class.queueImpulse(this.panel.changesMomentum.value, rowDelta);
   }
 
   impulseChangesHorizontal(columnDelta: number): void {
-    this.panel.changesHorizontalMomentum.value = Momentum.Class.addImpulse(
+    Momentum.Class.queueImpulse(
       this.panel.changesHorizontalMomentum.value,
       columnDelta,
     );
   }
 
   impulseLogHorizontal(columnDelta: number): void {
-    this.panel.logHorizontalMomentum.value = Momentum.Class.addImpulse(
+    Momentum.Class.queueImpulse(
       this.panel.logHorizontalMomentum.value,
       columnDelta,
     );

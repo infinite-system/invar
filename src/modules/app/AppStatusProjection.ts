@@ -140,6 +140,9 @@ class $AppStatusProjection {
       ),
       editorScrollTop: editor.viewport.scrollTop.value,
       editorScrollLeft: editor.viewport.scrollLeft.value,
+      editorVerticalScrollImpulseCount:
+        editor.viewport.verticalScrollMomentum.value
+          .restEquivalentGestureImpulseCount ?? 0,
       editorFrameAttribution: ports.view.editorFrameAttribution(),
       wordWrap: editor.wordWrap.value,
       codeFolding: editor.codeFoldingEnabled,

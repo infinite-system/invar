@@ -31,9 +31,16 @@ editor case initializes a repository by default and verifies that
 version-control marks, indent guides, and fold controls are present together.
 `SMOOTHNESS_BURST_DURATIONS` switches to sustained-input measurement: it
 reports completed-frame counts in each `SMOOTHNESS_BURST_WINDOW`, the gap
-sequence, and the longest starvation while `SMOOTHNESS_BURST_NOTCHES` keep
-arriving per window. `SMOOTHNESS_REQUIRE_FRAME_PROGRESS=1` makes a zero-frame
-window fail the instrument.
+sequence, longest starvation, events sent, impulses applied, projection
+passes, and rows travelled while `SMOOTHNESS_BURST_NOTCHES` keep arriving per
+window. A 6 ms window with one notch requests an individual-event trackpad
+burst above 150 events/second and measures about 144 events/second through the
+loaded app; the older 100/200 ms multi-notch shapes are
+batched PTY writes, not equivalent input-boundary pressure.
+`SMOOTHNESS_REQUIRE_FRAME_PROGRESS=1` makes a zero-frame window fail.
+`SMOOTHNESS_REQUIRE_INPUT_COALESCING=1` requires exact event-to-impulse
+preservation, fewer projection passes than input events, and exact 2k/100k
+row-travel parity within one maximum-velocity frame on editor and diff.
 For flat editor runs, it also reports cumulative document-line reads,
 fold/wrap projection lookups, and layout computations. The behavioral
 contract drives the same gesture at 2k and 100k lines and compares the
