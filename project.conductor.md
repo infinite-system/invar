@@ -2550,3 +2550,37 @@ this shape are wrong, and only the first is cosmetic:
 Corollary for the conductor: on ALL-PASS, still grep the log for `FAIL` and for exit codes inside
 soft blocks. This run's green was clean by the retry tally and still carried two measurement
 failures and a live orphan.
+
+## 2026-07-27 22:20 UTC — a seventh instrument-family member: the status that reports attention
+
+The user asked why `#109 (agent-permissions quiet-tail flake)` was taking so long, having watched it
+sit at `in_progress` for a day. The honest answer was that nobody was working on it at all: no
+brief, no worktree, no builder, no report file. The work was not slow — it was not happening.
+
+The prioritisation itself was correct. Every fire that day went to live user direction: the scroll
+campaign, the ivue outage that made the app unusable twice, the statics migration, the docs de-bloat.
+A flaky smoke genuinely ranks below an unusable editor.
+
+The defect is the STATUS. `in_progress` is a claim about the fleet — that something is driving this —
+and it was made once and never re-checked against evidence. That puts it squarely in the instrument
+family: **it reported "attended" without observing a driver.** Same shape as a check that reports
+success without measuring, and the same failure direction the other six share — toward "nothing wrong
+here", the direction that strands work instead of interrupting it.
+
+What makes it worse than a merely stale note is the second-order effect: a task that looks attended
+generates no pressure. An honest `pending` in a long backlog is visible as debt; a false
+`in_progress` is invisible, because the list is telling you it is handled. **A lying status outlives
+an honest backlog.**
+
+  **`in_progress` requires a named driver — a worktree, a brief, a log. No driver, set it back.**
+
+Two more things this surfaced, both worth keeping:
+
+- `#124 (terminal-follow Escape intermittent)` carried the same false marker. One instance is an
+  oversight; two is the rule being absent, which is why it went into the skill as an order rather
+  than staying here as a story.
+- The reason #109 could not simply be dispatched on the spot is itself structural: its method needs a
+  QUIET MACHINE, because the finding that distinguishes it from a contention story is that it flakes
+  inside the serialized quiet tail. A second live builder would poison the measurement. So its
+  dispatch condition is *no other builder live* — recorded in the task, because an undispatchable
+  task with no stated condition looks identical to a neglected one.

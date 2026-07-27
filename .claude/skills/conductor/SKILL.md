@@ -347,6 +347,10 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   an explicit, user-authorized sweep.
 
 ## Liveness & visibility
+- **A task is `in_progress` only while a NAMED builder is driving it.** The status is a claim about
+  the fleet, so it needs the same evidence as any liveness claim: a worktree, a brief, a log. With no
+  driver, set it back to `pending` — an item that looks attended gets no pressure, so a lying status
+  outlives an honest backlog.
 - **Verify, don't assume.** Key on fork-specific evidence only: worktree writes in the last
   cycle, gate-log transitions, new branch/main commits, and the builder's own PTY processes
   resolved by `/proc/<pid>/cwd` (never by argv pattern — a brief's TEXT matches its own tool
