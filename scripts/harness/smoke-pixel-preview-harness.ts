@@ -57,6 +57,94 @@ async function awaitImageStatus(
   );
 }
 
+function kittyGraphicsCapabilityReply(driver: PtyTestDriver.Model): string {
+  const graphicsQueryPrefix = '\x1b_Gi=';
+  const graphicsQuerySuffix = ',s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\';
+  const rawOutput = driver.recordedOutput();
+  const graphicsQueryStart = rawOutput.indexOf(graphicsQueryPrefix);
+  const graphicsQuerySuffixStart = rawOutput.indexOf(
+    graphicsQuerySuffix,
+    graphicsQueryStart,
+  );
+  const graphicsQueryIdentifier =
+    graphicsQueryStart >= 0 && graphicsQuerySuffixStart >= 0
+      ? rawOutput.slice(
+          graphicsQueryStart + graphicsQueryPrefix.length,
+          graphicsQuerySuffixStart,
+        )
+      : '';
+  HarnessSmoke.Class.requireCondition(
+    /^\d+$/.test(graphicsQueryIdentifier),
+    'the graphics capability query is discovered in the raw PTY output',
+  );
+  const graphicsCapabilityQuery =
+    graphicsQueryPrefix + graphicsQueryIdentifier + graphicsQuerySuffix;
+  const graphicsCapabilityReply =
+    graphicsQueryPrefix + graphicsQueryIdentifier + ';OK\x1b\\';
+  console.log(
+    `graphics capability query ${JSON.stringify(graphicsCapabilityQuery)}`,
+  );
+  console.log(
+    `graphics capability reply ${JSON.stringify(graphicsCapabilityReply)}`,
+  );
+  return graphicsCapabilityReply;
+}
+
+async function selectSettingByVisibleLabel(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingLabel: string,
+): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selected settings label is published before navigation',
+    (status) =>
+      typeof status.settingsSelectedLabel === 'string' &&
+      status.settingsSelectedLabel.length > 0,
+  );
+  for (let navigationStep = 0; navigationStep < 80; navigationStep++) {
+    if (selectionStatus.settingsSelectedLabel === settingLabel) break;
+    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
+    driver.sendKeys('Down');
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `settings navigation advances toward ${settingLabel}`,
+      (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
+    );
+  }
+  HarnessSmoke.Class.requireCondition(
+    selectionStatus.settingsSelectedLabel === settingLabel,
+    `${settingLabel} is discovered by its live settings label`,
+  );
+  await driver.awaitGridCondition(
+    `${settingLabel} is the visibly selected settings row`,
+    (snapshot) => snapshot.findText(`› ${settingLabel}`) !== null,
+  );
+}
+
+async function awaitPersistedGraphicsTier(
+  settingsPath: string,
+  expectedTier: string,
+): Promise<void> {
+  const deadline = performance.now() + 10_000;
+  while (performance.now() < deadline) {
+    try {
+      const settings = JSON.parse(
+        await Bun.file(settingsPath).text(),
+      ) as Record<string, unknown>;
+      if (settings.graphicsTier === expectedTier) return;
+    } catch {
+      // The user settings file may not exist until the first live edit saves.
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(
+    `Timed out waiting for graphicsTier=${expectedTier} at ` + settingsPath,
+  );
+}
+
 async function awaitOutputSequenceCountAbove(
   driver: PtyTestDriver.Model,
   sequence: string,
@@ -171,40 +259,12 @@ async function driveLateKittyCapabilityUpgrade(): Promise<void> {
       'no kitty placement is emitted before the terminal reports kitty graphics',
     );
 
-    const graphicsQueryPrefix = '\x1b_Gi=';
-    const graphicsQuerySuffix = ',s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\';
-    const rawOutput = driver.recordedOutput();
-    const graphicsQueryStart = rawOutput.indexOf(graphicsQueryPrefix);
-    const graphicsQuerySuffixStart = rawOutput.indexOf(
-      graphicsQuerySuffix,
-      graphicsQueryStart,
-    );
-    const graphicsQueryIdentifier =
-      graphicsQueryStart >= 0 && graphicsQuerySuffixStart >= 0
-        ? rawOutput.slice(
-            graphicsQueryStart + graphicsQueryPrefix.length,
-            graphicsQuerySuffixStart,
-          )
-        : '';
-    HarnessSmoke.Class.requireCondition(
-      /^\d+$/.test(graphicsQueryIdentifier),
-      'the graphics capability query is discovered in the raw PTY output',
-    );
-    const graphicsCapabilityQuery =
-      graphicsQueryPrefix + graphicsQueryIdentifier + graphicsQuerySuffix;
-    const graphicsCapabilityReply =
-      graphicsQueryPrefix + graphicsQueryIdentifier + ';OK\x1b\\';
-    console.log(
-      `graphics capability query ${JSON.stringify(graphicsCapabilityQuery)}`,
-    );
-    console.log(
-      `graphics capability reply ${JSON.stringify(graphicsCapabilityReply)}`,
-    );
-
     const placementCountBeforeCapabilityReply =
       driver.outputSequenceCount('\x1b_Ga=T');
     const outputLengthBeforeCapabilityReply = driver.recordedOutput().length;
-    driver.sendRawInputWithoutFrameExpectation(graphicsCapabilityReply);
+    driver.sendRawInputWithoutFrameExpectation(
+      kittyGraphicsCapabilityReply(driver),
+    );
     const upgradedProjectionSnapshot = await driver.awaitGridCondition(
       'the late capability answer replaces half-block cells with a pixel-tier projection',
       (candidate) => halfBlockCount(candidate) === 0,
@@ -243,6 +303,261 @@ async function driveLateKittyCapabilityUpgrade(): Promise<void> {
     );
   } finally {
     await driver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  }
+}
+
+function createUnforcedGraphicsDriver(options: {
+  homeDirectory: string;
+  statusPath: string;
+  columns: number;
+  rows: number;
+}): PtyTestDriver.Model {
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: options.columns,
+    rows: options.rows,
+    homeDirectory: options.homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: options.statusPath,
+      COLORTERM: 'truecolor',
+      TUI_GRAPHICS_TIER: undefined,
+      TMUX: undefined,
+      KITTY_WINDOW_ID: undefined,
+      TERM_PROGRAM: undefined,
+    },
+    retainFullOutput: true,
+  });
+  driver.outputSequenceCount('\x1b_Ga=T');
+  driver.outputSequenceCount('\x1b_Ga=d,d=I');
+  return driver;
+}
+
+async function drivePersistedGraphicsTierSetting(options: {
+  scaleLabel: string;
+  columns: number;
+  rows: number;
+}): Promise<void> {
+  const homeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-pixel-setting-${options.scaleLabel}-harness-home-`),
+  );
+  const settingsPath = join(homeDirectory, '.config', 'invar', 'settings.json');
+  const firstStatusPath = join(homeDirectory, 'status-first.json');
+  const firstDriver = createUnforcedGraphicsDriver({
+    homeDirectory,
+    statusPath: firstStatusPath,
+    columns: options.columns,
+    rows: options.rows,
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'the first graphics-setting session is ready',
+      (status) => status.ready === true,
+      15_000,
+    );
+    await openThroughQuickOpen(firstDriver, firstStatusPath, 'picture');
+    await awaitImageStatus(firstDriver, firstStatusPath);
+    const automaticFloorSnapshot = await firstDriver.awaitGridCondition(
+      'the automatic tier starts at the half-block floor',
+      (snapshot) => halfBlockCount(snapshot) > 100,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(automaticFloorSnapshot) > 100,
+      `${options.scaleLabel} automatic tier paints the half-block floor`,
+    );
+
+    firstDriver.sendRawInputWithoutFrameExpectation(
+      kittyGraphicsCapabilityReply(firstDriver),
+    );
+    await firstDriver.awaitOutputCondition(
+      'the automatic tier emits kitty after the capability reply',
+      () => firstDriver.outputSequenceCount('\x1b_Ga=T') > 0,
+    );
+    const automaticKittySnapshot = await firstDriver.awaitGridCondition(
+      'the automatic kitty tier blanks its underlying cells',
+      (snapshot) => halfBlockCount(snapshot) === 0,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(automaticKittySnapshot) === 0,
+      `${options.scaleLabel} automatic tier upgrades live to kitty`,
+    );
+
+    const removalCountBeforeSettings =
+      firstDriver.outputSequenceCount('\x1b_Ga=d,d=I');
+    const placementCountBeforeDowngrade =
+      firstDriver.outputSequenceCount('\x1b_Ga=T');
+    firstDriver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'Settings opens over the automatic kitty projection',
+      (status) => status.settingsOpen === true,
+    );
+    await awaitOutputSequenceCountAbove(
+      firstDriver,
+      '\x1b_Ga=d,d=I',
+      removalCountBeforeSettings,
+      'the kitty placement is deleted before the tier is downgraded',
+    );
+    await selectSettingByVisibleLabel(
+      firstDriver,
+      firstStatusPath,
+      'Graphics tier',
+    );
+    const automaticSettingStatus = await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'the graphics tier setting starts at auto',
+      (status) => status.settingsSelectedValue === 'auto',
+    );
+    HarnessSmoke.Class.requireCondition(
+      automaticSettingStatus.settingsSelectedValue === 'auto',
+      'Graphics tier exposes auto as its default value',
+    );
+    firstDriver.sendKeys('Left');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'the graphics tier setting changes from auto to halfblock',
+      (status) => status.settingsSelectedValue === 'halfblock',
+    );
+    await awaitPersistedGraphicsTier(settingsPath, 'halfblock');
+    firstDriver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'Settings closes after the live graphics-tier downgrade',
+      (status) => status.settingsOpen === false,
+    );
+    const downgradedSnapshot = await firstDriver.awaitGridCondition(
+      'the live downgrade replaces kitty with half-block cells',
+      (snapshot) => halfBlockCount(snapshot) > 100,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(downgradedSnapshot) > 100 &&
+        firstDriver.outputSequenceCount('\x1b_Ga=d,d=I') >
+          removalCountBeforeSettings &&
+        firstDriver.outputSequenceCount('\x1b_Ga=T') ===
+          placementCountBeforeDowngrade,
+      `${options.scaleLabel} live downgrade deletes kitty and paints cells`,
+    );
+
+    firstDriver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'Settings reopens to choose a persisted pixel tier',
+      (status) => status.settingsOpen === true,
+    );
+    await selectSettingByVisibleLabel(
+      firstDriver,
+      firstStatusPath,
+      'Graphics tier',
+    );
+    firstDriver.sendKeys('Right');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'the graphics tier setting changes from halfblock to auto',
+      (status) => status.settingsSelectedValue === 'auto',
+    );
+    firstDriver.sendKeys('Right');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'the graphics tier setting changes from auto to kitty',
+      (status) => status.settingsSelectedValue === 'kitty',
+    );
+    await awaitPersistedGraphicsTier(settingsPath, 'kitty');
+    firstDriver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      firstDriver,
+      firstStatusPath,
+      'Settings closes after choosing the persisted kitty tier',
+      (status) => status.settingsOpen === false,
+    );
+    await firstDriver.awaitOutputCondition(
+      'the persisted kitty choice live-applies without restart',
+      () =>
+        firstDriver.outputSequenceCount('\x1b_Ga=T') >
+        placementCountBeforeDowngrade,
+    );
+    firstDriver.sendKeys('Control+q');
+    HarnessSmoke.Class.requireCondition(
+      (await firstDriver.exitCode()) === 0,
+      'the first graphics-setting session quits cleanly',
+    );
+  } finally {
+    await firstDriver.dispose();
+  }
+
+  const secondStatusPath = join(homeDirectory, 'status-second.json');
+  const secondDriver = createUnforcedGraphicsDriver({
+    homeDirectory,
+    statusPath: secondStatusPath,
+    columns: options.columns,
+    rows: options.rows,
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      secondDriver,
+      secondStatusPath,
+      'the restarted graphics-setting session is ready',
+      (status) => status.ready === true,
+      15_000,
+    );
+    await openThroughQuickOpen(secondDriver, secondStatusPath, 'picture');
+    await awaitImageStatus(secondDriver, secondStatusPath);
+    await secondDriver.awaitOutputCondition(
+      'the persisted kitty tier emits a placement after restart',
+      () => secondDriver.outputSequenceCount('\x1b_Ga=T') > 0,
+    );
+    const restartedKittySnapshot = await secondDriver.awaitGridCondition(
+      'the persisted kitty tier blanks its cells after restart',
+      (snapshot) => halfBlockCount(snapshot) === 0,
+    );
+    HarnessSmoke.Class.requireCondition(
+      halfBlockCount(restartedKittySnapshot) === 0,
+      `${options.scaleLabel} kitty choice survives a same-HOME restart`,
+    );
+    secondDriver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      secondDriver,
+      secondStatusPath,
+      'Settings opens after the same-HOME restart',
+      (status) => status.settingsOpen === true,
+    );
+    await selectSettingByVisibleLabel(
+      secondDriver,
+      secondStatusPath,
+      'Graphics tier',
+    );
+    const restartedSettingStatus = await HarnessSmoke.Class.awaitStatus(
+      secondDriver,
+      secondStatusPath,
+      'Settings displays the persisted kitty choice after restart',
+      (status) => status.settingsSelectedValue === 'kitty',
+    );
+    HarnessSmoke.Class.requireCondition(
+      restartedSettingStatus.settingsSelectedValue === 'kitty',
+      'the persisted graphics tier remains visible in Settings',
+    );
+    secondDriver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      secondDriver,
+      secondStatusPath,
+      'Settings closes in the restarted session',
+      (status) => status.settingsOpen === false,
+    );
+    secondDriver.sendKeys('Control+q');
+    HarnessSmoke.Class.requireCondition(
+      (await secondDriver.exitCode()) === 0,
+      'the restarted graphics-setting session quits cleanly',
+    );
+  } finally {
+    await secondDriver.dispose();
     await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
   }
 }
@@ -673,6 +988,18 @@ async function driveHalfBlockFloor(): Promise<void> {
 try {
   console.log('== harness pixel-preview: late unforced kitty capability ==');
   await driveLateKittyCapabilityUpgrade();
+  console.log('== harness pixel-preview: persisted setting at small scale ==');
+  await drivePersistedGraphicsTierSetting({
+    scaleLabel: 'small',
+    columns: 80,
+    rows: 24,
+  });
+  console.log('== harness pixel-preview: persisted setting at large scale ==');
+  await drivePersistedGraphicsTierSetting({
+    scaleLabel: 'large',
+    columns: 160,
+    rows: 50,
+  });
   console.log('== harness pixel-preview: forced kitty tier ==');
   await driveKittyTier();
   console.log('== harness pixel-preview: forced sixel tier ==');

@@ -15,6 +15,7 @@ import {
   type TypeScriptServer,
   type AgentProvider,
 } from './Settings';
+import type { GraphicsTierSetting } from '../theme/TerminalCapabilities';
 import type {
   SettingSpec,
   SettingValue,
@@ -41,6 +42,12 @@ class $SettingsPanel {
       'nerd',
       'unicode',
       'ascii',
+    ];
+    const graphicsTierOptions: readonly GraphicsTierSetting[] = [
+      'auto',
+      'kitty',
+      'sixel',
+      'halfblock',
     ];
     const workspaceTabPositionOptions: readonly WorkspaceTabPosition[] = [
       'top',
@@ -139,6 +146,12 @@ class $SettingsPanel {
         label: 'Glyph mode',
         section: 'Appearance',
         spec: { kind: 'enum', options: glyphModeOptions },
+      },
+      {
+        key: 'graphicsTier',
+        label: 'Graphics tier',
+        section: 'Appearance',
+        spec: { kind: 'enum', options: graphicsTierOptions },
       },
       {
         key: 'theme',

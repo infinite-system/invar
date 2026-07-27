@@ -1395,7 +1395,8 @@ class $RootView {
         // mount; the half-block floor (and every decode failure) renders through the cells exactly
         // as before. The ladder is one registry ask — no tier list lives here.
         // invariant: Graphics tier prefers the reported capability and degrades to cells (src/modules/theme/theme.invariants.md)
-        const graphicsTier = TerminalCapabilities.Class.detectGraphicsTier(
+        const graphicsTier = TerminalCapabilities.Class.resolveGraphicsTier(
+          settings.graphicsTier.value,
           reportedGraphics.value,
         );
         const pixelEncoder = ImageRenderers.Class.encoderFor(graphicsTier);

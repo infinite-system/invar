@@ -44,7 +44,9 @@ export PATH="$HOME/.bun/bin:$PATH"
 # smoke-terminal-stage-harness.ts (instant-vs-animated command staging and the spawned-shell prompt).
 # primaryDockContentOrder is driven through plugin disable/re-enable, activity pointer reorder, and a
 # same-HOME restart in smoke-activitybar-harness.ts.
-COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio primaryDockContentOrder panelContentOrder"
+# graphicsTier is driven on a real image through live downgrade and same-HOME restart in
+# smoke-pixel-preview-harness.ts.
+COVERED_SETTINGS="verticalFlingCeiling scrollAccelGain scrollFriction linesPerNotch horizontalScrollModifier fastScrollModifier fastScrollMultiplier scrollbarThickness glyphMode graphicsTier theme wordWrap showActivityBar showIndentGuides reducedMotion workspaceTabPosition typescriptServer lspFileSizeLimitKb agentProvider agentSkipPermissions agentModel agentTerminalFollowMode agentTypingSpeed terminalCleanPrompt agentAudioNarration agentNarrationVoice agentNarrationRate sidebarWidth rightDockWidth sidebarPosition panelAlignment leftDockVerticalSpan rightDockVerticalSpan gitSplitRatio diffSplitRatio markdownSplitRatio primaryDockContentOrder panelContentOrder"
 
 # ---- schema-enumeration META-GATE (cheap; the enforcing check) -------------------------------------
 meta_gate() {

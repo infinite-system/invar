@@ -37,22 +37,49 @@ class $TerminalCapabilities {
     return 'ascii';
   }
 
-  /** Resolve the image-preview graphics tier. Precedence:
-   *  1. `TUI_GRAPHICS_TIER` env override (the test seam and user escape hatch) — beats everything,
-   *     including the multiplexer floor, so smokes can force any tier.
-   *  2. A positive OpenTUI capability report (the terminal's own answer), even when that answer
-   *     arrived through a multiplexer — the reply proves the query passed through.
-   *  3. A report with no rich graphics capability: half-block, including under a multiplexer, and
-   *     never second-guessed by env.
-   *  4. No report object (a caller without a renderer): a tmux floor, then conservative env
-   *     heuristics, else the universal half-block floor. A live renderer supplies a negative report
-   *     while its query is pending, so its async path can only move UP from the floor. */
+  /** Auto-detect the image-preview graphics tier, retaining the environment override for callers
+   *  without a persisted setting (the reporting instrument and older harness probes). */
   static detectGraphicsTier(
     reported: ReportedGraphicsCapabilities | null,
   ): GraphicsTier {
-    const forced = Environment.Class.env('TUI_GRAPHICS_TIER');
-    if (forced === 'kitty' || forced === 'sixel' || forced === 'halfblock')
-      return forced;
+    return (
+      this.graphicsTierEnvironmentOverride() ??
+      this.detectAutomaticGraphicsTier(reported)
+    );
+  }
+
+  /** Resolve the live application tier. Precedence is the harness/CI environment override, then the
+   *  persisted declaration, then automatic detection when the declaration is `auto`. */
+  static resolveGraphicsTier(
+    declared: GraphicsTierSetting,
+    reported: ReportedGraphicsCapabilities | null,
+  ): GraphicsTier {
+    const environmentOverride = this.graphicsTierEnvironmentOverride();
+    if (environmentOverride) return environmentOverride;
+    if (declared !== 'auto') return declared;
+    return this.detectAutomaticGraphicsTier(reported);
+  }
+
+  protected static graphicsTierEnvironmentOverride(): GraphicsTier | null {
+    const configuredTier = Environment.Class.env('TUI_GRAPHICS_TIER');
+    return configuredTier === 'kitty' ||
+      configuredTier === 'sixel' ||
+      configuredTier === 'halfblock'
+      ? configuredTier
+      : null;
+  }
+
+  /** Automatic tier selection:
+   *  1. A positive OpenTUI capability report (the terminal's own answer), even when that answer
+   *     arrived through a multiplexer — the reply proves the query passed through.
+   *  2. A report with no rich graphics capability: half-block, including under a multiplexer, and
+   *     never second-guessed by env.
+   *  3. No report object (a caller without a renderer): a tmux floor, then conservative env
+   *     heuristics, else the universal half-block floor. A live renderer supplies a negative report
+   *     while its query is pending, so its async path can only move UP from the floor. */
+  protected static detectAutomaticGraphicsTier(
+    reported: ReportedGraphicsCapabilities | null,
+  ): GraphicsTier {
     if (reported) {
       if (reported.kitty_graphics) return 'kitty';
       if (reported.sixel) return 'sixel';
@@ -77,6 +104,8 @@ export type ColorDepth = 'truecolor' | '256' | '16';
 export type GlyphLevel = 'nerd' | 'unicode' | 'ascii';
 /** How the image preview reaches the screen, richest first. */
 export type GraphicsTier = 'kitty' | 'sixel' | 'halfblock';
+/** The persisted declaration; `auto` keeps live terminal-capability detection active. */
+export type GraphicsTierSetting = 'auto' | GraphicsTier;
 
 /** The slice of OpenTUI's terminal-capability report that graphics-tier detection consumes. */
 export interface ReportedGraphicsCapabilities {

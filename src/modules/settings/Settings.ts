@@ -17,6 +17,7 @@ import type {
   PanelAlignment,
   SidebarPosition,
 } from '../layout/LayoutModel';
+import type { GraphicsTierSetting } from '../theme/TerminalCapabilities';
 import type {
   RegisteredSetting,
   SettingContribution,
@@ -51,6 +52,15 @@ class $Settings {
       'nerd',
       'unicode',
       'ascii',
+    ]);
+  }
+
+  protected static get $allowedGraphicsTiers(): ReadonlySet<GraphicsTierSetting> {
+    return this.cachedSet('$allowedGraphicsTiers', [
+      'auto',
+      'kitty',
+      'sixel',
+      'halfblock',
     ]);
   }
 
@@ -118,6 +128,9 @@ class $Settings {
   }
   get glyphMode(): Ref<GlyphMode> {
     return ref<GlyphMode>('auto');
+  }
+  get graphicsTier(): Ref<GraphicsTierSetting> {
+    return ref<GraphicsTierSetting>('auto');
   }
   get theme(): Ref<string> {
     return ref('dark');
@@ -211,6 +224,7 @@ class $Settings {
       fastScrollMultiplier: this.fastScrollMultiplier,
       scrollbarThickness: this.scrollbarThickness,
       glyphMode: this.glyphMode,
+      graphicsTier: this.graphicsTier,
       theme: this.theme,
       wordWrap: this.wordWrap,
       showActivityBar: this.showActivityBar,
@@ -512,6 +526,7 @@ class $Settings {
       fastScrollMultiplier: 3,
       scrollbarThickness: 1,
       glyphMode: 'auto',
+      graphicsTier: 'auto',
       theme: 'dark',
       wordWrap: false,
       showActivityBar: true,
@@ -587,6 +602,12 @@ class $Settings {
       this.$allowedGlyphModes.has(record.glyphMode as GlyphMode)
     ) {
       result.glyphMode = record.glyphMode as GlyphMode;
+    }
+    if (
+      typeof record.graphicsTier === 'string' &&
+      this.$allowedGraphicsTiers.has(record.graphicsTier as GraphicsTierSetting)
+    ) {
+      result.graphicsTier = record.graphicsTier as GraphicsTierSetting;
     }
     if (typeof record.theme === 'string') result.theme = record.theme;
     if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
@@ -739,6 +760,7 @@ export interface SettingsValues {
   fastScrollMultiplier: number;
   scrollbarThickness: number;
   glyphMode: GlyphMode;
+  graphicsTier: GraphicsTierSetting;
   theme: string;
   wordWrap: boolean;
   showActivityBar: boolean;

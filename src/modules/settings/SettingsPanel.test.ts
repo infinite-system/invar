@@ -107,6 +107,12 @@ describe('SettingsPanel', () => {
     panel.adjust(-1);
     expect(settings.glyphMode.value).toBe(modeBefore); // cycles back
 
+    panel.selectedIndex.value = indexOfKey(panel, 'graphicsTier');
+    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('auto');
+    panel.adjust(1);
+    expect(settings.graphicsTier.value).toBe('kitty');
+    expect(panel.rows()[panel.selectedIndex.value]?.valueText).toBe('kitty');
+
     panel.selectedIndex.value = indexOfKey(panel, 'workspaceTabPosition');
     panel.adjust(1);
     expect(settings.workspaceTabPosition.value).toBe('left');
