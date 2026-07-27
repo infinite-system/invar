@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Reactive } from 'ivue';
 import type { Palette } from '../theme/ThemePalettes';
@@ -109,7 +110,7 @@ class $PanelContentsList {
 }
 
 export namespace PanelContentsList {
-  export const $Class = $PanelContentsList;
+  export const $Class = Static($PanelContentsList);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

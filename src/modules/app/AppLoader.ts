@@ -69,6 +69,6 @@ class $AppLoader {
 }
 
 export namespace AppLoader {
-  export const $Class = $AppLoader;
-  export let Class = Static($AppLoader);
+  export const $Class = Static($AppLoader);
+  export let Class = $Class;
 }

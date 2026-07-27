@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Files } from '../system/Files';
 import type { Theme } from '../theme/Theme';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
@@ -153,7 +154,7 @@ class $BreadcrumbPicker {
 }
 
 export namespace BreadcrumbPicker {
-  export const $Class = $BreadcrumbPicker;
+  export const $Class = Static($BreadcrumbPicker);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
   export type Instance = InstanceType<typeof Class>;

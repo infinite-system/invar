@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import type { Ref } from 'vue';
 import { WrapText } from '../ui/WrapText';
 import {
@@ -400,7 +401,7 @@ class $AgentComposer {
 }
 
 export namespace AgentComposer {
-  export const $Class = $AgentComposer;
+  export const $Class = Static($AgentComposer);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

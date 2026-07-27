@@ -128,8 +128,8 @@ class $WrapBreakOpportunity {
 }
 
 export namespace WrapBreakOpportunity {
-  export const $Class = $WrapBreakOpportunity;
-  export const Class = Static($Class);
+  export const $Class = Static($WrapBreakOpportunity);
+  export const Class = $Class;
 }
 
 export type WrapBreakProfile = 'prose' | 'code';

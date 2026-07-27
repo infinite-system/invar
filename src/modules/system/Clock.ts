@@ -16,6 +16,6 @@ class $Clock {
 }
 
 export namespace Clock {
-  export const $Class = $Clock;
-  export let Class = Static($Clock);
+  export const $Class = Static($Clock);
+  export let Class = $Class;
 }

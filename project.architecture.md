@@ -39,7 +39,7 @@ visible window from the model during render; it holds no state.
 - **Plain stateful classes** — `PieceTable`, `LineIndex`, `UndoStore`, `RingBuffer`, `PackedSpans`,
   `ScreenBuffer`, `TreeSitterParser`, `LspProcess`, `LspTransport`, `DiffEngine`. Algorithms and
   resource owners; non-reactive; bridged to models via revision refs.
-- **Static capability classes** (vendored `Static()`) — `Files`, `Paths`, `Processes`,
+- **Static capability classes** (`Static()` from `ivue/extras`) — `Files`, `Paths`, `Processes`,
   `Environment`, `Clock`, `Ids`, `GitCommands`, `Logging`, `TerminalCapabilities`. Allocation-free,
   `super`-capable, replaceable, dependencies read late via static getters.
 

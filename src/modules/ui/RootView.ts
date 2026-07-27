@@ -2168,8 +2168,8 @@ class $RootView {
   }
 }
 export namespace RootView {
-  export const $Class = $RootView;
-  export const Class = Static($RootView);
+  export const $Class = Static($RootView);
+  export const Class = $Class;
 }
 // roleColor moved to EditorPaneRenderer with the editor render that used it.
 export interface RootView {

@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
@@ -240,7 +241,7 @@ class $GitPanel {
 }
 
 export namespace GitPanel {
-  export const $Class = $GitPanel;
+  export const $Class = Static($GitPanel);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

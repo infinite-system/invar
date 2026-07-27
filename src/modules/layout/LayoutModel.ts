@@ -81,10 +81,6 @@ class $LayoutModel {
         rightDockVerticalSpan: 'ends-at-panel',
       },
     ];
-    Object.defineProperty(this, '$layoutPresets', {
-      configurable: true,
-      value: presets,
-    });
     return presets;
   }
 
@@ -290,8 +286,8 @@ class $LayoutModel {
 }
 
 export namespace LayoutModel {
-  export const $Class = $LayoutModel;
-  export const Class = Static($LayoutModel);
+  export const $Class = Static($LayoutModel);
+  export const Class = $Class;
 }
 
 export type SidebarPosition = 'left' | 'right';

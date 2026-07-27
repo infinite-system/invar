@@ -26,10 +26,6 @@ class $AgentThinkingIndicator {
       'Finding the invariant…',
       'Crystallizing…',
     ]);
-    Object.defineProperty(this, '$coreWords', {
-      configurable: true,
-      value: coreWords,
-    });
     return coreWords;
   }
 
@@ -42,10 +38,6 @@ class $AgentThinkingIndicator {
       'Two-axis Auditing…',
       'Approaching the limit…',
     ]);
-    Object.defineProperty(this, '$easterEggs', {
-      configurable: true,
-      value: easterEggs,
-    });
     return easterEggs;
   }
 
@@ -65,10 +57,6 @@ class $AgentThinkingIndicator {
       ['string', 'type'],
       ['number', 'error'],
     ]);
-    Object.defineProperty(this, '$gradientSchemes', {
-      configurable: true,
-      value: gradientSchemes,
-    });
     return gradientSchemes;
   }
 
@@ -186,8 +174,8 @@ class $AgentThinkingIndicator {
 }
 
 export namespace AgentThinkingIndicator {
-  export const $Class = $AgentThinkingIndicator;
-  export const Class = Static($AgentThinkingIndicator);
+  export const $Class = Static($AgentThinkingIndicator);
+  export const Class = $Class;
 }
 
 export interface ThinkingSegment {

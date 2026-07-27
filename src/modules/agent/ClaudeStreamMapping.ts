@@ -24,45 +24,59 @@ class $ClaudeStreamMapping {
     if (!raw || typeof raw !== 'object') return [];
     const record = raw as Record<string, unknown>;
     switch (record.type) {
-    case 'system':
-      return record.subtype === 'init' ? [{ kind: 'session-start' }] : [];
-    case 'assistant': {
-      const content = (record.message as { content?: unknown })?.content;
-      if (!Array.isArray(content)) return [];
-      const events: AgentEvent[] = [];
-      for (const block of content) {
-        if (!block || typeof block !== 'object') continue;
-        const part = block as Record<string, unknown>;
-        if (part.type === 'text' && typeof part.text === 'string' && part.text) {
-          events.push({ kind: 'text-delta', text: part.text });
-        } else if (part.type === 'tool_use') {
-          events.push({ kind: 'tool-use', id: String(part.id ?? ''), name: String(part.name ?? 'tool'), input: part.input });
+      case 'system':
+        return record.subtype === 'init' ? [{ kind: 'session-start' }] : [];
+      case 'assistant': {
+        const content = (record.message as { content?: unknown })?.content;
+        if (!Array.isArray(content)) return [];
+        const events: AgentEvent[] = [];
+        for (const block of content) {
+          if (!block || typeof block !== 'object') continue;
+          const part = block as Record<string, unknown>;
+          if (
+            part.type === 'text' &&
+            typeof part.text === 'string' &&
+            part.text
+          ) {
+            events.push({ kind: 'text-delta', text: part.text });
+          } else if (part.type === 'tool_use') {
+            events.push({
+              kind: 'tool-use',
+              id: String(part.id ?? ''),
+              name: String(part.name ?? 'tool'),
+              input: part.input,
+            });
+          }
         }
+        return events;
       }
-      return events;
-    }
-    case 'user': {
-      const content = (record.message as { content?: unknown })?.content;
-      if (!Array.isArray(content)) return [];
-      const events: AgentEvent[] = [];
-      for (const block of content) {
-        if (!block || typeof block !== 'object') continue;
-        const part = block as Record<string, unknown>;
-        if (part.type === 'tool_result') {
-          events.push({
-            kind: 'tool-result',
-            id: String(part.tool_use_id ?? ''),
-            result: this.toolResultText(part.content),
-            isError: part.is_error === true,
-          });
+      case 'user': {
+        const content = (record.message as { content?: unknown })?.content;
+        if (!Array.isArray(content)) return [];
+        const events: AgentEvent[] = [];
+        for (const block of content) {
+          if (!block || typeof block !== 'object') continue;
+          const part = block as Record<string, unknown>;
+          if (part.type === 'tool_result') {
+            events.push({
+              kind: 'tool-result',
+              id: String(part.tool_use_id ?? ''),
+              result: this.toolResultText(part.content),
+              isError: part.is_error === true,
+            });
+          }
         }
+        return events;
       }
-      return events;
-    }
-    case 'result':
-      return [{ kind: 'session-end', reason: record.is_error === true ? 'error' : 'completed' }];
-    default:
-      return [];
+      case 'result':
+        return [
+          {
+            kind: 'session-end',
+            reason: record.is_error === true ? 'error' : 'completed',
+          },
+        ];
+      default:
+        return [];
     }
   }
 
@@ -82,6 +96,6 @@ class $ClaudeStreamMapping {
 }
 
 export namespace ClaudeStreamMapping {
-  export const $Class = $ClaudeStreamMapping;
-  export const Class = Static($ClaudeStreamMapping);
+  export const $Class = Static($ClaudeStreamMapping);
+  export const Class = $Class;
 }

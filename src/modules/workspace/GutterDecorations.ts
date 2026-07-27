@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import type { DocumentHandle } from './DocumentHandle';
 
 // invariant: Gutter marks come from document scoped contributions (workspace.invariants.md)
@@ -104,8 +105,8 @@ class $GutterDecorations {
 }
 
 export namespace GutterDecorations {
-  export const $Class = $GutterDecorations;
-  export let Class = $GutterDecorations;
+  export const $Class = Static($GutterDecorations);
+  export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
 

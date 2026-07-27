@@ -14,6 +14,7 @@
 // invariant: Current-line blame is a cached lookup, not a per-move git spawn (src/modules/git/git.invariants.md)
 // invariant: An unblamable file degrades to no blame, never an error (src/modules/git/git.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { Files } from '../system/Files';
@@ -173,8 +174,8 @@ class $GitBlameCache {
 }
 
 export namespace GitBlameCache {
-  export const $Class = $GitBlameCache;
-  export let Class = Reactive($GitBlameCache);
+  export const $Class = Static($GitBlameCache);
+  export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
