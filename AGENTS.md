@@ -24,6 +24,20 @@ Your inner loop is **driving the real app in your own PTY** — `scripts/harness
 3. **Write the contract only AFTER the symptom is gone**, to lock in what you achieved.
 4. **One verification pass at the end.** Then report.
 
+**FEEL-BISECT — when something "used to" work, go find the version that did.** History is
+evidence you already have. Cut scratch worktrees at candidate commits (`git worktree add
+/tmp/<name>-bisect-<sha> <sha> --detach`, then `bun install --frozen-lockfile`), drive the SAME
+gesture with the SAME settings in each, and compare. **Halve the range — do not walk commits one
+by one.** Prefer the user's real settings over defaults; a defect that only appears at their
+configured values is invisible at yours.
+
+Compare a FINGERPRINT, not a verdict: for motion, the per-frame row-crossing sequence.
+`3,3,3,3` glides; `5,1,5,1` stumbles at the same average; a sequence that does not GROW across
+successive inputs is "heavy". Judge the SHAPE — do not invent a pass/fail threshold for a felt
+quality. Once a good commit and a bad commit are identified, diff them on the relevant path: that
+diff is the finding. If NO version is good, say so with the fingerprints — the user may be
+remembering something that never existed, and that is a real answer.
+
 **SCALE PARITY — drive SMALL and LARGE, always.** The app is named Invar because a 100,000-line
 file must feel identical to a 10-line one. Any change on a per-row / per-item / per-frame path is
 not verified until you have driven it at BOTH ends of the scale and they behave the same. A fix
