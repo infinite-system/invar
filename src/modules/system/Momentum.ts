@@ -11,7 +11,7 @@
 // each caller holds in its own reactive cell.
 import { Static } from 'ivue/extras';
 
-// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
+// invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
 class $Momentum {
   protected static get $defaultOptions(): MomentumOptions {
     const defaultOptions: MomentumOptions = {
@@ -49,6 +49,7 @@ class $Momentum {
       velocity: 0,
       residual: 0,
       restEquivalentGestureVelocity: 0,
+      restEquivalentGestureImpulseUnits: 0,
     };
     Object.defineProperty(this, '$atRest', {
       configurable: true,
@@ -75,11 +76,21 @@ class $Momentum {
     return 0.3;
   }
 
-  /** How many notches' worth of velocity saturate the gain ramp. Scaling the ramp by the profile's
-   *  own impulse keeps acceleration identical across profiles — a raised velocity CAP must make
-   *  flings go farther, never make the ramp longer. */
+  /** How many notches' worth of velocity would saturate the gain ramp. Scaling by the profile's
+   *  impulse keeps acceleration identical across ceilings, while the span leaves room for separate
+   *  flicks to accumulate before physical velocity reaches its ceiling. */
   protected static get gainRampNotchSpan(): number {
-    return 3;
+    return 20;
+  }
+
+  /** The driven hard-flick shape is twelve unit impulses in one PTY write. The first such flick
+   *  reserves headroom for this many later hard flicks, regardless of the configured ceiling. */
+  protected static get hardFlickImpulseUnits(): number {
+    return 12;
+  }
+
+  protected static get followOnHardFlicksWithReservedHeadroom(): number {
+    return 2;
   }
 
   /** Wheel impulses inside this interval belong to one physical gesture. Terminal input has no
@@ -131,6 +142,9 @@ class $Momentum {
     const restEquivalentGestureVelocity = gestureContinues
       ? (momentum.restEquivalentGestureVelocity ?? 0)
       : 0;
+    const restEquivalentGestureImpulseUnits = gestureContinues
+      ? (momentum.restEquivalentGestureImpulseUnits ?? 0)
+      : 0;
     const gainScale =
       this.initialGainFraction +
       (1 - this.initialGainFraction) *
@@ -151,16 +165,47 @@ class $Momentum {
     }
     const gainedPhysicalVelocity =
       restEquivalentGestureVelocityAfterImpulse - restEquivalentGestureVelocity;
-    const velocity = momentum.velocity + gainedPhysicalVelocity;
+    const restEquivalentGestureImpulseUnitsAfterImpulse =
+      restEquivalentGestureImpulseUnits + Math.abs(deltaRows);
+    const velocityBeforeCeiling = momentum.velocity + gainedPhysicalVelocity;
+    const physicalVelocityCeiling = this.physicalVelocityCeiling(
+      restEquivalentGestureImpulseUnitsAfterImpulse,
+      options,
+    );
+    const velocity =
+      Math.sign(velocityBeforeCeiling) *
+      Math.min(Math.abs(velocityBeforeCeiling), physicalVelocityCeiling);
     return {
-      velocity: Math.max(-options.max, Math.min(options.max, velocity)),
+      velocity,
       residual: momentum.residual,
-      restEquivalentGestureVelocity: Math.max(
-        -options.max,
-        Math.min(options.max, restEquivalentGestureVelocityAfterImpulse),
-      ),
+      restEquivalentGestureVelocity: restEquivalentGestureVelocityAfterImpulse,
+      restEquivalentGestureImpulseUnits:
+        restEquivalentGestureImpulseUnitsAfterImpulse,
       lastImpulseTimestampMilliseconds: currentTimestampMilliseconds,
     };
+  }
+
+  protected static physicalVelocityCeiling(
+    restEquivalentGestureImpulseUnits: number,
+    options: MomentumOptions,
+  ): number {
+    const hardFlickCount = this.followOnHardFlicksWithReservedHeadroom + 1;
+    const velocityHeadroomPerFollowOnFlick = Math.min(
+      options.impulse * 0.75,
+      options.max / hardFlickCount,
+    );
+    const hardFlickProgress =
+      restEquivalentGestureImpulseUnits / this.hardFlickImpulseUnits;
+    const remainingHardFlicksWithReservedHeadroom = Math.max(
+      0,
+      hardFlickCount - hardFlickProgress,
+    );
+    return Math.max(
+      0,
+      options.max -
+        remainingHardFlicksWithReservedHeadroom *
+          velocityHeadroomPerFollowOnFlick,
+    );
   }
 
   /**
@@ -188,6 +233,8 @@ class $Momentum {
         velocity,
         residual,
         restEquivalentGestureVelocity: momentum.restEquivalentGestureVelocity,
+        restEquivalentGestureImpulseUnits:
+          momentum.restEquivalentGestureImpulseUnits,
         lastImpulseTimestampMilliseconds:
           momentum.lastImpulseTimestampMilliseconds,
       },
@@ -216,6 +263,9 @@ export interface ScrollMomentum {
   // Gain-curve input accumulated from notches in the current physical gesture. Optional so external
   // plain values created before this field existed enter honestly at rest-equivalent gain.
   restEquivalentGestureVelocity?: number;
+  // Absolute impulse units accumulated by the same gesture. The physical ceiling envelope uses
+  // these units to reserve visible velocity headroom for two follow-on hard flicks.
+  restEquivalentGestureImpulseUnits?: number;
   // Input cadence is the pre-motion continuation proxy. Live physical
   // motion is authoritative.
   lastImpulseTimestampMilliseconds?: number;

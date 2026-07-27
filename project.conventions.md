@@ -132,9 +132,10 @@ a mechanical checker should not be able to see.
 ## Verification (authoritative channels)
 - Semantic state → the session's `status-<session>.json` (harness `field <session> <name>`);
   NEVER pane-scrape state. Visual → FrameProbe (`TUI_FRAME_DUMP=1`, 4 RGBA lanes/cell,
-  frame-diff with a no-action control). Native caret → tmux `#{cursor_x},#{cursor_y}`.
+  frame-diff with a no-action control). Native caret → the PTY harness's cursor position from the
+  emulator grid (historically tmux `#{cursor_x},#{cursor_y}`).
 - Never pipe tsc through anything that masks the exit code: `bunx tsc --noEmit; echo TSC=$?`.
-- Every feature lands with: unit tests for extractable logic + a live tmux verification + (where
+- Every feature lands with: unit tests for extractable logic + a live PTY-harness verification + (where
   visual) a FrameProbe assertion; regressions get a permanent smoke assertion.
 - Destructive git verification runs in a SCRATCH repo under /tmp — never this repo's tree.
 - Merge gate = tsc + `bun test` + smoke ALL-PASS + invariants checker `--all --refs` 0 problems +

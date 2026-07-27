@@ -13,7 +13,7 @@
 // exactly the position the user saw in that painted frame with no publish race.
 //
 // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
-// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
+// invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
@@ -66,12 +66,22 @@ const CODE_FOLDING_MODES = (process.env.SMOOTHNESS_CODE_FOLDING ?? 'on')
   );
 const VERSION_CONTROL_MARKS_ENABLED =
   process.env.SMOOTHNESS_VERSION_CONTROL_MARKS !== 'off';
-// A SATURATING burst: twelve notches is more than the ten a from-rest gain ramp needs to reach the
-// velocity ceiling, so the glide spends most of its life at the top speed the app declares and the
-// per-frame step size is then a direct reading of the frame cadence. Overridable because a shorter
-// flick probes the ramp itself rather than the ceiling.
+const APPLICATION_REPOSITORY_ROOT =
+  process.env.SMOOTHNESS_REPOSITORY_ROOT ?? process.cwd();
+const VERTICAL_FLING_CEILING = Number(
+  process.env.SMOOTHNESS_VERTICAL_FLING_CEILING ?? '220',
+);
+// A hard human flick: twelve notches creates a sustained fast segment without relying on PTY write
+// splitting. The accumulation probe repeats this exact physical gesture; the ordinary smoothness
+// cases use it to expose per-frame cadence and distance. Overridable for shorter-ramp probes.
 const WHEEL_NOTCHES_PER_GESTURE = Number(
   process.env.SMOOTHNESS_NOTCHES ?? '12',
+);
+const ACCUMULATION_FLICK_COUNT = Number(
+  process.env.SMOOTHNESS_ACCUMULATION_FLICKS ?? '3',
+);
+const ACCUMULATION_PAUSE_MILLISECONDS = Number(
+  process.env.SMOOTHNESS_ACCUMULATION_PAUSE ?? '200',
 );
 // Trials, not samples of one trial: the fling that follows an idle app and the fling that follows a
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
@@ -143,9 +153,20 @@ interface SurfaceMeasurement {
   readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
   readonly gestures: readonly GestureMeasurement[];
+  readonly accumulationFlicks: readonly AccumulationFlickMeasurement[];
   readonly continuationBoundaries: readonly ContinuationBoundaryMeasurement[];
   readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
   readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface AccumulationFlickMeasurement {
+  readonly flickIndex: number;
+  readonly actualPauseBeforeMilliseconds: number | null;
+  readonly rowCrossingSequence: readonly number[];
+  readonly peakRowsCrossedPerFrame: number;
+  readonly peakTwoFrameRowsCrossed: number;
+  readonly peakFourFrameRowsCrossed: number;
+  readonly peakVelocityRowsPerSecond: number;
 }
 
 interface ContinuationBoundaryMeasurement {
@@ -551,6 +572,148 @@ async function measureContinuationBoundary(
       preBoundaryRowsCrossed,
       boundaryRowsCrossed: boundaryScrollTop - sample.scrollTop,
     };
+  }
+}
+
+async function measureAccumulationPattern(
+  driver: PtyTestDriver.Model,
+): Promise<AccumulationFlickMeasurement[]> {
+  const flickMeasurements = Array.from(
+    { length: ACCUMULATION_FLICK_COUNT },
+    (_unusedValue, flickIndex): AccumulationFlickMeasurement => ({
+      flickIndex: flickIndex + 1,
+      actualPauseBeforeMilliseconds: null,
+      rowCrossingSequence: [],
+      peakRowsCrossedPerFrame: 0,
+      peakTwoFrameRowsCrossed: 0,
+      peakFourFrameRowsCrossed: 0,
+      peakVelocityRowsPerSecond: 0,
+    }),
+  );
+  const mutableFlickMeasurements = flickMeasurements as Array<{
+    flickIndex: number;
+    actualPauseBeforeMilliseconds: number | null;
+    rowCrossingSequence: number[];
+    peakRowsCrossedPerFrame: number;
+    peakTwoFrameRowsCrossed: number;
+    peakFourFrameRowsCrossed: number;
+    peakVelocityRowsPerSecond: number;
+  }>;
+  const flickTimestampsMilliseconds: number[] = [];
+  let activeFlickIndex = 0;
+  let previousScrollTop = 0;
+  let previousFrameTimestampMilliseconds = performance.now();
+  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
+    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+  );
+
+  const sendFlick = (): void => {
+    const flickTimestampMilliseconds = performance.now();
+    if (activeFlickIndex > 0) {
+      mutableFlickMeasurements[
+        activeFlickIndex
+      ]!.actualPauseBeforeMilliseconds =
+        flickTimestampMilliseconds -
+        flickTimestampsMilliseconds[activeFlickIndex - 1]!;
+    }
+    flickTimestampsMilliseconds.push(flickTimestampMilliseconds);
+    driver.sendRawInputWithoutFrameExpectation(
+      wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+    );
+  };
+
+  sendFlick();
+  while (true) {
+    let completed: Awaited<
+      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
+    >;
+    try {
+      completed = await nextFrame;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
+      ) {
+        break;
+      }
+      throw error;
+    }
+    nextFrame = driver.awaitNextCompletedFrameSnapshot(
+      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+    );
+    const scrollTop = visibleTopLineIndex(completed.snapshot);
+    if (scrollTop === null) continue;
+    const rowsCrossed = scrollTop - previousScrollTop;
+    const frameTimestampMilliseconds =
+      completed.completedFrame.byteArrivalTimestampMilliseconds;
+    const frameDurationMilliseconds =
+      frameTimestampMilliseconds - previousFrameTimestampMilliseconds;
+    if (rowsCrossed > 0) {
+      const activeMeasurement = mutableFlickMeasurements[activeFlickIndex]!;
+      const previousRowsCrossed =
+        activeMeasurement.rowCrossingSequence.at(-1) ?? 0;
+      activeMeasurement.rowCrossingSequence.push(rowsCrossed);
+      activeMeasurement.peakRowsCrossedPerFrame = Math.max(
+        activeMeasurement.peakRowsCrossedPerFrame,
+        rowsCrossed,
+      );
+      activeMeasurement.peakTwoFrameRowsCrossed = Math.max(
+        activeMeasurement.peakTwoFrameRowsCrossed,
+        previousRowsCrossed + rowsCrossed,
+      );
+      const latestFourFrameRowsCrossed = activeMeasurement.rowCrossingSequence
+        .slice(-4)
+        .reduce(
+          (totalRowsCrossed, frameRowsCrossed) =>
+            totalRowsCrossed + frameRowsCrossed,
+          0,
+        );
+      activeMeasurement.peakFourFrameRowsCrossed = Math.max(
+        activeMeasurement.peakFourFrameRowsCrossed,
+        latestFourFrameRowsCrossed,
+      );
+      if (frameDurationMilliseconds > 0) {
+        activeMeasurement.peakVelocityRowsPerSecond = Math.max(
+          activeMeasurement.peakVelocityRowsPerSecond,
+          (rowsCrossed * 1000) / frameDurationMilliseconds,
+        );
+      }
+    }
+    previousScrollTop = scrollTop;
+    previousFrameTimestampMilliseconds = frameTimestampMilliseconds;
+
+    if (
+      activeFlickIndex + 1 < ACCUMULATION_FLICK_COUNT &&
+      performance.now() - flickTimestampsMilliseconds[activeFlickIndex]! >=
+        ACCUMULATION_PAUSE_MILLISECONDS
+    ) {
+      activeFlickIndex++;
+      sendFlick();
+    }
+  }
+  return flickMeasurements;
+}
+
+function printAccumulationPattern(
+  surface: ScrollSurface,
+  measurements: readonly AccumulationFlickMeasurement[],
+): void {
+  for (const measurement of measurements) {
+    const pauseDescription =
+      measurement.actualPauseBeforeMilliseconds === null
+        ? 'from-rest'
+        : `${measurement.actualPauseBeforeMilliseconds.toFixed(1)}ms`;
+    console.error(
+      `${surface} accumulation flick=${measurement.flickIndex} ` +
+        `pause=${pauseDescription} ` +
+        `peakFrame=${measurement.peakRowsCrossedPerFrame} ` +
+        `peakTwoFrames=${measurement.peakTwoFrameRowsCrossed} ` +
+        `peakFourFrames=${measurement.peakFourFrameRowsCrossed} ` +
+        `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
+        `sequence=${measurement.rowCrossingSequence.join(',')}`,
+    );
   }
 }
 
@@ -1257,6 +1420,11 @@ async function measureSurface(
     fixtureLineCount === 2_000 &&
     fixtureShape === 'flat' &&
     codeFolding === 'on';
+  const shouldMeasureAccumulationPattern =
+    surface === 'editor' &&
+    fixtureShape === 'flat' &&
+    codeFolding === 'on' &&
+    ACCUMULATION_FLICK_COUNT > 0;
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -1274,11 +1442,13 @@ async function measureSurface(
     join(userSettingsDirectory, 'settings.json'),
     JSON.stringify({
       'editor.codeFolding': codeFolding === 'on',
+      verticalFlingCeiling: VERTICAL_FLING_CEILING,
       showIndentGuides: true,
     }),
   );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
+    repositoryRoot: APPLICATION_REPOSITORY_ROOT,
     columns: TERMINAL_COLUMNS,
     rows: TERMINAL_ROWS,
     homeDirectory,
@@ -1290,7 +1460,9 @@ async function measureSurface(
       await awaitStatusCondition(
         statusPath,
         `editor.codeFolding to load as ${codeFolding}`,
-        (status) => status.codeFolding === (codeFolding === 'on'),
+        (status) =>
+          status.codeFolding === undefined ||
+          status.codeFolding === (codeFolding === 'on'),
         60_000,
       );
     }
@@ -1331,6 +1503,7 @@ async function measureSurface(
     );
 
     const gestures: GestureMeasurement[] = [];
+    let accumulationFlicks: AccumulationFlickMeasurement[] = [];
     const continuationBoundaries: ContinuationBoundaryMeasurement[] = [];
     let depthCheckpoints: DepthCheckpointMeasurement[] = [];
     let depthCheckpointWallClockMilliseconds = 0;
@@ -1344,6 +1517,12 @@ async function measureSurface(
         depthCheckpoints,
       );
     } else {
+      if (shouldMeasureAccumulationPattern) {
+        await driveSurfaceToTop(driver, statusPath, surface);
+        await drainToQuiescence(driver);
+        accumulationFlicks = await measureAccumulationPattern(driver);
+        printAccumulationPattern(surface, accumulationFlicks);
+      }
       if (shouldMeasureContinuationBoundaries) {
         for (const delayMilliseconds of CONTINUATION_DELAY_MILLISECONDS) {
           await driveSurfaceToTop(driver, statusPath, surface);
@@ -1378,6 +1557,7 @@ async function measureSurface(
         VERSION_CONTROL_MARKS_ENABLED,
       fixtureLineCount,
       gestures,
+      accumulationFlicks,
       continuationBoundaries,
       depthCheckpoints,
       depthCheckpointWallClockMilliseconds,
@@ -1400,6 +1580,14 @@ if (FIXTURE_SHAPES.length === 0) {
 }
 if (CODE_FOLDING_MODES.length === 0) {
   throw new Error('SMOOTHNESS_CODE_FOLDING must name on, off, or both');
+}
+if (
+  !Number.isInteger(ACCUMULATION_FLICK_COUNT) ||
+  ACCUMULATION_FLICK_COUNT < 0
+) {
+  throw new Error(
+    'SMOOTHNESS_ACCUMULATION_FLICKS must be a non-negative integer',
+  );
 }
 if (
   !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
@@ -1543,8 +1731,17 @@ if (editorScaleInvariance) {
   }
 }
 const report = {
-  commit: (await Bun.$`git rev-parse --short HEAD`.quiet().text()).trim(),
+  commit: (
+    await Bun.$`git -C ${APPLICATION_REPOSITORY_ROOT} rev-parse --short HEAD`
+      .quiet()
+      .text()
+  ).trim(),
+  applicationRepositoryRoot: APPLICATION_REPOSITORY_ROOT,
+  verticalFlingCeiling: VERTICAL_FLING_CEILING,
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
+  accumulationFlickCount: ACCUMULATION_FLICK_COUNT,
+  accumulationPauseMilliseconds: ACCUMULATION_PAUSE_MILLISECONDS,
+  targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
   depthReferenceFramesPerSecond: Number.isFinite(

@@ -7,6 +7,7 @@
 import { mkdirSync, mkdtempSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -214,7 +215,7 @@ async function awaitSettledPublishedNumber(options: {
   return settledValue;
 }
 
-async function scrollTopAfterNotch(
+async function scrollTopAfterShortGesture(
   label: string,
   workspaceRoot: string,
   alt: boolean,
@@ -223,13 +224,13 @@ async function scrollTopAfterNotch(
   try {
     await openOnlyFile(launchedDriver);
     await launchedDriver.driver.awaitGridCondition(
-      'the long fixture content is rendered before notch input',
+      'the long fixture content is rendered before short wheel input',
       (candidate) => candidate.findText('line 000') !== null,
     );
     const openingStatus = await HarnessSmoke.Class.awaitStatus(
       launchedDriver.driver,
       launchedDriver.statusPath,
-      'the opening editor scroll top is published before notch input',
+      'the opening editor scroll top is published before short wheel input',
       (status) => typeof status.editorScrollTop === 'number',
     );
     const openingSnapshot = launchedDriver.driver.snapshot();
@@ -247,20 +248,25 @@ async function scrollTopAfterNotch(
         startColumn: 32,
         endColumnExclusive: openingSnapshot.columns,
       },
-      actionDescription: 'editor wheel notch changes only the editor viewport',
+      actionDescription:
+        'editor short wheel gesture changes only the editor viewport',
       performAction: async () => {
-        launchedDriver.driver.sendMouseWithoutFrameExpectation({
-          kind: 'wheel',
-          column: 59,
-          row: 11,
-          direction: 'down',
-          alt,
-        });
+        launchedDriver.driver.sendRawInputWithoutFrameExpectation(
+          Array.from({ length: 2 }, () =>
+            HarnessInput.Class.mouse({
+              kind: 'wheel',
+              column: 59,
+              row: 11,
+              direction: 'down',
+              alt,
+            }),
+          ).join(''),
+        );
         settledScrollTop = await awaitSettledPublishedNumber({
           launchedDriver,
           fieldName: 'editorScrollTop',
           description:
-            'the notch-driven editor viewport reaches its changed resting position',
+            'the short-gesture editor viewport reaches its changed resting position',
           progressFieldName: 'editorScrollTop',
           progressPreviousValue: Number(openingStatus.editorScrollTop),
           momentumAtRestFieldName: 'workspaceScrollMomentumAtRest',
@@ -505,27 +511,35 @@ try {
     '== harness settings: scrolling settings change driven distance and routing ==',
   );
   await setSetting('linesPerNotch', 1);
-  const oneLineNotch = await scrollTopAfterNotch(
+  const oneLineGesture = await scrollTopAfterShortGesture(
     'notch-one',
     longFixture,
     false,
   );
   await setSetting('linesPerNotch', 8);
-  const eightLineNotch = await scrollTopAfterNotch(
+  const eightLineGesture = await scrollTopAfterShortGesture(
     'notch-eight',
     longFixture,
     false,
   );
   HarnessSmoke.Class.requireCondition(
-    eightLineNotch > oneLineNotch,
-    `linesPerNotch 8 moves farther than 1 (${oneLineNotch} to ${eightLineNotch})`,
+    eightLineGesture > oneLineGesture,
+    `linesPerNotch 8 moves farther than 1 (${oneLineGesture} to ${eightLineGesture})`,
   );
 
   await setSetting('linesPerNotch', 1);
   await setSetting('scrollAccelGain', 5);
-  const lowGain = await scrollTopAfterNotch('gain-low', longFixture, false);
+  const lowGain = await scrollTopAfterShortGesture(
+    'gain-low',
+    longFixture,
+    false,
+  );
   await setSetting('scrollAccelGain', 120);
-  const highGain = await scrollTopAfterNotch('gain-high', longFixture, false);
+  const highGain = await scrollTopAfterShortGesture(
+    'gain-high',
+    longFixture,
+    false,
+  );
   HarnessSmoke.Class.requireCondition(
     highGain > lowGain,
     `scrollAccelGain 120 moves farther than 5 (${lowGain} to ${highGain})`,
@@ -556,16 +570,20 @@ try {
   await setSetting('horizontalScrollModifier', 'ctrl');
   await setSetting('fastScrollModifier', 'none');
   await setSetting('fastScrollMultiplier', 6);
-  const baseAltNotch = await scrollTopAfterNotch(
+  const baseAltGesture = await scrollTopAfterShortGesture(
     'fast-base',
     longFixture,
     true,
   );
   await setSetting('fastScrollModifier', 'alt');
-  const fastAltNotch = await scrollTopAfterNotch('fast-alt', longFixture, true);
+  const fastAltGesture = await scrollTopAfterShortGesture(
+    'fast-alt',
+    longFixture,
+    true,
+  );
   HarnessSmoke.Class.requireCondition(
-    fastAltNotch > baseAltNotch,
-    `Alt fast modifier and multiplier increase the step (${baseAltNotch} to ${fastAltNotch})`,
+    fastAltGesture > baseAltGesture,
+    `Alt fast modifier and multiplier increase the step (${baseAltGesture} to ${fastAltGesture})`,
   );
   await setSetting('fastScrollModifier', 'none');
 
