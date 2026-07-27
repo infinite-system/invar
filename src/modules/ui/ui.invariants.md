@@ -1021,7 +1021,9 @@ strictly positive gain-ramped impulse. Successive flicks therefore produce
 strictly increasing visible per-gesture adjacent-four-frame peak row crossings
 until the ceiling is reached. A twelve-impulse hard first flick retains
 velocity headroom for at least two more hard flicks at every supported
-configured ceiling.
+configured ceiling. Same-direction impulse velocity received at the configured
+ceiling is retained to replace subsequent frame decay, so rapid input sustains
+the ceiling instead of being discarded.
 
 **Scope:** `Momentum.addImpulse` for every horizontal and vertical
 wheel-momentum consumer. Contrary-direction input still halts and restarts,
@@ -1040,11 +1042,19 @@ of a full-gain notch changes the four-frame row-crossing budget by more than
 three rows at the declared default 30-frame cadence. The underlying gain
 curve stays impulse-scaled and therefore does not slow when the ceiling
 rises; only a flick that would consume the reserved headroom is limited. The
-contrary-direction branch still halts before restarting.
+velocity rejected by that first/second-flick envelope is deliberately not
+banked. Once the true configured ceiling is available, excess
+`ceilingSustainingVelocity` replaces only the velocity lost to each decay step;
+physical velocity never exceeds the configured maximum. A separate physical
+impulse-event count opens that reserve only after 36 events, independent of
+lines-per-notch scaling; row-scaled impulse units continue to govern the
+landed envelope unchanged. The contrary-direction branch still halts before
+restarting.
 
 **Generates:** One continuous motion whose speed grows across successive
-same-direction flicks; no hitch at a gesture boundary; a raised ceiling that
-requires continued input to reach and remains reachable.
+same-direction flicks; no hitch at a gesture boundary; dense input that
+sustains capped speed rather than disappearing; a raised ceiling that requires
+continued input to reach and remains reachable.
 
 **Rejected alternatives:** Three-impulse ramp — a 12-notch flick pre-saturates
 a 320 row-per-second ceiling and absorbs every later notch. A fixed
@@ -1052,20 +1062,26 @@ twenty-impulse ramp with a hard clamp — it climbs at 320 but produces the
 `10 → 7 → 7` fingerprint at 120. Cap-scaled gain ramp — raising the ceiling
 makes acceleration slower. Clock-only continuation — a glide can outlive the
 150 ms proxy and reset gain while visibly moving. Reset gain on a rendered
-frame — PTY chunk timing would split one physical gesture.
+frame — PTY chunk timing would split one physical gesture. Discard velocity at
+the true ceiling — rapid notches vanish while the same notches delivered after
+decay keep moving the viewport.
 
 **Evidence:** `src/modules/system/Momentum.ts`;
 `src/modules/system/Momentum.test.ts` (`successive hard flicks retain headroom
-across configured ceilings`);
+across configured ceilings`; `rapid hard flicks sustain capped speed with
+excess impulses`);
 `scripts/harness/measure-scroll-smoothness.ts` (per-frame row-crossing
 sequences from three 12-notch flicks at the default 220 row-per-second
 ceiling and a raised 320 row-per-second ceiling, separated by 200 ms, plus a
-120 / 220 / 320 / 480 ceiling sweep and the delayed-notch sweep).
+rapid 60-notch burst, a 120 / 220 / 320 / 480 ceiling sweep, and the
+delayed-notch sweep).
 
 **Impossible if true:** A same-direction notch below the ceiling leaving
 physical velocity unchanged; successive flick peaks staying flat before the
 ceiling; a 12-notch first flick pre-saturating any supported configured
-ceiling; continued same-direction input never reaching the ceiling.
+ceiling; continued same-direction input never reaching the ceiling; rapid
+notches at the configured ceiling producing less sustained travel than their
+impulse energy can carry.
 
 **Verification:** `bun test src/modules/system/Momentum.test.ts && bash
 scripts/behavioral-contracts.sh`; `glide-accumulation` drives three separated
@@ -1073,7 +1089,10 @@ flicks first at the default 220 ceiling and then at a raised 320 ceiling, and
 requires strictly increasing adjacent-four-frame peak row crossings in both
 rows. The four-frame window preserves the per-frame fingerprint while leaving
 enough integer cell-grid resolution for three levels under the default
-ceiling. `glide-continuation` retains the delayed single-notch boundary check.
+ceiling. The same contract drives a rapid 60-notch burst at the default
+ceiling and requires its 24 post-ceiling impulses to remain visible as at
+least 24 ceiling-budget completed frames. `glide-continuation` retains the
+delayed single-notch boundary check.
 
 **Status:** provisional
 

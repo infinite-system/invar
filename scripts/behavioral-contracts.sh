@@ -342,11 +342,13 @@ fi
 # 13, so three strict levels cannot fit; four frames retain the exact sequence while adding enough
 # cell-grid resolution to distinguish all three. This is deliberately separate from
 # glide-continuation: non-decrease admits a flat peak shape, while accumulation does not.
-echo "== CONTRACT glide-accumulation: successive flick peaks climb until the ceiling =="
+echo "== CONTRACT glide-accumulation: separated peaks climb; rapid input sustains the ceiling =="
 ACCUMULATION_DEFAULT_JSON="$ROOT/artifacts/glide-accumulation-default.json"
 ACCUMULATION_DEFAULT_LOG="$ROOT/artifacts/glide-accumulation-default.log"
 ACCUMULATION_RAISED_JSON="$ROOT/artifacts/glide-accumulation-raised.json"
 ACCUMULATION_RAISED_LOG="$ROOT/artifacts/glide-accumulation-raised.log"
+ACCUMULATION_RAPID_JSON="$ROOT/artifacts/glide-accumulation-rapid.json"
+ACCUMULATION_RAPID_LOG="$ROOT/artifacts/glide-accumulation-rapid.log"
 if SMOOTHNESS_GESTURES=0 \
    SMOOTHNESS_CONTINUATION_DELAYS='' \
    SMOOTHNESS_ACCUMULATION_FLICKS=3 \
@@ -368,17 +370,32 @@ if SMOOTHNESS_GESTURES=0 \
    SMOOTHNESS_FIXTURES=flat \
    SMOOTHNESS_CODE_FOLDING=on \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-     >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG"; then
+     >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG" \
+   && SMOOTHNESS_GESTURES=1 \
+   SMOOTHNESS_NOTCHES=60 \
+   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+   SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
+   SMOOTHNESS_LINE_COUNTS=2000 \
+   SMOOTHNESS_SURFACES=editor \
+   SMOOTHNESS_FIXTURES=flat \
+   SMOOTHNESS_CODE_FOLDING=on \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$ACCUMULATION_RAPID_JSON" 2>"$ACCUMULATION_RAPID_LOG"; then
   read -r accumulation_positive_control_rejected \
-    accumulation_production_climbs accumulation_default_peaks \
+    accumulation_rapid_positive_control_rejected \
+    accumulation_production_holds accumulation_default_peaks \
     accumulation_raised_peaks accumulation_default_sequences \
     accumulation_raised_sequences accumulation_delays \
+    accumulation_rapid_ceiling_frames accumulation_rapid_required_frames \
+    accumulation_rapid_sequence \
     <<<"$(python3 -c "
 import json
 import math
 
 default_report = json.load(open('$ACCUMULATION_DEFAULT_JSON'))
 raised_report = json.load(open('$ACCUMULATION_RAISED_JSON'))
+rapid_report = json.load(open('$ACCUMULATION_RAPID_JSON'))
 
 def case_values(report):
     flicks = report['cases'][0]['accumulationFlicks']
@@ -424,15 +441,45 @@ positive_control_rejected = not climbs_with_headroom(
     flat_positive_control,
     default_budget,
 )
-production_climbs = (
+rapid_gesture = rapid_report['cases'][0]['gestures'][0]
+rapid_positions = rapid_gesture['positions']
+rapid_row_crossings = [
+    later_position - earlier_position
+    for earlier_position, later_position
+    in zip(rapid_positions, rapid_positions[1:])
+]
+rapid_ceiling_crossing_floor = math.floor(
+    rapid_report['verticalFlingCeiling']
+    / rapid_report['targetFramesPerSecond']
+)
+rapid_required_ceiling_frames = (
+    rapid_report['wheelNotchesPerGesture'] - 3 * 12
+)
+rapid_ceiling_frame_count = sum(
+    row_crossing >= rapid_ceiling_crossing_floor
+    for row_crossing in rapid_row_crossings
+)
+decaying_positive_control = list(
+    range(rapid_ceiling_crossing_floor, 0, -1)
+)
+rapid_positive_control_rejected = (
+    sum(
+        row_crossing >= rapid_ceiling_crossing_floor
+        for row_crossing in decaying_positive_control
+    )
+    < rapid_required_ceiling_frames
+)
+production_holds = (
     climbs_with_headroom(default_peaks, default_budget)
     and climbs_with_headroom(raised_peaks, raised_budget)
     and len(default_delays) == 2
     and len(raised_delays) == 2
+    and rapid_ceiling_frame_count >= rapid_required_ceiling_frames
 )
 print(
     int(positive_control_rejected),
-    int(production_climbs),
+    int(rapid_positive_control_rejected),
+    int(production_holds),
     ','.join(str(peak) for peak in default_peaks),
     ','.join(str(peak) for peak in raised_peaks),
     '/'.join(default_sequences),
@@ -441,6 +488,9 @@ print(
         f'{delay:.1f}'
         for delay in default_delays + raised_delays
     ),
+    rapid_ceiling_frame_count,
+    rapid_required_ceiling_frames,
+    ','.join(str(rows) for rows in rapid_row_crossings),
 )
 ")"
   if [ "${accumulation_positive_control_rejected:-0}" -eq 1 ] 2>/dev/null; then
@@ -448,19 +498,35 @@ print(
   else
     bad "glide-accumulation positive control accepted a flat peak sequence"
   fi
-  if [ "${accumulation_production_climbs:-0}" -eq 1 ] 2>/dev/null; then
-    accumulation_message="successive flick peaks climb with headroom"
+  if [ "${accumulation_rapid_positive_control_rejected:-0}" -eq 1 ] \
+    2>/dev/null; then
+    pass "glide-accumulation positive control rejects a decaying rapid burst"
+  else
+    bad "glide-accumulation positive control accepted a decaying rapid burst"
+  fi
+  if [ "${accumulation_production_holds:-0}" -eq 1 ] 2>/dev/null; then
+    accumulation_message="separated flick peaks climb and rapid input"
+    accumulation_message+=" sustains the ceiling"
     accumulation_message+=" (default=$accumulation_default_peaks,"
     accumulation_message+=" raised=$accumulation_raised_peaks,"
     accumulation_message+=" delays=${accumulation_delays}ms,"
+    accumulation_message+=" rapidCeilingFrames="
+    accumulation_message+="$accumulation_rapid_ceiling_frames/"
+    accumulation_message+="$accumulation_rapid_required_frames,"
+    accumulation_message+=" rapidSequence=$accumulation_rapid_sequence,"
     accumulation_message+=" defaultSequences=$accumulation_default_sequences,"
     accumulation_message+=" raisedSequences=$accumulation_raised_sequences)"
     pass "$accumulation_message"
   else
-    accumulation_message="successive flick peaks did not climb with headroom"
+    accumulation_message="separated peaks or rapid ceiling duration failed"
     accumulation_message+=" (default=${accumulation_default_peaks:-missing},"
     accumulation_message+=" raised=${accumulation_raised_peaks:-missing},"
     accumulation_message+=" delays=${accumulation_delays:-missing}ms,"
+    accumulation_message+=" rapidCeilingFrames="
+    accumulation_message+="${accumulation_rapid_ceiling_frames:-missing}/"
+    accumulation_message+="${accumulation_rapid_required_frames:-missing},"
+    accumulation_message+=" rapidSequence="
+    accumulation_message+="${accumulation_rapid_sequence:-missing},"
     accumulation_message+=" defaultSequences="
     accumulation_message+="${accumulation_default_sequences:-missing},"
     accumulation_message+=" raisedSequences="
@@ -471,6 +537,7 @@ else
   bad "glide-accumulation instrument did not complete — see accumulation logs"
   sed -n '1,12p' "$ACCUMULATION_DEFAULT_LOG"
   sed -n '1,12p' "$ACCUMULATION_RAISED_LOG"
+  sed -n '1,12p' "$ACCUMULATION_RAPID_LOG"
 fi
 
 # ---- CONTRACT: fold-dense full-stack cadence (RATCHET: real package JSON stayed slow) ---------------

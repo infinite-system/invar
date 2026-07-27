@@ -126,6 +126,49 @@ describe('scroll-momentum', () => {
       );
     }
     expect(defaultFirstFlick.velocity).toBeCloseTo(148.94, 2);
+    expect(defaultFirstFlick.ceilingSustainingVelocity).toBe(0);
+
+    let rowScaledFlicks = Momentum.Class.atRest;
+    for (let impulseNumber = 0; impulseNumber < 25; impulseNumber++) {
+      rowScaledFlicks = Momentum.Class.addImpulse(
+        rowScaledFlicks,
+        3,
+        defaultCeilingOptions,
+        0,
+      );
+    }
+    expect(rowScaledFlicks.ceilingSustainingVelocity).toBe(0);
+  });
+
+  test('rapid hard flicks sustain capped speed with excess impulses', () => {
+    const verticalOptions = Momentum.Class.verticalOptions;
+    let momentum = Momentum.Class.atRest;
+    for (let notchNumber = 0; notchNumber < 60; notchNumber++) {
+      momentum = Momentum.Class.addImpulse(momentum, 1, verticalOptions, 0);
+    }
+
+    expect(momentum.velocity).toBe(verticalOptions.max);
+    expect(momentum.ceilingSustainingVelocity).toBeGreaterThan(0);
+
+    let cappedFrameCount = 0;
+    for (
+      let frameNumber = 0;
+      frameNumber < 300 && Momentum.Class.isMoving(momentum);
+      frameNumber++
+    ) {
+      momentum = Momentum.Class.stepMomentum(
+        momentum,
+        1 / 30,
+        verticalOptions,
+      ).momentum;
+      expect(Math.abs(momentum.velocity)).toBeLessThanOrEqual(
+        verticalOptions.max,
+      );
+      if (momentum.velocity === verticalOptions.max) cappedFrameCount++;
+    }
+
+    expect(cappedFrameCount).toBeGreaterThanOrEqual(24);
+    expect(Momentum.Class.isMoving(momentum)).toBe(false);
   });
 
   test('a live glide continues gain outside the input cadence window', () => {
