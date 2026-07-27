@@ -31,3 +31,7 @@ dist/
 # Large fixtures are GENERATED here and cached, never committed — a 100k-line
 # file in git lives in every clone forever and churns on every regeneration.
 tmp/
+
+# macOS AppleDouble metadata from the Parallels shared mount
+._*
+.DS_Store

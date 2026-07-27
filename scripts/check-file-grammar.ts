@@ -811,7 +811,13 @@ function collectTypeScriptFiles(absolutePath: string): string[] {
     } else if (
       directoryEntry.isFile() &&
       /\.tsx?$/.test(directoryEntry.name) &&
-      !directoryEntry.name.endsWith('.d.ts')
+      !directoryEntry.name.endsWith('.d.ts') &&
+      // `._Foo.ts` is macOS AppleDouble metadata, written by the editor host
+      // whenever a file is saved over the Parallels shared mount. It is not
+      // source, but it ends in `.ts`, so the walk used to hand it to the grammar
+      // rules and demand `class $._Foo` — reddening the gate for a file the
+      // author never wrote, on a change unrelated to it.
+      !directoryEntry.name.startsWith('._')
     ) {
       fileNames.push(entryPath);
     }
