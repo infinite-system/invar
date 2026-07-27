@@ -96,3 +96,19 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 | `src/modules/settings/Settings.test.ts` | assertions 58 → 64, waits 10 → 11. Covers the primary-dock order default, shared validation and deduplication, save output, and reload round-trip. |
 | `src/modules/ui/ContentOrderDrag.test.ts` | assertions 0 → 4, waits 0 → 1. New file. Proves pointer movement is inert before and after a drag and delegates the active drag to the persisted `PanelHost` reorder seam. |
 | `src/modules/ui/PanelHost.test.ts` | assertions 57 → 67, waits 15 → 18. Covers dormant identifiers as inert membership gaps, deterministic unseen-content append, retained disable/re-enable slots, and persisted visible reorder across a dormant identifier. |
+
+- `src/modules/keybindings/KeybindingDefaults.test.ts` — assertions: 62, waits: 0
+  (was 63/0) — merge reconciliation with the inline-rewrite plugin landing
+  (`ac868f4`). That landing moved the inline-rewrite chords out of the canonical
+  binding layer into `InlineRewriteContributor`, and deleted this file's
+  `inline rewrite chords resolve without spending editor Tab` test accordingly;
+  the branch had forked before that and a naive union resurrected it, where it
+  asserted against a layer that no longer carries those bindings. Removed here.
+  The resolution assertion it carried is preserved at
+  `src/modules/inline-rewrite/InlineRewriteContributor.test.ts:113`.
+  DELIBERATELY RETAINED: `inline rewrite modified chords arrive through both
+  OpenTUI parsers`. That assertion (encoded bytes -> parsed event, both parser
+  modes) was DROPPED by `ac868f4` with no replacement anywhere in the tree, and
+  it is parser-level — independent of where the bindings are registered — so it
+  still passes and still guards the #93 property that a chord must actually
+  ARRIVE, not merely resolve.

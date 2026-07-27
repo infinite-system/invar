@@ -187,32 +187,6 @@ test('activity and panel lists share Alt arrow reorder gestures', () => {
   );
 });
 
-test('inline rewrite chords resolve without spending editor Tab', () => {
-  const registry = registryWithCanonicalLayer();
-  registry.registerGuard('inlineRewriteVisible', () => true);
-  const resolve = (
-    name: string,
-    modifiers: Partial<typeof unmodifiedEvent>,
-  ): string | null =>
-    registry.resolve({ ...unmodifiedEvent, ...modifiers, name }, 'editor', 0)
-      .action;
-
-  expect(resolve('r', { ctrl: true, shift: true })).toBe(
-    'inlineRewrite.request',
-  );
-  expect(resolve('right', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.accept',
-  );
-  expect(resolve('down', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.next',
-  );
-  expect(resolve('up', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.previous',
-  );
-  expect(resolve('escape', {})).toBe('inlineRewrite.reject');
-  expect(resolve('tab', {})).toBe('editor.indent');
-});
-
 test('inline rewrite modified chords arrive through both OpenTUI parsers', () => {
   const encodedChords = [
     '\x1b[27;6;114~',
