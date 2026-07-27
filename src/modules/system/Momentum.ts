@@ -11,7 +11,7 @@
 // each caller holds in its own reactive cell.
 import { Static } from 'ivue/extras';
 
-// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
+// invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
 class $Momentum {
   protected static get $defaultOptions(): MomentumOptions {
     const defaultOptions: MomentumOptions = {
@@ -75,11 +75,11 @@ class $Momentum {
     return 0.3;
   }
 
-  /** How many notches' worth of velocity saturate the gain ramp. Scaling the ramp by the profile's
-   *  own impulse keeps acceleration identical across profiles — a raised velocity CAP must make
-   *  flings go farther, never make the ramp longer. */
+  /** How many notches' worth of velocity would saturate the gain ramp. Scaling by the profile's
+   *  impulse keeps acceleration identical across ceilings, while the span leaves room for separate
+   *  flicks to accumulate before physical velocity reaches its ceiling. */
   protected static get gainRampNotchSpan(): number {
-    return 3;
+    return 20;
   }
 
   /** Wheel impulses inside this interval belong to one physical gesture. Terminal input has no

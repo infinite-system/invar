@@ -1013,45 +1013,56 @@ scripts/harness/smoke-terminal-harness.ts`.
 
 **Last refined:** 2026-07-26
 
-### A same-direction notch never slows a live glide
+### Same-direction notches accumulate until the glide ceiling
 
-**Invariant:** If a same-direction wheel notch is delivered while physical
-velocity remains above the halt threshold, then the notch continues the live
-motion and instantaneous velocity cannot fall across its boundary.
+**Invariant:** If same-direction wheel notches arrive while a glide is live and
+physical velocity is below its configured ceiling, then every notch adds a
+strictly positive gain-ramped impulse. Successive flicks therefore produce
+strictly increasing visible per-gesture adjacent-two-frame peak row crossings
+until the ceiling is reached; a first flick cannot pre-saturate a raised
+ceiling.
 
-**Scope:** `Momentum.addImpulse` for every horizontal and vertical wheel-momentum consumer. Contrary
-direction input still halts and restarts, and direct or programmatic scroll still adopts and stops.
+**Scope:** `Momentum.addImpulse` for every horizontal and vertical
+wheel-momentum consumer. Contrary-direction input still halts and restarts,
+direct or programmatic scroll still adopts and stops, and velocity may remain
+flat only after the configured ceiling is genuinely reached.
 
 **Mechanism:** `Momentum.addImpulse` treats velocity at or above
-`stopVelocity` as authoritative continuation and uses the 150 ms
-`lastImpulseTimestampMilliseconds` window only before live motion can
-establish that fact. It preserves `restEquivalentGestureVelocity` across the
-glide and adds the continued gain to physical `velocity`; the
-contrary-direction branch still halts before restarting.
+`stopVelocity` as authoritative continuation and uses the 150 ms input-cadence
+window only before live motion can establish that fact. It preserves
+`restEquivalentGestureVelocity` across the glide, ramps gain over twenty
+impulses, adds that gain to physical `velocity`, and applies the configured
+ceiling only to the resulting velocity. The contrary-direction branch still
+halts before restarting.
 
-**Generates:** Same-direction notches that accelerate one continuous motion;
-no visible hitch at a gesture boundary; one continuation rule shared by every
-`Momentum` consumer.
+**Generates:** One continuous motion whose speed grows across successive
+same-direction flicks; no hitch at a gesture boundary; a raised ceiling that
+requires continued input to reach and remains reachable.
 
-**Rejected alternatives:** Clock-only continuation — a glide can outlive the
-150 ms proxy, resetting gain while the surface is visibly moving. Reset gain
-on a rendered frame — one PTY write may be parsed across frames, so renderer
-timing would split one physical gesture.
+**Rejected alternatives:** Three-impulse ramp — a 12-notch flick pre-saturates
+a 320 row-per-second ceiling and absorbs every later notch. Cap-scaled ramp —
+raising the ceiling makes acceleration slower. Clock-only continuation — a
+glide can outlive the 150 ms proxy and reset gain while visibly moving. Reset
+gain on a rendered frame — PTY chunk timing would split one physical gesture.
 
 **Evidence:** `src/modules/system/Momentum.ts`;
-`src/modules/system/Momentum.test.ts` (`a live glide continues gain outside
-the input cadence window`);
-`scripts/harness/measure-scroll-smoothness.ts` (200, 250, and 300 ms
-delayed-notch sweep).
+`src/modules/system/Momentum.test.ts` (`successive raised-ceiling flicks
+accumulate before reaching the ceiling`);
+`scripts/harness/measure-scroll-smoothness.ts` (per-frame row-crossing
+sequences from three 12-notch flicks at a 320 row-per-second ceiling,
+separated by 200 ms, plus the delayed-notch sweep).
 
-**Impossible if true:** A same-direction notch delivered during a live glide
-reducing instantaneous velocity; the boundary frame crossing fewer rows than
-the immediately preceding frame under the same render cadence.
+**Impossible if true:** A same-direction notch below the ceiling leaving
+physical velocity unchanged; successive flick peaks staying flat before the
+ceiling; a 12-notch first flick pre-saturating a 320 row-per-second ceiling;
+continued same-direction input never reaching the ceiling.
 
 **Verification:** `bun test src/modules/system/Momentum.test.ts && bash
-scripts/behavioral-contracts.sh`; the `glide-continuation` sweep drives
-delayed notches after the 150 ms cadence window and compares pre-boundary and
-boundary row-crossing counts.
+scripts/behavioral-contracts.sh`; `glide-accumulation` drives three separated
+flicks and requires strictly increasing adjacent-two-frame peak row crossings
+through the ceiling-reaching third flick. The two-frame window preserves the
+per-frame fingerprint while removing a one-row cell-quantization phase tie.
+`glide-continuation` retains the delayed single-notch boundary check.
 
 **Status:** provisional
 
