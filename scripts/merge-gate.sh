@@ -153,8 +153,9 @@ reporting_step() {
 }
 
 # SWAP (2026-07-24, user-approved): the PTY harness suite is the per-gate smoke phase and the
-# TerminalEmulator conformance corpus directly specifies its screen oracle in bun test. All tmux
-# originals run only with INVAR_FULL_TMUX=1 (weekly cron / audits).
+# TerminalEmulator conformance corpus directly specifies its screen oracle in bun test. Retained tmux
+# originals run only with INVAR_FULL_TMUX=1 (weekly cron / audits); strict-subset duplicates may be
+# parked when their gated harness twin is declared as the replacement in project.coverage-deltas.md.
 # Contract: harness.invariants.md "The conformance corpus replaces the tmux ring".
 FULL_TMUX_SKIPPED=0
 gate_worker_count="${INVAR_GATE_WORKERS:-6}"
@@ -508,7 +509,6 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: open-project" bash scripts/smoke-openproject.sh
   parallel_safe_full_tmux_smoke "smoke: search-mouse" bash scripts/smoke-search-mouse.sh
   parallel_safe_full_tmux_smoke "smoke: gutter-diff" bash scripts/smoke-gutter-diff.sh
-  parallel_safe_full_tmux_smoke "smoke: diff-overview" bash scripts/smoke-diff-overview.sh
   parallel_safe_full_tmux_smoke "smoke: markdown"     bash scripts/smoke-markdown.sh
   # Guarded inside the script: SKIPs cleanly (exit 0) when typescript-language-server is absent.
   parallel_safe_full_tmux_smoke "smoke: goto-definition" bash scripts/smoke-goto-definition.sh
@@ -518,9 +518,6 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: image-preview" bash scripts/smoke-image-preview.sh
   parallel_safe_full_tmux_smoke "smoke: pixel-preview" bash scripts/smoke-pixel-preview.sh
   parallel_safe_full_tmux_smoke "smoke: agent"       bash scripts/smoke-agent.sh
-  quiet_serial_full_tmux_smoke "smoke: agent-pane-ux" bash scripts/smoke-agent-pane-ux.sh
-  parallel_safe_full_tmux_smoke "smoke: agent-permissions" bash scripts/smoke-agent-permissions.sh
-  parallel_safe_full_tmux_smoke "smoke: agent-engine-switch" bash scripts/smoke-agent-engine-switch.sh
   parallel_safe_full_tmux_smoke "smoke: agent-search" bash scripts/smoke-agent-search.sh
   # Bracketed paste (clipboard / Hex dictation): a framed \e[200~…\e[201~ burst lands in the editor
   # (single + multi-line), the terminal PTY, and the agent composer — the paste-event routing fix.
@@ -542,8 +539,9 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: activitybar" bash scripts/smoke-activitybar.sh
   parallel_safe_full_tmux_smoke "smoke: panel-split" bash scripts/smoke-panel-split.sh
   # invariant: Shared seam changes verify every consumer (scripts/harness/harness.invariants.md)
-  # PTY byte-harness wave 2 ports. These are additive: every tmux original above remains registered as
-  # the independent terminal-emulator verification ring.
+  # PTY byte-harness wave 2 ports. Distinct tmux originals above remain registered as the independent
+  # terminal-emulator verification ring; proven strict-subset duplicates are parked and declared in
+  # project.coverage-deltas.md.
   # Moved to the POOL: this smoke's only reason to be in the quiet tail was a 600 ms
   # frame-silence window, and that window was proven UNSOUND earlier tonight (GitWatcher's
   # 5 s reconcile floor legitimately repaints after the fixture creates an untracked file,

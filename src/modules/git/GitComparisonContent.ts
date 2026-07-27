@@ -1,5 +1,6 @@
 import { Files } from '../system/Files';
 import { DiffView } from '../diff/DiffView';
+import type { Ref } from 'vue';
 import type { FindBarTarget } from '../search/FindBar';
 import type {
   EditorSurfaceContent,
@@ -18,6 +19,7 @@ class $GitComparisonContent implements EditorSurfaceContent {
     protected readonly gitWorkspace: GitWorkspace.Model,
     request: GitComparisonRequest,
     protected readonly context: EditorSurfaceContentContext,
+    protected readonly layoutRevision?: Ref<number>,
   ) {
     this.view = this.createComparisonView(request);
   }
@@ -77,6 +79,7 @@ class $GitComparisonContent implements EditorSurfaceContent {
     if (laidOutHeight !== this.lastLaidOutHeight) {
       this.lastLaidOutHeight = laidOutHeight;
       this.view.update(); // now at the real height -> renders the full window
+      if (this.layoutRevision) this.layoutRevision.value += 1;
       live = true; // keep frames coming until the height stabilizes
     }
     return live;

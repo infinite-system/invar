@@ -660,6 +660,37 @@ class $DiffView {
     );
   }
 
+  headerGeometry(): readonly DiffHeaderSegmentGeometry[] {
+    const row = Number(this.headerRenderable.y);
+    const left = Number(this.headerRenderable.x);
+    return this.headerSegments.map((segment) => ({
+      kind: segment.kind,
+      row,
+      startColumn: left + segment.startColumn,
+      endColumnExclusive: left + segment.endColumnExclusive,
+    }));
+  }
+
+  overviewRulerGeometry(): DiffOverviewRulerGeometry | null {
+    const bodyWidth = Math.max(1, Number(this.bodyRenderable.width) || 1);
+    const bodyHeight = Math.max(1, Number(this.bodyRenderable.height) || 1);
+    const geometry = this.ScrollbarGeometry.scrollbarGeometry(
+      'vertical',
+      { top: 0, left: 0, width: bodyWidth, height: bodyHeight },
+      {
+        scrollSize: this.alignment.alignedRows.length,
+        viewportSize: this.viewportAlignedRowCount(),
+        scrollPosition: this.alignedRowScrollOffset.value,
+      },
+    );
+    if (!geometry) return null;
+    return {
+      top: Number(this.bodyRenderable.y) + geometry.trackTop,
+      left: Number(this.bodyRenderable.x) + Math.max(0, geometry.trackLeft - 1),
+      height: geometry.trackLength,
+    };
+  }
+
   // --- projection ---
 
   update(): void {
@@ -1692,6 +1723,19 @@ export interface DiffViewOptions extends DiffViewCallbacks {
   previousVersionPath?: string;
   currentVersionPath?: string;
   parentRenderable?: Renderable;
+}
+
+export interface DiffHeaderSegmentGeometry {
+  readonly kind: 'openFull' | 'nextChange' | 'previousChange';
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+export interface DiffOverviewRulerGeometry {
+  readonly top: number;
+  readonly left: number;
+  readonly height: number;
 }
 
 interface HeaderSegment {

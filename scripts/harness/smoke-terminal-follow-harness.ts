@@ -13,6 +13,8 @@ import {
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -138,14 +140,27 @@ class $SmokeTerminalFollowHarness {
         'agent',
         'agent footer is focused for compact-chrome inspection',
       );
-      const footerSnapshot = await driver.awaitGridCondition(
-        'the focused agent footer omits terminal-follow chrome',
-        (candidate) =>
-          candidate.findText('perm:') !== null &&
-          candidate.findText('follow:') === null,
+      const footerStatus = await this.awaitStatus(
+        'the off-mode agent footer owner publishes its geometry',
+        (status) =>
+          status.terminalFollowMode === 'off' &&
+          this.agentFooterRegion(status) !== null,
       );
+      const footerRegion = this.agentFooterRegion(footerStatus);
+      if (!footerRegion) throw new Error('Agent footer geometry disappeared.');
+      const offModeFooterSnapshot = await driver.awaitGridCondition(
+        'the focused agent footer is visible in its published region',
+        (candidate) =>
+          this.agentFooterSignature(candidate, footerRegion) !== null,
+      );
+      const offModeFooterSignature = this.agentFooterSignature(
+        offModeFooterSnapshot,
+        footerRegion,
+      );
+      if (!offModeFooterSignature)
+        throw new Error('Agent footer signature disappeared.');
       HarnessSmoke.Class.pass(
-        `compact footer is settled on row ${footerSnapshot.findText('perm:')?.row}`,
+        `compact footer is settled on owned row ${footerRegion.row}`,
       );
       await this.clickEditorToBlurPanel();
       driver.sendKeys('F1');
@@ -165,6 +180,20 @@ class $SmokeTerminalFollowHarness {
         (status) =>
           status.paletteOpen === false &&
           status.terminalFollowMode === 'follow-all',
+      );
+      await this.focusPanelCell(
+        'agent',
+        'agent footer is focused after the palette changes follow mode',
+      );
+      const followAllFooterSnapshot = await driver.awaitGridCondition(
+        'the agent-owned footer remains visible after the follow-mode change',
+        (candidate) =>
+          this.agentFooterSignature(candidate, footerRegion) !== null,
+      );
+      HarnessSmoke.Class.requireCondition(
+        this.agentFooterSignature(followAllFooterSnapshot, footerRegion) ===
+          offModeFooterSignature,
+        'terminal-follow state changes leave the agent footer byte-identical',
       );
       await this.cycleModeByKeyboard(
         'on-error',
@@ -760,6 +789,69 @@ class $SmokeTerminalFollowHarness {
     );
   }
 
+  protected static agentFooterRegion(
+    status: StatusSnapshot,
+  ): AgentFooterRegion | null {
+    const bottomPanel = (
+      status.layoutSlots as Record<string, Rectangle> | undefined
+    )?.bottomPanel;
+    const headings = status.panelHeadingGeometry;
+    const contentIdentifiers = status.panelCellIds;
+    const cellColumns = status.panelCellColumns;
+    if (
+      !bottomPanel ||
+      !Array.isArray(headings) ||
+      !Array.isArray(contentIdentifiers) ||
+      !Array.isArray(cellColumns)
+    ) {
+      return null;
+    }
+    const agentHeading = (
+      headings as unknown as readonly PanelHeadingGeometryStatus[]
+    ).find((heading) => heading.contentId === 'agent');
+    const contentIndex = contentIdentifiers.indexOf('agent');
+    const panelViewportRows = Number(status.terminalRows);
+    const contentColumns = Number(cellColumns[contentIndex]);
+    if (
+      !agentHeading ||
+      contentIndex < 0 ||
+      panelViewportRows <= 0 ||
+      contentColumns <= 0
+    ) {
+      return null;
+    }
+    let startColumn = bottomPanel.left + 1;
+    for (
+      let precedingIndex = 0;
+      precedingIndex < contentIndex;
+      precedingIndex += 1
+    ) {
+      startColumn += Number(cellColumns[precedingIndex]) + 1;
+    }
+    return {
+      row: agentHeading.row + panelViewportRows,
+      startColumn,
+      endColumnExclusive: startColumn + contentColumns,
+    };
+  }
+
+  protected static agentFooterSignature(
+    snapshot: HarnessSnapshot.Model,
+    footerRegion: AgentFooterRegion,
+  ): string | null {
+    const footerCells = snapshot
+      .rowCells(footerRegion.row)
+      .slice(footerRegion.startColumn, footerRegion.endColumnExclusive);
+    const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
+    if (
+      !footerCells.some((cell) => cell.characters === themedSearchGlyph) ||
+      !footerCells.some((cell) => cell.characters.trim().length > 0)
+    ) {
+      return null;
+    }
+    return footerCells.map((cell) => cell.characters).join('\0');
+  }
+
   protected static async sendAgentPrompt(
     prompt: string,
     predicate: (status: StatusSnapshot) => boolean,
@@ -917,4 +1009,22 @@ interface ScrollbackToolSnapshot {
   readonly totalLines: number;
   readonly startLine: number;
   readonly endLine: number;
+}
+
+interface Rectangle {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface PanelHeadingGeometryStatus {
+  readonly contentId: string;
+  readonly row: number;
+}
+
+interface AgentFooterRegion {
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
 }
