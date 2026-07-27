@@ -9,7 +9,6 @@
 //   bun scripts/ast-query.ts classes              # every class declaration
 //   bun scripts/ast-query.ts module-functions     # module-level function declarations (grammar debt)
 //   bun scripts/ast-query.ts private-members      # `private` modifiers + #private names (grammar debt)
-//   bun scripts/ast-query.ts hash-private-members # #private names only
 //   bun scripts/ast-query.ts text-input-census    # one-line input state + editing members outside TextInputModel
 // Flags: --tests (include *.test.ts)  --path <glob-root under repo, default src/modules>
 //        --require-zero (exit 1 when structural matches remain)
@@ -34,10 +33,7 @@ const queryName = positional[1];
 
 if (!queryMode) {
   console.error(
-    'usage: bun scripts/ast-query.ts ' +
-      '<calls|named-calls|news|identifiers|classes|module-functions|' +
-      'private-members|hash-private-members|text-input-census> ' +
-      '[name] [--tests] [--path <root>]',
+    'usage: bun scripts/ast-query.ts <calls|named-calls|news|identifiers|classes|module-functions|private-members|text-input-census> [name] [--tests] [--path <root>]',
   );
   process.exit(2);
 }
@@ -147,7 +143,7 @@ const predicateByMode: Record<string, MatchPredicate> = {
       ? `function ${node.name?.text ?? '<anonymous>'}`
       : null,
   'private-members': (node) => {
-    if (ts.isPrivateIdentifier(node)) return node.text;
+    if (ts.isPrivateIdentifier(node)) return `#${node.text}`;
     if (
       (ts.isPropertyDeclaration(node) || ts.isMethodDeclaration(node)) &&
       node.modifiers?.some(
@@ -161,8 +157,6 @@ const predicateByMode: Record<string, MatchPredicate> = {
     }
     return null;
   },
-  'hash-private-members': (node) =>
-    ts.isPrivateIdentifier(node) ? node.text : null,
   'text-input-census': (node) => textInputCensusLabel(node),
 };
 

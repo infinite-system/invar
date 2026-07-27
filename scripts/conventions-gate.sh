@@ -49,15 +49,6 @@ if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   fail=1
 fi
 
-# 1.6) HASH-PRIVATE CENSUS: Static() publishes a subclass receiver, which
-#      cannot access a #private name declared by its superclass. Parse the
-#      syntax so comments and strings containing a hash cannot trip the ban.
-if ! "$bun_binary" scripts/ast-query.ts hash-private-members \
-  --require-zero; then
-  echo "CONVENTIONS FAIL: #private member prevents Static() subclass access"
-  fail=1
-fi
-
 # 1.75) STATIC-GETTER NAMING: cached versus uncached is the `$` axis; literal versus derived is
 #       the CASE axis. Parse getter bodies so comments, strings, and instance knobs cannot satisfy
 #       or trip the rule by textual coincidence.
