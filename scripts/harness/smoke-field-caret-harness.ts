@@ -44,7 +44,7 @@ interface CaretCellStatus {
 // or a glyph re-breaks on every palette change. The tone POLICY (three distinct tones, focus quieter
 // than hover) is proven in src/modules/ui/TextFieldPainter.test.ts; here the three are also asserted
 // pairwise different in observed cells.
-const palette = ThemePalettes.Class.dark;
+const palette = ThemePalettes.Class.DARK;
 const idleTone = TextFieldPainter.Class.toneFor(palette, 'idle');
 const focusedTone = TextFieldPainter.Class.toneFor(palette, 'focused');
 const hoveredTone = TextFieldPainter.Class.toneFor(palette, 'hovered');

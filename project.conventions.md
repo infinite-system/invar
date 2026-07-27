@@ -76,6 +76,14 @@ a mechanical checker should not be able to see.
   a subclass/other module needs the raw form (parallel to `$Class`); (b) manifest-shape only — a tiny
   inline-body capability needs no `$name` backing. CHECK: conventions-gate grep for the `…Implementation`
   suffix.
+- STATIC GETTERS HAVE TWO ORTHOGONAL NAMING AXES: `$` says cached versus uncached; CASE says
+  literal versus derived. A get-only static `$name` is computed once per receiving class by
+  `Static()` and shallow-frozen; a static getter without `$` stays live. Independently, a static
+  getter whose only statement returns a literal or frozen literal composition and never reads
+  `this` is `SCREAMING_SNAKE_CASE`; a getter that reads `this` or composes over another member is
+  lower camel case. Instance getters remain lower camel case because a literal there is usually a
+  per-instance knob. `$SCREAMING_SNAKE_CASE` is always invalid: a literal needs no cache. CHECK:
+  `scripts/check-static-getter-naming.ts` in `scripts/conventions-gate.sh`.
 - ~~MANIFEST-ON-TOP~~ **SUPERSEDED (2026-07-24) by FILE GRAMMAR below.** The old layout kept
   `$name` implementations as module-level function declarations below the manifest (hoisting made
   it safe). Retired by user adjudication: detached functions are invisible to BOTH governing

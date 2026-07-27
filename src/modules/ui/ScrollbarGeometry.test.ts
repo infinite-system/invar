@@ -114,7 +114,7 @@ describe('minimum thumb', () => {
       ),
     );
     expect(thumbCells).toBeGreaterThanOrEqual(
-      ScrollbarGeometry.Class.minimumThumbCells,
+      ScrollbarGeometry.Class.MINIMUM_THUMB_CELLS,
     );
   });
 });

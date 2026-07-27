@@ -9,11 +9,6 @@ import { Static } from 'ivue/extras';
 import type { SymbolClass } from '../theme/ThemeIcons';
 
 class $CompletionItemKinds {
-  protected static cache<Value>(propertyName: string, value: Value): Value {
-    Object.defineProperty(this, propertyName, { configurable: true, value });
-    return value;
-  }
-
   /**
    * Every `CompletionItemKind` in the LSP specification (1–25), grouped into the symbol-class
    * families. The grouping is the point: a reader scanning a member list needs "callable versus
@@ -22,10 +17,10 @@ class $CompletionItemKinds {
    * `File` and `Folder` deliberately resolve to the SAME classes the file tree uses, so a path
    * completion is marked exactly like the row it will open.
    */
-  protected static get $symbolClassesByCompletionItemKind(): Readonly<
+  protected static get SYMBOL_CLASSES_BY_COMPLETION_ITEM_KIND(): Readonly<
     Record<number, SymbolClass>
   > {
-    return this.cache('$symbolClassesByCompletionItemKind', {
+    return {
       1: 'unclassified', // Text — the provider offered a word with no semantics
       2: 'callable', // Method
       3: 'callable', // Function
@@ -51,7 +46,7 @@ class $CompletionItemKinds {
       23: 'value', // Event — a member you subscribe to, not one you call
       24: 'syntax', // Operator
       25: 'type', // TypeParameter
-    });
+    };
   }
 
   /**
@@ -62,7 +57,7 @@ class $CompletionItemKinds {
   static symbolClassFor(completionItemKind: number | null): SymbolClass {
     if (completionItemKind === null) return 'unclassified';
     return (
-      this.$symbolClassesByCompletionItemKind[completionItemKind] ??
+      this.SYMBOL_CLASSES_BY_COMPLETION_ITEM_KIND[completionItemKind] ??
       'unclassified'
     );
   }

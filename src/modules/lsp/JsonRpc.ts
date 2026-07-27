@@ -1,10 +1,6 @@
 class $JsonRpc {
   protected static get $headerEnd(): Uint8Array {
     const headerEnd = new Uint8Array([13, 10, 13, 10]);
-    Object.defineProperty(this, '$headerEnd', {
-      configurable: true,
-      value: headerEnd,
-    });
     return headerEnd;
   }
 
@@ -25,14 +21,19 @@ class $JsonRpc {
     if (body.byteLength > this.maxMessageBytes) {
       throw new Error(`JSON-RPC message exceeds ${this.maxMessageBytes} bytes`);
     }
-    const header = new TextEncoder().encode(`Content-Length: ${body.byteLength}\r\n\r\n`);
+    const header = new TextEncoder().encode(
+      `Content-Length: ${body.byteLength}\r\n\r\n`,
+    );
     const framed = new Uint8Array(header.byteLength + body.byteLength);
     framed.set(header, 0);
     framed.set(body, header.byteLength);
     return framed;
   }
 
-  createRequest<Result = unknown>(method: string, params?: unknown): PendingJsonRpcRequest<Result> {
+  createRequest<Result = unknown>(
+    method: string,
+    params?: unknown,
+  ): PendingJsonRpcRequest<Result> {
     const id = ++this.requestId;
     const message: JsonRpcRequest = { jsonrpc: '2.0', id, method };
     if (params !== undefined) message.params = params;
@@ -77,7 +78,9 @@ class $JsonRpc {
         const headerEnd = this.findHeaderEnd();
         if (headerEnd < 0) {
           if (this.bytes.byteLength > this.maxHeaderBytes) {
-            throw new Error(`JSON-RPC header exceeds ${this.maxHeaderBytes} bytes`);
+            throw new Error(
+              `JSON-RPC header exceeds ${this.maxHeaderBytes} bytes`,
+            );
           }
           break;
         }
@@ -96,7 +99,8 @@ class $JsonRpc {
 
       const decoded = new TextDecoder().decode(body);
       const parsed: unknown = JSON.parse(decoded);
-      if (!this.isMessage(parsed)) throw new Error('Invalid JSON-RPC 2.0 message');
+      if (!this.isMessage(parsed))
+        throw new Error('Invalid JSON-RPC 2.0 message');
       this.correlate(parsed);
       messages.push(parsed);
     }
@@ -148,13 +152,20 @@ class $JsonRpc {
       const name = line.slice(0, separator).trim().toLowerCase();
       if (name !== 'content-length') continue;
       const value = line.slice(separator + 1).trim();
-      if (!/^\d+$/.test(value)) throw new Error('Invalid JSON-RPC Content-Length');
+      if (!/^\d+$/.test(value))
+        throw new Error('Invalid JSON-RPC Content-Length');
       length = Number(value);
       break;
     }
     if (length === null) throw new Error('Missing JSON-RPC Content-Length');
-    if (!Number.isSafeInteger(length) || length < 0 || length > this.maxMessageBytes) {
-      throw new Error(`JSON-RPC Content-Length exceeds ${this.maxMessageBytes} bytes`);
+    if (
+      !Number.isSafeInteger(length) ||
+      length < 0 ||
+      length > this.maxMessageBytes
+    ) {
+      throw new Error(
+        `JSON-RPC Content-Length exceeds ${this.maxMessageBytes} bytes`,
+      );
     }
     return length;
   }
@@ -174,7 +185,10 @@ class $JsonRpc {
     this.pending.delete(message.id);
     if (message.error) {
       const error = new Error(message.error.message);
-      Object.assign(error, { code: message.error.code, data: message.error.data });
+      Object.assign(error, {
+        code: message.error.code,
+        data: message.error.data,
+      });
       pending.reject(error);
       return;
     }
@@ -217,9 +231,7 @@ export interface JsonRpcResponse {
 }
 
 export type JsonRpcMessage =
-  | JsonRpcRequest
-  | JsonRpcNotification
-  | JsonRpcResponse;
+  JsonRpcRequest | JsonRpcNotification | JsonRpcResponse;
 
 export interface PendingJsonRpcRequest<Result = unknown> {
   id: JsonRpcId;

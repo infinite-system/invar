@@ -3,7 +3,7 @@ import { AgentTranscriptProjection } from './AgentTranscriptProjection';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import type { TranscriptEntry } from './AgentEvents.interface';
 
-const darkPalette = ThemePalettes.Class.dark;
+const darkPalette = ThemePalettes.Class.DARK;
 
 const project = (
   transcript: TranscriptEntry[],
@@ -11,7 +11,15 @@ const project = (
   expanded: ReadonlySet<number> = new Set(),
   glyph: 'nerd' | 'unicode' | 'ascii' = 'unicode',
   activeProviderLabel = 'Claude',
-) => AgentTranscriptProjection.Class.project(transcript, darkPalette, glyph, width, expanded, activeProviderLabel);
+) =>
+  AgentTranscriptProjection.Class.project(
+    transcript,
+    darkPalette,
+    glyph,
+    width,
+    expanded,
+    activeProviderLabel,
+  );
 
 describe('AgentTranscriptProjection.project', () => {
   test('an empty transcript projects the single empty-state hint (not a toggle row)', () => {
@@ -37,12 +45,34 @@ describe('AgentTranscriptProjection.project', () => {
       ],
       40,
     );
-    expect(lines[0]).toMatchObject({ text: 'You', bold: true, entryIndex: 0, toggleable: false });
-    expect(lines[1]).toMatchObject({ text: 'hello', bold: false, entryIndex: 0 });
+    expect(lines[0]).toMatchObject({
+      text: 'You',
+      bold: true,
+      entryIndex: 0,
+      toggleable: false,
+    });
+    expect(lines[1]).toMatchObject({
+      text: 'hello',
+      bold: false,
+      entryIndex: 0,
+    });
     // A blank turn-separator line follows the user turn (airy spacing), then the assistant.
-    expect(lines[2]).toMatchObject({ text: '', entryIndex: -1, toggleable: false });
-    expect(lines[3]).toMatchObject({ text: 'Claude', bold: true, entryIndex: 1, toggleable: false });
-    expect(lines[4]).toMatchObject({ text: 'hi there', bold: false, entryIndex: 1 });
+    expect(lines[2]).toMatchObject({
+      text: '',
+      entryIndex: -1,
+      toggleable: false,
+    });
+    expect(lines[3]).toMatchObject({
+      text: 'Claude',
+      bold: true,
+      entryIndex: 1,
+      toggleable: false,
+    });
+    expect(lines[4]).toMatchObject({
+      text: 'hi there',
+      bold: false,
+      entryIndex: 1,
+    });
   });
 
   test('a JUST-POSTED user turn is followed by a blank line (before any reply exists)', () => {
@@ -52,8 +82,20 @@ describe('AgentTranscriptProjection.project', () => {
   });
 
   test('user→assistant has EXACTLY one blank between them (no double)', () => {
-    const lines = project([{ role: 'user', text: 'hi' }, { role: 'assistant', text: 'yo' }], 40);
-    expect(lines.map((line) => line.text)).toEqual(['You', 'hi', '', 'Claude', 'yo']);
+    const lines = project(
+      [
+        { role: 'user', text: 'hi' },
+        { role: 'assistant', text: 'yo' },
+      ],
+      40,
+    );
+    expect(lines.map((line) => line.text)).toEqual([
+      'You',
+      'hi',
+      '',
+      'Claude',
+      'yo',
+    ]);
   });
 
   test('assistant rows are labeled by the engine that PRODUCED them (entry-stamped, per entry)', () => {
@@ -70,12 +112,28 @@ describe('AgentTranscriptProjection.project', () => {
   });
 
   test('an assistant entry WITHOUT an engine stamp (historical) defaults to the Claude label', () => {
-    const lines = project([{ role: 'assistant', text: 'old turn' }], 40, new Set(), 'unicode', 'Codex');
+    const lines = project(
+      [{ role: 'assistant', text: 'old turn' }],
+      40,
+      new Set(),
+      'unicode',
+      'Codex',
+    );
     expect(lines[0]).toMatchObject({ text: 'Claude', bold: true });
   });
 
   test('a Read tool-use collapses to the human phrase "Reading <basename>", not raw JSON', () => {
-    const lines = project([{ role: 'tool-use', id: 't1', name: 'Read', input: { file_path: '/a/b/Foo.ts' } }], 60);
+    const lines = project(
+      [
+        {
+          role: 'tool-use',
+          id: 't1',
+          name: 'Read',
+          input: { file_path: '/a/b/Foo.ts' },
+        },
+      ],
+      60,
+    );
     expect(lines).toHaveLength(1);
     expect(lines[0]!.text).toContain('Reading Foo.ts');
     expect(lines[0]!.text).not.toContain('file_path'); // no JSON key names
@@ -83,7 +141,17 @@ describe('AgentTranscriptProjection.project', () => {
   });
 
   test('a tool-use collapses to ONE toggleable summary line with caret + gear + name + input', () => {
-    const lines = project([{ role: 'tool-use', id: 't1', name: 'Bash', input: { command: 'echo hi' } }], 60);
+    const lines = project(
+      [
+        {
+          role: 'tool-use',
+          id: 't1',
+          name: 'Bash',
+          input: { command: 'echo hi' },
+        },
+      ],
+      60,
+    );
     expect(lines).toHaveLength(1);
     const summary = lines[0]!;
     expect(summary.toggleable).toBe(true);
@@ -95,26 +163,40 @@ describe('AgentTranscriptProjection.project', () => {
   });
 
   test('an expanded tool-use shows an expanded caret header PLUS pretty multi-line input', () => {
-    const entry: TranscriptEntry = { role: 'tool-use', id: 't1', name: 'Bash', input: { command: 'echo hi' } };
+    const entry: TranscriptEntry = {
+      role: 'tool-use',
+      id: 't1',
+      name: 'Bash',
+      input: { command: 'echo hi' },
+    };
     const lines = project([entry], 60, new Set([0]));
     expect(lines.length).toBeGreaterThan(1); // header + pretty body
     expect(lines[0]!.text).toContain('▾'); // expanded caret
-    expect(lines.every((line) => line.entryIndex === 0 && line.toggleable)).toBe(true);
+    expect(
+      lines.every((line) => line.entryIndex === 0 && line.toggleable),
+    ).toBe(true);
     expect(lines.some((line) => line.text.includes('"command"'))).toBe(true); // pretty JSON
   });
 
   test('a tool-result collapses to ✓ (ok) / ✗ (error) summary rows', () => {
-    const ok = project([{ role: 'tool-result', id: 't1', result: 'done ok', isError: false }], 60);
+    const ok = project(
+      [{ role: 'tool-result', id: 't1', result: 'done ok', isError: false }],
+      60,
+    );
     expect(ok[0]!.text).toContain('✓');
     expect(ok[0]!.toggleable).toBe(true);
-    const bad = project([{ role: 'tool-result', id: 't1', result: 'boom', isError: true }], 60);
+    const bad = project(
+      [{ role: 'tool-result', id: 't1', result: 'boom', isError: true }],
+      60,
+    );
     expect(bad[0]!.text).toContain('✗');
   });
 
   test('bodies WRAP to width — no projected line exceeds the width in code points', () => {
     const long = 'x'.repeat(200);
     const lines = project([{ role: 'assistant', text: long }], 20);
-    for (const line of lines) expect(Array.from(line.text).length).toBeLessThanOrEqual(20);
+    for (const line of lines)
+      expect(Array.from(line.text).length).toBeLessThanOrEqual(20);
     expect(lines.length).toBeGreaterThan(1); // it actually wrapped
   });
 
@@ -139,17 +221,30 @@ describe('AgentTranscriptProjection.project', () => {
   });
 
   test('a collapsed summary is truncated to width (never overflows the pane)', () => {
-    const lines = project([{ role: 'tool-use', id: 't1', name: 'Bash', input: 'a'.repeat(200) }], 25);
+    const lines = project(
+      [{ role: 'tool-use', id: 't1', name: 'Bash', input: 'a'.repeat(200) }],
+      25,
+    );
     expect(lines).toHaveLength(1);
     expect(Array.from(lines[0]!.text).length).toBeLessThanOrEqual(25);
   });
 
   test('the ascii glyph tier uses > / v carets and a * tool glyph (no unicode)', () => {
-    const collapsed = project([{ role: 'tool-use', id: 't1', name: 'Bash', input: 'x' }], 40, new Set(), 'ascii');
+    const collapsed = project(
+      [{ role: 'tool-use', id: 't1', name: 'Bash', input: 'x' }],
+      40,
+      new Set(),
+      'ascii',
+    );
     expect(collapsed[0]!.text).toContain('>');
     expect(collapsed[0]!.text).toContain('*');
     expect(collapsed[0]!.text).not.toContain('⚙');
-    const expanded = project([{ role: 'tool-use', id: 't1', name: 'Bash', input: 'x' }], 40, new Set([0]), 'ascii');
+    const expanded = project(
+      [{ role: 'tool-use', id: 't1', name: 'Bash', input: 'x' }],
+      40,
+      new Set([0]),
+      'ascii',
+    );
     expect(expanded[0]!.text).toContain('v');
   });
 });
@@ -176,7 +271,15 @@ describe('AgentTranscriptProjection.firstVisibleLine', () => {
 describe('permission-request projection', () => {
   test('PENDING renders a highlighted two-line prompt: the human phrase + the y/n/a keys', () => {
     const lines = project(
-      [{ role: 'permission-request', id: 'p1', toolName: 'Bash', input: { command: 'rm -rf /tmp/build' }, status: 'pending' }],
+      [
+        {
+          role: 'permission-request',
+          id: 'p1',
+          toolName: 'Bash',
+          input: { command: 'rm -rf /tmp/build' },
+          status: 'pending',
+        },
+      ],
       70,
     );
     expect(lines).toHaveLength(2);
@@ -191,7 +294,16 @@ describe('permission-request projection', () => {
 
   test('a PENDING prompt names the engine that is asking (entry-stamped)', () => {
     const lines = project(
-      [{ role: 'permission-request', id: 'p1', toolName: 'Bash', input: { command: 'ls' }, status: 'pending', engine: 'codex' }],
+      [
+        {
+          role: 'permission-request',
+          id: 'p1',
+          toolName: 'Bash',
+          input: { command: 'ls' },
+          status: 'pending',
+          engine: 'codex',
+        },
+      ],
       70,
     );
     expect(lines[0]!.text).toContain('? Codex wants to run');
@@ -200,7 +312,15 @@ describe('permission-request projection', () => {
 
   test('RESOLVED renders one compact record line (✓ allowed / ✗ denied)', () => {
     const allowed = project(
-      [{ role: 'permission-request', id: 'p1', toolName: 'Read', input: { file_path: '/a/Foo.ts' }, status: 'allowed' }],
+      [
+        {
+          role: 'permission-request',
+          id: 'p1',
+          toolName: 'Read',
+          input: { file_path: '/a/Foo.ts' },
+          status: 'allowed',
+        },
+      ],
       70,
     );
     expect(allowed).toHaveLength(1);
@@ -208,7 +328,15 @@ describe('permission-request projection', () => {
     expect(allowed[0]!.text).toContain('Reading Foo.ts');
 
     const denied = project(
-      [{ role: 'permission-request', id: 'p2', toolName: 'Bash', input: { command: 'x' }, status: 'denied' }],
+      [
+        {
+          role: 'permission-request',
+          id: 'p2',
+          toolName: 'Bash',
+          input: { command: 'x' },
+          status: 'denied',
+        },
+      ],
       70,
     );
     expect(denied).toHaveLength(1);
@@ -218,8 +346,13 @@ describe('permission-request projection', () => {
 
 describe('system (engine-switch) note projection', () => {
   test('a system entry renders one dim, em-dash-framed aside (not toggleable, synthetic index)', () => {
-    const lines = project([{ role: 'system', text: 'switched to codex — context ported' }], 70);
-    const banner = lines.find((line) => line.text.includes('switched to codex'));
+    const lines = project(
+      [{ role: 'system', text: 'switched to codex — context ported' }],
+      70,
+    );
+    const banner = lines.find((line) =>
+      line.text.includes('switched to codex'),
+    );
     expect(banner).toBeDefined();
     expect(banner!.text).toBe('— switched to codex — context ported —');
     expect(banner!.toggleable).toBe(false);
@@ -238,7 +371,8 @@ describe('per-entry memoization (review B7 — O(changed), not O(transcript))', 
     // Nothing changed → identical line OBJECTS (cache hits), not merely equal content.
     expect(second[0]).toBe(first[0]);
     expect(second.length).toBe(first.length);
-    for (let index = 0; index < first.length; index += 1) expect(second[index]).toBe(first[index]);
+    for (let index = 0; index < first.length; index += 1)
+      expect(second[index]).toBe(first[index]);
 
     // Mutate the assistant text (streaming) → ONLY its lines recompute; the user's stay identical.
     (transcript[1] as { text: string }).text = 'growing more';
@@ -248,7 +382,9 @@ describe('per-entry memoization (review B7 — O(changed), not O(transcript))', 
   });
 
   test('a width/expand change recomputes (the cache keys on every shaping input)', () => {
-    const transcript: TranscriptEntry[] = [{ role: 'tool-use', id: 't1', name: 'Bash', input: { command: 'x' } }];
+    const transcript: TranscriptEntry[] = [
+      { role: 'tool-use', id: 't1', name: 'Bash', input: { command: 'x' } },
+    ];
     const collapsed = project(transcript, 40);
     const expanded = project(transcript, 40, new Set([0]));
     expect(expanded.length).toBeGreaterThan(collapsed.length);

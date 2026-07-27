@@ -4,11 +4,6 @@ import { Static } from 'ivue/extras';
 import type { GlyphLevel } from './TerminalCapabilities';
 
 class $ThemeIcons {
-  protected static cache<Value>(propertyName: string, value: Value): Value {
-    Object.defineProperty(this, propertyName, { configurable: true, value });
-    return value;
-  }
-
   // THE symbol-mark table: one row per capability tier, one column per symbol class. Every surface
   // that marks a classified thing — the file tree, the breadcrumb popup, the completion popup —
   // classifies into a `SymbolClass` and reads its mark here. There is no second table and no second
@@ -28,8 +23,8 @@ class $ThemeIcons {
   //
   // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
   // invariant: The glyph ladder degrades icons single-cell and legible (src/modules/theme/theme.invariants.md)
-  protected static get $symbolMarks(): Record<GlyphLevel, SymbolMarkSet> {
-    return this.cache('$symbolMarks', {
+  protected static get SYMBOL_MARKS(): Record<GlyphLevel, SymbolMarkSet> {
+    return {
       nerd: {
         directoryOpen: '\u{f07c}',
         directoryClosed: '\u{f07b}',
@@ -125,18 +120,18 @@ class $ThemeIcons {
         syntax: 'k',
         unclassified: '.',
       },
-    });
+    };
   }
 
   // The filesystem classifier's data: an extension names a file FAMILY, never a mark. Extensions that
   // shared a mark at every tier before this table existed share a class now, which is why the map
   // loses nothing — `.ts`/`.tsx`, `.js`/`.jsx`, the four image extensions, and `.toml`/`.yaml`/`.yml`
   // each painted one glyph per tier already.
-  protected static get $symbolClassesByFileExtension(): Record<
+  protected static get SYMBOL_CLASSES_BY_FILE_EXTENSION(): Record<
     string,
     SymbolClass
   > {
-    return this.cache('$symbolClassesByFileExtension', {
+    return {
       ts: 'typescript',
       tsx: 'typescript',
       js: 'javascript',
@@ -158,7 +153,7 @@ class $ThemeIcons {
       toml: 'configuration',
       yaml: 'configuration',
       yml: 'configuration',
-    });
+    };
   }
 
   // WHO OWNS WHICH MARK. Every mark that can land in a list row's mark column or a single-cell chrome
@@ -187,9 +182,9 @@ class $ThemeIcons {
   // disclosure). Auditing those is a separate change, because resolving any of them moves a hit
   // column.
   protected static get $markOwnerships(): readonly MarkOwnership[] {
-    const unicodeVocabulary = this.$interfaceGlyphVocabularies.unicode;
-    const unicodeSymbolMarks = this.$symbolMarks.unicode;
-    return this.cache('$markOwnerships', [
+    const unicodeVocabulary = this.INTERFACE_GLYPH_VOCABULARIES.unicode;
+    const unicodeSymbolMarks = this.SYMBOL_MARKS.unicode;
+    return [
       { mark: unicodeVocabulary.activityFiles, owner: 'activity: Explorer' },
       {
         mark: unicodeVocabulary.activitySourceControl,
@@ -213,27 +208,27 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.foldOpen, owner: 'the open fold control' },
       { mark: unicodeVocabulary.foldClosed, owner: 'the closed fold control' },
       {
-        mark: this.$tabSeparators.unicode,
+        mark: this.TAB_SEPARATORS.unicode,
         owner: 'the buffer-tab separator',
       },
       {
-        mark: this.$terminalIcons.unicode,
+        mark: this.TERMINAL_ICONS.unicode,
         owner: 'the status-bar terminal affordance',
       },
       {
-        mark: this.$settingsIcons.unicode,
+        mark: this.SETTINGS_ICONS.unicode,
         owner: 'the status-bar settings affordance',
       },
       {
-        mark: this.$agentIcons.unicode,
+        mark: this.AGENT_ICONS.unicode,
         owner: 'the status-bar agent affordance',
       },
       {
-        mark: this.$rightDockIcons.unicode,
+        mark: this.RIGHT_DOCK_ICONS.unicode,
         owner: 'the status-bar right-dock affordance',
       },
       {
-        mark: this.$alertIcons.unicode,
+        mark: this.ALERT_ICONS.unicode,
         owner: 'the un-openable path warning',
       },
       {
@@ -246,40 +241,37 @@ class $ThemeIcons {
         mark,
         owner: `symbol class: ${symbolClass}`,
       })),
-    ]);
+    ];
   }
 
   // The sharings that are INTENDED or KNOWN, each with its reason. A sharing absent from this map
   // fails the gate; a sharing listed here that is no longer real also fails, so the list cannot rot
   // into an allowlist nobody revisits.
   protected static get $declaredMarkSharings(): ReadonlyMap<string, string> {
-    return this.cache(
-      '$declaredMarkSharings',
-      new Map([
-        [
-          this.$symbolMarks.unicode.versionControl,
-          'INTENDED. The Source Control activity item and a git file row mean the SAME thing — ' +
-            'version control — so one mark is consistency, not ambiguity. This is the rule the ' +
-            'other entries fail: a mark may be shared only by owners that mean the same thing.',
-        ],
-        [
-          this.$symbolMarks.unicode.configuration,
-          'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
-            'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
-            '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
-            '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
-            'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
-            'its own change deliberately rather than picked in passing.',
-        ],
-        [
-          this.$tabSeparators.unicode,
-          'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
-            'paint the chevron with different meanings. They are in different chrome strips and no ' +
-            'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
-            'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
-        ],
-      ]),
-    );
+    return new Map([
+      [
+        this.SYMBOL_MARKS.unicode.versionControl,
+        'INTENDED. The Source Control activity item and a git file row mean the SAME thing — ' +
+          'version control — so one mark is consistency, not ambiguity. This is the rule the ' +
+          'other entries fail: a mark may be shared only by owners that mean the same thing.',
+      ],
+      [
+        this.SYMBOL_MARKS.unicode.configuration,
+        'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
+          'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
+          '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
+          '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
+          'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
+          'its own change deliberately rather than picked in passing.',
+      ],
+      [
+        this.TAB_SEPARATORS.unicode,
+        'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
+          'paint the chevron with different meanings. They are in different chrome strips and no ' +
+          'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
+          'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
+      ],
+    ]);
   }
 
   protected static get $markOwnersByMark(): ReadonlyMap<
@@ -295,7 +287,7 @@ class $ThemeIcons {
       }
       owners.push(ownership.owner);
     }
-    return this.cache('$markOwnersByMark', markOwnersByMark);
+    return markOwnersByMark;
   }
 
   /** Every recorded mark ownership at the shared portable tier. */
@@ -352,8 +344,8 @@ class $ThemeIcons {
 
   // Action-button glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
   // letter fallback (o/d/+/-) so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
-  protected static get $actionIcons(): Record<GlyphLevel, ActionIconSet> {
-    return this.cache('$actionIcons', {
+  protected static get ACTION_ICONS(): Record<GlyphLevel, ActionIconSet> {
+    return {
       nerd: {
         open: '\u{f08e}',
         discard: '\u{f0e2}',
@@ -375,27 +367,27 @@ class $ThemeIcons {
         unstage: '-',
         preview: 'p',
       },
-    });
+    };
   }
 
   // Staging-checkbox glyph ladder. nerd = fa square / check-square; unicode = ballot box ☐/☑;
   // ascii = blank / x so a no-nerd-font terminal still degrades to the classic ` ` / `x`.
-  protected static get $checkboxIcons(): Record<GlyphLevel, CheckboxIconSet> {
-    return this.cache('$checkboxIcons', {
+  protected static get CHECKBOX_ICONS(): Record<GlyphLevel, CheckboxIconSet> {
+    return {
       nerd: { unchecked: '\u{f0c8}', checked: '\u{f14a}' },
       unicode: { unchecked: '☐', checked: '☑' },
       ascii: { unchecked: ' ', checked: 'x' },
-    });
+    };
   }
 
   // Semantic glyph slots are the indirection between behavior and vocabulary. Consumers name what
   // a cell means; this table alone chooses how that meaning looks at each capability tier.
   // invariant: Appearance is data with a capability fallback (project.invariants.md)
-  protected static get $interfaceGlyphVocabularies(): Record<
+  protected static get INTERFACE_GLYPH_VOCABULARIES(): Record<
     GlyphLevel,
     InterfaceGlyphVocabulary
   > {
-    return this.cache('$interfaceGlyphVocabularies', {
+    return {
       nerd: {
         activityFiles: '\u{f07b}',
         activitySourceControl: '\u{e702}',
@@ -454,17 +446,17 @@ class $ThemeIcons {
         foldOpen: 'v',
         foldClosed: ']',
       },
-    });
+    };
   }
 
   protected static get $activityIcons(): Record<GlyphLevel, ActivityIconSet> {
-    return this.cache('$activityIcons', {
-      nerd: this.activityIconSetFrom(this.$interfaceGlyphVocabularies.nerd),
+    return {
+      nerd: this.activityIconSetFrom(this.INTERFACE_GLYPH_VOCABULARIES.nerd),
       unicode: this.activityIconSetFrom(
-        this.$interfaceGlyphVocabularies.unicode,
+        this.INTERFACE_GLYPH_VOCABULARIES.unicode,
       ),
-      ascii: this.activityIconSetFrom(this.$interfaceGlyphVocabularies.ascii),
-    });
+      ascii: this.activityIconSetFrom(this.INTERFACE_GLYPH_VOCABULARIES.ascii),
+    };
   }
 
   protected static activityIconSetFrom(
@@ -480,42 +472,42 @@ class $ThemeIcons {
 
   // Status-bar affordance glyph ladder. nerd = fa cog; unicode = the gear ⚙; ascii = `*` so a
   // no-nerd-font terminal still shows a settings mark. Single cell at every tier.
-  protected static get $settingsIcons(): Record<GlyphLevel, string> {
-    return this.cache('$settingsIcons', {
+  protected static get SETTINGS_ICONS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{f013}', // fa cog / gear
       unicode: '⚙',
       ascii: '*',
-    });
+    };
   }
 
-  protected static get $terminalIcons(): Record<GlyphLevel, string> {
-    return this.cache('$terminalIcons', {
+  protected static get TERMINAL_ICONS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{f120}', // fa terminal (prompt)
       unicode: '❯',
       ascii: '>',
-    });
+    };
   }
 
-  protected static get $agentIcons(): Record<GlyphLevel, string> {
-    return this.cache('$agentIcons', {
+  protected static get AGENT_ICONS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{f544}', // fa robot (the native agent pane)
       unicode: '✦', // matches AgentPaneContent's switcher glyph
       ascii: 'A',
-    });
+    };
   }
 
-  protected static get $rightDockIcons(): Record<GlyphLevel, string> {
-    return this.cache('$rightDockIcons', {
+  protected static get RIGHT_DOCK_ICONS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{f0db}',
       unicode: '▥',
       ascii: 'R',
-    });
+    };
   }
 
   // Find-bar action glyph ladder. nerd = nerd-font glyphs; unicode = single-cell symbols; ascii = the
   // letter/arrow fallback so a no-nerd-font terminal still reads. Each glyph is exactly one cell.
-  protected static get $findIcons(): Record<GlyphLevel, FindIconSet> {
-    return this.cache('$findIcons', {
+  protected static get FIND_ICONS(): Record<GlyphLevel, FindIconSet> {
+    return {
       nerd: {
         search: '\u{f002}',
         previous: '\u{f062}',
@@ -540,42 +532,42 @@ class $ThemeIcons {
         replaceAll: 'R',
         toggleMode: 'x',
       },
-    });
+    };
   }
 
   /** The whole symbol-mark row for a tier — read once by a consumer that marks many items. */
   static symbolMarksFor(level: GlyphLevel): SymbolMarkSet {
-    return this.$symbolMarks[level];
+    return this.SYMBOL_MARKS[level];
   }
 
   /** The one resolver: a classified thing plus a capability tier resolve to one mark. */
   // invariant: One table resolves every symbol mark (src/modules/theme/theme.invariants.md)
   static symbolMarkFor(level: GlyphLevel, symbolClass: SymbolClass): string {
-    return this.$symbolMarks[level][symbolClass];
+    return this.SYMBOL_MARKS[level][symbolClass];
   }
 
   static settingsIconFor(level: GlyphLevel): string {
-    return this.$settingsIcons[level];
+    return this.SETTINGS_ICONS[level];
   }
 
   static terminalIconFor(level: GlyphLevel): string {
-    return this.$terminalIcons[level];
+    return this.TERMINAL_ICONS[level];
   }
 
   static agentIconFor(level: GlyphLevel): string {
-    return this.$agentIcons[level];
+    return this.AGENT_ICONS[level];
   }
 
   static rightDockIconFor(level: GlyphLevel): string {
-    return this.$rightDockIcons[level];
+    return this.RIGHT_DOCK_ICONS[level];
   }
 
   static actionIconsFor(level: GlyphLevel): ActionIconSet {
-    return this.$actionIcons[level];
+    return this.ACTION_ICONS[level];
   }
 
   static checkboxIconsFor(level: GlyphLevel): CheckboxIconSet {
-    return this.$checkboxIcons[level];
+    return this.CHECKBOX_ICONS[level];
   }
 
   static activityIconsFor(level: GlyphLevel): ActivityIconSet {
@@ -585,48 +577,39 @@ class $ThemeIcons {
   static interfaceGlyphVocabularyFor(
     level: GlyphLevel,
   ): InterfaceGlyphVocabulary {
-    return this.$interfaceGlyphVocabularies[level];
+    return this.INTERFACE_GLYPH_VOCABULARIES[level];
   }
 
   static glyphFor(level: GlyphLevel, slot: GlyphSlot): string {
-    return this.$interfaceGlyphVocabularies[level][slot];
+    return this.INTERFACE_GLYPH_VOCABULARIES[level][slot];
   }
 
   static findIconsFor(level: GlyphLevel): FindIconSet {
-    return this.$findIcons[level];
+    return this.FIND_ICONS[level];
   }
 
   // Alert / warning glyph ladder (single cell): nerd = fa exclamation-triangle; unicode = ⚠; ascii = !.
   // Used to flag an un-openable path in the open-project navigator, painted in the theme warning colour.
-  protected static get $alertIcons(): Record<GlyphLevel, string> {
-    return this.cache('$alertIcons', {
+  protected static get ALERT_ICONS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{f071}',
       unicode: '⚠',
       ascii: '!',
-    });
+    };
   }
 
   static alertIconFor(level: GlyphLevel): string {
-    return this.$alertIcons[level];
+    return this.ALERT_ICONS[level];
   }
 
   // The spinner animation cycles: braille at glyph-capable tiers, a rotating ascii bar below — a
   // no-unicode terminal still animates.
-  protected static get $brailleSpinnerFrames(): readonly string[] {
-    return this.cache('$brailleSpinnerFrames', [
-      '⠋',
-      '⠙',
-      '⠹',
-      '⠸',
-      '⠼',
-      '⠴',
-      '⠦',
-      '⠧',
-    ]);
+  protected static get BRAILLE_SPINNER_FRAMES(): readonly string[] {
+    return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
   }
 
-  protected static get $asciiSpinnerFrames(): readonly string[] {
-    return this.cache('$asciiSpinnerFrames', ['|', '/', '-', '\\']);
+  protected static get ASCII_SPINNER_FRAMES(): readonly string[] {
+    return ['|', '/', '-', '\\'];
   }
 
   // Agent transcript glyph ladder. The tool cog reuses SETTINGS_ICON per tier (one cog definition);
@@ -636,41 +619,41 @@ class $ThemeIcons {
     GlyphLevel,
     AgentTranscriptIconSet
   > {
-    return this.cache('$agentTranscriptIcons', {
+    return {
       nerd: {
         caretCollapsed: '\u{f0da}',
         caretExpanded: '\u{f0d7}',
-        tool: this.$settingsIcons.nerd,
+        tool: this.SETTINGS_ICONS.nerd,
         resultOk: '\u{f00c}',
         resultError: '\u{f00d}',
         ellipsis: '…',
         ellipsisCell: '…',
         rule: '─',
-        spinnerFrames: this.$brailleSpinnerFrames,
+        spinnerFrames: this.BRAILLE_SPINNER_FRAMES,
       },
       unicode: {
         caretCollapsed: '▸',
         caretExpanded: '▾',
-        tool: this.$settingsIcons.unicode,
+        tool: this.SETTINGS_ICONS.unicode,
         resultOk: '✓',
         resultError: '✗',
         ellipsis: '…',
         ellipsisCell: '…',
         rule: '─',
-        spinnerFrames: this.$brailleSpinnerFrames,
+        spinnerFrames: this.BRAILLE_SPINNER_FRAMES,
       },
       ascii: {
         caretCollapsed: '>',
         caretExpanded: 'v',
-        tool: this.$settingsIcons.ascii,
+        tool: this.SETTINGS_ICONS.ascii,
         resultOk: '+',
         resultError: 'x',
         ellipsis: '...',
         ellipsisCell: '.',
         rule: '-',
-        spinnerFrames: this.$asciiSpinnerFrames,
+        spinnerFrames: this.ASCII_SPINNER_FRAMES,
       },
-    });
+    };
   }
 
   static agentTranscriptIconsFor(level: GlyphLevel): AgentTranscriptIconSet {
@@ -678,16 +661,16 @@ class $ThemeIcons {
   }
 
   // Between-buffer-tab powerline separator ladder: solid nerd powerline glyph → portable ❯ → ascii >.
-  protected static get $tabSeparators(): Record<GlyphLevel, string> {
-    return this.cache('$tabSeparators', {
+  protected static get TAB_SEPARATORS(): Record<GlyphLevel, string> {
+    return {
       nerd: '\u{e0b0}',
       unicode: '❯',
       ascii: '>',
-    });
+    };
   }
 
   static tabSeparatorFor(level: GlyphLevel): string {
-    return this.$tabSeparators[level];
+    return this.TAB_SEPARATORS[level];
   }
 
   /** Classify a filesystem entry. The filesystem's half of the question: WHAT is this thing? */
@@ -701,7 +684,7 @@ class $ThemeIcons {
     const dotIndex = name.lastIndexOf('.');
     const extension =
       dotIndex >= 0 ? name.slice(dotIndex + 1).toLowerCase() : '';
-    return this.$symbolClassesByFileExtension[extension] ?? 'file';
+    return this.SYMBOL_CLASSES_BY_FILE_EXTENSION[extension] ?? 'file';
   }
 
   /** Resolve a filesystem entry's mark: classify, then look the class up in the one table. */

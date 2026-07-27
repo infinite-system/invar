@@ -4,7 +4,7 @@ import { ref, watch } from 'vue';
 // invariant: Thinking indicator follows turn state (src/modules/agent/agent.invariants.md)
 
 class $AgentSpinner {
-  protected static get frameIntervalMilliseconds(): number {
+  protected static get FRAME_INTERVAL_MILLISECONDS(): number {
     return 100;
   }
 
@@ -16,10 +16,6 @@ class $AgentSpinner {
         clearInterval(handle as ReturnType<typeof setInterval>),
       now: () => Date.now(),
     };
-    Object.defineProperty(this, '$defaultScheduler', {
-      configurable: true,
-      value: defaultScheduler,
-    });
     return defaultScheduler;
   }
 
@@ -39,7 +35,7 @@ class $AgentSpinner {
     const agentSpinnerClass = this.constructor as typeof $AgentSpinner;
     this.scheduler = scheduler ?? agentSpinnerClass.$defaultScheduler;
     this.intervalMilliseconds =
-      intervalMilliseconds ?? agentSpinnerClass.frameIntervalMilliseconds;
+      intervalMilliseconds ?? agentSpinnerClass.FRAME_INTERVAL_MILLISECONDS;
     this.stopRunningWatch = watch(
       () => this.running,
       (running) => this.synchronizeTimer(running),

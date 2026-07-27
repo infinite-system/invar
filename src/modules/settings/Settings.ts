@@ -24,68 +24,36 @@ import type {
 } from './SettingContribution.interface';
 
 class $Settings {
-  protected static cachedSet<Value>(
-    propertyName: string,
-    values: readonly Value[],
-  ): ReadonlySet<Value> {
-    const allowedValues = new Set(values);
-    Object.defineProperty(this, propertyName, {
-      configurable: true,
-      value: allowedValues,
-    });
-    return allowedValues;
-  }
-
   protected static get $allowedScrollModifiers(): ReadonlySet<ScrollModifier> {
-    return this.cachedSet('$allowedScrollModifiers', [
-      'alt',
-      'shift',
-      'ctrl',
-      'none',
-    ]);
+    return new Set(['alt', 'shift', 'ctrl', 'none']);
   }
 
   protected static get $allowedGlyphModes(): ReadonlySet<GlyphMode> {
-    return this.cachedSet('$allowedGlyphModes', [
-      'auto',
-      'nerd',
-      'unicode',
-      'ascii',
-    ]);
+    return new Set(['auto', 'nerd', 'unicode', 'ascii']);
   }
 
   protected static get $allowedWorkspaceTabPositions(): ReadonlySet<WorkspaceTabPosition> {
-    return this.cachedSet('$allowedWorkspaceTabPositions', ['top', 'left']);
+    return new Set(['top', 'left']);
   }
 
   protected static get $allowedSidebarPositions(): ReadonlySet<SidebarPosition> {
-    return this.cachedSet('$allowedSidebarPositions', ['left', 'right']);
+    return new Set(['left', 'right']);
   }
 
   protected static get $allowedPanelAlignments(): ReadonlySet<PanelAlignment> {
-    return this.cachedSet('$allowedPanelAlignments', ['center', 'right']);
+    return new Set(['center', 'right']);
   }
 
   protected static get $allowedDockVerticalSpans(): ReadonlySet<DockVerticalSpan> {
-    return this.cachedSet('$allowedDockVerticalSpans', [
-      'full-height',
-      'ends-at-panel',
-    ]);
+    return new Set(['full-height', 'ends-at-panel']);
   }
 
   protected static get $allowedTypeScriptServers(): ReadonlySet<TypeScriptServer> {
-    return this.cachedSet('$allowedTypeScriptServers', [
-      'tsgo',
-      'typescript-language-server',
-    ]);
+    return new Set(['tsgo', 'typescript-language-server']);
   }
 
   protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
-    return this.cachedSet('$allowedAgentProviders', [
-      'auto',
-      'claude',
-      'codex',
-    ]);
+    return new Set(['auto', 'claude', 'codex']);
   }
 
   constructor(readonly options: SettingsOptions = {}) {}
@@ -327,7 +295,7 @@ class $Settings {
     this.storedProjectRecord = this.readSettingsRecord(resolved.projectPath);
     const settingsClass = this.constructor as typeof $Settings;
     this.applyValues({
-      ...settingsClass.defaults,
+      ...settingsClass.DEFAULTS,
       ...settingsClass.sanitize(this.storedUserRecord),
       ...settingsClass.sanitize(this.storedProjectRecord),
     });
@@ -501,7 +469,7 @@ class $Settings {
 
   // ---- Static helpers ----------------------------------------------------------------------------
 
-  static get defaults(): SettingsValues {
+  static get DEFAULTS(): SettingsValues {
     return {
       verticalFlingCeiling: 220,
       scrollAccelGain: 34,
@@ -693,12 +661,7 @@ class $Settings {
   }
 
   protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
-    return this.cachedSet('$allowedAgentTerminalFollowModes', [
-      'follow-all',
-      'on-error',
-      'on-request',
-      'off',
-    ]);
+    return new Set(['follow-all', 'on-error', 'on-request', 'off']);
   }
 }
 

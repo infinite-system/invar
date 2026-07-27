@@ -20,13 +20,8 @@ import type { ColorDepth } from './TerminalCapabilities';
 // both secondary UI text (which must stay readable -> #787C99) and inactive line numbers (spec would
 // prefer a darker #363B54); readability wins, so inactive line numbers ride a touch brighter than spec.
 class $ThemePalettes {
-  protected static cache<Value>(propertyName: string, value: Value): Value {
-    Object.defineProperty(this, propertyName, { configurable: true, value });
-    return value;
-  }
-
-  protected static get $dark(): Palette {
-    return this.cache('$dark', {
+  static get DARK(): Palette {
+    return {
       name: 'invar-dark',
       bg: '#1a1b26',
       panel: '#16161e',
@@ -60,13 +55,13 @@ class $ThemePalettes {
       error: '#db4b4b',
       warning: '#e0af68',
       info: '#0da0ba',
-    });
+    };
   }
 
   // Tokyo Night Day — a soft grey-blue light theme (bg is never #fff so it doesn't burn the eyes),
   // body text a dark blue-grey rather than black, all accents desaturated for easy daytime reading.
-  protected static get $light(): Palette {
-    return this.cache('$light', {
+  static get LIGHT(): Palette {
+    return {
       name: 'invar-light',
       bg: '#e1e2e7',
       panel: '#d4d6e4',
@@ -100,22 +95,14 @@ class $ThemePalettes {
       error: '#f52a65',
       warning: '#8c6c3e',
       info: '#2e7de9',
-    });
+    };
   }
 
   protected static get $palettes(): Readonly<Record<string, Palette>> {
-    return this.cache('$palettes', {
-      [this.$dark.name]: this.$dark,
-      [this.$light.name]: this.$light,
-    });
-  }
-
-  static get dark(): Palette {
-    return this.$dark;
-  }
-
-  static get light(): Palette {
-    return this.$light;
+    return {
+      [this.DARK.name]: this.DARK,
+      [this.LIGHT.name]: this.LIGHT,
+    };
   }
 
   static get palettes(): Readonly<Record<string, Palette>> {
@@ -149,10 +136,10 @@ class $ThemePalettes {
   }
 
   /** Map to the nearest of the 16 ANSI colors (approx hexes). */
-  protected static get $ansi16(): ReadonlyArray<
+  protected static get ANSI16(): ReadonlyArray<
     readonly [number, number, number]
   > {
-    return this.cache('$ansi16', [
+    return [
       [0, 0, 0],
       [128, 0, 0],
       [0, 128, 0],
@@ -169,16 +156,15 @@ class $ThemePalettes {
       [255, 0, 255],
       [0, 255, 255],
       [255, 255, 255],
-    ]);
+    ];
   }
 
   protected static to16Hex(hex: string): string {
     const [red, green, blue] = this.hexToRgb(hex);
     let best = 0;
     let bestDistance = Infinity;
-    for (let index = 0; index < this.$ansi16.length; index++) {
-      const [candidateRed, candidateGreen, candidateBlue] =
-        this.$ansi16[index]!;
+    for (let index = 0; index < this.ANSI16.length; index++) {
+      const [candidateRed, candidateGreen, candidateBlue] = this.ANSI16[index]!;
       const distance =
         (red - candidateRed) ** 2 +
         (green - candidateGreen) ** 2 +
@@ -188,7 +174,7 @@ class $ThemePalettes {
         best = index;
       }
     }
-    const [nearestRed, nearestGreen, nearestBlue] = this.$ansi16[best]!;
+    const [nearestRed, nearestGreen, nearestBlue] = this.ANSI16[best]!;
     return this.rgbToHex(nearestRed, nearestGreen, nearestBlue);
   }
 

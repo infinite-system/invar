@@ -7,10 +7,6 @@ class $MarkdownParser {
       code: 3,
       link: 4,
     });
-    Object.defineProperty(this, '$inlineStyles', {
-      configurable: true,
-      value: inlineStyles,
-    });
     return inlineStyles;
   }
 
@@ -20,19 +16,11 @@ class $MarkdownParser {
 
   protected static get $emptyNumbers(): readonly number[] {
     const emptyNumbers: readonly number[] = Object.freeze([]);
-    Object.defineProperty(this, '$emptyNumbers', {
-      configurable: true,
-      value: emptyNumbers,
-    });
     return emptyNumbers;
   }
 
   protected static get $emptyStrings(): readonly string[] {
     const emptyStrings: readonly string[] = Object.freeze([]);
-    Object.defineProperty(this, '$emptyStrings', {
-      configurable: true,
-      value: emptyStrings,
-    });
     return emptyStrings;
   }
 

@@ -16,7 +16,7 @@ describe('Tooltip', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Open diff', 10, 5);
     let elapsedSeconds = 0;
-    while (elapsedSeconds + FRAME < Tooltip.$Class.tooltipDwellSeconds) {
+    while (elapsedSeconds + FRAME < Tooltip.$Class.TOOLTIP_DWELL_SECONDS) {
       expect(tooltip.tick(FRAME)).toBe(true); // still counting: caller keeps frames coming
       expect(tooltip.visible.value).toBe(false);
       elapsedSeconds += FRAME;
@@ -32,9 +32,9 @@ describe('Tooltip', () => {
   test('pointer jitter on the SAME target keeps the accumulated dwell and tracks the anchor', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds / 2);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS / 2);
     tooltip.point('Stage', 11, 5); // jitter within the target
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds / 2);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS / 2);
     expect(tooltip.visible.value).toBe(true);
     expect(tooltip.anchorX.value).toBe(11); // the latest anchor
   });
@@ -42,11 +42,11 @@ describe('Tooltip', () => {
   test('pointing at a DIFFERENT target restarts the dwell', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds * 0.9);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS * 0.9);
     tooltip.point('Discard…', 12, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds * 0.9);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS * 0.9);
     expect(tooltip.visible.value).toBe(false); // the old dwell did not carry over
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds * 0.2);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS * 0.2);
     expect(tooltip.visible.value).toBe(true);
     expect(tooltip.text.value).toBe('Discard…');
   });
@@ -54,11 +54,11 @@ describe('Tooltip', () => {
   test('moving to a different target while VISIBLE hides and re-dwells', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     expect(tooltip.visible.value).toBe(true);
     tooltip.point('Unstage', 10, 6);
     expect(tooltip.visible.value).toBe(false); // hidden immediately
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     expect(tooltip.visible.value).toBe(true);
     expect(tooltip.text.value).toBe('Unstage');
   });
@@ -66,7 +66,7 @@ describe('Tooltip', () => {
   test('re-pointing the SAME text while visible only tracks the anchor', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     tooltip.point('Stage', 14, 7);
     expect(tooltip.visible.value).toBe(true);
     expect(tooltip.anchorX.value).toBe(14);
@@ -76,12 +76,12 @@ describe('Tooltip', () => {
   test('placement defaults to auto and carries an explicit choice through the dwell', () => {
     const auto = new Tooltip.Class();
     auto.point('Open', 10, 5);
-    auto.tick(Tooltip.$Class.tooltipDwellSeconds);
+    auto.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     expect(auto.placement.value).toBe('auto'); // default
 
     const below = new Tooltip.Class();
     below.point('Discard…', 10, 5, 'below');
-    below.tick(Tooltip.$Class.tooltipDwellSeconds);
+    below.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     expect(below.visible.value).toBe(true);
     expect(below.placement.value).toBe('below'); // explicit choice survives to the shown tooltip
   });
@@ -89,16 +89,16 @@ describe('Tooltip', () => {
   test('clear disarms a pending dwell', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds / 2);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS / 2);
     tooltip.clear();
-    expect(tooltip.tick(Tooltip.$Class.tooltipDwellSeconds)).toBe(false); // nothing pending anymore
+    expect(tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS)).toBe(false); // nothing pending anymore
     expect(tooltip.visible.value).toBe(false);
   });
 
   test('clear hides a visible tooltip immediately', () => {
     const tooltip = new Tooltip.Class();
     tooltip.point('Stage', 10, 5);
-    tooltip.tick(Tooltip.$Class.tooltipDwellSeconds);
+    tooltip.tick(Tooltip.$Class.TOOLTIP_DWELL_SECONDS);
     expect(tooltip.visible.value).toBe(true);
     tooltip.clear();
     expect(tooltip.visible.value).toBe(false);

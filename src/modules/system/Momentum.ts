@@ -20,10 +20,6 @@ class $Momentum {
       decayPerSec: 0.015,
       stopVelocity: 3,
     };
-    Object.defineProperty(this, '$defaultOptions', {
-      configurable: true,
-      value: defaultOptions,
-    });
     return defaultOptions;
   }
 
@@ -37,10 +33,6 @@ class $Momentum {
       decayPerSec: 0.015,
       stopVelocity: 3,
     };
-    Object.defineProperty(this, '$verticalOptions', {
-      configurable: true,
-      value: verticalOptions,
-    });
     return verticalOptions;
   }
 
@@ -53,10 +45,6 @@ class $Momentum {
       restEquivalentGestureImpulseCount: 0,
       ceilingSustainingVelocity: 0,
     };
-    Object.defineProperty(this, '$atRest', {
-      configurable: true,
-      value: atRest,
-    });
     return atRest;
   }
 
@@ -74,30 +62,30 @@ class $Momentum {
 
   /** Fraction of the impulse gain a notch lands with when the regime is AT REST. A lone notch is a
    *  precision move — it must travel a row or two, not a fling's opening jump. */
-  protected static get initialGainFraction(): number {
+  protected static get INITIAL_GAIN_FRACTION(): number {
     return 0.3;
   }
 
   /** How many notches' worth of velocity would saturate the gain ramp. Scaling by the profile's
    *  impulse keeps acceleration identical across ceilings, while the span leaves room for separate
    *  flicks to accumulate before physical velocity reaches its ceiling. */
-  protected static get gainRampNotchSpan(): number {
+  protected static get GAIN_RAMP_NOTCH_SPAN(): number {
     return 20;
   }
 
   /** The driven hard-flick shape is twelve unit impulses in one PTY write. The first such flick
    *  reserves headroom for this many later hard flicks, regardless of the configured ceiling. */
-  protected static get hardFlickImpulseUnits(): number {
+  protected static get HARD_FLICK_IMPULSE_UNITS(): number {
     return 12;
   }
 
-  protected static get followOnHardFlicksWithReservedHeadroom(): number {
+  protected static get FOLLOW_ON_HARD_FLICKS_WITH_RESERVED_HEADROOM(): number {
     return 2;
   }
 
   /** Wheel impulses inside this interval belong to one physical gesture. Terminal input has no
    *  gesture-end event, so cadence supplies the same boundary that key repeat inference uses. */
-  protected static get gestureContinuationWindowMilliseconds(): number {
+  protected static get GESTURE_CONTINUATION_WINDOW_MILLISECONDS(): number {
     return 150;
   }
 
@@ -130,7 +118,7 @@ class $Momentum {
         currentTimestampMilliseconds,
       );
     }
-    const gainRampCeiling = options.impulse * this.gainRampNotchSpan;
+    const gainRampCeiling = options.impulse * this.GAIN_RAMP_NOTCH_SPAN;
     const elapsedSincePreviousImpulseMilliseconds =
       currentTimestampMilliseconds -
       (momentum.lastImpulseTimestampMilliseconds ?? Number.NEGATIVE_INFINITY);
@@ -139,7 +127,7 @@ class $Momentum {
     const inputCadenceContinues =
       elapsedSincePreviousImpulseMilliseconds >= 0 &&
       elapsedSincePreviousImpulseMilliseconds <
-        this.gestureContinuationWindowMilliseconds;
+        this.GESTURE_CONTINUATION_WINDOW_MILLISECONDS;
     const gestureContinues = liveGlideContinues || inputCadenceContinues;
     const restEquivalentGestureVelocity = gestureContinues
       ? (momentum.restEquivalentGestureVelocity ?? 0)
@@ -151,8 +139,8 @@ class $Momentum {
       ? (momentum.restEquivalentGestureImpulseCount ?? 0)
       : 0;
     const gainScale =
-      this.initialGainFraction +
-      (1 - this.initialGainFraction) *
+      this.INITIAL_GAIN_FRACTION +
+      (1 - this.INITIAL_GAIN_FRACTION) *
         Math.min(1, Math.abs(restEquivalentGestureVelocity) / gainRampCeiling);
     const curveGainedVelocity = deltaRows * options.impulse * gainScale;
     let restEquivalentGestureVelocityAfterImpulse =
@@ -187,8 +175,8 @@ class $Momentum {
       Math.min(Math.abs(velocityBeforeCeiling), physicalVelocityCeiling);
     const configuredCeilingWasAlreadyReached =
       restEquivalentGestureImpulseCount >=
-      this.hardFlickImpulseUnits *
-        (this.followOnHardFlicksWithReservedHeadroom + 1);
+      this.HARD_FLICK_IMPULSE_UNITS *
+        (this.FOLLOW_ON_HARD_FLICKS_WITH_RESERVED_HEADROOM + 1);
     const ceilingSustainingVelocity = configuredCeilingWasAlreadyReached
       ? velocityBeforeCeiling - velocity
       : 0;
@@ -209,13 +197,14 @@ class $Momentum {
     restEquivalentGestureImpulseUnits: number,
     options: MomentumOptions,
   ): number {
-    const hardFlickCount = this.followOnHardFlicksWithReservedHeadroom + 1;
+    const hardFlickCount =
+      this.FOLLOW_ON_HARD_FLICKS_WITH_RESERVED_HEADROOM + 1;
     const velocityHeadroomPerFollowOnFlick = Math.min(
       options.impulse * 0.75,
       options.max / hardFlickCount,
     );
     const hardFlickProgress =
-      restEquivalentGestureImpulseUnits / this.hardFlickImpulseUnits;
+      restEquivalentGestureImpulseUnits / this.HARD_FLICK_IMPULSE_UNITS;
     const remainingHardFlicksWithReservedHeadroom = Math.max(
       0,
       hardFlickCount - hardFlickProgress,

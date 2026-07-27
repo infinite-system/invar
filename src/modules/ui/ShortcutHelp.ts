@@ -26,10 +26,6 @@ class $ShortcutHelp {
       'menu',
       'help',
     ] as const;
-    Object.defineProperty(this, '$mergedShortcutContexts', {
-      configurable: true,
-      value: mergedShortcutContextsValue,
-    });
     return mergedShortcutContextsValue;
   }
   protected get mergedShortcutContexts() {
@@ -55,10 +51,6 @@ class $ShortcutHelp {
       menu: 'Menu',
       help: 'Help',
     };
-    Object.defineProperty(this, '$categoryByActionPrefix', {
-      configurable: true,
-      value: categoryByActionPrefixValue,
-    });
     return categoryByActionPrefixValue;
   }
   protected get categoryByActionPrefix(): Record<string, string> {
@@ -79,10 +71,6 @@ class $ShortcutHelp {
       'focus.toggle': 'Toggle Sidebar/Editor Focus',
       'settings.toggle': 'Open Settings',
     };
-    Object.defineProperty(this, '$fallbackTitleByActionIdentifier', {
-      configurable: true,
-      value: fallbackTitleByActionIdentifierValue,
-    });
     return fallbackTitleByActionIdentifierValue;
   }
   protected get fallbackTitleByActionIdentifier(): Record<string, string> {

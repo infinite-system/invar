@@ -35,10 +35,6 @@ class $LanguageRegistry {
       sass: 'css',
       vue: 'vue',
     };
-    Object.defineProperty(this, '$languagesByExtension', {
-      configurable: true,
-      value: languagesByExtension,
-    });
     return languagesByExtension;
   }
 

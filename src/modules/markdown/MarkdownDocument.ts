@@ -12,10 +12,6 @@ import { StatusChannel } from '../system/StatusChannel';
 class $MarkdownDocument {
   protected static get $emptyBlocks(): readonly BlockRecord[] {
     const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
-    Object.defineProperty(this, '$emptyBlocks', {
-      configurable: true,
-      value: emptyBlocks,
-    });
     return emptyBlocks;
   }
 

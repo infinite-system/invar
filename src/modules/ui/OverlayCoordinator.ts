@@ -13,10 +13,6 @@ class $OverlayCoordinator {
       'completionPopup',
       'shortcutHelp',
     ];
-    Object.defineProperty(this, '$exclusiveOverlayNames', {
-      configurable: true,
-      value: exclusiveOverlayNamesValue,
-    });
     return exclusiveOverlayNamesValue;
   }
   protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {

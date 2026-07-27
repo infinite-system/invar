@@ -80,10 +80,6 @@ class $Highlighter {
       'while',
       'yield',
     ]);
-    Object.defineProperty(this, '$typescriptKeywords', {
-      configurable: true,
-      value: typescriptKeywords,
-    });
     return typescriptKeywords;
   }
 

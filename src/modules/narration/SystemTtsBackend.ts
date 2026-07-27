@@ -23,7 +23,7 @@ class $SystemTtsBackend implements TtsBackend {
 
   /** The most pending utterances kept while one plays: enough to ride out a burst of short turns,
    *  small enough that narration never runs minutes behind the screen. */
-  protected static get maximumPendingUtterances(): number {
+  protected static get MAXIMUM_PENDING_UTTERANCES(): number {
     return 8;
   }
 
@@ -160,10 +160,7 @@ class $SystemTtsBackend implements TtsBackend {
           playsDirectly: true,
           synthCommand: (text) => [enginePath, text],
         }
-      : systemTtsBackendClass.detectEngine(
-          resolveVoiceName,
-          resolveSpeechRate,
-        );
+      : systemTtsBackendClass.detectEngine(resolveVoiceName, resolveSpeechRate);
     this.playerPath =
       this.engine && !this.engine.playsDirectly
         ? systemTtsBackendClass.detectPlayer()
@@ -192,7 +189,7 @@ class $SystemTtsBackend implements TtsBackend {
     systemTtsBackendClass.enqueueBounded(
       this.utteranceQueue,
       trimmedText,
-      systemTtsBackendClass.maximumPendingUtterances,
+      systemTtsBackendClass.MAXIMUM_PENDING_UTTERANCES,
     );
     if (!this.synthesisProcess && !this.playbackProcess) this.playNext();
   }

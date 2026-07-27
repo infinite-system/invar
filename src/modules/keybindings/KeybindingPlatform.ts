@@ -35,10 +35,6 @@ class $KeybindingPlatform {
       'workspace.next',
       'workspace.previous',
     ]);
-    Object.defineProperty(this, '$primaryModifierActions', {
-      configurable: true,
-      value: primaryModifierActions,
-    });
     return primaryModifierActions;
   }
 

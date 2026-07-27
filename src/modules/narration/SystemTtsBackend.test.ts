@@ -8,7 +8,7 @@ import { Processes } from '../system/Processes';
 
 class InspectableSystemTtsBackend extends SystemTtsBackend.$Class {
   static get maximumPendingUtterancesForTest(): number {
-    return super.maximumPendingUtterances;
+    return super.MAXIMUM_PENDING_UTTERANCES;
   }
 }
 
@@ -36,8 +36,7 @@ describe('SystemTtsBackend.enqueueBounded', () => {
     const queue: string[] = [];
     for (
       let index = 0;
-      index <
-      InspectableSystemTtsBackend.maximumPendingUtterancesForTest * 3;
+      index < InspectableSystemTtsBackend.maximumPendingUtterancesForTest * 3;
       index++
     ) {
       SystemTtsBackend.Class.enqueueBounded(
@@ -75,7 +74,9 @@ test('live playback is serial and starts the next utterance only after the activ
       ...spawnArguments: Parameters<typeof Processes.Class.spawn>
     ): ReturnType<typeof Processes.Class.spawn> {
       const argumentVector = spawnArguments[0];
-      startedUtterances.push(argumentVector[argumentVector.length - 1] as string);
+      startedUtterances.push(
+        argumentVector[argumentVector.length - 1] as string,
+      );
       let completeProcess = (): void => {};
       const exited = new Promise<number>((resolveExit) => {
         completeProcess = () => resolveExit(0);
@@ -104,10 +105,7 @@ test('live playback is serial and starts the next utterance only after the activ
 
   completeProcesses.shift()?.();
   await Promise.resolve();
-  expect(startedUtterances).toEqual([
-    'first utterance',
-    'second utterance',
-  ]);
+  expect(startedUtterances).toEqual(['first utterance', 'second utterance']);
 
   completeProcesses.shift()?.();
   await Promise.resolve();
@@ -132,15 +130,23 @@ describe('SystemTtsBackend engine-argument rate mapping (speed multiplier: highe
   test('FASTER (rate 2.0) means a LOWER piper length_scale and a HIGHER espeak wpm', () => {
     expect(SystemTtsBackend.Class.toLengthScale(2.0)).toBe(0.5);
     expect(SystemTtsBackend.Class.toWordsPerMinute(2.0)).toBe(350);
-    expect(SystemTtsBackend.Class.toLengthScale(2.0)).toBeLessThan(SystemTtsBackend.Class.toLengthScale(1.0));
-    expect(SystemTtsBackend.Class.toWordsPerMinute(2.0)).toBeGreaterThan(SystemTtsBackend.Class.toWordsPerMinute(1.0));
+    expect(SystemTtsBackend.Class.toLengthScale(2.0)).toBeLessThan(
+      SystemTtsBackend.Class.toLengthScale(1.0),
+    );
+    expect(SystemTtsBackend.Class.toWordsPerMinute(2.0)).toBeGreaterThan(
+      SystemTtsBackend.Class.toWordsPerMinute(1.0),
+    );
   });
 
   test('SLOWER (rate 0.5) means a HIGHER piper length_scale and a LOWER espeak wpm', () => {
     expect(SystemTtsBackend.Class.toLengthScale(0.5)).toBe(2.0);
     expect(SystemTtsBackend.Class.toWordsPerMinute(0.5)).toBe(88); // round(175 × 0.5)
-    expect(SystemTtsBackend.Class.toLengthScale(0.5)).toBeGreaterThan(SystemTtsBackend.Class.toLengthScale(1.0));
-    expect(SystemTtsBackend.Class.toWordsPerMinute(0.5)).toBeLessThan(SystemTtsBackend.Class.toWordsPerMinute(1.0));
+    expect(SystemTtsBackend.Class.toLengthScale(0.5)).toBeGreaterThan(
+      SystemTtsBackend.Class.toLengthScale(1.0),
+    );
+    expect(SystemTtsBackend.Class.toWordsPerMinute(0.5)).toBeLessThan(
+      SystemTtsBackend.Class.toWordsPerMinute(1.0),
+    );
   });
 
   test('extreme rates clamp to the sane band instead of exploding an engine argument', () => {

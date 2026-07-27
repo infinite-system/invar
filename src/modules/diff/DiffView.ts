@@ -66,10 +66,6 @@ class $DiffView {
       DiffAlignmentResult,
       Map<number, readonly (AlignedRowKind | null)[]>
     >();
-    Object.defineProperty(this, '$overviewKindsByAlignment', {
-      configurable: true,
-      value: overviewKindsByAlignment,
-    });
     return overviewKindsByAlignment;
   }
 

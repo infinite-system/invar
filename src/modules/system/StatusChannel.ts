@@ -45,10 +45,6 @@ class $StatusChannel {
       lifecycleTier: 'boot',
       overlay: null,
     };
-    Object.defineProperty(this, '$state', {
-      configurable: true,
-      value: state,
-    });
     return state;
   }
 

@@ -303,10 +303,6 @@ class $SettingsPanel {
         spec: { kind: 'enum', options: dockVerticalSpanOptions },
       },
     ];
-    Object.defineProperty(this, '$settingDescriptors', {
-      configurable: true,
-      value: settingDescriptors,
-    });
     return settingDescriptors;
   }
 

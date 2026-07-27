@@ -45,7 +45,7 @@ interface PopupPublishedState {
 // sits in the published icon column, and its label starts at the column every sibling row shares.
 // Its identifier comes from the picker itself, never a literal copy.
 const parentRowIdentifier =
-  BreadcrumbPicker.Class.parentDirectoryItemIdentifier;
+  BreadcrumbPicker.Class.PARENT_DIRECTORY_ITEM_IDENTIFIER;
 
 function popupRowLabelColumn(geometry: PopupGeometryStatus): number {
   return geometry.listIconColumns > 0 ? 2 + geometry.listIconColumns : 1;

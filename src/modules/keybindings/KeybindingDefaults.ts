@@ -697,10 +697,6 @@ class $KeybindingDefaults {
         context: 'editor',
       },
     ];
-    Object.defineProperty(this, '$canonicalBindings', {
-      configurable: true,
-      value: canonicalBindings,
-    });
     return canonicalBindings;
   }
 

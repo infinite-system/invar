@@ -17,16 +17,16 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { TabStrip } from './TabStrip';
 import { Breadcrumb, type BreadcrumbPathSegment } from './Breadcrumb';
 class $TabBarRenderer {
-  protected static get workspaceTabMaxLabelWidth() {
+  protected static get WORKSPACE_TAB_MAX_LABEL_WIDTH() {
     return 18;
   }
-  protected static get breadcrumbBackColumn() {
+  protected static get BREADCRUMB_BACK_COLUMN() {
     return 1;
   }
-  protected static get breadcrumbForwardColumn() {
+  protected static get BREADCRUMB_FORWARD_COLUMN() {
     return 3;
   }
-  protected static get breadcrumbNavPrefixWidth() {
+  protected static get BREADCRUMB_NAV_PREFIX_WIDTH() {
     return 5;
   }
   protected static ellipsize(text: string, width: number): string {
@@ -169,7 +169,7 @@ class $TabBarRenderer {
       width: Math.min(
         availableTabsWidth,
         Math.min(
-          this.workspaceTabMaxLabelWidth,
+          this.WORKSPACE_TAB_MAX_LABEL_WIDTH,
           Math.max(
             EditorCoordinates.Class.lineWidth(workspaceTab.label),
             EditorCoordinates.Class.lineWidth(workspaceTab.detailLabel ?? ''),
@@ -551,13 +551,13 @@ class $TabBarRenderer {
     localColumn: number,
   ): 'back' | 'forward' | null {
     if (
-      localColumn === this.breadcrumbBackColumn ||
-      localColumn === this.breadcrumbBackColumn - 1
+      localColumn === this.BREADCRUMB_BACK_COLUMN ||
+      localColumn === this.BREADCRUMB_BACK_COLUMN - 1
     )
       return 'back';
     if (
-      localColumn === this.breadcrumbForwardColumn ||
-      localColumn === this.breadcrumbForwardColumn - 1
+      localColumn === this.BREADCRUMB_FORWARD_COLUMN ||
+      localColumn === this.BREADCRUMB_FORWARD_COLUMN - 1
     )
       return 'forward';
     return null;
@@ -575,7 +575,7 @@ class $TabBarRenderer {
     const barWidth = Math.max(1, context.barWidth);
     const crumbs = Breadcrumb.Class.fitPathSegments(
       Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      Math.max(1, barWidth - this.breadcrumbNavPrefixWidth - 1), // reserve the nav-button prefix + a trailing pad
+      Math.max(1, barWidth - this.BREADCRUMB_NAV_PREFIX_WIDTH - 1), // reserve the nav-button prefix + a trailing pad
       3,
     );
     // History nav buttons (‹ ›) ahead of the path: accent when a move is available, dim at an end.
@@ -588,7 +588,7 @@ class $TabBarRenderer {
       fg(palette.fg)(' '),
     ];
     const segments: BreadcrumbBarSegment[] = [];
-    let column = this.breadcrumbNavPrefixWidth;
+    let column = this.BREADCRUMB_NAV_PREFIX_WIDTH;
     crumbs.forEach((crumb, index) => {
       const isFilename = index === crumbs.length - 1;
       const styledCrumb = fg(isFilename ? palette.fg : palette.dim)(

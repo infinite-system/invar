@@ -2,16 +2,16 @@ import { Static } from 'ivue/extras';
 
 // invariant: Layout slots derive from one configuration (src/modules/layout/layout.invariants.md)
 class $LayoutModel {
-  protected static get minimumEditorRows(): number {
+  protected static get MINIMUM_EDITOR_ROWS(): number {
     return 1;
   }
 
-  protected static get bottomPanelSplitterRows(): number {
+  protected static get BOTTOM_PANEL_SPLITTER_ROWS(): number {
     return 1;
   }
 
   // invariant: Default panel height scales with the viewport (src/modules/layout/layout.invariants.md)
-  protected static get defaultBottomPanelProportion(): number {
+  protected static get DEFAULT_BOTTOM_PANEL_PROPORTION(): number {
     return 0.45;
   }
 
@@ -19,7 +19,8 @@ class $LayoutModel {
     return Math.max(
       3,
       Math.round(
-        Math.max(1, Math.floor(totalRows)) * this.defaultBottomPanelProportion,
+        Math.max(1, Math.floor(totalRows)) *
+          this.DEFAULT_BOTTOM_PANEL_PROPORTION,
       ),
     );
   }
@@ -28,8 +29,8 @@ class $LayoutModel {
     return Math.max(
       1,
       Math.floor(totalRows) -
-        this.minimumEditorRows -
-        this.bottomPanelSplitterRows,
+        this.MINIMUM_EDITOR_ROWS -
+        this.BOTTOM_PANEL_SPLITTER_ROWS,
     );
   }
 
@@ -80,10 +81,6 @@ class $LayoutModel {
         rightDockVerticalSpan: 'ends-at-panel',
       },
     ];
-    Object.defineProperty(this, '$layoutPresets', {
-      configurable: true,
-      value: presets,
-    });
     return presets;
   }
 
@@ -253,7 +250,7 @@ class $LayoutModel {
         width: panelRight - panelLeft,
         height:
           options.bottomPanelVisible && !bottomPanelExpanded
-            ? this.bottomPanelSplitterRows
+            ? this.BOTTOM_PANEL_SPLITTER_ROWS
             : 0,
       },
       bottomPanel: {

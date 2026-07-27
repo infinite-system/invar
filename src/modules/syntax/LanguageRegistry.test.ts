@@ -20,7 +20,8 @@ test('language registry maps web extensions and aliases', () => {
 test('language mappings remain an overridable late-bound seam', () => {
   class CustomLanguageRegistry extends LanguageRegistry.$Class {
     protected static override get $languagesByExtension() {
-      return { notes: 'markdown' as const };
+      const languagesByExtension = { notes: 'markdown' as const };
+      return languagesByExtension;
     }
   }
 

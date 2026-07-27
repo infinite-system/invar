@@ -1,5 +1,5 @@
-import { Static } from "ivue/extras";
-import { TextSegmentation } from "../system/TextSegmentation";
+import { Static } from 'ivue/extras';
+import { TextSegmentation } from '../system/TextSegmentation';
 
 // Text coordinate model. A document line is a JS string (UTF-16 internally). Three coordinates
 // that do NOT coincide, each used by a different consumer:
@@ -12,43 +12,27 @@ import { TextSegmentation } from "../system/TextSegmentation";
 // invariant: A cursor position resolves to three distinct coordinates (editor.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $EditorCoordinates {
-  protected static get memoCapacity(): number {
+  protected static get MEMO_CAPACITY(): number {
     return 512;
   }
 
   protected static get $boundariesMemo(): Map<string, number[]> {
     const boundariesMemo = new Map<string, number[]>();
-    Object.defineProperty(this, "$boundariesMemo", {
-      configurable: true,
-      value: boundariesMemo,
-    });
     return boundariesMemo;
   }
 
   protected static get $clustersMemo(): Map<string, string[]> {
     const clustersMemo = new Map<string, string[]>();
-    Object.defineProperty(this, "$clustersMemo", {
-      configurable: true,
-      value: clustersMemo,
-    });
     return clustersMemo;
   }
 
   protected static get $displayPrefixMemo(): Map<string, number[]> {
     const displayPrefixMemo = new Map<string, number[]>();
-    Object.defineProperty(this, "$displayPrefixMemo", {
-      configurable: true,
-      value: displayPrefixMemo,
-    });
     return displayPrefixMemo;
   }
 
   protected static get $lineWidthMemo(): Map<string, number> {
     const lineWidthMemo = new Map<string, number>();
-    Object.defineProperty(this, "$lineWidthMemo", {
-      configurable: true,
-      value: lineWidthMemo,
-    });
     return lineWidthMemo;
   }
 
@@ -63,11 +47,11 @@ class $EditorCoordinates {
   ): Value {
     const cached = cache.get(line);
     if (cached !== undefined) return cached;
-    if (cache.size >= this.memoCapacity) {
+    if (cache.size >= this.MEMO_CAPACITY) {
       let dropped = 0;
       for (const key of cache.keys()) {
         cache.delete(key);
-        if (++dropped >= this.memoCapacity / 2) break;
+        if (++dropped >= this.MEMO_CAPACITY / 2) break;
       }
     }
     const value = compute();
@@ -180,9 +164,9 @@ class $EditorCoordinates {
       prefix[0] = 0;
       let column = 0;
       for (let index = 0; index < clusters.length; index++) {
-        const cluster = clusters[index] ?? "";
+        const cluster = clusters[index] ?? '';
         column +=
-          cluster === "\t"
+          cluster === '\t'
             ? tabWidth - (column % tabWidth)
             : this.graphemeWidth(cluster);
         prefix[index + 1] = column;
@@ -305,7 +289,7 @@ class $EditorCoordinates {
 
   /** Right-pad `text` with spaces to fill `width` display columns (no-op when already at least wide). */
   static padToDisplayWidth(text: string, width: number): string {
-    return text + " ".repeat(Math.max(0, width - this.lineWidth(text)));
+    return text + ' '.repeat(Math.max(0, width - this.lineWidth(text)));
   }
 
   /** The [start, end) grapheme range of the "word" at a column: a run of word characters (letters,

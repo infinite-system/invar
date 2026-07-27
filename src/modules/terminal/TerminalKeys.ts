@@ -11,13 +11,13 @@ import type { KeyEvent } from '@opentui/core';
 
 class $TerminalKeys {
   // CSI = ESC [ — the introducer for cursor/navigation sequences.
-  protected static get controlSequenceIntroducer(): string {
+  protected static get CONTROL_SEQUENCE_INTRODUCER(): string {
     return '\x1b[';
   }
 
   /** Named keys → their canonical terminal bytes (unmodified). */
   protected static get $namedKeyBytes(): Readonly<Record<string, string>> {
-    const controlSequenceIntroducer = this.controlSequenceIntroducer;
+    const controlSequenceIntroducer = this.CONTROL_SEQUENCE_INTRODUCER;
     const namedKeyBytes: Readonly<Record<string, string>> = {
       return: '\r',
       enter: '\r',
@@ -36,10 +36,6 @@ class $TerminalKeys {
       delete: `${controlSequenceIntroducer}3~`,
       insert: `${controlSequenceIntroducer}2~`,
     };
-    Object.defineProperty(this, '$namedKeyBytes', {
-      configurable: true,
-      value: namedKeyBytes,
-    });
     return namedKeyBytes;
   }
 
@@ -60,7 +56,7 @@ class $TerminalKeys {
     }
     // Shift+Tab is the back-tab sequence.
     if (name === 'tab' && key.shift) {
-      return `${this.controlSequenceIntroducer}Z`;
+      return `${this.CONTROL_SEQUENCE_INTRODUCER}Z`;
     }
     const namedKeyBytes = this.$namedKeyBytes[name];
     if (namedKeyBytes) return namedKeyBytes;

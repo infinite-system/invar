@@ -7,11 +7,11 @@ import type { AgentStatus } from './AgentEvents.interface';
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
 
 class $AgentSpinnerFrames {
-  protected static get shimmerWavelength(): number {
+  protected static get SHIMMER_WAVELENGTH(): number {
     return 6;
   }
 
-  protected static get shimmerPhasePerFrame(): number {
+  protected static get SHIMMER_PHASE_PER_FRAME(): number {
     return 0.55;
   }
 
@@ -52,9 +52,7 @@ class $AgentSpinnerFrames {
     return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
   }
 
-  protected static toHex(
-    [red, green, blue]: [number, number, number],
-  ): string {
+  protected static toHex([red, green, blue]: [number, number, number]): string {
     const clamp = (channel: number) =>
       Math.max(0, Math.min(255, Math.round(channel)))
         .toString(16)
@@ -71,15 +69,13 @@ class $AgentSpinnerFrames {
   ): string[] {
     const base = this.parseHex(baseColor);
     const highlight = this.parseHex(highlightColor);
-    const phase = frameIndex * this.shimmerPhasePerFrame;
+    const phase = frameIndex * this.SHIMMER_PHASE_PER_FRAME;
     const colors: string[] = [];
     for (let index = 0; index < length; index += 1) {
       const interpolation =
         0.5 +
         0.5 *
-          Math.cos(
-            ((index - phase) * (2 * Math.PI)) / this.shimmerWavelength,
-          );
+          Math.cos(((index - phase) * (2 * Math.PI)) / this.SHIMMER_WAVELENGTH);
       if (colorDepth === 'truecolor' && base && highlight) {
         colors.push(
           this.toHex([

@@ -32,7 +32,7 @@ class $SplitterElement {
   }
 
   protected createRenderable(): BoxRenderable {
-    const crossAxisCellCount = $SplitterElement.crossAxisCellCount;
+    const crossAxisCellCount = $SplitterElement.CROSS_AXIS_CELL_COUNT;
     return new BoxRenderable(this.options.renderer, {
       id: this.options.identifier,
       width:
@@ -43,7 +43,7 @@ class $SplitterElement {
     });
   }
 
-  protected static get crossAxisCellCount(): number {
+  protected static get CROSS_AXIS_CELL_COUNT(): number {
     return 1;
   }
 
@@ -69,11 +69,11 @@ class $SplitterElement {
     this.renderable.top = geometry.top;
     this.renderable.visible = geometry.visible ?? true;
     if (this.options.orientation === 'vertical') {
-      this.renderable.width = $SplitterElement.crossAxisCellCount;
+      this.renderable.width = $SplitterElement.CROSS_AXIS_CELL_COUNT;
       this.renderable.height = Math.max(0, geometry.length);
     } else {
       this.renderable.width = Math.max(0, geometry.length);
-      this.renderable.height = $SplitterElement.crossAxisCellCount;
+      this.renderable.height = $SplitterElement.CROSS_AXIS_CELL_COUNT;
     }
   }
 

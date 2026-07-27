@@ -10,27 +10,27 @@ import { dlopen, FFIType, ptr, read } from 'bun:ffi';
 import { closeSync, createReadStream, type ReadStream } from 'node:fs';
 
 class $OpenPty {
-  protected static get terminalWindowSizeRequest(): bigint {
+  protected static get TERMINAL_WINDOW_SIZE_REQUEST(): bigint {
     return 0x5414n;
   }
 
-  protected static get getFileStatusFlagsCommand(): number {
+  protected static get GET_FILE_STATUS_FLAGS_COMMAND(): number {
     return 3;
   }
 
-  protected static get setFileStatusFlagsCommand(): number {
+  protected static get SET_FILE_STATUS_FLAGS_COMMAND(): number {
     return 4;
   }
 
-  protected static get nonBlockingFileStatusFlag(): number {
+  protected static get NON_BLOCKING_FILE_STATUS_FLAG(): number {
     return 0x800;
   }
 
-  protected static get tryAgainErrno(): number {
+  protected static get TRY_AGAIN_ERRNO(): number {
     return 11;
   }
 
-  protected static get operationWouldBlockErrno(): number {
+  protected static get OPERATION_WOULD_BLOCK_ERRNO(): number {
     return 11;
   }
 
@@ -38,16 +38,12 @@ class $OpenPty {
     return 16 * 1024;
   }
 
-  protected static get writeRetryDelayMilliseconds(): number {
+  protected static get WRITE_RETRY_DELAY_MILLISECONDS(): number {
     return 1;
   }
 
   protected static get $openPtyLibrary(): OpenPtyLibrary {
     const openPtyLibrary = this.loadOpenPtyLibrary();
-    Object.defineProperty(this, '$openPtyLibrary', {
-      configurable: true,
-      value: openPtyLibrary,
-    });
     return openPtyLibrary;
   }
 
@@ -73,10 +69,6 @@ class $OpenPty {
         args: [],
         returns: FFIType.ptr,
       },
-    });
-    Object.defineProperty(this, '$terminalControlLibrary', {
-      configurable: true,
-      value: terminalControlLibrary,
     });
     return terminalControlLibrary;
   }
@@ -248,7 +240,7 @@ class $OpenPty {
     const currentFileStatusFlags =
       openPtyClass.$terminalControlLibrary.symbols.fcntl(
         this.masterFileDescriptor,
-        openPtyClass.getFileStatusFlagsCommand,
+        openPtyClass.GET_FILE_STATUS_FLAGS_COMMAND,
         0,
       );
     if (currentFileStatusFlags < 0) {
@@ -256,7 +248,7 @@ class $OpenPty {
       throw this.fileControlError('F_GETFL', failureErrno);
     }
     this.fileStatusFlagsWithoutNonBlocking =
-      currentFileStatusFlags & ~openPtyClass.nonBlockingFileStatusFlag;
+      currentFileStatusFlags & ~openPtyClass.NON_BLOCKING_FILE_STATUS_FLAG;
     this.establishNonBlockingWriteState();
   }
 
@@ -264,7 +256,7 @@ class $OpenPty {
     const openPtyClass = this.constructor as typeof $OpenPty;
     this.applyFileStatusFlags(
       this.fileStatusFlagsWithoutNonBlocking |
-        openPtyClass.nonBlockingFileStatusFlag,
+        openPtyClass.NON_BLOCKING_FILE_STATUS_FLAG,
     );
   }
 
@@ -281,7 +273,7 @@ class $OpenPty {
     const setFileStatusFlagsResult =
       openPtyClass.$terminalControlLibrary.symbols.fcntl(
         this.masterFileDescriptor,
-        openPtyClass.setFileStatusFlagsCommand,
+        openPtyClass.SET_FILE_STATUS_FLAGS_COMMAND,
         requestedFileStatusFlags,
       );
     if (setFileStatusFlagsResult < 0) {
@@ -303,7 +295,7 @@ class $OpenPty {
     const observedFileStatusFlags =
       openPtyClass.$terminalControlLibrary.symbols.fcntl(
         this.masterFileDescriptor,
-        openPtyClass.getFileStatusFlagsCommand,
+        openPtyClass.GET_FILE_STATUS_FLAGS_COMMAND,
         0,
       );
     if (observedFileStatusFlags < 0) {
@@ -311,9 +303,12 @@ class $OpenPty {
       throw this.fileControlError('F_GETFL read-back', failureErrno);
     }
     const requestedNonBlocking =
-      (requestedFileStatusFlags & openPtyClass.nonBlockingFileStatusFlag) !== 0;
+      (requestedFileStatusFlags &
+        openPtyClass.NON_BLOCKING_FILE_STATUS_FLAG) !==
+      0;
     const observedNonBlocking =
-      (observedFileStatusFlags & openPtyClass.nonBlockingFileStatusFlag) !== 0;
+      (observedFileStatusFlags & openPtyClass.NON_BLOCKING_FILE_STATUS_FLAG) !==
+      0;
     if (requestedNonBlocking !== observedNonBlocking) {
       throw new Error(
         `OpenPty F_SETFL requested O_NONBLOCK=${requestedNonBlocking} on ` +
@@ -383,10 +378,12 @@ class $OpenPty {
         if (writeResult < 0) {
           const errno = this.currentErrno();
           if (
-            errno === openPtyClass.tryAgainErrno ||
-            errno === openPtyClass.operationWouldBlockErrno
+            errno === openPtyClass.TRY_AGAIN_ERRNO ||
+            errno === openPtyClass.OPERATION_WOULD_BLOCK_ERRNO
           ) {
-            this.scheduleWriteDrain(openPtyClass.writeRetryDelayMilliseconds);
+            this.scheduleWriteDrain(
+              openPtyClass.WRITE_RETRY_DELAY_MILLISECONDS,
+            );
             return;
           }
           throw new Error(
@@ -434,7 +431,7 @@ class $OpenPty {
     const openPtyClass = this.constructor as typeof $OpenPty;
     openPtyClass.$terminalControlLibrary.symbols.ioctl(
       this.masterFileDescriptor,
-      openPtyClass.terminalWindowSizeRequest,
+      openPtyClass.TERMINAL_WINDOW_SIZE_REQUEST,
       ptr(windowSize),
     );
   }

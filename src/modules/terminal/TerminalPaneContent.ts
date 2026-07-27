@@ -43,11 +43,11 @@ class $TerminalPaneContent implements PaneContent {
   // emulator, so the shell doesn't hug the panel border. The emulator (and thus the child PTY) sizes to
   // the VISIBLE region inside the gutter; the caret and rendered cells shift by the same margin. Kept in
   // ONE place so render(), onResize(), and caret() agree — a mismatch would put the cursor off the text.
-  protected static get padColumns(): number {
+  protected static get PAD_COLUMNS(): number {
     return 2;
   }
 
-  protected static get padRows(): number {
+  protected static get PAD_ROWS(): number {
     return 1;
   }
 
@@ -71,13 +71,13 @@ class $TerminalPaneContent implements PaneContent {
   protected get terminalPadColumns(): number {
     const terminalPaneContentClass = this
       .constructor as typeof $TerminalPaneContent;
-    return terminalPaneContentClass.padColumns;
+    return terminalPaneContentClass.PAD_COLUMNS;
   }
 
   protected get terminalPadRows(): number {
     const terminalPaneContentClass = this
       .constructor as typeof $TerminalPaneContent;
-    return terminalPaneContentClass.padRows;
+    return terminalPaneContentClass.PAD_ROWS;
   }
 
   get title(): string {

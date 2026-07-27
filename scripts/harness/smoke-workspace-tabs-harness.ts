@@ -190,7 +190,7 @@ try {
       const caretColumn = pathPosition.column + `+ ${secondRoot}`.length;
       return (
         candidate.cell(pathPosition.row, caretColumn)?.background ===
-        Number.parseInt(ThemePalettes.Class.dark.fg.slice(1), 16)
+        Number.parseInt(ThemePalettes.Class.DARK.fg.slice(1), 16)
       );
     },
   );

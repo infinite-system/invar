@@ -49,6 +49,14 @@ if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   fail=1
 fi
 
+# 1.75) STATIC-GETTER NAMING: cached versus uncached is the `$` axis; literal versus derived is
+#       the CASE axis. Parse getter bodies so comments, strings, and instance knobs cannot satisfy
+#       or trip the rule by textual coincidence.
+if ! "$bun_binary" scripts/check-static-getter-naming.ts; then
+  echo "CONVENTIONS FAIL: static getter literal/derived naming"
+  fail=1
+fi
+
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding

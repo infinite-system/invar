@@ -11,20 +11,18 @@ class $CodeFolding {
     FoldRangeSnapshot
   > {
     const rangesByDocument = new WeakMap<FoldableDocument, FoldRangeSnapshot>();
-    Object.defineProperty(this, '$rangesByDocument', {
-      configurable: true,
-      value: rangesByDocument,
-    });
     return rangesByDocument;
   }
 
-  protected static get matchingOpeningDelimiter(): Readonly<
+  protected static get MATCHING_OPENING_DELIMITER(): Readonly<
     Record<string, string>
   > {
     return { '}': '{', ']': '[' };
   }
 
-  protected static get closingDelimiterFor(): Readonly<Record<string, string>> {
+  protected static get CLOSING_DELIMITER_FOR(): Readonly<
+    Record<string, string>
+  > {
     return { '{': '}', '[': ']' };
   }
 
@@ -96,11 +94,11 @@ class $CodeFolding {
       for (const span of spans) {
         if (span.role !== 'operator') continue;
         for (const delimiter of span.text) {
-          if (this.closingDelimiterFor[delimiter]) {
+          if (this.CLOSING_DELIMITER_FOR[delimiter]) {
             delimiterStack.push({ delimiter, line: lineIndex });
             continue;
           }
-          const openingDelimiter = this.matchingOpeningDelimiter[delimiter];
+          const openingDelimiter = this.MATCHING_OPENING_DELIMITER[delimiter];
           if (!openingDelimiter) continue;
           const opening = delimiterStack[delimiterStack.length - 1];
           if (!opening || opening.delimiter !== openingDelimiter) continue;

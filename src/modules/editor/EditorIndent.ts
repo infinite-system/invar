@@ -12,14 +12,14 @@ import { Static } from 'ivue/extras';
 // invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 class $EditorIndent {
   /** Fallback when a document shows no indentation at all (empty or single-level file). */
-  protected static get defaultSpaceWidth(): number {
+  protected static get DEFAULT_SPACE_WIDTH(): number {
     return 2;
   }
 
   /** How many lines to sample when detecting the unit — enough to be representative, bounded so a
    *  huge file costs nothing. Public because the Editor slices exactly this many lines to hand over,
    *  and a second copy of the number in the Editor would be free to drift. */
-  static get detectionLineLimit(): number {
+  static get DETECTION_LINE_LIMIT(): number {
     return 200;
   }
 
@@ -29,7 +29,7 @@ class $EditorIndent {
    * between levels), else the default.
    */
   static detectIndentUnit(lines: readonly string[]): string {
-    const sampledLineCount = Math.min(lines.length, this.detectionLineLimit);
+    const sampledLineCount = Math.min(lines.length, this.DETECTION_LINE_LIMIT);
     let smallestSpaceIndentWidth = 0;
     for (let lineIndex = 0; lineIndex < sampledLineCount; lineIndex += 1) {
       const lineText = lines[lineIndex] ?? '';
@@ -48,7 +48,7 @@ class $EditorIndent {
     const spaceWidth =
       smallestSpaceIndentWidth > 0
         ? smallestSpaceIndentWidth
-        : this.defaultSpaceWidth;
+        : this.DEFAULT_SPACE_WIDTH;
     return ' '.repeat(spaceWidth);
   }
 

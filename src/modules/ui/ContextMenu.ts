@@ -12,17 +12,17 @@ class $ContextMenu {
   protected get ContextMenu() {
     return ContextMenu.Class as unknown as typeof $ContextMenu;
   }
-  protected static get menuHorizontalFrame() {
+  protected static get MENU_HORIZONTAL_FRAME() {
     return 4;
   }
   protected get menuHorizontalFrame() {
-    return this.ContextMenu.menuHorizontalFrame;
+    return this.ContextMenu.MENU_HORIZONTAL_FRAME;
   }
-  protected static get menuVerticalFrame() {
+  protected static get MENU_VERTICAL_FRAME() {
     return 2;
   }
   protected get menuVerticalFrame() {
-    return this.ContextMenu.menuVerticalFrame;
+    return this.ContextMenu.MENU_VERTICAL_FRAME;
   }
   get open() {
     return ref(false);

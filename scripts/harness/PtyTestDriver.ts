@@ -64,11 +64,11 @@ export interface ContentInvarianceOptions {
 class $PtyTestDriver {
   /** How many trailing recorded characters accompany an unexpected-exit failure. Long enough to hold
    *  a runtime's uncaught-exception dump with its stack, short enough to stay readable in a gate log. */
-  protected static get outputConditionPollIntervalMilliseconds(): number {
+  protected static get OUTPUT_CONDITION_POLL_INTERVAL_MILLISECONDS(): number {
     return 10;
   }
 
-  protected static get exitEvidenceTailLength(): number {
+  protected static get EXIT_EVIDENCE_TAIL_LENGTH(): number {
     return 2000;
   }
 
@@ -155,7 +155,9 @@ class $PtyTestDriver {
               : '') +
             `; output tail: ` +
             JSON.stringify(
-              this.observedOutput.slice(-$PtyTestDriver.exitEvidenceTailLength),
+              this.observedOutput.slice(
+                -$PtyTestDriver.EXIT_EVIDENCE_TAIL_LENGTH,
+              ),
             ) +
             (this.observedOutput.length === 0
               ? ' — NO bytes reached the harness at all, so the failure is before or' +
@@ -408,7 +410,9 @@ class $PtyTestDriver {
           `Timed out waiting for output condition: ${predicateDescription}`,
         );
       }
-      await Bun.sleep($PtyTestDriver.outputConditionPollIntervalMilliseconds);
+      await Bun.sleep(
+        $PtyTestDriver.OUTPUT_CONDITION_POLL_INTERVAL_MILLISECONDS,
+      );
     }
   }
 

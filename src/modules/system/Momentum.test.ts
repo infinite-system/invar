@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test';
+import { Static } from 'ivue/extras';
 import {
   Momentum,
   type MomentumOptions,
@@ -27,6 +28,28 @@ describe('scroll-momentum', () => {
       decayPerSec: 0.015,
       stopVelocity: 3,
     });
+  });
+
+  test('a parent-first cached read does not shadow a raw subclass override', () => {
+    expect(Momentum.Class.defaultOptions.impulse).toBe(22);
+    class $SpecializedMomentum extends Momentum.$Class {
+      protected static override get $defaultOptions(): MomentumOptions {
+        const defaultOptions: MomentumOptions = {
+          impulse: 99,
+          max: 120,
+          decayPerSec: 0.02,
+          stopVelocity: 4,
+        };
+        return defaultOptions;
+      }
+    }
+    const SpecializedMomentum = Static($SpecializedMomentum);
+
+    expect(SpecializedMomentum.defaultOptions.impulse).toBe(99);
+    expect(SpecializedMomentum.defaultOptions).toBe(
+      SpecializedMomentum.defaultOptions,
+    );
+    expect(Object.isFrozen(SpecializedMomentum.defaultOptions)).toBe(true);
   });
 
   test('at rest emits no rows', () => {
