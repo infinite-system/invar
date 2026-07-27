@@ -230,6 +230,19 @@ and a rotted list reports green. The proven shape (measured on main: 36 files �
 **Scan-then-import is load-bearing, not an optimisation.** Importing all of `src` to discover
 classes HANGS (killed at 120s) — some module has a non-returning module-level side effect.
 
+**Accessibility modifiers are handled, and `#`-private is FORBIDDEN.** This repo writes
+`protected static get $…` almost universally (66 of 67 on main; 0 plain `private`, 0 `public`), and
+the grep matches it because `protected static get $X` CONTAINS `static get $X`. There is no legal
+ordering that escapes: `tsc` rejects `static private` with TS1029 ("'private' modifier must precede
+'static' modifier"). TS `private`/`protected` are compile-time only, so all of them stay visible to
+`getOwnPropertyDescriptors` and all of them cache under `Static()` — verified.
+
+ES `#`-private is the exception and must be banned outright: a `static get #$FOO` is **not a
+property**, so no descriptor walk can see it, and `Static()` cannot reach it either — verified, a
+`#`-private getter does not cache. It would silently recompute forever with nothing able to observe
+it. Zero instances today. Because runtime cannot see it, this one needs a source grep in the
+conventions gate: **`static get #$` is forbidden.**
+
 Three guards, all required:
 - fail unless the DISCOVERED getter count equals the SOURCE-SCAN count. "Fail if zero" is too weak:
   a walk that finds 4 of 36 also reports green, and since discovery rests on a grep, a `$`-getter
