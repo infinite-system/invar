@@ -322,9 +322,74 @@ vocabulary is now the authority: every entry is enumerated, disagreement and
 double-cell rendering are both forbidden, and the wide-glyph positive control
 proves the detector can fail toward two.
 
-**Open question:** The settings gear still has unrelated shell-script and
-configuration-file owners in the same mark column; resolving that semantic
-collision is separate from width uniformity.
+**Open question:** Should shell scripts and configuration files move from the
+settings gear to the distinct marks recommended in the proposal below?
+
+#### Proposal for distinct shell-script and configuration marks
+
+This proposal changes no shipped mark. The source-derived owner query
+`ThemeIcons.Class.markOwnersFor('⚙')` reports:
+
+| Mark | Owner | Collision in a classified-mark column |
+| --- | --- | --- |
+| `⚙` | `activity: Settings` | No; activity chrome |
+| `⚙` | `the status-bar settings affordance` | No; status chrome, same settings meaning |
+| `⚙` | `symbol class: shellScript` | Yes; the file-tree, breadcrumb, and completion mark column |
+| `⚙` | `symbol class: configuration` | Yes; the same column as `shellScript` |
+
+The existing verified Nerd Font marks remain `U+F489` for shell scripts and
+`U+E6B2` for configuration. Each candidate below is a Unicode-tier pair; at
+the ASCII tier every pair honestly degrades to `$` and `:`. No candidate is
+in the Geometric Shapes block, present in `$markOwnerships`, reserved by the
+editor-mark table, or in the activity row `≡ ⑂ ⌕ ⚙ ⧫`.
+
+| Pair | Shell-script mark | YAML/configuration mark | Why it reads correctly |
+| --- | --- | --- | --- |
+| A | `$` — `U+0024 DOLLAR SIGN` | `:` — `U+003A COLON` | `$` is the Unix shell prompt; `:` is YAML's key/value delimiter. Both remain truthful ASCII fallbacks. |
+| B | `⌘` — `U+2318 PLACE OF INTEREST SIGN` | `☷` — `U+2637 TRIGRAM FOR EARTH` | `⌘` is widely read as “command”; `☷` has three strong horizontal rows that read as a settings list. The tradeoff is the Mac association of `⌘` and the formal trigram meaning of `☷`. |
+| C | `⏵` — `U+23F5 BLACK MEDIUM RIGHT-POINTING TRIANGLE` | `≔` — `U+2254 COLON EQUALS` | The solid triangle reads as “run”; colon-equals reads as a key/value assignment. The tradeoff is that “run” is broader than “shell script,” and `≔` is less familiar than a plain colon. |
+
+Measured with the same two authorities as the exhaustive vocabulary test:
+`EditorCoordinates.lineWidth` for the app and `@xterm/headless` through
+`TerminalEmulator` for terminal cursor advance. The wide control proves the
+run can report two:
+
+```text
+control 漢 U+6F22 app=2 xterm=2
+pair A shell $ U+0024 app=1 xterm=1
+pair A config : U+003A app=1 xterm=1
+pair B shell ⌘ U+2318 app=1 xterm=1
+pair B config ☷ U+2637 app=1 xterm=1
+pair C shell ⏵ U+23F5 app=1 xterm=1
+pair C config ≔ U+2254 app=1 xterm=1
+nerd shell  U+F489 app=1 xterm=1
+nerd config  U+E6B2 app=1 xterm=1
+```
+
+Recommendation — accept Pair A. It names the two families through syntax
+users already see in shell and YAML files, has no platform-specific reading,
+uses no font-dependent code point, and keeps the same meaning when repeated
+as the ASCII fallback. Pair B is more decorative but semantically less exact;
+Pair C is solid and measurable but reads as execution and assignment rather
+than specifically shell and YAML.
+
+If accepted, the implementation is mechanical:
+
+- `src/modules/theme/ThemeIcons.ts:70,80` — replace the two Unicode `⚙`
+  entries; `:106,113` — replace the blank ASCII entries with `$` and `:`;
+  `:263-271` — remove the now-stale declared `⚙` sharing. Keep the verified
+  Nerd Font entries at `:37,44`.
+- `src/modules/theme/ThemeIcons.test.ts:324-370` — update the pinned Unicode
+  and ASCII rows; near `:462-472` — pin that shell, configuration, and Settings
+  have distinct meanings and marks. The exhaustive width test at `:515-562`
+  will automatically exercise all three tiers.
+- `src/modules/theme/theme.invariants.md:325` — replace this pending proposal
+  with the accepted choice and its measured rationale.
+- `project.coverage-deltas.md` — record any assertion-count change if the
+  focused regression adds an assertion.
+
+Do you accept Pair A — `$` for shell scripts and `:` for YAML/configuration at
+the Unicode and ASCII tiers, while retaining the verified Nerd Font marks?
 
 **Impossible if true:** An icon-cell glyph wider than one cell at any level;
 any theme glyph whose app-measured width disagrees with terminal cursor
@@ -341,4 +406,4 @@ scripts/harness/smoke-activitybar-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
