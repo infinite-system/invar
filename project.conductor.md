@@ -2446,3 +2446,43 @@ killed three structural reads by measurement and that is the signal to stop reas
 One more, quieter: the user's own long-running instance was the control group. A two-day-old process
 on old code, sitting at 0.8% next to two new ones at 50%+, is a natural experiment nobody designed.
 **When a user reports a regression, ask what else is still running.**
+
+## 2026-07-27 20:15 UTC — three vacuous measurements in one day, all mine
+
+Today's outage was a missing `bun install`. Getting to that answer took six refuted hypotheses, and
+what slowed it down was not the hypotheses — it was that **three of my own measurements measured
+nothing**, and each one nearly became a reported finding.
+
+1. **A headless boot of a PTY app.** `bun run src/main.ts > log 2>&1 < /dev/null`, 1–2% CPU falling.
+   No PTY, so the render loop may never have run. I briefly took it as a refutation.
+2. **A path-existence audit that could not read its own sentence.** Flagged
+   `src/modules/system/Static.ts` as a dead citation; the sentence's entire point was that the file
+   *was deleted*. A checker that resolves paths without reading the clause around them invents work.
+3. **A two-leg version comparison whose legs were the same version.** Ran the capability probe in a
+   worktree whose `package.json` had been restored but whose `node_modules` had not, so both legs
+   loaded ivue 2.2.1 and both printed "caching present". I nearly published that as evidence the
+   probe could not discriminate — which would have killed the correct design.
+
+Plus a fourth of the same family from earlier: a `git ls-tree ... 'src/**/*.ts'` glob that matched
+nothing, so a freeze census summed over zero files and printed a confident `post=0`.
+
+  **Every measurement needs the question: what would this print if the thing I am measuring were
+  absent?** All four printed the same output for "healthy" and for "not measured". That is not a
+  weak instrument, it is a non-instrument.
+
+The concrete discipline that caught each one, worth copying:
+
+- **Print the environment inside the leg, not around it.** #3 died the moment the probe printed the
+  installed version per leg instead of my asserting it from the worktree name.
+- **Pin the negative case explicitly.** The real two-leg table needed a scratch directory with
+  `"ivue": "2.1.0"` written by hand. "The old worktree probably still has the old version" is an
+  assumption wearing a measurement's clothes.
+- **A positive control before the subject.** The `bun --cpu-prof` capture was only trustworthy
+  because a deliberately hot function came back as 52 of 52 samples first. `perf` failed that same
+  check (`perf_event_paranoid=4`) and was discarded instead of shipped — the one time today the
+  control did its job before the measurement mattered.
+
+Failure direction, again: all four failed toward "nothing wrong here", which is the direction that
+strands work rather than interrupting it. That is now consistent enough across two days to treat as
+a personal bias rather than coincidence — I write predicates that assume the healthy state, because
+healthy is the state I am hoping to confirm.
