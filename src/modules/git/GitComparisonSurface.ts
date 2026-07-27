@@ -1,4 +1,5 @@
 import type { DiffView } from '../diff/DiffView';
+import { ref } from 'vue';
 import type {
   EditorSurfaceContent,
   EditorSurfaceContentContext,
@@ -23,6 +24,7 @@ class $GitComparisonSurface implements EditorSurfaceContentProvider {
 
   readonly identifier = 'sourceControl.comparison';
   protected content: GitComparisonContent.Model | null = null;
+  protected readonly layoutRevision = ref(0);
 
   /** The mounted comparison view, or null. Read by the plugin's own commands and status snapshot —
    *  never by the host, which knows only the generic content contract. */
@@ -47,6 +49,7 @@ class $GitComparisonSurface implements EditorSurfaceContentProvider {
    *  invariant: The diff pane split stays draggable and persistent (src/modules/diff/diff.invariants.md) */
   observePaintSignals(): void {
     void this.activeWorkspace()?.diffSplitRatioSetting.value.value;
+    void this.layoutRevision.value;
   }
 
   // invariant: Construction goes through overridable seams (project.invariants.md)
@@ -55,7 +58,12 @@ class $GitComparisonSurface implements EditorSurfaceContentProvider {
     request: GitComparisonRequest,
     context: EditorSurfaceContentContext,
   ): GitComparisonContent.Model {
-    return new GitComparisonContent.Class(workspace, request, context);
+    return new GitComparisonContent.Class(
+      workspace,
+      request,
+      context,
+      this.layoutRevision,
+    );
   }
 
   create(context: EditorSurfaceContentContext): EditorSurfaceContent {

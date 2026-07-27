@@ -199,13 +199,14 @@ distribution; no second diff or scroll authority.
 already is the single change-region authority.
 
 **Evidence:** `src/modules/diff/DiffView.test.ts`, including the 100k-row/1,000-block cache cost
-ratchet; `scripts/smoke-diff-overview.sh`; live mount `RootView.syncDiffView` to
-`DiffView.synchronizeOverviewRuler`.
+ratchet; `scripts/harness/smoke-diff-overview-harness.ts`; live mount
+`GitComparisonContent.createComparisonView` to `DiffView.synchronizeOverviewRuler`.
 
 **Impossible if true:** a separated top, middle, or bottom change block existing with no matching
 colored ruler cell; an unchanged ruler band painted as a change when it overlaps no change block.
 
-**Verification:** `bun test src/modules/diff/DiffView.test.ts && bash scripts/smoke-diff-overview.sh`.
+**Verification:** `bun test src/modules/diff/DiffView.test.ts && bun
+scripts/harness/smoke-diff-overview-harness.ts`.
 
 **Status:** established
 
@@ -226,13 +227,15 @@ single value, and saves once when the drag ends.
 **Generates:** a one-cell visible grab strip; complementary previous/current widths; live resize;
 persisted split geometry across diff instances.
 
-**Evidence:** `src/modules/layout/SplitterModel.test.ts`; `scripts/smoke-diff-overview.sh`; live caller
-`RootView.syncDiffView` attaches the shared `Settings` instance to each `DiffView`.
+**Evidence:** `src/modules/layout/SplitterModel.test.ts`;
+`scripts/harness/smoke-diff-overview-harness.ts`; live caller
+`GitComparisonContent.createComparisonView` attaches the shared `Settings` instance to each
+`DiffView`.
 
 **Impossible if true:** dragging the divider while the pane widths remain fixed; reopening a diff in
 the same session resets a completed split drag to one half; both pane widths growing independently.
 
-**Verification:** `bash scripts/smoke-diff-overview.sh`.
+**Verification:** `bun scripts/harness/smoke-diff-overview-harness.ts`.
 
 **Status:** established
 
@@ -261,13 +264,15 @@ underlying-text copy; one pointer-rate and lifecycle rule shared with the editor
 **Rejected alternatives:** A native-only diff selection or a diff-specific selection model —
 either can disagree with the shared cursor range that Ctrl+C copies after repaint or scrolling.
 
-**Evidence:** `src/modules/ui/SelectionDragBehavior.test.ts`; `scripts/smoke-diff-overview.sh`; live
-callers `RootView` and `DiffView` both construct `SelectionDragBehavior`.
+**Evidence:** `src/modules/ui/SelectionDragBehavior.test.ts`;
+`scripts/harness/smoke-diff-overview-harness.ts`; live callers `RootView` and `DiffView` both
+construct `SelectionDragBehavior`.
 
 **Impossible if true:** a diff drag highlight disappearing on repaint; a held bottom-edge drag leaving
 the aligned scroll offset unchanged; Ctrl+C copying alignment filler or text outside the model range.
 
-**Verification:** `bun test src/modules/ui/SelectionDragBehavior.test.ts && bash scripts/smoke-diff-overview.sh`.
+**Verification:** `bun test src/modules/ui/SelectionDragBehavior.test.ts && bun
+scripts/harness/smoke-diff-overview-harness.ts`.
 
 **Status:** established
 

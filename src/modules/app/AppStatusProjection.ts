@@ -307,6 +307,7 @@ class $AppStatusProjection {
       // (empty when none) — flips on when ask-mode pauses a tool, off when y/n/a resolves it.
       agentPendingPermissionTool:
         ports.agentPaneContent?.agentSession.pendingPermission?.toolName ?? '',
+      agentSkipPermissions: ports.settings.agentSkipPermissions.value,
       // The live engine label (drives the engine-switch smoke) — flips claude⇄codex on cycle.
       agentEngine: ports.agentPaneContent?.currentEngine ?? '',
       // The pane's LIVE title (drives the identity smoke) — the registry display label of the active
@@ -392,6 +393,7 @@ export interface AppStatusProjectionPorts {
     | 'rightDockWidth'
     | 'agentAudioNarration'
     | 'agentTerminalFollowMode'
+    | 'agentSkipPermissions'
   >;
   readonly commands: Pick<
     InstanceType<typeof CommandRegistry.Class>,
