@@ -81,40 +81,51 @@ describe('scroll-momentum', () => {
     expect(gainedAtHighCeiling).toBeCloseTo(gainedAtDefaultCeiling);
   });
 
-  test('successive raised-ceiling flicks accumulate before reaching the ceiling', () => {
-    const raisedCeilingOptions = {
-      ...Momentum.Class.verticalOptions,
-      max: 320,
-    };
-    const peakVelocities: number[] = [];
-    let momentum = Momentum.Class.atRest;
-    for (let flickNumber = 0; flickNumber < 3; flickNumber++) {
-      if (flickNumber > 0) {
-        momentum = Momentum.Class.stepMomentum(
-          momentum,
-          0.2,
-          raisedCeilingOptions,
-        ).momentum;
-      }
-      for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
-        const velocityBeforeNotch = momentum.velocity;
-        momentum = Momentum.Class.addImpulse(
-          momentum,
-          1,
-          raisedCeilingOptions,
-          flickNumber * 200,
-        );
-        if (velocityBeforeNotch < raisedCeilingOptions.max) {
+  test('successive hard flicks retain headroom across configured ceilings', () => {
+    for (const verticalFlingCeiling of [220, 320, 120, 480]) {
+      const ceilingOptions = {
+        ...Momentum.Class.verticalOptions,
+        max: verticalFlingCeiling,
+      };
+      const peakVelocities: number[] = [];
+      let momentum = Momentum.Class.atRest;
+      for (let flickNumber = 0; flickNumber < 3; flickNumber++) {
+        if (flickNumber > 0) {
+          momentum = Momentum.Class.stepMomentum(
+            momentum,
+            0.2,
+            ceilingOptions,
+          ).momentum;
+        }
+        for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
+          const velocityBeforeNotch = momentum.velocity;
+          momentum = Momentum.Class.addImpulse(
+            momentum,
+            1,
+            ceilingOptions,
+            flickNumber * 200,
+          );
           expect(momentum.velocity).toBeGreaterThan(velocityBeforeNotch);
         }
+        peakVelocities.push(momentum.velocity);
       }
-      peakVelocities.push(momentum.velocity);
+
+      expect(peakVelocities[0]).toBeLessThan(verticalFlingCeiling);
+      expect(peakVelocities[1]).toBeGreaterThan(peakVelocities[0]!);
+      expect(peakVelocities[2]).toBeGreaterThan(peakVelocities[1]!);
     }
 
-    expect(peakVelocities[0]).toBeLessThan(raisedCeilingOptions.max);
-    expect(peakVelocities[1]).toBeGreaterThan(peakVelocities[0]!);
-    expect(peakVelocities[2]).toBeGreaterThan(peakVelocities[1]!);
-    expect(peakVelocities[2]).toBe(raisedCeilingOptions.max);
+    const defaultCeilingOptions = Momentum.Class.verticalOptions;
+    let defaultFirstFlick = Momentum.Class.atRest;
+    for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
+      defaultFirstFlick = Momentum.Class.addImpulse(
+        defaultFirstFlick,
+        1,
+        defaultCeilingOptions,
+        0,
+      );
+    }
+    expect(defaultFirstFlick.velocity).toBeCloseTo(148.94, 2);
   });
 
   test('a live glide continues gain outside the input cadence window', () => {

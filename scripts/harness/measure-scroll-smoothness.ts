@@ -164,6 +164,7 @@ interface AccumulationFlickMeasurement {
   readonly rowCrossingSequence: readonly number[];
   readonly peakRowsCrossedPerFrame: number;
   readonly peakTwoFrameRowsCrossed: number;
+  readonly peakFourFrameRowsCrossed: number;
   readonly peakVelocityRowsPerSecond: number;
 }
 
@@ -480,6 +481,7 @@ async function measureAccumulationPattern(
       rowCrossingSequence: [],
       peakRowsCrossedPerFrame: 0,
       peakTwoFrameRowsCrossed: 0,
+      peakFourFrameRowsCrossed: 0,
       peakVelocityRowsPerSecond: 0,
     }),
   );
@@ -489,6 +491,7 @@ async function measureAccumulationPattern(
     rowCrossingSequence: number[];
     peakRowsCrossedPerFrame: number;
     peakTwoFrameRowsCrossed: number;
+    peakFourFrameRowsCrossed: number;
     peakVelocityRowsPerSecond: number;
   }>;
   const flickTimestampsMilliseconds: number[] = [];
@@ -555,6 +558,17 @@ async function measureAccumulationPattern(
         activeMeasurement.peakTwoFrameRowsCrossed,
         previousRowsCrossed + rowsCrossed,
       );
+      const latestFourFrameRowsCrossed = activeMeasurement.rowCrossingSequence
+        .slice(-4)
+        .reduce(
+          (totalRowsCrossed, frameRowsCrossed) =>
+            totalRowsCrossed + frameRowsCrossed,
+          0,
+        );
+      activeMeasurement.peakFourFrameRowsCrossed = Math.max(
+        activeMeasurement.peakFourFrameRowsCrossed,
+        latestFourFrameRowsCrossed,
+      );
       if (frameDurationMilliseconds > 0) {
         activeMeasurement.peakVelocityRowsPerSecond = Math.max(
           activeMeasurement.peakVelocityRowsPerSecond,
@@ -591,6 +605,7 @@ function printAccumulationPattern(
         `pause=${pauseDescription} ` +
         `peakFrame=${measurement.peakRowsCrossedPerFrame} ` +
         `peakTwoFrames=${measurement.peakTwoFrameRowsCrossed} ` +
+        `peakFourFrames=${measurement.peakFourFrameRowsCrossed} ` +
         `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
         `sequence=${measurement.rowCrossingSequence.join(',')}`,
     );
