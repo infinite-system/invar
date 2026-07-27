@@ -140,6 +140,7 @@ class $AppStatusProjection {
       ),
       editorScrollTop: editor.viewport.scrollTop.value,
       editorScrollLeft: editor.viewport.scrollLeft.value,
+      editorFrameAttribution: ports.view.editorFrameAttribution(),
       wordWrap: editor.wordWrap.value,
       codeFolding: editor.codeFoldingEnabled,
       foldedLineStarts: editor.codeFoldingEnabled
@@ -483,6 +484,7 @@ export interface AppStatusProjectionPorts {
     | 'overlayDialogBounds'
     | 'overlayScrollPositions'
     | 'overlayViewportExtents'
+    | 'editorFrameAttribution'
   >;
   readonly mouse: AppStatusMouseEvent | null;
   readonly narration: Pick<

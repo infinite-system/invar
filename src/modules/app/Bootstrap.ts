@@ -847,7 +847,12 @@ class $Bootstrap {
     // Pull current state into the renderables and request a frame. READ-ONLY over model state
     // (no ref writes), so it is safe to run inside the reactive effect with no feedback loop.
     const paint = (): void => {
-      view.update();
+      view.beginEditorFrameAttribution();
+      try {
+        view.update();
+      } finally {
+        view.completeEditorFrameAttribution();
+      }
       boundedListPopup.update();
       completionPopup.update();
       agentSkillPopup.update();

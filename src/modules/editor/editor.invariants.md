@@ -402,6 +402,42 @@ scripts/harness/smoke-code-folding-harness.ts`.
 
 **Last refined:** 2026-07-26
 
+### Editor frame work is independent of document length
+
+**Invariant:** If the editor renders the same viewport and gesture over
+unchanged documents of different lengths, then document-line reads,
+fold and wrap projection lookups, and layout computations per frame are
+identical.
+
+**Scope:** The flat editor scroll path at fixed terminal geometry, settings,
+fixture shape, and input gesture. Fold density, word wrap, gutter marks,
+indent guides, scroll depth, and the diff surface are separate axes.
+
+**Mechanism:** `EditorFrameAttribution` brackets `RootView.update()` and
+counts operations at the shared editor projection seams. The frame-settled
+status channel publishes cumulative integer totals, so
+`measure-scroll-smoothness.ts` compares exact count deltas per attributed
+frame between its 2,000-line and 100,000-line fixtures.
+
+**Generates:** A machine-independent ratio contract on editor scroll work;
+wall-clock FPS retained only as one secondary canary per surface.
+
+**Evidence:** `src/modules/editor/EditorFrameAttribution.ts`;
+`src/modules/ui/EditorPaneRenderer.ts`;
+`scripts/harness/measure-scroll-smoothness.ts`; the
+`glide-smoothness` behavioral contract.
+
+**Impossible if true:** A per-frame quantity that scales with document
+length.
+
+**Verification:** `bash scripts/behavioral-contracts.sh` reports the
+2,000-line and 100,000-line counts and requires every count-per-frame ratio
+to equal 1.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-27
+
 ### A fold toggle preserves the viewport anchor
 
 **Invariant:** If a fold is toggled while the editor is scrolled, then the topmost visible
