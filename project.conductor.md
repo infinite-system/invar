@@ -2486,3 +2486,39 @@ Failure direction, again: all four failed toward "nothing wrong here", which is 
 strands work rather than interrupting it. That is now consistent enough across two days to treat as
 a personal bias rather than coincidence — I write predicates that assume the healthy state, because
 healthy is the state I am hoping to confirm.
+
+## 2026-07-27 21:40 UTC — a red inside a SOFT step reaches no verdict, and its leak outlives the run
+
+The #152 gate declared `merge-gate: ALL-PASS` and exited 0 while its own log contained:
+
+```
+|   FAIL orphan bun processes from this run: 2912951
+| == wrap-up: ... measurement failures=2 · idle-quiescence violations=0 · target misses=1 ==
+| EXIT 2 — measurement failure(s): the affected numbers cannot support their claims
+```
+
+The verdict is honest — `perf-baselines` is declared `SOFT — reports, does not block`, and perf
+numbers are load-dependent, so making them block would red honest trees. But three things about
+this shape are wrong, and only the first is cosmetic:
+
+1. **The verdict line launders the step's own self-diagnosis.** The step said *the affected numbers
+   cannot support their claims*; the gate printed `WARN — target miss or measurement gap`. A soft
+   step should surface its own failure COUNT on the verdict line, so `measurement failures=2` is
+   legible without reading the block.
+2. **A soft step can report N failures and show fewer.** `measurement failures=2` with exactly one
+   `FAIL` line visible, because the gate prints a bounded TAIL of a soft step's output. The count
+   and the evidence disagree, and the count is the honest one. Bounded output is right; a bound that
+   can hide a named failure is not.
+3. **The orphan is not a measurement opinion — it is state.** A leaked editor at ~2.8% CPU and
+   190 MB survives the gate, so the NEXT run's quiet measurement inherits contention that its own
+   quiet lock cannot see. That is #147's family exactly (a contended measurement still reporting a
+   number), reached through a different door. A process leak belongs in a HARD step even when the
+   numbers around it are soft.
+
+  **Soft means "does not block". It does not mean "does not need reading".** And within a soft
+  step, distinguish OPINIONS (numbers that vary with load) from STATE (processes, files, locks) —
+  state leaks forward into the next run's opinions, so it earns a hard verdict.
+
+Corollary for the conductor: on ALL-PASS, still grep the log for `FAIL` and for exit codes inside
+soft blocks. This run's green was clean by the retry tally and still carried two measurement
+failures and a live orphan.

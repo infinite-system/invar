@@ -685,6 +685,29 @@ contains the pattern — resolve every hit through `/proc/<pid>/cwd` before beli
 `git commit` launches a gate you never typed, so "am I running a gate?" is the wrong question; the
 right one is "is anything about to run one?"
 
+**Third trap, and it cost a day: a WAIT whose pattern can match ITSELF never fires.** This waiter
+spun from 2026-07-26 21:12 to 2026-07-27 21:30 UTC and could never have completed:
+
+```sh
+bash -c 'until ! pgrep -f "codex exec ... -C /tmp/conductor-foldperf" >/dev/null; do sleep 5; done
+         ...; bash scripts/merge-gate.sh > /tmp/gate-foldperf.log'
+```
+
+The waiter's own `bash -c` argv CONTAINS the pattern, so `pgrep -f` always found itself, always
+concluded the builder was alive, and slept forever. Its gate never ran and its log was never
+created. The builder had exited a day earlier.
+
+Same root cause as the kill trap, opposite symptom: there a `-f` pattern kills the wrong process,
+here it makes a wait immortal. **A full-command-line pattern is not a predicate about a process —
+it is a predicate about text that includes your own.** So:
+
+- Never wait on `pgrep -f <pattern>` when the pattern appears in the waiting command. Capture the
+  pid at launch, or iterate pids and compare `readlink /proc/<pid>/cwd` against the worktree.
+- **A wait that can never fire is indistinguishable from a wait that is still waiting.** Give every
+  long wait a deadline and a distinct expiry line in its log, so "never fired" is legible.
+- Prefer the harness — a tracked background command that exits on the condition, or a Monitor on the
+  builder's own log — over a hand-rolled shell spin.
+
 If a builder is alive: either WAIT, or take the exception deliberately and write down why. What is
 forbidden is gating while builders verify and then reading the result as if it were clean.
 
