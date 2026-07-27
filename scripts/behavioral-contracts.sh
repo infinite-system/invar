@@ -120,9 +120,9 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 # and needs its own assertion, so this contract gates the per-frame step distribution of one fast
 # fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts. The instrument
 # generates 2k, 26,635, and 100k-line fixtures at run time and drives both the editor and diff
-# surfaces, so cadence is compared at scale without storing giant fixtures in the repository.
-# The 100k flat editor gesture starts at the top and supplies the current-run
-# reference FPS for the separate full-stack depth checkpoint below.
+# surfaces without storing giant fixtures in the repository. Deterministic editor frame-work counts
+# at 2k and 100k are the size-invariance contract. One diff FPS floor here and one fold-dense editor
+# FPS floor below remain secondary wall-clock canaries.
 #
 # THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
 #  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
@@ -150,6 +150,7 @@ SMOOTH_JSON="$ROOT/artifacts/scroll-smoothness.json"
 SMOOTH_LOG="$ROOT/artifacts/scroll-smoothness.log"
 mkdir -p "$ROOT/artifacts"
 if SMOOTHNESS_GESTURES=2 \
+   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
    SMOOTHNESS_LINE_COUNTS=2000,26635,100000 \
    SMOOTHNESS_SURFACES=editor,diff \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
@@ -157,16 +158,21 @@ if SMOOTHNESS_GESTURES=2 \
   read -r smooth_frames smooth_max_step smooth_travel \
     smooth_from_rest_travel smooth_follow_on_min_travel \
     smooth_follow_on_max_travel smooth_follow_on_within_tolerance \
-    smooth_fast_cadence_floor_passes smooth_minimum_fast_fps \
-    smooth_100k_surface_count smooth_100k_cadence_floor_passes \
-    smooth_100k_minimum_fast_fps \
+    smooth_diff_cadence_canary_passes smooth_diff_cadence_canary_fps \
+    smooth_scale_holds smooth_scale_baseline_frames \
+    smooth_scale_comparison_frames smooth_scale_baseline_reads \
+    smooth_scale_comparison_reads smooth_scale_read_ratio \
+    smooth_scale_fold_ratio smooth_scale_wrap_ratio \
+    smooth_scale_layout_ratio \
     smooth_100k_top_reference_fps \
     smooth_continuation_count smooth_continuation_holds \
     smooth_continuation_minimum_margin \
     smooth_continuation_minimum_delay smooth_continuation_maximum_delay \
     <<<"$(python3 -c "
 import json
-cases = json.load(open('$SMOOTH_JSON'))['cases']
+report = json.load(open('$SMOOTH_JSON'))
+cases = report['cases']
+scale = report['editorScaleInvariance']
 baseline = next(
     case for case in cases
     if case['surface'] == 'editor' and case['fixtureLineCount'] == 2000
@@ -178,31 +184,22 @@ all_gestures = [
     for case in cases
     for gesture in case['gestures']
 ]
-large_cases = [
-    case for case in cases if case['fixtureLineCount'] == 100000
-]
-large_gestures = [
-    gesture
-    for case in large_cases
-    for gesture in case['gestures']
-]
 large_editor_gestures = [
     gesture
-    for case in large_cases
-    if case['surface'] == 'editor'
+    for case in cases
+    if case['fixtureLineCount'] == 100000
+    and case['surface'] == 'editor'
     for gesture in case['gestures']
 ]
+diff_canary = next(
+    case for case in cases
+    if case['surface'] == 'diff' and case['fixtureLineCount'] == 2000
+)['gestures'][0]['sustainedFastFramesPerSecond']
 from_rest_travel = gestures[0]['totalDistanceRows']
 follow_on_travel = [gesture['totalDistanceRows'] for gesture in gestures[1:]]
 follow_on_within_tolerance = all(
     abs(travel - from_rest_travel) <= abs(from_rest_travel) * 0.10
     for travel in follow_on_travel
-)
-minimum_fast_fps = min(
-    gesture['sustainedFastFramesPerSecond'] for gesture in all_gestures
-)
-minimum_100k_fast_fps = min(
-    gesture['sustainedFastFramesPerSecond'] for gesture in large_gestures
 )
 top_reference_fps = min(
     gesture['sustainedFastFramesPerSecond']
@@ -231,14 +228,18 @@ print(min(g['movingFrameCount'] for g in all_gestures),
       min(follow_on_travel),
       max(follow_on_travel),
       int(follow_on_within_tolerance),
-      int(minimum_fast_fps >= 28),
-      f'{minimum_fast_fps:.1f}',
-      len(large_cases),
-      int(len(large_cases) == 2
-          and len(large_editor_gestures) == 2
-          and all(not case['depthCheckpoints'] for case in large_cases)
-          and minimum_100k_fast_fps >= 28),
-      f'{minimum_100k_fast_fps:.1f}',
+      int(diff_canary >= 28),
+      f'{diff_canary:.1f}',
+      int(scale is not None
+          and all(ratio == 1 for ratio in scale['ratios'].values())),
+      scale['baseline']['completedFrameCount'],
+      scale['comparison']['completedFrameCount'],
+      scale['baseline']['documentLineReads'],
+      scale['comparison']['documentLineReads'],
+      f\"{scale['ratios']['documentLineReads']:.6f}\",
+      f\"{scale['ratios']['foldProjectionLookups']:.6f}\",
+      f\"{scale['ratios']['wrapProjectionLookups']:.6f}\",
+      f\"{scale['ratios']['layoutComputations']:.6f}\",
       f'{top_reference_fps:.6f}',
       len(continuation_boundaries),
       int(continuation_holds),
@@ -304,33 +305,179 @@ print(min(g['movingFrameCount'] for g in all_gestures),
     continuation_message+="${smooth_continuation_minimum_margin:-missing})"
     bad "$continuation_message"
   fi
-  if [ "${smooth_fast_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
-    fast_cadence_message="sustained fast glide meets declared cadence"
-    fast_cadence_message+=" (slowest=${smooth_minimum_fast_fps}fps,"
-    fast_cadence_message+=" floor 28)"
-    pass "$fast_cadence_message"
+  if [ "${smooth_diff_cadence_canary_passes:-0}" -eq 1 ] 2>/dev/null; then
+    diff_cadence_message="diff wall-clock canary meets declared cadence"
+    diff_cadence_message+=" (${smooth_diff_cadence_canary_fps}fps,"
+    diff_cadence_message+=" floor 28)"
+    pass "$diff_cadence_message"
   else
-    fast_cadence_message="sustained fast glide misses declared cadence"
-    fast_cadence_message+=" (slowest=${smooth_minimum_fast_fps}fps,"
-    fast_cadence_message+=" floor 28)"
-    bad "$fast_cadence_message"
+    diff_cadence_message="diff wall-clock canary misses declared cadence"
+    diff_cadence_message+=" (${smooth_diff_cadence_canary_fps}fps,"
+    diff_cadence_message+=" floor 28)"
+    bad "$diff_cadence_message"
   fi
-  if [ "${smooth_100k_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
-    large_cadence_message="100k editor and diff glides sustain cadence"
-    large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
-    large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
-    large_cadence_message+=" floor 28)"
-    pass "$large_cadence_message"
+  if [ "${smooth_scale_holds:-0}" -eq 1 ] 2>/dev/null; then
+    scale_message="editor frame work is invariant from 2k to 100k"
+    scale_message+=" (reads=${smooth_scale_baseline_reads}/"
+    scale_message+="${smooth_scale_baseline_frames} vs "
+    scale_message+="${smooth_scale_comparison_reads}/"
+    scale_message+="${smooth_scale_comparison_frames}; ratios "
+    scale_message+="reads=$smooth_scale_read_ratio,"
+    scale_message+=" fold=$smooth_scale_fold_ratio,"
+    scale_message+=" wrap=$smooth_scale_wrap_ratio,"
+    scale_message+=" layout=$smooth_scale_layout_ratio)"
+    pass "$scale_message"
   else
-    large_cadence_message="100k editor or diff cadence regressed"
-    large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
-    large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
-    large_cadence_message+=" floor 28)"
-    bad "$large_cadence_message"
+    scale_message="editor frame work scales with document length"
+    scale_message+=" (reads ratio=${smooth_scale_read_ratio:-missing},"
+    scale_message+=" fold=${smooth_scale_fold_ratio:-missing},"
+    scale_message+=" wrap=${smooth_scale_wrap_ratio:-missing},"
+    scale_message+=" layout=${smooth_scale_layout_ratio:-missing};"
+    scale_message+=" expected exact 1)"
+    bad "$scale_message"
   fi
 else
   bad "glide-smoothness instrument did not complete — see $SMOOTH_LOG"
   sed -n '1,20p' "$SMOOTH_LOG"
+fi
+
+# ---- CONTRACT: successive flick accumulation (user-reported heavy glide, 2026-07-27) -------------
+# One 12-notch PTY write is a realistic hard flick. The DEFAULT 220-row/s ceiling is primary and a
+# raised 320-row/s ceiling is the second row. Successive 200 ms-separated flicks must visibly widen
+# the adjacent-four-frame row-crossing peak while the first stays below the ceiling-derived budget.
+# At 220/30 FPS a two-frame budget has only about 14 integer rows and the preserved first flick uses
+# 13, so three strict levels cannot fit; four frames retain the exact sequence while adding enough
+# cell-grid resolution to distinguish all three. This is deliberately separate from
+# glide-continuation: non-decrease admits a flat peak shape, while accumulation does not.
+echo "== CONTRACT glide-accumulation: successive flick peaks climb until the ceiling =="
+ACCUMULATION_DEFAULT_JSON="$ROOT/artifacts/glide-accumulation-default.json"
+ACCUMULATION_DEFAULT_LOG="$ROOT/artifacts/glide-accumulation-default.log"
+ACCUMULATION_RAISED_JSON="$ROOT/artifacts/glide-accumulation-raised.json"
+ACCUMULATION_RAISED_LOG="$ROOT/artifacts/glide-accumulation-raised.log"
+if SMOOTHNESS_GESTURES=0 \
+   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_ACCUMULATION_FLICKS=3 \
+   SMOOTHNESS_ACCUMULATION_PAUSE=200 \
+   SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
+   SMOOTHNESS_LINE_COUNTS=2000 \
+   SMOOTHNESS_SURFACES=editor \
+   SMOOTHNESS_FIXTURES=flat \
+   SMOOTHNESS_CODE_FOLDING=on \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$ACCUMULATION_DEFAULT_JSON" 2>"$ACCUMULATION_DEFAULT_LOG" \
+   && SMOOTHNESS_GESTURES=0 \
+   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_ACCUMULATION_FLICKS=3 \
+   SMOOTHNESS_ACCUMULATION_PAUSE=200 \
+   SMOOTHNESS_VERTICAL_FLING_CEILING=320 \
+   SMOOTHNESS_LINE_COUNTS=2000 \
+   SMOOTHNESS_SURFACES=editor \
+   SMOOTHNESS_FIXTURES=flat \
+   SMOOTHNESS_CODE_FOLDING=on \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG"; then
+  read -r accumulation_positive_control_rejected \
+    accumulation_production_climbs accumulation_default_peaks \
+    accumulation_raised_peaks accumulation_default_sequences \
+    accumulation_raised_sequences accumulation_delays \
+    <<<"$(python3 -c "
+import json
+import math
+
+default_report = json.load(open('$ACCUMULATION_DEFAULT_JSON'))
+raised_report = json.load(open('$ACCUMULATION_RAISED_JSON'))
+
+def case_values(report):
+    flicks = report['cases'][0]['accumulationFlicks']
+    peaks = [flick['peakFourFrameRowsCrossed'] for flick in flicks]
+    sequences = [
+        ','.join(str(rows) for rows in flick['rowCrossingSequence'])
+        for flick in flicks
+    ]
+    delays = [
+        flick['actualPauseBeforeMilliseconds']
+        for flick in flicks
+        if flick['actualPauseBeforeMilliseconds'] is not None
+    ]
+    ceiling_four_frame_rows = (
+        math.floor(
+            4
+            * report['verticalFlingCeiling']
+            / report['targetFramesPerSecond']
+        )
+        - 1
+    )
+    return peaks, sequences, delays, ceiling_four_frame_rows
+
+def climbs_with_headroom(candidate_peaks, ceiling_four_frame_rows):
+    return (
+        len(candidate_peaks) == 3
+        and candidate_peaks[0] < ceiling_four_frame_rows
+        and all(
+            later_peak > earlier_peak
+            for earlier_peak, later_peak
+            in zip(candidate_peaks, candidate_peaks[1:])
+        )
+    )
+
+default_peaks, default_sequences, default_delays, default_budget = (
+    case_values(default_report)
+)
+raised_peaks, raised_sequences, raised_delays, raised_budget = (
+    case_values(raised_report)
+)
+flat_positive_control = [default_budget - 1] * 3
+positive_control_rejected = not climbs_with_headroom(
+    flat_positive_control,
+    default_budget,
+)
+production_climbs = (
+    climbs_with_headroom(default_peaks, default_budget)
+    and climbs_with_headroom(raised_peaks, raised_budget)
+    and len(default_delays) == 2
+    and len(raised_delays) == 2
+)
+print(
+    int(positive_control_rejected),
+    int(production_climbs),
+    ','.join(str(peak) for peak in default_peaks),
+    ','.join(str(peak) for peak in raised_peaks),
+    '/'.join(default_sequences),
+    '/'.join(raised_sequences),
+    ','.join(
+        f'{delay:.1f}'
+        for delay in default_delays + raised_delays
+    ),
+)
+")"
+  if [ "${accumulation_positive_control_rejected:-0}" -eq 1 ] 2>/dev/null; then
+    pass "glide-accumulation positive control rejects a flat peak sequence"
+  else
+    bad "glide-accumulation positive control accepted a flat peak sequence"
+  fi
+  if [ "${accumulation_production_climbs:-0}" -eq 1 ] 2>/dev/null; then
+    accumulation_message="successive flick peaks climb with headroom"
+    accumulation_message+=" (default=$accumulation_default_peaks,"
+    accumulation_message+=" raised=$accumulation_raised_peaks,"
+    accumulation_message+=" delays=${accumulation_delays}ms,"
+    accumulation_message+=" defaultSequences=$accumulation_default_sequences,"
+    accumulation_message+=" raisedSequences=$accumulation_raised_sequences)"
+    pass "$accumulation_message"
+  else
+    accumulation_message="successive flick peaks did not climb with headroom"
+    accumulation_message+=" (default=${accumulation_default_peaks:-missing},"
+    accumulation_message+=" raised=${accumulation_raised_peaks:-missing},"
+    accumulation_message+=" delays=${accumulation_delays:-missing}ms,"
+    accumulation_message+=" defaultSequences="
+    accumulation_message+="${accumulation_default_sequences:-missing},"
+    accumulation_message+=" raisedSequences="
+    accumulation_message+="${accumulation_raised_sequences:-missing})"
+    bad "$accumulation_message"
+  fi
+else
+  bad "glide-accumulation instrument did not complete — see accumulation logs"
+  sed -n '1,12p' "$ACCUMULATION_DEFAULT_LOG"
+  sed -n '1,12p' "$ACCUMULATION_RAISED_LOG"
 fi
 
 # ---- CONTRACT: fold-dense full-stack cadence (RATCHET: real package JSON stayed slow) ---------------

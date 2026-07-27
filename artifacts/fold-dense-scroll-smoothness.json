@@ -1,0 +1,39 @@
+{
+  "commit": "8438514",
+  "wheelNotchesPerGesture": 12,
+  "depthGestureTargetRows": 1000,
+  "depthCheckpointFpsFloor": 28,
+  "depthReferenceFramesPerSecond": 29.88946,
+  "depthCheckpointFloorPositiveControl": "positive-control depth-75000 checkpoint 27.0 FPS is below 28 FPS",
+  "editorScaleInvariancePositiveControl": "scale-invariance document-line reads-per-frame ratio 100000/2000=50.000000, expected exact 1 (counts 1000000/10 vs 20000/10)",
+  "editorScaleInvariance": null,
+  "wallClockMilliseconds": 10701.581755,
+  "depthCheckpointWallClockMilliseconds": 9160.852921,
+  "depthCheckpointWallClockFraction": 0.8560279340687054,
+  "cases": [
+    {
+      "surface": "editor",
+      "fixtureShape": "fold-dense",
+      "codeFolding": "on",
+      "indentGuides": true,
+      "versionControlMarks": true,
+      "fixtureLineCount": 100000,
+      "gestures": [],
+      "continuationBoundaries": [],
+      "depthCheckpoints": [
+        {
+          "targetDepthLine": 75000,
+          "actualStartLine": 74969,
+          "actualEndLine": 75969,
+          "rowsTravelled": 1000,
+          "observedFrameCount": 187,
+          "movingFrameCount": 187,
+          "durationMilliseconds": 6202.897211,
+          "framesPerSecond": 29.98598778489415,
+          "ratioToReference": 1.0032294924329228
+        }
+      ],
+      "depthCheckpointWallClockMilliseconds": 9160.852921
+    }
+  ]
+}

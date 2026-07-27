@@ -13,7 +13,7 @@
 // exactly the position the user saw in that painted frame with no publish race.
 //
 // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
-// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
+// invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
@@ -66,12 +66,22 @@ const CODE_FOLDING_MODES = (process.env.SMOOTHNESS_CODE_FOLDING ?? 'on')
   );
 const VERSION_CONTROL_MARKS_ENABLED =
   process.env.SMOOTHNESS_VERSION_CONTROL_MARKS !== 'off';
-// A SATURATING burst: twelve notches is more than the ten a from-rest gain ramp needs to reach the
-// velocity ceiling, so the glide spends most of its life at the top speed the app declares and the
-// per-frame step size is then a direct reading of the frame cadence. Overridable because a shorter
-// flick probes the ramp itself rather than the ceiling.
+const APPLICATION_REPOSITORY_ROOT =
+  process.env.SMOOTHNESS_REPOSITORY_ROOT ?? process.cwd();
+const VERTICAL_FLING_CEILING = Number(
+  process.env.SMOOTHNESS_VERTICAL_FLING_CEILING ?? '220',
+);
+// A hard human flick: twelve notches creates a sustained fast segment without relying on PTY write
+// splitting. The accumulation probe repeats this exact physical gesture; the ordinary smoothness
+// cases use it to expose per-frame cadence and distance. Overridable for shorter-ramp probes.
 const WHEEL_NOTCHES_PER_GESTURE = Number(
   process.env.SMOOTHNESS_NOTCHES ?? '12',
+);
+const ACCUMULATION_FLICK_COUNT = Number(
+  process.env.SMOOTHNESS_ACCUMULATION_FLICKS ?? '3',
+);
+const ACCUMULATION_PAUSE_MILLISECONDS = Number(
+  process.env.SMOOTHNESS_ACCUMULATION_PAUSE ?? '200',
 );
 // Trials, not samples of one trial: the fling that follows an idle app and the fling that follows a
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
@@ -132,6 +142,7 @@ interface GestureMeasurement {
   // "fewer, larger steps" outside the harness, where the emulator is not free.
   readonly meanFrameByteCount: number;
   readonly maximumFrameByteCount: number;
+  readonly editorFrameAttribution: EditorFrameAttributionMeasurement | null;
 }
 
 interface SurfaceMeasurement {
@@ -142,9 +153,20 @@ interface SurfaceMeasurement {
   readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
   readonly gestures: readonly GestureMeasurement[];
+  readonly accumulationFlicks: readonly AccumulationFlickMeasurement[];
   readonly continuationBoundaries: readonly ContinuationBoundaryMeasurement[];
   readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
   readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface AccumulationFlickMeasurement {
+  readonly flickIndex: number;
+  readonly actualPauseBeforeMilliseconds: number | null;
+  readonly rowCrossingSequence: readonly number[];
+  readonly peakRowsCrossedPerFrame: number;
+  readonly peakTwoFrameRowsCrossed: number;
+  readonly peakFourFrameRowsCrossed: number;
+  readonly peakVelocityRowsPerSecond: number;
 }
 
 interface ContinuationBoundaryMeasurement {
@@ -166,6 +188,33 @@ interface DepthCheckpointMeasurement {
   readonly durationMilliseconds: number;
   readonly framesPerSecond: number;
   readonly ratioToReference: number;
+}
+
+interface EditorFrameCounts {
+  readonly documentLineReads: number;
+  readonly foldProjectionLookups: number;
+  readonly wrapProjectionLookups: number;
+  readonly layoutComputations: number;
+}
+
+interface EditorFrameAttributionTotals extends EditorFrameCounts {
+  readonly completedFrameCount: number;
+}
+
+interface EditorFrameAttributionMeasurement extends EditorFrameCounts {
+  readonly completedFrameCount: number;
+  readonly documentLineReadsPerFrame: number;
+  readonly foldProjectionLookupsPerFrame: number;
+  readonly wrapProjectionLookupsPerFrame: number;
+  readonly layoutComputationsPerFrame: number;
+}
+
+interface EditorScaleInvarianceMeasurement {
+  readonly baselineFixtureLineCount: number;
+  readonly comparisonFixtureLineCount: number;
+  readonly baseline: EditorFrameAttributionMeasurement;
+  readonly comparison: EditorFrameAttributionMeasurement;
+  readonly ratios: EditorFrameCounts;
 }
 
 async function awaitStatusCondition(
@@ -199,6 +248,66 @@ async function awaitStatusCondition(
   }
 }
 
+function readEditorFrameAttributionTotals(
+  statusPath: string,
+): EditorFrameAttributionTotals {
+  const status = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const attribution = status.editorFrameAttribution as
+    { totals?: Partial<EditorFrameAttributionTotals> } | undefined;
+  const totals = attribution?.totals;
+  const values = [
+    totals?.completedFrameCount,
+    totals?.documentLineReads,
+    totals?.foldProjectionLookups,
+    totals?.wrapProjectionLookups,
+    totals?.layoutComputations,
+  ];
+  if (!values.every((value) => Number.isInteger(value) && Number(value) >= 0)) {
+    throw new Error(
+      `editor frame attribution is absent or malformed at ${statusPath}`,
+    );
+  }
+  return {
+    completedFrameCount: Number(totals?.completedFrameCount),
+    documentLineReads: Number(totals?.documentLineReads),
+    foldProjectionLookups: Number(totals?.foldProjectionLookups),
+    wrapProjectionLookups: Number(totals?.wrapProjectionLookups),
+    layoutComputations: Number(totals?.layoutComputations),
+  };
+}
+
+function editorFrameAttributionDelta(
+  before: EditorFrameAttributionTotals,
+  after: EditorFrameAttributionTotals,
+): EditorFrameAttributionMeasurement {
+  const completedFrameCount =
+    after.completedFrameCount - before.completedFrameCount;
+  const documentLineReads = after.documentLineReads - before.documentLineReads;
+  const foldProjectionLookups =
+    after.foldProjectionLookups - before.foldProjectionLookups;
+  const wrapProjectionLookups =
+    after.wrapProjectionLookups - before.wrapProjectionLookups;
+  const layoutComputations =
+    after.layoutComputations - before.layoutComputations;
+  if (completedFrameCount <= 0) {
+    throw new Error('editor gesture completed no attributed frames');
+  }
+  return {
+    completedFrameCount,
+    documentLineReads,
+    foldProjectionLookups,
+    wrapProjectionLookups,
+    layoutComputations,
+    documentLineReadsPerFrame: documentLineReads / completedFrameCount,
+    foldProjectionLookupsPerFrame: foldProjectionLookups / completedFrameCount,
+    wrapProjectionLookupsPerFrame: wrapProjectionLookups / completedFrameCount,
+    layoutComputationsPerFrame: layoutComputations / completedFrameCount,
+  };
+}
+
 function visibleTopLineIndex(snapshot: HarnessSnapshot.Model): number | null {
   let lowestVisibleIndex: number | null = null;
   for (let row = 0; row < snapshot.rows; row++) {
@@ -215,6 +324,7 @@ function visibleTopLineIndex(snapshot: HarnessSnapshot.Model): number | null {
 function summarize(
   samples: readonly GestureFrameSample[],
   inputWrittenTimestampMilliseconds: number,
+  editorFrameAttribution: EditorFrameAttributionMeasurement | null,
 ): GestureMeasurement {
   const positions = samples.map((sample) => sample.scrollTop);
   const frameDeltas: number[] = [];
@@ -303,6 +413,7 @@ function summarize(
       (largest, byteCount) => Math.max(largest, byteCount),
       0,
     ),
+    editorFrameAttribution,
   };
 }
 
@@ -334,8 +445,12 @@ async function drainToQuiescence(driver: PtyTestDriver.Model): Promise<void> {
 
 async function measureOneGesture(
   driver: PtyTestDriver.Model,
+  statusPath: string,
+  surface: ScrollSurface,
 ): Promise<GestureMeasurement> {
   const samples: GestureFrameSample[] = [];
+  const editorFrameAttributionBefore =
+    surface === 'editor' ? readEditorFrameAttributionTotals(statusPath) : null;
   let nextFrame = driver.awaitNextCompletedFrameSnapshot(
     FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
   );
@@ -386,7 +501,18 @@ async function measureOneGesture(
       FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
     );
   }
-  return summarize(samples, inputWrittenTimestampMilliseconds);
+  const editorFrameAttribution =
+    editorFrameAttributionBefore === null
+      ? null
+      : editorFrameAttributionDelta(
+          editorFrameAttributionBefore,
+          readEditorFrameAttributionTotals(statusPath),
+        );
+  return summarize(
+    samples,
+    inputWrittenTimestampMilliseconds,
+    editorFrameAttribution,
+  );
 }
 
 async function measureContinuationBoundary(
@@ -446,6 +572,148 @@ async function measureContinuationBoundary(
       preBoundaryRowsCrossed,
       boundaryRowsCrossed: boundaryScrollTop - sample.scrollTop,
     };
+  }
+}
+
+async function measureAccumulationPattern(
+  driver: PtyTestDriver.Model,
+): Promise<AccumulationFlickMeasurement[]> {
+  const flickMeasurements = Array.from(
+    { length: ACCUMULATION_FLICK_COUNT },
+    (_unusedValue, flickIndex): AccumulationFlickMeasurement => ({
+      flickIndex: flickIndex + 1,
+      actualPauseBeforeMilliseconds: null,
+      rowCrossingSequence: [],
+      peakRowsCrossedPerFrame: 0,
+      peakTwoFrameRowsCrossed: 0,
+      peakFourFrameRowsCrossed: 0,
+      peakVelocityRowsPerSecond: 0,
+    }),
+  );
+  const mutableFlickMeasurements = flickMeasurements as Array<{
+    flickIndex: number;
+    actualPauseBeforeMilliseconds: number | null;
+    rowCrossingSequence: number[];
+    peakRowsCrossedPerFrame: number;
+    peakTwoFrameRowsCrossed: number;
+    peakFourFrameRowsCrossed: number;
+    peakVelocityRowsPerSecond: number;
+  }>;
+  const flickTimestampsMilliseconds: number[] = [];
+  let activeFlickIndex = 0;
+  let previousScrollTop = 0;
+  let previousFrameTimestampMilliseconds = performance.now();
+  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
+    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+  );
+
+  const sendFlick = (): void => {
+    const flickTimestampMilliseconds = performance.now();
+    if (activeFlickIndex > 0) {
+      mutableFlickMeasurements[
+        activeFlickIndex
+      ]!.actualPauseBeforeMilliseconds =
+        flickTimestampMilliseconds -
+        flickTimestampsMilliseconds[activeFlickIndex - 1]!;
+    }
+    flickTimestampsMilliseconds.push(flickTimestampMilliseconds);
+    driver.sendRawInputWithoutFrameExpectation(
+      wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+    );
+  };
+
+  sendFlick();
+  while (true) {
+    let completed: Awaited<
+      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
+    >;
+    try {
+      completed = await nextFrame;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
+      ) {
+        break;
+      }
+      throw error;
+    }
+    nextFrame = driver.awaitNextCompletedFrameSnapshot(
+      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+    );
+    const scrollTop = visibleTopLineIndex(completed.snapshot);
+    if (scrollTop === null) continue;
+    const rowsCrossed = scrollTop - previousScrollTop;
+    const frameTimestampMilliseconds =
+      completed.completedFrame.byteArrivalTimestampMilliseconds;
+    const frameDurationMilliseconds =
+      frameTimestampMilliseconds - previousFrameTimestampMilliseconds;
+    if (rowsCrossed > 0) {
+      const activeMeasurement = mutableFlickMeasurements[activeFlickIndex]!;
+      const previousRowsCrossed =
+        activeMeasurement.rowCrossingSequence.at(-1) ?? 0;
+      activeMeasurement.rowCrossingSequence.push(rowsCrossed);
+      activeMeasurement.peakRowsCrossedPerFrame = Math.max(
+        activeMeasurement.peakRowsCrossedPerFrame,
+        rowsCrossed,
+      );
+      activeMeasurement.peakTwoFrameRowsCrossed = Math.max(
+        activeMeasurement.peakTwoFrameRowsCrossed,
+        previousRowsCrossed + rowsCrossed,
+      );
+      const latestFourFrameRowsCrossed = activeMeasurement.rowCrossingSequence
+        .slice(-4)
+        .reduce(
+          (totalRowsCrossed, frameRowsCrossed) =>
+            totalRowsCrossed + frameRowsCrossed,
+          0,
+        );
+      activeMeasurement.peakFourFrameRowsCrossed = Math.max(
+        activeMeasurement.peakFourFrameRowsCrossed,
+        latestFourFrameRowsCrossed,
+      );
+      if (frameDurationMilliseconds > 0) {
+        activeMeasurement.peakVelocityRowsPerSecond = Math.max(
+          activeMeasurement.peakVelocityRowsPerSecond,
+          (rowsCrossed * 1000) / frameDurationMilliseconds,
+        );
+      }
+    }
+    previousScrollTop = scrollTop;
+    previousFrameTimestampMilliseconds = frameTimestampMilliseconds;
+
+    if (
+      activeFlickIndex + 1 < ACCUMULATION_FLICK_COUNT &&
+      performance.now() - flickTimestampsMilliseconds[activeFlickIndex]! >=
+        ACCUMULATION_PAUSE_MILLISECONDS
+    ) {
+      activeFlickIndex++;
+      sendFlick();
+    }
+  }
+  return flickMeasurements;
+}
+
+function printAccumulationPattern(
+  surface: ScrollSurface,
+  measurements: readonly AccumulationFlickMeasurement[],
+): void {
+  for (const measurement of measurements) {
+    const pauseDescription =
+      measurement.actualPauseBeforeMilliseconds === null
+        ? 'from-rest'
+        : `${measurement.actualPauseBeforeMilliseconds.toFixed(1)}ms`;
+    console.error(
+      `${surface} accumulation flick=${measurement.flickIndex} ` +
+        `pause=${pauseDescription} ` +
+        `peakFrame=${measurement.peakRowsCrossedPerFrame} ` +
+        `peakTwoFrames=${measurement.peakTwoFrameRowsCrossed} ` +
+        `peakFourFrames=${measurement.peakFourFrameRowsCrossed} ` +
+        `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
+        `sequence=${measurement.rowCrossingSequence.join(',')}`,
+    );
   }
 }
 
@@ -666,6 +934,168 @@ function proveDepthCheckpointFloorCanFail(): string {
     );
   }
   throw new Error('Depth floor positive control did not fail');
+}
+
+function aggregateEditorFrameAttribution(
+  surfaceMeasurement: SurfaceMeasurement,
+): EditorFrameAttributionMeasurement {
+  const attributions = surfaceMeasurement.gestures.map(
+    (gesture) => gesture.editorFrameAttribution,
+  );
+  if (
+    attributions.length === 0 ||
+    attributions.some((attribution) => attribution === null)
+  ) {
+    throw new Error(
+      `${surfaceMeasurement.fixtureLineCount}-line editor gesture ` +
+        `has no frame attribution`,
+    );
+  }
+  const totals = attributions.reduce(
+    (sum, attribution) => ({
+      completedFrameCount:
+        sum.completedFrameCount + attribution!.completedFrameCount,
+      documentLineReads: sum.documentLineReads + attribution!.documentLineReads,
+      foldProjectionLookups:
+        sum.foldProjectionLookups + attribution!.foldProjectionLookups,
+      wrapProjectionLookups:
+        sum.wrapProjectionLookups + attribution!.wrapProjectionLookups,
+      layoutComputations:
+        sum.layoutComputations + attribution!.layoutComputations,
+    }),
+    {
+      completedFrameCount: 0,
+      documentLineReads: 0,
+      foldProjectionLookups: 0,
+      wrapProjectionLookups: 0,
+      layoutComputations: 0,
+    },
+  );
+  return {
+    ...totals,
+    documentLineReadsPerFrame:
+      totals.documentLineReads / totals.completedFrameCount,
+    foldProjectionLookupsPerFrame:
+      totals.foldProjectionLookups / totals.completedFrameCount,
+    wrapProjectionLookupsPerFrame:
+      totals.wrapProjectionLookups / totals.completedFrameCount,
+    layoutComputationsPerFrame:
+      totals.layoutComputations / totals.completedFrameCount,
+  };
+}
+
+function assertEditorFrameWorkPerFrameEquality(
+  baseline: EditorFrameAttributionMeasurement,
+  comparison: EditorFrameAttributionMeasurement,
+  comparisonFixtureLineCount: number,
+  baselineFixtureLineCount: number,
+): EditorFrameCounts {
+  const countFields = [
+    ['documentLineReads', 'document-line reads'],
+    ['foldProjectionLookups', 'fold projection lookups'],
+    ['wrapProjectionLookups', 'wrap projection lookups'],
+    ['layoutComputations', 'layout computations'],
+  ] as const;
+  const ratios = {
+    documentLineReads: 0,
+    foldProjectionLookups: 0,
+    wrapProjectionLookups: 0,
+    layoutComputations: 0,
+  };
+  for (const [countField, countLabel] of countFields) {
+    const baselineCount = baseline[countField];
+    const comparisonCount = comparison[countField];
+    if (baselineCount <= 0 || comparisonCount <= 0) {
+      throw new Error(
+        `scale-invariance ${countLabel} did not observe a positive count`,
+      );
+    }
+    const numerator = comparisonCount * baseline.completedFrameCount;
+    const denominator = baselineCount * comparison.completedFrameCount;
+    const ratio = numerator / denominator;
+    ratios[countField] = ratio;
+    if (numerator !== denominator) {
+      throw new Error(
+        `scale-invariance ${countLabel}-per-frame ratio ` +
+          `${comparisonFixtureLineCount}/${baselineFixtureLineCount}=` +
+          `${ratio.toFixed(6)}, expected exact 1 ` +
+          `(counts ${comparisonCount}/${comparison.completedFrameCount} ` +
+          `vs ${baselineCount}/${baseline.completedFrameCount})`,
+      );
+    }
+  }
+  return ratios;
+}
+
+function measureEditorScaleInvariance(
+  measurements: readonly SurfaceMeasurement[],
+): EditorScaleInvarianceMeasurement | null {
+  const editorCases = measurements.filter(
+    (measurement) =>
+      measurement.surface === 'editor' &&
+      measurement.fixtureShape === 'flat' &&
+      measurement.codeFolding === 'on',
+  );
+  const baselineCase = editorCases.find(
+    (measurement) => measurement.fixtureLineCount === 2_000,
+  );
+  const comparisonCase = editorCases.find(
+    (measurement) => measurement.fixtureLineCount === 100_000,
+  );
+  if (!baselineCase || !comparisonCase) return null;
+  const baseline = aggregateEditorFrameAttribution(baselineCase);
+  const comparison = aggregateEditorFrameAttribution(comparisonCase);
+  return {
+    baselineFixtureLineCount: baselineCase.fixtureLineCount,
+    comparisonFixtureLineCount: comparisonCase.fixtureLineCount,
+    baseline,
+    comparison,
+    ratios: assertEditorFrameWorkPerFrameEquality(
+      baseline,
+      comparison,
+      comparisonCase.fixtureLineCount,
+      baselineCase.fixtureLineCount,
+    ),
+  };
+}
+
+function proveEditorScaleInvarianceCanFail(): string {
+  const baseline: EditorFrameAttributionMeasurement = {
+    completedFrameCount: 10,
+    documentLineReads: 20_000,
+    foldProjectionLookups: 400,
+    wrapProjectionLookups: 20,
+    layoutComputations: 10,
+    documentLineReadsPerFrame: 2_000,
+    foldProjectionLookupsPerFrame: 40,
+    wrapProjectionLookupsPerFrame: 2,
+    layoutComputationsPerFrame: 1,
+  };
+  const documentScaleCost: EditorFrameAttributionMeasurement = {
+    ...baseline,
+    documentLineReads: 1_000_000,
+    documentLineReadsPerFrame: 100_000,
+  };
+  try {
+    assertEditorFrameWorkPerFrameEquality(
+      baseline,
+      documentScaleCost,
+      100_000,
+      2_000,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      message.includes('document-line reads-per-frame ratio') &&
+      message.includes('50.000000')
+    ) {
+      return message;
+    }
+    throw new Error(
+      `Scale-invariance positive control produced the wrong red: ${message}`,
+    );
+  }
+  throw new Error('Scale-invariance positive control did not fail');
 }
 
 function printDepthCheckpointTable(
@@ -990,6 +1420,11 @@ async function measureSurface(
     fixtureLineCount === 2_000 &&
     fixtureShape === 'flat' &&
     codeFolding === 'on';
+  const shouldMeasureAccumulationPattern =
+    surface === 'editor' &&
+    fixtureShape === 'flat' &&
+    codeFolding === 'on' &&
+    ACCUMULATION_FLICK_COUNT > 0;
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -1007,11 +1442,13 @@ async function measureSurface(
     join(userSettingsDirectory, 'settings.json'),
     JSON.stringify({
       'editor.codeFolding': codeFolding === 'on',
+      verticalFlingCeiling: VERTICAL_FLING_CEILING,
       showIndentGuides: true,
     }),
   );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
+    repositoryRoot: APPLICATION_REPOSITORY_ROOT,
     columns: TERMINAL_COLUMNS,
     rows: TERMINAL_ROWS,
     homeDirectory,
@@ -1023,7 +1460,9 @@ async function measureSurface(
       await awaitStatusCondition(
         statusPath,
         `editor.codeFolding to load as ${codeFolding}`,
-        (status) => status.codeFolding === (codeFolding === 'on'),
+        (status) =>
+          status.codeFolding === undefined ||
+          status.codeFolding === (codeFolding === 'on'),
         60_000,
       );
     }
@@ -1064,6 +1503,7 @@ async function measureSurface(
     );
 
     const gestures: GestureMeasurement[] = [];
+    let accumulationFlicks: AccumulationFlickMeasurement[] = [];
     const continuationBoundaries: ContinuationBoundaryMeasurement[] = [];
     let depthCheckpoints: DepthCheckpointMeasurement[] = [];
     let depthCheckpointWallClockMilliseconds = 0;
@@ -1077,6 +1517,12 @@ async function measureSurface(
         depthCheckpoints,
       );
     } else {
+      if (shouldMeasureAccumulationPattern) {
+        await driveSurfaceToTop(driver, statusPath, surface);
+        await drainToQuiescence(driver);
+        accumulationFlicks = await measureAccumulationPattern(driver);
+        printAccumulationPattern(surface, accumulationFlicks);
+      }
       if (shouldMeasureContinuationBoundaries) {
         for (const delayMilliseconds of CONTINUATION_DELAY_MILLISECONDS) {
           await driveSurfaceToTop(driver, statusPath, surface);
@@ -1097,7 +1543,7 @@ async function measureSurface(
       ) {
         await driveSurfaceToTop(driver, statusPath, surface);
         await drainToQuiescence(driver);
-        gestures.push(await measureOneGesture(driver));
+        gestures.push(await measureOneGesture(driver, statusPath, surface));
       }
     }
     return {
@@ -1111,6 +1557,7 @@ async function measureSurface(
         VERSION_CONTROL_MARKS_ENABLED,
       fixtureLineCount,
       gestures,
+      accumulationFlicks,
       continuationBoundaries,
       depthCheckpoints,
       depthCheckpointWallClockMilliseconds,
@@ -1133,6 +1580,14 @@ if (FIXTURE_SHAPES.length === 0) {
 }
 if (CODE_FOLDING_MODES.length === 0) {
   throw new Error('SMOOTHNESS_CODE_FOLDING must name on, off, or both');
+}
+if (
+  !Number.isInteger(ACCUMULATION_FLICK_COUNT) ||
+  ACCUMULATION_FLICK_COUNT < 0
+) {
+  throw new Error(
+    'SMOOTHNESS_ACCUMULATION_FLICKS must be a non-negative integer',
+  );
 }
 if (
   !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
@@ -1178,6 +1633,12 @@ console.error(
   `depth-floor positive control RED (expected): ` +
     depthCheckpointFloorPositiveControl,
 );
+const editorScaleInvariancePositiveControl =
+  proveEditorScaleInvarianceCanFail();
+console.error(
+  `scale-invariance positive control RED (expected): ` +
+    editorScaleInvariancePositiveControl,
+);
 
 const measurementRunStartMilliseconds = performance.now();
 const surfaceMeasurements: SurfaceMeasurement[] = [];
@@ -1214,7 +1675,17 @@ for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
               `fps=${measurement.framesPerSecond.toFixed(1)} ` +
               `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
               `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
-              `maxBytes=${measurement.maximumFrameByteCount}`,
+              `maxBytes=${measurement.maximumFrameByteCount}` +
+              (measurement.editorFrameAttribution
+                ? ` lineReads/frame=` +
+                  `${measurement.editorFrameAttribution.documentLineReadsPerFrame.toFixed(3)} ` +
+                  `foldLookups/frame=` +
+                  `${measurement.editorFrameAttribution.foldProjectionLookupsPerFrame.toFixed(3)} ` +
+                  `wrapLookups/frame=` +
+                  `${measurement.editorFrameAttribution.wrapProjectionLookupsPerFrame.toFixed(3)} ` +
+                  `layout/frame=` +
+                  `${measurement.editorFrameAttribution.layoutComputationsPerFrame.toFixed(3)}`
+                : ''),
           );
         }
       }
@@ -1228,9 +1699,49 @@ const depthCheckpointWallClockMilliseconds = surfaceMeasurements.reduce(
   (sum, measurement) => sum + measurement.depthCheckpointWallClockMilliseconds,
   0,
 );
+const editorScaleInvariance = measureEditorScaleInvariance(surfaceMeasurements);
+if (editorScaleInvariance) {
+  console.error(
+    `scale-invariance counts: ` +
+      `${editorScaleInvariance.baselineFixtureLineCount} lines vs ` +
+      `${editorScaleInvariance.comparisonFixtureLineCount} lines`,
+  );
+  console.error(
+    '| lines | frames | document reads/frame | fold lookups/frame | ' +
+      'wrap lookups/frame | layout computations/frame |',
+  );
+  console.error('| ---: | ---: | ---: | ---: | ---: | ---: |');
+  for (const [lineCount, attribution] of [
+    [
+      editorScaleInvariance.baselineFixtureLineCount,
+      editorScaleInvariance.baseline,
+    ],
+    [
+      editorScaleInvariance.comparisonFixtureLineCount,
+      editorScaleInvariance.comparison,
+    ],
+  ] as const) {
+    console.error(
+      `| ${lineCount} | ${attribution.completedFrameCount} | ` +
+        `${attribution.documentLineReadsPerFrame.toFixed(3)} | ` +
+        `${attribution.foldProjectionLookupsPerFrame.toFixed(3)} | ` +
+        `${attribution.wrapProjectionLookupsPerFrame.toFixed(3)} | ` +
+        `${attribution.layoutComputationsPerFrame.toFixed(3)} |`,
+    );
+  }
+}
 const report = {
-  commit: (await Bun.$`git rev-parse --short HEAD`.quiet().text()).trim(),
+  commit: (
+    await Bun.$`git -C ${APPLICATION_REPOSITORY_ROOT} rev-parse --short HEAD`
+      .quiet()
+      .text()
+  ).trim(),
+  applicationRepositoryRoot: APPLICATION_REPOSITORY_ROOT,
+  verticalFlingCeiling: VERTICAL_FLING_CEILING,
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
+  accumulationFlickCount: ACCUMULATION_FLICK_COUNT,
+  accumulationPauseMilliseconds: ACCUMULATION_PAUSE_MILLISECONDS,
+  targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
   depthReferenceFramesPerSecond: Number.isFinite(
@@ -1239,6 +1750,8 @@ const report = {
     ? DEPTH_REFERENCE_FRAMES_PER_SECOND
     : null,
   depthCheckpointFloorPositiveControl,
+  editorScaleInvariancePositiveControl,
+  editorScaleInvariance,
   wallClockMilliseconds,
   depthCheckpointWallClockMilliseconds,
   depthCheckpointWallClockFraction:

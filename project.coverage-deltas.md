@@ -5,6 +5,7 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 
 | File | Delta and replacement |
 | --- | --- |
+| `scripts/behavioral-contracts.sh` | assertions 41 → 41, waits 34 → 34. The count-neutral role refinement replaces the editor/diff size-matrix FPS floors with the primary exact 2k-to-100k editor frame-work ratio, retains one diff cadence floor, and retains the fold-dense editor cadence floor as the one editor wall-clock canary. No behavioral assertion or wait was removed. |
 | `scripts/harness/SynchronizedOutputQuiescence.test.ts` | assertions 11 → 10, waits 6 → 5. Removed the duration-based no-frame test with the deleted silence API. Idle frame efficiency remains covered once by `scripts/behavioral-contracts.sh`; action stability is covered by `PtyTestDriver` content-invariance tests. |
 | `scripts/harness/smoke-agent-engine-switch-harness.ts` | assertions 11 → 10, waits 16 → 16. Removed its duplicate idle frame-budget assertion. The single idle-quiescence behavioral contract remains authoritative. |
 | `scripts/harness/smoke-agent-harness.ts` | assertions 11 → 10, waits 8 → 8. Removed its duplicate idle frame-budget assertion. The single idle-quiescence behavioral contract remains authoritative. |

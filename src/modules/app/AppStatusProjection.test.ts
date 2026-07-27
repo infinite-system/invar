@@ -135,6 +135,21 @@ describe('AppStatusProjection', () => {
       statusProjectionContributions,
       pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
+        editorFrameAttribution: () => ({
+          latestFrame: {
+            documentLineReads: 0,
+            foldProjectionLookups: 0,
+            wrapProjectionLookups: 0,
+            layoutComputations: 0,
+          },
+          totals: {
+            completedFrameCount: 0,
+            documentLineReads: 0,
+            foldProjectionLookups: 0,
+            wrapProjectionLookups: 0,
+            layoutComputations: 0,
+          },
+        }),
         panelViewportColumns: () => 80,
         panelViewportRows: () => 24,
         panelHeadingGeometry: () => [
@@ -223,6 +238,21 @@ describe('AppStatusProjection', () => {
       'git',
       'extensions',
     ]);
+    expect(initialSnapshot.editorFrameAttribution).toEqual({
+      latestFrame: {
+        documentLineReads: 0,
+        foldProjectionLookups: 0,
+        wrapProjectionLookups: 0,
+        layoutComputations: 0,
+      },
+      totals: {
+        completedFrameCount: 0,
+        documentLineReads: 0,
+        foldProjectionLookups: 0,
+        wrapProjectionLookups: 0,
+        layoutComputations: 0,
+      },
+    });
 
     mouse = { type: 'down', x: 12, y: 7, button: 1 };
     narration = {

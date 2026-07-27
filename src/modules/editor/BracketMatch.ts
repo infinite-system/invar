@@ -2,6 +2,7 @@ import { Static } from 'ivue/extras';
 import { EditorCoordinates } from './EditorCoordinates';
 import { Highlighter, type LangId, type Span } from '../syntax/Highlighter';
 import type { TextDocument } from './TextDocument';
+import type { EditorFrameAttribution } from './EditorFrameAttribution';
 
 // Bracket matching (editor parity): given the cursor position, find the bracket the cursor is ON or
 // immediately AFTER, and its balanced partner. The core `find` is PURE — it takes grapheme cells per
@@ -161,6 +162,7 @@ class $BracketMatch {
     cursorLine: number,
     cursorColumn: number,
     language: LangId,
+    frameAttribution?: EditorFrameAttribution.Model,
   ): BracketMatchResult | null {
     const revision = document.revision.value;
     const cached = this.$snapshotByDocument.get(document);
@@ -179,14 +181,20 @@ class $BracketMatch {
       if (!cellsMemo.has(lineIndex)) {
         cellsMemo.set(
           lineIndex,
-          this.EditorCoordinates.graphemes(document.line(lineIndex)),
+          this.EditorCoordinates.graphemes(
+            frameAttribution
+              ? frameAttribution.documentLine(document, lineIndex)
+              : document.line(lineIndex),
+          ),
         );
       }
       return cellsMemo.get(lineIndex) ?? null;
     };
     const isCodeBracket = (lineIndex: number, column: number): boolean => {
       if (language === 'plain') return true; // no strings/comments to exclude in plain text
-      const text = document.line(lineIndex);
+      const text = frameAttribution
+        ? frameAttribution.documentLine(document, lineIndex)
+        : document.line(lineIndex);
       if (!spansMemo.has(lineIndex)) {
         spansMemo.set(
           lineIndex,

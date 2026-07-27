@@ -14,6 +14,7 @@ import type {
 } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import type { EditorFrameAttribution } from '../editor/EditorFrameAttribution';
 import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
 import { EditorPaneRenderer } from './EditorPaneRenderer';
 import { BracketMatch } from '../editor/BracketMatch';
@@ -71,6 +72,7 @@ class $EditorPane {
             editor.cursor.line.value,
             editor.cursor.col.value,
             LanguageRegistry.Class.forPath(editor.document.path),
+            this.deps.frameAttribution,
           )
         : null;
     const result = EditorPaneRenderer.Class.render({
@@ -86,6 +88,7 @@ class $EditorPane {
       indentGuideGlyph: theme.glyphLevel.value === 'ascii' ? '|' : '│',
       foldOpenGlyph: theme.glyph('foldOpen'),
       foldClosedGlyph: theme.glyph('foldClosed'),
+      frameAttribution: this.deps.frameAttribution,
       bracketHighlights: bracketMatch
         ? [bracketMatch.bracket, bracketMatch.match]
         : [],
@@ -116,7 +119,11 @@ class $EditorPane {
     const firstRow = this.visualRowsWindow[0];
     const lastRow = this.visualRowsWindow[this.visualRowsWindow.length - 1];
     if (!firstRow || !lastRow) return 'before';
-    const lineText = workspaceSet.active.editor.document.line(line);
+    const lineText = this.deps.frameAttribution.documentLine(
+      workspaceSet.active.editor.document,
+      line,
+    );
+    this.deps.frameAttribution.recordWrapProjectionLookup();
     const segments = workspaceSet.active.editor.wordWrap.value
       ? EditorWrap.Class.wrapLine(
           lineText,
@@ -218,7 +225,11 @@ class $EditorPane {
     );
     const row = this.visualRowsWindow[rowIndex];
     if (!row) return null;
-    const lineText = workspaceSet.active.editor.document.line(row.lineIndex);
+    const lineText = this.deps.frameAttribution.documentLine(
+      workspaceSet.active.editor.document,
+      row.lineIndex,
+    );
+    this.deps.frameAttribution.recordWrapProjectionLookup();
     const segments = workspaceSet.active.editor.wordWrap.value
       ? EditorWrap.Class.wrapLine(
           lineText,
@@ -257,7 +268,10 @@ class $EditorPane {
     },
   ): boolean {
     const editor = this.deps.workspaceSet.active.editor;
-    const lineText = editor.document.line(position.line);
+    const lineText = this.deps.frameAttribution.documentLine(
+      editor.document,
+      position.line,
+    );
     if (!editor.wordWrap.value) {
       const displayColumn =
         editor.viewport.scrollLeft.value + (cellX - this.deps.codeBody.x);
@@ -307,7 +321,10 @@ class $EditorPane {
         !workspaceSet.active.editor.wordWrap.value,
       lineGraphemeCount: (lineIndex) =>
         EditorCoordinates.Class.graphemeCount(
-          workspaceSet.active.editor.document.line(lineIndex),
+          this.deps.frameAttribution.documentLine(
+            workspaceSet.active.editor.document,
+            lineIndex,
+          ),
         ),
       beginSelection: (position) => {
         workspaceSet.active.focusEditor();
@@ -512,6 +529,7 @@ export interface EditorPaneDeps {
   findBar: FindBar.Instance;
   settings: Settings.Instance;
   theme: Theme.Instance;
+  frameAttribution: EditorFrameAttribution.Model;
   tooltip: import('./Tooltip').Tooltip.Instance;
   readPalette: () => Palette;
   editorViewportHeight: () => number;

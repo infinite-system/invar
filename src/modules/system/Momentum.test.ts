@@ -37,8 +37,8 @@ describe('scroll-momentum', () => {
   });
 
   test('an impulse sets velocity in the wheel direction and accumulates progressively', () => {
-    // Gain ramps from 30% at rest to 100% at three notches' worth of velocity (3 * impulse 10 = 30
-    // rows/sec): the first notch is a precision step; persistence buys speed.
+    // Gain ramps from 30% at rest toward full strength over twenty notches' worth of velocity:
+    // the first notch is a precision step; persistence across separate flicks buys speed.
     let momentum = Momentum.Class.addImpulse(
       Momentum.Class.atRest,
       1,
@@ -46,29 +46,86 @@ describe('scroll-momentum', () => {
     ); // +1 notch from rest
     expect(momentum.velocity).toBeCloseTo(3); // 10 * 0.3 — small first step
     momentum = Momentum.Class.addImpulse(momentum, 1, NO_DECAY); // same direction accumulates
-    expect(momentum.velocity).toBeCloseTo(6.7); // gain already ramping: 0.3 + 0.7 * (3/30)
+    expect(momentum.velocity).toBeCloseTo(6.105);
     expect(momentum.velocity).toBeGreaterThan(2 * 3); // compounding beats linear
   });
 
   test('impulse gain reaches full strength at the ramp ceiling and is independent of the cap', () => {
     const sustainedGesture = {
+      velocity: 40,
+      residual: 0,
+      restEquivalentGestureVelocity: 200,
+      lastImpulseTimestampMilliseconds: 0,
+    };
+    const highCeiling = { ...NO_DECAY, max: 1000 };
+    const momentum = Momentum.Class.addImpulse(
+      sustainedGesture,
+      1,
+      highCeiling,
+      1,
+    );
+    expect(momentum.velocity).toBeCloseTo(50); // full 10-per-notch gain
+
+    const rampingGesture = {
       velocity: 30,
       residual: 0,
       restEquivalentGestureVelocity: 30,
       lastImpulseTimestampMilliseconds: 0,
     };
-    const momentum = Momentum.Class.addImpulse(
-      sustainedGesture,
-      1,
-      NO_DECAY,
-      1,
-    );
-    expect(momentum.velocity).toBeCloseTo(40); // full 10-per-notch gain
-    // Same state under a 15x cap: identical acceleration — the cap only moves the clamp.
-    const highCeiling = { ...NO_DECAY, max: 1500 };
-    expect(
-      Momentum.Class.addImpulse(sustainedGesture, 1, highCeiling, 1).velocity,
-    ).toBeCloseTo(40);
+    const gainedAtDefaultCeiling =
+      Momentum.Class.addImpulse(rampingGesture, 1, NO_DECAY, 1).velocity -
+      rampingGesture.velocity;
+    const gainedAtHighCeiling =
+      Momentum.Class.addImpulse(rampingGesture, 1, highCeiling, 1).velocity -
+      rampingGesture.velocity;
+    expect(gainedAtHighCeiling).toBeCloseTo(gainedAtDefaultCeiling);
+  });
+
+  test('successive hard flicks retain headroom across configured ceilings', () => {
+    for (const verticalFlingCeiling of [220, 320, 120, 480]) {
+      const ceilingOptions = {
+        ...Momentum.Class.verticalOptions,
+        max: verticalFlingCeiling,
+      };
+      const peakVelocities: number[] = [];
+      let momentum = Momentum.Class.atRest;
+      for (let flickNumber = 0; flickNumber < 3; flickNumber++) {
+        if (flickNumber > 0) {
+          momentum = Momentum.Class.stepMomentum(
+            momentum,
+            0.2,
+            ceilingOptions,
+          ).momentum;
+        }
+        for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
+          const velocityBeforeNotch = momentum.velocity;
+          momentum = Momentum.Class.addImpulse(
+            momentum,
+            1,
+            ceilingOptions,
+            flickNumber * 200,
+          );
+          expect(momentum.velocity).toBeGreaterThan(velocityBeforeNotch);
+        }
+        peakVelocities.push(momentum.velocity);
+      }
+
+      expect(peakVelocities[0]).toBeLessThan(verticalFlingCeiling);
+      expect(peakVelocities[1]).toBeGreaterThan(peakVelocities[0]!);
+      expect(peakVelocities[2]).toBeGreaterThan(peakVelocities[1]!);
+    }
+
+    const defaultCeilingOptions = Momentum.Class.verticalOptions;
+    let defaultFirstFlick = Momentum.Class.atRest;
+    for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
+      defaultFirstFlick = Momentum.Class.addImpulse(
+        defaultFirstFlick,
+        1,
+        defaultCeilingOptions,
+        0,
+      );
+    }
+    expect(defaultFirstFlick.velocity).toBeCloseTo(148.94, 2);
   });
 
   test('a live glide continues gain outside the input cadence window', () => {
