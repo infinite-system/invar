@@ -48,7 +48,7 @@ class $Momentum {
     return verticalOptions;
   }
 
-  static get atRest(): ScrollMomentum {
+  static get AT_REST(): ScrollMomentum {
     return {
       velocity: 0,
       residual: 0,
@@ -134,7 +134,7 @@ class $Momentum {
       Math.sign(deltaRows) !== Math.sign(momentum.velocity)
     ) {
       return this.addImpulse(
-        this.atRest,
+        this.AT_REST,
         deltaRows,
         options,
         currentTimestampMilliseconds,
@@ -329,7 +329,7 @@ class $Momentum {
 
   /** Immediately halt (adopt-and-stop for a programmatic jump — One-Writer-Per-Regime). */
   static halt(): ScrollMomentum {
-    return this.atRest;
+    return this.AT_REST;
   }
 
   static isMoving(momentum: ScrollMomentum): boolean {

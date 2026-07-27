@@ -33,8 +33,8 @@ import { Logging } from '../system/Logging';
 class $ScrollableTextViewport {
   protected scrollTopValue = 0;
   protected scrollLeftValue = 0;
-  protected verticalMomentum: ScrollMomentum = Momentum.Class.atRest;
-  protected horizontalMomentum: ScrollMomentum = Momentum.Class.atRest;
+  protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected horizontalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
   protected readonly verticalBar: ScrollBarRenderable;
   protected readonly horizontalBar: ScrollBarRenderable;
   protected readonly drag: SelectionDragBehavior.Model;

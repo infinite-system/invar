@@ -45,10 +45,10 @@ class $GitPanel {
     return ref(0);
   }
   get changesMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get changesHorizontalMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get changesHovered() {
     return ref(-1);
@@ -92,7 +92,7 @@ class $GitPanel {
   }
   // Momentum state for the commit-log wheel glide (see ui/scroll-momentum).
   get logMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get logViewportHeight() {
     return ref(1);
@@ -107,7 +107,7 @@ class $GitPanel {
     return ref(0);
   }
   get logHorizontalMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   /** Fraction of the sidebar height given to the top (changes+commit) region. */
   get splitRatio() {

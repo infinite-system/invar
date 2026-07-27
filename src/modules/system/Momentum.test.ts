@@ -33,13 +33,13 @@ describe('scroll-momentum', () => {
 
   test('at rest emits no rows', () => {
     expect(
-      Momentum.Class.stepMomentum(Momentum.Class.atRest, 1 / 30).rows,
+      Momentum.Class.stepMomentum(Momentum.Class.AT_REST, 1 / 30).rows,
     ).toBe(0);
-    expect(Momentum.Class.isMoving(Momentum.Class.atRest)).toBe(false);
+    expect(Momentum.Class.isMoving(Momentum.Class.AT_REST)).toBe(false);
   });
 
   test('real-rate input queues every impulse for one animation write', () => {
-    const momentum = Momentum.Class.atRest;
+    const momentum = Momentum.Class.AT_REST;
     for (let eventIndex = 0; eventIndex < 150; eventIndex++) {
       Momentum.Class.queueImpulse(momentum, 1, eventIndex * 7);
     }
@@ -57,7 +57,7 @@ describe('scroll-momentum', () => {
   });
 
   test('the configured glide duration bounds the tail after input', () => {
-    const momentum = Momentum.Class.atRest;
+    const momentum = Momentum.Class.AT_REST;
     for (let eventIndex = 0; eventIndex < 150; eventIndex++) {
       Momentum.Class.queueImpulse(momentum, 1, eventIndex * 7);
     }
@@ -84,7 +84,7 @@ describe('scroll-momentum', () => {
     // Gain ramps from 30% at rest toward full strength over twenty notches' worth of velocity:
     // the first notch is a precision step; persistence across separate flicks buys speed.
     let momentum = Momentum.Class.addImpulse(
-      Momentum.Class.atRest,
+      Momentum.Class.AT_REST,
       1,
       NO_DECAY,
     ); // +1 notch from rest
@@ -132,7 +132,7 @@ describe('scroll-momentum', () => {
         max: verticalFlingCeiling,
       };
       const peakVelocities: number[] = [];
-      let momentum = Momentum.Class.atRest;
+      let momentum = Momentum.Class.AT_REST;
       for (let flickNumber = 0; flickNumber < 3; flickNumber++) {
         if (flickNumber > 0) {
           momentum = Momentum.Class.stepMomentum(
@@ -160,7 +160,7 @@ describe('scroll-momentum', () => {
     }
 
     const defaultCeilingOptions = Momentum.Class.verticalOptions;
-    let defaultFirstFlick = Momentum.Class.atRest;
+    let defaultFirstFlick = Momentum.Class.AT_REST;
     for (let notchNumber = 0; notchNumber < 12; notchNumber++) {
       defaultFirstFlick = Momentum.Class.addImpulse(
         defaultFirstFlick,
@@ -172,7 +172,7 @@ describe('scroll-momentum', () => {
     expect(defaultFirstFlick.velocity).toBeCloseTo(148.94, 2);
     expect(defaultFirstFlick.ceilingSustainingVelocity).toBe(0);
 
-    let rowScaledFlicks = Momentum.Class.atRest;
+    let rowScaledFlicks = Momentum.Class.AT_REST;
     for (let impulseNumber = 0; impulseNumber < 25; impulseNumber++) {
       rowScaledFlicks = Momentum.Class.addImpulse(
         rowScaledFlicks,
@@ -186,7 +186,7 @@ describe('scroll-momentum', () => {
 
   test('rapid hard flicks sustain capped speed with excess impulses', () => {
     const verticalOptions = Momentum.Class.verticalOptions;
-    let momentum = Momentum.Class.atRest;
+    let momentum = Momentum.Class.AT_REST;
     for (let notchNumber = 0; notchNumber < 60; notchNumber++) {
       momentum = Momentum.Class.addImpulse(momentum, 1, verticalOptions, 0);
     }
@@ -216,7 +216,7 @@ describe('scroll-momentum', () => {
   });
 
   test('a live glide continues gain outside the input cadence window', () => {
-    let previousGesture = Momentum.Class.atRest;
+    let previousGesture = Momentum.Class.AT_REST;
     for (let notchNumber = 0; notchNumber < 3; notchNumber++) {
       previousGesture = Momentum.Class.addImpulse(
         previousGesture,
@@ -243,7 +243,7 @@ describe('scroll-momentum', () => {
       3,
     );
     const fromRestGesture = Momentum.Class.addImpulse(
-      Momentum.Class.atRest,
+      Momentum.Class.AT_REST,
       1,
       Momentum.Class.defaultOptions,
       500,
@@ -259,7 +259,7 @@ describe('scroll-momentum', () => {
 
   test('one gesture keeps its gain across an intervening frame', () => {
     const firstImpulse = Momentum.Class.addImpulse(
-      Momentum.Class.atRest,
+      Momentum.Class.AT_REST,
       1,
       NO_DECAY,
       0,
@@ -297,7 +297,7 @@ describe('scroll-momentum', () => {
       stopVelocity: 3,
     };
     let momentum = Momentum.Class.addImpulse(
-      Momentum.Class.atRest,
+      Momentum.Class.AT_REST,
       1,
       realistic,
     );
@@ -317,7 +317,7 @@ describe('scroll-momentum', () => {
 
   test('velocity is capped', () => {
     const momentum = Momentum.Class.addImpulse(
-      Momentum.Class.atRest,
+      Momentum.Class.AT_REST,
       100,
       NO_DECAY,
     );
@@ -349,7 +349,7 @@ describe('scroll-momentum', () => {
   });
 
   test('decay glides to a halt with no slow sub-row tail', () => {
-    let momentum = Momentum.Class.addImpulse(Momentum.Class.atRest, 3); // real decay defaults
+    let momentum = Momentum.Class.addImpulse(Momentum.Class.AT_REST, 3); // real decay defaults
     let frames = 0;
     while (Momentum.Class.isMoving(momentum) && frames < 1000) {
       momentum = Momentum.Class.stepMomentum(momentum, 1 / 30).momentum;
@@ -361,7 +361,7 @@ describe('scroll-momentum', () => {
   });
 
   test('Momentum.Class.halt() immediately stops (adopt-and-stop for a programmatic jump)', () => {
-    const moving = Momentum.Class.addImpulse(Momentum.Class.atRest, 5);
+    const moving = Momentum.Class.addImpulse(Momentum.Class.AT_REST, 5);
     expect(Momentum.Class.isMoving(moving)).toBe(true);
     expect(Momentum.Class.isMoving(Momentum.Class.halt())).toBe(false);
   });

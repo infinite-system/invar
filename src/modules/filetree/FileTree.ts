@@ -34,10 +34,10 @@ class $FileTree {
     return ref(-1);
   }
   get selectionMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   // INDEPENDENT scroll offset (first visible row), like the git-changes list — NOT derived from the
   // selection. Wheel scrolls this; selection moves independently; clicking a visible row leaves it

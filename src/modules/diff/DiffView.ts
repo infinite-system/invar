@@ -269,10 +269,10 @@ class $DiffView {
     return ref(0);
   }
   get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(this.Momentum.atRest);
+    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
   }
   get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(this.Momentum.atRest);
+    return shallowRef<ScrollMomentum>(this.Momentum.AT_REST);
   }
   get activeChangeBlockNumber() {
     return ref(this.alignment.changeBlocks.length > 0 ? 1 : 0);

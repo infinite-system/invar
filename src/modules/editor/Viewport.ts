@@ -1,6 +1,6 @@
-import { Reactive } from "ivue";
-import { ref, shallowRef } from "vue";
-import { Momentum, type ScrollMomentum } from "../system/Momentum";
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
+import { Momentum, type ScrollMomentum } from '../system/Momentum';
 
 // Scroll/viewport state. The editor renders only the lines this window exposes — memory
 // and render cost track the visible set, not the file size.
@@ -15,10 +15,10 @@ class $Viewport {
     return ref(0);
   }
   get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get horizontalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
   get height() {
     return ref(20);

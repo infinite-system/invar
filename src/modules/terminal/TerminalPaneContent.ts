@@ -58,7 +58,7 @@ class $TerminalPaneContent implements PaneContent {
   protected readonly selection = new TextSelectionModel.Class();
   protected scrollPort: PaneScrollPort | null = null;
   protected observedOutputRevision = 0;
-  protected verticalMomentum: ScrollMomentum = Momentum.Class.atRest;
+  protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
 
   constructor(
     protected readonly instance: TerminalInstance.Instance,

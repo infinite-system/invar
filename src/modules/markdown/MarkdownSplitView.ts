@@ -52,7 +52,7 @@ class $MarkdownSplitView {
     return ref(0);
   }
   get verticalScrollMomentum() {
-    return shallowRef<ScrollMomentum>(Momentum.Class.atRest);
+    return shallowRef<ScrollMomentum>(Momentum.Class.AT_REST);
   }
 
   constructor(
