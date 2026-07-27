@@ -27,6 +27,7 @@
   "scripts": {
     "start": "bun src/main.ts .",
     "dev": "bun src/main.ts",
+    "drive": "bun scripts/harness/Drive.ts",
     "build": "bun build --compile --minify --external web-tree-sitter src/main.ts --outfile dist/iv",
     "build:prod": "bun run build",
     "typecheck": "tsc --noEmit",
