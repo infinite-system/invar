@@ -16,3 +16,8 @@ artifacts/home/
 dist/
 artifacts/*.pulse
 .perf-history/
+
+# Scratch + generated scale fixtures (see AGENTS.md SCALE PARITY, task #136).
+# Large fixtures are GENERATED here and cached, never committed — a 100k-line
+# file in git lives in every clone forever and churns on every regeneration.
+tmp/

@@ -9,6 +9,58 @@ framework and conventions before writing code.
 > Structural code search: prefer `bun scripts/ast-query.ts` (parse-don't-grep) for any question
 > about code structure — see `.claude/skills/ast-query/SKILL.md`. grep stays for prose/logs.
 
+## ⚑ YOUR PRIMARY LOOP: DRIVE IT
+
+**Read this first. It is how you work, not just how you check.**
+
+Your inner loop is **driving the real app in your own PTY** — `scripts/harness/PtyTestDriver.ts`
++ FrameProbe — and LOOKING at what it does. Seconds per turn. No gate, no suite.
+
+1. **REPRODUCE BY DRIVING FIRST.** Write no assertion yet. If you cannot see the problem, you
+   cannot fix it — and if you truly cannot see it, say so and report what you tried.
+2. **Iterate: drive → change → drive.** ONE instrument at a time. **Do NOT run
+   `behavioral-contracts.sh` while iterating. Do NOT run it 3x. Do NOT run the full checker suite.**
+   Those are the END, once.
+3. **Write the contract only AFTER the symptom is gone**, to lock in what you achieved.
+4. **One verification pass at the end.** Then report.
+
+**FEEL-BISECT — when something "used to" work, go find the version that did.** History is
+evidence you already have. Cut scratch worktrees at candidate commits (`git worktree add
+/tmp/<name>-bisect-<sha> <sha> --detach`, then `bun install --frozen-lockfile`), drive the SAME
+gesture with the SAME settings in each, and compare. **Halve the range — do not walk commits one
+by one.**
+
+**DEFAULTS FIRST — always.** The contract is the DEFAULT experience: that is what almost every
+user runs, and it is what the app promises. Drive defaults before anything else, and fix at
+defaults. A user's own settings are a SECOND probe, not the baseline — they are often the user's
+attempt to COMPENSATE for the very bug being reported (raising a ceiling, changing friction), so
+driving them measures bug-plus-workaround and risks tuning the fix to a configuration nobody else
+has. Use them when the symptom will not reproduce at defaults, or to confirm the fix also helps
+where the user actually sits; and when a setting changes the outcome, say WHICH knob moved it —
+that difference is itself evidence. Whatever you compare across commits, hold the settings FIXED
+within the comparison.
+
+Compare a FINGERPRINT, not a verdict: for motion, the per-frame row-crossing sequence.
+`3,3,3,3` glides; `5,1,5,1` stumbles at the same average; a sequence that does not GROW across
+successive inputs is "heavy". Judge the SHAPE — do not invent a pass/fail threshold for a felt
+quality. Once a good commit and a bad commit are identified, diff them on the relevant path: that
+diff is the finding. If NO version is good, say so with the fingerprints — the user may be
+remembering something that never existed, and that is a real answer.
+
+**SCALE PARITY — drive SMALL and LARGE, always.** The app is named Invar because a 100,000-line
+file must feel identical to a 10-line one. Any change on a per-row / per-item / per-frame path is
+not verified until you have driven it at BOTH ends of the scale and they behave the same. A fix
+that only holds at small scale is not a fix; a cost that only appears at large scale is the defect
+this project exists to prevent. Use the shared scale fixtures (see `project.tools.md`) — do NOT
+hand-roll another generator, and do NOT commit large fixture files.
+
+**Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.** Judge by observing the real path.
+A test in your inner loop makes you optimize for making an assertion pass instead of making it
+right — and for felt qualities (smoothness, weight, responsiveness) the assertion is a lossy proxy,
+so a green suite and an unhappy user coexist comfortably.
+
+Never internal values: drive the path a user drives. Reproduce before diagnosing.
+
 ## Skills index (ALL agents — codex does not auto-see `.claude/skills/`; this list is your map)
 - **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
 - **`.claude/skills/ivue/`** — the reactive substrate + namespace pattern. Load before touching `src/modules/**`.
@@ -51,15 +103,38 @@ Non-negotiable conventions (summarized from the `ivue` + `invariants` skills and
 4. **Invariants govern change.** Check against the relevant `*.invariants.md`; require zero
    problems from `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`.
    Never put a literal `// invariant: …` string in example/comment text (the checker scans it).
-5. **Verify by DRIVING the real user path** (tmux harness + FrameProbe), never internal values.
-   Reproduce before diagnosing; ratchet verified behavior into a gated smoke.
-6. **Branches are NEVER deleted — parked and tagged.** Every branch ends in exactly one of two
+5. **Verify by DRIVING — see YOUR PRIMARY LOOP at the top of this file.** Ratchet verified
+   behavior into a gated smoke so it cannot silently regress. tmux is a LEGACY opt-in audit tier
+   (`INVAR_FULL_TMUX=1`), skipped by the gate; never write a new tmux smoke — extend a
+   PTY-harness one.
+6. **Every check needs a POSITIVE CONTROL — a check that can only pass is not an instrument.**
+   Before you trust a green, make it go RED on purpose: plant the defect it claims to catch, run
+   it, quote the failure, remove the plant. This applies to smokes, gate steps, counters, lints,
+   and liveness probes alike. An assertion nobody has ever seen fail is a decoration.
+7. **Every wait observes a CONDITION, and a timeout is never the fix.** No fixed sleeps, no frame
+   ordinals, no predicate that is already true before the work happens (a grid search that matches
+   text painted by a DIFFERENT surface is the classic). If a wait times out, the wait or the code
+   is wrong — **never widen the timeout to silence a red.** Prefer LOAD-INVARIANT quantities:
+   counts of work (rows crossed, document reads, layout passes) over wall-clock, because a count
+   cannot flake under load and cannot be argued with.
+8. **You do not land your own work.** Never `push`, `merge` into main, tag, or delete a branch —
+   the conductor gates and lands. Commit in your worktree, leave the tree clean, write your READY
+   report. When you ARE asked to resolve a merge, classify every difference against the **merge
+   BASE**: ours-vs-theirs alone cannot tell "we added it" from "they deleted it", and resurrecting
+   a deleted test is the signature failure.
+9. **Report blockers; do not work around them. A negative result is a real deliverable.**
+   If the honest finding is "cannot reproduce", "this is pre-existing", or "the premise in the
+   brief is wrong", say that with the evidence — do not manufacture a fix. If a constraint blocks
+   you (a frozen value that must mutate, a contract that contradicts the task), REPORT it rather
+   than cloning around it. And never read `$?` after a pipeline or after `A && B` — you will
+   report the wrong command's status; capture the exit code of the command you actually mean.
+10. **Branches are NEVER deleted — parked and tagged.** Every branch ends in exactly one of two
    marked terminal states: `git tag -a finished/<branch>` (content fully merged into main) or
    `git tag -a orphaned/<branch> -m '<why>'` (content never landed: superseded, unadopted, or
    replaced by a rebase — tag the pre-rebase twin too). No `git branch -D`, ever; cleanup removes
    WORKTREES only (`git worktree remove`). In-flight branches get neither tag — pending ≠ orphaned.
    Greppable: `git tag -l 'finished/*'` / `'orphaned/*'`.
-7. The editor is named **Invar** (formerly "Fable").
+11. The editor is named **Invar** (formerly "Fable").
 
 Also read on entry: `CLAUDE.md`, `project.conventions.md`, `project.ivue-reference.md`,
 `project.invariants.md`, `project.architecture.md`.
