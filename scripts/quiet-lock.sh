@@ -107,8 +107,12 @@ quiet_lock_run_with_paths() {
   local lock_file_descriptor
   local lock_option
   local previous_holder_name="${INVAR_QUIET_LOCK_HOLDER_NAME-}"
+  local previous_lock_degraded_reason="${INVAR_QUIET_LOCK_DEGRADED_REASON-}"
+  local previous_lock_holders="${INVAR_QUIET_LOCK_HOLDERS-}"
   local previous_lock_mode="${INVAR_QUIET_LOCK_MODE-}"
   local previous_lock_state="${INVAR_QUIET_LOCK_STATE-}"
+  local previous_lock_wait_milliseconds="${INVAR_QUIET_LOCK_WAIT_MILLISECONDS-}"
+  local previous_lock_wait_seconds="${INVAR_QUIET_LOCK_WAIT_SECONDS-}"
 
   case "$requested_mode" in
     quiet-exclusive) lock_option="-x" ;;
@@ -157,6 +161,10 @@ quiet_lock_run_with_paths() {
     export INVAR_QUIET_LOCK_MODE="$requested_mode"
     export INVAR_QUIET_LOCK_HOLDER_NAME="$holder_name"
     export INVAR_QUIET_LOCK_STATE="degraded"
+    export INVAR_QUIET_LOCK_DEGRADED_REASON="flock-unavailable"
+    export INVAR_QUIET_LOCK_WAIT_SECONDS="0"
+    export INVAR_QUIET_LOCK_WAIT_MILLISECONDS="0"
+    export INVAR_QUIET_LOCK_HOLDERS="flock unavailable"
     quiet_lock_append_journal \
       "$journal_path" \
       "degraded" \
@@ -182,6 +190,10 @@ quiet_lock_run_with_paths() {
       export INVAR_QUIET_LOCK_MODE="$requested_mode"
       export INVAR_QUIET_LOCK_HOLDER_NAME="$holder_name"
       export INVAR_QUIET_LOCK_STATE="acquired"
+      unset INVAR_QUIET_LOCK_DEGRADED_REASON
+      unset INVAR_QUIET_LOCK_WAIT_SECONDS
+      unset INVAR_QUIET_LOCK_WAIT_MILLISECONDS
+      unset INVAR_QUIET_LOCK_HOLDERS
       quiet_lock_append_journal \
         "$journal_path" \
         "acquired" \
@@ -208,13 +220,21 @@ quiet_lock_run_with_paths() {
           "$acquisition_started_milliseconds" \
           "$acquisition_finished_milliseconds"
       )"
+      local current_holder_names
+      current_holder_names="$(
+        quiet_lock_current_holder_names "$journal_path"
+      )"
       echo "QUIET-LOCK WARNING: '$holder_name' waited" \
         "${acquisition_wait_milliseconds} ms for $requested_mode; holders:" \
-        "$(quiet_lock_current_holder_names "$journal_path")." \
+        "${current_holder_names}." \
         "Proceeding unlocked so scheduling cannot wedge the machine." >&2
       export INVAR_QUIET_LOCK_MODE="$requested_mode"
       export INVAR_QUIET_LOCK_HOLDER_NAME="$holder_name"
       export INVAR_QUIET_LOCK_STATE="degraded"
+      export INVAR_QUIET_LOCK_DEGRADED_REASON="timeout"
+      export INVAR_QUIET_LOCK_WAIT_SECONDS="$maximum_wait_seconds"
+      export INVAR_QUIET_LOCK_WAIT_MILLISECONDS="$acquisition_wait_milliseconds"
+      export INVAR_QUIET_LOCK_HOLDERS="$current_holder_names"
       quiet_lock_append_journal \
         "$journal_path" \
         "degraded" \
@@ -243,6 +263,26 @@ quiet_lock_run_with_paths() {
     export INVAR_QUIET_LOCK_STATE="$previous_lock_state"
   else
     unset INVAR_QUIET_LOCK_STATE
+  fi
+  if [ -n "$previous_lock_degraded_reason" ]; then
+    export INVAR_QUIET_LOCK_DEGRADED_REASON="$previous_lock_degraded_reason"
+  else
+    unset INVAR_QUIET_LOCK_DEGRADED_REASON
+  fi
+  if [ -n "$previous_lock_wait_seconds" ]; then
+    export INVAR_QUIET_LOCK_WAIT_SECONDS="$previous_lock_wait_seconds"
+  else
+    unset INVAR_QUIET_LOCK_WAIT_SECONDS
+  fi
+  if [ -n "$previous_lock_wait_milliseconds" ]; then
+    export INVAR_QUIET_LOCK_WAIT_MILLISECONDS="$previous_lock_wait_milliseconds"
+  else
+    unset INVAR_QUIET_LOCK_WAIT_MILLISECONDS
+  fi
+  if [ -n "$previous_lock_holders" ]; then
+    export INVAR_QUIET_LOCK_HOLDERS="$previous_lock_holders"
+  else
+    unset INVAR_QUIET_LOCK_HOLDERS
   fi
   return "$command_exit_code"
 }

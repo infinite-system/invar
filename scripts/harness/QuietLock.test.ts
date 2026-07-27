@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { QuietLock } from './QuietLock';
 
 const quietLockScriptPath = join(import.meta.dir, '..', 'quiet-lock.sh');
 
@@ -81,6 +82,10 @@ test('quiet-exclusive warns and proceeds after its bounded wait', async () => {
   const journalPath = join(testDirectory, 'journal');
   const loudReadyPath = join(testDirectory, 'loud-ready');
   const quietRanPath = join(testDirectory, 'quiet-ran');
+  const degradationEnvironmentPath = join(
+    testDirectory,
+    'degradation-environment',
+  );
 
   try {
     const loudProcess = spawnLockHolder(
@@ -105,13 +110,35 @@ test('quiet-exclusive warns and proceeds after its bounded wait', async () => {
       0.1,
       lockFilePath,
       journalPath,
-      ['bash', '-c', 'printf ran >"$1"', 'quiet-command', quietRanPath],
+      [
+        'bash',
+        '-c',
+        'printf ran >"$1"; ' +
+          'printf "%s\\n%s\\n%s\\n%s" ' +
+          '"$INVAR_QUIET_LOCK_DEGRADED_REASON" ' +
+          '"$INVAR_QUIET_LOCK_WAIT_SECONDS" ' +
+          '"$INVAR_QUIET_LOCK_WAIT_MILLISECONDS" ' +
+          '"$INVAR_QUIET_LOCK_HOLDERS" >"$2"',
+        'quiet-command',
+        quietRanPath,
+        degradationEnvironmentPath,
+      ],
     );
     expect(await quietProcess.exited).toBe(0);
     expect(readFileSync(quietRanPath, 'utf8')).toBe('ran');
     const standardError = await new Response(quietProcess.stderr).text();
     expect(standardError).toContain('QUIET-LOCK WARNING');
     expect(standardError).toContain('holder that never releases');
+    const [
+      degradedReason,
+      maximumWaitSeconds,
+      actualWaitMilliseconds,
+      holderNames,
+    ] = readFileSync(degradationEnvironmentPath, 'utf8').split('\n');
+    expect(degradedReason).toBe('timeout');
+    expect(maximumWaitSeconds).toBe('0.1');
+    expect(Number(actualWaitMilliseconds)).toBeGreaterThanOrEqual(100);
+    expect(holderNames).toContain('holder that never releases');
 
     loudProcess.kill(9);
     await loudProcess.exited;
@@ -127,6 +154,39 @@ test('quiet-exclusive warns and proceeds after its bounded wait', async () => {
   } finally {
     rmSync(testDirectory, { recursive: true, force: true });
   }
+});
+
+test('quiet-lock degradation is absent from an acquired environment', () => {
+  expect(
+    QuietLock.Class.degradation({
+      INVAR_QUIET_LOCK_STATE: 'acquired',
+    }),
+  ).toBeNull();
+});
+
+test('quiet-lock degradation preserves timeout evidence', () => {
+  expect(
+    QuietLock.Class.degradation({
+      INVAR_QUIET_LOCK_STATE: 'degraded',
+      INVAR_QUIET_LOCK_DEGRADED_REASON: 'timeout',
+      INVAR_QUIET_LOCK_WAIT_SECONDS: '120',
+      INVAR_QUIET_LOCK_WAIT_MILLISECONDS: '120007',
+      INVAR_QUIET_LOCK_HOLDERS: 'other gate (pid 123, quiet-exclusive)',
+    }),
+  ).toEqual({
+    reason: 'timeout',
+    maximumWaitSeconds: '120',
+    actualWaitMilliseconds: '120007',
+    holderNames: 'other gate (pid 123, quiet-exclusive)',
+  });
+});
+
+test('quiet-lock degradation does not invent a missing cause', () => {
+  expect(
+    QuietLock.Class.degradation({
+      INVAR_QUIET_LOCK_STATE: 'degraded',
+    }),
+  ).toEqual({ reason: 'unknown' });
 });
 
 function spawnLockHolder(

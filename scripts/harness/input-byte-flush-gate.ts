@@ -11,6 +11,7 @@ import {
   type InputByteFlushBaseline,
   type InputByteFlushHistorySample,
 } from './InputByteFlushTrend';
+import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { QuietLock } from './QuietLock';
 
 const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
@@ -18,6 +19,32 @@ const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
   import.meta.path,
 );
 if (quietLockExitCode !== null) process.exit(quietLockExitCode);
+
+const quietLockDegradation = QuietLock.Class.degradation(process.env);
+if (quietLockDegradation?.reason === 'timeout') {
+  console.error(
+    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
+      `quiet lock unavailable after ` +
+      `${quietLockDegradation.maximumWaitSeconds} s ` +
+      `(waited ${quietLockDegradation.actualWaitMilliseconds} ms), holders: ` +
+      quietLockDegradation.holderNames,
+  );
+  process.exit(2);
+}
+if (quietLockDegradation?.reason === 'flock-unavailable') {
+  console.error(
+    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
+      `quiet lock unavailable because flock is unavailable`,
+  );
+  process.exit(2);
+}
+if (quietLockDegradation?.reason === 'unknown') {
+  console.error(
+    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
+      `quiet lock degraded without acquisition evidence`,
+  );
+  process.exit(2);
+}
 
 interface SessionMeasurement {
   p50Milliseconds: number;
@@ -73,8 +100,12 @@ function measureFiveSessionMedians(passLabel: string): {
     const standardError = new TextDecoder().decode(measurementResult.stderr);
     if (measurementResult.exitCode !== 0) {
       throw new Error(
-        `Input-byte-flush session ${sessionNumber} failed with exit ` +
-          `${measurementResult.exitCode}\n${standardOutput}\n${standardError}`,
+        InputByteFlushVerdict.Class.sessionFailureMessage(
+          sessionNumber,
+          measurementResult.exitCode,
+          standardOutput,
+          standardError,
+        ),
       );
     }
     const sessionMeasurement = parseSessionMeasurement(standardOutput);
@@ -165,8 +196,10 @@ if (p50Milliseconds > failureThresholdMilliseconds) {
 reportHistoryTrend(historyPath, baseline);
 if (p50Milliseconds > failureThresholdMilliseconds) {
   console.error(
-    `input-byte-flush-gate: FAIL p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +
-      `baseline×${baseline.failureMultiplier} on both passes`,
+    InputByteFlushVerdict.Class.tooSlowMessage(
+      p50Milliseconds,
+      baseline.failureMultiplier,
+    ),
   );
   process.exit(1);
 }

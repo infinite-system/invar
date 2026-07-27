@@ -220,11 +220,19 @@ scripts/merge-gate.sh && rg "retired-smokes/.*\\.sh" project.coverage-deltas.md`
 
 ### Input byte latency uses a reviewed gate baseline
 
-**Invariant:** If the merge gate measures input byte flush latency, then it runs five independent
-sessions, records their median p50 and p95 at the named byte-arrival boundary, appends the result to
-ignored NDJSON history, warns above the reviewed p50 baseline times 1.3, and fails above baseline
-times 2. It also reports a loud non-blocking trend warning when the median of five trailing
-comparable history samples exceeds the reviewed baseline era by 1.15 times.
+**Invariant:** If the merge gate reports input byte flush latency, then an acquired quiet lock
+guards five independent sessions and only their median p50 and p95 enter the comparable result and
+NDJSON history; a degraded lock abandons the measurement without a number or history sample.
+
+**Components:**
+- *Comparable results require quiet acquisition* — `INVAR_QUIET_LOCK_STATE=acquired` is required
+  before any session starts or any history sample is appended.
+- *Failure verdicts name their generator* — invalid measurement conditions, a breached latency
+  ceiling, and wrong driven cursor behavior produce distinct messages.
+- *The reviewed baseline remains fixed* — valid medians warn above baseline times 1.3 and fail above
+  baseline times 2.
+- *Comparable history detects sustained shifts* — the median of five trailing samples warns above
+  the reviewed baseline era times 1.15.
 
 **Scope:** `scripts/harness/input-byte-flush-gate.ts`, its unskipped `scripts/merge-gate.sh` step,
 the machine-readable block in `project.performance-baselines.md`, and
@@ -233,22 +241,26 @@ hard latency check.
 
 **Mechanism:** `input-byte-flush-gate.ts` launches
 `scripts/harness/measure-input-byte-flush.ts` five times, rejects a boundary mismatch, takes the
-median of session p50 and p95 values, reads thresholds from the reviewed JSON block, appends one
-history object, and returns non-zero above the failure threshold. `InputByteFlushTrend` filters
-history to the same boundary, takes the configured trailing-window median, and names its sample span
-when it exceeds the reviewed era by the configured sustained-shift multiplier. The trend verdict is
-report-only. `reporting_step` preserves the successful p50, p95, boundary, and trend output in the
-merge-gate log.
+median of session p50 and p95 values, and reads thresholds from the reviewed JSON block.
+`QuietLock.degradation` runs before the first session; a degraded result exits with
+`MEASUREMENT INVALID` and the wait and holder evidence, so the history append is unreachable.
+`InputByteFlushVerdict` distinguishes `MEASUREMENT INVALID`, `MEASUREMENT TOO SLOW`, and
+`DRIVEN BEHAVIOUR WRONG`. `InputByteFlushTrend` filters history to the same boundary, takes the
+configured trailing-window median, and names its sample span when it exceeds the reviewed era by
+the configured sustained-shift multiplier. The trend verdict is report-only.
 
 **Generates:** an always-run latency regression signal under `SKIP_PERF` and `FAST`; commit-addressed
 history; a non-blocking warning band; a sustained-shift warning before an individual run reaches the
-warning band; an explicit landing diff whenever the baseline changes.
+warning band; an explicit landing diff whenever the baseline changes; no durable datum from a
+contended run; failure output that says whether the measurement was invalid, slow, or behaviorally
+wrong.
 
 **Rejected alternatives:** Update the baseline from measurement history — lets the tested commit
 move its own threshold and makes regressions self-ratifying.
 
 **Evidence:** `scripts/harness/input-byte-flush-gate.ts`; `scripts/merge-gate.sh`;
 `scripts/harness/InputByteFlushTrend.ts`; `scripts/harness/InputByteFlushTrend.test.ts`;
+`scripts/harness/InputByteFlushVerdict.ts`; `scripts/harness/InputByteFlushVerdict.test.ts`;
 `project.performance-baselines.md` `Input byte flush merge-gate baseline`. Re-reviewed 2026-07-26:
 ten history samples from inline drain through task base have median p50 4.928 ms; a fresh quiet-lock
 five-session median was 4.794 ms. Sample-interleaved comparison against fixed reference `0005fa0`
@@ -259,16 +271,18 @@ bimodality, not queued work.
 **Impossible if true:** `SKIP_PERF=1` bypassing the latency check; a p50 above baseline times 2
 leaving the gate green; a history line without sha, timestamp, p50, p95, and boundary; a successful
 gate log omitting the measurement boundary; five synthetically shifted comparable history samples
-producing no warning that names their sustained span.
+producing no warning that names their sustained span; a degraded quiet lock printing a session p50
+or appending history; a cursor-movement assertion failure reported as a latency regression.
 
-**Verification:** `bun test scripts/harness/InputByteFlushTrend.test.ts && bun
+**Verification:** `bun test scripts/harness/InputByteFlushTrend.test.ts
+scripts/harness/InputByteFlushVerdict.test.ts scripts/harness/QuietLock.test.ts && bun
 scripts/harness/input-byte-flush-gate.ts &&
 (INPUT_BYTE_FLUSH_BASELINE_P50_MILLISECONDS=0 bun scripts/harness/input-byte-flush-gate.ts; test $?
 -ne 0)`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-27
 
 ### Harness waits observe conditions not frame ordinals
 
@@ -530,7 +544,9 @@ idle-quiescence frame-count window duplicated in a per-feature smoke.
 
 **Invariant:** If a smoke makes an absence assertion, bounds a wait by elapsed
 time, or measures duration, then it runs under the machine-wide
-quiet-exclusive lock while ordinary gate load runs under the loud-shared lock.
+quiet-exclusive lock while ordinary gate load runs under the loud-shared lock;
+if acquisition degrades, then the degraded state and its cause travel with the
+child execution.
 
 **Scope:** `scripts/quiet-lock.sh`; the quiet-serial tail in
 `scripts/merge-gate.sh`; direct runs of `scripts/behavioral-contracts.sh`,
@@ -546,23 +562,35 @@ processes. The gate holds loud-shared around `bun test` and the parallel pool,
 then quiet-exclusive once around the complete quiet tail. Standalone
 timing-sensitive entry points re-execute through the same helper and recognize
 an inherited quiet lock without reacquiring it. Acquisition waits at most 120
-seconds, then warns with journaled holder names and proceeds unlocked.
+seconds, then warns with journaled holder names and proceeds unlocked with
+`INVAR_QUIET_LOCK_STATE=degraded`, the actual wait, configured maximum, cause,
+and holder names. Input-byte-flush consumes that state before sampling and
+abandons the measurement.
 
 **Generates:** Cross-gate scheduling; standalone smoke protection; shared
 parallel load; crash-released locks; a bounded diagnostic journal at
-`/tmp/invar-quiet-lock.journal`.
+`/tmp/invar-quiet-lock.journal`; result-local invalidity when scheduling
+degrades.
 
 **Rejected alternatives:** Gate-level lock — builders run smokes directly and
 bypass it. PID-file lock — a crashed holder leaves dirty state that can wedge
-future acquisition.
+future acquisition. Warning-only degradation — the result outlives the warning
+and looks comparable.
 
 **Evidence:** `scripts/quiet-lock.sh`; `scripts/harness/QuietLock.ts`;
 `scripts/harness/QuietLock.test.ts`; lock calls in `scripts/merge-gate.sh` and
-the standalone timing-sensitive entry points.
+the standalone timing-sensitive entry points. Most timing checks are latency
+ceilings or minimum-progress bounds, so contention biases them toward false
+failures. `idle-quiescence` is the exception: its completed-frame delta is an
+upper bound over a fixed interval, so contention can suppress a defective loop
+into a false pass. That exception rules out treating a degraded green as
+universally trustworthy and requires the input-byte measurement to abandon its
+timing verdict.
 
 **Impossible if true:** A quiet-tail smoke and a loud pool job both hold the
 lock at the same time; two quiet-exclusive smokes overlap; loud-shared holders
-serialize against one another; a crashed holder wedges acquisition forever.
+serialize against one another; a crashed holder wedges acquisition forever; a
+degraded measurement result that omits its lock cause.
 
 **Verification:** `bun test scripts/harness/QuietLock.test.ts && bash -n
 scripts/quiet-lock.sh scripts/merge-gate.sh scripts/behavioral-contracts.sh

@@ -3,6 +3,7 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { PtyTestDriver } from './PtyTestDriver';
 import { QuietLock } from './QuietLock';
 
@@ -66,7 +67,10 @@ try {
     const cursorColumnAfter = driver.snapshot().cursorColumn;
     if (cursorColumnAfter === cursorColumnBefore) {
       throw new Error(
-        `Measured ${keyName} press ${pressNumber} did not move the terminal cursor`,
+        InputByteFlushVerdict.Class.drivenBehaviourFailureMessage(
+          `Measured ${keyName} press ${pressNumber} did not move the ` +
+            `terminal cursor`,
+        ),
       );
     }
 
@@ -124,6 +128,12 @@ try {
       `median-frame-bytes=${medianFrameByteCount} ` +
       `boundary=input-write→DEC-2026-end-marker-byte-arrival`,
   );
+} catch (error) {
+  const failureDetails = error instanceof Error ? error.message : String(error);
+  console.error(
+    InputByteFlushVerdict.Class.measurementFailureMessage(failureDetails),
+  );
+  process.exitCode = 1;
 } finally {
   await driver.dispose();
   await Promise.race([driver.exitCode(), Bun.sleep(1_000)]);

@@ -628,7 +628,7 @@ run_machine_quiet_tail() {
   # reviewed baseline's failure multiplier.
   # invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
   reporting_step \
-    "input byte flush latency (5-session median)" \
+    "input byte flush measurement (5-session median)" \
     bun scripts/harness/input-byte-flush-gate.ts
   # 6) Perf baselines are soft: the load-bearing idle-quiescence invariant is
   # hard-gated above.

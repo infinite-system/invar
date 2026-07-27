@@ -37,9 +37,46 @@ class $QuietLock {
     );
     return childProcess.exited;
   }
+
+  static degradation(
+    environment: Readonly<Record<string, string | undefined>>,
+  ): QuietLockDegradation | null {
+    if (environment.INVAR_QUIET_LOCK_STATE !== 'degraded') return null;
+    if (
+      environment.INVAR_QUIET_LOCK_DEGRADED_REASON === 'timeout' &&
+      environment.INVAR_QUIET_LOCK_WAIT_SECONDS !== undefined &&
+      environment.INVAR_QUIET_LOCK_WAIT_MILLISECONDS !== undefined &&
+      environment.INVAR_QUIET_LOCK_HOLDERS !== undefined
+    ) {
+      return {
+        reason: 'timeout',
+        maximumWaitSeconds: environment.INVAR_QUIET_LOCK_WAIT_SECONDS,
+        actualWaitMilliseconds: environment.INVAR_QUIET_LOCK_WAIT_MILLISECONDS,
+        holderNames: environment.INVAR_QUIET_LOCK_HOLDERS,
+      };
+    }
+    if (environment.INVAR_QUIET_LOCK_DEGRADED_REASON === 'flock-unavailable') {
+      return { reason: 'flock-unavailable' };
+    }
+    return { reason: 'unknown' };
+  }
 }
 
 export namespace QuietLock {
   export const $Class = $QuietLock;
   export const Class = Static($Class);
 }
+
+export type QuietLockDegradation =
+  | {
+      readonly reason: 'timeout';
+      readonly maximumWaitSeconds: string;
+      readonly actualWaitMilliseconds: string;
+      readonly holderNames: string;
+    }
+  | {
+      readonly reason: 'flock-unavailable';
+    }
+  | {
+      readonly reason: 'unknown';
+    };
