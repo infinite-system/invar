@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Logging } from '../system/Logging';
 
 // The kernel composes module implementations (via the namespace Class slots) and SEALS
@@ -44,8 +43,8 @@ class $Kernel {
 }
 
 export namespace Kernel {
-  export const $Class = Static($Kernel);
-  export let Class = $Class;
+  export const $Class = $Kernel;
+  export let Class = $Kernel;
 }
 
 export type SealHook = () => void;

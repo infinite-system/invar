@@ -45,6 +45,10 @@ class $StatusChannel {
       lifecycleTier: 'boot',
       overlay: null,
     };
+    Object.defineProperty(this, '$state', {
+      configurable: true,
+      value: state,
+    });
     return state;
   }
 
@@ -90,8 +94,8 @@ class $StatusChannel {
 }
 
 export namespace StatusChannel {
-  export const $Class = Static($StatusChannel);
-  export let Class = $Class;
+  export const $Class = $StatusChannel;
+  export let Class = Static($StatusChannel);
 }
 
 export interface StatusSnapshot {

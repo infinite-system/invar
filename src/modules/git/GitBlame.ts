@@ -98,8 +98,8 @@ class $GitBlame {
 }
 
 export namespace GitBlame {
-  export const $Class = Static($GitBlame);
-  export const Class = $Class;
+  export const $Class = $GitBlame;
+  export const Class = Static($GitBlame);
 }
 
 export interface BlameLine {

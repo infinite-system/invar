@@ -861,8 +861,8 @@ class $Files {
 }
 
 export namespace Files {
-  export const $Class = Static($Files);
-  export let Class = $Class;
+  export const $Class = $Files;
+  export let Class = Static($Class);
 }
 ```
 

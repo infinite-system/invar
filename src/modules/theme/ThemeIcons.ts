@@ -4,6 +4,11 @@ import { Static } from 'ivue/extras';
 import type { GlyphLevel } from './TerminalCapabilities';
 
 class $ThemeIcons {
+  protected static cache<Value>(propertyName: string, value: Value): Value {
+    Object.defineProperty(this, propertyName, { configurable: true, value });
+    return value;
+  }
+
   // THE symbol-mark table: one row per capability tier, one column per symbol class. Every surface
   // that marks a classified thing — the file tree, the breadcrumb popup, the completion popup —
   // classifies into a `SymbolClass` and reads its mark here. There is no second table and no second
@@ -184,7 +189,7 @@ class $ThemeIcons {
   protected static get $markOwnerships(): readonly MarkOwnership[] {
     const unicodeVocabulary = this.INTERFACE_GLYPH_VOCABULARIES.unicode;
     const unicodeSymbolMarks = this.SYMBOL_MARKS.unicode;
-    return [
+    return this.cache('$markOwnerships', [
       { mark: unicodeVocabulary.activityFiles, owner: 'activity: Explorer' },
       {
         mark: unicodeVocabulary.activitySourceControl,
@@ -246,37 +251,40 @@ class $ThemeIcons {
         mark,
         owner: `symbol class: ${symbolClass}`,
       })),
-    ];
+    ]);
   }
 
   // The sharings that are INTENDED or KNOWN, each with its reason. A sharing absent from this map
   // fails the gate; a sharing listed here that is no longer real also fails, so the list cannot rot
   // into an allowlist nobody revisits.
   protected static get $declaredMarkSharings(): ReadonlyMap<string, string> {
-    return new Map([
-      [
-        this.SYMBOL_MARKS.unicode.versionControl,
-        'INTENDED. The Source Control activity item and a git file row mean the SAME thing — ' +
-          'version control — so one mark is consistency, not ambiguity. This is the rule the ' +
-          'other entries fail: a mark may be shared only by owners that mean the same thing.',
-      ],
-      [
-        this.SYMBOL_MARKS.unicode.configuration,
-        'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
-          'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
-          '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
-          '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
-          'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
-          'its own change deliberately rather than picked in passing.',
-      ],
-      [
-        this.TAB_SEPARATORS.unicode,
-        'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
-          'paint the chevron with different meanings. They are in different chrome strips and no ' +
-          'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
-          'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
-      ],
-    ]);
+    return this.cache(
+      '$declaredMarkSharings',
+      new Map([
+        [
+          this.SYMBOL_MARKS.unicode.versionControl,
+          'INTENDED. The Source Control activity item and a git file row mean the SAME thing — ' +
+            'version control — so one mark is consistency, not ambiguity. This is the rule the ' +
+            'other entries fail: a mark may be shared only by owners that mean the same thing.',
+        ],
+        [
+          this.SYMBOL_MARKS.unicode.configuration,
+          'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
+            'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
+            '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
+            '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
+            'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
+            'its own change deliberately rather than picked in passing.',
+        ],
+        [
+          this.TAB_SEPARATORS.unicode,
+          'KNOWN, 2026-07-26. The buffer-tab separator and the status-bar terminal affordance both ' +
+            'paint the chevron with different meanings. They are in different chrome strips and no ' +
+            'surface composes them into one row, so nothing is ambiguous today; unifying or ' +
+            'splitting the two is a vocabulary decision, not a fix to make while adding a family.',
+        ],
+      ]),
+    );
   }
 
   protected static get $markOwnersByMark(): ReadonlyMap<
@@ -292,7 +300,7 @@ class $ThemeIcons {
       }
       owners.push(ownership.owner);
     }
-    return markOwnersByMark;
+    return this.cache('$markOwnersByMark', markOwnersByMark);
   }
 
   /** Every recorded mark ownership at the shared portable tier. */
@@ -493,13 +501,13 @@ class $ThemeIcons {
   }
 
   protected static get $activityIcons(): Record<GlyphLevel, ActivityIconSet> {
-    return {
+    return this.cache('$activityIcons', {
       nerd: this.activityIconSetFrom(this.INTERFACE_GLYPH_VOCABULARIES.nerd),
       unicode: this.activityIconSetFrom(
         this.INTERFACE_GLYPH_VOCABULARIES.unicode,
       ),
       ascii: this.activityIconSetFrom(this.INTERFACE_GLYPH_VOCABULARIES.ascii),
-    };
+    });
   }
 
   protected static activityIconSetFrom(
@@ -666,7 +674,7 @@ class $ThemeIcons {
     GlyphLevel,
     AgentTranscriptIconSet
   > {
-    return {
+    return this.cache('$agentTranscriptIcons', {
       nerd: {
         caretCollapsed: '\u{f0da}',
         caretExpanded: '\u{f0d7}',
@@ -700,7 +708,7 @@ class $ThemeIcons {
         rule: '-',
         spinnerFrames: this.ASCII_SPINNER_FRAMES,
       },
-    };
+    });
   }
 
   static agentTranscriptIconsFor(level: GlyphLevel): AgentTranscriptIconSet {
@@ -751,8 +759,8 @@ class $ThemeIcons {
 }
 
 export namespace ThemeIcons {
-  export const $Class = Static($ThemeIcons);
-  export const Class = $Class;
+  export const $Class = $ThemeIcons;
+  export const Class = Static($ThemeIcons);
 }
 
 /**

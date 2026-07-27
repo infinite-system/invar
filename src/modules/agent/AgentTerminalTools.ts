@@ -246,8 +246,8 @@ class $AgentTerminalTools {
 }
 
 export namespace AgentTerminalTools {
-  export const $Class = Static($AgentTerminalTools);
-  export const Class = $Class;
+  export const $Class = $AgentTerminalTools;
+  export const Class = Static($Class);
 }
 
 export type AgentTerminalToolName =

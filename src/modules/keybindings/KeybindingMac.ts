@@ -91,6 +91,10 @@ class $KeybindingMac {
       ),
       ...this.MAC_NATIVE_BINDINGS,
     ];
+    Object.defineProperty(this, '$overlayBindings', {
+      configurable: true,
+      value: overlayBindings,
+    });
     return overlayBindings;
   }
 
@@ -100,6 +104,6 @@ class $KeybindingMac {
 }
 
 export namespace KeybindingMac {
-  export const $Class = Static($KeybindingMac);
-  export const Class = $Class;
+  export const $Class = $KeybindingMac;
+  export const Class = Static($KeybindingMac);
 }

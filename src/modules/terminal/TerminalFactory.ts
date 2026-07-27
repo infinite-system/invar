@@ -39,8 +39,8 @@ class $TerminalFactory {
 }
 
 export namespace TerminalFactory {
-  export const $Class = Static($TerminalFactory);
-  export const Class = $Class;
+  export const $Class = $TerminalFactory;
+  export const Class = Static($TerminalFactory);
 }
 
 export interface TerminalCreateOptions {

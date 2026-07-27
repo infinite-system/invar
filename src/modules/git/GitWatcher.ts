@@ -13,7 +13,6 @@
 // invariant: The watcher has one disposable debounce (src/modules/git/git.invariants.md)
 // invariant: The git panel converges without watcher notifications (src/modules/git/git.invariants.md)
 // invariant: The watcher never watches inside an ignored directory (src/modules/git/git.invariants.md)
-import { Static } from 'ivue/extras';
 import { watch, readdirSync, lstatSync, type FSWatcher } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { Processes } from '../system/Processes';
@@ -422,8 +421,8 @@ class $GitWatcher {
 }
 
 export namespace GitWatcher {
-  export const $Class = Static($GitWatcher);
-  export let Class = $Class;
+  export const $Class = $GitWatcher;
+  export let Class = $GitWatcher;
   export type Model = InstanceType<typeof Class>;
 }
 

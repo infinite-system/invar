@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import type { StyledText, KeyEvent } from '@opentui/core';
 import { computed, ref, type Ref } from 'vue';
 import type {
@@ -1009,7 +1008,7 @@ class $AgentPaneContent implements PaneContent {
 }
 
 export namespace AgentPaneContent {
-  export const $Class = Static($AgentPaneContent);
+  export const $Class = $AgentPaneContent;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

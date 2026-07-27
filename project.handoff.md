@@ -535,23 +535,19 @@ checker + `bun test` before merging. Deprecate sub-par output (don't patch aroun
 - Typecheck `bunx tsc --noEmit; echo TSC=$?` — **NEVER pipe tsc through tail/tee** (masks the exit code; this trap already bit two audits).
 - Invariants checker (in the ibr repo — do NOT copy here):
   `node .claude/skills/invariants/scripts/check_invariants.mjs --all|--refs|--score`
-- Deps: `ivue@2.2.1`, `vue@3.6.0-rc.1`, `@opentui/core@0.4.5`, `web-tree-sitter@0.26.11`.
-  `Static` comes from `ivue/extras`.
+- Deps: `ivue@2.0.0`, `vue@3.5.40`, `@opentui/core@0.4.5`, `web-tree-sitter@0.26.11`. Vendored `src/modules/system/Static.ts`.
 - codex worktrees: `.claude/worktrees/codex-<mod>` (branch `codex/<mod>`, node_modules symlinked). Prompts `scripts/codex/*.prompt.txt`. Drive: `codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C <worktree> "$(cat prompt)"`.
 
 ## Key API / pattern facts (easy to forget after compaction)
 ### ivue
 - `import { Reactive } from 'ivue'`; `ref/shallowRef/computed/watch/watchEffect` from `'vue'`.
-- Namespace: `class $X {...}` + `export namespace X`; statics-bearing classes anchor with
-  `$Class=Static($X)`, classes without statics use `$Class=$X`, and the selected binding is
-  `Class=$Class` or `Class=Reactive($Class)`.
+- Namespace: `class $X {...}` + `export namespace X { export const $Class=$X; export let Class=Reactive($X); export type Model=InstanceType<typeof Class>; export type Instance=typeof Class.Instance }`.
 - `$watch/$watchEffect/$stopEffects` are injected on the WRAPPED instance, NOT the raw `$X` type.
   Inside a class method, cast: `(this as { $stopEffects?: () => void }).$stopEffects?.()`.
 - Plain getters for cheap derived state (NOT `computed()`); `ref`-getters for state.
 - Late dep reads (getter/method bodies, never top-level `new`/`const C = X.Class`).
 - Owned deps via overridable `createX()` seams: `field = this.createDep(); protected createDep(){ return new Dep.Class() }` — NOT `field = new Dep.Class()`.
-- Stateless capability classes → `$Class=Static($X); Class=$Class`; stateful classes choose
-  `Class=$Class` or `Class=Reactive($Class)` according to their reactive lifetime.
+- Stateless capability classes → `Static($X)` (vendored `system/Static.ts`); stateful (identity+lifetime) → plain instance `let Class = $X`.
 ### OpenTUI (@opentui/core)
 - `createCliRenderer({exitOnCtrlC:false, targetFps})` → renderer. `.root`, `.requestRender()`, `.start()`, `.destroy()`, `.keyInput.on('keypress', KeyEvent{name,ctrl,shift,meta,option,sequence,repeated})`, `.on('resize')`, `.on('frame')/.once('frame')`, `.width/.height`.
 - `BoxRenderable, TextRenderable, StyledText, fg, type TextChunk` from `@opentui/core`. Yoga flex layout (`flexGrow/flexDirection/width/height/padding`). Renderable `.height/.width` are NON-reactive layout values (read after a frame; synced to viewport on boot/resize only).

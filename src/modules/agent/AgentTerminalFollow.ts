@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import type { Ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
 import type { AgentSession } from './AgentSession';
@@ -114,7 +113,7 @@ class $AgentTerminalFollow {
 }
 
 export namespace AgentTerminalFollow {
-  export const $Class = Static($AgentTerminalFollow);
+  export const $Class = $AgentTerminalFollow;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

@@ -93,6 +93,6 @@ class $AgentSpinnerFrames {
 }
 
 export namespace AgentSpinnerFrames {
-  export const $Class = Static($AgentSpinnerFrames);
-  export const Class = $Class;
+  export const $Class = $AgentSpinnerFrames;
+  export const Class = Static($AgentSpinnerFrames);
 }

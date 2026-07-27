@@ -50,8 +50,8 @@ class $TerminalCommandTyping {
 }
 
 export namespace TerminalCommandTyping {
-  export const $Class = Static($TerminalCommandTyping);
-  export const Class = $Class;
+  export const $Class = $TerminalCommandTyping;
+  export const Class = Static($Class);
 }
 
 export interface TerminalCommandTypingPlan {

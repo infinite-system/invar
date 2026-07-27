@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import {
@@ -13,6 +12,10 @@ import { StatusChannel } from '../system/StatusChannel';
 class $MarkdownDocument {
   protected static get $emptyBlocks(): readonly BlockRecord[] {
     const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyBlocks', {
+      configurable: true,
+      value: emptyBlocks,
+    });
     return emptyBlocks;
   }
 
@@ -192,7 +195,7 @@ class $MarkdownDocument {
 }
 
 export namespace MarkdownDocument {
-  export const $Class = Static($MarkdownDocument);
+  export const $Class = $MarkdownDocument;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

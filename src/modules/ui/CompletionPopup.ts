@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import type { CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { CompletionItemKinds } from '../lsp/CompletionItemKinds';
@@ -198,7 +197,7 @@ class $CompletionPopup {
 }
 
 export namespace CompletionPopup {
-  export const $Class = Static($CompletionPopup);
+  export const $Class = $CompletionPopup;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

@@ -3,7 +3,6 @@
 // piece-table delta store is the performance refinement (see KNOWN_LIMITATIONS.md).
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 //   — the stack is bounded; the oldest states are evicted, not retained forever.
-import { Static } from 'ivue/extras';
 class $UndoStore {
   protected static get MAXIMUM_DEPTH(): number {
     return 500;
@@ -77,8 +76,8 @@ class $UndoStore {
 }
 
 export namespace UndoStore {
-  export const $Class = Static($UndoStore);
-  export let Class = $Class;
+  export const $Class = $UndoStore;
+  export let Class = $UndoStore;
   export type Instance = InstanceType<typeof $UndoStore>;
 }
 

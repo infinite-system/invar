@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, watch } from 'vue';
 
@@ -17,6 +16,10 @@ class $AgentSpinner {
         clearInterval(handle as ReturnType<typeof setInterval>),
       now: () => Date.now(),
     };
+    Object.defineProperty(this, '$defaultScheduler', {
+      configurable: true,
+      value: defaultScheduler,
+    });
     return defaultScheduler;
   }
 
@@ -100,7 +103,7 @@ class $AgentSpinner {
 }
 
 export namespace AgentSpinner {
-  export const $Class = Static($AgentSpinner);
+  export const $Class = $AgentSpinner;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;

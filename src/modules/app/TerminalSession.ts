@@ -66,8 +66,8 @@ class $TerminalSession {
 }
 
 export namespace TerminalSession {
-  export const $Class = Static($TerminalSession);
-  export let Class = $Class;
+  export const $Class = $TerminalSession;
+  export let Class = Static($TerminalSession);
 }
 
 /** The minimal terminal-control surface the re-assert needs (a CliRenderer satisfies it). */

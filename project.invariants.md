@@ -426,19 +426,17 @@ order.
 ### Public classes use the namespace pattern
 
 **Invariant:** If Invar publishes a project-owned class, then it exposes a private `class $X`
-through `namespace X` with one immutable `$Class` anchor and one honest `Class` binding. A class
-that declares statics anchors as `$Class = Static($X)`; a class without statics anchors as
-`$Class = $X`. The selected binding is `$Class` for a static capability, `Reactive($Class)` for a
-reactive model, or `$Class` for a plain stateful class.
+through `namespace X` with `$Class = $X` and one honest `Class` binding: `Static($X)` for a
+stateless capability, `Reactive($X)` for a reactive model, or `$X` for a plain stateful class.
 
 **Scope:** Every public class under `src/modules/`. External library classes, interfaces, types,
 and data-only role collections are outside this rule.
 
-**Mechanism:** The namespace keeps the public domain name stable while immutable `$Class` exposes
-the inheritance anchor and mutable `Class` exposes the selected construction form. Wrapping the
-anchor once gives every subclass per-receiver static semantics without snapshotting the mutable
-selection slot. The selected forms preserve the distinction between stateless capability,
-reactive model, and plain stateful class.
+**Mechanism:** The namespace keeps the public domain name stable while `$Class` exposes the raw
+inheritance root and `Class` exposes the selected construction form. The three bindings preserve
+the actual distinction between stateless capability, reactive model, and plain stateful class.
+The pattern was discovered through ivue, but Invar adopts it independently of reactivity and
+independently of whether a module currently participates in an import cycle.
 
 **Generates:** One class shape across the codebase; `new X.Class()` construction; `extends
 X.$Class` specialization; the `Static` / `Reactive` / raw class-kind distinction; PascalCase
@@ -452,15 +450,14 @@ or specialization.
 `scripts/check-exported-capabilities.mjs`.
 
 **Impossible if true:** A direct `export class X`; a public class module without `X.$Class` and
-`X.Class`; a statics-bearing class with a raw anchor; an `extends X.Class` clause that snapshots
-the mutable selection slot; a selected binding whose static, reactive, or raw form contradicts
-the class's actual state and lifetime.
+`X.Class`; a `Class` binding whose `Static`, `Reactive`, or raw form contradicts the class's
+actual state and lifetime.
 
 **Verification:** `node scripts/check-exported-capabilities.mjs && bash scripts/conventions-gate.sh`.
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-24
 
 ### Construction goes through overridable seams
 

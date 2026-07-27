@@ -10,7 +10,6 @@
 // invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
 // invariant: Only the newest Git request mutates state (src/modules/git/git.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { shallowRef } from 'vue';
 import { GitCommands } from './GitCommands';
@@ -150,8 +149,8 @@ class $CommitExpansion {
 }
 
 export namespace CommitExpansion {
-  export const $Class = Static($CommitExpansion);
-  export let Class = Reactive($Class);
+  export const $Class = $CommitExpansion;
+  export let Class = Reactive($CommitExpansion);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }

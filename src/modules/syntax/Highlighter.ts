@@ -80,6 +80,10 @@ class $Highlighter {
       'while',
       'yield',
     ]);
+    Object.defineProperty(this, '$typescriptKeywords', {
+      configurable: true,
+      value: typescriptKeywords,
+    });
     return typescriptKeywords;
   }
 
@@ -563,8 +567,8 @@ class $Highlighter {
 }
 
 export namespace Highlighter {
-  export const $Class = Static($Highlighter);
-  export const Class = $Class;
+  export const $Class = $Highlighter;
+  export const Class = Static($Highlighter);
 }
 
 export type Role =

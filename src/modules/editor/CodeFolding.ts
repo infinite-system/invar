@@ -11,6 +11,10 @@ class $CodeFolding {
     FoldRangeSnapshot
   > {
     const rangesByDocument = new WeakMap<FoldableDocument, FoldRangeSnapshot>();
+    Object.defineProperty(this, '$rangesByDocument', {
+      configurable: true,
+      value: rangesByDocument,
+    });
     return rangesByDocument;
   }
 
@@ -187,8 +191,8 @@ class $CodeFolding {
 }
 
 export namespace CodeFolding {
-  export const $Class = Static($CodeFolding);
-  export const Class = $Class;
+  export const $Class = $CodeFolding;
+  export const Class = Static($CodeFolding);
 }
 
 export interface FoldRange {

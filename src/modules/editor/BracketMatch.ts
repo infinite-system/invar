@@ -29,6 +29,10 @@ class $BracketMatch {
       TextDocument.Instance,
       BracketMatchSnapshot
     >();
+    Object.defineProperty(this, '$snapshotByDocument', {
+      configurable: true,
+      value: snapshotByDocument,
+    });
     return snapshotByDocument;
   }
 
@@ -226,8 +230,8 @@ class $BracketMatch {
 }
 
 export namespace BracketMatch {
-  export const $Class = Static($BracketMatch);
-  export const Class = $Class;
+  export const $Class = $BracketMatch;
+  export const Class = Static($BracketMatch);
 }
 
 /** A cell position: 0-based line and 0-based grapheme column. */

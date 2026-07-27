@@ -7,7 +7,6 @@
 // Reactive class holding plain renderable fields), instantiated `new HoverCard.Class(deps)`.
 //
 // invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
-import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
   StyledText,
@@ -85,6 +84,10 @@ class $HoverCard {
       md: 'markdown',
       diff: 'diff',
     };
+    Object.defineProperty(this, '$fenceLanguage', {
+      configurable: true,
+      value: fenceLanguageValue,
+    });
     return fenceLanguageValue;
   }
   protected get fenceLanguage(): Record<string, LangId> {
@@ -854,7 +857,7 @@ class $HoverCard {
   }
 }
 export namespace HoverCard {
-  export const $Class = Static($HoverCard);
+  export const $Class = $HoverCard;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

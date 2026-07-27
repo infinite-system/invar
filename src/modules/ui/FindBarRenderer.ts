@@ -126,8 +126,8 @@ class $FindBarRenderer {
   }
 }
 export namespace FindBarRenderer {
-  export const $Class = Static($FindBarRenderer);
-  export const Class = $Class;
+  export const $Class = $FindBarRenderer;
+  export const Class = Static($FindBarRenderer);
 }
 export type FindBarButtonAction =
   'previous' | 'next' | 'toggleCase' | 'replace' | 'replaceAll' | 'toggleMode';

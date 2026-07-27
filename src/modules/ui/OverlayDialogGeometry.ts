@@ -35,8 +35,8 @@ class $OverlayDialogGeometry {
 }
 
 export namespace OverlayDialogGeometry {
-  export const $Class = Static($OverlayDialogGeometry);
-  export const Class = $Class;
+  export const $Class = $OverlayDialogGeometry;
+  export const Class = Static($OverlayDialogGeometry);
 }
 
 export interface OverlayDialogGeometryInput {
