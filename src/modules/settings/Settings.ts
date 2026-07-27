@@ -341,7 +341,7 @@ class $Settings {
     this.storedProjectRecord = this.readSettingsRecord(resolved.projectPath);
     const settingsClass = this.constructor as typeof $Settings;
     this.applyValues({
-      ...settingsClass.defaults,
+      ...settingsClass.DEFAULTS,
       ...settingsClass.sanitize(this.storedUserRecord),
       ...settingsClass.sanitize(this.storedProjectRecord),
     });
@@ -515,7 +515,7 @@ class $Settings {
 
   // ---- Static helpers ----------------------------------------------------------------------------
 
-  static get defaults(): SettingsValues {
+  static get DEFAULTS(): SettingsValues {
     return {
       verticalFlingCeiling: 220,
       scrollAccelGain: 34,

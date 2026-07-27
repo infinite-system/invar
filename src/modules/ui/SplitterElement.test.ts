@@ -8,7 +8,7 @@ import { RGBA } from '@opentui/core';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { SplitterElement } from './SplitterElement';
 
-const darkPalette = ThemePalettes.Class.dark;
+const darkPalette = ThemePalettes.Class.DARK;
 
 let renderer: TestRenderer | null = null;
 let mockMouse: MockMouse | null = null;

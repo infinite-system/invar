@@ -13,14 +13,14 @@ class $WrapBreakOpportunity {
     if (previousText === '-') return 'separator';
     if (breakProfile === 'prose') return null;
     if (
-      this.codeSeparators.includes(previousText) ||
-      this.openingBrackets.includes(previousText)
+      this.CODE_SEPARATORS.includes(previousText) ||
+      this.OPENING_BRACKETS.includes(previousText)
     ) {
       return 'separator';
     }
     if (
       nextGrapheme !== undefined &&
-      this.closingBrackets.includes(nextGrapheme)
+      this.CLOSING_BRACKETS.includes(nextGrapheme)
     ) {
       return 'bracket';
     }
@@ -30,9 +30,9 @@ class $WrapBreakOpportunity {
     ) {
       return 'camel-case';
     }
-    const previousIsOperator = this.codeOperators.includes(previousText);
+    const previousIsOperator = this.CODE_OPERATORS.includes(previousText);
     const nextIsOperator =
-      nextGrapheme !== undefined && this.codeOperators.includes(nextGrapheme);
+      nextGrapheme !== undefined && this.CODE_OPERATORS.includes(nextGrapheme);
     return previousIsOperator !== nextIsOperator ? 'operator' : null;
   }
 
@@ -76,19 +76,19 @@ class $WrapBreakOpportunity {
     return true;
   }
 
-  protected static get codeSeparators(): string {
+  protected static get CODE_SEPARATORS(): string {
     return '_/\\.,;:';
   }
 
-  protected static get openingBrackets(): string {
+  protected static get OPENING_BRACKETS(): string {
     return '([{';
   }
 
-  protected static get closingBrackets(): string {
+  protected static get CLOSING_BRACKETS(): string {
     return ')]}';
   }
 
-  protected static get codeOperators(): string {
+  protected static get CODE_OPERATORS(): string {
     return '=+*%<>!&|^?~';
   }
 

@@ -10,7 +10,7 @@ import { FindInBuffer } from '../search/FindInBuffer';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import type { TranscriptEntry } from './AgentEvents.interface';
 
-const darkPalette = ThemePalettes.Class.dark;
+const darkPalette = ThemePalettes.Class.DARK;
 
 /** Project a transcript, mirror it into a document, and run one query — the exact runtime pipeline. */
 function searchTranscript(

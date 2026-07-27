@@ -68,14 +68,14 @@ describe('GitBlameCache', () => {
     });
     for (
       let fileIndex = 0;
-      fileIndex < GitBlameCache.$Class.maximumBlamedFiles + 5;
+      fileIndex < GitBlameCache.$Class.MAXIMUM_BLAMED_FILES + 5;
       fileIndex++
     ) {
       cache.lineBlame(`/repo/file-${fileIndex}.ts`, 0);
       await wait(1);
     }
     expect(cache.cachedFileCount).toBeLessThanOrEqual(
-      GitBlameCache.$Class.maximumBlamedFiles,
+      GitBlameCache.$Class.MAXIMUM_BLAMED_FILES,
     );
   });
 

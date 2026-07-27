@@ -46,7 +46,7 @@ function createFixture(enabled: boolean) {
       return provider;
     },
     eligible: () => true,
-    palette: () => ThemePalettes.Class.dark,
+    palette: () => ThemePalettes.Class.DARK,
     bindingHint: (action) => action,
   });
   return { contribution, editor, providers, workspace };

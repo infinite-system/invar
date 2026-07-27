@@ -9,7 +9,7 @@ import { ref, shallowRef } from 'vue';
 // invariant: Resolution is layered and later layers shadow earlier (keybindings.invariants.md)
 // invariant: Focus owns the keystroke (keybindings.invariants.md)
 class $KeybindingRegistry {
-  protected static get chordTimeoutMilliseconds(): number {
+  protected static get CHORD_TIMEOUT_MILLISECONDS(): number {
     return 2000;
   }
 
@@ -150,7 +150,7 @@ class $KeybindingRegistry {
       const keybindingRegistryClass = this
         .constructor as typeof $KeybindingRegistry;
       const expired =
-        nowMs - armedAtMs > keybindingRegistryClass.chordTimeoutMilliseconds;
+        nowMs - armedAtMs > keybindingRegistryClass.CHORD_TIMEOUT_MILLISECONDS;
       const nextStep = binding.steps?.[stepIndex];
       if (!expired && nextStep && this.patternMatches(nextStep, event)) {
         if (stepIndex + 1 >= (binding.steps?.length ?? 0)) {

@@ -19,18 +19,18 @@ class $TerminalObserverFixtureRecorder {
     );
   }
 
-  protected static get workingDirectory(): string {
+  protected static get WORKING_DIRECTORY(): string {
     return '/tmp/invar-terminal-observer-fixture';
   }
 
   static async record(): Promise<void> {
-    mkdirSync(this.workingDirectory, { recursive: true });
+    mkdirSync(this.WORKING_DIRECTORY, { recursive: true });
     const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-observer-home-'));
     const rcfile = TerminalRcfile.Class.create('/bin/bash', '#7aa2f7');
     if (!rcfile) throw new Error('Bash terminal rcfile was not created');
     const driver = new PtyTestDriver.Class({
-      workspaceRoot: this.workingDirectory,
-      repositoryRoot: this.workingDirectory,
+      workspaceRoot: this.WORKING_DIRECTORY,
+      repositoryRoot: this.WORKING_DIRECTORY,
       columns: 120,
       rows: 24,
       homeDirectory,

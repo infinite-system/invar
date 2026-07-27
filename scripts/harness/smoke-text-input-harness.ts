@@ -24,7 +24,7 @@ interface DiscoveredInputPosition {
 // field's foreground as its background and the text around it never shifts. The colour comes from the
 // same theme data the app paints from, never a literal.
 const caretCellBackground = Number.parseInt(
-  ThemePalettes.Class.dark.fg.slice(1),
+  ThemePalettes.Class.DARK.fg.slice(1),
   16,
 );
 

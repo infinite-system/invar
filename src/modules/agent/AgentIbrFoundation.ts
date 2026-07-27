@@ -5,12 +5,12 @@ import { Files } from '../system/Files';
 // invariant: File access is confined to a single root (src/modules/system/system.invariants.md)
 
 class $AgentIbrFoundation {
-  protected static get relativePath(): string {
+  protected static get RELATIVE_PATH(): string {
     return '.claude/skills/ibr/IBR.md';
   }
 
   static resolve(workspaceRoot: string): AgentIbrFoundationResolution | null {
-    const path = Files.Class.confineToRoot(workspaceRoot, this.relativePath);
+    const path = Files.Class.confineToRoot(workspaceRoot, this.RELATIVE_PATH);
     if (path === null || !Files.Class.exists(path)) return null;
     try {
       return { path, content: Files.Class.read(path) };

@@ -189,16 +189,16 @@ class $GitParsers {
   static parseLog(output: string): CommitRecord[] {
     const commits: CommitRecord[] = [];
 
-    for (const rawRecord of output.split(this.logRecordSeparator)) {
+    for (const rawRecord of output.split(this.LOG_RECORD_SEPARATOR)) {
       const parsedRecord = rawRecord.replace(/^\r?\n+|\r?\n+$/g, '');
       if (!parsedRecord) {
         continue;
       }
-      const fields = parsedRecord.split(this.logFieldSeparator);
+      const fields = parsedRecord.split(this.LOG_FIELD_SEPARATOR);
       if (fields.length < 5) {
         continue;
       }
-      const refsField = fields.slice(5).join(this.logFieldSeparator);
+      const refsField = fields.slice(5).join(this.LOG_FIELD_SEPARATOR);
       commits.push({
         sha: fields[0] ?? '',
         shortSha: fields[1] ?? '',
@@ -253,11 +253,11 @@ class $GitParsers {
       .filter((branchName) => branchName.length > 0);
   }
 
-  protected static get logFieldSeparator(): string {
+  protected static get LOG_FIELD_SEPARATOR(): string {
     return '\x1f';
   }
 
-  protected static get logRecordSeparator(): string {
+  protected static get LOG_RECORD_SEPARATOR(): string {
     return '\x1e';
   }
 

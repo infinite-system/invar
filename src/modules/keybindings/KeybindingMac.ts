@@ -20,7 +20,7 @@ class $KeybindingMac {
    * Chords whose macOS meaning is NOT the primary-modifier substitution — they use a different
    * modifier for a meaning the floor spells differently, so no generator can derive them.
    */
-  protected static get macNativeBindings(): Keybinding[] {
+  protected static get MAC_NATIVE_BINDINGS(): Keybinding[] {
     return [
       // Option word-jumps. Terminals encode Option+arrow either as alt+arrow, or as the readline
       // forms ESC-b / ESC-f (Terminal.app default profile) — both patterns, one intent. The floor
@@ -89,7 +89,7 @@ class $KeybindingMac {
       ...KeybindingPlatform.Class.primaryModifierAliases(
         KeybindingDefaults.Class.canonicalBindings,
       ),
-      ...this.macNativeBindings,
+      ...this.MAC_NATIVE_BINDINGS,
     ];
     Object.defineProperty(this, '$overlayBindings', {
       configurable: true,

@@ -38,7 +38,8 @@ function createRecordedStreamDriver(
 
 class TinyOutputPtyTestDriver extends PtyTestDriver.$Class {
   protected static override get retainedOutputLengthLimit(): number {
-    return 32;
+    const retainedOutputLengthLimit = 32;
+    return retainedOutputLengthLimit;
   }
 }
 

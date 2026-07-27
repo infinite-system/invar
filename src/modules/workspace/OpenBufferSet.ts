@@ -13,7 +13,7 @@ import { DocumentHandle } from './DocumentHandle';
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
 
 class $OpenBufferSet {
-  protected static get origin(): BufferPosition {
+  protected static get ORIGIN(): BufferPosition {
     return { cursorLine: 0, cursorColumn: 0, scrollTop: 0, scrollLeft: 0 };
   }
 
@@ -72,7 +72,7 @@ class $OpenBufferSet {
       path,
       documentHandle: this.createDocumentHandle(path),
       buffer: null,
-      position: { ...openBufferSetClass.origin },
+      position: { ...openBufferSetClass.ORIGIN },
       dirty: false,
     };
     this.entries.value = [...this.entries.value, entry];

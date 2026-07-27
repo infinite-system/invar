@@ -35,13 +35,13 @@ class $CommitExpansion {
   protected fetchPromises = new Map<string, Promise<void>>();
   protected nextTicket = 0;
 
-  protected static get defaultCapacity(): number {
+  protected static get DEFAULT_CAPACITY(): number {
     return 32;
   }
 
   get capacity(): number {
     const commitExpansionClass = this.constructor as typeof $CommitExpansion;
-    return this.options.capacity ?? commitExpansionClass.defaultCapacity;
+    return this.options.capacity ?? commitExpansionClass.DEFAULT_CAPACITY;
   }
 
   isExpanded(sha: string): boolean {

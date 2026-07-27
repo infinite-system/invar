@@ -678,7 +678,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** The indent unit this document uses (a tab, or the file's own space step). */
   protected detectIndentUnit(): string {
     return EditorIndent.Class.detectIndentUnit(
-      this.document.slice(0, EditorIndent.Class.detectionLineLimit),
+      this.document.slice(0, EditorIndent.Class.DETECTION_LINE_LIMIT),
     );
   }
 

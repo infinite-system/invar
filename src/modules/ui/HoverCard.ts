@@ -35,41 +35,41 @@ class $HoverCard {
   protected get HoverCard() {
     return HoverCard.Class as unknown as typeof $HoverCard;
   }
-  public static get hoverDwellSeconds() {
+  public static get HOVER_DWELL_SECONDS() {
     return 0.5;
   }
   protected get hoverDwellSeconds() {
-    return this.HoverCard.hoverDwellSeconds;
+    return this.HoverCard.HOVER_DWELL_SECONDS;
   }
-  public static get hoverSymbolOffDismissSeconds() {
+  public static get HOVER_SYMBOL_OFF_DISMISS_SECONDS() {
     return 0.5;
   }
   protected get hoverSymbolOffDismissSeconds() {
-    return this.HoverCard.hoverSymbolOffDismissSeconds;
+    return this.HoverCard.HOVER_SYMBOL_OFF_DISMISS_SECONDS;
   }
-  public static get hoverIdleDismissSeconds() {
+  public static get HOVER_IDLE_DISMISS_SECONDS() {
     return 2.5;
   }
   protected get hoverIdleDismissSeconds() {
-    return this.HoverCard.hoverIdleDismissSeconds;
+    return this.HoverCard.HOVER_IDLE_DISMISS_SECONDS;
   }
-  protected static get maxCardColumns() {
+  protected static get MAX_CARD_COLUMNS() {
     return 64;
   }
   protected get maxCardColumns() {
-    return this.HoverCard.maxCardColumns;
+    return this.HoverCard.MAX_CARD_COLUMNS;
   }
-  protected static get maxCardRows() {
+  protected static get MAX_CARD_ROWS() {
     return 16;
   }
   protected get maxCardRows() {
-    return this.HoverCard.maxCardRows;
+    return this.HoverCard.MAX_CARD_ROWS;
   }
-  protected static get anchorOffsetColumns() {
+  protected static get ANCHOR_OFFSET_COLUMNS() {
     return 2;
   }
   protected get anchorOffsetColumns() {
-    return this.HoverCard.anchorOffsetColumns;
+    return this.HoverCard.ANCHOR_OFFSET_COLUMNS;
   }
   protected static get $fenceLanguage(): Record<string, LangId> {
     const fenceLanguageValue: Record<string, LangId> = {

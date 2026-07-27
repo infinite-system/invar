@@ -15,7 +15,7 @@ import { ImageResample } from './ImageResample';
 
 class $HalfBlockRenderer {
   /** The upper-half-block glyph: foreground paints the top pixel, background the bottom pixel. */
-  protected static get upperHalfBlock(): string {
+  protected static get UPPER_HALF_BLOCK(): string {
     return '▀';
   }
 
@@ -29,11 +29,7 @@ class $HalfBlockRenderer {
     if (normalized.length < 6) return [0, 0, 0];
     const packed = Number.parseInt(normalized.slice(0, 6), 16);
     if (Number.isNaN(packed)) return [0, 0, 0];
-    return [
-      (packed >> 16) & 0xff,
-      (packed >> 8) & 0xff,
-      packed & 0xff,
-    ];
+    return [(packed >> 16) & 0xff, (packed >> 8) & 0xff, packed & 0xff];
   }
 
   protected static componentToHex(value: number): string {
@@ -42,11 +38,7 @@ class $HalfBlockRenderer {
       .padStart(2, '0');
   }
 
-  protected static rgbToHex(
-    red: number,
-    green: number,
-    blue: number,
-  ): string {
+  protected static rgbToHex(red: number, green: number, blue: number): string {
     return (
       `#${this.componentToHex(red)}` +
       `${this.componentToHex(green)}${this.componentToHex(blue)}`
@@ -130,7 +122,7 @@ class $HalfBlockRenderer {
         const bottomHex = subpixelHex(columnIndex, rowIndex * 2 + 1);
         const cellKey = `${topHex}:${bottomHex}`;
         if (runText && cellKey !== runKey) flushRun();
-        runText += this.upperHalfBlock;
+        runText += this.UPPER_HALF_BLOCK;
         runKey = cellKey;
         runTopHex = topHex;
         runBottomHex = bottomHex;

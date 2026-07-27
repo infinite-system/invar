@@ -31,23 +31,23 @@ import { TextFieldPainter } from './TextFieldPainter';
 // invariant: Popup hierarchy is mouse and keyboard reachable (src/modules/ui/ui.invariants.md)
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 class $BoundedListPopup {
-  protected static get defaultSearchThreshold(): number {
+  protected static get DEFAULT_SEARCH_THRESHOLD(): number {
     return 10;
   }
 
-  protected static get minimumBoxWidth(): number {
+  protected static get MINIMUM_BOX_WIDTH(): number {
     return 18;
   }
 
-  protected static get horizontalFrameColumns(): number {
+  protected static get HORIZONTAL_FRAME_COLUMNS(): number {
     return 2;
   }
 
-  protected static get verticalFrameRows(): number {
+  protected static get VERTICAL_FRAME_ROWS(): number {
     return 2;
   }
 
-  protected static get reservedBottomRows(): number {
+  protected static get RESERVED_BOTTOM_ROWS(): number {
     return 1;
   }
 
@@ -61,8 +61,8 @@ class $BoundedListPopup {
   protected selectionHandler: ((item: BoundedListPopupItem) => void) | null =
     null;
   protected navigationBackwardHandler: (() => void) | null = null;
-  protected searchThresholdValue = $BoundedListPopup.defaultSearchThreshold;
-  protected minimumWidthValue = $BoundedListPopup.minimumBoxWidth;
+  protected searchThresholdValue = $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD;
+  protected minimumWidthValue = $BoundedListPopup.MINIMUM_BOX_WIDTH;
   protected titleValue = '';
   protected anchorValue: BoundedListPopupAnchor = { column: 0, row: 0 };
   protected pointerPressedFilteredIndex = -1;
@@ -252,11 +252,11 @@ class $BoundedListPopup {
     const chromeRows = input.searchVisible ? 1 : 0;
     const naturalListRows = Math.max(1, input.itemCount);
     const naturalHeight =
-      $BoundedListPopup.verticalFrameRows + chromeRows + naturalListRows;
+      $BoundedListPopup.VERTICAL_FRAME_ROWS + chromeRows + naturalListRows;
     const safeBottomExclusive = Math.max(
       1,
       Math.min(
-        screenHeight - $BoundedListPopup.reservedBottomRows,
+        screenHeight - $BoundedListPopup.RESERVED_BOTTOM_ROWS,
         input.availableBottomExclusive ?? screenHeight,
       ),
     );
@@ -278,7 +278,7 @@ class $BoundedListPopup {
       Math.min(unclampedTop, Math.max(0, safeBottomExclusive - boxHeight)),
     );
     const requestedWidth = Math.max(
-      $BoundedListPopup.minimumBoxWidth,
+      $BoundedListPopup.MINIMUM_BOX_WIDTH,
       Math.floor(input.desiredBoxWidth),
     );
     const boxWidth = Math.max(1, Math.min(requestedWidth, screenWidth));
@@ -291,12 +291,12 @@ class $BoundedListPopup {
     );
     const listRows = Math.max(
       0,
-      boxHeight - $BoundedListPopup.verticalFrameRows - chromeRows,
+      boxHeight - $BoundedListPopup.VERTICAL_FRAME_ROWS - chromeRows,
     );
     const verticalOverflow = input.itemCount > listRows;
     const interiorColumns = Math.max(
       1,
-      boxWidth - $BoundedListPopup.horizontalFrameColumns,
+      boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
     );
     const listColumns = Math.max(
       1,
@@ -337,12 +337,12 @@ class $BoundedListPopup {
   static desiredBoxWidth(
     maximumItemWidth: number,
     title: string,
-    minimumWidth = $BoundedListPopup.minimumBoxWidth,
+    minimumWidth = $BoundedListPopup.MINIMUM_BOX_WIDTH,
   ): number {
     return Math.max(
       minimumWidth,
       EditorCoordinates.Class.lineWidth(title) + 4,
-      maximumItemWidth + $BoundedListPopup.horizontalFrameColumns,
+      maximumItemWidth + $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
     );
   }
 
@@ -357,13 +357,13 @@ class $BoundedListPopup {
     this.anchorValue = anchor;
     this.selectionHandler = selectionHandler;
     this.searchThresholdValue =
-      options.searchThreshold ?? $BoundedListPopup.defaultSearchThreshold;
+      options.searchThreshold ?? $BoundedListPopup.DEFAULT_SEARCH_THRESHOLD;
     this.searchVisibleValue = options.searchVisible ?? true;
     this.backdropVisibleValue = options.showBackdrop ?? true;
     this.itemsAlreadyFilteredValue = options.itemsAlreadyFiltered ?? false;
     this.availableBottomExclusiveValue = options.availableBottomExclusive;
     this.minimumWidthValue =
-      options.minimumWidth ?? $BoundedListPopup.minimumBoxWidth;
+      options.minimumWidth ?? $BoundedListPopup.MINIMUM_BOX_WIDTH;
     this.titleValue = options.title ?? '';
     this.navigationBackwardHandler = options.navigateBackwardHandler ?? null;
     this.queryInput.clear();
@@ -561,7 +561,7 @@ class $BoundedListPopup {
     }
     this.searchInput.visible = this.searchEnabled;
     this.searchInput.width =
-      geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
+      geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS;
     if (this.searchEnabled) {
       // The search row is a single-line text field like every other: its window, caret, and state
       // tone come from the one painter, so it cannot drift into its own two-state highlight or lose
@@ -580,7 +580,7 @@ class $BoundedListPopup {
         ),
         surfaceBackground: palette.panel,
         caretVisible: queryFocused,
-        width: geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+        width: geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
       });
       this.searchInput.content = new StyledText(paintedField.chunks);
       this.queryCaretCellValue = {
@@ -594,7 +594,7 @@ class $BoundedListPopup {
     this.list.visible = true;
     this.list.height = geometry.listRows;
     this.list.width =
-      geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns;
+      geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS;
     const visibleMatches = matches.slice(
       geometry.firstVisible,
       geometry.firstVisible + geometry.listRows,
@@ -645,7 +645,7 @@ class $BoundedListPopup {
     this.viewport.updateScrollbars({
       top: this.searchEnabled ? 1 : 0,
       left: 0,
-      width: geometry.boxWidth - $BoundedListPopup.horizontalFrameColumns,
+      width: geometry.boxWidth - $BoundedListPopup.HORIZONTAL_FRAME_COLUMNS,
       height: geometry.listRows,
     });
   }

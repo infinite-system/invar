@@ -36,15 +36,15 @@ class $BracketMatch {
     return snapshotByDocument;
   }
 
-  protected static get openers(): string {
+  protected static get OPENERS(): string {
     return '([{';
   }
 
-  protected static get closers(): string {
+  protected static get CLOSERS(): string {
     return ')]}';
   }
 
-  protected static get partners(): Readonly<Record<string, string>> {
+  protected static get PARTNERS(): Readonly<Record<string, string>> {
     return {
       '(': ')',
       '[': ']',
@@ -55,7 +55,7 @@ class $BracketMatch {
     };
   }
 
-  protected static get defaultMaxScanCells(): number {
+  protected static get DEFAULT_MAX_SCAN_CELLS(): number {
     return 100_000;
   }
 
@@ -73,7 +73,7 @@ class $BracketMatch {
     return (
       cell !== undefined &&
       cell.length === 1 &&
-      (this.openers.includes(cell) || this.closers.includes(cell))
+      (this.OPENERS.includes(cell) || this.CLOSERS.includes(cell))
     );
   }
 
@@ -103,10 +103,10 @@ class $BracketMatch {
     }
 
     const bracketCharacter = cell as string;
-    const partner = this.partners[bracketCharacter]!;
-    const forward = this.openers.includes(bracketCharacter); // opener scans forward, closer scans backward
+    const partner = this.PARTNERS[bracketCharacter]!;
+    const forward = this.OPENERS.includes(bracketCharacter); // opener scans forward, closer scans backward
     const step = forward ? 1 : -1;
-    const cap = query.maxScanCells ?? this.defaultMaxScanCells;
+    const cap = query.maxScanCells ?? this.DEFAULT_MAX_SCAN_CELLS;
 
     let line = query.cursorLine;
     let scanColumn = column;

@@ -3,23 +3,23 @@ import { Static } from 'ivue/extras';
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 // invariant: Terminal tools have explicit permission tiers (src/modules/agent/agent.invariants.md)
 class $AgentTerminalTools {
-  static get readTerminalInputDescription(): string {
+  static get READ_TERMINAL_INPUT_DESCRIPTION(): string {
     return "Read the user's current terminal command and the default 40 newest retained terminal lines without changing anything. Secret redaction is heuristic, so do not treat it as a guarantee. Use this before fixing a command; when a correction is needed, call replaceTerminalInput with the complete replacement.";
   }
 
-  static get readTerminalScrollbackDescription(): string {
+  static get READ_TERMINAL_SCROLLBACK_DESCRIPTION(): string {
     return "Read retained terminal scrollback without changing anything. With no arguments, returns the default 40 newest lines. Set lineCount to return exactly that many newest lines when retained, or range.startLine/range.endLine for a 1-based inclusive slice where line 1 is the oldest retained line. The maximum is the emulator's full retained scrollback (currently up to 1000 scrollback lines plus the visible grid). Every result path uses Invar's password-prompt and secret-assignment redactor, but redaction is heuristic and must not be treated as a guarantee.";
   }
 
-  static get stageTerminalCommandDescription(): string {
+  static get STAGE_TERMINAL_COMMAND_DESCRIPTION(): string {
     return 'Default courtesy for terminal work. Use stageTerminalCommand when a command should be visible for human review: Invar sanitizes the full command before writing any byte, waits until the terminal prompt is idle and its input buffer is empty, then types it into the real shell without Enter. The terminal header shows the cwd where it will run. The user may edit the real readline buffer, press Enter to execute, or press Ctrl+C to reject; Ctrl+C during animated typing aborts the staging. Prefer this tool unless the user has explicitly allowed autonomous execution.';
   }
 
-  static get runTerminalCommandDescription(): string {
+  static get RUN_TERMINAL_COMMAND_DESCRIPTION(): string {
     return 'Use runTerminalCommand only when the current allow/bypass permission mode authorizes autonomous execution. Invar uses the same visible, sanitized terminal pathway as staging, waits for an idle prompt and empty input buffer, types the command where the terminal header cwd says it will run, then sends Enter itself after the entire command is present. The user can press Ctrl+C during animated typing to abort before execution. In ask mode this tool is unavailable; use stageTerminalCommand so Enter remains the human grant.';
   }
 
-  static get replaceTerminalInputDescription(): string {
+  static get REPLACE_TERMINAL_INPUT_DESCRIPTION(): string {
     return "Fix the user's current command without executing it. Invar sends exactly one Ctrl+U to clear the readline input, sanitizes the complete replacement, then uses the same grapheme-safe visible staging path as stageTerminalCommand. No Enter is sent; the user may edit, execute, or reject the replacement.";
   }
 
@@ -32,12 +32,12 @@ class $AgentTerminalTools {
       this.scrollbackDefinition(terminal),
       this.commandDefinition(
         'stageTerminalCommand',
-        this.stageTerminalCommandDescription,
+        this.STAGE_TERMINAL_COMMAND_DESCRIPTION,
         (command) => terminal.stageTerminalCommand(command),
       ),
       this.commandDefinition(
         'replaceTerminalInput',
-        this.replaceTerminalInputDescription,
+        this.REPLACE_TERMINAL_INPUT_DESCRIPTION,
         (command) => terminal.replaceTerminalInput(command),
       ),
     ];
@@ -45,7 +45,7 @@ class $AgentTerminalTools {
       definitions.push(
         this.commandDefinition(
           'runTerminalCommand',
-          this.runTerminalCommandDescription,
+          this.RUN_TERMINAL_COMMAND_DESCRIPTION,
           (command) => terminal.runTerminalCommand(command),
         ),
       );
@@ -58,13 +58,17 @@ class $AgentTerminalTools {
     bypassPermissions: boolean,
     terminal: AgentTerminalToolPort,
   ): AgentTerminalToolDefinition | null {
-    return this.definitions(bypassPermissions, terminal).find(
-      (definition) => definition.name === name,
-    ) ?? null;
+    return (
+      this.definitions(bypassPermissions, terminal).find(
+        (definition) => definition.name === name,
+      ) ?? null
+    );
   }
 
   static isStageToolName(name: string): boolean {
-    return name === 'stageTerminalCommand' || name.endsWith('__stageTerminalCommand');
+    return (
+      name === 'stageTerminalCommand' || name.endsWith('__stageTerminalCommand')
+    );
   }
 
   static isLowPermissionToolName(name: string): boolean {
@@ -81,7 +85,7 @@ class $AgentTerminalTools {
   ): AgentTerminalToolDefinition {
     return {
       name: 'readTerminalInput',
-      description: this.readTerminalInputDescription,
+      description: this.READ_TERMINAL_INPUT_DESCRIPTION,
       inputSchema: {
         type: 'object',
         additionalProperties: false,
@@ -104,7 +108,7 @@ class $AgentTerminalTools {
   ): AgentTerminalToolDefinition {
     return {
       name: 'readTerminalScrollback',
-      description: this.readTerminalScrollbackDescription,
+      description: this.READ_TERMINAL_SCROLLBACK_DESCRIPTION,
       inputSchema: {
         type: 'object',
         additionalProperties: false,
@@ -112,7 +116,8 @@ class $AgentTerminalTools {
           lineCount: {
             type: 'integer',
             minimum: 1,
-            description: 'Newest retained line count. Omit for the protected default of 40.',
+            description:
+              'Newest retained line count. Omit for the protected default of 40.',
           },
           range: {
             type: 'object',
@@ -122,7 +127,8 @@ class $AgentTerminalTools {
               startLine: {
                 type: 'integer',
                 minimum: 1,
-                description: 'First retained line to return, 1-based from the oldest line.',
+                description:
+                  'First retained line to return, 1-based from the oldest line.',
               },
               endLine: {
                 type: 'integer',
@@ -153,8 +159,8 @@ class $AgentTerminalTools {
       return 'Choose either lineCount or range, not both.';
     }
     if (
-      record.lineCount !== undefined
-      && (!Number.isInteger(record.lineCount) || Number(record.lineCount) < 1)
+      record.lineCount !== undefined &&
+      (!Number.isInteger(record.lineCount) || Number(record.lineCount) < 1)
     ) {
       return 'lineCount must be a positive integer.';
     }
@@ -164,10 +170,10 @@ class $AgentTerminalTools {
       }
       const range = record.range as Record<string, unknown>;
       if (
-        !Number.isInteger(range.startLine)
-        || !Number.isInteger(range.endLine)
-        || Number(range.startLine) < 1
-        || Number(range.endLine) < Number(range.startLine)
+        !Number.isInteger(range.startLine) ||
+        !Number.isInteger(range.endLine) ||
+        Number(range.startLine) < 1 ||
+        Number(range.endLine) < Number(range.startLine)
       ) {
         return 'range must use positive 1-based lines with endLine at or after startLine.';
       }
@@ -201,20 +207,23 @@ class $AgentTerminalTools {
         properties: {
           command: {
             type: 'string',
-            description: 'The single shell command to sanitize and type into the visible terminal.',
+            description:
+              'The single shell command to sanitize and type into the visible terminal.',
           },
         },
       },
       requiresCommand: true,
       invoke: async (input) => {
         if (
-          typeof input !== 'object'
-          || input === null
-          || typeof (input as { command?: unknown }).command !== 'string'
+          typeof input !== 'object' ||
+          input === null ||
+          typeof (input as { command?: unknown }).command !== 'string'
         ) {
           return 'The command argument must be a string.';
         }
-        const result = await invokeCommand((input as { command: string }).command);
+        const result = await invokeCommand(
+          (input as { command: string }).command,
+        );
         if (result.state === 'queued') {
           return `Queued until the terminal prompt is idle: ${result.command}`;
         }

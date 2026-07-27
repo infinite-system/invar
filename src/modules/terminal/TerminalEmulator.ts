@@ -213,10 +213,11 @@ class $TerminalEmulator {
       );
     } else {
       const requestedLineCount =
-        request.lineCount ?? terminalEmulatorClass.defaultScrollbackLineCount;
+        request.lineCount ??
+        terminalEmulatorClass.DEFAULT_SCROLLBACK_LINE_COUNT;
       const safeLineCount = Number.isFinite(requestedLineCount)
         ? Math.max(0, Math.floor(requestedLineCount))
-        : terminalEmulatorClass.defaultScrollbackLineCount;
+        : terminalEmulatorClass.DEFAULT_SCROLLBACK_LINE_COUNT;
       firstLineIndex = Math.max(0, totalLines - safeLineCount);
       endLineIndex = totalLines;
     }
@@ -310,7 +311,7 @@ class $TerminalEmulator {
     return false;
   }
 
-  protected static get defaultScrollbackLineCount(): number {
+  protected static get DEFAULT_SCROLLBACK_LINE_COUNT(): number {
     return 40;
   }
 
