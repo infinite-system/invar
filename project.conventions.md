@@ -253,11 +253,23 @@ ordering that escapes: `tsc` rejects `static private` with TS1029 ("'private' mo
 'static' modifier"). TS `private`/`protected` are compile-time only, so all of them stay visible to
 `getOwnPropertyDescriptors` and all of them cache under `Static()` — verified.
 
-ES `#`-private is the exception and must be banned outright: a `static get #$FOO` is **not a
-property**, so no descriptor walk can see it, and `Static()` cannot reach it either — verified, a
-`#`-private getter does not cache. It would silently recompute forever with nothing able to observe
-it. Zero instances today. Because runtime cannot see it, this one needs a source grep in the
-conventions gate: **`static get #$` is forbidden.**
+ES `#`-private is banned in capability classes, and this rule PRE-EXISTS — it was recorded as the
+"`Static()` `#private` caveat" in `project.skill-upgrades.md` and is promoted here because a
+limitation in a notes file is not a convention. **Native static `#private` rejects the
+selected-subclass receiver** — a `Static()` class is a SUBCLASS of `$Class`, and a `#` name is keyed
+to the exact class that declared it, so `this.#member` is rejected on the wrapped receiver, not
+merely uncached. Use TS `private`/`protected` or module-scope state for capability-class private
+data, never `this.#member`.
+
+For a `$`-getter specifically the consequence compounds: `static get #$FOO` is **not a property**, so
+no descriptor walk can see it and the discovery test is structurally blind to it. Zero instances in
+`src/` today (0 files use `#` members at all).
+
+Enforcement reuses the instrument we already have, not a grep: **`scripts/ast-query.ts
+private-members`** covers `private` + `#private`, and `ast-query.ts` is already gate-resident
+(`conventions-gate.sh` runs its `text-input-census --require-zero`), so this is a one-line addition
+in the same style. An AST query is the right tool here where grep is not — grep matches `#` inside
+comments and strings.
 
 Three guards, all required:
 - fail unless the DISCOVERED getter count equals the SOURCE-SCAN count. "Fail if zero" is too weak:
