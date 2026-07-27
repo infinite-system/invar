@@ -84,7 +84,6 @@ export interface InputByteFlushBaseline {
   p50Milliseconds: number;
   boundary: string;
   warningMultiplier: number;
-  failureMultiplier: number;
   trendWindowSampleCount: number;
   trendWarningMultiplier: number;
   baselineChangePolicy: string;

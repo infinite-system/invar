@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { Static } from 'ivue/extras';
 
-// invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+// invariant: Soft duration reports use a machine-wide quiet lock (scripts/harness/harness.invariants.md)
 class $QuietLock {
   protected static get shellHelperPath(): string {
     return join(import.meta.dir, '..', 'quiet-lock.sh');

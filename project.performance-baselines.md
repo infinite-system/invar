@@ -3,9 +3,10 @@
 Measured with `scripts/perf-baselines.sh` (rerunnable, session-scoped: unique tmux sessions +
 per-session status side channels, so live demo instances are never touched).
 
-## Input byte flush merge-gate baseline
+## Input byte flush report baseline
 
-The gate reads this block directly. The baseline changes only through an explicit edit in a landing
+The gate reads this block for non-blocking warnings and trailing-trend
+comparison. The baseline changes only through an explicit edit in a landing
 diff; measurements append history but never rewrite the baseline.
 
 <!-- input-byte-flush-baseline:begin -->
@@ -15,7 +16,6 @@ diff; measurements append history but never rewrite the baseline.
   "p50Milliseconds": 4.928,
   "boundary": "input-write→DEC-2026-end-marker-byte-arrival",
   "warningMultiplier": 1.3,
-  "failureMultiplier": 2,
   "trendWindowSampleCount": 5,
   "trendWarningMultiplier": 1.15,
   "baselineChangePolicy": "Explicit edit in a landing diff only; measurement history never updates this block."
@@ -33,11 +33,20 @@ implementation left the paired result unchanged (**+0.477 ms**). The apparent
 bimodality, not work left on the queued write path. The reviewed absolute gate baseline
 now matches the instrument it governs.
 
-The individual-run WARN and FAIL multipliers remain unchanged. A separate report-only
-trend warning compares the median of five trailing history samples to this reviewed era
-and names a sustained shift above **1.15×** (**5.667 ms**), before the individual-run
-warning at **1.3×** (**6.406 ms**). History remains evidence only and can never rewrite
-either threshold.
+The former blocking FAIL threshold at **2×** (**9.856 ms**) is retired.
+An individual run still warns above **1.3×** (**6.406 ms**), and the
+trailing-history warning compares the median of five samples to this reviewed
+era and names a sustained shift above **1.15×** (**5.667 ms**). Both are
+report-only; history remains evidence and can never rewrite either threshold.
+
+Blocking authority is now the user-visible ordering property: the DEC 2026
+end-marker closes the first completed frame after the input byte, and that
+frame's emulator snapshot already contains the edited glyph. This deliberately
+loses sub-frame sensitivity. At 30 FPS, a regression from the reviewed 4.928 ms
+to 25 ms can remain within one roughly 33 ms frame and pass. That loss is
+accepted because the user cannot perceive an intra-frame delay, while the
+millisecond series and trailing-trend warning retain sensitivity without making
+machine load a blocking verdict.
 
 ## CURRENT baseline — 2026-07-24, repaired harness (the authoritative numbers)
 

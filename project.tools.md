@@ -22,8 +22,9 @@ fixtures at run time (nothing large is committed), then measures both the bare e
 diff. Reports, per surface and gesture: moving frame count, total distance,
 input-write-to-first-frame latency, max/mean frame delta, peak velocity, whole-glide fps,
 sustained-fast fps, and bytes per frame. Reads the lowest visible fixture line out of every completed
-synchronized frame, so each sample IS that frame's scrollTop with no publish race. Runs under the
-machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACES`,
+synchronized frame, so each sample IS that frame's scrollTop with no publish race. Timing fields are
+diagnostic; blocking consumers use ordering and counts. `SMOOTHNESS_LINE_COUNTS`,
+`SMOOTHNESS_SURFACES`,
 `SMOOTHNESS_FIXTURES` (`flat` / `fold-dense`), `SMOOTHNESS_CODE_FOLDING` (`on` / `off`),
 `SMOOTHNESS_VERSION_CONTROL_MARKS` (`on` by default / `off` as an isolator),
 `SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation. The nested-JSON
@@ -56,7 +57,8 @@ For flat editor runs, it also reports cumulative document-line reads,
 fold/wrap projection lookups, and layout computations. The behavioral
 contract drives the same gesture at 2k and 100k lines and compares the
 integer counts per attributed frame by exact rational equality. One diff and
-one fold-dense editor FPS floor remain secondary wall-clock canaries. The
+one fold-dense editor FPS floor remain secondary report-only wall-clock
+canaries. The
 fold-dense checkpoint keeps folding, indent guides, and version-control
 gutter marks on, direct-jumps to line 75,000, settles on observed scroll state
 and frame quiescence, excludes jump frames, and measures a fresh 1,000-row

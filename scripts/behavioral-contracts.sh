@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 # BEHAVIORAL CONTRACT SUITE — executable assertions for LOAD-BEARING felt invariants.
 #
 # The *.invariants.md files document invariants in PROSE; a prose contract that doesn't gate is just a
@@ -18,12 +19,6 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 H="$DIR/tui-harness.sh"
-source "$DIR/quiet-lock.sh"
-quiet_lock_rerun_script \
-  "quiet-exclusive" \
-  "behavioral-contracts" \
-  "$0" \
-  "$@"
 # tui-harness.sh launches every app with this worktree-local HOME. Write the contract settings to
 # that SAME isolated path; writing the caller's real $HOME makes the drive depend on stale harness
 # state and can silently run the wrap contract with wordWrap=false.
@@ -33,6 +28,7 @@ fail=0
 SESSIONS=""
 pass() { echo "  PASS  $1"; }
 bad()  { echo "  FAIL  $1"; fail=1; }
+warn() { echo "  WARN  $1"; }
 skip() { echo "  SKIP  $1"; }
 
 # Neutral scroll settings so the assertions are deterministic (one row per notch, no fast modifier).
@@ -201,8 +197,8 @@ fi
 # fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts. The instrument
 # generates 2k, 26,635, and 100k-line fixtures at run time and drives both the editor and diff
 # surfaces without storing giant fixtures in the repository. Deterministic editor frame-work counts
-# at 2k and 100k are the size-invariance contract. One diff FPS floor here and one fold-dense editor
-# FPS floor below remain secondary wall-clock canaries.
+# at 2k and 100k are the size-invariance contract. The diff and fold-dense
+# editor FPS readings remain secondary, report-only wall-clock canaries.
 #
 # THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
 #  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
@@ -249,7 +245,7 @@ if SMOOTHNESS_GESTURES=2 \
     smooth_100k_top_reference_fps \
     smooth_continuation_count smooth_continuation_holds \
     smooth_continuation_minimum_margin \
-    smooth_continuation_minimum_delay smooth_continuation_maximum_delay \
+    smooth_continuation_moving_frames smooth_continuation_frame_boundaries \
     <<<"$(python3 -c "
 import json
 report = json.load(open('$SMOOTH_JSON'))
@@ -291,7 +287,6 @@ continuation_holds = (
     len(continuation_boundaries) == 3
     and all(boundary['observedMovingFrameCount']
                 >= boundary['minimumMovingFrameCount']
-            and boundary['actualDelayMilliseconds'] > 150
             and boundary['preBoundaryRowsCrossed'] == 1
             and boundary['boundaryRowsCrossed']
                 >= boundary['preBoundaryRowsCrossed']
@@ -301,8 +296,12 @@ continuation_margins = [
     boundary['boundaryRowsCrossed'] - boundary['preBoundaryRowsCrossed']
     for boundary in continuation_boundaries
 ]
-continuation_delays = [
-    boundary['actualDelayMilliseconds']
+continuation_moving_frames = [
+    boundary['observedMovingFrameCount']
+    for boundary in continuation_boundaries
+]
+continuation_frame_boundaries = [
+    f\"{boundary['preBoundaryFrameCount']}->{boundary['boundaryFrameCount']}\"
     for boundary in continuation_boundaries
 ]
 print(min(g['movingFrameCount'] for g in all_gestures),
@@ -328,8 +327,8 @@ print(min(g['movingFrameCount'] for g in all_gestures),
       len(continuation_boundaries),
       int(continuation_holds),
       min(continuation_margins),
-      f'{min(continuation_delays):.1f}',
-      f'{max(continuation_delays):.1f}')
+      ','.join(str(count) for count in continuation_moving_frames),
+      ','.join(continuation_frame_boundaries))
 ")"
   if python3 -c \
     "raise SystemExit(0 if float('${smooth_100k_top_reference_fps:-0}') > 0 else 1)"
@@ -378,17 +377,20 @@ print(min(g['movingFrameCount'] for g in all_gestures),
   fi
   if [ "${smooth_continuation_holds:-0}" -eq 1 ] 2>/dev/null; then
     continuation_message="live-glide notches preserve boundary velocity"
-    continuation_message+=" (delays=${smooth_continuation_minimum_delay}.."
-    continuation_message+="${smooth_continuation_maximum_delay}ms,"
+    continuation_message+=" (movingFrames="
+    continuation_message+="$smooth_continuation_moving_frames,"
+    continuation_message+=" frameBoundaries="
+    continuation_message+="$smooth_continuation_frame_boundaries,"
     continuation_message+=" trials=$smooth_continuation_count,"
     continuation_message+=" minimum row-count margin="
     continuation_message+="$smooth_continuation_minimum_margin)"
     pass "$continuation_message"
   else
     continuation_message="a same-direction notch SLOWED a live glide"
-    continuation_message+=" (delays="
-    continuation_message+="${smooth_continuation_minimum_delay:-missing}.."
-    continuation_message+="${smooth_continuation_maximum_delay:-missing}ms,"
+    continuation_message+=" (movingFrames="
+    continuation_message+="${smooth_continuation_moving_frames:-missing},"
+    continuation_message+=" frameBoundaries="
+    continuation_message+="${smooth_continuation_frame_boundaries:-missing},"
     continuation_message+=" trials=${smooth_continuation_count:-0},"
     continuation_message+=" minimum row-count margin="
     continuation_message+="${smooth_continuation_minimum_margin:-missing})"
@@ -398,12 +400,12 @@ print(min(g['movingFrameCount'] for g in all_gestures),
     diff_cadence_message="diff wall-clock canary meets declared cadence"
     diff_cadence_message+=" (${smooth_diff_cadence_canary_fps}fps,"
     diff_cadence_message+=" floor 28)"
-    pass "$diff_cadence_message"
+    warn "$diff_cadence_message (report-only)"
   else
     diff_cadence_message="diff wall-clock canary misses declared cadence"
     diff_cadence_message+=" (${smooth_diff_cadence_canary_fps}fps,"
     diff_cadence_message+=" floor 28)"
-    bad "$diff_cadence_message"
+    warn "$diff_cadence_message (report-only)"
   fi
   if [ "${smooth_scale_holds:-0}" -eq 1 ] 2>/dev/null; then
     scale_message="editor frame work is invariant from 2k to 100k"
@@ -483,7 +485,8 @@ if SMOOTHNESS_GESTURES=0 \
     accumulation_separated_peaks_hold \
     accumulation_rapid_travel_holds accumulation_default_peaks \
     accumulation_raised_peaks accumulation_default_sequences \
-    accumulation_raised_sequences accumulation_delays \
+    accumulation_raised_sequences accumulation_frame_boundaries \
+    accumulation_order_positive_control_rejected \
     accumulation_rapid_travel_rows accumulation_rapid_travel_floor \
     accumulation_rapid_sequence \
     <<<"$(python3 -c "
@@ -501,10 +504,9 @@ def case_values(report):
         ','.join(str(rows) for rows in flick['rowCrossingSequence'])
         for flick in flicks
     ]
-    delays = [
-        flick['actualPauseBeforeMilliseconds']
+    frame_boundaries = [
+        flick['precedingCompletedFrameCount']
         for flick in flicks
-        if flick['actualPauseBeforeMilliseconds'] is not None
     ]
     ceiling_four_frame_rows = (
         math.floor(
@@ -514,7 +516,7 @@ def case_values(report):
         )
         - 1
     )
-    return peaks, sequences, delays, ceiling_four_frame_rows
+    return peaks, sequences, frame_boundaries, ceiling_four_frame_rows
 
 def climbs_with_headroom(candidate_peaks, ceiling_four_frame_rows):
     return (
@@ -527,17 +529,30 @@ def climbs_with_headroom(candidate_peaks, ceiling_four_frame_rows):
         )
     )
 
-default_peaks, default_sequences, default_delays, default_budget = (
+default_peaks, default_sequences, default_frame_boundaries, default_budget = (
     case_values(default_report)
 )
-raised_peaks, raised_sequences, raised_delays, raised_budget = (
+raised_peaks, raised_sequences, raised_frame_boundaries, raised_budget = (
     case_values(raised_report)
 )
+
+def flick_order_holds(frame_boundaries):
+    return (
+        len(frame_boundaries) == 3
+        and frame_boundaries[0] == 0
+        and all(
+            later_frame > earlier_frame
+            for earlier_frame, later_frame
+            in zip(frame_boundaries, frame_boundaries[1:])
+        )
+    )
+
 flat_positive_control = [default_budget - 1] * 3
 positive_control_rejected = not climbs_with_headroom(
     flat_positive_control,
     default_budget,
 )
+order_positive_control_rejected = not flick_order_holds([0, 12, 12])
 rapid_gesture = rapid_report['cases'][0]['gestures'][0]
 rapid_positions = rapid_gesture['positions']
 rapid_row_crossings = [
@@ -571,8 +586,8 @@ rapid_positive_control_rejected = (
 separated_peaks_hold = (
     climbs_with_headroom(default_peaks, default_budget)
     and climbs_with_headroom(raised_peaks, raised_budget)
-    and len(default_delays) == 2
-    and len(raised_delays) == 2
+    and flick_order_holds(default_frame_boundaries)
+    and flick_order_holds(raised_frame_boundaries)
 )
 rapid_travel_holds = (
     rapid_total_travel_rows >= rapid_travel_floor
@@ -586,10 +601,10 @@ print(
     ','.join(str(peak) for peak in raised_peaks),
     '/'.join(default_sequences),
     '/'.join(raised_sequences),
-    ','.join(
-        f'{delay:.1f}'
-        for delay in default_delays + raised_delays
-    ),
+    ','.join(str(count) for count in default_frame_boundaries)
+        + '/'
+        + ','.join(str(count) for count in raised_frame_boundaries),
+    int(order_positive_control_rejected),
     rapid_total_travel_rows,
     rapid_travel_floor,
     ','.join(str(rows) for rows in rapid_row_crossings),
@@ -606,11 +621,18 @@ print(
   else
     bad "glide-accumulation positive control accepted a decaying rapid burst"
   fi
+  if [ "${accumulation_order_positive_control_rejected:-0}" -eq 1 ] \
+    2>/dev/null; then
+    pass "glide-accumulation positive control rejects a repeated frame boundary"
+  else
+    bad "glide-accumulation positive control accepted a repeated frame boundary"
+  fi
   if [ "${accumulation_separated_peaks_hold:-0}" -eq 1 ] 2>/dev/null; then
     accumulation_message="separated flick peaks climb"
     accumulation_message+=" (default=$accumulation_default_peaks,"
     accumulation_message+=" raised=$accumulation_raised_peaks,"
-    accumulation_message+=" delays=${accumulation_delays}ms,"
+    accumulation_message+=" frameBoundaries="
+    accumulation_message+="$accumulation_frame_boundaries,"
     accumulation_message+=" defaultSequences=$accumulation_default_sequences,"
     accumulation_message+=" raisedSequences=$accumulation_raised_sequences)"
     pass "$accumulation_message"
@@ -618,7 +640,8 @@ print(
     accumulation_message="separated flick peaks failed to climb"
     accumulation_message+=" (default=${accumulation_default_peaks:-missing},"
     accumulation_message+=" raised=${accumulation_raised_peaks:-missing},"
-    accumulation_message+=" delays=${accumulation_delays:-missing}ms,"
+    accumulation_message+=" frameBoundaries="
+    accumulation_message+="${accumulation_frame_boundaries:-missing},"
     accumulation_message+=" defaultSequences="
     accumulation_message+="${accumulation_default_sequences:-missing},"
     accumulation_message+=" raisedSequences="
@@ -654,7 +677,7 @@ fi
 # 100k fixture asserts that complete stack with host folding enabled, not the
 # flat-text isolator. One 1,000-row drive at line 75,000 is enough to sample the
 # defect that was visible from its first frame.
-echo "== CONTRACT fold-dense-cadence: 100k nested JSON keeps the full row stack at 28 FPS =="
+echo "== CONTRACT fold-dense-stack: 100k nested JSON keeps the full row stack =="
 FOLD_DENSE_JSON="$ROOT/artifacts/fold-dense-scroll-smoothness.json"
 FOLD_DENSE_LOG="$ROOT/artifacts/fold-dense-scroll-smoothness.log"
 if [ "${smooth_stage_completed:-0}" -ne 1 ]; then
@@ -671,7 +694,8 @@ elif SMOOTHNESS_GESTURES=2 \
      >"$FOLD_DENSE_JSON" 2>"$FOLD_DENSE_LOG"; then
   read -r fold_dense_case_count fold_dense_full_stack \
     fold_dense_checkpoint_count fold_dense_minimum_rows \
-    fold_dense_minimum_fast_fps fold_dense_floor_passes <<<"$(python3 -c "
+    fold_dense_minimum_fast_fps fold_dense_shape_holds \
+    fold_dense_cadence_canary_passes <<<"$(python3 -c "
 import json
 cases = json.load(open('$FOLD_DENSE_JSON'))['cases']
 matching = [
@@ -706,12 +730,8 @@ print(len(matching), int(full_stack), checkpoint_count, minimum_rows,
       int(full_stack
           and checkpoint_count == 1
           and target_depths == {75000}
-          and minimum_rows >= 1000
-          and all(
-              checkpoint['framesPerSecond'] >= 28
-              for checkpoint in checkpoints
-          )
-          and minimum_fast_fps >= 28))
+          and minimum_rows >= 1000),
+      int(minimum_fast_fps >= 28))
 ")"
   python3 - "$FOLD_DENSE_JSON" <<'PY'
 import json
@@ -738,17 +758,16 @@ for case in report["cases"]:
             f"{checkpoint['ratioToReference']:.3f} |"
         )
 PY
-  if [ "${fold_dense_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
+  if [ "${fold_dense_shape_holds:-0}" -eq 1 ] 2>/dev/null; then
     fold_dense_message="100k nested JSON sustains the full per-row stack"
     fold_dense_message+=" (cases=$fold_dense_case_count,"
     fold_dense_message+=" fullStack=$fold_dense_full_stack,"
     fold_dense_message+=" checkpoints=$fold_dense_checkpoint_count,"
     fold_dense_message+=" rows=$fold_dense_minimum_rows,"
-    fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps}fps,"
-    fold_dense_message+=" floor 28)"
+    fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps}fps)"
     pass "$fold_dense_message"
   else
-    fold_dense_message="100k nested JSON cadence regressed"
+    fold_dense_message="100k nested JSON count/shape contract failed"
     fold_dense_message+=" (cases=${fold_dense_case_count:-0},"
     fold_dense_message+=" fullStack=${fold_dense_full_stack:-0},"
     fold_dense_message+=" checkpoints=${fold_dense_checkpoint_count:-0},"
@@ -756,6 +775,11 @@ PY
     fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps:-0}fps,"
     fold_dense_message+=" floor 28)"
     bad "$fold_dense_message"
+  fi
+  if [ "${fold_dense_cadence_canary_passes:-0}" -eq 1 ] 2>/dev/null; then
+    warn "fold-dense cadence canary ${fold_dense_minimum_fast_fps}fps meets 28fps (report-only)"
+  else
+    warn "fold-dense cadence canary ${fold_dense_minimum_fast_fps:-missing}fps misses 28fps (report-only)"
   fi
 else
   bad "fold-dense cadence instrument did not complete — see $FOLD_DENSE_LOG"
@@ -832,16 +856,16 @@ import sys
 report = json.load(open(sys.argv[1]))
 print(
     "  | surface | lines | frames per 200ms input window "
-    "| largest frame gap |"
+    "| consecutive zero-frame windows |"
 )
 print("  | :--- | ---: | :--- | ---: |")
 for case in report["cases"]:
     burst = case["continuousInputBursts"][0]
     counts = ",".join(str(count) for count in burst["inputWindowFrameCounts"])
-    largest_gap = max(burst["completedFrameGapSequenceMilliseconds"])
+    zero_windows = burst["maximumConsecutiveZeroFrameWindows"]
     print(
         f"  | {case['surface']} | {case['fixtureLineCount']} | "
-        f"{counts} | {largest_gap:.1f}ms |"
+        f"{counts} | {zero_windows} |"
     )
 PY
   if [ "${render_progress_holds:-0}" -eq 1 ] 2>/dev/null; then
@@ -910,7 +934,7 @@ import sys
 
 report = json.load(open(sys.argv[1]))
 print(
-    "  | surface | lines | delivered ms | events | impulses | "
+    "  | surface | lines | windows | events | impulses | "
     "projections | rows | max step | row sequence |"
 )
 print(
@@ -921,7 +945,7 @@ for case in report["cases"]:
     burst = case["continuousInputBursts"][0]
     print(
         f"  | {case['surface']} | {case['fixtureLineCount']} | "
-        f"{burst['actualInputDurationMilliseconds']:.1f} | "
+        f"{len(burst['inputWindowFrameCounts'])} | "
         f"{burst['inputEventCount']} | {burst['appliedImpulseCount']} | "
         f"{burst['projectionPassCount']} | {burst['rowsTravelled']} | "
         f"{burst['maximumFrameDeltaRows']} | "

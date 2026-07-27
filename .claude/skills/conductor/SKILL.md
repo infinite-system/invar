@@ -377,33 +377,12 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
 - **Tracked background, never nohup.** Run every gate/long command as a TRACKED background child
   (the harness re-invokes you on completion and keeps you visible in /tasks). `nohup … &` leaves
   you with no live children and the harness drops you from view.
-- **Parallel gates are OK now — cap ~2–3 concurrent (soft CPU ceiling), no longer strictly serial.**
-  Gates USED to require strict "one gate at a time" because `smoke-settings-applied` launched tmux
-  sessions with FIXED names (`sa-sbt-a`…) and read `artifacts/frame-<session>.json` — tmux names are
-  global to the one server, so two gates clobbered each other's session + frame dump, a DETERMINISTIC
-  collision that threw `IndexError` in the frame probe. Fixed (2026-07-23): every smoke now
-  PID-namespaces its sessions (`sa-$$-…`, matching what all other smokes already did), so concurrent
-  gates no longer collide — run them in PARALLEL. The remaining limit is SOFT: ~4–5 simultaneous gates
-  starve CPU enough to flake timing-sensitive smokes (word-wrap caret, frame-settle). Keep ~2–3
-  concurrent; if a smoke fails oddly while several gates run, RE-RUN IT ISOLATED before treating it as
-  real (a load flake re-runs green). Over-spawn → tell the fleet to cap. When adding a smoke, PID-
-  namespace its tmux sessions from the start, or it silently re-breaks concurrent gating.
-  QUIET-MACHINE SURVIVES THE HARNESS ERA (2026-07-24, paid for twice): marker/condition waits
-  killed the flake class, but two shapes remain TIME-COUPLED and load-sensitive: (1) ABSENCE
-  assertions ("no frame/blame/repaint in this window") — proving a negative needs a clock, and
-  load stretches when frames land into the window; (2) any TIMEOUT-bounded wait — load can push a
-  legitimate completion past the bound. Therefore: NO builder launches while a gate runs and no
-  gate launches while builders churn, exactly as before the harness. "The suite is deterministic"
-  is not an exemption — determinism holds for what happens, not for when.
-  DETERMINISTIC-INSTRUMENT REDS ARE DEFECTS (2026-07-24): the clearance/rerun protocol exists ONLY
-  for timing-sensitive instruments (the legacy tmux audit tier, and any wall-clock measurement).
-  A PTY-harness smoke red is never "cleared" by
-  rerunning — determinism is its contract, so an in-gate red after solo greens is evidence of an
-  environment/ordering defect in the port or driver (first instance: goto-definition's
-  frame-ordinal wait — coalescing made frame counts unstable; fixed at the shared seam, rule now
-  in harness.invariants.md: waits are conditions or quiescence, never frame ordinals). Diagnose,
-  fix at the generator, re-gate. If a harness red DOES re-run green solo, that green is itself the
-  bug report.
+- **Run parallel gates within the machine's soft resource ceiling.** Keep
+  sessions and artifacts PID-namespaced, and cap the product of gates and pool
+  workers. Do not clear a PTY-harness red by rerunning it alone: a blocking
+  verdict must survive contention, so a solo-only green is evidence of an
+  environment or ordering defect. Keep builders out of gate windows because a
+  builder may enter its own verification phase without warning.
   LANDING INVARIANT SIGNAL (2026-07-25): the gate's end-of-run "encode the invariants" reminder
   is read by NO ONE (builders bypass via SKIP_GATE; conductor sentinels grep only GATE_EXIT/FAIL)
   — its function lives in brief requirements + this check: AT LANDING, before the ff-push, run
@@ -536,9 +515,10 @@ and its gotcha; every brief that asks for a measurement names the instrument to 
 Two rules that belong with the instruments themselves:
 - **A check that can only fail toward "pass" is a decoration.** Give every instrument a positive
   control — plant the defect it claims to detect and require a red — before trusting a green.
-- **Normalise a load-bound metric before tolerating it.** A metric measured per FRAME is a function
-  of machine load by construction; widening the tolerance to absorb that hides the signal. Convert
-  to a load-independent quantity first (per unit time, not per frame), then set the tolerance.
+- **Replace load-bound verdicts before tolerating them.** A measured duration
+  or rate is a function of machine load; widening its tolerance hides the
+  signal. Block on ordering or work counts, and retain durations only as
+  report-only trends.
 
 **Harness blind spot.** The PTY/SGR harness proves LOGIC but cannot exercise terminal-SPECIFIC paths —
 a terminal's mouse protocol (SGR-1006 vs X10, the 223-col clamp), glyph tier, or escape-sequence support.
@@ -646,96 +626,37 @@ prompt history (three refreshes, each earned by a restart or a superseded rule) 
 the armable text was deliberately deleted from this file because a stale recorded prompt is worse
 than none — a restored cron would re-impose retired doctrine.
 
-## Gate concurrency — RE-NARROWED 2026-07-27: gates no longer overlap in practice
+## Gate concurrency
 
-**READ THIS FIRST, IT REVERSES THE HEADING BELOW.** The 2026-07-25 retirement of
-one-gate-at-a-time was correct at the time: its reason was two shared-namespace collisions, both
-fixed in 9f6c617. But `7a9a7f0` (2026-07-27) made a CONTENDED TIMING MEASUREMENT declare itself
-invalid instead of printing a number — which is right, and which means **two concurrent gates now
-GUARANTEE a red**: one of them loses the quiet-exclusive lock after 120 s and its
-`input byte flush measurement` step reports `MEASUREMENT INVALID` and fails the gate.
+Run gates concurrently when useful; cap the product of gates and pool workers
+to the machine's CPU, memory, and inotify capacity. Blocking verdicts are
+ordering- and count-based, so another gate's load does not invalidate them.
+The input-byte millisecond series and FPS canaries remain report-only.
 
-So the old rule is effectively back, for a NEW reason. Not namespace collisions (fixed), but
-measurement validity (introduced deliberately). Overlapping two gates does not save wall clock any
-more — it costs a whole gate run plus a solo re-run, which is worse than serialising from the start.
+Keep builders as the blocker. Before launching any gate, including an
+implicitly gated `git commit`, enumerate live builder processes by exact
+process name and resolve their working directories through `/proc/<pid>/cwd`.
+Wait while a builder may still enter its own verification phase. Do not infer
+builder idleness from quiet logs.
 
-  **Run gates ONE AT A TIME.** Not because they collide, but because the second one cannot produce
-  a valid timing measurement and will fail on that alone.
+Treat gate process searches as informational only. Never wait on a `pgrep -f`
+pattern that appears in the waiting command, and never act on a command-line
+match without resolving its working directory. A gate publishes its own PID;
+use that identity for stopping or monitoring it. Give every long wait a deadline
+and a distinct expiry line in its log: a wait that can never fire is
+indistinguishable from one still waiting, and one such waiter spun for 24 hours
+before anyone noticed its gate had never run.
 
-Exception, deliberate and stated: if you know the branch's verdict does not depend on the timing
-step (docs-only, or you will re-run solo before landing anyway), overlapping is fine — but expect
-the red and do not read it as a defect. I overlapped three times on 2026-07-27 and produced three
-avoidable reds; the first cost a wrong diagnosis before the instrument existed to name it.
+Keep every gate's application sessions and failure artifacts namespaced.
+Land serially even after speculative gates run in parallel: each landing
+changes the combined tree and may require the remaining branch to integrate
+and verify again.
 
-This is also a lesson about doctrine itself: **a rule retired because its cause was fixed can be
-reinstated by a later change for a different cause.** Do not read a "superseded" heading as
-permanent. Check whether the reason still holds, and whether a NEW reason has arrived.
-
-## Gate concurrency (the 2026-07-25 retirement — see the re-narrowing above)
-
-**PRECONDITION — run this before launching ANY gate, including a `git commit` whose pre-commit
-hook gates.** The rule below has been broken three times in one night by a conductor who knew it
-and did not check. Prose did not fix that; a command might.
-
-```sh
-# live builders (a gate must not overlap ANY of these)
-for p in $(pgrep -x codex); do echo "BUILDER $(readlink /proc/$p/cwd)"; done
-# live gates (informational — overlap is allowed, builders are the blocker)
-for p in $(pgrep -f 'merge-gate\.sh'); do echo "GATE $(readlink /proc/$p/cwd)"; done
-```
-
-Two traps this closes. First, `pgrep -f merge-gate.sh` matches YOUR OWN shell, because its argv
-contains the pattern — resolve every hit through `/proc/<pid>/cwd` before believing it. **This also
-makes a `pgrep -f` WAIT immortal: the waiter matches itself, so it never fires** (one spun 24 hours
-and its gate never ran). Never wait on a pattern that appears in the waiting command; resolve pids
-through `/proc`, and give any long wait a deadline plus a distinct expiry line, because a wait that
-can never fire looks exactly like one still waiting. Second, a `git commit` launches a gate you
-never typed, so "am I running a gate?" is the wrong question; the right one is "is anything about to
-run one?"
-
-If a builder is alive: either WAIT, or take the exception deliberately and write down why. What is
-forbidden is gating while builders verify and then reading the result as if it were clean.
-
-Two or more gates MAY now run simultaneously. The rule existed because of two shared-namespace
-collisions, both fixed in 9f6c617 — the pre-gate reaper killed every `/tmp/tui-*` app (executing a
-peer gate's in-flight smokes and producing reds indistinguishable from starvation), and the failure-log
-directory was a single path wiped at gate start. An orphan is now PARENT-GONE, and failure dirs are
-per-run with a symlink to the latest.
-
-Operating limits, measured on a 16-core box: inotify `max_user_instances` is 128 and each app is one
-instance; each app is ~250MB RSS; a serial gate contributes ~1.5 load. CPU binds first at roughly
-12-14 CONCURRENT APPS, so reason about the PRODUCT `gates x pool workers`, not the gate count.
-
-**BUT A GATE MUST NOT OVERLAP A LIVE BUILDER (learned the hard way, 2026-07-25 evening).** A gate and a
-builder's verification phase are THE SAME RESOURCE. The rule "launch a gate while the builders look
-quiet" is wrong twice over: a builder that is quiet at launch reaches its own `bun test` and smokes
-minutes later, INSIDE the gate's five-minute window; and "looks quiet" is judged from log growth, which
-is exactly what a reading-phase builder produces. Two reds tonight looked identical and had opposite
-causes — `smoke-workspace-tabs` failed 1-of-2 SOLO at load 0.28 (intrinsic, a fixture reading the
-machine's /tmp), while `smoke-editor-harness` timed out twice with a builder mid-verification
-(contention, my scheduling). So: HOLD gating while any builder is alive, then drain the gate queue
-back-to-back on a quiet machine — UNLESS a contention red would still be DIAGNOSTIC (e.g. the known
-flakes are already fixed and you want a realistic-load validation), in which case take the exception
-deliberately and state the reason. Never gate blind while builders verify. And note the reframe: a quiet
-machine is a CRUTCH that hides fragility — a smoke that cannot survive load is not robust, it has merely
-not been asked. Load is the discriminator (fails only under load = clock/existence-bound assertion;
-fails idle = real race or defect; survives both = genuinely poolable). Serial gates on a quiet machine beat overlapped gates end-to-end,
-because a re-run costs five minutes and a wait usually costs less.
-
-Diagnosis discriminator: before attributing a timeout-class red to a defect, ask what else was running,
-then re-run that one smoke SOLO on an idle machine. It costs about a minute and it separated intrinsic
-from contention for two smokes that failed the same way tonight.
-
-The machine-wide quiet lock, when it lands, must therefore be acquirable by BUILDER verification runs
-too — not only by gates. A lock only gates respect leaves the largest contention source outside it.
-
-Use concurrency for PARALLEL SPECULATIVE VERIFICATION — gate every ready branch at once to discover
-all their defects in one wall-clock window — then LAND SERIALLY: ff-only merges force each branch to
-rebase onto the new main and re-verify, and semantic conflicts across landings are routine, not rare.
-
-Treat concurrency as a HAZARD-FINDING instrument too: load-sensitive races are invisible on an idle
-machine. The first two-gate run exposed a latent await-after-terminal-action race that dozens of
-serial runs had missed.
+Use deliberate contention as a robustness probe. A blocking red under load is
+a defect in the product or instrument, not grounds to widen a duration
+threshold or declare the measurement invalid. The machine-wide quiet lock
+belongs only to soft performance reports and never narrows blocking gate
+concurrency.
 
 ## Diagnosis rules earned 2026-07-25
 
@@ -772,6 +693,7 @@ serial runs had missed.
 - **Knowing a class does not exempt you from sweeping it.** After any vocabulary or identifier swap,
   search for the BARE token with no quoting assumption and re-run until the search returns nothing —
   `'⌕'` missed `'⌕ file-073'` minutes after I briefed a builder about exactly that coupling.
-- **Several smokes flaking under load is ONE finding, not several.** Four distinct smokes failed in gate
-  runs tonight and all four passed solo on a quiet machine. Rank the machine-wide quiet lock above the
-  individual smokes, and never let retry-once turn one missing lock into four phantom defects.
+- **Several smokes changing verdict under load is ONE finding, not several.**
+  Find the shared clock, timeout, namespace, or resource dependency and repair
+  that generator. Never widen thresholds or restore whole-gate quiet locking
+  to hide a blocking verdict that is not load-independent.

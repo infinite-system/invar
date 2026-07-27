@@ -4,6 +4,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+// invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 import {
   existsSync,
   mkdtempSync,
@@ -16,7 +17,6 @@ import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
-import { QuietLock } from './QuietLock';
 
 function paneText(
   snapshot: HarnessSnapshot.Model,
@@ -34,6 +34,23 @@ function paneText(
         .join(''),
     )
     .join('\n');
+}
+
+function activePanelText(
+  snapshot: HarnessSnapshot.Model,
+  statusPath: string,
+): string {
+  const status = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const layoutSlots = status.layoutSlots as
+    Record<string, { left: number }> | undefined;
+  const panelCellColumns = status.panelCellColumns as number[] | undefined;
+  const focusedCellIndex = Number(status.panelFocusedIndex ?? 0);
+  const panelLeft = Number(layoutSlots?.bottomPanel?.left ?? 0) + 1;
+  const panelColumns = Number(panelCellColumns?.[focusedCellIndex] ?? 0);
+  return paneText(snapshot, panelLeft, panelColumns);
 }
 
 function snapshotHasPromptColor(
@@ -509,14 +526,49 @@ async function driveReducedMotion(
     );
     await openAgentPane(driver, statusPath);
     const command = `printf INSTANT > ${reducedMotionPath} # ${'x'.repeat(120)}`;
-    const startedMilliseconds = performance.now();
+    let firstTypingFrameObserved = false;
+    let firstTypingFrameWasComplete = false;
+    let nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
     driver.sendText(`terminal-tools:run:${command}`);
     driver.sendKeys('Enter');
+    while (true) {
+      const completed = await nextCompletedFrame;
+      const projectedTerminalText = activePanelText(
+        completed.snapshot,
+        statusPath,
+      );
+      if (
+        !firstTypingFrameObserved &&
+        projectedTerminalText.includes('printf')
+      ) {
+        firstTypingFrameObserved = true;
+        firstTypingFrameWasComplete =
+          projectedTerminalText.includes('xxxxxxxxxxxx');
+      }
+      if (existsSync(reducedMotionPath)) break;
+      nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
+    }
     await awaitFileContents(reducedMotionPath, 'INSTANT');
-    const elapsedMilliseconds = performance.now() - startedMilliseconds;
+    const positiveControlFailure = firstTypingFrameCompletionFailure(
+      true,
+      false,
+    );
     HarnessSmoke.Class.requireCondition(
-      elapsedMilliseconds < 1_000,
-      `reducedMotion uses the instant path (${elapsedMilliseconds.toFixed(0)} ms)`,
+      positiveControlFailure !== null,
+      'reduced-motion frame positive control rejects a partial first frame',
+    );
+    console.log(
+      `reduced-motion frame positive control RED (expected): ` +
+        positiveControlFailure,
+    );
+    const completionFailure = firstTypingFrameCompletionFailure(
+      firstTypingFrameObserved,
+      firstTypingFrameWasComplete,
+    );
+    HarnessSmoke.Class.requireCondition(
+      completionFailure === null,
+      completionFailure ??
+        'reducedMotion writes the complete command in its first typing frame',
     );
     driver.sendKeys('Control+q');
   } finally {
@@ -524,7 +576,18 @@ async function driveReducedMotion(
   }
 }
 
-async function measureAgentTypingDuration(
+function firstTypingFrameCompletionFailure(
+  firstTypingFrameObserved: boolean,
+  firstTypingFrameWasComplete: boolean,
+): string | null {
+  if (firstTypingFrameObserved && firstTypingFrameWasComplete) return null;
+  return (
+    `reducedMotion first-frame ordering failed: observed=` +
+    `${firstTypingFrameObserved}, complete=${firstTypingFrameWasComplete}`
+  );
+}
+
+async function countAgentTypingFrames(
   homeDirectory: string,
   settingsPath: string,
   label: string,
@@ -560,11 +623,19 @@ async function measureAgentTypingDuration(
     );
     await openAgentPane(driver, statusPath);
     const command = `printf ${label.toUpperCase()} > ${executedCommandPath} # ${'x'.repeat(60)}`;
-    const startedMilliseconds = performance.now();
+    let completedTypingFrameCount = 0;
+    let nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
     driver.sendText(`terminal-tools:run:${command}`);
     driver.sendKeys('Enter');
+    while (true) {
+      const completed = await nextCompletedFrame;
+      void completed;
+      completedTypingFrameCount++;
+      if (existsSync(executedCommandPath)) break;
+      nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
+    }
     await awaitFileContents(executedCommandPath, label.toUpperCase());
-    return performance.now() - startedMilliseconds;
+    return completedTypingFrameCount;
   } finally {
     await driver.dispose();
   }
@@ -575,24 +646,48 @@ async function driveAgentTypingSpeed(
   settingsPath: string,
 ): Promise<void> {
   console.log(
-    '== harness terminal-stage: agentTypingSpeed controls visible typing duration ==',
+    '== harness terminal-stage: agentTypingSpeed controls visible typing frames ==',
   );
-  const slowDurationMilliseconds = await measureAgentTypingDuration(
+  const slowCompletedFrameCount = await countAgentTypingFrames(
     homeDirectory,
     settingsPath,
     'slow',
     10,
   );
-  const fastDurationMilliseconds = await measureAgentTypingDuration(
+  const fastCompletedFrameCount = await countAgentTypingFrames(
     homeDirectory,
     settingsPath,
     'fast',
     240,
   );
+  const positiveControlFailure = typingFrameOrderingFailure(3, 3);
   HarnessSmoke.Class.requireCondition(
-    slowDurationMilliseconds > fastDurationMilliseconds + 400,
-    'agentTypingSpeed 240 completes materially faster than 10 ' +
-      `(${fastDurationMilliseconds.toFixed(0)} ms versus ${slowDurationMilliseconds.toFixed(0)} ms)`,
+    positiveControlFailure !== null,
+    'typing-frame positive control rejects equal slow and fast frame counts',
+  );
+  console.log(
+    `typing-frame positive control RED (expected): ` + positiveControlFailure,
+  );
+  const orderingFailure = typingFrameOrderingFailure(
+    slowCompletedFrameCount,
+    fastCompletedFrameCount,
+  );
+  HarnessSmoke.Class.requireCondition(
+    orderingFailure === null,
+    orderingFailure ??
+      'agentTypingSpeed 10 spans more completed frames than 240',
+  );
+}
+
+function typingFrameOrderingFailure(
+  slowCompletedFrameCount: number,
+  fastCompletedFrameCount: number,
+): string | null {
+  if (slowCompletedFrameCount > fastCompletedFrameCount) return null;
+  return (
+    `agentTypingSpeed frame ordering failed: slow=` +
+    `${slowCompletedFrameCount}, fast=${fastCompletedFrameCount}; ` +
+    `expected slow > fast`
   );
 }
 
@@ -654,12 +749,6 @@ async function driveTerminalCleanPromptDisabled(
     await driver.dispose();
   }
 }
-
-const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
-  'smoke-terminal-stage-harness',
-  import.meta.path,
-);
-if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-terminal-stage-harness-home-'),

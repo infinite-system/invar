@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Machine-wide readers-writer scheduling for timing-sensitive Invar work.
 #
-# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+# invariant: Soft duration reports use a machine-wide quiet lock (scripts/harness/harness.invariants.md)
 
 quiet_lock_script_path="$(
   cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd

@@ -308,15 +308,18 @@ per-frame quantity that scales with document length.
 same gesture over 2k and 100k flat editor fixtures and requires exact equality
 of document-line reads, fold/wrap projection lookups, and layout computations
 per attributed frame. One diff and one fold-dense editor wall-clock canary
-retain the 28 FPS sanity floor without making host speed the scale contract.
+retain the 28 FPS sanity floor as report-only warnings; host speed never
+controls the blocking scale contract.
 The fold-dense editor checkpoint keeps folding, indent guides, and
 version-control gutter marks enabled, direct-jumps to line 75,000, settles on
 observed scroll state and frame quiescence, excludes jump frames, then drives
 at least 1,000 rows of real wheel input. Unit cost ratchets in
 `CodeFolding.test.ts`, `Editor.test.ts`, and `DiffView.test.ts` prove
 unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
-remains ~0 after activity. Continuous (time axis): the per-gate byte-flush
-latency step (campaign wave 1) — a spike names the commit that broke the bound.
+remains ~0 after activity. Continuous input-path evidence comes from the
+always-run byte-flush step: the edited glyph must be present in the first
+completed frame after its input byte. Millisecond p50/p95 samples remain
+commit-addressed and trend-compared as report-only warnings.
 
 **Status:** established
 
@@ -386,11 +389,12 @@ load-bearing together.
 
 **Impossible if true:** A `computed()` in the codebase with no caching/identity justification.
 
-**Verification:** A review/lint pass counting `computed()` uses, each with a one-line
-justification; the architecture-compliance audit. Continuous (time axis): the per-gate
-byte-flush latency step — if getter accumulation ever makes recomputation expensive, a specific
-gate goes red and `computed()` is applied surgically to the profiled-hot derivation, per this
-invariant's own escape clause.
+**Verification:** A review/lint pass counting `computed()` uses, each with a
+one-line justification; the architecture-compliance audit. The per-gate
+byte-flush ordering check blocks when recomputation defers visible input to a
+second completed frame. Its retained millisecond history warns on a sustained
+sub-frame shift so profiling can identify a derivation that earns surgical
+`computed()`.
 
 **Status:** established
 
