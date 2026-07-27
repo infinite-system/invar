@@ -24,11 +24,25 @@ await Bun.write(
 );
 await Bun.write(
   join(workspaceRoot, '.claude', 'skills', 'ivue', 'SKILL.md'),
-  '---\ndescription: reactive substrate\n---\nUse ivue.',
+  [
+    '---',
+    'description: >-',
+    '  Reactive substrate guidance with wide glyphs 界界 and an astral 🚀',
+    '  that is deliberately long enough to require one-row truncation.',
+    '---',
+    'Use ivue.',
+  ].join('\n'),
 );
 await Bun.write(
   join(workspaceRoot, '.claude', 'skills', 'invariants', 'SKILL.md'),
-  '---\ndescription: contract discipline\n---\nCheck invariants.',
+  [
+    '---',
+    'description: |-',
+    '  Contract discipline that keeps load-bearing rules visible',
+    '  across implementation changes.',
+    '---',
+    'Check invariants.',
+  ].join('\n'),
 );
 
 const driver = new PtyTestDriver.Class({
@@ -64,18 +78,76 @@ try {
   );
   await driver.awaitQuiescence();
 
-  console.log('== skill popup: live prefix filtering and dropup ==');
-  driver.sendText('/i');
-  await HarnessSmoke.Class.awaitStatus(
+  console.log('== skill popup: block scalars and bounded rows ==');
+  driver.sendText('/');
+  const popupStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the slash token lists both matching skills',
+    'the slash token lists both skills with popup geometry',
     (status) =>
       status.agentSkillPopupOpen === true &&
       Array.isArray(status.agentSkillPopupItemIdentifiers) &&
-      status.agentSkillPopupItemIdentifiers.length === 2,
+      status.agentSkillPopupItemIdentifiers.length === 2 &&
+      status.agentSkillPopupGeometry !== null,
   );
   HarnessSmoke.Class.pass('typing a slash token opens the skill popup');
+  const popupSnapshot = await driver.awaitSnapshot(
+    (snapshot) =>
+      snapshot.findText('/invariants') !== null &&
+      snapshot.findText('/ivue') !== null,
+  );
+  const popupGeometry = popupStatus.agentSkillPopupGeometry as {
+    boxLeft: number;
+    boxWidth: number;
+    listLeft: number;
+    listTop: number;
+    listColumns: number;
+    visibleItemCount: number;
+  };
+  const popupRowTexts = Array.from(
+    { length: popupGeometry.visibleItemCount },
+    (_unused, visibleRowIndex) =>
+      popupSnapshot.rowText(popupGeometry.listTop + visibleRowIndex),
+  );
+  HarnessSmoke.Class.requireCondition(
+    popupRowTexts.every(
+      (rowText) => !rowText.includes('>-') && !rowText.includes('|-'),
+    ),
+    'block scalar indicators never reach rendered popup rows',
+  );
+  HarnessSmoke.Class.requireCondition(
+    popupRowTexts.some(
+      (rowText) =>
+        rowText.includes('/ivue') &&
+        rowText.includes('Reactive substrate') &&
+        rowText.includes('…'),
+    ),
+    'the known long block-scalar description ends in an ellipsis',
+  );
+  const popupRightColumn = popupGeometry.boxLeft + popupGeometry.boxWidth - 1;
+  HarnessSmoke.Class.requireCondition(
+    popupRowTexts.every((_rowText, visibleRowIndex) => {
+      const row = popupGeometry.listTop + visibleRowIndex;
+      const rightBorder = popupSnapshot.cell(row, popupRightColumn);
+      const labelPosition =
+        popupSnapshot.findText(
+          visibleRowIndex === 0 ? '/invariants' : '/ivue',
+        ) ??
+        popupSnapshot.findText(visibleRowIndex === 0 ? '/ivue' : '/invariants');
+      return (
+        rightBorder?.characters === '│' &&
+        labelPosition !== null &&
+        labelPosition.row === row &&
+        labelPosition.column >= popupGeometry.listLeft &&
+        labelPosition.column <
+          popupGeometry.listLeft + popupGeometry.listColumns
+      );
+    }),
+    'every rendered skill row stays inside the popup cell boundary',
+  );
+
+  console.log('== skill popup: live prefix filtering and dropup ==');
+  driver.sendText('i');
 
   driver.sendText('v');
   const filteredStatus = await HarnessSmoke.Class.awaitStatus(

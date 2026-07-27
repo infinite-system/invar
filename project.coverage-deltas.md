@@ -96,6 +96,11 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 | `src/modules/settings/Settings.test.ts` | assertions 58 → 64, waits 10 → 11. Covers the primary-dock order default, shared validation and deduplication, save output, and reload round-trip. |
 | `src/modules/ui/ContentOrderDrag.test.ts` | assertions 0 → 4, waits 0 → 1. New file. Proves pointer movement is inert before and after a drag and delegates the active drag to the persisted `PanelHost` reorder seam. |
 | `src/modules/ui/PanelHost.test.ts` | assertions 57 → 67, waits 15 → 18. Covers dormant identifiers as inert membership gaps, deterministic unseen-content append, retained disable/re-enable slots, and persisted visible reorder across a dormant identifier. |
+| `scripts/harness/smoke-agent-skill-popup-harness.ts` | assertions 7 → 10, waits 13 → 14. The real PTY catalog now uses folded and literal block-scalar descriptions, proves their indicators never reach frame cells, requires a known long description to end in one ellipsis, and checks every visible item row remains inside the popup border. |
+| `src/modules/agent/AgentPromptResolver.test.ts` | assertions 5 → 7, waits 5 → 7. Covers plain, quoted, folded, and literal description scalars; both chomping directions; explicit indentation; escaped quotes; and missing or empty descriptions. |
+| `src/modules/agent/AgentSkillPopup.test.ts` | assertions 7 → 15, waits 2 → 3. Proves a folded scalar contributes its continuation text instead of its indicator, literal newlines collapse to one row, and wide or astral descriptions ellipsize by display cells without truncating the skill name. |
+| `src/modules/ui/BoundedListPopup.test.ts` | assertions 39 → 40, waits 13 → 13. Pins the shared desired-width authority used by popup paint and the skill-label clipping budget. |
+| `src/modules/ui/WrapText.test.ts` | assertions 27 → 29, waits 15 → 15. Adds the two-cell cutoff counterexample: an overlapping wide grapheme is excluded before the ellipsis so the shared clipper cannot exceed its display-cell budget. |
 
 - `src/modules/keybindings/KeybindingDefaults.test.ts` — assertions: 62, waits: 0
   (was 63/0) — merge reconciliation with the inline-rewrite plugin landing

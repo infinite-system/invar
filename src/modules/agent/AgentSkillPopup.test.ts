@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { ref } from 'vue';
 import { Files } from '../system/Files';
-import type {
+import {
   BoundedListPopup,
-  BoundedListPopupItem,
-  BoundedListPopupOpenOptions,
+  type BoundedListPopupItem,
+  type BoundedListPopupOpenOptions,
 } from '../ui/BoundedListPopup';
+import { WrapText } from '../ui/WrapText';
 import { AgentSkillPopup } from './AgentSkillPopup';
 
 class FakeBoundedListPopup {
@@ -74,13 +75,19 @@ class TestAgentSkillPopup extends AgentSkillPopup.$Class {
   }
 }
 
-function createPopup(): {
+function createPopup(
+  columns = 100,
+  rows = 40,
+): {
   popup: TestAgentSkillPopup;
   fakePopup: FakeBoundedListPopup;
 } {
   fakePopupForConstruction = new FakeBoundedListPopup();
   return {
-    popup: new TestAgentSkillPopup({} as never),
+    popup: new TestAgentSkillPopup({
+      renderer: { width: columns, height: rows },
+      settings: { scrollbarThickness: ref(1) },
+    } as never),
     fakePopup: fakePopupForConstruction,
   };
 }
@@ -99,7 +106,14 @@ describe('AgentSkillPopup', () => {
           'ivue',
           'SKILL.md',
         ),
-        '---\ndescription: reactive substrate\n---\nUse ivue.',
+        [
+          '---',
+          'description: >-',
+          '  Reactive substrate guidance',
+          '  across model boundaries.',
+          '---',
+          'Use ivue.',
+        ].join('\n'),
       );
       Files.Class.write(
         Files.Class.join(
@@ -124,6 +138,10 @@ describe('AgentSkillPopup', () => {
       );
 
       expect(popup.items.map((item) => item.identifier)).toEqual(['ivue']);
+      expect(popup.items[0]?.label).toContain(
+        'Reactive substrate guidance across model boundaries.',
+      );
+      expect(popup.items[0]?.label).not.toContain('>-');
       expect(fakePopup.lastOptions).toMatchObject({
         searchVisible: false,
         showBackdrop: false,
@@ -135,6 +153,64 @@ describe('AgentSkillPopup', () => {
       popup.runSelected();
       expect(accepted).toEqual(['ivue']);
       expect(popup.open.value).toBe(false);
+    } finally {
+      Files.Class.removeDirectory(workspaceRoot);
+    }
+  });
+
+  test('ellipsizes only the description to the usable display-cell width', () => {
+    const workspaceRoot = Files.Class.createTemporaryDirectory(
+      'invar-agent-skill-ellipsis-',
+    );
+    try {
+      Files.Class.write(
+        Files.Class.join(
+          workspaceRoot,
+          '.claude',
+          'skills',
+          'ivue',
+          'SKILL.md',
+        ),
+        [
+          '---',
+          'description: |-',
+          '  Wide 界界 glyphs and astral 🚀 characters continue through',
+          '  a deliberately overlong description.',
+          '---',
+          'Use ivue.',
+        ].join('\n'),
+      );
+      const { popup, fakePopup } = createPopup(30, 40);
+
+      popup.synchronize(
+        'agent',
+        workspaceRoot,
+        { prefix: '', start: 0, end: 1 },
+        { column: 2, row: 20 },
+        () => {},
+      );
+
+      const label = popup.items[0]?.label ?? '';
+      expect(label.startsWith('/ivue  ')).toBe(true);
+      expect(label.endsWith('…')).toBe(true);
+      expect(label).not.toContain('\n');
+      expect(label).not.toContain('|-');
+      const geometry = BoundedListPopup.$Class.layoutGeometry({
+        screenWidth: 30,
+        screenHeight: 40,
+        anchor: { column: 2, row: 20 },
+        desiredBoxWidth: fakePopup.lastOptions?.minimumWidth ?? 0,
+        itemCount: 1,
+        searchVisible: false,
+        iconColumns: 0,
+        scrollbarThickness: 1,
+        firstVisible: 0,
+        availableBottomExclusive: 20,
+      });
+      expect(WrapText.Class.displayWidth(` ${label}`)).toBeLessThanOrEqual(
+        geometry.listColumns,
+      );
+      expect(label).toContain('/ivue');
     } finally {
       Files.Class.removeDirectory(workspaceRoot);
     }

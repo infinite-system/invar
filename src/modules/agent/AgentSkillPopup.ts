@@ -8,6 +8,7 @@ import {
   type BoundedListPopupItem,
 } from '../ui/BoundedListPopup';
 import type { ScrollPhysics } from '../ui/ScrollPhysics';
+import { WrapText } from '../ui/WrapText';
 import type { AgentSkillInvocation } from './AgentComposer';
 import {
   AgentPromptResolver,
@@ -26,7 +27,7 @@ class $AgentSkillPopup {
   protected activeInvocationKey: string | null = null;
   protected dismissedInvocationKey: string | null = null;
 
-  constructor(dependencies: AgentSkillPopupDependencies) {
+  constructor(protected readonly dependencies: AgentSkillPopupDependencies) {
     this.popup = this.createPopup({
       ...dependencies,
       identifier: 'agent-skill-popup',
@@ -84,13 +85,22 @@ class $AgentSkillPopup {
       this.popup.close();
       return;
     }
-    const items = this.skills(workspaceRoot)
-      .filter((skill) =>
-        skill.name
-          .toLocaleLowerCase()
-          .startsWith(invocation.prefix.toLocaleLowerCase()),
-      )
-      .map((skill) => this.item(skill));
+    const matchingSkills = this.skills(workspaceRoot).filter((skill) =>
+      skill.name
+        .toLocaleLowerCase()
+        .startsWith(invocation.prefix.toLocaleLowerCase()),
+    );
+    const minimumWidth = 18;
+    const naturalItems = matchingSkills.map((skill) => this.item(skill));
+    const popupGeometry = this.layoutGeometry(
+      naturalItems,
+      anchor,
+      minimumWidth,
+    );
+    const maximumLabelWidth = Math.max(0, popupGeometry.listColumns - 1);
+    const items = matchingSkills.map((skill) =>
+      this.item(skill, maximumLabelWidth),
+    );
     if (items.length === 0) {
       this.popup.close();
       return;
@@ -106,7 +116,7 @@ class $AgentSkillPopup {
         searchVisible: false,
         showBackdrop: false,
         itemsAlreadyFiltered: true,
-        minimumWidth: 18,
+        minimumWidth: popupGeometry.boxWidth,
         availableBottomExclusive: anchor.row,
         selectedItemIdentifier: this.selectedIdentifier ?? undefined,
       },
@@ -151,14 +161,54 @@ class $AgentSkillPopup {
     return skills;
   }
 
-  protected item(skill: AgentPromptSkill): BoundedListPopupItem {
+  protected item(
+    skill: AgentPromptSkill,
+    maximumLabelWidth = Number.POSITIVE_INFINITY,
+  ): BoundedListPopupItem {
+    const nameLabel = `/${skill.name}`;
+    const description = skill.description.replace(/\s+/gu, ' ').trim();
+    const descriptionPrefix = `${nameLabel}  `;
+    const maximumDescriptionWidth =
+      maximumLabelWidth - WrapText.Class.displayWidth(descriptionPrefix);
+    const clippedDescription =
+      maximumDescriptionWidth > 0
+        ? WrapText.Class.clipToWidth(description, maximumDescriptionWidth)
+        : '';
     return {
       identifier: skill.name,
-      label: skill.description
-        ? `/${skill.name}  ${skill.description}`
-        : `/${skill.name}`,
+      label: clippedDescription
+        ? `${descriptionPrefix}${clippedDescription}`
+        : nameLabel,
       searchText: skill.name,
     };
+  }
+
+  protected layoutGeometry(
+    items: readonly BoundedListPopupItem[],
+    anchor: BoundedListPopupAnchor,
+    minimumWidth: number,
+  ): BoundedListPopupGeometry {
+    const scrollbarThickness = Math.max(
+      1,
+      Math.round(this.dependencies.settings.scrollbarThickness.value),
+    );
+    const maximumItemWidth = BoundedListPopup.$Class.itemSetMaximumWidth(items);
+    return BoundedListPopup.$Class.layoutGeometry({
+      screenWidth: this.dependencies.renderer.width,
+      screenHeight: this.dependencies.renderer.height,
+      anchor,
+      desiredBoxWidth: BoundedListPopup.$Class.desiredBoxWidth(
+        maximumItemWidth,
+        '',
+        minimumWidth,
+      ),
+      itemCount: items.length,
+      searchVisible: false,
+      iconColumns: 0,
+      scrollbarThickness,
+      firstVisible: 0,
+      availableBottomExclusive: anchor.row,
+    });
   }
 
   protected closeAndResetDismissal(): void {

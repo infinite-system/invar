@@ -276,8 +276,12 @@ describe('BoundedListPopup', () => {
       { identifier: 'wide', label: 'wide界' },
     ];
 
-    expect(BoundedListPopup.$Class.itemSetMaximumWidth(items)).toBe(
+    const maximumItemWidth = BoundedListPopup.$Class.itemSetMaximumWidth(items);
+    expect(maximumItemWidth).toBe(
       1 + EditorCoordinates.Class.lineWidth('wide界'),
     );
+    expect(
+      BoundedListPopup.$Class.desiredBoxWidth(maximumItemWidth, '', 1),
+    ).toBe(maximumItemWidth + 2);
   });
 });

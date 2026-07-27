@@ -334,6 +334,18 @@ class $BoundedListPopup {
     };
   }
 
+  static desiredBoxWidth(
+    maximumItemWidth: number,
+    title: string,
+    minimumWidth = $BoundedListPopup.minimumBoxWidth,
+  ): number {
+    return Math.max(
+      minimumWidth,
+      EditorCoordinates.Class.lineWidth(title) + 4,
+      maximumItemWidth + $BoundedListPopup.horizontalFrameColumns,
+    );
+  }
+
   openAt(
     items: readonly BoundedListPopupItem[],
     anchor: BoundedListPopupAnchor,
@@ -508,10 +520,10 @@ class $BoundedListPopup {
       1,
       Math.round(this.dependencies.settings.scrollbarThickness.value),
     );
-    const desiredBoxWidth = Math.max(
+    const desiredBoxWidth = $BoundedListPopup.desiredBoxWidth(
+      this.maximumItemWidthValue,
+      this.titleValue,
       this.minimumWidthValue,
-      EditorCoordinates.Class.lineWidth(this.titleValue) + 4,
-      this.maximumItemWidthValue + $BoundedListPopup.horizontalFrameColumns,
     );
     this.currentGeometry = $BoundedListPopup.layoutGeometry({
       screenWidth: this.dependencies.renderer.width,
