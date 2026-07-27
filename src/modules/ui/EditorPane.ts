@@ -81,6 +81,7 @@ class $EditorPane {
       findEngineFor: (documentPath) =>
         findBar.engineFor(`source:${documentPath}`),
       showIndentGuides: settings.showIndentGuides.value,
+      codeFoldingEnabled: editor.codeFoldingEnabled,
       // Box-drawing bar in nerd/unicode tiers; plain pipe where only ascii glyphs render.
       indentGuideGlyph: theme.glyphLevel.value === 'ascii' ? '|' : '│',
       foldOpenGlyph: theme.glyph('foldOpen'),

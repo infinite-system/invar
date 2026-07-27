@@ -124,6 +124,9 @@ class $Workspace {
     // (emptyEditor) are retro-attached there.
     if (this.settingsSource)
       editor.attachWordWrap(this.settingsSource.wordWrap);
+    if (this.codeFoldingEnabledSource) {
+      editor.attachCodeFolding(this.codeFoldingEnabledSource);
+    }
     if (this.inlineRewriteEnabledSource) {
       editor.attachInlineRewrite(
         this.inlineRewriteEnabledSource,
@@ -489,6 +492,7 @@ class $Workspace {
   // ceiling / gain / friction from the reactive Settings store so the settings panel LIVE-APPLIES
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default.
   protected settingsSource: Settings.Instance | null = null;
+  protected codeFoldingEnabledSource: Ref<boolean> | null = null;
   protected inlineRewriteEnabledSource: Ref<boolean> | null = null;
   protected inlineRewriteEligibility: (() => boolean) | null = null;
 
@@ -507,6 +511,14 @@ class $Workspace {
     for (const entry of this.buffers.entries.value) {
       const editor = entry.buffer as Editor.Instance | null;
       if (editor) attachEditor(editor);
+    }
+  }
+
+  attachCodeFolding(enabled: Ref<boolean>): void {
+    this.codeFoldingEnabledSource = enabled;
+    this.emptyEditor.attachCodeFolding(enabled);
+    for (const entry of this.buffers.entries.value) {
+      (entry.buffer as Editor.Instance | null)?.attachCodeFolding(enabled);
     }
   }
 

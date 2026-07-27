@@ -402,6 +402,35 @@ scripts/harness/smoke-code-folding-harness.ts`.
 
 **Last refined:** 2026-07-26
 
+### A fold toggle preserves the viewport anchor
+
+**Invariant:** If a fold is toggled while the editor is scrolled, then the topmost visible
+document row is translated through the new fold projection and remains the viewport anchor; the
+toggle never resets the canvas to document row zero. A cursor inside a newly collapsed body still
+moves to its fold header.
+
+**Scope:** Pointer fold controls and the fold/unfold keyboard commands.
+
+**Mechanism:** `Editor.toggleFoldAtLine` records the pre-toggle topmost document row from
+`EditorWrap`, mutates fold state, then restores that row through the rebuilt line-to-visual-row
+index and clamps only to the new extent.
+
+**Generates:** A fold header that stays at the same screen row for pointer and keyboard toggles,
+except for the minimum displacement required when the old anchor itself becomes hidden.
+
+**Evidence:** `src/modules/editor/Editor.test.ts`;
+`scripts/harness/smoke-code-folding-harness.ts`.
+
+**Impossible if true:** Clicking a fold control around document line 500 reveals line zero, or
+folding and immediately unfolding changes an otherwise-valid viewport anchor.
+
+**Verification:** `bun test src/modules/editor/Editor.test.ts && bun
+scripts/harness/smoke-code-folding-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
+
 ### Geometry aggregates match their consumers
 
 **Invariant:** If a geometry aggregate supplies a consumer, then it is computed exactly at that
@@ -541,8 +570,10 @@ predicate are injected — so the whole algorithm is unit-testable with plain ar
 **Mechanism:** `find` locates the active bracket (cell under the cursor, else the cell before it),
 picks the partner char and scan direction, and walks cells across line boundaries incrementing depth on
 a same-family opener and decrementing on its partner; depth 0 at the partner is the match. `findInDocument`
-supplies grapheme cells from the document and the predicate. `EditorPane` computes the match once per
-frame and passes the two cells to the renderer, which recolours only cells on a visible line.
+supplies grapheme cells from the document and the predicate. Its result is cached by document
+revision, cursor, and language, so an unchanged frame performs an O(1) snapshot lookup rather than
+rescanning the same cells. `EditorPane` passes the two cells to the renderer, which recolours only
+cells on a visible line.
 
 **Generates:** GitLens/VS-Code-style bracket matching that highlights the cursor's bracket and its true
 partner across lines; a bounded, hang-proof scan; a pure, exhaustively testable core.
@@ -551,8 +582,9 @@ partner across lines; a bounded, hang-proof scan; a pure, exhaustively testable 
 matching, unbalanced → null, scan cap → null); `scripts/smoke-bracket-match.sh` (cursor on a `{` paints
 the matching `}` cell; moving off clears it).
 
-**Impossible if true:** a match that crosses bracket families incorrectly counting `[` against `(`; a
-scan that hangs on an unbalanced file; a highlight when the cursor is not on a bracket.
+**Impossible if true:** a match that crosses bracket families incorrectly counting `[` against
+`(`; a scan that hangs on an unbalanced file; a highlight when the cursor is not on a bracket; an
+unchanged scroll frame rescanning document cells for the same cursor match.
 
 **Verification:** `bun test src/modules/editor/BracketMatch.test.ts && bash scripts/smoke-bracket-match.sh`
 

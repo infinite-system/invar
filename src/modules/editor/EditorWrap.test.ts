@@ -18,6 +18,7 @@ const {
 import { EditorCoordinates } from './EditorCoordinates';
 import { TextDocument } from './TextDocument';
 import { Editor } from './Editor';
+import type { FoldRange } from './CodeFolding';
 
 function documentFromLines(lines: string[]): WrappableDocument {
   return {
@@ -362,6 +363,68 @@ test('scrollTopToRevealCursor: far jump walks only O(height) lines (lower-bound 
   const top = scrollTopToRevealCursor(documentWindow, 0, 99999, 0, 80, 20);
   expect(top).toBe(99980);
   expect(reads).toBeLessThan(100); // never O(document)
+});
+
+test('folded visual-row queries reuse one projection with O(1) line lookups', () => {
+  class CountingEditorWrap extends EditorWrap.$Class {
+    static foldProjectionBuildCount = 0;
+
+    protected static override buildFoldProjection(
+      lineCount: number,
+      foldedRanges: readonly FoldRange[],
+    ) {
+      this.foldProjectionBuildCount++;
+      return super.buildFoldProjection(lineCount, foldedRanges);
+    }
+  }
+  const lines = Array.from(
+    { length: 100_000 },
+    (_unusedValue, lineIndex) => `line ${lineIndex}`,
+  );
+  let lineReads = 0;
+  const document = {
+    lineCount: lines.length,
+    revision: { value: 1 },
+    line: (lineIndex: number) => {
+      lineReads++;
+      return lines[lineIndex] ?? '';
+    },
+  };
+  const foldedRanges: readonly FoldRange[] = [
+    { startLine: 0, endLine: 99_999, kind: 'delimiter' },
+  ];
+
+  expect(CountingEditorWrap.totalVisualRows(document, null, foldedRanges)).toBe(
+    1,
+  );
+  const readsAfterProjection = lineReads;
+  for (let frameNumber = 0; frameNumber < 10_000; frameNumber++) {
+    expect(
+      CountingEditorWrap.visualRowsFromOffset(
+        document,
+        0,
+        null,
+        40,
+        foldedRanges,
+      ),
+    ).toHaveLength(1);
+    expect(
+      CountingEditorWrap.visualRowOfLine(document, 50_000, null, foldedRanges),
+    ).toBe(0);
+    expect(
+      CountingEditorWrap.lineSegmentAtVisualRow(
+        document,
+        1_000_000,
+        null,
+        foldedRanges,
+      ).lineIndex,
+    ).toBe(0);
+  }
+  expect(CountingEditorWrap.foldProjectionBuildCount).toBe(1);
+  expect(lineReads - readsAfterProjection).toBe(10_000);
+
+  CountingEditorWrap.totalVisualRows(document, null, [...foldedRanges]);
+  expect(CountingEditorWrap.foldProjectionBuildCount).toBe(2);
 });
 
 test('property: segments partition, respect the width, and never split clusters', () => {

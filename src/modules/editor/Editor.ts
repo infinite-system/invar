@@ -114,6 +114,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // toggle command drive the identical ref, and switching tabs never desyncs the mode. Falls back to a
   // local ref only before a source is attached (bare unit tests).
   protected wordWrapSource: Ref<boolean> | null = null;
+  protected codeFoldingSource: Ref<boolean> | null = null;
   attachWordWrap(source: Ref<boolean>): void {
     this.wordWrapSource = source;
   }
@@ -122,6 +123,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
   get localWordWrap() {
     return ref(false);
+  }
+  attachCodeFolding(source: Ref<boolean>): void {
+    this.codeFoldingSource = source;
+  }
+  get codeFoldingEnabled(): boolean {
+    return this.codeFoldingSource?.value ?? true;
   }
   get foldState() {
     return shallowRef<EditorFoldState>({
@@ -141,7 +148,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   foldRanges(): readonly FoldRange[] {
-    if (!this.hasDocument.value) return [];
+    if (!this.codeFoldingEnabled || !this.hasDocument.value) return [];
     return CodeFolding.Class.ranges(
       this.document,
       LanguageRegistry.Class.forPath(this.document.path),
@@ -152,7 +159,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     // openFile places the cursor before activating the freshly loaded document. That placement
     // consults folding so it can reveal a requested line, but a document-less projection is not a
     // valid revision snapshot and must not seed the cache used after activation.
-    if (!this.hasDocument.value) return [];
+    if (!this.codeFoldingEnabled || !this.hasDocument.value) return [];
     const documentRevision = this.document.revision.value;
     const foldRevision = this.foldRevision.value;
     if (
@@ -171,6 +178,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   foldRangeAtLine(lineIndex: number): FoldRange | null {
+    if (!this.codeFoldingEnabled || !this.hasDocument.value) return null;
     return CodeFolding.Class.rangeAtLine(
       this.document,
       LanguageRegistry.Class.forPath(this.document.path),
@@ -182,9 +190,15 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const range = this.foldRangeAtLine(lineIndex);
     if (!range) return false;
     const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    const previousTopmostRow = EditorWrap.Class.lineSegmentAtVisualRow(
+      this.document,
+      this.viewport.scrollTop.value,
+      this.visualWrapWidth(),
+      collapsedLineStarts.size === 0 ? [] : this.collapsedFoldRanges,
+    );
     if (collapsedLineStarts.delete(lineIndex)) {
       this.foldRevision.value++;
-      this.revealCursor();
+      this.restoreFoldToggleViewportAnchor(previousTopmostRow);
       return true;
     }
     collapsedLineStarts.add(lineIndex);
@@ -201,10 +215,30 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
           this.cursor.col.value,
         ),
       );
-    } else {
-      this.revealCursor();
     }
+    this.restoreFoldToggleViewportAnchor(previousTopmostRow);
     return true;
+  }
+
+  protected restoreFoldToggleViewportAnchor(previousTopmostRow: {
+    lineIndex: number;
+    segmentIndex: number;
+  }): void {
+    const anchorVisualRow =
+      EditorWrap.Class.visualRowOfLine(
+        this.document,
+        previousTopmostRow.lineIndex,
+        this.visualWrapWidth(),
+        this.collapsedFoldRanges,
+      ) + previousTopmostRow.segmentIndex;
+    const maximumScrollTop = Math.max(
+      0,
+      this.totalVisualRows() - this.viewport.height.value,
+    );
+    this.viewport.scrollTop.value = Math.max(
+      0,
+      Math.min(anchorVisualRow, maximumScrollTop),
+    );
   }
 
   foldAtCursor(): void {

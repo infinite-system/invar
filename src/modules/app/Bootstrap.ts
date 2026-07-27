@@ -128,6 +128,14 @@ class $Bootstrap {
       spec: { kind: 'boolean' },
     });
     app.onDispose(() => inlineRewriteEnabled.dispose());
+    const codeFoldingEnabled = settings.registerSetting({
+      identifier: 'editor.codeFolding',
+      label: 'Code folding',
+      section: 'Editor',
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
+    app.onDispose(() => codeFoldingEnabled.dispose());
     let inlineRewriteOverlayOpen = (): boolean => true;
     const workspaceSet = new WorkspaceSet.Class(settings, {
       awaitNextViewPaint: () =>
@@ -136,6 +144,7 @@ class $Bootstrap {
         }),
       inlineRewriteEnabled: inlineRewriteEnabled.value,
       inlineRewriteEligible: () => !inlineRewriteOverlayOpen(),
+      codeFoldingEnabled: codeFoldingEnabled.value,
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();
@@ -876,6 +885,7 @@ class $Bootstrap {
       void editor.viewport.scrollTop.value;
       void editor.viewport.scrollLeft.value;
       void editor.wordWrap.value;
+      void editor.codeFoldingEnabled;
       void editor.foldRevision.value;
       // Contributed editor surfaces subscribe their own paint signals.
       editorSurfaceContents.observePaintSignals();

@@ -268,6 +268,64 @@ else
   sed -n '1,20p' "$SMOOTH_LOG"
 fi
 
+# ---- CONTRACT: fold-dense full-stack cadence (RATCHET: real package JSON stayed slow) ---------------
+# SIZE alone is not the workload: nested JSON combines a structural fold start, indentation guide,
+# syntax/bracket projection, and version-control gutter marks on the same visible rows. The generated
+# 100k fixture asserts that complete stack with host folding enabled, not the flat-text isolator.
+echo "== CONTRACT fold-dense-cadence: 100k nested JSON keeps the full row stack at 28 FPS =="
+FOLD_DENSE_JSON="$ROOT/artifacts/fold-dense-scroll-smoothness.json"
+FOLD_DENSE_LOG="$ROOT/artifacts/fold-dense-scroll-smoothness.log"
+if SMOOTHNESS_GESTURES=2 \
+   SMOOTHNESS_LINE_COUNTS=100000 \
+   SMOOTHNESS_SURFACES=editor \
+   SMOOTHNESS_FIXTURES=fold-dense \
+   SMOOTHNESS_CODE_FOLDING=on \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$FOLD_DENSE_JSON" 2>"$FOLD_DENSE_LOG"; then
+  read -r fold_dense_case_count fold_dense_full_stack \
+    fold_dense_minimum_fast_fps fold_dense_floor_passes <<<"$(python3 -c "
+import json
+cases = json.load(open('$FOLD_DENSE_JSON'))['cases']
+matching = [
+    case for case in cases
+    if case['surface'] == 'editor'
+    and case['fixtureShape'] == 'fold-dense'
+    and case['codeFolding'] == 'on'
+    and case['fixtureLineCount'] == 100000
+]
+full_stack = (
+    len(matching) == 1
+    and matching[0]['indentGuides'] is True
+    and matching[0]['versionControlMarks'] is True
+)
+minimum_fast_fps = min(
+    gesture['sustainedFastFramesPerSecond']
+    for case in matching
+    for gesture in case['gestures']
+) if matching else 0
+print(len(matching), int(full_stack), f'{minimum_fast_fps:.1f}',
+      int(full_stack and minimum_fast_fps >= 28))
+")"
+  if [ "${fold_dense_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
+    fold_dense_message="100k nested JSON sustains the full per-row stack"
+    fold_dense_message+=" (cases=$fold_dense_case_count,"
+    fold_dense_message+=" fullStack=$fold_dense_full_stack,"
+    fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps}fps,"
+    fold_dense_message+=" floor 28)"
+    pass "$fold_dense_message"
+  else
+    fold_dense_message="100k nested JSON cadence regressed"
+    fold_dense_message+=" (cases=${fold_dense_case_count:-0},"
+    fold_dense_message+=" fullStack=${fold_dense_full_stack:-0},"
+    fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps:-0}fps,"
+    fold_dense_message+=" floor 28)"
+    bad "$fold_dense_message"
+  fi
+else
+  bad "fold-dense cadence instrument did not complete — see $FOLD_DENSE_LOG"
+  sed -n '1,20p' "$FOLD_DENSE_LOG"
+fi
+
 # ---- CONTRACT: wrap-mode momentum + visual-row extent (RATCHET: the "momentum gone in wrap" report) ----
 # Wrap mode feeds the SAME momentum engine in VISUAL-ROW units, so it glides like non-wrap AND reaches
 # the true last visual row (extent = wrapped visual rows, not logical lines). Both were user-felt gaps.

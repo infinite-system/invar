@@ -81,7 +81,7 @@ class $EditorPaneRenderer {
       top,
       editor.visualWrapWidth(),
       height,
-      editor.collapsedFoldRanges,
+      context.codeFoldingEnabled ? editor.collapsedFoldRanges : [],
     );
     const lineNumberWidth = String(editor.document.lineCount).length + 1;
     const currentLineIndex = editor.cursor.line.value;
@@ -97,6 +97,7 @@ class $EditorPaneRenderer {
     const codeChunks: TextChunk[] = [];
     const gutterHoverLabelsByRow: string[][] = [];
     const foldMarkerFor = (lineIndex: number): string => {
+      if (!context.codeFoldingEnabled) return ' ';
       const foldRange = editor.foldRangeAtLine(lineIndex);
       if (
         foldRange &&
@@ -544,6 +545,8 @@ export interface EditorPaneRenderContext {
   findEngineFor: (documentPath: string) => FindInBuffer.Instance | null;
   /** Draw faint vertical indent guides down the leading whitespace of each line (settings-driven). */
   showIndentGuides: boolean;
+  /** Host editor capability: disabled means no fold discovery or gutter controls enter paint. */
+  codeFoldingEnabled: boolean;
   /** The guide glyph at the current glyph tier — box-drawing bar `│` degrading to ascii `|`. */
   indentGuideGlyph: string;
   /** One-cell fold controls resolved by the active theme vocabulary. */

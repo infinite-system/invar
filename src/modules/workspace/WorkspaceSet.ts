@@ -59,6 +59,9 @@ class $WorkspaceSet {
     }
     const workspace = this.createWorkspace();
     workspace.attachSettings(this.settings);
+    if (this.options.codeFoldingEnabled) {
+      workspace.attachCodeFolding(this.options.codeFoldingEnabled);
+    }
     if (this.options.inlineRewriteEnabled) {
       workspace.attachInlineRewrite(
         this.options.inlineRewriteEnabled,
@@ -175,6 +178,7 @@ export interface WorkspaceSetOptions {
   contributors?: readonly WorkspaceContributor[];
   inlineRewriteEnabled?: Ref<boolean>;
   inlineRewriteEligible?: () => boolean;
+  codeFoldingEnabled?: Ref<boolean>;
 }
 
 export interface WorkspaceTab {

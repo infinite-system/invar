@@ -1,4 +1,5 @@
 import { test, expect, afterEach } from 'bun:test';
+import { ref } from 'vue';
 import { Editor } from './Editor';
 import { UndoStore } from '../storage/UndoStore';
 import { Clock } from '../system/Clock';
@@ -237,6 +238,64 @@ test('collapsed fold projection is cached until document or fold state changes',
   editor.document.setLine(1, '  answer: 43,');
   expect(editor.collapsedFoldRanges).toHaveLength(1);
   expect(editor.foldRangeReads).toBe(2);
+});
+
+test('disabled code folding expands rows and performs zero structural reads', () => {
+  const editor = openWith(
+    ['const value = {', '  nested: {', '    answer: 42,', '  },', '};'].join(
+      '\n',
+    ),
+  );
+  const codeFoldingEnabled = ref(true);
+  editor.attachCodeFolding(codeFoldingEnabled);
+  expect(editor.toggleFoldAtLine(0)).toBe(true);
+  expect(editor.totalVisualRows()).toBe(1);
+
+  codeFoldingEnabled.value = false;
+  const originalLine = editor.document.line.bind(editor.document);
+  let structuralLineReads = 0;
+  editor.document.line = (lineIndex: number): string => {
+    structuralLineReads++;
+    return originalLine(lineIndex);
+  };
+  expect(editor.collapsedFoldRanges).toEqual([]);
+  expect(editor.foldRangeAtLine(0)).toBeNull();
+  expect(editor.toggleFoldAtLine(0)).toBe(false);
+  editor.foldAtCursor();
+  editor.unfoldAtCursor();
+  expect(structuralLineReads).toBe(0);
+  expect(editor.totalVisualRows()).toBe(5);
+
+  codeFoldingEnabled.value = true;
+  expect(editor.collapsedFoldRanges).toHaveLength(1);
+});
+
+test('fold toggles preserve a deep viewport anchor for pointer and keyboard paths', () => {
+  const lines = Array.from(
+    { length: 600 },
+    (_unusedValue, lineIndex) => `const line${lineIndex} = ${lineIndex};`,
+  );
+  lines[510] = 'if (condition) {';
+  lines[511] = '  const nested = 1;';
+  lines[512] = '  const more = 2;';
+  lines[513] = '}';
+  const editor = openWith(lines.join('\n'));
+  editor.viewport.setSize(80, 20);
+
+  editor.viewport.scrollTop.value = 500;
+  expect(editor.toggleFoldAtLine(510)).toBe(true);
+  expect(editor.viewport.scrollTop.value).toBe(500);
+  expect(editor.toggleFoldAtLine(510)).toBe(true);
+  expect(editor.viewport.scrollTop.value).toBe(500);
+
+  editor.placeCursor(510, 0);
+  editor.viewport.scrollTop.value = 500;
+  editor.foldAtCursor();
+  expect(editor.foldState.value.collapsedLineStarts.has(510)).toBe(true);
+  expect(editor.viewport.scrollTop.value).toBe(500);
+  editor.unfoldAtCursor();
+  expect(editor.foldState.value.collapsedLineStarts.has(510)).toBe(false);
+  expect(editor.viewport.scrollTop.value).toBe(500);
 });
 
 test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-dirties)', () => {

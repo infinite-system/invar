@@ -7,6 +7,7 @@ import {
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
+import { ref } from 'vue';
 import { Settings, type SettingsFileSystem } from '../settings/Settings';
 import { WorkspaceSet } from './WorkspaceSet';
 import { GitPlugin } from '../git/GitPlugin';
@@ -41,6 +42,18 @@ function createSettings(): Settings.Instance {
 }
 
 describe('WorkspaceSet project-layer flyweight', () => {
+  test('host code-folding capability attaches to every workspace editor', () => {
+    const codeFoldingEnabled = ref(false);
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      codeFoldingEnabled,
+    });
+    workspaceSet.open(workspaceRoots[0]!);
+    expect(workspaceSet.active.editor.codeFoldingEnabled).toBe(false);
+
+    codeFoldingEnabled.value = true;
+    expect(workspaceSet.active.editor.codeFoldingEnabled).toBe(true);
+  });
+
   test('N open workspaces keep exactly one live GitWatcher', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {

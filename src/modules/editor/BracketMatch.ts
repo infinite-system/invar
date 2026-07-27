@@ -1,7 +1,7 @@
-import { Static } from "ivue/extras";
-import { EditorCoordinates } from "./EditorCoordinates";
-import { Highlighter, type LangId, type Span } from "../syntax/Highlighter";
-import type { TextDocument } from "./TextDocument";
+import { Static } from 'ivue/extras';
+import { EditorCoordinates } from './EditorCoordinates';
+import { Highlighter, type LangId, type Span } from '../syntax/Highlighter';
+import type { TextDocument } from './TextDocument';
 
 // Bracket matching (editor parity): given the cursor position, find the bracket the cursor is ON or
 // immediately AFTER, and its balanced partner. The core `find` is PURE — it takes grapheme cells per
@@ -20,22 +20,37 @@ import type { TextDocument } from "./TextDocument";
 // invariant: A matched bracket pair is balanced within the same family (src/modules/editor/editor.invariants.md)
 // invariant: Bracket matching skips brackets inside strings and comments (src/modules/editor/editor.invariants.md)
 class $BracketMatch {
+  protected static get $snapshotByDocument(): WeakMap<
+    TextDocument.Instance,
+    BracketMatchSnapshot
+  > {
+    const snapshotByDocument = new WeakMap<
+      TextDocument.Instance,
+      BracketMatchSnapshot
+    >();
+    Object.defineProperty(this, '$snapshotByDocument', {
+      configurable: true,
+      value: snapshotByDocument,
+    });
+    return snapshotByDocument;
+  }
+
   protected static get openers(): string {
-    return "([{";
+    return '([{';
   }
 
   protected static get closers(): string {
-    return ")]}";
+    return ')]}';
   }
 
   protected static get partners(): Readonly<Record<string, string>> {
     return {
-      "(": ")",
-      "[": "]",
-      "{": "}",
-      ")": "(",
-      "]": "[",
-      "}": "{",
+      '(': ')',
+      '[': ']',
+      '{': '}',
+      ')': '(',
+      ']': '[',
+      '}': '{',
     };
   }
 
@@ -147,6 +162,16 @@ class $BracketMatch {
     cursorColumn: number,
     language: LangId,
   ): BracketMatchResult | null {
+    const revision = document.revision.value;
+    const cached = this.$snapshotByDocument.get(document);
+    if (
+      cached?.revision === revision &&
+      cached.cursorLine === cursorLine &&
+      cached.cursorColumn === cursorColumn &&
+      cached.language === language
+    ) {
+      return cached.result;
+    }
     const cellsMemo = new Map<number, readonly string[] | null>();
     const spansMemo = new Map<number, Span[]>();
     const cellsAt = (lineIndex: number): readonly string[] | null => {
@@ -160,7 +185,7 @@ class $BracketMatch {
       return cellsMemo.get(lineIndex) ?? null;
     };
     const isCodeBracket = (lineIndex: number, column: number): boolean => {
-      if (language === "plain") return true; // no strings/comments to exclude in plain text
+      if (language === 'plain') return true; // no strings/comments to exclude in plain text
       const text = document.line(lineIndex);
       if (!spansMemo.has(lineIndex)) {
         spansMemo.set(
@@ -173,18 +198,26 @@ class $BracketMatch {
       let accumulated = 0;
       for (const span of spans) {
         if (utf16 >= accumulated && utf16 < accumulated + span.text.length)
-          return span.role === "operator";
+          return span.role === 'operator';
         accumulated += span.text.length;
       }
       return true; // past the last classified span → treat as code
     };
-    return this.find({
+    const result = this.find({
       cursorLine,
       cursorColumn,
       lineCount: document.lineCount,
       cellsAt,
       isCodeBracket,
     });
+    this.$snapshotByDocument.set(document, {
+      revision,
+      cursorLine,
+      cursorColumn,
+      language,
+      result,
+    });
+    return result;
   }
 }
 
@@ -203,6 +236,14 @@ export interface BracketCell {
 export interface BracketMatchResult {
   readonly bracket: BracketCell;
   readonly match: BracketCell;
+}
+
+export interface BracketMatchSnapshot {
+  readonly revision: number;
+  readonly cursorLine: number;
+  readonly cursorColumn: number;
+  readonly language: LangId;
+  readonly result: BracketMatchResult | null;
 }
 
 /** Everything the pure finder needs — injected so tests drive it with plain arrays. */

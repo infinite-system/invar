@@ -20,7 +20,7 @@
 // `HarnessSmoke`'s status helpers changed signature in the historical window, so the status poll
 // below stays local and depends on nothing but the published file. Historical measurements port the
 // one missing completed-frame snapshot method into the disposable reference tree.
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessInput } from './HarnessInput';
@@ -47,6 +47,22 @@ const SURFACES = (process.env.SMOOTHNESS_SURFACES ?? 'editor,diff')
     (surfaceText): surfaceText is ScrollSurface =>
       surfaceText === 'editor' || surfaceText === 'diff',
   );
+const FIXTURE_SHAPES = (process.env.SMOOTHNESS_FIXTURES ?? 'flat')
+  .split(',')
+  .map((fixtureShapeText) => fixtureShapeText.trim())
+  .filter(
+    (fixtureShapeText): fixtureShapeText is FixtureShape =>
+      fixtureShapeText === 'flat' || fixtureShapeText === 'fold-dense',
+  );
+const CODE_FOLDING_MODES = (process.env.SMOOTHNESS_CODE_FOLDING ?? 'on')
+  .split(',')
+  .map((codeFoldingModeText) => codeFoldingModeText.trim())
+  .filter(
+    (codeFoldingModeText): codeFoldingModeText is CodeFoldingMode =>
+      codeFoldingModeText === 'on' || codeFoldingModeText === 'off',
+  );
+const VERSION_CONTROL_MARKS_ENABLED =
+  process.env.SMOOTHNESS_VERSION_CONTROL_MARKS !== 'off';
 // A SATURATING burst: twelve notches is more than the ten a from-rest gain ramp needs to reach the
 // velocity ceiling, so the glide spends most of its life at the top speed the app declares and the
 // per-frame step size is then a direct reading of the frame cadence. Overridable because a shorter
@@ -69,6 +85,8 @@ const EDITOR_WHEEL_ROW = 12;
 const FRAME_ARRIVAL_TIMEOUT_MILLISECONDS = 700;
 
 type ScrollSurface = 'editor' | 'diff';
+type FixtureShape = 'flat' | 'fold-dense';
+type CodeFoldingMode = 'on' | 'off';
 
 interface GestureFrameSample {
   readonly completedFrameCount: number;
@@ -99,6 +117,10 @@ interface GestureMeasurement {
 
 interface SurfaceMeasurement {
   readonly surface: ScrollSurface;
+  readonly fixtureShape: FixtureShape;
+  readonly codeFolding: CodeFoldingMode;
+  readonly indentGuides: true;
+  readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
   readonly gestures: readonly GestureMeasurement[];
 }
@@ -343,25 +365,93 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
   }
 }
 
-function fixtureLines(fixtureLineCount: number): string[] {
-  // Short plain-text rows keep terminal-byte cost below the 30 FPS budget. Every third indentation
-  // transition still produces a fold range, so editor frames exercise document-scale fold metadata.
+function flatFixtureLines(fixtureLineCount: number): string[] {
+  // Keep this axis genuinely flat: a size fixture with no structural fold ranges.
   return Array.from({ length: fixtureLineCount }, (_unusedValue, lineIndex) => {
-    const lineMarker = `line ${String(lineIndex).padStart(6, '0')} content`;
-    return lineIndex % 3 === 1 ? ` ${lineMarker}` : lineMarker;
+    return `line ${String(lineIndex).padStart(6, '0')} content`;
   });
+}
+
+function fixtureLineMarker(lineIndex: number, suffix: string): string {
+  return `line ${String(lineIndex).padStart(6, '0')} content ${suffix}`;
+}
+
+function foldDenseGroup(firstLineIndex: number): string[] {
+  const lines: string[] = [];
+  const pushLine = (lineText: string): void => {
+    lines.push(
+      lineText.replace(
+        '$marker',
+        fixtureLineMarker(firstLineIndex + lines.length, 'dependency'),
+      ),
+    );
+  };
+
+  pushLine('  { "$marker": {');
+  for (let nestingIndex = 0; nestingIndex < 8; nestingIndex++) {
+    const indentation = '  '.repeat(nestingIndex + 2);
+    pushLine(
+      `${indentation}"$marker-${String(nestingIndex).padStart(2, '0')}": {`,
+    );
+  }
+  pushLine(`${'  '.repeat(10)}"$marker-versions": [`);
+  pushLine(`${'  '.repeat(11)}{ "$marker-resolved": {`);
+  pushLine(`${'  '.repeat(12)}"$marker-integrity": "sha512-fixture"`);
+  pushLine(`${'  '.repeat(11)}}, "$marker-optional": true`);
+  pushLine(`${'  '.repeat(10)}}, "$marker-peer"`);
+  pushLine(`${'  '.repeat(9)}], "$marker-dev": false`);
+  for (let nestingIndex = 8; nestingIndex > 0; nestingIndex--) {
+    pushLine(`${'  '.repeat(nestingIndex)}}, "$marker-sibling": true`);
+  }
+  pushLine('  }, "$marker-package": true },');
+  return lines;
+}
+
+function foldDenseFixtureLines(fixtureLineCount: number): string[] {
+  const lines = [`{ "${fixtureLineMarker(0, 'packages')}": [`];
+  const finalLineCount = 1;
+  while (
+    lines.length + foldDenseGroup(lines.length).length + finalLineCount <=
+    fixtureLineCount
+  ) {
+    lines.push(...foldDenseGroup(lines.length));
+  }
+  while (lines.length + finalLineCount < fixtureLineCount) {
+    lines.push(`  "${fixtureLineMarker(lines.length, 'long-key-run')}",`);
+  }
+  lines.push(`  "${fixtureLineMarker(lines.length, 'final-entry')}" ] }`);
+  return lines;
+}
+
+function fixtureLines(
+  fixtureLineCount: number,
+  fixtureShape: FixtureShape,
+): string[] {
+  return fixtureShape === 'fold-dense'
+    ? foldDenseFixtureLines(fixtureLineCount)
+    : flatFixtureLines(fixtureLineCount);
 }
 
 async function buildFixture(
   fixtureRoot: string,
   fixtureLineCount: number,
   surface: ScrollSurface,
+  fixtureShape: FixtureShape,
 ): Promise<string> {
-  const fixtureFileName = `glide-${String(fixtureLineCount).padStart(6, '0')}.txt`;
+  const fixtureExtension = fixtureShape === 'fold-dense' ? 'json' : 'txt';
+  const fixtureName = fixtureShape === 'fold-dense' ? 'dense' : 'flat';
+  const fixtureFileName =
+    `${fixtureName}-${String(fixtureLineCount).padStart(6, '0')}.` +
+    fixtureExtension;
   const fixturePath = join(fixtureRoot, fixtureFileName);
-  const lines = fixtureLines(fixtureLineCount);
+  const lines = fixtureLines(fixtureLineCount, fixtureShape);
   await Bun.write(fixturePath, `${lines.join('\n')}\n`);
-  if (surface === 'editor') return fixtureFileName;
+  if (
+    surface === 'editor' &&
+    (fixtureShape === 'flat' || !VERSION_CONTROL_MARKS_ENABLED)
+  ) {
+    return fixtureFileName;
+  }
 
   runGit(fixtureRoot, ['init', '-q']);
   runGit(fixtureRoot, ['config', 'user.name', 'scroll-smoothness']);
@@ -372,6 +462,25 @@ async function buildFixture(
   ]);
   runGit(fixtureRoot, ['add', fixtureFileName]);
   runGit(fixtureRoot, ['commit', '-qm', 'base']);
+  // The fold-dense editor case deliberately carries version-control gutter marks together with
+  // indentation and fold controls. The edits stay inside JSON string values, preserving the
+  // structural positive control while placing a mark inside the instrument's fast window and
+  // bounding the 100k fixture to 1,000 diff blocks.
+  if (surface === 'editor') {
+    for (
+      let changedLineIndex = 25;
+      changedLineIndex < fixtureLineCount;
+      changedLineIndex += 100
+    ) {
+      lines[changedLineIndex] = (lines[changedLineIndex] ?? '').replace(
+        ' content ',
+        ' content changed-',
+      );
+    }
+    await Bun.write(fixturePath, `${lines.join('\n')}\n`);
+    return fixtureFileName;
+  }
+
   // Regularly separated edits make the diff carry up to 1,000 change blocks at 100k lines. The
   // comparison still opens quickly, while per-frame ruler or active-block scans remain observable.
   for (
@@ -397,6 +506,18 @@ async function openSurface(
     60_000,
   );
   if (surface === 'editor') {
+    driver.sendKeysWithoutFrameExpectation('Control+p');
+    await driver.awaitGridCondition(
+      'quick open to receive the glide fixture name',
+      (snapshot) => snapshot.findText('Go to File') !== null,
+      60_000,
+    );
+    driver.sendText(fixtureFileName);
+    await driver.awaitGridCondition(
+      'quick open to select the exact glide fixture',
+      (snapshot) => snapshot.findText(fixtureFileName) !== null,
+      60_000,
+    );
     driver.sendKeysWithoutFrameExpectation('Enter');
     await driver.awaitGridCondition(
       'the glide fixture renders its first line in the editor',
@@ -491,6 +612,8 @@ async function driveSurfaceToTop(
 async function measureSurface(
   surface: ScrollSurface,
   fixtureLineCount: number,
+  fixtureShape: FixtureShape,
+  codeFolding: CodeFoldingMode,
 ): Promise<SurfaceMeasurement> {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
@@ -501,6 +624,16 @@ async function measureSurface(
     fixtureRoot,
     fixtureLineCount,
     surface,
+    fixtureShape,
+  );
+  const userSettingsDirectory = join(homeDirectory, '.config', 'invar');
+  mkdirSync(userSettingsDirectory, { recursive: true });
+  await Bun.write(
+    join(userSettingsDirectory, 'settings.json'),
+    JSON.stringify({
+      'editor.codeFolding': codeFolding === 'on',
+      showIndentGuides: true,
+    }),
   );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
@@ -511,6 +644,36 @@ async function measureSurface(
   });
   try {
     await openSurface(driver, statusPath, fixtureFileName, surface);
+    if (surface === 'editor') {
+      await awaitStatusCondition(
+        statusPath,
+        `editor.codeFolding to load as ${codeFolding}`,
+        (status) => status.codeFolding === (codeFolding === 'on'),
+        60_000,
+      );
+    }
+    if (
+      surface === 'editor' &&
+      fixtureShape === 'fold-dense' &&
+      VERSION_CONTROL_MARKS_ENABLED
+    ) {
+      await driver.awaitGridCondition(
+        'version-control gutter marks to join folds and indent guides',
+        (snapshot) => {
+          const changedLinePosition = snapshot.findText(
+            'line 000025 content changed-',
+          );
+          return (
+            changedLinePosition !== null &&
+            snapshot
+              .rowText(changedLinePosition.row)
+              .slice(0, changedLinePosition.column)
+              .includes('▎')
+          );
+        },
+        60_000,
+      );
+    }
     const statusField = scrollStatusField(surface);
     driver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
@@ -535,7 +698,18 @@ async function measureSurface(
       await drainToQuiescence(driver);
       gestures.push(await measureOneGesture(driver));
     }
-    return { surface, fixtureLineCount, gestures };
+    return {
+      surface,
+      fixtureShape,
+      codeFolding,
+      indentGuides: true,
+      versionControlMarks:
+        surface === 'editor' &&
+        fixtureShape === 'fold-dense' &&
+        VERSION_CONTROL_MARKS_ENABLED,
+      fixtureLineCount,
+      gestures,
+    };
   } finally {
     await driver.dispose();
     rmSync(fixtureRoot, { recursive: true, force: true });
@@ -549,30 +723,58 @@ if (FIXTURE_LINE_COUNTS.length === 0) {
 if (SURFACES.length === 0) {
   throw new Error('SMOOTHNESS_SURFACES must name editor, diff, or both');
 }
+if (FIXTURE_SHAPES.length === 0) {
+  throw new Error('SMOOTHNESS_FIXTURES must name flat, fold-dense, or both');
+}
+if (CODE_FOLDING_MODES.length === 0) {
+  throw new Error('SMOOTHNESS_CODE_FOLDING must name on, off, or both');
+}
+const foldDensePositiveControl = foldDenseFixtureLines(101);
+const parsedFoldDensePositiveControl = JSON.parse(
+  foldDensePositiveControl.join('\n'),
+) as unknown;
+if (
+  foldDensePositiveControl.length !== 101 ||
+  typeof parsedFoldDensePositiveControl !== 'object' ||
+  parsedFoldDensePositiveControl === null ||
+  Array.isArray(parsedFoldDensePositiveControl)
+) {
+  throw new Error('fold-dense fixture positive control failed');
+}
 
 const surfaceMeasurements: SurfaceMeasurement[] = [];
 for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
-  for (const surface of SURFACES) {
-    const surfaceMeasurement = await measureSurface(surface, fixtureLineCount);
-    surfaceMeasurements.push(surfaceMeasurement);
-    for (const [
-      gestureIndex,
-      measurement,
-    ] of surfaceMeasurement.gestures.entries()) {
-      console.error(
-        `${surface} ${fixtureLineCount} lines gesture ${gestureIndex + 1}: ` +
-          `frames=${measurement.observedFrameCount} ` +
-          `firstFrame=${measurement.inputToFirstFrameMilliseconds.toFixed(3)}ms ` +
-          `moving=${measurement.movingFrameCount} ` +
-          `distance=${measurement.totalDistanceRows} ` +
-          `maxDelta=${measurement.maximumFrameDeltaRows} ` +
-          `meanDelta=${measurement.meanMovingFrameDeltaRows.toFixed(2)} ` +
-          `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
-          `fps=${measurement.framesPerSecond.toFixed(1)} ` +
-          `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
-          `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
-          `maxBytes=${measurement.maximumFrameByteCount}`,
-      );
+  for (const fixtureShape of FIXTURE_SHAPES) {
+    for (const codeFolding of CODE_FOLDING_MODES) {
+      for (const surface of SURFACES) {
+        const surfaceMeasurement = await measureSurface(
+          surface,
+          fixtureLineCount,
+          fixtureShape,
+          codeFolding,
+        );
+        surfaceMeasurements.push(surfaceMeasurement);
+        for (const [
+          gestureIndex,
+          measurement,
+        ] of surfaceMeasurement.gestures.entries()) {
+          console.error(
+            `${surface} ${fixtureShape} folding-${codeFolding} ` +
+              `${fixtureLineCount} lines gesture ${gestureIndex + 1}: ` +
+              `frames=${measurement.observedFrameCount} ` +
+              `firstFrame=${measurement.inputToFirstFrameMilliseconds.toFixed(3)}ms ` +
+              `moving=${measurement.movingFrameCount} ` +
+              `distance=${measurement.totalDistanceRows} ` +
+              `maxDelta=${measurement.maximumFrameDeltaRows} ` +
+              `meanDelta=${measurement.meanMovingFrameDeltaRows.toFixed(2)} ` +
+              `peak=${measurement.peakVelocityRowsPerSecond.toFixed(0)}rows/s ` +
+              `fps=${measurement.framesPerSecond.toFixed(1)} ` +
+              `fastFps=${measurement.sustainedFastFramesPerSecond.toFixed(1)} ` +
+              `bytes/frame=${measurement.meanFrameByteCount.toFixed(0)} ` +
+              `maxBytes=${measurement.maximumFrameByteCount}`,
+          );
+        }
+      }
     }
   }
 }
