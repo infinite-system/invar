@@ -2349,3 +2349,46 @@ the direction that interrupts it. The bias is consistent enough to be structural
 that assume the subject is still alive, because that is the state I am waiting to leave. Prefer
 predicates that name the terminal states the tool actually writes, and enumerate them all — a watch
 that can only observe one outcome is silent on every other.
+
+## 2026-07-27 16:47 UTC — a builder's log contains every document it was told to read
+
+Armed a failure-signature grep on the new builder's codex log:
+
+    grep -iE 'rate.?limit|quota|usage limit|stream error|fatal|panic|401|429|insufficient'
+
+It fired within three minutes. Six matches, all false:
+
+1. my own brief text — the word `handleFatal` matched `fatal`;
+2. a CAUTION line in a doc containing the word "quota";
+3. `fatal: TypeError: Attempted to assign to readonly property.` — **quoted inside
+   `/tmp/statics-READY.md`, the PREVIOUS attempt's blocked report**, which the brief explicitly
+   instructs the builder to read;
+4-6. the IBR framework's own objection-severity vocabulary ("**Fatal** — the objection defeats the
+   claim as stated…").
+
+The first is the `pkill -f` defect again — a predicate matching the subject through its own brief
+text, which cost two builders on 2026-07-26. But the third is worse and is the real lesson:
+
+  **An agent's transcript contains, by construction, every document it was told to read — including
+  prior failure reports quoted verbatim. No content-grep over that log can distinguish THIS run
+  failing from this run READING ABOUT a past failure.**
+
+So the fix is not a tighter pattern. Tightening chases an unbounded set: any error string that has
+ever been written down in this repo can legitimately appear in a healthy builder's log, and the
+better our failure reports get, the more error prose a well-behaved run contains. The clause was
+DELETED, not narrowed.
+
+  **Detect a builder's failure from OBSERVABLES, never from prose:** process exit, commits ahead of
+  base, whether the report artifact exists, log-silence paired with CPU. Those cannot be forged by
+  the builder reading something.
+
+General form, and this is the third distinct instance of it in two days: **a predicate must not be
+able to match its own subject's inputs.** `pkill -f` matched a brief; a monitor matched a brief and
+a quoted report; and earlier a liveness check matched a remembered filename rather than the round
+that writes it. All three read a channel that carries the instructions as well as the results.
+
+Note the failure direction, which for once was the safe one: toward "broken" rather than toward
+"still running". That invites interrupting healthy work — cheaper than stranding it, but still
+waste. It is also the fourth monitor defect of the day, against one real finding, which says the
+monitors themselves now deserve the treatment we give app instruments: a positive control, and an
+explicit answer to "what would have to be true for this to fire, and is that the thing I meant?"
