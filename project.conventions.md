@@ -139,6 +139,16 @@ a mechanical checker should not be able to see.
 - Destructive git verification runs in a SCRATCH repo under /tmp — never this repo's tree.
 - Merge gate = tsc + `bun test` + smoke ALL-PASS + invariants checker `--all --refs` 0 problems +
   `scripts/conventions-gate.sh`.
+- **Guard the CAPABILITY, not the version that usually implies it.** A dependency version is a
+  PROXY for the behaviour code relies on, and a proxy can be satisfied while the behaviour is
+  absent. Assert the behaviour directly: wrap a throwaway canary, exercise the property, require the
+  result. Version-agnostic, so a flexible range or a locally `bun link`ed build still passes — a
+  strict version comparison would lock a developer out of their own editor. Verified: ivue 2.1.0's
+  `Static()` skips getters entirely (`if (typeof descriptor.value != "function") continue`), so a
+  two-read identity probe returns false there and true on 2.2.1, while `package.json` said `^2.2.1`
+  in both cases. State the CONSEQUENCE in the failure, not the symptom — "Static() is not caching
+  $-getters, every cached table would recompute on every read; run bun install", never "version
+  mismatch". Any guard that can refuse to start the app ships with a documented override.
 - MEASURED ≠ ENFORCED: a check that only prints a verdict, or that runs on-demand, is not enforcement.
   Every INVARIANT must (a) BLOCK — assert with a non-zero exit on violation, never print-FAIL-and-
   exit-0 — and (b) ride the ALWAYS-RUN gate above, not a separate on-demand script. Corollary: pick
