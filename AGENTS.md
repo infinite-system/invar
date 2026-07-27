@@ -14,7 +14,9 @@ framework and conventions before writing code.
 **Read this first. It is how you work, not just how you check.**
 
 Your inner loop is **driving the real app in your own PTY** — `scripts/harness/PtyTestDriver.ts`
-+ FrameProbe — and LOOKING at what it does. Seconds per turn. No gate, no suite.
++ FrameProbe — and LOOKING at what it does. Seconds per turn. No gate, no suite. Start with
+[`bun run drive`](scripts/harness/drive.md) for a settled grid, published probes, scale fixtures,
+and repeatable key, wheel, or click input.
 
 1. **REPRODUCE BY DRIVING FIRST.** Write no assertion yet. If you cannot see the problem, you
    cannot fix it — and if you truly cannot see it, say so and report what you tried.
