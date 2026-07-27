@@ -337,8 +337,8 @@ class $TerminalObserverTest {
 }
 
 export namespace TerminalObserverTest {
-  export const $Class = $TerminalObserverTest;
-  export let Class = Static($Class);
+  export const $Class = Static($TerminalObserverTest);
+  export let Class = $Class;
 }
 
 interface RedactionCase {

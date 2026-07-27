@@ -137,6 +137,6 @@ class $HarnessSmoke {
 }
 
 export namespace HarnessSmoke {
-  export const $Class = $HarnessSmoke;
-  export let Class = Static($Class);
+  export const $Class = Static($HarnessSmoke);
+  export let Class = $Class;
 }

@@ -63,8 +63,8 @@ class $QuietLock {
 }
 
 export namespace QuietLock {
-  export const $Class = $QuietLock;
-  export let Class = Static($Class);
+  export const $Class = Static($QuietLock);
+  export let Class = $Class;
 }
 
 export type QuietLockDegradation =

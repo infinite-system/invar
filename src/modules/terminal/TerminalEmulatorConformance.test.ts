@@ -1246,8 +1246,8 @@ class $TerminalEmulatorConformance {
 }
 
 export namespace TerminalEmulatorConformance {
-  export const $Class = $TerminalEmulatorConformance;
-  export let Class = Static($Class);
+  export const $Class = Static($TerminalEmulatorConformance);
+  export let Class = $Class;
 }
 
 type TerminalAttributeExpectations = Partial<

@@ -86,6 +86,22 @@ if [ -n "$frozen_class_slot" ]; then
   fail=1
 fi
 
+# 1.95) THE WRAPPER LIVES AT THE ANCHOR: `Static()` returns a NEW SUBCLASS, so
+#       `$Class = $Raw; Class = Static($Class)` leaves the ANCHOR unwrapped — and
+#       `extends X.$Class` then inherits a class whose `$`-getters never cache.
+#       That is the recomputation-on-every-read defect that made the app unusable
+#       twice on 2026-07-27. Required shape: `$Class = Static($Raw); Class = $Class`.
+#       NOT applicable to `Reactive()`, which mutates IN PLACE — there the raw class
+#       IS the reactive class, so `Class = Reactive($Class)` is correct.
+wrapper_off_anchor=$(grep -rnE '^\s*export (const|let) Class = Static\(' src scripts --include='*.ts' || true)
+if [ -n "$wrapper_off_anchor" ]; then
+  echo "CONVENTIONS FAIL: Static() wraps at the Class slot, leaving \$Class unwrapped."
+  echo "Static() returns a NEW subclass, so \`extends X.\$Class\` would get uncached"
+  echo "\$-getters. Use: export const \$Class = Static(\$Raw); export let Class = \$Class;"
+  echo "$wrapper_off_anchor"
+  fail=1
+fi
+
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding

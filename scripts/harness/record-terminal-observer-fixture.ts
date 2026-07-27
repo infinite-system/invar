@@ -88,8 +88,8 @@ class $TerminalObserverFixtureRecorder {
 }
 
 export namespace TerminalObserverFixtureRecorder {
-  export const $Class = $TerminalObserverFixtureRecorder;
-  export let Class = Static($Class);
+  export const $Class = Static($TerminalObserverFixtureRecorder);
+  export let Class = $Class;
 }
 
 await TerminalObserverFixtureRecorder.Class.record();

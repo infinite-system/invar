@@ -57,6 +57,6 @@ class $InputByteFlushVerdict {
 }
 
 export namespace InputByteFlushVerdict {
-  export const $Class = $InputByteFlushVerdict;
-  export let Class = Static($Class);
+  export const $Class = Static($InputByteFlushVerdict);
+  export let Class = $Class;
 }

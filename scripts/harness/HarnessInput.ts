@@ -32,8 +32,8 @@ class $HarnessInput {
 }
 
 export namespace HarnessInput {
-  export const $Class = $HarnessInput;
-  export let Class = Static($Class);
+  export const $Class = Static($HarnessInput);
+  export let Class = $Class;
 }
 
 const namedKeySequences: Readonly<Record<string, string>> = {

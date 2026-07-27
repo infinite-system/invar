@@ -219,8 +219,8 @@ class $TerminalEmulatorFixtureRecorder {
 }
 
 export namespace TerminalEmulatorFixtureRecorder {
-  export const $Class = $TerminalEmulatorFixtureRecorder;
-  export let Class = Static($Class);
+  export const $Class = Static($TerminalEmulatorFixtureRecorder);
+  export let Class = $Class;
 }
 
 interface RecordedColorExpectation {

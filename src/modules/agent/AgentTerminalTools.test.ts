@@ -129,6 +129,6 @@ class $AgentTerminalToolsTest {
 }
 
 export namespace AgentTerminalToolsTest {
-  export const $Class = $AgentTerminalToolsTest;
-  export let Class = Static($Class);
+  export const $Class = Static($AgentTerminalToolsTest);
+  export let Class = $Class;
 }

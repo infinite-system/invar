@@ -45,6 +45,6 @@ class $BracketedPasteInput {
 }
 
 export namespace BracketedPasteInput {
-  export const $Class = $BracketedPasteInput;
-  export let Class = Static($Class);
+  export const $Class = Static($BracketedPasteInput);
+  export let Class = $Class;
 }

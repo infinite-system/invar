@@ -466,8 +466,8 @@ class $Drive {
 }
 
 export namespace Drive {
-  export const $Class = $Drive;
-  export let Class = Static($Class);
+  export const $Class = Static($Drive);
+  export let Class = $Class;
 }
 
 interface DriveOptions {
