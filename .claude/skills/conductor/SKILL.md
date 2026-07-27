@@ -211,6 +211,41 @@ actions). `fable` = a subagent on the `claude-fable-5` model (the ivue-rooter mo
 tool). So a blocked fork reports UP to the conductor, and the conductor brings in codex/fable.
 This delegate-when-blocked rule is wired into the hourly orchestration loop.
 
+## A GREEN GATE IS NOT A CLAIM ABOUT WHAT THE USER FEELS (2026-07-27, cost the user a usable app)
+
+The statics anchor migration passed a FULL gate ALL-PASS — 69 OK steps, `RETRY TALLY: clean
+green`, `idle-quiescence violations=0` — **twice**, and made the app unusable within minutes of
+the user opening it. Two idle instances burned 52% and 65% CPU while a pre-migration instance sat
+at 0.8%. Reverted; the user confirmed the revert fixed it.
+
+  **The gate proves the properties it encodes, and nothing else.** It never claimed the app stays
+  responsive under the user's real conditions — their workspace, LSP, git watcher, open files —
+  because no contract measures that. A clean green is evidence about the contract set, not about
+  the product.
+
+Operating rules that follow:
+
+- **Optional cleanup carries all the risk and none of the reward.** This migration was explicitly
+  "mechanism cleanup, not a fix for a live defect" — nothing was silently recomputing. A change
+  that buys nothing must clear a HIGHER bar than a fix, not the same one, because a fix at least
+  pays for its risk. When a 144-file refactor's stated benefit is "one mechanism instead of two",
+  the correct question is not "is it green" but "what would it cost us to be wrong".
+- **On a live user outage, REVERT optional work before diagnosing it.** Reverting took four
+  minutes and restored a tree that had run all day; diagnosing took an hour and produced three
+  refuted hypotheses. Prove equivalence by `git diff` against the last known-good tree — do not
+  infer it — then diagnose on a branch. Park the reverted merges under `reverted/<name>` tags so
+  nothing is lost.
+- **Re-landing needs the missing contract FIRST, red-then-green.** Do not re-land a change the
+  gate could not see until a contract exists that WOULD have caught it. Otherwise the second
+  landing is the first landing with more confidence and no more information.
+- **CPU that RISES with uptime is accumulation, not per-operation cost.** 52% at 45 s and 65% at
+  4:57 is the signature of undisposed effects/listeners, not of a slower instruction. A fixed cost
+  does not grow. Read the trend before theorising about the mechanism.
+- **Headless is not a reproduction of a PTY app.** Booting with `> log 2>&1 < /dev/null` and
+  measuring 1–2% CPU proves nothing: the render loop may never run. Reproduce with a real PTY
+  (`PtyTestDriver` / the harness / `bun run drive`) or you have built an instrument that cannot
+  fail — the exact defect class this file warns about, committed while diagnosing it.
+
 ## Merge safety (each of these cost real time when missed)
 - **Commit before gating.** A green gate on an uncommitted/staged tree is NOT durable —
   `git worktree remove --force` discards it (this lost a whole task's work once). The commit is

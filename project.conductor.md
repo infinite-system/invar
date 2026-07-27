@@ -2398,3 +2398,51 @@ Two structural notes:
   style, and an AST query is strictly correct where grep is not — grep matches `#` inside comments
   and strings. Before specifying a new checker, grep for an existing one that already parses the
   thing.
+
+## 2026-07-27 18:15 UTC — the gate went green twice on a change that made the app unusable
+
+The statics anchor migration (#125, 144 source files) passed a full merge gate ALL-PASS — 69 OK
+steps, clean green, `idle-quiescence violations=0` — and again on the follow-up (#130). Within two
+hours the user reported "everything is laggy", then "the app is unusable, i had to close". Two of
+their idle instances were burning 52% and 65% CPU; a two-day-old instance on pre-migration code sat
+at 0.8%. Reverted to `063e3ab`, `src/` proved byte-identical to the last known-good tree, user
+confirmed it was fixed.
+
+The doctrine is in the skill now. What belongs here is the diagnostic record, because three of my
+hypotheses died and the manner of their death is the useful part.
+
+**Refuted 1 — two-receiver cache miss.** The discovery test read every `$`-getter through `$Class`;
+the app reads through `Class`. Per-receiver caching made that look decisive. It is not:
+`Reactive()` is in-place, `Class === $Class` is `true`, the cache hits, zero recomputes, a million
+reads in 2.3 ms. Note what actually happened here — I had FOUND the two-receiver fact hours earlier,
+checked it against test doubles, and written "zero current exposure". That conclusion was correct,
+but not because of the check I ran: I never looked at the production read path at all. **A
+conclusion that is right for a reason you did not verify is not knowledge, it is luck with a
+citation.**
+
+**Refuted 2 — read cost as the cause.** Real and worth keeping: `Static()`'s guarded getter is
+**3.8× slower** than the old self-replacing property, 2.56 ns vs 0.67 ns over 20M reads each. But
+50% CPU needs ~200 million reads/second. The mechanism was true and the magnitude was absurd, which
+is the most seductive kind of wrong answer — every detail checks out except whether it can produce
+the symptom. **Before briefing a mechanism, multiply it out against the observed magnitude.**
+
+**Refuted 3 — construction cost.** 6.0 → 12.3 ns across 45 constructed classes at 59 non-loop
+sites. Orders of magnitude short.
+
+**And one invalid test of my own.** I booted the migration's code headless and measured 1–2% CPU,
+falling, and briefly took that as a refutation. It refutes nothing: no PTY, so the render loop may
+never have run. I built an instrument that could only report green while writing doctrine about
+instruments that can only report green. The reproduction requirement went into the brief as the
+named negative example.
+
+The clue I under-weighted for several minutes, and the one that mattered: **the CPU rose with
+uptime.** 52% at 45 s, 65% at 4:57. A fixed per-operation cost does not grow. That single reading
+eliminates every per-op hypothesis above without any probing, and points at undisposed
+effects/listeners — plausible because `Static()` inserts a new subclass generation into 143 classes
+and `$stopEffects` resolves per-receiver. Handed to a builder (#150) with a real-PTY reproduction
+required before diagnosis and a bisect across the three separable groups, because by then I had
+killed three structural reads by measurement and that is the signal to stop reasoning.
+
+One more, quieter: the user's own long-running instance was the control group. A two-day-old process
+on old code, sitting at 0.8% next to two new ones at 50%+, is a natural experiment nobody designed.
+**When a user reports a regression, ask what else is still running.**
