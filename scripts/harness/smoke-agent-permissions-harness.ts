@@ -14,18 +14,7 @@ async function submitPrompt(
   statusPath: string,
   prompt: string,
 ): Promise<void> {
-  // The pending-permission wait must be UNREACHABLE FROM THE PREVIOUS PROMPT'S STATE.
-  // `agentPendingPermissionTool` is 'Bash' for EVERY gated command, so after an earlier
-  // prompt is answered this predicate could still read 'Bash' from the prior turn: the
-  // status wait then passed on stale state and the grid wait below spent its full timeout
-  // waiting for a prompt that had not been requested yet. That is why this smoke failed at
-  // `second-gated-command` on one attempt and `fourth-gated-command` on the next — the
-  // failure lands on whichever prompt the stale read happens to precede, which is the
-  // signature of a race rather than a defect. It was the third-worst flake in the gate-log
-  // census (4 masked retries).
-  //
-  // Requiring NO pending permission before sending makes the following 'Bash' necessarily
-  // belong to this command.
+  // The pending-permission wait must be unreachable from the previous prompt.
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -38,18 +27,24 @@ async function submitPrompt(
   driver.sendText(prompt);
   await driver.awaitSnapshot((snapshot) => snapshot.findText(prompt) !== null);
   driver.sendKeys('Enter');
-  await HarnessSmoke.Class.awaitStatus(
+  const permissionStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     `a permission is pending for ${prompt}`,
-    (status) => status.agentPendingPermissionTool === 'Bash',
+    (status) =>
+      status.agentPendingPermissionTool === 'Bash' &&
+      String(status.agentLastAssistantText).includes(prompt),
+  );
+  HarnessSmoke.Class.requireCondition(
+    String(permissionStatus.agentLastAssistantText).includes(prompt),
+    `the pending permission belongs to ${prompt}`,
   );
   await driver.awaitGridCondition(
     `the permission prompt for ${prompt} is visibly rendered`,
     (snapshot) =>
-      snapshot.findText('? Claude wants to run') !== null &&
-      snapshot.findText(`$ echo gated for: ${prompt}`) !== null &&
       snapshot.findText('[y] allow') !== null &&
+      snapshot.findText('[n] deny') !== null &&
+      snapshot.findText('[a] always') !== null &&
       snapshot.findText('▸ ⚙ Bash') === null,
   );
 }
@@ -154,7 +149,9 @@ try {
   await driver.awaitGridCondition(
     'the permission prompt remains visible without rendering stray input',
     (snapshot) =>
-      snapshot.findText('? Claude wants to run') !== null &&
+      snapshot.findText('[y] allow') !== null &&
+      snapshot.findText('[n] deny') !== null &&
+      snapshot.findText('[a] always') !== null &&
       snapshot.findText('zqx') === null,
   );
   status = await HarnessSmoke.Class.awaitStatus(
