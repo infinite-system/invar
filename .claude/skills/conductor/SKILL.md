@@ -267,7 +267,9 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
 
 ## Liveness & visibility
 - **Verify, don't assume.** Key on fork-specific evidence only: worktree writes in the last
-  cycle, gate-log transitions, new branch/main commits, builder tmux sessions. NEVER treat the
+  cycle, gate-log transitions, new branch/main commits, and the builder's own PTY processes
+  resolved by `/proc/<pid>/cwd` (never by argv pattern — a brief's TEXT matches its own tool
+  names). NEVER treat the
   user's own interactive instances as fork liveness, and never kill them.
 - **Commits are the #1 progress signal — and a `find … -not -path '*/.git/*'` MISSES them.** A
   worktree-writes scan that excludes `.git/` makes a just-committed agent look idle. Always include
@@ -309,7 +311,8 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   gate launches while builders churn, exactly as before the harness. "The suite is deterministic"
   is not an exemption — determinism holds for what happens, not for when.
   DETERMINISTIC-INSTRUMENT REDS ARE DEFECTS (2026-07-24): the clearance/rerun protocol exists ONLY
-  for timing-sensitive instruments (tmux smokes). A PTY-harness smoke red is never "cleared" by
+  for timing-sensitive instruments (the legacy tmux audit tier, and any wall-clock measurement).
+  A PTY-harness smoke red is never "cleared" by
   rerunning — determinism is its contract, so an in-gate red after solo greens is evidence of an
   environment/ordering defect in the port or driver (first instance: goto-definition's
   frame-ordinal wait — coalescing made frame counts unstable; fixed at the shared seam, rule now
@@ -355,7 +358,7 @@ build state or the fleet. A clone needs all three. Read in this order:
 - EPHEMERAL (dies with the session — must be RE-ESTABLISHED, never assumed alive): background
   agents (the fork + workers — their agent-IDs are gone; you cannot reattach, only respawn an
   equivalent for genuinely unfinished work), crons (loop-check + hourly — recreate via CronCreate),
-  tmux harness sessions, and the session-local scratchpad HANDOFF.
+  harness PTY sessions and their temp roots, and the session-local scratchpad HANDOFF.
 
 On resume: read the anchor for what was in flight → verify each in-flight branch/worktree by git →
 respawn missing crons → respawn a worker ONLY for unfinished work (never duplicate a live one) →
@@ -364,8 +367,14 @@ truth. The scratchpad HANDOFF is a convenience mirror; the committed `project.ha
 one a clone will actually find.
 
 ## Verify by driving
-Verify EVERYTHING by driving the real user path (tmux harness + frame probe), never internal
-values. Reproduce before diagnosing. Ratchet a verified behavior into a gated smoke so it can't
+Verify EVERYTHING by driving the real user path — the **PTY harness** (`PtyTestDriver` +
+frame probe) — never internal values. **The PTY harness is THE driving mechanism**; see Rule Zero,
+this is also the builder's inner loop, not only the gate's instrument.
+
+> **tmux is LEGACY and demoted.** ~44 `*_full_tmux_smoke` registrations survive as an opt-in audit
+> tier that the gate SKIPS unless `INVAR_FULL_TMUX=1` (weekly/audit runs). Per #105 an unrun smoke
+> is not coverage — it is a file that LOOKS like a contract. Never write a new tmux smoke; port or
+> extend a PTY-harness one. Reproduce before diagnosing. Ratchet a verified behavior into a gated smoke so it can't
 silently regress.
 
 **Smoke-coverage ratchet (on every ALL-PASS gate).** A green gate only proves what the smokes
@@ -379,7 +388,7 @@ LOAD-BEARING, user-facing behavior that no smoke drives?* If so, ratchet it in. 
   maps invariants↔smokes (by annotation) and flags the un-driven ones makes this objective, the way
   `check_invariants --refs` did for annotations. Build it when there's slack.
 - **Guard against smoke bloat (the gate is a ~7min time budget).** Grow coverage in ASSERTIONS folded
-  into existing smokes over new slow tmux-launch scripts; add a NEW smoke only for a genuinely new
+  into existing PTY-harness smokes rather than new scripts; add a NEW smoke only for a genuinely new
   surface. Only load-bearing, user-relied-on behaviors earn a smoke — not every internal detail. An
   unrunnably-slow gate destroys the doubt-elimination it exists to provide.
 
@@ -446,7 +455,7 @@ Two rules that belong with the instruments themselves:
   of machine load by construction; widening the tolerance to absorb that hides the signal. Convert
   to a load-independent quantity first (per unit time, not per frame), then set the tolerance.
 
-**Harness blind spot.** The tmux/SGR harness proves LOGIC but cannot exercise terminal-SPECIFIC paths —
+**Harness blind spot.** The PTY/SGR harness proves LOGIC but cannot exercise terminal-SPECIFIC paths —
 a terminal's mouse protocol (SGR-1006 vs X10, the 223-col clamp), glyph tier, or escape-sequence support.
 A real user "break" that won't reproduce in-harness is often such a path (the macOS Terminal.app mouse
 case). Do NOT fabricate a code fix for a bug that doesn't reproduce (it ships a no-op) — diagnose the

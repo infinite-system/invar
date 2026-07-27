@@ -31,6 +31,14 @@ drifted away from it without noticing (user correction, 2026-07-27).**
   per-frame fingerprints as SHAPES, not thresholds. `3,3,3,3` glides; `5,1,5,1` stumbles at the
   same mean.
 
+**DRIVING MEANS THE PTY HARNESS** (`scripts/harness/PtyTestDriver.ts` + frame probe). **tmux is
+LEGACY and demoted**: ~44 `*_full_tmux_smoke` registrations remain as an opt-in audit tier the gate
+SKIPS unless `INVAR_FULL_TMUX=1`, and per #105 an unrun smoke is not coverage — it is a file that
+LOOKS like a contract. Never write a new tmux smoke; extend a PTY-harness one.
+**Entries BELOW this banner are an append-only changelog and many predate the port** — where a
+dated entry says "tmux harness" as the driving mechanism, read "PTY harness". The history is kept
+verbatim because rewriting a changelog destroys the evidence; this note is the correction.
+
 ## Part 1 — What the skills got right (validated in the wild)
 
 - **IBR reduction was the highest-value early artifact.** Collapsing the brief's 37
@@ -1577,7 +1585,8 @@ regardless of what it returned this time.
   can't read off the frame; the visible round-trip is the proof.
 
 - **modifyOtherKeys is the reliable way to send modified chords in smokes.** `Ctrl+Shift+A` =
-  `printf '\033[27;6;97~'` via `tmux send-keys -l`. The `;6` = Ctrl+Shift, the final number = the
+  `printf '\033[27;6;97~'` — sent via the PTY driver's key/text write (historically
+  `tmux send-keys -l`). The `;6` = Ctrl+Shift, the final number = the
   base-key codepoint (97 = 'a'). Precedent: `smoke-navigation-history.sh` (Alt+[ = `\033[27;3;91~`).
 
 ## Building new modules
