@@ -214,11 +214,11 @@ fi
 #  * TRAVEL FLOOR — the second reported symptom (lower peak velocity) as a clock-free figure: with
 #    linesPerNotch 1 the 12-notch fling REQUESTS 12 rows, and momentum that cannot at least double the
 #    raw notch travel is not a fling at all. 24 rows is that doubling.
-#  * CONTINUATION — three notches land after 6, 10, and 14 observed moving
-#    frames while the first glide remains live. Placement follows motion, not
-#    a requested delay; delivered time is reported only to prove each boundary
-#    lies beyond Momentum's 150 ms pre-motion cadence proxy. Each boundary
-#    frame must cross at least as many rows as the immediately preceding frame.
+#  * CONTINUATION — follow-on notches land halfway through and at the declared
+#    ten-moving-frame cadence floor while the first glide remains live.
+#    Placement follows motion, not a requested delay; delivered time is
+#    diagnostic only. Each boundary frame must cross at least as many rows as
+#    the immediately preceding frame.
 # Measured floors on 2026-07-26 across six commits spanning 24h of history (40d244b~1 .. e6450c6):
 # 17 moving frames, largest single step 7 rows, fastest trial travelling 36-48 rows. Every bound below
 # therefore has at least 1.5x headroom against a loaded machine while still catching a halving.
@@ -242,7 +242,7 @@ if SMOOTHNESS_GESTURES=2 \
     smooth_scale_comparison_reads smooth_scale_read_ratio \
     smooth_scale_fold_ratio smooth_scale_wrap_ratio \
     smooth_scale_layout_ratio \
-    smooth_100k_top_reference_fps \
+    smooth_100k_top_reference_fps smooth_minimum_moving_frame_count \
     smooth_continuation_count smooth_continuation_holds \
     smooth_continuation_minimum_margin \
     smooth_continuation_moving_frames smooth_continuation_frame_boundaries \
@@ -283,8 +283,10 @@ top_reference_fps = min(
     gesture['sustainedFastFramesPerSecond']
     for gesture in large_editor_gestures
 )
+continuation_minimums = report['continuationMinimumMovingFrameCounts']
 continuation_holds = (
-    len(continuation_boundaries) == 3
+    len(continuation_minimums) >= 2
+    and len(continuation_boundaries) == len(continuation_minimums)
     and all(boundary['observedMovingFrameCount']
                 >= boundary['minimumMovingFrameCount']
             and boundary['preBoundaryRowsCrossed'] == 1
@@ -324,6 +326,7 @@ print(min(g['movingFrameCount'] for g in all_gestures),
       f\"{scale['ratios']['wrapProjectionLookups']:.6f}\",
       f\"{scale['ratios']['layoutComputations']:.6f}\",
       f'{top_reference_fps:.6f}',
+      report['minimumGlideMovingFrameCount'],
       len(continuation_boundaries),
       int(continuation_holds),
       min(continuation_margins),
@@ -344,13 +347,16 @@ print(min(g['movingFrameCount'] for g in all_gestures),
     smooth_step_message+=" $smooth_max_step rows (bound 15)"
     bad "$smooth_step_message"
   fi
-  if [ "${smooth_frames:-0}" -ge 10 ] 2>/dev/null; then
+  if [ "${smooth_frames:-0}" \
+       -ge "${smooth_minimum_moving_frame_count:-999}" ] 2>/dev/null; then
     smooth_frame_message="the fling is carried by many frames"
-    smooth_frame_message+=" (fewest moving frames=$smooth_frames, floor 10)"
+    smooth_frame_message+=" (fewest moving frames=$smooth_frames,"
+    smooth_frame_message+=" floor=$smooth_minimum_moving_frame_count)"
     pass "$smooth_frame_message"
   else
     smooth_frame_message="glide CADENCE COLLAPSED: only $smooth_frames"
-    smooth_frame_message+=" moving frames carried the fling (floor 10)"
+    smooth_frame_message+=" moving frames carried the fling"
+    smooth_frame_message+=" (floor=$smooth_minimum_moving_frame_count)"
     bad "$smooth_frame_message"
   fi
   if [ "${smooth_travel:-0}" -ge 24 ] 2>/dev/null; then

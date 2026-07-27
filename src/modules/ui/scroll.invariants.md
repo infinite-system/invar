@@ -154,9 +154,9 @@ outlast the cadence window and receive a from-rest-sized follow-on impulse.
 `src/modules/system/Momentum.test.ts` (`a live glide continues gain outside
 the input cadence window`); commits `87d25d0` and `25cdf18`;
 `scripts/harness/measure-scroll-smoothness.ts` places follow-on input after
-observing live one-row motion beyond 6, 10, and 14 moving frames. The blocking
-predicate uses that moving-frame order and one-row phase; delivered
-milliseconds remain diagnostic only.
+observing live one-row motion halfway through and at the ten-moving-frame
+cadence floor. The blocking predicate uses that moving-frame order and one-row
+phase; delivered milliseconds remain diagnostic only.
 
 **Impossible if true:** A from-rest-sized impulse delivered while the surface
 is still moving; a live same-direction glide resetting because a timer
@@ -227,10 +227,10 @@ selectable value still lets one accepted wheel notch produce visible motion.
 **Mechanism:** `addImpulse` floors a from-rest notch at the velocity required
 to integrate one row before either decay or the configured tail can halt it,
 including the distance removed by cap easing. `stepMomentum` integrates a
-linear velocity ramp over the final 150 milliseconds, limits frame time to
-the remaining tail, and reaches zero when elapsed time reaches the setting.
-`SettingsPanel` supplies the bounded numeric selector, and every momentum
-owner reads the live setting into its options.
+linear velocity ramp across the 900 millisecond default tail, limits frame
+time to the remaining tail, and reaches zero when elapsed time reaches the
+setting. `SettingsPanel` supplies the bounded numeric selector, and every
+momentum owner reads the live setting into its options.
 
 **Generates:** A finite tail after dense input; one discoverable control shared
 by every scroll surface; a continuous stop when the duration boundary wins; a
@@ -280,12 +280,13 @@ window, then subtracts only the sub-row residual the integrator may discard:
 glideCapEasingDurationMilliseconds / 2) / 1000 - 1)`.
 The scale-travel comparison permits one maximum animation integration step:
 `ceil(verticalFlingCeiling * maximumAnimationDeltaTimeSeconds)`. Continuation
-input is placed by observed moving-frame count and row crossing. Accumulation
-requires strictly increasing completed-frame boundaries across its three
-flicks, render progress uses completed-frame counts per input window, and
-real-rate coalescing uses window, event, impulse, projection, and row counts.
-Their delivered delays, pauses, input durations, and frame gaps are diagnostic
-only and never control a blocking verdict.
+input is placed at half of and at the declared ten-moving-frame cadence floor,
+then waits for a one-row crossing. Accumulation requires strictly increasing
+completed-frame boundaries across its three flicks, render progress uses
+completed-frame counts per input window, and real-rate coalescing uses window,
+event, impulse, projection, and row counts. Their delivered delays, pauses,
+input durations, and frame gaps are diagnostic only and never control a
+blocking verdict.
 
 **Generates:** Phase-independent live contracts; expected values that survive
 host load, frame coalescing, and refactoring while the mechanism remains the

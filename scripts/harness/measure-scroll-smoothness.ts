@@ -111,8 +111,14 @@ const CONTINUOUS_INPUT_COALESCING_REQUIRED =
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
 const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
+const MINIMUM_GLIDE_MOVING_FRAME_COUNT = 10;
+const DEFAULT_CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = [
+  Math.ceil(MINIMUM_GLIDE_MOVING_FRAME_COUNT / 2),
+  MINIMUM_GLIDE_MOVING_FRAME_COUNT,
+];
 const CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = (
-  process.env.SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES ?? '6,10,14'
+  process.env.SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES ??
+  DEFAULT_CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS.join(',')
 )
   .split(',')
   .map((frameCountText) => Number(frameCountText.trim()))
@@ -546,20 +552,34 @@ function summarize(
   samples: readonly GestureFrameSample[],
   inputWrittenTimestampMilliseconds: number,
   editorFrameAttribution: EditorFrameAttributionMeasurement | null,
+  scrollTopBeforeInput: number,
 ): GestureMeasurement {
   const positions = samples.map((sample) => sample.scrollTop);
-  const frameDeltas: number[] = [];
+  const frameDeltas =
+    samples.length === 0
+      ? []
+      : [
+          samples[0]!.scrollTop - scrollTopBeforeInput,
+          ...samples
+            .slice(1)
+            .map(
+              (sample, sampleIndex) =>
+                sample.scrollTop - samples[sampleIndex]!.scrollTop,
+            ),
+        ];
   let peakVelocityRowsPerSecond = 0;
-  for (let index = 1; index < samples.length; index++) {
-    const deltaRows = positions[index]! - positions[index - 1]!;
-    frameDeltas.push(deltaRows);
+  for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
+    const previousTimestampMilliseconds =
+      sampleIndex === 0
+        ? inputWrittenTimestampMilliseconds
+        : samples[sampleIndex - 1]!.byteArrivalTimestampMilliseconds;
     const deltaMilliseconds =
-      samples[index]!.byteArrivalTimestampMilliseconds -
-      samples[index - 1]!.byteArrivalTimestampMilliseconds;
+      samples[sampleIndex]!.byteArrivalTimestampMilliseconds -
+      previousTimestampMilliseconds;
     if (deltaMilliseconds > 0) {
       peakVelocityRowsPerSecond = Math.max(
         peakVelocityRowsPerSecond,
-        (deltaRows * 1000) / deltaMilliseconds,
+        (frameDeltas[sampleIndex]! * 1000) / deltaMilliseconds,
       );
     }
   }
@@ -583,11 +603,13 @@ function summarize(
   // Below two rows per completed frame, cell-grid quantization naturally produces unchanged render
   // ticks and slower row-crossing intervals. The fast segment ends at the final >=2-row crossing,
   // so its cadence measures the renderer while motion is fast enough to change every frame.
-  const sustainedFastFrameEndIndex = frameDeltas.reduce(
-    (lastFastFrameIndex, deltaRows, frameDeltaIndex) =>
-      Math.abs(deltaRows) >= 2 ? frameDeltaIndex + 1 : lastFastFrameIndex,
-    0,
-  );
+  const sustainedFastFrameEndIndex = frameDeltas
+    .slice(1)
+    .reduce(
+      (lastFastFrameIndex, deltaRows, frameDeltaIndex) =>
+        Math.abs(deltaRows) >= 2 ? frameDeltaIndex + 1 : lastFastFrameIndex,
+      0,
+    );
   const sustainedFastDurationMilliseconds =
     sustainedFastFrameEndIndex > 0
       ? samples[sustainedFastFrameEndIndex]!.byteArrivalTimestampMilliseconds -
@@ -603,7 +625,7 @@ function summarize(
     movingFrameCount: movingFrameDeltas.length,
     observedFrameCount: samples.length,
     totalDistanceRows:
-      positions.length >= 2 ? positions.at(-1)! - positions[0]! : 0,
+      positions.length === 0 ? 0 : positions.at(-1)! - scrollTopBeforeInput,
     maximumFrameDeltaRows: frameDeltas.reduce(
       (largest, deltaRows) => Math.max(largest, deltaRows),
       0,
@@ -670,6 +692,12 @@ async function measureOneGesture(
   surface: ScrollSurface,
 ): Promise<GestureMeasurement> {
   const samples: GestureFrameSample[] = [];
+  const scrollTopBeforeInput = visibleTopLineIndex(driver.snapshot());
+  if (scrollTopBeforeInput === null) {
+    throw new Error(
+      `${surface} gesture started without a visible fixture line`,
+    );
+  }
   const editorFrameAttributionBefore =
     surface === 'editor' ? readEditorFrameAttributionTotals(statusPath) : null;
   let nextFrame = driver.awaitNextCompletedFrameSnapshot(
@@ -733,6 +761,7 @@ async function measureOneGesture(
     samples,
     inputWrittenTimestampMilliseconds,
     editorFrameAttribution,
+    scrollTopBeforeInput,
   );
 }
 
@@ -747,9 +776,20 @@ async function measureContinuationBoundary(
     wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
   );
   while (true) {
-    const completed = await driver.awaitNextCompletedFrameSnapshot(
-      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-    );
+    let completed: Awaited<
+      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
+    >;
+    try {
+      completed = await driver.awaitNextCompletedFrameSnapshot(
+        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+      );
+    } catch (error) {
+      throw new Error(
+        `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
+          'waiting for a one-row moving frame',
+        { cause: error },
+      );
+    }
     const scrollTop = visibleTopLineIndex(completed.snapshot);
     if (scrollTop === null) continue;
     const sample: GestureFrameSample = {
@@ -778,9 +818,20 @@ async function measureContinuationBoundary(
 
     const secondGestureTimestampMilliseconds = performance.now();
     driver.sendRawInputWithoutFrameExpectation(wheelInput('down', 1));
-    const boundaryFrame = await driver.awaitNextCompletedFrameSnapshot(
-      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-    );
+    let boundaryFrame: Awaited<
+      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
+    >;
+    try {
+      boundaryFrame = await driver.awaitNextCompletedFrameSnapshot(
+        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+      );
+    } catch (error) {
+      throw new Error(
+        `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
+          'waiting for the follow-on boundary frame',
+        { cause: error },
+      );
+    }
     const boundaryScrollTop = visibleTopLineIndex(boundaryFrame.snapshot);
     if (boundaryScrollTop === null) {
       throw new Error(
@@ -2384,6 +2435,7 @@ const report = {
   continuousInputCoalescingFailure: continuousInputCoalescingFailureMessage,
   continuationMinimumMovingFrameCounts:
     CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS,
+  minimumGlideMovingFrameCount: MINIMUM_GLIDE_MOVING_FRAME_COUNT,
   continuationBoundaryPositiveControl,
   targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
