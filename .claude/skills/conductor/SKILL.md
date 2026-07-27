@@ -22,6 +22,15 @@ codifies it so it is not re-improvised each run.
 `project.conductor.md` (repo root). Read it before a run; append to it during one.
 This SKILL.md is the stable doctrine; that file is the changelog.
 
+**ONE live copy, and it lives in the repo the work happens in** (user correction 2026-07-26).
+`ibr/Skills/Orchestration Lessons.md` is SUPERSEDED — never append there; its unique entries were
+ported into `project.conductor.md` under "MIGRATED 2026-07-26". The hourly `/loop` prompt still
+names that ibr path and is WRONG: write to `project.conductor.md` regardless of what it says. The
+two files had diverged for days with each holding lessons the other lacked, so a reader could not
+tell which was current — the same defect as a stale duplicate cron prompt, where restoring the old
+copy re-imposes a retired rule with full authority. A stale instruction in an automated prompt does
+not become correct by repeating.
+
 ## When to use
 Any build with a fork/conductor coordinating one or more builder agents over a task backlog —
 e.g. the Invar (tui-editor) UI-task runs. Not needed for a single-shot task you do yourself.
