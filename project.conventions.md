@@ -158,6 +158,72 @@ a mechanical checker should not be able to see.
   even while the loop ticks because empty frames are cheap; a CPU-only spot check shipped a live idle
   loop as a false-green.)
 
+### Where a check belongs: source text → script, runtime property → test
+A check's HOME follows its SUBJECT, not convenience:
+- **Subject is source text** (identifier shape, file layout, a forbidden syntactic form) → a script
+  in `scripts/conventions-gate.sh`. Builders already run that gate in the inner loop — every task
+  brief names it alongside `bunx tsc --noEmit` and `bun test` — so the early-feedback benefit is
+  already present without relocating anything.
+- **Subject is a runtime property** (does this value cache, does this method bind to its receiver,
+  does this effect observe) → a test in `bun test`. Source text cannot answer these; you have to
+  read the thing twice and compare.
+
+Do NOT migrate source-text checkers into the test suite for earlier feedback. The timing is already
+there via the brief instruction, and mixing them costs diagnosis: a red `bun test` should tell you
+the app broke, not that a getter is misnamed.
+
+## ivue statics: the ANCHOR RULE
+**A class that declares static members publishes a wrapped anchor —
+`const $Class = Static($X)` — and everything downstream stays as it was.**
+
+```ts
+export namespace GitCommands {            // statics-only capability class
+  export const $Class = Static($GitCommands);
+  export let Class = $Class;
+}
+export namespace Settings {               // statics + reactive instances
+  export const $Class = Static($Settings);
+  export let Class = Reactive($Class);    // in-place ⇒ Class === $Class initially
+}
+export namespace Editor {                 // no statics — unchanged
+  export const $Class = $Editor;
+  export let Class = Reactive($Class);
+}
+```
+The deciding property is visible in the class body: **declares static members → wrap the anchor.**
+Our tree already has the anchor slot (`export const $Class = $X;`), so this is a ONE-LINE change per
+statics-bearing class — no renaming, no declaration churn.
+
+- **`extends X.Class` is FORBIDDEN.** An `extends` clause is an eager snapshot of a mutable slot, so
+  a child is pinned to whichever generation a kernel or prior test installed — load-order drift.
+  Extend `$Class`, which is `const`. Enforced by grep in the conventions gate (source text).
+- **A test double that only OVERRIDES needs no wrapper** — it extends an anchored `$Class` and
+  inherits working static semantics bare. Only a double that DECLARES new transformable members
+  wraps, at the installation line you already write: `X.Class = Static($RecordingX)` — the same slot
+  where `X.Class = Reactive($MeasuredX)` already lives. Wrapping unconditionally is fine and costs
+  nanoseconds; it is a HABIT, not a contract, and is deliberately not enforced (its violation on an
+  override-only double is harmless).
+- **`Static()` returns a NEW SUBCLASS** — not in-place, not idempotent. `instanceof` survives; class
+  identity does not. Consequence: a wrapped double and its raw class name are TWO RECEIVERS WITH TWO
+  CACHES, so reference an installed double through `X.Class`, never by its own name.
+
+### The $-cache contract is a TEST, not a checker
+`$`-cache stability is a runtime property, so it rides `bun test`: for each class declaring
+`$`-static getters, read each `$`-property twice and assert the two reads are the same object. This
+asserts the PROPERTY (the cache works) rather than the MECHANISM (was `Static()` applied) — which
+matters because wrapping is not cleanly detectable at runtime: no marker symbol on the class, and
+`.name` is a minified wrapper. Two guards, both required:
+- fail if it inspected ZERO classes (a walk over an empty list reports green);
+- fail on any `$`-property whose value is a PRIMITIVE — `'a' === 'a'` regardless of caching, so the
+  identity tell would be vacuous. Zero instances today; the guard exists because the line that opens
+  the hole (`static get $LABEL(): string`) looks harmless.
+
+Assert EVERY `$`-property, not one per class. Wrapping fails per-class, but `Static()` only
+transforms get-only `$`-accessors — so adding a setter to one, or making it a `static $field`,
+silently stops THAT ONE caching while its class stays wrapped and its siblings keep working.
+Positive control is free and structural: a raw class and a `Reactive`-only class both fail the
+identity assertion.
+
 ## Retiring smoke files
 - A retired smoke lives in `scripts/retired-smokes/`. Move it there with
   `git mv`, preserving its original basename. Do not append `.parked` or any
