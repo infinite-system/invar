@@ -220,24 +220,23 @@ selectable value still lets one accepted wheel notch produce visible motion.
 `Momentum` profile. The default is 900 milliseconds; the selectable range is
 100–2,000 milliseconds in 50 millisecond steps.
 
-**Mechanism:** `stepMomentum` limits integrated frame time to the remaining
-tail and halts when elapsed time reaches the setting. `SettingsPanel` supplies
-the bounded numeric selector, and every momentum owner reads the live setting
-into its options.
+**Mechanism:** `addImpulse` floors a from-rest notch at the velocity required
+to integrate one row before either decay or the configured tail can halt it.
+`stepMomentum` limits integrated frame time to the remaining tail and halts
+when elapsed time reaches the setting. `SettingsPanel` supplies the bounded
+numeric selector, and every momentum owner reads the live setting into its
+options.
 
 **Generates:** A finite tail after dense input; one discoverable control shared
 by every scroll surface; a short setting that remains a short motion rather
 than becoming dead input.
 
-**Open question:** Issue #146 — at the 100 millisecond minimum, one notch
-currently travels zero visible rows; what mechanism preserves one row without
-violating the selected tail?
-
 **Evidence:** `src/modules/system/Momentum.ts`;
 `src/modules/settings/Settings.ts`;
 `src/modules/settings/SettingsPanel.test.ts`;
-`scripts/harness/smoke-settings-applied-harness.ts`; commits `3af155c` and
-`2442d8f`.
+`scripts/harness/smoke-settings-applied-harness.ts`;
+`scripts/harness/measure-scroll-smoothness.ts`;
+`scripts/behavioral-contracts.sh`; commits `3af155c` and `2442d8f`.
 
 **Impossible if true:** Momentum continuing past the selected tail; a
 selectable duration swallowing an accepted wheel notch without visible
@@ -246,12 +245,13 @@ motion.
 **Verification:** `bun test src/modules/system/Momentum.test.ts
 src/modules/settings/Settings.test.ts
 src/modules/settings/SettingsPanel.test.ts && bun
-scripts/harness/smoke-settings-applied-harness.ts`. These checks enforce the
-900 millisecond default, the 100–2,000 range, persistence, and the applied
-effect at 300 and 1,200 milliseconds. No enforcing check currently proves
-visible motion at every selectable value; issue #146 is the known violation.
+scripts/harness/smoke-settings-applied-harness.ts && bash
+scripts/behavioral-contracts.sh`. These checks enforce the 900 millisecond
+default, the 100–2,000 range, persistence, the minimum setting's visible
+one-notch motion, and one-notch impulse/travel counts at 100, 1,050, and 2,000
+milliseconds over 2,000-line and 100,000-line fixtures.
 
-**Status:** provisional
+**Status:** established
 
 **Last refined:** 2026-07-27
 

@@ -110,6 +110,85 @@ glide_pane() { # <label> <fixture> <status-field> <needs-open> <wheel-col>
 glide_pane editor "$LONG" editorScrollTop open   60
 glide_pane tree   "$TREE" treeScrollTop  noopen 10
 
+# ---- CONTRACT: every selectable glide cap preserves one accepted notch ----
+# One event must remain one impulse and produce visible travel at both document
+# scales. The three values span the schema's full selectable range.
+echo "== CONTRACT glide-cap-range: one notch always moves =="
+glide_cap_run_failed=0
+glide_cap_reports=""
+for glide_cap_milliseconds in 100 1050 2000; do
+  glide_cap_report="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.json"
+  glide_cap_log="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.log"
+  if SMOOTHNESS_GESTURES=1 \
+     SMOOTHNESS_NOTCHES=1 \
+     SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+     SMOOTHNESS_CONTINUATION_DELAYS='' \
+     SMOOTHNESS_LINE_COUNTS=2000,100000 \
+     SMOOTHNESS_SURFACES=editor \
+     SMOOTHNESS_VERSION_CONTROL_MARKS=off \
+     SMOOTHNESS_MAXIMUM_GLIDE_DURATION="$glide_cap_milliseconds" \
+     bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+       >"$glide_cap_report" 2>"$glide_cap_log"; then
+    glide_cap_reports="$glide_cap_reports $glide_cap_report"
+  else
+    bad "glide-cap $glide_cap_milliseconds ms drive failed"
+    tail -20 "$glide_cap_log"
+    glide_cap_run_failed=1
+  fi
+done
+if [ "$glide_cap_run_failed" = 0 ]; then
+  read -r glide_cap_positive_control_rejected \
+    glide_cap_case_count glide_cap_all_hold \
+    <<<"$(python3 - $glide_cap_reports <<'PY'
+import json
+import sys
+
+def single_notch_holds(cases):
+    return all(
+        case["singleNotch"]["appliedImpulseCount"] == 1
+        and case["singleNotch"]["rowsTravelled"] >= 1
+        for case in cases
+    )
+
+reports = [json.load(open(path)) for path in sys.argv[1:]]
+cases = [
+    case
+    for report in reports
+    for case in report["cases"]
+]
+bad_case = {
+    "singleNotch": {
+        "appliedImpulseCount": 1,
+        "rowsTravelled": 0,
+    }
+}
+print(
+    int(not single_notch_holds([bad_case])),
+    len(cases),
+    int(
+        len(cases) == 6
+        and {report["maximumGlideDurationMilliseconds"]
+             for report in reports} == {100, 1050, 2000}
+        and {case["fixtureLineCount"] for case in cases}
+            == {2000, 100000}
+        and single_notch_holds(cases)
+    ),
+)
+PY
+)"
+  if [ "${glide_cap_positive_control_rejected:-0}" = 1 ]; then
+    pass "glide-cap positive control rejects one applied impulse with zero rows"
+  else
+    bad "glide-cap positive control accepted one applied impulse with zero rows"
+  fi
+  if [ "${glide_cap_case_count:-0}" = 6 ] \
+     && [ "${glide_cap_all_hold:-0}" = 1 ]; then
+    pass "one notch applies once and moves at 100/1050/2000 ms, 2k/100k lines"
+  else
+    bad "one notch did not survive every cap and document scale"
+  fi
+fi
+
 # ---- CONTRACT: glide smoothness (RATCHET: the "choppier and slower" report of 2026-07-26) ----
 # The contract above measures total DISPLACEMENT over five notches. Displacement is a TIME INTEGRAL of
 # the momentum curve — velocity decays geometrically and the fractional row `residual` is carried in

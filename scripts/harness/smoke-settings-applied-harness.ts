@@ -407,6 +407,57 @@ async function rapidInputTravel(
   }
 }
 
+async function singleNotchTravel(
+  label: string,
+  workspaceRoot: string,
+): Promise<{ appliedImpulseCount: number; rowsTravelled: number }> {
+  const launchedDriver = await launchDriver(label, workspaceRoot);
+  try {
+    await openOnlyFile(launchedDriver);
+    await launchedDriver.driver.awaitGridCondition(
+      'the long fixture content is rendered before single wheel input',
+      (candidate) => candidate.findText('line 000') !== null,
+    );
+    const openingStatus = await HarnessSmoke.Class.awaitStatus(
+      launchedDriver.driver,
+      launchedDriver.statusPath,
+      'scroll and impulse counts are published before single wheel input',
+      (status) =>
+        typeof status.editorScrollTop === 'number' &&
+        typeof status.editorVerticalScrollImpulseCount === 'number',
+    );
+    const openingScrollTop = Number(openingStatus.editorScrollTop);
+    const openingImpulseCount = Number(
+      openingStatus.editorVerticalScrollImpulseCount,
+    );
+    launchedDriver.driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      column: 59,
+      row: 11,
+      direction: 'down',
+    });
+
+    let appliedImpulseCount = 0;
+    let rowsTravelled = 0;
+    await launchedDriver.driver.awaitGridCondition(
+      'the single wheel event is applied and the glide reaches rest',
+      () => {
+        const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
+        appliedImpulseCount =
+          Number(status.editorVerticalScrollImpulseCount) - openingImpulseCount;
+        rowsTravelled = Number(status.editorScrollTop) - openingScrollTop;
+        return (
+          appliedImpulseCount === 1 &&
+          status.workspaceScrollMomentumAtRest === true
+        );
+      },
+    );
+    return { appliedImpulseCount, rowsTravelled };
+  } finally {
+    await launchedDriver.driver.dispose();
+  }
+}
+
 function markerRow(snapshot: HarnessSnapshot.Model, marker: string): number {
   return snapshot.findText(marker)?.row ?? -1;
 }
@@ -634,6 +685,19 @@ try {
     `scrollFriction changes glide distance (${lowFriction} versus ${highFriction})`,
   );
   await setSetting('scrollFriction', 0.015);
+
+  await setSetting('maximumGlideDurationMilliseconds', 100);
+  const minimumGlideDuration = await singleNotchTravel(
+    'glide-duration-minimum',
+    longFixture,
+  );
+  HarnessSmoke.Class.requireCondition(
+    minimumGlideDuration.appliedImpulseCount === 1 &&
+      minimumGlideDuration.rowsTravelled >= 1,
+    `maximumGlideDurationMilliseconds 100 applies one impulse and moves at ` +
+      `least one row (${minimumGlideDuration.appliedImpulseCount} impulse, ` +
+      `${minimumGlideDuration.rowsTravelled} rows)`,
+  );
 
   await setSetting('maximumGlideDurationMilliseconds', 300);
   const shortGlideDuration = await rapidInputTravel(

@@ -167,10 +167,27 @@ class $Momentum {
     const curveGainedVelocity = deltaRows * options.impulse * gainScale;
     let restEquivalentGestureVelocityAfterImpulse =
       restEquivalentGestureVelocity + curveGainedVelocity;
+    // invariant: The glide tail is bounded and effective (scroll.invariants.md)
     if (!gestureContinues && deltaRows !== 0) {
-      // Distance to halt from v0 is (v0 - stopVelocity) / -ln(decayPerSec); require >= 1 row.
+      // The first accepted notch must integrate one row before either boundary can halt it.
       const decayRatePerSecond = -Math.log(options.decayPerSec);
-      const singleRowVelocity = options.stopVelocity + decayRatePerSecond;
+      const velocityToCrossBeforeDecayHalt =
+        options.stopVelocity + decayRatePerSecond;
+      const maximumGlideDurationSeconds =
+        (options.maximumGlideDurationMilliseconds ?? Number.POSITIVE_INFINITY) /
+        1000;
+      const velocityToCrossBeforeGlideCap = Number.isFinite(
+        maximumGlideDurationSeconds,
+      )
+        ? decayRatePerSecond === 0
+          ? 1 / maximumGlideDurationSeconds
+          : decayRatePerSecond /
+            -Math.expm1(-decayRatePerSecond * maximumGlideDurationSeconds)
+        : 0;
+      const singleRowVelocity = Math.max(
+        velocityToCrossBeforeDecayHalt,
+        velocityToCrossBeforeGlideCap,
+      );
       if (
         Math.abs(restEquivalentGestureVelocityAfterImpulse) < singleRowVelocity
       ) {
