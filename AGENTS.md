@@ -28,8 +28,17 @@ Your inner loop is **driving the real app in your own PTY** — `scripts/harness
 evidence you already have. Cut scratch worktrees at candidate commits (`git worktree add
 /tmp/<name>-bisect-<sha> <sha> --detach`, then `bun install --frozen-lockfile`), drive the SAME
 gesture with the SAME settings in each, and compare. **Halve the range — do not walk commits one
-by one.** Prefer the user's real settings over defaults; a defect that only appears at their
-configured values is invisible at yours.
+by one.**
+
+**DEFAULTS FIRST — always.** The contract is the DEFAULT experience: that is what almost every
+user runs, and it is what the app promises. Drive defaults before anything else, and fix at
+defaults. A user's own settings are a SECOND probe, not the baseline — they are often the user's
+attempt to COMPENSATE for the very bug being reported (raising a ceiling, changing friction), so
+driving them measures bug-plus-workaround and risks tuning the fix to a configuration nobody else
+has. Use them when the symptom will not reproduce at defaults, or to confirm the fix also helps
+where the user actually sits; and when a setting changes the outcome, say WHICH knob moved it —
+that difference is itself evidence. Whatever you compare across commits, hold the settings FIXED
+within the comparison.
 
 Compare a FINGERPRINT, not a verdict: for motion, the per-frame row-crossing sequence.
 `3,3,3,3` glides; `5,1,5,1` stumbles at the same average; a sequence that does not GROW across
