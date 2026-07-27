@@ -2310,3 +2310,42 @@ Related and worth keeping separate: **a habit can be right without being enforce
 "Always wrap the double" removes a judgment from the author and costs nanoseconds in test
 code, so it is good guidance. It is still not a contract, because its violation is not a
 defect. Gate what is invisible; leave habits as habits.
+
+## 2026-07-27 16:40 UTC — I armed a monitor on a sentinel my own launch could not emit
+
+Minutes after appending the lesson about instruments that fail toward "still running", I did it
+again, in the cleanest possible form.
+
+Launched the #149 re-gate as:
+
+    nohup setsid bash scripts/merge-gate.sh > /tmp/gate-schedbounds3.log 2>&1 &
+
+and armed a Monitor grepping for `GATE_EXIT`. But `merge-gate.sh` does not print `GATE_EXIT` —
+earlier runs had it because those launches wrapped the call and echoed `GATE_EXIT=$? WALL=...`
+themselves. I reused the *predicate* from the previous round and not the *launch* that produced it,
+so the two halves came apart.
+
+Result: the gate reached `merge-gate: ALL-PASS` at 5m59s and exited. The monitor stayed silent and
+would have stayed silent for its full 30-minute timeout, with a clean green and a landable branch
+sitting there. I only noticed because I checked the log directly while answering something else.
+
+  **A sentinel is part of the launch, not part of the watch.** If the predicate names a string, the
+  command that produces that string must be in the same call that arms the watcher. Never carry a
+  predicate forward from a previous round to a launch you wrote differently.
+
+Two supporting notes:
+
+- The correct predicate here was available and mechanism-free: the process is gone AND the log
+  contains `merge-gate: ALL-PASS` / `FAILED`. That is what the gate actually writes. I invented a
+  sentinel instead of reading what the tool emits — the same error as keying a probe to a
+  remembered filename rather than to the round that writes it.
+- **CPU, not log age, distinguishes wedged from working** — and here neither applied, because the
+  process had already exited. The first question on a quiet log is "does the process still exist",
+  and only then "is it burning CPU". I went to CPU first and would have been misled by an empty
+  answer if I had not also listed the log's own verdict lines.
+
+This is now the seventh probe in two days that failed in the direction that wastes work rather than
+the direction that interrupts it. The bias is consistent enough to be structural: I write predicates
+that assume the subject is still alive, because that is the state I am waiting to leave. Prefer
+predicates that name the terminal states the tool actually writes, and enumerate them all — a watch
+that can only observe one outcome is silent on every other.
