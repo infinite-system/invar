@@ -121,12 +121,13 @@ phase.
 
 **Mechanism of conjunction:** Events, impulses, projection work, row travel,
 and attributed work are countable. Their expected relations come from queue
-cardinality, exact count equality, and configured velocity integrated over
-the configured tail.
+cardinality, exact count equality, configured velocity integrated over the
+configured tail or maximum animation step, and continuation input placed by
+observed live motion.
 
 **Breaks if:** A live contract promotes an observed frame count to an expected
-constant, or reports a count without a planted failure proving the predicate
-can go red.
+constant, treats a requested timer delay or target FPS as exact scheduling, or
+reports a count without a planted failure proving the predicate can go red.
 
 ## The generated system
 

@@ -42,7 +42,16 @@ batched PTY writes, not equivalent input-boundary pressure.
 `SMOOTHNESS_REQUIRE_FRAME_PROGRESS=1` makes a zero-frame window fail.
 `SMOOTHNESS_REQUIRE_INPUT_COALESCING=1` requires exact event-to-impulse
 preservation, fewer projection passes than input events, and exact 2k/100k
-row-travel parity within one maximum-velocity frame on editor and diff.
+row-travel parity within one maximum animation integration step on editor and
+diff. The step bound is
+`ceil(verticalFlingCeiling * maximumAnimationDeltaTimeSeconds)`, not
+`ceil(verticalFlingCeiling / targetFramesPerSecond)`: target FPS is a cadence
+goal, while Bootstrap permits a delayed integration step up to 100
+milliseconds. Burst reports include the delivered input duration, per-frame
+row-crossing sequence, and maximum row crossing. Continuation probes place
+their follow-on input after observed live one-row motion beyond a declared
+moving-frame count; the delivered delay is reported but never controls
+placement.
 For flat editor runs, it also reports cumulative document-line reads,
 fold/wrap projection lookups, and layout computations. The behavioral
 contract drives the same gesture at 2k and 100k lines and compares the

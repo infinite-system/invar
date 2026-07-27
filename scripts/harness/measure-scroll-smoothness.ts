@@ -76,6 +76,12 @@ const VERTICAL_FLING_CEILING = Number(
 const MAXIMUM_GLIDE_DURATION_MILLISECONDS = Number(
   process.env.SMOOTHNESS_MAXIMUM_GLIDE_DURATION ?? '900',
 );
+// Bootstrap caps every animation integration step at 100 milliseconds. A
+// delayed frame can therefore carry up to this much motion; target FPS is not
+// a maximum frame duration.
+const MAXIMUM_ANIMATION_DELTA_TIME_SECONDS = Number(
+  process.env.SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS ?? '0.1',
+);
 // A hard human flick: twelve notches creates a sustained fast segment without relying on PTY write
 // splitting. The accumulation probe repeats this exact physical gesture; the ordinary smoothness
 // cases use it to expose per-frame cadence and distance. Overridable for shorter-ramp probes.
@@ -111,12 +117,15 @@ const CONTINUOUS_INPUT_COALESCING_REQUIRED =
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
 const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
-const CONTINUATION_DELAY_MILLISECONDS = (
-  process.env.SMOOTHNESS_CONTINUATION_DELAYS ?? '200,250,300'
+const CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS = (
+  process.env.SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES ?? '6,10,14'
 )
   .split(',')
-  .map((delayText) => Number(delayText.trim()))
-  .filter((delayMilliseconds) => delayMilliseconds > 150);
+  .map((frameCountText) => Number(frameCountText.trim()))
+  .filter(
+    (movingFrameCount) =>
+      Number.isInteger(movingFrameCount) && movingFrameCount > 0,
+  );
 const DEPTH_GESTURE_TARGET_ROWS = Number(
   process.env.SMOOTHNESS_DEPTH_GESTURE_ROWS ?? '1000',
 );
@@ -198,6 +207,8 @@ interface ContinuousInputBurstMeasurement {
   readonly inputEventsPerSecond: number;
   readonly projectionPassCount: number;
   readonly rowsTravelled: number;
+  readonly rowCrossingSequence: readonly number[];
+  readonly maximumFrameDeltaRows: number;
   readonly inputWindowFrameCounts: readonly number[];
   readonly completedFrameGapSequenceMilliseconds: readonly number[];
   readonly maximumConsecutiveZeroFrameWindows: number;
@@ -250,7 +261,9 @@ function continuousInputCoalescingFailure(
       );
     const baselineBurst = surfaceCases[0]!.continuousInputBursts[0]!;
     const largeBurst = surfaceCases[1]!.continuousInputBursts[0]!;
-    const maximumOneFrameTravelRows = Math.ceil(VERTICAL_FLING_CEILING / 30);
+    const maximumOneFrameTravelRows = Math.ceil(
+      VERTICAL_FLING_CEILING * MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
+    );
     if (
       Math.abs(baselineBurst.rowsTravelled - largeBurst.rowsTravelled) >
       maximumOneFrameTravelRows
@@ -261,7 +274,9 @@ function continuousInputCoalescingFailure(
         `${baselineBurst.rowsTravelled} rows, ` +
         `${surfaceCases[1]!.fixtureLineCount} lines travelled ` +
         `${largeBurst.rowsTravelled} rows; one-frame budget is ` +
-        `${maximumOneFrameTravelRows} rows`
+        `${maximumOneFrameTravelRows} rows from ` +
+        `${VERTICAL_FLING_CEILING} rows/s * ` +
+        `${MAXIMUM_ANIMATION_DELTA_TIME_SECONDS}s maximum animation step`
       );
     }
   }
@@ -277,6 +292,8 @@ function proveContinuousInputCoalescingCanFail(): string {
     inputEventsPerSecond: 142.9,
     projectionPassCount: 150,
     rowsTravelled: 384,
+    rowCrossingSequence: [],
+    maximumFrameDeltaRows: 0,
     inputWindowFrameCounts: [],
     completedFrameGapSequenceMilliseconds: [],
     maximumConsecutiveZeroFrameWindows: 0,
@@ -311,6 +328,62 @@ function proveContinuousInputCoalescingCanFail(): string {
   return failure;
 }
 
+function proveContinuousInputScaleTravelCanFail(): string {
+  const maximumOneFrameTravelRows = Math.ceil(
+    VERTICAL_FLING_CEILING * MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
+  );
+  const makeBurst = (
+    rowsTravelled: number,
+  ): ContinuousInputBurstMeasurement => ({
+    requestedDurationMilliseconds: 900,
+    actualInputDurationMilliseconds: 1_030,
+    inputEventCount: 150,
+    appliedImpulseCount: 150,
+    inputEventsPerSecond: 145.6,
+    projectionPassCount: 58,
+    rowsTravelled,
+    rowCrossingSequence: [],
+    maximumFrameDeltaRows: 0,
+    inputWindowFrameCounts: [],
+    completedFrameGapSequenceMilliseconds: [],
+    maximumConsecutiveZeroFrameWindows: 0,
+    maximumFrameStarvationMilliseconds: 0,
+    inputToFirstCompletedFrameMilliseconds: null,
+    finalInputToNextCompletedFrameMilliseconds: null,
+  });
+  const cases = (['editor', 'diff'] as const).flatMap((surface) =>
+    [2_000, 100_000].map((fixtureLineCount): SurfaceMeasurement => ({
+      surface,
+      fixtureShape: 'fold-dense',
+      codeFolding: 'on',
+      indentGuides: true,
+      versionControlMarks: surface === 'editor',
+      fixtureLineCount,
+      singleNotch: {
+        appliedImpulseCount: 1,
+        rowsTravelled: 1,
+      },
+      gestures: [],
+      accumulationFlicks: [],
+      continuationBoundaries: [],
+      continuousInputBursts: [
+        makeBurst(
+          fixtureLineCount === 2_000
+            ? 400
+            : 400 + maximumOneFrameTravelRows + 1,
+        ),
+      ],
+      depthCheckpoints: [],
+      depthCheckpointWallClockMilliseconds: 0,
+    })),
+  );
+  const failure = continuousInputCoalescingFailure(cases);
+  if (!failure || !failure.includes('travel changed with document scale')) {
+    throw new Error('rapid-input scale-travel positive control did not fail');
+  }
+  return failure;
+}
+
 interface AccumulationFlickMeasurement {
   readonly flickIndex: number;
   readonly actualPauseBeforeMilliseconds: number | null;
@@ -322,8 +395,9 @@ interface AccumulationFlickMeasurement {
 }
 
 interface ContinuationBoundaryMeasurement {
-  readonly requestedDelayMilliseconds: number;
+  readonly minimumMovingFrameCount: number;
   readonly actualDelayMilliseconds: number;
+  readonly observedMovingFrameCount: number;
   readonly preBoundaryFrameCount: number;
   readonly boundaryFrameCount: number;
   readonly preBoundaryRowsCrossed: number;
@@ -669,9 +743,10 @@ async function measureOneGesture(
 
 async function measureContinuationBoundary(
   driver: PtyTestDriver.Model,
-  requestedDelayMilliseconds: number,
+  minimumMovingFrameCount: number,
 ): Promise<ContinuationBoundaryMeasurement> {
   const samples: GestureFrameSample[] = [];
+  let observedMovingFrameCount = 0;
   const firstGestureTimestampMilliseconds = performance.now();
   driver.sendRawInputWithoutFrameExpectation(
     wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
@@ -693,11 +768,15 @@ async function measureContinuationBoundary(
     if (samples.length < 2) continue;
     const previousSample = samples.at(-2)!;
     const preBoundaryRowsCrossed = sample.scrollTop - previousSample.scrollTop;
-    const elapsedMilliseconds =
-      performance.now() - firstGestureTimestampMilliseconds;
+    if (preBoundaryRowsCrossed <= 0) continue;
+    observedMovingFrameCount++;
+    // Place the follow-on input at a repeatable visible motion state. The
+    // moving-frame floor samples progressively later live motion; the
+    // one-row crossing fixes the cell-grid phase that made a requested timer
+    // delay alternate between incomparable 2-row and 3-row boundaries.
     if (
-      elapsedMilliseconds < requestedDelayMilliseconds ||
-      preBoundaryRowsCrossed <= 0
+      observedMovingFrameCount < minimumMovingFrameCount ||
+      preBoundaryRowsCrossed !== 1
     ) {
       continue;
     }
@@ -716,9 +795,10 @@ async function measureContinuationBoundary(
       );
     }
     return {
-      requestedDelayMilliseconds,
+      minimumMovingFrameCount,
       actualDelayMilliseconds:
         secondGestureTimestampMilliseconds - firstGestureTimestampMilliseconds,
+      observedMovingFrameCount,
       preBoundaryFrameCount: sample.completedFrameCount,
       boundaryFrameCount: boundaryFrame.completedFrame.completedFrameCount,
       preBoundaryRowsCrossed,
@@ -869,6 +949,7 @@ async function measureContinuousInputBurst(
   );
   const inputWindowStartsMilliseconds: number[] = [];
   const completedFrameTimestampsMilliseconds: number[] = [];
+  const observedScrollTops = [scrollTopBefore];
   let inputComplete = false;
   let inputEndTimestampMilliseconds = 0;
   let nextFrame = driver.awaitNextCompletedFrameSnapshot(
@@ -905,6 +986,9 @@ async function measureContinuousInputBurst(
       completedFrameTimestampsMilliseconds.push(
         completed.completedFrame.byteArrivalTimestampMilliseconds,
       );
+      const observedScrollTop = visibleTopLineIndex(completed.snapshot);
+      if (observedScrollTop !== null)
+        observedScrollTops.push(observedScrollTop);
       nextFrame = driver.awaitNextCompletedFrameSnapshot(
         FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
       );
@@ -942,6 +1026,13 @@ async function measureContinuousInputBurst(
     frameAttributionBefore.completedFrameCount;
   const rowsTravelled =
     Number(statusAfter[scrollStatusField(surface)] ?? 0) - scrollTopBefore;
+  const rowCrossingSequence = observedScrollTops
+    .slice(1)
+    .map(
+      (observedScrollTop, observedScrollTopIndex) =>
+        observedScrollTop - observedScrollTops[observedScrollTopIndex]!,
+    )
+    .filter((rowsCrossed) => rowsCrossed !== 0);
 
   const inputStartTimestampMilliseconds = inputWindowStartsMilliseconds[0]!;
   const inputWindowFrameCounts = inputWindowStartsMilliseconds.map(
@@ -1029,6 +1120,11 @@ async function measureContinuousInputBurst(
     ),
     projectionPassCount,
     rowsTravelled,
+    rowCrossingSequence,
+    maximumFrameDeltaRows: Math.max(
+      0,
+      ...rowCrossingSequence.map((rowsCrossed) => Math.abs(rowsCrossed)),
+    ),
     inputWindowFrameCounts,
     completedFrameGapSequenceMilliseconds:
       completedFrameGapSequenceMilliseconds.map((gapMilliseconds) =>
@@ -1083,23 +1179,76 @@ function printAccumulationPattern(
 function assertContinuationBoundaries(
   measurements: readonly ContinuationBoundaryMeasurement[],
 ): void {
-  const failures = measurements.filter(
-    (measurement) =>
-      measurement.boundaryRowsCrossed < measurement.preBoundaryRowsCrossed,
-  );
-  if (failures.length === 0) return;
-  const failureDescriptions = failures.map(
-    (measurement) =>
+  const failure = continuationBoundaryFailure(measurements);
+  if (!failure) return;
+  throw new Error(failure);
+}
+
+function continuationBoundaryFailure(
+  measurements: readonly ContinuationBoundaryMeasurement[],
+): string | null {
+  const failureDescriptions = measurements.flatMap((measurement) => {
+    const placementFailures: string[] = [];
+    if (
+      measurement.observedMovingFrameCount < measurement.minimumMovingFrameCount
+    ) {
+      placementFailures.push(
+        `observed ${measurement.observedMovingFrameCount}/` +
+          `${measurement.minimumMovingFrameCount} moving frames`,
+      );
+    }
+    if (measurement.actualDelayMilliseconds <= 150) {
+      placementFailures.push(
+        `delivered at ${measurement.actualDelayMilliseconds.toFixed(1)}ms`,
+      );
+    }
+    if (measurement.preBoundaryRowsCrossed !== 1) {
+      placementFailures.push(
+        `pre-boundary crossed ${measurement.preBoundaryRowsCrossed} rows`,
+      );
+    }
+    if (
+      measurement.boundaryRowsCrossed >= measurement.preBoundaryRowsCrossed &&
+      placementFailures.length === 0
+    ) {
+      return [];
+    }
+    const placementSuffix =
+      placementFailures.length === 0
+        ? ''
+        : `; invalid placement: ${placementFailures.join(', ')}`;
+    return [
       `frame ${measurement.boundaryFrameCount} ` +
-      `${measurement.preBoundaryRowsCrossed}->` +
-      `${measurement.boundaryRowsCrossed} rows at ` +
-      `${measurement.actualDelayMilliseconds.toFixed(1)}ms ` +
-      `(requested ${measurement.requestedDelayMilliseconds}ms)`,
+        `${measurement.preBoundaryRowsCrossed}->` +
+        `${measurement.boundaryRowsCrossed} rows at ` +
+        `${measurement.actualDelayMilliseconds.toFixed(1)}ms after ` +
+        `${measurement.observedMovingFrameCount} moving frames ` +
+        `(minimum ${measurement.minimumMovingFrameCount})` +
+        placementSuffix,
+    ];
+  });
+  if (failureDescriptions.length === 0) return null;
+  return (
+    `live-glide continuation boundary failed: ` + failureDescriptions.join('; ')
   );
-  throw new Error(
-    `live-glide continuation slowed at boundary: ` +
-      failureDescriptions.join('; '),
-  );
+}
+
+function proveContinuationBoundaryCanFail(): string {
+  const failure = continuationBoundaryFailure([
+    {
+      minimumMovingFrameCount: 6,
+      actualDelayMilliseconds: 200,
+      observedMovingFrameCount: 6,
+      preBoundaryFrameCount: 14,
+      boundaryFrameCount: 15,
+      preBoundaryRowsCrossed: 3,
+      boundaryRowsCrossed: 2,
+    },
+  ]);
+  if (!failure) {
+    throw new Error('live-glide continuation positive control did not fail');
+  }
+  return failure;
 }
 
 function printContinuationBoundary(
@@ -1107,8 +1256,9 @@ function printContinuationBoundary(
   measurement: ContinuationBoundaryMeasurement,
 ): void {
   console.error(
-    `${surface} continuation requested=` +
-      `${measurement.requestedDelayMilliseconds}ms ` +
+    `${surface} continuation minimumMovingFrames=` +
+      `${measurement.minimumMovingFrameCount} ` +
+      `observedMovingFrames=${measurement.observedMovingFrameCount} ` +
       `actual=${measurement.actualDelayMilliseconds.toFixed(1)}ms ` +
       `frames=${measurement.preBoundaryFrameCount}->` +
       `${measurement.boundaryFrameCount} ` +
@@ -1958,12 +2108,12 @@ async function measureSurface(
         printAccumulationPattern(surface, accumulationFlicks);
       }
       if (shouldMeasureContinuationBoundaries) {
-        for (const delayMilliseconds of CONTINUATION_DELAY_MILLISECONDS) {
+        for (const minimumMovingFrameCount of CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS) {
           await driveSurfaceToTop(driver, statusPath, surface);
           await drainToQuiescence(driver);
           const continuationBoundary = await measureContinuationBoundary(
             driver,
-            delayMilliseconds,
+            minimumMovingFrameCount,
           );
           continuationBoundaries.push(continuationBoundary);
           printContinuationBoundary(surface, continuationBoundary);
@@ -2040,6 +2190,14 @@ if (
   throw new Error('SMOOTHNESS_BURST_NOTCHES must be a positive integer');
 }
 if (
+  !Number.isFinite(MAXIMUM_ANIMATION_DELTA_TIME_SECONDS) ||
+  MAXIMUM_ANIMATION_DELTA_TIME_SECONDS <= 0
+) {
+  throw new Error(
+    'SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS must be positive',
+  );
+}
+if (
   !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
   DEPTH_GESTURE_TARGET_ROWS < 1_000 ||
   DEPTH_GESTURE_TARGET_ROWS > 5_000
@@ -2095,6 +2253,17 @@ const continuousInputCoalescingPositiveControl =
 console.error(
   `rapid-input coalescing positive control RED (expected): ` +
     continuousInputCoalescingPositiveControl,
+);
+const continuousInputScaleTravelPositiveControl =
+  proveContinuousInputScaleTravelCanFail();
+console.error(
+  `rapid-input scale-travel positive control RED (expected): ` +
+    continuousInputScaleTravelPositiveControl,
+);
+const continuationBoundaryPositiveControl = proveContinuationBoundaryCanFail();
+console.error(
+  `live-glide continuation positive control RED (expected): ` +
+    continuationBoundaryPositiveControl,
 );
 
 const measurementRunStartMilliseconds = performance.now();
@@ -2204,6 +2373,10 @@ const report = {
   applicationRepositoryRoot: APPLICATION_REPOSITORY_ROOT,
   verticalFlingCeiling: VERTICAL_FLING_CEILING,
   maximumGlideDurationMilliseconds: MAXIMUM_GLIDE_DURATION_MILLISECONDS,
+  maximumAnimationDeltaTimeSeconds: MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
+  maximumAnimationFrameTravelRows: Math.ceil(
+    VERTICAL_FLING_CEILING * MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
+  ),
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
   accumulationFlickCount: ACCUMULATION_FLICK_COUNT,
   accumulationPauseMilliseconds: ACCUMULATION_PAUSE_MILLISECONDS,
@@ -2215,7 +2388,11 @@ const report = {
     CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED,
   continuousInputCoalescingRequired: CONTINUOUS_INPUT_COALESCING_REQUIRED,
   continuousInputCoalescingPositiveControl,
+  continuousInputScaleTravelPositiveControl,
   continuousInputCoalescingFailure: continuousInputCoalescingFailureMessage,
+  continuationMinimumMovingFrameCounts:
+    CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS,
+  continuationBoundaryPositiveControl,
   targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
