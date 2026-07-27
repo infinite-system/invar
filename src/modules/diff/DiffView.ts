@@ -1013,6 +1013,10 @@ class $DiffView {
       region,
       verticalScrollState,
     );
+    this.verticalScrollbarRenderable.slider.backgroundColor = palette.panel;
+    this.verticalScrollbarRenderable.slider.foregroundColor = palette.dim;
+    this.horizontalScrollbarRenderable.slider.backgroundColor = palette.panel;
+    this.horizontalScrollbarRenderable.slider.foregroundColor = palette.dim;
     if (process.env.TUI_DEBUG_BARS === '1') {
       Logging.Class.info(
         `bar ${this.verticalScrollbarRenderable.id}: ` +

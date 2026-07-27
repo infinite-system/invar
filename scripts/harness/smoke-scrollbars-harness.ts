@@ -1715,12 +1715,7 @@ try {
       candidate.panelActiveContent === 'agent' &&
       Number(candidate.agentViewportRows) > 0,
   );
-  await clickPanelHeadingAction(
-    overflowDriver,
-    statusPath,
-    'expand',
-    String(agentStatus.panelActiveContent),
-  );
+  await clickPanelHeadingAction(overflowDriver, statusPath, 'expand', 'panel');
   const expandedAgentStatus = await HarnessSmoke.Class.awaitStatus(
     overflowDriver,
     statusPath,
