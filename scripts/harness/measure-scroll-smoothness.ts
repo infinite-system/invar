@@ -821,7 +821,7 @@ function aggregateEditorFrameAttribution(
   };
 }
 
-function assertEditorFrameRateEquality(
+function assertEditorFrameWorkPerFrameEquality(
   baseline: EditorFrameAttributionMeasurement,
   comparison: EditorFrameAttributionMeasurement,
   comparisonFixtureLineCount: number,
@@ -887,7 +887,7 @@ function measureEditorScaleInvariance(
     comparisonFixtureLineCount: comparisonCase.fixtureLineCount,
     baseline,
     comparison,
-    ratios: assertEditorFrameRateEquality(
+    ratios: assertEditorFrameWorkPerFrameEquality(
       baseline,
       comparison,
       comparisonCase.fixtureLineCount,
@@ -914,7 +914,12 @@ function proveEditorScaleInvarianceCanFail(): string {
     documentLineReadsPerFrame: 100_000,
   };
   try {
-    assertEditorFrameRateEquality(baseline, documentScaleCost, 100_000, 2_000);
+    assertEditorFrameWorkPerFrameEquality(
+      baseline,
+      documentScaleCost,
+      100_000,
+      2_000,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (

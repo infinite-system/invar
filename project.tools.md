@@ -49,7 +49,7 @@ those document aggregates, the six-case 2k/26,635/100k editor+diff matrix sustai
 The 2026-07-27 load-invariance contract measured 65 document-line reads, 33
 fold lookups, two wrap lookups, and one layout computation per attributed
 frame at both 2k and 100k lines: every ratio was exactly 1. Its planted
-whole-document read loop failed at ratio 48.434656.
+one-read-per-100-lines loop failed at ratio 12.395349.
 The 2026-07-26 fold-density axis found 26k/100k flat text at about 30 FPS but nested JSON at
 13.5-13.7 FPS, unchanged when folding or indent guides were disabled. Temporary frame attribution
 named `BracketMatch.findInDocument`: the cursor on the root `{` rescanned and syntax-classified up
