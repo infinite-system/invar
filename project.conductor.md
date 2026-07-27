@@ -1909,3 +1909,142 @@ user's machine.
 Practical shape, now queued as #140: a bounded, off-by-default capture mode (frame timestamps,
 input arrival, top per-frame callees) plus an analyzer with a planted-gap positive control. The
 user reproduces in seconds what an hour of driving could not, and the fix waits for THAT evidence.
+
+## 2026-07-27 04:30 — I broke the one-gate rule myself, and a queued HOOK gate is still a gate
+
+I launched the `fix-render-stall` gate while a commit was already queued whose pre-commit hook runs
+the full gate. Two gates ran concurrently, and the hook gate went red on `audio-narration`.
+
+The rule was never "do not launch two gates by hand." It is **one gate at a time on this machine**,
+and a pre-commit hook is a gate I did not type. The tell is easy to miss because the second gate has
+no command of mine attached to it: it is a side effect of `git commit`.
+
+  **Before launching a gate, ask what else is holding a commit.** A queued commit is a queued gate.
+
+Cost: the red is now ambiguous. `audio-narration` may be a genuine defect (its escalation pattern
+says it probably is) or it may be contention, and I destroyed the ability to tell them apart in that
+run. The brief for #141 therefore leads with "establish whether it survives a SINGLE-gate run" —
+paying later for the discrimination I could have had for free.
+
+## 2026-07-27 04:35 — the escalation path from "retry-tally regular" to "hard red" is a DEFECT signature
+
+Two for two now.
+
+`overlay-dialog` was a first-attempt timeout that passed on retry, for two days, and was treated as
+ambient load. When it finally went hard red the cause was structural: `requestPaint()` mutated the
+reactive `paintRevision` AND directly asked the renderer for a frame, so a stale frame could win.
+Two owners of one obligation. Never load at all. It went 4/10 red → 20/20 green.
+
+`audio-narration` has now walked the identical path — nightly retry-tally regular, then a hard red
+that survived its own quiet retry.
+
+  **A flake that passes only on retry is not noise that happens to be loud. It is a race whose
+  window is usually smaller than the retry interval.** Load moves the window; it does not create it.
+
+The retry mechanism is what hides this: it converts "fails under contention" into a green tick and a
+tally line nobody reads. So the tally is not bookkeeping — it is the **early warning**, and a name
+that recurs in it has already declared itself. Open it as a defect, not as a flake, and require a
+mechanism before accepting any load story.
+
+## 2026-07-27 04:40 — a gate blocker OUTRANKS a solo slot, because the solo task lands through the gate
+
+#125 (the repo-wide ivue statics codemod) holds a SOLO slot precisely so nothing else touches the
+tree while it runs. That looked like a reason not to dispatch the `audio-narration` fix.
+
+It is the opposite. **#125 cannot land through a red gate.** The blocker is not competing with the
+solo task for the machine; it is a prerequisite for it. Serializing behind the solo slot would have
+left the codemod finished and unlandable.
+
+  **A solo slot excludes work that CONFLICTS with it, not work it DEPENDS on.**
+
+The general form: when scheduling, separate contention (two jobs wanting the same resource) from
+dependency (one job gating the other's completion). Only contention justifies waiting.
+
+## 2026-07-27 04:45 — a codemod branch resolves conflicts by RE-RUNNING the codemod
+
+While #125 is in flight, every commit I land to main raises its merge cost — a branch that rewrote
+471 source files conflicts with essentially any concurrent change.
+
+Do not hand-resolve that merge. Hand-resolving a mechanical transformation is how a codemod acquires
+exceptions: each manual resolution is a site where the rule was applied by judgement rather than by
+the tool, and none of them are visible afterward.
+
+  **Merge main INTO the codemod branch taking THEIRS for conflicted files, then re-run the codemod
+  over the merged tree.** The transformation is idempotent; that is the property being bought.
+
+Corollary for fleet scheduling: a repo-wide codemod is cheapest when main is quiet, so batch doc and
+small fixes rather than trickling them in. If main must keep moving, accept it deliberately and plan
+the re-run — do not discover the cost at merge time.
+
+## 2026-07-27 04:50 — a builder measuring a LOAD-SENSITIVE defect needs the machine quiet
+
+Standard fleet concurrency here is 2–3 builders. That cap assumes the work is CPU-bound and
+order-independent.
+
+It does not hold when a builder's deliverable is a MEASUREMENT of a timing-sensitive intermittent.
+Its first job is a failure RATE on an idle machine; a second builder compiling in the background
+makes that number meaningless, and worse, makes it meaningless invisibly — the run still produces
+digits.
+
+  **When a builder's output is a rate or a latency, its concurrency budget is part of its brief.**
+
+So the cap is not a constant. It is set by the most measurement-sensitive job in flight.
+
+## 2026-07-27 05:00 — I stated an ENVIRONMENT FACT from memory, and the builder had to correct me
+
+My #141 brief asserted, in bold, that `espeak-ng` is **not installed** on this machine, and
+built a whole requirement on it ("do not fix this by installing espeak-ng; the gate must be
+green on a machine that does not have it, because ours does not").
+
+`/usr/bin/espeak-ng` has been there since April 2024. The claim came from a memory note
+saying the narration harness *needs* espeak-ng, which I silently converted into *lacks*.
+One `which` would have settled it. The builder checked, found the binary, and said so.
+
+  **A brief's environment claims are ASSERTIONS, and a brief is read as authoritative. Run
+  the check before writing the sentence.** Cheap to verify, expensive to propagate: the
+  builder would have been entitled to design an entire espeak-absent degradation path for a
+  condition that does not exist here.
+
+The general form is the measure-before-briefing rule applied to the environment rather than
+to a cause: a remembered fact about the machine is a hypothesis about the machine.
+
+Credit where due — it also read the brief closely enough to contradict it rather than
+comply with it. That is the behaviour the drive-first loop is supposed to produce.
+
+## 2026-07-27 05:05 — a FRESH WORKTREE has no `node_modules`, so the first measurement is garbage
+
+The same builder's first ten baseline runs all exited 1. Not the defect: the new worktree
+had no `node_modules`, so the harness failed inside its unit-test preflight on unresolved
+`vue` and `ivue/extras` before Invar ever launched.
+
+Ten runs of a clean, consistent, completely meaningless red. Worse, the failure mode
+resembles the real one closely enough to be believed — an exit 1 from a smoke you dispatched
+someone to investigate for exiting 1.
+
+  **`git worktree add` copies tracked files only. Install dependencies as part of worktree
+  creation, before dispatch — not as something the builder discovers.**
+
+Dispatch procedure is now: create worktree → `bun install` → copy brief → launch. And any
+brief whose first step is a measurement should say that a setup failure is not a data point,
+so a uniform red gets re-examined instead of averaged in.
+
+The builder recovered on its own — it noticed the preflight was failing rather than the app,
+restored the lockfile dependencies, and re-ran the untouched ten. Then the REAL rate
+appeared immediately: run 1 pass, run 2 timeout. Which also answers the contention question
+below.
+
+## 2026-07-27 05:10 — the narration red reproduces SOLO, so my two-gates mistake did not cause it
+
+I attributed the `audio-narration` hard red partly to my own rule-break (two gates running
+concurrently). With dependencies restored on an idle machine and no gate running at all, it
+failed on the second run.
+
+So: the rule-break was real and stays recorded, but it was **not** the cause here. Correct
+the attribution rather than leaving a tidy story standing.
+
+  **Owning an error is not the same as owning a causal claim about it.** Self-blame that
+  outruns the evidence is still a wrong diagnosis, and it costs the same as any other — it
+  would have sent the fix toward scheduling instead of toward the race.
+
+The escalation-signature prior held: retry-tally regular → hard red → reproduces solo. Two
+for two that this pattern means a defect.

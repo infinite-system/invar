@@ -105,6 +105,29 @@ e.g. the Invar (tui-editor) UI-task runs. Not needed for a single-shot task you 
   "clean up"/"refactor the tree"; keep all `rm`/deletions to the conductor; `git status`/`diff`
   its output before accepting.
 
+## Cutting a worktree (do this BEFORE dispatch, every time)
+
+`git worktree add` copies **tracked files only**. A fresh worktree therefore has no
+`node_modules`, and the first thing a builder runs there fails in preflight on unresolved
+imports — a clean, consistent, completely meaningless red that looks exactly like the defect
+you dispatched it to investigate. This cost a builder ten baseline runs on 2026-07-27.
+
+The order is fixed:
+
+1. `git worktree add -b <branch> /tmp/conductor-<name> main` — and check the path is FREE first;
+   a leftover worktree from a prior session silently starts the builder on the wrong base
+   (three times so far). If the path exists, pick a new one; do not reuse and do not remove.
+2. **`bun install` in the new worktree.** Not optional, not the builder's job to discover.
+3. Copy the brief in, then launch.
+
+And when a brief's first step is a MEASUREMENT, say in the brief that a setup failure is not a
+data point — so a uniform red gets re-examined rather than averaged into a rate.
+
+**Verify environment claims before writing them into a brief.** A brief is read as
+authoritative, so a remembered fact about the machine ("espeak-ng isn't installed") is a
+hypothesis about the machine, and a wrong one can send a builder to design a whole degradation
+path for a condition that does not exist. One `which` is cheaper than the correction.
+
 ## Priming delegated agents (anti-telephone)
 IBR and the repo's ivue / invariants conventions **decay when relayed turn-over-turn in task
 prose** — the "bad telephone" failure. Do NOT re-explain them per task. **Prime every agent that
