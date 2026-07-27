@@ -92,12 +92,15 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
   override async completion(
     document: TextDocumentModel,
     position: TextPosition,
-    _context: LanguageCompletionContext,
+    context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
     this.completionRequestCount++;
     StatusChannel.Class.update({
       completionRequestCount: this.completionRequestCount,
     });
+    if (!document.path.endsWith('.rs')) {
+      return super.completion(document, position, context);
+    }
     const lineText = document.line(position.line);
     const prefixText =
       Array.from(lineText)

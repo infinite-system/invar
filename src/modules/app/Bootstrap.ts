@@ -191,8 +191,12 @@ class $Bootstrap {
       scrollPhysics,
     });
     let completionRequestGeneration = 0;
+    let completionRequestPending = false;
+    let identifierCompletionRequestScheduled = false;
     const dismissCompletion = (): void => {
       completionRequestGeneration++;
+      completionRequestPending = false;
+      identifierCompletionRequestScheduled = false;
       completionPopup.close();
       // A completion request can open while the renderer still has that frame queued. OpenTUI
       // coalesces another request made in the same input turn, so retry on the next turn after the
@@ -1284,55 +1288,108 @@ class $Bootstrap {
         line: editor.cursor.line.value,
         column: editor.cursor.col.value,
       };
+      const requestPrefix = completionPrefix();
       const requestGeneration = ++completionRequestGeneration;
+      completionRequestPending = true;
       void workspaceSet.active
         .completionAt(position, { triggerKind, triggerCharacter })
         .then((completionList) => {
           const activeEditor = workspaceSet.active.editor;
+          if (requestGeneration !== completionRequestGeneration) return;
+          completionRequestPending = false;
+          const currentPrefix = completionPrefix();
+          const prefixExtendedWhileRequestWasPending =
+            activeEditor.document === document &&
+            activeEditor.document.path === path &&
+            activeEditor.cursor.line.value === position.line &&
+            currentPrefix.range.start.line === requestPrefix.range.start.line &&
+            currentPrefix.range.start.column ===
+              requestPrefix.range.start.column &&
+            currentPrefix.text.startsWith(requestPrefix.text);
           if (
-            requestGeneration !== completionRequestGeneration ||
             activeEditor.document !== document ||
             activeEditor.document.path !== path ||
-            activeEditor.document.revision.value !== revision ||
+            (activeEditor.document.revision.value !== revision &&
+              !prefixExtendedWhileRequestWasPending) ||
             activeEditor.cursor.line.value !== position.line ||
-            activeEditor.cursor.col.value !== position.column
+            (activeEditor.cursor.col.value !== position.column &&
+              !prefixExtendedWhileRequestWasPending)
           )
             return;
+          if (
+            activeEditor.document.revision.value !== revision &&
+            (completionList.isIncomplete || completionList.items.length === 0)
+          ) {
+            requestCompletion('invoked');
+            return;
+          }
           const anchor = view.editorCaretAnchor();
           if (!anchor || completionList.items.length === 0) {
             dismissCompletion();
             return;
           }
-          const prefix = completionPrefix();
-          completionPopup.show(completionList, anchor, prefix.text, (item) => {
-            const currentPrefix = completionPrefix();
-            const originalTextEdit = item.textEdit;
-            const itemTextEditMatchesOriginalPrefix =
-              originalTextEdit !== null &&
-              originalTextEdit.range.start.line === prefix.range.start.line &&
-              originalTextEdit.range.start.column ===
-                prefix.range.start.column &&
-              originalTextEdit.range.end.line === prefix.range.end.line &&
-              originalTextEdit.range.end.column === prefix.range.end.column;
-            const acceptedItem =
-              itemTextEditMatchesOriginalPrefix && originalTextEdit
-                ? {
-                    ...item,
-                    textEdit: {
-                      newText: originalTextEdit.newText,
-                      range: {
-                        start: originalTextEdit.range.start,
-                        end: currentPrefix.range.end,
+          completionPopup.show(
+            completionList,
+            anchor,
+            currentPrefix.text,
+            (item) => {
+              const currentPrefix = completionPrefix();
+              const originalTextEdit = item.textEdit;
+              const itemTextEditMatchesOriginalPrefix =
+                originalTextEdit !== null &&
+                originalTextEdit.range.start.line ===
+                  requestPrefix.range.start.line &&
+                originalTextEdit.range.start.column ===
+                  requestPrefix.range.start.column &&
+                originalTextEdit.range.end.line ===
+                  requestPrefix.range.end.line &&
+                originalTextEdit.range.end.column ===
+                  requestPrefix.range.end.column;
+              const acceptedItem =
+                itemTextEditMatchesOriginalPrefix && originalTextEdit
+                  ? {
+                      ...item,
+                      textEdit: {
+                        newText: originalTextEdit.newText,
+                        range: {
+                          start: originalTextEdit.range.start,
+                          end: currentPrefix.range.end,
+                        },
                       },
-                    },
-                  }
-                : item;
-            workspaceSet.active.editor.applyCompletion(
-              acceptedItem,
-              currentPrefix.range,
-            );
-          });
+                    }
+                  : item;
+              workspaceSet.active.editor.applyCompletion(
+                acceptedItem,
+                currentPrefix.range,
+              );
+            },
+          );
+        })
+        .catch(() => {
+          if (requestGeneration === completionRequestGeneration)
+            dismissCompletion();
         });
+    };
+    // invariant: Completion is provider-neutral (src/modules/lsp/lsp.invariants.md)
+    const scheduleIdentifierCompletionRequest = (): void => {
+      if (
+        identifierCompletionRequestScheduled ||
+        completionRequestPending ||
+        completionPopup.open
+      )
+        return;
+      identifierCompletionRequestScheduled = true;
+      queueMicrotask(() => {
+        if (!identifierCompletionRequestScheduled) return;
+        identifierCompletionRequestScheduled = false;
+        if (
+          completionRequestPending ||
+          completionPopup.open ||
+          completionPrefix().text.length === 0
+        )
+          return;
+        requestCompletion('invoked');
+      });
     };
 
     // ---------------------------------------------------------------------------------------------
@@ -2258,12 +2315,13 @@ class $Bootstrap {
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget
       ) {
         workspaceSet.active.editor.insertText(key.sequence);
-        if (
-          workspaceSet.active
-            .completionTriggerCharacters()
-            .includes(key.sequence)
-        )
+        const prefix = completionPrefix();
+        const isTriggerCharacter = workspaceSet.active
+          .completionTriggerCharacters()
+          .includes(key.sequence);
+        if (isTriggerCharacter)
           requestCompletion('triggerCharacter', key.sequence);
+        else if (prefix.text.length > 0) scheduleIdentifierCompletionRequest();
       }
       // No explicit render here — any model mutation above triggers the frame effect.
     };
