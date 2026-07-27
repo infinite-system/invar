@@ -304,7 +304,19 @@ class $AgentSession {
     this.turnState.value = 'canceled';
     this.renderRevision.value++;
     this.backend.interrupt();
+    this.publishCanceledStateAfterTeardown();
     return true;
+  }
+
+  /** Publish once after the synchronous key/backend stack has unwound. A
+   *  cancellation can stop the spinner while the renderer is settling its
+   *  current frame; every synchronous pulse then belongs to that frame and the
+   *  status channel retains the preceding running snapshot. */
+  protected publishCanceledStateAfterTeardown(): void {
+    queueMicrotask(() => {
+      if (this.disposed || this.turnState.value !== 'canceled') return;
+      this.renderRevision.value++;
+    });
   }
 
   /** Fold one backend event into the transcript + derived status. The whole state machine lives here. */

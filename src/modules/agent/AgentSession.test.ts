@@ -222,6 +222,19 @@ describe('AgentSession', () => {
     expect(session.status.value).toBe('idle');
   });
 
+  test('cancel republishes after synchronous backend teardown', async () => {
+    const { session } = makeSession();
+    session.send('go');
+    expect(session.interrupt()).toBe(true);
+    const synchronousTeardownRevision = session.renderRevision.value;
+    expect(session.turnState.value).toBe('canceled');
+
+    await Promise.resolve();
+
+    expect(session.renderRevision.value).toBe(synchronousTeardownRevision + 1);
+    expect(session.turnState.value).toBe('canceled');
+  });
+
   test('external observations queue behind user turns and each other', () => {
     const { session, backend } = makeSession();
     session.send('user-first');
