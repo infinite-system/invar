@@ -29,11 +29,14 @@ machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACE
 `SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation. The nested-JSON
 editor case initializes a repository by default and verifies that
 version-control marks, indent guides, and fold controls are present together.
-Every editor fixture of at least 80k lines also direct-jumps to depth 0, 50k,
-and 75k, settles on observed scroll state and frame quiescence, then measures a
-fresh 1,000-row real wheel drive. Jump frames are excluded. The report gives
-actual start, rows travelled, FPS, and ratio to depth 0 for every checkpoint,
-and fails the exact checkpoint below 28 FPS.
+The behavioral contract takes the flat 100k editor's top-of-file cadence as
+the current-run reference, then supplies it through
+`SMOOTHNESS_DEPTH_REFERENCE_FPS` to one fold-dense checkpoint. That checkpoint
+keeps folding, indent guides, and version-control gutter marks on,
+direct-jumps to line 75,000, settles on observed scroll state and frame
+quiescence, excludes jump frames, and measures a fresh 1,000-row real wheel
+drive. The report gives actual start, rows travelled, FPS, and ratio to the
+flat 100k top cadence, and fails the checkpoint below 28 FPS.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: before the 2026-07-26 cadence and gesture-gain repair, a fling ran 19-23 whole-glide

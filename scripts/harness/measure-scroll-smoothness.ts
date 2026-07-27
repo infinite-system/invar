@@ -77,7 +77,10 @@ const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
 const DEPTH_GESTURE_TARGET_ROWS = Number(
   process.env.SMOOTHNESS_DEPTH_GESTURE_ROWS ?? '1000',
 );
-const DEPTH_CHECKPOINT_TARGETS = [0, 50_000, 75_000] as const;
+const DEPTH_REFERENCE_FRAMES_PER_SECOND = Number(
+  process.env.SMOOTHNESS_DEPTH_REFERENCE_FPS ?? 'NaN',
+);
+const DEPTH_CHECKPOINT_TARGETS = [75_000] as const;
 const DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES = 80_000;
 const DEPTH_CHECKPOINT_FPS_FLOOR = 28;
 const DEPTH_GESTURE_REFRESH_FRAME_INTERVAL = 6;
@@ -143,7 +146,7 @@ interface DepthCheckpointMeasurement {
   readonly movingFrameCount: number;
   readonly durationMilliseconds: number;
   readonly framesPerSecond: number;
-  readonly ratioToDepthZero: number;
+  readonly ratioToReference: number;
 }
 
 async function awaitStatusCondition(
@@ -417,7 +420,7 @@ async function measureDepthCheckpoint(
   driver: PtyTestDriver.Model,
   targetDepthLine: number,
   actualStartLine: number,
-): Promise<Omit<DepthCheckpointMeasurement, 'ratioToDepthZero'>> {
+): Promise<Omit<DepthCheckpointMeasurement, 'ratioToReference'>> {
   const samples: GestureFrameSample[] = [];
   const targetEndLine = actualStartLine + DEPTH_GESTURE_TARGET_ROWS;
   driver.sendRawInputWithoutFrameExpectation(
@@ -477,7 +480,7 @@ async function measureDepthCheckpoints(
   statusPath: string,
 ): Promise<DepthCheckpointMeasurement[]> {
   const checkpointsWithoutRatios: Array<
-    Omit<DepthCheckpointMeasurement, 'ratioToDepthZero'>
+    Omit<DepthCheckpointMeasurement, 'ratioToReference'>
   > = [];
   for (const targetDepthLine of DEPTH_CHECKPOINT_TARGETS) {
     const actualStartLine = await jumpEditorToDepth(
@@ -489,14 +492,10 @@ async function measureDepthCheckpoints(
       await measureDepthCheckpoint(driver, targetDepthLine, actualStartLine),
     );
   }
-  const depthZeroFramesPerSecond =
-    checkpointsWithoutRatios[0]?.framesPerSecond ?? 0;
   return checkpointsWithoutRatios.map((checkpoint) => ({
     ...checkpoint,
-    ratioToDepthZero:
-      depthZeroFramesPerSecond > 0
-        ? checkpoint.framesPerSecond / depthZeroFramesPerSecond
-        : 0,
+    ratioToReference:
+      checkpoint.framesPerSecond / DEPTH_REFERENCE_FRAMES_PER_SECOND,
   }));
 }
 
@@ -525,7 +524,7 @@ function assertDepthCheckpointFloors(
 
 function proveDepthCheckpointFloorCanFail(): string {
   const syntheticCheckpoints = DEPTH_CHECKPOINT_TARGETS.map(
-    (targetDepthLine, checkpointIndex): DepthCheckpointMeasurement => ({
+    (targetDepthLine): DepthCheckpointMeasurement => ({
       targetDepthLine,
       actualStartLine: targetDepthLine,
       actualEndLine: targetDepthLine + DEPTH_GESTURE_TARGET_ROWS,
@@ -533,8 +532,8 @@ function proveDepthCheckpointFloorCanFail(): string {
       observedFrameCount: 100,
       movingFrameCount: 100,
       durationMilliseconds: 3_300,
-      framesPerSecond: checkpointIndex === 2 ? 27 : 30,
-      ratioToDepthZero: checkpointIndex === 2 ? 0.9 : 1,
+      framesPerSecond: 27,
+      ratioToReference: 0.9,
     }),
   );
   try {
@@ -561,7 +560,7 @@ function printDepthCheckpointTable(
   );
   console.error(
     '| target depth | actual start | rows travelled | FPS | ' +
-      'ratio to depth 0 | floor |',
+      'ratio to 100k top | floor |',
   );
   console.error('| ---: | ---: | ---: | ---: | ---: | :---: |');
   for (const checkpoint of surfaceMeasurement.depthCheckpoints) {
@@ -569,7 +568,7 @@ function printDepthCheckpointTable(
       `| ${checkpoint.targetDepthLine} | ${checkpoint.actualStartLine} | ` +
         `${checkpoint.rowsTravelled} | ` +
         `${checkpoint.framesPerSecond.toFixed(1)} | ` +
-        `${checkpoint.ratioToDepthZero.toFixed(3)} | PASS |`,
+        `${checkpoint.ratioToReference.toFixed(3)} | PASS |`,
     );
   }
 }
@@ -743,12 +742,27 @@ async function openSurface(
       60_000,
     );
     driver.sendText(fixtureFileName);
-    await driver.awaitGridCondition(
+    // The Files pane already shows this name behind Quick Open, so grid text
+    // cannot prove that asynchronous enumeration produced an activatable row.
+    await awaitStatusCondition(
+      statusPath,
       'quick open to select the exact glide fixture',
-      (snapshot) => snapshot.findText(fixtureFileName) !== null,
+      (status) =>
+        status.quickOpenOpen === true &&
+        status.quickOpenQuery === fixtureFileName &&
+        Number(status.quickOpenMatches) === 1 &&
+        Number(status.quickOpenSelected) === 0,
       60_000,
     );
     driver.sendKeysWithoutFrameExpectation('Enter');
+    await awaitStatusCondition(
+      statusPath,
+      'quick open to activate the exact glide fixture',
+      (status) =>
+        typeof status.activeBuffer === 'string' &&
+        status.activeBuffer.endsWith(fixtureFileName),
+      60_000,
+    );
     await driver.awaitGridCondition(
       'the glide fixture renders its first line in the editor',
       (snapshot) => snapshot.findText('line 000000 content') !== null,
@@ -847,7 +861,10 @@ async function measureSurface(
 ): Promise<SurfaceMeasurement> {
   const shouldMeasureDepthCheckpoints =
     surface === 'editor' &&
-    fixtureLineCount >= DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES;
+    fixtureLineCount >= DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES &&
+    fixtureShape === 'fold-dense' &&
+    codeFolding === 'on' &&
+    VERSION_CONTROL_MARKS_ENABLED;
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -986,6 +1003,24 @@ if (
     'SMOOTHNESS_DEPTH_GESTURE_ROWS must be an integer from 1000 to 5000',
   );
 }
+const depthCheckpointRequested =
+  SURFACES.includes('editor') &&
+  FIXTURE_SHAPES.includes('fold-dense') &&
+  CODE_FOLDING_MODES.includes('on') &&
+  VERSION_CONTROL_MARKS_ENABLED &&
+  FIXTURE_LINE_COUNTS.some(
+    (fixtureLineCount) =>
+      fixtureLineCount >= DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES,
+  );
+if (
+  depthCheckpointRequested &&
+  (!Number.isFinite(DEPTH_REFERENCE_FRAMES_PER_SECOND) ||
+    DEPTH_REFERENCE_FRAMES_PER_SECOND <= 0)
+) {
+  throw new Error(
+    'SMOOTHNESS_DEPTH_REFERENCE_FPS must name the measured 100k top FPS',
+  );
+}
 const foldDensePositiveControl = foldDenseFixtureLines(101);
 const parsedFoldDensePositiveControl = JSON.parse(
   foldDensePositiveControl.join('\n'),
@@ -1010,6 +1045,10 @@ for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
   for (const fixtureShape of FIXTURE_SHAPES) {
     for (const codeFolding of CODE_FOLDING_MODES) {
       for (const surface of SURFACES) {
+        console.error(
+          `measuring case: ${surface} ${fixtureShape} ` +
+            `folding-${codeFolding} ${fixtureLineCount} lines`,
+        );
         const surfaceMeasurement = await measureSurface(
           surface,
           fixtureLineCount,
@@ -1054,6 +1093,11 @@ const report = {
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
+  depthReferenceFramesPerSecond: Number.isFinite(
+    DEPTH_REFERENCE_FRAMES_PER_SECOND,
+  )
+    ? DEPTH_REFERENCE_FRAMES_PER_SECOND
+    : null,
   depthCheckpointFloorPositiveControl,
   wallClockMilliseconds,
   depthCheckpointWallClockMilliseconds,

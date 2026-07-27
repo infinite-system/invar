@@ -305,12 +305,13 @@ workspace; idle CPU above ~zero; memory that grows with file/repo size rather th
 
 **Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` generates
 and drives 2k, 26,635, and 100k-line editor and diff fixtures. On every 100k
-editor fixture it direct-jumps to depths 0, 50k, and 75k, settles on observed
-scroll state and frame quiescence, excludes jump frames, then drives 1,000-5,000
-rows of real wheel input. The behavioral contract reports FPS, rows travelled,
-and the depth-zero ratio at each checkpoint and requires each one,
-independently, to sustain at least 28 FPS. Its fold-dense axis keeps folding,
-indent guides, and version-control gutter marks enabled. Unit cost ratchets in
+flat editor fixture the top-of-file glide supplies the current-run FPS
+reference. One separate 100k fold-dense checkpoint keeps folding, indent
+guides, and version-control gutter marks enabled, direct-jumps to line 75,000,
+settles on observed scroll state and frame quiescence, excludes jump frames,
+then drives at least 1,000 rows of real wheel input. The behavioral contract
+reports FPS, rows travelled, and the ratio to the flat 100k top reference, and
+requires the checkpoint to sustain at least 28 FPS. Unit cost ratchets in
 `CodeFolding.test.ts`, `Editor.test.ts`, and `DiffView.test.ts` prove
 unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
 remains ~0 after activity. Continuous (time axis): the per-gate byte-flush

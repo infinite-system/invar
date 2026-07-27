@@ -121,9 +121,8 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 # fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts. The instrument
 # generates 2k, 26,635, and 100k-line fixtures at run time and drives both the editor and diff
 # surfaces, so cadence is compared at scale without storing giant fixtures in the repository.
-# The 100k editor direct-jumps to depth 0, 50k, and 75k, excludes those setup
-# frames, and checks each subsequent 1,000-row real-wheel drive independently
-# against the 28 FPS floor.
+# The 100k flat editor gesture starts at the top and supplies the current-run
+# reference FPS for the separate full-stack depth checkpoint below.
 #
 # THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
 #  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
@@ -156,7 +155,8 @@ if SMOOTHNESS_GESTURES=2 \
     smooth_follow_on_max_travel smooth_follow_on_within_tolerance \
     smooth_fast_cadence_floor_passes smooth_minimum_fast_fps \
     smooth_100k_surface_count smooth_100k_cadence_floor_passes \
-    smooth_100k_minimum_fast_fps <<<"$(python3 -c "
+    smooth_100k_minimum_fast_fps \
+    smooth_100k_top_reference_fps <<<"$(python3 -c "
 import json
 cases = json.load(open('$SMOOTH_JSON'))['cases']
 baseline = next(
@@ -172,21 +172,17 @@ all_gestures = [
 large_cases = [
     case for case in cases if case['fixtureLineCount'] == 100000
 ]
-large_diff_gestures = [
+large_gestures = [
     gesture
     for case in large_cases
-    if case['surface'] == 'diff'
     for gesture in case['gestures']
 ]
-large_editor_checkpoints = [
-    checkpoint
+large_editor_gestures = [
+    gesture
     for case in large_cases
     if case['surface'] == 'editor'
-    for checkpoint in case['depthCheckpoints']
+    for gesture in case['gestures']
 ]
-large_editor_targets = {
-    checkpoint['targetDepthLine'] for checkpoint in large_editor_checkpoints
-}
 from_rest_travel = gestures[0]['totalDistanceRows']
 follow_on_travel = [gesture['totalDistanceRows'] for gesture in gestures[1:]]
 follow_on_within_tolerance = all(
@@ -197,10 +193,11 @@ minimum_fast_fps = min(
     gesture['sustainedFastFramesPerSecond'] for gesture in all_gestures
 )
 minimum_100k_fast_fps = min(
-    [gesture['sustainedFastFramesPerSecond']
-     for gesture in large_diff_gestures]
-    + [checkpoint['framesPerSecond']
-       for checkpoint in large_editor_checkpoints]
+    gesture['sustainedFastFramesPerSecond'] for gesture in large_gestures
+)
+top_reference_fps = min(
+    gesture['sustainedFastFramesPerSecond']
+    for gesture in large_editor_gestures
 )
 print(min(g['movingFrameCount'] for g in all_gestures),
       max(g['maximumFrameDeltaRows'] for g in all_gestures),
@@ -213,38 +210,12 @@ print(min(g['movingFrameCount'] for g in all_gestures),
       f'{minimum_fast_fps:.1f}',
       len(large_cases),
       int(len(large_cases) == 2
-          and len(large_editor_checkpoints) == 3
-          and large_editor_targets == {0, 50000, 75000}
-          and all(checkpoint['framesPerSecond'] >= 28
-                  for checkpoint in large_editor_checkpoints)
+          and len(large_editor_gestures) == 2
+          and all(not case['depthCheckpoints'] for case in large_cases)
           and minimum_100k_fast_fps >= 28),
-      f'{minimum_100k_fast_fps:.1f}')
+      f'{minimum_100k_fast_fps:.1f}',
+      f'{top_reference_fps:.6f}')
 ")"
-  python3 - "$SMOOTH_JSON" <<'PY'
-import json
-import sys
-
-report = json.load(open(sys.argv[1]))
-print(
-    "  depth-floor positive control RED (expected): "
-    + report["depthCheckpointFloorPositiveControl"]
-)
-print(
-    "  | fixture | target depth | actual start | rows travelled | "
-    "FPS | ratio |"
-)
-print("  | :--- | ---: | ---: | ---: | ---: | ---: |")
-for case in report["cases"]:
-    for checkpoint in case["depthCheckpoints"]:
-        print(
-            f"  | {case['fixtureShape']} | "
-            f"{checkpoint['targetDepthLine']} | "
-            f"{checkpoint['actualStartLine']} | "
-            f"{checkpoint['rowsTravelled']} | "
-            f"{checkpoint['framesPerSecond']:.1f} | "
-            f"{checkpoint['ratioToDepthZero']:.3f} |"
-        )
-PY
   if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
     smooth_step_message="no glide frame jumps more than two frame budgets"
     smooth_step_message+=" (largest step=$smooth_max_step rows, bound 15)"
@@ -297,14 +268,13 @@ PY
     bad "$fast_cadence_message"
   fi
   if [ "${smooth_100k_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
-    large_cadence_message="100k editor checkpoints and diff glides"
-    large_cadence_message+=" sustain cadence"
+    large_cadence_message="100k editor and diff glides sustain cadence"
     large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
     large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
     large_cadence_message+=" floor 28)"
     pass "$large_cadence_message"
   else
-    large_cadence_message="100k editor checkpoint or diff cadence regressed"
+    large_cadence_message="100k editor or diff cadence regressed"
     large_cadence_message+=" (surfaces=$smooth_100k_surface_count,"
     large_cadence_message+=" slowest=${smooth_100k_minimum_fast_fps}fps,"
     large_cadence_message+=" floor 28)"
@@ -318,7 +288,9 @@ fi
 # ---- CONTRACT: fold-dense full-stack cadence (RATCHET: real package JSON stayed slow) ---------------
 # SIZE alone is not the workload: nested JSON combines a structural fold start, indentation guide,
 # syntax/bracket projection, and version-control gutter marks on the same visible rows. The generated
-# 100k fixture asserts that complete stack with host folding enabled, not the flat-text isolator.
+# 100k fixture asserts that complete stack with host folding enabled, not the
+# flat-text isolator. One 1,000-row drive at line 75,000 is enough to sample the
+# defect that was visible from its first frame.
 echo "== CONTRACT fold-dense-cadence: 100k nested JSON keeps the full row stack at 28 FPS =="
 FOLD_DENSE_JSON="$ROOT/artifacts/fold-dense-scroll-smoothness.json"
 FOLD_DENSE_LOG="$ROOT/artifacts/fold-dense-scroll-smoothness.log"
@@ -327,9 +299,11 @@ if SMOOTHNESS_GESTURES=2 \
    SMOOTHNESS_SURFACES=editor \
    SMOOTHNESS_FIXTURES=fold-dense \
    SMOOTHNESS_CODE_FOLDING=on \
+   SMOOTHNESS_DEPTH_REFERENCE_FPS="${smooth_100k_top_reference_fps:-0}" \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$FOLD_DENSE_JSON" 2>"$FOLD_DENSE_LOG"; then
   read -r fold_dense_case_count fold_dense_full_stack \
+    fold_dense_checkpoint_count fold_dense_minimum_rows \
     fold_dense_minimum_fast_fps fold_dense_floor_passes <<<"$(python3 -c "
 import json
 cases = json.load(open('$FOLD_DENSE_JSON'))['cases']
@@ -345,23 +319,30 @@ full_stack = (
     and matching[0]['indentGuides'] is True
     and matching[0]['versionControlMarks'] is True
 )
+checkpoints = [
+    checkpoint
+    for case in matching
+    for checkpoint in case['depthCheckpoints']
+]
 minimum_fast_fps = min(
-    checkpoint['framesPerSecond']
-    for case in matching
-    for checkpoint in case['depthCheckpoints']
-) if matching else 0
+    checkpoint['framesPerSecond'] for checkpoint in checkpoints
+) if checkpoints else 0
 target_depths = {
-    checkpoint['targetDepthLine']
-    for case in matching
-    for checkpoint in case['depthCheckpoints']
+    checkpoint['targetDepthLine'] for checkpoint in checkpoints
 }
-print(len(matching), int(full_stack), f'{minimum_fast_fps:.1f}',
+checkpoint_count = len(checkpoints)
+minimum_rows = min(
+    checkpoint['rowsTravelled'] for checkpoint in checkpoints
+) if checkpoints else 0
+print(len(matching), int(full_stack), checkpoint_count, minimum_rows,
+      f'{minimum_fast_fps:.1f}',
       int(full_stack
-          and len(matching[0]['depthCheckpoints']) == 3
-          and target_depths == {0, 50000, 75000}
+          and checkpoint_count == 1
+          and target_depths == {75000}
+          and minimum_rows >= 1000
           and all(
               checkpoint['framesPerSecond'] >= 28
-              for checkpoint in matching[0]['depthCheckpoints']
+              for checkpoint in checkpoints
           )
           and minimum_fast_fps >= 28))
 ")"
@@ -371,8 +352,12 @@ import sys
 
 report = json.load(open(sys.argv[1]))
 print(
+    "  depth-floor positive control RED (expected): "
+    + report["depthCheckpointFloorPositiveControl"]
+)
+print(
     "  | fixture | target depth | actual start | rows travelled | "
-    "FPS | ratio |"
+    "FPS | ratio to 100k top |"
 )
 print("  | :--- | ---: | ---: | ---: | ---: | ---: |")
 for case in report["cases"]:
@@ -383,13 +368,15 @@ for case in report["cases"]:
             f"{checkpoint['actualStartLine']} | "
             f"{checkpoint['rowsTravelled']} | "
             f"{checkpoint['framesPerSecond']:.1f} | "
-            f"{checkpoint['ratioToDepthZero']:.3f} |"
+            f"{checkpoint['ratioToReference']:.3f} |"
         )
 PY
   if [ "${fold_dense_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
     fold_dense_message="100k nested JSON sustains the full per-row stack"
     fold_dense_message+=" (cases=$fold_dense_case_count,"
     fold_dense_message+=" fullStack=$fold_dense_full_stack,"
+    fold_dense_message+=" checkpoints=$fold_dense_checkpoint_count,"
+    fold_dense_message+=" rows=$fold_dense_minimum_rows,"
     fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps}fps,"
     fold_dense_message+=" floor 28)"
     pass "$fold_dense_message"
@@ -397,6 +384,8 @@ PY
     fold_dense_message="100k nested JSON cadence regressed"
     fold_dense_message+=" (cases=${fold_dense_case_count:-0},"
     fold_dense_message+=" fullStack=${fold_dense_full_stack:-0},"
+    fold_dense_message+=" checkpoints=${fold_dense_checkpoint_count:-0},"
+    fold_dense_message+=" rows=${fold_dense_minimum_rows:-0},"
     fold_dense_message+=" slowest=${fold_dense_minimum_fast_fps:-0}fps,"
     fold_dense_message+=" floor 28)"
     bad "$fold_dense_message"
