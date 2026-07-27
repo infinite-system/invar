@@ -17,3 +17,17 @@ test('status snapshot contributions are read live at the host boundary', () => {
     currentLineBlameAuthor: 'A',
   });
 });
+
+test('disposing a contribution clears its previously projected fields', () => {
+  const contributions = new StatusProjectionContributions.Class();
+  const dispose = contributions.register({
+    snapshot: () => ({ samplePluginValue: 'active' }),
+  });
+  expect(contributions.snapshot().samplePluginValue).toBe('active');
+
+  dispose();
+
+  expect(contributions.snapshot()).toEqual({
+    samplePluginValue: undefined,
+  });
+});

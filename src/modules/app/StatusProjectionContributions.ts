@@ -2,6 +2,7 @@ import type { StatusSnapshot } from '../system/StatusChannel';
 
 class $StatusProjectionContributions {
   protected readonly contributions = new Set<StatusProjectionContribution>();
+  protected projectedKeys = new Set<keyof StatusSnapshot>();
 
   register(contribution: StatusProjectionContribution): () => void {
     this.contributions.add(contribution);
@@ -9,10 +10,23 @@ class $StatusProjectionContributions {
   }
 
   snapshot(): Partial<StatusSnapshot> {
-    return Object.assign(
+    const currentSnapshot = Object.assign(
       {},
       ...[...this.contributions].map((contribution) => contribution.snapshot()),
     );
+    const currentKeys = new Set(
+      Object.keys(currentSnapshot) as (keyof StatusSnapshot)[],
+    );
+    const snapshotWithRemovedKeys = {
+      ...Object.fromEntries(
+        [...this.projectedKeys]
+          .filter((key) => !currentKeys.has(key))
+          .map((key) => [key, undefined]),
+      ),
+      ...currentSnapshot,
+    };
+    this.projectedKeys = currentKeys;
+    return snapshotWithRemovedKeys;
   }
 }
 

@@ -12,6 +12,7 @@ test('the shipped application registers its built in contributions', () => {
     ['file-tree', 'File Tree'],
     ['git', 'Git'],
     ['markdown', 'Markdown'],
+    ['inline-rewrite', 'Inline Rewrite'],
     ['extensions', 'Extensions'],
   ]);
   expect(
@@ -23,5 +24,5 @@ test('the shipped application registers its built in contributions', () => {
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
-  ).toEqual([true, true, true, false]);
+  ).toEqual([true, true, true, true, false]);
 });

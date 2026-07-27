@@ -2,6 +2,7 @@ import { test, expect, afterEach } from 'bun:test';
 import { Editor } from './Editor';
 import { UndoStore } from '../storage/UndoStore';
 import { Clock } from '../system/Clock';
+import { EditorContributions } from './EditorContributions';
 
 afterEach(() => Clock.Class.freeze(null));
 
@@ -54,44 +55,37 @@ test('completion applies the exact text edit as one undoable mutation', () => {
   expect(editor.document.line(0)).toBe('this.pr');
 });
 
-test('an accepted inline rewrite is exactly one undo step', () => {
+test('a contributed range replacement is exactly one undo step', () => {
   const editor = openWith('const answer = calculate();');
-  editor.inlineRewrite.candidates.value = [
+  editor.replaceRangeAsUndoStep(
     {
-      region: {
-        start: { line: 0, column: 0 },
-        end: { line: 0, column: 27 },
-      },
-      replacementText: 'const answer = calculateAnswer();',
-      rationale: 'names the result',
+      start: { line: 0, column: 0 },
+      end: { line: 0, column: 27 },
     },
-  ];
+    'const answer = calculateAnswer();',
+  );
 
-  editor.acceptInlineRewrite();
   expect(editor.document.line(0)).toBe('const answer = calculateAnswer();');
   editor.performUndo();
   expect(editor.document.line(0)).toBe('const answer = calculate();');
   editor.dispose();
 });
 
-test('ordinary typing dismisses a rewrite and the character still lands', () => {
+test('ordinary typing notifies contributions and the character still lands', () => {
   const editor = openWith('value');
-  editor.cursor.set(0, 5);
-  editor.inlineRewrite.candidates.value = [
-    {
-      region: {
-        start: { line: 0, column: 0 },
-        end: { line: 0, column: 5 },
-      },
-      replacementText: 'betterValue',
-      rationale: 'clearer name',
+  const editorContributions = new EditorContributions.Class();
+  let recordedText = '';
+  editor.attachEditorContributions(editorContributions);
+  editorContributions.register({
+    recordTyping: (editedEditor) => {
+      recordedText = editedEditor.document.text;
     },
-  ];
+  });
+  editor.cursor.set(0, 5);
 
-  // invariant: An inline rewrite proposal never consumes an ordinary edit keystroke (src/modules/editor/editor.invariants.md)
   editor.insertText('x');
 
-  expect(editor.inlineRewrite.visible).toBe(false);
+  expect(recordedText).toBe('valuex');
   expect(editor.document.line(0)).toBe('valuex');
   editor.dispose();
 });

@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { effect, stop } from 'vue';
 import { TextDocument } from '../editor/TextDocument';
 import { DocumentHandle } from '../workspace/DocumentHandle';
 import { GitDocumentState } from './GitDocumentState';
@@ -49,4 +50,47 @@ test('deletion and modification remain separate marks on one real line', () => {
       hoverLabel: '2 lines deleted above',
     },
   ]);
+});
+
+test('a refresh keeps the last known gutter marks until new head text lands', () => {
+  const handle = new DocumentHandle.Class(Symbol('document'), '/file.ts');
+  const document = new TextDocument.Class();
+  document.loadFromText('changed', handle.path);
+  handle.attach(document);
+  const state = new GitDocumentState.Class(handle);
+  state.applyHeadText(state.beginHeadRequest(), 'original');
+  const revisionBeforeRefresh = state.decorationRevision;
+
+  const refreshGeneration = state.beginHeadRequest();
+
+  expect(state.hasHeadText.value).toBe(true);
+  expect(state.decorationsByLine().get(0)?.[0]).toMatchObject({
+    owner: 'versionControl',
+    kind: 'modified',
+  });
+  state.applyHeadText(refreshGeneration, 'original');
+  expect(state.decorationRevision).toBe(revisionBeforeRefresh);
+});
+
+test('a changed HEAD invalidates the cached decoration projection', () => {
+  const handle = new DocumentHandle.Class(Symbol('document'), '/file.ts');
+  const document = new TextDocument.Class();
+  document.loadFromText('changed', handle.path);
+  handle.attach(document);
+  const state = new GitDocumentState.Class(handle);
+  state.applyHeadText(state.beginHeadRequest(), 'original');
+  let cachedRevision = '';
+  let cachedDecorationCount = 0;
+  const projectionEffect = effect(() => {
+    const revision = state.decorationRevision;
+    if (revision === cachedRevision) return;
+    cachedRevision = revision;
+    cachedDecorationCount = state.decorationsByLine().size;
+  });
+  expect(cachedDecorationCount).toBe(1);
+
+  state.applyHeadText(state.beginHeadRequest(), 'changed');
+
+  expect(cachedDecorationCount).toBe(0);
+  stop(projectionEffect);
 });

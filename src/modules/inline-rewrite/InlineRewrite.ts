@@ -1,15 +1,14 @@
 import { Reactive } from 'ivue';
-import { ref, shallowRef, type Ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 import type {
   LanguageRange,
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
 } from '../lsp/LanguageProvider.interface';
-import { EditorCoordinates } from './EditorCoordinates';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 
 class $InlineRewrite {
-  protected enabledSource: Ref<boolean> | null = null;
   protected eligibility: (() => boolean) | null = null;
   protected recentRegion: LanguageRange | null = null;
   protected recentRegionFragmented = false;
@@ -20,11 +19,7 @@ class $InlineRewrite {
   constructor(protected readonly options: InlineRewriteOptions) {}
 
   protected get quietMilliseconds(): number {
-    return 1750;
-  }
-
-  get localEnabled() {
-    return ref(false);
+    return this.options.quietMilliseconds ?? 1750;
   }
 
   get candidates() {
@@ -47,10 +42,6 @@ class $InlineRewrite {
     return ref(0);
   }
 
-  get enabled(): Ref<boolean> {
-    return this.enabledSource ?? this.localEnabled;
-  }
-
   get visible(): boolean {
     return this.candidates.value.length > 0;
   }
@@ -59,18 +50,13 @@ class $InlineRewrite {
     return this.candidates.value[this.selectedCandidateIndex.value] ?? null;
   }
 
-  attachEnabled(source: Ref<boolean>): void {
-    this.enabledSource = source;
-    if (!source.value) this.dismiss();
-  }
-
   attachEligibility(eligibility: () => boolean): void {
     this.eligibility = eligibility;
   }
 
   recordTyping(firstLine: number, lastLine: number): void {
     this.dismissForOrdinaryEdit();
-    if (!this.enabled.value || !this.options.provider.available) return;
+    if (!this.options.provider.available) return;
     const editRegion = this.options.lineRegion(firstLine, lastLine);
     if (this.recentRegion === null) {
       this.recentRegion = editRegion;
@@ -159,7 +145,6 @@ class $InlineRewrite {
   protected async requestFor(region: LanguageRange | null): Promise<void> {
     if (
       !region ||
-      !this.enabled.value ||
       !this.options.provider.available ||
       !(this.eligibility?.() ?? false)
     ) {
@@ -190,10 +175,9 @@ class $InlineRewrite {
       ) {
         return;
       }
-      // invariant: Inline rewrite responses are revision-stamped and stale results discarded (src/modules/lsp/lsp.invariants.md)
+      // invariant: Stale rewrites never land (inline-rewrite.invariants.md)
       if (
         this.options.currentRevision() !== snapshot.revision ||
-        !this.enabled.value ||
         !(this.eligibility?.() ?? false)
       ) {
         return;
@@ -211,8 +195,8 @@ class $InlineRewrite {
       if (requestGeneration === this.requestGeneration) {
         this.activeAbortController = null;
         this.requestInFlight.value = false;
+        this.clearRecentRegion();
       }
-      this.clearRecentRegion();
     }
   }
 
@@ -243,7 +227,7 @@ class $InlineRewrite {
 
   protected cancelActiveRequest(): void {
     if (!this.activeAbortController) return;
-    // invariant: Inline rewrite owns at most one in-flight request (src/modules/lsp/lsp.invariants.md)
+    // invariant: Only one rewrite request runs (inline-rewrite.invariants.md)
     this.requestGeneration += 1;
     this.activeAbortController.abort();
     this.activeAbortController = null;
@@ -284,4 +268,5 @@ export interface InlineRewriteOptions {
   readonly currentRevision: () => number;
   readonly currentLineRegion: () => LanguageRange | null;
   readonly lineRegion: (firstLine: number, lastLine: number) => LanguageRange;
+  readonly quietMilliseconds?: number;
 }

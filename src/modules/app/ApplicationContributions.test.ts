@@ -27,6 +27,7 @@ class SampleContributor implements ApplicationContributor {
       { chord: { key: 'p' }, action: 'sample.pluginDefault' },
       { chord: { key: 'u' }, action: 'sample.pluginDefault' },
     ]);
+    context.registerKeybindingGuard('sampleAllowed', () => true);
   }
 
   disposeApplication(): void {
@@ -100,5 +101,15 @@ describe('ApplicationContributions', () => {
       ).action,
     ).toBe('host.default');
     expect(contributor.disposed).toBe(true);
+  });
+
+  test('disable removes contributed keybinding guards', () => {
+    const { keybindings, manager } = createManager();
+    manager.activateAll();
+    expect(keybindings.hasGuard('sampleAllowed')).toBe(true);
+
+    manager.setEnabled('sample', false);
+
+    expect(keybindings.hasGuard('sampleAllowed')).toBe(false);
   });
 });

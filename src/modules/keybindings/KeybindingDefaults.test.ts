@@ -160,61 +160,6 @@ test('Tab and Shift+Tab are the EDITOR surface s indentation, not a focus move',
   ).toBe(null);
 });
 
-test('inline rewrite chords resolve without spending editor Tab', () => {
-  const registry = registryWithCanonicalLayer();
-  registry.registerGuard('inlineRewriteVisible', () => true);
-  const resolve = (
-    name: string,
-    modifiers: Partial<typeof unmodifiedEvent>,
-  ): string | null =>
-    registry.resolve({ ...unmodifiedEvent, ...modifiers, name }, 'editor', 0)
-      .action;
-
-  expect(resolve('r', { ctrl: true, shift: true })).toBe(
-    'inlineRewrite.request',
-  );
-  expect(resolve('right', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.accept',
-  );
-  expect(resolve('down', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.next',
-  );
-  expect(resolve('up', { ctrl: true, option: true })).toBe(
-    'inlineRewrite.previous',
-  );
-  expect(resolve('escape', {})).toBe('inlineRewrite.reject');
-  expect(resolve('tab', {})).toBe('editor.indent');
-});
-
-test('inline rewrite modified chords arrive through both OpenTUI parsers', () => {
-  const encodedChords = [
-    '\x1b[27;6;114~',
-    '\x1b[1;7C',
-    '\x1b[1;7B',
-    '\x1b[1;7A',
-  ];
-  const expectedEvents = [
-    { name: 'r', ctrl: true, shift: true, option: false },
-    { name: 'right', ctrl: true, shift: false, option: true },
-    { name: 'down', ctrl: true, shift: false, option: true },
-    { name: 'up', ctrl: true, shift: false, option: true },
-  ];
-  for (const useKittyKeyboard of [false, true]) {
-    expect(
-      encodedChords.map((encodedChord) => {
-        const event = parseKeypress(encodedChord, { useKittyKeyboard });
-        if (!event) throw new Error('OpenTUI rejected a rewrite chord');
-        return {
-          name: event.name,
-          ctrl: event.ctrl,
-          shift: event.shift,
-          option: event.option,
-        };
-      }),
-    ).toEqual(expectedEvents);
-  }
-});
-
 test('no F-key is the PRIMARY (last-listed) binding of any action', () => {
   const registry = registryWithCanonicalLayer();
   const functionKeyPrimaries: string[] = [];

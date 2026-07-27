@@ -36,6 +36,7 @@ import type {
   WorkspaceContribution,
   WorkspaceContributor,
 } from './WorkspaceContributor.interface';
+import { EditorContributions } from '../editor/EditorContributions';
 
 // A workspace: one project root with its editor, documents, and generic contribution lifecycle.
 // WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -63,6 +64,7 @@ class $Workspace {
   // tab, never replaces. Flyweight — only the active buffer (and any dirty background buffer) holds a
   // live document; clean background tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
+  editorContributions = new EditorContributions.Class();
   documentLifecycle = new DocumentLifecycle.Class();
   gutterDecorations = new GutterDecorations.Class();
   // Contributions claim the editor surface here and the host asks them capability questions. It
@@ -119,20 +121,12 @@ class $Workspace {
 
   protected createEditor() {
     const editor = new Editor.Class();
+    editor.attachEditorContributions(this.editorContributions);
     // Word wrap is global: every editor reads the SAME settings.wordWrap when settings are attached, so
     // the mode is consistent across tabs and the empty editor. Editors made before attachSettings
     // (emptyEditor) are retro-attached there.
     if (this.settingsSource)
       editor.attachWordWrap(this.settingsSource.wordWrap);
-    if (this.inlineRewriteEnabledSource) {
-      editor.attachInlineRewrite(
-        this.inlineRewriteEnabledSource,
-        () =>
-          (this.inlineRewriteEligibility?.() ?? false) &&
-          this.focus.value === 'editor' &&
-          this.editorSurfaces.activeDocumentIsKeyboardTarget,
-      );
-    }
     return editor;
   }
   protected createNavigationHistory() {
@@ -489,27 +483,6 @@ class $Workspace {
   // ceiling / gain / friction from the reactive Settings store so the settings panel LIVE-APPLIES
   // (no restart). Unattached (tests) falls back to the tuned VERTICAL_MOMENTUM default.
   protected settingsSource: Settings.Instance | null = null;
-  protected inlineRewriteEnabledSource: Ref<boolean> | null = null;
-  protected inlineRewriteEligibility: (() => boolean) | null = null;
-
-  attachInlineRewrite(enabled: Ref<boolean>, eligibility: () => boolean): void {
-    this.inlineRewriteEnabledSource = enabled;
-    this.inlineRewriteEligibility = eligibility;
-    const attachEditor = (editor: Editor.Instance): void =>
-      editor.attachInlineRewrite(
-        enabled,
-        () =>
-          eligibility() &&
-          this.focus.value === 'editor' &&
-          this.editorSurfaces.activeDocumentIsKeyboardTarget,
-      );
-    attachEditor(this.emptyEditor);
-    for (const entry of this.buffers.entries.value) {
-      const editor = entry.buffer as Editor.Instance | null;
-      if (editor) attachEditor(editor);
-    }
-  }
-
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
     // Retro-attach the global wordWrap source to editors already built (the field-init empty editor +
@@ -565,7 +538,6 @@ class $Workspace {
   /** Release per-root live resources while preserving this workspace's resumable model state. */
   suspendOwnedResources(): void {
     this.resourcesSuspended = true;
-    this.editor.inlineRewrite.dismiss();
     for (const contribution of this.contributions) contribution.suspended();
     // A suspended (background) workspace holds no language-server subprocess; resuming recreates
     // the client lazily through the buffer seams / the next semantic request.

@@ -129,68 +129,6 @@ src/modules/editor/Editor.test.ts`
 
 **Last refined:** 2026-07-26
 
-### Inline rewrite owns at most one in-flight request
-
-**Invariant:** If a rewrite request starts while another rewrite request is in flight, then the
-older request is cancelled before the newer one becomes authoritative, so one editor never owns
-two live inference processes.
-
-**Scope:** `InlineRewrite` request ownership and `CodexRewriteProvider` child-process ownership.
-Other language requests retain their own independent concurrency rules.
-
-**Mechanism:** `InlineRewrite.requestFor` aborts its current controller before installing a new
-one. `CodexRewriteProvider.rewrite` independently terminates its active detached process before
-spawning another, and abort terminates the process group. The request generation makes an older
-promise non-authoritative even if a mock or process races cancellation.
-
-**Generates:** One active abort controller and one active Codex child; request-now superseding a
-debounced request; disposal that terminates inference instead of leaving an orphan.
-
-**Evidence:** `src/modules/editor/InlineRewrite.ts`;
-`src/modules/lsp/CodexRewriteProvider.ts`; and
-`src/modules/editor/InlineRewrite.test.ts`.
-
-**Impossible if true:** Two Codex rewrite children owned by one editor, or an older request
-becoming the visible proposal after a newer request has started.
-
-**Verification:** `bun test src/modules/editor/InlineRewrite.test.ts
-src/modules/lsp/CodexRewriteProvider.test.ts` and
-`bun scripts/harness/smoke-inline-rewrite-harness.ts`.
-
-**Status:** provisional
-
-**Last refined:** 2026-07-26
-
-### Inline rewrite responses are revision-stamped and stale results discarded
-
-**Invariant:** If the document revision differs from the revision captured when a rewrite request
-started, then that response produces no proposal, regardless of arrival order or whether the
-provider observed cancellation.
-
-**Scope:** Rewrite responses crossing from `RewriteProvider` into the editor proposal state.
-Acceptance is a later synchronous edit against the still-current visible candidate.
-
-**Mechanism:** The editor snapshot carries the document revision beside the provider request.
-After the await, `InlineRewrite` compares that stamp with the live document revision before
-publishing candidates. Request generation and eligibility are checked at the same boundary.
-
-**Generates:** A stale-drop guard after inference; deterministic behavior for a provider that
-finishes after an intervening edit; no stale text painted over a newer document.
-
-**Evidence:** `src/modules/editor/InlineRewrite.ts`;
-`src/modules/editor/InlineRewrite.test.ts`; and the stale-response phase in
-`scripts/harness/smoke-inline-rewrite-harness.ts`.
-
-**Impossible if true:** A candidate computed for revision N becoming visible after the document
-has advanced to revision N+1.
-
-**Verification:** `bun test src/modules/editor/InlineRewrite.test.ts -t "older document
-revision"` and `bun scripts/harness/smoke-inline-rewrite-harness.ts`.
-
-**Status:** provisional
-
-**Last refined:** 2026-07-26
-
 ### The LSP attaches only to documents within the size budget
 
 **Invariant:** If a document's text exceeds the configured size budget (`lspFileSizeLimitKb`, in KB;

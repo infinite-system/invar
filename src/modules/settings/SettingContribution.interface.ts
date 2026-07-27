@@ -9,6 +9,7 @@ export interface SettingContribution<
   section: string;
   defaultValue: Value;
   spec: SettingSpec;
+  changed?: (value: Value) => void;
 }
 
 export interface RegisteredSetting<Value extends SettingValue = SettingValue> {
