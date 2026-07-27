@@ -1,6 +1,6 @@
 # Orchestration Lessons — running multi-agent autonomous work with IBR + skills
 
-What a full night of building the Fable TUI editor taught us about our skills and, more
+What a full night of building the Invar TUI editor taught us about our skills and, more
 importantly, about **managing** work like this — one main session conducting a background
 fork, which in turn drove three codex workers, all under IBR + the `/invariants` governance
 loop. Written 2026-07-21, from real events in this run. The point is to convert the friction
@@ -410,8 +410,7 @@ Six new operational lessons, every one from real friction this run.
 State at this fire: **frontier empty** — ground-truthed against `origin/main`, NOT the handoff anchor
 (which lagged, still listing "remaining 0.5 + 6"). All 11 UI tasks + the 7 polish requests +
 pull-diagnostics are merged (`893c581` activity-toggle, `061d583` two-line→breadcrumb flip, `9d5b9b4`
-undo-unchanged, `c54be3a` open-project navigator, `ce8a261` open-project wrap). The full lesson set is
-in `/home/parallels/dev/ibr/Skills/Orchestration Lessons.md`; the doctrine-worthy new ones:
+undo-unchanged, `c54be3a` open-project navigator, `ce8a261` open-project wrap). The doctrine-worthy new ones:
 
 - **Ground-truth the backlog against `git log origin/main`, never the handoff anchor.** The anchor is a
   point-in-time note and lags reality by hours; three fires were spent re-reporting "parked" against a
@@ -419,8 +418,8 @@ in `/home/parallels/dev/ibr/Skills/Orchestration Lessons.md`; the doctrine-worth
   and match each named task to a commit.
 - **The caret/cursor smoke is the CPU-load canary.** `smoke-wrap`'s "caret == tmux cursor on a wrapped
   row" FAILED with unrelated changes purely because `tsc` ran concurrently with the gate; isolated
-  re-run = ALL-PASS. Rule: gates run SOLO — one gate at a time across BOTH agents, and never `tsc`/second
-  gate alongside. A red caret smoke on unrelated code is almost always load, not regression.
+  re-run = ALL-PASS. Run gates one at a time and never `tsc`/second gate alongside — see the skill's
+  "Gate concurrency" section for the CURRENT reason (measurement validity, not CPU or namespaces). A red caret smoke on unrelated code is almost always load, not regression.
 - **New `git worktree add` worktrees have NO node_modules** — symlink it to the main repo immediately
   (`ln -s <mainrepo>/node_modules node_modules`) or `bun test` dies "Cannot find package 'ivue'".
 - **Pre-commit hook re-runs the full gate → a foreground `git commit` times out (~2min tool ceiling vs
@@ -434,11 +433,6 @@ in `/home/parallels/dev/ibr/Skills/Orchestration Lessons.md`; the doctrine-worth
   (`experiment-agent-harness`) mirrored `terminal/` exactly (backend seam + mock + Reactive
   single-source + PaneContent + Static factory + colocated invariants + smoke) and typechecked
   first-try. When a contract doc names the file layout, follow it verbatim (file-name-follows-class).
-
-**Cron drift (still open):** the live hourly (`4e2da192`) + 10-min (`e4de2d1a`) prompts hardcode "the 11
-Invar UI tasks" — all done. They should be re-pointed to "invent + gate ONE experiment-branch feature
-per fire; verify frontier against git" on the next reasonably-safe cron edit (deferred here to avoid
-restructuring the live loop while the user sleeps).
 
 ---
 
@@ -579,34 +573,14 @@ Lessons, most general first:
 
 ---
 
-## Live cron prompts (canonical copy now in the /conductor SKILL.md "Live cron prompts" section — edit THERE; the copy below may lag)
+## Live cron prompts — NOT here
 
-These are the exact prompts driving the orchestration loop this session. **Improve them HERE, then
-recreate the cron** — crons are session-only, in-memory snapshots (`CronDelete <id>` +
-`CronCreate`), so editing this doc does NOT change a running cron, and a running cron does NOT read
-this doc. Both auto-expire after 7 days. IDs drift each time we recreate; the text is what matters.
-
-### Hourly orchestration loop — cron `4e2da192` (every hour at :07, `7 * * * *`)
-
-```
-Hourly orchestration loop (bounded per fire). Follow the `/conductor` skill (tui-editor/.claude/skills/conductor/SKILL.md). Do in order:
-
-(1) BACKLOG FIRST — before ANY creative experiment, read the active task list and drain real work. Sources of truth, in order: (a) the scratchpad HANDOFF.md task list; (b) any TodoWrite/goal list still open; (c) the fork's (a0f12abb2a300d596) reported remaining tasks. The original 11 Invar UI tasks come first; after them the 7 UI-polish requests, then the pull-diagnostics follow-up. For each UNFINISHED real task: confirm the fork is actively driving it (worktree writes / gate activity / branch commits in the last cycle). If the fork is dormant or stalled, nudge it via SendMessage with a precise fix, OR take it over and drive it yourself. Do NOT start a creative experiment while any original-11 UI task is unmerged.
-
-(2) IF BLOCKED on a task (fork stuck, ambiguous fix, or a hard problem) — do NOT default to deferring to the user. Spin up a codex or fable subagent and have it reach a solution creatively; only escalate to the user if the subagents also can't resolve it or the call is genuinely the user's (naming, scope, publish consent).
-
-(3) ONLY once the real backlog is drained — invent + execute ONE creative IDE-parity experiment: reduce a real user need to its invariant, plan it, build on an experiment-* branch forked off LATEST main, gate it. NEVER merge experiments to main.
-
-(4) Append any orchestrator lessons learned this fire to /home/parallels/dev/tui-editor/project.conductor.md (the running lessons log; the /conductor skill is the stable doctrine).
-
-(5) Keep yourself, the fork, and its builder agents in working order — verify alive by fork-specific evidence, resume attack. Cap builders ~2-3, ONE gate at a time. Verify by DRIVING the real user path. Keep local main synced to origin/main (clean ff). Report concisely.
-```
-
-### 10-minute liveness check — cron `e4de2d1a` (every 10 min, `3,13,23,33,43,53 * * * *`)
-
-```
-Loop check (every 10 min): VERIFY — do not assume — that the fork orchestrator (agent a0f12abb2a300d596) and its builder agents are actually progressing on the 11 Invar UI tasks. IMPORTANT: the USER runs their OWN interactive Invar instances (from /home/parallels/dev/tui-editor and /tmp/tui-demo) — do NOT treat raw `src/main.ts` process count or instance age as a fork-liveness or hang signal, and NEVER kill a process from those paths. Key ONLY on FORK-SPECIFIC evidence: (1) writes in the fork's worktrees `/tmp/conductor-*` and `.claude/worktrees/agent-*` in the last ~10 min (`find /tmp/conductor-* /home/parallels/dev/tui-editor/.claude/worktrees/agent-* -newermt '10 minutes ago' -not -path '*/.git/*'`); (2) gate-log transitions in /tmp/*gate*.log (ALL-PASS / FAILURES / running); (3) new commits on main (past f64e15e), or on agent-*/conductor-* branches (`git -C /home/parallels/dev/tui-editor log --oneline --all --since='12 minutes ago'`); (4) tmux harness sessions with builder/conductor/agent-ish names (NOT diff-manual*, which are stale). If the fork is DORMANT with a red or finished gate: read the gate log, diagnose the specific failing step, and nudge it via SendMessage with the precise fix. If genuinely STALLED (no worktree writes, no gate activity, no branch commits across a FULL cycle): take over — diagnose, fix, gate, merge. If progressing, note it briefly. Also flag if the fork over-spawned builders (CPU contention flakes smoke-wrap) — tell it to cap at ~2. Report concisely.
-```
+The authoritative verbatim copies live in the `/conductor` SKILL.md under "Live cron prompts".
+This file used to duplicate them and the duplicate drifted: it named cron IDs that had been
+recreated, presented the 10-minute liveness check as live after it was retired, said "fable
+subagent" after the fleet moved to codex, and said "ONE gate at a time" without the re-narrowing
+that explains WHY. A verbatim prompt is the artifact a restarted session re-arms from, so a
+second copy of it is not redundancy — it is a live misdirection. One copy, in the skill.
 
 **Due for refresh (drift noted 2026-07-23):** both prompts hardcode "the 11 Invar UI tasks" and the
 hourly one names "the 7 UI-polish requests, then the pull-diagnostics follow-up" — with 11/11 done
