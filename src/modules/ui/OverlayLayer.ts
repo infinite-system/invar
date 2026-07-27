@@ -532,7 +532,6 @@ class $OverlayLayer {
   }
   protected requestPaint(): void {
     this.paintRevision.value += 1;
-    this.dependencies.renderer.requestRender();
   }
   protected createOverlayViewport(
     identifier: string,

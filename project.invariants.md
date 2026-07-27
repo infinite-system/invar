@@ -301,17 +301,18 @@ no-computed paradigm holds indefinitely against data scale, leaving only per-fea
 cost, which the gate step watches.
 
 **Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold
-workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size.
+workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size; a
+per-frame quantity that scales with document length.
 
-**Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` generates
-and drives 2k, 26,635, and 100k-line editor and diff fixtures. On every 100k
-flat editor fixture the top-of-file glide supplies the current-run FPS
-reference. One separate 100k fold-dense checkpoint keeps folding, indent
-guides, and version-control gutter marks enabled, direct-jumps to line 75,000,
-settles on observed scroll state and frame quiescence, excludes jump frames,
-then drives at least 1,000 rows of real wheel input. The behavioral contract
-reports FPS, rows travelled, and the ratio to the flat 100k top reference, and
-requires the checkpoint to sustain at least 28 FPS. Unit cost ratchets in
+**Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` drives the
+same gesture over 2k and 100k flat editor fixtures and requires exact equality
+of document-line reads, fold/wrap projection lookups, and layout computations
+per attributed frame. One diff and one fold-dense editor wall-clock canary
+retain the 28 FPS sanity floor without making host speed the scale contract.
+The fold-dense editor checkpoint keeps folding, indent guides, and
+version-control gutter marks enabled, direct-jumps to line 75,000, settles on
+observed scroll state and frame quiescence, excludes jump frames, then drives
+at least 1,000 rows of real wheel input. Unit cost ratchets in
 `CodeFolding.test.ts`, `Editor.test.ts`, and `DiffView.test.ts` prove
 unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
 remains ~0 after activity. Continuous (time axis): the per-gate byte-flush
@@ -319,7 +320,7 @@ latency step (campaign wave 1) — a spike names the commit that broke the bound
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### Held key movement accelerates within a ceiling
 

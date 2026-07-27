@@ -29,6 +29,10 @@ import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import { Files } from '../system/Files';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import {
+  EditorFrameAttribution,
+  type EditorFrameAttributionSnapshot,
+} from '../editor/EditorFrameAttribution';
 import { CommandBar } from './CommandBar';
 import { StatusBar } from './StatusBar';
 import { TabBar } from './TabBar';
@@ -118,6 +122,7 @@ class $RootView {
     revealFindMatch: () => void,
   ): RootView {
     const root = renderer.root;
+    const editorFrameAttribution = new EditorFrameAttribution.Class();
     const readPalette = () => theme.palette;
     const settings = settingsPanel.settings;
     // OpenTUI captures a drag target only on the FIRST drag event, resolved at the pointer's CURRENT
@@ -1068,6 +1073,7 @@ class $RootView {
         leftDockVerticalSpan: settings.leftDockVerticalSpan.value,
         rightDockVerticalSpan: settings.rightDockVerticalSpan.value,
       });
+      editorFrameAttribution.recordLayoutComputation();
       activityBar.bar.position = 'absolute';
       activityBar.bar.left = layoutSlotGeometry.activityBar.left;
       activityBar.bar.top = layoutSlotGeometry.activityBar.top;
@@ -1839,6 +1845,7 @@ class $RootView {
       findBar,
       settings,
       theme,
+      frameAttribution: editorFrameAttribution,
       tooltip,
       readPalette,
       editorViewportHeight,
@@ -1929,6 +1936,10 @@ class $RootView {
     update();
     return {
       update,
+      beginEditorFrameAttribution: () => editorFrameAttribution.beginFrame(),
+      completeEditorFrameAttribution: () =>
+        editorFrameAttribution.completeFrame(),
+      editorFrameAttribution: () => editorFrameAttribution.snapshot,
       editorViewportHeight,
       editorViewportWidth,
       editorCaretAnchor,
@@ -2046,6 +2057,9 @@ export namespace RootView {
 // roleColor moved to EditorPaneRenderer with the editor render that used it.
 export interface RootView {
   update(): void;
+  beginEditorFrameAttribution(): void;
+  completeEditorFrameAttribution(): void;
+  editorFrameAttribution(): EditorFrameAttributionSnapshot;
   editorViewportHeight(): number;
   editorViewportWidth(): number;
   editorCaretAnchor(): { column: number; row: number } | null;

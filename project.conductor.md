@@ -1798,3 +1798,51 @@ is a sieve that depends on the machine, so it is both slow and arguable. Count-b
 (#133) have no clock in them: they cannot be slow, cannot flake under load, and cannot be excused.
 Making the gate timeless attacks the bottleneck from the other side — cheaper AND stricter at once,
 which is the signature of a real reduction rather than a trade.
+
+## 2026-07-27 02:30 — the law file is read from the WORKTREE, so law changes do not reach running builders
+
+User asked: "are all agents aware that driving first is the new way?" The audit said no. codex
+auto-reads `AGENTS.md` from its own worktree, and worktrees fork at different commits — so each
+builder sees the law file AS OF ITS FORK POINT. Tonight: overlayfix (forked at `185abf9`) had every
+new law; foldfeel (merged main mid-task) had all but bycatch; scaleinv (forked at `25cdf18`,
+resumed later) had NONE of them — no Primary Loop banner, no defaults-first, no scale parity — and
+its resume prompt explicitly told it to follow "the Primary Loop section in AGENTS.md", a section
+that did not exist in its tree. An instruction pointing at a missing law reads as noise, not law.
+
+  **Doctrine propagates at FORK time, not at WRITE time. Updating the law file changes future
+  builders only; running builders keep the law of their fork point.**
+
+Remedies, in order:
+1. **Sync on dispatch and on resume**: copying main's current `AGENTS.md` into the worktree is
+   safe — it is a repo file, identical to main's version, so it merges cleanly later. Done for the
+   two stale worktrees tonight.
+2. **Add it to the dispatch checklist**: any brief that cites a law by name must be preceded by a
+   grep for that law in the TARGET worktree's AGENTS.md. Citing a law the worktree cannot see is
+   the same defect as the loop prompt pointing at the retired ibr lessons file.
+3. Long-lived worktrees that merge main mid-task pick laws up incidentally — fine, but incidental
+   is not a mechanism. The sync is the mechanism.
+
+## 2026-07-27 02:45 — a generated artifact got COMMITTED because the ignore pattern named an instance
+
+Landing the scale-invariance branch, the fast-forward aborted: an untracked
+`artifacts/fold-dense-scroll-smoothness.json` in the checkout "would be overwritten by merge" —
+because the branch TRACKED it. A generated run artifact had been committed.
+
+Cause: `.gitignore` listed `artifacts/scroll-smoothness.json` — the INSTANCE that existed when the
+rule was written. The fold work then produced a sibling, `fold-dense-scroll-smoothness.json`, which
+the pattern did not match, so it was neither ignored nor noticed, and a builder swept it in with
+`git add -A`.
+
+  **An ignore rule that names an instance does not cover the class. The next instance is invisible
+  by construction, and `git add -A` will commit it.**
+
+Same family as the smoke asserting a glyph an invariant forbids and the monitor keyed on a filename
+that already existed: a rule written against today's names silently fails on tomorrow's. Prefer
+pattern-by-KIND (`artifacts/*scroll-smoothness.json`) over pattern-by-NAME, and treat a merge
+aborting on "untracked file would be overwritten" as evidence that something generated is tracked —
+not as a local-cleanliness problem to sweep aside.
+
+Second-order note from the same minute: `git merge --ff-only … | tail -1` printed `Updating a..b`
+and I read it as success — but the merge ABORTED after that line. That is the fourth
+output-order/exit-code misread of the session. `tail -1` shows the last line, not the outcome;
+verify the REF moved, not the message.

@@ -24,6 +24,7 @@ import {
 } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
+import type { EditorFrameAttribution } from '../editor/EditorFrameAttribution';
 import { EditorWrap, type VisualRow } from '../editor/EditorWrap';
 import { Highlighter, type Role, type Span } from '../syntax/Highlighter';
 import type { BracketCell } from '../editor/BracketMatch';
@@ -76,8 +77,13 @@ class $EditorPaneRenderer {
     const language = LanguageRegistry.Class.forPath(editor.document.path);
     const height = context.viewportHeight;
     const top = editor.viewport.scrollTop.value;
-    const visualRowsWindow = EditorWrap.Class.visualRowsFromOffset(
+    const attributedDocument = context.frameAttribution.attributedDocument(
       editor.document,
+    );
+    context.frameAttribution.recordWrapProjectionLookup();
+    context.frameAttribution.recordFoldProjectionLookup();
+    const visualRowsWindow = EditorWrap.Class.visualRowsFromOffset(
+      attributedDocument,
       top,
       editor.visualWrapWidth(),
       height,
@@ -98,6 +104,7 @@ class $EditorPaneRenderer {
     const gutterHoverLabelsByRow: string[][] = [];
     const foldMarkerFor = (lineIndex: number): string => {
       if (!context.codeFoldingEnabled) return ' ';
+      context.frameAttribution.recordFoldProjectionLookup();
       const foldRange = editor.foldRangeAtLine(lineIndex);
       if (
         foldRange &&
@@ -382,7 +389,10 @@ class $EditorPaneRenderer {
           gutterChunks.push(fg(palette.dim)(' '.repeat(lineNumberWidth + 2)));
           gutterHoverLabelsByRow.push([]);
         }
-        const lineText = editor.document.line(row.lineIndex);
+        const lineText = context.frameAttribution.documentLine(
+          editor.document,
+          row.lineIndex,
+        );
         let segmentSpans: Span[] | null = null;
         if (!plainForeground) {
           if (row.lineIndex !== tokenizedLineIndex) {
@@ -413,6 +423,7 @@ class $EditorPaneRenderer {
           row.segment.startGrapheme,
           segmentSpans,
         );
+        context.frameAttribution.recordWrapProjectionLookup();
         const lineSegmentCount = EditorWrap.Class.wrapLine(
           lineText,
           editor.wrapWidth(),
@@ -448,7 +459,10 @@ class $EditorPaneRenderer {
     const viewportWidth = context.viewportWidth;
     visualRowsWindow.forEach((row, visibleIndex) => {
       const lineNumber = row.lineIndex;
-      const text = editor.document.line(lineNumber);
+      const text = context.frameAttribution.documentLine(
+        editor.document,
+        lineNumber,
+      );
       const isCurrentLine = lineNumber === currentLineIndex;
       const lineNumberText = String(lineNumber + 1).padStart(
         lineNumberWidth,
@@ -541,6 +555,8 @@ export interface EditorPaneRenderContext {
   showIndentGuides: boolean;
   /** Host editor capability: disabled means no fold discovery or gutter controls enter paint. */
   codeFoldingEnabled: boolean;
+  /** Per-frame operation counts, published through the frame-settled status channel. */
+  frameAttribution: EditorFrameAttribution.Model;
   /** The guide glyph at the current glyph tier — box-drawing bar `│` degrading to ascii `|`. */
   indentGuideGlyph: string;
   /** One-cell fold controls resolved by the active theme vocabulary. */

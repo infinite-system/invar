@@ -1148,8 +1148,10 @@ visibly choppy and its effective velocity is lower.
 horizontal regimes, the file tree, the agent transcript, each git region, terminal scrollback, and
 any future scroll animation on the same offsets. It governs the CADENCE of the write; *One writer per
 scroll regime per frame* governs who writes and *The wheel gesture resolves through one
-settings-sourced step* governs how the gesture is measured first. The sustained-fast floor applies
-at document scale: both editor and diff must hold it at 100k lines, not merely on a small fixture.
+settings-sourced step* governs how the gesture is measured first. One editor and one diff
+wall-clock canary sample the sustained-fast floor. Document-size scaling is governed by *Editor
+frame work is independent of document length*, whose deterministic count ratio is the primary
+contract.
 
 **Mechanism:** three properties together bound the step size. `Momentum.stepMomentum` carries the
 fractional row `residual` inside the momentum value between frames, so a whole-row write never
@@ -1172,11 +1174,13 @@ count, the per-frame delta distribution, the peak velocity and the distance. Dri
 six commits spanning 24 hours of history (`40d244b~1` through `e6450c6`), a 12-notch fling was carried
 by 17 to 19 moving frames with a largest single-frame step of 7 rows at every one of them. The
 `glide-smoothness` contract in `scripts/behavioral-contracts.sh` gates the ceiling, moving-frame
-floor, travel floor, 28 FPS sustained-fast cadence, follow-on travel parity, and the same 28 FPS floor
-for both editor and diff on runtime-generated 100k-line fixtures. After replacing the recursive
-live-loop delay with the absolute-deadline cadence on 2026-07-26, the standard gesture ran at 29.9
-to 30.1 sustained-fast FPS; after removing document-scale frame work, a six-case 2k/26,635/100k
-editor+diff matrix ran every sustained-fast segment at 29.8 FPS or faster.
+floor, travel floor, follow-on travel parity, one 28 FPS diff canary, and the exact editor
+2k-to-100k frame-work ratio. The fold-dense contract retains one 28 FPS editor canary. After
+replacing the recursive live-loop delay with the absolute-deadline cadence on 2026-07-26, the
+standard gesture ran at 29.9 to 30.1 sustained-fast FPS; after removing document-scale frame work,
+a six-case 2k/26,635/100k editor+diff matrix ran every sustained-fast segment at 29.8 FPS or
+faster. On 2026-07-27 the editor count contract measured exact ratios of 1 for document-line reads,
+fold projections, wrap projections, and layout computations.
 
 **Impossible if true:** a fling that covers its distance in a handful of large jumps; a renderer that
 writes a quantized copy of the momentum integrator's position back into the viewport each frame (that
@@ -1184,12 +1188,13 @@ rounding both enlarges the steps and loses velocity, while leaving total displac
 whose sustained fast segment falls below 28 FPS while the declared target remains 30 FPS; an idle
 animation timer that keeps producing frames after every animation settles.
 
-**Verification:** `bash scripts/behavioral-contracts.sh` (the `glide-smoothness` contract); `bun
-scripts/harness/measure-scroll-smoothness.ts` for the raw per-frame distribution.
+**Verification:** `bash scripts/behavioral-contracts.sh` (the `glide-smoothness` and
+`fold-dense-cadence` contracts); `bun scripts/harness/measure-scroll-smoothness.ts` for the raw
+per-frame distribution and attribution counts.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### A context menu is modal and single-consumer
 
