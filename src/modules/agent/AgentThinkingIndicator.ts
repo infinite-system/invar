@@ -49,7 +49,7 @@ class $AgentThinkingIndicator {
     return easterEggs;
   }
 
-  protected static get wordRotateSeconds(): number {
+  protected static get WORD_ROTATE_SECONDS(): number {
     return 3;
   }
 
@@ -80,13 +80,13 @@ class $AgentThinkingIndicator {
     return this.$easterEggs;
   }
 
-  static get easterEggOdds(): number {
+  static get EASTER_EGG_ODDS(): number {
     return 15;
   }
 
   static pickWord(slot: number): string {
     const hash = Math.imul((slot >>> 0) + 0x9e3779b9, 2654435761) >>> 0;
-    if (hash % this.easterEggOdds === 0)
+    if (hash % this.EASTER_EGG_ODDS === 0)
       return this.$easterEggs[(hash >>> 8) % this.$easterEggs.length]!;
     return this.$coreWords[slot % this.$coreWords.length]!;
   }
@@ -100,56 +100,87 @@ class $AgentThinkingIndicator {
   }
 
   static compose(state: ThinkingState): ThinkingSegment[] {
-  const { frameIndex, elapsedSeconds, glyphLevel, colorDepth, palette } = state;
+    const { frameIndex, elapsedSeconds, glyphLevel, colorDepth, palette } =
+      state;
 
-  // The primary line always shows the agent WORKING — a rotating reduction verb with a shimmer; what
-  // it's blocked on (a pending tool) lives in the calm secondary note, not here.
-  const slot = Math.floor(Math.max(0, elapsedSeconds) / this.wordRotateSeconds);
-  const word = this.pickWord(slot);
+    // The primary line always shows the agent WORKING — a rotating reduction verb with a shimmer; what
+    // it's blocked on (a pending tool) lives in the calm secondary note, not here.
+    const slot = Math.floor(
+      Math.max(0, elapsedSeconds) / this.WORD_ROTATE_SECONDS,
+    );
+    const word = this.pickWord(slot);
 
-  // The gradient palette switches with each slot (visual variety as the words change).
-  const scheme = this.$gradientSchemes[slot % this.$gradientSchemes.length]!;
-  const baseColor = palette[scheme[0]] as string;
-  const highlightColor = palette[scheme[1]] as string;
+    // The gradient palette switches with each slot (visual variety as the words change).
+    const scheme = this.$gradientSchemes[slot % this.$gradientSchemes.length]!;
+    const baseColor = palette[scheme[0]] as string;
+    const highlightColor = palette[scheme[1]] as string;
 
-  const glyph = AgentSpinnerFrames.Class.glyphFor(frameIndex, glyphLevel);
-  const characters = Array.from(word);
-  const shimmer =
-    glyphLevel === 'ascii'
-      ? characters.map(() => highlightColor) // ascii: plain (single colour) word
-      : AgentSpinnerFrames.Class.shimmerColors(characters.length, frameIndex, colorDepth, baseColor, highlightColor);
+    const glyph = AgentSpinnerFrames.Class.glyphFor(frameIndex, glyphLevel);
+    const characters = Array.from(word);
+    const shimmer =
+      glyphLevel === 'ascii'
+        ? characters.map(() => highlightColor) // ascii: plain (single colour) word
+        : AgentSpinnerFrames.Class.shimmerColors(
+            characters.length,
+            frameIndex,
+            colorDepth,
+            baseColor,
+            highlightColor,
+          );
 
-  const segments: ThinkingSegment[] = [];
-  // EXACTLY ONE front glyph (a single-width braille cell at a fixed column), twinkling by COLOUR — the
-  // word after it always starts at the same column, so the line never reflows.
-  segments.push({ text: glyph, color: this.twinkleGlyphColor(frameIndex, highlightColor, palette.fg), bold: true });
-  segments.push({ text: ' ', color: palette.dim, bold: false });
-  // The shimmering word, one segment per glyph so each carries its own gradient colour.
-  characters.forEach((character, index) => {
-    segments.push({ text: character, color: shimmer[index] ?? highlightColor, bold: true });
-  });
-  // Dim elapsed-seconds counter (trailing TEXT, never a glyph).
-  segments.push({ text: `  ${AgentSpinnerFrames.Class.formatElapsed(elapsedSeconds)}`, color: palette.dim, bold: false });
-  return segments;
+    const segments: ThinkingSegment[] = [];
+    // EXACTLY ONE front glyph (a single-width braille cell at a fixed column), twinkling by COLOUR — the
+    // word after it always starts at the same column, so the line never reflows.
+    segments.push({
+      text: glyph,
+      color: this.twinkleGlyphColor(frameIndex, highlightColor, palette.fg),
+      bold: true,
+    });
+    segments.push({ text: ' ', color: palette.dim, bold: false });
+    // The shimmering word, one segment per glyph so each carries its own gradient colour.
+    characters.forEach((character, index) => {
+      segments.push({
+        text: character,
+        color: shimmer[index] ?? highlightColor,
+        bold: true,
+      });
+    });
+    // Dim elapsed-seconds counter (trailing TEXT, never a glyph).
+    segments.push({
+      text: `  ${AgentSpinnerFrames.Class.formatElapsed(elapsedSeconds)}`,
+      color: palette.dim,
+      bold: false,
+    });
+    return segments;
   }
 
-/** The calm secondary note: which pending tool the agent is blocked on, with that tool's elapsed time.
- *  The pane cycles `toolName` through the pending set over time; a "2/3" counter hints there are more.
- *  Dim/informative (not shimmering), with a gentle pulse on switch. Empty when nothing is pending. */
+  /** The calm secondary note: which pending tool the agent is blocked on, with that tool's elapsed time.
+   *  The pane cycles `toolName` through the pending set over time; a "2/3" counter hints there are more.
+   *  Dim/informative (not shimmering), with a gentle pulse on switch. Empty when nothing is pending. */
   static composeWaitingNote(state: WaitingNoteState): ThinkingSegment[] {
-  if (!state.toolName) return [];
-  const glyph = state.glyphLevel === 'ascii' ? '*' : '⧗';
-  const ellipsis = state.glyphLevel === 'ascii' ? '...' : '…';
-  const glyphColor = state.highlight ? state.palette.accent : state.palette.info; // pulse on switch
-  const segments: ThinkingSegment[] = [
-    { text: `${glyph} `, color: glyphColor, bold: state.highlight },
-    { text: state.toolName, color: state.palette.info, bold: false },
-    { text: `${ellipsis} ${AgentSpinnerFrames.Class.formatElapsed(state.elapsedSeconds)}`, color: state.palette.dim, bold: false },
-  ];
-  if (state.pendingCount > 1) {
-    // Which of the N pending calls this is (cycling); the pane sets highlight on the switch frame.
-    segments.push({ text: `  (${state.pendingCount} pending)`, color: state.palette.dim, bold: false });
-  }
+    if (!state.toolName) return [];
+    const glyph = state.glyphLevel === 'ascii' ? '*' : '⧗';
+    const ellipsis = state.glyphLevel === 'ascii' ? '...' : '…';
+    const glyphColor = state.highlight
+      ? state.palette.accent
+      : state.palette.info; // pulse on switch
+    const segments: ThinkingSegment[] = [
+      { text: `${glyph} `, color: glyphColor, bold: state.highlight },
+      { text: state.toolName, color: state.palette.info, bold: false },
+      {
+        text: `${ellipsis} ${AgentSpinnerFrames.Class.formatElapsed(state.elapsedSeconds)}`,
+        color: state.palette.dim,
+        bold: false,
+      },
+    ];
+    if (state.pendingCount > 1) {
+      // Which of the N pending calls this is (cycling); the pane sets highlight on the switch frame.
+      segments.push({
+        text: `  (${state.pendingCount} pending)`,
+        color: state.palette.dim,
+        bold: false,
+      });
+    }
     return segments;
   }
 }

@@ -8,11 +8,11 @@ import { Momentum, type ScrollMomentum } from '../system/Momentum';
 // changes → a commit's files → a file's diff, with `back()` unwinding it.
 
 class $GitPanel {
-  protected static get minimumSplit(): number {
+  protected static get MINIMUM_SPLIT(): number {
     return 0.15;
   }
 
-  protected static get maximumSplit(): number {
+  protected static get MAXIMUM_SPLIT(): number {
     return 0.85;
   }
 
@@ -121,8 +121,8 @@ class $GitPanel {
   setSplit(ratio: number): void {
     const gitPanelClass = this.constructor as typeof $GitPanel;
     this.splitRatio.value = Math.max(
-      gitPanelClass.minimumSplit,
-      Math.min(gitPanelClass.maximumSplit, ratio),
+      gitPanelClass.MINIMUM_SPLIT,
+      Math.min(gitPanelClass.MAXIMUM_SPLIT, ratio),
     );
   }
 

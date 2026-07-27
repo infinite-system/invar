@@ -15,7 +15,7 @@ import type { DecodedImage } from './ImageDecoders';
 class $JpegDecoder {
   // Decode memory ceiling: a 48-megapixel photo needs ~192MB of RGBA plus working buffers; anything
   // larger is not a previewable photo and gets jpeg-js's clear "allocate too much memory" Error.
-  protected static get maximumDecodeMemoryMegabytes(): number {
+  protected static get MAXIMUM_DECODE_MEMORY_MEGABYTES(): number {
     return 1024;
   }
 
@@ -23,7 +23,7 @@ class $JpegDecoder {
     const decoded = decodeJpeg(bytes, {
       useTArray: true,
       formatAsRGBA: true,
-      maxMemoryUsageInMB: this.maximumDecodeMemoryMegabytes,
+      maxMemoryUsageInMB: this.MAXIMUM_DECODE_MEMORY_MEGABYTES,
     });
     return {
       width: decoded.width,

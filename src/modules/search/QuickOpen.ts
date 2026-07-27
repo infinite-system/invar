@@ -9,7 +9,7 @@ import { Processes } from '../system/Processes';
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $QuickOpen {
   /** Upper bound on entries the open-project navigator classifies per listing. */
-  protected static get siblingFolderEntryLimit(): number {
+  protected static get SIBLING_FOLDER_ENTRY_LIMIT(): number {
     return 2000;
   }
 
@@ -300,7 +300,7 @@ class $QuickOpen {
     }
     const entryNames = this.listDirectoryNames(parentDirectory);
     const siblingFolderEntryLimit = (this.constructor as typeof $QuickOpen)
-      .siblingFolderEntryLimit;
+      .SIBLING_FOLDER_ENTRY_LIMIT;
     const cappedEntryNames =
       entryNames.length > siblingFolderEntryLimit
         ? entryNames.slice(0, siblingFolderEntryLimit)

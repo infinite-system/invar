@@ -39,7 +39,7 @@ import type {
 } from '../workspace/GutterDecorations';
 import { GutterDecorations } from '../workspace/GutterDecorations';
 class $EditorPaneRenderer {
-  protected static get indentGuideTabWidth() {
+  protected static get INDENT_GUIDE_TAB_WIDTH() {
     return 4;
   }
   protected static roleColor(role: Role, palette: Palette): string {
@@ -193,7 +193,7 @@ class $EditorPaneRenderer {
           if (windowText[indentGrapheme] !== ' ') break;
           if (
             EditorCoordinates.Class.displayColumn(windowText, indentGrapheme) %
-              this.indentGuideTabWidth ===
+              this.INDENT_GUIDE_TAB_WIDTH ===
             0
           ) {
             indentGuideGraphemes.add(indentGrapheme);

@@ -5,9 +5,9 @@ import type {
 } from './BoundedListPopup';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 
-// invariant: Panel heading controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
+// invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelAddPopup {
-  protected static get items(): readonly BoundedListPopupItem[] {
+  protected static get ITEMS(): readonly BoundedListPopupItem[] {
     return [
       { identifier: 'terminal', label: 'Terminal' },
       { identifier: 'agent', label: 'Agent' },
@@ -21,7 +21,7 @@ class $PanelAddPopup {
       'boundedListPopup',
       () =>
         this.dependencies.popup.openAt(
-          $PanelAddPopup.items,
+          $PanelAddPopup.ITEMS,
           anchor,
           (item) => {
             if (item.identifier === 'terminal' || item.identifier === 'agent') {

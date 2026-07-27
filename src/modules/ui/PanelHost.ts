@@ -23,11 +23,11 @@ class $PanelHost {
   protected get PanelHost() {
     return PanelHost.Class as unknown as typeof $PanelHost;
   }
-  protected static get minimumCellRatio() {
+  protected static get MINIMUM_CELL_RATIO() {
     return 0.12;
   }
   protected get minimumCellRatio() {
-    return this.PanelHost.minimumCellRatio;
+    return this.PanelHost.MINIMUM_CELL_RATIO;
   }
   constructor(readonly options: PanelHostOptions = {}) {}
   /** The registry, keyed by content id. Non-reactive — `order`/`layout` drive what shows. */

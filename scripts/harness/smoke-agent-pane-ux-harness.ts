@@ -310,13 +310,13 @@ try {
   );
   driver.sendRawInput('\x1b[27;6;97~');
   let snapshot = await driver.awaitSnapshot((candidate) => {
-    const followPosition = candidate.findText('follow: off');
-    if (!followPosition) return false;
-    const discoveredFooterRow = candidate.rowText(followPosition.row);
+    const permissionPosition = candidate.findText('perm: bypass');
+    if (!permissionPosition) return false;
+    const discoveredFooterRow = candidate.rowText(permissionPosition.row);
     return (
       candidate.findText('──────────') !== null &&
-      discoveredFooterRow.includes('engine: claude') &&
-      discoveredFooterRow.includes('bypass permissions') &&
+      discoveredFooterRow.includes('claude ⇄') &&
+      !discoveredFooterRow.includes('follow:') &&
       candidate.findText('❯') !== null &&
       candidate.findText('  Ask Claude') !== null
     );
@@ -339,16 +339,23 @@ try {
     'agent pane owns a heading inside the shared panel border',
   );
   HarnessSmoke.Class.pass(
-    'the discovered footer row contains engine, follow mode, and permission segments',
+    'the discovered footer row contains compact engine and permission segments',
+  );
+  const permissionPosition = snapshot.findText('perm: bypass');
+  HarnessSmoke.Class.requireCondition(
+    permissionPosition !== null &&
+      snapshot.rowText(permissionPosition.row + 1).includes('╰') &&
+      snapshot.rowCells(permissionPosition.row).every((cell) => !cell.isBold),
+    'the agent footer is flush with the pane bottom and never bold',
   );
   const originalModeLine = snapshot
     .textRows()
-    .find((rowText) => rowText.includes('permissions'));
+    .find((rowText) => rowText.includes('perm:'));
   driver.sendKeys('Shift+Tab');
   snapshot = await driver.awaitSnapshot((candidate) => {
     const modeLine = candidate
       .textRows()
-      .find((rowText) => rowText.includes('permissions'));
+      .find((rowText) => rowText.includes('perm:'));
     return modeLine !== undefined && modeLine !== originalModeLine;
   });
   HarnessSmoke.Class.pass('Shift+Tab changes the permission mode line');

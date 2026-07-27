@@ -20,9 +20,13 @@ class $TerminalEmulatorConformance {
     });
 
     describe('TerminalEmulator chunk-split conformance', () => {
-      for (const fixture of this.chunkSplitFixtures) {
+      for (const fixture of this.CHUNK_SPLIT_FIXTURES) {
         const inputBytes = new TextEncoder().encode(fixture.input);
-        for (let byteBoundary = 1; byteBoundary < inputBytes.length; byteBoundary++) {
+        for (
+          let byteBoundary = 1;
+          byteBoundary < inputBytes.length;
+          byteBoundary++
+        ) {
           test(`${fixture.name}: byte boundary ${byteBoundary}/${inputBytes.length}`, async () => {
             await this.assertFixture({
               ...fixture,
@@ -37,15 +41,19 @@ class $TerminalEmulatorConformance {
     });
 
     describe('TerminalEmulator recorded OpenTUI fixtures', () => {
-      for (const recordedFixture of this.recordedFixtures) {
+      for (const recordedFixture of this.RECORDED_FIXTURES) {
         test(recordedFixture.name, async () => {
-          const expectations = await Bun.file(
+          const expectations = (await Bun.file(
             new URL(recordedFixture.expectationsPath, import.meta.url),
-          ).json() as TerminalFixtureExpectations;
+          ).json()) as TerminalFixtureExpectations;
           const input: Uint8Array[] = [];
           for (const inputPath of recordedFixture.inputPaths) {
-            const base64Input = await Bun.file(new URL(inputPath, import.meta.url)).text();
-            input.push(new Uint8Array(Buffer.from(base64Input.trim(), 'base64')));
+            const base64Input = await Bun.file(
+              new URL(inputPath, import.meta.url),
+            ).text();
+            input.push(
+              new Uint8Array(Buffer.from(base64Input.trim(), 'base64')),
+            );
           }
           await this.assertFixture({
             category: 'recorded-real',
@@ -92,13 +100,15 @@ class $TerminalEmulatorConformance {
         input: '\x1b[38;5;202;48;5;17mX',
         expectations: {
           cursor: { row: 0, column: 1 },
-          cells: [{
-            row: 0,
-            column: 0,
-            characters: 'X',
-            foreground: { mode: 'palette', value: 202 },
-            background: { mode: 'palette', value: 17 },
-          }],
+          cells: [
+            {
+              row: 0,
+              column: 0,
+              characters: 'X',
+              foreground: { mode: 'palette', value: 202 },
+              background: { mode: 'palette', value: 17 },
+            },
+          ],
         },
       },
       {
@@ -107,13 +117,15 @@ class $TerminalEmulatorConformance {
         input: '\x1b[38;2;1;2;3;48;2;4;5;6mX',
         expectations: {
           cursor: { row: 0, column: 1 },
-          cells: [{
-            row: 0,
-            column: 0,
-            characters: 'X',
-            foreground: { mode: 'rgb', value: 0x010203 },
-            background: { mode: 'rgb', value: 0x040506 },
-          }],
+          cells: [
+            {
+              row: 0,
+              column: 0,
+              characters: 'X',
+              foreground: { mode: 'rgb', value: 0x010203 },
+              background: { mode: 'rgb', value: 0x040506 },
+            },
+          ],
         },
       },
       {
@@ -122,22 +134,24 @@ class $TerminalEmulatorConformance {
         input: '\x1b[1;2;3;4;5;7;8;9;53mX',
         expectations: {
           cursor: { row: 0, column: 1 },
-          cells: [{
-            row: 0,
-            column: 0,
-            characters: 'X',
-            attributes: {
-              isBold: true,
-              isDim: true,
-              isItalic: true,
-              isUnderline: true,
-              isBlink: true,
-              isInverse: true,
-              isInvisible: true,
-              isStrikethrough: true,
-              isOverline: true,
+          cells: [
+            {
+              row: 0,
+              column: 0,
+              characters: 'X',
+              attributes: {
+                isBold: true,
+                isDim: true,
+                isItalic: true,
+                isUnderline: true,
+                isBlink: true,
+                isInverse: true,
+                isInvisible: true,
+                isStrikethrough: true,
+                isOverline: true,
+              },
             },
-          }],
+          ],
         },
       },
       {
@@ -501,15 +515,17 @@ class $TerminalEmulatorConformance {
         input: '\x1b]133;A\x07',
         expectations: {
           cursor: { row: 0, column: 0 },
-          shellIntegrationEvents: [{
-            kind: 'prompt-start',
-            marker: 'A',
-            exitCode: null,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: '',
-            cursorColumn: 0,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'prompt-start',
+              marker: 'A',
+              exitCode: null,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: '',
+              cursorColumn: 0,
+            },
+          ],
         },
       },
       {
@@ -519,15 +535,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: '$ ' },
           cursor: { row: 0, column: 2 },
-          shellIntegrationEvents: [{
-            kind: 'command-start',
-            marker: 'B',
-            exitCode: null,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: '$ ',
-            cursorColumn: 2,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'command-start',
+              marker: 'B',
+              exitCode: null,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: '$ ',
+              cursorColumn: 2,
+            },
+          ],
         },
       },
       {
@@ -538,15 +556,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: '$ echo ready' },
           cursor: { row: 1, column: 0 },
-          shellIntegrationEvents: [{
-            kind: 'output-start',
-            marker: 'C',
-            exitCode: null,
-            command: 'echo ready',
-            currentWorkingDirectory: '',
-            currentLine: '',
-            cursorColumn: 0,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'output-start',
+              marker: 'C',
+              exitCode: null,
+              command: 'echo ready',
+              currentWorkingDirectory: '',
+              currentLine: '',
+              cursorColumn: 0,
+            },
+          ],
         },
       },
       {
@@ -556,15 +576,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: 'failed' },
           cursor: { row: 0, column: 6 },
-          shellIntegrationEvents: [{
-            kind: 'command-end',
-            marker: 'D',
-            exitCode: 17,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: 'failed',
-            cursorColumn: 6,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'command-end',
+              marker: 'D',
+              exitCode: 17,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: 'failed',
+              cursorColumn: 6,
+            },
+          ],
         },
       },
       {
@@ -604,7 +626,8 @@ class $TerminalEmulatorConformance {
       {
         category: 'OSC-modes',
         name: 'bracketed paste and SGR mouse modes reset',
-        input: '\x1b[?2004h\x1b[?1000h\x1b[?1006h\x1b[?1006l\x1b[?1000l\x1b[?2004l',
+        input:
+          '\x1b[?2004h\x1b[?1000h\x1b[?1006h\x1b[?1006l\x1b[?1000l\x1b[?2004l',
         expectations: {
           cursor: { row: 0, column: 0 },
           modes: {
@@ -683,12 +706,13 @@ class $TerminalEmulatorConformance {
       {
         category: 'recorded-gap',
         name: 'OpenTUI notification capability and shell integration OSC are ignored',
-        input: 'A'
-          + '\x1b]99;i=opentui-notifications:p=?;\x1b\\'
-          + '\x1b]1337;Capabilities\x1b\\'
-          + '\x1b]66;w=1; \x1b\\'
-          + '\x1b]66;s=2; \x1b\\'
-          + 'B',
+        input:
+          'A' +
+          '\x1b]99;i=opentui-notifications:p=?;\x1b\\' +
+          '\x1b]1337;Capabilities\x1b\\' +
+          '\x1b]66;w=1; \x1b\\' +
+          '\x1b]66;s=2; \x1b\\' +
+          'B',
         expectations: {
           textRows: { 0: 'AB' },
           cursor: { row: 0, column: 2 },
@@ -718,14 +742,15 @@ class $TerminalEmulatorConformance {
       {
         category: 'recorded-gap',
         name: 'OpenTUI DECRQM probes pass status replies through without grid changes',
-        input: 'A'
-          + '\x1b[?1016$p'
-          + '\x1b[?2027$p'
-          + '\x1b[?2031$p'
-          + '\x1b[?1004$p'
-          + '\x1b[?2004$p'
-          + '\x1b[?2026$p'
-          + 'B',
+        input:
+          'A' +
+          '\x1b[?1016$p' +
+          '\x1b[?2027$p' +
+          '\x1b[?2031$p' +
+          '\x1b[?1004$p' +
+          '\x1b[?2004$p' +
+          '\x1b[?2026$p' +
+          'B',
         expectations: {
           textRows: { 0: 'AB' },
           cursor: { row: 0, column: 2 },
@@ -800,7 +825,7 @@ class $TerminalEmulatorConformance {
     ];
   }
 
-  protected static get chunkSplitFixtures(): TerminalChunkSplitFixture[] {
+  protected static get CHUNK_SPLIT_FIXTURES(): TerminalChunkSplitFixture[] {
     return [
       {
         category: 'chunk-split',
@@ -808,12 +833,14 @@ class $TerminalEmulatorConformance {
         input: '\x1b[38;2;1;2;3mX',
         expectations: {
           cursor: { row: 0, column: 1 },
-          cells: [{
-            row: 0,
-            column: 0,
-            characters: 'X',
-            foreground: { mode: 'rgb', value: 0x010203 },
-          }],
+          cells: [
+            {
+              row: 0,
+              column: 0,
+              characters: 'X',
+              foreground: { mode: 'rgb', value: 0x010203 },
+            },
+          ],
         },
       },
       {
@@ -850,15 +877,17 @@ class $TerminalEmulatorConformance {
         input: '\x1b]133;A\x07',
         expectations: {
           cursor: { row: 0, column: 0 },
-          shellIntegrationEvents: [{
-            kind: 'prompt-start',
-            marker: 'A',
-            exitCode: null,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: '',
-            cursorColumn: 0,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'prompt-start',
+              marker: 'A',
+              exitCode: null,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: '',
+              cursorColumn: 0,
+            },
+          ],
         },
       },
       {
@@ -868,15 +897,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: '$ ' },
           cursor: { row: 0, column: 2 },
-          shellIntegrationEvents: [{
-            kind: 'command-start',
-            marker: 'B',
-            exitCode: null,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: '$ ',
-            cursorColumn: 2,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'command-start',
+              marker: 'B',
+              exitCode: null,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: '$ ',
+              cursorColumn: 2,
+            },
+          ],
         },
       },
       {
@@ -887,15 +918,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: '$ printf ready' },
           cursor: { row: 1, column: 0 },
-          shellIntegrationEvents: [{
-            kind: 'output-start',
-            marker: 'C',
-            exitCode: null,
-            command: 'printf ready',
-            currentWorkingDirectory: '',
-            currentLine: '',
-            cursorColumn: 0,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'output-start',
+              marker: 'C',
+              exitCode: null,
+              command: 'printf ready',
+              currentWorkingDirectory: '',
+              currentLine: '',
+              cursorColumn: 0,
+            },
+          ],
         },
       },
       {
@@ -905,15 +938,17 @@ class $TerminalEmulatorConformance {
         expectations: {
           textRows: { 0: 'done' },
           cursor: { row: 0, column: 4 },
-          shellIntegrationEvents: [{
-            kind: 'command-end',
-            marker: 'D',
-            exitCode: 23,
-            command: null,
-            currentWorkingDirectory: '',
-            currentLine: 'done',
-            cursorColumn: 4,
-          }],
+          shellIntegrationEvents: [
+            {
+              kind: 'command-end',
+              marker: 'D',
+              exitCode: 23,
+              command: null,
+              currentWorkingDirectory: '',
+              currentLine: 'done',
+              cursorColumn: 4,
+            },
+          ],
         },
       },
       {
@@ -978,12 +1013,13 @@ class $TerminalEmulatorConformance {
     ];
   }
 
-  protected static get recordedFixtures(): TerminalRecordedFixture[] {
+  protected static get RECORDED_FIXTURES(): TerminalRecordedFixture[] {
     return [
       {
         name: 'OpenTUI boot frame',
         inputPaths: ['./fixtures/terminal-emulator-recorded-boot.base64'],
-        expectationsPath: './fixtures/terminal-emulator-recorded-boot.expected.json',
+        expectationsPath:
+          './fixtures/terminal-emulator-recorded-boot.expected.json',
       },
       {
         name: 'OpenTUI keypress diff frame',
@@ -991,22 +1027,29 @@ class $TerminalEmulatorConformance {
           './fixtures/terminal-emulator-recorded-boot.base64',
           './fixtures/terminal-emulator-recorded-keypress-diff.base64',
         ],
-        expectationsPath: './fixtures/terminal-emulator-recorded-keypress-diff.expected.json',
+        expectationsPath:
+          './fixtures/terminal-emulator-recorded-keypress-diff.expected.json',
       },
       {
         name: 'OpenTUI light themed frame',
-        inputPaths: ['./fixtures/terminal-emulator-recorded-light-theme.base64'],
-        expectationsPath: './fixtures/terminal-emulator-recorded-light-theme.expected.json',
+        inputPaths: [
+          './fixtures/terminal-emulator-recorded-light-theme.base64',
+        ],
+        expectationsPath:
+          './fixtures/terminal-emulator-recorded-light-theme.expected.json',
       },
       {
         name: 'shimmed Bash OSC 133 command lifecycle',
         inputPaths: ['./fixtures/terminal-observer-recorded-bash.base64'],
-        expectationsPath: './fixtures/terminal-observer-recorded-bash.expected.json',
+        expectationsPath:
+          './fixtures/terminal-observer-recorded-bash.expected.json',
       },
     ];
   }
 
-  protected static allAttributes(isEnabled: boolean): TerminalAttributeExpectations {
+  protected static allAttributes(
+    isEnabled: boolean,
+  ): TerminalAttributeExpectations {
     return {
       isBold: isEnabled,
       isDim: isEnabled,
@@ -1020,7 +1063,9 @@ class $TerminalEmulatorConformance {
     };
   }
 
-  protected static async assertFixture(fixture: TerminalConformanceFixture): Promise<void> {
+  protected static async assertFixture(
+    fixture: TerminalConformanceFixture,
+  ): Promise<void> {
     const emulator = new TerminalEmulator.Class(
       fixture.columns ?? fixture.expectations.columns ?? 10,
       fixture.rows ?? fixture.expectations.rows ?? 4,
@@ -1028,13 +1073,18 @@ class $TerminalEmulatorConformance {
     const replies: string[] = [];
     const shellIntegrationEvents: TerminalShellIntegrationEvent[] = [];
     emulator.onReply((reply) => replies.push(reply));
-    emulator.onShellIntegrationEvent((event) => shellIntegrationEvents.push(event));
-    const inputChunks = Array.isArray(fixture.input) ? fixture.input : [fixture.input];
+    emulator.onShellIntegrationEvent((event) =>
+      shellIntegrationEvents.push(event),
+    );
+    const inputChunks = Array.isArray(fixture.input)
+      ? fixture.input
+      : [fixture.input];
     try {
       for (let writeIndex = 0; writeIndex < inputChunks.length; writeIndex++) {
         emulator.write(inputChunks[writeIndex]!);
         await emulator.flush();
-        const intermediateExpectations = fixture.expectationsAfterEachWrite?.[writeIndex];
+        const intermediateExpectations =
+          fixture.expectationsAfterEachWrite?.[writeIndex];
         if (intermediateExpectations) {
           this.assertExpectations(
             emulator,
@@ -1061,28 +1111,41 @@ class $TerminalEmulatorConformance {
     replies: readonly string[],
     shellIntegrationEvents: readonly TerminalShellIntegrationEvent[],
   ): void {
-    if (expectations.columns !== undefined) expect(emulator.columns).toBe(expectations.columns);
-    if (expectations.rows !== undefined) expect(emulator.rows).toBe(expectations.rows);
+    if (expectations.columns !== undefined)
+      expect(emulator.columns).toBe(expectations.columns);
+    if (expectations.rows !== undefined)
+      expect(emulator.rows).toBe(expectations.rows);
     if (expectations.cursor) {
       expect({
         row: emulator.cursorRow,
         column: emulator.cursorColumn,
       }).toEqual(expectations.cursor);
     }
-    if (expectations.title !== undefined) expect(emulator.title).toBe(expectations.title);
+    if (expectations.title !== undefined)
+      expect(emulator.title).toBe(expectations.title);
     if (expectations.currentWorkingDirectory !== undefined) {
-      expect(emulator.currentWorkingDirectory).toBe(expectations.currentWorkingDirectory);
+      expect(emulator.currentWorkingDirectory).toBe(
+        expectations.currentWorkingDirectory,
+      );
     }
-    if (expectations.replies !== undefined) expect(replies).toEqual(expectations.replies);
+    if (expectations.replies !== undefined)
+      expect(replies).toEqual(expectations.replies);
     if (expectations.shellIntegrationEvents !== undefined) {
-      expect(shellIntegrationEvents).toEqual(expectations.shellIntegrationEvents);
-      expect(emulator.lastShellIntegrationEvent)
-        .toEqual(expectations.shellIntegrationEvents.at(-1) ?? null);
+      expect(shellIntegrationEvents).toEqual(
+        expectations.shellIntegrationEvents,
+      );
+      expect(emulator.lastShellIntegrationEvent).toEqual(
+        expectations.shellIntegrationEvents.at(-1) ?? null,
+      );
     }
     if (expectations.textRows) {
-      for (const [rowTextIndex, expectedRowText] of Object.entries(expectations.textRows)) {
+      for (const [rowTextIndex, expectedRowText] of Object.entries(
+        expectations.textRows,
+      )) {
         const row = Number(rowTextIndex);
-        expect(this.rowText(emulator, row)).toBe(expectedRowText.padEnd(emulator.columns));
+        expect(this.rowText(emulator, row)).toBe(
+          expectedRowText.padEnd(emulator.columns),
+        );
       }
     }
     for (const expectedCell of expectations.cells ?? []) {
@@ -1091,29 +1154,41 @@ class $TerminalEmulatorConformance {
       this.assertCell(actualCell!, expectedCell);
     }
     if (expectations.modes?.isBracketedPasteEnabled !== undefined) {
-      expect(emulator.isBracketedPasteEnabled)
-        .toBe(expectations.modes.isBracketedPasteEnabled);
+      expect(emulator.isBracketedPasteEnabled).toBe(
+        expectations.modes.isBracketedPasteEnabled,
+      );
     }
     if (expectations.modes?.mouseTrackingMode !== undefined) {
-      expect(emulator.mouseTrackingMode).toBe(expectations.modes.mouseTrackingMode);
+      expect(emulator.mouseTrackingMode).toBe(
+        expectations.modes.mouseTrackingMode,
+      );
     }
     if (expectations.modes?.isSgrMouseEncodingEnabled !== undefined) {
-      expect(emulator.isSgrMouseEncodingEnabled)
-        .toBe(expectations.modes.isSgrMouseEncodingEnabled);
+      expect(emulator.isSgrMouseEncodingEnabled).toBe(
+        expectations.modes.isSgrMouseEncodingEnabled,
+      );
     }
     if (expectations.modes?.isOriginModeEnabled !== undefined) {
-      expect(emulator.isOriginModeEnabled).toBe(expectations.modes.isOriginModeEnabled);
+      expect(emulator.isOriginModeEnabled).toBe(
+        expectations.modes.isOriginModeEnabled,
+      );
     }
     if (expectations.modes?.isSynchronizedOutputEnabled !== undefined) {
-      expect(emulator.isSynchronizedOutputEnabled)
-        .toBe(expectations.modes.isSynchronizedOutputEnabled);
+      expect(emulator.isSynchronizedOutputEnabled).toBe(
+        expectations.modes.isSynchronizedOutputEnabled,
+      );
     }
     if (expectations.modes?.isAlternateScreenActive !== undefined) {
-      expect(emulator.isAlternateScreenActive).toBe(expectations.modes.isAlternateScreenActive);
+      expect(emulator.isAlternateScreenActive).toBe(
+        expectations.modes.isAlternateScreenActive,
+      );
     }
   }
 
-  protected static rowText(emulator: TerminalEmulator.Model, row: number): string {
+  protected static rowText(
+    emulator: TerminalEmulator.Model,
+    row: number,
+  ): string {
     let text = '';
     for (let column = 0; column < emulator.columns; column++) {
       text += emulator.cell(row, column)?.characters ?? ' ';
@@ -1128,7 +1203,8 @@ class $TerminalEmulatorConformance {
     if (expectedCell.characters !== undefined) {
       expect(actualCell.characters).toBe(expectedCell.characters);
     }
-    if (expectedCell.width !== undefined) expect(actualCell.width).toBe(expectedCell.width);
+    if (expectedCell.width !== undefined)
+      expect(actualCell.width).toBe(expectedCell.width);
     if (expectedCell.foreground) {
       this.assertColor(actualCell, 'foreground', expectedCell.foreground);
     }
@@ -1138,7 +1214,9 @@ class $TerminalEmulatorConformance {
     for (const [attributeName, expectedValue] of Object.entries(
       expectedCell.attributes ?? {},
     )) {
-      expect(actualCell[attributeName as keyof TerminalAttributeExpectations]).toBe(expectedValue);
+      expect(
+        actualCell[attributeName as keyof TerminalAttributeExpectations],
+      ).toBe(expectedValue);
     }
   }
 
@@ -1148,14 +1226,18 @@ class $TerminalEmulatorConformance {
     expectedColor: TerminalColorExpectation,
   ): void {
     const isForeground = layer === 'foreground';
-    const actualValue = isForeground ? actualCell.foreground : actualCell.background;
+    const actualValue = isForeground
+      ? actualCell.foreground
+      : actualCell.background;
     const isDefault = isForeground
       ? actualCell.isForegroundDefault
       : actualCell.isBackgroundDefault;
     const isPalette = isForeground
       ? actualCell.isForegroundPalette
       : actualCell.isBackgroundPalette;
-    const isRgb = isForeground ? actualCell.isForegroundRgb : actualCell.isBackgroundRgb;
+    const isRgb = isForeground
+      ? actualCell.isForegroundRgb
+      : actualCell.isBackgroundRgb;
     expect(actualValue).toBe(expectedColor.value);
     expect(isDefault).toBe(expectedColor.mode === 'default');
     expect(isPalette).toBe(expectedColor.mode === 'palette');
@@ -1168,18 +1250,20 @@ export namespace TerminalEmulatorConformance {
   export const Class = Static($Class);
 }
 
-type TerminalAttributeExpectations = Partial<Pick<
-  TerminalCell,
-  | 'isBold'
-  | 'isDim'
-  | 'isItalic'
-  | 'isUnderline'
-  | 'isBlink'
-  | 'isInverse'
-  | 'isInvisible'
-  | 'isStrikethrough'
-  | 'isOverline'
->>;
+type TerminalAttributeExpectations = Partial<
+  Pick<
+    TerminalCell,
+    | 'isBold'
+    | 'isDim'
+    | 'isItalic'
+    | 'isUnderline'
+    | 'isBlink'
+    | 'isInverse'
+    | 'isInvisible'
+    | 'isStrikethrough'
+    | 'isOverline'
+  >
+>;
 
 interface TerminalColorExpectation {
   mode: 'default' | 'palette' | 'rgb';
@@ -1228,7 +1312,10 @@ interface TerminalConformanceFixture {
   expectationsAfterEachWrite?: TerminalFixtureExpectations[];
 }
 
-interface TerminalChunkSplitFixture extends Omit<TerminalConformanceFixture, 'input'> {
+interface TerminalChunkSplitFixture extends Omit<
+  TerminalConformanceFixture,
+  'input'
+> {
   input: string;
 }
 

@@ -38,7 +38,7 @@ class $TerminalObserver {
     const terminalObserverClass = this.constructor as typeof $TerminalObserver;
     this.maximumEventCount = this.positiveInteger(
       options.maximumEventCount,
-      terminalObserverClass.defaultMaximumEventCount,
+      terminalObserverClass.DEFAULT_MAXIMUM_EVENT_COUNT,
     );
     this.maximumBufferBytes = this.positiveInteger(
       options.maximumBufferBytes,
@@ -46,29 +46,30 @@ class $TerminalObserver {
     );
     this.headLineCount = this.nonnegativeInteger(
       options.headLineCount,
-      terminalObserverClass.defaultHeadLineCount,
+      terminalObserverClass.DEFAULT_HEAD_LINE_COUNT,
     );
     this.tailLineCount = this.nonnegativeInteger(
       options.tailLineCount,
-      terminalObserverClass.defaultTailLineCount,
+      terminalObserverClass.DEFAULT_TAIL_LINE_COUNT,
     );
     this.outputByteCap = this.positiveInteger(
       options.outputByteCap,
-      terminalObserverClass.defaultOutputByteCap,
+      terminalObserverClass.DEFAULT_OUTPUT_BYTE_CAP,
     );
     this.now = options.now ?? Date.now;
-    this.stopCellsChangedObservation = this.emulator.onCellsChanged(
-      () => this.observeParsedCells(),
+    this.stopCellsChangedObservation = this.emulator.onCellsChanged(() =>
+      this.observeParsedCells(),
     );
-    this.stopLineFeedObservation = this.emulator.onLineFeed(
-      (event) => this.observeLineFeed(event),
+    this.stopLineFeedObservation = this.emulator.onLineFeed((event) =>
+      this.observeLineFeed(event),
     );
-    this.stopShellIntegrationObservation = this.emulator.onShellIntegrationEvent(
-      (event) => this.observeShellIntegrationEvent(event),
-    );
+    this.stopShellIntegrationObservation =
+      this.emulator.onShellIntegrationEvent((event) =>
+        this.observeShellIntegrationEvent(event),
+      );
   }
 
-  protected static get defaultMaximumEventCount(): number {
+  protected static get DEFAULT_MAXIMUM_EVENT_COUNT(): number {
     return 100;
   }
 
@@ -76,15 +77,15 @@ class $TerminalObserver {
     return 256 * 1024;
   }
 
-  protected static get defaultHeadLineCount(): number {
+  protected static get DEFAULT_HEAD_LINE_COUNT(): number {
     return 20;
   }
 
-  protected static get defaultTailLineCount(): number {
+  protected static get DEFAULT_TAIL_LINE_COUNT(): number {
     return 20;
   }
 
-  protected static get defaultOutputByteCap(): number {
+  protected static get DEFAULT_OUTPUT_BYTE_CAP(): number {
     return 8192;
   }
 
@@ -100,15 +101,22 @@ class $TerminalObserver {
     return this.bufferedByteCountValue;
   }
 
-  snapshot(maximumEventCount = this.maximumEventCount): readonly TerminalObservationEvent[] {
+  snapshot(
+    maximumEventCount = this.maximumEventCount,
+  ): readonly TerminalObservationEvent[] {
     const safeMaximumEventCount = this.nonnegativeInteger(maximumEventCount, 0);
-    const firstEventIndex = Math.max(0, this.bufferedEntries.length - safeMaximumEventCount);
+    const firstEventIndex = Math.max(
+      0,
+      this.bufferedEntries.length - safeMaximumEventCount,
+    );
     return this.bufferedEntries
       .slice(firstEventIndex)
       .map((entry) => entry.event);
   }
 
-  onObservation(callback: (event: TerminalObservationEvent) => void): () => void {
+  onObservation(
+    callback: (event: TerminalObservationEvent) => void,
+  ): () => void {
     this.observationCallbacks.add(callback);
     return () => this.observationCallbacks.delete(callback);
   }
@@ -131,9 +139,12 @@ class $TerminalObserver {
     this.activeCommand = null;
   }
 
-  protected observeShellIntegrationEvent(event: TerminalShellIntegrationEvent): void {
+  protected observeShellIntegrationEvent(
+    event: TerminalShellIntegrationEvent,
+  ): void {
     if (this.disposed) return;
-    if (this.activeCommand?.boundarySource === 'heuristic') this.activeCommand = null;
+    if (this.activeCommand?.boundarySource === 'heuristic')
+      this.activeCommand = null;
     if (event.kind === 'output-start') {
       const command = event.command ?? this.pendingHeuristicCommand;
       if (!command) return;
@@ -145,7 +156,10 @@ class $TerminalObserver {
       );
       return;
     }
-    if (event.kind === 'command-end' && this.activeCommand?.boundarySource === 'osc133') {
+    if (
+      event.kind === 'command-end' &&
+      this.activeCommand?.boundarySource === 'osc133'
+    ) {
       this.completeActiveCommand(event.exitCode, event.currentLine);
     }
   }
@@ -174,9 +188,13 @@ class $TerminalObserver {
     const promptInputLine = this.emulator.currentPromptInputLine();
     if (promptInputLine !== null && promptInputLine !== '') {
       this.pendingHeuristicCommand = promptInputLine;
-      this.pendingHeuristicCurrentWorkingDirectory = this.emulator.currentWorkingDirectory;
+      this.pendingHeuristicCurrentWorkingDirectory =
+        this.emulator.currentWorkingDirectory;
     }
-    if (this.activeCommand?.boundarySource === 'heuristic' && promptInputLine === '') {
+    if (
+      this.activeCommand?.boundarySource === 'heuristic' &&
+      promptInputLine === ''
+    ) {
       this.completeActiveCommand(null, '');
     }
   }
@@ -203,12 +221,16 @@ class $TerminalObserver {
     };
   }
 
-  protected completeActiveCommand(exitCode: number | null, currentLine: string): void {
+  protected completeActiveCommand(
+    exitCode: number | null,
+    currentLine: string,
+  ): void {
     const activeCommand = this.activeCommand;
     if (!activeCommand) return;
-    const currentOutputLine = activeCommand.completedLineFeedCount === 0
-      ? currentLine.slice(activeCommand.firstOutputColumn)
-      : currentLine;
+    const currentOutputLine =
+      activeCommand.completedLineFeedCount === 0
+        ? currentLine.slice(activeCommand.firstOutputColumn)
+        : currentLine;
     if (currentOutputLine !== '') this.recordOutputLine(currentOutputLine);
     const completedAtMilliseconds = this.now();
     const output = this.buildOutput(activeCommand);
@@ -222,7 +244,9 @@ class $TerminalObserver {
       exitCode: activeCommand.boundarySource === 'heuristic' ? null : exitCode,
       durationMs: Math.max(
         0,
-        Math.round(completedAtMilliseconds - activeCommand.startedAtMilliseconds),
+        Math.round(
+          completedAtMilliseconds - activeCommand.startedAtMilliseconds,
+        ),
       ),
       output,
       boundarySource: activeCommand.boundarySource,
@@ -253,7 +277,9 @@ class $TerminalObserver {
       }
       return;
     }
-    activeCommand.tailCandidates.push(this.utf8Suffix(redactedLine, this.outputByteCap));
+    activeCommand.tailCandidates.push(
+      this.utf8Suffix(redactedLine, this.outputByteCap),
+    );
     if (activeCommand.tailCandidates.length > this.tailLineCount) {
       activeCommand.tailCandidates.shift();
     }
@@ -263,10 +289,17 @@ class $TerminalObserver {
     );
   }
 
-  protected buildOutput(activeCommand: TerminalObservedCommand): TerminalObservationOutput {
+  protected buildOutput(
+    activeCommand: TerminalObservedCommand,
+  ): TerminalObservationOutput {
     const hasTail = activeCommand.tailCandidates.length > 0;
-    const headByteBudget = hasTail ? Math.floor(this.outputByteCap / 2) : this.outputByteCap;
-    const headLines = this.fitHeadLines(activeCommand.headCandidates, headByteBudget);
+    const headByteBudget = hasTail
+      ? Math.floor(this.outputByteCap / 2)
+      : this.outputByteCap;
+    const headLines = this.fitHeadLines(
+      activeCommand.headCandidates,
+      headByteBudget,
+    );
     const headByteCount = this.linesByteLength(headLines);
     const tailByteBudget = this.outputByteCap - headByteCount;
     const tailLines = hasTail
@@ -278,13 +311,16 @@ class $TerminalObserver {
       tailLines: Object.freeze(tailLines),
       totalLines: activeCommand.totalLineCount,
       truncated:
-        activeCommand.totalLineCount > headLines.length + tailLines.length
-        || activeCommand.observedByteCount > deliveredByteCount,
+        activeCommand.totalLineCount > headLines.length + tailLines.length ||
+        activeCommand.observedByteCount > deliveredByteCount,
       byteCap: this.outputByteCap,
     });
   }
 
-  protected fitHeadLines(lines: readonly string[], byteBudget: number): string[] {
+  protected fitHeadLines(
+    lines: readonly string[],
+    byteBudget: number,
+  ): string[] {
     const fittedLines: string[] = [];
     let remainingBytes = Math.max(0, byteBudget);
     for (const line of lines) {
@@ -297,7 +333,10 @@ class $TerminalObserver {
     return fittedLines;
   }
 
-  protected fitTailLines(lines: readonly string[], byteBudget: number): string[] {
+  protected fitTailLines(
+    lines: readonly string[],
+    byteBudget: number,
+  ): string[] {
     const fittedLines: string[] = [];
     let remainingBytes = Math.max(0, byteBudget);
     for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex -= 1) {
@@ -316,8 +355,8 @@ class $TerminalObserver {
     this.bufferedEntries.push({ event, byteLength });
     this.bufferedByteCountValue += byteLength;
     while (
-      this.bufferedEntries.length > this.maximumEventCount
-      || this.bufferedByteCountValue > this.maximumBufferBytes
+      this.bufferedEntries.length > this.maximumEventCount ||
+      this.bufferedByteCountValue > this.maximumBufferBytes
     ) {
       const evictedEntry = this.bufferedEntries.shift();
       if (!evictedEntry) break;
@@ -336,26 +375,26 @@ class $TerminalObserver {
   protected redactLine(line: string): string {
     const terminalObserverClass = this.constructor as typeof $TerminalObserver;
     if (
-      terminalObserverClass.passwordPromptPattern.test(line)
-      || terminalObserverClass.passphrasePromptPattern.test(line)
+      terminalObserverClass.PASSWORD_PROMPT_PATTERN.test(line) ||
+      terminalObserverClass.PASSPHRASE_PROMPT_PATTERN.test(line)
     ) {
       return '[REDACTED]';
     }
     return line.replace(
-      terminalObserverClass.secretAssignmentPattern,
+      terminalObserverClass.SECRET_ASSIGNMENT_PATTERN,
       (_assignment, prefix: string) => `${prefix}[REDACTED]`,
     );
   }
 
-  protected static get passwordPromptPattern(): RegExp {
+  protected static get PASSWORD_PROMPT_PATTERN(): RegExp {
     return /password.*:/i;
   }
 
-  protected static get passphrasePromptPattern(): RegExp {
+  protected static get PASSPHRASE_PROMPT_PATTERN(): RegExp {
     return /enter\s+passphrase/i;
   }
 
-  protected static get secretAssignmentPattern(): RegExp {
+  protected static get SECRET_ASSIGNMENT_PATTERN(): RegExp {
     return /(\b(?:[a-z_][a-z0-9_]*_(?:token|secret|key)|[a-z_][a-z0-9_]*password[a-z0-9_]*|password[a-z0-9_]*)\s*=\s*)(?:"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^\s]*)/gi;
   }
 
@@ -383,7 +422,11 @@ class $TerminalObserver {
     const characters = Array.from(text);
     let result = '';
     let byteCount = 0;
-    for (let characterIndex = characters.length - 1; characterIndex >= 0; characterIndex -= 1) {
+    for (
+      let characterIndex = characters.length - 1;
+      characterIndex >= 0;
+      characterIndex -= 1
+    ) {
       const character = characters[characterIndex]!;
       const characterByteCount = this.byteLength(character);
       if (byteCount + characterByteCount > byteCap) break;
@@ -398,15 +441,24 @@ class $TerminalObserver {
   }
 
   protected linesByteLength(lines: readonly string[]): number {
-    return lines.reduce((byteCount, line) => byteCount + this.byteLength(line), 0);
+    return lines.reduce(
+      (byteCount, line) => byteCount + this.byteLength(line),
+      0,
+    );
   }
 
-  protected positiveInteger(value: number | undefined, fallback: number): number {
+  protected positiveInteger(
+    value: number | undefined,
+    fallback: number,
+  ): number {
     if (value === undefined || !Number.isFinite(value)) return fallback;
     return Math.max(1, Math.floor(value));
   }
 
-  protected nonnegativeInteger(value: number | undefined, fallback: number): number {
+  protected nonnegativeInteger(
+    value: number | undefined,
+    fallback: number,
+  ): number {
     if (value === undefined || !Number.isFinite(value)) return fallback;
     return Math.max(0, Math.floor(value));
   }

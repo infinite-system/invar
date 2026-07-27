@@ -8,7 +8,7 @@ import { ref, shallowRef } from 'vue';
 // invariant: Programmatic history navigation does not record new history (navigation.invariants.md)
 class $NavigationHistory {
   /** The largest number of entries retained; recording past it drops the oldest. */
-  protected static get maximumEntryCount(): number {
+  protected static get MAXIMUM_ENTRY_COUNT(): number {
     return 100;
   }
 
@@ -26,7 +26,7 @@ class $NavigationHistory {
   /** The location currently shown, or null when the history is empty. */
   get currentEntry(): Location | null {
     const index = this.currentIndex.value;
-    return index >= 0 ? this.entries.value[index] ?? null : null;
+    return index >= 0 ? (this.entries.value[index] ?? null) : null;
   }
 
   /** Whether back() would move (there is an older location to return to). */
@@ -67,10 +67,16 @@ class $NavigationHistory {
       return;
     }
     // A genuinely new location: drop any forward history, then append and make it current.
-    const retainedEntries = this.entries.value.slice(0, this.currentIndex.value + 1);
+    const retainedEntries = this.entries.value.slice(
+      0,
+      this.currentIndex.value + 1,
+    );
     retainedEntries.push(location);
-    const navigationHistoryClass = this.constructor as typeof $NavigationHistory;
-    while (retainedEntries.length > navigationHistoryClass.maximumEntryCount) {
+    const navigationHistoryClass = this
+      .constructor as typeof $NavigationHistory;
+    while (
+      retainedEntries.length > navigationHistoryClass.MAXIMUM_ENTRY_COUNT
+    ) {
       retainedEntries.shift();
     }
     this.entries.value = retainedEntries;

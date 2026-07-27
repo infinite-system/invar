@@ -9,14 +9,14 @@
 // invariant: A scrollbar track is derived per frame from its region rect (ui.invariants.md)
 import { Static } from 'ivue/extras';
 class $ScrollbarGeometry {
-  public static get minimumThumbCells() {
+  public static get MINIMUM_THUMB_CELLS() {
     return 2;
   }
   public static scrollbarGeometry(
     orientation: 'vertical' | 'horizontal',
     region: RegionRect,
     scroll: ScrollState,
-    minimumThumbCells = this.minimumThumbCells,
+    minimumThumbCells = this.MINIMUM_THUMB_CELLS,
   ): BarGeometry | null {
     if (scroll.scrollSize <= scroll.viewportSize || scroll.scrollSize <= 0)
       return null;

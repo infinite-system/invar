@@ -14,7 +14,7 @@ import type { DecodedImage } from './ImageDecoders';
 
 class $KittyGraphics {
   /** The kitty spec's hard ceiling for one APC chunk's base64 payload. */
-  static get chunkLimit(): number {
+  static get CHUNK_LIMIT(): number {
     return 4096;
   }
 
@@ -35,15 +35,13 @@ class $KittyGraphics {
     const controls =
       `a=T,f=32,o=z,s=${image.width},v=${image.height},` +
       `c=${columns},r=${rows},i=${imageId},C=1,q=2`;
-    if (base64.length <= this.chunkLimit) return this.apc(controls, base64);
+    if (base64.length <= this.CHUNK_LIMIT) return this.apc(controls, base64);
     const parts: string[] = [];
-    for (let offset = 0; offset < base64.length; offset += this.chunkLimit) {
-      const chunk = base64.slice(offset, offset + this.chunkLimit);
+    for (let offset = 0; offset < base64.length; offset += this.CHUNK_LIMIT) {
+      const chunk = base64.slice(offset, offset + this.CHUNK_LIMIT);
       const isFirst = offset === 0;
-      const isLast = offset + this.chunkLimit >= base64.length;
-      const chunkControls = isFirst
-        ? `${controls},m=1`
-        : `m=${isLast ? 0 : 1}`;
+      const isLast = offset + this.CHUNK_LIMIT >= base64.length;
+      const chunkControls = isFirst ? `${controls},m=1` : `m=${isLast ? 0 : 1}`;
       parts.push(this.apc(chunkControls, chunk));
     }
     return parts.join('');

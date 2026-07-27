@@ -15,7 +15,7 @@ import { ImageResample } from './ImageResample';
 
 class $SixelEncoder {
   // The fixed 6-level channel ladder: 0, 51, 102, 153, 204, 255 → sixel's 0..100 scale.
-  protected static get channelLevels(): number {
+  protected static get CHANNEL_LEVELS(): number {
     return 6;
   }
 
@@ -25,7 +25,7 @@ class $SixelEncoder {
 
   /** Quantize an 0..255 channel to its 6-level index. */
   protected static channelIndex(value: number): number {
-    return Math.round((value / 255) * (this.channelLevels - 1));
+    return Math.round((value / 255) * (this.CHANNEL_LEVELS - 1));
   }
 
   /** The sixel palette register (0..215) for an RGB sample. */
@@ -35,17 +35,15 @@ class $SixelEncoder {
     blue: number,
   ): number {
     return (
-      this.channelIndex(red) * this.channelLevels * this.channelLevels +
-      this.channelIndex(green) * this.channelLevels +
+      this.channelIndex(red) * this.CHANNEL_LEVELS * this.CHANNEL_LEVELS +
+      this.channelIndex(green) * this.CHANNEL_LEVELS +
       this.channelIndex(blue)
     );
   }
 
   /** A palette register's channel value on sixel's 0..100 scale. */
   protected static paletteChannel(levelIndex: number): number {
-    return Math.round(
-      (levelIndex / (this.channelLevels - 1)) * 100,
-    );
+    return Math.round((levelIndex / (this.CHANNEL_LEVELS - 1)) * 100);
   }
 
   static encode(paint: SixelPaint): string {
@@ -78,18 +76,16 @@ class $SixelEncoder {
     }
 
     // DCS introducer (P2=1: unset pixels keep the screen content) + raster attributes (1:1 aspect).
-    const parts: string[] = [
-      `\x1bP0;1;0q"1;1;${pixelWidth};${pixelHeight}`,
-    ];
+    const parts: string[] = [`\x1bP0;1;0q"1;1;${pixelWidth};${pixelHeight}`];
     for (const register of [...usedRegisters].sort(
       (left, right) => left - right,
     )) {
       const redLevel = Math.floor(
-        register / (this.channelLevels * this.channelLevels),
+        register / (this.CHANNEL_LEVELS * this.CHANNEL_LEVELS),
       );
       const greenLevel =
-        Math.floor(register / this.channelLevels) % this.channelLevels;
-      const blueLevel = register % this.channelLevels;
+        Math.floor(register / this.CHANNEL_LEVELS) % this.CHANNEL_LEVELS;
+      const blueLevel = register % this.CHANNEL_LEVELS;
       parts.push(
         `#${register};2;${this.paletteChannel(redLevel)};` +
           `${this.paletteChannel(greenLevel)};${this.paletteChannel(blueLevel)}`,
@@ -111,9 +107,7 @@ class $SixelEncoder {
           horizontalPixelIndex++
         ) {
           bandRegisters.add(
-            registers[
-              verticalPixelIndex * pixelWidth + horizontalPixelIndex
-            ]!,
+            registers[verticalPixelIndex * pixelWidth + horizontalPixelIndex]!,
           );
         }
       }

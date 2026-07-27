@@ -100,8 +100,7 @@ class $PngDecoder {
             reconstructedByte = filteredByte + aboveByte;
             break; // Up
           case 3:
-            reconstructedByte =
-              filteredByte + ((leftByte + aboveByte) >> 1);
+            reconstructedByte = filteredByte + ((leftByte + aboveByte) >> 1);
             break; // Average
           case 4:
             reconstructedByte =
@@ -109,9 +108,7 @@ class $PngDecoder {
               this.paethPredictor(leftByte, aboveByte, upperLeftByte);
             break; // Paeth
           default:
-            throw new Error(
-              `PNG: unsupported scanline filter ${filterType}`,
-            );
+            throw new Error(`PNG: unsupported scanline filter ${filterType}`);
         }
         raw[rawRowStart + byteIndex] = reconstructedByte & 0xff;
       }
@@ -174,11 +171,7 @@ class $PngDecoder {
         throw new Error('PNG: not a PNG file (bad signature)');
       }
     }
-    const view = new DataView(
-      bytes.buffer,
-      bytes.byteOffset,
-      bytes.byteLength,
-    );
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     let width = 0;
     let height = 0;
     let bitDepth = 0;
@@ -244,12 +237,7 @@ class $PngDecoder {
     }
     const inflated = new Uint8Array(inflateSync(compressed));
     const bytesPerPixel = channels; // bit depth 8: one byte per channel
-    const raw = this.unfilterScanlines(
-      inflated,
-      width,
-      height,
-      bytesPerPixel,
-    );
+    const raw = this.unfilterScanlines(inflated, width, height, bytesPerPixel);
     const rgba = this.expandToRgba(
       raw,
       width,

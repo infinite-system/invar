@@ -29,18 +29,9 @@ class $ImageDecoders {
     ImageDecoder
   > {
     const decodersByExtension: ReadonlyMap<string, ImageDecoder> = new Map([
-      [
-        '.png',
-        (bytes: Uint8Array) => this.PngDecoder.decode(bytes),
-      ],
-      [
-        '.jpg',
-        (bytes: Uint8Array) => this.JpegDecoder.decode(bytes),
-      ],
-      [
-        '.jpeg',
-        (bytes: Uint8Array) => this.JpegDecoder.decode(bytes),
-      ],
+      ['.png', (bytes: Uint8Array) => this.PngDecoder.decode(bytes)],
+      ['.jpg', (bytes: Uint8Array) => this.JpegDecoder.decode(bytes)],
+      ['.jpeg', (bytes: Uint8Array) => this.JpegDecoder.decode(bytes)],
     ]);
     Object.defineProperty(this, '$decodersByExtension', {
       configurable: true,

@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { AgentPaneRenderer } from './AgentPaneRenderer';
 
-const darkPalette = ThemePalettes.Class.dark;
+const darkPalette = ThemePalettes.Class.DARK;
 
 test('render paints the supplied transcript and composer rows', () => {
   const rendered = AgentPaneRenderer.Class.render({

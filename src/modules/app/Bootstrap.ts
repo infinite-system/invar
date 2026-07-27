@@ -1935,7 +1935,7 @@ class $Bootstrap {
           if (
             findBar.open.value &&
             findBar.target?.identifier ===
-              AgentPaneContent.Class.transcriptFindTargetIdentifier
+              AgentPaneContent.Class.TRANSCRIPT_FIND_TARGET_IDENTIFIER
           ) {
             handleFindBarKey(key);
             return;

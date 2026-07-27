@@ -1910,21 +1910,35 @@ Practical shape, now queued as #140: a bounded, off-by-default capture mode (fra
 input arrival, top per-frame callees) plus an analyzer with a planted-gap positive control. The
 user reproduces in seconds what an hour of driving could not, and the fix waits for THAT evidence.
 
-## 2026-07-27 04:30 — I broke the one-gate rule myself, and a queued HOOK gate is still a gate
+## 2026-07-27 04:30 — a queued HOOK gate is still a gate (CORRECTED 05:10 — I cited a retired rule)
 
 I launched the `fix-render-stall` gate while a commit was already queued whose pre-commit hook runs
 the full gate. Two gates ran concurrently, and the hook gate went red on `audio-narration`.
 
-The rule was never "do not launch two gates by hand." It is **one gate at a time on this machine**,
-and a pre-commit hook is a gate I did not type. The tell is easy to miss because the second gate has
-no command of mine attached to it: it is a side effect of `git commit`.
+The durable half: **a pre-commit hook is a gate I did not type.** The tell is easy to miss because
+the second gate has no command of mine attached to it — it is a side effect of `git commit`. Before
+launching a gate, ask what else is holding a commit. A queued commit is a queued gate.
 
-  **Before launching a gate, ask what else is holding a commit.** A queued commit is a queued gate.
+**CORRECTION.** I originally wrote this up as breaking "my own one-gate-at-a-time rule." That rule
+was RETIRED on 2026-07-25 and the skill says so explicitly — gates may overlap, because both
+shared-namespace collisions behind the old rule were fixed in 9f6c617. Writing doctrine that cites a
+retired rule is worse than writing none: it re-imposes superseded constraint on whoever reads it next,
+which is the same failure the cron section warns about for stale prompts. Check the skill before
+invoking a rule by name, especially your own.
 
-Cost: the red is now ambiguous. `audio-narration` may be a genuine defect (its escalation pattern
-says it probably is) or it may be contention, and I destroyed the ability to tell them apart in that
-run. The brief for #141 therefore leads with "establish whether it survives a SINGLE-gate run" —
-paying later for the discrimination I could have had for free.
+The rule I ACTUALLY broke — three times tonight, not once — is the live one:
+**A GATE MUST NOT OVERLAP A LIVE BUILDER.** A gate and a builder's verification phase are the same
+resource. I ran the chrome-wave gate with two builders alive, then the doc-commit hook gate with
+three. The skill's warning is precise about the cost: it produces reds indistinguishable from
+starvation. That is not hypothetical here — of the chrome wave's three reds, two have exact
+literal-text causes that are load-independent and therefore safe, but `scrollbars` is a
+thumb-paint timing condition whose verdict I have now made ambiguous by my own scheduling.
+
+  **"Looks quiet" is not a builder being idle.** A builder in its reading phase produces log growth
+  and no CPU; minutes later it reaches its own `bun test` and smokes, inside the gate's window.
+
+Cost paid twice over: the #141 brief had to lead with "establish whether it survives a SINGLE-gate
+run," buying later, with a builder's time, the discrimination that correct scheduling gives for free.
 
 ## 2026-07-27 04:35 — the escalation path from "retry-tally regular" to "hard red" is a DEFECT signature
 
@@ -2134,3 +2148,80 @@ Three standing consequences:
 - Round-2 briefs for this class must force the probe-versus-app verdict FIRST and separately
   per smoke, because the two diagnoses need opposite fixes and "make the smoke green" quietly
   chooses one. And re-keying a stale probe to a NEW label just moves the dependency.
+
+## 2026-07-27 05:40 — the layout change did not BREAK that probe, it EXPOSED what the probe was missing
+
+Round 2 came back with split verdicts, and the split is the whole point.
+
+- `agent-search`: **stale probe, app correct.** The frame painted the footer and clicking the
+  glyph really did open the FindBar. The predicate still demanded the retired `engine:` copy.
+- `scrollbars`: **app WRONG, probe correct.** `DiffView`'s `SolidThumbScrollBar` sliders had
+  never been given theme track/thumb colors. The bar has been unthemed this whole time.
+
+And the sharp part: **the probe had been PASSING by matching unrelated right-edge paint** and
+calling it the diff bar. Reclaiming the hidden tab row moved the geometry enough that the
+coincidence stopped holding.
+
+  **A probe that passes for the wrong reason is worse than one that fails.** It reports a
+  contract that was never being checked, and it converts an unrelated layout change into a
+  mystery red — the diagnosis lands on whoever moved the rows, not on the defect.
+
+This is the same family as the instrument rules already recorded (a check that can only pass is
+not an instrument; a smoke the gate never runs is not a contract). Tonight adds the third
+member: **a check that passes on a coincidence is not a contract either.** All three fail the
+same test — ask what would have to be true for this assertion to go red, and whether that thing
+is the property you meant.
+
+Two operational consequences:
+- Had the round-2 brief said "make the smokes green," a user-visible defect would have shipped
+  behind a re-keyed probe. Forcing a per-smoke probe-versus-app verdict, decided BY DRIVING, is
+  what surfaced it. Keep that shape for every stale-probe round.
+- A layout change is therefore not only a blast radius, it is an OPPORTUNITY: it perturbs
+  coincidences and shakes out probes that were passing by luck. Reds following a layout change
+  deserve a real verdict, not a re-key.
+
+The census it produced is now debt with an owner: eight further probes keyed to retired copy or
+fixed rows (four agent-footer, four diff-toolbar/positional), enumerated and deliberately NOT
+expanded into a scoped repair. Enumerating without fixing is correct here — but only because it
+is now written down and tasked, which is what #105 failed to do with the `⌕` risk it flagged.
+
+## 2026-07-27 06:00 — `every([])` is TRUE, so a probe that measures nothing reports success
+
+The fourth instrument failure of the night, and the most dangerous, because it is invisible.
+
+The ivue naming rename turned `static get defaults` into `static get DEFAULTS`.
+`smoke-settings-applied-harness.ts` derived its field list by regex over SOURCE TEXT:
+
+```js
+settingsSource.match(/static get defaults[\s\S]*?return \{([\s\S]*?)\n\s*\};/)?.[1] ?? ''
+```
+
+Case-sensitive, so it matched nothing, `?? ''` swallowed the miss, and the field list came back
+empty. The gate printed `FAIL all 0 schema fields have an applied-effect drive`.
+
+**It only failed because someone had written `schemaSettingNames.length > 0 &&` on the assertion
+line.** Without that guard, `uncoveredSettings.length === 0` is vacuously true over an empty
+list, and the rename would have switched off the whole settings-applied contract while the gate
+went GREEN with zero settings covered.
+
+  **A probe that parses source text by identifier spelling is coupled to naming in a way the type
+  checker cannot see, and it fails SILENTLY TOWARD EMPTY.** Derive from the runtime instead —
+  enumerate the imported object — so a rename breaks the import loudly or does not break anything.
+
+Two refinements worth carrying forward, one of which the builder found rather than me:
+
+- **A compound assertion should report WHICH clause failed.** I asked only for a non-zero guard;
+  it split empty-enumeration and uncovered-fields into separate failures with separate messages.
+  `all 0 fields` is ambiguous between "nothing to check" and "nothing passed" — precisely the
+  ambiguity that made this take a diagnosis instead of a glance.
+- **Every guard needs its own positive control.** It planted both an uncovered field
+  (`uncovered: theme`) and an empty enumeration, and quoted both reds. A guard against vacuity
+  that has never been seen to fire is itself vacuous.
+
+The class is now closed, not just the instance: its sweep found no other raw source-text
+identifier parsers in the harnesses or checkers.
+
+Four members of this family in one night: a check that can only pass, a check that never runs, a
+check that passes on a coincidence, and a check that measures nothing. **One test catches all
+four — ask what would have to be true for this to go red, and whether that thing is the property
+you meant to assert.**

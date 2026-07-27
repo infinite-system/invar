@@ -65,7 +65,7 @@ describe('Settings', () => {
   test('load with no files keeps every default', () => {
     const { settings } = makeStore();
     settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
-    expect(settings.snapshot()).toEqual(Settings.$Class.defaults);
+    expect(settings.snapshot()).toEqual(Settings.$Class.DEFAULTS);
   });
 
   test('user file overrides defaults', () => {
@@ -105,7 +105,7 @@ describe('Settings', () => {
     expect(() =>
       settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH }),
     ).not.toThrow();
-    expect(settings.snapshot()).toEqual(Settings.$Class.defaults);
+    expect(settings.snapshot()).toEqual(Settings.$Class.DEFAULTS);
   });
 
   test('unrecognized and mistyped keys are dropped, valid siblings kept', () => {

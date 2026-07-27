@@ -24,7 +24,7 @@ import {
 
 class $Theme {
   get paletteName() {
-    return ref(ThemePalettes.Class.dark.name);
+    return ref(ThemePalettes.Class.DARK.name);
   }
   get colorDepth() {
     return ref<ColorDepth>(TerminalCapabilities.Class.detectColorDepth());
@@ -38,7 +38,7 @@ class $Theme {
   get palette(): Palette {
     const base =
       ThemePalettes.Class.palettes[this.paletteName.value] ??
-      ThemePalettes.Class.dark;
+      ThemePalettes.Class.DARK;
     return ThemePalettes.Class.quantizePalette(base, this.colorDepth.value);
   }
   /** The active tier's whole symbol-mark row: read ONCE by a consumer that marks a list of items,
@@ -106,9 +106,9 @@ class $Theme {
   }
   toggleDark(): void {
     this.paletteName.value =
-      this.paletteName.value === ThemePalettes.Class.dark.name
+      this.paletteName.value === ThemePalettes.Class.DARK.name
         ? 'invar-light'
-        : ThemePalettes.Class.dark.name;
+        : ThemePalettes.Class.DARK.name;
   }
   setColorDepth(d: ColorDepth): void {
     this.colorDepth.value = d;

@@ -9,11 +9,11 @@ import { Static } from 'ivue/extras';
 /** Authorship of ONE line: who last touched it, when, the commit summary, and its sha. `uncommitted` is
  *  true for a working-tree line git has not committed yet (the all-zero sha). */
 class $GitBlame {
-  protected static get uncommittedSha(): string {
+  protected static get UNCOMMITTED_SHA(): string {
     return '0000000000000000000000000000000000000000';
   }
 
-  protected static get porcelainHeaderPattern(): RegExp {
+  protected static get PORCELAIN_HEADER_PATTERN(): RegExp {
     return /^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$/;
   }
 
@@ -21,7 +21,7 @@ class $GitBlame {
     sha: string;
     lineNumber: number;
   } {
-    const match = this.porcelainHeaderPattern.exec(headerLine);
+    const match = this.PORCELAIN_HEADER_PATTERN.exec(headerLine);
     if (!match) {
       return { sha: '', lineNumber: 0 };
     }
@@ -83,7 +83,7 @@ class $GitBlame {
         rawLineIndex += 1;
       }
 
-      const isUncommittedLine = header.sha === this.uncommittedSha;
+      const isUncommittedLine = header.sha === this.UNCOMMITTED_SHA;
       result.set(header.lineNumber, {
         sha: header.sha,
         author: isUncommittedLine ? 'You (uncommitted)' : metadata.author,

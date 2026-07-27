@@ -133,6 +133,43 @@ test('close uses the ordinary foreground instead of the error color', () => {
   });
 
   const closeChunk = projection.text.chunks.at(-1);
-  expect(closeChunk?.fg).toEqual(fg(palette.fg)(' x ').fg);
-  expect(closeChunk?.fg).not.toEqual(fg(palette.error)(' x ').fg);
+  expect(closeChunk?.fg).toEqual(fg(palette.fg)('\u00a0x\u00a0').fg);
+  expect(closeChunk?.fg).not.toEqual(fg(palette.error)('\u00a0x\u00a0').fg);
+});
+
+test('pane headings project only pane close while the panel bar owns all actions', () => {
+  const glyphVocabulary =
+    ThemeIcons.Class.interfaceGlyphVocabularyFor('unicode');
+  const paneProjection = PanelHeading.Class.project({
+    width: 24,
+    title: 'Agent',
+    focused: true,
+    expanded: false,
+    hoveredAction: null,
+    actions: ['close'],
+    closeTooltip: 'Close pane',
+    glyphVocabulary,
+    palette,
+  });
+  const panelProjection = PanelHeading.Class.project({
+    width: 9,
+    title: '',
+    focused: true,
+    expanded: false,
+    hoveredAction: null,
+    actions: ['add', 'expand', 'close'],
+    glyphVocabulary,
+    palette,
+  });
+
+  expect(paneProjection.controls.map((control) => control.action)).toEqual([
+    'close',
+  ]);
+  expect(paneProjection.controls[0]?.tooltip).toBe('Close pane');
+  expect(panelProjection.controls.map((control) => control.action)).toEqual([
+    'add',
+    'expand',
+    'close',
+  ]);
+  expect(panelProjection.controls[2]?.endColumn).toBe(9);
 });

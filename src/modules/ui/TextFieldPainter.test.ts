@@ -4,7 +4,7 @@ import { TextInputModel } from '../editor/TextInputModel';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { TextFieldPainter, type TextFieldState } from './TextFieldPainter';
 
-const palette = ThemePalettes.Class.dark;
+const palette = ThemePalettes.Class.DARK;
 
 function paintedText(
   result: ReturnType<typeof TextFieldPainter.Class.paint>,

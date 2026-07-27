@@ -54,29 +54,61 @@ send_turn "omega needle last"
 "$H" settle "$S" >/dev/null 2>&1
 chk "transcript tail-anchored after seeding" "$(f agentStuckToBottom)" "true"
 
-echo "== CLICK the themed mode-line search icon; it opens the SHARED transcript FindBar =="
-# Find the unicode search token in tmux's exact cell capture, then inject a real SGR mouse
-# press+release on that painted cell. FrameProbe remaps symbols to astral code points in its JSON, so
-# the literal glyph is intentionally resolved from capture; FrameProbe remains the visual assertion
-# channel below for the highlight backgrounds.
-read -r search_icon_column mode_line_row <<<"$(tmux capture-pane -p -t "$S" | "$BUN" -e '
+echo "== CLICK the themed agent-footer search icon =="
+# Resolve the search token from the same theme vocabulary the app paints, then
+# locate it only in the agent-owned footer row published by panel geometry.
+themed_search_glyph="$(
+  cd "$ROOT" &&
+    "$BUN" -e '
+      import { ThemeIcons } from "./src/modules/theme/ThemeIcons";
+      process.stdout.write(ThemeIcons.Class.findIconsFor("unicode").search);
+    '
+)"
+read -r search_icon_column agent_footer_row <<<"$(
+  tmux capture-pane -p -t "$S" |
+    AGENT_STATUS_PATH="$ROOT/artifacts/status-$S.json" \
+    THEMED_SEARCH_GLYPH="$themed_search_glyph" \
+      "$BUN" -e '
   const rows = (await Bun.stdin.text()).split("\n");
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-    const characters = Array.from(rows[rowIndex]);
-    const column = characters.indexOf("⌕");
-    if (column >= 0 && rows[rowIndex].includes("engine:")) {
-      process.stdout.write(`${column} ${rowIndex}`);
-      process.exit(0);
-    }
+  const status = await Bun.file(process.env.AGENT_STATUS_PATH).json();
+  const bottomPanel = status.layoutSlots?.bottomPanel;
+  const agentHeading = status.panelHeadingGeometry?.find(
+    (heading) => heading.contentId === "agent",
+  );
+  const glyph = process.env.THEMED_SEARCH_GLYPH;
+  if (!bottomPanel || !agentHeading || !glyph) {
+    process.stdout.write("-1 -1");
+    process.exit(0);
+  }
+  const panelViewportRows = Number(status.terminalRows);
+  if (panelViewportRows <= 0) {
+    process.stdout.write("-1 -1");
+    process.exit(0);
+  }
+  const footerRow = agentHeading.row + panelViewportRows;
+  const characters = Array.from(rows[footerRow] ?? "");
+  const startColumn = bottomPanel.left + 1;
+  const endColumnExclusive = bottomPanel.left + bottomPanel.width - 1;
+  for (
+    let column = startColumn;
+    column < endColumnExclusive;
+    column += 1
+  ) {
+    if (characters[column] !== glyph) continue;
+    process.stdout.write(`${column} ${footerRow}`);
+    process.exit(0);
   }
   process.stdout.write("-1 -1");
-')"
-if [ "${search_icon_column:-'-1'}" -ge 0 ] 2>/dev/null && [ "${mode_line_row:-'-1'}" -ge 0 ] 2>/dev/null; then
-  echo "  PASS  themed search icon is painted at ($search_icon_column,$mode_line_row)"
-  "$H" click "$S" "$search_icon_column" "$mode_line_row" >/dev/null
+'
+)"
+if [ "${search_icon_column:-'-1'}" -ge 0 ] 2>/dev/null &&
+  [ "${agent_footer_row:-'-1'}" -ge 0 ] 2>/dev/null; then
+  echo "  PASS  themed search icon is painted at" \
+    "($search_icon_column,$agent_footer_row)"
+  "$H" click "$S" "$search_icon_column" "$agent_footer_row" >/dev/null
   sleep 0.3
 else
-  echo "  FAIL  could not locate themed search icon in the mode line"
+  echo "  FAIL  could not locate themed search icon in the agent footer"
   fail=1
 fi
 "$H" settle "$S" >/dev/null 2>&1
@@ -148,7 +180,9 @@ chk "find bar closed on Esc" "$(f findOpen)" "false"
 has "typing after Esc lands in the composer" "❯ after esc"
 
 echo "== clicking the icon again reopens the retained transcript target =="
-"$H" click "$S" "$search_icon_column" "$mode_line_row" >/dev/null; sleep 0.4; "$H" settle "$S" >/dev/null 2>&1
+"$H" click "$S" "$search_icon_column" "$agent_footer_row" >/dev/null
+sleep 0.4
+"$H" settle "$S" >/dev/null 2>&1
 chk "query retained across icon reopen" "$(f findQuery)" "needle"
 chk "matches re-derived over the CURRENT transcript" "$(f findMatchCount)" "4"
 

@@ -16,15 +16,15 @@ import { AgentWordWrap, type AgentWordWrapSegment } from './AgentWordWrap';
 // invariant: Agent skill invocations use the composer popup (src/modules/agent/agent.invariants.md)
 
 class $AgentComposer {
-  static get maxRows(): number {
+  static get MAX_ROWS(): number {
     return 5;
   }
 
-  static get gutterColumns(): number {
+  static get GUTTER_COLUMNS(): number {
     return 2;
   }
 
-  protected static get rightPaddingColumns(): number {
+  protected static get RIGHT_PADDING_COLUMNS(): number {
     return 2;
   }
 
@@ -281,15 +281,15 @@ class $AgentComposer {
     this.lastWrapWidth = Math.max(
       1,
       paneWidth -
-        agentComposerClass.gutterColumns -
-        agentComposerClass.rightPaddingColumns,
+        agentComposerClass.GUTTER_COLUMNS -
+        agentComposerClass.RIGHT_PADDING_COLUMNS,
     );
     const segments = this.segments();
 
     const totalLines = Math.max(1, segments.length);
     const rowCount = Math.max(
       1,
-      Math.min(totalLines, agentComposerClass.maxRows),
+      Math.min(totalLines, agentComposerClass.MAX_ROWS),
     );
     const caret = this.caretVisual();
 
@@ -322,7 +322,7 @@ class $AgentComposer {
         0,
         Math.min(caret.line - this.scrollOffset, rowCount - 1),
       ),
-      caretColumn: agentComposerClass.gutterColumns + caret.column,
+      caretColumn: agentComposerClass.GUTTER_COLUMNS + caret.column,
     };
   }
 
@@ -333,7 +333,7 @@ class $AgentComposer {
   pointAt(localColumn: number, visibleRow: number): SelectionPoint {
     const agentComposerClass = this.constructor as typeof $AgentComposer;
     const line = this.scrollOffset + Math.max(0, visibleRow);
-    const column = Math.max(0, localColumn - agentComposerClass.gutterColumns);
+    const column = Math.max(0, localColumn - agentComposerClass.GUTTER_COLUMNS);
     return { line, column };
   }
   beginSelection(point: SelectionPoint): void {
@@ -359,7 +359,7 @@ class $AgentComposer {
     const agentComposerClass = this.constructor as typeof $AgentComposer;
     return Math.max(
       1,
-      Math.min(this.numVisualLines(), agentComposerClass.maxRows),
+      Math.min(this.numVisualLines(), agentComposerClass.MAX_ROWS),
     );
   }
 

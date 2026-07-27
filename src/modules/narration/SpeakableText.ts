@@ -7,7 +7,7 @@ import { Static } from 'ivue/extras';
 class $SpeakableText {
   /** Recognized source/file extensions — dropped from a BARE spoken name (`Editor.ts` → `Editor`). A
    *  closed list keeps prose abbreviations such as "e.g" intact. Inline code bypasses this transform. */
-  protected static get codeExtension(): RegExp {
+  protected static get CODE_EXTENSION(): RegExp {
     return /\.(ts|tsx|js|jsx|mjs|cjs|md|json|onnx|sh|py|rb|go|rs|c|cc|cpp|h|hpp|css|scss|html|vue|txt|yml|yaml|toml)$/i;
   }
 
@@ -23,7 +23,9 @@ class $SpeakableText {
   /** Return the last meaningful segment of a path-like token and trim trailing prose punctuation. */
   protected static lastSegment(token: string): string {
     const cleanedToken = token.replace(/[.,;:!?)\]]+$/, '');
-    const pathSegments = cleanedToken.split('/').filter((pathSegment) => pathSegment.length > 0);
+    const pathSegments = cleanedToken
+      .split('/')
+      .filter((pathSegment) => pathSegment.length > 0);
     return pathSegments.length > 0
       ? (pathSegments[pathSegments.length - 1] as string)
       : cleanedToken;
@@ -31,7 +33,7 @@ class $SpeakableText {
 
   /** Drop a trailing known file extension so a bare filename is not spoken as "dot tee-ess". */
   protected static dropExtension(token: string): string {
-    return token.replace(this.codeExtension, '');
+    return token.replace(this.CODE_EXTENSION, '');
   }
 
   /** Split camelCase, PascalCase, snake_case, and kebab-case identifiers into spoken words. */
@@ -49,9 +51,9 @@ class $SpeakableText {
   protected static isBareCodeIdentifier(token: string): boolean {
     const camelCaseBoundaryCount = (token.match(/[a-z][A-Z]/g) ?? []).length;
     return (
-      camelCaseBoundaryCount >= 2
-      || /[a-z]_[a-z]/i.test(token)
-      || this.codeExtension.test(token)
+      camelCaseBoundaryCount >= 2 ||
+      /[a-z]_[a-z]/i.test(token) ||
+      this.CODE_EXTENSION.test(token)
     );
   }
 
@@ -68,10 +70,14 @@ class $SpeakableText {
       return `${urlParts[1]} link${trailingPunctuation}`;
     }
     if (this.isPathLike(tokenCore)) {
-      return this.dropExtension(this.lastSegment(tokenCore)) + trailingPunctuation;
+      return (
+        this.dropExtension(this.lastSegment(tokenCore)) + trailingPunctuation
+      );
     }
     if (this.isBareCodeIdentifier(tokenCore)) {
-      return this.splitWords(this.dropExtension(tokenCore)) + trailingPunctuation;
+      return (
+        this.splitWords(this.dropExtension(tokenCore)) + trailingPunctuation
+      );
     }
     return token;
   }
@@ -79,24 +85,24 @@ class $SpeakableText {
   /** Hex commit-ish token: 7-40 hex digits containing BOTH letters and digits (a bare number like
    *  1200000 stays a number; a bare word like "deadbeef"... also qualifies — speech prefers "hash"
    *  over eight spelled letters). */
-  protected static get commitHashToken(): RegExp {
+  protected static get COMMIT_HASH_TOKEN(): RegExp {
     return /^[0-9a-f]{7,40}$/i;
   }
 
-  protected static get uuidToken(): RegExp {
+  protected static get UUID_TOKEN(): RegExp {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   }
 
-  protected static get hexColorToken(): RegExp {
+  protected static get HEX_COLOR_TOKEN(): RegExp {
     return /^#[0-9a-f]{3,8}$/i;
   }
 
   /** A long mixed-alphabet run with digits and no path/prose shape — base64 payloads, tokens, keys. */
-  protected static get encodedDataToken(): RegExp {
+  protected static get ENCODED_DATA_TOKEN(): RegExp {
     return /^[A-Za-z0-9+/_-]{16,}={0,2}$/;
   }
 
-  protected static get escapeSequenceToken(): RegExp {
+  protected static get ESCAPE_SEQUENCE_TOKEN(): RegExp {
     return /\\x1b|\\e\[|\\u001b/;
   }
 
@@ -108,30 +114,35 @@ class $SpeakableText {
     const tokenCore = tokenParts?.[1] ?? token;
     const trailingPunctuation = tokenParts?.[2] ?? '';
     if (!tokenCore) return token;
-    if (this.uuidToken.test(tokenCore)) return `identifier${trailingPunctuation}`;
-    if (this.hexColorToken.test(tokenCore)) return `color${trailingPunctuation}`;
+    if (this.UUID_TOKEN.test(tokenCore))
+      return `identifier${trailingPunctuation}`;
+    if (this.HEX_COLOR_TOKEN.test(tokenCore))
+      return `color${trailingPunctuation}`;
     if (
-      this.commitHashToken.test(tokenCore)
-      && /[a-f]/i.test(tokenCore)
-      && /\d/.test(tokenCore)
+      this.COMMIT_HASH_TOKEN.test(tokenCore) &&
+      /[a-f]/i.test(tokenCore) &&
+      /\d/.test(tokenCore)
     ) {
       return `hash${trailingPunctuation}`;
     }
     if (
-      this.encodedDataToken.test(tokenCore)
-      && !tokenCore.includes('_')
-      && (
-        tokenCore.endsWith('=')
-        || (/\d/.test(tokenCore) && /[a-z]/.test(tokenCore) && /[A-Z]/.test(tokenCore))
-      )
+      this.ENCODED_DATA_TOKEN.test(tokenCore) &&
+      !tokenCore.includes('_') &&
+      (tokenCore.endsWith('=') ||
+        (/\d/.test(tokenCore) &&
+          /[a-z]/.test(tokenCore) &&
+          /[A-Z]/.test(tokenCore)))
     ) {
       return `encoded data${trailingPunctuation}`;
     }
-    if (this.escapeSequenceToken.test(tokenCore)) return `escape sequence${trailingPunctuation}`;
+    if (this.ESCAPE_SEQUENCE_TOKEN.test(tokenCore))
+      return `escape sequence${trailingPunctuation}`;
     if (tokenCore === '&&') return `and${trailingPunctuation}`;
     if (tokenCore === '||') return `or${trailingPunctuation}`;
     if (/^--?[a-zA-Z][\w-]*$/.test(tokenCore)) {
-      return this.splitWords(tokenCore.replace(/^--?/, '')) + trailingPunctuation;
+      return (
+        this.splitWords(tokenCore.replace(/^--?/, '')) + trailingPunctuation
+      );
     }
     return token;
   }
@@ -146,7 +157,9 @@ class $SpeakableText {
       .replace(/\s*\|$/g, '');
     return withoutTableChrome
       .split(/(\s+)/)
-      .map((token) => (/\S/.test(token) ? this.makeTokenPronounceable(token) : token))
+      .map((token) =>
+        /\S/.test(token) ? this.makeTokenPronounceable(token) : token,
+      )
       .join('')
       .replace(/,(\s*,)+/g, ',')
       .replace(/\s+/g, ' ')
@@ -207,9 +220,7 @@ class $SpeakableText {
       .replace(/\s+/g, ' ')
       .trim()
       .replace(
-        this.inlineCodePlaceholderPattern(
-          inlineCodeSentinelPrefix,
-        ),
+        this.inlineCodePlaceholderPattern(inlineCodeSentinelPrefix),
         (inlineCodePlaceholder) => {
           const inlineCodeContent = inlineCodeByPlaceholder.get(
             inlineCodePlaceholder,
@@ -223,15 +234,18 @@ class $SpeakableText {
         },
       );
     if (
-      inlineCodeByPlaceholder.size > 0
-      || speakableText.includes(inlineCodeSentinelPrefix)
+      inlineCodeByPlaceholder.size > 0 ||
+      speakableText.includes(inlineCodeSentinelPrefix)
     ) {
       restorationIsTotal = false;
     }
     if (!restorationIsTotal) {
       return { text: markdown, usedOriginalFallback: true };
     }
-    return { text: this.makePronounceable(speakableText), usedOriginalFallback: false };
+    return {
+      text: this.makePronounceable(speakableText),
+      usedOriginalFallback: false,
+    };
   }
 
   static forSpeech(markdown: string): string {

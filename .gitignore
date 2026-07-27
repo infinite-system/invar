@@ -8,14 +8,23 @@ artifacts/process-snapshots/
 
 # codex worker worktrees (own branches, not embedded in main tree)
 .claude/worktrees/
-artifacts/status-*.json
-artifacts/frame-*.json
+# Harness output is GENERATED, so ignore the CLASS, not each instance. Three
+# generated artifacts have reached the index by naming instances here and then
+# meeting a `git add -A`: a fold-dense sibling slipped past
+# `artifacts/*scroll-smoothness.json` and later blocked an ff-merge, and
+# `artifacts/render-progress.json` appeared the same way. An exception list that
+# keeps growing is evidence the rule is at the wrong level.
+#
+# Everything the harness writes directly into artifacts/ is ignored. The one
+# tracked JSON is re-admitted below; .gitkeep files in subdirectories are
+# unaffected because these patterns do not descend.
+artifacts/*.json
+artifacts/*.log
 artifacts/*.tmp
-artifacts/*scroll-smoothness.json
-artifacts/glide-accumulation-*.json
+artifacts/*.pulse
+!artifacts/frame.json
 artifacts/home/
 dist/
-artifacts/*.pulse
 .perf-history/
 
 # Scratch + generated scale fixtures (see AGENTS.md SCALE PARITY, task #136).

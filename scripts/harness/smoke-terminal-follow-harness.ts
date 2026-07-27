@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The real echo-agent + Bash path verifies live terminal-follow policy, footer controls, scrollback
+// The real echo-agent + Bash path verifies live terminal-follow policy, compact footer, scrollback
 // reach, and redaction through the public tool boundary.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
@@ -81,7 +81,7 @@ class $SmokeTerminalFollowHarness {
       );
       await this.cycleModeByKeyboard(
         'on-error',
-        'Ctrl+Shift+M changes the live footer mode to on-error',
+        'Ctrl+Shift+M changes the live follow mode to on-error',
       );
       await this.runTerminalCommand(
         "printf 'ON_ERROR_PASS\\n'",
@@ -96,7 +96,7 @@ class $SmokeTerminalFollowHarness {
 
       await this.cycleModeByKeyboard(
         'on-request',
-        'Ctrl+Shift+M changes the live footer mode to on-request',
+        'Ctrl+Shift+M changes the live follow mode to on-request',
       );
       await this.runTerminalCommand(
         "printf 'ON_REQUEST_PASS\\n'",
@@ -118,7 +118,7 @@ class $SmokeTerminalFollowHarness {
 
       await this.cycleModeByKeyboard(
         'off',
-        'Ctrl+Shift+M changes the live footer mode to off',
+        'Ctrl+Shift+M changes the live follow mode to off',
       );
       await this.runTerminalCommand(
         "printf 'OFF_PASS\\n'",
@@ -132,23 +132,20 @@ class $SmokeTerminalFollowHarness {
       );
 
       console.log(
-        '== harness terminal-follow: footer mouse and palette share the action ==',
+        '== harness terminal-follow: compact footer and palette action ==',
       );
       await this.focusPanelCell(
         'agent',
-        'agent footer is focused for pointer cycling',
+        'agent footer is focused for compact-chrome inspection',
       );
       const footerSnapshot = await driver.awaitGridCondition(
-        'the focused agent footer paints the follow-off control',
-        (candidate) => candidate.findText('follow: off') !== null,
+        'the focused agent footer omits terminal-follow chrome',
+        (candidate) =>
+          candidate.findText('perm:') !== null &&
+          candidate.findText('follow:') === null,
       );
       HarnessSmoke.Class.pass(
-        'agent footer repaint is settled before pointer discovery',
-      );
-      HarnessSmoke.Class.clickText(driver, footerSnapshot, 'follow: off', 2);
-      await this.awaitStatus(
-        'clicking the discovered footer text cycles off to follow',
-        (status) => status.terminalFollowMode === 'follow-all',
+        `compact footer is settled on row ${footerSnapshot.findText('perm:')?.row}`,
       );
       await this.clickEditorToBlurPanel();
       driver.sendKeys('F1');
@@ -167,7 +164,11 @@ class $SmokeTerminalFollowHarness {
         'the palette command runs the same cycle action',
         (status) =>
           status.paletteOpen === false &&
-          status.terminalFollowMode === 'on-error',
+          status.terminalFollowMode === 'follow-all',
+      );
+      await this.cycleModeByKeyboard(
+        'on-error',
+        'Ctrl+Shift+M returns follow mode to on-error for the next probe',
       );
 
       console.log(
@@ -668,11 +669,11 @@ class $SmokeTerminalFollowHarness {
 
   protected static thinkingIndicatorVisible(rows: readonly string[]): boolean {
     return rows.some((row) =>
-      this.spinnerGlyphs.some((glyph) => row.includes(glyph)),
+      this.SPINNER_GLYPHS.some((glyph) => row.includes(glyph)),
     );
   }
 
-  protected static get spinnerGlyphs(): readonly string[] {
+  protected static get SPINNER_GLYPHS(): readonly string[] {
     return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
   }
 

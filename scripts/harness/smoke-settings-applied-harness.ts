@@ -7,6 +7,7 @@
 import { mkdirSync, mkdtempSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { Settings } from '../../src/modules/settings/Settings';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -63,6 +64,7 @@ const coveredSettingNames = new Set([
   'primaryDockContentOrder',
   'panelContentOrder',
 ]);
+const schemaSettingNames = Object.keys(Settings.$Class.DEFAULTS);
 
 const settingsHome = mkdtempSync(
   join(tmpdir(), 'tui-settings-applied-harness-home-'),
@@ -914,13 +916,20 @@ try {
   );
   try {
     followModeDriver.driver.sendKeys('Control+,');
-    await HarnessSmoke.Class.awaitStatus(
+    const openedSettingsStatus = await HarnessSmoke.Class.awaitStatus(
       followModeDriver.driver,
       followModeDriver.statusPath,
       'settings opens with terminal follow mode off',
       (candidate) =>
         candidate.settingsOpen === true &&
         candidate.terminalFollowMode === 'off',
+    );
+    const settingsLabels = openedSettingsStatus.settingsLabels;
+    HarnessSmoke.Class.requireCondition(
+      Array.isArray(settingsLabels) &&
+        settingsLabels.length >= schemaSettingNames.length,
+      `opened Settings panel lists at least all ${schemaSettingNames.length} ` +
+        'host schema fields',
     );
     await selectSettingByVisibleLabel(
       followModeDriver,
@@ -1078,24 +1087,18 @@ try {
   }
 
   console.log('== harness settings: schema coverage meta-gate ==');
-  const settingsSource = await Bun.file(
-    join(process.cwd(), 'src/modules/settings/Settings.ts'),
-  ).text();
-  const defaultsBlock =
-    settingsSource.match(
-      /static get defaults[\s\S]*?return \{([\s\S]*?)\n\s*\};/,
-    )?.[1] ?? '';
-  const schemaSettingNames = [
-    ...defaultsBlock.matchAll(/^\s*([A-Za-z0-9_]+):/gm),
-  ]
-    .map((match) => match[1])
-    .filter((settingName): settingName is string => Boolean(settingName));
   const uncoveredSettings = schemaSettingNames.filter(
     (settingName) => !coveredSettingNames.has(settingName),
   );
   HarnessSmoke.Class.requireCondition(
-    schemaSettingNames.length > 0 && uncoveredSettings.length === 0,
-    `all ${schemaSettingNames.length} schema fields have an applied-effect drive`,
+    schemaSettingNames.length > 0,
+    'runtime Settings defaults enumerate at least one schema field',
+  );
+  HarnessSmoke.Class.requireCondition(
+    uncoveredSettings.length === 0,
+    `all ${schemaSettingNames.length} schema fields have an ` +
+      'applied-effect drive; ' +
+      `uncovered: ${uncoveredSettings.join(', ') || 'none'}`,
   );
 
   console.log('smoke-settings-applied-harness: ALL-PASS');

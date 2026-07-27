@@ -42,11 +42,11 @@ class $GitBlameCache {
   // the mtime — the status bar and the status side-channel both query during one frame.
   protected statMemo: GitStatMemo | null = null;
 
-  static get maximumBlamedFiles(): number {
+  static get MAXIMUM_BLAMED_FILES(): number {
     return 16;
   }
 
-  protected static get statMemoWindowMilliseconds(): number {
+  protected static get STAT_MEMO_WINDOW_MILLISECONDS(): number {
     return 30;
   }
 
@@ -92,7 +92,7 @@ class $GitBlameCache {
       this.statMemo !== null &&
       this.statMemo.documentPath === documentPath &&
       nowMs - this.statMemo.checkedAtMs <
-        gitBlameCacheClass.statMemoWindowMilliseconds
+        gitBlameCacheClass.STAT_MEMO_WINDOW_MILLISECONDS
     ) {
       return this.statMemo.mtimeMs;
     }
@@ -117,7 +117,7 @@ class $GitBlameCache {
     this.cache.delete(documentPath);
     this.cache.set(documentPath, status);
     const gitBlameCacheClass = this.constructor as typeof $GitBlameCache;
-    while (this.cache.size > gitBlameCacheClass.maximumBlamedFiles) {
+    while (this.cache.size > gitBlameCacheClass.MAXIMUM_BLAMED_FILES) {
       const coldestPath = this.cache.keys().next().value;
       if (coldestPath === undefined) {
         break;
