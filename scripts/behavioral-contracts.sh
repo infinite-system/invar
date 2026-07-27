@@ -657,6 +657,124 @@ else
   sed -n '1,20p' "$FOLD_DENSE_LOG"
 fi
 
+# ---- CONTRACT: completed frames during continuous wheel input ----
+# A velocity fingerprint can stay healthy across a freeze because it samples
+# only frames that eventually arrived. This contract observes the missing
+# dimension directly: while rapid wheel input keeps arriving, every input
+# window must contain at least one completed DEC-2026 frame.
+# The verdict counts frames per window; gap durations are report evidence only.
+echo "== CONTRACT render-progress: each input window emits a completed frame =="
+RENDER_PROGRESS_JSON="$ROOT/artifacts/render-progress.json"
+RENDER_PROGRESS_LOG="$ROOT/artifacts/render-progress.log"
+if SMOOTHNESS_GESTURES=0 \
+   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+   SMOOTHNESS_LINE_COUNTS=2000,100000 \
+   SMOOTHNESS_SURFACES=editor,diff \
+   SMOOTHNESS_FIXTURES=fold-dense \
+   SMOOTHNESS_CODE_FOLDING=on \
+   SMOOTHNESS_BURST_DURATIONS=3000 \
+   SMOOTHNESS_BURST_WINDOW=200 \
+   SMOOTHNESS_BURST_NOTCHES=12 \
+   SMOOTHNESS_REQUIRE_FRAME_PROGRESS=1 \
+   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+     >"$RENDER_PROGRESS_JSON" 2>"$RENDER_PROGRESS_LOG"; then
+  read -r render_progress_case_count render_progress_burst_count \
+    render_progress_minimum_frames render_progress_expected_shape \
+    render_progress_holds <<<"$(python3 -c "
+import json
+report = json.load(open('$RENDER_PROGRESS_JSON'))
+cases = report['cases']
+bursts = [
+    (case, burst)
+    for case in cases
+    for burst in case['continuousInputBursts']
+]
+minimum_frames = min(
+    frame_count
+    for _case, burst in bursts
+    for frame_count in burst['inputWindowFrameCounts']
+) if bursts else 0
+expected_shape = (
+    len(cases) == 4
+    and {case['surface'] for case in cases} == {'editor', 'diff'}
+    and {case['fixtureLineCount'] for case in cases} == {2000, 100000}
+    and all(case['fixtureShape'] == 'fold-dense' for case in cases)
+    and all(
+        len(burst['inputWindowFrameCounts']) == 15
+        for _case, burst in bursts
+    )
+)
+print(
+    len(cases),
+    len(bursts),
+    minimum_frames,
+    int(expected_shape),
+    int(
+        expected_shape
+        and len(bursts) == 4
+        and all(
+            all(frame_count >= 1
+                for frame_count in burst['inputWindowFrameCounts'])
+            for _case, burst in bursts
+        )
+    ),
+)
+")"
+  python3 - "$RENDER_PROGRESS_JSON" <<'PY'
+import json
+import sys
+
+report = json.load(open(sys.argv[1]))
+print(
+    "  | surface | lines | frames per 200ms input window "
+    "| largest frame gap |"
+)
+print("  | :--- | ---: | :--- | ---: |")
+for case in report["cases"]:
+    burst = case["continuousInputBursts"][0]
+    counts = ",".join(str(count) for count in burst["inputWindowFrameCounts"])
+    largest_gap = max(burst["completedFrameGapSequenceMilliseconds"])
+    print(
+        f"  | {case['surface']} | {case['fixtureLineCount']} | "
+        f"{counts} | {largest_gap:.1f}ms |"
+    )
+PY
+  if [ "${render_progress_holds:-0}" -eq 1 ] 2>/dev/null; then
+    render_progress_summary="cases=$render_progress_case_count"
+    render_progress_bursts="bursts=$render_progress_burst_count"
+    render_progress_minimum="minimum=$render_progress_minimum_frames"
+    render_progress_summary="$render_progress_summary $render_progress_bursts"
+    render_progress_summary="$render_progress_summary $render_progress_minimum"
+    render_progress_result="editor and diff emit >=1 completed frame"
+    render_progress_result="$render_progress_result in every rapid-input window"
+    pass "$render_progress_result at 2k and 100k ($render_progress_summary)"
+  else
+    render_progress_summary="cases=${render_progress_case_count:-0}"
+    render_progress_bursts="bursts=${render_progress_burst_count:-0}"
+    render_progress_summary="$render_progress_summary $render_progress_bursts"
+    render_progress_shape="expectedShape=${render_progress_expected_shape:-0}"
+    render_progress_summary="$render_progress_summary $render_progress_shape"
+    render_progress_minimum="minimum=${render_progress_minimum_frames:-0}"
+    render_progress_summary="$render_progress_summary $render_progress_minimum"
+    bad "completed frames starved during rapid input ($render_progress_summary)"
+  fi
+else
+  bad "render-progress instrument did not complete — see $RENDER_PROGRESS_LOG"
+  sed -n '1,20p' "$RENDER_PROGRESS_LOG"
+fi
+if python3 - <<'PY'
+counts_with_starvation = [2, 0, 3]
+all_windows_rendered = all(
+    count >= 1 for count in counts_with_starvation
+)
+raise SystemExit(0 if all_windows_rendered else 1)
+PY
+then
+  bad "render-progress positive control accepted a zero-frame input window"
+else
+  pass "render-progress positive control rejects a zero-frame input window"
+fi
+
 # ---- CONTRACT: wrap-mode momentum + visual-row extent (RATCHET: the "momentum gone in wrap" report) ----
 # Wrap mode feeds the SAME momentum engine in VISUAL-ROW units, so it glides like non-wrap AND reaches
 # the true last visual row (extent = wrapped visual rows, not logical lines). Both were user-felt gaps.
