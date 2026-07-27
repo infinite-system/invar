@@ -3,7 +3,10 @@ import type { ApplicationContributor } from '../app/ApplicationContributor.inter
 import { FileTreeContributor } from '../filetree/FileTreeContributor';
 import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
-import { InlineRewriteContributor } from '../inline-rewrite/InlineRewriteContributor';
+// prettier-ignore
+import {
+  InlineRewriteContributor,
+} from '../inline-rewrite/InlineRewriteContributor';
 import { ExtensionsPlugin } from './ExtensionsPlugin';
 
 class $DefaultPlugins {

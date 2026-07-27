@@ -5,7 +5,6 @@ import type {
 import type { Keybinding } from '../keybindings/KeybindingRegistry';
 import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
 import type { RewriteProvider } from '../lsp/LanguageProvider.interface';
-import type { RegisteredSetting } from '../settings/SettingContribution.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
 import type {
@@ -30,7 +29,6 @@ class $InlineRewriteContributor
     InlineRewriteWorkspace.Model
   >();
   protected application: ApplicationContributionContext | null = null;
-  protected enabledSetting: RegisteredSetting<boolean> | null = null;
   protected enabled = false;
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
@@ -40,7 +38,7 @@ class $InlineRewriteContributor
     const availabilityProbe = this.createRewriteProvider();
     const available = availabilityProbe.available;
     availabilityProbe.dispose();
-    this.enabledSetting = context.registerSetting({
+    const enabledSetting = context.registerSetting({
       identifier: 'inlineRewrite.enabled',
       label: 'Enabled',
       section: this.name,
@@ -48,7 +46,7 @@ class $InlineRewriteContributor
       spec: { kind: 'boolean' },
       changed: (enabled) => this.setEnabled(enabled),
     });
-    this.enabled = this.enabledSetting.value.value;
+    this.enabled = enabledSetting.value.value;
     context.registerKeybindingGuard(
       'inlineRewriteVisible',
       () => this.activeController()?.visible ?? false,
@@ -122,7 +120,6 @@ class $InlineRewriteContributor
     this.disposeStatusProjection = null;
     this.disposeCommands?.();
     this.disposeCommands = null;
-    this.enabledSetting = null;
     this.application = null;
     this.workspaces.clear();
     this.enabled = false;

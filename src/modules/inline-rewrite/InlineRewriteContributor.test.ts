@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
-import { ApplicationContributions } from '../app/ApplicationContributions';
-import type { ApplicationContributionsOptions } from '../app/ApplicationContributions';
-import { StatusProjectionContributions } from '../app/StatusProjectionContributions';
+import {
+  ApplicationContributions,
+  type ApplicationContributionsOptions,
+} from '../app/ApplicationContributions';
+// prettier-ignore
+import {
+  StatusProjectionContributions,
+} from '../app/StatusProjectionContributions';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type {

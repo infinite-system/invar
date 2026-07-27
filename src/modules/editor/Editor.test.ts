@@ -71,7 +71,7 @@ test('a contributed range replacement is exactly one undo step', () => {
   editor.dispose();
 });
 
-test('ordinary typing notifies contributions and the character still lands', () => {
+test('typing notifies contributions after the character lands', () => {
   const editor = openWith('value');
   const editorContributions = new EditorContributions.Class();
   let recordedText = '';

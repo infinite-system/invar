@@ -6,7 +6,10 @@ import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { Palette } from '../theme/ThemePalettes';
 import type { Workspace } from '../workspace/Workspace';
-import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
+// prettier-ignore
+import type {
+  WorkspaceContribution,
+} from '../workspace/WorkspaceContributor.interface';
 import { InlineRewrite } from './InlineRewrite';
 
 // invariant: Disabled rewrites observe nothing (inline-rewrite.invariants.md)

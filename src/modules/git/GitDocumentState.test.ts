@@ -52,7 +52,7 @@ test('deletion and modification remain separate marks on one real line', () => {
   ]);
 });
 
-test('a refresh keeps the last known gutter marks until new head text lands', () => {
+test('a refresh retains gutter marks until new HEAD text lands', () => {
   const handle = new DocumentHandle.Class(Symbol('document'), '/file.ts');
   const document = new TextDocument.Class();
   document.loadFromText('changed', handle.path);
