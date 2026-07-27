@@ -184,6 +184,25 @@ function popupListContains(
   return false;
 }
 
+function popupListViewportText(
+  snapshot: HarnessSnapshot.Model,
+  geometry: PopupGeometryStatus,
+): string {
+  const visibleRows: string[] = [];
+  for (
+    let row = geometry.listTop;
+    row < geometry.listTop + geometry.listRows;
+    row++
+  ) {
+    visibleRows.push(
+      Array.from(snapshot.rowText(row))
+        .slice(geometry.listLeft, geometry.listLeft + geometry.listColumns)
+        .join(''),
+    );
+  }
+  return visibleRows.join('\n');
+}
+
 function sharedTextColumn(
   snapshot: HarnessSnapshot.Model,
   labels: readonly string[],
@@ -461,20 +480,37 @@ try {
     '== bounded popup: wheel reaches the tail through the shared viewport ==',
   );
   if (!geometry) throw new Error('Popup geometry vanished');
+  const popupWheelGeometry = geometry;
   const popupWheelColumn =
-    geometry.listLeft + Math.max(0, geometry.listColumns - 2);
-  const popupWheelRow = geometry.listTop + Math.floor(geometry.listRows / 2);
+    popupWheelGeometry.listLeft +
+    Math.max(0, popupWheelGeometry.listColumns - 2);
+  const popupWheelRow =
+    popupWheelGeometry.listTop + Math.floor(popupWheelGeometry.listRows / 2);
   let tailVisible = false;
   for (let wheelNumber = 0; wheelNumber < 80; wheelNumber++) {
-    driver.sendMouse({
+    if (popupListContains(snapshot, popupWheelGeometry, 'file-100.txt')) {
+      tailVisible = true;
+      break;
+    }
+    const previousPopupListViewportText = popupListViewportText(
+      snapshot,
+      popupWheelGeometry,
+    );
+    driver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
       column: popupWheelColumn,
       row: popupWheelRow,
       direction: 'down',
     });
-    await driver.awaitQuiescence();
-    snapshot = driver.snapshot();
-    if (popupListContains(snapshot, geometry, 'file-100.txt')) {
+    // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+    snapshot = await driver.awaitGridCondition(
+      'wheel scrolling changes the visible popup list or reveals its tail',
+      (candidate) =>
+        popupListContains(candidate, popupWheelGeometry, 'file-100.txt') ||
+        popupListViewportText(candidate, popupWheelGeometry) !==
+          previousPopupListViewportText,
+    );
+    if (popupListContains(snapshot, popupWheelGeometry, 'file-100.txt')) {
       tailVisible = true;
       break;
     }
