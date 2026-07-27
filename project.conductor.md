@@ -2225,3 +2225,29 @@ Four members of this family in one night: a check that can only pass, a check th
 check that passes on a coincidence, and a check that measures nothing. **One test catches all
 four — ask what would have to be true for this to go red, and whether that thing is the property
 you meant to assert.**
+
+## 2026-07-27 10:27 — arming a replacement monitor must STOP its predecessor, in the same action
+
+Second false "wedged" alarm tonight from the same cause. A monitor watched
+`/tmp/lockvalid-codex.log` (round 1, cold for 55 minutes) while resolving a LIVE pid for the
+round-2 builder in the same worktree. Live pid + dead log = confident report of a state that does
+not exist.
+
+Both times the mechanism was identical: I created a new monitor for the next round and left the
+previous one running. The reconciliation sweep has a step for exactly this — "any Monitor watching
+a log/worktree whose subject already completed" — and I answered it twice by checking only the
+other half of the step ("any builder WITHOUT a monitor").
+
+  **A replacement monitor and its predecessor are one operation, not two.** Stop the old one in the
+  same action that arms the new one, or the pair will disagree.
+
+And the general form, which is the third instance of this shape tonight: **a probe assembled from
+two sources must have both sides pointing at the same subject.** The pid came from
+`/proc/<pid>/cwd`, the liveness from a log path, and nothing tied them together — so a new round in
+the same worktree silently desynchronised them. Same defect family as reading a piped command's
+exit code: the thing measured was not the thing named.
+
+Failure direction again toward "broken", which invites interrupting healthy work. That is now six
+probes of mine tonight that failed in the direction that invites waste. Prefer predicates keyed to
+a single authority (here: the log the CURRENT round writes, discovered from the round, not from a
+remembered filename).
