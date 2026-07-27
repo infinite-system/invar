@@ -10,6 +10,49 @@ bounded viewport; a referenced resource stays alive)._
 
 ## Chosen invariants
 
+### Boot checks ivue static getter caching
+
+**Invariant:** If Invar boots without `INVAR_SKIP_CAPABILITY_CHECK=1`, then the
+installed ivue `Static()` has demonstrated stable identity across two reads of
+a get-only `$` accessor before `AppLoader` begins booting any application
+surface.
+
+**Scope:** Process startup and the always-run merge gate. Other ivue behavior
+and dependency versions are outside this capability-specific check.
+
+**Mechanism:** `IvueStaticGetterCapability` installs one get-only accessor on
+a throwaway canary, wraps it with the installed `Static()`, and compares two
+property reads. `AppLoader.main` runs the assertion before calling its boot
+seam. The gate invokes the same assertion with its escape hatch cleared.
+
+**Generates:** Refusal to boot when every cached static table would recompute;
+an actionable `bun install` remedy; the documented
+`INVAR_SKIP_CAPABILITY_CHECK=1` emergency override; a hard gate step over the
+installed dependency resolution.
+
+**Rejected alternatives:** Compare installed and declared ivue versions —
+valid semver resolutions and linked local builds make the version string a
+false proxy for the capability.
+
+**Evidence:** `IvueStaticGetterCapability.ts`;
+`IvueStaticGetterCapability.test.ts`;
+`scripts/check-ivue-static-getter-capability.ts`; real scratch installs of
+ivue 2.1.0 and 2.2.1 produce false and true respectively for the canary.
+
+**Impossible if true:** An unskipped stale ivue whose `Static()` ignores
+getters reaching application construction; a capable linked ivue build being
+rejected only because of its version string; a locked-out user having no
+stated bypass.
+
+**Verification:** `bun scripts/check-ivue-static-getter-capability.ts`; copy
+the guard into scratch projects pinned to ivue 2.1.0 and 2.2.1 and observe
+exit 1 with the remedy versus exit 0; set
+`INVAR_SKIP_CAPABILITY_CHECK=1` in the failing leg and observe exit 0.
+
+**Status:** established
+
+**Last refined:** 2026-07-27
+
 ### Rendering is one coarse frame effect
 
 **Invariant:** If model state changes — by input OR by an async producer (syntax, LSP, git) —
