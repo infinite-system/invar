@@ -172,4 +172,16 @@ describe('isCoverageBearingPath', () => {
       false,
     );
   });
+
+  it('leaves retired tests and harness smokes out', () => {
+    const retiredSmokeDirectoryPath = ['scripts', 'retired-smokes'].join('/');
+    expect(
+      isCoverageBearingPath(
+        `${retiredSmokeDirectoryPath}/smoke-obsolete-harness.ts`,
+      ),
+    ).toBe(false);
+    expect(
+      isCoverageBearingPath(`${retiredSmokeDirectoryPath}/Obsolete.test.ts`),
+    ).toBe(false);
+  });
 });
