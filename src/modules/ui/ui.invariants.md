@@ -345,26 +345,28 @@ scripts/harness/smoke-bounded-list-popup-harness.ts`
 
 **Last refined:** 2026-07-26
 
-### Panel heading controls share paint and hit geometry
+### Panel controls share paint and hit geometry
 
-**Invariant:** If a bottom-panel heading paints Add, Expand/Restore, or Close controls, then one
+**Invariant:** If the bottom panel paints Add, Expand/Restore, or Close controls, then one
 `PanelHeadingProjection` determines both the displayed control segments and the screen columns that
 activate their actions, while each segment carries its tooltip label and hover projection.
 
-**Scope:** `PanelHeading`, the generic headed panel cells in `RootView`, and the `PanelAddPopup`
-adapter. The contents-list row controls and status-bar buttons are outside this heading rule.
+**Scope:** `PanelHeading`, the panel-level separator bar and generic headed panel cells in
+`RootView`, and the `PanelAddPopup` adapter. The contents-list row controls and status-bar buttons
+are outside this rule.
 
-**Mechanism:** `PanelHeading.project` clips the title around three right-aligned control segments and
-returns their exact half-open column ranges, semantic glyph slots, tooltip labels, and `StyledText`;
-`controlSegmentAtColumn` resolves pointer input and hover only from those ranges. RootView retains that
-projection for each painted cell and points the shared `Tooltip` at the segment. Hover uses
-`palette.cursorLine`, the same background affordance as breadcrumb segments; Close uses `palette.fg`,
-not `palette.error`. Add opens the shared `BoundedListPopup` with Terminal and Agent items, Expand
-toggles the host layout override, and Close removes that cell's owned content.
+**Mechanism:** `PanelHeading.project` clips its optional title around the requested right-aligned
+control segments and returns their exact half-open column ranges, semantic glyph slots, tooltip
+labels, and `StyledText`; `controlSegmentAtColumn` resolves pointer input and hover only from those
+ranges. RootView retains one three-action projection on the shortened panel separator and one
+close-only projection for each painted cell, and points the shared `Tooltip` at each segment. Hover
+uses `palette.cursorLine`; Close uses `palette.fg`, not `palette.error`. Panel-level Add opens the
+shared bounded list, Expand toggles the host layout override, and Close hides the whole panel without
+disposing its contents. A pane Close removes only that cell's owned content.
 
-**Generates:** Right-edge controls that survive cell resizing; identical paint and pointer
-boundaries; tooltips and hover highlights for every control; one shared dropdown implementation; a
-non-destructive-looking close action attached to each visible region.
+**Generates:** A shortened separator with stable panel actions; close-only pane headings that survive
+cell resizing; identical paint and pointer boundaries; tooltips and hover highlights for every
+control; one shared dropdown implementation; distinct whole-panel and individual-pane close actions.
 
 **Evidence:** `src/modules/ui/PanelHeading.ts`; `src/modules/ui/PanelAddPopup.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/ui/PanelHeading.test.ts`;
@@ -380,7 +382,7 @@ src/modules/ui/PanelAddPopup.test.ts && bun scripts/harness/smoke-panel-chrome-h
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-27
 
 ### Panel content order is one persisted sequence
 

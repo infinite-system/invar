@@ -7,6 +7,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -16,6 +17,59 @@ import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 // hunts for a hardcoded glyph re-breaks on every vocabulary change, which contradicts the invariant
 // that makes appearance data (the panel-heading smokes were decoupled the same way).
 const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
+
+interface Rectangle {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+interface PanelHeadingGeometryStatus {
+  readonly contentId: string;
+  readonly row: number;
+}
+
+interface AgentFooterRegion {
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
+  const bottomPanel = (
+    status.layoutSlots as Record<string, Rectangle> | undefined
+  )?.bottomPanel;
+  const headings = status.panelHeadingGeometry;
+  if (!bottomPanel || !Array.isArray(headings)) return null;
+  const agentHeading = (
+    headings as unknown as readonly PanelHeadingGeometryStatus[]
+  ).find((heading) => heading.contentId === 'agent');
+  const panelViewportRows = Number(status.terminalRows);
+  if (!agentHeading || panelViewportRows <= 0) return null;
+  return {
+    row: agentHeading.row + panelViewportRows,
+    startColumn: bottomPanel.left + 1,
+    endColumnExclusive: bottomPanel.left + bottomPanel.width - 1,
+  };
+}
+
+function themedAgentSearchIconPosition(
+  snapshot: HarnessSnapshot.Model,
+  footerRegion: AgentFooterRegion,
+): { row: number; column: number } | null {
+  for (
+    let column = footerRegion.startColumn;
+    column < footerRegion.endColumnExclusive;
+    column++
+  ) {
+    if (
+      snapshot.cell(footerRegion.row, column)?.characters === themedSearchGlyph
+    )
+      return { row: footerRegion.row, column };
+  }
+  return null;
+}
 
 function runProjectionUnitTests(repositoryRoot: string): void {
   const result = Bun.spawnSync(
@@ -129,21 +183,26 @@ try {
   HarnessSmoke.Class.pass('transcript is tail-anchored after seeding');
 
   console.log('== harness agent search: click the themed search icon ==');
-  let snapshot = await driver.awaitGridCondition(
-    'the themed search icon paints in the agent engine mode line',
-    (candidate) => {
-      const candidateSearchIconPosition = candidate.findText(themedSearchGlyph);
-      return (
-        candidateSearchIconPosition !== null &&
-        candidate.rowText(candidateSearchIconPosition.row).includes('engine:')
-      );
-    },
+  const agentFooterStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent footer owner has published its panel geometry',
+    (candidate) => agentFooterRegion(candidate) !== null,
   );
-  const searchIconPosition = snapshot.findText(themedSearchGlyph);
+  const footerRegion = agentFooterRegion(agentFooterStatus);
+  if (!footerRegion) throw new Error('Agent footer geometry disappeared');
+  let snapshot = await driver.awaitGridCondition(
+    'the themed search icon paints in the agent-owned footer',
+    (candidate) =>
+      themedAgentSearchIconPosition(candidate, footerRegion) !== null,
+  );
+  const searchIconPosition = themedAgentSearchIconPosition(
+    snapshot,
+    footerRegion,
+  );
   HarnessSmoke.Class.requireCondition(
-    searchIconPosition !== null &&
-      snapshot.rowText(searchIconPosition.row).includes('engine:'),
-    'themed search icon paints in the engine mode line',
+    searchIconPosition !== null,
+    'themed search icon paints in the agent-owned footer',
   );
   if (!searchIconPosition) throw new Error('Search icon disappeared');
   driver.sendMouse({

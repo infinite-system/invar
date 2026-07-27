@@ -406,6 +406,9 @@ class $DiffView {
 
     this.headerRenderable.onMouseDown = (event) =>
       this.onHeaderMouseDown(event.x);
+    this.headerRenderable.onMouseMove = (event) =>
+      this.onHeaderMouseMove(event.x, event.y);
+    this.headerRenderable.onMouseOut = () => this.options.onClearTooltip?.();
     this.bodyRenderable.onMouseScroll = (event) =>
       this.onBodyMouseScroll(
         event.scroll?.direction,
@@ -704,10 +707,10 @@ class $DiffView {
 
   renderHeader(palette: Palette): StyledText {
     // invariant: Base and current stay unambiguous (src/modules/diff/diff.invariants.md)
-    const actionIcons = this.theme.actionIcons;
-    const openLabel = ` ${actionIcons.open} Open current `;
-    const previousLabel = ` ${actionIcons.unstage} Previous `;
-    const nextLabel = ` ${actionIcons.stage} Next `;
+    const glyphVocabulary = this.theme.glyphVocabulary;
+    const openLabel = ' Open current ';
+    const previousLabel = ` ${glyphVocabulary.diffPreviousChange} `;
+    const nextLabel = ` ${glyphVocabulary.diffNextChange} `;
     const changeCounter = `${this.activeChangeBlockNumber.value} of ${this.alignment.changeBlocks.length} changes`;
     const headerSegments: HeaderSegment[] = [];
     let nextColumn = 0;
@@ -717,7 +720,7 @@ class $DiffView {
       color: string,
     ): TextChunk => {
       const startColumn = nextColumn;
-      nextColumn += label.length;
+      nextColumn += this.EditorCoordinates.lineWidth(label);
       headerSegments.push({
         kind,
         startColumn,
@@ -725,12 +728,9 @@ class $DiffView {
       });
       return fg(color)(label);
     };
-    const chunks: TextChunk[] = [
-      appendSegment('previousChange', previousLabel, palette.dim),
-      appendSegment('nextChange', nextLabel, palette.dim),
-      fg(palette.fg)(` ${changeCounter}`),
-    ];
-    nextColumn += ` ${changeCounter}`.length;
+    const counterText = ` ${changeCounter}`;
+    const chunks: TextChunk[] = [fg(palette.fg)(counterText)];
+    nextColumn += this.EditorCoordinates.lineWidth(counterText);
     const headerWidth = Math.max(
       1,
       Number(this.headerRenderable.width) ||
@@ -745,10 +745,13 @@ class $DiffView {
       laidOutCurrentPaneStart > 0
         ? laidOutCurrentPaneStart
         : ratioCurrentPaneStart;
+    const actionGroupWidth = this.EditorCoordinates.lineWidth(
+      previousLabel + nextLabel + openLabel,
+    );
     const openSegmentStart = Math.max(
       nextColumn,
-      currentPaneStart,
-      headerWidth - openLabel.length - 2,
+      Math.min(currentPaneStart, headerWidth - actionGroupWidth),
+      headerWidth - actionGroupWidth,
     );
     if (openSegmentStart > nextColumn) {
       chunks.push(
@@ -756,7 +759,11 @@ class $DiffView {
       );
       nextColumn = openSegmentStart;
     }
-    chunks.push(appendSegment('openFull', openLabel, palette.accent));
+    chunks.push(
+      appendSegment('previousChange', previousLabel, palette.dim),
+      appendSegment('nextChange', nextLabel, palette.dim),
+      appendSegment('openFull', openLabel, palette.accent),
+    );
     this.headerSegments = headerSegments;
     return new StyledText(chunks);
   }
@@ -1006,6 +1013,10 @@ class $DiffView {
       region,
       verticalScrollState,
     );
+    this.verticalScrollbarRenderable.slider.backgroundColor = palette.panel;
+    this.verticalScrollbarRenderable.slider.foregroundColor = palette.dim;
+    this.horizontalScrollbarRenderable.slider.backgroundColor = palette.panel;
+    this.horizontalScrollbarRenderable.slider.foregroundColor = palette.dim;
     if (process.env.TUI_DEBUG_BARS === '1') {
       Logging.Class.info(
         `bar ${this.verticalScrollbarRenderable.id}: ` +
@@ -1473,6 +1484,22 @@ class $DiffView {
       this.jumpToPreviousChange();
   }
 
+  onHeaderMouseMove(screenColumn: number, screenRow: number): void {
+    const localColumn = screenColumn - this.headerRenderable.x;
+    const headerSegment = this.headerSegments.find(
+      (segment) =>
+        localColumn >= segment.startColumn &&
+        localColumn < segment.endColumnExclusive,
+    );
+    if (headerSegment?.kind === 'previousChange') {
+      this.options.onPointTooltip?.('Previous change', screenColumn, screenRow);
+    } else if (headerSegment?.kind === 'nextChange') {
+      this.options.onPointTooltip?.('Next change', screenColumn, screenRow);
+    } else {
+      this.options.onClearTooltip?.();
+    }
+  }
+
   onBodyMouseScroll(
     direction: 'up' | 'down' | 'left' | 'right' | undefined,
     isHorizontalModifierPressed: boolean,
@@ -1658,6 +1685,8 @@ export interface DiffViewCallbacks {
     totalChanges: number,
     alignedRowIndex: number,
   ) => void;
+  onPointTooltip?: (text: string, column: number, row: number) => void;
+  onClearTooltip?: () => void;
 }
 
 export interface DiffViewOptions extends DiffViewCallbacks {

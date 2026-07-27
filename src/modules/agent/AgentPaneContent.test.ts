@@ -7,8 +7,9 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 import type { PaneRenderContext } from '../ui/PaneContent.interface';
 import { ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
+import { EditorCoordinates } from '../editor/EditorCoordinates';
 
-const darkPalette = ThemePalettes.Class.DARK;
+const darkPalette = ThemePalettes.Class.dark;
 
 /** A fake scroll engine — records the scroll commands the pane issues, without any renderer. */
 class FakePort implements AgentScrollPort {
@@ -284,7 +285,7 @@ describe('AgentPaneContent — engine switcher', () => {
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
+    expect(painted).toContain('claude');
     expect(painted).toContain('⇄'); // cyclable affordance
     expect(pane.currentEngine).toBe('claude');
   });
@@ -304,9 +305,9 @@ describe('AgentPaneContent — engine switcher', () => {
     const enginePort = new FakeEnginePort();
     pane.attachEnginePort(enginePort);
     pane.render(context());
-    // The mode line is the second-to-last row; the engine segment starts at the left gutter (col 2).
-    const modeRow = context().height - 2;
-    expect(pane.onPointerDown(3, modeRow)).toBe(true); // on "engine: claude ⇄"
+    // The mode line is the final row; the engine segment starts at the left gutter (col 2).
+    const modeRow = context().height - 1;
+    expect(pane.onPointerDown(3, modeRow)).toBe(true); // on "claude ⇄"
     expect(enginePort.cycles).toBe(1);
     // A click far to the right on the same row (the hint text) does not cycle.
     pane.render(context());
@@ -321,40 +322,44 @@ describe('AgentPaneContent — engine switcher', () => {
     enginePort.canCycle = false;
     pane.attachEnginePort(enginePort);
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
+    expect(painted).toContain('claude');
     expect(painted).not.toContain('⇄');
     pane.handleKey({ name: 'e', ctrl: true } as never); // cycleEngine → port.cycle still called but…
     // The pane calls cycle(); the port itself decides. Here canCycle=false but our fake still flips —
     // the REAL guard (availability) lives in Bootstrap's port. The pane's hit-test, however, refuses the
     // click when canCycle is false:
     const before = enginePort.cycles;
-    pane.onPointerDown(3, context().height - 2);
+    pane.onPointerDown(3, context().height - 1);
     expect(enginePort.cycles).toBe(before); // click ignored when not cyclable
   });
 });
 
-describe('AgentPaneContent — terminal follow footer control', () => {
-  test('the live mode paints next to the engine and its painted target cycles the shared port', () => {
+describe('AgentPaneContent — compact footer', () => {
+  test('keeps engine and permission, drops follow and hints, and ends on the footer row', () => {
     const { pane } = makePane();
     pane.attachEnginePort(new FakeEnginePort());
     const mode = ref<AgentTerminalFollowMode>('follow-all');
-    let cycleCount = 0;
     pane.attachTerminalFollowPort({
       mode,
-      label: () => (mode.value === 'follow-all' ? 'follow' : mode.value),
-      cycle: () => {
-        cycleCount += 1;
-        mode.value = 'on-error';
-        return mode.value;
-      },
     });
     const painted = paintedText(pane.render(context()));
-    expect(painted).toContain('engine: claude');
-    expect(painted).toContain('follow: follow');
-    const modeRow = context().height - 2;
-    expect(pane.onPointerDown(25, modeRow)).toBe(true);
-    expect(cycleCount).toBe(1);
-    expect(paintedText(pane.render(context()))).toContain('follow: on-error');
+    expect(painted).toContain('claude ⇄');
+    expect(painted).toContain('perm: bypass-only');
+    expect(painted).not.toContain('follow:');
+    expect(painted).not.toContain('shift+tab');
+    expect(painted.endsWith('perm: bypass-only')).toBe(true);
+    expect(pane.onPointerDown(25, context().height - 1)).toBe(false);
+  });
+
+  test('never emits a footer wider than a narrow pane', () => {
+    const { pane } = makePane();
+    pane.attachEnginePort(new FakeEnginePort());
+    const narrowContext = context({ width: 18 });
+    const finalRow = paintedText(pane.render(narrowContext)).split('\n').at(-1);
+    expect(
+      EditorCoordinates.Class.lineWidth(finalRow ?? ''),
+    ).toBeLessThanOrEqual(narrowContext.width);
+    expect(finalRow).toContain('perm:');
   });
 });
 

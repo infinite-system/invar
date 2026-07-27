@@ -209,6 +209,11 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.panelExpand, owner: 'panel expand' },
       { mark: unicodeVocabulary.panelRestore, owner: 'panel restore' },
       { mark: unicodeVocabulary.panelClose, owner: 'panel close' },
+      {
+        mark: unicodeVocabulary.diffPreviousChange,
+        owner: 'diff previous change',
+      },
+      { mark: unicodeVocabulary.diffNextChange, owner: 'diff next change' },
       { mark: unicodeVocabulary.overviewMark, owner: 'the overview pip' },
       { mark: unicodeVocabulary.foldOpen, owner: 'the open fold control' },
       { mark: unicodeVocabulary.foldClosed, owner: 'the closed fold control' },
@@ -407,6 +412,8 @@ class $ThemeIcons {
         panelExpand: '\u{f065}',
         panelRestore: '\u{f066}',
         panelClose: '\u{f00d}',
+        diffPreviousChange: '↑',
+        diffNextChange: '↓',
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
@@ -435,6 +442,8 @@ class $ThemeIcons {
         panelExpand: '↗',
         panelRestore: '↙',
         panelClose: '×',
+        diffPreviousChange: '↑',
+        diffNextChange: '↓',
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
@@ -450,6 +459,8 @@ class $ThemeIcons {
         panelExpand: '>',
         panelRestore: '<',
         panelClose: 'x',
+        diffPreviousChange: 'U',
+        diffNextChange: 'D',
         overviewMark: '.',
         foldOpen: 'v',
         foldClosed: ']',
@@ -795,6 +806,8 @@ export interface InterfaceGlyphVocabulary {
   panelExpand: string;
   panelRestore: string;
   panelClose: string;
+  diffPreviousChange: string;
+  diffNextChange: string;
   overviewMark: string;
   foldOpen: string;
   foldClosed: string;

@@ -4,30 +4,48 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphSlot, InterfaceGlyphVocabulary } from '../theme/ThemeIcons';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
-// invariant: Panel heading controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
+// invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelHeading {
   static project(options: PanelHeadingOptions): PanelHeadingProjection {
     const width = Math.max(1, Math.floor(options.width));
-    const controlSlots: readonly Omit<PanelHeadingControlDefinition, 'text'>[] =
-      [
-        { action: 'add', glyphSlot: 'panelAdd', tooltip: 'Add panel' },
-        {
-          action: 'expand',
-          glyphSlot: options.expanded ? 'panelRestore' : 'panelExpand',
-          tooltip: options.expanded ? 'Restore panel' : 'Expand panel',
-        },
-        { action: 'close', glyphSlot: 'panelClose', tooltip: 'Close panel' },
-      ];
+    const availableControlSlots: readonly Omit<
+      PanelHeadingControlDefinition,
+      'text'
+    >[] = [
+      { action: 'add', glyphSlot: 'panelAdd', tooltip: 'Add panel' },
+      {
+        action: 'expand',
+        glyphSlot: options.expanded ? 'panelRestore' : 'panelExpand',
+        tooltip: options.expanded ? 'Restore panel' : 'Expand panel',
+      },
+      {
+        action: 'close',
+        glyphSlot: 'panelClose',
+        tooltip: options.closeTooltip ?? 'Close panel',
+      },
+    ];
+    const selectedActions: readonly PanelHeadingAction[] = options.actions ?? [
+      'add',
+      'expand',
+      'close',
+    ];
+    const controlSlots = availableControlSlots.filter((control) =>
+      selectedActions.includes(control.action),
+    );
     const controls: readonly PanelHeadingControlDefinition[] = controlSlots.map(
       (control) => ({
         ...control,
-        text: ` ${options.glyphVocabulary[control.glyphSlot]} `,
+        text: `\u00a0${options.glyphVocabulary[control.glyphSlot]}\u00a0`,
       }),
+    );
+    const trailingPaddingWidth = Math.max(
+      0,
+      Math.floor(options.trailingPaddingWidth ?? 0),
     );
     const controlsWidth = controls.reduce(
       (totalWidth, control) =>
         totalWidth + EditorCoordinates.Class.lineWidth(control.text),
-      0,
+      trailingPaddingWidth,
     );
     const titleWidth = Math.max(0, width - controlsWidth);
     const titleText = ` ${options.icon ? `${options.icon} ` : ''}${options.title}`;
@@ -85,6 +103,15 @@ class $PanelHeading {
       });
       controlColumn += visibleWidth;
     }
+    if (trailingPaddingWidth > 0) {
+      const visibleTrailingPaddingWidth = Math.max(
+        0,
+        Math.min(trailingPaddingWidth, width - controlColumn),
+      );
+      chunks.push(
+        fg(options.palette.dim)('\u00a0'.repeat(visibleTrailingPaddingWidth)),
+      );
+    }
     return {
       text: new StyledText(chunks),
       controls: controlSegments,
@@ -130,6 +157,9 @@ export interface PanelHeadingOptions {
   focused: boolean;
   expanded: boolean;
   hoveredAction: PanelHeadingAction | null;
+  actions?: readonly PanelHeadingAction[];
+  closeTooltip?: string;
+  trailingPaddingWidth?: number;
   glyphVocabulary: InterfaceGlyphVocabulary;
   palette: Palette;
 }

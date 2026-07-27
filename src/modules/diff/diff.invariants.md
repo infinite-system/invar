@@ -277,26 +277,30 @@ the aligned scroll offset unchanged; Ctrl+C copying alignment filler or text out
 
 **Invariant:** If a side-by-side diff is visible, then the left pane is named as the HEAD base, the
 right pane is named as the working current file, and Open current is positioned with the right pane
-and opens that current path.
+and opens that current path; the hidden buffer-tab row is reclaimed, while adjacent theme-owned
+up/down controls navigate changes and identify themselves on hover.
 
-**Scope:** `DiffView.update`, `DiffView.renderHeader`, header-segment hit-testing, and the
-`RootView.syncDiffView` `onOpenFull` callback.
+**Scope:** `DiffView.update`, `DiffView.renderHeader`, header-segment hit-testing and tooltip
+callbacks, `GitComparisonContent` callbacks, and RootView's buffer-tab height.
 
 **Mechanism:** Pane title rows carry explicit `Base (HEAD)` and `Current (working)` prefixes.
-`renderHeader` places the existing `openFull` segment at or beyond the current pane start, and the
-existing header hit map dispatches it to `Workspace.openFileInTab(currentVersionPath)`.
+`renderHeader` right-aligns the padded `diffPreviousChange` and `diffNextChange` glyph segments
+beside `openFull`; one header hit map dispatches all three, and hover points the shared tooltip at
+the navigation segments. RootView assigns the hidden buffer-tab strip zero rows while a contributed
+surface owns the editor column. `openFull` resolves and opens the working path.
 
-**Generates:** distinct base/current labels; a spatially associated Open current affordance; existing
-Previous/Next navigation and change count kept together.
+**Generates:** distinct base/current labels; a spatially associated Open current affordance; compact
+previous/next controls with reliable padded hit targets and tooltips; one reclaimed comparison row.
 
-**Evidence:** `scripts/smoke-diff-overview.sh`; live caller path `RootView.syncDiffView` to
-`DiffView.renderHeader` and `Workspace.openFileInTab`.
+**Evidence:** `scripts/harness/smoke-diff-overview-harness.ts`;
+`src/modules/git/GitComparisonContent.ts`; `src/modules/diff/DiffView.ts`.
 
 **Impossible if true:** Open current appearing over the base pane; clicking Open current leaving the
-diff open or opening the base revision; both panes carrying labels that do not distinguish their roles.
+diff open or opening the base revision; both panes carrying labels that do not distinguish their
+roles; a blank tab row above the comparison; an unlabeled or reserved navigation mark.
 
-**Verification:** `bash scripts/smoke-diff-overview.sh`.
+**Verification:** `bun scripts/harness/smoke-diff-overview-harness.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-27

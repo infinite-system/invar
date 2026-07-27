@@ -5,7 +5,7 @@ import type {
 } from './BoundedListPopup';
 import type { OverlayCoordinator } from './OverlayCoordinator';
 
-// invariant: Panel heading controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
+// invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 class $PanelAddPopup {
   protected static get ITEMS(): readonly BoundedListPopupItem[] {
     return [

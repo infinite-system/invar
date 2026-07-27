@@ -3,11 +3,71 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+
+const themedSearchGlyph = ThemeIcons.Class.findIconsFor('unicode').search;
+
+interface Rectangle {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface PanelHeadingGeometryStatus {
+  readonly contentId: string;
+  readonly row: number;
+}
+
+interface AgentFooterRegion {
+  readonly row: number;
+  readonly startColumn: number;
+  readonly endColumnExclusive: number;
+}
+
+function agentFooterRegion(status: StatusSnapshot): AgentFooterRegion | null {
+  const bottomPanel = (
+    status.layoutSlots as Record<string, Rectangle> | undefined
+  )?.bottomPanel;
+  const headings = status.panelHeadingGeometry;
+  if (!bottomPanel || !Array.isArray(headings)) return null;
+  const agentHeading = (
+    headings as unknown as readonly PanelHeadingGeometryStatus[]
+  ).find((heading) => heading.contentId === 'agent');
+  const panelViewportRows = Number(status.terminalRows);
+  if (!agentHeading || panelViewportRows <= 0) return null;
+  return {
+    row: agentHeading.row + panelViewportRows,
+    startColumn: bottomPanel.left + 1,
+    endColumnExclusive: bottomPanel.left + bottomPanel.width - 1,
+  };
+}
+
+function agentPermissionFooterSignature(
+  snapshot: HarnessSnapshot.Model,
+  footerRegion: AgentFooterRegion,
+): string | null {
+  const footerCharacters: string[] = [];
+  let themedSearchGlyphFound = false;
+  for (
+    let column = footerRegion.startColumn;
+    column < footerRegion.endColumnExclusive;
+    column++
+  ) {
+    const characters =
+      snapshot.cell(footerRegion.row, column)?.characters ?? ' ';
+    footerCharacters.push(characters);
+    if (characters === themedSearchGlyph) themedSearchGlyphFound = true;
+  }
+  return themedSearchGlyphFound ? footerCharacters.join('\0') : null;
+}
 
 async function submitPrompt(
   driver: PtyTestDriver.Model,
@@ -68,6 +128,11 @@ const repositoryRoot = process.cwd();
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-permissions-harness-home-'),
 );
+mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+await Bun.write(
+  join(homeDirectory, '.config', 'invar', 'settings.json'),
+  JSON.stringify({ glyphMode: 'unicode' }),
+);
 const statusPath = join(homeDirectory, 'status.json');
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(repositoryRoot, 'fixtures'),
@@ -92,12 +157,38 @@ try {
     20_000,
   );
   driver.sendRawInput('\x1b[27;6;97~');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('bypass permissions on') !== null,
+  const agentFooterStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the agent footer owner has published its panel geometry',
+    (candidate) => agentFooterRegion(candidate) !== null,
   );
+  const footerRegion = agentFooterRegion(agentFooterStatus);
+  if (!footerRegion) throw new Error('Agent footer geometry disappeared');
+  const bypassSnapshot = await driver.awaitGridCondition(
+    'the permission state is visible in the agent-owned footer',
+    (snapshot) =>
+      agentPermissionFooterSignature(snapshot, footerRegion) !== null,
+  );
+  const bypassFooterSignature = agentPermissionFooterSignature(
+    bypassSnapshot,
+    footerRegion,
+  );
+  if (!bypassFooterSignature) {
+    throw new Error('Agent permission footer disappeared');
+  }
   driver.sendKeys('Shift+Tab');
-  await driver.awaitSnapshot(
-    (snapshot) => snapshot.findText('? ask permissions') !== null,
+  await driver.awaitGridCondition(
+    'Shift+Tab visibly changes the agent-owned permission state',
+    (snapshot) => {
+      const footerSignature = agentPermissionFooterSignature(
+        snapshot,
+        footerRegion,
+      );
+      return (
+        footerSignature !== null && footerSignature !== bypassFooterSignature
+      );
+    },
   );
   HarnessSmoke.Class.pass('Shift+Tab cycles bypass mode to ask permissions');
 

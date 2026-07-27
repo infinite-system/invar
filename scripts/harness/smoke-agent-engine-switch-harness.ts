@@ -103,7 +103,7 @@ try {
   let snapshot = await driver.awaitGridCondition(
     'the Claude pane title and engine-cycle affordance are visible',
     (candidate) =>
-      candidate.findText('engine: claude') !== null &&
+      candidate.findText('claude ⇄') !== null &&
       candidate.findText('Ask Claude anything') !== null &&
       candidate.findText('✦ Claude') !== null &&
       candidate.findText('⇄') !== null,
@@ -124,7 +124,7 @@ try {
     'Claude title and engine-cycle affordance render',
   );
   let panelRectangle = bottomPanelSlot(status);
-  const initialEngineSegment = snapshot.findText('engine: claude');
+  const initialEngineSegment = snapshot.findText('claude ⇄');
   if (!initialEngineSegment)
     throw new Error('Claude engine segment disappeared');
   HarnessSmoke.Class.requireCondition(
@@ -152,7 +152,7 @@ try {
     (candidate) =>
       candidate.findText('switched to codex') !== null &&
       candidate.findText('context ported') !== null &&
-      candidate.findText('engine: codex') !== null &&
+      candidate.findText('codex ⇄') !== null &&
       candidate.findText('✦ Codex') !== null &&
       hasTranscriptLabel(candidate, panelRectangle, 'Claude'),
   );
@@ -196,7 +196,7 @@ try {
     hasTranscriptLabel(snapshot, panelRectangle, 'Codex'),
     'post-switch reply is labeled Codex and receives ported context',
   );
-  const engineSegment = snapshot.findText('engine: codex');
+  const engineSegment = snapshot.findText('codex ⇄');
   if (!engineSegment) throw new Error('Codex engine segment disappeared');
   driver.sendMouse({
     kind: 'press',

@@ -6,7 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
-// invariant: Panel heading controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
+// invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
 // invariant: Each panel instance owns one independent session (src/modules/terminal/terminal.invariants.md)
 // invariant: Expanded panel overrides only the editor center rows (src/modules/layout/layout.invariants.md)
 // invariant: An unexpanded bottom panel leaves one editor row (src/modules/layout/layout.invariants.md)
@@ -226,10 +226,13 @@ function requireOrdinaryCloseForeground(
   const closeCells = snapshot
     .rowCells(closeControl.row)
     .slice(closeControl.startColumn, closeControl.endColumnExclusive);
+  const closeGlyphCell = closeCells.find(
+    (cell) => cell.characters.trim().length > 0,
+  );
   HarnessSmoke.Class.requireCondition(
-    closeCells.every(
-      (cell) => cell.isForegroundRgb && cell.foreground === 0xa9b1d6,
-    ),
+    closeGlyphCell?.isForegroundRgb === true &&
+      closeGlyphCell.foreground === 0xa9b1d6 &&
+      closeCells.every((cell) => cell.foreground !== 0xf7768e),
     'Close uses the ordinary theme foreground and never the error red',
   );
 }
@@ -398,7 +401,8 @@ function requireExpandedGeometry(
     `${label} expansion leaves both dock rectangles byte-identical`,
   );
   const expandControl = headingControl(status, 'expand');
-  const paintedTopRow = (expandControl?.row ?? 0) - 1;
+  const paintedTopRow =
+    (expandControl?.row ?? 0) - (expandControl?.contentId === 'panel' ? 0 : 1);
   const topLeftCell = snapshot.cell(paintedTopRow, expandedPanel.left);
   const bottomLeftCell = snapshot.cell(
     paintedTopRow + expandedPanel.height - 1,
@@ -469,7 +473,8 @@ async function driveSecondSize(): Promise<void> {
     if (!expandedControl) {
       throw new Error('Missing compact expanded heading geometry');
     }
-    const paintedTopRow = expandedControl.row - 1;
+    const paintedTopRow =
+      expandedControl.row - (expandedControl.contentId === 'panel' ? 0 : 1);
     const expandedSnapshot = await driver.awaitGridCondition(
       'the compact expanded panel paints both slot edges',
       (snapshot) =>
@@ -866,7 +871,8 @@ try {
   const expandedPanel = rectangle(expandedStatus, 'bottomPanel');
   const expandedControl = headingControl(expandedStatus, 'expand');
   if (!expandedControl) throw new Error('Missing expanded heading action');
-  const paintedTopRow = expandedControl.row - 1;
+  const paintedTopRow =
+    expandedControl.row - (expandedControl.contentId === 'panel' ? 0 : 1);
   const expandedSnapshot = await driver.awaitGridCondition(
     'the expanded panel paints both slot edges',
     (snapshot) =>
@@ -912,10 +918,35 @@ try {
     'Restore returns to the exact prior panel rectangle',
   );
 
+  const preservedPanelContentIds = JSON.stringify(
+    restoredStatus.panelContentIds,
+  );
+  await clickHeadingAction(driver, statusPath, 'close');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the panel-level Close hides the panel without destroying its panes',
+    (candidate) =>
+      candidate.terminalVisible === false &&
+      JSON.stringify(candidate.panelContentIds) === preservedPanelContentIds,
+  );
+  driver.sendKeys('Control+j');
+  const reopenedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Ctrl+J restores the panel-level Close contents',
+    (candidate) =>
+      candidate.terminalVisible === true &&
+      JSON.stringify(candidate.panelContentIds) === preservedPanelContentIds,
+  );
+  HarnessSmoke.Class.pass(
+    'panel-level Close hides and restores without disposing pane sessions',
+  );
+
   console.log(
     '== harness panel-chrome: splitter reaches the new near-full maximum ==',
   );
-  const splitter = splitterRectangle(restoredStatus);
+  const splitter = splitterRectangle(reopenedStatus);
   const splitterColumn = splitter.left + Math.floor(splitter.width / 2);
   driver.sendMouse({
     kind: 'press',

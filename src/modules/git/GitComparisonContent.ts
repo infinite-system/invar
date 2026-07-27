@@ -45,6 +45,9 @@ class $GitComparisonContent implements EditorSurfaceContent {
       },
       onNextChange: () => context.requestRender(),
       onPrevChange: () => context.requestRender(),
+      onPointTooltip: (text, column, row) =>
+        context.tooltip.point(text, column, row),
+      onClearTooltip: () => context.tooltip.clear(),
     });
     view.attachSettings(
       context.settings,
