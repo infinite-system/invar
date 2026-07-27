@@ -104,7 +104,7 @@ class $Momentum {
   }
 
   protected static get GLIDE_CAP_EASING_DURATION_MILLISECONDS(): number {
-    return 150;
+    return 200;
   }
 
   /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.

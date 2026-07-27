@@ -76,19 +76,29 @@ describe('scroll-momentum', () => {
     }
 
     expect(frameCount).toBe(27);
-    expect(rowsTravelled).toBe(181);
+    expect(rowsTravelled).toBe(175);
     expect(Momentum.Class.isMoving(currentMomentum)).toBe(false);
   });
 
   test('the glide cap eases a ceiling velocity to zero before halting', () => {
+    // Both legs PIN the easing window: this test owns the mechanism, not the
+    // shipped tuning. Reading the production constant here made a feel change
+    // (150ms -> 200ms) fail a test about whether easing works at all.
     class $UnsoftenedMomentum extends Momentum.$Class {
       protected static override get GLIDE_CAP_EASING_DURATION_MILLISECONDS() {
         return 0;
       }
     }
+    class $EasedMomentum extends Momentum.$Class {
+      protected static override get GLIDE_CAP_EASING_DURATION_MILLISECONDS() {
+        return 100;
+      }
+    }
+    // The cap must exceed the easing window, or there is no full-speed phase to
+    // taper AWAY from and the shape under test never occurs.
     const cappedNoDecayOptions = {
       ...NO_DECAY,
-      maximumGlideDurationMilliseconds: 200,
+      maximumGlideDurationMilliseconds: 300,
     };
     const rowCrossingSequence = (
       momentumClass: typeof Momentum.$Class,
@@ -110,17 +120,23 @@ describe('scroll-momentum', () => {
       }
       return rowsCrossed;
     };
-    const tapersToZero = (rowsCrossed: readonly number[]): boolean =>
-      rowsCrossed.every(
-        (rows, rowIndex) => rowIndex === 0 || rows < rowsCrossed[rowIndex - 1]!,
-      );
+    // The property is not "every frame is smaller than the last" — a real glide
+    // holds a plateau first. It is that a ceiling-speed glide does NOT end at
+    // ceiling speed: the final crossing must fall below the plateau.
+    const endsBelowPlateau = (rowsCrossed: readonly number[]): boolean =>
+      rowsCrossed[rowsCrossed.length - 1]! < Math.max(...rowsCrossed);
 
     const unsoftenedRows = rowCrossingSequence($UnsoftenedMomentum);
-    expect(unsoftenedRows).toEqual([5, 5, 5, 5]);
-    expect(tapersToZero(unsoftenedRows)).toBe(false);
-    const easedRows = rowCrossingSequence(Momentum.Class);
-    expect(easedRows).toEqual([5, 4, 2, 1]);
-    expect(tapersToZero(easedRows)).toBe(true);
+    expect(unsoftenedRows).toEqual([5, 5, 5, 5, 5, 5]);
+    expect(endsBelowPlateau(unsoftenedRows)).toBe(false);
+
+    const easedRows = rowCrossingSequence($EasedMomentum);
+    expect(easedRows).toEqual([5, 5, 5, 5, 3, 1]);
+    expect(endsBelowPlateau(easedRows)).toBe(true);
+
+    // Separately, and weakly on purpose: whatever the shipped easing is tuned
+    // to, it must still produce a taper. This one survives retuning.
+    expect(endsBelowPlateau(rowCrossingSequence(Momentum.Class))).toBe(true);
   });
 
   test('representative glide caps halt no later than their deadline', () => {
