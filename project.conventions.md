@@ -49,8 +49,11 @@ a mechanical checker should not be able to see.
   (`project.invariants.md`). Circular-import safety is a separate late-read rule; even an acyclic
   class publishes through the same namespace seam.
 - NEW FILE RULE: exported STATELESS behavior is born as `class $X { static … }` + `export namespace
-  X { export const $Class = $X; export const Class = Static($X); }` — never a bare
-  `export function` bag. State: Reactive domain models via `Reactive($X)` (mutable `let Class`);
+  X { export const $Class = Static($X); export let Class = $Class; }` — never a bare
+  `export function` bag. **The wrapper lives at the `$Class` ANCHOR, not at `Class`** (see the ivue
+  statics section below; the older `const Class = Static($X)` form is SUPERSEDED as of 2026-07-27,
+  because a wrapper on the mutable selection slot leaves inheritance pinned to a load-order-dependent
+  generation). State: Reactive domain models via `Reactive($X)` (mutable `let Class`);
   plain classes for algorithms/resources. Legacy bare bags are converted by the scheduled item-9
   pass; new code NEVER adds more. CHECK: conventions-gate grep for `^export function` in
   `src/modules/**`.
@@ -78,7 +81,10 @@ a mechanical checker should not be able to see.
   suffix.
 - STATIC GETTERS HAVE TWO ORTHOGONAL NAMING AXES: `$` says cached versus uncached; CASE says
   literal versus derived. A get-only static `$name` is computed once per receiving class by
-  `Static()` and shallow-frozen; a static getter without `$` stays live. Independently, a static
+  `Static()` and **NOT frozen** (ivue ≥ 2.2.1 — the `$` prefix promises stable identity per receiver
+  and nothing more; 2.2.0's unconditional shallow freeze was a DEFECT that crashed
+  `StatusChannel.$state` at boot, and mutable memo tables are legal and covered by upstream tests);
+  a static getter without `$` stays live. Independently, a static
   getter whose only statement returns a literal or frozen literal composition and never reads
   `this` is `SCREAMING_SNAKE_CASE`; a getter that reads `this` or composes over another member is
   lower camel case. Instance getters remain lower camel case because a literal there is usually a
