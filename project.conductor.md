@@ -1846,3 +1846,66 @@ Second-order note from the same minute: `git merge --ff-only … | tail -1` prin
 and I read it as success — but the merge ABORTED after that line. That is the fourth
 output-order/exit-code misread of the session. `tail -1` shows the last line, not the outcome;
 verify the REF moved, not the message.
+
+## 2026-07-27 03:10 — a brief is read at LAUNCH; appending to it does not reach a running agent
+
+The rapid-fire builder was dispatched, and over the next fifteen minutes I appended FOUR addenda to
+its brief file: the diff-surface clue, the render-stall reframing, the seconds-long-freeze severity
+with a re-ranked hypothesis list, and the sibling overlay defect. Its report addresses NONE of them
+— zero mentions of the diff surface, zero of stalls or frame gaps, no backlog-scaling test. It
+fixed the throttle it was originally briefed for (well, and with real evidence) and never saw the
+rest.
+
+  **`codex exec` reads its brief at launch. A file the agent has already read is not a channel.
+  Appending to it is writing to a mailbox nobody checks again.**
+
+I did this four times in one night while telling myself the information had landed, and I even
+checked the log's phrasing once and concluded "still reading — it will pick this up". That check
+was worthless: seeing the process read the file ONCE says nothing about whether it re-reads.
+
+Rules:
+- **Post-dispatch information requires a NEW DISPATCH**, not an append. Either stop and relaunch
+  with the fuller brief (cheap when minutes old — the earlier redispatch for the accumulation spec
+  cost three minutes and was clearly right), or queue the addendum as an explicit ROUND 2.
+- If you do append for the record, say so plainly in the report to the user rather than implying
+  the running agent now knows.
+- **Verify by the OUTPUT, not by the plumbing.** The only reliable evidence that an instruction
+  reached an agent is that its work reflects it. Grep the report for the addendum's subject before
+  believing it landed.
+- Same family as the doctrine-propagation gap two hours earlier: `AGENTS.md` changes reach only
+  FUTURE builders, and worktrees keep the law of their fork point. Both are the same shape —
+  **information written after a reader has read is invisible to that reader** — and both need a
+  push (redispatch / file sync), never a passive edit.
+
+## 2026-07-27 03:45 — when a symptom will not reproduce in-harness, build an instrument where it LIVES
+
+The user reported a multi-second render freeze under rapid flicks, on two surfaces, on a real
+`package-lock.json`. A dedicated builder drove 1s/3s/5s continuous bursts on editor and diff, at 2k
+and 100k, fold-dense, at defaults — and could not reproduce it. Every input window produced frames.
+The only zero was a 100 ms phase-boundary artifact that neither recurred nor grew with duration,
+which is the OPPOSITE of a backlog signature.
+
+It did the right thing: no production change on speculation, and it landed the missing observable
+anyway (frame-gap sequences, frames-per-input-window, a 3-second `render-progress` contract, and
+`The render loop never wedges` as a count-based impossible state). An honest negative plus a
+permanent instrument is a real deliverable.
+
+  **But a non-reproduction in the harness is not evidence of absence — it localizes the defect to
+  what the harness cannot reach.** The next step is not more harness driving; it is an instrument
+  that runs WHERE THE SYMPTOM LIVES.
+
+What our harness structurally cannot exercise, and why each could produce exactly this symptom:
+- the user's real terminal + VM output backpressure — a slow consumer applies pressure a headless
+  emulator never does;
+- real trackpad/mouse event rates and burst SHAPES, which scripted notch writes only approximate;
+- the user's LIVE session (agent, terminal, LSP, git watcher all active) versus a minimal fixture;
+- their actual document, not a generated look-alike.
+
+This is the same class as the graphics tier and the nerd-font PUA code points: **a property the
+harness cannot probe needs the user's real terminal or a persisted declaration.** Tonight adds the
+negative form of that rule — a DEFECT the harness cannot probe needs a capture that runs on the
+user's machine.
+
+Practical shape, now queued as #140: a bounded, off-by-default capture mode (frame timestamps,
+input arrival, top per-frame callees) plus an analyzer with a planted-gap positive control. The
+user reproduces in seconds what an hour of driving could not, and the fix waits for THAT evidence.
