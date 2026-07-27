@@ -94,7 +94,8 @@ it, which means a tracked file in this repo:
 | law every agent must load | `AGENTS.md` (this file; `CLAUDE.md` redirects here) |
 | operative conventions — the WHAT | `project.conventions.md` |
 | the WHY and history behind a convention | `project.decisions.md` |
-| orchestration/fleet lessons | `project.conductor.md`, distilled into `.claude/skills/conductor/SKILL.md` |
+| an orchestration lesson — the dated account, with its evidence | `project.conductor.md` |
+| the standing ORDER distilled from lessons | `.claude/skills/conductor/SKILL.md` |
 | a domain's invariants | `<domain>.invariants.md` |
 | how to run an instrument | `project.tools.md` |
 
@@ -105,6 +106,12 @@ who need it will never see. The repo travels; a home directory does not.
 
 If a fact seems too small for a tracked file, it is either not worth keeping or it belongs as one
 line in an existing section. Do not invent a new file for it.
+
+**A SKILL is an order, not a log.** It is loaded on every session, so its cost is paid every time:
+imperative, present tense, no dates, no provenance, no evidence blocks, no narrative. A new lesson
+earns at most a CLAUSE there, and only if it changes what an agent must DO — the account of how it
+was learned goes in the `project.*` file. When a lesson extends a rule already written, amend that
+rule in place instead of adding a section beside it.
 
 ## Reporting to the user
 

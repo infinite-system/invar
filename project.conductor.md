@@ -2487,6 +2487,34 @@ strands work rather than interrupting it. That is now consistent enough across t
 a personal bias rather than coincidence — I write predicates that assume the healthy state, because
 healthy is the state I am hoping to confirm.
 
+## 2026-07-27 21:30 UTC — a wait whose pattern can match ITSELF never fires
+
+This waiter spun from 2026-07-26 21:12 to 2026-07-27 21:30 UTC and could never have completed:
+
+```sh
+bash -c 'until ! pgrep -f "codex exec ... -C /tmp/conductor-foldperf" >/dev/null; do sleep 5; done
+         ...; bash scripts/merge-gate.sh > /tmp/gate-foldperf.log'
+```
+
+The waiter's own `bash -c` argv CONTAINS the pattern, so `pgrep -f` always found itself, always
+concluded the builder was alive, and slept forever. Its gate never ran and its log was never
+created. The builder had exited a day earlier.
+
+Same root cause as the kill trap already recorded, opposite symptom: there a `-f` pattern kills the
+wrong process, here it makes a wait immortal.
+
+  **A full-command-line pattern is not a predicate about a process — it is a predicate about text
+  that includes your own.**
+
+And the reason it went unnoticed for a day: **a wait that can never fire is indistinguishable from a
+wait that is still waiting.** Both are silent. That is the same failure direction as the vacuous
+measurements — toward "nothing wrong here" — so a long wait needs a deadline and a distinct expiry
+line, and the harness (a tracked background command, or a Monitor on the builder's own log) is
+better than a hand-rolled spin because its expiry is visible.
+
+The operating rule is unchanged and already in the skill: resolve process identity through
+`/proc/<pid>/cwd`, never through the text of a command line.
+
 ## 2026-07-27 21:40 UTC — a red inside a SOFT step reaches no verdict, and its leak outlives the run
 
 The #152 gate declared `merge-gate: ALL-PASS` and exited 0 while its own log contained:
