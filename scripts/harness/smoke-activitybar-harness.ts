@@ -131,6 +131,60 @@ async function driveActivityGlyphTier(
   }
 }
 
+async function drivePlantedPanelOrderProfile(
+  fixtureRoot: string,
+): Promise<void> {
+  const plantedHomeDirectory = mkdtempSync(
+    join(tmpdir(), 'tui-activitybar-planted-panel-order-'),
+  );
+  const plantedStatusPath = join(plantedHomeDirectory, 'status.json');
+  mkdirSync(join(plantedHomeDirectory, '.config', 'invar'), {
+    recursive: true,
+  });
+  await Bun.write(
+    join(plantedHomeDirectory, '.config', 'invar', 'settings.json'),
+    `${JSON.stringify({
+      glyphMode: 'ascii',
+      panelContentOrder: ['terminal', 'agent'],
+    })}\n`,
+  );
+  const plantedDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 100,
+    rows: 36,
+    homeDirectory: plantedHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: plantedStatusPath,
+      COLORTERM: 'truecolor',
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+  try {
+    await HarnessSmoke.Class.awaitStatus(
+      plantedDriver,
+      plantedStatusPath,
+      'the planted profile reaches application readiness',
+      (status) => status.ready === true,
+      15_000,
+    );
+    plantedDriver.sendKeys('Control+Shift+s');
+    await HarnessSmoke.Class.awaitStatus(
+      plantedDriver,
+      plantedStatusPath,
+      'the planted terminal-first order reaches the first split paint',
+      (status) =>
+        Array.isArray(status.panelCellIds) &&
+        status.panelCellIds.join(',') === 'terminal,agent',
+    );
+    HarnessSmoke.Class.pass(
+      'a planted terminal-first profile overrides the agent-first default',
+    );
+  } finally {
+    await plantedDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(plantedHomeDirectory);
+  }
+}
+
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-activitybar-harness-'));
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-activitybar-harness-home-'),
@@ -161,8 +215,13 @@ const driver = new PtyTestDriver.Class({
   columns: 100,
   rows: 36,
   homeDirectory,
-  environment: { TUI_STATUS_PATH: statusPath, COLORTERM: 'truecolor' },
+  environment: {
+    TUI_STATUS_PATH: statusPath,
+    COLORTERM: 'truecolor',
+    INVAR_AGENT_BACKEND: 'echo',
+  },
 });
+let restartDriver: PtyTestDriver.Model | null = null;
 
 try {
   console.log(
@@ -196,13 +255,38 @@ try {
     `Extensions glyph 'X' rendered (row ${extensionsRow})`,
   );
 
-  console.log('== harness activitybar: initial Explorer state is coherent ==');
+  console.log(
+    '== harness activitybar: fresh and planted profiles choose panel order ==',
+  );
   const initialStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the activity bar boots on the Explorer view',
     (status) => status.sidebarView === 'files',
   );
+  driver.sendKeys('Control+Shift+s');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the fresh profile paints agent left of terminal on its first split',
+    (status) =>
+      Array.isArray(status.panelCellIds) &&
+      status.panelCellIds.join(',') === 'agent,terminal',
+  );
+  HarnessSmoke.Class.pass(
+    'fresh profile paints agent left of terminal on first split paint',
+  );
+  driver.sendKeys('Control+Shift+s');
+  driver.sendKeys('Control+Shift+a');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the panel returns hidden after the fresh-order measurement',
+    (status) => status.terminalVisible === false,
+  );
+  await drivePlantedPanelOrderProfile(fixtureRoot);
+
+  console.log('== harness activitybar: initial Explorer state is coherent ==');
   const pluginPrimaryDockContentIdentifiers =
     initialStatus.pluginPrimaryDockContentIdentifiers as string[];
   const expectedPrimaryDockContentIdentifiers =
@@ -353,6 +437,100 @@ try {
   );
 
   console.log(
+    '== harness activitybar: disable and re-enable preserve the icon slot ==',
+  );
+  const initialActivityOrder = [
+    ...(initialStatus.activityBarItemIdentifiers as string[]),
+  ];
+  driver.sendKeys('Down');
+  await driver.awaitGridCondition(
+    'the Extensions list selects Git before disabling it',
+    (candidate) => candidate.findText('› [x] Git') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Git unregisters while its persisted activity slot stays dormant',
+    (status) =>
+      Array.isArray(status.activityBarItemIdentifiers) &&
+      !status.activityBarItemIdentifiers.includes('git'),
+  );
+  HarnessSmoke.Class.pass('disabling Git removes its activity membership');
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Git returns to the exact activity order it held before disable',
+    (status) =>
+      JSON.stringify(status.activityBarItemIdentifiers) ===
+      JSON.stringify(initialActivityOrder),
+  );
+  HarnessSmoke.Class.pass(
+    're-enabling Git restored the same activity-bar index',
+  );
+
+  console.log(
+    '== harness activitybar: keyboard and pointer share persisted reorder ==',
+  );
+  driver.sendKeys('Alt+Up');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Alt+Up moves the active Extensions item through the activity order',
+    (status) =>
+      Array.isArray(status.activityBarItemIdentifiers) &&
+      status.activityBarItemIdentifiers.join(',') === 'files,extensions,git',
+  );
+  HarnessSmoke.Class.pass('Alt+Up reorders the active activity item');
+  driver.sendKeys('Alt+Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Alt+Down restores the initial activity order',
+    (status) =>
+      JSON.stringify(status.activityBarItemIdentifiers) ===
+      JSON.stringify(initialActivityOrder),
+  );
+  snapshot = await driver.awaitGridCondition(
+    'all activity glyphs render before the pointer reorder',
+    (candidate) =>
+      glyphRow(candidate, 'F') >= 0 &&
+      glyphRow(candidate, 'G') >= 0 &&
+      glyphRow(candidate, 'X') >= 0,
+  );
+  const dragSourceRow = glyphRow(snapshot, 'G');
+  const dragTargetRow = glyphRow(snapshot, 'F');
+  driver.sendMouse({
+    kind: 'press',
+    column: 1,
+    row: dragSourceRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'move',
+    column: 1,
+    row: dragTargetRow,
+    button: 'left',
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: 1,
+    row: dragTargetRow,
+    button: 'left',
+  });
+  const draggedActivityOrder = ['git', 'files', 'extensions'];
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'pointer drag moves Git to the first activity index',
+    (status) =>
+      JSON.stringify(status.activityBarItemIdentifiers) ===
+      JSON.stringify(draggedActivityOrder),
+  );
+  HarnessSmoke.Class.pass('pointer drag moved Git to a new activity index');
+
+  console.log(
     '== harness activitybar: Ctrl+Shift+B hides and restores the bar ==',
   );
   driver.sendKeys('Control+Shift+e');
@@ -381,10 +559,46 @@ try {
   );
   HarnessSmoke.Class.pass('Ctrl+Shift+B showed the bar again');
 
+  console.log(
+    '== harness activitybar: restart restores the pointer-dragged order ==',
+  );
   driver.sendKeys('Control+q');
+  restartDriver = new PtyTestDriver.Class({
+    workspaceRoot: fixtureRoot,
+    columns: 100,
+    rows: 36,
+    homeDirectory,
+    environment: {
+      TUI_STATUS_PATH: statusPath,
+      COLORTERM: 'truecolor',
+      INVAR_AGENT_BACKEND: 'echo',
+    },
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    restartDriver,
+    statusPath,
+    'the restarted app restores the pointer-dragged activity order',
+    (status) =>
+      status.ready === true &&
+      JSON.stringify(status.activityBarItemIdentifiers) ===
+        JSON.stringify(draggedActivityOrder),
+    15_000,
+  );
+  const restartedSnapshot = await restartDriver.awaitGridCondition(
+    'the restarted activity bar paints Git above Explorer',
+    (candidate) =>
+      glyphRow(candidate, 'G') >= 0 &&
+      glyphRow(candidate, 'F') > glyphRow(candidate, 'G'),
+  );
+  HarnessSmoke.Class.requireCondition(
+    glyphRow(restartedSnapshot, 'G') < glyphRow(restartedSnapshot, 'F'),
+    'the dragged activity order persists visually after restart',
+  );
+  restartDriver.sendKeys('Control+q');
   console.log('smoke-activitybar-harness: ALL-PASS');
 } finally {
   await driver.dispose();
+  await restartDriver?.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
 }

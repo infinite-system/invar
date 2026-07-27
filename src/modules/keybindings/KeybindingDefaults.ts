@@ -262,6 +262,18 @@ class $KeybindingDefaults {
         action: 'panel.contentsMoveDown',
         context: 'panel',
       },
+      // The primary dock mirrors the panel list's Alt+Up/Down reorder while any activity content owns
+      // focus. ActivityBar and PanelContentsList both delegate the mutation to PanelHost.
+      {
+        chord: { key: 'up', alt: true },
+        action: 'activity.moveItemUp',
+        context: 'activity',
+      },
+      {
+        chord: { key: 'down', alt: true },
+        action: 'activity.moveItemDown',
+        context: 'activity',
+      },
       {
         chord: { key: 'delete', alt: true },
         action: 'panel.contentsClose',

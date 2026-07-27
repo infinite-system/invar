@@ -190,6 +190,9 @@ class $Settings {
   get rightDockWidth(): Ref<number> {
     return ref(28);
   }
+  get primaryDockContentOrder(): Ref<string[]> {
+    return shallowRef([]);
+  }
   get panelContentOrder(): Ref<string[]> {
     return shallowRef(['agent', 'terminal']);
   }
@@ -231,6 +234,7 @@ class $Settings {
       agentNarrationRate: this.agentNarrationRate,
       sidebarWidth: this.sidebarWidth,
       rightDockWidth: this.rightDockWidth,
+      primaryDockContentOrder: this.primaryDockContentOrder,
       panelContentOrder: this.panelContentOrder,
     };
   }
@@ -531,8 +535,24 @@ class $Settings {
       agentNarrationRate: 1.0,
       sidebarWidth: 32,
       rightDockWidth: 28,
+      primaryDockContentOrder: [],
       panelContentOrder: ['agent', 'terminal'],
     };
+  }
+
+  protected static sanitizeIdentifierOrder(
+    candidate: unknown,
+  ): string[] | undefined {
+    if (
+      !Array.isArray(candidate) ||
+      candidate.length === 0 ||
+      !candidate.every(
+        (identifier) => typeof identifier === 'string' && identifier.length > 0,
+      )
+    ) {
+      return undefined;
+    }
+    return [...new Set(candidate as string[])];
   }
 
   /** Keep only recognized keys whose value has the right shape — corrupt entries are dropped. */
@@ -660,17 +680,15 @@ class $Settings {
     readNumber('lspFileSizeLimitKb');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
-    if (
-      Array.isArray(record.panelContentOrder) &&
-      record.panelContentOrder.length > 0 &&
-      record.panelContentOrder.every(
-        (identifier) => typeof identifier === 'string' && identifier.length > 0,
-      )
-    ) {
-      result.panelContentOrder = [
-        ...new Set(record.panelContentOrder as string[]),
-      ];
-    }
+    const primaryDockContentOrder = this.sanitizeIdentifierOrder(
+      record.primaryDockContentOrder,
+    );
+    if (primaryDockContentOrder)
+      result.primaryDockContentOrder = primaryDockContentOrder;
+    const panelContentOrder = this.sanitizeIdentifierOrder(
+      record.panelContentOrder,
+    );
+    if (panelContentOrder) result.panelContentOrder = panelContentOrder;
     return result;
   }
 
@@ -744,6 +762,7 @@ export interface SettingsValues {
   agentNarrationRate: number;
   sidebarWidth: number;
   rightDockWidth: number;
+  primaryDockContentOrder: string[];
   panelContentOrder: string[];
 }
 

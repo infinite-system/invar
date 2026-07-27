@@ -281,32 +281,41 @@ class $PanelHost {
     if (addedIndex >= 0) this.focusCell(addedIndex);
     this.focus();
   }
-  /** Move an open content one row in the user order and immediately reflow the live split. */
-  moveOpenContent(id: string, direction: -1 | 1): void {
-    const openIdentifiers = this.resolvedCells.map((cell) => cell.content.id);
-    const sourceOpenIndex = openIdentifiers.indexOf(id);
-    const targetOpenIndex = sourceOpenIndex + direction;
+  /** Move registered content one row in the user order and immediately reflow any live split. */
+  moveContent(id: string, direction: -1 | 1): void {
+    const registeredIdentifiers = this.orderedContents.map(
+      (content) => content.id,
+    );
+    const sourceIndex = registeredIdentifiers.indexOf(id);
+    const targetIndex = sourceIndex + direction;
     if (
-      sourceOpenIndex < 0 ||
-      targetOpenIndex < 0 ||
-      targetOpenIndex >= openIdentifiers.length
+      sourceIndex < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= registeredIdentifiers.length
     )
       return;
-    this.moveOpenContentTo(id, targetOpenIndex);
+    this.moveContentTo(id, targetIndex);
   }
-  /** Drag counterpart to moveOpenContent: place an open content at an exact open-row index. */
-  moveOpenContentTo(id: string, targetOpenIndex: number): void {
-    const openCells = this.resolvedCells;
-    const sourceOpenIndex = openCells.findIndex(
-      (cell) => cell.content.id === id,
+
+  /** Backward-compatible bottom-panel name for its keyboard reorder action. */
+  moveOpenContent(id: string, direction: -1 | 1): void {
+    this.moveContent(id, direction);
+  }
+
+  /** Place registered content at an exact visible-row index in the persisted user order. */
+  moveContentTo(id: string, targetIndex: number): void {
+    const registeredContents = this.orderedContents;
+    const sourceIndex = registeredContents.findIndex(
+      (content) => content.id === id,
     );
     const clampedTargetIndex = Math.max(
       0,
-      Math.min(targetOpenIndex, openCells.length - 1),
+      Math.min(targetIndex, registeredContents.length - 1),
     );
-    if (sourceOpenIndex < 0 || sourceOpenIndex === clampedTargetIndex) return;
-    const targetIdentifier = openCells[clampedTargetIndex]?.content.id;
+    if (sourceIndex < 0 || sourceIndex === clampedTargetIndex) return;
+    const targetIdentifier = registeredContents[clampedTargetIndex]?.id;
     if (!targetIdentifier) return;
+    const openCells = this.resolvedCells;
     const nextOrder = [...this.order.value];
     const sourceOrderIndex = nextOrder.indexOf(id);
     const targetOrderIndex = nextOrder.indexOf(targetIdentifier);
@@ -333,6 +342,11 @@ class $PanelHost {
     });
     this.options.persistContentOrder?.();
   }
+
+  /** Backward-compatible drag name used by the bottom-panel contents list. */
+  moveOpenContentTo(id: string, targetIndex: number): void {
+    this.moveContentTo(id, targetIndex);
+  }
   /** Close affordance shared by the dock-list mouse row and keyboard command. */
   closeOpenContent(id: string): void {
     this.removeContent(id);
@@ -345,9 +359,9 @@ class $PanelHost {
     const remainingVisibleIdentifiers = this.resolvedCells
       .map((cell) => cell.content.id)
       .filter((identifier) => identifier !== id);
-    const remainingOrder = this.order.value.filter(
-      (identifier) => identifier !== id,
-    );
+    const remainingOrder = this.options.retainUnregisteredContentOrder
+      ? this.order.value
+      : this.order.value.filter((identifier) => identifier !== id);
     this.retargetFocus(() => {
       this.contents.delete(id);
       this.order.value = remainingOrder;
@@ -388,7 +402,9 @@ class $PanelHost {
     }
     content.dispose();
     this.options.onContentRemoved?.(content);
-    this.options.persistContentOrder?.();
+    if (!this.options.retainUnregisteredContentOrder) {
+      this.options.persistContentOrder?.();
+    }
   }
   /** Collapse any split back to the single active content. */
   unsplit(): void {
@@ -628,5 +644,6 @@ export interface PanelHostOptions {
   showWhenContentRegistered?: boolean;
   contentOrder?: Ref<string[]>;
   persistContentOrder?: () => void;
+  retainUnregisteredContentOrder?: boolean;
   onContentRemoved?: (content: PaneContent) => void;
 }

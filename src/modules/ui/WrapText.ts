@@ -154,9 +154,21 @@ class $WrapText {
     if (this.displayWidth(text) <= cells) return text;
     const ellipsisWidth = this.displayWidth(ellipsis);
     return (
-      this.sliceByDisplayCells(text, 0, Math.max(0, cells - ellipsisWidth)) +
+      this.prefixToDisplayWidth(text, Math.max(0, cells - ellipsisWidth)) +
       ellipsis
     );
+  }
+
+  protected static prefixToDisplayWidth(text: string, cells: number): string {
+    let prefix = '';
+    let prefixWidth = 0;
+    for (const cluster of EditorCoordinates.Class.graphemes(text)) {
+      const clusterWidth = this.cellWidthOf(cluster);
+      if (prefixWidth + clusterWidth > cells) break;
+      prefix += cluster;
+      prefixWidth += clusterWidth;
+    }
+    return prefix;
   }
 }
 export namespace WrapText {

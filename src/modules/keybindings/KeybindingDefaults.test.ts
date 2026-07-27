@@ -160,6 +160,62 @@ test('Tab and Shift+Tab are the EDITOR surface s indentation, not a focus move',
   ).toBe(null);
 });
 
+test('activity and panel lists share Alt arrow reorder gestures', () => {
+  const registry = registryWithCanonicalLayer();
+  const altUp = {
+    ...unmodifiedEvent,
+    name: 'up',
+    option: true,
+  };
+  const altDown = {
+    ...unmodifiedEvent,
+    name: 'down',
+    option: true,
+  };
+
+  expect(registry.resolve(altUp, 'panel', 0).action).toBe(
+    'panel.contentsMoveUp',
+  );
+  expect(registry.resolve(altDown, 'panel', 0).action).toBe(
+    'panel.contentsMoveDown',
+  );
+  expect(registry.resolve(altUp, 'activity', 0).action).toBe(
+    'activity.moveItemUp',
+  );
+  expect(registry.resolve(altDown, 'activity', 0).action).toBe(
+    'activity.moveItemDown',
+  );
+});
+
+test('inline rewrite modified chords arrive through both OpenTUI parsers', () => {
+  const encodedChords = [
+    '\x1b[27;6;114~',
+    '\x1b[1;7C',
+    '\x1b[1;7B',
+    '\x1b[1;7A',
+  ];
+  const expectedEvents = [
+    { name: 'r', ctrl: true, shift: true, option: false },
+    { name: 'right', ctrl: true, shift: false, option: true },
+    { name: 'down', ctrl: true, shift: false, option: true },
+    { name: 'up', ctrl: true, shift: false, option: true },
+  ];
+  for (const useKittyKeyboard of [false, true]) {
+    expect(
+      encodedChords.map((encodedChord) => {
+        const event = parseKeypress(encodedChord, { useKittyKeyboard });
+        if (!event) throw new Error('OpenTUI rejected a rewrite chord');
+        return {
+          name: event.name,
+          ctrl: event.ctrl,
+          shift: event.shift,
+          option: event.option,
+        };
+      }),
+    ).toEqual(expectedEvents);
+  }
+});
+
 test('no F-key is the PRIMARY (last-listed) binding of any action', () => {
   const registry = registryWithCanonicalLayer();
   const functionKeyPrimaries: string[] = [];

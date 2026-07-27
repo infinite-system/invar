@@ -122,6 +122,9 @@ describe('WrapText.sliceByDisplayCells + clipToWidth (grapheme-safe)', () => {
     const clipped = WrapText.Class.clipToWidth('界界界界', 5);
     expect(WrapText.Class.displayWidth(clipped)).toBeLessThanOrEqual(5);
     expect(clipped.endsWith('…')).toBe(true);
-    expect(WrapText.Class.clipToWidth('short', 10)).toBe('short'); // fits → untouched
+    expect(WrapText.Class.clipToWidth('short', 10)).toBe('short');
+    const boundaryClipped = WrapText.Class.clipToWidth('a界rest', 3);
+    expect(boundaryClipped).toBe('a…');
+    expect(WrapText.Class.displayWidth(boundaryClipped)).toBeLessThanOrEqual(3);
   });
 });

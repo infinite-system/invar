@@ -1,6 +1,7 @@
 import { StyledText, bg, fg, type TextChunk } from '@opentui/core';
 import { Reactive } from 'ivue';
 import type { Palette } from '../theme/ThemePalettes';
+import { ContentOrderDrag } from './ContentOrderDrag';
 import type { PanelHost } from './PanelHost';
 import { WrapText } from './WrapText';
 
@@ -15,9 +16,11 @@ class $PanelContentsList {
     return 24;
   }
 
-  protected draggingIdentifier: string | null = null;
+  protected readonly contentOrderDrag: ContentOrderDrag.Model;
 
-  constructor(protected readonly panelHost: PanelHost.Instance) {}
+  constructor(protected readonly panelHost: PanelHost.Instance) {
+    this.contentOrderDrag = new ContentOrderDrag.Class(panelHost);
+  }
 
   get visible(): boolean {
     return this.panelHost.panelListVisible;
@@ -85,10 +88,10 @@ class $PanelContentsList {
   pointerDown(localColumn: number, localRow: number): boolean {
     const row = this.rows[localRow];
     if (!row) return false;
-    this.draggingIdentifier = row.identifier;
+    this.contentOrderDrag.pointerDown(row.identifier);
     if (localColumn >= this.width - 2) {
       this.panelHost.closeOpenContent(row.identifier);
-      this.draggingIdentifier = null;
+      this.contentOrderDrag.pointerUp();
       return true;
     }
     this.panelHost.activateOpenContent(row.identifier);
@@ -96,14 +99,12 @@ class $PanelContentsList {
   }
 
   pointerDrag(localRow: number): boolean {
-    if (this.draggingIdentifier === null) return false;
     const targetIndex = Math.max(0, Math.min(localRow, this.rows.length - 1));
-    this.panelHost.moveOpenContentTo(this.draggingIdentifier, targetIndex);
-    return true;
+    return this.contentOrderDrag.pointerDrag(targetIndex);
   }
 
   pointerUp(): void {
-    this.draggingIdentifier = null;
+    this.contentOrderDrag.pointerUp();
   }
 }
 

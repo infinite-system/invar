@@ -392,8 +392,9 @@ sequence immediately and after restart.
 terminal-agent split. Other `PanelHost` instances are outside this persisted bottom-panel order.
 
 **Mechanism:** `Bootstrap` injects the `Settings.panelContentOrder` ref and `Settings.save` callback
-into `PanelHost`. `PanelHost.moveOpenContentTo` mutates that ref once, rebuilds `layout` from it, and
-persists; `PanelContentsList.rows` and `PanelHost.split` read the same order.
+into `PanelHost`. `PanelHost.moveContentTo` mutates that ref once, rebuilds `layout` from it, and
+persists; `PanelContentsList.rows` and `PanelHost.split` read the same order. `PanelContentsList`
+delegates its pointer lifecycle to `ContentOrderDrag`.
 
 **Generates:** Live drag reorder; Alt+Up and Alt+Down reorder; restart persistence; the agent-first
 default `['agent', 'terminal']`.
@@ -412,6 +413,42 @@ scripts/harness/smoke-panel-split-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-25
+
+### Activity bar order is one persisted sequence
+
+**Invariant:** If primary-dock content is registered, removed, reordered, or registered again, then
+the activity bar derives membership from registered `PaneContent` and order from
+`Settings.primaryDockContentOrder`.
+
+**Scope:** `ActivityBar`, the primary `PanelHost`, `Settings.primaryDockContentOrder`, plugin
+registration and removal, pointer drag reorder, and activity-context Alt+Up or Alt+Down reorder.
+Bottom-panel session removal remains governed by *Panel content order is one persisted sequence*.
+
+**Mechanism:** `Bootstrap` injects `Settings.primaryDockContentOrder` into `PanelHost` with dormant-id
+retention. `PanelHost.orderedContents` filters unregistered identifiers without deleting them,
+registration appends only unseen identifiers, and `moveContentTo` writes one persisted sequence.
+`ActivityBar` and `PanelContentsList` delegate pointer state to `ContentOrderDrag`.
+
+**Generates:** Stable icon slots across plugin disable and re-enable; deterministic end insertion for
+new plugins; inert missing identifiers; drag reorder; Alt+Up and Alt+Down reorder; restart
+persistence.
+
+**Evidence:** `src/modules/settings/Settings.ts`; `src/modules/ui/PanelHost.ts`;
+`src/modules/ui/ContentOrderDrag.ts`; `src/modules/ui/ActivityBar.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/ui/PanelHost.test.ts`;
+`scripts/harness/smoke-activitybar-harness.ts`.
+
+**Impossible if true:** Disabling and re-enabling a plugin moves its activity icon; an unregistered
+identifier paints a gap or crashes; a newly registered identifier appears before a known identifier;
+drag and keyboard reorder produce different persisted sequences; restart restores an older order.
+
+**Verification:** `bun test src/modules/settings/Settings.test.ts src/modules/ui/PanelHost.test.ts
+src/modules/ui/ContentOrderDrag.test.ts src/modules/keybindings/KeybindingDefaults.test.ts && bun
+scripts/harness/smoke-activitybar-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-26
 
 ### The panel contents list mirrors open content
 
@@ -626,7 +663,7 @@ activity action switches the same `PanelHost` selection. Exactly one item is act
 and the sidebar projection in `RootView.update`.
 
 **Mechanism:** `PanelHost.activeId` is the single active identity. `ActivityBar` derives its rows
-from `PanelHost.orderedContents`, calls `showContent`, and highlights only `activeId`.
+from persisted `PanelHost.orderedContents`, calls `showContent`, and highlights only `activeId`.
 `RootView.update` renders `PanelHost.activeContent`, so accent and content cannot diverge.
 
 **Generates:** a clickable, self-explaining view switcher (button + name/shortcut tooltip + palette

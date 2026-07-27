@@ -95,3 +95,30 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
 | `src/modules/keybindings/KeybindingDefaults.test.ts` | assertions 59 → 52, waits 19 → 17. Removed seven plugin-specific binding and parser claims from the host canonical table; `InlineRewriteContributor.test.ts` now pins plugin-layer request resolution, while `smoke-inline-rewrite-harness.ts` drives request, guarded reject, both variation arrows, accept, and editor Tab through the real PTY. |
 | `scripts/harness/smoke-agent-permissions-harness.ts` | assertions 7 → 8, waits 17 → 17. Each gated turn now proves its pending Bash permission belongs to the submitted prompt through semantic session status, while the terminal grid independently proves all actionable approval controls remain visible and no completed tool row appears. |
 | `src/modules/agent/AgentSession.test.ts` | assertions 115 → 119, waits 33 → 34. Adds the cancellation-publication mechanism pin: synchronous backend teardown leaves the canceled state intact and schedules exactly one guarded render revision after the teardown stack unwinds. |
+| `scripts/harness/smoke-activitybar-harness.ts` | assertions 31 → 38, waits 18 → 31. Adds fresh and planted panel-order profiles, plugin disable/re-enable slot retention, activity-context keyboard reorder, pointer drag, and same-HOME restart persistence. |
+| `scripts/harness/smoke-settings-applied-harness.ts` | assertions 24 → 24, waits 24 → 24. No count movement; the settings schema census now records that `primaryDockContentOrder` is driven by the activity-bar harness. |
+| `src/modules/keybindings/KeybindingDefaults.test.ts` | assertions 59 → 63, waits 19 → 20. Proves the activity and bottom-panel contexts resolve the same Alt+Up and Alt+Down reorder gestures. |
+| `src/modules/settings/Settings.test.ts` | assertions 58 → 64, waits 10 → 11. Covers the primary-dock order default, shared validation and deduplication, save output, and reload round-trip. |
+| `src/modules/ui/ContentOrderDrag.test.ts` | assertions 0 → 4, waits 0 → 1. New file. Proves pointer movement is inert before and after a drag and delegates the active drag to the persisted `PanelHost` reorder seam. |
+| `src/modules/ui/PanelHost.test.ts` | assertions 57 → 67, waits 15 → 18. Covers dormant identifiers as inert membership gaps, deterministic unseen-content append, retained disable/re-enable slots, and persisted visible reorder across a dormant identifier. |
+| `scripts/harness/smoke-agent-skill-popup-harness.ts` | assertions 7 → 10, waits 13 → 14. The real PTY catalog now uses folded and literal block-scalar descriptions, proves their indicators never reach frame cells, requires a known long description to end in one ellipsis, and checks every visible item row remains inside the popup border. |
+| `src/modules/agent/AgentPromptResolver.test.ts` | assertions 5 → 7, waits 5 → 7. Covers plain, quoted, folded, and literal description scalars; both chomping directions; explicit indentation; escaped quotes; and missing or empty descriptions. |
+| `src/modules/agent/AgentSkillPopup.test.ts` | assertions 7 → 15, waits 2 → 3. Proves a folded scalar contributes its continuation text instead of its indicator, literal newlines collapse to one row, and wide or astral descriptions ellipsize by display cells without truncating the skill name. |
+| `src/modules/ui/BoundedListPopup.test.ts` | assertions 39 → 40, waits 13 → 13. Pins the shared desired-width authority used by popup paint and the skill-label clipping budget. |
+| `src/modules/ui/WrapText.test.ts` | assertions 27 → 29, waits 15 → 15. Adds the two-cell cutoff counterexample: an overlapping wide grapheme is excluded before the ellipsis so the shared clipper cannot exceed its display-cell budget. |
+
+- `src/modules/keybindings/KeybindingDefaults.test.ts` — assertions: 62, waits: 0
+  (was 63/0) — merge reconciliation with the inline-rewrite plugin landing
+  (`ac868f4`). That landing moved the inline-rewrite chords out of the canonical
+  binding layer into `InlineRewriteContributor`, and deleted this file's
+  `inline rewrite chords resolve without spending editor Tab` test accordingly;
+  the branch had forked before that and a naive union resurrected it, where it
+  asserted against a layer that no longer carries those bindings. Removed here.
+  The resolution assertion it carried is preserved at
+  `src/modules/inline-rewrite/InlineRewriteContributor.test.ts:113`.
+  DELIBERATELY RETAINED: `inline rewrite modified chords arrive through both
+  OpenTUI parsers`. That assertion (encoded bytes -> parsed event, both parser
+  modes) was DROPPED by `ac868f4` with no replacement anywhere in the tree, and
+  it is parser-level — independent of where the bindings are registered — so it
+  still passes and still guards the #93 property that a chord must actually
+  ARRIVE, not merely resolve.

@@ -104,11 +104,102 @@ class $AgentPromptResolver {
     if (lines[0] !== '---') return '';
     const closingDelimiterIndex = lines.indexOf('---', 1);
     if (closingDelimiterIndex < 0) return '';
-    for (const line of lines.slice(1, closingDelimiterIndex)) {
-      const match = /^description:\s*(.*)$/.exec(line);
-      if (match) return (match[1] ?? '').trim();
+    const frontmatterLines = lines.slice(1, closingDelimiterIndex);
+    for (let lineIndex = 0; lineIndex < frontmatterLines.length; lineIndex++) {
+      const match = /^description:\s*(.*)$/.exec(
+        frontmatterLines[lineIndex] ?? '',
+      );
+      if (!match) continue;
+      const scalarHeader = (match[1] ?? '').trim();
+      const blockHeader = /^([>|])((?:[1-9][+-]?)|(?:[+-][1-9]?)|)$/.exec(
+        scalarHeader,
+      );
+      if (!blockHeader) return this.quotedDescription(scalarHeader);
+      return this.blockDescription(
+        frontmatterLines,
+        lineIndex + 1,
+        blockHeader[1] as '>' | '|',
+        blockHeader[2] ?? '',
+      );
     }
     return '';
+  }
+
+  protected static quotedDescription(scalar: string): string {
+    if (scalar.startsWith("'")) return this.singleQuotedDescription(scalar);
+    if (!scalar.startsWith('"')) return scalar;
+    try {
+      return JSON.parse(scalar) as string;
+    } catch {
+      return scalar;
+    }
+  }
+
+  protected static singleQuotedDescription(scalar: string): string {
+    if (!scalar.endsWith("'") || scalar.length < 2) return scalar;
+    return scalar.slice(1, -1).replace(/''/g, "'");
+  }
+
+  protected static blockDescription(
+    frontmatterLines: readonly string[],
+    firstContentLineIndex: number,
+    style: '>' | '|',
+    modifiers: string,
+  ): string {
+    const explicitIndentation = /[1-9]/.exec(modifiers);
+    let contentIndentation = explicitIndentation
+      ? Number(explicitIndentation[0])
+      : 0;
+    const contentLines: string[] = [];
+    for (
+      let lineIndex = firstContentLineIndex;
+      lineIndex < frontmatterLines.length;
+      lineIndex++
+    ) {
+      const line = frontmatterLines[lineIndex] ?? '';
+      const leadingSpaces = /^ */.exec(line)?.[0].length ?? 0;
+      if (line.trim().length > 0 && contentIndentation === 0) {
+        contentIndentation = leadingSpaces;
+      }
+      if (
+        line.trim().length > 0 &&
+        (contentIndentation === 0 || leadingSpaces < contentIndentation)
+      ) {
+        break;
+      }
+      contentLines.push(line.slice(Math.min(contentIndentation, line.length)));
+    }
+    const value =
+      style === '|'
+        ? this.literalBlockValue(contentLines)
+        : this.foldedBlockValue(contentLines);
+    return this.applyBlockChomping(value, modifiers);
+  }
+
+  protected static literalBlockValue(lines: readonly string[]): string {
+    return lines.length > 0 ? `${lines.join('\n')}\n` : '';
+  }
+
+  protected static foldedBlockValue(lines: readonly string[]): string {
+    if (lines.length === 0) return '';
+    let value = '';
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex] ?? '';
+      value += line;
+      if (lineIndex === lines.length - 1) return `${value}\n`;
+      const nextLine = lines[lineIndex + 1] ?? '';
+      value += line.length === 0 || nextLine.length === 0 ? '\n' : ' ';
+    }
+    return value;
+  }
+
+  protected static applyBlockChomping(
+    value: string,
+    modifiers: string,
+  ): string {
+    if (modifiers.includes('-')) return value.replace(/\n+$/u, '');
+    if (modifiers.includes('+') || value.length === 0) return value;
+    return `${value.replace(/\n+$/u, '')}\n`;
   }
 
   protected static withArguments(
