@@ -13,6 +13,7 @@
 // exactly the position the user saw in that painted frame with no publish race.
 //
 // invariant: A fast glide crosses rows in many small steps (src/modules/ui/ui.invariants.md)
+// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
@@ -76,6 +77,12 @@ const WHEEL_NOTCHES_PER_GESTURE = Number(
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
 const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
+const CONTINUATION_DELAY_MILLISECONDS = (
+  process.env.SMOOTHNESS_CONTINUATION_DELAYS ?? '200,250,300'
+)
+  .split(',')
+  .map((delayText) => Number(delayText.trim()))
+  .filter((delayMilliseconds) => delayMilliseconds > 150);
 const DEPTH_GESTURE_TARGET_ROWS = Number(
   process.env.SMOOTHNESS_DEPTH_GESTURE_ROWS ?? '1000',
 );
@@ -135,8 +142,18 @@ interface SurfaceMeasurement {
   readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
   readonly gestures: readonly GestureMeasurement[];
+  readonly continuationBoundaries: readonly ContinuationBoundaryMeasurement[];
   readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
   readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface ContinuationBoundaryMeasurement {
+  readonly requestedDelayMilliseconds: number;
+  readonly actualDelayMilliseconds: number;
+  readonly preBoundaryFrameCount: number;
+  readonly boundaryFrameCount: number;
+  readonly preBoundaryRowsCrossed: number;
+  readonly boundaryRowsCrossed: number;
 }
 
 interface DepthCheckpointMeasurement {
@@ -370,6 +387,103 @@ async function measureOneGesture(
     );
   }
   return summarize(samples, inputWrittenTimestampMilliseconds);
+}
+
+async function measureContinuationBoundary(
+  driver: PtyTestDriver.Model,
+  requestedDelayMilliseconds: number,
+): Promise<ContinuationBoundaryMeasurement> {
+  const samples: GestureFrameSample[] = [];
+  const firstGestureTimestampMilliseconds = performance.now();
+  driver.sendRawInputWithoutFrameExpectation(
+    wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+  );
+  while (true) {
+    const completed = await driver.awaitNextCompletedFrameSnapshot(
+      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+    );
+    const scrollTop = visibleTopLineIndex(completed.snapshot);
+    if (scrollTop === null) continue;
+    const sample: GestureFrameSample = {
+      completedFrameCount: completed.completedFrame.completedFrameCount,
+      byteArrivalTimestampMilliseconds:
+        completed.completedFrame.byteArrivalTimestampMilliseconds,
+      observedByteCount: completed.completedFrame.observedByteCount,
+      scrollTop,
+    };
+    samples.push(sample);
+    if (samples.length < 2) continue;
+    const previousSample = samples.at(-2)!;
+    const preBoundaryRowsCrossed = sample.scrollTop - previousSample.scrollTop;
+    const elapsedMilliseconds =
+      performance.now() - firstGestureTimestampMilliseconds;
+    if (
+      elapsedMilliseconds < requestedDelayMilliseconds ||
+      preBoundaryRowsCrossed <= 0
+    ) {
+      continue;
+    }
+
+    const secondGestureTimestampMilliseconds = performance.now();
+    driver.sendRawInputWithoutFrameExpectation(wheelInput('down', 1));
+    const boundaryFrame = await driver.awaitNextCompletedFrameSnapshot(
+      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+    );
+    const boundaryScrollTop = visibleTopLineIndex(boundaryFrame.snapshot);
+    if (boundaryScrollTop === null) {
+      throw new Error(
+        `continuation boundary frame ` +
+          `${boundaryFrame.completedFrame.completedFrameCount} did not ` +
+          `contain the fixture`,
+      );
+    }
+    return {
+      requestedDelayMilliseconds,
+      actualDelayMilliseconds:
+        secondGestureTimestampMilliseconds - firstGestureTimestampMilliseconds,
+      preBoundaryFrameCount: sample.completedFrameCount,
+      boundaryFrameCount: boundaryFrame.completedFrame.completedFrameCount,
+      preBoundaryRowsCrossed,
+      boundaryRowsCrossed: boundaryScrollTop - sample.scrollTop,
+    };
+  }
+}
+
+function assertContinuationBoundaries(
+  measurements: readonly ContinuationBoundaryMeasurement[],
+): void {
+  const failures = measurements.filter(
+    (measurement) =>
+      measurement.boundaryRowsCrossed < measurement.preBoundaryRowsCrossed,
+  );
+  if (failures.length === 0) return;
+  const failureDescriptions = failures.map(
+    (measurement) =>
+      `frame ${measurement.boundaryFrameCount} ` +
+      `${measurement.preBoundaryRowsCrossed}->` +
+      `${measurement.boundaryRowsCrossed} rows at ` +
+      `${measurement.actualDelayMilliseconds.toFixed(1)}ms ` +
+      `(requested ${measurement.requestedDelayMilliseconds}ms)`,
+  );
+  throw new Error(
+    `live-glide continuation slowed at boundary: ` +
+      failureDescriptions.join('; '),
+  );
+}
+
+function printContinuationBoundary(
+  surface: ScrollSurface,
+  measurement: ContinuationBoundaryMeasurement,
+): void {
+  console.error(
+    `${surface} continuation requested=` +
+      `${measurement.requestedDelayMilliseconds}ms ` +
+      `actual=${measurement.actualDelayMilliseconds.toFixed(1)}ms ` +
+      `frames=${measurement.preBoundaryFrameCount}->` +
+      `${measurement.boundaryFrameCount} ` +
+      `rows=${measurement.preBoundaryRowsCrossed}->` +
+      `${measurement.boundaryRowsCrossed}`,
+  );
 }
 
 async function jumpEditorToDepth(
@@ -871,6 +985,11 @@ async function measureSurface(
     fixtureShape === 'fold-dense' &&
     codeFolding === 'on' &&
     VERSION_CONTROL_MARKS_ENABLED;
+  const shouldMeasureContinuationBoundaries =
+    surface === 'editor' &&
+    fixtureLineCount === 2_000 &&
+    fixtureShape === 'flat' &&
+    codeFolding === 'on';
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -945,6 +1064,7 @@ async function measureSurface(
     );
 
     const gestures: GestureMeasurement[] = [];
+    const continuationBoundaries: ContinuationBoundaryMeasurement[] = [];
     let depthCheckpoints: DepthCheckpointMeasurement[] = [];
     let depthCheckpointWallClockMilliseconds = 0;
     if (shouldMeasureDepthCheckpoints) {
@@ -957,6 +1077,19 @@ async function measureSurface(
         depthCheckpoints,
       );
     } else {
+      if (shouldMeasureContinuationBoundaries) {
+        for (const delayMilliseconds of CONTINUATION_DELAY_MILLISECONDS) {
+          await driveSurfaceToTop(driver, statusPath, surface);
+          await drainToQuiescence(driver);
+          const continuationBoundary = await measureContinuationBoundary(
+            driver,
+            delayMilliseconds,
+          );
+          continuationBoundaries.push(continuationBoundary);
+          printContinuationBoundary(surface, continuationBoundary);
+        }
+        assertContinuationBoundaries(continuationBoundaries);
+      }
       for (
         let gestureIndex = 0;
         gestureIndex < GESTURE_REPEAT_COUNT;
@@ -978,6 +1111,7 @@ async function measureSurface(
         VERSION_CONTROL_MARKS_ENABLED,
       fixtureLineCount,
       gestures,
+      continuationBoundaries,
       depthCheckpoints,
       depthCheckpointWallClockMilliseconds,
     };

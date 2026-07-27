@@ -1013,38 +1013,45 @@ scripts/harness/smoke-terminal-harness.ts`.
 
 **Last refined:** 2026-07-26
 
-### Fling gain comes from the current gesture
+### A same-direction notch never slows a live glide
 
-**Invariant:** If a wheel gesture adds impulses while velocity remains from an earlier glide, then
-the progressive gain scale comes only from the current gesture's rest-equivalent impulse sequence,
-while the gained velocity still composes with the residual physical velocity.
+**Invariant:** If a same-direction wheel notch is delivered while physical
+velocity remains above the halt threshold, then the notch continues the live
+motion and instantaneous velocity cannot fall across its boundary.
 
 **Scope:** `Momentum.addImpulse` for every horizontal and vertical wheel-momentum consumer. Contrary
 direction input still halts and restarts, and direct or programmatic scroll still adopts and stops.
 
-**Mechanism:** `ScrollMomentum.restEquivalentGestureVelocity` accumulates only impulses inside the
-150 ms input-cadence window identified by `lastImpulseTimestampMilliseconds`. `addImpulse` reads that
-value for progressive gain and adds the result to physical `velocity`; `stepMomentum` decays only the
-physical velocity and preserves the gesture accumulator until cadence starts a new gesture.
+**Mechanism:** `Momentum.addImpulse` treats velocity at or above
+`stopVelocity` as authoritative continuation and uses the 150 ms
+`lastImpulseTimestampMilliseconds` window only before live motion can
+establish that fact. It preserves `restEquivalentGestureVelocity` across the
+glide and adds the continued gain to physical `velocity`; the
+contrary-direction branch still halts before restarting.
 
-**Generates:** Identical gesture gain from rest or during a decaying glide; preserved momentum
-composition; one gain derivation shared by every `Momentum` consumer.
+**Generates:** Same-direction notches that accelerate one continuous motion;
+no visible hitch at a gesture boundary; one continuation rule shared by every
+`Momentum` consumer.
 
-**Rejected alternatives:** Derive gain from physical velocity — decay from the previous fling changes
-the next gesture's curve. Reset gain on a rendered frame — one PTY write may be parsed across frames,
-so renderer timing would split one physical gesture.
+**Rejected alternatives:** Clock-only continuation — a glide can outlive the
+150 ms proxy, resetting gain while the surface is visibly moving. Reset gain
+on a rendered frame — one PTY write may be parsed across frames, so renderer
+timing would split one physical gesture.
 
 **Evidence:** `src/modules/system/Momentum.ts`;
-`src/modules/system/Momentum.test.ts` (`a follow-on gesture derives gain from rest while composing
-velocity`); `scripts/harness/measure-scroll-smoothness.ts`.
+`src/modules/system/Momentum.test.ts` (`a live glide continues gain outside
+the input cadence window`);
+`scripts/harness/measure-scroll-smoothness.ts` (200, 250, and 300 ms
+delayed-notch sweep).
 
-**Impossible if true:** Two identical same-direction gestures receiving different gain because one
-started during residual glide; preserving equal gain by discarding the residual velocity instead of
-composing it.
+**Impossible if true:** A same-direction notch delivered during a live glide
+reducing instantaneous velocity; the boundary frame crossing fewer rows than
+the immediately preceding frame under the same render cadence.
 
-**Verification:** `bun test src/modules/system/Momentum.test.ts && bun
-scripts/harness/measure-scroll-smoothness.ts`; compare every follow-on gesture's
-`totalDistanceRows` with the first gesture within 10%.
+**Verification:** `bun test src/modules/system/Momentum.test.ts && bash
+scripts/behavioral-contracts.sh`; the `glide-continuation` sweep drives
+delayed notches after the 150 ms cadence window and compares pre-boundary and
+boundary row-crossing counts.
 
 **Status:** provisional
 

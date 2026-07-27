@@ -71,7 +71,7 @@ describe('scroll-momentum', () => {
     ).toBeCloseTo(40);
   });
 
-  test('a follow-on gesture derives gain from rest while composing velocity', () => {
+  test('a live glide continues gain outside the input cadence window', () => {
     let previousGesture = Momentum.Class.atRest;
     for (let notchNumber = 0; notchNumber < 3; notchNumber++) {
       previousGesture = Momentum.Class.addImpulse(
@@ -92,6 +92,12 @@ describe('scroll-momentum', () => {
       Momentum.Class.defaultOptions,
       500,
     );
+    const uninterruptedGesture = Momentum.Class.addImpulse(
+      previousGesture,
+      1,
+      Momentum.Class.defaultOptions,
+      3,
+    );
     const fromRestGesture = Momentum.Class.addImpulse(
       Momentum.Class.atRest,
       1,
@@ -100,9 +106,11 @@ describe('scroll-momentum', () => {
     );
 
     expect(followOnGesture.velocity - residualGlide.velocity).toBeCloseTo(
+      uninterruptedGesture.velocity - previousGesture.velocity,
+    );
+    expect(followOnGesture.velocity - residualGlide.velocity).toBeGreaterThan(
       fromRestGesture.velocity,
     );
-    expect(followOnGesture.velocity).toBeGreaterThan(fromRestGesture.velocity);
   });
 
   test('one gesture keeps its gain across an intervening frame', () => {

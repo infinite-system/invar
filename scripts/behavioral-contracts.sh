@@ -138,6 +138,10 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 #  * TRAVEL FLOOR — the second reported symptom (lower peak velocity) as a clock-free figure: with
 #    linesPerNotch 1 the 12-notch fling REQUESTS 12 rows, and momentum that cannot at least double the
 #    raw notch travel is not a fling at all. 24 rows is that doubling.
+#  * CONTINUATION — three delayed notches land after Momentum's 150 ms
+#    input-cadence window while the first glide remains live. Each boundary
+#    frame must cross at least as many rows as the immediately preceding frame.
+#    Row counts make the comparison independent of host clock contention.
 # Measured floors on 2026-07-26 across six commits spanning 24h of history (40d244b~1 .. e6450c6):
 # 17 moving frames, largest single step 7 rows, fastest trial travelling 36-48 rows. Every bound below
 # therefore has at least 1.5x headroom against a loaded machine while still catching a halving.
@@ -156,7 +160,11 @@ if SMOOTHNESS_GESTURES=2 \
     smooth_fast_cadence_floor_passes smooth_minimum_fast_fps \
     smooth_100k_surface_count smooth_100k_cadence_floor_passes \
     smooth_100k_minimum_fast_fps \
-    smooth_100k_top_reference_fps <<<"$(python3 -c "
+    smooth_100k_top_reference_fps \
+    smooth_continuation_count smooth_continuation_holds \
+    smooth_continuation_minimum_margin \
+    smooth_continuation_minimum_delay smooth_continuation_maximum_delay \
+    <<<"$(python3 -c "
 import json
 cases = json.load(open('$SMOOTH_JSON'))['cases']
 baseline = next(
@@ -164,6 +172,7 @@ baseline = next(
     if case['surface'] == 'editor' and case['fixtureLineCount'] == 2000
 )
 gestures = baseline['gestures']
+continuation_boundaries = baseline['continuationBoundaries']
 all_gestures = [
     gesture
     for case in cases
@@ -199,6 +208,22 @@ top_reference_fps = min(
     gesture['sustainedFastFramesPerSecond']
     for gesture in large_editor_gestures
 )
+continuation_holds = (
+    len(continuation_boundaries) == 3
+    and all(boundary['requestedDelayMilliseconds'] > 150
+            and boundary['actualDelayMilliseconds'] > 150
+            and boundary['boundaryRowsCrossed']
+                >= boundary['preBoundaryRowsCrossed']
+            for boundary in continuation_boundaries)
+)
+continuation_margins = [
+    boundary['boundaryRowsCrossed'] - boundary['preBoundaryRowsCrossed']
+    for boundary in continuation_boundaries
+]
+continuation_delays = [
+    boundary['actualDelayMilliseconds']
+    for boundary in continuation_boundaries
+]
 print(min(g['movingFrameCount'] for g in all_gestures),
       max(g['maximumFrameDeltaRows'] for g in all_gestures),
       max(g['totalDistanceRows'] for g in all_gestures),
@@ -214,7 +239,12 @@ print(min(g['movingFrameCount'] for g in all_gestures),
           and all(not case['depthCheckpoints'] for case in large_cases)
           and minimum_100k_fast_fps >= 28),
       f'{minimum_100k_fast_fps:.1f}',
-      f'{top_reference_fps:.6f}')
+      f'{top_reference_fps:.6f}',
+      len(continuation_boundaries),
+      int(continuation_holds),
+      min(continuation_margins),
+      f'{min(continuation_delays):.1f}',
+      f'{max(continuation_delays):.1f}')
 ")"
   if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
     smooth_step_message="no glide frame jumps more than two frame budgets"
@@ -255,6 +285,24 @@ print(min(g['movingFrameCount'] for g in all_gestures),
     follow_on_message+=" follow-on=$smooth_follow_on_min_travel"
     follow_on_message+="..$smooth_follow_on_max_travel rows; bound 10%)"
     bad "$follow_on_message"
+  fi
+  if [ "${smooth_continuation_holds:-0}" -eq 1 ] 2>/dev/null; then
+    continuation_message="live-glide notches preserve boundary velocity"
+    continuation_message+=" (delays=${smooth_continuation_minimum_delay}.."
+    continuation_message+="${smooth_continuation_maximum_delay}ms,"
+    continuation_message+=" trials=$smooth_continuation_count,"
+    continuation_message+=" minimum row-count margin="
+    continuation_message+="$smooth_continuation_minimum_margin)"
+    pass "$continuation_message"
+  else
+    continuation_message="a same-direction notch SLOWED a live glide"
+    continuation_message+=" (delays="
+    continuation_message+="${smooth_continuation_minimum_delay:-missing}.."
+    continuation_message+="${smooth_continuation_maximum_delay:-missing}ms,"
+    continuation_message+=" trials=${smooth_continuation_count:-0},"
+    continuation_message+=" minimum row-count margin="
+    continuation_message+="${smooth_continuation_minimum_margin:-missing})"
+    bad "$continuation_message"
   fi
   if [ "${smooth_fast_cadence_floor_passes:-0}" -eq 1 ] 2>/dev/null; then
     fast_cadence_message="sustained fast glide meets declared cadence"

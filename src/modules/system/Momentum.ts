@@ -11,7 +11,7 @@
 // each caller holds in its own reactive cell.
 import { Static } from 'ivue/extras';
 
-// invariant: Fling gain comes from the current gesture (src/modules/ui/ui.invariants.md)
+// invariant: A same-direction notch never slows a live glide (src/modules/ui/ui.invariants.md)
 class $Momentum {
   protected static get $defaultOptions(): MomentumOptions {
     const defaultOptions: MomentumOptions = {
@@ -90,8 +90,9 @@ class $Momentum {
 
   /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.
    *  Gain is PROGRESSIVE: a notch from rest lands small (precise single-step feel) and a sustained
-   *  gesture compounds toward the cap. The gain curve reads only the current gesture's
-   *  rest-equivalent velocity; physical velocity still composes with any previous glide. A
+   *  gesture compounds toward the cap. The gain curve reads the current
+   *  motion's rest-equivalent velocity; physical velocity still composes
+   *  with the live glide. A
    *  from-rest notch is floored at the velocity that glides ONE full row before the halt threshold
    *  eats it — a wheel notch that visibly does nothing is not precision, it is a dead input. */
   static addImpulse(
@@ -120,10 +121,13 @@ class $Momentum {
     const elapsedSincePreviousImpulseMilliseconds =
       currentTimestampMilliseconds -
       (momentum.lastImpulseTimestampMilliseconds ?? Number.NEGATIVE_INFINITY);
-    const gestureContinues =
+    const liveGlideContinues =
+      Math.abs(momentum.velocity) >= options.stopVelocity;
+    const inputCadenceContinues =
       elapsedSincePreviousImpulseMilliseconds >= 0 &&
       elapsedSincePreviousImpulseMilliseconds <
         this.gestureContinuationWindowMilliseconds;
+    const gestureContinues = liveGlideContinues || inputCadenceContinues;
     const restEquivalentGestureVelocity = gestureContinues
       ? (momentum.restEquivalentGestureVelocity ?? 0)
       : 0;
@@ -212,7 +216,8 @@ export interface ScrollMomentum {
   // Gain-curve input accumulated from notches in the current physical gesture. Optional so external
   // plain values created before this field existed enter honestly at rest-equivalent gain.
   restEquivalentGestureVelocity?: number;
-  // Input-cadence boundary for the gain accumulator. It never participates in physical velocity.
+  // Input cadence is the pre-motion continuation proxy. Live physical
+  // motion is authoritative.
   lastImpulseTimestampMilliseconds?: number;
 }
 
