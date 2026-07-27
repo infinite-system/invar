@@ -19,7 +19,10 @@ class $BracketedPasteInput {
     for (const markerByte of this.startMarker) {
       chunks.push(Uint8Array.of(markerByte));
     }
-    const normalizedMaximumPayloadChunkBytes = Math.max(1, maximumPayloadChunkBytes);
+    const normalizedMaximumPayloadChunkBytes = Math.max(
+      1,
+      maximumPayloadChunkBytes,
+    );
     for (
       let payloadOffset = 0;
       payloadOffset < payloadBytes.length;
@@ -43,5 +46,5 @@ class $BracketedPasteInput {
 
 export namespace BracketedPasteInput {
   export const $Class = $BracketedPasteInput;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }

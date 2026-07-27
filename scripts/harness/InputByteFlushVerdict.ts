@@ -58,5 +58,5 @@ class $InputByteFlushVerdict {
 
 export namespace InputByteFlushVerdict {
   export const $Class = $InputByteFlushVerdict;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }

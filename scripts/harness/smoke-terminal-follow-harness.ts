@@ -1001,7 +1001,7 @@ class $SmokeTerminalFollowHarness {
 
 export namespace SmokeTerminalFollowHarness {
   export const $Class = $SmokeTerminalFollowHarness;
-  export const Class = $Class;
+  export let Class = $Class;
 }
 
 interface ScrollbackToolSnapshot {

@@ -67,7 +67,7 @@ if ! "$bun_binary" scripts/check-static-getter-naming.ts; then
 fi
 
 # 1.8) IMMUTABLE INHERITANCE ANCHOR: an extends clause must never snapshot the mutable Class slot.
-mutable_class_extends=$(grep -rnE 'extends [A-Za-z_][A-Za-z0-9_]*\.Class\b' src --include='*.ts' || true)
+mutable_class_extends=$(grep -rnE 'extends [A-Za-z_][A-Za-z0-9_]*\.Class\b' src scripts --include='*.ts' || true)
 if [ -n "$mutable_class_extends" ]; then
   echo "CONVENTIONS FAIL: extends uses a mutable Class slot — extend the immutable \$Class anchor:"
   echo "$mutable_class_extends"
@@ -78,7 +78,7 @@ fi
 #      wrapper, or a downstream customization replaces it in place. `const` freezes the slot and
 #      makes the class un-extensible, which contradicts the always-extensible invariant. The
 #      IMMUTABLE anchor is `$Class` (always `const`); `Class` is always `let`.
-frozen_class_slot=$(grep -rnE '^\s*(export )?const Class\b\s*=' src --include='*.ts' || true)
+frozen_class_slot=$(grep -rnE '^\s*(export )?const Class\b\s*=' src scripts --include='*.ts' || true)
 if [ -n "$frozen_class_slot" ]; then
   echo "CONVENTIONS FAIL: the Class slot is const — it must be \`export let Class = …\` so a"
   echo "double, a Reactive wrapper, or a customization can replace it (\$Class stays const):"

@@ -16,7 +16,7 @@ ${classBody}
 
 export namespace ${className} {
   export const $Class = $${className};
-  export const Class = $${className};
+  export let Class = $${className};
 }
 
 export interface ${className}Options {
@@ -33,7 +33,7 @@ class $${className} {
 
 export namespace ${className} {
   export const $Class = Static($${className});
-  export const Class = $Class;
+  export let Class = $Class;
 }
 `;
 }
@@ -255,7 +255,7 @@ class $Example {}
 class $Replacement {}
 export namespace Example {
   export const $Class = $Example;
-  export const Class = $Replacement;
+  export let Class = $Replacement;
 }
 `,
         },

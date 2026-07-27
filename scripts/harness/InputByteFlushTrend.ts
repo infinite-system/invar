@@ -76,7 +76,7 @@ class $InputByteFlushTrend {
 
 export namespace InputByteFlushTrend {
   export const $Class = $InputByteFlushTrend;
-  export const Class = Static($Class);
+  export let Class = Static($Class);
 }
 
 export interface InputByteFlushBaseline {
