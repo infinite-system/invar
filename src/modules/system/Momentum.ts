@@ -163,7 +163,7 @@ class $Momentum {
     const curveGainedVelocity = deltaRows * options.impulse * gainScale;
     let restEquivalentGestureVelocityAfterImpulse =
       restEquivalentGestureVelocity + curveGainedVelocity;
-    // invariant: The glide tail is bounded and effective (scroll.invariants.md)
+    // invariant: The glide tail is bounded and effective (src/modules/ui/scroll.invariants.md)
     if (!gestureContinues && deltaRows !== 0) {
       // The first accepted notch must integrate one row before either boundary can halt it.
       const decayRatePerSecond = -Math.log(options.decayPerSec);

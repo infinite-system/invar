@@ -284,6 +284,16 @@ and strings.
   technical necessity.
 
 ## Contracts (invariants)
+- **A record lives WITH its domain, never in the root.** `src/modules/<domain>/<domain>.invariants.md`
+  (and `.lattice.md` beside it); a record for a non-module domain lives in that domain's directory
+  (`scripts/harness/harness.invariants.md`). The repo root is reserved for whole-repo `project.*`
+  records — a domain record there is a misfile, not a variant. A domain that spans modules is
+  anchored in the folder of its primary surface and keeps the domain's own name
+  (`src/modules/ui/scroll.invariants.md` — the generator is `system/Momentum.ts`, the surface is ui).
+- **Cite records by ROOT-RELATIVE path**, never by bare filename: `(src/modules/ui/ui.invariants.md)`.
+  A bare name resolves only while the record happens to sit in the root, so it silently orphans the
+  annotation the moment the record is filed correctly. `--refs` is the authority; it counts
+  resolutions, so a moved record shows up as a drop in the total.
 - Contract-first for new modules; records follow the /invariants schema (both section headings;
   Evidence + Impossible-if-true required; unnumbered declarative names; charset letters/digits/
   spaces/hyphens). Code that upholds a record carries `// invariant: <exact name> (<path>)`.
