@@ -547,7 +547,10 @@ rapid_row_crossings = [
 ]
 rapid_continuous_ceiling_travel = (
     rapid_report['verticalFlingCeiling']
-    * rapid_report['maximumGlideDurationMilliseconds']
+    * (
+        rapid_report['maximumGlideDurationMilliseconds']
+        - rapid_report['glideCapEasingDurationMilliseconds'] / 2
+    )
     / 1000
 )
 rapid_travel_floor = math.ceil(

@@ -76,8 +76,76 @@ describe('scroll-momentum', () => {
     }
 
     expect(frameCount).toBe(27);
-    expect(rowsTravelled).toBe(197);
+    expect(rowsTravelled).toBe(181);
     expect(Momentum.Class.isMoving(currentMomentum)).toBe(false);
+  });
+
+  test('the glide cap eases a ceiling velocity to zero before halting', () => {
+    class $UnsoftenedMomentum extends Momentum.$Class {
+      protected static override get GLIDE_CAP_EASING_DURATION_MILLISECONDS() {
+        return 0;
+      }
+    }
+    const cappedNoDecayOptions = {
+      ...NO_DECAY,
+      maximumGlideDurationMilliseconds: 200,
+    };
+    const rowCrossingSequence = (
+      momentumClass: typeof Momentum.$Class,
+    ): number[] => {
+      let momentum: ScrollMomentum = {
+        velocity: 100,
+        residual: 0,
+        millisecondsSinceLastImpulse: 0,
+      };
+      const rowsCrossed: number[] = [];
+      while (Momentum.Class.isMoving(momentum)) {
+        const stepped = momentumClass.stepMomentum(
+          momentum,
+          0.05,
+          cappedNoDecayOptions,
+        );
+        momentum = stepped.momentum;
+        rowsCrossed.push(stepped.rows);
+      }
+      return rowsCrossed;
+    };
+    const tapersToZero = (rowsCrossed: readonly number[]): boolean =>
+      rowsCrossed.every(
+        (rows, rowIndex) => rowIndex === 0 || rows < rowsCrossed[rowIndex - 1]!,
+      );
+
+    const unsoftenedRows = rowCrossingSequence($UnsoftenedMomentum);
+    expect(unsoftenedRows).toEqual([5, 5, 5, 5]);
+    expect(tapersToZero(unsoftenedRows)).toBe(false);
+    const easedRows = rowCrossingSequence(Momentum.Class);
+    expect(easedRows).toEqual([5, 4, 2, 1]);
+    expect(tapersToZero(easedRows)).toBe(true);
+  });
+
+  test('representative glide caps halt no later than their deadline', () => {
+    for (const maximumGlideDurationMilliseconds of [100, 900, 2_000]) {
+      const options = {
+        ...Momentum.Class.verticalOptions,
+        maximumGlideDurationMilliseconds,
+      };
+      let momentum: ScrollMomentum = {
+        ...Momentum.Class.AT_REST,
+        velocity: options.max,
+        ceilingSustainingVelocity: options.max * 100,
+      };
+      while (Momentum.Class.isMoving(momentum)) {
+        momentum = Momentum.Class.stepMomentum(
+          momentum,
+          0.01,
+          options,
+        ).momentum;
+      }
+
+      expect(momentum.millisecondsSinceLastImpulse).toBeLessThanOrEqual(
+        maximumGlideDurationMilliseconds + Number.EPSILON,
+      );
+    }
   });
 
   test('an impulse sets velocity in the wheel direction and accumulates progressively', () => {

@@ -76,6 +76,7 @@ const VERTICAL_FLING_CEILING = Number(
 const MAXIMUM_GLIDE_DURATION_MILLISECONDS = Number(
   process.env.SMOOTHNESS_MAXIMUM_GLIDE_DURATION ?? '900',
 );
+const GLIDE_CAP_EASING_DURATION_MILLISECONDS = 150;
 // Bootstrap caps every animation integration step at 100 milliseconds. A
 // delayed frame can therefore carry up to this much motion; target FPS is not
 // a maximum frame duration.
@@ -2373,6 +2374,7 @@ const report = {
   applicationRepositoryRoot: APPLICATION_REPOSITORY_ROOT,
   verticalFlingCeiling: VERTICAL_FLING_CEILING,
   maximumGlideDurationMilliseconds: MAXIMUM_GLIDE_DURATION_MILLISECONDS,
+  glideCapEasingDurationMilliseconds: GLIDE_CAP_EASING_DURATION_MILLISECONDS,
   maximumAnimationDeltaTimeSeconds: MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,
   maximumAnimationFrameTravelRows: Math.ceil(
     VERTICAL_FLING_CEILING * MAXIMUM_ANIMATION_DELTA_TIME_SECONDS,

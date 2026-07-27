@@ -224,17 +224,20 @@ selectable value still lets one accepted wheel notch produce visible motion.
 100–2,000 milliseconds in 50 millisecond steps.
 
 **Mechanism:** `addImpulse` floors a from-rest notch at the velocity required
-to integrate one row before either decay or the configured tail can halt it.
-`stepMomentum` limits integrated frame time to the remaining tail and halts
-when elapsed time reaches the setting. `SettingsPanel` supplies the bounded
-numeric selector, and every momentum owner reads the live setting into its
-options.
+to integrate one row before either decay or the configured tail can halt it,
+including the distance removed by cap easing. `stepMomentum` integrates a
+linear velocity ramp over the final 150 milliseconds, limits frame time to
+the remaining tail, and reaches zero when elapsed time reaches the setting.
+`SettingsPanel` supplies the bounded numeric selector, and every momentum
+owner reads the live setting into its options.
 
 **Generates:** A finite tail after dense input; one discoverable control shared
-by every scroll surface; a short setting that remains a short motion rather
-than becoming dead input.
+by every scroll surface; a continuous stop when the duration boundary wins; a
+short setting that remains a short motion rather than becoming dead input.
 
 **Evidence:** `src/modules/system/Momentum.ts`;
+`src/modules/system/Momentum.test.ts` (`the glide cap eases a ceiling velocity
+to zero before halting`);
 `src/modules/settings/Settings.ts`;
 `src/modules/settings/SettingsPanel.test.ts`;
 `scripts/harness/smoke-settings-applied-harness.ts`;
@@ -242,8 +245,8 @@ than becoming dead input.
 `scripts/behavioral-contracts.sh`; commits `3af155c` and `2442d8f`.
 
 **Impossible if true:** Momentum continuing past the selected tail; a
-selectable duration swallowing an accepted wheel notch without visible
-motion.
+ceiling-reaching glide stopping at a non-tapered row-crossing rate; a
+selectable duration swallowing an accepted wheel notch without visible motion.
 
 **Verification:** `bun test src/modules/system/Momentum.test.ts
 src/modules/settings/Settings.test.ts
@@ -270,9 +273,10 @@ unit tests may assert exact frame counts because they control phase and time.
 
 **Mechanism:** Contracts compare event, impulse, projection, row-travel, and
 attributed-work counts. The rapid-ceiling floor integrates the configured
-velocity and tail, then subtracts only the sub-row residual the integrator may
-discard:
-`ceil(verticalFlingCeiling * maximumGlideDurationMilliseconds / 1000 - 1)`.
+velocity over the full tail and the half-area of the final linear easing
+window, then subtracts only the sub-row residual the integrator may discard:
+`ceil(verticalFlingCeiling * (maximumGlideDurationMilliseconds -
+glideCapEasingDurationMilliseconds / 2) / 1000 - 1)`.
 The scale-travel comparison permits one maximum animation integration step:
 `ceil(verticalFlingCeiling * maximumAnimationDeltaTimeSeconds)`. Continuation
 input is placed by observed moving-frame count and row crossing, while its

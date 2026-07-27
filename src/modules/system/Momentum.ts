@@ -103,6 +103,10 @@ class $Momentum {
     return 150;
   }
 
+  protected static get GLIDE_CAP_EASING_DURATION_MILLISECONDS(): number {
+    return 150;
+  }
+
   /** Add a wheel/flick impulse in the direction of `deltaRows`; same-direction impulses accumulate.
    *  Gain is PROGRESSIVE: a notch from rest lands small (precise single-step feel) and a sustained
    *  gesture compounds toward the cap. The gain curve reads the current
@@ -168,14 +172,12 @@ class $Momentum {
       const maximumGlideDurationSeconds =
         (options.maximumGlideDurationMilliseconds ?? Number.POSITIVE_INFINITY) /
         1000;
-      const velocityToCrossBeforeGlideCap = Number.isFinite(
-        maximumGlideDurationSeconds,
-      )
-        ? decayRatePerSecond === 0
-          ? 1 / maximumGlideDurationSeconds
-          : decayRatePerSecond /
-            -Math.expm1(-decayRatePerSecond * maximumGlideDurationSeconds)
-        : 0;
+      const velocityToCrossBeforeGlideCap =
+        this.minimumVelocityToCrossBeforeGlideCap(
+          decayRatePerSecond,
+          maximumGlideDurationSeconds,
+          this.GLIDE_CAP_EASING_DURATION_MILLISECONDS / 1000,
+        );
       const singleRowVelocity = Math.max(
         velocityToCrossBeforeDecayHalt,
         velocityToCrossBeforeGlideCap,
@@ -250,6 +252,70 @@ class $Momentum {
     );
   }
 
+  protected static minimumVelocityToCrossBeforeGlideCap(
+    decayRatePerSecond: number,
+    maximumGlideDurationSeconds: number,
+    glideCapEasingDurationSeconds: number,
+  ): number {
+    if (!Number.isFinite(maximumGlideDurationSeconds)) return 0;
+    const boundedEasingDurationSeconds = Math.min(
+      Math.max(0, glideCapEasingDurationSeconds),
+      maximumGlideDurationSeconds,
+    );
+    if (decayRatePerSecond === 0) {
+      return (
+        1 / (maximumGlideDurationSeconds - boundedEasingDurationSeconds / 2)
+      );
+    }
+    const fullVelocityDurationSeconds =
+      maximumGlideDurationSeconds - boundedEasingDurationSeconds;
+    const fullVelocityDistancePerStartingVelocity =
+      -Math.expm1(-decayRatePerSecond * fullVelocityDurationSeconds) /
+      decayRatePerSecond;
+    if (boundedEasingDurationSeconds === 0) {
+      return 1 / fullVelocityDistancePerStartingVelocity;
+    }
+    const easingDistancePerVelocityAtEasingStart =
+      1 / decayRatePerSecond -
+      -Math.expm1(-decayRatePerSecond * boundedEasingDurationSeconds) /
+        (boundedEasingDurationSeconds * decayRatePerSecond ** 2);
+    const easingDistancePerStartingVelocity =
+      Math.exp(-decayRatePerSecond * fullVelocityDurationSeconds) *
+      easingDistancePerVelocityAtEasingStart;
+    return (
+      1 /
+      (fullVelocityDistancePerStartingVelocity +
+        easingDistancePerStartingVelocity)
+    );
+  }
+
+  protected static glideCapEasedElapsedSeconds(
+    elapsedSeconds: number,
+    maximumGlideDurationSeconds: number,
+    glideCapEasingDurationSeconds: number,
+  ): number {
+    const boundedElapsedSeconds = Math.min(
+      Math.max(0, elapsedSeconds),
+      maximumGlideDurationSeconds,
+    );
+    const boundedEasingDurationSeconds = Math.min(
+      Math.max(0, glideCapEasingDurationSeconds),
+      maximumGlideDurationSeconds,
+    );
+    if (boundedEasingDurationSeconds === 0) return boundedElapsedSeconds;
+    const easingStartSeconds =
+      maximumGlideDurationSeconds - boundedEasingDurationSeconds;
+    if (boundedElapsedSeconds <= easingStartSeconds) {
+      return boundedElapsedSeconds;
+    }
+    const elapsedEasingSeconds = boundedElapsedSeconds - easingStartSeconds;
+    return (
+      easingStartSeconds +
+      elapsedEasingSeconds -
+      elapsedEasingSeconds ** 2 / (2 * boundedEasingDurationSeconds)
+    );
+  }
+
   /**
    * Advance one frame by `dtSec`. Returns the next momentum and the WHOLE number of rows to move this
    * frame (signed). Under constant velocity the row-crossings land at a constant frame interval
@@ -279,18 +345,39 @@ class $Momentum {
       (currentMomentum.millisecondsSinceLastImpulse ?? 0) + dtSec * 1000;
     const maximumGlideDurationMilliseconds =
       options.maximumGlideDurationMilliseconds ?? Number.POSITIVE_INFINITY;
+    const elapsedBeforeFrameMilliseconds =
+      currentMomentum.millisecondsSinceLastImpulse ?? 0;
     const availableDeltaTimeSeconds = Math.min(
       dtSec,
       Math.max(
         0,
-        (maximumGlideDurationMilliseconds -
-          (currentMomentum.millisecondsSinceLastImpulse ?? 0)) /
+        (maximumGlideDurationMilliseconds - elapsedBeforeFrameMilliseconds) /
           1000,
       ),
     );
+    const maximumGlideDurationSeconds = maximumGlideDurationMilliseconds / 1000;
+    const glideCapEasingDurationSeconds =
+      this.GLIDE_CAP_EASING_DURATION_MILLISECONDS / 1000;
+    const elapsedBeforeFrameSeconds = elapsedBeforeFrameMilliseconds / 1000;
+    const elapsedAfterFrameSeconds =
+      elapsedBeforeFrameSeconds + availableDeltaTimeSeconds;
+    const availableEasedDeltaTimeSeconds = Number.isFinite(
+      maximumGlideDurationSeconds,
+    )
+      ? this.glideCapEasedElapsedSeconds(
+          elapsedAfterFrameSeconds,
+          maximumGlideDurationSeconds,
+          glideCapEasingDurationSeconds,
+        ) -
+        this.glideCapEasedElapsedSeconds(
+          elapsedBeforeFrameSeconds,
+          maximumGlideDurationSeconds,
+          glideCapEasingDurationSeconds,
+        )
+      : availableDeltaTimeSeconds;
     const advanced =
       currentMomentum.residual +
-      currentMomentum.velocity * availableDeltaTimeSeconds;
+      currentMomentum.velocity * availableEasedDeltaTimeSeconds;
     const rows = Math.trunc(advanced);
     let residual = advanced - rows;
     const decayedVelocity =
