@@ -176,12 +176,18 @@ interface SurfaceMeasurement {
   readonly indentGuides: true;
   readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
+  readonly singleNotch: SingleNotchMeasurement;
   readonly gestures: readonly GestureMeasurement[];
   readonly accumulationFlicks: readonly AccumulationFlickMeasurement[];
   readonly continuationBoundaries: readonly ContinuationBoundaryMeasurement[];
   readonly continuousInputBursts: readonly ContinuousInputBurstMeasurement[];
   readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
   readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface SingleNotchMeasurement {
+  readonly appliedImpulseCount: number;
+  readonly rowsTravelled: number;
 }
 
 interface ContinuousInputBurstMeasurement {
@@ -286,6 +292,10 @@ function proveContinuousInputCoalescingCanFail(): string {
       indentGuides: true,
       versionControlMarks: surface === 'editor',
       fixtureLineCount,
+      singleNotch: {
+        appliedImpulseCount: 1,
+        rowsTravelled: 1,
+      },
       gestures: [],
       accumulationFlicks: [],
       continuationBoundaries: [],
@@ -1843,6 +1853,19 @@ async function measureSurface(
       );
     }
     const statusField = scrollStatusField(surface);
+    const impulseCountField =
+      surface === 'editor'
+        ? 'editorVerticalScrollImpulseCount'
+        : 'diffVerticalScrollImpulseCount';
+    const statusBeforeSingleNotch = JSON.parse(
+      readFileSync(statusPath, 'utf8'),
+    ) as Record<string, unknown>;
+    const scrollTopBeforeSingleNotch = Number(
+      statusBeforeSingleNotch[statusField] ?? 0,
+    );
+    const impulseCountBeforeSingleNotch = Number(
+      statusBeforeSingleNotch[impulseCountField] ?? 0,
+    );
     driver.sendMouseWithoutFrameExpectation({
       kind: 'wheel',
       column: EDITOR_WHEEL_COLUMN,
@@ -1852,9 +1875,23 @@ async function measureSurface(
     await awaitStatusCondition(
       statusPath,
       `the ${surface} surface to consume wheel input before measurement`,
-      (status) => Number(status[statusField]) > 0,
+      (status) =>
+        Number(status[impulseCountField]) ===
+          impulseCountBeforeSingleNotch + 1 &&
+        status.workspaceScrollMomentumAtRest === true,
       60_000,
     );
+    const statusAfterSingleNotch = JSON.parse(
+      readFileSync(statusPath, 'utf8'),
+    ) as Record<string, unknown>;
+    const singleNotch = {
+      appliedImpulseCount:
+        Number(statusAfterSingleNotch[impulseCountField]) -
+        impulseCountBeforeSingleNotch,
+      rowsTravelled:
+        Number(statusAfterSingleNotch[statusField]) -
+        scrollTopBeforeSingleNotch,
+    };
 
     const gestures: GestureMeasurement[] = [];
     let accumulationFlicks: AccumulationFlickMeasurement[] = [];
@@ -1953,6 +1990,7 @@ async function measureSurface(
         fixtureShape === 'fold-dense' &&
         VERSION_CONTROL_MARKS_ENABLED,
       fixtureLineCount,
+      singleNotch,
       gestures,
       accumulationFlicks,
       continuationBoundaries,

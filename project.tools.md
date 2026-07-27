@@ -29,6 +29,8 @@ machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACE
 `SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation. The nested-JSON
 editor case initializes a repository by default and verifies that
 version-control marks, indent guides, and fold controls are present together.
+Every case also reports the applied-impulse count and visible row travel for
+its one-notch preflight, including cap settings whose settled travel is zero.
 `SMOOTHNESS_BURST_DURATIONS` switches to sustained-input measurement: it
 reports completed-frame counts in each `SMOOTHNESS_BURST_WINDOW`, the gap
 sequence, longest starvation, events sent, impulses applied, projection

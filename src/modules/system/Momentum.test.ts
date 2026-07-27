@@ -315,6 +315,37 @@ describe('scroll-momentum', () => {
     expect(totalRows).toBeLessThanOrEqual(3); // still a precision step, not a fling
   });
 
+  test('one queued notch crosses a row across every selectable glide cap', () => {
+    for (
+      let maximumGlideDurationMilliseconds = 100;
+      maximumGlideDurationMilliseconds <= 2_000;
+      maximumGlideDurationMilliseconds += 50
+    ) {
+      const options = {
+        ...Momentum.Class.verticalOptions,
+        maximumGlideDurationMilliseconds,
+      };
+      let momentum = Momentum.Class.AT_REST;
+      Momentum.Class.queueImpulse(momentum, 1, 0);
+      let rowsTravelled = 0;
+      for (
+        let frameNumber = 0;
+        frameNumber < 100 && Momentum.Class.isMoving(momentum);
+        frameNumber++
+      ) {
+        const stepped = Momentum.Class.stepMomentum(momentum, 1 / 30, options);
+        momentum = stepped.momentum;
+        rowsTravelled += stepped.rows;
+      }
+
+      expect(momentum.restEquivalentGestureImpulseCount).toBe(1);
+      expect(rowsTravelled).toBeGreaterThanOrEqual(1);
+      if (maximumGlideDurationMilliseconds === 900) {
+        expect(rowsTravelled).toBe(1);
+      }
+    }
+  });
+
   test('velocity is capped', () => {
     const momentum = Momentum.Class.addImpulse(
       Momentum.Class.AT_REST,
