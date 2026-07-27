@@ -9,7 +9,7 @@ import { ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
-const darkPalette = ThemePalettes.Class.dark;
+const darkPalette = ThemePalettes.Class.DARK;
 
 /** A fake scroll engine — records the scroll commands the pane issues, without any renderer. */
 class FakePort implements AgentScrollPort {

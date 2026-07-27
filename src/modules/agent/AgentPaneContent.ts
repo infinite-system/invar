@@ -46,23 +46,23 @@ import type { AgentTerminalFollowMode } from '../settings/Settings';
 // invariant: Agent footer stays within its pane (src/modules/agent/agent.invariants.md)
 
 class $AgentPaneContent implements PaneContent {
-  static get transcriptFindTargetIdentifier(): string {
+  static get TRANSCRIPT_FIND_TARGET_IDENTIFIER(): string {
     return 'agent-transcript';
   }
 
-  protected static get transcriptPadLeft(): number {
+  protected static get TRANSCRIPT_PAD_LEFT(): number {
     return 2;
   }
 
-  protected static get transcriptPadRight(): number {
+  protected static get TRANSCRIPT_PAD_RIGHT(): number {
     return 2;
   }
 
-  protected static get composerChromeRows(): number {
+  protected static get COMPOSER_CHROME_ROWS(): number {
     return 5;
   }
 
-  protected static get waitingCycleMilliseconds(): number {
+  protected static get WAITING_CYCLE_MILLISECONDS(): number {
     return 1500;
   }
 
@@ -182,7 +182,7 @@ class $AgentPaneContent implements PaneContent {
       void this.transcriptSearchPort?.findBar.open.value;
       const transcriptSearchEngine =
         this.transcriptSearchPort?.findBar.engineFor(
-          this.agentPaneContentClass.transcriptFindTargetIdentifier,
+          this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
         );
       void transcriptSearchEngine?.query.value;
       void transcriptSearchEngine?.matches.value;
@@ -258,7 +258,7 @@ class $AgentPaneContent implements PaneContent {
    *  the target declines, the markdown preview's exact shape) plus the pane's own reveal writer. */
   findTarget(): FindBarTarget {
     return {
-      identifier: this.agentPaneContentClass.transcriptFindTargetIdentifier,
+      identifier: this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
       document: this.transcriptSearchDocument,
       replaceAllowed: false,
       revealMatch: (match) => this.revealTranscriptMatch(match),
@@ -270,7 +270,7 @@ class $AgentPaneContent implements PaneContent {
   protected transcriptSearchEngine(): FindInBuffer.Instance | null {
     return (
       this.transcriptSearchPort?.findBar.engineFor(
-        this.agentPaneContentClass.transcriptFindTargetIdentifier,
+        this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER,
       ) ?? null
     );
   }
@@ -301,7 +301,7 @@ class $AgentPaneContent implements PaneContent {
     const barOpenOnTranscript =
       findBar.open.value &&
       findBar.target?.identifier ===
-        this.agentPaneContentClass.transcriptFindTargetIdentifier;
+        this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER;
     if (!barOpenOnTranscript && engine.query.value.length === 0) return null;
     const searchableText =
       AgentTranscriptSearch.Class.searchableLineTexts(lines).join('\n');
@@ -372,13 +372,13 @@ class $AgentPaneContent implements PaneContent {
     // rule · composer (1..cap) · rule · mode line · blank(bottom pad). Chrome takes fixed rows; body flexes.
     // The composer is indented by the same left gutter, so it wraps to width − padLeft.
     const composerLayout = this.composer.layout(
-      context.width - this.agentPaneContentClass.transcriptPadLeft,
+      context.width - this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT,
     );
     const composerRows = composerLayout.rowCount;
     const bodyHeight = Math.max(
       1,
       context.height -
-        this.agentPaneContentClass.composerChromeRows -
+        this.agentPaneContentClass.COMPOSER_CHROME_ROWS -
         composerRows -
         indicatorRows,
     );
@@ -391,8 +391,8 @@ class $AgentPaneContent implements PaneContent {
     const textWidth = Math.max(
       1,
       context.width -
-        this.agentPaneContentClass.transcriptPadLeft -
-        this.agentPaneContentClass.transcriptPadRight,
+        this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT -
+        this.agentPaneContentClass.TRANSCRIPT_PAD_RIGHT,
     );
     const lines = AgentTranscriptProjection.Class.project(
       this.session.transcript,
@@ -468,8 +468,8 @@ class $AgentPaneContent implements PaneContent {
     const ruleWidth = Math.max(
       1,
       context.width -
-        this.agentPaneContentClass.transcriptPadLeft -
-        this.agentPaneContentClass.transcriptPadRight,
+        this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT -
+        this.agentPaneContentClass.TRANSCRIPT_PAD_RIGHT,
     );
     const rule = ThemeIcons.Class.agentTranscriptIconsFor(
       context.glyphLevel,
@@ -478,7 +478,7 @@ class $AgentPaneContent implements PaneContent {
     // The composer caret sits on its last visible row inside the frame, shifted right by the left gutter.
     this.lastCaret = {
       column:
-        this.agentPaneContentClass.transcriptPadLeft +
+        this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT +
         composerLayout.caretColumn,
       row: this.lastComposerStart + composerLayout.caretRow,
     };
@@ -486,7 +486,7 @@ class $AgentPaneContent implements PaneContent {
     const modeLineRow = this.lastComposerStart + composerLayout.rowCount + 1; // below composer + bottom rule
     return AgentPaneRenderer.Class.render({
       palette: context.palette,
-      padLeft: this.agentPaneContentClass.transcriptPadLeft,
+      padLeft: this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT,
       bodyRows,
       selectionRanges,
       searchHighlights,
@@ -516,12 +516,12 @@ class $AgentPaneContent implements PaneContent {
 
     const segments: ThinkingSegment[] = [
       {
-        text: ' '.repeat(this.agentPaneContentClass.transcriptPadLeft),
+        text: ' '.repeat(this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT),
         color: context.palette.dim,
         bold: false,
       },
     ];
-    let modeLineColumn = this.agentPaneContentClass.transcriptPadLeft;
+    let modeLineColumn = this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT;
     const maximumModeLineColumn = Math.max(0, Math.floor(context.width));
     const appendText = (
       text: string,
@@ -601,7 +601,7 @@ class $AgentPaneContent implements PaneContent {
       const searchIsOpen =
         this.transcriptSearchPort.findBar.open.value &&
         this.transcriptSearchPort.findBar.target?.identifier ===
-          this.agentPaneContentClass.transcriptFindTargetIdentifier;
+          this.agentPaneContentClass.TRANSCRIPT_FIND_TARGET_IDENTIFIER;
       const searchRange = appendText(
         searchButtonText,
         searchIsOpen ? context.palette.accent : context.palette.info,
@@ -641,7 +641,7 @@ class $AgentPaneContent implements PaneContent {
     if (pending.length === 0) return null;
 
     const cycleIndex =
-      Math.floor(now / this.agentPaneContentClass.waitingCycleMilliseconds) %
+      Math.floor(now / this.agentPaneContentClass.WAITING_CYCLE_MILLISECONDS) %
       pending.length;
     const active = pending[cycleIndex]!;
     const startMilliseconds = this.toolStartMilliseconds.get(active.id) ?? now;
@@ -652,7 +652,7 @@ class $AgentPaneContent implements PaneContent {
     // Pulse for the first ~300ms of each cycle window (the switch moment), only when there is >1 to cycle.
     const highlight =
       pending.length > 1 &&
-      now % this.agentPaneContentClass.waitingCycleMilliseconds < 300;
+      now % this.agentPaneContentClass.WAITING_CYCLE_MILLISECONDS < 300;
     return AgentThinkingIndicator.Class.composeWaitingNote({
       toolName: active.name,
       elapsedSeconds,
@@ -896,7 +896,7 @@ class $AgentPaneContent implements PaneContent {
       line: this.transcriptLineAtRow(localRow),
       column: Math.max(
         0,
-        localColumn - this.agentPaneContentClass.transcriptPadLeft,
+        localColumn - this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT,
       ),
     };
   }
@@ -924,7 +924,7 @@ class $AgentPaneContent implements PaneContent {
   // is inset by the left gutter too, so the pointer column subtracts it before mapping into composer space.
   composerPointAt(localColumn: number, visibleRow: number): SelectionPoint {
     return this.composer.pointAt(
-      localColumn - this.agentPaneContentClass.transcriptPadLeft,
+      localColumn - this.agentPaneContentClass.TRANSCRIPT_PAD_LEFT,
       visibleRow,
     );
   }
