@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
   StyledText,
@@ -66,10 +67,6 @@ class $DiffView {
       DiffAlignmentResult,
       Map<number, readonly (AlignedRowKind | null)[]>
     >();
-    Object.defineProperty(this, '$overviewKindsByAlignment', {
-      configurable: true,
-      value: overviewKindsByAlignment,
-    });
     return overviewKindsByAlignment;
   }
 
@@ -1696,8 +1693,8 @@ class $DiffView {
 }
 
 export namespace DiffView {
-  export const $Class = $DiffView;
-  export let Class = Reactive($DiffView);
+  export const $Class = Static($DiffView);
+  export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
 

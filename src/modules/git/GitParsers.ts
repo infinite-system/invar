@@ -291,8 +291,8 @@ class $GitParsers {
 }
 
 export namespace GitParsers {
-  export const $Class = $GitParsers;
-  export const Class = Static($GitParsers);
+  export const $Class = Static($GitParsers);
+  export const Class = $Class;
 }
 
 export interface GitFileRecord {

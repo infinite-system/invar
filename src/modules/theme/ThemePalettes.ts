@@ -20,11 +20,6 @@ import type { ColorDepth } from './TerminalCapabilities';
 // both secondary UI text (which must stay readable -> #787C99) and inactive line numbers (spec would
 // prefer a darker #363B54); readability wins, so inactive line numbers ride a touch brighter than spec.
 class $ThemePalettes {
-  protected static cache<Value>(propertyName: string, value: Value): Value {
-    Object.defineProperty(this, propertyName, { configurable: true, value });
-    return value;
-  }
-
   static get DARK(): Palette {
     return {
       name: 'invar-dark',
@@ -104,10 +99,10 @@ class $ThemePalettes {
   }
 
   protected static get $palettes(): Readonly<Record<string, Palette>> {
-    return this.cache('$palettes', {
+    return {
       [this.DARK.name]: this.DARK,
       [this.LIGHT.name]: this.LIGHT,
-    });
+    };
   }
 
   static get palettes(): Readonly<Record<string, Palette>> {
@@ -208,8 +203,8 @@ class $ThemePalettes {
 }
 
 export namespace ThemePalettes {
-  export const $Class = $ThemePalettes;
-  export const Class = Static($ThemePalettes);
+  export const $Class = Static($ThemePalettes);
+  export const Class = $Class;
 }
 
 export interface Palette {

@@ -40,9 +40,17 @@ class $AgentProviderRegistry {
       return { engine: 'codex', binaryPath: codexPath, fellBack: false };
     const askedConcrete = wanted === 'claude' || wanted === 'codex';
     if (claudePath)
-      return { engine: 'claude', binaryPath: claudePath, fellBack: askedConcrete };
+      return {
+        engine: 'claude',
+        binaryPath: claudePath,
+        fellBack: askedConcrete,
+      };
     if (codexPath)
-      return { engine: 'codex', binaryPath: codexPath, fellBack: askedConcrete };
+      return {
+        engine: 'codex',
+        binaryPath: codexPath,
+        fellBack: askedConcrete,
+      };
     return { engine: 'echo', binaryPath: '', fellBack: askedConcrete };
   }
 
@@ -63,14 +71,16 @@ class $AgentProviderRegistry {
     if (availableEngines.length < 2) return null;
     const currentIndex = availableEngines.indexOf(current);
     const nextEngine =
-      availableEngines[(Math.max(0, currentIndex) + 1) % availableEngines.length];
+      availableEngines[
+        (Math.max(0, currentIndex) + 1) % availableEngines.length
+      ];
     return nextEngine && nextEngine !== current ? nextEngine : null;
   }
 }
 
 export namespace AgentProviderRegistry {
-  export const $Class = $AgentProviderRegistry;
-  export const Class = Static($AgentProviderRegistry);
+  export const $Class = Static($AgentProviderRegistry);
+  export const Class = $Class;
 }
 
 /** A concrete, runnable engine (the echo is the always-available hermetic fallback). */

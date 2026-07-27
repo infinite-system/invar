@@ -41,8 +41,8 @@ class $AgentTranscriptSearch {
 }
 
 export namespace AgentTranscriptSearch {
-  export const $Class = $AgentTranscriptSearch;
-  export const Class = Static($AgentTranscriptSearch);
+  export const $Class = Static($AgentTranscriptSearch);
+  export const Class = $Class;
 }
 
 export interface TranscriptMatchHighlight {

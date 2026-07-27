@@ -56,26 +56,25 @@ instance class.
 **Scope:** `system/*` capability classes vs stateful non-reactive classes elsewhere
 (`PieceTable`, `LspProcess`, `UndoStore`, `GitWatcher`, …).
 
-**Mechanism:** `Static()` (vendored `system/Static.ts`, 39 lines from ivue's experiment) lazily
-binds each visible static method to a selected subclass; first read binds, later calls are plain
-bound functions (~native cost). Realizes `project.decisions.md` #7 (capability vs plain vs
-reactive). The discriminator: stateless-behavior-bag → `Static()`; has-instances-and-lifetime →
-plain instance class, `let Class = $Class`, never `Static()`.
+**Mechanism:** `Static()` from `ivue/extras` wraps the immutable `$Class` anchor for every class
+declaring statics. It lazily binds visible static methods and caches get-only `$` accessors per
+receiving class. `Class` remains the selected mutable seam. Realizes `project.decisions.md` #7
+(capability vs plain vs reactive) without making the inheritance anchor mutable.
 
 **Generates:** callback-safe passable capability methods (command actions, key handlers, watcher
 callbacks); native static `super` + kernel composition of capabilities; the `system/*` `Static()`
 wrapping.
 
 **Evidence:** `system/{Files,Clock,Environment,Logging,Processes,StatusChannel}.ts` →
-`let Class = Static($X)`; `system/Static.ts` vendored. No capability class holds instance state
-or uses `this.#private` (which `Static()`'s subclass receiver would reject).
+`const $Class = Static($X); Class = $Class`. No capability class holds instance state or uses
+`this.#private` (which `Static()`'s subclass receiver would reject).
 
 **Impossible if true:** a capability method that loses its `this`/binding when passed as a
 detached callback; a `system/*` capability class that holds per-instance state; a stateful
 class (identity + lifetime) wrapped in `Static()`.
 
 **Verification:** a test that retains a capability method as a detached callback and asserts it
-still executes correctly; grep asserts stateful classes are not `Static()`-wrapped.
+still executes correctly; the static-cache contract test; the namespace grammar checker.
 
 **Status:** provisional
 

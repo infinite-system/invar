@@ -13,7 +13,15 @@ import {
   mkdtempSync,
   rmSync,
 } from 'node:fs';
-import { join, resolve, relative, basename, extname, dirname, sep } from 'node:path';
+import {
+  join,
+  resolve,
+  relative,
+  basename,
+  extname,
+  dirname,
+  sep,
+} from 'node:path';
 import { tmpdir } from 'node:os';
 
 class $Files {
@@ -147,8 +155,8 @@ class $Files {
 }
 
 export namespace Files {
-  export const $Class = $Files;
-  export let Class = Static($Files);
+  export const $Class = Static($Files);
+  export let Class = $Class;
 }
 
 export interface DirEntry {

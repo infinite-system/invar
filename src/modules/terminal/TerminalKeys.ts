@@ -36,10 +36,6 @@ class $TerminalKeys {
       delete: `${controlSequenceIntroducer}3~`,
       insert: `${controlSequenceIntroducer}2~`,
     };
-    Object.defineProperty(this, '$namedKeyBytes', {
-      configurable: true,
-      value: namedKeyBytes,
-    });
     return namedKeyBytes;
   }
 
@@ -81,6 +77,6 @@ class $TerminalKeys {
 }
 
 export namespace TerminalKeys {
-  export const $Class = $TerminalKeys;
-  export const Class = Static($TerminalKeys);
+  export const $Class = Static($TerminalKeys);
+  export const Class = $Class;
 }

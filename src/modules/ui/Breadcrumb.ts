@@ -139,8 +139,8 @@ class $Breadcrumb {
 }
 
 export namespace Breadcrumb {
-  export const $Class = $Breadcrumb;
-  export const Class = Static($Breadcrumb);
+  export const $Class = Static($Breadcrumb);
+  export const Class = $Class;
 }
 
 export interface BreadcrumbPathSegment {

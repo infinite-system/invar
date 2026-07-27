@@ -53,8 +53,8 @@ class $GitWindow {
 }
 
 export namespace GitWindow {
-  export const $Class = $GitWindow;
-  export const Class = Static($GitWindow);
+  export const $Class = Static($GitWindow);
+  export const Class = $Class;
 }
 
 export interface FetchRange {

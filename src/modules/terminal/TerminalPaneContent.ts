@@ -9,6 +9,7 @@
 // invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
 // invariant: Child terminal modes own wheel input (src/modules/terminal/terminal.invariants.md)
 // invariant: Terminal follow obeys the live user mode (src/modules/agent/agent.invariants.md)
+import { Static } from 'ivue/extras';
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
@@ -353,7 +354,7 @@ class $TerminalPaneContent implements PaneContent {
 }
 
 export namespace TerminalPaneContent {
-  export const $Class = $TerminalPaneContent;
+  export const $Class = Static($TerminalPaneContent);
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

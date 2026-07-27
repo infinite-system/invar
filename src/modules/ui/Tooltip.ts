@@ -7,6 +7,7 @@
 // click or alter routing.
 //
 // invariant: A tooltip never intercepts input (src/modules/ui/ui.invariants.md)
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 class $Tooltip {
@@ -94,7 +95,7 @@ class $Tooltip {
   }
 }
 export namespace Tooltip {
-  export const $Class = $Tooltip;
+  export const $Class = Static($Tooltip);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

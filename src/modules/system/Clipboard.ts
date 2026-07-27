@@ -30,11 +30,14 @@ class $Clipboard {
   /** Copy text to the host terminal with OSC 52, plus a local system tool when one is available. */
   static async copy(text: string): Promise<boolean> {
     this.internalBuffer = text;
-    this.lastCopiedTextHash = createHash('sha256').update(text, 'utf8').digest('hex');
+    this.lastCopiedTextHash = createHash('sha256')
+      .update(text, 'utf8')
+      .digest('hex');
     let emittedOsc52 = false;
     try {
       const base64Payload = Buffer.from(text, 'utf8').toString('base64');
-      emittedOsc52 = this.osc52Emitter?.(`\x1b]52;c;${base64Payload}\x07`) ?? false;
+      emittedOsc52 =
+        this.osc52Emitter?.(`\x1b]52;c;${base64Payload}\x07`) ?? false;
       if (emittedOsc52) this.lastBackend = 'osc52';
     } catch {
       /* a local tool below remains available */
@@ -42,7 +45,11 @@ class $Clipboard {
     const tool = await this.detectTool();
     if (tool) {
       try {
-        const subprocess = Processes.Class.spawn(tool.copy, { stdin: 'pipe', stdout: 'ignore', stderr: 'ignore' });
+        const subprocess = Processes.Class.spawn(tool.copy, {
+          stdin: 'pipe',
+          stdout: 'ignore',
+          stderr: 'ignore',
+        });
         subprocess.stdin.write(text);
         await subprocess.stdin.end();
         if ((await subprocess.exited) === 0) {
@@ -66,7 +73,10 @@ class $Clipboard {
     const tool = await this.detectTool();
     if (!tool) return this.internalBuffer;
     try {
-      const subprocess = Processes.Class.spawn(tool.paste, { stdout: 'pipe', stderr: 'ignore' });
+      const subprocess = Processes.Class.spawn(tool.paste, {
+        stdout: 'pipe',
+        stderr: 'ignore',
+      });
       const output = await new Response(subprocess.stdout).text();
       await subprocess.exited;
       return output;
@@ -83,7 +93,10 @@ class $Clipboard {
   protected static async detectTool(): Promise<ClipboardTool | null> {
     if (this.detectedTool !== undefined) return this.detectedTool;
     const candidates: Array<{ probe: string; tool: ClipboardTool }> = [
-      { probe: 'wl-copy', tool: { copy: ['wl-copy'], paste: ['wl-paste', '--no-newline'] } },
+      {
+        probe: 'wl-copy',
+        tool: { copy: ['wl-copy'], paste: ['wl-paste', '--no-newline'] },
+      },
       {
         probe: 'xclip',
         tool: {
@@ -93,7 +106,10 @@ class $Clipboard {
       },
       {
         probe: 'xsel',
-        tool: { copy: ['xsel', '--clipboard', '--input'], paste: ['xsel', '--clipboard', '--output'] },
+        tool: {
+          copy: ['xsel', '--clipboard', '--input'],
+          paste: ['xsel', '--clipboard', '--output'],
+        },
       },
       { probe: 'pbcopy', tool: { copy: ['pbcopy'], paste: ['pbpaste'] } },
     ];
@@ -109,10 +125,10 @@ class $Clipboard {
 
   protected static async commandExists(command: string): Promise<boolean> {
     try {
-      const subprocess = Processes.Class.spawn(
-        ['which', command],
-        { stdout: 'ignore', stderr: 'ignore' },
-      );
+      const subprocess = Processes.Class.spawn(['which', command], {
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
       return (await subprocess.exited) === 0;
     } catch {
       return false;
@@ -121,8 +137,8 @@ class $Clipboard {
 }
 
 export namespace Clipboard {
-  export const $Class = $Clipboard;
-  export let Class = Static($Class);
+  export const $Class = Static($Clipboard);
+  export let Class = $Class;
 }
 
 export interface ClipboardTool {

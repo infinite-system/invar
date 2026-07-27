@@ -1,3 +1,4 @@
+import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { DocumentHandle } from './DocumentHandle';
@@ -197,8 +198,8 @@ class $OpenBufferSet {
 }
 
 export namespace OpenBufferSet {
-  export const $Class = $OpenBufferSet;
-  export let Class = Reactive($OpenBufferSet);
+  export const $Class = Static($OpenBufferSet);
+  export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
 

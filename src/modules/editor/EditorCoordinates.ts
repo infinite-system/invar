@@ -18,37 +18,21 @@ class $EditorCoordinates {
 
   protected static get $boundariesMemo(): Map<string, number[]> {
     const boundariesMemo = new Map<string, number[]>();
-    Object.defineProperty(this, '$boundariesMemo', {
-      configurable: true,
-      value: boundariesMemo,
-    });
     return boundariesMemo;
   }
 
   protected static get $clustersMemo(): Map<string, string[]> {
     const clustersMemo = new Map<string, string[]>();
-    Object.defineProperty(this, '$clustersMemo', {
-      configurable: true,
-      value: clustersMemo,
-    });
     return clustersMemo;
   }
 
   protected static get $displayPrefixMemo(): Map<string, number[]> {
     const displayPrefixMemo = new Map<string, number[]>();
-    Object.defineProperty(this, '$displayPrefixMemo', {
-      configurable: true,
-      value: displayPrefixMemo,
-    });
     return displayPrefixMemo;
   }
 
   protected static get $lineWidthMemo(): Map<string, number> {
     const lineWidthMemo = new Map<string, number>();
-    Object.defineProperty(this, '$lineWidthMemo', {
-      configurable: true,
-      value: lineWidthMemo,
-    });
     return lineWidthMemo;
   }
 
@@ -332,6 +316,6 @@ class $EditorCoordinates {
 }
 
 export namespace EditorCoordinates {
-  export const $Class = $EditorCoordinates;
-  export const Class = Static($EditorCoordinates);
+  export const $Class = Static($EditorCoordinates);
+  export const Class = $Class;
 }

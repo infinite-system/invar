@@ -49,7 +49,7 @@ a mechanical checker should not be able to see.
   (`project.invariants.md`). Circular-import safety is a separate late-read rule; even an acyclic
   class publishes through the same namespace seam.
 - NEW FILE RULE: exported STATELESS behavior is born as `class $X { static … }` + `export namespace
-  X { export const $Class = $X; export const Class = Static($X); }` — never a bare
+  X { export const $Class = Static($X); export const Class = $Class; }` — never a bare
   `export function` bag. State: Reactive domain models via `Reactive($X)` (mutable `let Class`);
   plain classes for algorithms/resources. Legacy bare bags are converted by the scheduled item-9
   pass; new code NEVER adds more. CHECK: conventions-gate grep for `^export function` in
@@ -57,8 +57,9 @@ a mechanical checker should not be able to see.
 - One class per `PascalCase.ts` file (ivue namespace pattern); role collections are
   `<module>.<role>.ts`. Docs are `project.<role>.md`. "ivue" is always lowercase.
 - FILE-NAME-FOLLOWS-CONTENT: a file whose primary export is a `namespace X` backing a Static/Reactive
-  class (`export const/let Class = Static($X)` / `Reactive($X)`) is named `X.ts` (PascalCase matching
-  the namespace). A pure contract whose primary declaration is `export interface X` is named
+  class (`export const $Class = Static($X)` / `export const/let Class = Reactive($Class)`) is named
+  `X.ts` (PascalCase matching the namespace). A pure contract whose primary declaration is
+  `export interface X` is named
   `X.interface.ts`; the suffix structurally declares the interface-only grammar and removes any
   maintained exemption list. A genuine role-collection of loose data/config with NO class stays
   `<module>.<role>.ts` (e.g. `keybindings.defaults.ts`). The filename tells you which shape is inside.
@@ -78,12 +79,13 @@ a mechanical checker should not be able to see.
   suffix.
 - STATIC GETTERS HAVE TWO ORTHOGONAL NAMING AXES: `$` says cached versus uncached; CASE says
   literal versus derived. A get-only static `$name` is computed once per receiving class by
-  `Static()` and shallow-frozen; a static getter without `$` stays live. Independently, a static
-  getter whose only statement returns a literal or frozen literal composition and never reads
-  `this` is `SCREAMING_SNAKE_CASE`; a getter that reads `this` or composes over another member is
-  lower camel case. Instance getters remain lower camel case because a literal there is usually a
-  per-instance knob. `$SCREAMING_SNAKE_CASE` is always invalid: a literal needs no cache. CHECK:
-  `scripts/check-static-getter-naming.ts` in `scripts/conventions-gate.sh`.
+  `Static()` with stable identity but no freeze; a static getter without `$` stays live.
+  Independently, a static getter whose only statement returns a literal or frozen literal
+  composition and never reads `this` is `SCREAMING_SNAKE_CASE`; a getter that reads `this` or
+  composes over another member is lower camel case. Instance getters remain lower camel case
+  because a literal there is usually a per-instance knob. `$SCREAMING_SNAKE_CASE` is always
+  invalid: a literal needs no cache. CHECK: `scripts/check-static-getter-naming.ts` in
+  `scripts/conventions-gate.sh`.
 - ~~MANIFEST-ON-TOP~~ **SUPERSEDED (2026-07-24) by FILE GRAMMAR below.** The old layout kept
   `$name` implementations as module-level function declarations below the manifest (hoisting made
   it safe). Retired by user adjudication: detached functions are invisible to BOTH governing

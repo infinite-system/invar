@@ -20,15 +20,9 @@ class $ImageResample {
     boxWidth: number,
     boxHeight: number,
   ): FittedSize {
-    const scale = Math.min(
-      boxWidth / sourceWidth,
-      boxHeight / sourceHeight,
-    );
+    const scale = Math.min(boxWidth / sourceWidth, boxHeight / sourceHeight);
     return {
-      width: Math.max(
-        1,
-        Math.min(boxWidth, Math.round(sourceWidth * scale)),
-      ),
+      width: Math.max(1, Math.min(boxWidth, Math.round(sourceWidth * scale))),
       height: Math.max(
         1,
         Math.min(boxHeight, Math.round(sourceHeight * scale)),
@@ -51,17 +45,13 @@ class $ImageResample {
     const grid = new Uint8Array(targetWidth * targetHeight * 3);
     const { width, height, rgba } = image;
     for (let targetY = 0; targetY < targetHeight; targetY++) {
-      const sourceRowStart = Math.floor(
-        (targetY * height) / targetHeight,
-      );
+      const sourceRowStart = Math.floor((targetY * height) / targetHeight);
       const sourceRowEnd = Math.max(
         sourceRowStart + 1,
         Math.floor(((targetY + 1) * height) / targetHeight),
       );
       for (let targetX = 0; targetX < targetWidth; targetX++) {
-        const sourceColumnStart = Math.floor(
-          (targetX * width) / targetWidth,
-        );
+        const sourceColumnStart = Math.floor((targetX * width) / targetWidth);
         const sourceColumnEnd = Math.max(
           sourceColumnStart + 1,
           Math.floor(((targetX + 1) * width) / targetWidth),
@@ -71,11 +61,7 @@ class $ImageResample {
         let blueTotal = 0;
         let alphaTotal = 0;
         let sampleCount = 0;
-        for (
-          let sourceY = sourceRowStart;
-          sourceY < sourceRowEnd;
-          sourceY++
-        ) {
+        for (let sourceY = sourceRowStart; sourceY < sourceRowEnd; sourceY++) {
           for (
             let sourceX = sourceColumnStart;
             sourceX < sourceColumnEnd;
@@ -109,8 +95,8 @@ class $ImageResample {
 }
 
 export namespace ImageResample {
-  export const $Class = $ImageResample;
-  export const Class = Static($ImageResample);
+  export const $Class = Static($ImageResample);
+  export const Class = $Class;
 }
 
 /** A fitted size: the largest aspect-preserving fit of a source into a box, each dimension ≥ 1. */
