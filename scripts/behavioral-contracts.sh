@@ -33,6 +33,7 @@ fail=0
 SESSIONS=""
 pass() { echo "  PASS  $1"; }
 bad()  { echo "  FAIL  $1"; fail=1; }
+skip() { echo "  SKIP  $1"; }
 
 # Neutral scroll settings so the assertions are deterministic (one row per notch, no fast modifier).
 mkdir -p "$(dirname "$SET")"
@@ -122,7 +123,7 @@ for glide_cap_milliseconds in 100 1050 2000; do
   if SMOOTHNESS_GESTURES=1 \
      SMOOTHNESS_NOTCHES=1 \
      SMOOTHNESS_ACCUMULATION_FLICKS=0 \
-     SMOOTHNESS_CONTINUATION_DELAYS='' \
+     SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
      SMOOTHNESS_LINE_COUNTS=2000,100000 \
      SMOOTHNESS_SURFACES=editor \
      SMOOTHNESS_VERSION_CONTROL_MARKS=off \
@@ -217,10 +218,11 @@ fi
 #  * TRAVEL FLOOR — the second reported symptom (lower peak velocity) as a clock-free figure: with
 #    linesPerNotch 1 the 12-notch fling REQUESTS 12 rows, and momentum that cannot at least double the
 #    raw notch travel is not a fling at all. 24 rows is that doubling.
-#  * CONTINUATION — three delayed notches land after Momentum's 150 ms
-#    input-cadence window while the first glide remains live. Each boundary
+#  * CONTINUATION — three notches land after 6, 10, and 14 observed moving
+#    frames while the first glide remains live. Placement follows motion, not
+#    a requested delay; delivered time is reported only to prove each boundary
+#    lies beyond Momentum's 150 ms pre-motion cadence proxy. Each boundary
 #    frame must cross at least as many rows as the immediately preceding frame.
-#    Row counts make the comparison independent of host clock contention.
 # Measured floors on 2026-07-26 across six commits spanning 24h of history (40d244b~1 .. e6450c6):
 # 17 moving frames, largest single step 7 rows, fastest trial travelling 36-48 rows. Every bound below
 # therefore has at least 1.5x headroom against a loaded machine while still catching a halving.
@@ -228,6 +230,7 @@ echo "== CONTRACT glide-smoothness: a fast fling is many small row crossings, no
 SMOOTH_JSON="$ROOT/artifacts/scroll-smoothness.json"
 SMOOTH_LOG="$ROOT/artifacts/scroll-smoothness.log"
 mkdir -p "$ROOT/artifacts"
+smooth_stage_completed=0
 if SMOOTHNESS_GESTURES=2 \
    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
    SMOOTHNESS_LINE_COUNTS=2000,26635,100000 \
@@ -286,8 +289,10 @@ top_reference_fps = min(
 )
 continuation_holds = (
     len(continuation_boundaries) == 3
-    and all(boundary['requestedDelayMilliseconds'] > 150
+    and all(boundary['observedMovingFrameCount']
+                >= boundary['minimumMovingFrameCount']
             and boundary['actualDelayMilliseconds'] > 150
+            and boundary['preBoundaryRowsCrossed'] == 1
             and boundary['boundaryRowsCrossed']
                 >= boundary['preBoundaryRowsCrossed']
             for boundary in continuation_boundaries)
@@ -326,6 +331,11 @@ print(min(g['movingFrameCount'] for g in all_gestures),
       f'{min(continuation_delays):.1f}',
       f'{max(continuation_delays):.1f}')
 ")"
+  if python3 -c \
+    "raise SystemExit(0 if float('${smooth_100k_top_reference_fps:-0}') > 0 else 1)"
+  then
+    smooth_stage_completed=1
+  fi
   if [ "${smooth_max_step:-999}" -le 15 ] 2>/dev/null; then
     smooth_step_message="no glide frame jumps more than two frame budgets"
     smooth_step_message+=" (largest step=$smooth_max_step rows, bound 15)"
@@ -436,7 +446,7 @@ ACCUMULATION_RAISED_LOG="$ROOT/artifacts/glide-accumulation-raised.log"
 ACCUMULATION_RAPID_JSON="$ROOT/artifacts/glide-accumulation-rapid.json"
 ACCUMULATION_RAPID_LOG="$ROOT/artifacts/glide-accumulation-rapid.log"
 if SMOOTHNESS_GESTURES=0 \
-   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
    SMOOTHNESS_ACCUMULATION_FLICKS=3 \
    SMOOTHNESS_ACCUMULATION_PAUSE=200 \
    SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
@@ -447,7 +457,7 @@ if SMOOTHNESS_GESTURES=0 \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$ACCUMULATION_DEFAULT_JSON" 2>"$ACCUMULATION_DEFAULT_LOG" \
    && SMOOTHNESS_GESTURES=0 \
-   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
    SMOOTHNESS_ACCUMULATION_FLICKS=3 \
    SMOOTHNESS_ACCUMULATION_PAUSE=200 \
    SMOOTHNESS_VERTICAL_FLING_CEILING=320 \
@@ -459,7 +469,7 @@ if SMOOTHNESS_GESTURES=0 \
      >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG" \
    && SMOOTHNESS_GESTURES=1 \
    SMOOTHNESS_NOTCHES=60 \
-   SMOOTHNESS_CONTINUATION_DELAYS='' \
+   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
    SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
    SMOOTHNESS_LINE_COUNTS=2000 \
@@ -644,7 +654,11 @@ fi
 echo "== CONTRACT fold-dense-cadence: 100k nested JSON keeps the full row stack at 28 FPS =="
 FOLD_DENSE_JSON="$ROOT/artifacts/fold-dense-scroll-smoothness.json"
 FOLD_DENSE_LOG="$ROOT/artifacts/fold-dense-scroll-smoothness.log"
-if SMOOTHNESS_GESTURES=2 \
+if [ "${smooth_stage_completed:-0}" -ne 1 ]; then
+  fold_dense_skip="fold-dense cadence because glide-smoothness aborted"
+  fold_dense_skip+=" before the 100k top FPS reference"
+  skip "$fold_dense_skip"
+elif SMOOTHNESS_GESTURES=2 \
    SMOOTHNESS_LINE_COUNTS=100000 \
    SMOOTHNESS_SURFACES=editor \
    SMOOTHNESS_FIXTURES=fold-dense \
@@ -866,8 +880,10 @@ fi
 # ---- CONTRACT: real-rate wheel input joins one animation owner ----
 # A trackpad emits individual events at roughly 150/s, not twelve-event PTY chunks at 60/s. Every
 # event must survive as an impulse, while projection work is coalesced below the input count. The
-# same event/impulse fingerprint and row travel within one maximum-velocity frame must hold at 2k
-# and 100k lines on editor and diff.
+# same event/impulse fingerprint and row travel within one maximum animation
+# step must hold at 2k and 100k lines on editor and diff. Bootstrap caps that
+# step at 100 ms, so the derived default bound is ceil(220 rows/s * 0.1 s) =
+# 22 rows. Nominal 30 FPS is a cadence target, not a maximum frame duration.
 echo "== CONTRACT glide-input-coalescing: real-rate events join one animation =="
 GLIDE_INPUT_JSON="$ROOT/artifacts/glide-input-coalescing.json"
 GLIDE_INPUT_LOG="$ROOT/artifacts/glide-input-coalescing.log"
@@ -881,6 +897,7 @@ if SMOOTHNESS_GESTURES=0 \
    SMOOTHNESS_BURST_WINDOW=6 \
    SMOOTHNESS_BURST_NOTCHES=1 \
    SMOOTHNESS_MAXIMUM_GLIDE_DURATION=900 \
+   SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS=0.1 \
    SMOOTHNESS_REQUIRE_INPUT_COALESCING=1 \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$GLIDE_INPUT_JSON" 2>"$GLIDE_INPUT_LOG"; then
@@ -890,16 +907,33 @@ import sys
 
 report = json.load(open(sys.argv[1]))
 print(
-    "  | surface | lines | events | impulses | projections | rows |"
+    "  | surface | lines | delivered ms | events | impulses | "
+    "projections | rows | max step | row sequence |"
 )
-print("  | :--- | ---: | ---: | ---: | ---: | ---: |")
+print(
+    "  | :--- | ---: | ---: | ---: | ---: | ---: | ---: | "
+    "---: | :--- |"
+)
 for case in report["cases"]:
     burst = case["continuousInputBursts"][0]
     print(
         f"  | {case['surface']} | {case['fixtureLineCount']} | "
+        f"{burst['actualInputDurationMilliseconds']:.1f} | "
         f"{burst['inputEventCount']} | {burst['appliedImpulseCount']} | "
-        f"{burst['projectionPassCount']} | {burst['rowsTravelled']} |"
+        f"{burst['projectionPassCount']} | {burst['rowsTravelled']} | "
+        f"{burst['maximumFrameDeltaRows']} | "
+        f"{','.join(str(rows) for rows in burst['rowCrossingSequence'])} |"
     )
+print(
+    "  scale-travel bound: "
+    f"{report['maximumAnimationFrameTravelRows']} rows = ceil("
+    f"{report['verticalFlingCeiling']} rows/s * "
+    f"{report['maximumAnimationDeltaTimeSeconds']} s)"
+)
+print(
+    "  scale-travel positive control RED (expected): "
+    + report["continuousInputScaleTravelPositiveControl"]
+)
 PY
   pass "150 real-rate events all join momentum; projection and scale counts hold"
 else

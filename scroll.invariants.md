@@ -152,16 +152,19 @@ outlast the cadence window and receive a from-rest-sized follow-on impulse.
 
 **Evidence:** `src/modules/system/Momentum.ts` (`liveGlideContinues`);
 `src/modules/system/Momentum.test.ts` (`a live glide continues gain outside
-the input cadence window`); commits `87d25d0` and `25cdf18`; the driven
-continuation sweep at 200, 250, and 300 milliseconds.
+the input cadence window`); commits `87d25d0` and `25cdf18`;
+`scripts/harness/measure-scroll-smoothness.ts` places follow-on input after
+observing live one-row motion beyond 6, 10, and 14 moving frames. The delivered
+delay remains report evidence, not the placement condition.
 
 **Impossible if true:** A from-rest-sized impulse delivered while the surface
 is still moving; a live same-direction glide resetting because a timer
 expired.
 
 **Verification:** `bun test src/modules/system/Momentum.test.ts && bash
-scripts/behavioral-contracts.sh`; `glide-continuation` requires each delayed
-boundary to cross at least as many rows as the immediately preceding frame.
+scripts/behavioral-contracts.sh`; `glide-continuation` requires each
+motion-placed boundary to cross at least as many rows as the live one-row
+frame that triggered the follow-on input.
 
 **Status:** established
 
@@ -270,6 +273,10 @@ attributed-work counts. The rapid-ceiling floor integrates the configured
 velocity and tail, then subtracts only the sub-row residual the integrator may
 discard:
 `ceil(verticalFlingCeiling * maximumGlideDurationMilliseconds / 1000 - 1)`.
+The scale-travel comparison permits one maximum animation integration step:
+`ceil(verticalFlingCeiling * maximumAnimationDeltaTimeSeconds)`. Continuation
+input is placed by observed moving-frame count and row crossing, while its
+delivered delay is diagnostic only.
 
 **Generates:** Phase-independent live contracts; expected values that survive
 host load, frame coalescing, and refactoring while the mechanism remains the
@@ -277,21 +284,25 @@ same.
 
 **Rejected alternatives:** Copy an observed frame count into the contract —
 the former 24-frame rapid-ceiling assertion varied from 22 to 24 while whole
-row travel remained exactly 197.
+row travel remained exactly 197. Treat target FPS or a requested timer delay
+as exact scheduling — Bootstrap permits a 100 millisecond integration step,
+and the OS delivers timers after their requested deadline.
 
 **Evidence:** Commit `9125b0f`; the `glide-accumulation`,
 `glide-input-coalescing`, and editor scale-invariance predicates in
-`scripts/behavioral-contracts.sh`; positive controls for every count-based
-predicate.
+`scripts/behavioral-contracts.sh`; `src/modules/app/Bootstrap.ts`
+`MAXIMUM_DELTA_TIME_SECONDS`; positive controls for every derived bound.
 
 **Impossible if true:** A driven scroll contract whose expected value came
 from an observation rather than the mechanism; a live assertion that fails
 only because identical travel was divided across a different number of
-completed frames.
+completed frames; a requested delay used as though it were a delivered delay;
+a 30 FPS target used as though it capped frame duration.
 
 **Verification:** `bash scripts/behavioral-contracts.sh`; the rapid 60-notch
 clause enforces the derived whole-row floor and rejects a decaying synthetic
-sequence. Future additions remain review-time enforced because no mechanical
+sequence. The scale-travel and continuation predicates print their planted
+reds. Future additions remain review-time enforced because no mechanical
 checker can distinguish a derived constant from an observed one.
 
 **Status:** established
