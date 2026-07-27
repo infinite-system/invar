@@ -246,6 +246,18 @@ Operating rules that follow:
   (`PtyTestDriver` / the harness / `bun run drive`) or you have built an instrument that cannot
   fail — the exact defect class this file warns about, committed while diagnosing it.
 
+## Stop a monitor in the ACTION that consumes its result
+
+A gate monitor exists to tell you the verdict once. The moment you act on that verdict — land the
+merge, revert, re-gate — `TaskStop` it in the SAME action. Not "later", not "when convenient": the
+landing and the stop are one operation, exactly like arming a replacement monitor and stopping its
+predecessor.
+
+Left running, it expires on its own timeout and emits a "[Monitor timed out — re-arm if needed]"
+line long after its subject is history. Each one is individually harmless and collectively it is
+noise that trains you to skim monitor events — which is precisely the channel that must stay
+trustworthy. Five of these accumulated on 2026-07-27 alone.
+
 ## Merge safety (each of these cost real time when missed)
 - **Commit before gating.** A green gate on an uncommitted/staged tree is NOT durable —
   `git worktree remove --force` discards it (this lost a whole task's work once). The commit is
