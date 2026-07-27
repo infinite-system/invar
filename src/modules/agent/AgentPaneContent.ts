@@ -43,6 +43,7 @@ import type { AgentTerminalFollowMode } from '../settings/Settings';
 // invariant: Stream inactivity is visible and non-destructive (src/modules/agent/agent.invariants.md)
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
 // invariant: Agent transcript scroll extent is position independent (src/modules/agent/agent.invariants.md)
+// invariant: Agent footer stays within its pane (src/modules/agent/agent.invariants.md)
 
 class $AgentPaneContent implements PaneContent {
   static get transcriptFindTargetIdentifier(): string {
@@ -58,7 +59,7 @@ class $AgentPaneContent implements PaneContent {
   }
 
   protected static get composerChromeRows(): number {
-    return 6;
+    return 5;
   }
 
   protected static get waitingCycleMilliseconds(): number {
@@ -120,12 +121,6 @@ class $AgentPaneContent implements PaneContent {
   protected lastTranscriptSearchText: string | null = null;
   /** The mode-line engine segment's click region, resolved last render (for the click-to-cycle hit-test). */
   protected lastEngineSegment: {
-    row: number;
-    startColumn: number;
-    endColumn: number;
-  } | null = null;
-  /** The terminal-follow segment's click region, produced by the same layout that paints it. */
-  protected lastTerminalFollowSegment: {
     row: number;
     startColumn: number;
     endColumn: number;
@@ -504,7 +499,7 @@ class $AgentPaneContent implements PaneContent {
     });
   }
 
-  /** The mode line: ENGINE, TERMINAL FOLLOW, SEARCH, then PERMISSION.
+  /** The mode line: ENGINE, PERMISSION, then SEARCH.
    *  The layout records button cell ranges while emitting their segments, so paint and hit-test share
    *  one geometry source. */
   protected modeLineSegments(
@@ -512,13 +507,12 @@ class $AgentPaneContent implements PaneContent {
     modeLineRow: number,
   ): ThinkingSegment[] {
     const bypass = this.permissionMode?.value ?? false;
-    const arrow = context.glyphLevel === 'ascii' ? '>>' : '⏵⏵';
     const askSupported = this.session.permissionPromptsSupported;
     const permissionText = bypass
-      ? `${arrow} bypass permissions on`
+      ? 'perm: bypass'
       : askSupported
-        ? '? ask permissions'
-        : 'bypass permissions off (prompts unavailable on this backend)';
+        ? 'perm: ask'
+        : 'perm: bypass-only';
 
     const segments: ThinkingSegment[] = [
       {
@@ -528,6 +522,43 @@ class $AgentPaneContent implements PaneContent {
       },
     ];
     let modeLineColumn = this.agentPaneContentClass.transcriptPadLeft;
+    const maximumModeLineColumn = Math.max(0, Math.floor(context.width));
+    const appendText = (
+      text: string,
+      color: string,
+      maximumWidth = Number.MAX_SAFE_INTEGER,
+    ): { startColumn: number; endColumn: number } | null => {
+      const remainingWidth = Math.max(
+        0,
+        maximumModeLineColumn - modeLineColumn,
+      );
+      const visibleText = WrapText.Class.sliceByDisplayCells(
+        text,
+        0,
+        Math.min(remainingWidth, maximumWidth),
+      );
+      const visibleWidth = WrapText.Class.displayWidth(visibleText);
+      if (visibleWidth === 0) return null;
+      const range = {
+        startColumn: modeLineColumn,
+        endColumn: modeLineColumn + visibleWidth,
+      };
+      segments.push({ text: visibleText, color, bold: false });
+      modeLineColumn = range.endColumn;
+      return range;
+    };
+    const separatorText = ' · ';
+    const searchButtonText = this.transcriptSearchPort
+      ? ` ${ThemeIcons.Class.findIconsFor(context.glyphLevel).search} `
+      : '';
+    const reservedWidth =
+      WrapText.Class.displayWidth(separatorText) +
+      WrapText.Class.displayWidth(permissionText) +
+      (searchButtonText
+        ? WrapText.Class.displayWidth(separatorText) +
+          WrapText.Class.displayWidth(searchButtonText)
+        : 0);
+
     // Engine segment (only when bound). The cycle affordance shows when >1 engine is switchable.
     this.lastEngineSegment = null;
     if (this.enginePort) {
@@ -537,97 +568,48 @@ class $AgentPaneContent implements PaneContent {
           ? ' <->'
           : ' ⇄'
         : '';
-      const engineText = `engine: ${this.enginePort.provider}${cycleGlyph}`;
-      const startColumn = modeLineColumn;
-      const endColumn = startColumn + WrapText.Class.displayWidth(engineText);
-      this.lastEngineSegment = { row: modeLineRow, startColumn, endColumn };
-      segments.push({
-        text: engineText,
-        color: cyclable ? context.palette.accent : context.palette.dim,
-        bold: cyclable,
-      });
-      modeLineColumn = endColumn;
-      const separatorText = '  ·  ';
-      segments.push({
-        text: separatorText,
-        color: context.palette.dim,
-        bold: false,
-      });
-      modeLineColumn += WrapText.Class.displayWidth(separatorText);
+      const engineText = `${this.enginePort.provider}${cycleGlyph}`;
+      const maximumEngineWidth = Math.max(
+        1,
+        maximumModeLineColumn - modeLineColumn - reservedWidth,
+      );
+      const engineRange = appendText(
+        engineText,
+        cyclable ? context.palette.accent : context.palette.dim,
+        maximumEngineWidth,
+      );
+      if (engineRange) {
+        this.lastEngineSegment = { row: modeLineRow, ...engineRange };
+        appendText(separatorText, context.palette.dim);
+      }
     }
 
-    this.lastTerminalFollowSegment = null;
-    if (this.terminalFollowPort) {
-      const followMode = this.terminalFollowPort.mode.value;
-      const followText = `follow: ${this.terminalFollowPort.label()}`;
-      const startColumn = modeLineColumn;
-      const endColumn = startColumn + WrapText.Class.displayWidth(followText);
-      this.lastTerminalFollowSegment = {
-        row: modeLineRow,
-        startColumn,
-        endColumn,
-      };
-      segments.push({
-        text: followText,
-        color:
-          followMode === 'off'
-            ? context.palette.dim
-            : followMode === 'on-request'
-              ? context.palette.info
-              : context.palette.accent,
-        bold: followMode !== 'off',
-      });
-      modeLineColumn = endColumn;
-      const separatorText = '  ·  ';
-      segments.push({
-        text: separatorText,
-        color: context.palette.dim,
-        bold: false,
-      });
-      modeLineColumn += WrapText.Class.displayWidth(separatorText);
-    }
-
-    // Search is a compact chrome button beside the engine control. Its glyph comes from the SAME
-    // semantic find-icon ladder the FindBar itself uses; the padded cells form its mouse target.
-    this.lastSearchSegment = null;
-    if (this.transcriptSearchPort) {
-      const searchButtonText = ` ${ThemeIcons.Class.findIconsFor(context.glyphLevel).search} `;
-      const startColumn = modeLineColumn;
-      const endColumn =
-        startColumn + WrapText.Class.displayWidth(searchButtonText);
-      this.lastSearchSegment = { row: modeLineRow, startColumn, endColumn };
-      const searchIsOpen =
-        this.transcriptSearchPort.findBar.open.value &&
-        this.transcriptSearchPort.findBar.target?.identifier ===
-          this.agentPaneContentClass.transcriptFindTargetIdentifier;
-      segments.push({
-        text: searchButtonText,
-        color: searchIsOpen ? context.palette.accent : context.palette.info,
-        bold: true,
-      });
-      modeLineColumn = endColumn;
-      const separatorText = '  ·  ';
-      segments.push({
-        text: separatorText,
-        color: context.palette.dim,
-        bold: false,
-      });
-      modeLineColumn += WrapText.Class.displayWidth(separatorText);
-    }
-
-    segments.push({
-      text: permissionText,
-      color: bypass
+    appendText(
+      permissionText,
+      bypass
         ? context.palette.accent
         : askSupported
           ? context.palette.info
           : context.palette.dim,
-      bold: bypass,
-    });
-    const hint = this.enginePort?.canCycle
-      ? '  (shift+tab · ctrl+e)'
-      : '  (shift+tab to cycle)';
-    segments.push({ text: hint, color: context.palette.dim, bold: false });
+    );
+
+    // Search is a compact chrome button beside the engine control. Its glyph comes from the SAME
+    // semantic find-icon ladder the FindBar itself uses; the padded cells form its mouse target.
+    this.lastSearchSegment = null;
+    if (this.transcriptSearchPort && searchButtonText) {
+      appendText(separatorText, context.palette.dim);
+      const searchIsOpen =
+        this.transcriptSearchPort.findBar.open.value &&
+        this.transcriptSearchPort.findBar.target?.identifier ===
+          this.agentPaneContentClass.transcriptFindTargetIdentifier;
+      const searchRange = appendText(
+        searchButtonText,
+        searchIsOpen ? context.palette.accent : context.palette.info,
+      );
+      if (searchRange) {
+        this.lastSearchSegment = { row: modeLineRow, ...searchRange };
+      }
+    }
     return segments;
   }
 
@@ -849,18 +831,6 @@ class $AgentPaneContent implements PaneContent {
     ) {
       return this.cycleEngine();
     }
-    const terminalFollow = this.lastTerminalFollowSegment;
-    if (
-      terminalFollow &&
-      this.terminalFollowPort &&
-      row === terminalFollow.row &&
-      column >= terminalFollow.startColumn &&
-      column < terminalFollow.endColumn
-    ) {
-      this.terminalFollowPort.cycle();
-      this.viewRevision.value += 1;
-      return true;
-    }
     const search = this.lastSearchSegment;
     if (
       search &&
@@ -1068,8 +1038,6 @@ export interface AgentTranscriptSearchPort {
 
 export interface AgentTerminalFollowPort {
   readonly mode: Ref<AgentTerminalFollowMode>;
-  label(): string;
-  cycle(): AgentTerminalFollowMode;
 }
 
 export type AgentPaneRegion =

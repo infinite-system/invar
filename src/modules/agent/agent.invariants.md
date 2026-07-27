@@ -402,8 +402,8 @@ alive, then the follow mode read at that command boundary alone determines deliv
 requests a response, `on-error` requests one only for a known nonzero exit, `on-request` adds silent
 context, and `off` delivers nothing; if the terminal has exited before delivery, no turn is sent.
 
-**Scope:** `AgentTerminalFollow`, `AgentSession` external context and response methods, the agent
-footer control, `agentTerminalFollowMode` setting, `agent.cycleTerminalFollowMode` command and
+**Scope:** `AgentTerminalFollow`, `AgentSession` external context and response methods,
+`agentTerminalFollowMode` setting, `agent.cycleTerminalFollowMode` command and
 keybinding, and the status projection. Terminal event construction and redaction remain governed by
 `terminal.invariants.md`. A command completion delivered before a later terminal exit remains
 truthful at its own boundary.
@@ -414,18 +414,18 @@ truthful at its own boundary.
   never trigger it.
 - Live terminal — `terminalExited` is read at delivery, so buffered output parsed after process death
   starts no observation turn.
-- One mode cell — footer clicks, Ctrl+Shift+M, the command palette, Settings, delivery, and status all read or
-  mutate `Settings.agentTerminalFollowMode`.
+- One mode cell — Ctrl+Shift+M, the command palette, Settings, delivery, and status all read or mutate
+  `Settings.agentTerminalFollowMode`.
 
 **Mechanism:** `AgentTerminalFollow` subscribes once to the terminal observation port and reads the
 mode ref inside each event callback. It calls `AgentSession.requestExternalResponse` for response
-modes and `AgentSession.ingestContext` for `on-request`; the footer port and every command path cycle
-the same setting ref. Before either delivery path, the controller reads
+modes and `AgentSession.ingestContext` for `on-request`; every command path cycles the same setting
+ref. Before either delivery path, the controller reads
 `AgentTerminalObservationPort.terminalExited`; an exited terminal makes the event non-deliverable.
 
-**Generates:** Activity-paced agent turns; silent on-request context; a visible footer indicator;
-mouse, keybinding, palette, and Settings parity; follow mode and event-count probe fields; no
-misleading turn from output that arrives after terminal death.
+**Generates:** Activity-paced agent turns; silent on-request context; keybinding, palette, and
+Settings parity; follow mode and event-count probe fields; no misleading turn from output that
+arrives after terminal death.
 
 **Evidence:** `src/modules/agent/AgentTerminalFollow.ts`;
 `src/modules/agent/AgentTerminalFollow.test.ts`; `src/modules/agent/AgentPaneContent.test.ts`;
@@ -433,13 +433,13 @@ misleading turn from output that arrives after terminal death.
 
 **Impossible if true:** `on-error` responding to exit code zero or null; `on-request` starting an
 agent turn; `off` adding context or transcript entries; a command observation starting a turn after
-the terminal reports exited; footer, Settings, and status reporting different modes.
+the terminal reports exited; Settings and status reporting different modes.
 
 **Verification:** `bun test src/modules/agent/AgentTerminalFollow.test.ts src/modules/agent/AgentPaneContent.test.ts && bun scripts/harness/smoke-terminal-follow-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### Agent events cross exactly one backend seam
 
@@ -505,6 +505,46 @@ scripts/harness/smoke-panel-split-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-25
+
+### Agent footer stays within its pane
+
+**Invariant:** If an agent pane is visible, then its final interior row contains a non-bold,
+width-bounded footer that keeps the live engine name and permission mode visible before optional
+search chrome.
+
+**Scope:** `AgentPaneContent.modeLineSegments`, `AgentPaneRenderer`, the composer chrome-row budget,
+and agent-pane rendering through split panel cells. Terminal-follow controls remain available
+through Settings, commands, and keybindings rather than this footer.
+
+**Components:**
+- Bottom ownership — the footer is the last rendered row, with no trailing padding row.
+- Essential identity — engine and permission mode precede optional search chrome.
+- Width agreement — emitted footer segments never exceed the pane render width.
+- Calm paint — footer segments never request bold styling.
+
+**Mechanism:** `AgentPaneContent` reserves five fixed chrome rows around the variable-height composer,
+computes the footer's remaining display-cell budget, truncates the engine before the permission
+segment when necessary, and records hit geometry only for visible engine/search cells.
+`AgentPaneRenderer` emits the footer without a trailing newline.
+
+**Generates:** One reclaimed transcript row; a footer flush with the pane bottom; no painting beneath
+a neighboring split pane; compact `provider ⇄ · perm: mode · search` chrome.
+
+**Evidence:** `src/modules/agent/AgentPaneContent.ts`;
+`src/modules/agent/AgentPaneRenderer.ts`; `src/modules/agent/AgentPaneContent.test.ts`;
+`scripts/harness/smoke-agent-pane-ux-harness.ts`.
+
+**Impossible if true:** A blank row between the footer and panel border; bold engine, permission, or
+search footer text; footer output wider than its render context; terminal-follow or shortcut hints
+displacing the permission mode.
+
+**Verification:** `bun test src/modules/agent/AgentPaneContent.test.ts
+src/modules/agent/AgentPaneRenderer.test.ts && bun
+scripts/harness/smoke-agent-pane-ux-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-27
 
 ### Transcript search is a projection of the transcript
 

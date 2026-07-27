@@ -945,6 +945,66 @@ class $RootView {
       },
     });
     const panelDividerRenderable = panelSplitter.renderable;
+    const panelControlBarWidth = 10;
+    const panelControlBarRenderable = new TextRenderable(renderer, {
+      id: 'panel-control-bar',
+      content: '',
+      position: 'absolute',
+      width: panelControlBarWidth,
+      height: 1,
+      wrapMode: 'none',
+      selectable: false,
+      zIndex: 60,
+    });
+    let panelControlBarProjection: PanelHeadingProjection | null = null;
+    let hoveredPanelControlBarAction: PanelHeadingAction | null = null;
+    panelControlBarRenderable.onMouseDown = (event) => {
+      primaryDockHost.blur();
+      rightDockHost.blur();
+      panelHost.focus();
+      const action = panelControlBarProjection
+        ? PanelHeading.Class.controlAtColumn(
+            panelControlBarProjection,
+            Number(event.x) - Number(panelControlBarRenderable.x),
+          )
+        : null;
+      if (action === 'add') {
+        openPanelAddPopup({
+          column: Number(event.x),
+          row: Number(event.y),
+        });
+      } else if (action === 'expand') {
+        panelHost.toggleExpanded();
+      } else if (action === 'close') {
+        panelHost.hide();
+      }
+      renderer.requestRender();
+    };
+    panelControlBarRenderable.onMouseMove = (event) => {
+      const control = panelControlBarProjection
+        ? PanelHeading.Class.controlSegmentAtColumn(
+            panelControlBarProjection,
+            Number(event.x) - Number(panelControlBarRenderable.x),
+          )
+        : null;
+      const nextHoveredAction = control?.action ?? null;
+      if (hoveredPanelControlBarAction !== nextHoveredAction) {
+        hoveredPanelControlBarAction = nextHoveredAction;
+        renderer.requestRender();
+      }
+      if (control) {
+        tooltip.point(control.tooltip, Number(event.x), Number(event.y));
+      } else {
+        tooltip.clear();
+      }
+    };
+    panelControlBarRenderable.onMouseOut = () => {
+      if (hoveredPanelControlBarAction !== null) {
+        hoveredPanelControlBarAction = null;
+        renderer.requestRender();
+      }
+      tooltip.clear();
+    };
     // Clicking the panel focuses it (focus-follows-click). Blur-on-outside is handled in Bootstrap's
     // global mouse handler via panelContainsPoint.
     panelBox.onMouseDown = () => {
@@ -958,9 +1018,11 @@ class $RootView {
       if (visible === panelMounted) return;
       if (visible) {
         layoutCanvas.add(panelDividerRenderable);
+        layoutCanvas.add(panelControlBarRenderable);
         layoutCanvas.add(panelBox);
       } else {
         layoutCanvas.remove(panelDividerRenderable);
+        layoutCanvas.remove(panelControlBarRenderable);
         layoutCanvas.remove(panelBox);
       }
       panelMounted = visible;
@@ -1109,9 +1171,24 @@ class $RootView {
         panelSplitter.setGeometry({
           left: layoutSlotGeometry.bottomPanelSplitter.left,
           top: layoutSlotGeometry.bottomPanelSplitter.top,
-          length: layoutSlotGeometry.bottomPanelSplitter.width,
+          length: Math.max(
+            0,
+            layoutSlotGeometry.bottomPanelSplitter.width - panelControlBarWidth,
+          ),
           visible: !panelHost.expanded.value,
         });
+        panelControlBarRenderable.left =
+          layoutSlotGeometry.bottomPanelSplitter.left +
+          Math.max(
+            0,
+            layoutSlotGeometry.bottomPanelSplitter.width - panelControlBarWidth,
+          );
+        panelControlBarRenderable.top =
+          layoutSlotGeometry.bottomPanelSplitter.top;
+        panelControlBarRenderable.width = Math.min(
+          panelControlBarWidth,
+          layoutSlotGeometry.bottomPanelSplitter.width,
+        );
         panelBox.left = layoutSlotGeometry.bottomPanel.left;
         panelBox.top = layoutSlotGeometry.bottomPanel.top;
         panelBox.width = layoutSlotGeometry.bottomPanel.width;
@@ -1342,10 +1419,11 @@ class $RootView {
           ? palette.accent
           : palette.dim;
       }
-      // A surface presenting something other than the active buffer has no editor buffer tabs —
-      // blank the buffer tab strip (keep its ROW so the panes don't jump when toggling in and out).
+      // A surface presenting something other than the active buffer has no editor buffer tabs. Reclaim
+      // that row for the surface; source buffers keep the stable one-row strip.
       const activeDocumentIsPresented =
         workspaceSet.active.editorSurfaces.activeDocumentIsPresented;
+      tabBar.height = activeDocumentIsPresented ? 1 : 0;
       tabBar.content = activeDocumentIsPresented
         ? tabBarController.renderBuffer()
         : '';
@@ -1505,6 +1583,8 @@ class $RootView {
             focused: cellFocused,
             expanded: panelHost.expanded.value,
             hoveredAction: view.hoveredHeadingAction,
+            actions: ['close'],
+            closeTooltip: 'Close pane',
             glyphVocabulary: theme.glyphVocabulary,
             palette,
           });
@@ -1633,6 +1713,18 @@ class $RootView {
           }
           view.splitterElement?.updateAppearance(palette);
         });
+        panelControlBarProjection = PanelHeading.Class.project({
+          width: Number(panelControlBarRenderable.width),
+          title: '',
+          focused: panelFocused,
+          expanded: panelHost.expanded.value,
+          hoveredAction: hoveredPanelControlBarAction,
+          actions: ['add', 'expand', 'close'],
+          trailingPaddingWidth: 1,
+          glyphVocabulary: theme.glyphVocabulary,
+          palette,
+        });
+        panelControlBarRenderable.content = panelControlBarProjection.text;
         if (!agentVisible) {
           agentScrollViewport.hideBars();
           agentCellGeometry = null;
@@ -1901,6 +1993,27 @@ class $RootView {
       let headingColumn =
         Number(layoutCanvas.x) + layoutSlotGeometry.bottomPanel.left + 1;
       const headings: PanelHeadingGeometry[] = [];
+      if (panelControlBarProjection) {
+        headings.push({
+          contentId: 'panel',
+          row:
+            Number(layoutCanvas.y) + layoutSlotGeometry.bottomPanelSplitter.top,
+          hoveredAction: hoveredPanelControlBarAction,
+          controls: panelControlBarProjection.controls.map((control) => ({
+            action: control.action,
+            startColumn:
+              Number(layoutCanvas.x) +
+              Number(panelControlBarRenderable.left) +
+              1 +
+              control.startColumn,
+            endColumnExclusive:
+              Number(layoutCanvas.x) +
+              Number(panelControlBarRenderable.left) +
+              1 +
+              control.endColumn,
+          })),
+        });
+      }
       for (const [index, span] of spans.entries()) {
         const view = panelCellViews[index];
         if (view?.headingProjection) {
