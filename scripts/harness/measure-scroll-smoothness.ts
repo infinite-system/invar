@@ -6,7 +6,9 @@
 // distance carried by fewer, larger steps is choppier while `gain` is untouched. This instrument
 // measures the property `gain` cannot see: the SEQUENCE of viewport positions across every completed
 // synchronized frame of one fast gesture, and hence the frame count, the per-frame delta
-// distribution, and the peak velocity.
+// distribution, and the peak velocity. Burst mode counts completed frames
+// and their gaps while rapid input continues to arrive, exposing a wedged
+// render loop that eventual motion would hide.
 //
 // The observed position is read from the EMULATOR GRID, not from the status file: the lowest visible
 // `line NNNN content` index in a completed frame IS that frame's scrollTop, so every sample is
@@ -83,6 +85,23 @@ const ACCUMULATION_FLICK_COUNT = Number(
 const ACCUMULATION_PAUSE_MILLISECONDS = Number(
   process.env.SMOOTHNESS_ACCUMULATION_PAUSE ?? '200',
 );
+const CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS = (
+  process.env.SMOOTHNESS_BURST_DURATIONS ?? ''
+)
+  .split(',')
+  .map((durationText) => Number(durationText.trim()))
+  .filter(
+    (durationMilliseconds) =>
+      Number.isInteger(durationMilliseconds) && durationMilliseconds > 0,
+  );
+const CONTINUOUS_INPUT_WINDOW_MILLISECONDS = Number(
+  process.env.SMOOTHNESS_BURST_WINDOW ?? '100',
+);
+const CONTINUOUS_INPUT_NOTCHES_PER_WINDOW = Number(
+  process.env.SMOOTHNESS_BURST_NOTCHES ?? '12',
+);
+const CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED =
+  process.env.SMOOTHNESS_REQUIRE_FRAME_PROGRESS === '1';
 // Trials, not samples of one trial: the fling that follows an idle app and the fling that follows a
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
@@ -155,8 +174,20 @@ interface SurfaceMeasurement {
   readonly gestures: readonly GestureMeasurement[];
   readonly accumulationFlicks: readonly AccumulationFlickMeasurement[];
   readonly continuationBoundaries: readonly ContinuationBoundaryMeasurement[];
+  readonly continuousInputBursts: readonly ContinuousInputBurstMeasurement[];
   readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
   readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface ContinuousInputBurstMeasurement {
+  readonly requestedDurationMilliseconds: number;
+  readonly actualInputDurationMilliseconds: number;
+  readonly inputWindowFrameCounts: readonly number[];
+  readonly completedFrameGapSequenceMilliseconds: readonly number[];
+  readonly maximumConsecutiveZeroFrameWindows: number;
+  readonly maximumFrameStarvationMilliseconds: number;
+  readonly inputToFirstCompletedFrameMilliseconds: number | null;
+  readonly finalInputToNextCompletedFrameMilliseconds: number | null;
 }
 
 interface AccumulationFlickMeasurement {
@@ -694,6 +725,183 @@ async function measureAccumulationPattern(
     }
   }
   return flickMeasurements;
+}
+
+async function measureContinuousInputBurst(
+  driver: PtyTestDriver.Model,
+  requestedDurationMilliseconds: number,
+): Promise<ContinuousInputBurstMeasurement> {
+  const inputWindowCount = Math.ceil(
+    requestedDurationMilliseconds / CONTINUOUS_INPUT_WINDOW_MILLISECONDS,
+  );
+  const inputWindowStartsMilliseconds: number[] = [];
+  const completedFrameTimestampsMilliseconds: number[] = [];
+  let inputComplete = false;
+  let inputEndTimestampMilliseconds = 0;
+  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
+    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+  );
+
+  const inputProducer = new Promise<void>((resolveInputProducer) => {
+    const writeInputWindow = (): void => {
+      inputWindowStartsMilliseconds.push(performance.now());
+      driver.sendRawInputWithoutFrameExpectation(
+        wheelInput('down', CONTINUOUS_INPUT_NOTCHES_PER_WINDOW),
+      );
+      if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
+        inputEndTimestampMilliseconds =
+          inputWindowStartsMilliseconds.at(-1)! +
+          CONTINUOUS_INPUT_WINDOW_MILLISECONDS;
+        inputComplete = true;
+        resolveInputProducer();
+      }
+    };
+    writeInputWindow();
+    if (inputWindowCount <= 1) return;
+    const inputInterval = setInterval(() => {
+      writeInputWindow();
+      if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
+        clearInterval(inputInterval);
+      }
+    }, CONTINUOUS_INPUT_WINDOW_MILLISECONDS);
+  });
+
+  while (true) {
+    try {
+      const completed = await nextFrame;
+      completedFrameTimestampsMilliseconds.push(
+        completed.completedFrame.byteArrivalTimestampMilliseconds,
+      );
+      nextFrame = driver.awaitNextCompletedFrameSnapshot(
+        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+      );
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        error.message.startsWith(
+          'Timed out waiting for the next complete synchronized frame',
+        )
+      )) {
+        throw error;
+      }
+      if (
+        inputComplete &&
+        performance.now() >=
+          inputEndTimestampMilliseconds + FRAME_ARRIVAL_TIMEOUT_MILLISECONDS
+      ) {
+        break;
+      }
+      nextFrame = driver.awaitNextCompletedFrameSnapshot(
+        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+      );
+    }
+  }
+  await inputProducer;
+
+  const inputStartTimestampMilliseconds = inputWindowStartsMilliseconds[0]!;
+  const inputWindowFrameCounts = inputWindowStartsMilliseconds.map(
+    (windowStartTimestampMilliseconds, windowIndex) => {
+      const windowEndTimestampMilliseconds =
+        inputWindowStartsMilliseconds[windowIndex + 1] ??
+        inputEndTimestampMilliseconds;
+      return completedFrameTimestampsMilliseconds.filter(
+        (frameTimestampMilliseconds) =>
+          frameTimestampMilliseconds >= windowStartTimestampMilliseconds &&
+          frameTimestampMilliseconds < windowEndTimestampMilliseconds,
+      ).length;
+    },
+  );
+  const completedFramesDuringInput =
+    completedFrameTimestampsMilliseconds.filter(
+      (frameTimestampMilliseconds) =>
+        frameTimestampMilliseconds >= inputStartTimestampMilliseconds &&
+        frameTimestampMilliseconds < inputEndTimestampMilliseconds,
+    );
+  const completedFrameGapSequenceMilliseconds: number[] = [];
+  let previousBoundaryTimestampMilliseconds = inputStartTimestampMilliseconds;
+  for (const frameTimestampMilliseconds of completedFramesDuringInput) {
+    completedFrameGapSequenceMilliseconds.push(
+      frameTimestampMilliseconds - previousBoundaryTimestampMilliseconds,
+    );
+    previousBoundaryTimestampMilliseconds = frameTimestampMilliseconds;
+  }
+  completedFrameGapSequenceMilliseconds.push(
+    inputEndTimestampMilliseconds - previousBoundaryTimestampMilliseconds,
+  );
+
+  let consecutiveZeroFrameWindows = 0;
+  let maximumConsecutiveZeroFrameWindows = 0;
+  let currentFrameStarvationMilliseconds = 0;
+  let maximumFrameStarvationMilliseconds = 0;
+  for (
+    let windowIndex = 0;
+    windowIndex < inputWindowFrameCounts.length;
+    windowIndex++
+  ) {
+    if (inputWindowFrameCounts[windowIndex]! > 0) {
+      consecutiveZeroFrameWindows = 0;
+      currentFrameStarvationMilliseconds = 0;
+      continue;
+    }
+    consecutiveZeroFrameWindows++;
+    const windowStartTimestampMilliseconds =
+      inputWindowStartsMilliseconds[windowIndex]!;
+    const windowEndTimestampMilliseconds =
+      inputWindowStartsMilliseconds[windowIndex + 1] ??
+      inputEndTimestampMilliseconds;
+    currentFrameStarvationMilliseconds +=
+      windowEndTimestampMilliseconds - windowStartTimestampMilliseconds;
+    maximumConsecutiveZeroFrameWindows = Math.max(
+      maximumConsecutiveZeroFrameWindows,
+      consecutiveZeroFrameWindows,
+    );
+    maximumFrameStarvationMilliseconds = Math.max(
+      maximumFrameStarvationMilliseconds,
+      currentFrameStarvationMilliseconds,
+    );
+  }
+  const firstCompletedFrameTimestampMilliseconds =
+    completedFrameTimestampsMilliseconds.find(
+      (frameTimestampMilliseconds) =>
+        frameTimestampMilliseconds >= inputStartTimestampMilliseconds,
+    );
+  const firstCompletedFrameAfterInputTimestampMilliseconds =
+    completedFrameTimestampsMilliseconds.find(
+      (frameTimestampMilliseconds) =>
+        frameTimestampMilliseconds >= inputEndTimestampMilliseconds,
+    );
+  return {
+    requestedDurationMilliseconds,
+    actualInputDurationMilliseconds:
+      inputEndTimestampMilliseconds - inputStartTimestampMilliseconds,
+    inputWindowFrameCounts,
+    completedFrameGapSequenceMilliseconds:
+      completedFrameGapSequenceMilliseconds.map((gapMilliseconds) =>
+        Number(gapMilliseconds.toFixed(1)),
+      ),
+    maximumConsecutiveZeroFrameWindows,
+    maximumFrameStarvationMilliseconds: Number(
+      maximumFrameStarvationMilliseconds.toFixed(1),
+    ),
+    inputToFirstCompletedFrameMilliseconds:
+      firstCompletedFrameTimestampMilliseconds === undefined
+        ? null
+        : Number(
+            (
+              firstCompletedFrameTimestampMilliseconds -
+              inputStartTimestampMilliseconds
+            ).toFixed(1),
+          ),
+    finalInputToNextCompletedFrameMilliseconds:
+      firstCompletedFrameAfterInputTimestampMilliseconds === undefined
+        ? null
+        : Number(
+            (
+              firstCompletedFrameAfterInputTimestampMilliseconds -
+              inputEndTimestampMilliseconds
+            ).toFixed(1),
+          ),
+  };
 }
 
 function printAccumulationPattern(
@@ -1505,9 +1713,45 @@ async function measureSurface(
     const gestures: GestureMeasurement[] = [];
     let accumulationFlicks: AccumulationFlickMeasurement[] = [];
     const continuationBoundaries: ContinuationBoundaryMeasurement[] = [];
+    const continuousInputBursts: ContinuousInputBurstMeasurement[] = [];
     let depthCheckpoints: DepthCheckpointMeasurement[] = [];
     let depthCheckpointWallClockMilliseconds = 0;
-    if (shouldMeasureDepthCheckpoints) {
+    if (CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS.length > 0) {
+      const burstDurationsMilliseconds =
+        CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS;
+      for (const burstDurationMilliseconds of burstDurationsMilliseconds) {
+        await driveSurfaceToTop(driver, statusPath, surface);
+        await drainToQuiescence(driver);
+        const continuousInputBurst = await measureContinuousInputBurst(
+          driver,
+          burstDurationMilliseconds,
+        );
+        continuousInputBursts.push(continuousInputBurst);
+        if (CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED) {
+          const starvedInputWindowIndex =
+            continuousInputBurst.inputWindowFrameCounts.findIndex(
+              (completedFrameCount) => completedFrameCount === 0,
+            );
+          if (starvedInputWindowIndex >= 0) {
+            throw new Error(
+              `${surface} ${fixtureShape} ${fixtureLineCount}-line burst ` +
+                `emitted zero completed frames in input window ` +
+                `${starvedInputWindowIndex + 1}; counts=[` +
+                `${continuousInputBurst.inputWindowFrameCounts.join(',')}]`,
+            );
+          }
+        }
+        const completedFrameGapSequence =
+          continuousInputBurst.completedFrameGapSequenceMilliseconds.join(',');
+        console.error(
+          `${surface} ${fixtureShape} ${fixtureLineCount} lines ` +
+            `${burstDurationMilliseconds}ms burst windows=` +
+            `[${continuousInputBurst.inputWindowFrameCounts.join(',')}] ` +
+            `gaps=[${completedFrameGapSequence}] starvation=` +
+            `${continuousInputBurst.maximumFrameStarvationMilliseconds}ms`,
+        );
+      }
+    } else if (shouldMeasureDepthCheckpoints) {
       const depthCheckpointStartMilliseconds = performance.now();
       depthCheckpoints = await measureDepthCheckpoints(driver, statusPath);
       depthCheckpointWallClockMilliseconds =
@@ -1559,6 +1803,7 @@ async function measureSurface(
       gestures,
       accumulationFlicks,
       continuationBoundaries,
+      continuousInputBursts,
       depthCheckpoints,
       depthCheckpointWallClockMilliseconds,
     };
@@ -1590,6 +1835,20 @@ if (
   );
 }
 if (
+  !Number.isInteger(CONTINUOUS_INPUT_WINDOW_MILLISECONDS) ||
+  CONTINUOUS_INPUT_WINDOW_MILLISECONDS <= 0
+) {
+  throw new Error(
+    'SMOOTHNESS_BURST_WINDOW must be a positive integer number of milliseconds',
+  );
+}
+if (
+  !Number.isInteger(CONTINUOUS_INPUT_NOTCHES_PER_WINDOW) ||
+  CONTINUOUS_INPUT_NOTCHES_PER_WINDOW <= 0
+) {
+  throw new Error('SMOOTHNESS_BURST_NOTCHES must be a positive integer');
+}
+if (
   !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
   DEPTH_GESTURE_TARGET_ROWS < 1_000 ||
   DEPTH_GESTURE_TARGET_ROWS > 5_000
@@ -1599,6 +1858,7 @@ if (
   );
 }
 const depthCheckpointRequested =
+  CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS.length === 0 &&
   SURFACES.includes('editor') &&
   FIXTURE_SHAPES.includes('fold-dense') &&
   CODE_FOLDING_MODES.includes('on') &&
@@ -1741,6 +2001,12 @@ const report = {
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
   accumulationFlickCount: ACCUMULATION_FLICK_COUNT,
   accumulationPauseMilliseconds: ACCUMULATION_PAUSE_MILLISECONDS,
+  continuousInputBurstDurationsMilliseconds:
+    CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS,
+  continuousInputWindowMilliseconds: CONTINUOUS_INPUT_WINDOW_MILLISECONDS,
+  continuousInputNotchesPerWindow: CONTINUOUS_INPUT_NOTCHES_PER_WINDOW,
+  continuousInputFrameProgressRequired:
+    CONTINUOUS_INPUT_FRAME_PROGRESS_REQUIRED,
   targetFramesPerSecond: 30,
   depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
   depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,

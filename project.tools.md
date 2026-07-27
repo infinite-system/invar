@@ -29,6 +29,11 @@ machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACE
 `SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation. The nested-JSON
 editor case initializes a repository by default and verifies that
 version-control marks, indent guides, and fold controls are present together.
+`SMOOTHNESS_BURST_DURATIONS` switches to sustained-input measurement: it
+reports completed-frame counts in each `SMOOTHNESS_BURST_WINDOW`, the gap
+sequence, and the longest starvation while `SMOOTHNESS_BURST_NOTCHES` keep
+arriving per window. `SMOOTHNESS_REQUIRE_FRAME_PROGRESS=1` makes a zero-frame
+window fail the instrument.
 For flat editor runs, it also reports cumulative document-line reads,
 fold/wrap projection lookups, and layout computations. The behavioral
 contract drives the same gesture at 2k and 100k lines and compares the
@@ -60,6 +65,10 @@ The depth-sampled follow-up measured the 100k flat fixture at
 version-control gutter marks enabled, at 30.0/30.0/30.0 FPS for depths
 0/50k/75k. Every drive travelled 1,000-1,006 rows; the lowest depth-zero ratio
 was 0.998.
+The 2026-07-27 sustained-input probe found no seconds-long freeze: all
+200-millisecond windows emitted frames on fold-dense editor and diff surfaces
+at 2k and 100k. One-, three-, and five-second bursts did not develop growing
+starvation.
 CAUTION: send a gesture as ONE PTY write. Split across 12 writes the identical gesture lands on one
 of three quantized outcomes ±35%, because the chunk boundary decides whether one physical gesture
 straddles input frames. Whole-glide fps includes the slow tail, where sub-two-row movement naturally

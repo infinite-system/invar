@@ -736,38 +736,49 @@ unaffected.
 
 ### The render loop never wedges
 
-**Invariant:** If a frame, input, or background handler throws, OR the terminal session state is
-reset out from under the app (a hidden VS Code tab reverting termios / mouse / focus modes), then the
-demand-driven render loop keeps running and the app stays responsive — one bad cycle degrades to a
-logged no-op and the next event repaints; a lost terminal setup is re-asserted on focus-in. The app
-NEVER freezes while alive.
+**Invariant:** If input keeps arriving, a frame, input, or background handler
+throws, or the terminal session state is reset out from under the app, then
+the demand-driven render loop keeps emitting completed frames and the app
+stays responsive.
 
-**Scope:** The frame callback, the reactive paint effect, and every input/background handler
-(keypress, mouse, resize, focus) in `Bootstrap.ts`; the terminal-session recovery in
-`TerminalSession.ts`; the exception isolation in `HandlerGuard.ts`.
+**Scope:** The frame callback, the reactive paint effect, and every
+input/background handler (keypress, mouse, resize, focus) in `Bootstrap.ts`;
+the terminal-session recovery in `TerminalSession.ts`; the exception
+isolation in `HandlerGuard.ts`; continuous wheel input over the editor and
+diff surfaces at both 2,000 and 100,000 fold-dense lines.
 
 **Mechanism:** Every handler runs inside `HandlerGuard.run` — a throw is caught, logged to the FILE
 (never the TTY), and a repaint is requested, so it degrades one cycle instead of stopping the pump.
-On focus-in, `TerminalSession.reenterTerminalModes` (OpenTUI suspend/resume) re-applies termios raw +
-mouse + focus reporting + a full repaint, so a tab-return never leaves the app frozen or input-dead.
+On focus-in, `TerminalSession.reenterTerminalModes` (OpenTUI suspend/resume)
+re-applies termios raw + mouse + focus reporting + a full repaint, so a
+tab-return never leaves the app frozen or input-dead. During a glide, one
+deadline cadence advances every momentum owner and requests the next frame
+after reactive projection has run.
 
-**Generates:** the freeze-resilience of the demand-driven loop; the tab-defocus recovery; the
-product guarantee that the app is never a black box the user must kill.
+**Generates:** the freeze-resilience of the demand-driven loop;
+completed-frame progress during continuous input; the tab-defocus recovery;
+the product guarantee that the app is never a black box the user must kill.
 
-**Evidence:** `src/modules/app/HandlerGuard.ts` (`run`); `src/modules/app/TerminalSession.ts`
-(`reenterTerminalModes`); `src/modules/app/Bootstrap.ts` (guarded frame/paint/keypress/mouse/resize/
-focus handlers, focus-in recovery); the `focus-recovery` behavioral contract (focus-out→focus-in
-emits a fresh frame and the app stays responsive).
+**Evidence:** `src/modules/app/HandlerGuard.ts` (`run`);
+`src/modules/app/TerminalSession.ts` (`reenterTerminalModes`);
+`src/modules/app/Bootstrap.ts` (guarded frame/paint/keypress/mouse/resize/
+focus handlers, focus-in recovery, animation deadline cadence); the
+`focus-recovery` and `render-progress` contracts in
+`scripts/behavioral-contracts.sh`.
 
-**Impossible if true:** a thrown handler stopping the render loop so the app freezes while the
-process is alive; a tab defocus→refocus leaving the screen stale or the mouse dead with no recovery.
+**Impossible if true:** a thrown handler stopping the render loop so the app
+freezes while the process is alive; a 200 millisecond rapid-input window with
+zero completed frames; a tab defocus→refocus leaving the screen stale or the
+mouse dead with no recovery.
 
-**Verification:** the `focus-recovery` contract in `scripts/behavioral-contracts.sh` +
-`terminal-session.test.ts` (a guarded throw is isolated and recovery still runs).
+**Verification:** `bash scripts/behavioral-contracts.sh`; `render-progress`
+drives three seconds of continuous wheel input through the real PTY and
+counts completed frames in every 200 millisecond window on fold-dense editor
+and diff surfaces at 2,000 and 100,000 lines.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-27
 
 ### Async results are revision-stamped and stale results discarded
 
