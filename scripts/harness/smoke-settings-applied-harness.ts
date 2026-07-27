@@ -23,6 +23,7 @@ const coveredSettingNames = new Set([
   'verticalFlingCeiling',
   'scrollAccelGain',
   'scrollFriction',
+  'maximumGlideDurationMilliseconds',
   'linesPerNotch',
   'horizontalScrollModifier',
   'fastScrollModifier',
@@ -340,6 +341,70 @@ async function scrollTopAfterFling(
   }
 }
 
+async function rapidInputTravel(
+  label: string,
+  workspaceRoot: string,
+): Promise<{ appliedImpulseCount: number; rowsTravelled: number }> {
+  const launchedDriver = await launchDriver(label, workspaceRoot);
+  try {
+    await openOnlyFile(launchedDriver);
+    await launchedDriver.driver.awaitGridCondition(
+      'the long fixture content is rendered before rapid wheel input',
+      (candidate) => candidate.findText('line 000') !== null,
+    );
+    const openingStatus = await HarnessSmoke.Class.awaitStatus(
+      launchedDriver.driver,
+      launchedDriver.statusPath,
+      'scroll and impulse counts are published before rapid wheel input',
+      (status) =>
+        typeof status.editorScrollTop === 'number' &&
+        typeof status.editorVerticalScrollImpulseCount === 'number',
+    );
+    const openingScrollTop = Number(openingStatus.editorScrollTop);
+    const openingImpulseCount = Number(
+      openingStatus.editorVerticalScrollImpulseCount,
+    );
+    const inputEventCount = 150;
+    const inputEventIntervalMilliseconds = 6;
+    await new Promise<void>((resolveInput) => {
+      let sentInputEventCount = 0;
+      const inputInterval = setInterval(() => {
+        launchedDriver.driver.sendMouseWithoutFrameExpectation({
+          kind: 'wheel',
+          column: 59,
+          row: 11,
+          direction: 'down',
+        });
+        sentInputEventCount++;
+        if (sentInputEventCount === inputEventCount) {
+          clearInterval(inputInterval);
+          resolveInput();
+        }
+      }, inputEventIntervalMilliseconds);
+    });
+
+    let appliedImpulseCount = 0;
+    let rowsTravelled = 0;
+    await launchedDriver.driver.awaitGridCondition(
+      'all rapid wheel events are applied and the glide reaches rest',
+      () => {
+        const status = HarnessSmoke.Class.readStatus(launchedDriver.statusPath);
+        appliedImpulseCount =
+          Number(status.editorVerticalScrollImpulseCount) - openingImpulseCount;
+        rowsTravelled = Number(status.editorScrollTop) - openingScrollTop;
+        return (
+          appliedImpulseCount === inputEventCount &&
+          rowsTravelled > 0 &&
+          status.workspaceScrollMomentumAtRest === true
+        );
+      },
+    );
+    return { appliedImpulseCount, rowsTravelled };
+  } finally {
+    await launchedDriver.driver.dispose();
+  }
+}
+
 function markerRow(snapshot: HarnessSnapshot.Model, marker: string): number {
   return snapshot.findText(marker)?.row ?? -1;
 }
@@ -450,7 +515,7 @@ function createFixture(prefix: string): string {
 
 const longFixture = createFixture('tui-settings-long-harness-');
 let longText = '';
-for (let lineNumber = 0; lineNumber < 300; lineNumber++) {
+for (let lineNumber = 0; lineNumber < 2_000; lineNumber++) {
   longText += `line ${String(lineNumber).padStart(3, '0')} ${'x'.repeat(180)}\n`;
 }
 await Bun.write(join(longFixture, 'long.txt'), longText);
@@ -567,6 +632,30 @@ try {
     `scrollFriction changes glide distance (${lowFriction} versus ${highFriction})`,
   );
   await setSetting('scrollFriction', 0.015);
+
+  await setSetting('maximumGlideDurationMilliseconds', 300);
+  const shortGlideDuration = await rapidInputTravel(
+    'glide-duration-short',
+    longFixture,
+  );
+  await setSetting('maximumGlideDurationMilliseconds', 1_200);
+  const longGlideDuration = await rapidInputTravel(
+    'glide-duration-long',
+    longFixture,
+  );
+  const maximumOneFrameTravelRows = Math.ceil(220 / 30);
+  HarnessSmoke.Class.requireCondition(
+    shortGlideDuration.appliedImpulseCount === 150 &&
+      longGlideDuration.appliedImpulseCount === 150 &&
+      longGlideDuration.rowsTravelled >
+        shortGlideDuration.rowsTravelled + maximumOneFrameTravelRows,
+    `maximumGlideDurationMilliseconds 1200 travels more rows than 300 ` +
+      `by more than one frame budget for 150 applied impulses each ` +
+      `(${shortGlideDuration.rowsTravelled} to ` +
+      `${longGlideDuration.rowsTravelled}; frame budget ` +
+      `${maximumOneFrameTravelRows})`,
+  );
+  await setSetting('maximumGlideDurationMilliseconds', 900);
 
   await setSetting('linesPerNotch', 1);
   await setSetting('horizontalScrollModifier', 'ctrl');

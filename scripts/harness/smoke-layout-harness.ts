@@ -211,48 +211,64 @@ function layoutSettingLabel(settingName: LayoutSettingName): string {
   return 'Right dock vertical span (when dock and panel are open)';
 }
 
+async function revealSettingThroughSettings(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingName: LayoutSettingName,
+): Promise<StatusSnapshot> {
+  const targetSettingLabel = layoutSettingLabel(settingName);
+  const selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the settings descriptor geometry is published before layout navigation',
+    (status) =>
+      typeof status.settingsSelected === 'number' &&
+      typeof status.settingsSelectedLabel === 'string' &&
+      Array.isArray(status.settingsLabels) &&
+      status.settingsLabels.includes(targetSettingLabel),
+  );
+  const descriptorLabels = selectionStatus.settingsLabels as string[];
+  const targetDescriptorIndex = descriptorLabels.indexOf(targetSettingLabel);
+  HarnessSmoke.Class.requireCondition(
+    targetDescriptorIndex >= 0,
+    `${settingName} resolves to published descriptor geometry`,
+  );
+  const currentDescriptorIndex = Number(selectionStatus.settingsSelected);
+  const navigationDistance = targetDescriptorIndex - currentDescriptorIndex;
+  if (navigationDistance !== 0) {
+    const navigationKey = navigationDistance > 0 ? 'Down' : 'Up';
+    driver.sendKeysWithoutFrameExpectation(
+      ...Array.from(
+        { length: Math.abs(navigationDistance) },
+        () => navigationKey,
+      ),
+    );
+  }
+  const revealedStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `${targetSettingLabel} is selected from published descriptor geometry`,
+    (candidate) =>
+      Number(candidate.settingsSelected) === targetDescriptorIndex &&
+      candidate.settingsSelectedLabel === targetSettingLabel,
+  );
+  await driver.awaitGridCondition(
+    `${targetSettingLabel} is revealed in the settings viewport`,
+    (snapshot) => snapshot.findText(`› ${targetSettingLabel}`) !== null,
+  );
+  HarnessSmoke.Class.pass(
+    `${settingName} row is reachable through published settings geometry`,
+  );
+  return revealedStatus;
+}
+
 async function adjustSettingThroughSettings(
   driver: PtyTestDriver.Model,
   statusPath: string,
   settingName: LayoutSettingName,
   expectedValue: string,
 ): Promise<StatusSnapshot> {
-  const targetSettingLabel = layoutSettingLabel(settingName);
-  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
-    driver,
-    statusPath,
-    'the selected settings row is published before layout-setting navigation',
-    (status) =>
-      typeof status.settingsSelected === 'number' &&
-      typeof status.settingsSelectedLabel === 'string',
-  );
-  const currentDescriptorIndex = Number(selectionStatus.settingsSelected);
-  if (currentDescriptorIndex > 0) {
-    driver.sendKeysWithoutFrameExpectation(
-      ...Array.from({ length: currentDescriptorIndex }, () => 'Up'),
-    );
-    selectionStatus = await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
-      'settings navigation reaches the first descriptor',
-      (candidate) => Number(candidate.settingsSelected) === 0,
-    );
-  }
-  for (let navigationStep = 0; navigationStep < 40; navigationStep++) {
-    if (selectionStatus.settingsSelectedLabel === targetSettingLabel) break;
-    const previousSelectedLabel = selectionStatus.settingsSelectedLabel;
-    driver.sendKeysWithoutFrameExpectation('Down');
-    selectionStatus = await HarnessSmoke.Class.awaitStatus(
-      driver,
-      statusPath,
-      `settings navigation advances toward ${targetSettingLabel}`,
-      (candidate) => candidate.settingsSelectedLabel !== previousSelectedLabel,
-    );
-  }
-  HarnessSmoke.Class.requireCondition(
-    selectionStatus.settingsSelectedLabel === targetSettingLabel,
-    `${settingName} row is discovered from its live settings label`,
-  );
+  await revealSettingThroughSettings(driver, statusPath, settingName);
   driver.sendKeysWithoutFrameExpectation('Right');
   const status = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -951,16 +967,28 @@ try {
   clickCell(driver, layoutSlot(sidebarLayoutStatus, 'sidebar').left + 2, 4);
   await driver.awaitQuiescence();
   driver.sendKeys('Control+,');
-  await driver.awaitSnapshot(
-    (snapshot) =>
-      snapshot.findText('Sidebar position') !== null &&
-      snapshot.findText('Bottom panel alignment') !== null &&
-      snapshot.findText(
-        'Primary dock vertical span (when bottom panel is open)',
-      ) !== null,
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Layout section publishes every driven descriptor before navigation',
+    (candidate) =>
+      Array.isArray(candidate.settingsSections) &&
+      candidate.settingsSections.includes('Layout') &&
+      Array.isArray(candidate.settingsLabels) &&
+      candidate.settingsLabels.includes(
+        layoutSettingLabel('sidebarPosition'),
+      ) &&
+      candidate.settingsLabels.includes(layoutSettingLabel('panelAlignment')) &&
+      candidate.settingsLabels.includes(
+        layoutSettingLabel('leftDockVerticalSpan'),
+      ),
   );
-  HarnessSmoke.Class.pass(
-    'visible layout settings disclose dock spans and empty alignment edges',
+  await revealSettingThroughSettings(driver, statusPath, 'sidebarPosition');
+  await revealSettingThroughSettings(driver, statusPath, 'panelAlignment');
+  await revealSettingThroughSettings(
+    driver,
+    statusPath,
+    'leftDockVerticalSpan',
   );
 
   status = await exerciseLayoutSettingsConfigurationMatrix(
@@ -1009,13 +1037,28 @@ try {
   clickCell(driver, layoutSlot(status, 'sidebar').left + 2, 4);
   await driver.awaitQuiescence();
   driver.sendKeys('Control+,');
-  await driver.awaitSnapshot(
-    (snapshot) =>
-      snapshot.findText('Sidebar position') !== null &&
-      snapshot.findText('Bottom panel alignment') !== null &&
-      snapshot.findText(
-        'Primary dock vertical span (when bottom panel is open)',
-      ) !== null,
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Layout section republishes every descriptor with right dock open',
+    (candidate) =>
+      Array.isArray(candidate.settingsSections) &&
+      candidate.settingsSections.includes('Layout') &&
+      Array.isArray(candidate.settingsLabels) &&
+      candidate.settingsLabels.includes(
+        layoutSettingLabel('sidebarPosition'),
+      ) &&
+      candidate.settingsLabels.includes(layoutSettingLabel('panelAlignment')) &&
+      candidate.settingsLabels.includes(
+        layoutSettingLabel('leftDockVerticalSpan'),
+      ),
+  );
+  await revealSettingThroughSettings(driver, statusPath, 'sidebarPosition');
+  await revealSettingThroughSettings(driver, statusPath, 'panelAlignment');
+  await revealSettingThroughSettings(
+    driver,
+    statusPath,
+    'leftDockVerticalSpan',
   );
   status = await exerciseLayoutSettingsConfigurationMatrix(
     driver,
