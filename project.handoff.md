@@ -3,50 +3,49 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-27 ~23:45) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-27 ~02:20) — OVERNIGHT AUTONOMOUS RUN, READ FIRST
 
-Main @ `e500748` pushed+clean. Fleet = CODEX. Crons: hourly loop + 30-min reconciliation sweep
-(`11,41 * * * *`); the 10-min poll is RETIRED — do not re-arm. USER IS ACTIVELY TESTING; their
-direction IS the backlog, so NO experiments while a user-requested task is unmerged.
+USER IS ASLEEP; GOAL HOOK ACTIVE: "complete all 26 tasks one by one, off to bed". Their direction
+is the queue below. NO experiments. Land only gated work (SKIP_GATE only for markdown with the
+justification in the commit message, only while overlay-dialog blocks gates).
 
-**DOCTRINE HOME IS THIS REPO.** `ibr/Skills/Orchestration Lessons.md` is SUPERSEDED — never append
-there, even though the hourly loop prompt still names it. All lessons go to `project.conductor.md`.
+Main (LOCAL) @ `185abf9`; remote has everything through `185abf9` (push confirmed via
+"Everything up-to-date" during a network window — NETWORK IS FLAPPING, DNS intermittent; a
+background task retries pushes; never conclude access problems from DNS errors).
 
-**LANDED TONIGHT (after the earlier anchor):** inline-rewrite plugin fix (#126, `ac868f4`) →
-activity-bar persisted order + drag + Alt-arrow reorder (#113/#128, `318fdf1`) → skill-dropdown YAML
-block scalars + one-row ellipsis (#127, `de892f0`) → fold-dense scroll + `editor.codeFolding` +
-fold-click anchor + depth contract (#123 follow-on/#129/#132, `e500748`).
+**IN FLIGHT (3 builders, at cap):**
+- foldfeel r3 (`/tmp/conductor-foldfeel`, #135): glide fix rounds 1-2 ACCEPTED (bisect found
+  `99f0550` ramp regression; ceiling-relative headroom envelope; defaults-first tables; sweep
+  120/220/320/480 all climbing). Gate 787893 found blast radius: `scrollbars` +
+  `settings-applied` smokes encode the OLD single-flick travel (envelope reserves velocity in
+  flick 1). R3 brief `/tmp/TASK-glide-round3.md`: QUANTIFY the single-gesture travel change at 220
+  (if >15% STOP and report — reservation fractions may need retuning, feel decision), then fix
+  both smokes to honest physics (more notches, never wider timeouts), then census ALL
+  wheel-consuming smokes (verification set must match a shared generator's BLAST RADIUS).
+- scaleinv (`/tmp/conductor-scaleinv`, #133): RESUMED from WIP `8438514`. Scale-invariance as the
+  contract: ratio ≈ 1 on COUNTS (reads-per-frame 2k == 100k), floors demoted to canaries,
+  positive control plants an O(document) cost. Brief `/tmp/TASK-scale-invariance.md`.
+- overlayfix (`/tmp/conductor-overlayfix`, NEW): overlay-dialog graduated from retry-flake to
+  HARD RED blocking every gate — the night's bottleneck, dispatched first. Brief
+  `/tmp/TASK-overlay-dialog-red.md`: reproduce by driving (~1/3 red, loop it), fix app or wait
+  (never timeout), prefer count verdicts, 20 consecutive greens acceptance.
 
-**THE FOLD FINDING (headline):** fold-dense slowness was NEVER folding. `BracketMatch.findInDocument`
-rescanned and syntax-classified up to 100k cells BEFORE EVERY RENDER when the cursor sat on the root
-`{` — which real JSON guarantees. 13.8 → 29.7 FPS at 26k; 14.6 → 30.0 at 100k full-stack. Fold
-projection was 0.10 ms/frame. The base table's tell: fold-dense with folding OFF was also ~13 FPS.
+**LANDING ORDER AFTER THESE:** #125 SOLO (ivue-2.2.0 statics + SCREAMING_SNAKE; read
+tmp/static-cached-getters-2.2.0-brief.md — NOTE tmp/ is now gitignored but files persist locally)
+→ #99 graphics tier → #111 copyable panels → #115/#116/#119 chrome wave → #130 extend-$Class
+invariant → #136 shared scale fixtures → #114 (REDEFINED: terminal-hosted agents + Invar MCP
+provider + jsonl-translator switcher; wrapper = power-user tool; see task metadata) → #122 editor
+capstone → #102 tables → #131 autocomplete identifiers → then the parked findings queue
+(#105 unrun smokes, #108 gear mark [needs a user-facing proposal, prepare but do not change
+appearance without them], #90, #94, #86, #75, #31, #35, #46, #104, #109, #124) → #59/#62 LAST.
 
-**#128 VERDICT:** no code defect. `panelContentOrder` default IS `['agent','terminal']`; a stale
-persisted value in the live HOME explains terminal-first. Deliberately NOT auto-repaired (that would
-destroy a legitimately dragged order) — the profile needs ONE re-drag.
+**METHOD (Rule Zero, top of this file and AGENTS.md):** builders drive PTY first, iterate
+drive→change→drive, contract after the symptom dies, suite once; scale parity (2k AND 100k);
+defaults first (user settings are a second probe); feel-bisect for "used to work"; bycatch
+reported, small-and-obvious fixes allowed under the four conditions; counts over clocks.
 
-**INLINE AI, OPEN SCOPE QUESTION:** the plugin is REQUEST-TRIGGERED ONLY (Ctrl+Shift+R). There is no
-debounce/idle path anywhere in `src/modules/inline-rewrite` — the fix removed the auto path rather
-than debouncing it. That is a scope regression against #98 ("Copilot-style ghost text"). User was
-offered (a) restore automatic proposals with a real idle-debounce gated by idle-quiescence, or
-(b) keep request-only and make the chord discoverable. UNANSWERED — do not pick for them.
-
-**NEXT, IN ORDER:** #133 delete-time-from-predicates (convert the quiet tail to load-invariant work
-counts; containers/throttling REJECTED as the fix — we are inside a Parallels VM whose host
-scheduler we cannot see, so only removing wall-clock from predicates reaches zero) → #125 SOLO
-(ivue-2.2.0 `$`-cached-statics migration PAIRED with the new SCREAMING_SNAKE literal-getter
-convention; 56 sites now, not 53) → #99 graphics tier → #111 copyable panels → #115/#116/#119 chrome
-wave → #130 extend-`$Class` invariant → #114 Terminal/Agent/LSP plugins + capsule-lite → #122 editor
-capstone → #102 tables → #59/#62 formatting LAST.
-
-**OPEN INTERMITTENTS (all pre-existing, none introduced):** overlay-dialog context-menu-wheel,
-audio-narration barge-in, bounded-list-popup. Landed over them deliberately and said so each time.
-
-**FIVE INSTRUMENT DEFECTS FOUND TONIGHT — the pattern is the lesson:** a wait already true before the
-work happened; a union merge with no BASE resurrecting a deleted test; a monitor satisfied by a
-3h-stale READY file; `pgrep` matching a worker's own brief text; a timeout discarding the one fact
-needed to diagnose it. Every one failed toward "looks fine". Full write-ups in `project.conductor.md`.
+**CRONS:** hourly loop `7 * * * *` (e8d7b9dd) + sweep `11,41 * * * *` (a5e026ea) — re-arm from
+the conductor skill's verbatim copies if the session restarts.
 
 ## PRIOR ANCHOR (2026-07-26 ~13:25)
 
