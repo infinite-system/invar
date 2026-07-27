@@ -23,13 +23,13 @@ import { LspTransport } from './LspTransport';
 
 class $LanguageClient implements LanguageProvider {
   protected static get $noCapabilities(): LanguageCapabilities {
-    const noCapabilities: LanguageCapabilities = Object.freeze({
+    const noCapabilities: LanguageCapabilities = {
       diagnostics: false,
       definition: false,
       hover: false,
       references: false,
       completion: false,
-    });
+    };
     return noCapabilities;
   }
 

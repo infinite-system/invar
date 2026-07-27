@@ -2,12 +2,12 @@
 import { Static } from 'ivue/extras';
 class $MarkdownParser {
   protected static get $inlineStyles(): InlineStyles {
-    const inlineStyles: InlineStyles = Object.freeze({
+    const inlineStyles: InlineStyles = {
       emphasis: 1,
       strong: 2,
       code: 3,
       link: 4,
-    });
+    };
     return inlineStyles;
   }
 
@@ -16,12 +16,12 @@ class $MarkdownParser {
   }
 
   protected static get $emptyNumbers(): readonly number[] {
-    const emptyNumbers: readonly number[] = Object.freeze([]);
+    const emptyNumbers: readonly number[] = [];
     return emptyNumbers;
   }
 
   protected static get $emptyStrings(): readonly string[] {
-    const emptyStrings: readonly string[] = Object.freeze([]);
+    const emptyStrings: readonly string[] = [];
     return emptyStrings;
   }
 

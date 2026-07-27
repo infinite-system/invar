@@ -5,7 +5,7 @@ import { AgentSpinnerFrames } from './AgentSpinnerFrames';
 
 class $AgentThinkingIndicator {
   protected static get $coreWords(): readonly string[] {
-    const coreWords = Object.freeze([
+    const coreWords = [
       'Reducing…',
       'Distilling…',
       'Carving away…',
@@ -25,19 +25,19 @@ class $AgentThinkingIndicator {
       'Reframing…',
       'Finding the invariant…',
       'Crystallizing…',
-    ]);
+    ];
     return coreWords;
   }
 
   protected static get $easterEggs(): readonly string[] {
-    const easterEggs = Object.freeze([
+    const easterEggs = [
       'Quantum-hopping the solution space…',
       'Consulting the negative space…',
       'Deleting what refuses to matter…',
       'Quantizing the ineffable…',
       'Two-axis Auditing…',
       'Approaching the limit…',
-    ]);
+    ];
     return easterEggs;
   }
 
@@ -50,13 +50,13 @@ class $AgentThinkingIndicator {
   > {
     const gradientSchemes: ReadonlyArray<
       readonly [keyof Palette, keyof Palette]
-    > = Object.freeze([
+    > = [
       ['func', 'operator'],
       ['type', 'number'],
       ['keyword', 'error'],
       ['string', 'type'],
       ['number', 'error'],
-    ]);
+    ];
     return gradientSchemes;
   }
 
