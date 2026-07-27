@@ -16,7 +16,7 @@ import type { DecodedImage } from './ImageDecoders';
 class $PngDecoder {
   // The eight fixed bytes every PNG file opens with (\x89 P N G \r \n \x1a \n).
   protected static get $pngSignature(): readonly number[] {
-    const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+    const pngSignature = Object.freeze([137, 80, 78, 71, 13, 10, 26, 10]);
     return pngSignature;
   }
 

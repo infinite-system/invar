@@ -12,7 +12,7 @@ import { StatusChannel } from '../system/StatusChannel';
 // invariant: Applied blocks match the current revision (src/modules/markdown/markdown.invariants.md)
 class $MarkdownDocument {
   protected static get $emptyBlocks(): readonly BlockRecord[] {
-    const emptyBlocks: readonly BlockRecord[] = [];
+    const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
     return emptyBlocks;
   }
 

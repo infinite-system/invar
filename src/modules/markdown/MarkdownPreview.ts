@@ -20,7 +20,7 @@ import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
 class $MarkdownPreview {
   protected static get $emptyBlocks(): readonly BlockRecord[] {
-    const emptyBlocks: readonly BlockRecord[] = [];
+    const emptyBlocks: readonly BlockRecord[] = Object.freeze([]);
     return emptyBlocks;
   }
 
