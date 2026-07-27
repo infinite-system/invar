@@ -48,10 +48,17 @@ export interface ApplicationContributionContext {
   readonly editorSurfaceContents: EditorSurfaceContents.Model;
   readonly applicationContributions: ApplicationContributionCatalog;
   readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
+  readonly registerKeybindingGuard: (
+    name: string,
+    predicate: () => boolean,
+  ) => void;
   readonly registerSetting: <Value extends SettingValue>(
     contribution: SettingContribution<Value>,
   ) => RegisteredSetting<Value>;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
+  readonly editorInteractionIsAvailable: () => boolean;
+  readonly dismissEditorSuggestions: () => void;
+  readonly bindingHint: (action: string, context: string) => string;
   readonly requestRender: () => void;
 }
 

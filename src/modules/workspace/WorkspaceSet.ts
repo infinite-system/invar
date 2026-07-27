@@ -62,14 +62,6 @@ class $WorkspaceSet {
     if (this.options.codeFoldingEnabled) {
       workspace.attachCodeFolding(this.options.codeFoldingEnabled);
     }
-    if (this.options.inlineRewriteEnabled) {
-      workspace.attachInlineRewrite(
-        this.options.inlineRewriteEnabled,
-        () =>
-          this.entries.value[this.activeWorkspaceIndex.value] === workspace &&
-          (this.options.inlineRewriteEligible?.() ?? true),
-      );
-    }
     workspace.open(root);
     this.entries.value = [...this.entries.value, workspace];
     this.activeWorkspaceIndex.value = this.entries.value.length - 1;
@@ -176,8 +168,6 @@ export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
   awaitNextViewPaint?: () => Promise<void>;
   contributors?: readonly WorkspaceContributor[];
-  inlineRewriteEnabled?: Ref<boolean>;
-  inlineRewriteEligible?: () => boolean;
   codeFoldingEnabled?: Ref<boolean>;
 }
 

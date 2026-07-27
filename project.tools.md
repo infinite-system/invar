@@ -27,8 +27,13 @@ machine-wide quiet-exclusive lock. `SMOOTHNESS_LINE_COUNTS`, `SMOOTHNESS_SURFACE
 `SMOOTHNESS_FIXTURES` (`flat` / `fold-dense`), `SMOOTHNESS_CODE_FOLDING` (`on` / `off`),
 `SMOOTHNESS_VERSION_CONTROL_MARKS` (`on` by default / `off` as an isolator),
 `SMOOTHNESS_GESTURES`, and `SMOOTHNESS_NOTCHES` narrow or deepen an investigation. The nested-JSON
-editor case initializes a repository by default and verifies that version-control marks, indent
-guides, and fold controls are present together.
+editor case initializes a repository by default and verifies that
+version-control marks, indent guides, and fold controls are present together.
+Every editor fixture of at least 80k lines also direct-jumps to depth 0, 50k,
+and 75k, settles on observed scroll state and frame quiescence, then measures a
+fresh 1,000-row real wheel drive. Jump frames are excluded. The report gives
+actual start, rows travelled, FPS, and ratio to depth 0 for every checkpoint,
+and fails the exact checkpoint below 28 FPS.
 USE IT WHEN: scrolling "feels" wrong. It distinguishes the two failures that feel identical —
 choppiness (few frames, big steps) from low velocity (fewer rows for the same gesture).
 KNOWN RESULTS: before the 2026-07-26 cadence and gesture-gain repair, a fling ran 19-23 whole-glide
@@ -42,6 +47,11 @@ The 2026-07-26 fold-density axis found 26k/100k flat text at about 30 FPS but ne
 named `BracketMatch.findInDocument`: the cursor on the root `{` rescanned and syntax-classified up
 to 100,000 cells per frame. Its revision/cursor/language snapshot restored the 26k nested case to
 30.1-30.3 FPS with folding both on and off.
+The depth-sampled follow-up measured the 100k flat fixture at
+30.0/30.0/30.0 FPS and the fold-dense fixture, with indent guides and
+version-control gutter marks enabled, at 30.0/30.0/30.0 FPS for depths
+0/50k/75k. Every drive travelled 1,000-1,006 rows; the lowest depth-zero ratio
+was 0.998.
 CAUTION: send a gesture as ONE PTY write. Split across 12 writes the identical gesture lands on one
 of three quantized outcomes ±35%, because the chunk boundary decides whether one physical gesture
 straddles input frames. Whole-glide fps includes the slow tail, where sub-two-row movement naturally

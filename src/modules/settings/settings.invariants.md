@@ -46,19 +46,23 @@ registration is active.
 **Scope:** `Settings.registerSetting`, the application contribution context, and `SettingsPanel`
 descriptor projection.
 
-**Mechanism:** contributors register typed `SettingContribution` records. `Settings` owns their
-reactive values and retains raw user/project records so late registration receives the same
-defaults-user-project precedence as host fields. `SettingsPanel` appends active contributed
-descriptors generically. Disposing the registration removes the descriptor and cell while a saved
-user value remains available for a later reinstall.
+**Mechanism:** contributors register typed `SettingContribution` records.
+`Settings` owns their reactive values and retains raw user/project records so
+late registration receives the same defaults-user-project precedence as host
+fields. `SettingsPanel` appends active contributed descriptors generically.
+`setContributed` invokes the contribution's optional `changed` callback only
+after a sanitized value changes, so a plugin can attach or release resources
+without a reactive watcher. Disposing the registration removes the descriptor
+and cell while a saved user value remains available for a later reinstall.
 
 **Generates:** plugin-owned headings and settings rows; disable/re-enable symmetry; a host schema
 whose vocabulary does not grow with installed plugins.
 
 **Evidence:** `SettingContribution.interface.ts`; `Settings.ts` (`registerSetting`);
-`SettingsPanel.ts` (`descriptors`); `Settings.test.ts` ("disposing a contribution removes its schema
-but preserves saved data"); `SettingsPanel.test.ts` ("contributed rows use their heading and
-disappear on dispose").
+`SettingsPanel.ts` (`descriptors`); `Settings.test.ts` ("disposing a
+contribution removes its schema but preserves saved data" and "setContributed
+notifies a plugin only when its value changes"); `SettingsPanel.test.ts`
+("contributed rows use their heading and disappear on dispose").
 
 **Impossible if true:** a plugin setting getter or key in `SettingsValues`; a disabled plugin leaving
 a row in Settings; a plugin heading special-cased in the overlay.

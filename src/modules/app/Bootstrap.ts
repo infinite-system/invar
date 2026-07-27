@@ -78,7 +78,6 @@ import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
-import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
 
 class $Bootstrap {
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
@@ -120,14 +119,6 @@ class $Bootstrap {
     // Reactive settings store (item G): load user + project settings; changes live-apply + persist.
     const settings = new Settings.Class();
     settings.load({ workspaceRoot: options.root ?? Environment.Class.cwd });
-    const inlineRewriteEnabled = settings.registerSetting({
-      identifier: 'inlineRewrite.enabled',
-      label: 'Enabled',
-      section: 'Inline Rewrite',
-      defaultValue: new CodexRewriteProvider.Class().available,
-      spec: { kind: 'boolean' },
-    });
-    app.onDispose(() => inlineRewriteEnabled.dispose());
     const codeFoldingEnabled = settings.registerSetting({
       identifier: 'editor.codeFolding',
       label: 'Code folding',
@@ -136,14 +127,11 @@ class $Bootstrap {
       spec: { kind: 'boolean' },
     });
     app.onDispose(() => codeFoldingEnabled.dispose());
-    let inlineRewriteOverlayOpen = (): boolean => true;
     const workspaceSet = new WorkspaceSet.Class(settings, {
       awaitNextViewPaint: () =>
         new Promise<void>((resolve) => {
           renderer.once('frame', () => resolve());
         }),
-      inlineRewriteEnabled: inlineRewriteEnabled.value,
-      inlineRewriteEligible: () => !inlineRewriteOverlayOpen(),
       codeFoldingEnabled: codeFoldingEnabled.value,
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
@@ -151,10 +139,6 @@ class $Bootstrap {
     keybindings.registerGuard(
       'editorHasSelection',
       () => workspaceSet.active.editor.cursor.hasSelection,
-    );
-    keybindings.registerGuard(
-      'inlineRewriteVisible',
-      () => workspaceSet.active.editor.inlineRewrite.visible,
     );
     keybindings.registerLayer(
       'canonical',
@@ -250,6 +234,8 @@ class $Bootstrap {
     // (which runs before buildRootView), so a provider registers early and its content is built
     // lazily at mount time from a view-supplied context.
     const editorSurfaceContents = new EditorSurfaceContents.Class();
+    let editorInteractionIsAvailable = (): boolean => false;
+    let dismissEditorSuggestions = (): void => {};
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
       (plugin) => plugin.primaryDockContentIdentifiers ?? [],
     );
@@ -269,6 +255,10 @@ class $Bootstrap {
         statusBarSegments,
         statusProjectionContributions,
         editorSurfaceContents,
+        editorInteractionIsAvailable: () => editorInteractionIsAvailable(),
+        dismissEditorSuggestions: () => dismissEditorSuggestions(),
+        bindingHint: (action, context) =>
+          keybindings.bindingHint(action, context),
         requestRender: () => renderer.requestRender(),
       },
     );
@@ -374,8 +364,9 @@ class $Bootstrap {
       activateQuickOpenSelection,
       revealFindMatch,
     );
-    inlineRewriteOverlayOpen = () =>
-      view.modalOverlayOwnsScreen() || completionPopup.open;
+    editorInteractionIsAvailable = () =>
+      !view.modalOverlayOwnsScreen() && !completionPopup.open;
+    dismissEditorSuggestions = dismissCompletion;
 
     // Lazily create + register the terminal PaneContent on first toggle (idle cost is zero until then).
     // The initial cols×rows seed from the laid-out panel region; the frame loop converges the true size.
@@ -1688,18 +1679,6 @@ class $Bootstrap {
       'editor.duplicateLine': () => workspaceSet.active.editor.duplicateLine(),
       'editor.indent': () => workspaceSet.active.editor.indent(),
       'editor.outdent': () => workspaceSet.active.editor.outdent(),
-      'inlineRewrite.request': () => {
-        dismissCompletion();
-        workspaceSet.active.editor.requestInlineRewrite();
-      },
-      'inlineRewrite.accept': () =>
-        workspaceSet.active.editor.acceptInlineRewrite(),
-      'inlineRewrite.reject': () =>
-        workspaceSet.active.editor.rejectInlineRewrite(),
-      'inlineRewrite.next': () =>
-        workspaceSet.active.editor.cycleInlineRewrite(1),
-      'inlineRewrite.previous': () =>
-        workspaceSet.active.editor.cycleInlineRewrite(-1),
       // Toggle the bottom panel (terminal). Reserved so it fires from ANY mode — including from within a
       // focused terminal (to hide it) — exactly like the quit escape hatch. Same closure the status-bar
       // terminal button runs, so chord and click are one action.

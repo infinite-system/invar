@@ -74,6 +74,13 @@ const WHEEL_NOTCHES_PER_GESTURE = Number(
 // previous fling reach measurably different peak velocities, so the contract needs at least one of
 // each and manual measurement wants a third to see which of the two a run landed on.
 const GESTURE_REPEAT_COUNT = Number(process.env.SMOOTHNESS_GESTURES ?? '3');
+const DEPTH_GESTURE_TARGET_ROWS = Number(
+  process.env.SMOOTHNESS_DEPTH_GESTURE_ROWS ?? '1000',
+);
+const DEPTH_CHECKPOINT_TARGETS = [0, 50_000, 75_000] as const;
+const DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES = 80_000;
+const DEPTH_CHECKPOINT_FPS_FLOOR = 28;
+const DEPTH_GESTURE_REFRESH_FRAME_INTERVAL = 6;
 const TERMINAL_COLUMNS = 120;
 const TERMINAL_ROWS = 40;
 const EDITOR_WHEEL_COLUMN = 80;
@@ -123,6 +130,20 @@ interface SurfaceMeasurement {
   readonly versionControlMarks: boolean;
   readonly fixtureLineCount: number;
   readonly gestures: readonly GestureMeasurement[];
+  readonly depthCheckpoints: readonly DepthCheckpointMeasurement[];
+  readonly depthCheckpointWallClockMilliseconds: number;
+}
+
+interface DepthCheckpointMeasurement {
+  readonly targetDepthLine: number;
+  readonly actualStartLine: number;
+  readonly actualEndLine: number;
+  readonly rowsTravelled: number;
+  readonly observedFrameCount: number;
+  readonly movingFrameCount: number;
+  readonly durationMilliseconds: number;
+  readonly framesPerSecond: number;
+  readonly ratioToDepthZero: number;
 }
 
 async function awaitStatusCondition(
@@ -342,6 +363,215 @@ async function measureOneGesture(
     );
   }
   return summarize(samples, inputWrittenTimestampMilliseconds);
+}
+
+async function jumpEditorToDepth(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  targetDepthLine: number,
+): Promise<number> {
+  if (targetDepthLine === 0) {
+    driver.sendKeysWithoutFrameExpectation('Control+Home');
+    await awaitStatusCondition(
+      statusPath,
+      'the depth-0 setup jump to reach the document origin',
+      (status) => Number(status.editorScrollTop) === 0,
+    );
+  } else {
+    const targetLineMarker = `line ${String(targetDepthLine).padStart(6, '0')} content`;
+    driver.sendKeysWithoutFrameExpectation('Control+f');
+    await awaitStatusCondition(
+      statusPath,
+      `Find to open before the depth-${targetDepthLine} jump`,
+      (status) => status.findOpen === true,
+    );
+    driver.sendKeysWithoutFrameExpectation(
+      ...Array.from({ length: targetLineMarker.length }, () => 'Backspace'),
+    );
+    driver.sendText(targetLineMarker);
+    await awaitStatusCondition(
+      statusPath,
+      `Find to navigate directly to depth ${targetDepthLine}`,
+      (status) =>
+        Number(status.cursorLineIndex) === targetDepthLine &&
+        Number(status.findMatchCount) === 1,
+    );
+    driver.sendKeysWithoutFrameExpectation('Escape');
+    await awaitStatusCondition(
+      statusPath,
+      `Find to close after the depth-${targetDepthLine} jump`,
+      (status) => status.findOpen === false,
+    );
+  }
+  await drainToQuiescence(driver);
+  const actualStartLine = visibleTopLineIndex(driver.snapshot());
+  if (actualStartLine === null) {
+    throw new Error(
+      `Depth-${targetDepthLine} jump settled without a visible fixture line`,
+    );
+  }
+  return actualStartLine;
+}
+
+async function measureDepthCheckpoint(
+  driver: PtyTestDriver.Model,
+  targetDepthLine: number,
+  actualStartLine: number,
+): Promise<Omit<DepthCheckpointMeasurement, 'ratioToDepthZero'>> {
+  const samples: GestureFrameSample[] = [];
+  const targetEndLine = actualStartLine + DEPTH_GESTURE_TARGET_ROWS;
+  driver.sendRawInputWithoutFrameExpectation(
+    wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+  );
+  while (true) {
+    const completed = await driver.awaitNextCompletedFrameSnapshot(
+      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+    );
+    const scrollTop = visibleTopLineIndex(completed.snapshot);
+    if (scrollTop === null) continue;
+    samples.push({
+      completedFrameCount: completed.completedFrame.completedFrameCount,
+      byteArrivalTimestampMilliseconds:
+        completed.completedFrame.byteArrivalTimestampMilliseconds,
+      observedByteCount: completed.completedFrame.observedByteCount,
+      scrollTop,
+    });
+    if (scrollTop >= targetEndLine) break;
+    if (samples.length % DEPTH_GESTURE_REFRESH_FRAME_INTERVAL === 0) {
+      driver.sendRawInputWithoutFrameExpectation(
+        wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+      );
+    }
+  }
+  const firstSample = samples[0];
+  const finalSample = samples.at(-1);
+  if (!firstSample || !finalSample) {
+    throw new Error(`Depth-${targetDepthLine} produced no frame samples`);
+  }
+  const durationMilliseconds =
+    finalSample.byteArrivalTimestampMilliseconds -
+    firstSample.byteArrivalTimestampMilliseconds;
+  let movingFrameCount = 0;
+  let previousScrollTop = actualStartLine;
+  for (const sample of samples) {
+    if (sample.scrollTop !== previousScrollTop) movingFrameCount++;
+    previousScrollTop = sample.scrollTop;
+  }
+  return {
+    targetDepthLine,
+    actualStartLine,
+    actualEndLine: finalSample.scrollTop,
+    rowsTravelled: finalSample.scrollTop - actualStartLine,
+    observedFrameCount: samples.length,
+    movingFrameCount,
+    durationMilliseconds,
+    framesPerSecond:
+      durationMilliseconds > 0
+        ? ((samples.length - 1) * 1000) / durationMilliseconds
+        : 0,
+  };
+}
+
+async function measureDepthCheckpoints(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+): Promise<DepthCheckpointMeasurement[]> {
+  const checkpointsWithoutRatios: Array<
+    Omit<DepthCheckpointMeasurement, 'ratioToDepthZero'>
+  > = [];
+  for (const targetDepthLine of DEPTH_CHECKPOINT_TARGETS) {
+    const actualStartLine = await jumpEditorToDepth(
+      driver,
+      statusPath,
+      targetDepthLine,
+    );
+    checkpointsWithoutRatios.push(
+      await measureDepthCheckpoint(driver, targetDepthLine, actualStartLine),
+    );
+  }
+  const depthZeroFramesPerSecond =
+    checkpointsWithoutRatios[0]?.framesPerSecond ?? 0;
+  return checkpointsWithoutRatios.map((checkpoint) => ({
+    ...checkpoint,
+    ratioToDepthZero:
+      depthZeroFramesPerSecond > 0
+        ? checkpoint.framesPerSecond / depthZeroFramesPerSecond
+        : 0,
+  }));
+}
+
+function assertDepthCheckpointFloors(
+  caseLabel: string,
+  checkpoints: readonly DepthCheckpointMeasurement[],
+): void {
+  for (const targetDepthLine of DEPTH_CHECKPOINT_TARGETS) {
+    const checkpoint = checkpoints.find(
+      (candidate) => candidate.targetDepthLine === targetDepthLine,
+    );
+    if (!checkpoint) {
+      throw new Error(
+        `${caseLabel} depth-${targetDepthLine} checkpoint is missing`,
+      );
+    }
+    if (checkpoint.framesPerSecond < DEPTH_CHECKPOINT_FPS_FLOOR) {
+      throw new Error(
+        `${caseLabel} depth-${targetDepthLine} checkpoint ` +
+          `${checkpoint.framesPerSecond.toFixed(1)} FPS is below ` +
+          `${DEPTH_CHECKPOINT_FPS_FLOOR} FPS`,
+      );
+    }
+  }
+}
+
+function proveDepthCheckpointFloorCanFail(): string {
+  const syntheticCheckpoints = DEPTH_CHECKPOINT_TARGETS.map(
+    (targetDepthLine, checkpointIndex): DepthCheckpointMeasurement => ({
+      targetDepthLine,
+      actualStartLine: targetDepthLine,
+      actualEndLine: targetDepthLine + DEPTH_GESTURE_TARGET_ROWS,
+      rowsTravelled: DEPTH_GESTURE_TARGET_ROWS,
+      observedFrameCount: 100,
+      movingFrameCount: 100,
+      durationMilliseconds: 3_300,
+      framesPerSecond: checkpointIndex === 2 ? 27 : 30,
+      ratioToDepthZero: checkpointIndex === 2 ? 0.9 : 1,
+    }),
+  );
+  try {
+    assertDepthCheckpointFloors('positive-control', syntheticCheckpoints);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('depth-75000') && message.includes('27.0 FPS')) {
+      return message;
+    }
+    throw new Error(
+      `Depth floor positive control failed with the wrong red: ${message}`,
+    );
+  }
+  throw new Error('Depth floor positive control did not fail');
+}
+
+function printDepthCheckpointTable(
+  surfaceMeasurement: SurfaceMeasurement,
+): void {
+  if (surfaceMeasurement.depthCheckpoints.length === 0) return;
+  console.error(
+    `depth checkpoints: ${surfaceMeasurement.fixtureShape} ` +
+      `${surfaceMeasurement.fixtureLineCount}-line editor`,
+  );
+  console.error(
+    '| target depth | actual start | rows travelled | FPS | ' +
+      'ratio to depth 0 | floor |',
+  );
+  console.error('| ---: | ---: | ---: | ---: | ---: | :---: |');
+  for (const checkpoint of surfaceMeasurement.depthCheckpoints) {
+    console.error(
+      `| ${checkpoint.targetDepthLine} | ${checkpoint.actualStartLine} | ` +
+        `${checkpoint.rowsTravelled} | ` +
+        `${checkpoint.framesPerSecond.toFixed(1)} | ` +
+        `${checkpoint.ratioToDepthZero.toFixed(3)} | PASS |`,
+    );
+  }
 }
 
 function runGit(repositoryRoot: string, commandArguments: string[]): void {
@@ -615,6 +845,9 @@ async function measureSurface(
   fixtureShape: FixtureShape,
   codeFolding: CodeFoldingMode,
 ): Promise<SurfaceMeasurement> {
+  const shouldMeasureDepthCheckpoints =
+    surface === 'editor' &&
+    fixtureLineCount >= DEPTH_CHECKPOINT_FIXTURE_MINIMUM_LINES;
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-scroll-smoothness-'));
   const homeDirectory = mkdtempSync(
     join(tmpdir(), 'tui-scroll-smoothness-home-'),
@@ -689,14 +922,27 @@ async function measureSurface(
     );
 
     const gestures: GestureMeasurement[] = [];
-    for (
-      let gestureIndex = 0;
-      gestureIndex < GESTURE_REPEAT_COUNT;
-      gestureIndex++
-    ) {
-      await driveSurfaceToTop(driver, statusPath, surface);
-      await drainToQuiescence(driver);
-      gestures.push(await measureOneGesture(driver));
+    let depthCheckpoints: DepthCheckpointMeasurement[] = [];
+    let depthCheckpointWallClockMilliseconds = 0;
+    if (shouldMeasureDepthCheckpoints) {
+      const depthCheckpointStartMilliseconds = performance.now();
+      depthCheckpoints = await measureDepthCheckpoints(driver, statusPath);
+      depthCheckpointWallClockMilliseconds =
+        performance.now() - depthCheckpointStartMilliseconds;
+      assertDepthCheckpointFloors(
+        `${fixtureShape} ${fixtureLineCount}-line editor`,
+        depthCheckpoints,
+      );
+    } else {
+      for (
+        let gestureIndex = 0;
+        gestureIndex < GESTURE_REPEAT_COUNT;
+        gestureIndex++
+      ) {
+        await driveSurfaceToTop(driver, statusPath, surface);
+        await drainToQuiescence(driver);
+        gestures.push(await measureOneGesture(driver));
+      }
     }
     return {
       surface,
@@ -709,6 +955,8 @@ async function measureSurface(
         VERSION_CONTROL_MARKS_ENABLED,
       fixtureLineCount,
       gestures,
+      depthCheckpoints,
+      depthCheckpointWallClockMilliseconds,
     };
   } finally {
     await driver.dispose();
@@ -729,6 +977,15 @@ if (FIXTURE_SHAPES.length === 0) {
 if (CODE_FOLDING_MODES.length === 0) {
   throw new Error('SMOOTHNESS_CODE_FOLDING must name on, off, or both');
 }
+if (
+  !Number.isInteger(DEPTH_GESTURE_TARGET_ROWS) ||
+  DEPTH_GESTURE_TARGET_ROWS < 1_000 ||
+  DEPTH_GESTURE_TARGET_ROWS > 5_000
+) {
+  throw new Error(
+    'SMOOTHNESS_DEPTH_GESTURE_ROWS must be an integer from 1000 to 5000',
+  );
+}
 const foldDensePositiveControl = foldDenseFixtureLines(101);
 const parsedFoldDensePositiveControl = JSON.parse(
   foldDensePositiveControl.join('\n'),
@@ -741,7 +998,13 @@ if (
 ) {
   throw new Error('fold-dense fixture positive control failed');
 }
+const depthCheckpointFloorPositiveControl = proveDepthCheckpointFloorCanFail();
+console.error(
+  `depth-floor positive control RED (expected): ` +
+    depthCheckpointFloorPositiveControl,
+);
 
+const measurementRunStartMilliseconds = performance.now();
 const surfaceMeasurements: SurfaceMeasurement[] = [];
 for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
   for (const fixtureShape of FIXTURE_SHAPES) {
@@ -754,6 +1017,7 @@ for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
           codeFolding,
         );
         surfaceMeasurements.push(surfaceMeasurement);
+        printDepthCheckpointTable(surfaceMeasurement);
         for (const [
           gestureIndex,
           measurement,
@@ -779,9 +1043,24 @@ for (const fixtureLineCount of FIXTURE_LINE_COUNTS) {
   }
 }
 
+const wallClockMilliseconds =
+  performance.now() - measurementRunStartMilliseconds;
+const depthCheckpointWallClockMilliseconds = surfaceMeasurements.reduce(
+  (sum, measurement) => sum + measurement.depthCheckpointWallClockMilliseconds,
+  0,
+);
 const report = {
   commit: (await Bun.$`git rev-parse --short HEAD`.quiet().text()).trim(),
   wheelNotchesPerGesture: WHEEL_NOTCHES_PER_GESTURE,
+  depthGestureTargetRows: DEPTH_GESTURE_TARGET_ROWS,
+  depthCheckpointFpsFloor: DEPTH_CHECKPOINT_FPS_FLOOR,
+  depthCheckpointFloorPositiveControl,
+  wallClockMilliseconds,
+  depthCheckpointWallClockMilliseconds,
+  depthCheckpointWallClockFraction:
+    wallClockMilliseconds > 0
+      ? depthCheckpointWallClockMilliseconds / wallClockMilliseconds
+      : 0,
   cases: surfaceMeasurements,
 };
 console.log(JSON.stringify(report, null, 2));

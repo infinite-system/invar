@@ -66,8 +66,8 @@ function createController(provider: DeferredRewriteProvider): {
     currentRevision: () => revision,
     currentLineRegion: () => lineRegion(0, 0),
     lineRegion,
+    quietMilliseconds: 0,
   });
-  controller.localEnabled.value = true;
   controller.attachEligibility(() => true);
   return {
     controller,
@@ -95,7 +95,7 @@ test('a newer rewrite request cancels the one already in flight', async () => {
   controller.dispose();
 });
 
-test('a response stamped with an older document revision is discarded', async () => {
+test('a response for an older document revision is discarded', async () => {
   const provider = new DeferredRewriteProvider();
   const { controller, setRevision } = createController(provider);
 
@@ -107,6 +107,22 @@ test('a response stamped with an older document revision is discarded', async ()
 
   expect(controller.visible).toBe(false);
   expect(controller.candidates.value).toEqual([]);
+  controller.dispose();
+});
+
+test('a cancelled response cannot clear a newer typed region', async () => {
+  const provider = new DeferredRewriteProvider();
+  const { controller } = createController(provider);
+  controller.requestNow();
+  await Promise.resolve();
+
+  controller.recordTyping(0, 0);
+  provider.resolvers[0]?.([candidate('stale')]);
+  await Bun.sleep(5);
+
+  expect(provider.requests).toHaveLength(2);
+  expect(provider.signals[0]?.aborted).toBe(true);
+  expect(provider.signals[1]?.aborted).toBe(false);
   controller.dispose();
 });
 
@@ -122,7 +138,7 @@ test('candidate cycling wraps in both directions', () => {
   controller.dispose();
 });
 
-test('provider errors become a silent status counter with no proposal', async () => {
+test('provider errors increment status without a proposal', async () => {
   const provider = new DeferredRewriteProvider();
   const { controller } = createController(provider);
 

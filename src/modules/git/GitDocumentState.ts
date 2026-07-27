@@ -19,25 +19,34 @@ class $GitDocumentState {
 
   protected requestGeneration = 0;
 
+  protected get appliedHeadRevision() {
+    return shallowRef(0);
+  }
+
   beginHeadRequest(): number {
-    this.hasHeadText.value = false;
     return ++this.requestGeneration;
   }
 
   applyHeadText(requestGeneration: number, headText: string): boolean {
     if (requestGeneration !== this.requestGeneration) return false;
+    if (this.hasHeadText.value && this.headText.value === headText) return true;
     this.headText.value = headText;
     this.hasHeadText.value = true;
+    this.appliedHeadRevision.value += 1;
     return true;
   }
 
   invalidate(): void {
     this.requestGeneration += 1;
+    if (!this.hasHeadText.value) return;
     this.hasHeadText.value = false;
+    this.appliedHeadRevision.value += 1;
   }
 
   get decorationRevision(): string {
-    return `${this.requestGeneration}:${this.hasHeadText.value ? 1 : 0}`;
+    return `${this.appliedHeadRevision.value}:${
+      this.hasHeadText.value ? 1 : 0
+    }`;
   }
 
   decorationsByLine(): Map<number, EditorLineDecoration[]> {

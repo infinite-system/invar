@@ -66,6 +66,11 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           ),
         );
       },
+      registerKeybindingGuard: (name, predicate) => {
+        registrationDisposers.push(
+          this.options.keybindings.registerGuard(name, predicate),
+        );
+      },
       registerSetting: (contribution) => {
         const registeredSetting =
           this.options.settings.registerSetting(contribution);
@@ -138,6 +143,7 @@ export type ApplicationContributionsOptions = Omit<
   ApplicationContributionContext,
   | 'applicationContributions'
   | 'registerKeybindings'
+  | 'registerKeybindingGuard'
   | 'registerSetting'
   | 'registerPrimaryDockContent'
 > & {

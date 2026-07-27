@@ -14,11 +14,9 @@ import { Clipboard } from '../system/Clipboard';
 import type {
   LanguageCompletionItem,
   LanguageRange,
-  RewriteProvider,
 } from '../lsp/LanguageProvider.interface';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
-import { InlineRewrite } from './InlineRewrite';
-import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
+import type { EditorContributions } from './EditorContributions';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -30,7 +28,8 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
   protected undo = this.createUndo();
-  inlineRewrite = this.createInlineRewrite();
+  protected disposeEditorContributions: (() => void) | null = null;
+  protected editorContributions: EditorContributions.Model | null = null;
 
   protected createViewport() {
     return new Viewport.Class();
@@ -38,63 +37,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   protected createUndo() {
     return new UndoStore.Class();
   }
-  protected createRewriteProvider(): RewriteProvider {
-    return new CodexRewriteProvider.Class();
-  }
-  protected createInlineRewrite(): InlineRewrite.Instance {
-    return new InlineRewrite.Class({
-      provider: this.createRewriteProvider(),
-      snapshot: (region) => {
-        if (!this.hasDocument.value) return null;
-        return {
-          request: {
-            documentPath: this.document.path,
-            documentText: this.document.text,
-            editRegion: region,
-            cursor: {
-              line: this.cursor.line.value,
-              column: this.cursor.col.value,
-            },
-            languageId: LanguageRegistry.Class.forPath(this.document.path),
-          },
-          revision: this.document.revision.value,
-          dirty: this.document.dirty,
-        };
-      },
-      currentRevision: () => this.document.revision.value,
-      currentLineRegion: () =>
-        this.hasDocument.value
-          ? this.inlineRewriteLineRegion(
-              this.cursor.line.value,
-              this.cursor.line.value,
-            )
-          : null,
-      lineRegion: (firstLine, lastLine) =>
-        this.inlineRewriteLineRegion(firstLine, lastLine),
-    });
-  }
-
-  attachInlineRewrite(enabled: Ref<boolean>, eligibility: () => boolean): void {
-    this.inlineRewrite.attachEnabled(enabled);
-    this.inlineRewrite.attachEligibility(eligibility);
-  }
-
-  protected inlineRewriteLineRegion(
-    firstLine: number,
-    lastLine: number,
-  ): LanguageRange {
-    const maximumLine = Math.max(0, this.document.lineCount - 1);
-    const startLine = Math.max(0, Math.min(firstLine, maximumLine));
-    const endLine = Math.max(startLine, Math.min(lastLine, maximumLine));
-    return {
-      start: { line: startLine, column: 0 },
-      end: {
-        line: endLine,
-        column: EditorCoordinates.Class.graphemeCount(
-          this.document.line(endLine),
-        ),
-      },
-    };
+  attachEditorContributions(contributions: EditorContributions.Model): void {
+    this.disposeEditorContributions?.();
+    this.editorContributions = contributions;
+    this.disposeEditorContributions = contributions.attach(
+      this as unknown as Editor.Model,
+    );
   }
 
   get hasDocument() {
@@ -367,7 +315,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   openFile(path: string): void {
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     this.document.loadFromFile(path);
     this.placeCursor(0, 0);
     this.cursor.clearSelection();
@@ -421,7 +369,9 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Release the owned document text + undo history so a closed/dehydrated tab frees memory promptly
    *  (the Editor holds no external listeners/timers, so dropping these + the reference is complete). */
   override dispose(): void {
-    this.inlineRewrite.dispose();
+    this.disposeEditorContributions?.();
+    this.disposeEditorContributions = null;
+    this.editorContributions = null;
     this.undo.clear();
     super.dispose();
     this.hasDocument.value = false;
@@ -443,7 +393,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    *  selection, delete the selection instead. Cmd/Ctrl+Backspace. */
   deleteToLineStart(): void {
     if (!this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     if (this.hasSelection) {
       this.captureBefore('delete');
       this.removeSelection();
@@ -521,6 +471,23 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
   }
 
+  protected recordOrdinaryEdit(): void {
+    this.editorContributions?.recordOrdinaryEdit(
+      this as unknown as Editor.Model,
+    );
+  }
+
+  protected recordTyping(
+    firstEditedLine: number,
+    lastEditedLine: number,
+  ): void {
+    this.editorContributions?.recordTyping(
+      this as unknown as Editor.Model,
+      firstEditedLine,
+      lastEditedLine,
+    );
+  }
+
   insertText(text: string): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const firstEditedLine =
@@ -534,7 +501,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
     this.placeCursor(this.cursor.line.value, column);
     this.scrollLineIntoView(this.cursor.line.value);
-    this.inlineRewrite.recordTyping(firstEditedLine, this.cursor.line.value);
+    this.recordTyping(firstEditedLine, this.cursor.line.value);
   }
 
   applyCompletion(
@@ -542,7 +509,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     fallbackRange: LanguageRange,
   ): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const edit = item.textEdit ?? {
       range: fallbackRange,
       newText: item.insertText ?? item.label,
@@ -584,12 +551,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       this.placeCursor(position.line, position.col);
     }
     this.scrollLineIntoView(this.cursor.line.value);
-    this.inlineRewrite.recordTyping(firstEditedLine, this.cursor.line.value);
+    this.recordTyping(firstEditedLine, this.cursor.line.value);
   }
 
   backspace(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     this.captureBefore('delete');
     if (this.removeSelection()) {
       this.scrollLineIntoView(this.cursor.line.value);
@@ -605,7 +572,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   deleteChar(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     this.captureBefore('delete');
     if (this.removeSelection()) return;
     this.document.deleteForward(this.cursor.line.value, this.cursor.col.value);
@@ -614,7 +581,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Delete exactly [wordLeft(cursor), cursor], or the active selection, as one undo step. */
   deletePreviousWord(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     if (this.hasSelection) {
       this.captureBefore('delete');
       this.removeSelection();
@@ -650,7 +617,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Swap the cursor's line with the one above, keeping the cursor on the moved line. No-op at the top. */
   moveLineUp(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const line = this.cursor.line.value;
     if (line <= 0) return; // top edge: nothing above to swap with
     this.captureBefore('other');
@@ -669,7 +636,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Swap the cursor's line with the one below, keeping the cursor on the moved line. No-op at the bottom. */
   moveLineDown(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const line = this.cursor.line.value;
     if (line >= this.document.lineCount - 1) return; // bottom edge: nothing below to swap with
     this.captureBefore('other');
@@ -688,7 +655,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Copy the cursor's line and insert the copy directly below; the cursor follows onto the copy. */
   duplicateLine(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     this.captureBefore('other');
     const line = this.cursor.line.value;
     const text = this.document.line(line);
@@ -722,7 +689,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
    */
   indent(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const indentUnit = this.detectIndentUnit();
     const selectionRange = this.cursor.selectionRange();
     this.captureBefore('other');
@@ -748,7 +715,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Remove at most one indent unit from every selected line, or from the caret's line. */
   outdent(): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const indentUnit = this.detectIndentUnit();
     const selectionRange = this.cursor.selectionRange();
     this.captureBefore('other');
@@ -811,7 +778,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (this.readOnly.value || !this.hasDocument.value) return;
     const text = this.selectionText();
     if (!text) return;
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     await Clipboard.Class.copy(text);
     this.captureBefore('delete');
     this.removeSelection();
@@ -838,13 +805,13 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
     this.placeCursor(position.line, position.col);
     this.scrollLineIntoView(position.line);
-    this.inlineRewrite.recordTyping(firstEditedLine, position.line);
+    this.recordTyping(firstEditedLine, position.line);
   }
 
   // --- undo/redo ------------------------------------------------------------
 
   performUndo(): void {
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
@@ -860,7 +827,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   performRedo(): void {
-    this.inlineRewrite.dismiss();
+    this.recordOrdinaryEdit();
     const current = {
       lines: this.document.snapshot(),
       cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
@@ -875,43 +842,24 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.scrollLineIntoView(target.cursor.line);
   }
 
-  requestInlineRewrite(): void {
-    this.inlineRewrite.requestNow();
-  }
-
-  acceptInlineRewrite(): void {
+  replaceRangeAsUndoStep(range: LanguageRange, replacementText: string): void {
     if (this.readOnly.value || !this.hasDocument.value) return;
-    const candidate = this.inlineRewrite.takeSelectedCandidate();
-    if (!candidate) return;
+    this.recordOrdinaryEdit();
     this.captureBefore('other');
     this.cursor.clearSelection();
     const position = this.document.replaceRange(
       {
-        line: candidate.region.start.line,
-        col: candidate.region.start.column,
+        line: range.start.line,
+        col: range.start.column,
       },
       {
-        line: candidate.region.end.line,
-        col: candidate.region.end.column,
+        line: range.end.line,
+        col: range.end.column,
       },
-      candidate.replacementText,
+      replacementText,
     );
     this.placeCursor(position.line, position.col);
     this.scrollLineIntoView(position.line);
-  }
-
-  rejectInlineRewrite(): void {
-    this.inlineRewrite.dismiss();
-  }
-
-  cycleInlineRewrite(candidateDelta: number): void {
-    this.inlineRewrite.cycle(candidateDelta);
-  }
-
-  inlineRewriteProjectedLine(lineIndex: number): string | null {
-    return this.inlineRewrite.projectedLine(lineIndex, (candidateLineIndex) =>
-      this.document.line(candidateLineIndex),
-    );
   }
 
   save(): boolean {
@@ -1130,6 +1078,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 export namespace Editor {
   export const $Class = $Editor;
   export let Class = Reactive($Class);
+  export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
 

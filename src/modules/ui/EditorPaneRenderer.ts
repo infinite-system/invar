@@ -158,20 +158,7 @@ class $EditorPaneRenderer {
       lineIndex: number,
       windowStartGrapheme = 0,
       windowSpans: readonly Span[] | null = null,
-      inlineRewriteDecoration = false,
     ): void => {
-      if (inlineRewriteDecoration) {
-        codeChunks.push(
-          dim(
-            italic(
-              bg(palette.inlineRewriteBackground)(
-                fg(palette.inlineRewriteForeground)(windowText),
-              ),
-            ),
-          ),
-        );
-        return;
-      }
       const lineMatches =
         sourceFindEngine?.matches.value.filter(
           (match) => match.line === lineIndex,
@@ -395,11 +382,7 @@ class $EditorPaneRenderer {
           gutterChunks.push(fg(palette.dim)(' '.repeat(lineNumberWidth + 2)));
           gutterHoverLabelsByRow.push([]);
         }
-        const sourceLineText = editor.document.line(row.lineIndex);
-        const projectedLineText = editor.inlineRewriteProjectedLine(
-          row.lineIndex,
-        );
-        const lineText = projectedLineText ?? sourceLineText;
+        const lineText = editor.document.line(row.lineIndex);
         let segmentSpans: Span[] | null = null;
         if (!plainForeground) {
           if (row.lineIndex !== tokenizedLineIndex) {
@@ -429,13 +412,20 @@ class $EditorPaneRenderer {
           row.lineIndex,
           row.segment.startGrapheme,
           segmentSpans,
-          projectedLineText !== null,
         );
-        if (
-          row.foldedRange &&
-          row.segmentIndex ===
-            EditorWrap.Class.wrapLine(lineText, editor.wrapWidth()).length - 1
-        ) {
+        const lineSegmentCount = EditorWrap.Class.wrapLine(
+          lineText,
+          editor.wrapWidth(),
+        ).length;
+        if (row.segmentIndex === lineSegmentCount - 1) {
+          codeChunks.push(
+            ...workspace.editorContributions.lineEndChunks(
+              editor,
+              row.lineIndex,
+            ),
+          );
+        }
+        if (row.foldedRange && row.segmentIndex === lineSegmentCount - 1) {
           codeChunks.push(fg(palette.dim)(` ${context.foldClosedGlyph}`));
         }
         if (rowIndex < visualRowsWindow.length - 1) {
@@ -458,9 +448,7 @@ class $EditorPaneRenderer {
     const viewportWidth = context.viewportWidth;
     visualRowsWindow.forEach((row, visibleIndex) => {
       const lineNumber = row.lineIndex;
-      const sourceText = editor.document.line(lineNumber);
-      const projectedText = editor.inlineRewriteProjectedLine(lineNumber);
-      const text = projectedText ?? sourceText;
+      const text = editor.document.line(lineNumber);
       const isCurrentLine = lineNumber === currentLineIndex;
       const lineNumberText = String(lineNumber + 1).padStart(
         lineNumberWidth,
@@ -514,8 +502,14 @@ class $EditorPaneRenderer {
         lineNumber,
         windowStartGrapheme,
         lineWindowSpans,
-        projectedText !== null,
       );
+      if (
+        windowEndGraphemeIndex >= EditorCoordinates.Class.graphemeCount(text)
+      ) {
+        codeChunks.push(
+          ...workspace.editorContributions.lineEndChunks(editor, lineNumber),
+        );
+      }
       if (row.foldedRange) {
         codeChunks.push(fg(palette.dim)(` ${context.foldClosedGlyph}`));
       }

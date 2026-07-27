@@ -525,36 +525,6 @@ touches a renderable.
 
 **Last refined:** 2026-07-23
 
-### An inline rewrite proposal never consumes an ordinary edit keystroke
-
-**Invariant:** If an ordinary editor edit arrives while an inline rewrite proposal is visible,
-then the proposal is dismissed and the edit still mutates the document exactly as it would with no
-proposal present.
-
-**Scope:** Editor insert, newline, paste, deletion, indentation, structural edit, completion,
-undo, and redo paths while a rewrite is visible. Rewrite accept/reject/cycle are separate explicit
-actions.
-
-**Mechanism:** Ordinary mutators dismiss rewrite state before or within the same synchronous input
-turn, then continue through their existing mutation path. Typing records the newly edited region
-only after the character or paste has landed, so starting a fresh debounce cannot intercept input.
-
-**Generates:** Typing-through behavior; proposal dismissal on edits; no modal rewrite mode; Tab
-remaining indentation rather than acceptance.
-
-**Evidence:** `src/modules/editor/Editor.ts`; `src/modules/editor/Editor.test.ts`; and the
-typing-through phase of `scripts/harness/smoke-inline-rewrite-harness.ts`.
-
-**Impossible if true:** A visible proposal swallowing a printable character, Tab accepting a
-rewrite instead of indenting, or the document remaining unchanged after an ordinary edit key.
-
-**Verification:** `bun test src/modules/editor/Editor.test.ts -t "ordinary typing dismisses"` and
-`bun scripts/harness/smoke-inline-rewrite-harness.ts`.
-
-**Status:** provisional
-
-**Last refined:** 2026-07-26
-
 ### A matched bracket pair is balanced within the same family
 
 **Invariant:** When the cursor is ON or immediately AFTER a bracket `()[]{}`, its match is the balanced

@@ -3,7 +3,50 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-26 ~13:25) — READ FIRST ON A COLD START
+## RESUME ANCHOR (2026-07-26 ~20:45) — READ FIRST ON A COLD START
+
+Main @ `98a40d5` pushed+clean; ~100 commits landed today, all gated. Fleet = CODEX
+(`nohup setsid codex exec --dangerously-bypass-approvals-and-sandbox -C <worktree> "Read <brief>"`),
+monitors keyed on COMMIT-COUNT-OR-SILENCE. Crons: hourly loop + 30-min RECONCILIATION SWEEP
+(`11,41 * * * *`); the 10-min poll is RETIRED — do not re-arm (verbatim prompts in the conductor
+skill). USER IS ACTIVELY TESTING and filing findings faster than they land — their direction IS the
+backlog; no experiments.
+
+**LANDED TODAY (headline):** pure canvas → plugin taxonomy (contributor/provider/hosted-runtime) →
+file tree plugin → plugin manifest (settings+keybindings, host floor 13→0 source-control lines) →
+quiet lock (which turned out to be a CLASSIFIER: it stripped the load alibi from real intermittents)
+→ code folding → inline AI rewrites → keyboard invariant (Tab indents, F-keys retired with proven
+arrival, pass-through) → both PTY root causes (descriptor theft via I/O-thread close; setTimeout(0)
+clamp) → completion kind glyphs → diff h-scrollbar → icon uniformity (emoji-width class CLOSED,
+empty exception list) → scroll feel + 100k-line fix (48/48/48 rows, 30 FPS, 28 FPS floor at 100k
+gated) → agent-state intermittents (#124 publication race 16/20→20/20; #109 was a wait defect).
+
+**IN FLIGHT:** fold-density perf + `editor.codeFolding` setting (`/tmp/conductor-foldperf`, brief
+`/tmp/TASK-fold-scroll-cost.md` — its ADDENDUM carries #129, the fold-click-jumps-viewport
+regression, to be dispatched as its round 2 in the SAME worktree); inline-rewrite plugin fix
+(`/tmp/conductor-inlinefix`, gate running at handoff — 3/3-failing reproductions of all three
+symptoms are in `/tmp/inline-rewrite-fix-READY.md`).
+
+**NEXT, IN ORDER:** #125 ivue-2.2.0 $-cached-statics sweep (SOLO slot — touches 35 files across
+every module; read `tmp/static-cached-getters-2.2.0-brief.md` first; the freeze is UNCONDITIONAL so
+a mutating site now throws in prod — report those, don't work around) → #113+#128 (activity-bar
+drag-reorder + agent-left default regression, one mechanism: order is a persisted property, not
+registration order) → #127 skill-dropdown (`>-` block-scalar parse + ellipsis) → #99 graphics tier
+→ #111 copyable panels → #115/#116/#119 chrome wave → #130 extend-$Class invariant → #114
+Terminal/Agent/LSP plugins (capsule-lite folded in: per-workspace agent+terminal, session RESUMES
+per folder) → #122 editor capstone (source-text view as the last contributor) → #102 tables →
+#59/#62 formatting sweeps LAST.
+
+**OPEN INTERMITTENT:** overlay-dialog context-menu-wheel condition fails ~1/3 isolated on `4ad3287`
+too (proven pre-existing before landing over it) — next in the intermittent queue.
+
+**THE TWO FIXTURE-AXIS LESSONS (why the user out-found the gate twice today):** coverage needs
+points at the far end of every dimension a metric can scale on — SIZE (flat 100k missed fold-dense
+26k JSON) and CONTENT SHAPE/CONFIG (the inline-AI smoke never drove a git-dirty file with live
+gutter marks, which is where the typed text vanished). When a user finds something eight green gates
+missed, the fixture set is the defect.
+
+## PRIOR ANCHOR (2026-07-26 ~13:25)
 
 Main @ `0ec98bd`, pushed, clean. Landed since the 08:55 anchor: the KEYBOARD INVARIANT (#91 Tab
 indents / #93 F-keys retired with driven arrival proof / #101 pass-through, `0b7ad0a`), the PLUGIN

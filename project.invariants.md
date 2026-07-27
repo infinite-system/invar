@@ -303,12 +303,18 @@ cost, which the gate step watches.
 **Impossible if true:** A reactive object per cell/token/line; an LSP alive for a cold
 workspace; idle CPU above ~zero; memory that grows with file/repo size rather than visible size.
 
-**Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` generates and drives 2k,
-26,635, and 100k-line editor and diff fixtures; the behavioral contract requires both 100k
-surfaces to sustain at least 28 FPS. Unit cost ratchets in `CodeFolding.test.ts`, `Editor.test.ts`,
-and `DiffView.test.ts` prove unchanged-frame lookups do not rescan their document-scale inputs.
-Idle CPU remains ~0 after activity. Continuous (time axis): the per-gate byte-flush latency step
-(campaign wave 1) — a spike names the commit that broke the bound.
+**Verification:** `bun scripts/harness/measure-scroll-smoothness.ts` generates
+and drives 2k, 26,635, and 100k-line editor and diff fixtures. On every 100k
+editor fixture it direct-jumps to depths 0, 50k, and 75k, settles on observed
+scroll state and frame quiescence, excludes jump frames, then drives 1,000-5,000
+rows of real wheel input. The behavioral contract reports FPS, rows travelled,
+and the depth-zero ratio at each checkpoint and requires each one,
+independently, to sustain at least 28 FPS. Its fold-dense axis keeps folding,
+indent guides, and version-control gutter marks enabled. Unit cost ratchets in
+`CodeFolding.test.ts`, `Editor.test.ts`, and `DiffView.test.ts` prove
+unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
+remains ~0 after activity. Continuous (time axis): the per-gate byte-flush
+latency step (campaign wave 1) — a spike names the commit that broke the bound.
 
 **Status:** established
 
