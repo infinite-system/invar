@@ -139,7 +139,16 @@ if ! bash "$(dirname "$0")/check-map-coherence.sh" >/tmp/conventions-gate-mapcoh
 fi
 rm -f /tmp/conventions-gate-mapcoh.$$.log
 
-# 10) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution contracts, but it must not
+# 10) RETIRED SMOKE REFERENCES: parked content is searchable but no longer
+#     authoritative. Live records, scripts, registrations, and project docs must
+#     not cite a file beneath the retirement directory.
+if ! bash scripts/check-retired-smoke-references.sh; then
+  echo "CONVENTIONS FAIL: live file cites a retired smoke"
+  fail=1
+fi
+
+# 11) PLUGIN CANVAS BOUNDARY: host core may expose generic contribution
+#     contracts, but it must not
 #     name a concrete plugin, import its module, or dispatch its domain command identifiers.
 #     THIS CHECK CALLED `rg`, WHICH IS NOT INSTALLED HERE, AND `|| true` SWALLOWED THE ERROR — so it
 #     passed unconditionally and the entire plugin-canvas boundary was unenforced. (Found twice

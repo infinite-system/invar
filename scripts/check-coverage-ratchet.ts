@@ -97,6 +97,7 @@ const WAIT_CALL_NAMES: ReadonlySet<string> = new Set([
 
 const DECLARATION_FILE_NAME = 'project.coverage-deltas.md';
 const DECLARATION_GRAMMAR = 'assertions A → B, waits C → D';
+const RETIRED_SMOKE_PATH_PREFIX = 'scripts/retired-smokes/';
 const POSITIVE_CONTROL_FILE_PATH =
   'fixtures/coverage-ratchet-positive-control.ts.fixture';
 const POSITIVE_CONTROL_EXPECTED_COUNTS: CoverageCounts = {
@@ -251,6 +252,9 @@ function readCalleeName(expression: typescript.Expression): string | null {
 }
 
 export function isCoverageBearingPath(filePath: string): boolean {
+  if (filePath.startsWith(RETIRED_SMOKE_PATH_PREFIX)) {
+    return false;
+  }
   if (filePath.endsWith('.test.ts')) {
     return true;
   }

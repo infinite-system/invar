@@ -385,9 +385,12 @@ normalized; fenced code blocks, HTML comments, and inline code spans are inert; 
 values may wrap onto continuation lines and are read in full.
 
 **Know its blind spots** (and reconcile them against step 1's manual enumeration):
-- It skips `node_modules/`, `.git/`, `.claude/`, and any nested checkout (a directory with
-  its own `.git` — printed as a `note:`). A contract living under `.claude/` is visible to
-  manual enumeration but invisible to the checker, permanently — flag the divergence.
+- It skips `node_modules/`, `.git/`, `.claude/`, `scripts/retired-smokes/`,
+  and any nested checkout (a directory with its own `.git` — printed as a
+  `note:`). A contract living under `.claude/` is visible to manual
+  enumeration but invisible to the checker, permanently — flag the
+  divergence. Retired smokes are deliberately outside live annotation and
+  contract coverage.
 - Contract diffs deserve fence-vigilance: fencing a record's lines makes it INERT (the
   checker notes fenced record-shaped headings) — review a fence appearing around a record
   as a deletion, because for enforcement it is one. Likewise a new `.git` directory
