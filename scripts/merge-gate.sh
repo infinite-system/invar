@@ -13,7 +13,6 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
-source "$DIR/quiet-lock.sh"
 export PATH="$HOME/.bun/bin:$PATH"
 gate_started_seconds="$(date +%s)"
 # THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
@@ -109,7 +108,7 @@ step() {
     if "$@" >"$step_log" 2>&1; then
       echo "  OK    $name (clean on retry; first attempt was starvation-class)"
       # Feed the SAME tally the pool jobs feed. Until now only pool retries were
-      # counted, so a serial or quiet-tail step that passed only on its retry left no
+      # counted, so a serial-tail step that passed only on its retry left no
       # trace but a line buried mid-log — which is how smoke-workspace-tabs stayed
       # 1-in-3 to 2-in-3 flaky for a whole day while every gate reported green.
       retried_pass_smoke_names+=("$name")
@@ -169,9 +168,9 @@ esac
 declare -a parallel_smoke_names=()
 declare -a parallel_smoke_commands=()
 declare -a parallel_smoke_sources=()
-declare -a quiet_smoke_names=()
-declare -a quiet_smoke_commands=()
-declare -a quiet_smoke_sources=()
+declare -a serial_smoke_names=()
+declare -a serial_smoke_commands=()
+declare -a serial_smoke_sources=()
 # TWO POPULATIONS, NOT ONE. A retry has two possible outcomes and they mean opposite things: a retried
 # PASS is a masked intermittent (the dangerous one — it is invisible in a green run), while a retried
 # FAIL is already visible in the FAIL list and only needs its timeout-class provenance recorded. The
@@ -208,11 +207,11 @@ parallel_safe_smoke() {
   parallel_smoke_sources+=("$(registered_smoke_source "$@")")
 }
 
-quiet_serial_smoke() {
+serial_smoke() {
   local smoke_name="$1"; shift
-  quiet_smoke_names+=("$smoke_name")
-  quiet_smoke_commands+=("$(quoted_command "$@")")
-  quiet_smoke_sources+=("$(registered_smoke_source "$@")")
+  serial_smoke_names+=("$smoke_name")
+  serial_smoke_commands+=("$(quoted_command "$@")")
+  serial_smoke_sources+=("$(registered_smoke_source "$@")")
 }
 
 parallel_safe_full_tmux_smoke() {
@@ -223,9 +222,9 @@ parallel_safe_full_tmux_smoke() {
   fi
 }
 
-quiet_serial_full_tmux_smoke() {
+serial_full_tmux_smoke() {
   if [ "${INVAR_FULL_TMUX:-0}" = "1" ]; then
-    quiet_serial_smoke "$@"
+    serial_smoke "$@"
   else
     FULL_TMUX_SKIPPED=$((FULL_TMUX_SKIPPED + 1))
   fi
@@ -324,15 +323,15 @@ run_parallel_smoke_pool() {
   done
 }
 
-run_quiet_serial_smokes() {
+run_serial_smokes() {
   local job_number
-  for job_number in "${!quiet_smoke_names[@]}"; do
+  for job_number in "${!serial_smoke_names[@]}"; do
     execute_registered_smoke_job \
-      "quiet" \
+      "serial" \
       "$job_number" \
-      "${quiet_smoke_names[$job_number]}" \
-      "${quiet_smoke_commands[$job_number]}"
-    collect_registered_smoke_job "quiet" "$job_number" "${quiet_smoke_names[$job_number]}"
+      "${serial_smoke_names[$job_number]}" \
+      "${serial_smoke_commands[$job_number]}"
+    collect_registered_smoke_job "serial" "$job_number" "${serial_smoke_names[$job_number]}"
   done
 }
 
@@ -346,8 +345,18 @@ validate_smoke_classification() {
   local smoke_source
   local classification_failure_count=0
   local inspected_source_count=0
-  for source_number in "${!parallel_smoke_sources[@]}"; do
-    smoke_source="${parallel_smoke_sources[$source_number]}"
+  local timing_pattern
+  timing_pattern='assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-'
+  local all_smoke_sources=(
+    "${parallel_smoke_sources[@]}"
+    "${serial_smoke_sources[@]}"
+  )
+  local all_smoke_names=(
+    "${parallel_smoke_names[@]}"
+    "${serial_smoke_names[@]}"
+  )
+  for source_number in "${!all_smoke_sources[@]}"; do
+    smoke_source="${all_smoke_sources[$source_number]}"
     [ -n "$smoke_source" ] || continue
     # Two structural tells, deliberately NOT domain vocabulary. Naming the
     # feature ("momentum", "glide") misses any smoke that measures time while
@@ -363,10 +372,8 @@ validate_smoke_classification() {
     #      wait deadline only ever ADDS to a clock reading and compares against
     #      it, and is load-robust because it simply waits longer. Subtraction is
     #      therefore the discriminator between measuring and waiting.
-    if grep -Eq \
-      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-' \
-      "$smoke_source"; then
-      echo "  FAIL  parallel-safe classification: ${parallel_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
+    if grep -Eq "$timing_pattern" "$smoke_source"; then
+      echo "  FAIL  blocking-smoke classification: ${all_smoke_names[$source_number]} contains a timing-sensitive assertion in $smoke_source"
       classification_failure_count=$((classification_failure_count + 1))
     fi
     inspected_source_count=$((inspected_source_count + 1))
@@ -374,34 +381,24 @@ validate_smoke_classification() {
   # POSITIVE CONTROL. This guard can only fail toward "pass": if its matcher does not
   # work, it finds no violations and reports OK. That is not hypothetical — it used
   # `rg`, which is NOT INSTALLED on this machine, so for 14 gate runs it printed
-  # "every registered timing-sensitive smoke is tagged quiet-serial" while inspecting
+  # "every registered blocking smoke is clock-free" while inspecting
   # nothing, and the error text sat two lines above the OK in every one of those logs.
   #
-  # The quiet-serial bucket is the KNOWN-POSITIVE set: those smokes are in the tail
-  # precisely because they contain the patterns above. So the guard proves its own
-  # instrument on them before trusting its silence about the parallel bucket. It also
-  # refuses to pass having inspected nothing.
+  # Prove the matcher against a synthetic known-positive before trusting its
+  # silence about production sources. It also refuses to pass having inspected
+  # nothing.
   if [ "$inspected_source_count" -eq 0 ]; then
     echo "  FAIL  classification guard inspected NO parallel-safe sources — the registry is empty or unreadable"
     return 1
   fi
-  local quiet_bucket_match_count=0
-  local quiet_source
-  for quiet_source in "${quiet_smoke_sources[@]}"; do
-    [ -n "$quiet_source" ] || continue
-    [ -f "$quiet_source" ] || continue
-    if grep -Eq \
-      'assertNoCompleteFrameEmittedFor|awaitFrameSilence|performance\.now\(\)[[:space:]]*-|Date\.now\(\)[[:space:]]*-' \
-      "$quiet_source"; then
-      quiet_bucket_match_count=$((quiet_bucket_match_count + 1))
-    fi
-  done
-  if [ "$quiet_bucket_match_count" -eq 0 ]; then
-    echo "  FAIL  classification guard SELF-TEST failed: the timing-sensitivity pattern matched none of the ${#quiet_smoke_sources[@]} quiet-serial sources, so its silence about the $inspected_source_count parallel sources proves nothing (a broken or missing matcher looks exactly like a clean bill of health)"
+  if ! grep -Eq "$timing_pattern" \
+    <<< 'const elapsedMilliseconds = performance.now() - startedMilliseconds;'
+  then
+    echo "  FAIL  classification guard SELF-TEST failed: the timing-sensitivity pattern rejected its synthetic clock-subtraction positive control"
     return 1
   fi
   if [ "$classification_failure_count" -eq 0 ]; then
-    echo "  OK    every registered timing-sensitive smoke is tagged quiet-serial ($inspected_source_count parallel sources inspected; matcher self-tested against $quiet_bucket_match_count of ${#quiet_smoke_sources[@]} quiet sources)"
+    echo "  OK    every registered blocking smoke is free of duration and frame-silence assertions ($inspected_source_count sources inspected; matcher positive control RED)"
     return 0
   fi
   return 1
@@ -442,23 +439,18 @@ step "coverage ratchet (no undeclared assertion loss)" bun scripts/check-coverag
 #     really happened in this repo (a gate guard called a missing binary and printed OK for 14 runs).
 step "dropped reactive observations (report-only findings, gated instrument)" bun scripts/check-reactive-observation.ts
 # 2) Unit tests.
-# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
-step \
-  "unit tests (bun test)" \
-  quiet_lock_run \
-  "loud-shared" \
-  "merge-gate unit tests" \
-  bun test
+step "unit tests (bun test)" bun test
 # 3) Behavioral CONTRACTS — the felt-invariants (momentum-glide, wrap-scroll, idle-quiescence).
-# They register in the quiet tail because their momentum and absence windows are timing-sensitive.
-quiet_serial_smoke "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
+# They remain serial within one gate because they launch a long sequence of
+# applications; their blocking verdicts use state, ordering, and counts.
+serial_smoke "behavioral-contracts (felt invariants)" bash scripts/behavioral-contracts.sh
 
 if [ "${FAST:-0}" != "1" ]; then
   echo "smoke phase: PTY harness suite (INVAR_FULL_TMUX=${INVAR_FULL_TMUX:-0}; tmux audit steps skipped when 0 are reported below)"
   # 4) Driving SMOKES — the real user paths.
   parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
   parallel_safe_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
-  quiet_serial_smoke "smoke: inline rewrite harness" bun scripts/harness/smoke-inline-rewrite-harness.ts
+  serial_smoke "smoke: inline rewrite harness" bun scripts/harness/smoke-inline-rewrite-harness.ts
   # The dirty marker is content-derived: typing then BACKSPACING (no undo) must clear the marker, a
   # deleted-and-retyped line must read clean, and a mid-session save must move the baseline.
   parallel_safe_smoke "smoke: dirty-marker harness" bun scripts/harness/smoke-dirty-marker-harness.ts
@@ -550,7 +542,7 @@ if [ "${FAST:-0}" != "1" ]; then
   # PTY byte-harness wave 2 ports. Distinct tmux originals above remain registered as the independent
   # terminal-emulator verification ring; proven strict-subset duplicates are parked and declared in
   # project.coverage-deltas.md.
-  # Moved to the POOL: this smoke's only reason to be in the quiet tail was a 600 ms
+  # Moved to the POOL: this smoke's only reason to be in the serial tail was a 600 ms
   # frame-silence window, and that window was proven UNSOUND earlier tonight (GitWatcher's
   # 5 s reconcile floor legitimately repaints after the fixture creates an untracked file,
   # so ~12% of windows contained a CORRECT repaint). It was replaced by a STATE assertion —
@@ -579,12 +571,12 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: agent-pane-ux harness" bun scripts/harness/smoke-agent-pane-ux-harness.ts
   parallel_safe_smoke "smoke: agent-cancel harness" bun scripts/harness/smoke-agent-cancel-harness.ts
   parallel_safe_smoke "smoke: agent-engine-switch harness" bun scripts/harness/smoke-agent-engine-switch-harness.ts
-  # Moved to the quiet tail 2026-07-26: the two repeat offenders in the retry tally (agent-permissions
+  # Kept in the serial tail: the two repeat offenders in the retry tally (agent-permissions
   # passed-only-on-retry twice today, overlay-dialog retried-and-still-failed twice) both pass 3/3
-  # isolated — the load-flake signature. They cannot take quiet-exclusive INSIDE the pool (the gate
-  # holds loud-shared around the pool, so a pool job wanting exclusive would only hit the 120 s
-  # degrade); the tail is where timing-sensitive work belongs, and the classification guard agrees.
-  quiet_serial_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
+  # isolated — the load-flake signature. Their blocking predicates must now
+  # survive contention; serial placement limits per-gate application pressure
+  # without taking a machine-wide lock.
+  serial_smoke "smoke: agent-permissions harness" bun scripts/harness/smoke-agent-permissions-harness.ts
   parallel_safe_smoke "smoke: agent-search harness" bun scripts/harness/smoke-agent-search-harness.ts
   parallel_safe_smoke "smoke: audio-narration harness" bun scripts/harness/smoke-audio-narration-harness.ts
   parallel_safe_smoke "smoke: voice-picker harness" bun scripts/harness/smoke-voice-picker-harness.ts
@@ -594,12 +586,10 @@ if [ "${FAST:-0}" != "1" ]; then
   # wave 4
   parallel_safe_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   parallel_safe_smoke "smoke: terminal backpressure harness" bun scripts/harness/smoke-terminal-backpressure-harness.ts
-  # Quiet-serial: this smoke asserts on DURATIONS, not just on rendered content.
-  # It requires the reducedMotion path to finish under 1000 ms, and requires a
-  # slow typing speed to take at least 400 ms longer than a fast one, measured
-  # across two separately launched applications. Both are measurements of the
-  # machine, so pool load can invert the margin or blow the ceiling.
-  quiet_serial_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
+  # Serial because it launches several terminal applications. Its blocking
+  # verdict is ordering/count based: reduced motion paints the complete command
+  # in its first typing frame, and slow typing produces more partial frames.
+  serial_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
   parallel_safe_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
@@ -607,7 +597,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: markdown harness" bun scripts/harness/smoke-markdown-harness.ts
   parallel_safe_smoke "smoke: settings-applied harness" bun scripts/harness/smoke-settings-applied-harness.ts
   parallel_safe_smoke "smoke: shortcut-help harness" bun scripts/harness/smoke-shortcut-help-harness.ts
-  quiet_serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
+  serial_smoke "smoke: overlay-dialog harness" bun scripts/harness/smoke-overlay-dialog-harness.ts
   parallel_safe_smoke "smoke: search-mouse harness" bun scripts/harness/smoke-search-mouse-harness.ts
 else
   echo "== merge-gate: (FAST) skipped the multi-launch smokes + real settings drives =="
@@ -618,25 +608,20 @@ if ! validate_smoke_classification; then fail=1; fi
 
 parallel_phase_started_seconds="$(date +%s)"
 echo "== merge-gate: parallel-safe smoke pool (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers) =="
-# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
-quiet_lock_run \
-  "loud-shared" \
-  "merge-gate parallel smoke pool" \
-  run_parallel_smoke_pool
+run_parallel_smoke_pool
 parallel_phase_elapsed_seconds="$(( $(date +%s) - parallel_phase_started_seconds ))"
 echo "merge-gate timing: parallel-safe phase $(format_duration "$parallel_phase_elapsed_seconds") (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers)"
 
-# invariant: Duration measurements run in a quiet serial tail (scripts/harness/harness.invariants.md)
-quiet_phase_started_seconds="$(date +%s)"
-echo "== merge-gate: quiet-serial tail (${#quiet_smoke_names[@]} registered jobs) =="
-run_machine_quiet_tail() {
-  run_quiet_serial_smokes
-  # This latency check is deliberately outside SKIP_PERF and FAST. It names
-  # the raw-byte boundary, records every result, and blocks only at the
-  # reviewed baseline's failure multiplier.
+# invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
+serial_phase_started_seconds="$(date +%s)"
+echo "== merge-gate: serial tail (${#serial_smoke_names[@]} registered jobs) =="
+run_serial_tail() {
+  run_serial_smokes
+  # This check remains outside SKIP_PERF and FAST. Frame ordering blocks;
+  # millisecond samples and their trailing trend remain report-only.
   # invariant: Input byte latency uses a reviewed gate baseline (scripts/harness/harness.invariants.md)
   reporting_step \
-    "input byte flush measurement (5-session median)" \
+    "input byte first-frame ordering + timing trend (5 sessions)" \
     bun scripts/harness/input-byte-flush-gate.ts
   # 6) Perf baselines are soft: the load-bearing idle-quiescence invariant is
   # hard-gated above.
@@ -648,13 +633,9 @@ run_machine_quiet_tail() {
     echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
   fi
 }
-# invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
-quiet_lock_run \
-  "quiet-exclusive" \
-  "merge-gate quiet serial tail" \
-  run_machine_quiet_tail
-quiet_phase_elapsed_seconds="$(( $(date +%s) - quiet_phase_started_seconds ))"
-echo "merge-gate timing: quiet-serial phase $(format_duration "$quiet_phase_elapsed_seconds")"
+run_serial_tail
+serial_phase_elapsed_seconds="$(( $(date +%s) - serial_phase_started_seconds ))"
+echo "merge-gate timing: serial phase $(format_duration "$serial_phase_elapsed_seconds")"
 
 if [ "${FULL_TMUX_SKIPPED:-0}" -gt 0 ]; then
   echo "== merge-gate: $FULL_TMUX_SKIPPED tmux audit smokes not run (INVAR_FULL_TMUX=1 runs them) =="

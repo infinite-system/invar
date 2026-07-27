@@ -14,7 +14,7 @@ class $InputByteFlushVerdict {
     if (failureDetails.startsWith(this.DRIVEN_BEHAVIOUR_PREFIX)) {
       return failureDetails;
     }
-    return `input-byte-flush: MEASUREMENT INVALID — ${failureDetails}`;
+    return `input-byte-flush: INSTRUMENT FAILED — ${failureDetails}`;
   }
 
   static sessionFailureMessage(
@@ -39,19 +39,18 @@ class $InputByteFlushVerdict {
       );
     }
     return (
-      `input-byte-flush-gate: MEASUREMENT INVALID — session ` +
+      `input-byte-flush-gate: INSTRUMENT FAILED — session ` +
       `${sessionNumber} exited ${exitCode} before producing a valid datum`
     );
   }
 
-  static tooSlowMessage(
-    p50Milliseconds: number,
-    failureMultiplier: number,
-  ): string {
+  static firstFrameOrderingFailure(
+    completedFramesUntilGlyph: number,
+  ): string | null {
+    if (completedFramesUntilGlyph === 1) return null;
     return (
-      `input-byte-flush-gate: MEASUREMENT TOO SLOW — p50 ` +
-      `${p50Milliseconds.toFixed(3)} ms exceeds ` +
-      `baseline×${failureMultiplier} on both passes`
+      `the edited glyph appeared in completed frame ` +
+      `${completedFramesUntilGlyph} after input; expected the first`
     );
   }
 }

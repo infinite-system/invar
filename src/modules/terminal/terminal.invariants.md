@@ -483,7 +483,9 @@ payload and makes every intermediate typing frame invisible.
 **Evidence:** `src/modules/terminal/TerminalCommandController.test.ts` asserts per-grapheme animated
 writes, sanitize-before-write, no staged Enter, final run-mode Enter, and early human Enter
 fast-forwarding the complete command; `scripts/harness/smoke-terminal-stage-harness.ts` stages and
-mid-line edits `echo "test — with emoji 🦊✨"` in real Bash, then asserts its exact output.
+mid-line edits `echo "test — with emoji 🦊✨"` in real Bash, asserts its exact output, requires
+reduced motion to paint the complete command in its first visible typing frame, and requires the
+slow configured typing speed to span more completed frames than the fast speed.
 
 **Impossible if true:** a surrogate pair, variation selector, combining mark, or joiner sequence
 written in separate timer steps; an animated command appearing all at once only after its final character; a

@@ -12,39 +12,6 @@ import {
   type InputByteFlushHistorySample,
 } from './InputByteFlushTrend';
 import { InputByteFlushVerdict } from './InputByteFlushVerdict';
-import { QuietLock } from './QuietLock';
-
-const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
-  'input-byte-flush-gate',
-  import.meta.path,
-);
-if (quietLockExitCode !== null) process.exit(quietLockExitCode);
-
-const quietLockDegradation = QuietLock.Class.degradation(process.env);
-if (quietLockDegradation?.reason === 'timeout') {
-  console.error(
-    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
-      `quiet lock unavailable after ` +
-      `${quietLockDegradation.maximumWaitSeconds} s ` +
-      `(waited ${quietLockDegradation.actualWaitMilliseconds} ms), holders: ` +
-      quietLockDegradation.holderNames,
-  );
-  process.exit(2);
-}
-if (quietLockDegradation?.reason === 'flock-unavailable') {
-  console.error(
-    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
-      `quiet lock unavailable because flock is unavailable`,
-  );
-  process.exit(2);
-}
-if (quietLockDegradation?.reason === 'unknown') {
-  console.error(
-    `input-byte-flush-gate: MEASUREMENT INVALID — measurement abandoned — ` +
-      `quiet lock degraded without acquisition evidence`,
-  );
-  process.exit(2);
-}
 
 interface SessionMeasurement {
   p50Milliseconds: number;
@@ -132,14 +99,9 @@ function measureFiveSessionMedians(passLabel: string): {
   };
 }
 
-// Ambient-noise retry: a shared dev machine carries user activity, so a single failing pass is
-// re-measured once before blocking — a real regression fails both passes; an ambient spike
-// almost never repeats. The retry is announced, and both passes land in the history file.
-let { p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('');
+const { p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('');
 const warningThresholdMilliseconds =
   effectiveBaselineP50Milliseconds * baseline.warningMultiplier;
-const failureThresholdMilliseconds =
-  effectiveBaselineP50Milliseconds * baseline.failureMultiplier;
 const commitSha = gitHeadSha(repositoryRoot);
 const historyPath = join(
   repositoryRoot,
@@ -164,45 +126,14 @@ console.log(
 );
 console.log(
   `  reviewed baseline p50 ${effectiveBaselineP50Milliseconds.toFixed(3)} ms; ` +
-    `WARN > ${warningThresholdMilliseconds.toFixed(3)} ms; ` +
-    `FAIL > ${failureThresholdMilliseconds.toFixed(3)} ms`,
+    `WARN > ${warningThresholdMilliseconds.toFixed(3)} ms ` +
+    `(report-only)`,
 );
 console.log(
   `  history appended: .perf-history/input-byte-flush.ndjson (${commitSha})`,
 );
 
-if (p50Milliseconds > failureThresholdMilliseconds) {
-  console.warn(
-    `input-byte-flush-gate: first pass p50 ${p50Milliseconds.toFixed(3)} ms exceeded the FAIL ` +
-      `threshold — ambient-noise retry: re-measuring once (a real regression fails twice)`,
-  );
-  ({ p50Milliseconds, p95Milliseconds } = measureFiveSessionMedians('retry '));
-  appendFileSync(
-    historyPath,
-    `${JSON.stringify({
-      sha: commitSha,
-      timestamp: new Date().toISOString(),
-      p50Milliseconds,
-      p95Milliseconds,
-      boundary: baseline.boundary,
-      ambientRetry: true,
-    })}\n`,
-  );
-  console.log(
-    `  retry medians: p50 ${p50Milliseconds.toFixed(3)} ms, ` +
-      `p95 ${p95Milliseconds.toFixed(3)} ms`,
-  );
-}
 reportHistoryTrend(historyPath, baseline);
-if (p50Milliseconds > failureThresholdMilliseconds) {
-  console.error(
-    InputByteFlushVerdict.Class.tooSlowMessage(
-      p50Milliseconds,
-      baseline.failureMultiplier,
-    ),
-  );
-  process.exit(1);
-}
 if (p50Milliseconds > warningThresholdMilliseconds) {
   console.warn(
     `input-byte-flush-gate: WARN p50 ${p50Milliseconds.toFixed(3)} ms exceeds ` +
@@ -227,7 +158,6 @@ function readBaseline(baselinePath: string): InputByteFlushBaseline {
     parsedBaseline.metric !== 'input-byte-flush' ||
     !Number.isFinite(parsedBaseline.p50Milliseconds) ||
     !Number.isFinite(parsedBaseline.warningMultiplier) ||
-    !Number.isFinite(parsedBaseline.failureMultiplier) ||
     !Number.isInteger(parsedBaseline.trendWindowSampleCount) ||
     parsedBaseline.trendWindowSampleCount < 2 ||
     !Number.isFinite(parsedBaseline.trendWarningMultiplier) ||

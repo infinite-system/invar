@@ -18,7 +18,7 @@
 // invariant: Same-direction notches accumulate until the glide ceiling (src/modules/ui/ui.invariants.md)
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
-// invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+// invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 // invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // Only the PTY driver, input encoder, snapshot type, and quiet lock are imported from the harness.
@@ -31,13 +31,6 @@ import { join } from 'node:path';
 import { HarnessInput } from './HarnessInput';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
-import { QuietLock } from './QuietLock';
-
-const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
-  'measure-scroll-smoothness',
-  import.meta.path,
-);
-if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const FIXTURE_LINE_COUNTS = (
   process.env.SMOOTHNESS_LINE_COUNTS ?? '2000,26635,100000'
@@ -387,6 +380,7 @@ function proveContinuousInputScaleTravelCanFail(): string {
 
 interface AccumulationFlickMeasurement {
   readonly flickIndex: number;
+  readonly precedingCompletedFrameCount: number;
   readonly actualPauseBeforeMilliseconds: number | null;
   readonly rowCrossingSequence: readonly number[];
   readonly peakRowsCrossedPerFrame: number;
@@ -815,6 +809,7 @@ async function measureAccumulationPattern(
     { length: ACCUMULATION_FLICK_COUNT },
     (_unusedValue, flickIndex): AccumulationFlickMeasurement => ({
       flickIndex: flickIndex + 1,
+      precedingCompletedFrameCount: 0,
       actualPauseBeforeMilliseconds: null,
       rowCrossingSequence: [],
       peakRowsCrossedPerFrame: 0,
@@ -825,6 +820,7 @@ async function measureAccumulationPattern(
   );
   const mutableFlickMeasurements = flickMeasurements as Array<{
     flickIndex: number;
+    precedingCompletedFrameCount: number;
     actualPauseBeforeMilliseconds: number | null;
     rowCrossingSequence: number[];
     peakRowsCrossedPerFrame: number;
@@ -840,8 +836,10 @@ async function measureAccumulationPattern(
     FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
   );
 
-  const sendFlick = (): void => {
+  const sendFlick = (precedingCompletedFrameCount: number): void => {
     const flickTimestampMilliseconds = performance.now();
+    mutableFlickMeasurements[activeFlickIndex]!.precedingCompletedFrameCount =
+      precedingCompletedFrameCount;
     if (activeFlickIndex > 0) {
       mutableFlickMeasurements[
         activeFlickIndex
@@ -855,7 +853,7 @@ async function measureAccumulationPattern(
     );
   };
 
-  sendFlick();
+  sendFlick(0);
   while (true) {
     let completed: Awaited<
       ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
@@ -923,7 +921,7 @@ async function measureAccumulationPattern(
         ACCUMULATION_PAUSE_MILLISECONDS
     ) {
       activeFlickIndex++;
-      sendFlick();
+      sendFlick(completed.completedFrame.completedFrameCount);
     }
   }
   return flickMeasurements;
@@ -1167,6 +1165,7 @@ function printAccumulationPattern(
         : `${measurement.actualPauseBeforeMilliseconds.toFixed(1)}ms`;
     console.error(
       `${surface} accumulation flick=${measurement.flickIndex} ` +
+        `precedingFrame=${measurement.precedingCompletedFrameCount} ` +
         `pause=${pauseDescription} ` +
         `peakFrame=${measurement.peakRowsCrossedPerFrame} ` +
         `peakTwoFrames=${measurement.peakTwoFrameRowsCrossed} ` +
@@ -1196,11 +1195,6 @@ function continuationBoundaryFailure(
       placementFailures.push(
         `observed ${measurement.observedMovingFrameCount}/` +
           `${measurement.minimumMovingFrameCount} moving frames`,
-      );
-    }
-    if (measurement.actualDelayMilliseconds <= 150) {
-      placementFailures.push(
-        `delivered at ${measurement.actualDelayMilliseconds.toFixed(1)}ms`,
       );
     }
     if (measurement.preBoundaryRowsCrossed !== 1) {
@@ -2097,10 +2091,6 @@ async function measureSurface(
       depthCheckpoints = await measureDepthCheckpoints(driver, statusPath);
       depthCheckpointWallClockMilliseconds =
         performance.now() - depthCheckpointStartMilliseconds;
-      assertDepthCheckpointFloors(
-        `${fixtureShape} ${fixtureLineCount}-line editor`,
-        depthCheckpoints,
-      );
     } else {
       if (shouldMeasureAccumulationPattern) {
         await driveSurfaceToTop(driver, statusPath, surface);

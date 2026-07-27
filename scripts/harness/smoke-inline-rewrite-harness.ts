@@ -100,76 +100,39 @@ async function awaitInlineRewriteVisible(
   );
 }
 
-async function measureSettledFrameCount(
-  durationMilliseconds: number,
-): Promise<{ before: number; after: number }> {
-  const before = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
-  let observedFrame = before;
-  let observedStatus = HarnessSmoke.Class.readStatus(statusPath);
-  const measurementStarted = performance.now();
-  const deadline = performance.now() + durationMilliseconds;
-  while (performance.now() < deadline) {
-    const status = HarnessSmoke.Class.readStatus(statusPath);
-    const frame = Number(status.frame);
-    if (frame !== observedFrame) {
-      const changedFields = Object.keys(status).filter(
-        (field) =>
-          field !== 'frame' &&
-          JSON.stringify(status[field]) !==
-            JSON.stringify(observedStatus[field]),
-      );
-      console.log(
-        `  FRAME ${observedFrame} -> ${frame} at ` +
-          `${Math.round(performance.now() - measurementStarted)}ms; ` +
-          `gitChangedCount=${String(status.gitChangedCount)}; ` +
-          `rewriteVisible=${String(status.inlineRewriteVisible)}; ` +
-          `rewriteInFlight=${String(status.inlineRewriteRequestInFlight)}; ` +
-          `changedFields=${changedFields.join(',')}`,
-      );
-      observedFrame = frame;
-      observedStatus = status;
-    }
-    await Bun.sleep(50);
-  }
-  return {
-    before,
-    after: Number(HarnessSmoke.Class.readStatus(statusPath).frame),
-  };
-}
-
-async function awaitSettledFrameCount(): Promise<void> {
-  const deadline = performance.now() + 15_000;
-  let stableSince = performance.now();
-  let observedFrame = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
-  while (performance.now() - stableSince < 2_000) {
-    if (performance.now() >= deadline) {
-      throw new Error('Timed out waiting for a stable frame count');
-    }
-    const frame = Number(HarnessSmoke.Class.readStatus(statusPath).frame);
-    if (frame !== observedFrame) {
-      observedFrame = frame;
-      stableSince = performance.now();
-    }
-    await Bun.sleep(50);
-  }
-}
-
-async function awaitClockFreeFrameMeasurementStart(
-  measurementDurationMilliseconds: number,
-): Promise<void> {
-  const clockBoundarySafetyMilliseconds = 500;
-  const millisecondsUntilNextClockTick = 60_000 - (Date.now() % 60_000) + 50;
+function idleOwnershipFailure(
+  status: Record<string, unknown>,
+  expectedRequestCount: number | null,
+): string | null {
+  const requestCount = Number(status.inlineRewriteMockRequestCount ?? 0);
   if (
-    millisecondsUntilNextClockTick >
-    measurementDurationMilliseconds + clockBoundarySafetyMilliseconds
+    status.renderQuiescent === true &&
+    (expectedRequestCount === null || requestCount === expectedRequestCount)
   ) {
-    return;
+    return null;
   }
-  await Bun.sleep(
-    millisecondsUntilNextClockTick + clockBoundarySafetyMilliseconds,
+  return (
+    `inline rewrite idle ownership failed: renderQuiescent=` +
+    `${String(status.renderQuiescent)}, requests=${requestCount}, ` +
+    `expectedRequests=${expectedRequestCount ?? 'unchanged'}`
   );
-  await awaitSettledFrameCount();
 }
+
+const idleOwnershipPositiveControl = idleOwnershipFailure(
+  {
+    renderQuiescent: false,
+    inlineRewriteMockRequestCount: 1,
+  },
+  0,
+);
+HarnessSmoke.Class.requireCondition(
+  idleOwnershipPositiveControl !== null,
+  'inline-rewrite idle positive control rejects an active render owner',
+);
+console.log(
+  `inline-rewrite idle positive control RED (expected): ` +
+    idleOwnershipPositiveControl,
+);
 
 smoke: try {
   console.log('== harness inline rewrite: open the fixture ==');
@@ -215,21 +178,17 @@ smoke: try {
       'status condition: editor focus returns after plugin disable',
       (status) => status.focus === 'editor',
     );
-    await awaitSettledFrameCount();
-    const disabledPluginWindowMilliseconds = Number(
-      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
-    );
-    await awaitClockFreeFrameMeasurementStart(disabledPluginWindowMilliseconds);
-    const disabledPluginFrames = await measureSettledFrameCount(
-      disabledPluginWindowMilliseconds,
-    );
-    const disabledPluginStatus = HarnessSmoke.Class.readStatus(statusPath);
+    const disabledPluginStatus =
+      await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        'status condition: disabled plugin is render-quiescent',
+        (status) => status.renderQuiescent === true,
+      );
+    const disabledPluginFailure = idleOwnershipFailure(disabledPluginStatus, 0);
     HarnessSmoke.Class.requireCondition(
-      Number(disabledPluginStatus.inlineRewriteMockRequestCount ?? 0) === 0 &&
-        disabledPluginFrames.after === disabledPluginFrames.before,
-      'disabled plugin owns zero requests and zero settled frames ' +
-        `(${disabledPluginFrames.before} -> ` +
-        `${disabledPluginFrames.after})`,
+      disabledPluginFailure === null,
+      disabledPluginFailure ?? 'disabled plugin owns no request or render loop',
     );
     console.log('smoke-inline-rewrite-harness: ALL-PASS');
     break smoke;
@@ -251,20 +210,18 @@ smoke: try {
       'the disabled-feature edit and its gutter marker settle visibly',
       (snapshot) => lineHasGutterMarker(snapshot, 'const value = calculate();'),
     );
-    await awaitSettledFrameCount();
-    const disabledWindowMilliseconds = Number(
-      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
-    );
-    await awaitClockFreeFrameMeasurementStart(disabledWindowMilliseconds);
-    const disabledFrames = await measureSettledFrameCount(
-      disabledWindowMilliseconds,
-    );
-    const disabledSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
+    const disabledSettledStatus =
+      await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        'status condition: disabled inline rewrite is render-quiescent',
+        (status) => status.renderQuiescent === true,
+      );
+    const disabledFailure = idleOwnershipFailure(disabledSettledStatus, 0);
     HarnessSmoke.Class.requireCondition(
-      Number(disabledSettledStatus.inlineRewriteMockRequestCount ?? 0) === 0 &&
-        disabledFrames.after === disabledFrames.before,
-      'disabled inline rewrite owns zero requests and zero settled frames ' +
-        `(${disabledFrames.before} -> ${disabledFrames.after})`,
+      disabledFailure === null,
+      disabledFailure ??
+        'disabled inline rewrite owns no request or render loop',
     );
     console.log('smoke-inline-rewrite-harness: ALL-PASS');
     break smoke;
@@ -339,17 +296,17 @@ smoke: try {
     break smoke;
   }
   if (reproductionMode === 'idle') {
-    await awaitSettledFrameCount();
-    const idleWindowMilliseconds = Number(
-      process.env.INVAR_INLINE_REWRITE_IDLE_WINDOW_MS ?? 12_000,
+    const idleSettledStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: visible inline rewrite is render-quiescent',
+      (status) => status.renderQuiescent === true,
     );
-    await awaitClockFreeFrameMeasurementStart(idleWindowMilliseconds);
-    const idleFrames = await measureSettledFrameCount(idleWindowMilliseconds);
-    const idleSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
+    const idleFailure = idleOwnershipFailure(idleSettledStatus, null);
     HarnessSmoke.Class.requireCondition(
-      idleFrames.after === idleFrames.before,
-      'settled inline rewrite with live gutter marks emits zero frames ' +
-        `(${idleFrames.before} -> ${idleFrames.after})`,
+      idleFailure === null,
+      idleFailure ??
+        'settled inline rewrite with live gutter marks is render-quiescent',
     );
     console.log('smoke-inline-rewrite-harness: ALL-PASS');
     break smoke;
@@ -442,18 +399,18 @@ smoke: try {
       Number(status.inlineRewriteMockDelayMilliseconds) === 3500,
   );
   if (process.env.INVAR_SKIP_INLINE_REWRITE_IDLE_CHECK !== '1') {
-    const frameCountBefore = Number(
-      HarnessSmoke.Class.readStatus(statusPath).frame,
+    const inFlightStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'status condition: in-flight inline rewrite is render-quiescent',
+      (status) =>
+        status.inlineRewriteRequestInFlight === true &&
+        status.renderQuiescent === true,
     );
-    await Bun.sleep(1000);
-    const inFlightStatus = HarnessSmoke.Class.readStatus(statusPath);
-    const frameCountAfter = Number(inFlightStatus.frame);
+    const inFlightFailure = idleOwnershipFailure(inFlightStatus, null);
     HarnessSmoke.Class.requireCondition(
-      frameCountAfter - frameCountBefore <= 1 &&
-        inFlightStatus.inlineRewriteRequestInFlight === true,
-      'an enabled in-flight rewrite advances at most one clock frame over ' +
-        `one idle second (${frameCountBefore} -> ${frameCountAfter}; ` +
-        `in flight ${String(inFlightStatus.inlineRewriteRequestInFlight)})`,
+      inFlightFailure === null,
+      inFlightFailure ?? 'in-flight work owns no render loop',
     );
   }
   driver.sendText('y');

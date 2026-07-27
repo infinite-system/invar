@@ -2550,3 +2550,32 @@ this shape are wrong, and only the first is cosmetic:
 Corollary for the conductor: on ALL-PASS, still grep the log for `FAIL` and for exit codes inside
 soft blocks. This run's green was clean by the retry tally and still carried two measurement
 failures and a live orphan.
+
+## 2026-07-27 — frame ordering retires blocking clock authority
+
+#155 (convert the gate to frame-count mode) separated configured duration
+inputs from measured-duration verdicts. The configured glide cap, easing
+window, and maximum animation delta still derive row-count bounds. Delivered
+continuation delay, flick pause, burst duration, and frame-gap measurements no
+longer participate in blocking predicates; moving-frame order, flick frame
+boundaries, completed-frame windows, events, impulses, projections, and rows
+replace them.
+
+The byte-flush gate now blocks on the user-visible boundary: the edited glyph
+must be present in the first completed DEC 2026 frame after input. The p50/p95
+series still appends to `.perf-history/input-byte-flush.ndjson`, and both the
+individual and trailing-window comparisons remain warnings. This deliberately
+loses sub-frame sensitivity: at 30 FPS, 25 ms can still fit within one frame.
+That is accepted because it is not visible as an extra frame; the retained
+trend carries the finer diagnostic signal without lending it blocking
+authority.
+
+The census also found two blocking duration comparisons in the terminal-stage
+smoke and two blocking FPS canaries that predated the claim that byte flush was
+the last clock gate. Terminal-stage now uses first-frame completeness and
+relative completed-frame counts; FPS remains visible as report-only warnings.
+With no blocking verdict depending on the quiet lock, only the soft
+`perf-baselines` report retains quiet-exclusive coordination. Blocking gates no
+longer take loud-shared or quiet-exclusive locks, so lock degradation cannot
+produce `MEASUREMENT INVALID` in their path and concurrent gates can reach
+independent verdicts.

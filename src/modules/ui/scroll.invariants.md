@@ -154,8 +154,9 @@ outlast the cadence window and receive a from-rest-sized follow-on impulse.
 `src/modules/system/Momentum.test.ts` (`a live glide continues gain outside
 the input cadence window`); commits `87d25d0` and `25cdf18`;
 `scripts/harness/measure-scroll-smoothness.ts` places follow-on input after
-observing live one-row motion beyond 6, 10, and 14 moving frames. The delivered
-delay remains report evidence, not the placement condition.
+observing live one-row motion beyond 6, 10, and 14 moving frames. The blocking
+predicate uses that moving-frame order and one-row phase; delivered
+milliseconds remain diagnostic only.
 
 **Impossible if true:** A from-rest-sized impulse delivered while the surface
 is still moving; a live same-direction glide resetting because a timer
@@ -279,8 +280,12 @@ window, then subtracts only the sub-row residual the integrator may discard:
 glideCapEasingDurationMilliseconds / 2) / 1000 - 1)`.
 The scale-travel comparison permits one maximum animation integration step:
 `ceil(verticalFlingCeiling * maximumAnimationDeltaTimeSeconds)`. Continuation
-input is placed by observed moving-frame count and row crossing, while its
-delivered delay is diagnostic only.
+input is placed by observed moving-frame count and row crossing. Accumulation
+requires strictly increasing completed-frame boundaries across its three
+flicks, render progress uses completed-frame counts per input window, and
+real-rate coalescing uses window, event, impulse, projection, and row counts.
+Their delivered delays, pauses, input durations, and frame gaps are diagnostic
+only and never control a blocking verdict.
 
 **Generates:** Phase-independent live contracts; expected values that survive
 host load, frame coalescing, and refactoring while the mechanism remains the
@@ -305,9 +310,10 @@ a 30 FPS target used as though it capped frame duration.
 
 **Verification:** `bash scripts/behavioral-contracts.sh`; the rapid 60-notch
 clause enforces the derived whole-row floor and rejects a decaying synthetic
-sequence. The scale-travel and continuation predicates print their planted
-reds. Future additions remain review-time enforced because no mechanical
-checker can distinguish a derived constant from an observed one.
+sequence. The scale-travel, continuation, accumulation, render-progress, and
+real-rate predicates print their planted reds. Future additions remain
+review-time enforced because no mechanical checker can distinguish a derived
+constant from an observed one.
 
 **Status:** established
 

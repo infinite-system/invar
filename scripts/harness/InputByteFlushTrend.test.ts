@@ -61,7 +61,6 @@ function baseline(): InputByteFlushBaseline {
     p50Milliseconds: 4.928,
     boundary: 'input-write-to-frame-byte-arrival',
     warningMultiplier: 1.3,
-    failureMultiplier: 2,
     trendWindowSampleCount: 5,
     trendWarningMultiplier: 1.15,
     baselineChangePolicy: 'test',

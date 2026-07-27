@@ -1,17 +1,11 @@
 #!/usr/bin/env bun
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
+// invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { PtyTestDriver } from './PtyTestDriver';
-import { QuietLock } from './QuietLock';
-
-const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
-  'measure-input-byte-flush',
-  import.meta.path,
-);
-if (quietLockExitCode !== null) process.exit(quietLockExitCode);
 
 const repositoryRoot = process.cwd();
 const latencySampleCount = Number(process.env.LATENCY_SAMPLE_COUNT ?? 20);
@@ -49,6 +43,8 @@ try {
     await driver.awaitQuiescence();
   }
 
+  const initialPrefix = 'abc';
+  const initialSuffix = 'defghijklmnopqrstuvwxyz';
   const byteArrivalLatencySamples: number[] = [];
   const snapshotReadyLatencySamples: number[] = [];
   const postArrivalOracleLatencySamples: number[] = [];
@@ -56,23 +52,34 @@ try {
   let previousCompletedFrameObservedByteCount: number | null = null;
 
   for (let pressNumber = 1; pressNumber <= latencySampleCount; pressNumber++) {
-    const cursorColumnBefore = driver.snapshot().cursorColumn;
-    const keyName = pressNumber % 2 === 1 ? 'Right' : 'Left';
-    const measurement = await driver.sendKeysAndAwaitFrameByteArrival(
-      [keyName],
+    const expectedLine =
+      initialPrefix + 'x'.repeat(pressNumber) + initialSuffix;
+    const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+      ['x'],
+      `inserted glyph ${pressNumber} to appear in the editor`,
+      (snapshot) => snapshot.text().includes(expectedLine),
       3_000,
     );
-    await driver.awaitQuiescence(3_000);
-    const snapshotReadyTimestampMilliseconds = performance.now();
-    const cursorColumnAfter = driver.snapshot().cursorColumn;
-    if (cursorColumnAfter === cursorColumnBefore) {
+    const orderingFailure =
+      InputByteFlushVerdict.Class.firstFrameOrderingFailure(
+        measurement.completedFramesUntilCondition,
+      );
+    if (orderingFailure) {
       throw new Error(
         InputByteFlushVerdict.Class.drivenBehaviourFailureMessage(
-          `Measured ${keyName} press ${pressNumber} did not move the ` +
-            `terminal cursor`,
+          orderingFailure,
         ),
       );
     }
+    await driver.awaitQuiescence(3_000);
+    if (!driver.snapshot().text().includes(expectedLine)) {
+      throw new Error(
+        InputByteFlushVerdict.Class.drivenBehaviourFailureMessage(
+          `Measured glyph ${pressNumber} was absent after quiescence`,
+        ),
+      );
+    }
+    const snapshotReadyTimestampMilliseconds = performance.now();
 
     byteArrivalLatencySamples.push(
       measurement.inputToFrameByteArrivalMilliseconds,
@@ -121,6 +128,7 @@ try {
   );
   console.log(
     `input-byte-flush samples=${latencySampleCount} ` +
+      `glyph-first-frame=${latencySampleCount}/${latencySampleCount} ` +
       `byte-arrival-p50=${byteArrivalPercentiles.p50.toFixed(3)}ms ` +
       `byte-arrival-p95=${byteArrivalPercentiles.p95.toFixed(3)}ms ` +
       `snapshot-ready-p50=${snapshotReadyPercentiles.p50.toFixed(3)}ms ` +
