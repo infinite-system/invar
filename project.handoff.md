@@ -3,16 +3,32 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-27 21:22 UTC) — READ FIRST
+## RESUME ANCHOR (2026-07-27 21:50 UTC) — READ FIRST
 
 **USER PRESENT AND DIRECTING.** Their live direction IS the backlog. No experiments.
 
-Main `e0f62c1`, clean, pushed. `ivue` requested ^2.2.1 / installed 2.2.1 — verify BOTH after any
-pull (see below).
+Main `8d370cb`, clean. `737e183` pushed; the doctrine commit on top needs a push. `ivue` requested
+^2.2.1 / installed 2.2.1 — verify BOTH after any pull (see below).
 
-**IN FLIGHT:** #152 (glide stop too sudden) round 2, codex in `/tmp/conductor-glidestop` branch
-`fix-glide-soft-stop`, brief `/tmp/TASK-glide-soften-stop.md` (READ TO THE END — the ROUND 2
-section supersedes the original premise), report `/tmp/glidestop-READY.md`, monitor `bu1isn4qs`.
+**NOTHING IN FLIGHT.** No builders alive, no gates running.
+
+**AWAITING THE USER'S FEEL CALL on #152 (glide stop softening), which LANDED in `737e183`.** They
+asked for a softer glide stop and they now have one; the remaining question is the amount.
+`stepMomentum` ramps velocity linearly over the final **150 ms** before the deadline instead of
+cutting to zero. Alternatives, driven, hard 60-notch at 2,000 lines:
+
+| easing | tail fingerprint | rows travelled |
+|---:|---|---:|
+| **150 ms (landed)** | `…7,8,7,5,4,2,1` | 181 |
+| 200 ms | `…7,7,5,4,3,2` | 175 |
+| 250 ms | `…7,6,6,3,4,2,2` | 170 |
+
+Change is one static: `Momentum.GLIDE_CAP_EASING_DURATION_MILLISECONDS`. 250 ms is not recommended —
+its quantized tail rises `3,4`. If they want softer, 200 ms costs 6 rows of travel.
+
+**`gh` AUTH IS DEAD** (HTTP 401 Bad credentials; SSH push works). Issue #152 is still OPEN on GitHub
+and its closing comment is written but unposted — see the transcript, or rewrite from the table
+above. Re-auth needs the user: `gh auth login -h github.com`.
 
 ### Today's outage, and the rule that came out of it
 
@@ -31,15 +47,22 @@ checkout and QUOTE the before/after installed version.
 
 ### Open, ranked
 
-- **#152 (glide stop too sudden)** — IN FLIGHT. Hard 60-notch flick ends `…7,7,6` instead of
-  tapering; the 900 ms cap fires while velocity is still ~5 rows/s (decay needs 1023 ms). Fix is ONE
-  change: ease the cap, don't cut it. Builder must return 2–3 candidate easing shapes with driven
-  fingerprints — **the feel decision is the user's, the builder does not pick.**
-- **#153 (horizontal fling profile split)** — horizontal is ~2.75x faster in the editor (220) than
-  in overlays/popups/agent pane (80). `40d244b` ("one fling profile on both axes", the #50 fix)
-  reached Workspace+DiffView but NOT ScrollableTextViewport. `Momentum.ts:29-31`'s comment still
-  documents the pre-#50 intent and is what misled the conductor into a wrong #152 diagnosis. Needs
-  the user's feel call: unify, or document the split deliberately.
+- **#153 (horizontal fling profile split)** — PREMISE CORRECTED by the #152 builder's call-site
+  audit, and the correction changes the task. `Momentum.defaultOptions` (max 80) is NOT dead: its one
+  production read is `ScrollableTextViewport.tick` (`ScrollableTextViewport.ts:189-193`) driving
+  HORIZONTAL momentum, and `HoverCard` is the one consumer that leaves horizontal scrolling enabled
+  with real column counts (`HoverCard.ts:224-237`). Editor and diff bypass it entirely, feeding the
+  settings-derived 220 profile to BOTH axes (`Workspace.ts:625-643`, `DiffView.ts:542-552`). So the
+  split is **editor/diff (220) vs hover card (80)**, not vertical vs horizontal. Needs the user's
+  feel call: keep 80 and document why (recommended — a 220 fling inside an eight-row card overshoots
+  its whole content in one frame), or unify. Either way `Momentum.ts:29-31`'s comment must be
+  corrected; that stale comment produced TWO wrong diagnoses today.
+- **#154 (perf-baselines soft step reaches no verdict)** — NEW. The #152 gate printed ALL-PASS with
+  `FAIL orphan bun processes` and `EXIT 2 — measurement failure(s)` inside its own log, because
+  perf-baselines is declared soft. Honest verdict, three real defects: the generic WARN launders the
+  step's self-diagnosis; the bounded output showed 1 of 2 counted failures; and the leaked editor is
+  STATE, not an opinion — it contaminates the NEXT run's quiet measurement (#147's family). Promote
+  the pid-scoped orphan check to hard while leaving the numbers soft, with a planted-leak control.
 - **The gate is only ~2/3 timeless.** `behavioral-contracts.sh` is 62 count-based vs 31 clock-based
   references, but the gate still has ONE hard clock-gated blocking step —
   `input byte flush measurement` (p50 4.928 / WARN 6.406 / FAIL 9.856 ms). That single step is why
@@ -65,6 +88,13 @@ checkout and QUOTE the before/after installed version.
   capability FAIL. **Always ask what the output would be if the thing were absent.**
 - **Read the wiring, not the declaration.** The #152 misdiagnosis came from reading
   `Momentum.ts`'s profile definitions and assuming the call sites.
+- **A wait whose pattern can match ITSELF never fires.** A `until ! pgrep -f "codex exec … -C
+  /tmp/conductor-foldperf"` waiter spun from 2026-07-26 21:12 to 2026-07-27 21:30 UTC — its own
+  `bash -c` argv contained the pattern, so it always found itself. Its gate never ran. Resolve
+  identity through `/proc/<pid>/cwd`, and give every long wait a deadline plus a distinct expiry
+  line, because a wait that can never fire looks exactly like one still waiting.
+- **On ALL-PASS, still grep the log for `FAIL` and for exit codes inside soft blocks.** The #152
+  run's green was clean by the retry tally and carried two measurement failures and a live orphan.
 - **A green gate names the COMMIT, not the branch** — re-check at landing time; diff with
   `merge-base`, never `main..HEAD`.
 - **Stop a monitor in the action that consumes its result** (five expired on their own today).
