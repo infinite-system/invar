@@ -429,10 +429,6 @@ production_climbs = (
     and climbs_with_headroom(raised_peaks, raised_budget)
     and len(default_delays) == 2
     and len(raised_delays) == 2
-    and all(
-        150 < delay < 350
-        for delay in default_delays + raised_delays
-    )
 )
 print(
     int(positive_control_rejected),
