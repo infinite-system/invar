@@ -2392,3 +2392,35 @@ Note the failure direction, which for once was the safe one: toward "broken" rat
 waste. It is also the fourth monitor defect of the day, against one real finding, which says the
 monitors themselves now deserve the treatment we give app instruments: a positive control, and an
 explicit answer to "what would have to be true for this to fire, and is that the thing I meant?"
+
+## 2026-07-27 17:05 UTC — a probe can confirm a symptom while the corpus already holds the cause
+
+The user asked whether the repo already had a rule against `#private`. It did — the "`Static()`
+`#private` caveat" in `project.skill-upgrades.md`. I had just "discovered" it from a runtime probe.
+
+The probe was not wrong, it was SHALLOWER. It concluded *a `#`-private static getter does not cache*.
+The recorded caveat gives the mechanism: **a `Static()` class is a SUBCLASS of `$Class`, and a `#`
+name is keyed to the exact class that declared it, so `this.#member` is REJECTED on the wrapped
+receiver** — a broader failure than "does not cache", and one my probe's single symptom would never
+have generalised to.
+
+  **Search the corpus BEFORE probing, not instead of it.** A probe answers the question you thought
+  to ask. A prior record answers the question someone already worked out — often with the mechanism
+  attached, which is the part that generalises. Probing first and searching never is how a repo
+  accumulates two statements of the same rule at different depths.
+
+Two structural notes:
+
+- **The rule existed but was not OPERATIVE.** It sat in `project.skill-upgrades.md`, a proposals
+  file, tagged *(minor)*. `project.conventions.md` — loaded first by every resume, embedded
+  mechanically in every delegate packet — did not carry it. A known limitation parked in a notes file
+  is indistinguishable from an unknown one: nothing loads it, no gate reads it, and the next agent
+  re-derives it. When a caveat is confirmed real, PROMOTE it to the operative file; leaving it in
+  notes is the documentation equivalent of a smoke the gate never runs.
+- **The instrument existed too, and was better than the one I proposed.** I specified a source grep
+  for `static get #$`. `scripts/ast-query.ts private-members` already covers `private` + `#private`,
+  and `ast-query.ts` is already gate-resident (`conventions-gate.sh` runs its
+  `text-input-census --require-zero`). So enforcement was a one-line addition in an established
+  style, and an AST query is strictly correct where grep is not — grep matches `#` inside comments
+  and strings. Before specifying a new checker, grep for an existing one that already parses the
+  thing.
