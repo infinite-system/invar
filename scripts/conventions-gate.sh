@@ -57,6 +57,14 @@ if ! "$bun_binary" scripts/check-static-getter-naming.ts; then
   fail=1
 fi
 
+# 1.875) RAW NAMESPACE INHERITANCE: subclasses and test doubles extend the
+#        native $Class root. Extending the selected Class surface can inherit
+#        a parent-bound Static() method depending on access order.
+if ! "$bun_binary" scripts/check-namespace-class-extensions.ts; then
+  echo "CONVENTIONS FAIL: namespace Class used as an inheritance root"
+  fail=1
+fi
+
 # 2) PUBLIC-CLASS / EXPORTED-CAPABILITY RULE: project classes are published through the namespace
 #    pattern; callable module exports are never bare functions/expressions/aliases. Type-aware
 #    detection distinguishes class/callable behavior from genuine data collections (keybinding

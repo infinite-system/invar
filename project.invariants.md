@@ -491,6 +491,43 @@ and observing the substitution take effect.
 
 **Last refined:** 2026-07-21
 
+### Subclasses extend raw namespace classes
+
+**Invariant:** If an Invar subclass or test double specializes a
+namespace-published class, then it extends `X.$Class`, never `X.Class`.
+
+**Scope:** Every class declaration and class expression under `src/` and
+`scripts/`. Construction through `new X.Class()` and non-namespace inheritance
+are outside this rule.
+
+**Mechanism:** `$Class` is the raw native inheritance root; `Class` is the
+selected construction surface. ivue's `Static()` method accessor binds the
+walked method and defines it on the receiver without an `Object.hasOwn` guard
+(`node_modules/ivue/lib/Static.ts:42`). The parent-first runtime probe returned
+`{"parentFirst":"parent","ownsParentValue":true,"ownsChildValue":false}`, so a
+subclass of `X.Class` can receive the parent-bound method according to access
+order instead of native override dispatch.
+
+**Generates:** `extends X.$Class` for subclasses and test doubles; the
+`check-namespace-class-extensions.ts` AST gate over `src/` and `scripts/`.
+
+**Rejected alternatives:** Extend `X.Class` and rely on ivue binding order —
+the subclass can silently receive a method bound to its parent.
+
+**Evidence:** `project.ivue-reference.md` section 6;
+`node_modules/ivue/lib/Static.ts:35-43`; the parent-first runtime probe above.
+
+**Impossible if true:** A declaration in `src/` or `scripts/` extends a
+namespace's `Class` entry point; a subclass receives a parent-bound method
+only because the parent method was accessed first.
+
+**Verification:** `bun scripts/check-namespace-class-extensions.ts && bash
+scripts/conventions-gate.sh`
+
+**Status:** established
+
+**Last refined:** 2026-07-27
+
 ### Seams are drawn at the shared generator
 
 **Invariant:** If two features share a behavior, that behavior belongs in one seam *only* when its
