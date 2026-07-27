@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 class $OverlayCoordinator {
   protected get OverlayCoordinator() {
     return OverlayCoordinator.Class as unknown as typeof $OverlayCoordinator;
@@ -14,6 +13,10 @@ class $OverlayCoordinator {
       'completionPopup',
       'shortcutHelp',
     ];
+    Object.defineProperty(this, '$exclusiveOverlayNames', {
+      configurable: true,
+      value: exclusiveOverlayNamesValue,
+    });
     return exclusiveOverlayNamesValue;
   }
   protected get exclusiveOverlayNames(): readonly ExclusiveOverlayName[] {
@@ -34,7 +37,7 @@ class $OverlayCoordinator {
   }
 }
 export namespace OverlayCoordinator {
-  export const $Class = Static($OverlayCoordinator);
+  export const $Class = $OverlayCoordinator;
   export let Class = $Class;
   export type Instance = InstanceType<typeof Class>;
 }

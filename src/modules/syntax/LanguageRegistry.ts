@@ -35,6 +35,10 @@ class $LanguageRegistry {
       sass: 'css',
       vue: 'vue',
     };
+    Object.defineProperty(this, '$languagesByExtension', {
+      configurable: true,
+      value: languagesByExtension,
+    });
     return languagesByExtension;
   }
 
@@ -47,6 +51,6 @@ class $LanguageRegistry {
 }
 
 export namespace LanguageRegistry {
-  export const $Class = Static($LanguageRegistry);
-  export const Class = $Class;
+  export const $Class = $LanguageRegistry;
+  export const Class = Static($LanguageRegistry);
 }

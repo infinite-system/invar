@@ -7,7 +7,6 @@
 // The filesystem is reached through an overridable `createFileSystem()` seam (a constructor-injected
 // `fileSystem` wins) so tests drive the whole load/merge/save cycle against an in-memory fake and
 // never touch the real `~/.config`.
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import { Files } from '../system/Files';
@@ -26,40 +25,77 @@ import type {
 } from './SettingContribution.interface';
 
 class $Settings {
+  protected static cachedSet<Value>(
+    propertyName: string,
+    values: readonly Value[],
+  ): ReadonlySet<Value> {
+    const allowedValues = new Set(values);
+    Object.defineProperty(this, propertyName, {
+      configurable: true,
+      value: allowedValues,
+    });
+    return allowedValues;
+  }
+
   protected static get $allowedScrollModifiers(): ReadonlySet<ScrollModifier> {
-    return new Set(['alt', 'shift', 'ctrl', 'none']);
+    return this.cachedSet('$allowedScrollModifiers', [
+      'alt',
+      'shift',
+      'ctrl',
+      'none',
+    ]);
   }
 
   protected static get $allowedGlyphModes(): ReadonlySet<GlyphMode> {
-    return new Set(['auto', 'nerd', 'unicode', 'ascii']);
+    return this.cachedSet('$allowedGlyphModes', [
+      'auto',
+      'nerd',
+      'unicode',
+      'ascii',
+    ]);
   }
 
   protected static get $allowedGraphicsTiers(): ReadonlySet<GraphicsTierSetting> {
-    return new Set(['auto', 'kitty', 'sixel', 'halfblock']);
+    return this.cachedSet('$allowedGraphicsTiers', [
+      'auto',
+      'kitty',
+      'sixel',
+      'halfblock',
+    ]);
   }
 
   protected static get $allowedWorkspaceTabPositions(): ReadonlySet<WorkspaceTabPosition> {
-    return new Set(['top', 'left']);
+    return this.cachedSet('$allowedWorkspaceTabPositions', ['top', 'left']);
   }
 
   protected static get $allowedSidebarPositions(): ReadonlySet<SidebarPosition> {
-    return new Set(['left', 'right']);
+    return this.cachedSet('$allowedSidebarPositions', ['left', 'right']);
   }
 
   protected static get $allowedPanelAlignments(): ReadonlySet<PanelAlignment> {
-    return new Set(['center', 'right']);
+    return this.cachedSet('$allowedPanelAlignments', ['center', 'right']);
   }
 
   protected static get $allowedDockVerticalSpans(): ReadonlySet<DockVerticalSpan> {
-    return new Set(['full-height', 'ends-at-panel']);
+    return this.cachedSet('$allowedDockVerticalSpans', [
+      'full-height',
+      'ends-at-panel',
+    ]);
   }
 
   protected static get $allowedTypeScriptServers(): ReadonlySet<TypeScriptServer> {
-    return new Set(['tsgo', 'typescript-language-server']);
+    return this.cachedSet('$allowedTypeScriptServers', [
+      'tsgo',
+      'typescript-language-server',
+    ]);
   }
 
   protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
-    return new Set(['auto', 'claude', 'codex']);
+    return this.cachedSet('$allowedAgentProviders', [
+      'auto',
+      'claude',
+      'codex',
+    ]);
   }
 
   constructor(readonly options: SettingsOptions = {}) {}
@@ -684,12 +720,17 @@ class $Settings {
   }
 
   protected static get $allowedAgentTerminalFollowModes(): ReadonlySet<AgentTerminalFollowMode> {
-    return new Set(['follow-all', 'on-error', 'on-request', 'off']);
+    return this.cachedSet('$allowedAgentTerminalFollowModes', [
+      'follow-all',
+      'on-error',
+      'on-request',
+      'off',
+    ]);
   }
 }
 
 export namespace Settings {
-  export const $Class = Static($Settings);
+  export const $Class = $Settings;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

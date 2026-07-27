@@ -1,5 +1,4 @@
 // invariant: Markdown blocks stay compact (src/modules/markdown/markdown.invariants.md)
-import { Static } from 'ivue/extras';
 class $MarkdownParser {
   protected static get $inlineStyles(): InlineStyles {
     const inlineStyles: InlineStyles = Object.freeze({
@@ -7,6 +6,10 @@ class $MarkdownParser {
       strong: 2,
       code: 3,
       link: 4,
+    });
+    Object.defineProperty(this, '$inlineStyles', {
+      configurable: true,
+      value: inlineStyles,
     });
     return inlineStyles;
   }
@@ -17,11 +20,19 @@ class $MarkdownParser {
 
   protected static get $emptyNumbers(): readonly number[] {
     const emptyNumbers: readonly number[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyNumbers', {
+      configurable: true,
+      value: emptyNumbers,
+    });
     return emptyNumbers;
   }
 
   protected static get $emptyStrings(): readonly string[] {
     const emptyStrings: readonly string[] = Object.freeze([]);
+    Object.defineProperty(this, '$emptyStrings', {
+      configurable: true,
+      value: emptyStrings,
+    });
     return emptyStrings;
   }
 
@@ -523,7 +534,7 @@ class $MarkdownParser {
 }
 
 export namespace MarkdownParser {
-  export const $Class = Static($MarkdownParser);
+  export const $Class = $MarkdownParser;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

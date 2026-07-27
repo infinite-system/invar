@@ -16,6 +16,6 @@ class $TextSelectionGeometry {
 }
 
 export namespace TextSelectionGeometry {
-  export const $Class = Static($TextSelectionGeometry);
-  export const Class = $Class;
+  export const $Class = $TextSelectionGeometry;
+  export const Class = Static($Class);
 }

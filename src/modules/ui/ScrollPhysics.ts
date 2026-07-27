@@ -2,7 +2,6 @@
 // that deliver them.
 
 // invariant: Held key movement accelerates within a ceiling (project.invariants.md)
-import { Static } from 'ivue/extras';
 class $ScrollPhysics {
   /** Key repeats within this window continue an acceleration run; a gap resets it. */
   static readonly KEY_RUN_WINDOW_MS = 150;
@@ -83,7 +82,7 @@ class $ScrollPhysics {
 }
 
 export namespace ScrollPhysics {
-  export const $Class = Static($ScrollPhysics);
-  export let Class = $Class;
+  export const $Class = $ScrollPhysics;
+  export let Class = $ScrollPhysics;
   export type Model = InstanceType<typeof Class>;
 }

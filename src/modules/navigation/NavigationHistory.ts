@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 
@@ -106,7 +105,7 @@ class $NavigationHistory {
 }
 
 export namespace NavigationHistory {
-  export const $Class = Static($NavigationHistory);
+  export const $Class = $NavigationHistory;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

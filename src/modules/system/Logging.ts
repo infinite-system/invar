@@ -42,6 +42,6 @@ class $Logging {
 }
 
 export namespace Logging {
-  export const $Class = Static($Logging);
-  export let Class = $Class;
+  export const $Class = $Logging;
+  export let Class = Static($Logging);
 }

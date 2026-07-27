@@ -35,6 +35,10 @@ class $TerminalPaneRenderer {
       '#00ffff',
       '#ffffff',
     ];
+    Object.defineProperty(this, '$ansiPalette', {
+      configurable: true,
+      value: ansiPalette,
+    });
     return ansiPalette;
   }
 
@@ -189,8 +193,8 @@ class $TerminalPaneRenderer {
 }
 
 export namespace TerminalPaneRenderer {
-  export const $Class = Static($TerminalPaneRenderer);
-  export const Class = $Class;
+  export const $Class = $TerminalPaneRenderer;
+  export const Class = Static($TerminalPaneRenderer);
 }
 
 export interface TerminalPaneRenderContext {

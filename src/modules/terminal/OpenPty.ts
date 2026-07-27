@@ -6,7 +6,6 @@
 // invariant: One openpty allocator serves both PTY roles (src/modules/terminal/terminal.invariants.md)
 // invariant: Bracketed paste survives stream chunking (src/modules/terminal/terminal.invariants.md)
 // invariant: Shared PTY writes never block the event loop (src/modules/terminal/terminal.invariants.md)
-import { Static } from 'ivue/extras';
 import { dlopen, FFIType, ptr, read } from 'bun:ffi';
 import { closeSync, createReadStream, type ReadStream } from 'node:fs';
 
@@ -45,6 +44,10 @@ class $OpenPty {
 
   protected static get $openPtyLibrary(): OpenPtyLibrary {
     const openPtyLibrary = this.loadOpenPtyLibrary();
+    Object.defineProperty(this, '$openPtyLibrary', {
+      configurable: true,
+      value: openPtyLibrary,
+    });
     return openPtyLibrary;
   }
 
@@ -70,6 +73,10 @@ class $OpenPty {
         args: [],
         returns: FFIType.ptr,
       },
+    });
+    Object.defineProperty(this, '$terminalControlLibrary', {
+      configurable: true,
+      value: terminalControlLibrary,
     });
     return terminalControlLibrary;
   }
@@ -477,7 +484,7 @@ class $OpenPty {
 }
 
 export namespace OpenPty {
-  export const $Class = Static($OpenPty);
+  export const $Class = $OpenPty;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }

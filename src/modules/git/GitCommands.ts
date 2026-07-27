@@ -287,8 +287,8 @@ class $GitCommands {
 }
 
 export namespace GitCommands {
-  export const $Class = Static($GitCommands);
-  export const Class = $Class;
+  export const $Class = $GitCommands;
+  export const Class = Static($GitCommands);
 }
 
 export interface GitCommandResult {

@@ -33,6 +33,10 @@ class $ImageDecoders {
       ['.jpg', (bytes: Uint8Array) => this.JpegDecoder.decode(bytes)],
       ['.jpeg', (bytes: Uint8Array) => this.JpegDecoder.decode(bytes)],
     ]);
+    Object.defineProperty(this, '$decodersByExtension', {
+      configurable: true,
+      value: decodersByExtension,
+    });
     return decodersByExtension;
   }
 
@@ -49,8 +53,8 @@ class $ImageDecoders {
 }
 
 export namespace ImageDecoders {
-  export const $Class = Static($ImageDecoders);
-  export const Class = $Class;
+  export const $Class = $ImageDecoders;
+  export const Class = Static($ImageDecoders);
 }
 
 /** A decoded raster image: dimensions plus a straight-alpha RGBA buffer of length width*height*4. */

@@ -34,8 +34,8 @@ class $ScrollGesture {
   }
 }
 export namespace ScrollGesture {
-  export const $Class = Static($ScrollGesture);
-  export const Class = $Class;
+  export const $Class = $ScrollGesture;
+  export const Class = Static($ScrollGesture);
 }
 export interface WheelModifiers {
   modifiers: {

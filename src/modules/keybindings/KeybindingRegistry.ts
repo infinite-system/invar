@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 
@@ -373,7 +372,7 @@ class $KeybindingRegistry {
 }
 
 export namespace KeybindingRegistry {
-  export const $Class = Static($KeybindingRegistry);
+  export const $Class = $KeybindingRegistry;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }

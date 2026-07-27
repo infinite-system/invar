@@ -165,8 +165,8 @@ class $SixelEncoder {
 }
 
 export namespace SixelEncoder {
-  export const $Class = Static($SixelEncoder);
-  export const Class = $Class;
+  export const $Class = $SixelEncoder;
+  export const Class = Static($SixelEncoder);
 }
 
 /** One sixel paint request: the decoded image resampled to an exact pixel rect over a background. */

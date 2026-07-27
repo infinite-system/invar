@@ -9,6 +9,11 @@ import { Static } from 'ivue/extras';
 import type { SymbolClass } from '../theme/ThemeIcons';
 
 class $CompletionItemKinds {
+  protected static cache<Value>(propertyName: string, value: Value): Value {
+    Object.defineProperty(this, propertyName, { configurable: true, value });
+    return value;
+  }
+
   /**
    * Every `CompletionItemKind` in the LSP specification (1–25), grouped into the symbol-class
    * families. The grouping is the point: a reader scanning a member list needs "callable versus
@@ -64,6 +69,6 @@ class $CompletionItemKinds {
 }
 
 export namespace CompletionItemKinds {
-  export const $Class = Static($CompletionItemKinds);
-  export const Class = $Class;
+  export const $Class = $CompletionItemKinds;
+  export const Class = Static($CompletionItemKinds);
 }

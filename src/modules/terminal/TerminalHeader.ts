@@ -25,8 +25,8 @@ class $TerminalHeader {
 }
 
 export namespace TerminalHeader {
-  export const $Class = Static($TerminalHeader);
-  export const Class = $Class;
+  export const $Class = $TerminalHeader;
+  export const Class = Static($Class);
 }
 
 export interface TerminalHeaderIdentityAndPath {

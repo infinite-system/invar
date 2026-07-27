@@ -236,8 +236,8 @@ class $AgentWordWrap {
 }
 
 export namespace AgentWordWrap {
-  export const $Class = Static($AgentWordWrap);
-  export const Class = $Class;
+  export const $Class = $AgentWordWrap;
+  export const Class = Static($Class);
 }
 
 export interface AgentWordWrapSegment extends WrapSegment {

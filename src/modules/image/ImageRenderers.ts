@@ -42,6 +42,10 @@ class $ImageRenderers {
         return imageRenderersClass.KittyGraphics.removeAll();
       },
     };
+    Object.defineProperty(this, '$kittyEncoder', {
+      configurable: true,
+      value: kittyEncoder,
+    });
     return kittyEncoder;
   }
 
@@ -63,6 +67,10 @@ class $ImageRenderers {
         return '';
       },
     };
+    Object.defineProperty(this, '$sixelEncoder', {
+      configurable: true,
+      value: sixelEncoder,
+    });
     return sixelEncoder;
   }
 
@@ -76,6 +84,10 @@ class $ImageRenderers {
       ['kitty', this.$kittyEncoder],
       ['sixel', this.$sixelEncoder],
     ]);
+    Object.defineProperty(this, '$encodersByTier', {
+      configurable: true,
+      value: encodersByTier,
+    });
     return encodersByTier;
   }
 
@@ -86,8 +98,8 @@ class $ImageRenderers {
 }
 
 export namespace ImageRenderers {
-  export const $Class = Static($ImageRenderers);
-  export const Class = $Class;
+  export const $Class = $ImageRenderers;
+  export const Class = Static($ImageRenderers);
 }
 
 /** Everything a pixel-tier encoder may need to place one image into one screen rect. The mount fills

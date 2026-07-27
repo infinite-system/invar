@@ -4,7 +4,6 @@
 // store — it owns no settings values itself.
 //
 // invariant: Every setting is a reactive cell read through its value ref (settings.invariants.md)
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { VoiceDiscovery } from '../narration/VoiceDiscovery';
@@ -329,6 +328,10 @@ class $SettingsPanel {
         spec: { kind: 'enum', options: dockVerticalSpanOptions },
       },
     ];
+    Object.defineProperty(this, '$settingDescriptors', {
+      configurable: true,
+      value: settingDescriptors,
+    });
     return settingDescriptors;
   }
 
@@ -493,8 +496,8 @@ class $SettingsPanel {
 }
 
 export namespace SettingsPanel {
-  export const $Class = Static($SettingsPanel);
-  export let Class = Reactive($Class);
+  export const $Class = $SettingsPanel;
+  export let Class = Reactive($SettingsPanel);
   export type Instance = typeof Class.Instance;
 }
 

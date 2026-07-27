@@ -363,8 +363,8 @@ class $AppStatusProjection {
 }
 
 export namespace AppStatusProjection {
-  export const $Class = Static($AppStatusProjection);
-  export const Class = $Class;
+  export const $Class = $AppStatusProjection;
+  export const Class = Static($AppStatusProjection);
 }
 
 export interface AppStatusMouseEvent {

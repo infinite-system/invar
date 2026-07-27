@@ -17,6 +17,10 @@ class $PngDecoder {
   // The eight fixed bytes every PNG file opens with (\x89 P N G \r \n \x1a \n).
   protected static get $pngSignature(): readonly number[] {
     const pngSignature = Object.freeze([137, 80, 78, 71, 13, 10, 26, 10]);
+    Object.defineProperty(this, '$pngSignature', {
+      configurable: true,
+      value: pngSignature,
+    });
     return pngSignature;
   }
 
@@ -248,6 +252,6 @@ class $PngDecoder {
 }
 
 export namespace PngDecoder {
-  export const $Class = Static($PngDecoder);
-  export const Class = $Class;
+  export const $Class = $PngDecoder;
+  export const Class = Static($PngDecoder);
 }

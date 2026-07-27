@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import {
   BoxRenderable,
   StyledText,
@@ -940,7 +939,7 @@ class $BoundedListPopup {
 }
 
 export namespace BoundedListPopup {
-  export const $Class = Static($BoundedListPopup);
+  export const $Class = $BoundedListPopup;
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;

@@ -250,8 +250,8 @@ class $CommandDefaults {
 }
 
 export namespace CommandDefaults {
-  export const $Class = Static($CommandDefaults);
-  export const Class = $Class;
+  export const $Class = $CommandDefaults;
+  export const Class = Static($CommandDefaults);
 }
 
 export interface CommandContext {

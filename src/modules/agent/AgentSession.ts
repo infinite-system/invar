@@ -13,7 +13,6 @@
 // invariant: Queued agent messages preserve order (src/modules/agent/agent.invariants.md)
 // invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
 // invariant: Every agent backend session begins from the IBR foundation (src/modules/agent/agent.invariants.md)
-import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { AgentBackend } from './AgentBackend.interface';
@@ -567,7 +566,7 @@ class $AgentSession {
 }
 
 export namespace AgentSession {
-  export const $Class = Static($AgentSession);
+  export const $Class = $AgentSession;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;

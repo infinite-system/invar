@@ -43,9 +43,8 @@ you can't gate "grandpa learns it" but you CAN gate these):**
 
 ## Conventions (also in project.conventions.md — the canonical WHAT)
 - FULL descriptive identifier names, NO abbreviations, ever, in all code.
-- ivue namespace pattern: `class $X {}` + `export namespace X`; statics-bearing classes publish
-  `$Class=Static($X)`, classes without statics publish `$Class=$X`, and the honest selected binding
-  is `Class=$Class` or `Class=Reactive($Class)`.
+- ivue namespace pattern: `class $X {}` + `export namespace X { export const $Class=$X; export const
+  Class=Static($X) | export let Class=Reactive($X); export type Instance = typeof Class.Instance }`.
 - Static-manifest shape + `$`-raw-form: a manifest member's backing is `$name` (the `...Implementation`
   suffix is BANNED; the gate fails on it).
 - FILE-NAME-FOLLOWS-CLASSIFICATION: a namespace+Static/Reactive class file is `<Namespace>.ts`

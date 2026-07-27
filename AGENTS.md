@@ -109,11 +109,10 @@ These skills live in this repo — read them, don't work from a second-hand summ
 Non-negotiable conventions (summarized from the `ivue` + `invariants` skills and
 `project.conventions.md`; these are the ones that must not be lost in relay):
 
-1. **ivue namespace pattern — anchored forms.** `class $X` + `namespace X`; a class declaring
-   statics publishes `$Class = Static($X)`, while a class without statics publishes `$Class = $X`.
-   Its honest selected `Class` is `$Class` (static capability or plain service) or
-   `Reactive($Class)` (stateful reactive controller). Pick the honest form — don't default
-   everything to Reactive.
+1. **ivue namespace pattern — three forms.** `class $X` + `namespace X` exposing one of
+   `Class = Static($X)` (stateless capability / swap seam), `Reactive($X)` (stateful + reactive
+   controller), or `= $X` (raw plain service: stateful, not reactive-tracked). Pick the honest
+   form — don't default everything to Reactive.
 2. **Distill to the shared generator — reuse the seam, don't duplicate or over-unify.** A behavior
    belongs in ONE seam only where its *generator* is the same across consumers (e.g. `TextEditing`
    word-edits, the `*Backend` provider seams, `ScrollableTextViewport`); a new consumer is then one

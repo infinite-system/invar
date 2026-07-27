@@ -33,6 +33,10 @@ class $EditorWrap {
 
   protected static get $wrapMemo(): Map<string, WrapSegment[]> {
     const wrapMemo = new Map<string, WrapSegment[]>();
+    Object.defineProperty(this, '$wrapMemo', {
+      configurable: true,
+      value: wrapMemo,
+    });
     return wrapMemo;
   }
 
@@ -44,11 +48,19 @@ class $EditorWrap {
       WrappableDocument,
       DocumentWrapIndex
     >();
+    Object.defineProperty(this, '$wrapIndexByDocument', {
+      configurable: true,
+      value: wrapIndexByDocument,
+    });
     return wrapIndexByDocument;
   }
 
   protected static get $emptyFoldRanges(): readonly FoldRange[] {
     const emptyFoldRanges: readonly FoldRange[] = [];
+    Object.defineProperty(this, '$emptyFoldRanges', {
+      configurable: true,
+      value: emptyFoldRanges,
+    });
     return emptyFoldRanges;
   }
 
@@ -612,8 +624,8 @@ class $EditorWrap {
 }
 
 export namespace EditorWrap {
-  export const $Class = Static($EditorWrap);
-  export const Class = $Class;
+  export const $Class = $EditorWrap;
+  export const Class = Static($EditorWrap);
 }
 
 export interface WrapSegment {

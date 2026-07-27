@@ -1,4 +1,3 @@
-import { Static } from 'ivue/extras';
 import type {
   BoundedListPopup,
   BoundedListPopupAnchor,
@@ -40,7 +39,7 @@ class $PanelAddPopup {
 }
 
 export namespace PanelAddPopup {
-  export const $Class = Static($PanelAddPopup);
+  export const $Class = $PanelAddPopup;
   export const Class = $Class;
   export type Instance = InstanceType<typeof Class>;
 }

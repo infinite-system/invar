@@ -21,6 +21,10 @@ class $AgentTranscriptProjection {
       TranscriptEntry,
       EntryProjectionCache
     >();
+    Object.defineProperty(this, '$entryProjectionCache', {
+      configurable: true,
+      value: entryProjectionCache,
+    });
     return entryProjectionCache;
   }
 
@@ -382,8 +386,8 @@ class $AgentTranscriptProjection {
 }
 
 export namespace AgentTranscriptProjection {
-  export const $Class = Static($AgentTranscriptProjection);
-  export const Class = $Class;
+  export const $Class = $AgentTranscriptProjection;
+  export const Class = Static($AgentTranscriptProjection);
 }
 
 export interface ProjectedLine {

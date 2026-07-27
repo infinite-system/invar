@@ -5,12 +5,20 @@ class $TextSegmentation {
     const graphemeSegmenter = new Intl.Segmenter(undefined, {
       granularity: 'grapheme',
     });
+    Object.defineProperty(this, '$graphemeSegmenter', {
+      configurable: true,
+      value: graphemeSegmenter,
+    });
     return graphemeSegmenter;
   }
 
   protected static get $wordSegmenter(): Intl.Segmenter {
     const wordSegmenter = new Intl.Segmenter(undefined, {
       granularity: 'word',
+    });
+    Object.defineProperty(this, '$wordSegmenter', {
+      configurable: true,
+      value: wordSegmenter,
     });
     return wordSegmenter;
   }
@@ -32,8 +40,8 @@ class $TextSegmentation {
 }
 
 export namespace TextSegmentation {
-  export const $Class = Static($TextSegmentation);
-  export const Class = $Class;
+  export const $Class = $TextSegmentation;
+  export const Class = Static($Class);
 }
 
 export interface TextWordSegment {
