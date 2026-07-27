@@ -83,6 +83,16 @@ A SMALL-AND-OBVIOUS fix is allowed — under all four conditions, and it is stil
    reviews it instead of discovering it.
 Everything larger: the conductor triages bycatch into tasks; yours is to see and to say.
 
+## Reporting to the user
+
+- **Never cite a task number alone.** Write `#151 (dependency boot guard)`, never `#151`. The
+  numbering is an index into a 150-entry list nobody memorises, so a bare number transfers no
+  information and forces a lookup — or worse, agreement without knowing which item is meant. Name
+  first, number second: the name identifies, the number is a handle for tooling. Same for gate
+  logs, commit subjects, branch names, and worktree names.
+- **State what a task IS when you report its status.** "Closed #150" is useless; "#150 (diagnose the
+  statics slowdown) closed — cause was a missing `bun install`" is the report.
+
 ## Skills index (ALL agents — codex does not auto-see `.claude/skills/`; this list is your map)
 - **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
 - **`.claude/skills/ivue/`** — the reactive substrate + namespace pattern. Load before touching `src/modules/**`.
