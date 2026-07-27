@@ -63,6 +63,81 @@ test('a dock-style host reveals itself when content is registered', () => {
   expect(host.activeId.value).toBe('navigator');
 });
 
+test('persisted order filters dormant ids and appends unseen content', () => {
+  const order = ref(['files', 'git', 'extensions']);
+  const host = new PanelHost.Class({ contentOrder: order });
+
+  host.register(fakeContent('files'));
+  host.register(fakeContent('extensions'));
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'files',
+    'extensions',
+  ]);
+
+  host.register(fakeContent('search'));
+  expect(order.value).toEqual(['files', 'git', 'extensions', 'search']);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'files',
+    'extensions',
+    'search',
+  ]);
+});
+
+test('retained dormant ids return to their persisted activity slot', () => {
+  const order = ref(['files', 'git', 'extensions']);
+  let persistenceCount = 0;
+  const host = new PanelHost.Class({
+    contentOrder: order,
+    persistContentOrder: () => {
+      persistenceCount += 1;
+    },
+    retainUnregisteredContentOrder: true,
+  });
+  host.register(fakeContent('files'));
+  host.register(fakeContent('git'));
+  host.register(fakeContent('extensions'));
+
+  host.removeContent('git');
+  expect(order.value).toEqual(['files', 'git', 'extensions']);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'files',
+    'extensions',
+  ]);
+
+  host.register(fakeContent('git'));
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'files',
+    'git',
+    'extensions',
+  ]);
+  expect(persistenceCount).toBe(0);
+});
+
+test('registered content reorder persists and ignores dormant identifiers', () => {
+  const order = ref(['files', 'dormant', 'git', 'extensions']);
+  let persistenceCount = 0;
+  const host = new PanelHost.Class({
+    contentOrder: order,
+    persistContentOrder: () => {
+      persistenceCount += 1;
+    },
+    retainUnregisteredContentOrder: true,
+  });
+  host.register(fakeContent('files'));
+  host.register(fakeContent('git'));
+  host.register(fakeContent('extensions'));
+
+  host.moveContentTo('extensions', 0);
+
+  expect(order.value).toEqual(['extensions', 'files', 'dormant', 'git']);
+  expect(host.orderedContents.map((content) => content.id)).toEqual([
+    'extensions',
+    'files',
+    'git',
+  ]);
+  expect(persistenceCount).toBe(1);
+});
+
 test('toggle shows+focuses then hides+blurs', () => {
   const host = new PanelHost.Class();
   const terminal = fakeContent('terminal');

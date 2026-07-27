@@ -55,6 +55,8 @@ const coveredSettingNames = new Set([
   'gitSplitRatio',
   'diffSplitRatio',
   'markdownSplitRatio',
+  // Plugin membership, activity reorder, and same-HOME restart are driven by the activity-bar smoke.
+  'primaryDockContentOrder',
   'panelContentOrder',
 ]);
 

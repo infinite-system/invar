@@ -160,6 +160,33 @@ test('Tab and Shift+Tab are the EDITOR surface s indentation, not a focus move',
   ).toBe(null);
 });
 
+test('activity and panel lists share Alt arrow reorder gestures', () => {
+  const registry = registryWithCanonicalLayer();
+  const altUp = {
+    ...unmodifiedEvent,
+    name: 'up',
+    option: true,
+  };
+  const altDown = {
+    ...unmodifiedEvent,
+    name: 'down',
+    option: true,
+  };
+
+  expect(registry.resolve(altUp, 'panel', 0).action).toBe(
+    'panel.contentsMoveUp',
+  );
+  expect(registry.resolve(altDown, 'panel', 0).action).toBe(
+    'panel.contentsMoveDown',
+  );
+  expect(registry.resolve(altUp, 'activity', 0).action).toBe(
+    'activity.moveItemUp',
+  );
+  expect(registry.resolve(altDown, 'activity', 0).action).toBe(
+    'activity.moveItemDown',
+  );
+});
+
 test('inline rewrite chords resolve without spending editor Tab', () => {
   const registry = registryWithCanonicalLayer();
   registry.registerGuard('inlineRewriteVisible', () => true);

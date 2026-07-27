@@ -10,13 +10,16 @@ import { Reactive } from 'ivue';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Palette } from '../theme/ThemePalettes';
+import { ContentOrderDrag } from './ContentOrderDrag';
 import type { PanelHost } from './PanelHost';
 import type { Tooltip } from './Tooltip';
 
 // invariant: The active activity item determines the sidebar content (ui.invariants.md)
+// invariant: Activity bar order is one persisted sequence (ui.invariants.md)
 class $ActivityBar {
   readonly bar: BoxRenderable;
   protected readonly body: TextRenderable;
+  protected readonly contentOrderDrag: ContentOrderDrag.Model;
   protected hoveredItemIndex = -1;
 
   constructor(protected readonly dependencies: ActivityBarDependencies) {
@@ -35,6 +38,9 @@ class $ActivityBar {
       wrapMode: 'none',
       selectable: false,
     });
+    this.contentOrderDrag = new ContentOrderDrag.Class(
+      dependencies.primaryDockHost,
+    );
     this.bar.add(this.body);
     this.wireHandlers();
   }
@@ -45,12 +51,31 @@ class $ActivityBar {
     return index >= 0 && content ? { index, content } : null;
   }
 
+  protected dragTargetIndexAtRow(screenRow: number): number {
+    const itemCount = this.dependencies.primaryDockHost.orderedContents.length;
+    return Math.max(
+      0,
+      Math.min(Math.floor((screenRow - this.bar.y) / 2), itemCount - 1),
+    );
+  }
+
+  protected capturePointer(): void {
+    const barWithContext = this.bar as unknown as {
+      _ctx?: {
+        setCapturedRenderable?: (renderable: unknown) => void;
+      };
+    };
+    barWithContext._ctx?.setCapturedRenderable?.(this.bar);
+  }
+
   protected wireHandlers(): void {
     const { renderer, primaryDockHost, tooltip, keybindings, commands } =
       this.dependencies;
     this.bar.onMouseDown = (event) => {
       const hit = this.itemAtRow(event.y);
       if (!hit) return;
+      this.capturePointer();
+      this.contentOrderDrag.pointerDown(hit.content.id);
       primaryDockHost.showContent(hit.content.id);
       if (hit.content.activityAction) {
         commands.run(hit.content.activityAction);
@@ -58,6 +83,18 @@ class $ActivityBar {
       tooltip.clear();
       renderer.requestRender();
     };
+    this.bar.onMouseDrag = (event) => {
+      this.contentOrderDrag.pointerDrag(
+        this.dragTargetIndexAtRow(Number(event.y)),
+      );
+      tooltip.clear();
+      renderer.requestRender();
+    };
+    const finishContentOrderDrag = (): void => {
+      this.contentOrderDrag.pointerUp();
+    };
+    this.bar.onMouseUp = finishContentOrderDrag;
+    this.bar.onMouseDragEnd = finishContentOrderDrag;
     this.bar.onMouseMove = (event) => {
       const hit = this.itemAtRow(event.y);
       this.hoveredItemIndex = hit?.index ?? -1;

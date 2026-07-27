@@ -219,7 +219,12 @@ class $Bootstrap {
       persistContentOrder: () => settings.save(),
       onContentRemoved: (content) => handlePanelContentRemoved(content),
     });
-    const primaryDockHost = new PanelHost.Class();
+    // invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
+    const primaryDockHost = new PanelHost.Class({
+      contentOrder: settings.primaryDockContentOrder,
+      persistContentOrder: () => settings.save(),
+      retainUnregisteredContentOrder: true,
+    });
     const rightDockHost = new PanelHost.Class({
       showWhenContentRegistered: true,
     });
@@ -718,6 +723,10 @@ class $Bootstrap {
       const identifier = panelHost.focusedContent?.id;
       if (identifier) panelHost.moveOpenContent(identifier, direction);
     };
+    const moveActivityItem = (direction: -1 | 1): void => {
+      const identifier = primaryDockHost.activeId.value;
+      if (identifier) primaryDockHost.moveContent(identifier, direction);
+    };
     const closeActivePanelContent = (): void => {
       const identifier = panelHost.focusedContent?.id;
       if (identifier) panelHost.closeOpenContent(identifier);
@@ -1188,6 +1197,8 @@ class $Bootstrap {
       focusNextPanelContent: () => focusPanelContent(1),
       movePanelContentUp: () => movePanelContent(-1),
       movePanelContentDown: () => movePanelContent(1),
+      moveActivityItemUp: () => moveActivityItem(-1),
+      moveActivityItemDown: () => moveActivityItem(1),
       closeActivePanelContent,
       cycleTerminalFollowMode,
       openShortcutHelp: () =>
@@ -1842,6 +1853,21 @@ class $Bootstrap {
         primaryDockHost.visible.value &&
         primaryDockHost.focused.value
       ) {
+        const activityResolution = keybindings.resolve(
+          {
+            name: key.name,
+            ctrl: key.ctrl,
+            shift: key.shift,
+            option: key.option || key.meta,
+            super: key.super,
+          },
+          'activity',
+          Date.now(),
+        );
+        if (activityResolution.action?.startsWith('activity.')) {
+          dispatchAction(activityResolution.action, key);
+          return;
+        }
         const content = primaryDockHost.focusedContent;
         const contentContext = content?.keybindingContext;
         if (contentContext) {

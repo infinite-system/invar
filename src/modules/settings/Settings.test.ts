@@ -56,6 +56,7 @@ describe('Settings', () => {
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.rightDockWidth.value).toBe(28);
     expect(settings.agentTerminalFollowMode.value).toBe('off');
+    expect(settings.primaryDockContentOrder.value).toEqual([]);
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
   });
 
@@ -112,6 +113,7 @@ describe('Settings', () => {
         panelAlignment: 'stretch',
         leftDockVerticalSpan: 'sometimes',
         agentTerminalFollowMode: 'sometimes',
+        primaryDockContentOrder: [],
         panelContentOrder: [],
         unknownKey: 99, // unknown, ignored
       }),
@@ -125,7 +127,26 @@ describe('Settings', () => {
     expect(settings.panelAlignment.value).toBe('center');
     expect(settings.leftDockVerticalSpan.value).toBe('full-height');
     expect(settings.agentTerminalFollowMode.value).toBe('off');
+    expect(settings.primaryDockContentOrder.value).toEqual([]);
     expect(settings.panelContentOrder.value).toEqual(['agent', 'terminal']);
+  });
+
+  test('persisted content orders reject invalid values and deduplicate ids', () => {
+    const { settings } = makeStore({
+      [USER_PATH]: JSON.stringify({
+        primaryDockContentOrder: ['git', 'files', 'git', 'extensions'],
+        panelContentOrder: ['terminal', 'agent', 'terminal'],
+      }),
+    });
+
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+
+    expect(settings.primaryDockContentOrder.value).toEqual([
+      'git',
+      'files',
+      'extensions',
+    ]);
+    expect(settings.panelContentOrder.value).toEqual(['terminal', 'agent']);
   });
 
   test.each(['justify', 'left'] as const)(
@@ -167,6 +188,7 @@ describe('Settings', () => {
     });
     contributedRatio.value.value = 0.65;
     settings.set('agentTerminalFollowMode', 'on-request');
+    settings.set('primaryDockContentOrder', ['extensions', 'files', 'git']);
     settings.set('panelContentOrder', ['terminal', 'agent']);
     settings.save();
 
@@ -179,6 +201,11 @@ describe('Settings', () => {
     expect(JSON.parse(written as string).agentTerminalFollowMode).toBe(
       'on-request',
     );
+    expect(JSON.parse(written as string).primaryDockContentOrder).toEqual([
+      'extensions',
+      'files',
+      'git',
+    ]);
     expect(JSON.parse(written as string).panelContentOrder).toEqual([
       'terminal',
       'agent',
@@ -211,6 +238,11 @@ describe('Settings', () => {
     expect(reloaded.sidebarWidth.value).toBe(48);
     expect(reloadedRatio.value.value).toBe(0.65);
     expect(reloaded.agentTerminalFollowMode.value).toBe('on-request');
+    expect(reloaded.primaryDockContentOrder.value).toEqual([
+      'extensions',
+      'files',
+      'git',
+    ]);
     expect(reloaded.panelContentOrder.value).toEqual(['terminal', 'agent']);
   });
 

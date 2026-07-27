@@ -189,6 +189,18 @@ class $CommandDefaults {
         run: context.movePanelContentDown,
       },
       {
+        id: 'activity.moveItemUp',
+        title: 'View: Move Activity Item Up',
+        category: 'View',
+        run: context.moveActivityItemUp,
+      },
+      {
+        id: 'activity.moveItemDown',
+        title: 'View: Move Activity Item Down',
+        category: 'View',
+        run: context.moveActivityItemDown,
+      },
+      {
         id: 'panel.contentsClose',
         title: 'Panel: Close Active Content',
         category: 'Panel',
@@ -257,6 +269,8 @@ export interface CommandContext {
   focusNextPanelContent: () => void;
   movePanelContentUp: () => void;
   movePanelContentDown: () => void;
+  moveActivityItemUp: () => void;
+  moveActivityItemDown: () => void;
   closeActivePanelContent: () => void;
   cycleTerminalFollowMode: () => void;
   openShortcutHelp: () => void;

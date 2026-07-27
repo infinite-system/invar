@@ -73,10 +73,10 @@ tests assert the exact ratio.
 ordered by `Settings.panelContentOrder`; the default sequence places agent left and terminal right.
 
 **Scope:** The bottom-panel content axis in `PanelHost.split`, `toggleContent`, and
-`moveOpenContentTo`. Cell ratios and the panel's root-slot alignment are outside this ordering rule.
+`moveContentTo`. Cell ratios and the panel's root-slot alignment are outside this ordering rule.
 
 **Mechanism:** `PanelHost.split` filters requested identifiers through `order`, `toggleContent` builds
-new cells from `order`, and `moveOpenContentTo` rebuilds the live `layout` after changing that same
+new cells from `order`, and `moveContentTo` rebuilds the live `layout` after changing that same
 sequence. `Settings.defaults.panelContentOrder` is `['agent', 'terminal']`.
 
 **Generates:** One ordering rule for automatic split creation, Ctrl+Shift+S split creation, drag reorder, and
