@@ -1558,10 +1558,11 @@ the content in that direction while extending the selection. Reachability and se
 same property: any row you can scroll to, you can select to. A surface that scrolls but cannot
 drag-select (or selects only what is already on screen) violates this.
 
-**Scope:** every scrollable text surface — the editor code body, the diff view, and the LSP hover
-card. Not plain non-scrolling labels (status bar, tab titles), which have nothing to scroll to.
+**Scope:** every scrollable text surface — the editor code body, the diff view, the LSP hover card,
+and the Settings overlay. Not plain non-scrolling labels (status bar, tab titles), which have
+nothing to scroll to.
 
-**Mechanism:** all three compose the SAME `SelectionDragBehavior` — the host supplies only
+**Mechanism:** all four compose the SAME `SelectionDragBehavior` — the host supplies only
 coordinate mapping (`positionAtCell`), selection-model writes (`begin`/`extend`/`finishSelection`),
 and a `scrollRows`/`scrollColumns` pair; the behavior owns the pointer-drag lifecycle and the
 edge-overshoot rate integration. Because the edge autoscroll is wired to the SAME `scrollBy` the
@@ -1583,10 +1584,9 @@ character short while another selects whole.
 construction the moment it wires the shared behavior — no per-pane drag/autoscroll rules to drift.
 
 **Evidence:** `EditorPane` and `DiffView` have composed `SelectionDragBehavior` since the selection
-work; `HoverCard` now composes the identical behavior on BOTH axes (drag-select the card text, drag
-past its bottom OR right edge auto-scrolls via `scrollRows`/`scrollColumns`, a wheel scrolls it, and
-long content is reachable under a horizontal scrollbar rather than truncated; Ctrl+C copies via
-`lastCopyChars`).
+work; `HoverCard` composes the identical behavior on BOTH axes; `OverlayLayer` wires Settings through
+`TextSelectionModel`, `SelectableText`, and `ScrollableTextViewport`; the clipboard boundary harness
+drag-selects `Scrolling`, observes the selection background, and copies exactly that text.
 
 **Impossible if true:** a pane with a working scrollbar whose off-screen rows cannot be selected; a
 drag that selects but never auto-scrolls at the edge; two scrollable panes with divergent drag rules.
@@ -1594,12 +1594,13 @@ drag that selects but never auto-scrolls at the edge; two scrollable panes with 
 **Verification:** review that each scrollable surface constructs `SelectionDragBehavior` (no bespoke
 drag path) + `scripts/smoke-hover.sh` drives a drag across the card's scroll boundary and asserts the
 copied text via `lastCopyChars`; `scripts/smoke-editor.sh` covers the editor (its "rightward
-drag-select INCLUDES the char under the release cell" case asserts a 7-char word copies whole, not 6)
-and `smoke-diff-overview` the diff.
+drag-select INCLUDES the char under the release cell" case asserts a 7-char word copies whole, not 6);
+`smoke-diff-overview` covers the diff; and
+`bun scripts/harness/smoke-clipboard-frame-boundary-harness.ts` covers Settings.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-23
+**Last refined:** 2026-07-27
 
 ### A scrollbar track is derived per frame from its region rect
 

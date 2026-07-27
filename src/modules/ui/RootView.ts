@@ -1977,6 +1977,7 @@ class $RootView {
       },
       hoverHasSelection: () => hoverCard.hasSelection(),
       hoverCopySelection: () => hoverCard.copySelection(),
+      settingsCopySelection: () => overlayLayer.copySettingsSelection(),
       observeHoverRepaint: () => {
         void hoverCard.paintRevision.value;
       },
@@ -2106,6 +2107,8 @@ export interface RootView {
   hoverHasSelection(): boolean;
   /** Copy the hover card's selected text to the clipboard; resolves to the character count copied. */
   hoverCopySelection(): Promise<number>;
+  /** Copy the Settings overlay's selected text through the shared clipboard authority. */
+  settingsCopySelection(): Promise<number>;
   /** Read the hover card's reactive paint signal inside the frame effect so an ASYNC hover landing
    *  (which no keypress/mouse-move accompanies) still triggers a repaint that projects the card. */
   observeHoverRepaint(): void;

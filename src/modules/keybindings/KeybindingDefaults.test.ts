@@ -187,6 +187,19 @@ test('activity and panel lists share Alt arrow reorder gestures', () => {
   );
 });
 
+test('Settings uses the editor copy chord through its own context', () => {
+  const registry = registryWithCanonicalLayer();
+  const controlC = {
+    ...unmodifiedEvent,
+    name: 'c',
+    ctrl: true,
+  };
+  expect(registry.resolve(controlC, 'editor', 0).action).toBe('editor.copy');
+  expect(registry.resolve(controlC, 'settings', 0).action).toBe(
+    'settings.copy',
+  );
+});
+
 test('inline rewrite modified chords arrive through both OpenTUI parsers', () => {
   const encodedChords = [
     '\x1b[27;6;114~',

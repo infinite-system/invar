@@ -438,6 +438,11 @@ class $KeybindingDefaults {
         context: 'settings',
       },
       {
+        chord: { key: 'c', ctrl: true },
+        action: 'settings.copy',
+        context: 'settings',
+      },
+      {
         chord: { key: 'escape' },
         action: 'settings.close',
         context: 'settings',

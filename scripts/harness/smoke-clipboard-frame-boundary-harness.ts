@@ -169,7 +169,6 @@ function panelCellBodyPoint(
 }
 
 try {
-  console.log('== clipboard boundary: active agent transcript and composer ==');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -177,6 +176,96 @@ try {
     (status) => status.ready === true,
     20_000,
   );
+
+  console.log('== clipboard boundary: Settings selection ==');
+  const focusBeforeSettings = (
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the host focus is published before Settings opens',
+      (status) => typeof status.focus === 'string',
+    )
+  ).focus;
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings owns the modal overlay before selection',
+    (status) => status.inputOverlay === 'settingsPanel',
+  );
+  const settingsTarget = 'Scrolling';
+  const settingsSnapshot = await driver.awaitGridCondition(
+    'the known Settings heading is visible for selection',
+    (snapshot) => snapshot.findText(settingsTarget) !== null,
+  );
+  const settingsTargetPosition = settingsSnapshot.findText(settingsTarget);
+  if (!settingsTargetPosition)
+    throw new Error('Settings selection target disappeared');
+  await dragBetweenCells(
+    driver,
+    settingsTargetPosition.column,
+    settingsTargetPosition.row,
+    settingsTargetPosition.column + settingsTarget.length - 1,
+    settingsTargetPosition.row,
+  );
+  const settingsEmissionCount = driver.clipboardEmissions().length;
+  driver.sendKeys('Control+c');
+  await awaitClipboardEmission(settingsEmissionCount, settingsTarget);
+  await driver.awaitGridCondition(
+    'the Settings selection paints the existing selection background',
+    (snapshot) => {
+      const targetBackgrounds = Array.from(
+        { length: settingsTarget.length },
+        (_unused, offset) =>
+          snapshot.cell(
+            settingsTargetPosition.row,
+            settingsTargetPosition.column + offset,
+          )?.background,
+      );
+      const selectedBackground = targetBackgrounds[0];
+      const followingBackground = snapshot.cell(
+        settingsTargetPosition.row,
+        settingsTargetPosition.column + settingsTarget.length,
+      )?.background;
+      return (
+        selectedBackground !== undefined &&
+        targetBackgrounds.every(
+          (background) => background === selectedBackground,
+        ) &&
+        selectedBackground !== followingBackground
+      );
+    },
+  );
+  const selectedLabelBeforeKeyboard = (
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the selected Settings label is published after pointer selection',
+      (status) => typeof status.settingsSelectedLabel === 'string',
+    )
+  ).settingsSelectedLabel;
+  driver.sendKeys('Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings keyboard navigation still advances after pointer selection',
+    (status) =>
+      status.inputOverlay === 'settingsPanel' &&
+      status.focus === focusBeforeSettings &&
+      status.settingsSelectedLabel !== selectedLabelBeforeKeyboard,
+  );
+  HarnessSmoke.Class.pass(
+    'Settings selection copies visibly without stealing focus or keyboard navigation',
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes before the panel clipboard drives',
+    (status) => status.settingsOpen === false,
+  );
+
+  console.log('== clipboard boundary: active agent transcript and composer ==');
   driver.sendRawInput('\x1b[27;6;97~');
   await driver.awaitGridCondition(
     'the agent composer is focused',
