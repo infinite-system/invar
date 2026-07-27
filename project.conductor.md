@@ -8,6 +8,29 @@ we hit into either practice or tooling.
 
 ---
 
+## ⚑ RULE ZERO — THE AGENT'S INNER LOOP IS DRIVING, NOT TESTING
+
+**Full doctrine in `.claude/skills/conductor/SKILL.md` Rule Zero. Restated at the top here because
+a cold start reads this file too — and because we DID work this way at the start, moved fast, and
+drifted away from it without noticing (user correction, 2026-07-27).**
+
+- INNER loop = the builder drives the real app in its own PTY: drive -> change -> drive. Seconds.
+  No gate, no conductor. Exit condition is *the symptom is gone when I drive it*.
+- OUTER loop = the conductor's merge gate, as final sieve. Rare, terminal.
+- **Iteration does not need the gate. Only LANDING does.**
+- Brief order, always: reproduce by DRIVING -> iterate by driving (ONE instrument, never the
+  suite, never 3x) -> write the contract only AFTER the symptom is gone -> one verification pass
+  at the END.
+- **Assertions PREVENT REGRESSION; they do not DISCOVER FIXES.** With the test in the inner loop a
+  builder optimizes for making an assertion pass rather than making it right — and for felt
+  qualities the assertion is a lossy proxy, so a green suite and an unhappy user coexist happily.
+- The CONDUCTOR causes the violation, by demanding suite runs inside the builder's loop. Do not.
+- The gate must be TIMELESS: count-based, no clock — cannot be slow, cannot flake, cannot be
+  excused. Cheaper AND stricter at once.
+- FEEL-BISECT: when something "used to feel right", bisect history BY DRIVING and compare
+  per-frame fingerprints as SHAPES, not thresholds. `3,3,3,3` glides; `5,1,5,1` stumbles at the
+  same mean.
+
 ## Part 1 — What the skills got right (validated in the wild)
 
 - **IBR reduction was the highest-value early artifact.** Collapsing the brief's 37
@@ -1691,3 +1714,78 @@ first line not containing the probe text) was refuted in one grep — the marker
 `line 000000 content packages`, and the probe is a substring of it. Refuting your own favourite
 before briefing it is what keeps a builder from spending an hour on your wrong idea; the brief now
 names it as tested-and-refuted so the next reader does not re-derive it.
+
+## 2026-07-27 00:30 — `A && B; echo $?` reports B's status only if A succeeded, and silence looks like a run
+
+Three times in one session I read an exit code that belonged to a different command than the one I
+thought I was measuring:
+
+1. `git merge … | tail -3; echo "merge_exit=$?"` printed **tail's** status — `0` while the merge had
+   actually conflicted. The printed message saved it, not the code.
+2. `bash scripts/behavioral-contracts.sh …; grep …` in a background task — the task's reported exit
+   was **grep's**.
+3. `cd … && git merge-base --is-ancestor origin/main HEAD && … bash scripts/merge-gate.sh > log`.
+   Main had moved after the branch forked, so the ancestor check failed, the `&&` chain
+   short-circuited, **the gate never ran**, and `GATE_EXIT=1` was the ancestor check's status. The
+   log contained nothing but that line.
+
+Case 3 is the dangerous one, because the failure is INDISTINGUISHABLE FROM A GATE FAILURE at the
+level I was reading. Same exit code, same sentinel, same place. Only the log's emptiness
+distinguished "the gate ran and failed" from "the gate never ran."
+
+  **A guard fused to the work with `&&` turns a guard failure into a work failure — the two become
+  the same observation.**
+
+Rules, all cheap:
+- **Never fuse a precondition to the work with `&&` when you intend to read the work's status.**
+  Check the precondition as its own command with its own reported result, THEN run the work.
+- **A sentinel must prove the work RAN, not merely that something exited.** `GATE_EXIT=` alone is
+  ambiguous; pair it with a line the work itself emits (`merge-gate: starting…`), and treat its
+  absence as "did not run" rather than "failed."
+- **Never read `$?` after a pipeline** unless you want the last stage's status. Capture into a
+  variable immediately after the command of interest, or use `PIPESTATUS`.
+- The generalization is the same one as the argv lesson and the stale-READY lesson:
+  **an observation that cannot distinguish two states is not evidence about either.** Empty output
+  next to a failure code should always trigger "which command produced this?" before any diagnosis.
+
+Standing cause worth noting separately: a doc-only commit to main invalidates the ancestor check for
+every in-flight branch. That is fine and expected — but it means the conductor's OWN landings are a
+source of this class, and the merge should be done deliberately before gating rather than discovered
+by a short-circuit.
+
+## 2026-07-27 00:40 — the gate is a SIEVE, not an ITERATION MECHANISM (user correction)
+
+USER: "our feedback loop is getting slower, the gate helps but also became its own bottleneck… the
+agents should test it by driving directly rather than by a test and a gate… right now
+self-verification loop moved outwards to you managing the gate, it became bureaucracy and procedure
+over fast iteration."
+
+Correct, and the cause was in MY BRIEFS. I had been requiring `behavioral-contracts.sh` 3x plus the
+full checker suite BEFORE a builder reported, and then gating on top. That pushes gate-shaped work
+INTO the iteration loop and then repeats it outside. Two consequences, both bad:
+
+1. Every refinement costs minutes instead of seconds, so builders take fewer swings.
+2. The builder optimizes for MAKING AN ASSERTION PASS rather than for MAKING IT RIGHT — the test
+   becomes the target instead of the record. For felt qualities (smoothness, feel) that is
+   actively wrong, because the assertion is a lossy proxy for the thing the user perceives.
+
+  **Two loops, and they must not be fused: the INNER loop is the agent driving the real app
+  (seconds, no gate, no conductor); the OUTER loop is the gate as final sieve (rare, terminal).**
+
+Iteration does not need the gate. Only LANDING does. Provenance discipline — builders never push,
+the conductor gates and lands — stays exactly as it was; that was never the bottleneck.
+
+The brief template changes:
+1. Reproduce by DRIVING first — no test written yet. If you cannot see it, you cannot fix it.
+2. Iterate drive -> change -> drive. One instrument at a time. Never the suite, never 3x.
+3. Write the contract only AFTER the symptom is gone, to lock in what was achieved.
+4. One verification pass at the END.
+5. Judge by observation of the real path; assertions PREVENT REGRESSION, they do not DISCOVER fixes.
+
+That inverts the previous order, where the test came first and dragged the work behind it.
+
+Corollary the user drew, worth keeping: **the gate must be TIMELESS.** A sieve that depends on FPS
+is a sieve that depends on the machine, so it is both slow and arguable. Count-based assertions
+(#133) have no clock in them: they cannot be slow, cannot flake under load, and cannot be excused.
+Making the gate timeless attacks the bottleneck from the other side — cheaper AND stricter at once,
+which is the signature of a real reduction rather than a trade.

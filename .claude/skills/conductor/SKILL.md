@@ -12,6 +12,60 @@ description: >-
 
 # Conductor — multi-agent build orchestration
 
+## ⚑ RULE ZERO — THE AGENT'S INNER LOOP IS DRIVING, NOT TESTING
+
+**Read this before anything else in this file. Violating it is the single most expensive
+mistake the conductor makes, and it is invisible while it happens — everything still looks
+rigorous.**
+
+There are TWO loops and they must never be fused:
+
+| | INNER loop — the agent's | OUTER loop — the conductor's |
+|---|---|---|
+| what | drive the real app in its own PTY, look, change, drive again | the merge gate as final sieve |
+| cadence | seconds | rare, terminal |
+| owner | the builder, alone | the conductor |
+| exit condition | *the symptom is gone when I drive it* | green, then land |
+
+**Iteration does not need the gate. Only LANDING does.**
+
+The brief template, in this order, always:
+
+1. **Reproduce by DRIVING first.** No assertion written yet. If you cannot see it, you cannot
+   fix it.
+2. **Iterate drive → change → drive.** ONE instrument at a time. Never the suite. Never 3x.
+3. **Write the contract only AFTER the symptom is gone**, to lock in what was achieved.
+4. **One verification pass at the END.**
+5. Judge by observation of the real path. **Assertions PREVENT REGRESSION; they do not
+   DISCOVER FIXES.**
+
+**Why this is not a style preference.** When the test sits in the inner loop, two things go
+wrong, and the second is worse:
+
+- every refinement costs minutes instead of seconds, so the builder takes fewer swings;
+- the builder starts optimizing for MAKING AN ASSERTION PASS instead of MAKING IT RIGHT. For
+  felt qualities — smoothness, weight, responsiveness — the assertion is a lossy proxy for the
+  thing the user perceives, so a green suite and an unhappy user coexist comfortably.
+
+**How the conductor causes the violation** (this is how it happened here, 2026-07-27): by
+writing briefs that demand `behavioral-contracts.sh` 3x plus the full checker suite BEFORE the
+builder reports, and then gating on top. That pushes gate-shaped work INTO the inner loop and
+repeats it outside. Provenance discipline — builders never push, the conductor gates and lands —
+was never the bottleneck and stays exactly as it is.
+
+**Corollary: the gate must be TIMELESS.** A sieve that depends on FPS depends on the machine, so
+it is both slow and arguable. Count-based assertions have no clock in them: they cannot be slow,
+cannot flake under load, and cannot be excused. Cheaper AND stricter at once — the signature of a
+real reduction rather than a trade.
+
+**Feel-bisect** — when a user reports that something *used to* feel right: bisect HISTORY BY
+DRIVING. Scratch worktrees at candidate commits, same gesture, same settings, and compare the
+per-frame fingerprint (e.g. the row-crossing sequence) as a SHAPE, not against a threshold.
+`3,3,3,3` glides; `5,1,5,1` stumbles at the same mean. This makes a felt quality comparable
+without inventing a pass/fail number for it.
+
+---
+
 The conductor is the architect / reviewer / integrator that stays out of the implementation
 weeds so its context survives a long build. It delegates scoped chunks, reviews output against
 contracts, protects the merge line, keeps the fleet alive and visible, and reconstructs state
