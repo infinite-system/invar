@@ -2048,3 +2048,89 @@ the attribution rather than leaving a tidy story standing.
 
 The escalation-signature prior held: retry-tally regular → hard red → reproduces solo. Two
 for two that this pattern means a defect.
+
+## 2026-07-27 05:00 — the narration mechanism, and the invariant it exposes
+
+Worth recording in full, because the mechanism is more general than the smoke.
+
+`NarrationProjection.bargeIn()` stops the TTS backend and increments a probe. Stopping audio
+**changes no terminal cells**. But `StatusChannel` publishes its snapshot when a render frame
+SETTLES — so the probe sat in memory with nothing to carry it out. The only periodic idle
+repaint in the app is the status-bar clock, at the next minute boundary. A 30-second waiter
+therefore passed when that boundary fell inside its window and failed when it did not.
+
+The measured rate was `0, 1, 0, 1, 0, 1, 0, 1, 0, 1`. **Perfect alternation — wall-clock
+phase, not load.** Every load story ever told about this smoke was wrong, and the shape of
+the data said so all along; nobody had run ten in a row and looked at the sequence.
+
+  **A semantic action that changes no cells cannot depend on a render frame to publish its
+  state.** Publication must happen at the mutation boundary for anything the UI does not
+  redraw. Frame-coupled publication is correct only for state a frame actually carries.
+
+Diagnostic tell worth reusing: after the timeout, one extra keystroke produced a frame, and
+that frame published the probe. So the action HAD run and only its publication was stale —
+which distinguishes "the code never executed" from "the code executed and nobody heard it"
+in a single step. Reach for that before bisecting.
+
+Both hypotheses I ranked in the brief were ELIMINATED (the espeak path; a two-owner stale
+frame race). The ranked-candidates method still worked: a wrong ranking costs minutes when
+the builder is told to measure first, versus the hour it costs when told one confident cause.
+
+## 2026-07-27 05:10 — a liveness predicate must observe what the brief ASKS FOR at that phase
+
+My fleet heartbeat called both live builders STALL: "no source file written in 20 minutes."
+Both were fine. One had a `bun` process actively driving the app, and both codex logs had
+grown within the previous minute.
+
+The predicate contradicted my own brief. The glide brief's first instruction is **"REPRODUCE
+BY DRIVING FIRST. Write no assertion yet."** During that phase, zero source writes is the
+CORRECT behaviour — so the heartbeat flagged compliance as death.
+
+  **Liveness evidence must match the phase of work being asked for.** Under drive-first, life
+  shows up as an advancing agent log and spawned harness processes, not as file mtimes. File
+  writes are evidence of the EDIT phase only.
+
+Fixed by keying the heartbeat on codex-log growth (with `DIED`/`DONE` still resolved by
+process absence plus report presence). Note the failure direction: it reported toward
+"broken," which invites the conductor to interrupt healthy work — the same direction my own
+probes have failed in six times now. Prefer predicates that observe the mechanism, not a
+side effect of one particular phase of it.
+
+## 2026-07-27 05:30 — a LAYOUT change invalidates every probe that locates by label or position
+
+The chrome wave landed three surfaces cleanly, with six positive controls and honest
+invariant-record updates — then went red on two smokes it never ran: `agent-search` and
+`scrollbars`.
+
+Both reds are almost certainly the PROBE, not the app. The `agent-search` log is the tell:
+
+```
+Timed out waiting for grid condition: the themed search icon paints in the agent engine mode line
+│  claude ⇄ · perm: bypass ·  ⌕
+```
+
+The captured frame **contains the glyph it says is missing.** The footer used to read
+`engine: claude ⇄ · follow: o…`; the task required reducing that line so it stops overflowing
+under the terminal pane, so the `engine:`/`follow:` labels are gone — and the probe located
+its line by that text. `scrollbars` fails on the diff thumb, exactly where the hidden tab row
+was reclaimed and pane content moved up a row.
+
+  **The blast radius of a layout change is not the set of files you edited. It is every probe
+  that locates its target by a label string or a row offset.**
+
+That set is invisible from the diff, which is why the builder's verification — thorough on
+the surfaces it touched — missed both. The instruction that would have caught it is not "run
+more checks"; it is "enumerate the probes that depend on what you MOVED."
+
+Three standing consequences:
+- This is the third instance of the class. `editorArea.title` going blank broke a
+  smoke-markdown probe that found its pane by title text; `smoke-gutter-diff` asserted a
+  glyph an invariant had already forbidden; now two probes keyed on moved chrome. **Probes
+  must locate by owner or semantic role, never by copy text or offset.**
+- The risk was already FLAGGED and DATED in #105 —
+  `smoke-agent-search.sh:66` hardcodes `⌕` via `characters.indexOf`, "an appearance dependency
+  of exactly the class that re-broke twice." A flagged risk with no owner is a scheduled
+  outage; flagging is not mitigation.
+- Round-2 briefs for this class must force the probe-versus-app verdict FIRST and separately
+  per smoke, because the two diagnoses need opposite fixes and "make the smoke green" quietly
+  chooses one. And re-keying a stale probe to a NEW label just moves the dependency.
