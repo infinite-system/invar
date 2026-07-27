@@ -51,7 +51,11 @@ Non-negotiable conventions (summarized from the `ivue` + `invariants` skills and
 4. **Invariants govern change.** Check against the relevant `*.invariants.md`; require zero
    problems from `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`.
    Never put a literal `// invariant: …` string in example/comment text (the checker scans it).
-5. **Verify by DRIVING the real user path** (tmux harness + FrameProbe), never internal values.
+5. **Verify by DRIVING the real user path** — the **PTY harness** (`scripts/harness/PtyTestDriver.ts`
+   + FrameProbe) — never internal values. DRIVING IS ALSO YOUR INNER LOOP: reproduce by driving
+   before writing any assertion, iterate drive -> change -> drive, and write the contract only once
+   the symptom is gone. tmux is a LEGACY opt-in audit tier (`INVAR_FULL_TMUX=1`), skipped by the
+   gate; never write a new tmux smoke.
    Reproduce before diagnosing; ratchet verified behavior into a gated smoke.
 6. **Branches are NEVER deleted — parked and tagged.** Every branch ends in exactly one of two
    marked terminal states: `git tag -a finished/<branch>` (content fully merged into main) or
