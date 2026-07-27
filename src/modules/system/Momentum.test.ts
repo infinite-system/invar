@@ -76,7 +76,7 @@ describe('scroll-momentum', () => {
     }
 
     expect(frameCount).toBe(27);
-    expect(rowsTravelled).toBe(164);
+    expect(rowsTravelled).toBe(98);
     expect(Momentum.Class.isMoving(currentMomentum)).toBe(false);
   });
 
