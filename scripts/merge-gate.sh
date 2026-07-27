@@ -407,6 +407,14 @@ validate_smoke_classification() {
   return 1
 }
 
+# 0) BOOT CAPABILITY. Assert the runtime property, not the ivue version:
+#     flexible ranges and linked builds are valid, but Static() must cache
+#     get-only $ accessors. Clear the product escape hatch so CI checks its
+#     installed resolution.
+step \
+  "ivue Static getter capability" \
+  env -u INVAR_SKIP_CAPABILITY_CHECK \
+  bun scripts/check-ivue-static-getter-capability.ts
 # 1) Fast inner gate: tsc + conventions + unwired-capability.
 step "conventions-gate (tsc + conventions + unwired)" bash scripts/conventions-gate.sh
 # 1b) The INVARIANT CONTRACT LAYER — the lattice itself. --all: every *.invariants.md is structurally

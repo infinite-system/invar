@@ -13,12 +13,14 @@ import { Static } from 'ivue/extras';
 import { Bootstrap, type BootedApp } from './Bootstrap';
 import { Logging } from '../system/Logging';
 import { DefaultPlugins } from '../plugins/DefaultPlugins';
+import { IvueStaticGetterCapability } from './IvueStaticGetterCapability';
 
 class $AppLoader {
   /** Boot the app from process state: argv → options, wire the signal handlers, and route any boot
    *  failure through the fatal path. The whole entry orchestration, swappable and testable. */
   static async main(): Promise<void> {
     try {
+      IvueStaticGetterCapability.Class.assertAvailable();
       const booted = await AppLoader.Class.bootApp();
       AppLoader.Class.wireSignals(booted);
     } catch (error) {
