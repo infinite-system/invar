@@ -16,6 +16,8 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Timing-sensitive smokes run on a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+// invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
+// invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // Only the PTY driver, input encoder, snapshot type, and quiet lock are imported from the harness.
 // `HarnessSmoke`'s status helpers changed signature in the historical window, so the status poll
 // below stays local and depends on nothing but the published file. Historical measurements port the
@@ -156,23 +158,25 @@ async function awaitStatusCondition(
   timeoutMilliseconds = 20_000,
 ): Promise<void> {
   const deadline = performance.now() + timeoutMilliseconds;
+  let lastObservedStatus: Record<string, unknown> | undefined;
   while (true) {
     try {
-      if (
-        predicate(
-          JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
-            string,
-            unknown
-          >,
-        )
-      ) {
-        return;
-      }
+      lastObservedStatus = JSON.parse(
+        readFileSync(statusPath, 'utf8'),
+      ) as Record<string, unknown>;
+      if (predicate(lastObservedStatus)) return;
     } catch {
       // The atomically published status file has not landed yet.
     }
     if (performance.now() >= deadline) {
-      throw new Error(`Timed out waiting for ${conditionDescription}`);
+      const lastObservedStatusText =
+        lastObservedStatus === undefined
+          ? '<no status object was observed>'
+          : JSON.stringify(lastObservedStatus, null, 2);
+      throw new Error(
+        `Timed out waiting for ${conditionDescription} at ${statusPath}\n` +
+          `Last observed status:\n${lastObservedStatusText}`,
+      );
     }
     await Bun.sleep(5);
   }
@@ -675,13 +679,9 @@ async function buildFixture(
   const fixturePath = join(fixtureRoot, fixtureFileName);
   const lines = fixtureLines(fixtureLineCount, fixtureShape);
   await Bun.write(fixturePath, `${lines.join('\n')}\n`);
-  if (
-    surface === 'editor' &&
-    (fixtureShape === 'flat' || !VERSION_CONTROL_MARKS_ENABLED)
-  ) {
-    return fixtureFileName;
-  }
-
+  // Quick Open uses ripgrep when available and Git as its fallback. Every
+  // fixture is a one-file repository so either enumerator proves the same
+  // single activatable result instead of depending on the host PATH.
   runGit(fixtureRoot, ['init', '-q']);
   runGit(fixtureRoot, ['config', 'user.name', 'scroll-smoothness']);
   runGit(fixtureRoot, [
@@ -691,6 +691,12 @@ async function buildFixture(
   ]);
   runGit(fixtureRoot, ['add', fixtureFileName]);
   runGit(fixtureRoot, ['commit', '-qm', 'base']);
+  if (
+    surface === 'editor' &&
+    (fixtureShape === 'flat' || !VERSION_CONTROL_MARKS_ENABLED)
+  ) {
+    return fixtureFileName;
+  }
   // The fold-dense editor case deliberately carries version-control gutter marks together with
   // indentation and fold controls. The edits stay inside JSON string values, preserving the
   // structural positive control while placing a mark inside the instrument's fast window and
