@@ -154,6 +154,23 @@ async function awaitSettledFrameCount(): Promise<void> {
   }
 }
 
+async function awaitClockFreeFrameMeasurementStart(
+  measurementDurationMilliseconds: number,
+): Promise<void> {
+  const clockBoundarySafetyMilliseconds = 500;
+  const millisecondsUntilNextClockTick = 60_000 - (Date.now() % 60_000) + 50;
+  if (
+    millisecondsUntilNextClockTick >
+    measurementDurationMilliseconds + clockBoundarySafetyMilliseconds
+  ) {
+    return;
+  }
+  await Bun.sleep(
+    millisecondsUntilNextClockTick + clockBoundarySafetyMilliseconds,
+  );
+  await awaitSettledFrameCount();
+}
+
 smoke: try {
   console.log('== harness inline rewrite: open the fixture ==');
   await HarnessSmoke.Class.awaitStatus(
@@ -199,8 +216,12 @@ smoke: try {
       (status) => status.focus === 'editor',
     );
     await awaitSettledFrameCount();
+    const disabledPluginWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
+    );
+    await awaitClockFreeFrameMeasurementStart(disabledPluginWindowMilliseconds);
     const disabledPluginFrames = await measureSettledFrameCount(
-      Number(process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000),
+      disabledPluginWindowMilliseconds,
     );
     const disabledPluginStatus = HarnessSmoke.Class.readStatus(statusPath);
     HarnessSmoke.Class.requireCondition(
@@ -231,8 +252,12 @@ smoke: try {
       (snapshot) => lineHasGutterMarker(snapshot, 'const value = calculate();'),
     );
     await awaitSettledFrameCount();
+    const disabledWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000,
+    );
+    await awaitClockFreeFrameMeasurementStart(disabledWindowMilliseconds);
     const disabledFrames = await measureSettledFrameCount(
-      Number(process.env.INVAR_INLINE_REWRITE_DISABLED_WINDOW_MS ?? 12_000),
+      disabledWindowMilliseconds,
     );
     const disabledSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
     HarnessSmoke.Class.requireCondition(
@@ -315,9 +340,11 @@ smoke: try {
   }
   if (reproductionMode === 'idle') {
     await awaitSettledFrameCount();
-    const idleFrames = await measureSettledFrameCount(
-      Number(process.env.INVAR_INLINE_REWRITE_IDLE_WINDOW_MS ?? 12_000),
+    const idleWindowMilliseconds = Number(
+      process.env.INVAR_INLINE_REWRITE_IDLE_WINDOW_MS ?? 12_000,
     );
+    await awaitClockFreeFrameMeasurementStart(idleWindowMilliseconds);
+    const idleFrames = await measureSettledFrameCount(idleWindowMilliseconds);
     const idleSettledStatus = HarnessSmoke.Class.readStatus(statusPath);
     HarnessSmoke.Class.requireCondition(
       idleFrames.after === idleFrames.before,

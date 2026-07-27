@@ -198,8 +198,14 @@ test('fold state can be attached to a stable document handle', () => {
   firstEditor.toggleFoldAtLine(0);
   expect([...foldState.collapsedLineStarts]).toEqual([0]);
 
-  const rehydratedEditor = openWith('const value = {\n  answer: 42,\n};');
+  const rehydratedEditor = new Editor.Class();
   rehydratedEditor.attachFoldState(foldState);
+  rehydratedEditor.document.loadFromText(
+    'const value = {\n  answer: 42,\n};',
+    'test.ts',
+  );
+  rehydratedEditor.placeCursor(0, 0);
+  rehydratedEditor.hasDocument.value = true;
   expect(rehydratedEditor.collapsedFoldRanges).toHaveLength(1);
 });
 
