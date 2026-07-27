@@ -215,9 +215,20 @@ This delegate-when-blocked rule is wired into the hourly orchestration loop.
 - **Commit before gating.** A green gate on an uncommitted/staged tree is NOT durable —
   `git worktree remove --force` discards it (this lost a whole task's work once). The commit is
   the safe signal.
-- **Gate the COMBINED tree.** A branch cut from an OLD main must `git merge main` FIRST, then
-  gate — otherwise you validate the wrong (stale-base) code. Confirm `git diff --name-only
-  main..HEAD` shows only that task's files.
+- **Gate the COMBINED tree, and re-check at LANDING time.** A branch cut from an OLD main must
+  `git merge main` FIRST, then gate — otherwise you validate the wrong (stale-base) code. This is
+  not only a pre-gate condition: **a green gate names the COMMIT it ran on, not the branch.** If
+  main moved while the branch sat (it does — landings are hourly), the green was earned on a tree
+  that no longer exists, and merging produces a combined state no gate has seen. Nearly landed
+  #149 on such a green on 2026-07-27: gate green at `1d72df0`, but #137 had landed meanwhile, so
+  the merge-base was three commits back. Merge main in and re-gate; it costs one gate cycle.
+- **Verify branch scope with `merge-base`, NEVER `main..HEAD`.** When main has moved, a
+  main-relative diff reports main's newer additions as **deletions by your branch** — and
+  "this branch deletes the driver we shipped an hour ago" is the one finding that would make you
+  refuse a merge. #149 showed `scripts/harness/Drive.ts | 512 ---------` and deleted nothing.
+  Use `git diff --stat $(git merge-base main <branch>)..<branch>`, and when a deletion still looks
+  alarming, confirm with the positive control: `git diff --name-only $BASE..$BRANCH | grep <file>`
+  → empty means main gained it, your branch did not remove it.
 - **Count ROOT gates** (a real `merge-gate.sh` process), never `pgrep -c` name-match — transient
   smoke children inflate the count and cause false cap-1 self-blocks. When gates run as tracked
   background children they don't reparent to ppid=1 either, so **gate-LOG step activity is the
@@ -584,7 +595,32 @@ prompt history (three refreshes, each earned by a restart or a superseded rule) 
 the armable text was deliberately deleted from this file because a stale recorded prompt is worse
 than none — a restored cron would re-impose retired doctrine.
 
-## Gate concurrency (superseding one-gate-at-a-time, as of 2026-07-25)
+## Gate concurrency — RE-NARROWED 2026-07-27: gates no longer overlap in practice
+
+**READ THIS FIRST, IT REVERSES THE HEADING BELOW.** The 2026-07-25 retirement of
+one-gate-at-a-time was correct at the time: its reason was two shared-namespace collisions, both
+fixed in 9f6c617. But `7a9a7f0` (2026-07-27) made a CONTENDED TIMING MEASUREMENT declare itself
+invalid instead of printing a number — which is right, and which means **two concurrent gates now
+GUARANTEE a red**: one of them loses the quiet-exclusive lock after 120 s and its
+`input byte flush measurement` step reports `MEASUREMENT INVALID` and fails the gate.
+
+So the old rule is effectively back, for a NEW reason. Not namespace collisions (fixed), but
+measurement validity (introduced deliberately). Overlapping two gates does not save wall clock any
+more — it costs a whole gate run plus a solo re-run, which is worse than serialising from the start.
+
+  **Run gates ONE AT A TIME.** Not because they collide, but because the second one cannot produce
+  a valid timing measurement and will fail on that alone.
+
+Exception, deliberate and stated: if you know the branch's verdict does not depend on the timing
+step (docs-only, or you will re-run solo before landing anyway), overlapping is fine — but expect
+the red and do not read it as a defect. I overlapped three times on 2026-07-27 and produced three
+avoidable reds; the first cost a wrong diagnosis before the instrument existed to name it.
+
+This is also a lesson about doctrine itself: **a rule retired because its cause was fixed can be
+reinstated by a later change for a different cause.** Do not read a "superseded" heading as
+permanent. Check whether the reason still holds, and whether a NEW reason has arrived.
+
+## Gate concurrency (the 2026-07-25 retirement — see the re-narrowing above)
 
 **PRECONDITION — run this before launching ANY gate, including a `git commit` whose pre-commit
 hook gates.** The rule below has been broken three times in one night by a conductor who knew it

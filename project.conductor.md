@@ -2251,3 +2251,62 @@ Failure direction again toward "broken", which invites interrupting healthy work
 probes of mine tonight that failed in the direction that invites waste. Prefer predicates keyed to
 a single authority (here: the log the CURRENT round writes, discovered from the round, not from a
 remembered filename).
+
+## 2026-07-27 16:20 UTC — a green gate is scoped to the commit, not the branch
+
+#149's gate exited 0 on `1d72df0`. I nearly landed on that green. But main had moved to
+`317e267` (#137's drive quickstart) while the branch sat, so the branch's merge-base was
+`5efc870` — three landings back. Merging would have produced a combined state that **no
+gate had ever run against**, carrying a green earned on a different tree.
+
+  **Before landing, ask whether main moved since the gate ran. If it did, the green is
+  stale: merge main into the branch and re-gate.** A gate result names a commit, not a
+  branch, and a branch's name is the same after main moves underneath it.
+
+Cheap check, and it is the same shape as the quiet-lock lesson: the number was real, the
+thing it described was not the thing I was about to act on.
+
+### The phantom-deletion trap, in a new position
+
+`git diff --stat main..fix-scheduling-bound-contracts` reported
+`scripts/harness/Drive.ts | 512 ---------` — reading exactly like *this branch deletes the
+exploration driver we shipped an hour ago*. It deletes nothing; #137 **added** those 512
+lines to main after the branch was cut, so main-relative diffing shows them as removals.
+
+The memory note for this covers reviewing *your own* branch. The new site is **landing
+review of a builder's branch**, where the false reading is worse: it looks like the branch
+is destructive, which is the one finding that would make me refuse a merge. Same fix, wider
+scope:
+
+  **Any branch review — yours or a builder's — diffs against `git merge-base`, never against
+  a main that may have moved.** `git diff $(git merge-base main <branch>)..<branch>`.
+
+Positive control that it was phantom: `git diff --name-only $BASE..$BRANCH | grep -i drive`
+→ empty. One command separated "the branch deleted it" from "main gained it".
+
+## 2026-07-27 16:20 UTC — a sixth member of the instrument family: the check that reds correct code
+
+The five known members all report success without measuring. This one is the mirror: it
+**measures faithfully and fails on code that has no defect**, because it enforces a habit
+rather than a property.
+
+I proposed two gate greps for the ivue anchor rule. The user asked, in effect, what the
+checker would be for — and one of the two collapsed under the question. "Every installed
+test double must be `Static()`-wrapped" is tidy, uniform, and grep-checkable, and it would
+have red-flagged `AppLoader.test.ts`, which is correct as written, while catching no defect
+anywhere: probed, forgetting the wrapper on an override-only double changes nothing.
+
+  **Justify a gate rule by what goes red, not by how uniform it reads.** If you cannot name
+  a defect the rule catches and a file it would wrongly accuse, you have not finished
+  designing it.
+
+The property worth gating was already available and narrower: *a class declaring a
+`$`-static getter must reach its consumers through `Static()`*. It covers production
+anchors and declaring doubles with one rule, and it exempts override-only doubles by
+construction rather than by an exception list — which is the tell that it is keyed to the
+real property. Three rules collapsed to one, and one fewer checker to maintain.
+
+Related and worth keeping separate: **a habit can be right without being enforceable.**
+"Always wrap the double" removes a judgment from the author and costs nanoseconds in test
+code, so it is good guidance. It is still not a contract, because its violation is not a
+defect. Gate what is invisible; leave habits as habits.

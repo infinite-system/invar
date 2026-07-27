@@ -3,7 +3,38 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-27 ~02:20) — OVERNIGHT AUTONOMOUS RUN, READ FIRST
+## RESUME ANCHOR (2026-07-27 16:25 UTC) — USER PRESENT AND DIRECTING, READ FIRST
+
+**USER IS AWAKE AND IN THE LOOP.** Their live direction IS the backlog — no experiments, no
+autonomous scope choices. The overnight anchor below (02:20) is SUPERSEDED: it declares the user
+asleep, a goal hook active, and three builders in flight. All three are finished and merged; **zero
+builders are live**. It also names main `185abf9`, which is ~13 landings stale.
+
+Main is `317e267` (`bun run drive`, #137). **Always ground-truth against git — this anchor lags
+too.**
+
+**Live thread (user-directed):** the ivue statics convention. The ivue-repo Fable settled the
+**ANCHOR RULE** — a class declaring static members publishes `const $Class = Static($X)` and
+everything downstream keeps extending `$Class` bare. `extends X.Class` is FORBIDDEN (an `extends`
+clause is an eager snapshot of a mutable slot ⇒ load-order drift). Briefs:
+`tmp/anchor-rule-brief.md`, `tmp/ivue-2.2.1-live-go-brief.md`. Our migration brief is rewritten at
+`/tmp/TASK-ivue-221-migration.md` (#125) and the gate rules are #130. **An older revision of both
+said the opposite about test doubles — if you read "extend X.Class, safe as of 2.2.1" anywhere, it
+is stale.**
+
+**In flight:** #149 (`fix-scheduling-bound-contracts` in `/tmp/conductor-schedbounds`) re-gating
+after merging main — log `/tmp/gate-schedbounds3.log`. Its first green (`1d72df0`) was stale
+because main moved under it; see the "green gate names the commit, not the branch" lesson in
+`project.conductor.md`.
+
+**Uncommitted and deliberately held** (a commit launches a gate, and a second gate invalidates the
+in-flight timing measurement): `.claude/skills/conductor/SKILL.md` (gate-concurrency re-narrowing +
+merge-base/stale-green doctrine) and `project.conductor.md` (this fire's lessons). Commit both once
+`/tmp/gate-schedbounds3.log` shows `GATE_EXIT`.
+
+---
+
+## RESUME ANCHOR (2026-07-27 ~02:20) — SUPERSEDED by the anchor above; historical
 
 USER IS ASLEEP; GOAL HOOK ACTIVE: "complete all 26 tasks one by one, off to bed". Their direction
 is the queue below. NO experiments. Land only gated work (SKIP_GATE only for markdown with the
