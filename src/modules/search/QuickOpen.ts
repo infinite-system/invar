@@ -226,6 +226,7 @@ class $QuickOpen {
    *  pressing Enter must open the row you are looking at, not the parent the input still names (the
    *  reported defect). While TYPING (any query edit resets the gesture) the input path commits
    *  verbatim, so a fully typed path still opens exactly what was typed. */
+  // invariant: Quick Open activates the selected entry (src/modules/search/search.invariants.md)
   activate(): string | null {
     if (this.mode.value === 'workspacePath') {
       const browsedFolderPath = this.selectionMovedByUser

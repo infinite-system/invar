@@ -229,6 +229,7 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.boundedListPopupItemIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupMatchIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupSelectedIdentifier).toBeNull();
+    expect(initialSnapshot.quickOpenSelectedIdentifier).toBeNull();
     expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
       'git',
       'extensions',
@@ -283,6 +284,11 @@ describe('AppStatusProjection', () => {
       scrollViewportRows: 24,
       forwardsWheelToChild: true,
     };
+    quickOpen.matches.value = [
+      { path: 'TASK.md', score: 0 },
+      { path: 'project.tasks.md', score: 1 },
+    ];
+    quickOpen.selectedIndex.value = 0;
 
     const publishedSnapshot = AppStatusProjection.Class.publish(ports);
     expect(publishedSnapshot.mouse).toEqual(mouse);
@@ -304,6 +310,7 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.terminalScrollContentRows).toBe(43);
     expect(publishedSnapshot.terminalScrollViewportRows).toBe(24);
     expect(publishedSnapshot.terminalWheelForwardedToChild).toBe(true);
+    expect(publishedSnapshot.quickOpenSelectedIdentifier).toBe('TASK.md');
     expect(publishedSnapshot.panelHeadingGeometry).toEqual([
       {
         contentId: 'terminal',
