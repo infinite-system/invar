@@ -76,7 +76,7 @@ For each of the 53 thin task files, find in the transcript:
 ### Constraints
 
 - A task file holds THE TASK. No convention boilerplate, no provenance hedging — that is
-  `.invar/tasks/README.md` and `meta.json` respectively.
+  `project.tasks-ledger.md` and `meta.json` respectively.
 - Where the transcript genuinely holds nothing more, leave the one line and let `## Sources` say
   `None. Only the subject line above survives.` **Do not invent specificity.** An honest stub is worth
   more than a plausible fabrication, because the next reader plans against what they find.

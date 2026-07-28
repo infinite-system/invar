@@ -68,7 +68,8 @@ as a SHAPE, not against a threshold. `3,3,3,3` glides; `5,1,5,1` stumbles at the
 ## ⚑ RULE ONE — THE LEDGER: A TASK’S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
 
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `todo`, `live`, `done`, `retired`. A
-task is MOVED between them; a folder is never deleted. `project.ledger.md` is the index.
+task is MOVED between them; a folder is never deleted. `project.ledger.md` is the index;
+`project.tasks-ledger.md` is the full protocol (this section is its operative summary).
 
 | file | shape |
 |---|---|
@@ -110,8 +111,6 @@ bun scripts/tasks/ledger-status.ts --self-test # before trusting a clean run
 Signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how a
 finished task sat unfiled), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**, **THIN**. It reports; it never
 moves anything.
-
----
 
 ---
 

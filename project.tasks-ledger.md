@@ -1,4 +1,4 @@
-# `.invar/tasks/` — the task ledger
+# project.tasks-ledger.md — the task ledger protocol (`.invar/tasks/`)
 
 One folder per task. A task lives in exactly one state directory and is MOVED between them; it is never
 copied, and a folder is never deleted (the repo rule is that things are parked, not removed).
