@@ -214,9 +214,9 @@ test('collapsed fold projection is cached until document or fold state changes',
   class CountingEditor extends Editor.$Class {
     foldRangeReads = 0;
 
-    override foldRanges() {
+    override foldRangeAtLine(lineIndex: number) {
       this.foldRangeReads++;
-      return super.foldRanges();
+      return super.foldRangeAtLine(lineIndex);
     }
   }
   const editor = new CountingEditor();
@@ -228,16 +228,16 @@ test('collapsed fold projection is cached until document or fold state changes',
   for (let readNumber = 0; readNumber < 10_000; readNumber++) {
     expect(editor.collapsedFoldRanges).toBe(initialProjection);
   }
-  expect(editor.foldRangeReads).toBe(1);
+  expect(editor.foldRangeReads).toBe(2);
 
   editor.document.setLine(1, '  answer: 43,');
   const nonStructuralEditProjection = editor.collapsedFoldRanges;
   expect(nonStructuralEditProjection).toBe(initialProjection);
-  expect(editor.foldRangeReads).toBe(2);
+  expect(editor.foldRangeReads).toBe(3);
 
   editor.document.setLine(1, '  answer: {');
   expect(editor.collapsedFoldRanges).not.toBe(nonStructuralEditProjection);
-  expect(editor.foldRangeReads).toBe(3);
+  expect(editor.foldRangeReads).toBe(4);
 });
 
 test('line-count edits invalidate a collapsed fold projection', () => {
