@@ -1,0 +1,12 @@
+{
+  "task": 168,
+  "slug": "frame-ordinal-wait",
+  "branch": "fleet/168-frame-ordinal-wait",
+  "worktree": ".invar/worktrees/168-frame-ordinal-wait",
+  "tmuxSession": "invar/168-frame-ordinal-wait",
+  "transcript": "tmp/transcripts/168-frame-ordinal-wait.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "960af8ef467b6396560e2714883b8cf46188a597",
+  "startedAt": "2026-07-28T02:43:54-04:00"
+}
