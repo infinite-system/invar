@@ -872,6 +872,22 @@ real terminal, not the harness.
 
 ## Live cron prompts (verbatim — the running loop's exact words)
 
+**What is NOT live, and how it stayed alive anyway.** The original hourly `/loop 1h …` in the user's
+own wording is RETIRED — `3da3cca9` (hourly at :07, "Follow the /conductor skill") supersedes it with a
+strict superset, and the old text pointed lessons at `Skills/Orchestration Lessons.md`, which is
+superseded. It is deliberately not recorded below, so a restored session cannot resurrect it.
+
+It kept firing for hours because a `/loop` is a **ScheduleWakeup chain the conductor re-arms every
+turn**, and I passed the original text forward each time on the strength of "pass the same input
+verbatim." The `/loop` skill's own words settle it: *"re-arming is a per-turn choice, not a default."*
+Verbatim governs the TEXT if you continue; it says nothing about whether to continue. I had the
+permission to stop and never exercised it — while flagging the stale target in three separate replies
+and re-arming immediately after each one. Noticing a defect and then reproducing it is worse than
+missing it.
+
+So each fire, before re-arming: **is this loop still the best-worded instrument for its job, or has
+something replaced it?** If replaced, stop the chain rather than forward the text.
+
 ### The 30-minute RECONCILIATION SWEEP (cron `11,41 * * * *`) — replaced the 10-minute liveness poll on 2026-07-26
 
 The old ten-minute check polled builder liveness. Two changes made that cadence wasteful: per-builder
