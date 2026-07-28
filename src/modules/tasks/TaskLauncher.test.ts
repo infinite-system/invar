@@ -22,12 +22,19 @@ function task(
 
 function launcherFixture() {
   const requests: TaskTerminalLaunchRequest[] = [];
-  const presentations: string[][] = [];
+  const presentations: {
+    identifiers: string[];
+    transferFocus: boolean;
+  }[] = [];
   const removedIdentifiers: string[] = [];
   const launcher = new TaskLauncher.Class({
     port: {
       launch: (request) => requests.push(request),
-      present: (identifiers) => presentations.push([...identifiers]),
+      present: (identifiers, transferFocus) =>
+        presentations.push({
+          identifiers: [...identifiers],
+          transferFocus,
+        }),
       has: (identifier) =>
         requests.some((request) => request.identifier === identifier),
       remove: (identifier) => removedIdentifiers.push(identifier),
@@ -60,8 +67,9 @@ test('folder-open tasks launch and matching groups present as one split', () => 
     'Right',
   ]);
   expect(fixture.presentations).toHaveLength(1);
-  expect(fixture.presentations[0]).toHaveLength(2);
-  expect(new Set(fixture.presentations[0]).size).toBe(2);
+  expect(fixture.presentations[0]!.identifiers).toHaveLength(2);
+  expect(new Set(fixture.presentations[0]!.identifiers).size).toBe(2);
+  expect(fixture.presentations[0]!.transferFocus).toBe(false);
 });
 
 test('an ungrouped manual rerun presents only its own terminal', () => {
@@ -71,9 +79,10 @@ test('an ungrouped manual rerun presents only its own terminal', () => {
 
   fixture.launcher.launchAndPresent('/workspace', tasks[1]!, tasks);
 
-  expect(fixture.presentations.at(-1)).toEqual([
-    fixture.requests.at(-1)!.identifier,
-  ]);
+  expect(fixture.presentations.at(-1)).toEqual({
+    identifiers: [fixture.requests.at(-1)!.identifier],
+    transferFocus: true,
+  });
 });
 
 test('the future MCP injection point contributes environment and arguments', () => {
@@ -129,7 +138,10 @@ test('configuration issues launch legible dedicated error terminals', () => {
     arguments: ['%s\n', 'Invar tasks: unsupported type "process"'],
     presentationPanel: 'dedicated',
   });
-  expect(fixture.presentations[0]).toEqual([fixture.requests[0]!.identifier]);
+  expect(fixture.presentations[0]).toEqual({
+    identifiers: [fixture.requests[0]!.identifier],
+    transferFocus: false,
+  });
 });
 
 test('reports remain discoverable without hiding the first task group', () => {
@@ -155,7 +167,13 @@ test('reports remain discoverable without hiding the first task group', () => {
     'Displaced: Built In',
   ]);
   expect(fixture.presentations).toEqual([
-    [fixture.requests[0]!.identifier, fixture.requests[1]!.identifier],
+    {
+      identifiers: [
+        fixture.requests[0]!.identifier,
+        fixture.requests[1]!.identifier,
+      ],
+      transferFocus: false,
+    },
   ]);
 });
 

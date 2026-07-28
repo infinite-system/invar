@@ -43,11 +43,11 @@ class $TaskLauncher {
     const allIssueIdentifiers = issueReports.map((report) => report.identifier);
     // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
     if (firstGroup.length > 0) {
-      this.options.port.present(firstGroup);
+      this.options.port.present(firstGroup, false);
     } else if (errorIssueIdentifiers.length > 0) {
-      this.options.port.present(errorIssueIdentifiers);
+      this.options.port.present(errorIssueIdentifiers, false);
     } else if (allIssueIdentifiers.length > 0) {
-      this.options.port.present(allIssueIdentifiers);
+      this.options.port.present(allIssueIdentifiers, false);
     }
   }
 
@@ -74,6 +74,7 @@ class $TaskLauncher {
       matchingGroupIdentifiers.length > 0
         ? matchingGroupIdentifiers
         : [identifier],
+      true,
     );
   }
 
@@ -178,7 +179,7 @@ export interface TaskLauncherOptions {
 
 export interface TaskTerminalLaunchPort {
   launch(request: TaskTerminalLaunchRequest): void;
-  present(identifiers: readonly string[]): void;
+  present(identifiers: readonly string[], transferFocus: boolean): void;
   has(identifier: string): boolean;
   remove(identifier: string): void;
 }

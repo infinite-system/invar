@@ -111,7 +111,8 @@ scripts/harness/smoke-tasks-harness.ts`
 
 **Invariant:** If a resolved shell task declares
 `runOptions.runOn: "folderOpen"`, then opening its workspace starts it without
-another user action.
+another user action and presents its terminal without taking keyboard focus
+from the surface the workspace opened.
 
 **Scope:** Shell tasks, workspace contribution lifecycle, and the no-file
 built-in. Manual task reruns remain registered commands. `problemMatcher` is
@@ -121,7 +122,10 @@ built-in convenience through `TasksOptions.builtInDefaultEnabled`; the tasks
 smoke enables and verifies it.
 
 **Mechanism:** `Tasks.opened` resolves once, registers `Tasks: Run <label>`,
-then calls `TaskLauncher.launchFolderOpen`. The built-in is exactly
+then calls `TaskLauncher.launchFolderOpen`.
+`TaskTerminalLaunchPort.present` receives `transferFocus=false` for automatic
+folder-open work and `true` for a manually invoked task command. The built-in is
+exactly
 `claude --dangerously-skip-permissions --continue || claude
 --dangerously-skip-permissions`: `||` is deliberate because a missing resumable
 session must start fresh; a pipe would connect two processes instead.
@@ -130,18 +134,25 @@ session must start fresh; a pipe would connect two processes instead.
 on open; a missing `claude` remains a legible shell failure in the terminal.
 
 **Evidence:** `src/modules/tasks/Tasks.test.ts`;
+`src/modules/tasks/TaskLauncher.test.ts`;
 `scripts/harness/smoke-tasks-harness.ts` observes `.vscode`, `.invar`, and both
-branches of the built-in resume-or-fresh command in real PTYs.
+branches of the built-in resume-or-fresh command in real PTYs;
+`scripts/harness/smoke-reserved-chord-harness.ts` opens a file beside an
+automatic task and drives `Ctrl+,` into Settings.
 
 **Impossible if true:** A folder-open task waits for a manual command; the
-built-in silently leaves an empty pane after `--continue` has no session.
+built-in silently leaves an empty pane after `--continue` has no session; an
+automatic task terminal and the newly opened editor both claim the next
+keystroke.
 
-**Verification:** `bun test src/modules/tasks/Tasks.test.ts && bun
-scripts/harness/smoke-tasks-harness.ts`
+**Verification:** `bun test src/modules/tasks/Tasks.test.ts
+src/modules/tasks/TaskLauncher.test.ts && bun
+scripts/harness/smoke-tasks-harness.ts && bun
+scripts/harness/smoke-reserved-chord-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-28
 
 ### Each task owns one terminal
 

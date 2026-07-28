@@ -108,6 +108,8 @@ field); `src/modules/app/Bootstrap.ts` (reserved-first router; the focused-panel
 `project.keyboard.md` (the reduction and the admission test);
 `scripts/smoke-keyboard-invariant.sh` (drives Tab/Shift+Tab indentation, every retired F-key's
 replacement chord, and the terminal pass-through sweep);
+`scripts/harness/smoke-reserved-chord-harness.ts` (drives the surface-scoped Settings chord from
+the editor, then proves a focused task keeps it while reserved Ctrl+Alt+B still reaches the host);
 `src/modules/git/GitComparisonContent.ts` (a contributed surface owning its own Ctrl+Shift+Up/Down
 change navigation, rather than the host floor naming the plugin's actions).
 
@@ -118,12 +120,14 @@ Linux.
 
 **Verification:** `bash scripts/smoke-keyboard-invariant.sh` (driven: indentation, every new chord's
 arrival, the pass-through sweep) plus
+`bun scripts/harness/smoke-reserved-chord-harness.ts` (driven: editor Settings chord plus focused
+task surface scope and reserved Ctrl+Alt+B) plus
 `bun test src/modules/keybindings/ src/modules/editor/EditorIndent.test.ts` (the reserved set carries
 warrants; no unmodified reserved chord; no `F<n>` primary).
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-28
 
 ### Bindings are intent addressed
 

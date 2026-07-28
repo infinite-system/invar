@@ -720,9 +720,16 @@ class $Bootstrap {
             }),
           );
         },
-        present: (identifiers) => {
+        // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
+        present: (identifiers, transferFocus) => {
           panelHost.split([...identifiers]);
-          panelHost.show();
+          if (transferFocus) {
+            primaryDockHost.blur();
+            rightDockHost.blur();
+            panelHost.show();
+          } else {
+            panelHost.visible.value = true;
+          }
         },
         has: (identifier) => panelHost.has(identifier),
         remove: (identifier) => {
