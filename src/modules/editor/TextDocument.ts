@@ -15,7 +15,7 @@ class $TextDocument {
   // Compact ground truth — a plain string[], not a reactive-per-line structure.
   protected _lines: string[] = [''];
   // The exact horizontal extent is full-document state. A single champion makes localized edits
-  // O(changed lines); shrinking/deleting that champion triggers the same cheap-bound rescan.
+  // O(changed lines); only removing it without an equal-or-wider replacement triggers a rescan.
   protected maximumLineWidthValue = 0;
   protected maximumLineWidthLineIndex = -1;
   protected _eol: '\n' | '\r\n' = '\n';
@@ -279,10 +279,35 @@ class $TextDocument {
     replacementLines: readonly string[],
   ): void {
     const previousMaximumLineWidthLineIndex = this.maximumLineWidthLineIndex;
+    const previousMaximumLineWidth = this.maximumLineWidthValue;
     const maximumLineWasDeleted =
       deletedLineCount > 0 &&
       previousMaximumLineWidthLineIndex >= startLineIndex &&
       previousMaximumLineWidthLineIndex < startLineIndex + deletedLineCount;
+    let replacementMaximumLineWidth = previousMaximumLineWidth;
+    let replacementMaximumLineOffset = -1;
+    for (
+      let replacementLineOffset = 0;
+      replacementLineOffset < replacementLines.length;
+      replacementLineOffset += 1
+    ) {
+      const replacementLine = replacementLines[replacementLineOffset] ?? '';
+      const replacementMayOwnMaximum = maximumLineWasDeleted
+        ? this.lineDisplayWidthUpperBound(replacementLine) >=
+          previousMaximumLineWidth
+        : this.lineDisplayWidthUpperBound(replacementLine) >
+          previousMaximumLineWidth;
+      if (!replacementMayOwnMaximum) continue;
+
+      const replacementLineWidth =
+        this.measureLineDisplayWidth(replacementLine);
+      const replacementOwnsMaximum = maximumLineWasDeleted
+        ? replacementLineWidth >= replacementMaximumLineWidth
+        : replacementLineWidth > replacementMaximumLineWidth;
+      if (!replacementOwnsMaximum) continue;
+      replacementMaximumLineWidth = replacementLineWidth;
+      replacementMaximumLineOffset = replacementLineOffset;
+    }
     // The running content length is adjusted from the lines this edit touches — O(edited lines), the
     // cost this op already pays — so no query ever rescans the document to learn its length.
     let lengthDelta = 0;
@@ -305,6 +330,12 @@ class $TextDocument {
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
 
     if (maximumLineWasDeleted) {
+      if (replacementMaximumLineOffset >= 0) {
+        this.maximumLineWidthValue = replacementMaximumLineWidth;
+        this.maximumLineWidthLineIndex =
+          startLineIndex + replacementMaximumLineOffset;
+        return;
+      }
       this.rebuildMaximumLineWidth();
       return;
     }
@@ -312,24 +343,10 @@ class $TextDocument {
       this.maximumLineWidthLineIndex +=
         replacementLines.length - deletedLineCount;
     }
-    for (
-      let replacementLineOffset = 0;
-      replacementLineOffset < replacementLines.length;
-      replacementLineOffset += 1
-    ) {
-      const replacementLine = replacementLines[replacementLineOffset] ?? '';
-      if (
-        this.lineDisplayWidthUpperBound(replacementLine) <=
-        this.maximumLineWidthValue
-      ) {
-        continue;
-      }
-      const replacementLineWidth =
-        this.measureLineDisplayWidth(replacementLine);
-      if (replacementLineWidth > this.maximumLineWidthValue) {
-        this.maximumLineWidthValue = replacementLineWidth;
-        this.maximumLineWidthLineIndex = startLineIndex + replacementLineOffset;
-      }
+    if (replacementMaximumLineOffset >= 0) {
+      this.maximumLineWidthValue = replacementMaximumLineWidth;
+      this.maximumLineWidthLineIndex =
+        startLineIndex + replacementMaximumLineOffset;
     }
   }
 

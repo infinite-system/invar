@@ -74,6 +74,8 @@ class $EditorEditPathMeasurement {
       positiveControlBaseline,
       positiveControlFullRebuild,
     );
+    const maximumWidthRescanPositiveControl =
+      this.measureMaximumWidthRescanPositiveControl(measurements);
     const visualRowCountHitRate = this.measureVisualRowCountHitRate();
     const hundredThousandLineMeasurements = measurements.filter(
       (measurement) => measurement.lineCount === 100_000,
@@ -104,6 +106,7 @@ class $EditorEditPathMeasurement {
           edit: 'successive single-character ASCII insertions at the midpoint line end',
           generatedAt: new Date().toISOString(),
           measurements,
+          maximumWidthRescanPositiveControl,
           positiveControl,
           quietLock: {
             holderName: process.env.INVAR_QUIET_LOCK_HOLDER_NAME,
@@ -245,6 +248,78 @@ class $EditorEditPathMeasurement {
         'minimum forced-full-rebuild sync duration exceeds maximum ' +
         'incremental sync duration',
       satisfied: true,
+    };
+  }
+
+  protected static measureMaximumWidthRescanPositiveControl(
+    measurements: readonly EditSyncCaseMeasurement[],
+  ): MaximumWidthRescanPositiveControlMeasurement {
+    const lineCount = this.POSITIVE_CONTROL_LINE_COUNT;
+    const fixtureLines = this.flatFixtureLines(lineCount);
+    const targetLineIndex = Math.floor(lineCount / 2);
+    const originalTargetLine = fixtureLines[targetLineIndex] ?? '';
+    const baselineMutationMilliseconds = measurements
+      .filter((measurement) => measurement.lineCount === lineCount)
+      .flatMap((measurement) =>
+        measurement.samples.map((sample) => sample.mutationMilliseconds),
+      );
+    const samples: MaximumWidthRescanSample[] = [];
+    const document = new TextDocument.Class();
+    document.replaceAll(fixtureLines);
+
+    for (
+      let sampleNumber = 1;
+      sampleNumber <= this.positiveControlSampleCount;
+      sampleNumber++
+    ) {
+      document.setLine(
+        targetLineIndex,
+        `${originalTargetLine}${'x'.repeat(32 + sampleNumber)}`,
+      );
+      const loadAverage = this.currentLoadAverage();
+      const mutationStartedMilliseconds = performance.now();
+      document.setLine(targetLineIndex, originalTargetLine);
+      const mutationFinishedMilliseconds = performance.now();
+      samples.push({
+        loadAverage,
+        mutationMilliseconds:
+          mutationFinishedMilliseconds - mutationStartedMilliseconds,
+        sampleNumber,
+      });
+    }
+
+    const maximumIncrementalMutationMilliseconds = Math.max(
+      ...baselineMutationMilliseconds,
+    );
+    const minimumForcedRescanMutationMilliseconds = Math.min(
+      ...samples.map((sample) => sample.mutationMilliseconds),
+    );
+    if (
+      minimumForcedRescanMutationMilliseconds <=
+      maximumIncrementalMutationMilliseconds
+    ) {
+      throw new Error(
+        'Editor edit-path maximum-width positive control did not move the ' +
+          `reported mutation duration: minimum forced rescan ` +
+          `${minimumForcedRescanMutationMilliseconds} ms <= maximum ` +
+          `incremental mutation ${maximumIncrementalMutationMilliseconds} ms`,
+      );
+    }
+    return {
+      baseline:
+        'all 20k ordered mutation samples, with the edited champion growing',
+      forcedBranch:
+        'restore the sole widest line to the shared fixture width, forcing ' +
+        'the exact maximum-width rescan path',
+      lineCount,
+      maximumIncrementalMutationMilliseconds,
+      minimumForcedRescanMutationMilliseconds,
+      requirement:
+        'minimum forced-rescan mutation duration exceeds maximum ' +
+        'incremental mutation duration',
+      samples,
+      satisfied: true,
+      targetLineIndex,
     };
   }
 
@@ -402,6 +477,24 @@ interface LoadAverageMeasurement {
   readonly oneMinute: number;
   readonly fiveMinutes: number;
   readonly fifteenMinutes: number;
+}
+
+interface MaximumWidthRescanPositiveControlMeasurement {
+  readonly baseline: string;
+  readonly forcedBranch: string;
+  readonly lineCount: number;
+  readonly maximumIncrementalMutationMilliseconds: number;
+  readonly minimumForcedRescanMutationMilliseconds: number;
+  readonly requirement: string;
+  readonly samples: readonly MaximumWidthRescanSample[];
+  readonly satisfied: true;
+  readonly targetLineIndex: number;
+}
+
+interface MaximumWidthRescanSample {
+  readonly loadAverage: LoadAverageMeasurement;
+  readonly mutationMilliseconds: number;
+  readonly sampleNumber: number;
 }
 
 interface PositiveControlMeasurement {

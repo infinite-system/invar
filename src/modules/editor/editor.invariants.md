@@ -488,11 +488,10 @@ only its final projection onto whole terminal cells is quantized.
 - *Absent unused aggregate* — an aggregate with no consumer in its owning surface is not
   computed or incrementally maintained.
 
-**Mechanism:** `TextDocument.rebuildMaximumLineWidth` seeds from integer UTF-16 lengths, rejects
-lines whose two-columns-per-code-unit upper bound cannot beat the champion, and exactly measures
-only surviving candidates; tab lines always survive to exact measurement. Local edits compare only
-replacements unless the champion shrinks or disappears, which reruns the same prefilter. The no-wrap
-horizontal consumers read that exact width. `ScrollbarSync` supplies the vertical bar with
+**Mechanism:** `TextDocument` maintains one exact width champion. Local edits measure only their
+replacements unless they remove the champion without an equal-or-wider replacement; only then does
+`rebuildMaximumLineWidth` rescan with its cheap upper-bound prefilter. The no-wrap horizontal
+consumers read that exact width. `ScrollbarSync` supplies the vertical bar with
 `EditorWrap.totalVisualRows` and the live layout viewport in both wrap modes; the solid thumb
 rasterizer derives one whole-cell length from those constant inputs and moves only its start.
 
