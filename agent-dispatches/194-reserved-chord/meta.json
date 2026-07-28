@@ -1,0 +1,12 @@
+{
+  "task": 194,
+  "slug": "reserved-chord",
+  "branch": "fleet/194-reserved-chord",
+  "worktree": ".invar/worktrees/194-reserved-chord",
+  "tmuxSession": "invar/194-reserved-chord",
+  "transcript": "tmp/transcripts/194-reserved-chord.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "e479b98038db1b9ef0875c66a5fdeca1e3222d09",
+  "startedAt": "2026-07-28T16:37:17-04:00"
+}
