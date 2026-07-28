@@ -46,10 +46,16 @@ once: `fleet/205-flake-population` was labelled before its task existed and the 
 orchestration lessons, `project.decisions.md` settled design calls, `project.handoff.md` the resume
 anchor. This directory holds the per-task detail those files point at.
 
-## Provenance of the backfill
+## What each task actually has
 
-Folders created by `scripts/tasks/migrate-task-ledger.ts` on 2026-07-28 carry an explicit
-RECONSTRUCTED marker in `task.md`. Those outlines were rebuilt from the session task list, which was the
-only complete record at the time. Where a brief or report sits beside such an outline, THOSE are
-primary. Where none does, the outline is a stub with an honest label rather than invented specificity —
-`project.ledger.md` and the closing commit hold what detail exists.
+Every `task-*.md` ends with a **Sources** section stating plainly what exists: the briefs and reports in
+its own folder, or `None. Only the subject line above survives.` There is no hedged middle — a reader
+either has the primary source or knows there is not one.
+
+The backfill placed archive documents ONLY where the document names its own task number in its header.
+Fuzzy slug matching was tried and rejected: it proposed `panel-chrome-flake` for #164 and
+`quiet-lock-validity` for #183, while those documents declare #159 and #147 themselves. A wrong mapping
+files real evidence under the wrong task, which is worse than leaving it where it is.
+
+`agent-dispatches/_archive-2026-07-27/` still holds 139 briefs and reports whose headers carry no task
+number. They are not lost and not misfiled — they are unplaced, and placing one requires reading it.
