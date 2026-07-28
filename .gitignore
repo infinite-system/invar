@@ -35,3 +35,4 @@ tmp/
 # macOS AppleDouble metadata from the Parallels shared mount
 ._*
 .DS_Store
+.invar/worktrees/
