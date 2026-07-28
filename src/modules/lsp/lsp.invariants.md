@@ -91,6 +91,60 @@ text but drifts by the surrogate/cluster width once an emoji or combining mark p
 
 ## Chosen invariants
 
+### LSP is a provider plugin
+
+**Invariant:** If language intelligence is installed, then `LspPlugin` registers
+one `LanguageProvider` through the existing application manifest and workspace
+contribution registry; the host never imports or names the LSP module.
+
+**Scope:** Completion, diagnostics, definition, hover, document synchronization,
+language settings, language keybindings, workspace lifecycle, and plugin
+install/uninstall.
+
+**Components:**
+- `LspPlugin` — contributes settings, keybindings, and a
+  `WorkspaceContributor` through `ApplicationContributor`.
+- `LspWorkspaceProvider` — registers itself in
+  `WorkspaceContribution.providers`, owns one `LanguageClient`, and adapts
+  protocol results to `LanguageProvider`.
+- `Workspace` — resolves a provider by capability identifier from its existing
+  contribution list and returns neutral results when none is installed.
+
+**Mechanism:** `ApplicationContributions` activates the one manifest and
+`WorkspaceSet.registerContributor` attaches `LspWorkspaceProvider` to each
+workspace. Disabling `LspPlugin` reverses those registrations; provider
+disposal releases its client, diagnostics, and subprocess, while
+`Workspace.languageProviderNotice` publishes the provider-empty state.
+
+**Generates:** One provider registration for all language behaviors; LSP-owned
+settings and keybindings; symmetric install/uninstall; a host-facing
+`LanguageProvider` port in `src/modules/workspace/`.
+
+**Rejected alternatives:** A dedicated LSP registry or plugin kind — duplicates
+the contributor/provider/runtime machinery. Host imports of LSP helpers —
+recreate the coupling the provider port removes.
+
+**Evidence:** `src/modules/lsp/LspPlugin.ts`;
+`src/modules/lsp/LspWorkspaceProvider.ts`;
+`src/modules/workspace/LanguageProvider.interface.ts`;
+`src/modules/workspace/Workspace.ts`; `src/modules/lsp/LspPlugin.test.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Impossible if true:** A production file in `src/modules/app`,
+`src/modules/workspace`, or `src/modules/ui` imports `src/modules/lsp`; disabling
+Language Intelligence leaves a server process or diagnostic behind; a second
+manifest format or provider registry exists only for LSP.
+
+**Verification:** `grep -rln "modules/lsp/" --include='*.ts'
+src/modules/app src/modules/workspace src/modules/ui | grep -v '\.test\.'`
+prints nothing; `bun test src/modules/lsp/LspPlugin.test.ts
+src/modules/lsp/LspWorkspaceProvider.test.ts`; and
+`bun scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-27
+
 ### Completion is provider-neutral
 
 **Invariant:** If the editor requests completion, then it consumes only the
@@ -99,19 +153,18 @@ language-specific launch choices do not cross that boundary.
 
 **Scope:** Completion requests, trigger-character discovery, item mapping, and editor acceptance.
 
-**Mechanism:** `LanguageClient` implements `LanguageProvider`, converts positions at the UTF-16
-boundary, maps completion-list fields into compact domain records, and exposes trigger characters
-from initialized server capabilities. `TypeScriptProvider` remains only a server-launch provider.
-`item.kind` stays a protocol NUMBER on the domain record, and `CompletionItemKinds` — in this module,
-beside the client that receives it — is the only place that interprets it, answering with a symbol
-class rather than a glyph. So the popup names no kind number and no provider's vocabulary, and a
-provider that sends kinds the table has not seen still classifies.
+**Mechanism:** `LanguageClient` converts positions at the UTF-16 boundary and
+maps wire fields into compact records. `LspWorkspaceProvider` exposes those
+records through `LanguageProvider`. `CompletionItemKinds` interprets the
+protocol number inside the LSP module and publishes only `symbolClass`, so the
+popup names no kind number, wire type, or provider vocabulary.
 
 **Generates:** One editor and popup path for TypeScript, a mock Rust provider, and future providers;
 revision-stamped completion responses; exact `textEdit` application through one document mutation;
 kind marks that a new provider gets for free by sending standard kind numbers.
 
-**Evidence:** `src/modules/lsp/LanguageProvider.interface.ts`;
+**Evidence:** `src/modules/workspace/LanguageProvider.interface.ts`;
+`src/modules/lsp/LspWorkspaceProvider.ts`;
 `src/modules/lsp/LanguageClient.ts`; `src/modules/lsp/LanguageClient.test.ts`;
 `src/modules/lsp/CompletionItemKinds.ts` and `CompletionItemKinds.test.ts` (the kind → symbol-class
 classifier, which chooses no appearance); `src/modules/ui/CompletionPopup.test.ts`;
@@ -167,9 +220,10 @@ activation-follows-demand invariant's meaning.
 
 **Evidence:** `src/modules/lsp/LanguageClient.ts` — `documentExceedsSizeLimit`,
 `refreshSizeSuppression`, the `openDocument`/`syncDocument` early returns, and the annotated skip in
-`sendLatestDocument`; `src/modules/workspace/Workspace.ts` (`languageSizeNotice`, the
-`fileSizeLimitKb` threading in `createLanguageClient`); `src/modules/ui/StatusBar.ts` (the notice
-part); `src/modules/app/Bootstrap.ts` (`lspSizeSuppressed` published). Driven by
+`sendLatestDocument`; `src/modules/lsp/LspWorkspaceProvider.ts`
+(`languageSizeNotice` and the `fileSizeLimitKb` threading);
+`src/modules/ui/StatusBar.ts` (the notice part);
+`src/modules/app/Bootstrap.ts` (`lspSizeSuppressed` published). Driven by
 `scripts/harness/smoke-settings-applied-harness.ts`: with
 `lspFileSizeLimitKb` 1 a >1 KB `.ts` file stays suppressed (no diagnostics,
 `lspSizeSuppressed` true) and the app survives; with the default budget the
@@ -307,24 +361,28 @@ contained*. `documentPositionAtCell` already yields grapheme columns — exactly
 returns the IMPORT SPECIFIER while the declaring file is not open in the server; one re-request
 from the import specifier (`rehopThroughImportSpecifier`) reaches the original declaration,
 matching VS Code. Per-workspace lifecycle: every live buffer registers through the
-`OpenBufferSet` create/dispose seams (`openDocument`/`closeDocument`), and a targeted
-document-revision watch in Bootstrap pushes edits as revision-idempotent `didChange`.
+`DocumentLifecycle` create/dispose seams (`openDocument`/`closeDocument`), and
+a targeted document-revision watch in Bootstrap pushes edits through the
+provider as revision-idempotent `didChange`.
 
-**Generates:** `Workspace.goToDefinition`/`rehopThroughImportSpecifier`/`jumpToLocation`; the
-lazy one-client-per-workspace ownership (`ensureLanguageClient`, disposed with the workspace);
-the consumed (never selection-starting) modifier-click branch; the `go.definition` command and
-its Ctrl+] floor binding.
+**Generates:** `Workspace.goToDefinition`,
+`LspWorkspaceProvider.rehopThroughImportSpecifier`, and
+`Workspace.jumpToLocation`; lazy one-client-per-provider ownership; the
+consumed modifier-click branch; the `go.definition` command and its
+LSP-plugin Ctrl+] binding.
 
 **Rejected alternatives:** A separate navigation path for LSP jumps (parallel to
 `openFileInTab`) — two openers would drift on tab/diff/focus semantics. Treating the import
 specifier result as final — lands the user on the import line instead of the declaration.
 
-**Evidence:** `src/modules/workspace/Workspace.ts` (`goToDefinition`,
-`rehopThroughImportSpecifier`, `jumpToLocation`, the buffer-seam `openDocument`/`closeDocument`
-registration); `src/modules/ui/RootView.ts` (`codeBody.onMouseDown` modifier branch);
+**Evidence:** `src/modules/workspace/Workspace.ts` (`goToDefinition` and
+`jumpToLocation`); `src/modules/lsp/LspWorkspaceProvider.ts`
+(`rehopThroughImportSpecifier` and document lifecycle);
+`src/modules/ui/RootView.ts` (`codeBody.onMouseDown` modifier branch);
 `src/modules/app/Bootstrap.ts` (`'go.definition'` action + the document-revision sync watch);
-`src/modules/keybindings/KeybindingDefaults.ts` (Ctrl+] → `go.definition`). Driven against a real
-`typescript-language-server`: `scripts/smoke-goto-definition.sh` Ctrl+clicks a use site in
+`src/modules/lsp/LspPlugin.ts` (Ctrl+] → `go.definition`). Driven against a real
+`typescript-language-server`:
+`scripts/harness/smoke-goto-definition-harness.ts` Ctrl+clicks a use site in
 `bar.ts` and asserts the editor shows `foo.ts` with the cursor on the declaration, then repeats
 the jump via Ctrl+].
 
@@ -332,8 +390,8 @@ the jump via Ctrl+].
 instead of jumping; a jump that opens the declaring file but leaves the cursor away from the
 declaration; a crash or thrown error from the gesture when the server is missing.
 
-**Verification:** `bash scripts/smoke-goto-definition.sh` (skips cleanly when no server is
-installed) and `bun test src/modules/workspace/Workspace.goToDefinition.test.ts`.
+**Verification:** `bun scripts/harness/smoke-goto-definition-harness.ts` and
+`bun test src/modules/workspace/Workspace.goToDefinition.test.ts`.
 
 **Status:** provisional
 
@@ -460,17 +518,18 @@ not answer. Pulling without a debounce — one request per keystroke during typi
 **Evidence:** `src/modules/lsp/LanguageClient.ts` — `storeDiagnostics` (shared sink),
 `pullDiagnostics`/`ingestDiagnosticReport`/`parseDiagnosticReport`, `serverPullsDiagnostics`,
 `scheduleDiagnosticPull`, the `initialize` capability advertisement, and the
-`workspace/diagnostic/refresh` handler. Driven against BOTH real servers by
-`scripts/smoke-diagnostics.sh`: tsgo (pull) and typescript-language-server (push) each paint the
-red in-body underline and red whole-document overview mark for the error. The gutter is deliberately
-absent from this evidence because it is reserved for source-control diff marks.
+`workspace/diagnostic/refresh` handler. Driven against both real servers by
+`scripts/harness/smoke-diagnostics-harness.ts`: tsgo (pull) and
+typescript-language-server (push) each paint the red in-body underline and red
+whole-document overview mark for the error. The gutter is deliberately absent
+from this evidence because it is reserved for source-control diff marks.
 
 **Impossible if true:** A reported diagnostic visible under one server model but not the other for
 the same error; a `textDocument/diagnostic` request sent to a server that never advertised
 `diagnosticProvider`; a pull report stored under a revision the document has moved past.
 
-**Verification:** `bash scripts/smoke-diagnostics.sh` (skips a case cleanly when that server is
-absent), `bun test src/modules/lsp -t "diagnostics are pulled via textDocument/diagnostic"`,
+**Verification:** `bun scripts/harness/smoke-diagnostics-harness.ts`,
+`bun test src/modules/lsp -t "diagnostics are pulled via textDocument/diagnostic"`,
 `bun test src/modules/lsp -t "unchanged report keeps the prior batch"`, and
 `bun test src/modules/lsp -t "never sends textDocument/diagnostic"`.
 

@@ -411,7 +411,7 @@ class $EditorPane {
       // Ctrl/Cmd+click on a symbol = go to definition (VS Code style). OpenTUI exposes terminal
       // Meta/Super mouse modifiers through the SGR alt bit, so ctrl OR alt covers Ctrl-click and
       // terminal Cmd/Meta-click without a second path. The event is consumed here — never a select begin.
-      // invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
+      // invariant: Plugin boundaries grant one authority (project.invariants.md)
       if (event.button === 0 && (event.modifiers.ctrl || event.modifiers.alt)) {
         const definitionPosition = this.documentPositionAtCell(
           event.x,

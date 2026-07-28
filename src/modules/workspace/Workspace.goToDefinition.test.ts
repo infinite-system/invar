@@ -7,9 +7,12 @@
 // invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import { Reactive } from 'ivue';
+import { ref } from 'vue';
 import { Workspace } from './Workspace';
 import { LanguageClient } from '../lsp/LanguageClient';
+import { LspWorkspaceProvider } from '../lsp/LspWorkspaceProvider';
 import { FakeLspProcess, FakeProvider, flush } from '../lsp/lsp.fakes.test';
+import type { WorkspaceContributor } from './WorkspaceContributor.interface';
 import {
   mkdtempSync as makeTemporaryDirectorySync,
   rmSync as removeSync,
@@ -19,15 +22,42 @@ import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-class $GoToDefinitionWorkspace extends Workspace.$Class {
-  readonly fakeLanguageServerProcess = new FakeLspProcess();
+class $GoToDefinitionLanguageProvider extends LspWorkspaceProvider.$Class {
+  constructor(
+    workspace: Workspace.Model,
+    readonly fakeLanguageServerProcess: FakeLspProcess,
+  ) {
+    super(workspace, {
+      preferredTypeScriptServer: ref('tsgo'),
+      fileSizeLimitKb: ref(2048),
+    });
+  }
 
   protected override createLanguageClient() {
     return new LanguageClient.Class({
-      rootPath: this.root,
+      rootPath: this.rootPath,
       providers: [new FakeProvider()],
       processFactory: () => this.fakeLanguageServerProcess,
     });
+  }
+}
+const GoToDefinitionLanguageProvider = Reactive(
+  $GoToDefinitionLanguageProvider,
+);
+
+class $GoToDefinitionWorkspace extends Workspace.$Class {
+  readonly fakeLanguageServerProcess = new FakeLspProcess();
+
+  constructor() {
+    super();
+    const contributor: WorkspaceContributor = {
+      attachWorkspace: (workspace) =>
+        new GoToDefinitionLanguageProvider(
+          workspace,
+          this.fakeLanguageServerProcess,
+        ),
+    };
+    this.registerContributor(contributor);
   }
 }
 const GoToDefinitionWorkspace = Reactive($GoToDefinitionWorkspace);
@@ -67,7 +97,7 @@ afterEach(() => {
 
 function buildWorkspace(): InstanceType<typeof GoToDefinitionWorkspace> {
   const workspace = new GoToDefinitionWorkspace();
-  workspace.root = workspaceDirectory;
+  workspace.open(workspaceDirectory);
   return workspace;
 }
 
@@ -79,7 +109,7 @@ describe('Workspace go-to-definition wiring', () => {
     await flush();
 
     workspace.editor.insertText('x');
-    workspace.syncActiveDocumentWithLanguageServer();
+    workspace.syncActiveDocumentWithLanguageProviders();
     await workspace.fakeLanguageServerProcess.waitFor('textDocument/didChange');
 
     workspace.closeTab(0);

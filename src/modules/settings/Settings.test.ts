@@ -115,7 +115,6 @@ describe('Settings', () => {
         sidebarWidth: 'wide', // wrong type, dropped -> default 32
         glyphMode: 'bogus', // out of enum, dropped -> default 'auto'
         graphicsTier: 'bogus', // out of enum, dropped -> default 'auto'
-        typescriptServer: 'deno', // out of enum, dropped -> default 'tsgo'
         sidebarPosition: 'middle',
         panelAlignment: 'stretch',
         leftDockVerticalSpan: 'sometimes',
@@ -130,7 +129,6 @@ describe('Settings', () => {
     expect(settings.sidebarWidth.value).toBe(32);
     expect(settings.glyphMode.value).toBe('auto');
     expect(settings.graphicsTier.value).toBe('auto');
-    expect(settings.typescriptServer.value).toBe('tsgo');
     expect(settings.sidebarPosition.value).toBe('left');
     expect(settings.panelAlignment.value).toBe('center');
     expect(settings.leftDockVerticalSpan.value).toBe('full-height');

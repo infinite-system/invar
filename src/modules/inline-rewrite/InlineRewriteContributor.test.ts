@@ -13,7 +13,7 @@ import type {
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
-} from '../lsp/LanguageProvider.interface';
+} from './RewriteProvider.interface';
 import { Settings } from '../settings/Settings';
 import { Theme } from '../theme/Theme';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';

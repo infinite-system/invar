@@ -6,12 +6,12 @@
 // (initialize + shutdown, plus a scriptable responder map). Tests drive the server->client
 // direction directly via `pushNotification` / `pushDiagnostics`.
 import { JsonRpc, type JsonRpcMessage } from './JsonRpc';
-import type { LanguageServerCommand } from './LanguageProvider.interface';
+import type { LanguageServerCommand } from './LanguageServerProvider.interface';
 import type { LspProcessLike, LspWritable } from './LspProcess';
 import type {
   LanguageCapabilities,
   LanguageServerProvider,
-} from './LanguageProvider.interface';
+} from './LanguageServerProvider.interface';
 
 export type ServerResponder = (params: unknown) => unknown;
 

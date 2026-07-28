@@ -3,7 +3,7 @@ import type {
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
-} from '../lsp/LanguageProvider.interface';
+} from './RewriteProvider.interface';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { Workspace } from '../workspace/Workspace';
 import { InlineRewriteWorkspace } from './InlineRewriteWorkspace';

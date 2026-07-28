@@ -1,16 +1,14 @@
 import { Reactive } from 'ivue';
 import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
-import {
-  LanguageClient,
-  type TextDocumentModel,
-  type TextPosition,
-} from '../../src/modules/lsp/LanguageClient';
+import { LanguageClient } from '../../src/modules/lsp/LanguageClient';
 import { StatusChannel } from '../../src/modules/system/StatusChannel';
 import type {
   LanguageCompletionContext,
   LanguageCompletionItem,
   LanguageCompletionList,
-} from '../../src/modules/lsp/LanguageProvider.interface';
+  LanguageDocument,
+  LanguagePosition,
+} from '../../src/modules/workspace/LanguageProvider.interface';
 import {
   BoundedListPopup,
   type BoundedListPopupItem,
@@ -73,15 +71,15 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
 
   protected completionRequestCount = 0;
 
-  override supportsDocument(document: TextDocumentModel): boolean {
+  override supportsDocument(document: LanguageDocument): boolean {
     return document.path.endsWith('.rs') || super.supportsDocument(document);
   }
 
-  override openDocument(document: TextDocumentModel): void {
+  override openDocument(document: LanguageDocument): void {
     if (!document.path.endsWith('.rs')) super.openDocument(document);
   }
 
-  override syncDocument(document: TextDocumentModel): void {
+  override syncDocument(document: LanguageDocument): void {
     if (!document.path.endsWith('.rs')) super.syncDocument(document);
   }
 
@@ -90,8 +88,8 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
   }
 
   override async completion(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
     context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
     this.completionRequestCount++;
@@ -114,7 +112,7 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
       sortText: string,
     ): LanguageCompletionItem => ({
       label,
-      kind: 2,
+      symbolClass: 'callable',
       insertText: null,
       textEdit: {
         range: {

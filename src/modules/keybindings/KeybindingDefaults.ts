@@ -329,14 +329,6 @@ class $KeybindingDefaults {
       },
       { chord: { key: 'pagedown', ctrl: true }, action: 'buffer.next' },
       { chord: { key: 'pageup', ctrl: true }, action: 'buffer.previous' },
-      // Go to Definition. Replaces F12 with Ctrl+] — the vi/ctags tag-jump chord, and a real C0 byte
-      // (0x1D) so it is deliverable on EVERY terminal with no protocol negotiation at all. It also
-      // pairs with the existing Alt+[ go-back. The pointer path is Ctrl/Cmd+click on the symbol.
-      {
-        chord: { key: ']', ctrl: true, shift: false },
-        action: 'go.definition',
-        context: 'editor',
-      },
       // Go Back / Go Forward through the navigation history (VS Code's Alt+Left/Right; here Alt+[ / Alt+]
       // since the arrows move the cursor). Alt+[ / Alt+] are free — only Ctrl+Shift+[/] are bound above.
       {
@@ -530,11 +522,6 @@ class $KeybindingDefaults {
       {
         chord: { key: 'backspace' },
         action: 'editor.backspace',
-        context: 'editor',
-      },
-      {
-        chord: { key: 'space', ctrl: true },
-        action: 'editor.completion',
         context: 'editor',
       },
       // TAB INDENTS. The editor surface owns Tab because it holds focus and Tab is CONTENT here — the

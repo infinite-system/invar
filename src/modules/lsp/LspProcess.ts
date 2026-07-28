@@ -1,4 +1,4 @@
-import type { LanguageServerCommand } from './LanguageProvider.interface';
+import type { LanguageServerCommand } from './LanguageServerProvider.interface';
 import { Processes } from '../system/Processes';
 
 class $LspProcess implements LspProcessLike {
@@ -105,7 +105,9 @@ class $LspProcess implements LspProcessLike {
     this.isRunning = false;
     if (code !== 0) {
       const detail = this.stderrText.trim();
-      this.processError = detail ? `Language server exited ${code}: ${detail}` : `Language server exited ${code}`;
+      this.processError = detail
+        ? `Language server exited ${code}: ${detail}`
+        : `Language server exited ${code}`;
     }
     return code;
   }
@@ -129,7 +131,8 @@ class $LspProcess implements LspProcessLike {
         const result = await reader.read();
         if (result.done) break;
         this.stderrText += decoder.decode(result.value, { stream: true });
-        if (this.stderrText.length > 16 * 1024) this.stderrText = this.stderrText.slice(-16 * 1024);
+        if (this.stderrText.length > 16 * 1024)
+          this.stderrText = this.stderrText.slice(-16 * 1024);
       }
       this.stderrText += decoder.decode();
       reader.releaseLock();

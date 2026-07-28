@@ -13,7 +13,6 @@ import {
   type ScrollModifier,
   type GlyphMode,
   type WorkspaceTabPosition,
-  type TypeScriptServer,
   type AgentProvider,
 } from './Settings';
 import type { GraphicsTierSetting } from '../theme/TerminalCapabilities';
@@ -65,10 +64,6 @@ class $SettingsPanel {
     const dockVerticalSpanOptions: readonly DockVerticalSpan[] = [
       'full-height',
       'ends-at-panel',
-    ];
-    const typeScriptServerOptions: readonly TypeScriptServer[] = [
-      'tsgo',
-      'typescript-language-server',
     ];
     const agentProviderOptions: readonly AgentProvider[] = [
       'auto',
@@ -195,24 +190,6 @@ class $SettingsPanel {
         label: 'Workspace tabs',
         section: 'Editor',
         spec: { kind: 'enum', options: workspaceTabPositionOptions },
-      },
-      {
-        key: 'typescriptServer',
-        label: 'TypeScript server',
-        section: 'Language',
-        spec: { kind: 'enum', options: typeScriptServerOptions },
-      },
-      {
-        key: 'lspFileSizeLimitKb',
-        label: 'LSP file size limit (KB, 0 = no limit)',
-        section: 'Language',
-        spec: {
-          kind: 'number',
-          step: 512,
-          minimum: 0,
-          maximum: 51200,
-          decimals: 0,
-        },
       },
       {
         key: 'agentProvider',

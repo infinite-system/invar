@@ -3,25 +3,32 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { resolve as resolvePath } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { TextDocument } from '../editor/TextDocument';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 import { Environment } from '../system/Environment';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
 import { StatusChannel } from '../system/StatusChannel';
+import { CompletionItemKinds } from './CompletionItemKinds';
 import type {
-  LanguageCapabilities,
   LanguageCompletionContext,
   LanguageCompletionItem,
   LanguageCompletionList,
-  LanguageProvider,
+  LanguageDiagnostic,
+  LanguageDocument,
+  LanguageHover,
+  LanguageLocation,
+  LanguagePosition,
+  LanguageRange,
+} from '../workspace/LanguageProvider.interface';
+import type {
+  LanguageCapabilities,
   LanguageServerProvider,
-} from './LanguageProvider.interface';
+} from './LanguageServerProvider.interface';
 import { TypeScriptProvider } from './TypeScriptProvider';
 import { LspProcess, type LspProcessLike } from './LspProcess';
 import { LspTransport } from './LspTransport';
 
-class $LanguageClient implements LanguageProvider {
+class $LanguageClient {
   protected static get $noCapabilities(): LanguageCapabilities {
     const noCapabilities: LanguageCapabilities = Object.freeze({
       diagnostics: false,
@@ -180,7 +187,7 @@ class $LanguageClient implements LanguageProvider {
 
   /** True when some provider can serve this document — the guard callers use before a
    *  semantic request, so an unsupported file never triggers a server start. */
-  supportsDocument(document: TextDocumentModel): boolean {
+  supportsDocument(document: LanguageDocument): boolean {
     return (
       Boolean(document.path) &&
       this.providers.some((provider) => provider.supportsPath(document.path))
@@ -195,14 +202,14 @@ class $LanguageClient implements LanguageProvider {
 
   /** True when `document`'s text is larger than the configured budget (and a budget is set). The
    *  document maintains this UTF-16 length so the guard never joins the whole buffer to measure it. */
-  protected documentExceedsSizeLimit(document: TextDocumentModel): boolean {
+  protected documentExceedsSizeLimit(document: LanguageDocument): boolean {
     const limit = this.currentFileSizeLimitKb();
     return limit > 0 && document.contentLength / 1024 > limit;
   }
 
   /** Recompute `document`'s suppression against the current budget, updating the tracked set and
    *  bumping the reactive signal on a change. Returns whether it is now suppressed. */
-  protected refreshSizeSuppression(document: TextDocumentModel): boolean {
+  protected refreshSizeSuppression(document: LanguageDocument): boolean {
     const uri = this.uriFor(document.path);
     const exceeds = this.documentExceedsSizeLimit(document);
     const wasSuppressed = this.sizeSuppressedUris.has(uri);
@@ -214,7 +221,7 @@ class $LanguageClient implements LanguageProvider {
   }
 
   /** True when the given document/URI is currently suppressed for exceeding the size budget. */
-  isSizeSuppressed(documentOrUri: TextDocumentModel | string): boolean {
+  isSizeSuppressed(documentOrUri: LanguageDocument | string): boolean {
     void this.sizeSuppressionRevision.value;
     const uri =
       typeof documentOrUri === 'string'
@@ -225,7 +232,7 @@ class $LanguageClient implements LanguageProvider {
 
   /** A user-facing notice when `document` is size-suppressed, else `null` — so a suppressed file is
    *  never a silent no-op. */
-  sizeSuppressionNotice(document: TextDocumentModel): string | null {
+  sizeSuppressionNotice(document: LanguageDocument): string | null {
     if (!this.isSizeSuppressed(document)) return null;
     const kilobytes = Math.round(document.contentLength / 1024);
     return `Large file — language features off (${kilobytes} KB > ${this.currentFileSizeLimitKb()} KB limit)`;
@@ -238,7 +245,7 @@ class $LanguageClient implements LanguageProvider {
    *
    * invariant: LSP activation follows semantic demand (src/modules/lsp/lsp.invariants.md)
    */
-  openDocument(document: TextDocumentModel): void {
+  openDocument(document: LanguageDocument): void {
     if (this.disposed || !this.supportsDocument(document)) return;
     if (this.refreshSizeSuppression(document)) return;
     const state = this.rememberDocument(document);
@@ -249,7 +256,7 @@ class $LanguageClient implements LanguageProvider {
       .catch((reason) => this.containFailure(reason));
   }
 
-  syncDocument(document: TextDocumentModel): void {
+  syncDocument(document: LanguageDocument): void {
     if (this.disposed || !document.path) return;
     if (this.refreshSizeSuppression(document)) return;
     const state = this.rememberDocument(document);
@@ -260,7 +267,7 @@ class $LanguageClient implements LanguageProvider {
     void this.synchronize(state).catch((reason) => this.containFailure(reason));
   }
 
-  closeDocument(documentOrUri: TextDocumentModel | string): void {
+  closeDocument(documentOrUri: LanguageDocument | string): void {
     const uri =
       typeof documentOrUri === 'string'
         ? documentOrUri
@@ -282,7 +289,7 @@ class $LanguageClient implements LanguageProvider {
 
   /** A bounded window over compact, non-reactive diagnostic records. */
   diagnosticSlice(
-    documentOrUri: TextDocumentModel | string,
+    documentOrUri: LanguageDocument | string,
     start: number,
     count: number,
   ): readonly LanguageDiagnostic[] {
@@ -300,7 +307,7 @@ class $LanguageClient implements LanguageProvider {
     return items.slice(safeStart, safeStart + safeCount);
   }
 
-  diagnosticCountFor(documentOrUri: TextDocumentModel | string): number {
+  diagnosticCountFor(documentOrUri: LanguageDocument | string): number {
     void this.diagnosticsRevision.value;
     const uri =
       typeof documentOrUri === 'string'
@@ -315,8 +322,8 @@ class $LanguageClient implements LanguageProvider {
   }
 
   async definition(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
   ): Promise<LanguageLocation | null> {
     if (!this.supports('definition')) return null;
     const requestRevision = document.revision.value;
@@ -341,8 +348,8 @@ class $LanguageClient implements LanguageProvider {
   }
 
   async references(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
     includeDeclaration = true,
   ): Promise<readonly LanguageLocation[]> {
     if (!this.supports('references')) return [];
@@ -368,8 +375,8 @@ class $LanguageClient implements LanguageProvider {
   }
 
   async hover(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
   ): Promise<LanguageHover | null> {
     if (!this.supports('hover')) return null;
     const requestRevision = document.revision.value;
@@ -390,8 +397,8 @@ class $LanguageClient implements LanguageProvider {
   }
 
   async completion(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
     context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
     if (!this.supports('completion')) return { items: [], isIncomplete: false };
@@ -470,7 +477,7 @@ class $LanguageClient implements LanguageProvider {
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
   }
 
-  protected rememberDocument(document: TextDocumentModel): OpenDocument {
+  protected rememberDocument(document: LanguageDocument): OpenDocument {
     const uri = this.uriFor(document.path);
     const existing = this.documents.get(uri);
     if (existing && existing.document === document) return existing;
@@ -679,7 +686,7 @@ class $LanguageClient implements LanguageProvider {
   }
 
   protected async transportFor(
-    document: TextDocumentModel,
+    document: LanguageDocument,
     requestRevision: number,
   ): Promise<LspTransport.Model | null> {
     if (this.disposed || !document.path) return null;
@@ -972,10 +979,11 @@ class $LanguageClient implements LanguageProvider {
         : null;
       items.push({
         label: item.label,
-        kind:
+        symbolClass: CompletionItemKinds.Class.symbolClassFor(
           typeof item.kind === 'number' && Number.isFinite(item.kind)
             ? Math.trunc(item.kind)
             : null,
+        ),
         insertText:
           typeof item.insertText === 'string' ? item.insertText : null,
         textEdit:
@@ -1011,7 +1019,7 @@ class $LanguageClient implements LanguageProvider {
     return '';
   }
 
-  protected parseRange(value: unknown, uri: string): TextRange | null {
+  protected parseRange(value: unknown, uri: string): LanguageRange | null {
     const candidate = this.objectValue(value);
     const start = this.parseLspPosition(candidate?.start);
     const end = this.parseLspPosition(candidate?.end);
@@ -1037,8 +1045,8 @@ class $LanguageClient implements LanguageProvider {
 
   /** invariant: LSP positions cross through UTF-16 (src/modules/lsp/lsp.invariants.md) */
   protected toLspPosition(
-    document: TextDocumentModel,
-    position: TextPosition,
+    document: LanguageDocument,
+    position: LanguagePosition,
   ): LspPosition {
     const line = Math.max(
       0,
@@ -1052,7 +1060,10 @@ class $LanguageClient implements LanguageProvider {
     };
   }
 
-  protected fromLspPosition(uri: string, position: LspPosition): TextPosition {
+  protected fromLspPosition(
+    uri: string,
+    position: LspPosition,
+  ): LanguagePosition {
     const lineText = this.lineForUri(uri, position.line);
     const utf16Column = Math.max(
       0,
@@ -1193,38 +1204,8 @@ export namespace LanguageClient {
   export type Instance = typeof Class.Instance;
 }
 
-export type TextDocumentModel = InstanceType<typeof TextDocument.Class>;
 export type LanguageClientStatus =
   'idle' | 'starting' | 'ready' | 'unavailable' | 'error' | 'disposed';
-
-export interface TextPosition {
-  line: number;
-  column: number;
-}
-
-export interface TextRange {
-  start: TextPosition;
-  end: TextPosition;
-}
-
-export interface LanguageLocation {
-  uri: string;
-  range: TextRange;
-}
-
-export interface LanguageHover {
-  contents: string;
-  range: TextRange | null;
-}
-
-export interface LanguageDiagnostic {
-  source: string;
-  severity: 1 | 2 | 3 | 4;
-  message: string;
-  code: string | number | null;
-  range: TextRange;
-  version: number;
-}
 
 export interface LanguageClientOptions {
   rootPath?: string;
@@ -1244,7 +1225,7 @@ export interface LanguageClientOptions {
 }
 
 interface OpenDocument {
-  document: TextDocumentModel;
+  document: LanguageDocument;
   uri: string;
   languageId: string;
   opened: boolean;

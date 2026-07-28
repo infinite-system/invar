@@ -1790,15 +1790,17 @@ src/modules/filetree/FileTree.scroll.test.ts && bash scripts/smoke-selection.sh`
 visible range has a severity-coloured in-body underline and every covered logical line has a
 severity-coloured whole-document overview mark, while the diff gutter carries no diagnostic.
 
-**Scope:** Language diagnostics contributed through `Workspace.languageDecorationsByLine`, the code
-body in `EditorPaneRenderer`, and the editor overview in `ScrollbarSync`. The source-control diff
-gutter is explicitly outside the diagnostic projection.
+**Scope:** Language diagnostics contributed through
+`LspWorkspaceProvider.byLine`, the code body in `EditorPaneRenderer`, and the
+editor overview in `ScrollbarSync`. The source-control diff gutter is
+explicitly outside the diagnostic projection.
 
-**Mechanism:** `Workspace.languageDecorationsByLine` creates only
-`DiagnosticLineDecoration`, whose discriminated shape contains a severity and underline but no
-gutter member. `EditorPaneRenderer` paints its code range; `OverviewRuler` projects the same cached
-`GutterDecorations` snapshot over the whole document. Push diagnostics from
-typescript-language-server and pull diagnostics from tsgo still funnel through the same store.
+**Mechanism:** `LspWorkspaceProvider.byLine` creates only
+`DiagnosticLineDecoration`, whose discriminated shape contains a severity and
+underline but no gutter member. `EditorPaneRenderer` paints its code range;
+`OverviewRuler` projects the same cached `GutterDecorations` snapshot over the
+whole document. Push diagnostics from typescript-language-server and pull
+diagnostics from tsgo still funnel through the same store.
 
 **Generates:** Red error, yellow warning, and info/hint underlines under code; matching pips at
 proportional scrollbar positions; a gutter whose red can only mean a source-control deletion.
@@ -1806,7 +1808,8 @@ proportional scrollbar positions; a gutter whose red can only mean a source-cont
 **Rejected alternatives:** Keep the diagnostic gutter mark — it collided with the red deletion mark
 in the same column, which is the user-visible ambiguity that refined this record.
 
-**Evidence:** `src/modules/workspace/Workspace.ts`; `src/modules/ui/EditorPaneRenderer.ts`;
+**Evidence:** `src/modules/lsp/LspWorkspaceProvider.ts`;
+`src/modules/ui/EditorPaneRenderer.ts`;
 `src/modules/ui/OverviewRuler.ts`; `scripts/harness/smoke-diagnostics-harness.ts` drives both real
 TypeScript servers and observes the underline, overview, and absent diagnostic gutter mark.
 

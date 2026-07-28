@@ -14,7 +14,7 @@ import { Clipboard } from '../system/Clipboard';
 import type {
   LanguageCompletionItem,
   LanguageRange,
-} from '../lsp/LanguageProvider.interface';
+} from '../workspace/LanguageProvider.interface';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { EditorContributions } from './EditorContributions';
 

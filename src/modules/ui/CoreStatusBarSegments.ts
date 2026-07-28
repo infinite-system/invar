@@ -26,8 +26,8 @@ class $CoreStatusBarSegments {
     if (context.app.copyNotice.value) {
       segments.push(context.app.copyNotice.value);
     }
-    const languageSizeNotice = workspace.languageSizeNotice();
-    if (languageSizeNotice) segments.push(languageSizeNotice);
+    const languageProviderNotice = workspace.languageProviderNotice();
+    if (languageProviderNotice) segments.push(languageProviderNotice);
     segments.push(
       context.app.quitChordArmed.value
         ? 'Ctrl+X armed — Ctrl+C quits'

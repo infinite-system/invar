@@ -1,11 +1,10 @@
 import { Static } from 'ivue/extras';
 import type { CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
-import { CompletionItemKinds } from '../lsp/CompletionItemKinds';
 import type {
   LanguageCompletionItem,
   LanguageCompletionList,
-} from '../lsp/LanguageProvider.interface';
+} from '../workspace/LanguageProvider.interface';
 import type { Settings } from '../settings/Settings';
 import type { Theme } from '../theme/Theme';
 import {
@@ -15,7 +14,7 @@ import {
 } from './BoundedListPopup';
 import type { ScrollPhysics } from './ScrollPhysics';
 
-// invariant: Completion is provider-neutral (src/modules/lsp/lsp.invariants.md)
+// invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: Completion reuses bounded popup geometry (src/modules/ui/ui.invariants.md)
 class $CompletionPopup {
   protected readonly popup: BoundedListPopup.Model;
@@ -182,9 +181,7 @@ class $CompletionPopup {
         return {
           identifier,
           label: item.label,
-          icon: symbolMarks[
-            CompletionItemKinds.Class.symbolClassFor(item.kind)
-          ],
+          icon: symbolMarks[item.symbolClass],
         };
       });
   }

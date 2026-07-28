@@ -10,31 +10,24 @@ import { Files } from '../system/Files';
 import { ImageDecoders } from '../image/ImageDecoders';
 import { Momentum, type MomentumOptions } from '../system/Momentum';
 import type { Settings } from '../settings/Settings';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { Logging } from '../system/Logging';
 import {
-  LanguageClient,
+  type LanguageCompletionContext,
+  type LanguageCompletionList,
   type LanguageHover,
   type LanguageLocation,
-  type TextDocumentModel,
-  type TextPosition,
-} from '../lsp/LanguageClient';
+  type LanguageHoverDiagnostic,
+  type LanguagePosition,
+  type LanguageProvider,
+} from './LanguageProvider.interface';
 import { fileURLToPath } from 'node:url';
-import { resolve as resolvePath } from 'node:path';
-import type {
-  LanguageCompletionContext,
-  LanguageCompletionList,
-} from '../lsp/LanguageProvider.interface';
 import { DocumentLifecycle } from './DocumentLifecycle';
 import { EditorSurfaceClaims } from './EditorSurfaceClaims';
-import {
-  GutterDecorations,
-  type EditorLineDecoration,
-} from './GutterDecorations';
+import { GutterDecorations } from './GutterDecorations';
 import type { DocumentHandle } from './DocumentHandle';
 import type {
   WorkspaceContribution,
   WorkspaceContributor,
+  WorkspaceProvider,
 } from './WorkspaceContributor.interface';
 import { EditorContributions } from '../editor/EditorContributions';
 
@@ -45,15 +38,6 @@ import { EditorContributions } from '../editor/EditorContributions';
 
 class $Workspace {
   constructor(protected readonly options: WorkspaceOptions = {}) {
-    this.documentLifecycle.register({
-      opened: (handle) => this.openLanguageDocument(handle),
-      becameActive: (handle) => this.activateLanguageDocument(handle),
-      closed: (handle) => this.closeLanguageDocument(handle),
-    });
-    this.gutterDecorations.register({
-      revision: (handle) => this.languageDecorationRevision(handle),
-      byLine: (handle) => this.languageDecorationsByLine(handle),
-    });
     for (const contributor of options.contributors ?? []) {
       this.registerContributor(contributor);
     }
@@ -162,125 +146,58 @@ class $Workspace {
     });
   }
 
-  // --- language intelligence (one client per workspace root) --------------------------------
-  // The client is created lazily on the first buffer open; the LSP subprocess itself starts only
-  // when a SUPPORTED document opens or a semantic request runs (activation follows demand).
-  protected languageClientInstance: LanguageClient.Model | null = null;
-  protected createLanguageClient(): LanguageClient.Model {
-    // Late-read the TypeScript-server choice so a settings change (or an attach that lands after this
-    // client is created) is honoured when a document activates the server.
-    return new LanguageClient.Class({
-      rootPath: this.root,
-      preferredTypeScriptServer: () =>
-        this.settingsSource?.typescriptServer.value ?? 'auto',
-      // Late-read the size budget so a file larger than the limit is never attached to the server
-      // (which would balloon and crash the app). `0` = no limit; unset settings (bare tests) also
-      // read 0 so tests are unaffected.
-      fileSizeLimitKb: () => this.settingsSource?.lspFileSizeLimitKb.value ?? 0,
-    });
-  }
-  protected ensureLanguageClient(): LanguageClient.Model {
-    if (!this.languageClientInstance)
-      this.languageClientInstance = this.createLanguageClient();
-    return this.languageClientInstance;
-  }
-
-  protected openLanguageDocument(handle: DocumentHandle.Model): void {
-    const document = handle.document;
-    if (document) this.ensureLanguageClient().openDocument(document);
-  }
-
-  protected activateLanguageDocument(handle: DocumentHandle.Model): void {
-    const document = handle.document;
-    if (!document) return;
-    this.ensureLanguageClient().openDocument(document);
-    this.languageClientInstance?.syncDocument(document);
-  }
-
-  protected closeLanguageDocument(handle: DocumentHandle.Model): void {
-    const document = handle.document;
-    if (document) this.languageClientInstance?.closeDocument(document);
-  }
-
-  protected languageDecorationsByLine(
-    handle: DocumentHandle.Model,
-  ): Map<number, EditorLineDecoration[]> {
-    const document = handle.document;
-    const client = this.languageClientInstance;
-    if (!document || !client) return new Map();
-    void client.diagnosticsRevision.value;
-    void document.revision.value;
-    const total = client.diagnosticCountFor(document);
-    const decorationsByLine = new Map<number, EditorLineDecoration[]>();
-    for (const diagnostic of client.diagnosticSlice(document, 0, total)) {
-      const firstLine = diagnostic.range.start.line;
-      const lastLine = diagnostic.range.end.line;
-      for (let lineIndex = firstLine; lineIndex <= lastLine; lineIndex += 1) {
-        if (lineIndex < 0 || lineIndex >= document.lineCount) continue;
-        const startColumn =
-          lineIndex === firstLine ? diagnostic.range.start.column : 0;
-        const endColumn =
-          lineIndex === lastLine
-            ? diagnostic.range.end.column
-            : EditorCoordinates.Class.graphemeCount(document.line(lineIndex));
-        const color =
-          diagnostic.severity === 1
-            ? 'error'
-            : diagnostic.severity === 2
-              ? 'warning'
-              : diagnostic.severity === 3
-                ? 'info'
-                : 'hint';
-        const decorations = decorationsByLine.get(lineIndex) ?? [];
-        decorations.push({
-          owner: 'diagnostics',
-          severity: color,
-          hoverLabel: color,
-          underline: {
-            startColumn,
-            endColumn: Math.max(startColumn, endColumn),
-          },
-        });
-        decorationsByLine.set(lineIndex, decorations);
-      }
+  protected provider<Provider extends WorkspaceProvider>(
+    identifier: string,
+  ): Provider | null {
+    for (
+      let contributionIndex = this.contributions.length - 1;
+      contributionIndex >= 0;
+      contributionIndex--
+    ) {
+      const contribution = this.contributions[contributionIndex];
+      const provider = contribution?.providers?.find(
+        (candidate) => candidate.identifier === identifier,
+      );
+      if (provider) return provider as Provider;
     }
-    return decorationsByLine;
+    return null;
   }
 
-  protected languageDecorationRevision(handle: DocumentHandle.Model): number {
-    if (!handle.document || !this.languageClientInstance) return 0;
-    return this.languageClientInstance.diagnosticsRevision.value;
+  protected get languageProvider(): LanguageProvider | null {
+    return this.provider<LanguageProvider>('language');
   }
 
-  /** Push the active buffer's current text to the language server (revision-idempotent full-text
-   *  didChange). Driven by the document-revision watch in Bootstrap; no-op before any client
-   *  exists, or while the active document is not the subject of the editor surface. */
-  syncActiveDocumentWithLanguageServer(): void {
+  /** Push the active buffer's current text to every installed semantic provider. */
+  syncActiveDocumentWithLanguageProviders(): void {
     if (!this.editorSurfaces.activeDocumentIsPresented) return;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path) return;
-    this.languageClientInstance?.syncDocument(editor.document);
+    this.languageProvider?.syncDocument(editor.document);
   }
 
-  /** The active file's language-size suppression notice, or `null` when it is within the LSP size
-   *  budget (or no client/document exists). Surfaced in the status bar so a suppressed large file is
-   *  never a silent no-op, and published to the observability channel so a driven gate can assert it.
-   *
-   * invariant: The LSP attaches only to documents within the size budget (src/modules/lsp/lsp.invariants.md)
-   */
+  /** A provider-owned size notice for the legacy observability projection. */
   languageSizeNotice(): string | null {
     if (!this.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    const client = this.languageClientInstance;
-    if (
-      !client ||
-      !editor ||
-      !editor.hasDocument.value ||
-      !editor.document.path
-    )
+    if (!editor || !editor.hasDocument.value || !editor.document.path) {
       return null;
-    void client.sizeSuppressionRevision.value; // reactive: re-evaluate as suppression flips
-    return client.sizeSuppressionNotice(editor.document);
+    }
+    return this.languageProvider?.statusNotice(editor.document) ?? null;
+  }
+
+  /** A provider-owned notice, or a legible empty state when none is installed. */
+  languageProviderNotice(): string | null {
+    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
+    const editor = this.buffers.activeBuffer as Editor.Instance | null;
+    if (!editor || !editor.hasDocument.value || !editor.document.path) {
+      return null;
+    }
+    return (
+      this.languageProvider?.statusNotice(editor.document) ??
+      (this.languageProvider
+        ? null
+        : 'Language features unavailable — no provider installed')
+    );
   }
 
   /**
@@ -289,79 +206,45 @@ class $Workspace {
    * cursor on the declaration. Resolves false — never throws — when no definition is available
    * (no document, unsupported file, server missing, or the server finds nothing).
    *
-   * invariant: A definition gesture jumps to the declaration (src/modules/lsp/lsp.invariants.md)
+   * invariant: Plugin boundaries grant one authority (project.invariants.md)
    */
-  async goToDefinition(position?: TextPosition): Promise<boolean> {
+  async goToDefinition(position?: LanguagePosition): Promise<boolean> {
     if (!this.editorSurfaces.activeDocumentIsPresented) return false;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path)
       return false;
-    const client = this.ensureLanguageClient();
-    if (!client.supportsDocument(editor.document)) return false;
+    const provider = this.languageProvider;
+    if (!provider) return false;
     const requestPosition = position ?? {
       line: editor.cursor.line.value,
       column: editor.cursor.col.value,
     };
-    const location = await client.definition(editor.document, requestPosition);
-    if (!location) return false;
-    const resolvedLocation = await this.rehopThroughImportSpecifier(
-      client,
+    const location = await provider.definition(
       editor.document,
-      location,
+      requestPosition,
     );
-    return this.jumpToLocation(resolvedLocation);
-  }
-
-  /** The real server resolves a use site to the IMPORT SPECIFIER while the target file is not
-   *  open in the server (and to the original declaration when it is — both observed against
-   *  typescript-language-server). One re-request from the import specifier reaches the original
-   *  declaration, matching VS Code. */
-  protected async rehopThroughImportSpecifier(
-    client: LanguageClient.Model,
-    document: TextDocumentModel,
-    location: LanguageLocation,
-  ): Promise<LanguageLocation> {
-    let landedPath: string;
-    try {
-      landedPath = fileURLToPath(location.uri);
-    } catch {
-      return location;
-    }
-    if (landedPath !== resolvePath(document.path)) return location;
-    if (!/^\s*import\b/.test(document.line(location.range.start.line)))
-      return location;
-    const rehoppedLocation = await client.definition(
-      document,
-      location.range.start,
-    );
-    if (!rehoppedLocation) return location;
-    const rehoppedToSameSpot =
-      rehoppedLocation.uri === location.uri &&
-      rehoppedLocation.range.start.line === location.range.start.line &&
-      rehoppedLocation.range.start.column === location.range.start.column;
-    return rehoppedToSameSpot ? location : rehoppedLocation;
+    if (!location) return false;
+    return this.jumpToLocation(location);
   }
 
   /**
    * VS-Code-style hover: resolve the type/documentation for the symbol at `position` through the
-   * language client so the mouse-hover card can show it. Mirrors goToDefinition's guards exactly —
+   * language provider so the mouse-hover card can show it. Mirrors goToDefinition's guards exactly —
    * resolves null (never throws) when no document, an unsupported file, a missing server, or the
    * server returns nothing. The client applies its own revision-staleness guard on the response.
    *
    * invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
    */
-  async hoverAt(position: TextPosition): Promise<LanguageHover | null> {
+  async hoverAt(position: LanguagePosition): Promise<LanguageHover | null> {
     if (!this.editorSurfaces.activeDocumentIsPresented) return null;
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
     if (!editor || !editor.hasDocument.value || !editor.document.path)
       return null;
-    const client = this.ensureLanguageClient();
-    if (!client.supportsDocument(editor.document)) return null;
-    return client.hover(editor.document, position);
+    return this.languageProvider?.hover(editor.document, position) ?? null;
   }
 
   async completionAt(
-    position: TextPosition,
+    position: LanguagePosition,
     context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
     if (!this.editorSurfaces.activeDocumentIsPresented) {
@@ -371,52 +254,34 @@ class $Workspace {
     if (!editor || !editor.hasDocument.value || !editor.document.path) {
       return { items: [], isIncomplete: false };
     }
-    const client = this.ensureLanguageClient();
-    if (!client.supportsDocument(editor.document)) {
-      return { items: [], isIncomplete: false };
-    }
-    return client.completion(editor.document, position, context);
+    return (
+      this.languageProvider?.completion(editor.document, position, context) ?? {
+        items: [],
+        isIncomplete: false,
+      }
+    );
   }
 
   completionTriggerCharacters(): readonly string[] {
-    return this.languageClientInstance?.completionTriggerCharacters ?? [];
+    return this.languageProvider?.completionTriggerCharacters ?? [];
   }
 
   /** Diagnostics whose range covers a document position — surfaced in the hover card so an errored
    *  expression (whose hover type is often just `any`) still shows the real error MESSAGE. */
-  diagnosticsAt(position: TextPosition): readonly HoverDiagnostic[] {
+  diagnosticsAt(
+    position: LanguagePosition,
+  ): readonly LanguageHoverDiagnostic[] {
     const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    const client = this.languageClientInstance;
     if (
       !this.editorSurfaces.activeDocumentIsPresented ||
-      !client ||
       !editor ||
       !editor.hasDocument.value
-    )
+    ) {
       return [];
-    void client.diagnosticsRevision.value; // reactive: re-query as diagnostics arrive
-    const total = client.diagnosticCountFor(editor.document);
-    if (total === 0) return [];
-    const covering: HoverDiagnostic[] = [];
-    for (const diagnostic of client.diagnosticSlice(
-      editor.document,
-      0,
-      total,
-    )) {
-      const { start, end } = diagnostic.range;
-      const afterStart =
-        position.line > start.line ||
-        (position.line === start.line && position.column >= start.column);
-      const beforeEnd =
-        position.line < end.line ||
-        (position.line === end.line && position.column <= end.column);
-      if (afterStart && beforeEnd)
-        covering.push({
-          severity: diagnostic.severity,
-          message: diagnostic.message,
-        });
     }
-    return covering;
+    return (
+      this.languageProvider?.diagnosticsAt(editor.document, position) ?? []
+    );
   }
 
   /** Open the located file through the existing tab path and reveal the declaration. */
@@ -554,11 +419,6 @@ class $Workspace {
   suspendOwnedResources(): void {
     this.resourcesSuspended = true;
     for (const contribution of this.contributions) contribution.suspended();
-    // A suspended (background) workspace holds no language-server subprocess; resuming recreates
-    // the client lazily through the buffer seams / the next semantic request.
-    // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
-    void this.languageClientInstance?.dispose();
-    this.languageClientInstance = null;
     this.buffers.deactivate();
   }
 
@@ -574,9 +434,6 @@ class $Workspace {
     for (const disposeContribution of [...this.contributorDisposers.values()]) {
       disposeContribution();
     }
-    // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
-    void this.languageClientInstance?.dispose();
-    this.languageClientInstance = null;
     this.buffers.disposeAll();
     this.emptyEditor.dispose();
   }
@@ -852,12 +709,6 @@ export namespace Workspace {
 }
 
 export type Focus = 'editor' | 'primaryPane';
-
-/** A diagnostic surfaced in the hover card: its severity and message text. */
-export interface HoverDiagnostic {
-  severity: 1 | 2 | 3 | 4;
-  message: string;
-}
 
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;

@@ -2,7 +2,7 @@ import { CodexRewriteProvider } from '../../src/modules/lsp/CodexRewriteProvider
 import type {
   RewriteCandidate,
   RewriteRequest,
-} from '../../src/modules/lsp/LanguageProvider.interface';
+} from '../../src/modules/inline-rewrite/RewriteProvider.interface';
 import { StatusChannel } from '../../src/modules/system/StatusChannel';
 
 let requestCount = 0;
