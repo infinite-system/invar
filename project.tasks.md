@@ -161,3 +161,30 @@ the final contributor) -> **#35** (structure pane, right dock, first new plugin 
 **#59** prettier on commit + one-shot reformat. **#62** parameter-count sweep (>3 args -> ports
 object). **#31** getter census -> scoped invalidation. **#94** popup Left/Right falls through to
 caret movement. **#104** DEFERRED editor glide monotonicity.
+
+### PR #1 review (2026-07-28) — macOS terminal, reviewed and accepted with follow-ups
+
+`origin/pr/1` on `infinite-system/invar`, 3 commits off `ac3622c`: a Bun-native PTY backend for
+darwin, a cross-platform installer, and a READY report. Reviewed by fetching the branch over SSH —
+`gh` has stale credentials (HTTP 401).
+
+**Accepted.** The write path handles the #81 blocking-write defect properly (queue + drain callback,
+short-count handling, and its comment names the OpenPty `O_NONBLOCK` analogue). The class anchor
+matches `OpenPtyBackend` exactly. `Bun.Terminal` was verified to be a function on Bun 1.3.14/Linux,
+so the new tests genuinely run on our gate rather than only claiming to. The invariant rewrite is
+the strongest part: it narrows "one openpty allocator" to per-platform with the exact ABI mechanism
+and **declares its own remaining gap** instead of hiding it.
+
+**Blocking on landing:** `READY.macos-terminal.md` is committed at the repo root and its own commit
+says "strip before landing". It belongs in `agent-dispatches/`.
+
+**Follow-ups opened:**
+
+| # | Item |
+|---|---|
+| **180** | **CRITICAL — no smoke can run on macOS.** `PtyTestDriver` is FFI-blocked on darwin, so none of the 61 smokes and no gate has ever run on the HOST machine. Every macOS defect is invisible by construction; the segfault PR #1 fixed was found by a human, not a contract. The prize is `bun run gate` on macOS |
+| 181 | `TerminalFactory`'s `process.platform === 'darwin'` branch has no test — the darwin arm never executes on Linux, and the real constraint is the arm64 ABI rather than the OS |
+| 182 | `collectUntil` resolves with partial text on its 4000 ms deadline — a false-success wait, the same shape #172 removed from Bootstrap hours earlier |
+
+A note on the review itself: I nearly filed `install.sh` for missing `set -euo pipefail`. It is
+present at line 18, outside the window I first looked at. Checked before reporting.
