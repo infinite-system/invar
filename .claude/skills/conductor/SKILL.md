@@ -382,9 +382,20 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   outlives an honest backlog.
 - **Verify, don't assume.** Key on fork-specific evidence only: worktree writes in the last
   cycle, gate-log transitions, new branch/main commits, and the builder's own PTY processes
-  resolved by `/proc/<pid>/cwd` (never by argv pattern — a brief's TEXT matches its own tool
-  names). NEVER treat the
+  resolved by `/proc/<pid>/cwd`. NEVER treat the
   user's own interactive instances as fork liveness, and never kill them.
+- **NEVER key a verdict on your own vocabulary appearing in content the builder processes.**
+  Argv is the famous case — a brief's TEXT matches its own tool names — but the class is wider
+  and the argv-only phrasing let it back in: a monitor grepping a builder's LOG for
+  `quota|rate limit|401` fired a QUOTA BLOCK on both live builders, because line 474 of the log
+  was repo documentation reading *"CAUTION: it consumes Codex quota"*. The builders were 90
+  seconds in and healthy; the monitor stopped itself on the false verdict. Same shape as
+  `pgrep -f` matching its own argv, grepping for my own wording of a rule the builder had
+  rephrased, and `sed` re-matching a duplicated bare value. **A log contains the brief, the
+  docs, and the agent's narration of both — so it contains every word you would search it for.**
+  Key on STRUCTURE instead: an exit-code sentinel the wrapper writes, process existence resolved
+  by cwd, log mtime via `-mmin`, commit counts. Those cannot be uttered by the thing being
+  watched.
 - **Commits are the #1 progress signal — and a `find … -not -path '*/.git/*'` MISSES them.** A
   worktree-writes scan that excludes `.git/` makes a just-committed agent look idle. Always include
   branch-commit detection (`git -C <wt> rev-list --count origin/main..HEAD`). And external snapshots
