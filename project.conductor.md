@@ -3265,3 +3265,55 @@ entire deliverable is population separations on LOAD-SENSITIVE smokes, and a sec
 instances would inflate the very timings it measures. The cap is about machine capacity; this was about
 not corrupting evidence I had just asked for. Concurrency limits should be reasoned per pair of tasks,
 not only per count.
+
+## 2026-07-28 19:15 — the negative space is one mistake, not several
+
+The user reduced a session's worth of my errors to a single defect: *"i think you would always forget
+the negative space, check for existence but not non existence or vice versa."* That is the correct
+reduction, and it retires four separate lessons I had been carrying as independent.
+
+Every instance is a check run in ONE polarity, whose output therefore cannot distinguish *the thing is
+absent* from *the check cannot see*:
+
+| instance | what was checked | what was never checked |
+| --- | --- | --- |
+| `find -newermt '-10 minutes'` | "0 files written" | whether the predicate can match ANYTHING (it cannot — it matches nothing, ever) |
+| monitor on "hash differs" | difference | existence — it fired on the DELETION half of a rewrite |
+| `grep \| tail \|\| echo` | the success branch | that `\|\|` is unreachable, because `tail` succeeds on empty input |
+| `pkill -f merge-gate.sh` | "a process matches" | that argv contains INSTRUCTIONS — it matched builders whose brief said *do not run merge-gate.sh* |
+| three dispatch guards | that they refuse | what NOT refusing does |
+
+That last one happened while building the tooling for the other four, which is the useful part. Three
+refusal guards were verified by running them and watching them refuse. The fourth check was the
+negative control — proof the guard does not simply refuse everything — and it was run the same way,
+against a script with side effects. **"Did not refuse" meant it cut a worktree, committed a brief
+reading `brief`, and launched a codex on a task nobody asked for.**
+
+**A control that mutates the system is not a control.** The negative arm of any guard test needs a way
+to reach the guard without paying for the action. `dispatch.sh` now has `DRY_RUN=1`, which stops after
+every guard and before the first side effect.
+
+### The operational form
+
+Every check supplies BOTH arms before its result is readable:
+
+- the PRESENT arm must find something — proves the check can see;
+- the ABSENT arm must find nothing — proves the check can be silent.
+
+**If both arms agree, the instrument is broken. Report that instead of a number.** This is the same
+rule as *an instrument must fail loudly*, generalised: a positive control alone proves only that a
+check can fire, and a check that fires on everything is as useless as one that never fires.
+
+### Tooling, so this stops depending on my remembering
+
+- `scripts/fleet/probe.sh` — `builders` (by `/proc` cwd, with an impossible-path arm that must stay
+  empty), `writes` (`-mmin`, never `-newermt`, with a planted canary that must be found), `gate` (a
+  finished log must not read as running), `exit` (a command's own status, never a pipeline's last
+  stage). `self-test` proves each can both fire and stay silent.
+- `scripts/tasks/ledger-status.ts` — ledger counts plus four drift signals; `--self-test` plants one of
+  each PLUS a clean control that must produce nothing.
+- `DRY_RUN=1 scripts/fleet/dispatch.sh` — the negative arm of a dispatch-guard test.
+
+The generalisation worth keeping: **when the user names a pattern behind several of my mistakes, the
+pattern is the fix and the instances are not.** Building four separate guards would have left the fifth
+instance free to happen — and it did happen, an hour later, in the very work meant to prevent it.
