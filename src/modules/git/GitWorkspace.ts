@@ -501,6 +501,19 @@ class $GitWorkspace
     void expansion.expand(row.commitIndex, row.record.sha);
   }
 
+  toggleLogRow(flatIndex: number): void {
+    const row = this.logRowAt(flatIndex);
+    const expansion = this.commitExpansion.value;
+    if (row?.kind !== 'commit' || !row.record || !expansion) return;
+    const wasExpanded = expansion.isExpanded(row.record.sha);
+    expansion.toggle(row.commitIndex, row.record.sha);
+    if (wasExpanded) {
+      this.selectCollapsedCommitHeader(row.commitIndex);
+      return;
+    }
+    this.previewLogRow(flatIndex);
+  }
+
   protected async showLogRowComparison(
     flatIndex: number,
     transferFocus: boolean,
@@ -541,9 +554,15 @@ class $GitWorkspace
     const sha = row.kind === 'commit' ? row.record?.sha : row.sha;
     if (!sha || !expansion.isExpanded(sha)) return;
     expansion.collapse(sha);
+    this.selectCollapsedCommitHeader(row.commitIndex);
+  }
+
+  protected selectCollapsedCommitHeader(commitIndex: number): void {
+    const expansion = this.commitExpansion.value;
+    if (!expansion) return;
     const headerFlatIndex = GitLogRows.Class.commitFlatIndex(
       expansion.entries.value,
-      row.commitIndex,
+      commitIndex,
     );
     this.panel.logIndex.value = headerFlatIndex;
     if (this.panel.logScrollTop.value > headerFlatIndex) {

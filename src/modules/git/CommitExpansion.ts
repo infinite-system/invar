@@ -49,7 +49,7 @@ class $CommitExpansion {
     return this.entries.value.some((entry) => entry.sha === sha);
   }
 
-  /** Expand a collapsed commit / collapse an expanded one (click or Enter on its header row). */
+  /** Expand a collapsed commit or collapse an expanded one. */
   toggle(commitIndex: number, sha: string): void {
     if (this.isExpanded(sha)) {
       this.collapse(sha);

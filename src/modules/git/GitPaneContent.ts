@@ -18,6 +18,7 @@ import type { GitWorkspace } from './GitWorkspace';
 
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 // invariant: Commit selection previews without focus transfer (src/modules/git/git.invariants.md)
+// invariant: Commit expansion is lazy and windowed (src/modules/git/git.invariants.md)
 class $GitPaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
@@ -204,7 +205,11 @@ class $GitPaneContent implements PaneContent {
       workspace.panel.region.value = 'log';
       workspace.panel.setLogSelection(hit.index);
       if (isDoubleClick) workspace.activateLogRow(hit.index);
-      else workspace.previewLogRow(hit.index);
+      else if (workspace.logRowAt(hit.index)?.kind === 'commit') {
+        workspace.toggleLogRow(hit.index);
+      } else {
+        workspace.previewLogRow(hit.index);
+      }
       return true;
     }
     const changeRow = workspace.currentChangeRows()[hit.index];

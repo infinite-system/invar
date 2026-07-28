@@ -269,26 +269,32 @@ loading row until the fetch lands, and discards a result superseded by collapse/
 tickets); `expansionOrder` bounds the expanded set at `capacity` (default 32) by collapsing the
 oldest; `commitLogRows(flatStart, rowCount, …)` walks only the commits intersecting the window
 plus the bounded expanded set, with unfetched commit records degrading to placeholder headers.
+`GitPaneContent.onPointerDown` routes a settled single click on a commit header through
+`GitWorkspace.toggleLogRow`; comparison preview and activation keep calling `expand` because files
+are their precondition.
 
 **Generates:** VS Code-style inline drill-down over a 10k-commit log at O(window) cost; a single
-flat row space shared by renderer, mouse hit-test, and keyboard selection; instant collapse with
-no orphaned async writes.
+flat row space shared by renderer, mouse hit-test, and keyboard selection; a settled single-click
+header toggle; instant collapse with no orphaned async writes.
 
 **Evidence:** `src/modules/git/CommitExpansion.ts` (`expand`, `collapse`, capacity eviction);
-`src/modules/git/git.log-rows.ts` (`commitLogRows`, `commitIndexAtFlatRow`, `totalFlatRows`);
+`src/modules/git/GitLogRows.ts` (`commitLogRows`, `commitIndexAtFlatRow`, `totalFlatRows`);
 `src/modules/git/CommitExpansion.test.ts` (lazy single-sha fetch, stale-collapse discard, bounded
-eviction); `src/modules/git/git.log-rows.test.ts` (windowing across an expanded commit, loading
-placeholder).
+eviction); `src/modules/git/GitLogRows.test.ts` (windowing across an expanded commit, loading
+placeholder); `a commit header click collapses through the production pane path` in
+`src/modules/git/GitPaneContent.test.ts`.
 
 **Impossible if true:** Expanding one commit pre-fetching any other commit's files; an expanded
 10k-commit log materializing rows beyond the visible window plus the bounded expanded set; a
-collapse racing its own fetch and re-expanding from a stale result.
+collapse racing its own fetch and re-expanding from a stale result; a settled single click on an
+expanded commit header leaving its file rows in the flat row space.
 
-**Verification:** `bun test src/modules/git/CommitExpansion.test.ts src/modules/git/git.log-rows.test.ts`
+**Verification:** `bun test src/modules/git/CommitExpansion.test.ts
+src/modules/git/GitLogRows.test.ts src/modules/git/GitPaneContent.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-28
 
 ### Git row decoration stays within one row
 
