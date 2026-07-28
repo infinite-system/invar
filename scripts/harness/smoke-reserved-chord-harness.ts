@@ -45,6 +45,7 @@ await Bun.write(
     2,
   )}\n`,
 );
+HarnessSmoke.Class.runGit(workspaceRoot, ['init', '--quiet']);
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot,
@@ -88,11 +89,33 @@ try {
   );
   driver.sendText('small');
   await awaitStatus(
-    'Quick Open selects small.txt from the typed query',
-    (candidate) =>
-      candidate.quickOpenQuery === 'small' &&
-      String(candidate.quickOpenSelectedIdentifier).endsWith('small.txt'),
+    'Quick Open receives the typed small query',
+    (candidate) => candidate.quickOpenQuery === 'small',
   );
+  try {
+    await awaitStatus(
+      [
+        'Quick Open enumerates and selects small.txt',
+        '(requires ripgrep or a Git repository)',
+      ].join(' '),
+      (candidate) =>
+        String(candidate.quickOpenSelectedIdentifier).endsWith('small.txt'),
+    );
+  } catch (error) {
+    const failedSelectionStatus = HarnessSmoke.Class.readStatus(statusPath);
+    throw new Error(
+      [
+        String(error),
+        'Published state:',
+        `quickOpenQuery=${JSON.stringify(
+          failedSelectionStatus.quickOpenQuery,
+        )};`,
+        `quickOpenSelectedIdentifier=${JSON.stringify(
+          failedSelectionStatus.quickOpenSelectedIdentifier,
+        )}`,
+      ].join(' '),
+    );
+  }
   driver.sendKeys('Enter');
   const openedFileStatus = await awaitStatus(
     'activating the selected file closes Quick Open',
