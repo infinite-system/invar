@@ -51,7 +51,18 @@ const OPTIONAL = ["Renegotiable at", "Components", "Generates", "Rejected altern
 const STATUSES = new Set(["established", "provisional"]);
 const DATE_RE = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", ".claude"]);
-const EXCLUDED_DIRECTORY_PATHS = new Set(["scripts/retired-smokes"]);
+// `tmp/` is gitignored scratch and `agent-dispatches/` is archived agent
+// correspondence. Neither holds contracts, but both are FULL of annotation-shaped
+// text: builders quote `invariant:` lines in their transcripts and briefs cite
+// contracts by name. Scanning them reports thousands of "contract not found" for
+// relative paths that were never meant to resolve from there. This walk reads the
+// FILESYSTEM, not git, so .gitignore does not protect it — the same property that
+// once made a macOS `._Foo.ts` artifact red the grammar gate.
+const EXCLUDED_DIRECTORY_PATHS = new Set([
+  "scripts/retired-smokes",
+  "tmp",
+  "agent-dispatches",
+]);
 const ANNOT_RE = /invariant:\s*([^(\n]+?)\s*\(([^)\n]*\.invariants\.md)\)/g;
 // annotation-shaped lines that DON'T parse (typo'd suffix, wrong brackets) — flagged, not silent
 const ANNOT_LOOSE_RE = /invariant:\s*\S[^\n]*?[([][^)\]\n]*\.(?:md|invariants)\b[^)\]\n]*[)\]]/i;
