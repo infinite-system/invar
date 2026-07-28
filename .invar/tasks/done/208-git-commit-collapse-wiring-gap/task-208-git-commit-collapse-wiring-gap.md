@@ -1,6 +1,6 @@
 # 208 — an expanded commit cannot be folded back
 
-State: LIVE
+State: DONE — merged 15f51dc
 Created: 2026-07-28
 
 ## Outline

@@ -1,6 +1,6 @@
 # 204 — drive expects every key to paint, and targets cells by number
 
-State: LIVE
+State: DONE — merged 7aa3a7c
 Created: 2026-07-28
 
 ## Outline
