@@ -23,8 +23,9 @@
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // Only the PTY driver, input encoder, snapshot type, and quiet lock are imported from the harness.
 // `HarnessSmoke`'s status helpers changed signature in the historical window, so the status poll
-// below stays local and depends on nothing but the published file. Historical measurements port the
-// one missing completed-frame snapshot method into the disposable reference tree.
+// below stays local and depends on nothing but the published file. A historical build without the
+// published momentum-rest field cannot support this instrument: its final painted grid does not
+// distinguish active momentum from rest, so no observable condition can replace a silence guess.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -140,11 +141,8 @@ const TERMINAL_COLUMNS = 120;
 const TERMINAL_ROWS = 40;
 const EDITOR_WHEEL_COLUMN = 80;
 const EDITOR_WHEEL_ROW = 12;
-// Rendering is demand-driven, so no frame arriving within this window IS the at-rest condition: while
-// any glide runs the app holds a live render request and frames keep coming, and the request is
-// dropped the moment every animation settles. The window only has to exceed one frame interval at
-// `targetFps` (33ms) by enough margin that a loaded machine cannot fake quiescence.
-const FRAME_ARRIVAL_TIMEOUT_MILLISECONDS = 700;
+// Preserve the existing continuous-input deadline margin while observing the published rest state.
+const CONTINUOUS_INPUT_REST_TIMEOUT_MARGIN_MILLISECONDS = 700;
 
 type ScrollSurface = 'editor' | 'diff';
 type FixtureShape = 'flat' | 'fold-dense';
@@ -660,30 +658,16 @@ function summarize(
   };
 }
 
-// Demand-driven rendering makes "no frame arrives" the QUIESCENCE CONDITION,
-// not a silence assumption: while any glide is active the app cadence requests
-// frames; the moment every animation settles the cadence stops. Draining until
-// a frame wait expires therefore observes rest itself, and it observes it
-// identically at every commit — unlike the `workspaceScrollMomentumAtRest`
-// status field, which does not exist in historical builds this measures.
-async function drainToQuiescence(driver: PtyTestDriver.Model): Promise<void> {
-  while (true) {
-    try {
-      await driver.awaitNextCompletedFrameSnapshot(
-        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-      );
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        return;
-      }
-      throw error;
-    }
-  }
+async function drainToQuiescence(
+  statusPath: string,
+  surface: ScrollSurface,
+): Promise<void> {
+  const restStatusField = animationRestStatusField(surface);
+  await awaitStatusCondition(
+    statusPath,
+    `${surface} scrolling to reach its published rest state`,
+    (status) => status[restStatusField] === true,
+  );
 }
 
 async function measureOneGesture(
@@ -700,9 +684,7 @@ async function measureOneGesture(
   }
   const editorFrameAttributionBefore =
     surface === 'editor' ? readEditorFrameAttributionTotals(statusPath) : null;
-  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
-    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-  );
+  const restStatusField = animationRestStatusField(surface);
   // ONE write for the whole notch train. Written as separate writes the train straddles two input
   // regimes — the application either reads several notches in one chunk (their impulses compound
   // before any frame decays them) or reads them one at a time across frames (each impulse is decayed
@@ -710,32 +692,36 @@ async function measureOneGesture(
   // outcomes differing by ~35% in both distance and peak velocity. That spread is a property of how
   // the bytes happened to split, not of the build under test, so a single write removes it and the
   // measurement compares builds instead of comparing PTY chunk boundaries.
-  const inputWrittenTimestampMilliseconds = performance.now();
-  driver.sendRawInputWithoutFrameExpectation(
-    Array.from({ length: WHEEL_NOTCHES_PER_GESTURE }, () =>
-      HarnessInput.Class.mouse({
-        kind: 'wheel',
-        column: EDITOR_WHEEL_COLUMN,
-        row: EDITOR_WHEEL_ROW,
-        direction: 'down',
-      }),
-    ).join(''),
-  );
-  while (true) {
-    let completed: Awaited<typeof nextFrame>;
-    try {
-      completed = await nextFrame;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        break;
-      }
-      throw error;
-    }
+  let inputWrittenTimestampMilliseconds = 0;
+  const completedFrameObservations =
+    await driver.collectCompletedFrameObservationsUntil({
+      conditionDescription: `${surface} gesture moves and reaches published momentum rest`,
+      condition: () => {
+        const status = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+          string,
+          unknown
+        >;
+        return (
+          Number(status[scrollStatusField(surface)] ?? 0) >
+            scrollTopBeforeInput && status[restStatusField] === true
+        );
+      },
+      performAction: () => {
+        inputWrittenTimestampMilliseconds = performance.now();
+        driver.sendRawInputWithoutFrameExpectation(
+          Array.from({ length: WHEEL_NOTCHES_PER_GESTURE }, () =>
+            HarnessInput.Class.mouse({
+              kind: 'wheel',
+              column: EDITOR_WHEEL_COLUMN,
+              row: EDITOR_WHEEL_ROW,
+              direction: 'down',
+            }),
+          ).join(''),
+        );
+      },
+      timeoutMilliseconds: 30_000,
+    });
+  for (const completed of completedFrameObservations) {
     const scrollTop = visibleTopLineIndex(completed.snapshot);
     if (scrollTop !== null) {
       samples.push({
@@ -746,9 +732,6 @@ async function measureOneGesture(
         scrollTop,
       });
     }
-    nextFrame = driver.awaitNextCompletedFrameSnapshot(
-      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-    );
   }
   const editorFrameAttribution =
     editorFrameAttributionBefore === null
@@ -771,90 +754,80 @@ async function measureContinuationBoundary(
 ): Promise<ContinuationBoundaryMeasurement> {
   const samples: GestureFrameSample[] = [];
   let observedMovingFrameCount = 0;
-  const firstGestureTimestampMilliseconds = performance.now();
-  driver.sendRawInputWithoutFrameExpectation(
-    wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
-  );
-  while (true) {
-    let completed: Awaited<
-      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
-    >;
-    try {
-      completed = await driver.awaitNextCompletedFrameSnapshot(
-        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
+  let firstGestureTimestampMilliseconds = 0;
+  let secondGestureTimestampMilliseconds = 0;
+  let preBoundarySample: GestureFrameSample | null = null;
+  let preBoundaryRowsCrossed = 0;
+  let boundarySample: GestureFrameSample | null = null;
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription:
+      `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
+      'observes the first frame after its follow-on input',
+    condition: () => boundarySample !== null,
+    performAction: () => {
+      firstGestureTimestampMilliseconds = performance.now();
+      driver.sendRawInputWithoutFrameExpectation(
+        wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
       );
-    } catch (error) {
-      throw new Error(
-        `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
-          'waiting for a one-row moving frame',
-        { cause: error },
-      );
-    }
-    const scrollTop = visibleTopLineIndex(completed.snapshot);
-    if (scrollTop === null) continue;
-    const sample: GestureFrameSample = {
-      completedFrameCount: completed.completedFrame.completedFrameCount,
-      byteArrivalTimestampMilliseconds:
-        completed.completedFrame.byteArrivalTimestampMilliseconds,
-      observedByteCount: completed.completedFrame.observedByteCount,
-      scrollTop,
-    };
-    samples.push(sample);
-    if (samples.length < 2) continue;
-    const previousSample = samples.at(-2)!;
-    const preBoundaryRowsCrossed = sample.scrollTop - previousSample.scrollTop;
-    if (preBoundaryRowsCrossed <= 0) continue;
-    observedMovingFrameCount++;
-    // Place the follow-on input at a repeatable visible motion state. The
-    // moving-frame floor samples progressively later live motion; the
-    // one-row crossing fixes the cell-grid phase that made a requested timer
-    // delay alternate between incomparable 2-row and 3-row boundaries.
-    if (
-      observedMovingFrameCount < minimumMovingFrameCount ||
-      preBoundaryRowsCrossed !== 1
-    ) {
-      continue;
-    }
-
-    const secondGestureTimestampMilliseconds = performance.now();
-    driver.sendRawInputWithoutFrameExpectation(wheelInput('down', 1));
-    let boundaryFrame: Awaited<
-      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
-    >;
-    try {
-      boundaryFrame = await driver.awaitNextCompletedFrameSnapshot(
-        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-      );
-    } catch (error) {
-      throw new Error(
-        `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
-          'waiting for the follow-on boundary frame',
-        { cause: error },
-      );
-    }
-    const boundaryScrollTop = visibleTopLineIndex(boundaryFrame.snapshot);
-    if (boundaryScrollTop === null) {
-      throw new Error(
-        `continuation boundary frame ` +
-          `${boundaryFrame.completedFrame.completedFrameCount} did not ` +
-          `contain the fixture`,
-      );
-    }
-    return {
-      minimumMovingFrameCount,
-      actualDelayMilliseconds:
-        secondGestureTimestampMilliseconds - firstGestureTimestampMilliseconds,
-      observedMovingFrameCount,
-      preBoundaryFrameCount: sample.completedFrameCount,
-      boundaryFrameCount: boundaryFrame.completedFrame.completedFrameCount,
-      preBoundaryRowsCrossed,
-      boundaryRowsCrossed: boundaryScrollTop - sample.scrollTop,
-    };
+    },
+    observeFrame: (completed) => {
+      const scrollTop = visibleTopLineIndex(completed.snapshot);
+      if (scrollTop === null) return;
+      const sample: GestureFrameSample = {
+        completedFrameCount: completed.completedFrame.completedFrameCount,
+        byteArrivalTimestampMilliseconds:
+          completed.completedFrame.byteArrivalTimestampMilliseconds,
+        observedByteCount: completed.completedFrame.observedByteCount,
+        scrollTop,
+      };
+      samples.push(sample);
+      if (preBoundarySample) {
+        boundarySample = sample;
+        return;
+      }
+      if (samples.length < 2) return;
+      const previousSample = samples.at(-2)!;
+      const rowsCrossed = sample.scrollTop - previousSample.scrollTop;
+      if (rowsCrossed <= 0) return;
+      observedMovingFrameCount++;
+      if (
+        observedMovingFrameCount < minimumMovingFrameCount ||
+        rowsCrossed !== 1
+      ) {
+        return;
+      }
+      preBoundarySample = sample;
+      preBoundaryRowsCrossed = rowsCrossed;
+      secondGestureTimestampMilliseconds = performance.now();
+      driver.sendRawInputWithoutFrameExpectation(wheelInput('down', 1));
+    },
+    timeoutMilliseconds: 30_000,
+  });
+  const observedPreBoundarySample =
+    preBoundarySample as GestureFrameSample | null;
+  const observedBoundarySample = boundarySample as GestureFrameSample | null;
+  if (!observedPreBoundarySample || !observedBoundarySample) {
+    throw new Error(
+      `continuation minimumMovingFrames=${minimumMovingFrameCount} ` +
+        'did not observe its boundary samples',
+    );
   }
+  return {
+    minimumMovingFrameCount,
+    actualDelayMilliseconds:
+      secondGestureTimestampMilliseconds - firstGestureTimestampMilliseconds,
+    observedMovingFrameCount,
+    preBoundaryFrameCount: observedPreBoundarySample.completedFrameCount,
+    boundaryFrameCount: observedBoundarySample.completedFrameCount,
+    preBoundaryRowsCrossed,
+    boundaryRowsCrossed:
+      observedBoundarySample.scrollTop - observedPreBoundarySample.scrollTop,
+  };
 }
 
 async function measureAccumulationPattern(
   driver: PtyTestDriver.Model,
+  statusPath: string,
 ): Promise<AccumulationFlickMeasurement[]> {
   const flickMeasurements = Array.from(
     { length: ACCUMULATION_FLICK_COUNT },
@@ -883,9 +856,6 @@ async function measureAccumulationPattern(
   let activeFlickIndex = 0;
   let previousScrollTop = 0;
   let previousFrameTimestampMilliseconds = performance.now();
-  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
-    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-  );
 
   const sendFlick = (precedingCompletedFrameCount: number): void => {
     const flickTimestampMilliseconds = performance.now();
@@ -904,77 +874,73 @@ async function measureAccumulationPattern(
     );
   };
 
-  sendFlick(0);
-  while (true) {
-    let completed: Awaited<
-      ReturnType<PtyTestDriver.Model['awaitNextCompletedFrameSnapshot']>
-    >;
-    try {
-      completed = await nextFrame;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        break;
-      }
-      throw error;
-    }
-    nextFrame = driver.awaitNextCompletedFrameSnapshot(
-      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-    );
-    const scrollTop = visibleTopLineIndex(completed.snapshot);
-    if (scrollTop === null) continue;
-    const rowsCrossed = scrollTop - previousScrollTop;
-    const frameTimestampMilliseconds =
-      completed.completedFrame.byteArrivalTimestampMilliseconds;
-    const frameDurationMilliseconds =
-      frameTimestampMilliseconds - previousFrameTimestampMilliseconds;
-    if (rowsCrossed > 0) {
-      const activeMeasurement = mutableFlickMeasurements[activeFlickIndex]!;
-      const previousRowsCrossed =
-        activeMeasurement.rowCrossingSequence.at(-1) ?? 0;
-      activeMeasurement.rowCrossingSequence.push(rowsCrossed);
-      activeMeasurement.peakRowsCrossedPerFrame = Math.max(
-        activeMeasurement.peakRowsCrossedPerFrame,
-        rowsCrossed,
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription:
+      'all accumulation flicks are delivered and momentum reaches rest',
+    condition: () => {
+      const status = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      return (
+        activeFlickIndex + 1 >= ACCUMULATION_FLICK_COUNT &&
+        status.workspaceScrollMomentumAtRest === true
       );
-      activeMeasurement.peakTwoFrameRowsCrossed = Math.max(
-        activeMeasurement.peakTwoFrameRowsCrossed,
-        previousRowsCrossed + rowsCrossed,
-      );
-      const latestFourFrameRowsCrossed = activeMeasurement.rowCrossingSequence
-        .slice(-4)
-        .reduce(
-          (totalRowsCrossed, frameRowsCrossed) =>
-            totalRowsCrossed + frameRowsCrossed,
-          0,
+    },
+    performAction: () => sendFlick(0),
+    observeFrame: (completed) => {
+      const scrollTop = visibleTopLineIndex(completed.snapshot);
+      if (scrollTop === null) return;
+      const rowsCrossed = scrollTop - previousScrollTop;
+      const frameTimestampMilliseconds =
+        completed.completedFrame.byteArrivalTimestampMilliseconds;
+      const frameDurationMilliseconds =
+        frameTimestampMilliseconds - previousFrameTimestampMilliseconds;
+      if (rowsCrossed > 0) {
+        const activeMeasurement = mutableFlickMeasurements[activeFlickIndex]!;
+        const previousRowsCrossed =
+          activeMeasurement.rowCrossingSequence.at(-1) ?? 0;
+        activeMeasurement.rowCrossingSequence.push(rowsCrossed);
+        activeMeasurement.peakRowsCrossedPerFrame = Math.max(
+          activeMeasurement.peakRowsCrossedPerFrame,
+          rowsCrossed,
         );
-      activeMeasurement.peakFourFrameRowsCrossed = Math.max(
-        activeMeasurement.peakFourFrameRowsCrossed,
-        latestFourFrameRowsCrossed,
-      );
-      if (frameDurationMilliseconds > 0) {
-        activeMeasurement.peakVelocityRowsPerSecond = Math.max(
-          activeMeasurement.peakVelocityRowsPerSecond,
-          (rowsCrossed * 1000) / frameDurationMilliseconds,
+        activeMeasurement.peakTwoFrameRowsCrossed = Math.max(
+          activeMeasurement.peakTwoFrameRowsCrossed,
+          previousRowsCrossed + rowsCrossed,
         );
+        const latestFourFrameRowsCrossed = activeMeasurement.rowCrossingSequence
+          .slice(-4)
+          .reduce(
+            (totalRowsCrossed, frameRowsCrossed) =>
+              totalRowsCrossed + frameRowsCrossed,
+            0,
+          );
+        activeMeasurement.peakFourFrameRowsCrossed = Math.max(
+          activeMeasurement.peakFourFrameRowsCrossed,
+          latestFourFrameRowsCrossed,
+        );
+        if (frameDurationMilliseconds > 0) {
+          activeMeasurement.peakVelocityRowsPerSecond = Math.max(
+            activeMeasurement.peakVelocityRowsPerSecond,
+            (rowsCrossed * 1000) / frameDurationMilliseconds,
+          );
+        }
       }
-    }
-    previousScrollTop = scrollTop;
-    previousFrameTimestampMilliseconds = frameTimestampMilliseconds;
+      previousScrollTop = scrollTop;
+      previousFrameTimestampMilliseconds = frameTimestampMilliseconds;
 
-    if (
-      activeFlickIndex + 1 < ACCUMULATION_FLICK_COUNT &&
-      performance.now() - flickTimestampsMilliseconds[activeFlickIndex]! >=
-        ACCUMULATION_PAUSE_MILLISECONDS
-    ) {
-      activeFlickIndex++;
-      sendFlick(completed.completedFrame.completedFrameCount);
-    }
-  }
+      if (
+        activeFlickIndex + 1 < ACCUMULATION_FLICK_COUNT &&
+        performance.now() - flickTimestampsMilliseconds[activeFlickIndex]! >=
+          ACCUMULATION_PAUSE_MILLISECONDS
+      ) {
+        activeFlickIndex++;
+        sendFlick(completed.completedFrame.completedFrameCount);
+      }
+    },
+    timeoutMilliseconds: 30_000,
+  });
   return flickMeasurements;
 }
 
@@ -997,79 +963,67 @@ async function measureContinuousInputBurst(
   const inputWindowCount = Math.ceil(
     requestedDurationMilliseconds / CONTINUOUS_INPUT_WINDOW_MILLISECONDS,
   );
+  const inputEventCount =
+    inputWindowCount * CONTINUOUS_INPUT_NOTCHES_PER_WINDOW;
+  const restStatusField = animationRestStatusField(surface);
   const inputWindowStartsMilliseconds: number[] = [];
   const completedFrameTimestampsMilliseconds: number[] = [];
   const observedScrollTops = [scrollTopBefore];
   let inputComplete = false;
   let inputEndTimestampMilliseconds = 0;
-  let nextFrame = driver.awaitNextCompletedFrameSnapshot(
-    FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-  );
-
-  const inputProducer = new Promise<void>((resolveInputProducer) => {
-    const writeInputWindow = (): void => {
-      inputWindowStartsMilliseconds.push(performance.now());
-      driver.sendRawInputWithoutFrameExpectation(
-        wheelInput('down', CONTINUOUS_INPUT_NOTCHES_PER_WINDOW),
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription: `${surface} continuous input completes and momentum reaches rest`,
+    condition: () => {
+      const status = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      return (
+        inputComplete &&
+        Number(status[impulseCountField] ?? 0) >= inputEventCount &&
+        status[restStatusField] === true
       );
-      if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
-        inputEndTimestampMilliseconds =
-          inputWindowStartsMilliseconds.at(-1)! +
-          CONTINUOUS_INPUT_WINDOW_MILLISECONDS;
-        inputComplete = true;
-        resolveInputProducer();
-      }
-    };
-    writeInputWindow();
-    if (inputWindowCount <= 1) return;
-    const inputInterval = setInterval(() => {
-      writeInputWindow();
-      if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
-        clearInterval(inputInterval);
-      }
-    }, CONTINUOUS_INPUT_WINDOW_MILLISECONDS);
-  });
-
-  while (true) {
-    try {
-      const completed = await nextFrame;
+    },
+    performAction: () =>
+      new Promise<void>((resolveInputProducer) => {
+        const writeInputWindow = (): void => {
+          inputWindowStartsMilliseconds.push(performance.now());
+          driver.sendRawInputWithoutFrameExpectation(
+            wheelInput('down', CONTINUOUS_INPUT_NOTCHES_PER_WINDOW),
+          );
+          if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
+            inputEndTimestampMilliseconds =
+              inputWindowStartsMilliseconds.at(-1)! +
+              CONTINUOUS_INPUT_WINDOW_MILLISECONDS;
+            inputComplete = true;
+            resolveInputProducer();
+          }
+        };
+        writeInputWindow();
+        if (inputWindowCount <= 1) return;
+        const inputInterval = setInterval(() => {
+          writeInputWindow();
+          if (inputWindowStartsMilliseconds.length >= inputWindowCount) {
+            clearInterval(inputInterval);
+          }
+        }, CONTINUOUS_INPUT_WINDOW_MILLISECONDS);
+      }),
+    observeFrame: (completed) => {
       completedFrameTimestampsMilliseconds.push(
         completed.completedFrame.byteArrivalTimestampMilliseconds,
       );
       const observedScrollTop = visibleTopLineIndex(completed.snapshot);
       if (observedScrollTop !== null)
         observedScrollTops.push(observedScrollTop);
-      nextFrame = driver.awaitNextCompletedFrameSnapshot(
-        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-      );
-    } catch (error) {
-      if (!(
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      )) {
-        throw error;
-      }
-      if (
-        inputComplete &&
-        performance.now() >=
-          inputEndTimestampMilliseconds + FRAME_ARRIVAL_TIMEOUT_MILLISECONDS
-      ) {
-        break;
-      }
-      nextFrame = driver.awaitNextCompletedFrameSnapshot(
-        FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-      );
-    }
-  }
-  await inputProducer;
+    },
+    timeoutMilliseconds:
+      requestedDurationMilliseconds +
+      CONTINUOUS_INPUT_REST_TIMEOUT_MARGIN_MILLISECONDS,
+  });
   const statusAfter = JSON.parse(readFileSync(statusPath, 'utf8')) as Record<
     string,
     unknown
   >;
-  const inputEventCount =
-    inputWindowCount * CONTINUOUS_INPUT_NOTCHES_PER_WINDOW;
   const appliedImpulseCount = Number(statusAfter[impulseCountField] ?? 0);
   const projectionPassCount =
     readEditorFrameAttributionTotals(statusPath).completedFrameCount -
@@ -1351,7 +1305,7 @@ async function jumpEditorToDepth(
       (status) => status.findOpen === false,
     );
   }
-  await drainToQuiescence(driver);
+  await drainToQuiescence(statusPath, 'editor');
   const actualStartLine = visibleTopLineIndex(driver.snapshot());
   if (actualStartLine === null) {
     throw new Error(
@@ -1368,29 +1322,36 @@ async function measureDepthCheckpoint(
 ): Promise<Omit<DepthCheckpointMeasurement, 'ratioToReference'>> {
   const samples: GestureFrameSample[] = [];
   const targetEndLine = actualStartLine + DEPTH_GESTURE_TARGET_ROWS;
-  driver.sendRawInputWithoutFrameExpectation(
-    wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
-  );
-  while (true) {
-    const completed = await driver.awaitNextCompletedFrameSnapshot(
-      FRAME_ARRIVAL_TIMEOUT_MILLISECONDS,
-    );
-    const scrollTop = visibleTopLineIndex(completed.snapshot);
-    if (scrollTop === null) continue;
-    samples.push({
-      completedFrameCount: completed.completedFrame.completedFrameCount,
-      byteArrivalTimestampMilliseconds:
-        completed.completedFrame.byteArrivalTimestampMilliseconds,
-      observedByteCount: completed.completedFrame.observedByteCount,
-      scrollTop,
-    });
-    if (scrollTop >= targetEndLine) break;
-    if (samples.length % DEPTH_GESTURE_REFRESH_FRAME_INTERVAL === 0) {
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription: `the depth-${targetDepthLine} drive reaches line ${targetEndLine}`,
+    condition: (snapshot) =>
+      (visibleTopLineIndex(snapshot) ?? -1) >= targetEndLine,
+    performAction: () => {
       driver.sendRawInputWithoutFrameExpectation(
         wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
       );
-    }
-  }
+    },
+    observeFrame: (completed) => {
+      const scrollTop = visibleTopLineIndex(completed.snapshot);
+      if (scrollTop === null) return;
+      samples.push({
+        completedFrameCount: completed.completedFrame.completedFrameCount,
+        byteArrivalTimestampMilliseconds:
+          completed.completedFrame.byteArrivalTimestampMilliseconds,
+        observedByteCount: completed.completedFrame.observedByteCount,
+        scrollTop,
+      });
+      if (
+        scrollTop < targetEndLine &&
+        samples.length % DEPTH_GESTURE_REFRESH_FRAME_INTERVAL === 0
+      ) {
+        driver.sendRawInputWithoutFrameExpectation(
+          wheelInput('down', WHEEL_NOTCHES_PER_GESTURE),
+        );
+      }
+    },
+    timeoutMilliseconds: 30_000,
+  });
   const firstSample = samples[0];
   const finalSample = samples.at(-1);
   if (!firstSample || !finalSample) {
@@ -1920,6 +1881,12 @@ function scrollStatusField(surface: ScrollSurface): string {
   return surface === 'editor' ? 'editorScrollTop' : 'diffScrollTop';
 }
 
+function animationRestStatusField(surface: ScrollSurface): string {
+  return surface === 'editor'
+    ? 'workspaceScrollMomentumAtRest'
+    : 'contributedSurfaceAnimationAtRest';
+}
+
 function wheelInput(direction: 'up' | 'down', notchCount: number): string {
   return Array.from({ length: notchCount }, () =>
     HarnessInput.Class.mouse({
@@ -1944,6 +1911,10 @@ async function driveSurfaceToTop(
       'the editor viewport to return to the top before the next gesture',
       (status) => Number(status[statusField]) === 0,
     );
+    await driver.awaitGridCondition(
+      'the editor grid paints the document origin before the next gesture',
+      (snapshot) => visibleTopLineIndex(snapshot) === 0,
+    );
     return;
   }
   for (let driveAttempt = 1; driveAttempt <= 20; driveAttempt++) {
@@ -1954,6 +1925,10 @@ async function driveSurfaceToTop(
         'the diff viewport to return to the top before the next gesture',
         (status) => Number(status[statusField]) === 0,
         1_000,
+      );
+      await driver.awaitGridCondition(
+        'the diff grid paints the document origin before the next gesture',
+        (snapshot) => visibleTopLineIndex(snapshot) === 0,
       );
       return;
     } catch (error) {
@@ -2053,6 +2028,7 @@ async function measureSurface(
       surface === 'editor'
         ? 'editorVerticalScrollImpulseCount'
         : 'diffVerticalScrollImpulseCount';
+    const restStatusField = animationRestStatusField(surface);
     const statusBeforeSingleNotch = JSON.parse(
       readFileSync(statusPath, 'utf8'),
     ) as Record<string, unknown>;
@@ -2073,8 +2049,7 @@ async function measureSurface(
       `the ${surface} surface to consume wheel input before measurement`,
       (status) =>
         Number(status[impulseCountField]) ===
-          impulseCountBeforeSingleNotch + 1 &&
-        status.workspaceScrollMomentumAtRest === true,
+          impulseCountBeforeSingleNotch + 1 && status[restStatusField] === true,
       60_000,
     );
     const statusAfterSingleNotch = JSON.parse(
@@ -2100,7 +2075,7 @@ async function measureSurface(
         CONTINUOUS_INPUT_BURST_DURATIONS_MILLISECONDS;
       for (const burstDurationMilliseconds of burstDurationsMilliseconds) {
         await driveSurfaceToTop(driver, statusPath, surface);
-        await drainToQuiescence(driver);
+        await drainToQuiescence(statusPath, surface);
         const continuousInputBurst = await measureContinuousInputBurst(
           driver,
           statusPath,
@@ -2145,14 +2120,17 @@ async function measureSurface(
     } else {
       if (shouldMeasureAccumulationPattern) {
         await driveSurfaceToTop(driver, statusPath, surface);
-        await drainToQuiescence(driver);
-        accumulationFlicks = await measureAccumulationPattern(driver);
+        await drainToQuiescence(statusPath, surface);
+        accumulationFlicks = await measureAccumulationPattern(
+          driver,
+          statusPath,
+        );
         printAccumulationPattern(surface, accumulationFlicks);
       }
       if (shouldMeasureContinuationBoundaries) {
         for (const minimumMovingFrameCount of CONTINUATION_MINIMUM_MOVING_FRAME_COUNTS) {
           await driveSurfaceToTop(driver, statusPath, surface);
-          await drainToQuiescence(driver);
+          await drainToQuiescence(statusPath, surface);
           const continuationBoundary = await measureContinuationBoundary(
             driver,
             minimumMovingFrameCount,
@@ -2168,7 +2146,7 @@ async function measureSurface(
         gestureIndex++
       ) {
         await driveSurfaceToTop(driver, statusPath, surface);
-        await drainToQuiescence(driver);
+        await drainToQuiescence(statusPath, surface);
         gestures.push(await measureOneGesture(driver, statusPath, surface));
       }
     }

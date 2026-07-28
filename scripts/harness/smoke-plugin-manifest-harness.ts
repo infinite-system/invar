@@ -419,17 +419,6 @@ try {
     providerUnavailableStatus.bufferRevision,
   );
   driver.sendKeys('Control+Space', 'Control+]');
-  await driver.awaitQuiescence();
-  const unavailableGestureStatus = HarnessSmoke.Class.readStatus(statusPath);
-  HarnessSmoke.Class.requireCondition(
-    unavailableGestureStatus.completionOpen === false &&
-      JSON.stringify(unavailableGestureStatus.cursor) ===
-        JSON.stringify(cursorBeforeUnavailableGestures) &&
-      Number(unavailableGestureStatus.bufferRevision) ===
-        revisionBeforeUnavailableGestures &&
-      String(unavailableGestureStatus.activeBuffer).endsWith('/z-language.ts'),
-    'completion and definition gestures stay inert without mutating or navigating',
-  );
   const languageProbePosition = driver.snapshot().findText('languageProbe;');
   if (!languageProbePosition) {
     throw new Error('Language hover probe is not visible');
@@ -442,8 +431,18 @@ try {
   });
   driver.sendKeys('Control+Shift+x');
   await driver.awaitGridCondition(
-    'hover leaves the app live and the disabled provider row selected',
+    'the later Extensions action proves the inert gestures and hover left the app live',
     (snapshot) => snapshot.findText('› [ ] Language Intelligence') !== null,
+  );
+  const unavailableGestureStatus = HarnessSmoke.Class.readStatus(statusPath);
+  HarnessSmoke.Class.requireCondition(
+    unavailableGestureStatus.completionOpen === false &&
+      JSON.stringify(unavailableGestureStatus.cursor) ===
+        JSON.stringify(cursorBeforeUnavailableGestures) &&
+      Number(unavailableGestureStatus.bufferRevision) ===
+        revisionBeforeUnavailableGestures &&
+      String(unavailableGestureStatus.activeBuffer).endsWith('/z-language.ts'),
+    'completion and definition gestures stay inert without mutating or navigating',
   );
   HarnessSmoke.Class.pass(
     'diagnostics clear and completion, definition, and hover degrade without a crash',

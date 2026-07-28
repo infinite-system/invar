@@ -11,12 +11,17 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const repositoryRoot = process.cwd();
-const generatedFixtureRoot = join(repositoryRoot, 'artifacts', 'switch-latency-fixtures');
+const generatedFixtureRoot = join(
+  repositoryRoot,
+  'artifacts',
+  'switch-latency-fixtures',
+);
 const sessionCount = Number(process.env.SWITCH_LATENCY_SESSION_COUNT ?? 5);
 const switchCount = Number(process.env.SWITCH_LATENCY_SWITCH_COUNT ?? 20);
 const requestedScenario = process.env.SWITCH_LATENCY_SCENARIO ?? 'all';
 const secondWorkspaceRoot = process.env.SWITCH_LATENCY_SECOND_WORKSPACE;
-const preserveGeneratedFixtures = process.env.SWITCH_LATENCY_PRESERVE_FIXTURES === '1';
+const preserveGeneratedFixtures =
+  process.env.SWITCH_LATENCY_PRESERVE_FIXTURES === '1';
 const diagnosticLspFileSizeLimitKilobytes =
   process.env.SWITCH_LATENCY_DIAGNOSTIC_LSP_FILE_SIZE_LIMIT_KB;
 const captureSwitchFrames = process.env.SWITCH_LATENCY_CAPTURE_FRAMES === '1';
@@ -60,7 +65,9 @@ interface ScenarioResult {
   boundary: string;
   samples: SwitchSample[];
   scenario: string;
-  sessions: Array<ReturnType<typeof summarizeSamples> & { sessionNumber: number }>;
+  sessions: Array<
+    ReturnType<typeof summarizeSamples> & { sessionNumber: number }
+  >;
 }
 
 const smallFirstTarget: SwitchTarget = {
@@ -87,13 +94,16 @@ const syntheticTwentyThousandTarget: SwitchTarget = {
   path: join(generatedFixtureRoot, 'synthetic-realistic-20000.ts'),
   visibleMarker: 'SWITCH-LATENCY-SYNTHETIC-20000',
 };
-const cacheTargets = Array.from({ length: switchCount }, (_unused, targetIndex): SwitchTarget => ({
-  path: join(
-    generatedFixtureRoot,
-    `cache-cold-${String(targetIndex + 1).padStart(2, '0')}.ts`,
-  ),
-  visibleMarker: `SWITCH-LATENCY-CACHE-${String(targetIndex + 1).padStart(2, '0')}`,
-}));
+const cacheTargets = Array.from(
+  { length: switchCount },
+  (_unused, targetIndex): SwitchTarget => ({
+    path: join(
+      generatedFixtureRoot,
+      `cache-cold-${String(targetIndex + 1).padStart(2, '0')}.ts`,
+    ),
+    visibleMarker: `SWITCH-LATENCY-CACHE-${String(targetIndex + 1).padStart(2, '0')}`,
+  }),
+);
 
 await prepareGeneratedFixtures();
 
@@ -103,37 +113,45 @@ try {
     results.push(await measureKeypressScenario());
   }
   if (scenarioRequested('small-plain')) {
-    results.push(await measurePairedBufferScenario(
-      'small-plain↔small-plain',
-      smallFirstTarget,
-      smallSecondTarget,
-    ));
+    results.push(
+      await measurePairedBufferScenario(
+        'small-plain↔small-plain',
+        smallFirstTarget,
+        smallSecondTarget,
+      ),
+    );
   }
   if (scenarioRequested('real-large-typescript')) {
-    results.push(await measurePairedBufferScenario(
-      'real-large-typescript↔real-large-typescript',
-      realLargeFirstTarget,
-      realLargeSecondTarget,
-    ));
+    results.push(
+      await measurePairedBufferScenario(
+        'real-large-typescript↔real-large-typescript',
+        realLargeFirstTarget,
+        realLargeSecondTarget,
+      ),
+    );
   }
   if (scenarioRequested('synthetic-large-typescript')) {
-    results.push(await measurePairedBufferScenario(
-      'synthetic-5000-lines↔synthetic-20000-lines',
-      syntheticFiveThousandTarget,
-      syntheticTwentyThousandTarget,
-    ));
+    results.push(
+      await measurePairedBufferScenario(
+        'synthetic-5000-lines↔synthetic-20000-lines',
+        syntheticFiveThousandTarget,
+        syntheticTwentyThousandTarget,
+      ),
+    );
   }
   if (scenarioRequested('large-small-asymmetric')) {
-    results.push(await measurePairedBufferScenario(
-      'large↔small-asymmetric',
-      smallSecondTarget,
-      syntheticFiveThousandTarget,
-      'opening-large',
-      'leaving-large',
-    ));
+    results.push(
+      await measurePairedBufferScenario(
+        'large↔small-asymmetric',
+        smallSecondTarget,
+        syntheticFiveThousandTarget,
+        'opening-large',
+        'leaving-large',
+      ),
+    );
   }
   if (scenarioRequested('large-cache')) {
-    results.push(...await measureLargeCacheScenario());
+    results.push(...(await measureLargeCacheScenario()));
   }
   if (scenarioRequested('workspace-tabs')) {
     if (!secondWorkspaceRoot) {
@@ -143,17 +161,27 @@ try {
     }
     results.push(await measureWorkspaceTabScenario(secondWorkspaceRoot));
   }
-  console.log(JSON.stringify({
-    boundary: observationBoundary,
-    generatedAt: new Date().toISOString(),
-    repositoryHead: new TextDecoder().decode(Bun.spawnSync(
-      ['git', 'rev-parse', 'HEAD'],
-      { cwd: repositoryRoot, stdout: 'pipe' },
-    ).stdout).trim(),
-    results,
-    sessionCount,
-    switchCount,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        boundary: observationBoundary,
+        generatedAt: new Date().toISOString(),
+        repositoryHead: new TextDecoder()
+          .decode(
+            Bun.spawnSync(['git', 'rev-parse', 'HEAD'], {
+              cwd: repositoryRoot,
+              stdout: 'pipe',
+            }).stdout,
+          )
+          .trim(),
+        results,
+        sessionCount,
+        switchCount,
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   if (!preserveGeneratedFixtures) {
     rmSync(generatedFixtureRoot, { recursive: true, force: true });
@@ -177,7 +205,11 @@ async function prepareGeneratedFixtures(): Promise<void> {
     20_000,
   );
   for (const cacheTarget of cacheTargets) {
-    await writeRealisticTypeScriptFixture(cacheTarget.path, cacheTarget.visibleMarker, 5_000);
+    await writeRealisticTypeScriptFixture(
+      cacheTarget.path,
+      cacheTarget.visibleMarker,
+      5_000,
+    );
   }
 }
 
@@ -204,12 +236,16 @@ async function writeRealisticTypeScriptFixture(
       `export function generatedBatch${batchNumber}(): GeneratedRecord[] {`,
       '  const records: GeneratedRecord[] = [];',
     );
-    const recordsInBatch = baseRecordsPerBatch
-      + (batchNumber <= batchesWithOneExtraRecord ? 1 : 0);
-    for (let batchRecordNumber = 1; batchRecordNumber <= recordsInBatch; batchRecordNumber++) {
+    const recordsInBatch =
+      baseRecordsPerBatch + (batchNumber <= batchesWithOneExtraRecord ? 1 : 0);
+    for (
+      let batchRecordNumber = 1;
+      batchRecordNumber <= recordsInBatch;
+      batchRecordNumber++
+    ) {
       lines.push(
-        `  records.push({ identifier: 'record-${recordNumber}', revision: ${recordNumber}, `
-          + `tags: ['generated', 'typescript', 'batch-${batchNumber}'] });`,
+        `  records.push({ identifier: 'record-${recordNumber}', revision: ${recordNumber}, ` +
+          `tags: ['generated', 'typescript', 'batch-${batchNumber}'] });`,
       );
       recordNumber++;
     }
@@ -226,13 +262,15 @@ async function measureKeypressScenario(): Promise<ScenarioResult> {
     await openTarget(driver, smallFirstTarget);
     const samples: SwitchSample[] = [];
     for (let switchNumber = 1; switchNumber <= switchCount; switchNumber++) {
-      samples.push(await measureKeyAction(
-        driver,
-        switchNumber % 2 === 1 ? 'Right' : 'Left',
-        sessionNumber,
-        switchNumber,
-        switchNumber % 2 === 1 ? 'right' : 'left',
-      ));
+      samples.push(
+        await measureKeyAction(
+          driver,
+          switchNumber % 2 === 1 ? 'Right' : 'Left',
+          sessionNumber,
+          switchNumber,
+          switchNumber % 2 === 1 ? 'right' : 'left',
+        ),
+      );
     }
     return samples;
   });
@@ -282,20 +320,26 @@ async function measureLargeCacheScenario(): Promise<ScenarioResult[]> {
         (snapshot) => snapshot.findText('src') !== null,
         15_000,
       );
-      for (let targetIndex = 0; targetIndex < cacheTargets.length; targetIndex++) {
+      for (
+        let targetIndex = 0;
+        targetIndex < cacheTargets.length;
+        targetIndex++
+      ) {
         const target = cacheTargets[targetIndex];
         if (!target) throw new Error(`Missing cache target ${targetIndex}`);
-        coldSamples.push(await openTargetMeasured(
-          driver,
-          target,
-          sessionNumber,
-          targetIndex + 1,
-          'cold-first-open',
-        ));
+        coldSamples.push(
+          await openTargetMeasured(
+            driver,
+            target,
+            sessionNumber,
+            targetIndex + 1,
+            'cold-first-open',
+          ),
+        );
       }
       for (let switchNumber = 1; switchNumber <= switchCount; switchNumber++) {
-        const targetIndex = cacheTargets.length - 1
-          - (switchNumber % cacheTargets.length);
+        const targetIndex =
+          cacheTargets.length - 1 - (switchNumber % cacheTargets.length);
         const expectedTarget = cacheTargets[targetIndex];
         const sample = await measureKeyAction(
           driver,
@@ -322,60 +366,85 @@ async function measureLargeCacheScenario(): Promise<ScenarioResult[]> {
 async function measureWorkspaceTabScenario(
   workspaceRoot: string,
 ): Promise<ScenarioResult> {
-  return measureSessions('workspace-tab-switch', async (driver, sessionNumber) => {
-    const statusPath = sessionStatusPath(sessionNumber, 'workspace-tab-switch');
-    const initialSnapshot = await driver.awaitSnapshot(
-      (snapshot) => snapshot.findText('Files') !== null,
-      15_000,
-    );
-    const plusColumn = Array.from(initialSnapshot.rowText(0)).lastIndexOf('+');
-    if (plusColumn < 0) throw new Error('Workspace plus button was not visible');
-    driver.sendMouse({ kind: 'press', column: plusColumn, row: 0, button: 'left' });
-    driver.sendMouse({ kind: 'release', column: plusColumn, row: 0, button: 'left' });
-    await driver.awaitSnapshot(
-      (snapshot) => snapshot.findText(`+ ${dirname(repositoryRoot)}`) !== null,
-    );
-    driver.sendText(basename(workspaceRoot));
-    await driver.awaitGridCondition(
-      `the workspace picker resolved ${workspaceRoot}`,
-      (snapshot) => snapshot.findText(workspaceRoot) !== null,
-      15_000,
-    );
-    driver.sendKeys('Enter');
-    await driver.awaitGridCondition(
-      `the active workspace root is ${workspaceRoot}`,
-      () => activeWorkspaceRoot(statusPath) === workspaceRoot,
-      15_000,
-    );
-    driver.sendKeys('Control+Shift+PageUp');
-    await driver.awaitGridCondition(
-      `the active workspace root is ${repositoryRoot}`,
-      () => activeWorkspaceRoot(statusPath) === repositoryRoot,
-      15_000,
-    );
-
-    const samples: SwitchSample[] = [];
-    for (let switchNumber = 1; switchNumber <= switchCount; switchNumber++) {
-      const openingSecondWorkspace = switchNumber % 2 === 1;
-      const expectedWorkspaceRoot = openingSecondWorkspace
-        ? workspaceRoot
-        : repositoryRoot;
-      samples.push(await measureKeyAction(
-        driver,
-        openingSecondWorkspace
-          ? 'Control+Shift+PageDown'
-          : 'Control+Shift+PageUp',
+  return measureSessions(
+    'workspace-tab-switch',
+    async (driver, sessionNumber) => {
+      const statusPath = sessionStatusPath(
         sessionNumber,
-        switchNumber,
-        openingSecondWorkspace ? 'opening-second-worktree' : 'opening-primary-worktree',
-        {
-          description: `the active workspace root is ${expectedWorkspaceRoot}`,
-          predicate: () => activeWorkspaceRoot(statusPath) === expectedWorkspaceRoot,
-        },
-      ));
-    }
-    return samples;
-  });
+        'workspace-tab-switch',
+      );
+      const initialSnapshot = await driver.awaitSnapshot(
+        (snapshot) => snapshot.findText('Files') !== null,
+        15_000,
+      );
+      const plusColumn = Array.from(initialSnapshot.rowText(0)).lastIndexOf(
+        '+',
+      );
+      if (plusColumn < 0)
+        throw new Error('Workspace plus button was not visible');
+      driver.sendMouse({
+        kind: 'press',
+        column: plusColumn,
+        row: 0,
+        button: 'left',
+      });
+      driver.sendMouse({
+        kind: 'release',
+        column: plusColumn,
+        row: 0,
+        button: 'left',
+      });
+      await driver.awaitSnapshot(
+        (snapshot) =>
+          snapshot.findText(`+ ${dirname(repositoryRoot)}`) !== null,
+      );
+      driver.sendText(basename(workspaceRoot));
+      await driver.awaitGridCondition(
+        `the workspace picker resolved ${workspaceRoot}`,
+        (snapshot) => snapshot.findText(workspaceRoot) !== null,
+        15_000,
+      );
+      driver.sendKeys('Enter');
+      await driver.awaitGridCondition(
+        `the active workspace root is ${workspaceRoot}`,
+        () => activeWorkspaceRoot(statusPath) === workspaceRoot,
+        15_000,
+      );
+      driver.sendKeys('Control+Shift+PageUp');
+      await driver.awaitGridCondition(
+        `the active workspace root is ${repositoryRoot}`,
+        () => activeWorkspaceRoot(statusPath) === repositoryRoot,
+        15_000,
+      );
+
+      const samples: SwitchSample[] = [];
+      for (let switchNumber = 1; switchNumber <= switchCount; switchNumber++) {
+        const openingSecondWorkspace = switchNumber % 2 === 1;
+        const expectedWorkspaceRoot = openingSecondWorkspace
+          ? workspaceRoot
+          : repositoryRoot;
+        samples.push(
+          await measureKeyAction(
+            driver,
+            openingSecondWorkspace
+              ? 'Control+Shift+PageDown'
+              : 'Control+Shift+PageUp',
+            sessionNumber,
+            switchNumber,
+            openingSecondWorkspace
+              ? 'opening-second-worktree'
+              : 'opening-primary-worktree',
+            {
+              description: `the active workspace root is ${expectedWorkspaceRoot}`,
+              predicate: () =>
+                activeWorkspaceRoot(statusPath) === expectedWorkspaceRoot,
+            },
+          ),
+        );
+      }
+      return samples;
+    },
+  );
 }
 
 async function measureSessions(
@@ -389,7 +458,7 @@ async function measureSessions(
   for (let sessionNumber = 1; sessionNumber <= sessionCount; sessionNumber++) {
     const driver = createDriver(sessionNumber, scenario);
     try {
-      samples.push(...await measureSession(driver, sessionNumber));
+      samples.push(...(await measureSession(driver, sessionNumber)));
     } finally {
       await disposeDriver(driver);
     }
@@ -397,7 +466,10 @@ async function measureSessions(
   return scenarioResult(scenario, samples);
 }
 
-function createDriver(sessionNumber: number, scenario: string): PtyTestDriver.Model {
+function createDriver(
+  sessionNumber: number,
+  scenario: string,
+): PtyTestDriver.Model {
   const homeDirectory = sessionHomeDirectory(sessionNumber, scenario);
   mkdirSync(homeDirectory, { recursive: true });
   if (diagnosticLspFileSizeLimitKilobytes !== undefined) {
@@ -416,7 +488,9 @@ function createDriver(sessionNumber: number, scenario: string): PtyTestDriver.Mo
     columns: 120,
     rows: 40,
     homeDirectory,
-    environment: { TUI_STATUS_PATH: sessionStatusPath(sessionNumber, scenario) },
+    environment: {
+      TUI_STATUS_PATH: sessionStatusPath(sessionNumber, scenario),
+    },
   });
 }
 
@@ -455,7 +529,10 @@ async function openTarget(
   target: SwitchTarget,
 ): Promise<void> {
   driver.sendKeys('Control+p');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Go to File') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Go to File') !== null,
+    15_000,
+  );
   const relativeTargetPath = relative(repositoryRoot, target.path);
   driver.sendText(relativeTargetPath);
   await awaitQuickOpenCandidate(driver, relativeTargetPath);
@@ -475,7 +552,10 @@ async function openTargetMeasured(
   direction: string,
 ): Promise<SwitchSample> {
   driver.sendKeys('Control+p');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Go to File') !== null, 15_000);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Go to File') !== null,
+    15_000,
+  );
   const relativeTargetPath = relative(repositoryRoot, target.path);
   driver.sendText(relativeTargetPath);
   await awaitQuickOpenCandidate(driver, relativeTargetPath);
@@ -499,7 +579,8 @@ async function awaitQuickOpenCandidate(
     (snapshot) => {
       let matchingRowCount = 0;
       for (let row = 0; row < snapshot.rows; row++) {
-        if (snapshot.rowText(row).includes(relativeTargetPath)) matchingRowCount++;
+        if (snapshot.rowText(row).includes(relativeTargetPath))
+          matchingRowCount++;
       }
       return matchingRowCount >= 2;
     },
@@ -516,28 +597,36 @@ async function measureKeyAction(
   expectedFrameCondition?: ExpectedFrameCondition,
 ): Promise<SwitchSample> {
   const beforeSnapshot = driver.snapshot();
-  const measurement = expectedFrameCondition === undefined
-    ? await driver.sendKeysAndAwaitFrameByteArrival([keyName], 10_000)
-    : await driver.sendKeysAndAwaitGridConditionByteArrival(
-      [keyName],
-      expectedFrameCondition.description,
-      expectedFrameCondition.predicate,
-      60_000,
-    );
-  await driver.awaitQuiescence(10_000);
-  const afterSnapshot = driver.snapshot();
+  const expectedCondition = expectedFrameCondition ?? {
+    description: 'the keypress moves the native caret',
+    predicate: (snapshot: HarnessSnapshot.Model) =>
+      snapshot.cursorColumn !== beforeSnapshot.cursorColumn ||
+      snapshot.cursorRow !== beforeSnapshot.cursorRow,
+  };
+  const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+    [keyName],
+    expectedCondition.description,
+    expectedCondition.predicate,
+    expectedFrameCondition === undefined ? 10_000 : 60_000,
+  );
+  const afterSnapshot = measurement.snapshot;
   const frameBytes = synchronizedFrameBytes(
     driver.recordedOutput(),
     measurement.completedFrame.observedByteCount,
   );
   if (captureSwitchFrames) {
-    const captureDirectory = join(repositoryRoot, 'artifacts', 'switch-latency-results', 'frames');
+    const captureDirectory = join(
+      repositoryRoot,
+      'artifacts',
+      'switch-latency-results',
+      'frames',
+    );
     mkdirSync(captureDirectory, { recursive: true });
     await Bun.write(
       join(
         captureDirectory,
-        `${direction.replaceAll(/[^a-z0-9-]/gi, '-')}-session-${sessionNumber}`
-          + `-switch-${switchNumber}.bin`,
+        `${direction.replaceAll(/[^a-z0-9-]/gi, '-')}-session-${sessionNumber}` +
+          `-switch-${switchNumber}.bin`,
       ),
       frameBytes,
     );
@@ -572,13 +661,19 @@ function synchronizedFrameBytes(
     0,
     Math.min(completedObservedByteCount, recordedBytes.length),
   );
-  const beginMarkerBytes = new TextEncoder().encode(synchronizedOutputBeginMarker);
+  const beginMarkerBytes = new TextEncoder().encode(
+    synchronizedOutputBeginMarker,
+  );
   const beginOffset = lastByteSequenceOffset(completedBytes, beginMarkerBytes);
-  if (beginOffset < 0) throw new Error('Completed frame has no DEC 2026 begin marker');
+  if (beginOffset < 0)
+    throw new Error('Completed frame has no DEC 2026 begin marker');
   return completedBytes.slice(beginOffset);
 }
 
-function lastByteSequenceOffset(haystack: Uint8Array, needle: Uint8Array): number {
+function lastByteSequenceOffset(
+  haystack: Uint8Array,
+  needle: Uint8Array,
+): number {
   for (
     let candidateOffset = haystack.length - needle.length;
     candidateOffset >= 0;
@@ -599,10 +694,12 @@ function lastByteSequenceOffset(haystack: Uint8Array, needle: Uint8Array): numbe
 function frameStreamMetrics(frameBytes: Uint8Array): FrameStreamMetrics {
   const frameText = new TextDecoder().decode(frameBytes);
   if (
-    !frameText.startsWith(synchronizedOutputBeginMarker)
-    || !frameText.endsWith(synchronizedOutputEndMarker)
+    !frameText.startsWith(synchronizedOutputBeginMarker) ||
+    !frameText.endsWith(synchronizedOutputEndMarker)
   ) {
-    throw new Error('Extracted frame is not bounded by matching DEC 2026 markers');
+    throw new Error(
+      'Extracted frame is not bounded by matching DEC 2026 markers',
+    );
   }
   const sgrSequences = frameText.match(/\x1b\[[0-9;:]*m/g) ?? [];
   let repeatedIdenticalSgrCount = 0;
@@ -629,7 +726,8 @@ function frameStreamMetrics(frameBytes: Uint8Array): FrameStreamMetrics {
       (sequence) => sequence === '\x1b[0m' || sequence === '\x1b[m',
     ).length,
     sgrByteCount: sgrSequences.reduce(
-      (byteCount, sequence) => byteCount + new TextEncoder().encode(sequence).length,
+      (byteCount, sequence) =>
+        byteCount + new TextEncoder().encode(sequence).length,
       0,
     ),
     sgrSequenceCount: sgrSequences.length,
@@ -645,7 +743,8 @@ function changedCellCount(
     for (let column = 0; column < beforeSnapshot.columns; column++) {
       const beforeCell = beforeSnapshot.cell(row, column);
       const afterCell = afterSnapshot.cell(row, column);
-      if (JSON.stringify(beforeCell) !== JSON.stringify(afterCell)) changeCount++;
+      if (JSON.stringify(beforeCell) !== JSON.stringify(afterCell))
+        changeCount++;
     }
   }
   return changeCount;
@@ -673,11 +772,14 @@ function scenarioResult(
 }
 
 function summarizeSamples(samples: readonly SwitchSample[]): {
-  byDirection: Record<string, {
-    byteArrivalP50Milliseconds: number;
-    byteArrivalP95Milliseconds: number;
-    sampleCount: number;
-  }>;
+  byDirection: Record<
+    string,
+    {
+      byteArrivalP50Milliseconds: number;
+      byteArrivalP95Milliseconds: number;
+      sampleCount: number;
+    }
+  >;
   byteArrivalP50Milliseconds: number;
   byteArrivalP95Milliseconds: number;
   cellChangesP50: number;
@@ -697,20 +799,31 @@ function summarizeSamples(samples: readonly SwitchSample[]): {
 } {
   const directions = new Set(samples.map((sample) => sample.direction));
   return {
-    byDirection: Object.fromEntries([...directions].map((direction) => {
-      const directionSamples = samples.filter((sample) => sample.direction === direction);
-      return [direction, {
-        byteArrivalP50Milliseconds: percentile(
-          directionSamples.map((sample) => sample.inputToFrameByteArrivalMilliseconds),
-          0.5,
-        ),
-        byteArrivalP95Milliseconds: percentile(
-          directionSamples.map((sample) => sample.inputToFrameByteArrivalMilliseconds),
-          0.95,
-        ),
-        sampleCount: directionSamples.length,
-      }];
-    })),
+    byDirection: Object.fromEntries(
+      [...directions].map((direction) => {
+        const directionSamples = samples.filter(
+          (sample) => sample.direction === direction,
+        );
+        return [
+          direction,
+          {
+            byteArrivalP50Milliseconds: percentile(
+              directionSamples.map(
+                (sample) => sample.inputToFrameByteArrivalMilliseconds,
+              ),
+              0.5,
+            ),
+            byteArrivalP95Milliseconds: percentile(
+              directionSamples.map(
+                (sample) => sample.inputToFrameByteArrivalMilliseconds,
+              ),
+              0.95,
+            ),
+            sampleCount: directionSamples.length,
+          },
+        ];
+      }),
+    ),
     byteArrivalP50Milliseconds: percentile(
       samples.map((sample) => sample.inputToFrameByteArrivalMilliseconds),
       0.5,
@@ -719,8 +832,14 @@ function summarizeSamples(samples: readonly SwitchSample[]): {
       samples.map((sample) => sample.inputToFrameByteArrivalMilliseconds),
       0.95,
     ),
-    cellChangesP50: percentile(samples.map((sample) => sample.cellChangeCount), 0.5),
-    cellChangesP95: percentile(samples.map((sample) => sample.cellChangeCount), 0.95),
+    cellChangesP50: percentile(
+      samples.map((sample) => sample.cellChangeCount),
+      0.5,
+    ),
+    cellChangesP95: percentile(
+      samples.map((sample) => sample.cellChangeCount),
+      0.95,
+    ),
     completedFramesUntilConditionP50: percentile(
       samples.map((sample) => sample.completedFramesUntilCondition),
       0.5,
@@ -737,8 +856,14 @@ function summarizeSamples(samples: readonly SwitchSample[]): {
       samples.map((sample) => sample.inputToFirstFrameByteArrivalMilliseconds),
       0.95,
     ),
-    frameBytesP50: percentile(samples.map((sample) => sample.byteCount), 0.5),
-    frameBytesP95: percentile(samples.map((sample) => sample.byteCount), 0.95),
+    frameBytesP50: percentile(
+      samples.map((sample) => sample.byteCount),
+      0.5,
+    ),
+    frameBytesP95: percentile(
+      samples.map((sample) => sample.byteCount),
+      0.95,
+    ),
     printableBytesP50: percentile(
       samples.map((sample) => sample.printableByteCount),
       0.5,
@@ -747,23 +872,37 @@ function summarizeSamples(samples: readonly SwitchSample[]): {
       samples.map((sample) => sample.repeatedIdenticalSgrCount),
       0.5,
     ),
-    resetSgrP50: percentile(samples.map((sample) => sample.resetSgrCount), 0.5),
+    resetSgrP50: percentile(
+      samples.map((sample) => sample.resetSgrCount),
+      0.5,
+    ),
     sampleCount: samples.length,
-    sgrBytesP50: percentile(samples.map((sample) => sample.sgrByteCount), 0.5),
-    sgrSequencesP50: percentile(samples.map((sample) => sample.sgrSequenceCount), 0.5),
+    sgrBytesP50: percentile(
+      samples.map((sample) => sample.sgrByteCount),
+      0.5,
+    ),
+    sgrSequencesP50: percentile(
+      samples.map((sample) => sample.sgrSequenceCount),
+      0.5,
+    ),
   };
 }
 
 function percentile(samples: readonly number[], fraction: number): number {
-  if (samples.length === 0) throw new Error('Cannot calculate a percentile without samples');
+  if (samples.length === 0)
+    throw new Error('Cannot calculate a percentile without samples');
   const sortedSamples = [...samples].sort(
     (firstSample, secondSample) => firstSample - secondSample,
   );
   const sampleIndex = Math.max(
     0,
-    Math.min(sortedSamples.length - 1, Math.ceil(sortedSamples.length * fraction) - 1),
+    Math.min(
+      sortedSamples.length - 1,
+      Math.ceil(sortedSamples.length * fraction) - 1,
+    ),
   );
   const sample = sortedSamples[sampleIndex];
-  if (sample === undefined) throw new Error(`Missing percentile sample ${sampleIndex}`);
+  if (sample === undefined)
+    throw new Error(`Missing percentile sample ${sampleIndex}`);
   return sample;
 }

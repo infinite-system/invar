@@ -55,7 +55,7 @@ try {
     (candidate) => candidate.findText('leadcomment') !== null,
   );
   driver.sendKeys('Right');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   await awaitStatusPublication(
     statusPath,
     'comment.ts has editor focus',

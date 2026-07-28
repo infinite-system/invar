@@ -86,7 +86,7 @@ try {
     hasVisibleOrder(candidate, ['one', 'two', 'three']),
   );
   driver.sendKeys('Tab');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const initialRows = lineRows(snapshot);
   requireCondition(initialRows !== null, 'initial order is one, two, three');
 

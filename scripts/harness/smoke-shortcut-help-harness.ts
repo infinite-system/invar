@@ -39,8 +39,14 @@ async function scrollUntilVisible(
   for (let scrollAttempt = 0; scrollAttempt < 8; scrollAttempt++) {
     const snapshot = driver.snapshot();
     if (snapshot.findText(marker)) return snapshot;
+    const visibleTextBeforeScroll = snapshot.text();
     driver.sendKeys('PageDown');
-    await driver.awaitQuiescence();
+    await driver.awaitGridCondition(
+      `PageDown changes the shortcut sheet while seeking ${marker}`,
+      (candidate) =>
+        candidate.findText(marker) !== null ||
+        candidate.text() !== visibleTextBeforeScroll,
+    );
   }
   throw new Error(`FAIL shortcut sheet never showed ${marker}`);
 }

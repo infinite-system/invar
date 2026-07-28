@@ -68,8 +68,8 @@ open/query/selection, theme selection) then calls `paint()` = `view.update()` +
 `AppStatusProjection.publish()` +
 `requestRender()`. `AppStatusProjection` reads narrow live ports and updates `StatusChannel`
 without mutating model state, so the effect never self-triggers. The frame tick publishes whether
-workspace and panel scroll momentum are exactly at rest before settling the status frame, giving
-driven verification condition endpoints without a clock. `viewport.setSize` (a
+workspace and panel scroll momentum and contributed-surface animation are exactly at rest before
+settling the status frame, giving driven verification condition endpoints without a clock. `viewport.setSize` (a
 projection→model write) is kept OUTSIDE the effect, on boot + resize only. Input handlers mutate
 model state and nothing else — the effect repaints. An animation deadline that mutates projection
 inputs queues its render request in a microtask, after the coarse reactive effect has projected those
@@ -87,7 +87,8 @@ reactive-invalidation half).
 effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling `$stopEffects()`.
 
 **Evidence:** `Bootstrap.ts` `app.$watchEffect(...)` + `paint()` + the
-`workspaceScrollMomentumAtRest` and `panelScrollMomentumAtRest` frame-tick projections;
+`workspaceScrollMomentumAtRest`, `panelScrollMomentumAtRest`, and
+`contributedSurfaceAnimationAtRest` frame-tick projections;
 `AppStatusProjection.ts`; `AppStatusProjection.test.ts`; `Bootstrap.test.ts` (the boot barrier stays
 pending until its requested frame completes); `app/__tests__/frame-effect.test.ts`;
 `src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`

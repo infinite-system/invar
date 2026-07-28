@@ -126,7 +126,7 @@ try {
     row: symbolPosition.row,
     button: 'none',
   });
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   snapshot = await driver.awaitSnapshot(
     (candidate) => hoverCardTextSpan(candidate) !== null,
     30_000,

@@ -98,7 +98,7 @@ three instruments measuring three different end observations:
 |---|---:|---:|---|
 | Input send → status-file cursor publication observed by a 1 ms poll | **6 ms p50** | **8 ms p50** | App status projection + JSON publication + poll/read cost |
 | Input write → raw PTY DEC 2026 end-marker byte arrival | **1.769 ms p50** | **2.973 ms p50** | The application byte-flush boundary |
-| Input write → `PtyTestDriver.awaitQuiescence()` returned with a settled emulator | not retained | **16–17 ms p50** | Byte arrival plus synchronous `TerminalEmulator.write` and `flush` oracle work |
+| Input write → the former settled-emulator wait returned | not retained | **16–17 ms p50** | Byte arrival plus synchronous `TerminalEmulator.write` and `flush` oracle work |
 
 The **28 ms frame-quantization narrative is retired**. That number came from the old status proxy:
 when its immediate read narrowly missed publication, the proxy slept 20 ms before looking again.
@@ -107,7 +107,7 @@ did not show that rendering had moved behind a 33 ms frame timer.
 
 The **16 ms real-regression narrative is also retired**. The DEC end-marker waiter resolves inside
 the PTY callback, but its awaiting continuation cannot run until the callback finishes feeding the
-frame to `TerminalEmulator`; `awaitQuiescence()` then flushes the emulator. Its 16–17 ms elapsed time
+frame to `TerminalEmulator`; the former wait then flushed the emulator. Its 16–17 ms elapsed time
 was a valid settled-oracle duration mislabeled as application byte flush.
 
 The true residual is gradual byte-flush growth of **1.204 ms** across the 2026-07-22→2026-07-24

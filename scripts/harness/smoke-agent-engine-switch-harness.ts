@@ -279,7 +279,7 @@ try {
     page += 1
   ) {
     driver.sendKeys('PageUp');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     snapshot = driver.snapshot();
   }
   snapshot = await driver.awaitGridCondition(

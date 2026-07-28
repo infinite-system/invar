@@ -15,7 +15,10 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function resultRowBackground(snapshot: HarnessSnapshot.Model, marker: string): number | null {
+function resultRowBackground(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): number | null {
   const position = snapshot.findText(marker);
   if (!position) return null;
   const cell = snapshot.cell(position.row, 31);
@@ -27,9 +30,11 @@ function requireNoSelectionArrow(
   resultMarkers: readonly string[],
   label: string,
 ): void {
-  const resultRows = snapshot.textRows().filter(
-    (rowText) => resultMarkers.some((marker) => rowText.includes(marker)),
-  );
+  const resultRows = snapshot
+    .textRows()
+    .filter((rowText) =>
+      resultMarkers.some((marker) => rowText.includes(marker)),
+    );
   const rowsWithArrow = resultRows.filter((rowText) => rowText.includes('›'));
   HarnessSmoke.Class.requireCondition(
     resultRows.length > 0 && rowsWithArrow.length === 0,
@@ -37,7 +42,10 @@ function requireNoSelectionArrow(
   );
 }
 
-function findButtonGeometry(snapshot: HarnessSnapshot.Model): { row: number; caseColumn: number } {
+function findButtonGeometry(snapshot: HarnessSnapshot.Model): {
+  row: number;
+  caseColumn: number;
+} {
   for (let row = 0; row < snapshot.rows; row++) {
     const rowText = snapshot.rowText(row);
     const caseColumn = rowText.indexOf('Aa');
@@ -65,7 +73,9 @@ function warningAlert(snapshot: HarnessSnapshot.Model): {
 
 const navigatorBase = mkdtempSync(join(tmpdir(), 'tui-search-mouse-harness-'));
 const fixtureRoot = join(navigatorBase, 'proj');
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-search-mouse-harness-home-'));
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-search-mouse-harness-home-'),
+);
 const statusPath = join(homeDirectory, 'status.json');
 mkdirSync(fixtureRoot);
 for (const directoryName of ['sibling-alpha', 'sibling-beta', 'zebra']) {
@@ -92,16 +102,22 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness search-mouse: Quick Open highlights rows and click-opens ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('sample.txt') !== null, 15_000);
+  console.log(
+    '== harness search-mouse: Quick Open highlights rows and click-opens ==',
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('sample.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('Control+p');
   let snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('Go to File') !== null
-      && candidate.findText('other.txt') !== null
-      && candidate.findText('sample.txt') !== null
-      && resultRowBackground(candidate, 'other.txt') !== null
-      && resultRowBackground(candidate, 'other.txt')
-        !== resultRowBackground(candidate, 'sample.txt'),
+    (candidate) =>
+      candidate.findText('Go to File') !== null &&
+      candidate.findText('other.txt') !== null &&
+      candidate.findText('sample.txt') !== null &&
+      resultRowBackground(candidate, 'other.txt') !== null &&
+      resultRowBackground(candidate, 'other.txt') !==
+        resultRowBackground(candidate, 'sample.txt'),
   );
   requireNoSelectionArrow(
     snapshot,
@@ -112,8 +128,8 @@ try {
   const unselectedBackground = resultRowBackground(snapshot, 'sample.txt');
   HarnessSmoke.Class.requireCondition(
     selectedBackground !== null && selectedBackground !== unselectedBackground,
-    `default selection is shown by a distinct row background `
-      + `(selected=${String(selectedBackground)}, unselected=${String(unselectedBackground)})`,
+    `default selection is shown by a distinct row background ` +
+      `(selected=${String(selectedBackground)}, unselected=${String(unselectedBackground)})`,
   );
   const samplePosition = snapshot.findText('sample.txt');
   if (!samplePosition) throw new Error('FAIL sample result is not visible');
@@ -124,12 +140,13 @@ try {
     button: 'none',
   });
   snapshot = await driver.awaitSnapshot(
-    (candidate) => resultRowBackground(candidate, 'sample.txt') !== unselectedBackground,
+    (candidate) =>
+      resultRowBackground(candidate, 'sample.txt') !== unselectedBackground,
   );
   const hoverStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.quickOpenSelected === 0",
+    'status condition: status.quickOpenSelected === 0',
     (status) => status.quickOpenSelected === 0,
   );
   HarnessSmoke.Class.requireCondition(
@@ -152,20 +169,26 @@ try {
     driver,
     statusPath,
     "status condition: String(status.activeBuffer).endsWith('/sample.txt') && status.quickOpenOpen === false",
-    (status) => String(status.activeBuffer).endsWith('/sample.txt')
-      && status.quickOpenOpen === false,
+    (status) =>
+      String(status.activeBuffer).endsWith('/sample.txt') &&
+      status.quickOpenOpen === false,
   );
-  HarnessSmoke.Class.pass('clicking a highlighted result opens it and closes Quick Open');
+  HarnessSmoke.Class.pass(
+    'clicking a highlighted result opens it and closes Quick Open',
+  );
 
-  console.log('== harness search-mouse: Find controls are live mouse buttons ==');
+  console.log(
+    '== harness search-mouse: Find controls are live mouse buttons ==',
+  );
   driver.sendKeys('Control+f');
   await driver.awaitSnapshot((candidate) => candidate.findText('Aa') !== null);
   driver.sendText('alpha');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.findMatchCount === 4 && status.findCurrentMatchIndex === 0",
-    (status) => status.findMatchCount === 4 && status.findCurrentMatchIndex === 0,
+    'status condition: status.findMatchCount === 4 && status.findCurrentMatchIndex === 0',
+    (status) =>
+      status.findMatchCount === 4 && status.findCurrentMatchIndex === 0,
   );
   snapshot = driver.snapshot();
   let buttonGeometry = findButtonGeometry(snapshot);
@@ -184,12 +207,13 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.findCurrentMatchIndex === 1",
+    'status condition: status.findCurrentMatchIndex === 1',
     (status) => status.findCurrentMatchIndex === 1,
   );
   snapshot = await driver.awaitGridCondition(
     'the Find counter paints the second of four matches',
-    (candidate) => candidate.textRows().some((rowText) => rowText.includes('2 of 4')),
+    (candidate) =>
+      candidate.textRows().some((rowText) => rowText.includes('2 of 4')),
   );
   HarnessSmoke.Class.requireCondition(
     snapshot.textRows().some((rowText) => rowText.includes('2 of 4')),
@@ -210,13 +234,18 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.findCaseSensitive === true && status.findMatchCount === 1",
-    (status) => status.findCaseSensitive === true && status.findMatchCount === 1,
+    'status condition: status.findCaseSensitive === true && status.findMatchCount === 1',
+    (status) =>
+      status.findCaseSensitive === true && status.findMatchCount === 1,
   );
-  HarnessSmoke.Class.pass('Aa click enables case sensitivity and immediately re-filters');
+  HarnessSmoke.Class.pass(
+    'Aa click enables case sensitivity and immediately re-filters',
+  );
 
   driver.sendKeys('Control+h');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Replace') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Replace') !== null,
+  );
   const replaceBaselineStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -241,35 +270,48 @@ try {
   const replacedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: Number(status.bufferRevision) > revisionBeforeReplace && status.findMatchCount === 0",
-    (status) => Number(status.bufferRevision) > revisionBeforeReplace
-      && status.findMatchCount === 0,
+    'status condition: Number(status.bufferRevision) > revisionBeforeReplace && status.findMatchCount === 0',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforeReplace &&
+      status.findMatchCount === 0,
   );
   HarnessSmoke.Class.pass(
     `replace-all click mutated the document (${revisionBeforeReplace} to ${String(replacedStatus.bufferRevision)})`,
   );
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await driver.awaitGridCondition(
+    'Escape closes Find before Command Palette input',
+    (candidate) => candidate.findText('Find / Replace') === null,
+  );
 
-  console.log('== harness search-mouse: open-project is a live click-drill navigator ==');
+  console.log(
+    '== harness search-mouse: open-project is a live click-drill navigator ==',
+  );
   driver.sendKeys('F1');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Command Palette') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Command Palette') !== null,
+  );
   driver.sendText('Open Folder');
-  await driver.awaitSnapshot((candidate) => candidate.findText('Open Folder') !== null);
+  await driver.awaitSnapshot(
+    (candidate) => candidate.findText('Open Folder') !== null,
+  );
   driver.sendKeys('Enter');
   snapshot = await driver.awaitSnapshot(
-    (candidate) => candidate.findText('sibling-alpha') !== null
-      && candidate.findText('sibling-beta') !== null,
+    (candidate) =>
+      candidate.findText('sibling-alpha') !== null &&
+      candidate.findText('sibling-beta') !== null,
   );
   let status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     "status condition: candidate.quickOpenMode === 'workspacePath' && candidate.quickOpenPathOpenable === true",
-    (candidate) => candidate.quickOpenMode === 'workspacePath'
-      && candidate.quickOpenPathOpenable === true,
+    (candidate) =>
+      candidate.quickOpenMode === 'workspacePath' &&
+      candidate.quickOpenPathOpenable === true,
   );
   HarnessSmoke.Class.requireCondition(
-    status.quickOpenMode === 'workspacePath' && status.quickOpenPathOpenable === true,
+    status.quickOpenMode === 'workspacePath' &&
+      status.quickOpenPathOpenable === true,
     'navigator opens on the real parent directory',
   );
   requireNoSelectionArrow(
@@ -281,25 +323,30 @@ try {
   status = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: candidate.quickOpenPathOpenable === false && candidate.quickOpenMatches === 2",
-    (candidate) => candidate.quickOpenPathOpenable === false
-      && candidate.quickOpenMatches === 2,
+    'status condition: candidate.quickOpenPathOpenable === false && candidate.quickOpenMatches === 2',
+    (candidate) =>
+      candidate.quickOpenPathOpenable === false &&
+      candidate.quickOpenMatches === 2,
   );
-  HarnessSmoke.Class.pass('partial path is flagged and filters live to two siblings');
+  HarnessSmoke.Class.pass(
+    'partial path is flagged and filters live to two siblings',
+  );
   snapshot = await driver.awaitGridCondition(
     'the un-openable path warning is painted in a distinct color',
     (candidate) => {
       const candidateAlert = warningAlert(candidate);
-      return candidateAlert.character === '!'
-        && candidateAlert.foreground !== null
-        && candidateAlert.foreground !== 0xa9b1d6;
+      return (
+        candidateAlert.character === '!' &&
+        candidateAlert.foreground !== null &&
+        candidateAlert.foreground !== 0xa9b1d6
+      );
     },
   );
   const alert = warningAlert(snapshot);
   HarnessSmoke.Class.requireCondition(
-    alert.character === '!'
-      && alert.foreground !== null
-      && alert.foreground !== 0xa9b1d6,
+    alert.character === '!' &&
+      alert.foreground !== null &&
+      alert.foreground !== 0xa9b1d6,
     `un-openable path paints a distinct warning alert (${String(alert.foreground)})`,
   );
   HarnessSmoke.Class.clickText(driver, snapshot, 'sibling-alpha', 2);
@@ -307,11 +354,14 @@ try {
     driver,
     statusPath,
     "status condition: String(candidate.quickOpenQuery).includes('sibling-alpha/') && candidate.quickOpenOpen === true && candidate.quickOpenPathOpenable === true",
-    (candidate) => String(candidate.quickOpenQuery).includes('sibling-alpha/')
-      && candidate.quickOpenOpen === true
-      && candidate.quickOpenPathOpenable === true,
+    (candidate) =>
+      String(candidate.quickOpenQuery).includes('sibling-alpha/') &&
+      candidate.quickOpenOpen === true &&
+      candidate.quickOpenPathOpenable === true,
   );
-  HarnessSmoke.Class.pass(`folder click drills into ${String(status.quickOpenQuery)}`);
+  HarnessSmoke.Class.pass(
+    `folder click drills into ${String(status.quickOpenQuery)}`,
+  );
 
   driver.sendKeys('Control+q');
   console.log('smoke-search-mouse-harness: ALL-PASS');

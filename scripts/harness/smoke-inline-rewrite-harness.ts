@@ -250,15 +250,16 @@ smoke: try {
         Number(status.inlineRewriteMockRequestCount) >= 1,
     );
     for (const typedCharacter of 'typed') {
-      const nextFrame = driver.awaitNextCompletedFrameSnapshot();
       driver.sendText(typedCharacter);
       expectedTypedLine += typedCharacter;
-      const { snapshot: typingSnapshot } = await nextFrame;
+      const typingSnapshot = await driver.awaitGridCondition(
+        `typed text includes ${expectedTypedLine}`,
+        (snapshot) => snapshot.findText(expectedTypedLine) !== null,
+      );
       HarnessSmoke.Class.requireCondition(
         typingSnapshot.findText(expectedTypedLine) !== null,
         `typed text remains visible after ${typedCharacter}`,
       );
-      await driver.awaitQuiescence();
       await Bun.sleep(800);
     }
     minimumVisibleRequestCount = 2;

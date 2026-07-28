@@ -47,6 +47,11 @@ export interface InputGridConditionByteArrivalMeasurement extends InputFrameByte
   snapshot: HarnessSnapshot.Model;
 }
 
+export interface CompletedFrameObservation {
+  completedFrame: CompletedSynchronizedFrame;
+  snapshot: HarnessSnapshot.Model;
+}
+
 export interface HarnessGridRegion {
   startRow: number;
   endRowExclusive: number;
@@ -59,6 +64,19 @@ export interface ContentInvarianceOptions {
   changedRegion: HarnessGridRegion;
   actionDescription: string;
   performAction: () => void | Promise<void>;
+}
+
+export interface FrameObservationOptions {
+  conditionDescription: string;
+  condition: (snapshot: HarnessSnapshot.Model) => boolean;
+  performAction: () => void | Promise<void>;
+  observeFrame?: (observation: CompletedFrameObservation) => void;
+  timeoutMilliseconds?: number;
+}
+
+interface ScreenChangeBaseline {
+  completedFrameCount: number;
+  snapshotSignature: string;
 }
 
 class $PtyTestDriver {
@@ -93,8 +111,13 @@ class $PtyTestDriver {
   private observedOutput = '';
   private discardedOutputLength = 0;
   private outputOverflowed = false;
-  private frameExpectationPredecessor:
-    CompletedSynchronizedFrame | null | undefined = null;
+  private expectedScreenChangeBaseline: ScreenChangeBaseline | undefined;
+  private emulatorObservationChain: Promise<void> = Promise.resolve();
+  private readonly completedFrameObservationsValue: CompletedFrameObservation[] =
+    [];
+  private readonly completedFrameObservers = new Set<
+    (observation: CompletedFrameObservation) => void
+  >();
   private disposalPromise: Promise<void> | null = null;
   private disposed = false;
 
@@ -107,9 +130,26 @@ class $PtyTestDriver {
     this.emulator.onReply((data) => this.openPty.write(data));
     this.openPty.onData((bytes) => {
       this.recordOutput(this.outputDecoder.decode(bytes, { stream: true }));
-      this.quiescence.observe(bytes);
-      this.emulator.write(bytes);
+      const observedByteCountBeforeChunk = this.quiescence.observedByteCount;
+      const completedFrames = this.quiescence.observe(bytes);
+      let chunkOffset = 0;
+      for (const completedFrame of completedFrames) {
+        const completedFrameChunkEndOffset =
+          completedFrame.observedByteCount - observedByteCountBeforeChunk;
+        this.enqueueEmulatorBytes(
+          bytes.slice(chunkOffset, completedFrameChunkEndOffset),
+          completedFrame,
+        );
+        chunkOffset = completedFrameChunkEndOffset;
+      }
+      if (chunkOffset < bytes.length) {
+        this.enqueueEmulatorBytes(bytes.slice(chunkOffset));
+      }
     });
+    this.expectedScreenChangeBaseline = {
+      completedFrameCount: 0,
+      snapshotSignature: this.snapshotSignature(this.snapshot()),
+    };
 
     const applicationCommand = options.command ?? [
       process.execPath,
@@ -182,79 +222,68 @@ class $PtyTestDriver {
     );
   }
 
-  async sendKeysAndAwaitFrameByteArrival(
-    keyNames: readonly string[],
-    timeoutMilliseconds = 30_000,
-  ): Promise<InputFrameByteArrivalMeasurement> {
-    this.markFrameExpected();
-    const completedFramePromise =
-      this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
-    const inputWrittenTimestampMilliseconds = performance.now();
-    this.openPty.write(
-      keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
-    );
-    const completedFrame = await completedFramePromise;
-    this.frameExpectationPredecessor = undefined;
-    return {
-      inputWrittenTimestampMilliseconds,
-      firstCompletedFrame: completedFrame,
-      completedFrame,
-      completedFramesUntilCondition: 1,
-      inputToFirstFrameByteArrivalMilliseconds:
-        completedFrame.byteArrivalTimestampMilliseconds -
-        inputWrittenTimestampMilliseconds,
-      inputToFrameByteArrivalMilliseconds:
-        completedFrame.byteArrivalTimestampMilliseconds -
-        inputWrittenTimestampMilliseconds,
-    };
-  }
-
   async sendKeysAndAwaitGridConditionByteArrival(
     keyNames: readonly string[],
     predicateDescription: string,
     predicate: (snapshot: HarnessSnapshot.Model) => boolean,
     timeoutMilliseconds = 10_000,
   ): Promise<InputGridConditionByteArrivalMeasurement> {
-    this.markFrameExpected();
+    await this.flushObservedOutput();
+    const initialSnapshot = this.snapshot();
+    if (predicate(initialSnapshot)) {
+      throw new Error(
+        `Cannot measure grid condition already satisfied before input: ` +
+          predicateDescription,
+      );
+    }
+    this.quiescence.throwIfFailed();
     const deadline = performance.now() + timeoutMilliseconds;
-    let completedFramePromise =
-      this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+    const firstObservationIndex = this.completedFrameObservationCount;
     const inputWrittenTimestampMilliseconds = performance.now();
     this.openPty.write(
       keyNames.map((keyName) => HarnessInput.Class.key(keyName)).join(''),
     );
-    let firstCompletedFrame: CompletedSynchronizedFrame | null = null;
-    let completedFramesUntilCondition = 0;
     while (true) {
-      const completedFrame = await completedFramePromise;
-      firstCompletedFrame ??= completedFrame;
-      completedFramesUntilCondition++;
-      await this.emulator.flush();
-      const snapshot = this.snapshot();
-      if (predicate(snapshot)) {
-        this.frameExpectationPredecessor = undefined;
+      await this.flushObservedOutput();
+      const completedFrameObservations = this.completedFrameObservationsSince(
+        firstObservationIndex,
+      );
+      const matchingObservationIndex = completedFrameObservations.findIndex(
+        (observation) => predicate(observation.snapshot),
+      );
+      if (matchingObservationIndex >= 0) {
+        const firstObservation = completedFrameObservations[0];
+        const matchingObservation =
+          completedFrameObservations[matchingObservationIndex];
+        if (!firstObservation || !matchingObservation) {
+          throw new Error('Completed-frame observation history changed');
+        }
+        this.expectedScreenChangeBaseline = undefined;
         return {
           inputWrittenTimestampMilliseconds,
-          firstCompletedFrame,
-          completedFrame,
-          completedFramesUntilCondition,
+          firstCompletedFrame: firstObservation.completedFrame,
+          completedFrame: matchingObservation.completedFrame,
+          completedFramesUntilCondition: matchingObservationIndex + 1,
           inputToFirstFrameByteArrivalMilliseconds:
-            firstCompletedFrame.byteArrivalTimestampMilliseconds -
+            firstObservation.completedFrame.byteArrivalTimestampMilliseconds -
             inputWrittenTimestampMilliseconds,
           inputToFrameByteArrivalMilliseconds:
-            completedFrame.byteArrivalTimestampMilliseconds -
+            matchingObservation.completedFrame
+              .byteArrivalTimestampMilliseconds -
             inputWrittenTimestampMilliseconds,
-          snapshot,
+          snapshot: matchingObservation.snapshot,
         };
       }
       const remainingMilliseconds = deadline - performance.now();
       if (remainingMilliseconds <= 0) {
-        this.frameExpectationPredecessor = undefined;
-        throw this.gridConditionTimeoutError(predicateDescription, snapshot);
+        this.expectedScreenChangeBaseline = undefined;
+        throw this.gridConditionTimeoutError(
+          predicateDescription,
+          this.snapshot(),
+        );
       }
-      completedFramePromise = this.quiescence.awaitNextCompletedFrame(
-        remainingMilliseconds,
-      );
+      this.quiescence.throwIfFailed();
+      await Bun.sleep(Math.min(10, remainingMilliseconds));
     }
   }
 
@@ -300,27 +329,24 @@ class $PtyTestDriver {
     this.openPty.resize(columns, rows);
   }
 
-  async awaitQuiescence(timeoutMilliseconds = 30_000): Promise<void> {
-    if (
-      this.frameExpectationPredecessor !== undefined &&
-      this.quiescence.lastCompletedFrame === this.frameExpectationPredecessor
-    ) {
-      await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
+  async awaitScreenChange(timeoutMilliseconds = 30_000): Promise<void> {
+    const expectedScreenChangeBaseline = this.expectedScreenChangeBaseline;
+    if (expectedScreenChangeBaseline === undefined) {
+      await this.flushObservedOutput();
+      return;
     }
-    await this.emulator.flush();
-    this.frameExpectationPredecessor = undefined;
-  }
-
-  /** Await the next synchronized frame and snapshot the emulator immediately after its bytes parse.
-   *  Diagnostic streams use this to inspect every emitted frame without identifying it by ordinal. */
-  async awaitNextCompletedFrameSnapshot(timeoutMilliseconds = 10_000): Promise<{
-    completedFrame: CompletedSynchronizedFrame;
-    snapshot: HarnessSnapshot.Model;
-  }> {
-    const completedFrame =
-      await this.quiescence.awaitNextCompletedFrame(timeoutMilliseconds);
-    await this.emulator.flush();
-    return { completedFrame, snapshot: this.snapshot() };
+    await this.awaitGridCondition(
+      'the driven input produces an observed screen or native caret change',
+      () =>
+        this.completedFrameObservationsValue.some(
+          (observation) =>
+            observation.completedFrame.completedFrameCount >
+              expectedScreenChangeBaseline.completedFrameCount &&
+            this.snapshotSignature(observation.snapshot) !==
+              expectedScreenChangeBaseline.snapshotSignature,
+        ),
+      timeoutMilliseconds,
+    );
   }
 
   async awaitSnapshot(
@@ -341,47 +367,25 @@ class $PtyTestDriver {
     diagnosticRegion?: Partial<HarnessGridRegion>,
   ): Promise<HarnessSnapshot.Model> {
     const deadline = performance.now() + timeoutMilliseconds;
-    await this.emulator.flush();
+    await this.flushObservedOutput();
     while (true) {
       const snapshot = this.snapshot();
       if (predicate(snapshot)) {
-        this.frameExpectationPredecessor = undefined;
+        this.expectedScreenChangeBaseline = undefined;
         return snapshot;
       }
       const remainingMilliseconds = deadline - performance.now();
       if (remainingMilliseconds <= 0) {
-        this.frameExpectationPredecessor = undefined;
+        this.expectedScreenChangeBaseline = undefined;
         throw this.gridConditionTimeoutError(
           predicateDescription,
           snapshot,
           diagnosticRegion,
         );
       }
-      try {
-        await this.quiescence.awaitNextCompletedFrame(
-          Math.min(10, remainingMilliseconds),
-        );
-      } catch (error) {
-        const isCompletedFrameTimeout =
-          error instanceof Error &&
-          error.message.startsWith(
-            'Timed out waiting for the next complete synchronized frame',
-          );
-        if (!isCompletedFrameTimeout && performance.now() < deadline)
-          throw error;
-        if (isCompletedFrameTimeout && performance.now() < deadline) {
-          await this.emulator.flush();
-          continue;
-        }
-        await this.emulator.flush();
-        this.frameExpectationPredecessor = undefined;
-        throw this.gridConditionTimeoutError(
-          predicateDescription,
-          this.snapshot(),
-          diagnosticRegion,
-        );
-      }
-      await this.emulator.flush();
+      this.quiescence.throwIfFailed();
+      await Bun.sleep(Math.min(10, remainingMilliseconds));
+      await this.flushObservedOutput();
     }
   }
 
@@ -419,7 +423,7 @@ class $PtyTestDriver {
   async assertContentInvariantAcrossAction(
     options: ContentInvarianceOptions,
   ): Promise<HarnessSnapshot.Model> {
-    await this.emulator.flush();
+    await this.flushObservedOutput();
     const initialSnapshot = this.snapshot();
     const initialInvariantContent = this.serializedRegionContent(
       initialSnapshot,
@@ -457,6 +461,46 @@ class $PtyTestDriver {
     return completedSnapshot;
   }
 
+  async collectCompletedFrameObservationsUntil(
+    options: FrameObservationOptions,
+  ): Promise<readonly CompletedFrameObservation[]> {
+    await this.flushObservedOutput();
+    const initialSnapshot = this.snapshot();
+    if (options.condition(initialSnapshot)) {
+      throw new Error(
+        `Cannot collect frames for a condition already satisfied before the action: ` +
+          options.conditionDescription,
+      );
+    }
+    const firstObservationIndex = this.completedFrameObservationCount;
+    if (options.observeFrame) {
+      this.completedFrameObservers.add(options.observeFrame);
+    }
+    try {
+      await options.performAction();
+      await this.awaitGridCondition(
+        options.conditionDescription,
+        options.condition,
+        options.timeoutMilliseconds,
+      );
+      await this.flushObservedOutput();
+    } finally {
+      if (options.observeFrame) {
+        this.completedFrameObservers.delete(options.observeFrame);
+      }
+    }
+    const completedFrameObservations = this.completedFrameObservationsSince(
+      firstObservationIndex,
+    );
+    if (completedFrameObservations.length === 0) {
+      throw new Error(
+        `Condition became true without an observable completed frame: ` +
+          options.conditionDescription,
+      );
+    }
+    return completedFrameObservations;
+  }
+
   snapshot(): HarnessSnapshot.Model {
     const copiedCells: HarnessSnapshotCell[] = [];
     for (let row = 0; row < this.emulator.rows; row++) {
@@ -480,6 +524,21 @@ class $PtyTestDriver {
 
   get lastCompletedFrame(): CompletedSynchronizedFrame | null {
     return this.quiescence.lastCompletedFrame;
+  }
+
+  get completedFrameObservationCount(): number {
+    return this.completedFrameObservationsValue.length;
+  }
+
+  completedFrameObservationsSince(
+    observationIndex: number,
+  ): readonly CompletedFrameObservation[] {
+    if (!Number.isInteger(observationIndex) || observationIndex < 0) {
+      throw new Error(
+        `Invalid completed-frame observation index ${observationIndex}`,
+      );
+    }
+    return this.completedFrameObservationsValue.slice(observationIndex);
   }
 
   outputSequenceCount(sequence: string): number {
@@ -545,6 +604,7 @@ class $PtyTestDriver {
       // The app already exited.
     }
     await this.child.exited;
+    await this.emulatorObservationChain.catch(() => undefined);
     this.openPty.close();
     this.emulator.dispose();
   }
@@ -595,12 +655,55 @@ class $PtyTestDriver {
   }
 
   private markFrameExpected(): void {
-    if (
-      this.frameExpectationPredecessor === undefined ||
-      this.frameExpectationPredecessor !== this.quiescence.lastCompletedFrame
-    ) {
-      this.frameExpectationPredecessor = this.quiescence.lastCompletedFrame;
-    }
+    this.expectedScreenChangeBaseline = {
+      completedFrameCount: this.quiescence.completedFrameCount,
+      snapshotSignature: this.snapshotSignature(this.snapshot()),
+    };
+  }
+
+  private enqueueEmulatorBytes(
+    bytes: Uint8Array,
+    completedFrame?: CompletedSynchronizedFrame,
+  ): void {
+    if (bytes.length === 0) return;
+    this.emulatorObservationChain = this.emulatorObservationChain
+      .then(async () => {
+        this.emulator.write(bytes);
+        await this.emulator.flush();
+        if (completedFrame) {
+          const observation = {
+            completedFrame,
+            snapshot: this.snapshot(),
+          };
+          this.completedFrameObservationsValue.push(observation);
+          for (const observer of this.completedFrameObservers) {
+            observer(observation);
+          }
+        }
+      })
+      .catch((error) => {
+        const observationError =
+          error instanceof Error ? error : new Error(String(error));
+        this.quiescence.fail(observationError);
+        throw observationError;
+      });
+  }
+
+  private async flushObservedOutput(): Promise<void> {
+    await this.emulatorObservationChain;
+    await this.emulator.flush();
+  }
+
+  private snapshotSignature(snapshot: HarnessSnapshot.Model): string {
+    return JSON.stringify({
+      columns: snapshot.columns,
+      rows: snapshot.rows,
+      cursorColumn: snapshot.cursorColumn,
+      cursorRow: snapshot.cursorRow,
+      cells: Array.from({ length: snapshot.rows }, (_unused, row) =>
+        snapshot.rowCells(row),
+      ),
+    });
   }
 
   private gridConditionTimeoutError(

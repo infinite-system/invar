@@ -74,7 +74,7 @@ class $Drive {
         },
         options.timeoutMilliseconds,
       );
-      await driver.awaitQuiescence(options.timeoutMilliseconds);
+      await driver.awaitScreenChange(options.timeoutMilliseconds);
 
       if (target.filePath) {
         await this.openFile(
@@ -94,7 +94,7 @@ class $Drive {
 
       for (const [actionIndex, action] of options.actions.entries()) {
         this.sendAction(driver, action, options.columns, options.rows);
-        await driver.awaitQuiescence(options.timeoutMilliseconds);
+        await driver.awaitScreenChange(options.timeoutMilliseconds);
         this.printObservation(
           driver.snapshot(),
           statusPath,
@@ -383,7 +383,7 @@ class $Drive {
         timeoutMilliseconds,
       );
     }
-    await driver.awaitQuiescence(timeoutMilliseconds);
+    await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
   protected static sendAction(

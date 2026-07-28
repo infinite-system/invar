@@ -194,7 +194,7 @@ try {
   pass('blur preserves a dim truecolor selection');
   // Back INTO the tree from the editor: Tab indents there now, so the host focus chord returns.
   driver.sendKeys('Control+Shift+j');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Down');
   snapshot = await driver.awaitSnapshot((candidate) =>
     markerHasBackground(candidate, 'directory-16', focusedSelectionColor),
@@ -269,7 +269,7 @@ try {
   );
   pass('changes selection remains visible on blur');
   driver.sendKeys('Control+g');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Down');
   snapshot = await driver.awaitSnapshot((candidate) =>
     markerHasBackground(candidate, 'file-11.txt', focusedChangesSelectionColor),

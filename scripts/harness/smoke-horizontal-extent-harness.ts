@@ -132,37 +132,26 @@ try {
   console.log(
     '== harness horizontal extent: reveal the deep widest line without more horizontal input ==',
   );
-  let nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
-  for (let wheelEvent = 1; wheelEvent <= 20; wheelEvent++) {
-    driver.sendMouse({
-      kind: 'wheel',
-      column: 70,
-      row: 15,
-      direction: 'down',
+  const verticalScrollFrames =
+    await driver.collectCompletedFrameObservationsUntil({
+      conditionDescription: `vertical scrolling reveals ${widestLineMarker}`,
+      condition: (snapshot) => snapshot.findText(widestLineMarker) !== null,
+      performAction: () => {
+        for (let wheelEvent = 1; wheelEvent <= 20; wheelEvent++) {
+          driver.sendMouse({
+            kind: 'wheel',
+            column: 70,
+            row: 15,
+            direction: 'down',
+          });
+        }
+      },
+      timeoutMilliseconds: 2_000,
     });
-  }
-  let widestLineSnapshot = null;
-  for (let frameNumber = 1; frameNumber <= 300; frameNumber++) {
-    let scrollFrame: Awaited<typeof nextScrollFrame>;
-    try {
-      scrollFrame = await nextScrollFrame;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        break;
-      }
-      throw error;
-    }
-    if (scrollFrame.snapshot.findText(widestLineMarker) !== null) {
-      widestLineSnapshot = scrollFrame.snapshot;
-      break;
-    }
-    nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(150);
-  }
+  const widestLineSnapshot =
+    verticalScrollFrames.find(
+      (observation) => observation.snapshot.findText(widestLineMarker) !== null,
+    )?.snapshot ?? null;
   requireCondition(
     widestLineSnapshot !== null,
     `vertical wheel reveals the deep widest line marker "${widestLineMarker}"`,

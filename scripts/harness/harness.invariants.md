@@ -21,25 +21,26 @@ test and an explicit replacement quiescence mechanism.
 
 **Mechanism:** `SynchronizedOutputQuiescence` scans raw chunks across chunk boundaries, tracks nesting,
 and advances `completedFrameCount` only for an end marker paired with an observed begin marker. It
-records the end-marker byte-arrival timestamp before the PTY callback feeds `TerminalEmulator`.
-`PtyTestDriver.awaitQuiescence` separately flushes `TerminalEmulator`, so the snapshot includes every
-byte through that completed frame.
+returns each completed-frame record to `PtyTestDriver`, which divides the raw chunk at those exact
+boundaries, flushes each segment through `TerminalEmulator`, and records the immutable grid paired
+with that already-observed frame.
 
-**Generates:** deterministic frame waits without settle sleeps; byte-arrival timestamps;
-chunk-boundary tests for the marker detector; a fail-loud timeout when no completed frame arrives.
+**Generates:** deterministic completed-frame histories; byte-arrival timestamps; exact grid snapshots
+for every observed frame even when one PTY chunk contains several frames; chunk-boundary tests for the
+marker detector.
 
 **Evidence:** A raw PTY capture on 2026-07-24 recorded three matched mode-2026 frame pairs;
 `scripts/harness/SynchronizedOutputQuiescence.test.ts` preserves the observed marker shape, timestamp,
 silence, and chunk-boundary cases.
 
-**Impossible if true:** `awaitQuiescence` resolving in the middle of a synchronized frame; a marker
-split across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable.
+**Impossible if true:** a recorded frame snapshot containing bytes from a later frame; a marker split
+across PTY chunks being missed; a fixed sleep being the condition that declares a frame stable.
 
 **Verification:** `bun test scripts/harness/SynchronizedOutputQuiescence.test.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-28
 
 ## Chosen invariants
 
@@ -81,22 +82,20 @@ word-delete paste tabs workspace-tabs mode-coherence wrap selection scrollbars; 
 observations, and a byte-arrival metric ends at the DEC 2026 end-marker timestamp captured before
 terminal emulation.
 
-**Scope:** `PtyTestDriver.sendKeysAndAwaitFrameByteArrival`,
-`PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival`,
+**Scope:** `PtyTestDriver.sendKeysAndAwaitGridConditionByteArrival`,
 `scripts/harness/measure-input-byte-flush.ts`, and performance documentation derived from them.
-Settled-screen smokes still use `PtyTestDriver.awaitQuiescence`.
 
 **Mechanism:** `SynchronizedOutputQuiescence.observeByte` timestamps the matching end marker inside the
-PTY callback. The callback feeds `TerminalEmulator` only after that observation; callers use the
-recorded timestamp for byte arrival and await `TerminalEmulator.flush()` only for the separately
-named settled-snapshot boundary.
+PTY callback. The callback then queues frame-bounded segments through `TerminalEmulator`; callers use
+the recorded timestamp for byte arrival and the paired immutable snapshot for the separately named
+grid-condition boundary.
 
 **Generates:** input-write-to-byte-arrival timing; marker-arrival-to-oracle-ready timing; a grid
 snapshot paired with the first completed frame that satisfies a visible condition; reports that
 cannot silently include emulator work in an application byte-flush number.
 
-**Rejected alternatives:** Time the return from `awaitQuiescence` as byte flush — the async
-continuation resumes only after synchronous emulator work and therefore crosses two boundaries.
+**Rejected alternatives:** Time the return from a screen-condition wait as byte flush — its async
+continuation resumes only after emulator work and therefore crosses two boundaries.
 
 **Evidence:** `scripts/harness/SynchronizedOutputQuiescence.ts`;
 `scripts/harness/PtyTestDriver.ts`; the recorded-stream boundary test in
@@ -290,8 +289,8 @@ scripts/harness/input-byte-flush-gate.ts`
 ### Harness waits observe conditions not frame ordinals
 
 **Invariant:** If a harness waits for a user-visible transition, then it resolves from a named grid
-condition or synchronized-output quiescence, never from a target frame ordinal. If it asserts a
-visual outcome after an action, then a named grid condition first waits for the asserted content;
+or external-state condition, never from synchronized-output arrival or a target frame ordinal. If it
+asserts a visual outcome after an action, then a named grid condition first waits for the asserted content;
 sampling after synchronized-output quiescence alone is not sufficient when the action can span
 frames. If the outcome includes content that must not change, then the action must also change a
 required comparison region while the invariant region stays byte-identical.
@@ -309,13 +308,14 @@ with no predicate at all. Legitimate exceptions, both narrow: at BOOT an existen
 `undefined -> value` transition, and a short sleep INSIDE a polling loop that has its own deadline is
 that loop's poll interval.
 
-**Mechanism:** `PtyTestDriver.awaitGridCondition` flushes and checks the current emulator grid first,
-then checks again after each future synchronized-frame completion event. `awaitQuiescence` waits on a
-completion event associated with pending input, without calculating a target frame number. Harness
-ports use `awaitGridCondition` on the visual assertion predicate before sampling the returned
-snapshot. `assertContentInvariantAcrossAction` captures both required regions, performs the action,
-uses change in the required comparison region as the liveness condition, and compares the invariant
-region's serialized cells byte-for-byte.
+**Mechanism:** `PtyTestDriver.awaitGridCondition` flushes and checks the current emulator grid, then
+polls the named predicate until its deadline independently of whether another frame arrives.
+`awaitScreenChange` requires a completed-frame observation after the driven input whose complete grid
+and native-caret signature differs from the pre-input signature. Diagnostic instruments subscribe to
+completed-frame observations, stop on a named grid or published-state condition, and inspect only the
+history already recorded while that condition was pending. `assertContentInvariantAcrossAction`
+captures both required regions, performs the action, uses change in the required comparison region as
+the liveness condition, and compares the invariant region's serialized cells byte-for-byte.
 
 **Generates:** already-satisfied fast paths; transition waits named for visible outcomes; timeout
 errors containing the predicate description and final relevant grid region; frame coalescing and
@@ -329,9 +329,9 @@ next frame to belong to the action — repaint coalescing changes ordinals and v
 frame. Assert a frame-silence interval — machine load can delay both a violating repaint and a
 legitimate awaited repaint across the interval boundary.
 
-**Evidence:** `scripts/harness/PtyTestDriver.ts` (`awaitGridCondition`,
-`assertContentInvariantAcrossAction`); the recorded-stream cases in
-`scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
+**Evidence:** `scripts/harness/PtyTestDriver.ts` (`awaitGridCondition`, `awaitScreenChange`,
+`collectCompletedFrameObservationsUntil`, `assertContentInvariantAcrossAction`); the recorded-stream
+cases in `scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-goto-definition-harness.ts`;
 `scripts/harness/smoke-agent-pane-ux-harness.ts`. The COST of the two shapes this record did not
 originally forbid, measured 2026-07-25: both produced ~50% flakes that `retry-once-on-timeout` then hid,
 so the gate reported green for a full day while degrading. `smoke-editor-harness` waited on
@@ -350,8 +350,7 @@ next step races); a bare `Bun.sleep` standing between a drive and the assertion 
 visual stability claim expressed as frame silence; a content-invariance assertion with no required
 changed region proving the action occurred; `runGit`, a file operation, or a spawned process consuming
 state produced asynchronously by the app before a deadline-bounded disk or process observation proves
-that state exists.
-
+that state exists; a primitive that promises to await the next synchronized frame.
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
 scripts/harness/SynchronizedOutputQuiescence.test.ts`
@@ -455,7 +454,7 @@ diagnoses when semantics move; focused repetition only after the complete consum
 **Rejected alternatives:** Verify only the smokes changed in the same commit — a shared seam can
 break an unchanged consumer whose prior assumption was never encoded in the seam's unit tests.
 
-**Evidence:** The `PtyTestDriver.awaitQuiescence` and status-wait change in commit `32a843d` passed its
+**Evidence:** The `PtyTestDriver` wait and status-wait change in commit `32a843d` passed its
 three focused smokes but regressed seven previously green registered harness ports.
 
 **Impossible if true:** A shared harness change called complete after only a selected subset of its

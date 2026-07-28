@@ -241,43 +241,50 @@ class CompletionListLatencyMeasurement {
       );
       const observedByteCountBeforeInput =
         driver.lastCompletedFrame?.observedByteCount ?? 0;
-      let completedFramePromise =
-        driver.awaitNextCompletedFrameSnapshot(10_000);
-      const inputWrittenTimestampMilliseconds = performance.now();
-      driver.sendMouseWithoutFrameExpectation({
-        kind: 'wheel',
-        column: pointerColumn,
-        row: pointerRow,
-        direction: 'down',
-      });
-      let completedFramesUntilCondition = 0;
-      while (true) {
-        const { completedFrame, snapshot } = await completedFramePromise;
-        completedFramesUntilCondition++;
-        if (snapshot.findText('push_str') === null) {
-          const completedStatus =
-            await HarnessSmoke.Class.awaitStatusWithoutFrame(
-              driver,
-              statusPath,
-              'the completion popup update counter advances after wheel movement',
-              (status) =>
-                Number(status.completionPopupUpdateCount) > updateCountBefore,
-            );
-          measurements.push({
-            latencyMilliseconds:
-              completedFrame.byteArrivalTimestampMilliseconds -
-              inputWrittenTimestampMilliseconds,
-            completedFramesUntilCondition,
-            frameByteCount:
-              completedFrame.observedByteCount - observedByteCountBeforeInput,
-            popupUpdateMilliseconds: Number(
-              completedStatus.completionPopupUpdateDurationMilliseconds,
-            ),
-          });
-          break;
-        }
-        completedFramePromise = driver.awaitNextCompletedFrameSnapshot(10_000);
+      let inputWrittenTimestampMilliseconds = 0;
+      const completedFrameObservations =
+        await driver.collectCompletedFrameObservationsUntil({
+          conditionDescription:
+            'wheel movement scrolls push_str out of the completion popup',
+          condition: (snapshot) => snapshot.findText('push_str') === null,
+          performAction: () => {
+            inputWrittenTimestampMilliseconds = performance.now();
+            driver.sendMouseWithoutFrameExpectation({
+              kind: 'wheel',
+              column: pointerColumn,
+              row: pointerRow,
+              direction: 'down',
+            });
+          },
+          timeoutMilliseconds: 10_000,
+        });
+      const matchingObservationIndex = completedFrameObservations.findIndex(
+        (observation) => observation.snapshot.findText('push_str') === null,
+      );
+      const matchingObservation =
+        completedFrameObservations[matchingObservationIndex];
+      if (!matchingObservation || matchingObservationIndex < 0) {
+        throw new Error('Completion wheel condition has no matching frame');
       }
+      const completedStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        'the completion popup update counter advances after wheel movement',
+        (status) =>
+          Number(status.completionPopupUpdateCount) > updateCountBefore,
+      );
+      measurements.push({
+        latencyMilliseconds:
+          matchingObservation.completedFrame.byteArrivalTimestampMilliseconds -
+          inputWrittenTimestampMilliseconds,
+        completedFramesUntilCondition: matchingObservationIndex + 1,
+        frameByteCount:
+          matchingObservation.completedFrame.observedByteCount -
+          observedByteCountBeforeInput,
+        popupUpdateMilliseconds: Number(
+          completedStatus.completionPopupUpdateDurationMilliseconds,
+        ),
+      });
     }
     return measurements;
   }

@@ -178,7 +178,10 @@ try {
   );
   pass('badge click opened the all-buffers dropdown');
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await driver.awaitGridCondition(
+    'Escape closes the all-buffers dropdown',
+    (candidate) => candidate.findText('Open Buffers') === null,
+  );
 
   console.log(
     '== harness tabs: right arrow pans without changing the active tab ==',
@@ -191,7 +194,7 @@ try {
     );
     if (cycleStatus.activeBufferIndex === 0) break;
     driver.sendKeys('Control+PageUp');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   const arrowBaselineStatus = await awaitStatusPublication(
     statusPath,

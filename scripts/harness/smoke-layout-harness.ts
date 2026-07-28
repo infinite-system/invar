@@ -293,7 +293,7 @@ async function closeSettingsForLayoutFrame(
     'status condition: candidate.settingsOpen === false',
     (candidate) => candidate.settingsOpen === false,
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 }
 
 async function reopenSettingsAfterLayoutFrame(
@@ -307,7 +307,7 @@ async function reopenSettingsAfterLayoutFrame(
     'status condition: candidate.settingsOpen === true',
     (candidate) => candidate.settingsOpen === true,
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 }
 
 async function cyclePanelAlignments(
@@ -500,7 +500,7 @@ async function selectLayoutPreset(
     `${presetName} preset applies every layout axis`,
     applied,
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   return status;
 }
 
@@ -516,7 +516,7 @@ async function assertSplitterStates(
     status: StatusSnapshot,
   ) => boolean,
 ): Promise<void> {
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   // Park the pointer before resolving geometry. Requiring the matching mouse projection prevents
   // an unrelated queued frame from being mistaken for the post-park boundary.
   driver.sendMouseWithoutFrameExpectation({ kind: 'move', column: 0, row: 0 });
@@ -552,7 +552,7 @@ async function assertSplitterStates(
     `${splitterName} splitter uses the shared one-cell cross axis`,
   );
   const initialPoint = splitterPoint(initialRegion);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const restingBackground = backgroundAt(driver.snapshot(), initialPoint);
 
   driver.sendMouse({
@@ -592,7 +592,7 @@ async function assertSplitterStates(
         candidate,
       ),
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const draggedRegion = splitterRegion(changedStatus, splitterName);
   const draggedPoint = splitterPoint(draggedRegion);
   const pointerTarget = {
@@ -798,7 +798,7 @@ try {
     'status condition: candidate.terminalVisible === true',
     (candidate) => candidate.terminalVisible === true,
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   await driver.awaitGridCondition(
     'layouts control remains at the right edge after a tree open',
     (snapshot) => snapshot.findText(' layouts ') !== null,
@@ -940,7 +940,7 @@ try {
     (before, after) => after.top < before.top,
   );
   clickCell(driver, layoutSlot(status, 'sidebar').left + 2, 4);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   await invokeCommand(driver, 'View: Toggle Right Dock');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -965,7 +965,7 @@ try {
     },
   );
   clickCell(driver, layoutSlot(sidebarLayoutStatus, 'sidebar').left + 2, 4);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -1035,7 +1035,7 @@ try {
     'command opened a real right-dock viewport before visible-dock settings checks',
   );
   clickCell(driver, layoutSlot(status, 'sidebar').left + 2, 4);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+,');
   await HarnessSmoke.Class.awaitStatus(
     driver,

@@ -228,7 +228,7 @@ async function driveAnimatedTerminalTools(
       page += 1
     ) {
       driver.sendKeys('PageUp');
-      await driver.awaitQuiescence();
+      await driver.awaitScreenChange();
       snapshot = driver.snapshot();
       sawRunTerminalCommand ||=
         snapshot.findText('runTerminalCommand') !== null;
@@ -528,11 +528,17 @@ async function driveReducedMotion(
     const command = `printf INSTANT > ${reducedMotionPath} # ${'x'.repeat(120)}`;
     let firstTypingFrameObserved = false;
     let firstTypingFrameWasComplete = false;
-    let nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
-    driver.sendText(`terminal-tools:run:${command}`);
-    driver.sendKeys('Enter');
-    while (true) {
-      const completed = await nextCompletedFrame;
+    const completedFrameObservations =
+      await driver.collectCompletedFrameObservationsUntil({
+        conditionDescription:
+          'the reduced-motion terminal command creates its proof file',
+        condition: () => existsSync(reducedMotionPath),
+        performAction: () => {
+          driver.sendText(`terminal-tools:run:${command}`);
+          driver.sendKeys('Enter');
+        },
+      });
+    for (const completed of completedFrameObservations) {
       const projectedTerminalText = activePanelText(
         completed.snapshot,
         statusPath,
@@ -545,8 +551,6 @@ async function driveReducedMotion(
         firstTypingFrameWasComplete =
           projectedTerminalText.includes('xxxxxxxxxxxx');
       }
-      if (existsSync(reducedMotionPath)) break;
-      nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
     }
     await awaitFileContents(reducedMotionPath, 'INSTANT');
     const positiveControlFailure = firstTypingFrameCompletionFailure(
@@ -623,19 +627,17 @@ async function countAgentTypingFrames(
     );
     await openAgentPane(driver, statusPath);
     const command = `printf ${label.toUpperCase()} > ${executedCommandPath} # ${'x'.repeat(60)}`;
-    let completedTypingFrameCount = 0;
-    let nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
-    driver.sendText(`terminal-tools:run:${command}`);
-    driver.sendKeys('Enter');
-    while (true) {
-      const completed = await nextCompletedFrame;
-      void completed;
-      completedTypingFrameCount++;
-      if (existsSync(executedCommandPath)) break;
-      nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot();
-    }
+    const completedFrameObservations =
+      await driver.collectCompletedFrameObservationsUntil({
+        conditionDescription: `${label} terminal typing creates its proof file`,
+        condition: () => existsSync(executedCommandPath),
+        performAction: () => {
+          driver.sendText(`terminal-tools:run:${command}`);
+          driver.sendKeys('Enter');
+        },
+      });
     await awaitFileContents(executedCommandPath, label.toUpperCase());
-    return completedTypingFrameCount;
+    return completedFrameObservations.length;
   } finally {
     await driver.dispose();
   }

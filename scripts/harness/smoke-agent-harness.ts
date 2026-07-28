@@ -74,7 +74,7 @@ try {
     20_000,
   );
   HarnessSmoke.Class.pass('agent pane is hidden at boot');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const agentButtonColumn = statusButtonColumn(driver, ' ✦ ');
   driver.sendMouse({
     kind: 'press',

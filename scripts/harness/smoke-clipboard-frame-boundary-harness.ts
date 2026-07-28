@@ -282,7 +282,7 @@ try {
       (snapshot) => snapshot.findText(promptMarker) !== null,
     );
     driver.sendKeys('Enter');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -394,7 +394,7 @@ try {
     'terminal',
   );
   driver.sendText('printf IDLE-TERMINAL');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Enter');
   await selectVisibleText('IDLE-TERMINAL');
   await copySelectionRepeatedly('IDLE-TERMINAL', idleCopyRunCount, 'idle');
@@ -414,9 +414,9 @@ try {
     row: terminalCellBodyPoint.row,
     button: 'left',
   });
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const activeTerminalCommand =
     'for iteration in $(seq 1 500); do printf \'\\rACTIVE-TERMINAL-%03d\' "$iteration"; ' +
     'sleep 0.02; done';
@@ -424,7 +424,7 @@ try {
   // Staging sequencing only: the staged command wraps at the pane width, so no single-row text
   // wait can gate here. Quiescence proves the typed bytes flushed and the echo settled; the loop
   // output assertion below prints at pane column 0 and cannot straddle a row boundary.
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Enter');
   await driver.awaitGridCondition(
     'the shell loop emits its first changing terminal row',
@@ -448,9 +448,9 @@ try {
     row: terminalCellBodyPoint.row,
     button: 'left',
   });
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   driver.sendKeys('Control+q');
   await driver.exitCode();
