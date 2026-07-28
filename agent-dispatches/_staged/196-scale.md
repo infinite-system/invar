@@ -87,8 +87,8 @@ THE LADDER, do-less first. Report a measurement per step so we learn which one t
    `replaceLineRange` already knows the changed range. Deleting a data structure beats optimizing one;
    if it cannot go, say precisely why.
 
-Order matters: steps 1-3 are "stop doing the work", steps 4-5 are "make what remains cheaper/smaller".
-Measuring in that order tells us whether the later ones are even needed.
+Order matters for MEASUREMENT — do-less before make-cheaper — but ALL FIVE STEPS SHIP. See the
+CORRECTION addendum: they are one coherent change, not a menu.
 
 ## PROBLEM B — the load path, which the user asked about directly
 
