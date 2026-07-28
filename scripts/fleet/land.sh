@@ -45,6 +45,22 @@ dispatch_directory="${repository_root}/agent-dispatches/${name}"
 tmux_session="invar/${name}"
 
 [ -d "$dispatch_directory" ] || { echo "land: no dispatch record for $name" >&2; exit 1; }
+
+# An EXPERIMENT branch is held from main pending proof. Refuse by default, so "provenance decides
+# main, not quality" stops being a rule the conductor recalls and becomes one the tooling enforces.
+# A change can be correct, measured and elegant and still not belong in main because nobody asked for
+# the problem to be solved — and the acceptance test is generativity: does it make neighbouring
+# problems easier and neighbouring invariant records SHORTER, or does it demand exception rules?
+if git show-ref --verify --quiet "refs/heads/experiment/${name}"; then
+  branch="experiment/${name}"
+  if [ "${ADOPT_EXPERIMENT:-0}" != "1" ]; then
+    echo "land: ${branch} is HELD FROM MAIN." >&2
+    echo "land: it lands only when its report shows an invariant unlock — downstream problems got" >&2
+    echo "      EASIER and no exception rule was needed. Re-run with ADOPT_EXPERIMENT=1 to accept." >&2
+    exit 4
+  fi
+  echo "land: ADOPT_EXPERIMENT=1 — accepting an experiment branch into main."
+fi
 git show-ref --verify --quiet "refs/heads/${branch}" || { echo "land: no branch $branch" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------

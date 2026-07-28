@@ -56,11 +56,26 @@ repository_root="$(git rev-parse --show-toplevel)"
 cd "$repository_root"
 
 name="${task_number}-${slug}"
-branch="fleet/${name}"
+
+# EXPERIMENT=1 marks work that is HELD FROM MAIN pending proof — the branch name carries the policy
+# so nobody has to remember it. `land.sh` refuses to merge an `experiment/` branch without an
+# explicit ADOPT_EXPERIMENT=1, which turns "provenance decides main, not quality" from a rule the
+# conductor recalls into one the tooling enforces. #169 is the founding case: an outside review found
+# a real structural fact (four arrays of length n per edit) that has never been shown to be a felt
+# problem, so the change must prove it is an invariant unlock before it is adopted at all.
+if [ "${EXPERIMENT:-0}" = "1" ]; then
+  branch="experiment/${name}"
+else
+  branch="fleet/${name}"
+fi
 worktree_path="${repository_root}/.invar/worktrees/${name}"
 dispatch_directory="${repository_root}/agent-dispatches/${name}"
 tmux_session="invar/${name}"
-transcript_path="${worktree_path}/../${name}.transcript.md"
+# Transcripts live with the other 171 in tmp/transcripts/ (gitignored; the user's decision on
+# 2026-07-27 was "no need to store in git history"). NOT beside the worktree dirs: .invar/worktrees/
+# gets pruned on landing, and co-mingling durable records with prunable scratch is what put 1.1 GB of
+# logs one reboot from gone in the first place.
+transcript_path="${repository_root}/tmp/transcripts/${name}.transcript.md"
 
 # ---------------------------------------------------------------------------
 # 1. REFUSE on any collision. A leftover worktree has silently started a builder
@@ -94,7 +109,7 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 # 3. Place the brief in BOTH homes: the worktree (for the builder) and the
 #    dispatch record (for the audit trail).
 # ---------------------------------------------------------------------------
-mkdir -p "$dispatch_directory"
+mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 cp "$brief_file" "$dispatch_directory/brief.md"
 cp "$brief_file" "$worktree_path/TASK.md"
 
