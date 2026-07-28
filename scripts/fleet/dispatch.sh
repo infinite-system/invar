@@ -69,7 +69,23 @@ else
   branch="fleet/${name}"
 fi
 worktree_path="${repository_root}/.invar/worktrees/${name}"
-dispatch_directory="${repository_root}/agent-dispatches/${name}"
+# THE TASK FOLDER IS THE RECORD, and a dispatched task is LIVE by definition. `.invar/tasks/` replaced
+# `agent-dispatches/` on 2026-07-28: the old layout kept one brief per task, so a follow-up brief either
+# overwrote its predecessor or lived only in a tmux session, and steering that overwrites its
+# predecessor destroys the record of what the agent was working from when it made a decision. Briefs are
+# now numbered and dated, never edited. The conductor moves the folder between todo/live/done/retired.
+#
+# A SLUG MUST BE DESCRIPTIVE — three words minimum. `fold-flyweight` required opening the brief to learn
+# what it meant; `folded-editing-scale-invariance` does not. A folder name is read far more often than
+# it is typed.
+dispatch_directory="${repository_root}/.invar/tasks/live/${name}"
+slug_word_count="$(printf '%s' "$slug" | tr '-' '\n' | grep -c .)"
+if [ "$slug_word_count" -lt 3 ]; then
+  echo "dispatch: REFUSING — slug '$slug' has $slug_word_count word(s); 3 minimum." >&2
+  echo "  A folder name is read far more often than it is typed. Say what the task IS:" >&2
+  echo "  not 'fold-flyweight' but 'folded-editing-scale-invariance'." >&2
+  exit 2
+fi
 tmux_session="invar/${name}"
 # Transcripts live with the other 171 in tmp/transcripts/ (gitignored; the user's decision on
 # 2026-07-27 was "no need to store in git history"). NOT beside the worktree dirs: .invar/worktrees/
@@ -145,7 +161,8 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 #    dispatch record (for the audit trail).
 # ---------------------------------------------------------------------------
 mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
-cp "$brief_file" "$dispatch_directory/brief.md"
+brief_dated_name="brief-1-$(date +%Y-%m-%d).md"
+cp "$brief_file" "$dispatch_directory/$brief_dated_name"
 cp "$brief_file" "$worktree_path/TASK.md"
 
 # meta.json is written BEFORE the commit so it lands WITH the brief. Written afterwards it stayed
@@ -173,14 +190,14 @@ META
 #    dispatch, because it produces work nobody can audit.
 #    SKIP_GATE: markdown only, and the gate is for landing, not for dispatching.
 # ---------------------------------------------------------------------------
-git add "$dispatch_directory/brief.md" "$dispatch_directory/meta.json"
+git add "$dispatch_directory/$brief_dated_name" "$dispatch_directory/meta.json"
 if ! SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
       -m "dispatch #${task_number}: ${slug}
 
 Brief committed before the agent starts, so the record cannot drift from what
 was actually asked. Branch ${branch}, worktree .invar/worktrees/${name},
 session ${tmux_session}, engine ${engine}." \
-      -- "$dispatch_directory/brief.md" "$dispatch_directory/meta.json"; then
+      -- "$dispatch_directory/$brief_dated_name" "$dispatch_directory/meta.json"; then
   echo "dispatch: BRIEF COMMIT FAILED — refusing to launch" >&2
   exit 1
 fi

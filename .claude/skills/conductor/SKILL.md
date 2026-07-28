@@ -1123,6 +1123,46 @@ Three corollaries earned the same day:
   validation, first-paint work landing inside the typing window). A green count is evidence about
   counts, not about speed.
 
+## THE LEDGER PROTOCOL — a task's record is a folder, and it is built as the work happens
+
+Established 2026-07-28 after the user asked where tasks are kept, having noticed `project.tasks.md` was
+incomplete while I could recall every task in detail. **Both halves were true, and together they were
+the defect:** the complete record — mechanisms, measurements, refutations — lived in my session task
+list and would die with the session, while the durable file was a hand-maintained mirror seventeen
+tasks behind. The detailed record was ephemeral and the durable one was partial. Same shape as every
+instrument defect this project keeps finding, applied to my own bookkeeping.
+
+**`.invar/tasks/<state>/<number>-<descriptive-name>/` is now the record.** States are `todo`, `live`,
+`done`, `retired`; a task is MOVED between them and a folder is never deleted. Read
+`.invar/tasks/README.md` for the file layout. `project.ledger.md` is the index and carries the full
+spec per open task.
+
+Rules that are mine to keep, because the tooling cannot enforce them:
+
+- **Create the task folder BEFORE dispatching.** A number chosen at dispatch time is a guess; I did
+  that once and the tracker assigned the number elsewhere, so a branch now disagrees with its task ID
+  permanently — branches are never renamed here.
+- **A follow-up brief is a NEW dated file.** Never edit the previous one. On the day this was written,
+  one task took three rounds of steering that each CHANGED THE ACCEPTANCE CRITERIA; had I overwritten,
+  the first two rounds' results would have become unreadable — you could no longer tell what the agent
+  was working from when it made a decision. `dispatch.sh` writes `brief-1-<date>.md`; I write
+  `brief-2-<date>.md` and onward by hand when I steer.
+- **Write `summary.md` after landing, not the report.** The report is the agent's own account. The
+  summary is what actually happened: what was refuted, what I got wrong, what was left undone. #203's
+  summary has to record that my stale-coordinate hypothesis was refuted by measurement — that is the
+  part a future reader needs and the part the agent's report has no reason to emphasise.
+- **State the reconstruction honestly.** The backfilled outlines carry a RECONSTRUCTED marker. A stub
+  with an honest label is worth more than invented specificity, because the next reader will otherwise
+  plan against detail that was never measured.
+- **Slugs are three words minimum** and `dispatch.sh` refuses less. `fold-flyweight` cost a reader a
+  file-open to learn what it meant.
+
+The generalisable rule, which is why this sits in doctrine rather than only in a README: **a record
+that requires a separate action to maintain will eventually not be maintained.** `dispatch.sh` already
+embodied that for briefs — it refuses to launch without committing one. The ledger extends it: the
+folder is created by dispatching, and moved by landing, so the record is a BYPRODUCT of the work rather
+than a chore beside it. Any part of this protocol that becomes a chore is the part that will rot next.
+
 ## A BUILDER'S ENVIRONMENT IS NOT MINE — SO OUR MEASUREMENTS ARE NOT COMPARABLE BY DEFAULT
 
 2026-07-28. `reserved-chord` resisted four gate sightings and three investigations. A builder measured

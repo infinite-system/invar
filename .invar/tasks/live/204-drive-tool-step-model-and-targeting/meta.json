@@ -1,0 +1,12 @@
+{
+  "task": 204,
+  "slug": "drive-tool",
+  "branch": "fleet/204-drive-tool",
+  "worktree": ".invar/worktrees/204-drive-tool",
+  "tmuxSession": "invar/204-drive-tool",
+  "transcript": "tmp/transcripts/204-drive-tool.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "fb199cb657546e7ab98dbdb2f7db224a7ef6a20e",
+  "startedAt": "2026-07-28T17:52:25-04:00"
+}

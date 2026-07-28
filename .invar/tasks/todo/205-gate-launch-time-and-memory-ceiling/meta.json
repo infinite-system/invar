@@ -1,0 +1,12 @@
+{
+  "task": 205,
+  "slug": "flake-population",
+  "branch": "fleet/205-flake-population",
+  "worktree": ".invar/worktrees/205-flake-population",
+  "tmuxSession": "invar/205-flake-population",
+  "transcript": "tmp/transcripts/205-flake-population.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "d3721b28ea74811993f0f6d3e6c867f024989f98",
+  "startedAt": "2026-07-28T17:12:02-04:00"
+}

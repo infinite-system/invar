@@ -1,0 +1,12 @@
+{
+  "task": 187,
+  "slug": "clamp",
+  "branch": "fleet/187-clamp",
+  "worktree": ".invar/worktrees/187-clamp",
+  "tmuxSession": "invar/187-clamp",
+  "transcript": "tmp/transcripts/187-clamp.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "5ad9bdc0c718cb6f0daed8d93205add7ec61ba4f",
+  "startedAt": "2026-07-28T08:36:59-04:00"
+}

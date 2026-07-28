@@ -1,0 +1,12 @@
+{
+  "task": 207,
+  "slug": "silent-input-dropping",
+  "branch": "fleet/207-silent-input-dropping",
+  "worktree": ".invar/worktrees/207-silent-input-dropping",
+  "tmuxSession": "invar/207-silent-input-dropping",
+  "transcript": "tmp/transcripts/207-silent-input-dropping.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "3f3bfd53b063a43b1e6ce7de6ae861bd27c7b762",
+  "startedAt": "2026-07-28T17:25:06-04:00"
+}

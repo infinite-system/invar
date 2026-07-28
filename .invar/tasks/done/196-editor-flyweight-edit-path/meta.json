@@ -1,0 +1,12 @@
+{
+  "task": 196,
+  "slug": "scale",
+  "branch": "fleet/196-scale",
+  "worktree": ".invar/worktrees/196-scale",
+  "tmuxSession": "invar/196-scale",
+  "transcript": "tmp/transcripts/196-scale.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "49662c24069fe25157ab38026235d48744c2c0c6",
+  "startedAt": "2026-07-28T09:40:43-04:00"
+}
