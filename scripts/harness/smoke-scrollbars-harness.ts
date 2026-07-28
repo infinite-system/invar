@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -389,6 +390,43 @@ function verticalDiffScrollBarProof(
     trackStartRow: bestPaintedRows[0]?.row ?? 0,
     trackLength: bestPaintedRows.length,
   };
+}
+
+function verticalThumbGeometryMatches(
+  firstProof: VerticalScrollBarProof,
+  secondProof: VerticalScrollBarProof,
+): boolean {
+  return (
+    firstProof.column === secondProof.column &&
+    firstProof.trackStartRow === secondProof.trackStartRow &&
+    firstProof.trackLength === secondProof.trackLength &&
+    firstProof.thumbStartRow === secondProof.thumbStartRow &&
+    firstProof.thumbEndRow === secondProof.thumbEndRow &&
+    firstProof.thumbLength === secondProof.thumbLength
+  );
+}
+
+function editorOverviewMarkIsPainted(
+  snapshot: HarnessSnapshot.Model,
+  scrollBarProof: VerticalScrollBarProof,
+): boolean {
+  const trackEndRowExclusive =
+    scrollBarProof.trackStartRow + scrollBarProof.trackLength;
+  for (
+    let row = scrollBarProof.trackStartRow;
+    row < trackEndRowExclusive;
+    row++
+  ) {
+    for (
+      let column = scrollBarProof.column;
+      column < snapshot.columns;
+      column++
+    ) {
+      const characters = snapshot.cell(row, column)?.characters;
+      if (characters === '•' || characters === '.') return true;
+    }
+  }
+  return false;
 }
 
 function horizontalScrollBarRowCount(snapshot: HarnessSnapshot.Model): number {
@@ -911,13 +949,20 @@ async function proveVerticalEditorThumbStability(
     process.env.INVAR_PROBE_REPOSITORY_ROOT ?? process.cwd();
   const diagnosticsRequired =
     process.env.INVAR_PROBE_REPOSITORY_ROOT === undefined;
+  const probeStatusPath = join(
+    homeDirectory,
+    `${modeLabel}-editor-status.json`,
+  );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
     repositoryRoot,
     columns: 120,
     rows: 28,
     homeDirectory,
-    environment: { TUI_DEBUG_BARS: '1' },
+    environment: {
+      TUI_DEBUG_BARS: '1',
+      TUI_STATUS_PATH: probeStatusPath,
+    },
   });
   try {
     await driver.awaitGridCondition(
@@ -936,6 +981,13 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} probe opens the mixed-width tall file`,
       (candidate) => candidate.findText('HORIZONTAL-TH') !== null,
     );
+    driver.sendKeys('Tab');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      probeStatusPath,
+      `the ${modeLabel} probe focuses the opened editor`,
+      (status) => status.focus === 'editor',
+    );
     if (wordWrapEnabled) {
       driver.sendKeys('Alt+z');
       await driver.awaitScreenChange();
@@ -948,29 +1000,53 @@ async function proveVerticalEditorThumbStability(
       `the ${modeLabel} editor vertical thumb is painted`,
       (candidate) => verticalEditorScrollBarProof(candidate) !== null,
     );
-    const unmarkedThumbProof = verticalEditorScrollBarProof(driver.snapshot());
+    const unmarkedSnapshot = driver.snapshot();
+    const unmarkedThumbProof = verticalEditorScrollBarProof(unmarkedSnapshot);
+    const firstLineText = '// HORIZONTAL-THUMB-STABILITY';
+    if (!unmarkedSnapshot.findText(firstLineText)) {
+      throw new Error(`FAIL ${modeLabel} first-line marker disappeared`);
+    }
     driver.sendKeys('End');
+    const lineEndStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      probeStatusPath,
+      `the ${modeLabel} editor caret reaches the first line end`,
+      (status) =>
+        status.cursor?.line === 0 && status.cursor.col === firstLineText.length,
+    );
     driver.sendText('X');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      probeStatusPath,
+      `the ${modeLabel} editor publishes the completed first-line edit`,
+      (status) =>
+        Number(status.bufferRevision) > Number(lineEndStatus.bufferRevision) &&
+        status.dirty === true &&
+        status.cursor?.line === 0 &&
+        status.cursor.col === firstLineText.length + 1,
+    );
     const markedSnapshot = await driver.awaitGridCondition(
-      `the ${modeLabel} editor paints an overview pip after a document mark appears`,
-      (candidate) =>
-        candidate
-          .rowCells(4)
-          .concat(
-            ...candidate
-              .textRows()
-              .slice(5, candidate.rows - 3)
-              .map((_rowText, rowOffset) => candidate.rowCells(rowOffset + 5)),
-          )
-          .some((cell) => cell.characters === '•' || cell.characters === '.'),
+      `the ${modeLabel} editor paints an overview mark without changing ` +
+        `track or thumb geometry`,
+      (candidate) => {
+        const candidateThumbProof = verticalEditorScrollBarProof(candidate);
+        return (
+          unmarkedThumbProof !== null &&
+          candidateThumbProof !== null &&
+          verticalThumbGeometryMatches(
+            unmarkedThumbProof,
+            candidateThumbProof,
+          ) &&
+          editorOverviewMarkIsPainted(candidate, candidateThumbProof)
+        );
+      },
     );
     const markedThumbProof = verticalEditorScrollBarProof(markedSnapshot);
     requireCondition(
       unmarkedThumbProof !== null &&
         markedThumbProof !== null &&
-        unmarkedThumbProof.column === markedThumbProof.column &&
-        unmarkedThumbProof.trackLength === markedThumbProof.trackLength &&
-        unmarkedThumbProof.thumbLength === markedThumbProof.thumbLength,
+        verticalThumbGeometryMatches(unmarkedThumbProof, markedThumbProof) &&
+        editorOverviewMarkIsPainted(markedSnapshot, markedThumbProof),
       `${modeLabel} overview marks leave track and thumb geometry unchanged`,
     );
     const thumbFrames = await collectVerticalThumbFrames(
@@ -1032,8 +1108,12 @@ async function proveVerticalDiffThumbStability(
       'the diff pane vertical thumb is painted before frame collection begins',
       (candidate) => verticalDiffScrollBarProof(candidate) !== null,
     );
+    const initialHorizontalSnapshot = await driver.awaitGridCondition(
+      'the diff pane horizontal thumb is painted before frame collection begins',
+      (candidate) => diffHorizontalScrollbarFrame(candidate) !== null,
+    );
     const initialHorizontalFrame = diffHorizontalScrollbarFrame(
-      driver.snapshot(),
+      initialHorizontalSnapshot,
     );
     requireCondition(
       initialHorizontalFrame !== null,

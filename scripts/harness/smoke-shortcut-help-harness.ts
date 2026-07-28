@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: The shortcut sheet lists the effective bindings (src/modules/ui/ui.invariants.md)
 // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
 import { mkdtempSync } from 'node:fs';
@@ -32,6 +33,27 @@ function advertisedQuickOpenKey(
   return null;
 }
 
+function shortcutSheetVisibleRange(snapshot: HarnessSnapshot.Model): {
+  firstRow: number;
+  lastRow: number;
+  totalRows: number;
+} | null {
+  for (const rowText of snapshot.textRows()) {
+    const rangeMatch = rowText.match(/(\d+)-(\d+) of (\d+)/);
+    const firstRow = rangeMatch?.[1];
+    const lastRow = rangeMatch?.[2];
+    const totalRows = rangeMatch?.[3];
+    if (firstRow && lastRow && totalRows) {
+      return {
+        firstRow: Number(firstRow),
+        lastRow: Number(lastRow),
+        totalRows: Number(totalRows),
+      };
+    }
+  }
+  return null;
+}
+
 async function scrollUntilVisible(
   driver: PtyTestDriver.Model,
   marker: string,
@@ -39,13 +61,30 @@ async function scrollUntilVisible(
   for (let scrollAttempt = 0; scrollAttempt < 8; scrollAttempt++) {
     const snapshot = driver.snapshot();
     if (snapshot.findText(marker)) return snapshot;
-    const visibleTextBeforeScroll = snapshot.text();
+    const visibleRangeBeforeScroll = shortcutSheetVisibleRange(snapshot);
+    if (!visibleRangeBeforeScroll) {
+      throw new Error(
+        `FAIL shortcut sheet range disappeared while seeking ${marker}`,
+      );
+    }
+    if (
+      visibleRangeBeforeScroll.lastRow >= visibleRangeBeforeScroll.totalRows
+    ) {
+      throw new Error(
+        `FAIL shortcut sheet reached its final row without showing ${marker}`,
+      );
+    }
     driver.sendKeys('PageDown');
     await driver.awaitGridCondition(
-      `PageDown changes the shortcut sheet while seeking ${marker}`,
-      (candidate) =>
-        candidate.findText(marker) !== null ||
-        candidate.text() !== visibleTextBeforeScroll,
+      `PageDown advances the shortcut sheet beyond row ` +
+        `${visibleRangeBeforeScroll.firstRow} while seeking ${marker}`,
+      (candidate) => {
+        const candidateRange = shortcutSheetVisibleRange(candidate);
+        return (
+          candidateRange !== null &&
+          candidateRange.firstRow > visibleRangeBeforeScroll.firstRow
+        );
+      },
     );
   }
   throw new Error(`FAIL shortcut sheet never showed ${marker}`);
@@ -63,6 +102,10 @@ async function scrollToTop(
     statusPath,
     'status condition: status.shortcutHelpScrollTop === 0',
     (status) => status.shortcutHelpScrollTop === 0,
+  );
+  await driver.awaitGridCondition(
+    'the shortcut sheet grid paints its first visible row after scrolling to top',
+    (snapshot) => shortcutSheetVisibleRange(snapshot)?.firstRow === 1,
   );
 }
 
