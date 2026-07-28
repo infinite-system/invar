@@ -537,9 +537,20 @@ async function snapshotForSetting(
   try {
     if (openFile) {
       const activeBuffer = await openOnlyFile(launchedDriver);
-      return launchedDriver.driver.awaitGridCondition(
-        `${basename(activeBuffer)} is rendered before its setting snapshot`,
-        (snapshot) => snapshot.findText(basename(activeBuffer)) !== null,
+      const renderedFileMarker = (await Bun.file(activeBuffer).text())
+        .split('\n')
+        .find((line) => line.length > 0)
+        ?.slice(0, 16);
+      if (!renderedFileMarker) {
+        throw new Error(
+          `FAIL ${basename(activeBuffer)} has no rendered marker`,
+        );
+      }
+      // Await inside this try: returning the pending promise enters finally and
+      // disposes the PTY before the editor body can paint.
+      return await launchedDriver.driver.awaitGridCondition(
+        `${basename(activeBuffer)} body is rendered before its setting snapshot`,
+        (snapshot) => snapshot.findText(renderedFileMarker) !== null,
       );
     }
     try {

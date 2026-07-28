@@ -7,7 +7,7 @@
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import {
   activeTabHasDirtyMarker,
@@ -519,28 +519,34 @@ try {
     (status) => typeof status.bufferTabCount === 'number',
   );
   const tabsBefore = Number(tabBaselineStatus.bufferTabCount);
-  const targetTabCount = tabsBefore + 2;
-  for (let openAttempt = 1; openAttempt <= 10; openAttempt++) {
-    const openStatus = await awaitStatusPublication(
-      statusPath,
-      'the tab count and focus are published while opening more files',
-      (status) =>
-        typeof status.bufferTabCount === 'number' &&
-        typeof status.focus === 'string',
-    );
-    if (Number(openStatus.bufferTabCount) >= targetTabCount) break;
-    if (openStatus.focus !== 'files') {
-      // Tab indents in the editor now (#91); the host focus chord is Ctrl+Shift+J.
-      driver.sendKeysWithoutFrameExpectation('Control+Shift+j');
-      await awaitStatusPublication(
-        statusPath,
-        "status condition: status.focus === 'files'",
-        (status) => status.focus === 'files',
-      );
-    }
-    driver.sendRawInput('\x1b[B\r');
-    await driver.awaitScreenChange();
+  const openBufferPaths = Array.isArray(tabBaselineStatus.openBuffers)
+    ? tabBaselineStatus.openBuffers.filter(
+        (bufferPath): bufferPath is string => typeof bufferPath === 'string',
+      )
+    : [];
+  const openBufferBasenames = new Set(
+    openBufferPaths.map((bufferPath) => basename(bufferPath)),
+  );
+  const unopenedFixtureName = ['greeter.ts', 'data.json', 'README.md'].find(
+    (fixtureName) => !openBufferBasenames.has(fixtureName),
+  );
+  if (!unopenedFixtureName) {
+    throw new Error('FAIL no unopened fixture file remains available');
   }
+  const unopenedFixtureSnapshot = await driver.awaitGridCondition(
+    `${unopenedFixtureName} is visible before opening another tab`,
+    (snapshot) => snapshot.findText(unopenedFixtureName) !== null,
+  );
+  const unopenedFixturePosition =
+    unopenedFixtureSnapshot.findText(unopenedFixtureName);
+  if (!unopenedFixturePosition) {
+    throw new Error(`FAIL ${unopenedFixtureName} is not visible`);
+  }
+  clickCell(
+    driver,
+    unopenedFixturePosition.column,
+    unopenedFixturePosition.row,
+  );
   const tabsAfterOpenStatus = await awaitStatusPublication(
     statusPath,
     'the increased tab count and live document count are published',
