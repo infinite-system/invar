@@ -1073,6 +1073,37 @@ The tell in all three: it worked, so nothing failed loudly. A partially-covered 
 not error — it quietly takes the slow path, or answers when it should decline, or lets a reader
 believe they have the whole rule.
 
+## A REPAIRED INSTRUMENT NEEDS ITS SUBJECT'S STATES ENUMERATED, NOT THE LAST FAILURE REPLAYED
+
+Three delivery confirmations for one channel in one day, 2026-07-28. Each replacement was verified
+against the failure that had just burned it, carried a positive control proving it caught that case,
+and shipped blind to a state neither had met yet:
+
+- *went busy* — one reachable outcome against an already-busy session.
+- *no `[Pasted Content]` placeholder* — blind to text TYPED into the composer, which renders as
+  ordinary visible lines. Reported success while ~1900 characters sat unsent. **The user caught it.**
+- *a probe from the message is gone* — blind to a message that SUBMITTED, because the agent echoes the
+  submitted turn into the transcript, so the text never leaves the screen. Reported failure on success.
+
+The right observable had been available all along: the CHANNEL's own state (the composer line),
+captured while known-empty and compared afterwards — valid for submit, queue and stuck alike.
+
+**The rule is not about any of those three checks.** It is that a positive control which replays only
+the last incident licenses the next one. So before trusting a repaired instrument, ENUMERATE THE STATES
+ITS SUBJECT CAN OCCUPY and evaluate the new predicate against every one. Here that was three; the
+fixtures should have covered three from the start.
+
+This is the impossibility boundary applied to instruments: name what the check must say NO to, not only
+what it must say YES to. A check verified against one state is a check with one tested outcome.
+
+Two corollaries earned the same day:
+
+- **Confirm on the channel, not on the payload's fate.** Every check that guessed *where the message
+  text ended up* was wrong for some state; the one keyed on the input surface itself was not.
+- **A liveness or rewrite monitor must require EXISTENCE, not just difference.** A monitor keyed on
+  "content hash differs from baseline" fired mid-rewrite while the file did not exist, because absence
+  hashes to nothing and therefore differs from anything.
+
 ## A PRE-SATISFIED WAIT LAUNDERS A NO-OP INTO A GREEN
 
 The reachability class has an inverse that is worse than a timeout, and #192 found
