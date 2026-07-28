@@ -409,7 +409,7 @@ class $EditorEditPathMeasurement {
   }
 
   protected static measureOperationalScaleContract(): OperationalScaleContract {
-    const incremental = [2_000, 500_000].map((lineCount) => {
+    const incremental = [2_000, 1_000_000].map((lineCount) => {
       const document = new TextDocument.Class();
       const fixtureLines = this.flatFixtureLines(lineCount);
       document.replaceAll(fixtureLines);
@@ -480,7 +480,7 @@ class $EditorEditPathMeasurement {
       forcedFullRebuild,
       incremental,
       requirement:
-        '2k and 500k same-line edits allocate no index arrays and perform ' +
+        '2k and 1M same-line edits allocate no index arrays and perform ' +
         'one row write; a forced rebuild must move the counter',
       satisfied: true,
     };

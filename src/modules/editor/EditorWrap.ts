@@ -292,17 +292,15 @@ class $EditorWrap {
   // The extent/locate queries below (scroll extent, line→visual-row, visual-row→line) used to walk
   // EVERY line per call — and they are called per RootView update, so a 50k-line wrapped file paid
   // O(document) per FRAME (the 512-entry segment memo thrashes on a sequential pass, so the "memoized"
-  // walk recomputed wraps too). This index makes them O(1)/O(log n) per call with an O(delta) sync
-  // per EDIT: per-line row counts survive between revisions, and an edit re-wraps only the changed
-  // middle (head/tail trimmed by line-reference equality — TextDocument mutates only edited entries
-  // of its line array, so untouched lines keep their string identity).
+  // walk recomputed wraps too). This compact index preserves per-line row counts across revisions;
+  // the document's published change range lets an edit re-wrap only changed lines.
   // invariant: Cost tracks the actively observed set (project.invariants.md)
 
   protected static get BLOCK_SHIFT(): number {
     return 12;
   }
 
-  protected static get BLOCK_SIZE(): number {
+  protected static get blockSize(): number {
     return 1 << this.BLOCK_SHIFT;
   }
 
@@ -335,7 +333,7 @@ class $EditorWrap {
     totalRowCount: number;
   } {
     const blockRowCounts = this.allocateBlockRowCounts(
-      Math.ceil(rowCounts.length / this.BLOCK_SIZE),
+      Math.ceil(rowCounts.length / this.blockSize),
     );
     let totalRowCount = 0;
     for (let lineIndex = 0; lineIndex < rowCounts.length; lineIndex++) {
@@ -366,7 +364,9 @@ class $EditorWrap {
         lineIndex,
         foldProjection.visibleLineByLine[lineIndex] !== lineIndex
           ? 0
-          : this.segmentsForLine(document.line(lineIndex), width).length,
+          : width === null
+            ? 1
+            : this.segmentsForLine(document.line(lineIndex), width).length,
       );
     }
     const { blockRowCounts, totalRowCount } =
@@ -408,9 +408,10 @@ class $EditorWrap {
     return rowCount;
   }
 
-  /** Bring the document's index current for `wrapWidth`: full build on first sight or width change;
-   *  otherwise a head/tail identity trim re-wraps only the edited middle (O(delta) wraps + O(n)
-   *  reference compares + O(n) prefix additions — no grapheme work for untouched lines). */
+  /** Bring the document's index current for `wrapWidth`: full build on first sight, width change,
+   *  fold-projection change, or an absent change fact. Otherwise patch only the published changed
+   *  range. A same-line edit reuses both typed arrays and updates one row, its block total when the
+   *  row count changed, and the exact document total. */
   protected static syncWrapIndex(
     document: WrappableDocument,
     wrapWidth: number | null,
@@ -502,7 +503,9 @@ class $EditorWrap {
         normalizedFoldRanges.length > 0 &&
         index.visibleLineByLine[lineIndex] !== lineIndex
           ? 0
-          : this.segmentsForLine(document.line(lineIndex), width).length;
+          : width === null
+            ? 1
+            : this.segmentsForLine(document.line(lineIndex), width).length;
       this.writeRowCount(rowCounts, lineIndex, nextRowCount);
       if (
         previousLineCount === lineCount &&
@@ -553,7 +556,8 @@ class $EditorWrap {
   /**
    * The visual-row index of a logical line's FIRST visual row (sum of the visual-row counts of all lines
    * before it). The logical↔visual scroll bridge: maps the cursor's line to its visual offset (scroll-into-
-   * view) and a logical scrollTop to its visual position (scrollbar thumb). O(1) off the cumulative index.
+   * view) and a logical scrollTop to its visual position (scrollbar thumb). Reads preceding block
+   * totals, then at most one fixed 4096-line block; it never re-wraps untouched text.
    */
   static firstVisualRowOfLine(
     document: WrappableDocument,
@@ -588,10 +592,10 @@ class $EditorWrap {
   }
 
   /**
-   * The (line, segment) at an absolute VISUAL-row offset — the inverse of $firstVisualRowOfLine. Binary
-   * search over the cumulative index (was a from-line-zero walk per call). Clamps to the last visual
-   * row. This is what lets the window start MID-LINE (a tall final line's lower segments become
-   * reachable — the true-last-visual-row fix). O(log lines).
+   * The (line, segment) at an absolute VISUAL-row offset — the inverse of $firstVisualRowOfLine.
+   * Walk compact block totals, then at most one fixed 4096-line block (instead of wrapping from
+   * line zero). Clamps to the last visual row. This is what lets the window start MID-LINE (a tall
+   * final line's lower segments become reachable — the true-last-visual-row fix).
    */
   static lineSegmentAtVisualRow(
     document: WrappableDocument,
@@ -625,7 +629,7 @@ class $EditorWrap {
     const blockStartLineIndex = targetBlockIndex << this.BLOCK_SHIFT;
     const blockEndLineIndex = Math.min(
       lineCount,
-      blockStartLineIndex + this.BLOCK_SIZE,
+      blockStartLineIndex + this.blockSize,
     );
     let rowsBeforeLine = rowsBeforeBlock;
     for (
@@ -756,9 +760,10 @@ export interface WrapSegment {
   startDisplayColumn: number;
 }
 
-/** The minimal document surface the window walk needs (TextDocument satisfies it). `revision` is
- *  optional (plain test doubles omit it): when present it fast-paths the cumulative index sync —
- *  an unchanged revision skips even the reference sweep. */
+/** The minimal document surface the window walk needs (TextDocument satisfies it). `revision` and
+ *  `lastLineChange` are the paired change facts: an unchanged revision skips synchronization, and
+ *  the matching change describes the only range an edit may patch. Plain test doubles may omit
+ *  both, in which case correctness falls back to rebuilding. */
 export interface WrappableDocument {
   lineCount: number;
   line(index: number): string;

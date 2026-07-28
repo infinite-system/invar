@@ -278,7 +278,7 @@ class $GitWorkspace
     );
     const requestGeneration = state.beginHeadRequest();
     if (confinedPath === null) {
-      state.applyHeadText(requestGeneration, '');
+      state.applyHeadText(requestGeneration, null);
       return;
     }
     const relativePath = Files.Class.relative(
@@ -293,7 +293,7 @@ class $GitWorkspace
     if (this.documentStates.get(handle) !== state) return;
     state.applyHeadText(
       requestGeneration,
-      result.code === 0 ? result.stdout : '',
+      result.code === 0 ? result.stdout : null,
     );
   }
 

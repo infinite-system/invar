@@ -40,6 +40,21 @@ class $CodeFolding {
     ) {
       return cached.ranges;
     }
+    const lineChange = document.lastLineChange;
+    if (
+      cached &&
+      cached.language === language &&
+      cached.lineCount === document.lineCount &&
+      lineChange?.revision === revision &&
+      lineChange.deletedLineCount === lineChange.insertedLineCount &&
+      this.foldStructureUnchanged(lineChange, language)
+    ) {
+      this.$rangesByDocument.set(document, {
+        ...cached,
+        revision,
+      });
+      return cached.ranges;
+    }
 
     const ranges = this.computeRanges(document, language);
     this.$rangesByDocument.set(document, {
@@ -66,6 +81,32 @@ class $CodeFolding {
     );
   }
 
+  /** Whether a visible line begins a fold, computed from only that line plus
+   *  the candidate range it opens. Gutter paint never builds the global fold
+   *  snapshot merely to draw the viewport's marker column. */
+  static startsAtLine(
+    document: FoldableDocument,
+    language: LangId,
+    lineIndex: number,
+  ): boolean {
+    const lineText = document.line(lineIndex);
+    if (lineText.trim().length === 0) return false;
+    if (this.startsDelimiterRange(document, language, lineIndex, lineText)) {
+      return true;
+    }
+    const indentation = this.indentationColumns(lineText);
+    for (
+      let nextLineIndex = lineIndex + 1;
+      nextLineIndex < document.lineCount;
+      nextLineIndex++
+    ) {
+      const nextLineText = document.line(nextLineIndex);
+      if (nextLineText.trim().length === 0) continue;
+      return this.indentationColumns(nextLineText) > indentation;
+    }
+    return false;
+  }
+
   protected static computeRanges(
     document: FoldableDocument,
     language: LangId,
@@ -78,6 +119,47 @@ class $CodeFolding {
         firstRange.startLine - secondRange.startLine ||
         secondRange.endLine - firstRange.endLine,
     );
+  }
+
+  protected static foldStructureUnchanged(
+    lineChange: FoldableLineChange,
+    language: LangId,
+  ): boolean {
+    for (
+      let changedLineOffset = 0;
+      changedLineOffset < lineChange.insertedLineCount;
+      changedLineOffset++
+    ) {
+      const deletedLine = lineChange.deletedLines[changedLineOffset] ?? '';
+      const insertedLine = lineChange.insertedLines[changedLineOffset] ?? '';
+      if (
+        this.foldStructureSignature(deletedLine, language) !==
+        this.foldStructureSignature(insertedLine, language)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected static foldStructureSignature(
+    lineText: string,
+    language: LangId,
+  ): string {
+    if (lineText.trim().length === 0) return 'blank';
+    let delimiters = '';
+    for (const span of Highlighter.Class.highlightLine(lineText, language)) {
+      if (span.role !== 'operator') continue;
+      for (const character of span.text) {
+        if (
+          this.CLOSING_DELIMITER_FOR[character] ||
+          this.MATCHING_OPENING_DELIMITER[character]
+        ) {
+          delimiters += character;
+        }
+      }
+    }
+    return `${this.indentationColumns(lineText)}:${delimiters}`;
   }
 
   protected static collectDelimiterRanges(
@@ -110,6 +192,50 @@ class $CodeFolding {
               kind: 'delimiter',
             });
           }
+        }
+      }
+    }
+  }
+
+  protected static startsDelimiterRange(
+    document: FoldableDocument,
+    language: LangId,
+    lineIndex: number,
+    lineText: string,
+  ): boolean {
+    const delimiterStack: string[] = [];
+    this.updateDelimiterStack(delimiterStack, lineText, language);
+    if (delimiterStack.length === 0) return false;
+    for (
+      let candidateLineIndex = lineIndex + 1;
+      candidateLineIndex < document.lineCount;
+      candidateLineIndex++
+    ) {
+      this.updateDelimiterStack(
+        delimiterStack,
+        document.line(candidateLineIndex),
+        language,
+      );
+      if (delimiterStack.length === 0) return true;
+    }
+    return false;
+  }
+
+  protected static updateDelimiterStack(
+    delimiterStack: string[],
+    lineText: string,
+    language: LangId,
+  ): void {
+    for (const span of Highlighter.Class.highlightLine(lineText, language)) {
+      if (span.role !== 'operator') continue;
+      for (const delimiter of span.text) {
+        if (this.CLOSING_DELIMITER_FOR[delimiter]) {
+          delimiterStack.push(delimiter);
+          continue;
+        }
+        const openingDelimiter = this.MATCHING_OPENING_DELIMITER[delimiter];
+        if (openingDelimiter && delimiterStack.at(-1) === openingDelimiter) {
+          delimiterStack.pop();
         }
       }
     }
@@ -201,6 +327,15 @@ export interface FoldableDocument {
   readonly lineCount: number;
   line(index: number): string;
   readonly revision?: { readonly value: number };
+  readonly lastLineChange?: FoldableLineChange | null;
+}
+
+export interface FoldableLineChange {
+  readonly deletedLineCount: number;
+  readonly deletedLines: readonly string[];
+  readonly insertedLineCount: number;
+  readonly insertedLines: readonly string[];
+  readonly revision: number;
 }
 
 export interface FoldRangeSnapshot {

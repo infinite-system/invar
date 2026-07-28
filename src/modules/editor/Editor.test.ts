@@ -360,18 +360,45 @@ test('undo coalesces a run of typed characters into one step', () => {
 
 test('UndoStore respects kind boundaries (typing then newline are separate steps)', () => {
   const undoStore = new UndoStore.Class();
-  undoStore.record(
-    { lines: ['a'], cursor: { line: 0, col: 0 }, kind: 'insert', at: 0 },
+  undoStore.begin(
+    {
+      beforeCursor: { line: 0, col: 0 },
+      kind: 'insert',
+      at: 0,
+    },
     0,
   );
-  undoStore.record(
-    { lines: ['ab'], cursor: { line: 0, col: 1 }, kind: 'insert', at: 50 },
+  undoStore.recordChange({
+    deletedLines: ['a'],
+    insertedLines: ['ab'],
+    startLineIndex: 0,
+  });
+  undoStore.begin(
+    {
+      beforeCursor: { line: 0, col: 1 },
+      kind: 'insert',
+      at: 50,
+    },
     50,
   ); // coalesced
-  undoStore.record(
-    { lines: ['abc'], cursor: { line: 0, col: 2 }, kind: 'newline', at: 100 },
+  undoStore.recordChange({
+    deletedLines: ['ab'],
+    insertedLines: ['abc'],
+    startLineIndex: 0,
+  });
+  undoStore.begin(
+    {
+      beforeCursor: { line: 0, col: 2 },
+      kind: 'newline',
+      at: 100,
+    },
     100,
   ); // new step
+  undoStore.recordChange({
+    deletedLines: ['abc'],
+    insertedLines: ['abc', ''],
+    startLineIndex: 0,
+  });
   expect(undoStore.depth).toBe(2);
 });
 

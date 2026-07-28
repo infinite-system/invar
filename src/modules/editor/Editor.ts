@@ -28,8 +28,16 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
   protected undo = this.createUndo();
+  protected disposeUndoDocumentListener: (() => void) | null = null;
   protected disposeEditorContributions: (() => void) | null = null;
   protected editorContributions: EditorContributions.Model | null = null;
+
+  constructor() {
+    super();
+    this.disposeUndoDocumentListener = this.document.onLineChange((change) =>
+      this.undo.recordChange(change),
+    );
+  }
 
   protected createViewport() {
     return new Viewport.Class();
@@ -117,6 +125,12 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       return this.collapsedFoldRangesValue;
     }
     const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    if (collapsedLineStarts.size === 0) {
+      this.collapsedFoldRangesValue = [];
+      this.collapsedFoldRangesDocumentRevision = documentRevision;
+      this.collapsedFoldRangesFoldRevision = foldRevision;
+      return this.collapsedFoldRangesValue;
+    }
     this.collapsedFoldRangesValue = this.foldRanges().filter((range) =>
       collapsedLineStarts.has(range.startLine),
     );
@@ -128,6 +142,15 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   foldRangeAtLine(lineIndex: number): FoldRange | null {
     if (!this.codeFoldingEnabled || !this.hasDocument.value) return null;
     return CodeFolding.Class.rangeAtLine(
+      this.document,
+      LanguageRegistry.Class.forPath(this.document.path),
+      lineIndex,
+    );
+  }
+
+  foldStartsAtLine(lineIndex: number): boolean {
+    if (!this.codeFoldingEnabled || !this.hasDocument.value) return false;
+    return CodeFolding.Class.startsAtLine(
       this.document,
       LanguageRegistry.Class.forPath(this.document.path),
       lineIndex,
@@ -216,6 +239,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   protected unfoldToRevealLine(lineIndex: number): void {
     const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
+    if (collapsedLineStarts.size === 0) return;
     let changed = false;
     for (const range of this.collapsedFoldRanges) {
       if (range.startLine < lineIndex && range.endLine >= lineIndex) {
@@ -369,6 +393,8 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   /** Release the owned document text + undo history so a closed/dehydrated tab frees memory promptly
    *  (the Editor holds no external listeners/timers, so dropping these + the reference is complete). */
   override dispose(): void {
+    this.disposeUndoDocumentListener?.();
+    this.disposeUndoDocumentListener = null;
     this.disposeEditorContributions?.();
     this.disposeEditorContributions = null;
     this.editorContributions = null;
@@ -460,14 +486,17 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // --- editing --------------------------------------------------------------
 
   protected captureBefore(kind: EditKind): void {
-    this.undo.record(
+    const now = Clock.Class.now();
+    this.undo.begin(
       {
-        lines: this.document.snapshot(),
-        cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
+        beforeCursor: {
+          line: this.cursor.line.value,
+          col: this.cursor.col.value,
+        },
         kind,
-        at: Clock.Class.now(),
+        at: now,
       },
-      Clock.Class.now(),
+      now,
     );
   }
 
@@ -812,34 +841,44 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
 
   performUndo(): void {
     this.recordOrdinaryEdit();
-    const current = {
-      lines: this.document.snapshot(),
-      cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: 'other' as EditKind,
-      at: Clock.Class.now(),
-    };
-    const target = this.undo.undo(current);
+    const target = this.undo.undo({
+      line: this.cursor.line.value,
+      col: this.cursor.col.value,
+    });
     if (!target) return;
-    this.document.restore(target.lines);
-    this.placeCursor(target.cursor.line, target.cursor.col);
+    for (
+      let changeIndex = target.changes.length - 1;
+      changeIndex >= 0;
+      changeIndex--
+    ) {
+      const change = target.changes[changeIndex];
+      if (!change) continue;
+      this.document.applyLineChange(
+        change.startLineIndex,
+        change.insertedLines.length,
+        change.deletedLines,
+      );
+    }
+    this.placeCursor(target.beforeCursor.line, target.beforeCursor.col);
     this.cursor.clearSelection();
-    this.scrollLineIntoView(target.cursor.line);
+    this.scrollLineIntoView(target.beforeCursor.line);
   }
 
   performRedo(): void {
     this.recordOrdinaryEdit();
-    const current = {
-      lines: this.document.snapshot(),
-      cursor: { line: this.cursor.line.value, col: this.cursor.col.value },
-      kind: 'other' as EditKind,
-      at: Clock.Class.now(),
-    };
-    const target = this.undo.redo(current);
+    const target = this.undo.redo();
     if (!target) return;
-    this.document.restore(target.lines);
-    this.placeCursor(target.cursor.line, target.cursor.col);
+    for (const change of target.changes) {
+      this.document.applyLineChange(
+        change.startLineIndex,
+        change.deletedLines.length,
+        change.insertedLines,
+      );
+    }
+    const afterCursor = target.afterCursor ?? target.beforeCursor;
+    this.placeCursor(afterCursor.line, afterCursor.col);
     this.cursor.clearSelection();
-    this.scrollLineIntoView(target.cursor.line);
+    this.scrollLineIntoView(afterCursor.line);
   }
 
   replaceRangeAsUndoStep(range: LanguageRange, replacementText: string): void {

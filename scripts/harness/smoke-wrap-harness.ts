@@ -43,9 +43,11 @@ function gutterRow(
   snapshot: HarnessSnapshot.Model,
   lineNumber: number,
 ): number {
-  return (
-    snapshot.findText(`${String(lineNumber).padStart(2, ' ')} ▎`)?.row ?? -1
-  );
+  const marker = `${String(lineNumber).padStart(3, ' ')} `;
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (snapshot.rowText(row).includes(marker)) return row;
+  }
+  return -1;
 }
 
 // The wrapped line lives in the CODE BODY's cells only. The editor's vertical scrollbar owns the
@@ -82,11 +84,12 @@ function codeBodyEndColumnExclusive(
 
 function wrappedRowsForFixtureLine(
   snapshot: HarnessSnapshot.Model,
-  lineNumber: number,
   lineStartMarker: string,
+  followingLineStartMarker: string,
 ): string[] | null {
   const lineStartPosition = snapshot.findText(lineStartMarker);
-  const followingLineRow = gutterRow(snapshot, lineNumber + 1);
+  const followingLineRow =
+    snapshot.findText(followingLineStartMarker)?.row ?? -1;
   if (lineStartPosition === null || followingLineRow <= lineStartPosition.row) {
     return null;
   }
@@ -115,16 +118,16 @@ function wrappedRowsForFixtureLine(
 
 function assertFixtureLineWrap(
   snapshot: HarnessSnapshot.Model,
-  lineNumber: number,
   lineStartMarker: string,
+  followingLineStartMarker: string,
   indivisibleFragments: readonly string[],
   trueLineEnd: string,
   label: string,
 ): void {
   const wrappedRows = wrappedRowsForFixtureLine(
     snapshot,
-    lineNumber,
     lineStartMarker,
+    followingLineStartMarker,
   );
   requireCondition(
     wrappedRows !== null && wrappedRows.length > 1,
@@ -300,32 +303,32 @@ try {
   );
   assertFixtureLineWrap(
     wrapOnSnapshot,
-    1,
     '// prosealpha',
+    'repositoryalpha',
     proseWords,
     'proseterminalend',
     'prose comment',
   );
   assertFixtureLineWrap(
     wrapOnSnapshot,
-    2,
     'repositoryalpha',
+    'calculate',
     pathComponents,
     'pathterminalend',
     'dotted and slashed path',
   );
   assertFixtureLineWrap(
     wrapOnSnapshot,
-    3,
     'calculate',
+    'alphaoperandvalue',
     camelCaseComponents,
     'Endmarker',
     'camelCase identifier',
   );
   assertFixtureLineWrap(
     wrapOnSnapshot,
-    4,
     'alphaoperandvalue',
+    'short tail line',
     [...operatorOperands, ...operatorRuns],
     'operatorterminalend',
     'operator expression',
@@ -378,7 +381,8 @@ try {
     'wrap-off restores consecutive logical gutter rows',
     (snapshot) => {
       const firstLineRow = gutterRow(snapshot, 1);
-      return firstLineRow >= 0 && gutterRow(snapshot, 2) === firstLineRow + 1;
+      const secondLineRow = gutterRow(snapshot, 2);
+      return firstLineRow >= 0 && secondLineRow === firstLineRow + 1;
     },
   );
   pass('wrap-off round trip restored consecutive logical rows');

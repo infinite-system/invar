@@ -1,4 +1,7 @@
 import { test, expect } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { TextDocument } from './TextDocument';
 
 class CountingTextDocument extends TextDocument.$Class {
@@ -247,6 +250,27 @@ test('the dirty query hashes only when clean is plausible, never per frame', () 
   }
   expect(cleanFrameCount).toBe(2000);
   expect(document.signatureComputationCount).toBe(1);
+});
+
+test('file load records a known-clean revision without hashing', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'invar-document-load-'));
+  const path = join(directory, 'document.ts');
+  try {
+    writeFileSync(path, 'alpha\nbeta');
+    const document = new SignatureCountingTextDocument();
+
+    document.loadFromFile(path);
+
+    expect(document.signatureComputationCount).toBe(0);
+    expect(document.dirty).toBe(false);
+    document.insertInline(0, 5, 'x');
+    expect(document.dirty).toBe(true);
+    document.deleteBackward(0, 6);
+    expect(document.dirty).toBe(false);
+    expect(document.signatureComputationCount).toBe(0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('the derived answer agrees with a whole-text comparison after every op kind', () => {

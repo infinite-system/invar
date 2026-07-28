@@ -132,6 +132,23 @@ CAUTION: the named boundary ends when `totalVisualRows` returns. It excludes
 PTY input, undo capture, reactive painting, and terminal output; use the
 input-byte-flush instrument for keypress-to-frame claims.
 
+### `INPUT_BYTE_FLUSH_MODE=scale-edit bun scripts/harness/measure-input-byte-flush.ts`
+Editing-input-write to the first complete DEC 2026 frame visibly containing
+that cumulative edit, through the real app and PTY at 2k / 20k / 100k / 500k
+/ 1M lines. It types 30-character bursts in the middle and, at 500k/1M, at
+the shared widest-line champion; reports every ordered sample, launch to
+first content, frames until edit, and launch-to-first-content peak resident
+memory (sampled before excluded target navigation). It
+requires the quiet lock, refuses any live `tsgo`, and forces the former
+full-wrap-index rebuild at 500k as a positive control that must move the
+median by at least 10x.
+USE IT WHEN: claiming that large-file editing feels scale-independent, or
+changing input, undo, document-index, reactive paint, or frame-emission work.
+CAUTION: the boundary excludes fixture generation, target navigation, save,
+terminal display after bytes reach the PTY master, and language-server work
+(the isolated fixture sets a 1 KB suppression limit). The component
+`measure-editor-edit-path.ts` does not answer this end-to-end question.
+
 ### `INVAR_REAL_CODEX_INLINE_REWRITE=1 bun scripts/harness/measure-inline-rewrite-codex.ts`
 One billed, real-Codex inline-rewrite drive through the PTY. It reports request-now-chord-to-visible
 latency and writes `artifacts/inline-rewrite-codex-latency.json`. A 350 ms mock run happens first as

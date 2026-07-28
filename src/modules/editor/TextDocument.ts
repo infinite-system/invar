@@ -19,11 +19,10 @@ class $TextDocument {
   protected maximumLineWidthValue = 0;
   protected maximumLineWidthLineIndex = -1;
   protected _eol: '\n' | '\r\n' = '\n';
-  // The content as it was last SAVED/LOADED (the clean baseline), held as three facts ordered
-  // cheapest-first. Line count and total length are O(1) integer comparisons that reject a changed
-  // buffer without touching a character; the FNV-1a signature is consulted ONLY when both match, so
-  // "clean" is already plausible. A false "clean" would need a hash collision AND a matching line
-  // count AND a matching length — negligible, and it only costs a missing dot.
+  // The content as it was last SAVED/LOADED (the clean baseline), held as facts ordered
+  // cheapest-first. Line count and total length reject most changes without touching a character.
+  // Text-only loads/saves retain an FNV signature; file loads instead retain a known-clean revision
+  // and fall back to an exact disk comparison only if later edits make clean plausible.
   protected savedLineCount = 0;
   protected savedContentLength = 0;
   protected savedSignature: string | null = '';
@@ -40,6 +39,9 @@ class $TextDocument {
   protected dirtyEvaluationBaselineVersion = -1;
   protected dirtyEvaluationResult = false;
   protected lastLineChangeValue: DocumentLineChange | null = null;
+  protected readonly lineChangeListeners = new Set<
+    (change: DocumentLineChange) => void
+  >();
 
   constructor() {
     // A never-loaded document is its own baseline: an empty buffer has no unsaved edits.
@@ -170,6 +172,11 @@ class $TextDocument {
     return this.lastLineChangeValue;
   }
 
+  onLineChange(listener: (change: DocumentLineChange) => void): () => void {
+    this.lineChangeListeners.add(listener);
+    return () => this.lineChangeListeners.delete(listener);
+  }
+
   // --- mutation surface (used from M3) ---
   replaceAll(lines: string[]): void {
     this._lines = lines.length ? lines : [''];
@@ -197,6 +204,16 @@ class $TextDocument {
     } else if (index >= 0 && index < this._lines.length) {
       this.replaceLineRange(index, 1, []);
     }
+    this.revision.value++;
+  }
+
+  /** Apply one localized line replacement, used by delta undo/redo. */
+  applyLineChange(
+    startLineIndex: number,
+    deletedLineCount: number,
+    replacementLines: readonly string[],
+  ): void {
+    this.replaceLineRange(startLineIndex, deletedLineCount, replacementLines);
     this.revision.value++;
   }
 
@@ -288,9 +305,15 @@ class $TextDocument {
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
       const line = lines[lineIndex] ?? '';
       contentLength += line.length;
-      const lineWidth = /^[\x20-\x7e]*$/.test(line)
-        ? line.length
-        : this.measureLineDisplayWidth(line);
+      const asciiOnly = /^[\x20-\x7e]*$/.test(line);
+      if (
+        asciiOnly
+          ? line.length <= maximumLineWidth
+          : this.lineDisplayWidthUpperBound(line) <= maximumLineWidth
+      ) {
+        continue;
+      }
+      const lineWidth = this.measureLineDisplayWidth(line);
       if (lineWidth <= maximumLineWidth) continue;
       maximumLineWidth = lineWidth;
       maximumLineWidthLineIndex = lineIndex;
@@ -359,6 +382,11 @@ class $TextDocument {
     deletedLineCount: number,
     replacementLines: readonly string[],
   ): void {
+    const deletedLines = this._lines.slice(
+      startLineIndex,
+      startLineIndex + deletedLineCount,
+    );
+    const insertedLines = replacementLines.slice();
     const previousMaximumLineWidthLineIndex = this.maximumLineWidthLineIndex;
     const previousMaximumLineWidth = this.maximumLineWidthValue;
     const maximumLineWasDeleted =
@@ -409,12 +437,18 @@ class $TextDocument {
     }
     this.contentLengthValue += lengthDelta;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
-    this.lastLineChangeValue = {
+    const lineChange: DocumentLineChange = {
       deletedLineCount,
+      deletedLines,
       insertedLineCount: replacementLines.length,
+      insertedLines,
       revision: this.revision.value + 1,
       startLineIndex,
     };
+    this.lastLineChangeValue = lineChange;
+    for (const listener of this.lineChangeListeners) {
+      listener(lineChange);
+    }
 
     if (maximumLineWasDeleted) {
       if (replacementMaximumLineOffset >= 0) {
@@ -660,13 +694,13 @@ class $TextDocument {
         };
   }
 
-  /** Snapshot the full line array (for undo). */
+  /** Explicit whole-document copy for consumers that request a detached snapshot. */
   snapshot(): string[] {
     return this._lines.slice();
   }
 
-  /** Restore from a snapshot (undo/redo). Nothing asserts a dirty state here or anywhere else — the
-   *  restored content answers for itself against the saved baseline. */
+  /** Restore an explicit whole-document snapshot. Nothing asserts a dirty state here or anywhere
+   *  else — the restored content answers for itself against the saved baseline. */
   restore(lines: string[]): void {
     this._lines = lines.length ? lines.slice() : [''];
     this.lastLineChangeValue = null;
@@ -684,7 +718,9 @@ export namespace TextDocument {
 
 export interface DocumentLineChange {
   readonly deletedLineCount: number;
+  readonly deletedLines: readonly string[];
   readonly insertedLineCount: number;
+  readonly insertedLines: readonly string[];
   readonly revision: number;
   readonly startLineIndex: number;
 }

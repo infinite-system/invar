@@ -27,11 +27,17 @@ class $GitDocumentState {
     return ++this.requestGeneration;
   }
 
-  applyHeadText(requestGeneration: number, headText: string): boolean {
+  applyHeadText(requestGeneration: number, headText: string | null): boolean {
     if (requestGeneration !== this.requestGeneration) return false;
-    if (this.hasHeadText.value && this.headText.value === headText) return true;
-    this.headText.value = headText;
-    this.hasHeadText.value = true;
+    const hasHeadText = headText !== null;
+    if (
+      this.hasHeadText.value === hasHeadText &&
+      (!hasHeadText || this.headText.value === headText)
+    ) {
+      return true;
+    }
+    this.headText.value = headText ?? '';
+    this.hasHeadText.value = hasHeadText;
     this.appliedHeadRevision.value += 1;
     return true;
   }

@@ -162,7 +162,13 @@ class $Files {
     } catch {
       return false;
     } finally {
-      if (fileDescriptor !== null) closeSync(fileDescriptor);
+      if (fileDescriptor !== null) {
+        try {
+          closeSync(fileDescriptor);
+        } catch {
+          // A close failure does not turn a prefix-sniff heuristic into an app failure.
+        }
+      }
     }
   }
 }

@@ -3,7 +3,9 @@
 // revision — they used to walk every line per RootView update), edits must resync only the delta,
 // and every answer must equal the naive full walk.
 import { test, expect, describe } from 'bun:test';
+import { effect, stop } from 'vue';
 import { EditorWrap } from './EditorWrap';
+import { TextDocument } from './TextDocument';
 
 class IndexProbeDocument {
   lineReads = 0;
@@ -171,8 +173,8 @@ describe('EditorWrap cumulative index', () => {
     }
   });
 
-  test('same-line edit work is identical at 2k and 500k lines', () => {
-    const countsByLineCount = [2_000, 500_000].map((lineCount) => {
+  test('same-line edit work is identical at 2k and 1M lines', () => {
+    const countsByLineCount = [2_000, 1_000_000].map((lineCount) => {
       const document = new IndexProbeDocument(makeLines(lineCount));
       const targetLineIndex = Math.floor(lineCount / 2);
       $CountingEditorWrap.totalVisualRows(document, 80);
@@ -190,6 +192,28 @@ describe('EditorWrap cumulative index', () => {
       rowWrites: 1,
     });
     expect(countsByLineCount[1]).toEqual(countsByLineCount[0]);
+  });
+
+  test('the document revision publishes an in-place typed-array update', () => {
+    const document = new TextDocument.Class();
+    document.loadFromText('12345\nsecond');
+    const observedTotals: number[] = [];
+    const projectionEffect = effect(() => {
+      document.revision.value;
+      observedTotals.push($CountingEditorWrap.totalVisualRows(document, 5));
+    });
+    $CountingEditorWrap.resetCounts();
+
+    document.insertInline(0, 5, 'x');
+
+    expect(observedTotals).toEqual([3, 4]);
+    expect($CountingEditorWrap.counts()).toEqual({
+      blockArrayAllocations: 0,
+      blockWrites: 1,
+      rowArrayAllocations: 0,
+      rowWrites: 1,
+    });
+    stop(projectionEffect);
   });
 
   test('operation counter positive control detects a forced full rebuild', () => {

@@ -94,3 +94,21 @@ test('a changed HEAD invalidates the cached decoration projection', () => {
   expect(cachedDecorationCount).toBe(0);
   stop(projectionEffect);
 });
+
+test('unavailable HEAD is distinct from a tracked empty file', () => {
+  const handle = new DocumentHandle.Class(Symbol('document'), '/file.ts');
+  const document = new TextDocument.Class();
+  document.loadFromText('working content', handle.path);
+  handle.attach(document);
+  const state = new GitDocumentState.Class(handle);
+
+  state.applyHeadText(state.beginHeadRequest(), null);
+  expect(state.hasHeadText.value).toBe(false);
+  expect(state.decorationsByLine().size).toBe(0);
+
+  state.applyHeadText(state.beginHeadRequest(), '');
+  expect(state.hasHeadText.value).toBe(true);
+  expect(state.decorationsByLine().get(0)?.[0]).toMatchObject({
+    kind: 'added',
+  });
+});

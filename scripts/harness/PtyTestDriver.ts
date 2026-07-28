@@ -209,6 +209,12 @@ class $PtyTestDriver {
     });
   }
 
+  /** Process identifier of the real app launched behind the PTY. Instruments use
+   *  it for external process facts such as peak resident memory. */
+  get processId(): number {
+    return this.child.pid;
+  }
+
   sendKeys(...keyNames: string[]): void {
     this.markFrameExpected();
     this.openPty.write(
