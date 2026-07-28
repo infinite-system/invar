@@ -4,6 +4,7 @@
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,11 +33,25 @@ const driver = new PtyTestDriver.Class({
 
 try {
   console.log('== harness tree-scroll: overflowing tree boots ==');
-  const openingSnapshot = await driver.awaitSnapshot(
+  const openingStatus = await HarnessSmoke.Class.awaitStatusWithoutFrame(
+    driver,
+    statusPath,
+    'status condition: a settled boot publishes all 60 file-tree rows',
+    (status) =>
+      status.ready === true &&
+      status.renderQuiescent === true &&
+      status.treeRows === 60,
+  );
+  HarnessSmoke.Class.requireCondition(
+    openingStatus.treeRows === 60,
+    'the settled model contains all 60 file-tree rows',
+  );
+  const openingSnapshot = await driver.awaitGridCondition(
+    'the settled boot paints the populated file tree',
     (snapshot) => snapshot.findText('file-20.txt') !== null,
     15_000,
   );
-  HarnessSmoke.Class.pass('boot');
+  HarnessSmoke.Class.pass('the settled boot paints the populated file tree');
 
   console.log(
     '== harness tree-scroll: wheel moves the window without swimming selection ==',

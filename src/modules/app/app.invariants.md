@@ -76,8 +76,10 @@ inputs queues its render request in a microtask, after the coarse reactive effec
 mutations; this includes the final settling deadline, which has no later cadence tick to repair a
 stale frame. State-changing input that can race an already queued frame uses
 `RenderRequest.afterCurrentTurn`, because OpenTUI may coalesce its same-turn request before the
-reactive projection reaches that frame. Realizes *Data flows one way* (the reactive-invalidation
-half).
+reactive projection reaches that frame. Boot observes `renderer.idle()` without a timeout fallback,
+then marks the app started and uses the same next-turn capability for the semantic frame;
+`ready=true` therefore cannot precede the frame that paints an already-populated contributed pane.
+Realizes *Data flows one way* (the reactive-invalidation half).
 
 **Generates:** async repaint for git/LSP/diagnostics without input; the single coarse effect (not
 effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling `$stopEffects()`.
@@ -86,18 +88,20 @@ effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling 
 `workspaceScrollMomentumAtRest` and `panelScrollMomentumAtRest` frame-tick projections;
 `AppStatusProjection.ts`; `AppStatusProjection.test.ts`; `app/__tests__/frame-effect.test.ts`;
 `src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`
-(revision + cursor change re-run the effect; `$stopEffects` stops it). Confirmed end-to-end by
-`scripts/smoke-editor.sh`: booting, opening a file, and typing bump `bufferRevision` and repaint
-the real terminal via the side channel.
+(revision + cursor change re-run the effect; `$stopEffects` stops it);
+`scripts/harness/smoke-tree-scroll-harness.ts` (settled boot publishes 60 modeled rows and paints
+one of them). Confirmed end-to-end by `scripts/smoke-editor.sh`: booting, opening a file, and typing
+bump `bufferRevision` and repaint the real terminal via the side channel.
 
 **Impossible if true:** an async result (LSP diagnostic, git refresh) that changes model state but
 does not repaint until the next keystroke; a final animation tick publishing stale focus, panel,
 or scroll projection because its synchronized frame preceded the reactive paint; a state-changing
 input whose only repaint request is coalesced into an in-flight frame before the new projection; a
-render pass that mutates model state; an effect-per-item render graph.
+settled `ready=true` boot publishing a nonzero `treeRows` model while the Files pane remains blank;
+a render pass that mutates model state; an effect-per-item render graph.
 
-**Verification:** the headless test above; `bun test src/modules/ui/RenderRequest.test.ts`; plus the
-tmux smoke `scripts/smoke-editor.sh`
+**Verification:** the headless test above; `bun test src/modules/ui/RenderRequest.test.ts`; `bun
+scripts/harness/smoke-tree-scroll-harness.ts`; plus the tmux smoke `scripts/smoke-editor.sh`
 (input → edit → repaint → side-channel, ALL-PASS). Async-producer (no-keypress) repaint is
 exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
