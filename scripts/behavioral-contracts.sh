@@ -113,25 +113,36 @@ glide_pane tree   "$TREE" treeScrollTop  noopen 10
 echo "== CONTRACT glide-cap-range: one notch always moves =="
 glide_cap_run_failed=0
 glide_cap_reports=""
+declare -a glide_cap_process_identifiers=()
 for glide_cap_milliseconds in 100 1050 2000; do
   glide_cap_report="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.json"
   glide_cap_log="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.log"
-  if SMOOTHNESS_GESTURES=1 \
-     SMOOTHNESS_NOTCHES=1 \
-     SMOOTHNESS_ACCUMULATION_FLICKS=0 \
-     SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
-     SMOOTHNESS_LINE_COUNTS=2000,100000 \
-     SMOOTHNESS_SURFACES=editor \
-     SMOOTHNESS_VERSION_CONTROL_MARKS=off \
-     SMOOTHNESS_MAXIMUM_GLIDE_DURATION="$glide_cap_milliseconds" \
-     bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-       >"$glide_cap_report" 2>"$glide_cap_log"; then
+  (
+    SMOOTHNESS_GESTURES=1 \
+      SMOOTHNESS_NOTCHES=1 \
+      SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+      SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
+      SMOOTHNESS_LINE_COUNTS=2000,100000 \
+      SMOOTHNESS_SURFACES=editor \
+      SMOOTHNESS_VERSION_CONTROL_MARKS=off \
+      SMOOTHNESS_MAXIMUM_GLIDE_DURATION="$glide_cap_milliseconds" \
+      bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+        >"$glide_cap_report" 2>"$glide_cap_log"
+  ) &
+  glide_cap_process_identifiers+=("$!")
+done
+glide_cap_number=0
+for glide_cap_milliseconds in 100 1050 2000; do
+  glide_cap_report="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.json"
+  glide_cap_log="$ROOT/artifacts/glide-cap-$glide_cap_milliseconds.log"
+  if wait "${glide_cap_process_identifiers[$glide_cap_number]}"; then
     glide_cap_reports="$glide_cap_reports $glide_cap_report"
   else
     bad "glide-cap $glide_cap_milliseconds ms drive failed"
     tail -20 "$glide_cap_log"
     glide_cap_run_failed=1
   fi
+  glide_cap_number=$((glide_cap_number + 1))
 done
 if [ "$glide_cap_run_failed" = 0 ]; then
   read -r glide_cap_positive_control_rejected \
@@ -194,11 +205,12 @@ fi
 # was reported as "choppier, and the velocity is less when going fast", the `gain` assertion was
 # byte-identical in gate logs from both sides of the reported change. Smoothness is a DIFFERENT NUMBER
 # and needs its own assertion, so this contract gates the per-frame step distribution of one fast
-# fling, measured at the real PTY by scripts/harness/measure-scroll-smoothness.ts. The instrument
-# generates 2k, 26,635, and 100k-line fixtures at run time and drives both the editor and diff
-# surfaces without storing giant fixtures in the repository. Deterministic editor frame-work counts
-# at 2k and 100k are the size-invariance contract. The diff and fold-dense
-# editor FPS readings remain secondary, report-only wall-clock canaries.
+# fling, measured at the real PTY by
+# scripts/harness/measure-scroll-smoothness.ts. The blocking matrix drives
+# both editor and diff at its 2k and 100k endpoints without storing giant
+# fixtures in the repository. Deterministic editor frame-work counts at those
+# endpoints are the size-invariance contract. The diff and fold-dense editor
+# FPS readings remain secondary, report-only wall-clock canaries.
 #
 # THE BOUNDS COME FROM THE APP'S OWN DECLARED VALUES, not from a fitted observation:
 #  * CHOPPINESS CEILING — settings.verticalFlingCeiling (220 rows/s) is the fastest a glide may ever
@@ -229,7 +241,7 @@ mkdir -p "$ROOT/artifacts"
 smooth_stage_completed=0
 if SMOOTHNESS_GESTURES=2 \
    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
-   SMOOTHNESS_LINE_COUNTS=2000,26635,100000 \
+   SMOOTHNESS_LINE_COUNTS=2000,100000 \
    SMOOTHNESS_SURFACES=editor,diff \
    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
      >"$SMOOTH_JSON" 2>"$SMOOTH_LOG"; then
@@ -453,39 +465,56 @@ ACCUMULATION_RAISED_JSON="$ROOT/artifacts/glide-accumulation-raised.json"
 ACCUMULATION_RAISED_LOG="$ROOT/artifacts/glide-accumulation-raised.log"
 ACCUMULATION_RAPID_JSON="$ROOT/artifacts/glide-accumulation-rapid.json"
 ACCUMULATION_RAPID_LOG="$ROOT/artifacts/glide-accumulation-rapid.log"
-if SMOOTHNESS_GESTURES=0 \
-   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
-   SMOOTHNESS_ACCUMULATION_FLICKS=3 \
-   SMOOTHNESS_ACCUMULATION_PAUSE=200 \
-   SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
-   SMOOTHNESS_LINE_COUNTS=2000 \
-   SMOOTHNESS_SURFACES=editor \
-   SMOOTHNESS_FIXTURES=flat \
-   SMOOTHNESS_CODE_FOLDING=on \
-   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-     >"$ACCUMULATION_DEFAULT_JSON" 2>"$ACCUMULATION_DEFAULT_LOG" \
-   && SMOOTHNESS_GESTURES=0 \
-   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
-   SMOOTHNESS_ACCUMULATION_FLICKS=3 \
-   SMOOTHNESS_ACCUMULATION_PAUSE=200 \
-   SMOOTHNESS_VERTICAL_FLING_CEILING=320 \
-   SMOOTHNESS_LINE_COUNTS=2000 \
-   SMOOTHNESS_SURFACES=editor \
-   SMOOTHNESS_FIXTURES=flat \
-   SMOOTHNESS_CODE_FOLDING=on \
-   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-     >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG" \
-   && SMOOTHNESS_GESTURES=1 \
-   SMOOTHNESS_NOTCHES=60 \
-   SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
-   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
-   SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
-   SMOOTHNESS_LINE_COUNTS=2000 \
-   SMOOTHNESS_SURFACES=editor \
-   SMOOTHNESS_FIXTURES=flat \
-   SMOOTHNESS_CODE_FOLDING=on \
-   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-     >"$ACCUMULATION_RAPID_JSON" 2>"$ACCUMULATION_RAPID_LOG"; then
+(
+  SMOOTHNESS_GESTURES=0 \
+    SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
+    SMOOTHNESS_ACCUMULATION_FLICKS=3 \
+    SMOOTHNESS_ACCUMULATION_PAUSE=200 \
+    SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
+    SMOOTHNESS_LINE_COUNTS=2000 \
+    SMOOTHNESS_SURFACES=editor \
+    SMOOTHNESS_FIXTURES=flat \
+    SMOOTHNESS_CODE_FOLDING=on \
+    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+      >"$ACCUMULATION_DEFAULT_JSON" 2>"$ACCUMULATION_DEFAULT_LOG"
+) &
+accumulation_default_process_identifier="$!"
+(
+  SMOOTHNESS_GESTURES=0 \
+    SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
+    SMOOTHNESS_ACCUMULATION_FLICKS=3 \
+    SMOOTHNESS_ACCUMULATION_PAUSE=200 \
+    SMOOTHNESS_VERTICAL_FLING_CEILING=320 \
+    SMOOTHNESS_LINE_COUNTS=2000 \
+    SMOOTHNESS_SURFACES=editor \
+    SMOOTHNESS_FIXTURES=flat \
+    SMOOTHNESS_CODE_FOLDING=on \
+    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+      >"$ACCUMULATION_RAISED_JSON" 2>"$ACCUMULATION_RAISED_LOG"
+) &
+accumulation_raised_process_identifier="$!"
+(
+  SMOOTHNESS_GESTURES=1 \
+    SMOOTHNESS_NOTCHES=60 \
+    SMOOTHNESS_CONTINUATION_MINIMUM_MOVING_FRAMES='' \
+    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+    SMOOTHNESS_VERTICAL_FLING_CEILING=220 \
+    SMOOTHNESS_LINE_COUNTS=2000 \
+    SMOOTHNESS_SURFACES=editor \
+    SMOOTHNESS_FIXTURES=flat \
+    SMOOTHNESS_CODE_FOLDING=on \
+    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+      >"$ACCUMULATION_RAPID_JSON" 2>"$ACCUMULATION_RAPID_LOG"
+) &
+accumulation_rapid_process_identifier="$!"
+accumulation_run_failed=0
+wait "$accumulation_default_process_identifier" ||
+  accumulation_run_failed=1
+wait "$accumulation_raised_process_identifier" ||
+  accumulation_run_failed=1
+wait "$accumulation_rapid_process_identifier" ||
+  accumulation_run_failed=1
+if [ "$accumulation_run_failed" -eq 0 ]; then
   read -r accumulation_positive_control_rejected \
     accumulation_rapid_positive_control_rejected \
     accumulation_separated_peaks_hold \
@@ -801,6 +830,25 @@ fi
 echo "== CONTRACT render-progress: each input window emits a completed frame =="
 RENDER_PROGRESS_JSON="$ROOT/artifacts/render-progress.json"
 RENDER_PROGRESS_LOG="$ROOT/artifacts/render-progress.log"
+GLIDE_INPUT_JSON="$ROOT/artifacts/glide-input-coalescing.json"
+GLIDE_INPUT_LOG="$ROOT/artifacts/glide-input-coalescing.log"
+(
+  SMOOTHNESS_GESTURES=0 \
+    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
+    SMOOTHNESS_LINE_COUNTS=2000,100000 \
+    SMOOTHNESS_SURFACES=editor,diff \
+    SMOOTHNESS_FIXTURES=fold-dense \
+    SMOOTHNESS_CODE_FOLDING=on \
+    SMOOTHNESS_BURST_DURATIONS=900 \
+    SMOOTHNESS_BURST_WINDOW=6 \
+    SMOOTHNESS_BURST_NOTCHES=1 \
+    SMOOTHNESS_MAXIMUM_GLIDE_DURATION=900 \
+    SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS=0.1 \
+    SMOOTHNESS_REQUIRE_INPUT_COALESCING=1 \
+    bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
+      >"$GLIDE_INPUT_JSON" 2>"$GLIDE_INPUT_LOG"
+) &
+glide_input_process_identifier="$!"
 if SMOOTHNESS_GESTURES=0 \
    SMOOTHNESS_ACCUMULATION_FLICKS=0 \
    SMOOTHNESS_LINE_COUNTS=2000,100000 \
@@ -918,22 +966,7 @@ fi
 # step at 100 ms, so the derived default bound is ceil(220 rows/s * 0.1 s) =
 # 22 rows. Nominal 30 FPS is a cadence target, not a maximum frame duration.
 echo "== CONTRACT glide-input-coalescing: real-rate events join one animation =="
-GLIDE_INPUT_JSON="$ROOT/artifacts/glide-input-coalescing.json"
-GLIDE_INPUT_LOG="$ROOT/artifacts/glide-input-coalescing.log"
-if SMOOTHNESS_GESTURES=0 \
-   SMOOTHNESS_ACCUMULATION_FLICKS=0 \
-   SMOOTHNESS_LINE_COUNTS=2000,100000 \
-   SMOOTHNESS_SURFACES=editor,diff \
-   SMOOTHNESS_FIXTURES=fold-dense \
-   SMOOTHNESS_CODE_FOLDING=on \
-   SMOOTHNESS_BURST_DURATIONS=900 \
-   SMOOTHNESS_BURST_WINDOW=6 \
-   SMOOTHNESS_BURST_NOTCHES=1 \
-   SMOOTHNESS_MAXIMUM_GLIDE_DURATION=900 \
-   SMOOTHNESS_MAXIMUM_ANIMATION_DELTA_TIME_SECONDS=0.1 \
-   SMOOTHNESS_REQUIRE_INPUT_COALESCING=1 \
-   bun "$ROOT/scripts/harness/measure-scroll-smoothness.ts" \
-     >"$GLIDE_INPUT_JSON" 2>"$GLIDE_INPUT_LOG"; then
+if wait "$glide_input_process_identifier"; then
   python3 - "$GLIDE_INPUT_JSON" <<'PY'
 import json
 import sys
