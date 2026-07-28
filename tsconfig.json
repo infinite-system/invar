@@ -26,5 +26,11 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+
+  // With no `include`/`exclude`, tsc's default is `**/*` — it walks the FILESYSTEM and does not
+  // consult .gitignore, so gitignored scratch under tmp/ was being typechecked as project source.
+  // That is latent until something large lands there: a 500k-line scale fixture at
+  // tmp/invar-scale-test/huge.ts makes `tsc --noEmit` ingest 39 MB of generated code.
+  "exclude": ["tmp"]
 }

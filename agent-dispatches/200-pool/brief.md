@@ -108,7 +108,11 @@ descriptive identifier names. 80 columns.
 ## Verification — quote exact exit codes, never read `$?` after a pipeline
 
 `bunx tsc --noEmit`, `bun test`, `bash scripts/conventions-gate.sh`,
-`node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` (>= 930 annotations),
+`node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` (**zero problems** — do
+not chase an annotation COUNT floor; the "930" figure originally written here was carried over from a
+different tree and this task's merge base resolves 928. The builder correctly refused to manufacture
+two annotations to satisfy it. A count floor is only meaningful when it is read off the tree the task
+actually sits on),
 `bun scripts/check-coverage-ratchet.ts`, `bash scripts/behavioral-contracts.sh`, the worker-count table,
 the standalone sequences, and a full gate reaching ALL-PASS **at the default worker count**.
 
