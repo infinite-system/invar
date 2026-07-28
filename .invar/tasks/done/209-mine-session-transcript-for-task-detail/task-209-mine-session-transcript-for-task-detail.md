@@ -76,7 +76,7 @@ For each of the 53 thin task files, find in the transcript:
 ### Constraints
 
 - A task file holds THE TASK. No convention boilerplate, no provenance hedging — that is
-  `project.tasks-ledger.md` and `meta.json` respectively.
+  the `manage-tasks` skill and `meta.json` respectively.
 - Where the transcript genuinely holds nothing more, leave the one line and let `## Sources` say
   `None. Only the subject line above survives.` **Do not invent specificity.** An honest stub is worth
   more than a plausible fabrication, because the next reader plans against what they find.
@@ -87,7 +87,7 @@ For each of the 53 thin task files, find in the transcript:
 ## Sources
 
 - The transcript named above (307 MB, this session, spans multiple compactions).
-- `project.ledger.md` — the index that existed at the time (since consolidated into `project.tasks-ledger.md`; content in git history).
+- `project.ledger.md` — the index that existed at the time (since consolidated into the `manage-tasks` skill; content in git history).
 - `agent-dispatches/_archive-2026-07-27/` — 139 briefs and reports whose headers carry NO task number
   and which are therefore still unplaced. The transcript may identify some of them; if it does, place
   them by the same number-declared-in-document rule, never by slug similarity.

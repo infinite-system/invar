@@ -68,9 +68,11 @@ as a SHAPE, not against a threshold. `3,3,3,3` glides; `5,1,5,1` stumbles at the
 ## ⚑ RULE ONE — THE LEDGER: A TASK’S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
 
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `todo`, `live`, `done`, `retired`. A
-task is MOVED between them; a folder is never deleted. `project.tasks-ledger.md` is the ONE
-companion doc — the full protocol plus the backlog priority ordering; this section is its operative
-summary. (`project.tasks.md` and `project.ledger.md` are consolidated into it and no longer exist.)
+task is MOVED between them; a folder is never deleted. The protocol is the
+`manage-tasks` SKILL (`.claude/skills/manage-tasks/SKILL.md`) — shared with Invar users; this section
+is the conductor's operative summary. The priority ordering is `.invar/tasks/backlog.md` (state,
+living with the tasks it orders). `project.tasks.md`, `project.ledger.md`, and
+`project.tasks-ledger.md` no longer exist
 
 | file | shape |
 |---|---|
@@ -113,83 +115,19 @@ Signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live
 finished task sat unfiled), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**, **THIN**. It reports; it never
 moves anything. Moving is the conductor's judgement, made with the lifecycle below.
 
-### The lifecycle — every task walks these steps, and each step is a command
+### The lifecycle — seven steps; the commands live in the `manage-tasks` skill
 
-**1. FILE** — the moment work is identified (user request, bycatch, your own finding):
+1. **FILE** — folder + task file with the header block; next number above the tracker's highest.
+2. **DISPATCH** — `DRY_RUN=1` first, then `dispatch.sh` (moves to `live/`, commits the brief BEFORE launching).
+3. **STEER** — a NEW brief at the next count; a brief is read at LAUNCH.
+4. **DELIVER** — copy the READY report verbatim; convert `## Bycatch` BEFORE merging.
+5. **LAND** — `git mv` to `done/` + `State: DONE — <sha>` + `finished/` tag + summary, in the SAME action as the merge.
+6. **RETIRE** — `git mv` to `retired/` + reason + `retired/` tag when a branch exists.
+7. **AUDIT** — `ledger-status.ts` every sweep; act on each signal or say why not.
 
-```
-mkdir -p .invar/tasks/todo/<number>-<three-word-minimum-slug>
-$EDITOR  .invar/tasks/todo/<n>-<slug>/task-<n>-<slug>.md
-```
-
-The task file holds THE TASK and nothing else: heading `# <n> — <subject>`, then
-`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` (+ `Assignment note:`
-when the assignment needs explaining), then `## Outline` with mechanism, evidence, refutations, and
-`## Sources`. Pick the next number ABOVE the tracker's `highest task number` — never reuse, never
-guess at dispatch time.
-
-**2. DISPATCH** — when a builder starts:
-
-```
-DRY_RUN=1 scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # guards only, no side effect
-          scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # the real launch
-```
-
-`dispatch.sh` moves the folder to `live/`, writes `brief-<n>-1-<slug>.md` and `meta.json`, commits the
-brief BEFORE launching (a record that needs a second step eventually does not happen), cuts the
-worktree, runs `bun install`, and pipes the transcript to
-`tmp/transcripts/transcript-<engine>-<model>-<effort>-<n>-<slug>.md`. It refuses an engine or
-environment that contradicts the task file.
-
-**3. STEER** — every follow-up instruction to a running builder is a NEW file, next count up:
-
-```
-$EDITOR .invar/tasks/live/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
-```
-
-**4. DELIVER** — when the builder reports READY, copy the report verbatim into the folder:
-
-```
-cp /tmp/<n>-*-READY.md .invar/tasks/live/<n>-<slug>/report-<n>-<slug>.md
-```
-
-Read its `## Bycatch` section NOW and convert each item to a new task (step 1) before merging.
-
-**5. LAND** — gate green, merge, then move the record in the SAME action as the merge:
-
-```
-git mv .invar/tasks/live/<n>-<slug> .invar/tasks/done/
-sed -i '0,/^State: .*/s//State: DONE — <merge-commit-sha>/' .invar/tasks/done/<n>-<slug>/task-<n>-<slug>.md
-git tag finished/<branch> <merge-sha>
-$EDITOR .invar/tasks/done/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
-```
-
-The `State:` line MUST name the commit — a bare `DONE` is the tracker's DONE-NO-EVIDENCE signal, and
-eight of those were created in one evening by writing the SHA into the body instead.
-
-**6. RETIRE** — a task that will never be done (superseded, refuted, declined):
-
-```
-git mv .invar/tasks/todo/<n>-<slug> .invar/tasks/retired/
-sed -i '0,/^State: .*/s//State: RETIRED — <why, or SUPERSEDED BY #m>/' .invar/tasks/retired/<n>-<slug>/task-<n>-<slug>.md
-git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits exists
-```
-
-**7. AUDIT** — every reconciliation sweep, and before claiming the backlog state to the user:
-
-```
-bun scripts/tasks/ledger-status.ts
-```
-
-Act on findings: REPORT-IN-OPEN → run step 5 or explain why not (a multi-wave task like #114
-legitimately holds a report while later waves are open — leave the signal firing rather than mute a
-true positive); STATE-MISMATCH → one side is stale, find which from git; DONE-NO-EVIDENCE → resolve
-the commit from `git log` and write it into the State line; THIN → the task was filed without its
-reasoning, recover it or mark the stub honest.
-
-**One task, one folder, forever.** `git mv` between states — never `cp`, never `rm`. A commit or
-`SKIP_GATE=1` commit accompanies every move so the ledger's history is the audit trail.
-
+Load `.claude/skills/manage-tasks/SKILL.md` for the literal commands — it is the single source, and
+Invar users manage their own repos with the same skill. One task, one folder, forever: `git mv`
+between states, never `cp`, never `rm`; a commit accompanies every move.
 ---
 
 ## ⚑ RULE TWO — EVERY CHECK HAS TWO ARMS
@@ -696,7 +634,7 @@ whose content *begins with* `/compact <focus>`.
 the METHOD, not the live state. Read in order:
 
 1. `CLAUDE.md` → `AGENTS.md` → this skill → `project.conductor.md`
-2. `project.handoff.md` (top anchor = current status) → `project.tasks-ledger.md` → `.invar/tasks/`
+2. `project.handoff.md` (top anchor = current status) → the `manage-tasks` skill → `.invar/tasks/` (+ `backlog.md`)
 3. `project.brief.md`, `project.requirements.md`, `project.architecture.md`, and `/ibr`, `/ivue`,
    `/invariants`
 4. **Ground-truth the docs against reality** — docs lag, git is authoritative:

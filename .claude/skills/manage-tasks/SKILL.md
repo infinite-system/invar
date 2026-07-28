@@ -1,4 +1,14 @@
-# project.tasks-ledger.md — the task ledger protocol (`.invar/tasks/`)
+---
+name: manage-tasks
+description: >-
+  Operate a durable task ledger: one folder per task under .invar/tasks/, moved between
+  todo/live/done/retired and never deleted. Use when filing, dispatching, steering, landing,
+  retiring, or auditing tasks — each lifecycle step is a command, every file is named
+  number-first, and the tracker (scripts/tasks/ledger-status.ts) reports drift with a
+  self-test. Built for the Invar repo and reusable by any repo that adopts the layout.
+---
+
+# Manage tasks — the ledger protocol
 
 One folder per task. A task lives in exactly one state directory and is MOVED between them; it is never
 copied, and a folder is never deleted (the repo rule is that things are parked, not removed).
@@ -87,30 +97,79 @@ files real evidence under the wrong task, which is worse than leaving it where i
 `agent-dispatches/_archive-2026-07-27/` still holds 139 briefs and reports whose headers carry no task
 number. They are not lost and not misfiled — they are unplaced, and placing one requires reading it.
 
-## The backlog, in priority order
+## The lifecycle — every task walks these steps, and each step is a command
 
-The per-task detail lives in each folder; this is only the ORDERING, which folders cannot express.
-Landed and retired tasks are not listed — `done/` and `retired/` are the list.
+**1. FILE** — the moment work is identified (user request, bycatch, your own finding):
 
-**OPEN — user-directed:** #202 (tab re-activation re-reads the file), #199 (Find reveal blank row at
-500k), #205 (peak-RSS launch contract).
+```
+mkdir -p .invar/tasks/todo/<number>-<three-word-minimum-slug>
+$EDITOR  .invar/tasks/todo/<n>-<slug>/task-<n>-<slug>.md
+```
 
-**OPEN — verification integrity (highest leverage):** #90 provenance guard · #177 retry ratchet
-(needs 3–5 clean gates first) · #179 gate self-comparison · #183 quiet-lock decision · #180 macOS
-gate (CRITICAL; claude on macos) · #181 platform-choice test · #182 collectUntil false-success ·
-#105 unrun smokes · #190 pool membership · #75 in-gate exit-1 · #210 mutation probes.
+The task file holds THE TASK and nothing else: heading `# <n> — <subject>`, then
+`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` (+ `Assignment note:`
+when the assignment needs explaining), then `## Outline` with mechanism, evidence, refutations, and
+`## Sources`. Pick the next number ABOVE the tracker's `highest task number` — never reuse, never
+guess at dispatch time.
 
-**OPEN — known flakes with evidence:** #167 audio-narration · #164 panel-chrome ASCII tier · #176
-tabs retry · #124 terminal-follow Escape (resolve its state discrepancy first) · #109
-agent-permissions quiet-tail (dispatch condition: no other builder live) · #193 fold-dense 995 rows ·
-#174 markdown ragged table · #173 wrapping-split predicates · #198 pre-satisfied wheels · #165
-zero-margin canary · #166 one-sample crash · #200 input-byte p50.
+**2. DISPATCH** — when a builder starts:
 
-**OPEN — performance and behaviour:** #175 boot attribution · #185 behavioral-contracts fixtures
-(after #136) · #153 hover-card fling (user's feel call) · #86 85 ms wheel constant (user's feel
-call) · #160 wheel double-dispatch · #94 popup Left/Right · #104 glide monotonicity (deferred) ·
-#140 freeze capture (waiting on one user check) · #154 perf-baselines verdict.
+```
+DRY_RUN=1 scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # guards only, no side effect
+          scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # the real launch
+```
 
-**OPEN — architecture and hygiene:** #114 modularity umbrella (Wave B) → #122 editor capstone → #35
-structure pane · #46 terminal observer (design with #157) · #31 getter census (hold for #110) · #62
-ports-object sweep · #59 prettier (LAST by design) · #136 shared fixtures · #107/#108 are done.
+`dispatch.sh` moves the folder to `live/`, writes `brief-<n>-1-<slug>.md` and `meta.json`, commits the
+brief BEFORE launching (a record that needs a second step eventually does not happen), cuts the
+worktree, runs `bun install`, and pipes the transcript to
+`tmp/transcripts/transcript-<engine>-<model>-<effort>-<n>-<slug>.md`. It refuses an engine or
+environment that contradicts the task file.
+
+**3. STEER** — every follow-up instruction to a running builder is a NEW file, next count up:
+
+```
+$EDITOR .invar/tasks/live/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
+```
+
+**4. DELIVER** — when the builder reports READY, copy the report verbatim into the folder:
+
+```
+cp /tmp/<n>-*-READY.md .invar/tasks/live/<n>-<slug>/report-<n>-<slug>.md
+```
+
+Read its `## Bycatch` section NOW and convert each item to a new task (step 1) before merging.
+
+**5. LAND** — gate green, merge, then move the record in the SAME action as the merge:
+
+```
+git mv .invar/tasks/live/<n>-<slug> .invar/tasks/done/
+sed -i '0,/^State: .*/s//State: DONE — <merge-commit-sha>/' .invar/tasks/done/<n>-<slug>/task-<n>-<slug>.md
+git tag finished/<branch> <merge-sha>
+$EDITOR .invar/tasks/done/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
+```
+
+The `State:` line MUST name the commit — a bare `DONE` is the tracker's DONE-NO-EVIDENCE signal, and
+eight of those were created in one evening by writing the SHA into the body instead.
+
+**6. RETIRE** — a task that will never be done (superseded, refuted, declined):
+
+```
+git mv .invar/tasks/todo/<n>-<slug> .invar/tasks/retired/
+sed -i '0,/^State: .*/s//State: RETIRED — <why, or SUPERSEDED BY #m>/' .invar/tasks/retired/<n>-<slug>/task-<n>-<slug>.md
+git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits exists
+```
+
+**7. AUDIT** — every reconciliation sweep, and before claiming the backlog state to the user:
+
+```
+bun scripts/tasks/ledger-status.ts
+```
+
+Act on findings: REPORT-IN-OPEN → run step 5 or explain why not (a multi-wave task like #114
+legitimately holds a report while later waves are open — leave the signal firing rather than mute a
+true positive); STATE-MISMATCH → one side is stale, find which from git; DONE-NO-EVIDENCE → resolve
+the commit from `git log` and write it into the State line; THIN → the task was filed without its
+reasoning, recover it or mark the stub honest.
+
+**One task, one folder, forever.** `git mv` between states — never `cp`, never `rm`. A commit or
+`SKIP_GATE=1` commit accompanies every move so the ledger's history is the audit trail.
