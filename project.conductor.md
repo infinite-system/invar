@@ -3145,3 +3145,46 @@ Six interleaved runs per arm said otherwise: 0/6 on the combined tree, 0/6 on pl
 Interleaving rather than batching matters, because it shares ambient load between arms instead of
 confounding it with the arm. The red is a pre-existing intermittent and the landing is clean; without
 those twelve runs I would have spent the cycle bisecting my own good work.
+
+## 2026-07-28 15:15 EDT — three confirmations for one channel, each verified against only the failure that burned it
+
+**A confirmation must be keyed on the state of the CHANNEL, not on the fate of the PAYLOAD.** I wrote
+three delivery checks for `agent-tmux send` in one day and the first two were both guesses about where
+the message text ends up:
+
+1. *went busy* — one reachable outcome against an already-busy session. Replaced same day.
+2. *no `[Pasted Content N chars]` placeholder* — blind to text TYPED into the composer, which renders as
+   ordinary visible lines with no placeholder anywhere. Reported `submitted` while ~1900 characters sat
+   there unsent. **The user found it by looking at the pane.**
+3. *a probe from the message is gone from the pane* — blind to a message that SUBMITTED, because codex
+   echoes the submitted turn into the transcript, so the text never leaves the screen. Reported failure
+   on a real success.
+
+The observable that separates all three states was there the whole time: the COMPOSER LINE. Capture it
+while the composer is known empty — immediately before sending — and compare after. No hardcoded
+placeholder, no assumption about the transcript, works for submit and queue alike. Verified against
+three fixtures where the empty and submitted panes share an identical composer line and the stuck pane
+has none.
+
+**The generalisable defect is not any of the three checks. It is that I verified each replacement
+against the failure it had just seen and no other.** Check 3 was written with check 2's failure in hand
+and a positive control proving it caught check 2's case — and it shipped broken for a state neither had
+encountered yet. A positive control that replays only the last incident licenses the next one.
+
+So, before trusting a repaired instrument: ENUMERATE THE STATES ITS SUBJECT CAN OCCUPY, and evaluate
+the new predicate against every one of them. Here that was three — empty, holding unsent text,
+submitted — and the fixtures should have covered three from the start. This is the same operator as
+the impossibility boundary applied to instruments: name what the check must say NO to, not only what
+it must say YES to.
+
+**Also learned, cheaply, and it cost delivery of a whole steering message: while a codex turn is in
+flight, `Enter` is a no-op and `Tab` is what queues.** The footer says `tab to queue message` and that
+footer IS the state signal. Ten Enter nudges at a busy session change nothing. No amount of
+confirmation logic helps if the submitting keystroke is wrong for the current state — which is why the
+key choice is now re-read on every iteration rather than decided once.
+
+**And a monitor of mine had the identical shape in the same hour.** I keyed a report-rewrite monitor on
+"content hash differs from baseline" — and a DELETED file also differs, since absence hashes to
+nothing. It fired `REPORT-REWRITTEN` during the deletion half of a rewrite, while the file did not
+exist. Corrected to: exists, non-empty, differs, and size-stable across two polls. Same lesson: I
+enumerated the state I wanted and not the states available.
