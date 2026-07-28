@@ -51,7 +51,10 @@ class $Drive {
       columns: options.columns,
       rows: options.rows,
       homeDirectory,
-      environment: { TUI_STATUS_PATH: statusPath },
+      environment: {
+        INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+        TUI_STATUS_PATH: statusPath,
+      },
     });
 
     try {

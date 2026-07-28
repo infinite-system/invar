@@ -53,20 +53,23 @@ class $TerminalPaneContent implements PaneContent {
   }
 
   readonly id: string;
-  readonly kind = 'terminal';
+  readonly kind: string;
   readonly instanceLabel: string;
   readonly icon = '❯'; // ❯
   protected readonly selection = new TextSelectionModel.Class();
   protected scrollPort: PaneScrollPort | null = null;
   protected observedOutputRevision = 0;
   protected verticalMomentum: ScrollMomentum = Momentum.Class.AT_REST;
+  protected readonly heading: string | null;
 
   constructor(
     protected readonly instance: TerminalInstance.Instance,
     identity: TerminalPaneIdentity = {},
   ) {
     this.id = identity.identifier ?? 'terminal';
+    this.kind = identity.kind ?? 'terminal';
     this.instanceLabel = identity.label ?? 'Terminal';
+    this.heading = identity.heading ?? null;
   }
 
   protected get terminalPadColumns(): number {
@@ -83,9 +86,10 @@ class $TerminalPaneContent implements PaneContent {
 
   get title(): string {
     const liveTitle =
-      this.id === 'terminal'
+      this.heading ??
+      (this.id === 'terminal'
         ? this.instance.title
-        : `${this.instanceLabel} · ${this.instance.title}`;
+        : `${this.instanceLabel} · ${this.instance.title}`);
     return this.instance.exited.value ? `${liveTitle} (exited)` : liveTitle;
   }
 
@@ -362,4 +366,6 @@ export namespace TerminalPaneContent {
 export interface TerminalPaneIdentity {
   identifier?: string;
   label?: string;
+  kind?: string;
+  heading?: string;
 }

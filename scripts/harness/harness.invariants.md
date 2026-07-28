@@ -54,7 +54,10 @@ encoders and recorded-stream quiescence are intentionally process-free.
 
 **Mechanism:** `PtyTestDriver` role-inverts the shared `OpenPty` allocator: the harness owns the master
 as the terminal and Invar owns the slave as its stdin, stdout, and stderr. The child environment
-declares `TERM=xterm-256color` and `COLORTERM=truecolor`; no harness-only app behavior is enabled.
+declares `TERM=xterm-256color` and `COLORTERM=truecolor`. It also sets
+`INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1` so an unrelated subsystem smoke does not start the no-config
+convenience process or alter its panel geometry. The tasks smoke explicitly sets the value to `0`
+and drives the real built-in path.
 
 **Generates:** real termios and terminal-protocol behavior; named key encoding; SGR mouse input;
 bracketed paste; resize through the same PTY generator as the integrated terminal.

@@ -76,7 +76,7 @@ case "$cmd" in
     mkdir -p "$HARNESS_HOME/.config/invar"
     # Run inside the repo with a WORKTREE-LOCAL HOME (isolated ~/.config, never shared/clobbered),
     # the real bun on PATH (captured before isolation), and a session-scoped side channel.
-    tmux send-keys -t "$session" "cd '$ROOT' && HOME='$HARNESS_HOME' PATH='$BUN_BIN':\"\$PATH\" TUI_STATUS_PATH='$(status_path "$session")' TUI_FRAME_PATH='$(frame_path "$session")' $* " C-m
+    tmux send-keys -t "$session" "cd '$ROOT' && HOME='$HARNESS_HOME' PATH='$BUN_BIN':\"\$PATH\" INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1 TUI_STATUS_PATH='$(status_path "$session")' TUI_FRAME_PATH='$(frame_path "$session")' $* " C-m
     echo "launched $session ($cols x $rows): $*"
     ;;
   ready|settle)
