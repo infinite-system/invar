@@ -344,3 +344,17 @@ were inline there and made it read as a log.
   name still resolves years later. A recipe whose anchor is on a branch that never landed is still
   informative: it says the behaviour existed on a line of work that was abandoned, which is usually the
   answer to "why doesn't this work any more."
+- **The anchors become an APPEND-ONLY ledger, and each entry needs a KIND** — user addition: record
+  every branch the recipe was later improved within, so each recipe carries a small log of its own
+  improvement. Append-only, never rewritten: each entry is a known-true point, so the log is a ladder of
+  bisect footholds rather than a changelog, and rewriting it destroys the ladder (same reason history is
+  never rewritten here). The load-bearing refinement is that "the recipe changed" has two opposite
+  meanings and an undifferentiated entry is useless as evidence, so each one declares which it is:
+  *tracked-a-change* (the app moved and the recipe was updated to match), *corrected-an-error* (the app
+  did not move, our description of it was wrong), or *re-verified-unchanged* (nothing edited — the
+  cheapest and most valuable entry, because it advances the bisect lower bound for free). A bisect reads
+  those three completely differently.
+  Generative consequence, and the answer to "won't this log rot too": a recipe whose ledger grows long
+  without the recipe itself getting clearer is evidence the area is volatile, which makes it a candidate
+  for PROMOTION to an executed gated contract. Log length is a promotion signal, not decoration — which
+  is what keeps the ledger from becoming the unread-artifact trap that killed the drive corpus.
