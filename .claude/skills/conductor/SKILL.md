@@ -7,7 +7,7 @@ description: >-
   by driving, and staying resilient across compaction. Covers when to delegate vs self-do,
   what to do when BLOCKED (bring in codex/fable before deferring to the user), and the
   merge-safety + liveness invariants that cost real time when missed. The running,
-  append-only detail lives in the repo root at `project.conductor.md`; this file is the doctrine.
+  append-only detail lives in the repo root at `project.conductor.md` (consolidated by rule) with the full log in `project.conductor.archive.md`; this file is the doctrine.
 ---
 
 # Conductor — multi-agent build orchestration
@@ -125,7 +125,7 @@ The negative arm of a guard test needs a way to reach the guard without paying f
 
 ### Use the tooling — it exists so this stops depending on memory
 
-```
+```sh
 bash scripts/fleet/probe.sh self-test        # prove the probes can fire AND stay silent
 bash scripts/fleet/probe.sh builders         # by /proc cwd + an impossible-path arm
 bash scripts/fleet/probe.sh writes <dir> 15  # -mmin, never -newermt, with a planted canary
