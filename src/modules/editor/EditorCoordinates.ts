@@ -202,6 +202,12 @@ class $EditorCoordinates {
           asciiColumn += tabWidth - (asciiColumn % tabWidth);
         } else if (codeUnit >= 0x20 && codeUnit <= 0x7e) {
           asciiColumn++;
+        } else if (
+          (codeUnit < 0xd800 || codeUnit > 0xdfff) &&
+          (codeUnit < 0xfe00 || codeUnit > 0xfe0f) &&
+          this.codePointWidth(codeUnit) === 1
+        ) {
+          asciiColumn++;
         } else {
           const prefix = this.displayColumnPrefix(line, tabWidth);
           return prefix[prefix.length - 1] ?? 0;

@@ -26,7 +26,9 @@ class $TextDocument {
   // count AND a matching length — negligible, and it only costs a missing dot.
   protected savedLineCount = 0;
   protected savedContentLength = 0;
-  protected savedSignature = '';
+  protected savedSignature: string | null = '';
+  protected savedFileModificationTime = 0;
+  protected savedCleanRevision = 0;
   // Σ of the lines' UTF-16 lengths, maintained incrementally by every edit (never rescanned per
   // query). This is what makes forward typing free: the length differs from the baseline on the very
   // first inserted character, so the dirty answer is DIRTY without hashing.
@@ -37,6 +39,7 @@ class $TextDocument {
   protected dirtyEvaluationRevision = -1;
   protected dirtyEvaluationBaselineVersion = -1;
   protected dirtyEvaluationResult = false;
+  protected lastLineChangeValue: DocumentLineChange | null = null;
 
   constructor() {
     // A never-loaded document is its own baseline: an empty buffer has no unsaved edits.
@@ -81,33 +84,47 @@ class $TextDocument {
 
   loadFromFile(path: string): void {
     this.path = path;
+    this.lastLineChangeValue = null;
     if (Files.Class.looksBinary(path)) {
       this._lines = ['(binary file not shown)'];
-      this.rebuildMaximumLineWidth();
+      this.rebuildDocumentMetadata();
       this._eol = '\n';
       this.binary.value = true;
-      this.captureSavedBaseline();
+      this.captureSavedBaseline(false, null, this.revision.value + 1);
       this.revision.value++;
       return;
     }
     const text = Files.Class.read(path);
-    this._eol = text.includes('\r\n') ? '\r\n' : '\n';
-    this._lines = text.split(/\r?\n/);
+    const firstNewlineIndex = text.indexOf('\n');
+    this._eol =
+      firstNewlineIndex > 0 && text[firstNewlineIndex - 1] === '\r'
+        ? '\r\n'
+        : '\n';
+    this._lines = this.splitTextIntoLines(text);
     if (this._lines.length === 0) this._lines = [''];
-    this.rebuildMaximumLineWidth();
+    this.rebuildDocumentMetadata();
     this.binary.value = false;
-    this.captureSavedBaseline();
+    this.captureSavedBaseline(false, null, this.revision.value + 1);
     this.revision.value++;
   }
 
   loadFromText(text: string, path = ''): void {
     this.path = path;
-    this._eol = text.includes('\r\n') ? '\r\n' : '\n';
-    this._lines = text.split(/\r?\n/);
+    this.lastLineChangeValue = null;
+    const firstNewlineIndex = text.indexOf('\n');
+    this._eol =
+      firstNewlineIndex > 0 && text[firstNewlineIndex - 1] === '\r'
+        ? '\r\n'
+        : '\n';
+    this._lines = this.splitTextIntoLines(text);
     if (this._lines.length === 0) this._lines = [''];
-    this.rebuildMaximumLineWidth();
+    this.rebuildDocumentMetadata();
     this.binary.value = false;
-    this.captureSavedBaseline();
+    this.captureSavedBaseline(
+      false,
+      this.contentSignature(),
+      this.revision.value + 1,
+    );
     this.revision.value++;
   }
 
@@ -149,11 +166,15 @@ class $TextDocument {
     return this._eol;
   }
 
+  get lastLineChange(): DocumentLineChange | null {
+    return this.lastLineChangeValue;
+  }
+
   // --- mutation surface (used from M3) ---
   replaceAll(lines: string[]): void {
     this._lines = lines.length ? lines : [''];
-    this.rebuildMaximumLineWidth();
-    this.rebuildContentLength();
+    this.lastLineChangeValue = null;
+    this.rebuildDocumentMetadata();
     this.revision.value++;
   }
 
@@ -172,9 +193,7 @@ class $TextDocument {
 
   removeLine(index: number): void {
     if (this._lines.length <= 1) {
-      this._lines = [''];
-      this.rebuildMaximumLineWidth();
-      this.rebuildContentLength();
+      this.replaceLineRange(0, 1, ['']);
     } else if (index >= 0 && index < this._lines.length) {
       this.replaceLineRange(index, 1, []);
     }
@@ -188,11 +207,18 @@ class $TextDocument {
   /** Snapshot the current content as the clean baseline (called on load + save), and resync the
    *  incrementally maintained length from the lines so the baseline facts are exact by construction
    *  and any accumulated drift is healed at every load and save. */
-  protected captureSavedBaseline(): void {
-    this.rebuildContentLength();
+  protected captureSavedBaseline(
+    rebuildContentLength = true,
+    savedSignature: string | null = this.contentSignature(),
+    cleanRevision = this.revision.value,
+  ): void {
+    if (rebuildContentLength) this.rebuildContentLength();
     this.savedLineCount = this._lines.length;
     this.savedContentLength = this.contentLengthValue;
-    this.savedSignature = this.contentSignature();
+    this.savedSignature = savedSignature;
+    this.savedFileModificationTime =
+      this.path.length > 0 ? Files.Class.mtimeMs(this.path) : 0;
+    this.savedCleanRevision = cleanRevision;
     this.savedBaselineVersion.value++;
   }
 
@@ -201,9 +227,19 @@ class $TextDocument {
    *  why forward typing never pays for a signature; the hash runs only when both facts match — the
    *  one moment the answer might flip back to clean. */
   matchesSaved(): boolean {
+    if (this.revision.value === this.savedCleanRevision) return true;
     if (this._lines.length !== this.savedLineCount) return false;
     if (this.contentLengthValue !== this.savedContentLength) return false;
-    return this.contentSignature() === this.savedSignature;
+    if (this.savedSignature !== null) {
+      return this.contentSignature() === this.savedSignature;
+    }
+    if (
+      this.path.length === 0 ||
+      Files.Class.mtimeMs(this.path) !== this.savedFileModificationTime
+    ) {
+      return false;
+    }
+    return this.matchesSerializedText(Files.Class.read(this.path));
   }
 
   /** `lineCount:hash` over the joined lines (FNV-1a, allocation-free — hashes chars in place with a
@@ -220,6 +256,20 @@ class $TextDocument {
     return `${this._lines.length}:${(hash >>> 0).toString(36)}`;
   }
 
+  protected matchesSerializedText(text: string): boolean {
+    if (text.length !== this.contentLength) return false;
+    let textOffset = 0;
+    for (let lineIndex = 0; lineIndex < this._lines.length; lineIndex++) {
+      const line = this._lines[lineIndex] ?? '';
+      if (!text.startsWith(line, textOffset)) return false;
+      textOffset += line.length;
+      if (lineIndex === this._lines.length - 1) continue;
+      if (!text.startsWith(this._eol, textOffset)) return false;
+      textOffset += this._eol.length;
+    }
+    return textOffset === text.length;
+  }
+
   /** Rescan Σ line lengths. Only wholesale line-array assignments pay this (load, replaceAll, restore,
    *  baseline capture); localized edits adjust the running total inside `replaceLineRange` instead. */
   protected rebuildContentLength(): void {
@@ -228,6 +278,26 @@ class $TextDocument {
       totalLength += this._lines[lineIndex]!.length;
     }
     this.contentLengthValue = totalLength;
+  }
+
+  protected rebuildDocumentMetadata(): void {
+    const lines = this._lines;
+    let contentLength = 0;
+    let maximumLineWidth = 0;
+    let maximumLineWidthLineIndex = -1;
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+      const line = lines[lineIndex] ?? '';
+      contentLength += line.length;
+      const lineWidth = /^[\x20-\x7e]*$/.test(line)
+        ? line.length
+        : this.measureLineDisplayWidth(line);
+      if (lineWidth <= maximumLineWidth) continue;
+      maximumLineWidth = lineWidth;
+      maximumLineWidthLineIndex = lineIndex;
+    }
+    this.contentLengthValue = contentLength;
+    this.maximumLineWidthValue = maximumLineWidth;
+    this.maximumLineWidthLineIndex = maximumLineWidthLineIndex;
   }
 
   // invariant: Geometry aggregates match their consumers (editor.invariants.md)
@@ -270,7 +340,18 @@ class $TextDocument {
   }
 
   protected measureLineDisplayWidth(line: string): number {
+    if (/^[\x20-\x7e]*$/.test(line)) return line.length;
     return EditorCoordinates.Class.lineWidth(line);
+  }
+
+  protected splitTextIntoLines(text: string): string[] {
+    const lines = text.split('\n');
+    if (this._eol === '\n') return lines;
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex] ?? '';
+      if (line.endsWith('\r')) lines[lineIndex] = line.slice(0, -1);
+    }
+    return lines;
   }
 
   protected replaceLineRange(
@@ -328,6 +409,12 @@ class $TextDocument {
     }
     this.contentLengthValue += lengthDelta;
     this._lines.splice(startLineIndex, deletedLineCount, ...replacementLines);
+    this.lastLineChangeValue = {
+      deletedLineCount,
+      insertedLineCount: replacementLines.length,
+      revision: this.revision.value + 1,
+      startLineIndex,
+    };
 
     if (maximumLineWasDeleted) {
       if (replacementMaximumLineOffset >= 0) {
@@ -582,8 +669,8 @@ class $TextDocument {
    *  restored content answers for itself against the saved baseline. */
   restore(lines: string[]): void {
     this._lines = lines.length ? lines.slice() : [''];
-    this.rebuildMaximumLineWidth();
-    this.rebuildContentLength();
+    this.lastLineChangeValue = null;
+    this.rebuildDocumentMetadata();
     this.revision.value++;
   }
 }
@@ -593,4 +680,11 @@ export namespace TextDocument {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
+}
+
+export interface DocumentLineChange {
+  readonly deletedLineCount: number;
+  readonly insertedLineCount: number;
+  readonly revision: number;
+  readonly startLineIndex: number;
 }

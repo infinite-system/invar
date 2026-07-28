@@ -298,13 +298,114 @@ class $EditorWrap {
   // of its line array, so untouched lines keep their string identity).
   // invariant: Cost tracks the actively observed set (project.invariants.md)
 
-  protected static buildPrefix(rowCounts: number[]): number[] {
-    const prefix: number[] = new Array(rowCounts.length + 1);
-    prefix[0] = 0;
-    for (let index = 0; index < rowCounts.length; index++) {
-      prefix[index + 1] = (prefix[index] ?? 0) + (rowCounts[index] ?? 1);
+  protected static get BLOCK_SHIFT(): number {
+    return 12;
+  }
+
+  protected static get BLOCK_SIZE(): number {
+    return 1 << this.BLOCK_SHIFT;
+  }
+
+  protected static allocateRowCounts(lineCount: number): Uint32Array {
+    return new Uint32Array(lineCount);
+  }
+
+  protected static allocateBlockRowCounts(blockCount: number): Uint32Array {
+    return new Uint32Array(blockCount);
+  }
+
+  protected static writeRowCount(
+    rowCounts: Uint32Array,
+    lineIndex: number,
+    rowCount: number,
+  ): void {
+    rowCounts[lineIndex] = rowCount;
+  }
+
+  protected static writeBlockRowCount(
+    blockRowCounts: Uint32Array,
+    blockIndex: number,
+    rowCount: number,
+  ): void {
+    blockRowCounts[blockIndex] = rowCount;
+  }
+
+  protected static buildBlockRowCounts(rowCounts: ArrayLike<number>): {
+    blockRowCounts: Uint32Array;
+    totalRowCount: number;
+  } {
+    const blockRowCounts = this.allocateBlockRowCounts(
+      Math.ceil(rowCounts.length / this.BLOCK_SIZE),
+    );
+    let totalRowCount = 0;
+    for (let lineIndex = 0; lineIndex < rowCounts.length; lineIndex++) {
+      const rowCount = rowCounts[lineIndex] ?? 1;
+      const blockIndex = lineIndex >> this.BLOCK_SHIFT;
+      this.writeBlockRowCount(
+        blockRowCounts,
+        blockIndex,
+        (blockRowCounts[blockIndex] ?? 0) + rowCount,
+      );
+      totalRowCount += rowCount;
     }
-    return prefix;
+    return { blockRowCounts, totalRowCount };
+  }
+
+  protected static buildDocumentWrapIndex(
+    document: WrappableDocument,
+    width: number | null,
+    foldedRanges: readonly FoldRange[],
+    revision: number,
+  ): DocumentWrapIndex {
+    const lineCount = document.lineCount;
+    const rowCounts = this.allocateRowCounts(lineCount);
+    const foldProjection = this.buildFoldProjection(lineCount, foldedRanges);
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+      this.writeRowCount(
+        rowCounts,
+        lineIndex,
+        foldProjection.visibleLineByLine[lineIndex] !== lineIndex
+          ? 0
+          : this.segmentsForLine(document.line(lineIndex), width).length,
+      );
+    }
+    const { blockRowCounts, totalRowCount } =
+      this.buildBlockRowCounts(rowCounts);
+    return {
+      width,
+      foldedRanges,
+      revision,
+      rowCounts,
+      blockRowCounts,
+      totalRowCount,
+      visibleLineByLine: foldProjection.visibleLineByLine,
+      foldedRangeByStartLine: foldProjection.foldedRangeByStartLine,
+      lastVisibleLineIndex: foldProjection.lastVisibleLineIndex,
+    };
+  }
+
+  protected static rowCountBeforeLine(
+    index: DocumentWrapIndex,
+    lineIndex: number,
+  ): number {
+    const blockIndex = lineIndex >> this.BLOCK_SHIFT;
+    let rowCount = 0;
+    for (
+      let precedingBlockIndex = 0;
+      precedingBlockIndex < blockIndex;
+      precedingBlockIndex++
+    ) {
+      rowCount += index.blockRowCounts[precedingBlockIndex] ?? 0;
+    }
+    const blockStartLineIndex = blockIndex << this.BLOCK_SHIFT;
+    for (
+      let precedingLineIndex = blockStartLineIndex;
+      precedingLineIndex < lineIndex;
+      precedingLineIndex++
+    ) {
+      rowCount += index.rowCounts[precedingLineIndex] ?? 0;
+    }
+    return rowCount;
   }
 
   /** Bring the document's index current for `wrapWidth`: full build on first sight or width change;
@@ -328,31 +429,12 @@ class $EditorWrap {
       index.width !== width ||
       index.foldedRanges !== normalizedFoldRanges
     ) {
-      const lineTexts: string[] = new Array(lineCount);
-      const rowCounts: number[] = new Array(lineCount);
-      const foldProjection = this.buildFoldProjection(
-        lineCount,
-        normalizedFoldRanges,
-      );
-      for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        const lineText = document.line(lineIndex);
-        lineTexts[lineIndex] = lineText;
-        rowCounts[lineIndex] =
-          foldProjection.visibleLineByLine[lineIndex] !== lineIndex
-            ? 0
-            : this.segmentsForLine(lineText, width).length;
-      }
-      index = {
+      index = this.buildDocumentWrapIndex(
+        document,
         width,
-        foldedRanges: normalizedFoldRanges,
+        normalizedFoldRanges,
         revision,
-        lineTexts,
-        rowCounts,
-        prefix: this.buildPrefix(rowCounts),
-        visibleLineByLine: foldProjection.visibleLineByLine,
-        foldedRangeByStartLine: foldProjection.foldedRangeByStartLine,
-        lastVisibleLineIndex: foldProjection.lastVisibleLineIndex,
-      };
+      );
       this.$wrapIndexByDocument.set(document, index);
       return index;
     }
@@ -361,68 +443,95 @@ class $EditorWrap {
     if (
       index.revision === revision &&
       revision !== -1 &&
-      index.lineTexts.length === lineCount
+      index.rowCounts.length === lineCount
     ) {
       return index;
     }
 
-    // Head/tail identity trim: find the unchanged prefix and suffix by string REFERENCE, re-wrap only
-    // the middle. Handles in-place edits AND line insertions/deletions (the tail realigns by offset).
-    const previousTexts = index.lineTexts;
+    const lineChange = document.lastLineChange;
     const previousCounts = index.rowCounts;
-    const previousCount = previousTexts.length;
-    let head = 0;
-    const maxHead = Math.min(previousCount, lineCount);
-    while (head < maxHead && previousTexts[head] === document.line(head))
-      head++;
-    let tail = 0;
-    const maxTail = Math.min(previousCount, lineCount) - head;
-    while (
-      tail < maxTail &&
-      previousTexts[previousCount - 1 - tail] ===
-        document.line(lineCount - 1 - tail)
-    )
-      tail++;
-
-    const lineTexts: string[] = new Array(lineCount);
-    const rowCounts: number[] = new Array(lineCount);
-    const foldProjection = this.buildFoldProjection(
-      lineCount,
-      normalizedFoldRanges,
-    );
-    for (let lineIndex = 0; lineIndex < head; lineIndex++) {
-      lineTexts[lineIndex] = previousTexts[lineIndex] as string;
-      rowCounts[lineIndex] =
-        foldProjection.visibleLineByLine[lineIndex] !== lineIndex
-          ? 0
-          : (previousCounts[lineIndex] as number);
-    }
-    for (let lineIndex = head; lineIndex < lineCount - tail; lineIndex++) {
-      const lineText = document.line(lineIndex);
-      lineTexts[lineIndex] = lineText;
-      rowCounts[lineIndex] =
-        foldProjection.visibleLineByLine[lineIndex] !== lineIndex
-          ? 0
-          : this.segmentsForLine(lineText, width).length;
-    }
-    for (let offsetFromEnd = 1; offsetFromEnd <= tail; offsetFromEnd++) {
-      lineTexts[lineCount - offsetFromEnd] = previousTexts[
-        previousCount - offsetFromEnd
-      ] as string;
-      const lineIndex = lineCount - offsetFromEnd;
-      rowCounts[lineIndex] =
-        foldProjection.visibleLineByLine[lineIndex] !== lineIndex
-          ? 0
-          : (previousCounts[previousCount - offsetFromEnd] as number);
+    const previousLineCount = previousCounts.length;
+    const changeMatchesRevision =
+      lineChange !== undefined &&
+      lineChange !== null &&
+      lineChange.revision === revision &&
+      previousLineCount -
+        lineChange.deletedLineCount +
+        lineChange.insertedLineCount ===
+        lineCount;
+    const canPatchLineCountChange =
+      changeMatchesRevision && normalizedFoldRanges.length === 0;
+    if (
+      !changeMatchesRevision ||
+      (previousLineCount !== lineCount && !canPatchLineCountChange)
+    ) {
+      index = this.buildDocumentWrapIndex(
+        document,
+        width,
+        normalizedFoldRanges,
+        revision,
+      );
+      this.$wrapIndexByDocument.set(document, index);
+      return index;
     }
 
+    const rowCounts =
+      previousLineCount === lineCount
+        ? previousCounts
+        : this.allocateRowCounts(lineCount);
+    if (previousLineCount !== lineCount) {
+      rowCounts.set(previousCounts.subarray(0, lineChange.startLineIndex), 0);
+      const previousTailStartLineIndex =
+        lineChange.startLineIndex + lineChange.deletedLineCount;
+      const nextTailStartLineIndex =
+        lineChange.startLineIndex + lineChange.insertedLineCount;
+      rowCounts.set(
+        previousCounts.subarray(previousTailStartLineIndex),
+        nextTailStartLineIndex,
+      );
+    }
+    const changedLineEndIndex =
+      lineChange.startLineIndex + lineChange.insertedLineCount;
+    for (
+      let lineIndex = lineChange.startLineIndex;
+      lineIndex < changedLineEndIndex;
+      lineIndex++
+    ) {
+      const previousRowCount = rowCounts[lineIndex] ?? 0;
+      const nextRowCount =
+        normalizedFoldRanges.length > 0 &&
+        index.visibleLineByLine[lineIndex] !== lineIndex
+          ? 0
+          : this.segmentsForLine(document.line(lineIndex), width).length;
+      this.writeRowCount(rowCounts, lineIndex, nextRowCount);
+      if (
+        previousLineCount === lineCount &&
+        nextRowCount !== previousRowCount
+      ) {
+        const rowCountDelta = nextRowCount - previousRowCount;
+        const blockIndex = lineIndex >> this.BLOCK_SHIFT;
+        this.writeBlockRowCount(
+          index.blockRowCounts,
+          blockIndex,
+          (index.blockRowCounts[blockIndex] ?? 0) + rowCountDelta,
+        );
+        index.totalRowCount += rowCountDelta;
+      }
+    }
+    if (previousLineCount !== lineCount) {
+      const blockIndex = this.buildBlockRowCounts(rowCounts);
+      index.blockRowCounts = blockIndex.blockRowCounts;
+      index.totalRowCount = blockIndex.totalRowCount;
+      const foldProjection = this.buildFoldProjection(
+        lineCount,
+        normalizedFoldRanges,
+      );
+      index.visibleLineByLine = foldProjection.visibleLineByLine;
+      index.foldedRangeByStartLine = foldProjection.foldedRangeByStartLine;
+      index.lastVisibleLineIndex = foldProjection.lastVisibleLineIndex;
+    }
     index.revision = revision;
-    index.lineTexts = lineTexts;
     index.rowCounts = rowCounts;
-    index.prefix = this.buildPrefix(rowCounts);
-    index.visibleLineByLine = foldProjection.visibleLineByLine;
-    index.foldedRangeByStartLine = foldProjection.foldedRangeByStartLine;
-    index.lastVisibleLineIndex = foldProjection.lastVisibleLineIndex;
     return index;
   }
 
@@ -438,7 +547,7 @@ class $EditorWrap {
     foldedRanges: readonly FoldRange[] = [],
   ): number {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
-    return Math.max(1, index.prefix[index.prefix.length - 1] ?? 1);
+    return Math.max(1, index.totalRowCount);
   }
 
   /**
@@ -454,7 +563,7 @@ class $EditorWrap {
   ): number {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
     const clamped = Math.max(0, Math.min(lineIndex, document.lineCount));
-    return index.prefix[clamped] ?? index.prefix[index.prefix.length - 1] ?? 0;
+    return this.rowCountBeforeLine(index, clamped);
   }
 
   /**
@@ -475,11 +584,7 @@ class $EditorWrap {
     );
     const visibleLineIndex =
       index.visibleLineByLine[clampedLineIndex] ?? clampedLineIndex;
-    return (
-      index.prefix[visibleLineIndex] ??
-      index.prefix[index.prefix.length - 1] ??
-      0
-    );
+    return this.rowCountBeforeLine(index, visibleLineIndex);
   }
 
   /**
@@ -495,8 +600,7 @@ class $EditorWrap {
     foldedRanges: readonly FoldRange[] = [],
   ): { lineIndex: number; segmentIndex: number } {
     const index = this.syncWrapIndex(document, wrapWidth, foldedRanges);
-    const prefix = index.prefix;
-    const total = prefix[prefix.length - 1] ?? 0;
+    const total = index.totalRowCount;
     const lineCount = document.lineCount;
     if (lineCount === 0) return { lineIndex: 0, segmentIndex: 0 };
     if (visualOffset >= total) {
@@ -509,15 +613,42 @@ class $EditorWrap {
       };
     }
     const target = Math.max(0, visualOffset);
-    // Greatest lineIndex with prefix[lineIndex] <= target.
-    let low = 0;
-    let high = lineCount - 1;
-    while (low < high) {
-      const middle = (low + high + 1) >> 1;
-      if ((prefix[middle] ?? 0) <= target) low = middle;
-      else high = middle - 1;
+    let rowsBeforeBlock = 0;
+    let targetBlockIndex = 0;
+    while (
+      targetBlockIndex < index.blockRowCounts.length &&
+      rowsBeforeBlock + (index.blockRowCounts[targetBlockIndex] ?? 0) <= target
+    ) {
+      rowsBeforeBlock += index.blockRowCounts[targetBlockIndex] ?? 0;
+      targetBlockIndex++;
     }
-    return { lineIndex: low, segmentIndex: target - (prefix[low] ?? 0) };
+    const blockStartLineIndex = targetBlockIndex << this.BLOCK_SHIFT;
+    const blockEndLineIndex = Math.min(
+      lineCount,
+      blockStartLineIndex + this.BLOCK_SIZE,
+    );
+    let rowsBeforeLine = rowsBeforeBlock;
+    for (
+      let lineIndex = blockStartLineIndex;
+      lineIndex < blockEndLineIndex;
+      lineIndex++
+    ) {
+      const rowCount = index.rowCounts[lineIndex] ?? 0;
+      if (rowsBeforeLine + rowCount > target) {
+        return {
+          lineIndex,
+          segmentIndex: target - rowsBeforeLine,
+        };
+      }
+      rowsBeforeLine += rowCount;
+    }
+    return {
+      lineIndex: index.lastVisibleLineIndex,
+      segmentIndex: Math.max(
+        0,
+        (index.rowCounts[index.lastVisibleLineIndex] ?? 1) - 1,
+      ),
+    };
   }
 
   /**
@@ -631,6 +762,12 @@ export interface WrapSegment {
 export interface WrappableDocument {
   lineCount: number;
   line(index: number): string;
+  lastLineChange?: {
+    readonly deletedLineCount: number;
+    readonly insertedLineCount: number;
+    readonly revision: number;
+    readonly startLineIndex: number;
+  } | null;
   revision?: { value: number };
 }
 
@@ -650,12 +787,12 @@ export interface DocumentWrapIndex {
   foldedRanges: readonly FoldRange[];
   /** The document revision this index was synced at (-1 = unknown, resync on every query). */
   revision: number;
-  /** The exact line-string references seen at last sync (identity = unchanged, never re-wrapped). */
-  lineTexts: string[];
-  /** Visual rows per line, aligned with lineTexts. */
-  rowCounts: number[];
-  /** prefix[i] = visual rows of all lines BEFORE line i; length lineCount+1 (last = total). */
-  prefix: number[];
+  /** Visual rows per line, aligned with the document's compact line storage. */
+  rowCounts: Uint32Array;
+  /** Visual-row totals for each fixed-size line block. */
+  blockRowCounts: Uint32Array;
+  /** Exact visual-row total maintained with the block sums. */
+  totalRowCount: number;
   /** O(1) line lookup: a hidden line maps to its visible collapsed header. */
   visibleLineByLine: number[];
   /** Only visible collapsed headers; nested hidden starts are absent. */
