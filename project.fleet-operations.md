@@ -1,10 +1,17 @@
 # Fleet operations — where dispatches live, how they are watched, how we migrate
 
-Status: DECIDED 2026-07-27, not yet implemented. Naming, transcript retention and fleet location
-are settled by the user; the migration phases below are unchanged.
+Status: DECIDED 2026-07-27. **Phases 1 and 2 landed 2026-07-28**; phases 3 and 4 open.
 
 **Settled:** `agent-dispatches/` for the records. ALL transcripts kept, as plain text. Fleet
-worktrees at `.invar/worktrees/`, gitignored.
+worktrees at `.invar/worktrees/`, gitignored. `runOn: folderOpen` for task entries.
+
+**Landed:** Phase 1 salvage (`f590440`) — 235 dispatch documents out of volatile `/tmp`.
+Phase 2 scripts (`e0c7693`) — `scripts/fleet/dispatch.sh` and `scripts/fleet/land.sh`, guards
+verified, end-to-end path awaiting its first real dispatch.
+
+**Open:** Phase 3 cutover (next dispatch uses the scripts), Phase 4 Invar-as-viewer via
+`.invar/tasks.json` — which is blocked behind #171, because writing that file today silently
+deletes the built-in Claude terminal.
 
 ## The problem, stated as one thing
 
