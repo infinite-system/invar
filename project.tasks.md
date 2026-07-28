@@ -98,3 +98,66 @@ Landed earlier in the campaign (commits in the `finished/*` tags and `project.de
   `scripts/merge-gate.sh`.
 - Orchestration lessons: `project.conductor.md`, and the long-form log in
   `~/dev/ibr/Skills/Orchestration Lessons.md`.
+
+---
+
+## OPEN BACKLOG as of 2026-07-28 05:50 UTC
+
+The live task list is session-scoped, so this is the durable copy. Briefs for the starred ones are
+at `agent-dispatches/_staged/`.
+
+### User-visible defects
+
+| # | What a user hits | Evidence |
+|---|---|---|
+| ★170 | `Ctrl+,` does not open Settings; the gear does | 3x at 80x24 with a generated file; publishes `focus="editor"` AND `terminalFocused=true` together |
+| ★171 | Writing `.invar/tasks.json` silently deletes the built-in Claude terminal | Replacement not union is a landed invariant; the built-in is lowest priority. Blocks fleet Phase 4 |
+| 174 | Markdown preview omitted a ragged table present in source | Once, under a loaded pool; hypothesis is the aligner assumes rectangular rows (#102) |
+| 160 | Context-menu wheel double-dispatch — one physical wheel, two impulses | |
+| 153 | Horizontal fling 2.75x slower in overlays than the editor | #50's one-profile fix never reached `ScrollableTextViewport` |
+
+### The unreachable-condition class — FOUR confirmed instances, one shared audit
+
+`mutation -> reachable publisher -> observed condition`. #158 (probe keyed to a fourteenth frame
+that stopped existing) and #159 (panel close with no publication carrier) are FIXED. Open:
+
+| # | Where | Note |
+|---|---|---|
+| ★168 | `SynchronizedOutputQuiescence:63` waits for "the next complete synchronized frame" | Frame-ordinal wait, forbidden by an established invariant. Highest value: one site is a GATE STEP, so its retries launder everything measured beside it |
+| 164 | panel-chrome expand-heading, ASCII tier | ~2/100 on a quiet machine, pre-existing on both populations |
+
+### Instrument and contract debt
+
+| # | Item |
+|---|---|
+| ★173 | Predicates asserting contiguous strings against surfaces that wrap by design; app rendered correctly, probe could not see it |
+| 177 | **Is the gate flake ONE shared cause?** Exactly one retry in 4 of 5 gates, a different smoke every time, never a repeat. If confirmed, #142/#164/#167/#176/#109/#124 are one task, not six. SOLO run |
+| 176 | tabs harness retried on the #172 gate — either #172 exposed a pre-existing race or `awaitProjectedFrame` resolves earlier than tabs needs |
+| 167 | audio-narration still times out in the pool after #141 CLOSED it; two independent builders saw it |
+| 165 | glide scale-travel canary at 9 rows against an 8-row budget — #144's zero-margin class on a third contract |
+| 166 | `LATENCY_SAMPLE_COUNT=1` crashes instead of reporting an unmeasurable run |
+| 154 | perf-baselines is SOFT, so its failures and its leaked editor reach no verdict — and it costs blocking time (folded into #178) |
+| 105 | A smoke the gate never runs cannot report that it has rotted (~20 `*_full_tmux_smoke`) |
+| 90 | Harness diagnostic channels need a provenance guard — a stale `artifacts/tui.log` line can satisfy assertions |
+| 75 | In-gate app crash (exit 1) with no diagnosable reason — instrument first |
+
+### Performance, all SOLO (deliverables are measurements)
+
+| # | Item |
+|---|---|
+| 175 | Attribute the ~300 ms boot (308 default / 290 at 100k) and decide what is irreducible. Two rival "boot time" numbers exist — reconcile the boundaries first |
+| 169 | Editing is not flat like scrolling: `syncWrapIndex` allocates 4 arrays of length n per edit. From the Opus 5 review the user surfaced; corrections recorded in the task |
+| 86 | Wheel-to-first-visible-frame ~85 ms regardless of item count — decide if that is intended |
+| 136 | One shared scale-fixture generator with a cached corpus |
+
+### Architecture sequence — user-requested, in this order
+
+**#114 Wave B** (terminal as runtime; Wave A landed LSP as a provider) -> **#122** (editor becomes
+the final contributor) -> **#35** (structure pane, right dock, first new plugin citizen).
+**#46** (TerminalObserver reverse presence) pairs with #114.
+
+### Conventions and hygiene
+
+**#59** prettier on commit + one-shot reformat. **#62** parameter-count sweep (>3 args -> ports
+object). **#31** getter census -> scoped invalidation. **#94** popup Left/Right falls through to
+caret movement. **#104** DEFERRED editor glide monotonicity.
