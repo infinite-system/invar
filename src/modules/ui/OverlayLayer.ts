@@ -1129,6 +1129,11 @@ class $OverlayLayer {
       // invariant: An un-openable open-project path is flagged live (src/modules/search/search.invariants.md)
       const showPathAlert =
         openingWorkspace && !quickOpen.workspacePathOpenable.value;
+      // invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
+      const showFileEnumerationNotice =
+        !openingWorkspace &&
+        (quickOpen.fileEnumerationState.value === 'degraded' ||
+          quickOpen.fileEnumerationState.value === 'failed');
       // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
       const inputChunks: TextChunk[] = TextFieldPainter.Class.paint({
         prefix: `${openingWorkspace ? '+' : theme.actionIcons.open} `,
@@ -1140,6 +1145,17 @@ class $OverlayLayer {
       }).chunks;
       if (showPathAlert)
         inputChunks.push(fg(palette.warning)(`  ${theme.alertIcon}`));
+      if (showFileEnumerationNotice) {
+        const noticeColour =
+          quickOpen.fileEnumerationState.value === 'failed'
+            ? palette.error
+            : palette.warning;
+        inputChunks.push(
+          fg(noticeColour)(
+            `  ${theme.alertIcon} ${quickOpen.fileEnumerationMessage.value}`,
+          ),
+        );
+      }
       this.quickOpenInput.content = new StyledText(inputChunks);
       // The result list renders through the renderer: row-background selection/hover (no arrow marker),
       // and it reports the hit-testable row count for the pointer handler.

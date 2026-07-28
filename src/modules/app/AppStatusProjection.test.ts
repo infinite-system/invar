@@ -235,6 +235,8 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.boundedListPopupMatchIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupSelectedIdentifier).toBeNull();
     expect(initialSnapshot.quickOpenSelectedIdentifier).toBeNull();
+    expect(initialSnapshot.quickOpenFileEnumerationState).toBe('idle');
+    expect(initialSnapshot.quickOpenFileEnumerationMessage).toBe('');
     expect(initialSnapshot.pluginPrimaryDockContentIdentifiers).toEqual([
       'git',
       'extensions',
@@ -296,6 +298,8 @@ describe('AppStatusProjection', () => {
       { path: 'project.tasks.md', score: 1 },
     ];
     quickOpen.selectedIndex.value = 0;
+    quickOpen.fileEnumerationState.value = 'degraded';
+    quickOpen.fileEnumerationMessage.value = 'Bounded folder scan';
 
     const publishedSnapshot = AppStatusProjection.Class.publish(ports);
     expect(publishedSnapshot.mouse).toEqual(mouse);
@@ -318,6 +322,10 @@ describe('AppStatusProjection', () => {
     expect(publishedSnapshot.terminalScrollViewportRows).toBe(24);
     expect(publishedSnapshot.terminalWheelForwardedToChild).toBe(true);
     expect(publishedSnapshot.quickOpenSelectedIdentifier).toBe('TASK.md');
+    expect(publishedSnapshot.quickOpenFileEnumerationState).toBe('degraded');
+    expect(publishedSnapshot.quickOpenFileEnumerationMessage).toBe(
+      'Bounded folder scan',
+    );
     expect(publishedSnapshot.panelHeadingGeometry).toEqual([
       {
         contentId: 'terminal',

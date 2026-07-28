@@ -8,3 +8,12 @@ test('confineToRoot accepts descendants and rejects traversal', () => {
   );
   expect(Files.Class.confineToRoot(workspaceRoot, '../outside')).toBeNull();
 });
+
+test('listNamesResult distinguishes an unreadable path from an empty directory', () => {
+  const missingDirectory = Files.Class.join(
+    '/tmp',
+    'invar-files-test-path-that-does-not-exist',
+  );
+
+  expect(Files.Class.listNamesResult(missingDirectory).ok).toBe(false);
+});

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { QuickOpen } from '../search/QuickOpen';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import { QuickOpenRenderer } from './QuickOpenRenderer';
 
 const computeWindow = QuickOpenRenderer.Class.computeWindow;
@@ -10,6 +11,51 @@ describe('QuickOpenRenderer.contentRowCount', () => {
     quickOpen.showWorkspacePath();
 
     expect(QuickOpenRenderer.Class.contentRowCount(quickOpen)).toBe(2);
+  });
+});
+
+describe('QuickOpenRenderer file-enumeration messages', () => {
+  test('complete empty degraded empty and failed enumeration render distinct states', () => {
+    const quickOpen = new QuickOpen.Class();
+    quickOpen.open.value = true;
+    quickOpen.fileEnumerationState.value = 'complete';
+    const completeEmptyText = QuickOpenRenderer.Class.render({
+      quickOpen,
+      palette: ThemePalettes.Class.DARK,
+      innerWidth: 70,
+      maxRows: 12,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+
+    quickOpen.fileEnumerationState.value = 'degraded';
+    quickOpen.fileEnumerationMessage.value = 'Bounded folder scan';
+    const degradedEmptyText = QuickOpenRenderer.Class.render({
+      quickOpen,
+      palette: ThemePalettes.Class.DARK,
+      innerWidth: 70,
+      maxRows: 12,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+
+    quickOpen.fileEnumerationState.value = 'failed';
+    quickOpen.fileEnumerationMessage.value = 'Project files unavailable';
+    const failedText = QuickOpenRenderer.Class.render({
+      quickOpen,
+      palette: ThemePalettes.Class.DARK,
+      innerWidth: 70,
+      maxRows: 12,
+    })
+      .text.chunks.map((chunk) => chunk.text)
+      .join('');
+
+    expect(completeEmptyText).toContain('no project files');
+    expect(completeEmptyText).not.toContain('Bounded folder scan');
+    expect(degradedEmptyText).toContain('Bounded folder scan');
+    expect(degradedEmptyText).toContain('no project files');
+    expect(failedText).toContain('Project files unavailable');
+    expect(failedText).not.toContain('no project files');
   });
 });
 

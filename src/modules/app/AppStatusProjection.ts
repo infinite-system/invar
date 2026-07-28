@@ -97,6 +97,10 @@ class $AppStatusProjection {
       quickOpenHovered: ports.quickOpen.hoveredIndex.value,
       quickOpenQuery: ports.quickOpen.query.value,
       quickOpenMatches: ports.quickOpen.matches.value.length,
+      // invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
+      quickOpenFileEnumerationState: ports.quickOpen.fileEnumerationState.value,
+      quickOpenFileEnumerationMessage:
+        ports.quickOpen.fileEnumerationMessage.value,
       // invariant: Quick Open activates the selected entry (src/modules/search/search.invariants.md)
       quickOpenSelectedIdentifier:
         ports.quickOpen.matches.value[ports.quickOpen.selectedIndex.value]
@@ -424,6 +428,8 @@ export interface AppStatusProjectionPorts {
     | 'hoveredIndex'
     | 'query'
     | 'matches'
+    | 'fileEnumerationState'
+    | 'fileEnumerationMessage'
     | 'mode'
     | 'workspacePathOpenable'
   >;

@@ -45,7 +45,7 @@ modes rendering the selection differently, or differently from the file tree.
 
 **Verification:** `bun test src/modules/search/QuickOpen.test.ts && bash scripts/smoke-search-mouse.sh`
 
-**Status:** provisional
+**Status:** established
 
 **Last refined:** 2026-07-23
 
@@ -126,6 +126,45 @@ scripts/harness/smoke-quickopen-harness.ts`
 **Status:** established
 
 **Last refined:** 2026-07-27
+
+### File enumeration failures stay visible
+
+**Invariant:** If Quick Open accepts a workspace for file enumeration, then
+it either publishes a complete result, publishes a visibly degraded bounded
+folder scan, or publishes a visible failure distinct from an empty result.
+
+**Scope:** `QuickOpen.show`, its ripgrep, Git, and bounded directory-walk
+strategies, `QuickOpenRenderer`, `OverlayLayer`, and
+`AppStatusProjection` file-enumeration fields.
+
+**Mechanism:** `QuickOpen.enumerateProjectFiles` tries ripgrep, then Git,
+then a directory walk capped by `PROJECT_FILE_ENTRY_LIMIT`. The walk skips
+throwing entries and reports an unreadable root as failure.
+`fileEnumerationState` and `fileEnumerationMessage` preserve the outcome
+through rendering and status publication.
+
+**Generates:** File discovery without ripgrep or a Git repository; a visible
+bounded-scan warning; distinct complete-empty, degraded, and failed states.
+
+**Rejected alternatives:** Return an empty array after command failures -
+the UI cannot distinguish unavailable enumeration from an empty workspace.
+
+**Evidence:** `src/modules/search/QuickOpen.ts`;
+`src/modules/search/QuickOpen.test.ts`;
+`src/modules/ui/QuickOpenRenderer.ts`;
+`src/modules/app/AppStatusProjection.ts`.
+
+**Impossible if true:** A non-git workspace with files rendering as empty
+only because ripgrep is absent; every enumeration strategy failing while
+Quick Open publishes the same status and message as a successful empty scan.
+
+**Verification:** `bun test src/modules/search/QuickOpen.test.ts
+src/modules/ui/QuickOpenRenderer.test.ts
+src/modules/app/AppStatusProjection.test.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-28
 
 ### Find bar controls are mouse-clickable buttons
 

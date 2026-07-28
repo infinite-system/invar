@@ -82,10 +82,18 @@ class $Files {
    * navigator caps and classifies itself, so it never stats an unbounded number of entries up front.
    */
   static listNames(directory: string): string[] {
+    return this.listNamesResult(directory).entryNames;
+  }
+
+  static listNamesResult(directory: string): DirectoryNameListingResult {
     try {
-      return readdirSync(directory);
-    } catch {
-      return [];
+      return { ok: true, entryNames: readdirSync(directory), error: '' };
+    } catch (error) {
+      return {
+        ok: false,
+        entryNames: [],
+        error: String(error),
+      };
     }
   }
 
@@ -182,4 +190,10 @@ export interface DirEntry {
   name: string;
   path: string;
   isDir: boolean;
+}
+
+export interface DirectoryNameListingResult {
+  ok: boolean;
+  entryNames: string[];
+  error: string;
 }
