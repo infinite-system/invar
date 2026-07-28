@@ -3090,3 +3090,58 @@ full gate spawns ~60 app instances. The user is interactively evaluating typing 
 tree right now, so a gate would both slow their app and corrupt the impression they are forming. The
 "conductor must not compete with its own fleet" rule extends to the user as a machine citizen. The gate
 runs when they are done testing.
+
+## 2026-07-28 14:14 EDT — a control that cannot fail, a fixture that cannot expose, and the fourth partial conversion
+
+**Two of my own instruments produced confident numbers while measuring nothing, in one hour.** First,
+`timeout bun scripts/...` printed eight instant identical failures and my loop reported
+`FAIL (exit 0)` — a verdict incoherent with its own status field, which is the tell. `bun` is not on
+this shell's PATH at all (only `~/.bun/bin/bun` exists; the merge gate exports it at line 16, my ad-hoc
+shell did not), so `timeout` never ran the subject. Eight data points, zero measurements. Second, and
+worse because it looked rigorous: I "proved" the new tsconfig `exclude` worked by running the same check
+with `--excludeDirectories nonexistent-dir` as the negative arm. That flag is ADDITIVE, so both arms read
+0 and the control could only ever agree with the thing it was checking. A real control needs an arm that
+DEMONSTRABLY FAILS: a `tsconfig.control.json` with `include: ["tmp/**/*"], exclude: []` fired, ingesting
+both fixtures, 34s, ~125,000 errors, exit 2 — which is also the cost the exclude avoids. Rule: when a
+control and its subject agree, ask whether the control CAN disagree before believing either.
+
+**And the liveness probe I have already written doctrine about, used wrong again.** I reached for
+`find . -newermt '-5 minutes'` in this same cycle — the form that matches nothing — and read its empty
+output as a quiet builder. Caught only because a recalled note contradicted it. The `-mmin -8` form found
+eight files immediately. A probe whose failure mode is "reports silence" must be run against something
+known to be live in the same breath; I now pair every liveness probe with the transcript file as its
+positive control. Writing the doctrine does not install the reflex.
+
+**A fixture that varies SIZE cannot expose a defect that scales with STRUCTURE.** The 500k/1M flat
+fixture drove the whole flyweight port to a real result — identical per-keystroke counts at 2k and 1M.
+The user then asked the question the fixture could not answer: what about a huge nested package.json,
+with fold regions "bigger than viewport or bigger than a single block stored in this new architecture".
+Every fold region in the flat file is a few lines and none crosses a block boundary, so a region-size
+defect measured perfectly clean. Folding one region of the new nested fixture reproduced slowness
+immediately at both 554k and 970k. Rule: state which axes a fixture VARIES and which it holds CONSTANT,
+and treat the constants as the untested surface. "It scales to 1M" meant one axis.
+
+**Fourth instance of partial coverage presenting as total, and this time in work I had just accepted.**
+The flyweight port converted `rowCounts` and `blockRowCounts` to `Uint32Array` and left
+`visibleLineByLine` as `Array.from({length: lineCount}, (_, i) => i)` — a plain boxed array of a million
+numbers, reallocated and identity-filled on every projection rebuild. It is the only one of the three
+that FOLDING reaches, which is exactly why the unfolded fixture never touched it. The O(1) keystroke
+result survives only through an empty-array singleton: with nothing collapsed the identity check holds,
+and one collapsed region removes that escape. So the accepted result was true and its scope was
+narrower than the claim. When a conversion sweeps a class, enumerate the class MEMBERS and say which
+were converted — "converted the row-count arrays" hid a third array in plain sight.
+
+**Committed record beat resumable session, measurably.** The user asked whether to revive the builder
+that did the port. Its session resumes (verified present, and resume does restore full context) but the
+rollout is 4.6 MB / 2,117 lines; the same knowledge sits committed in the repo as 578 lines of brief plus
+report. Fresh agent pointed at the artifacts, ~1% of the context cost. This is the payoff of the standing
+rule against writing to an agent's private memory: the artifact is what makes a cold start equivalent to
+a resume. The one thing resume would have answered better — whether the third array was left plain
+DELIBERATELY — I turned into an explicit question in the brief against the committed report.
+
+**Exonerate before attributing, and the population separation is cheap.** A gate red on the combined
+tree failed reserved-chord twice, arriving right after the flyweight landing — the shape of a regression.
+Six interleaved runs per arm said otherwise: 0/6 on the combined tree, 0/6 on plain main, identical.
+Interleaving rather than batching matters, because it shares ambient load between arms instead of
+confounding it with the arm. The red is a pre-existing intermittent and the landing is clean; without
+those twelve runs I would have spent the cycle bisecting my own good work.
