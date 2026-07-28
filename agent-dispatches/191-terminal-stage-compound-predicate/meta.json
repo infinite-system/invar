@@ -1,0 +1,12 @@
+{
+  "task": 191,
+  "slug": "terminal-stage-compound-predicate",
+  "branch": "fleet/191-terminal-stage-compound-predicate",
+  "worktree": ".invar/worktrees/191-terminal-stage-compound-predicate",
+  "tmuxSession": "invar/191-terminal-stage-compound-predicate",
+  "transcript": "tmp/transcripts/191-terminal-stage-compound-predicate.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "5494a3e6f4caee69fb7fc200516f538739f68e09",
+  "startedAt": "2026-07-28T06:53:25-04:00"
+}
