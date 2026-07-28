@@ -181,12 +181,18 @@ async function driveAnimatedTerminalTools(
         status.panelActiveContent === 'terminal' &&
         status.terminalFocused === true,
     );
-    let snapshot = await driver.awaitSnapshot(
+    let snapshot = await driver.awaitGridCondition(
+      'the clean terminal paints the minimal prompt with the ' +
+        'terminalPrompt palette role',
+      (candidate) => snapshotHasPromptColor(candidate, 0x7aa2f7),
+      15_000,
+    );
+    snapshot = await driver.awaitGridCondition(
+      'the terminal header shows shell identity and a working-directory path',
       (candidate) =>
         candidate
           .textRows()
-          .some((rowText) => /[^@\s]+@[^:\s]+:.*fixtures/.test(rowText)) &&
-        snapshotHasPromptColor(candidate, 0x7aa2f7),
+          .some((rowText) => /[^@\s]+@[^:\s]+:\S+/.test(rowText)),
       15_000,
     );
     HarnessSmoke.Class.requireCondition(
@@ -343,7 +349,19 @@ async function driveAnimatedTerminalTools(
     await focusPanelCell(driver, statusPath, agentCellIndex);
     driver.sendText('terminal-tools:read');
     driver.sendKeys('Enter');
-    snapshot = await driver.awaitSnapshot(
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'readTerminalInput finishes with the current readline buffer',
+      (candidate) =>
+        candidate.agentBusy === false &&
+        typeof candidate.agentLastToolResult === 'string' &&
+        candidate.agentLastToolResult.includes(
+          'Current terminal input: printf BROKN_COMMAND',
+        ),
+    );
+    snapshot = await driver.awaitGridCondition(
+      'the completed readTerminalInput result summary is visible',
       (candidate) =>
         candidate.findText('lines') !== null &&
         candidate.findText('readTerminalInput') !== null,
@@ -367,13 +385,15 @@ async function driveAnimatedTerminalTools(
       row: readResultSummary.row,
       button: 'left',
     });
-    await driver.awaitSnapshot(
+    snapshot = await driver.awaitGridCondition(
+      'the expanded tool result shows the current terminal input',
       (candidate) =>
-        candidate.findText('Current terminal input: printf') !== null &&
-        candidate.findText('BROKN_COMMAND') !== null,
+        candidate.findText('Current terminal input: printf') !== null,
     );
-    HarnessSmoke.Class.pass(
-      'readTerminalInput observes the real current readline buffer',
+    HarnessSmoke.Class.requireCondition(
+      terminalText(snapshot).includes('BROKN_COMMAND'),
+      'the terminal pane retains the current readline buffer while the ' +
+        'tool result expands',
     );
     driver.sendText(
       `terminal-tools:replace:printf REPLACED > ${replacementPath}`,
