@@ -1,6 +1,6 @@
 # 209 — mine the session transcript for the task detail the ledger is missing
 
-State: TODO
+State: DONE — 53 of 53 filled
 Created: 2026-07-28
 Priority: USER-DIRECTED, next task
 

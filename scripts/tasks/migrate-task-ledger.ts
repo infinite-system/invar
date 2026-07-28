@@ -548,7 +548,7 @@ for (const task of TASKS) {
     const sourcePath = join(source, fileName);
     if (!statSync(sourcePath).isFile()) continue;
     const targetName =
-      fileName === 'brief.md' ? `brief-1-${today()}.md` : fileName;
+      fileName === 'brief.md' ? `brief-<number>-<count>-<slug>.md` : fileName;
     const targetPath = join(destination, targetName);
     if (existsSync(targetPath)) continue;
     if (!dryRun) writeFileSync(targetPath, readFileSync(sourcePath));
