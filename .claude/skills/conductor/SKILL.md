@@ -229,6 +229,30 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## THE FLEET DIES WITH DNS — know what work survives an outage
+
+Every builder is a cloud model. When name resolution fails, `codex exec` starts, spins on
+`failed to lookup address information: Try again`, writes nothing, and either hangs retrying or
+exits nonzero. Dispatch is not degraded during an outage — it is unavailable. Confirm with a
+PRESENCE CONTROL (`getent hosts github.com` failing while `getent hosts localhost` succeeds proves
+the resolver works and the name does not), because the errors lie about the cause: `git push`
+reports *"Please make sure you have the correct access rights and the repository exists"* for what
+is purely a DNS failure, which sends you to SSH keys and deploy config for no reason.
+
+**A spinning builder is worse than no builder**, because it satisfies "a builder is live" and by
+this skill's own rule that blocks every gate until it resolves. Either let it retry with a monitor
+armed on recovery-or-exit, or stand it down — but never leave it unwatched.
+
+What still works, and is therefore what an outage is FOR:
+
+- landing and gating work already merged locally (the gate needs no network)
+- conductor-side salvage, planning, doc and doctrine — 235 dispatch documents were archived out of
+  volatile `/tmp` during one outage
+- reading, measuring and reproducing locally: driving the app, running instruments, bisecting
+- writing briefs so dispatch is instant when resolution returns
+
+Queue the dispatches, do the local work, and push when the name resolves.
+
 ## When BLOCKED — delegate before deferring
 If a task is stuck (an agent can't crack it, the fix is ambiguous, or it's a genuinely hard
 problem), **do NOT default to escalating to the user.** Spin up a **codex or fable** subagent
