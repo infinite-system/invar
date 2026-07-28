@@ -1,0 +1,12 @@
+{
+  "task": 189,
+  "slug": "gate-reds-separation",
+  "branch": "fleet/189-gate-reds-separation",
+  "worktree": ".invar/worktrees/189-gate-reds-separation",
+  "tmuxSession": "invar/189-gate-reds-separation",
+  "transcript": "tmp/transcripts/189-gate-reds-separation.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "e407bfd45ced01fca429d75740502de631c9862b",
+  "startedAt": "2026-07-28T06:14:56-04:00"
+}
