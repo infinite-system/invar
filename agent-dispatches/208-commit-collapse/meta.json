@@ -1,0 +1,12 @@
+{
+  "task": 208,
+  "slug": "commit-collapse",
+  "branch": "fleet/208-commit-collapse",
+  "worktree": ".invar/worktrees/208-commit-collapse",
+  "tmuxSession": "invar/208-commit-collapse",
+  "transcript": "tmp/transcripts/208-commit-collapse.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "32caaf521aeeb1fc9aa419fdac5c755cfead9996",
+  "startedAt": "2026-07-28T17:54:03-04:00"
+}
