@@ -465,7 +465,9 @@ reorder, and close actions; if one session remains, the list is absent.
 `isContentVisible`. `PanelContentsList.pointerDown` and `pointerDrag` delegate selection, close, and
 reorder to `PanelHost`; selecting a hidden instance replaces the visible instance of the same kind
 while preserving another kind's split cell, and close unregisters and disposes the selected session.
-Panel-context keybindings delegate to the same host methods.
+Panel-context keybindings delegate to the same host methods. `RootView` requests both the immediate
+frame and a next-turn `RenderRequest`, so a queued frame cannot coalesce away the projection that
+publishes the closed session list.
 
 **Generates:** VS Code-style docked session rows; visible and hidden instances in one list; per-row
 close affordances; mouse and keyboard parity without a second content registry.
@@ -474,19 +476,22 @@ close affordances; mouse and keyboard parity without a second content registry.
 content and cannot continuously mirror the open split.
 
 **Evidence:** `src/modules/ui/PanelContentsList.ts`; `src/modules/ui/RootView.ts`;
+`src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`;
 `src/modules/keybindings/KeybindingDefaults.ts`; `src/modules/ui/PanelContentsList.test.ts`.
 
 **Impossible if true:** The list showing with one registered session; two registered sessions
 producing one or three rows; hiding an instance removing its row; a close row retaining its backend;
-a drag updating only presentation.
+a drag updating only presentation; a close mutating the host while the published session list remains
+stale because its render request was coalesced into an in-flight frame.
 
-**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts && bun
+**Verification:** `bun test src/modules/ui/PanelContentsList.test.ts
+src/modules/ui/RenderRequest.test.ts && bun
 scripts/harness/smoke-panel-split-harness.ts && bun
 scripts/harness/smoke-panel-chrome-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-27
 
 ### Completion reuses bounded popup geometry
 
@@ -500,8 +505,8 @@ caret anchor, prefix-filtered items, and acceptance behavior.
 modal backdrop or search row, and updates its cached items after one cheap prefix pass. The editor
 keeps keyboard focus; completion consumes only Up, Down, Enter, Tab, and Escape.
 `BoundedListPopup.close` advances the same `paintRevision` Ref that open and selection changes use,
-and `Bootstrap` requests a next-turn render when dismissal races the still-queued opening frame, so
-the closed state reaches both the terminal and `status.completionOpen`.
+and `Bootstrap` uses `RenderRequest.afterCurrentTurn` when dismissal races the still-queued opening
+frame, so the closed state reaches both the terminal and `status.completionOpen`.
 
 **Generates:** Caret-relative downward placement with upward flipping, O(viewport) paint, wrapped
 selection with reveal, continuous editor typing, exact text-edit acceptance, and kind marks for free —

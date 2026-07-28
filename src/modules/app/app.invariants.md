@@ -74,30 +74,36 @@ projection→model write) is kept OUTSIDE the effect, on boot + resize only. Inp
 model state and nothing else — the effect repaints. An animation deadline that mutates projection
 inputs queues its render request in a microtask, after the coarse reactive effect has projected those
 mutations; this includes the final settling deadline, which has no later cadence tick to repair a
-stale frame. Realizes *Data flows one way* (the reactive-invalidation half).
+stale frame. State-changing input that can race an already queued frame uses
+`RenderRequest.afterCurrentTurn`, because OpenTUI may coalesce its same-turn request before the
+reactive projection reaches that frame. Realizes *Data flows one way* (the reactive-invalidation
+half).
 
 **Generates:** async repaint for git/LSP/diagnostics without input; the single coarse effect (not
 effect-per-line/token/cell); handlers that only mutate; `App.dispose()` calling `$stopEffects()`.
 
 **Evidence:** `Bootstrap.ts` `app.$watchEffect(...)` + `paint()` + the
 `workspaceScrollMomentumAtRest` and `panelScrollMomentumAtRest` frame-tick projections;
-`AppStatusProjection.ts`; `AppStatusProjection.test.ts`; `app/__tests__/frame-effect.test.ts`
+`AppStatusProjection.ts`; `AppStatusProjection.test.ts`; `app/__tests__/frame-effect.test.ts`;
+`src/modules/ui/RenderRequest.ts`; `src/modules/ui/RenderRequest.test.ts`
 (revision + cursor change re-run the effect; `$stopEffects` stops it). Confirmed end-to-end by
 `scripts/smoke-editor.sh`: booting, opening a file, and typing bump `bufferRevision` and repaint
 the real terminal via the side channel.
 
 **Impossible if true:** an async result (LSP diagnostic, git refresh) that changes model state but
 does not repaint until the next keystroke; a final animation tick publishing stale focus, panel,
-or scroll projection because its synchronized frame preceded the reactive paint; a render pass that
-mutates model state; an effect-per-item render graph.
+or scroll projection because its synchronized frame preceded the reactive paint; a state-changing
+input whose only repaint request is coalesced into an in-flight frame before the new projection; a
+render pass that mutates model state; an effect-per-item render graph.
 
-**Verification:** the headless test above; plus the tmux smoke `scripts/smoke-editor.sh`
+**Verification:** the headless test above; `bun test src/modules/ui/RenderRequest.test.ts`; plus the
+tmux smoke `scripts/smoke-editor.sh`
 (input → edit → repaint → side-channel, ALL-PASS). Async-producer (no-keypress) repaint is
 exercised end-to-end once git/LSP is wired into the editor (M4/M5).
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### Owned resources release in reverse order
 
