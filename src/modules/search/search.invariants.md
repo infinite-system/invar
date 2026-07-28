@@ -90,6 +90,43 @@ different match than the pointed row; the renderer persisting a scroll offset be
 
 **Last refined:** 2026-07-23
 
+### Quick Open activates the selected entry
+
+**Invariant:** If Quick Open activates a file result, then the opened file is
+the exact `QuickOpenMatch.path` published as selected.
+
+**Scope:** File-mode activation by Enter or mouse click. The open-project
+directory navigator has its own typed-path and browsed-folder rules.
+
+**Mechanism:** `QuickOpen.activate` returns
+`matches[selectedIndex].path`; `Bootstrap.activateQuickOpenSelection` resolves
+that path against the workspace root without re-querying or indexing another
+collection. `AppStatusProjection` publishes the selected path identity.
+
+**Generates:** One activation identity shared by keyboard and mouse; a driven
+contract that compares the opened absolute path with the published selected
+entry.
+
+**Rejected alternatives:** Re-query or index `projectFiles` during
+activation — filtering and ranking can make that collection identify a
+different file.
+
+**Evidence:** `src/modules/search/QuickOpen.ts`;
+`src/modules/app/AppStatusProjection.ts`;
+`scripts/harness/smoke-quickopen-harness.ts` confusable `TASK.md` and
+`project.tasks.md` fixture.
+
+**Impossible if true:** Quick Open publishes `TASK.md` as selected but Enter
+or a mouse click opens `project.tasks.md`.
+
+**Verification:** `bun test src/modules/search/QuickOpen.test.ts
+src/modules/app/AppStatusProjection.test.ts && bun
+scripts/harness/smoke-quickopen-harness.ts`
+
+**Status:** established
+
+**Last refined:** 2026-07-27
+
 ### Find bar controls are mouse-clickable buttons
 
 **Invariant:** Every FindBar action — previous match, next match, the case toggle, replace, replace-all,

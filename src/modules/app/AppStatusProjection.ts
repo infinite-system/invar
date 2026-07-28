@@ -97,6 +97,10 @@ class $AppStatusProjection {
       quickOpenHovered: ports.quickOpen.hoveredIndex.value,
       quickOpenQuery: ports.quickOpen.query.value,
       quickOpenMatches: ports.quickOpen.matches.value.length,
+      // invariant: Quick Open activates the selected entry (src/modules/search/search.invariants.md)
+      quickOpenSelectedIdentifier:
+        ports.quickOpen.matches.value[ports.quickOpen.selectedIndex.value]
+          ?.path ?? null,
       quickOpenMode: ports.quickOpen.mode.value,
       quickOpenPathOpenable: ports.quickOpen.workspacePathOpenable.value,
       paletteOpen: ports.commands.open.value,
