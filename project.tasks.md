@@ -101,18 +101,31 @@ Landed earlier in the campaign (commits in the `finished/*` tags and `project.de
 
 ---
 
-## OPEN BACKLOG as of 2026-07-28 05:50 UTC
+## OPEN BACKLOG as of 2026-07-28 06:20 UTC
 
 The live task list is session-scoped, so this is the durable copy. Briefs for the starred ones are
-at `agent-dispatches/_staged/`.
+at `agent-dispatches/_staged/`. **★ means a brief exists, not that the task is open** — check the
+LANDED list below first. This section listed four already-merged tasks as open 25 minutes after they
+merged, which is the "evidence has an age" defect applied to my own record.
+
+### LANDED overnight 2026-07-27/28 — do not re-dispatch
+
+#178 (gate 6m31s -> 4m02s), #169 (edit-path DECLINED with evidence), #186 (500k mutation 68-87 ms ->
+0.007-0.045 ms), #171 (displacement warning), #168 (75 frame-ordinal waits + the primitive removed),
+#170 (automatic tasks stole the keyboard), #188 (#168's own two regressions), #184 (188 nested
+symlinks; provenance self-test now always on).
+
+### IN FLIGHT
+
+| # | Item |
+|---|---|
+| 189 | **Blocks a green main.** Two gate reds on `52dcde4`, separation before fix: `scrollbars` "28 to 44" (#186 suspect, but #168's bycatch saw the same pair before #186 existed) and `reserved-chord` timing out in the 60-job pool while passing standalone. Dispatched 06:15 UTC |
 
 ### User-visible defects
 
 | # | What a user hits | Evidence |
 |---|---|---|
-| ★170 | `Ctrl+,` does not open Settings; the gear does | 3x at 80x24 with a generated file; publishes `focus="editor"` AND `terminalFocused=true` together |
-| ★171 | Writing `.invar/tasks.json` silently deletes the built-in Claude terminal | Replacement not union is a landed invariant; the built-in is lowest priority. Blocks fleet Phase 4 |
-| 174 | Markdown preview omitted a ragged table present in source | Once, under a loaded pool; hypothesis is the aligner assumes rectangular rows (#102) |
+| 174 | Markdown preview omitted a ragged table present in source | Twice, independently, under a loaded pool; hypothesis is the aligner assumes rectangular rows (#102) |
 | 160 | Context-menu wheel double-dispatch — one physical wheel, two impulses | |
 | 153 | Horizontal fling 2.75x slower in overlays than the editor | #50's one-profile fix never reached `ScrollableTextViewport` |
 
@@ -131,6 +144,7 @@ that stopped existing) and #159 (panel close with no publication carrier) are FI
 | # | Item |
 |---|---|
 | ★173 | Predicates asserting contiguous strings against surfaces that wrap by design; app rendered correctly, probe could not see it |
+| 190 | **A smoke may not enter the pool by default.** #178 required 10/10 pool runs to promote; #170 registered a new smoke pool-safe by DEFAULT nine hours later with zero pool runs, and it now blocks main. Invert the default so missing proof costs wall-clock, not a red. BLOCKED ON #189, may merge with #177 |
 | 177 | **Is the gate flake ONE shared cause?** Exactly one retry in 4 of 5 gates, a different smoke every time, never a repeat. If confirmed, #142/#164/#167/#176/#109/#124 are one task, not six. SOLO run |
 | 176 | tabs harness retried on the #172 gate — either #172 exposed a pre-existing race or `awaitProjectedFrame` resolves earlier than tabs needs |
 | 167 | audio-narration still times out in the pool after #141 CLOSED it; two independent builders saw it |

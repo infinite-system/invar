@@ -943,6 +943,33 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## A RETRY INSIDE THE POOL CANNOT RESCUE A POOL-CAUSED FAILURE
+
+The gate's retry-once runs in the same 60-job pool as the first attempt. So
+"retried and still failed" is NOT evidence that a failure is deterministic — for
+any load-dependent failure the retry has no discriminating power at all, because
+it reproduces the condition it was meant to rule out. Read that line as "failed
+twice under load," never as "fails everywhere."
+
+The discriminating run is standalone and quiet. `reserved-chord` failed the gate
+twice on 2026-07-27 while passing standalone at both candidate commits — the
+gap between those two populations IS the finding, and reading the in-pool retry
+as determinism would have sent a builder hunting a defect in the smoke's logic
+instead of in its load assumptions.
+
+## A PROOF STANDARD LIVES IN DOCTRINE OR IT DIES WITH THE BRIEF
+
+#178 required **10/10 pool runs** before promoting a smoke into the concurrent
+pool, and proved both of its promotions that way. Nine hours later #170 added a
+brand-new smoke to the pool as pool-safe by DEFAULT, with zero pool runs, and it
+became one of two things blocking main.
+
+Nothing was violated: the standard existed only inside #178's brief, and briefs
+do not read each other. Any bar worth requiring twice belongs here, in the
+checkers, or in `project.tasks.md` — because the conductor is the only shared
+memory between two builders who never meet. When a task earns a rule, land the
+rule, not just the fix.
+
 ## Diagnosis rules earned 2026-07-25
 
 - A red naming a smoke UNRELATED to the branch's diff: test MAIN first. Retry-once absorbs starvation

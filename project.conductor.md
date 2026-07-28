@@ -2845,3 +2845,33 @@ rule: **only one measurement phase on the machine at a time, and never assume th
 
 Note the timeout is 120 seconds while a full gate is now four minutes — a threshold that predates the
 thing it guards.
+
+## 2026-07-28 06:20 UTC — two lessons from a red main, and why I did not invent a feature
+
+Main was red on `52dcde4` after eight landings. #189 is dispatched to separate the two remaining
+failures before either is fixed. Two orchestration lessons landed in the conductor skill alongside it.
+
+**A retry inside the pool cannot rescue a pool-caused failure.** The gate's retry-once runs in the
+same 60-job pool as the first attempt, so `reserved-chord`'s "RETRIED AND STILL FAILED" is not
+evidence of determinism — for a load-dependent failure the retry reproduces the exact condition it
+was meant to rule out. It means "failed twice under load," and the discriminating run is standalone.
+Reading it as determinism would have sent a builder hunting a defect in the smoke's logic rather than
+in its load assumptions.
+
+**A proof standard lives in doctrine or it dies with the brief.** #178 required 10/10 in-pool runs
+before promoting a smoke into the pool and proved both promotions that way. Nine hours later #170
+registered a brand-new smoke pool-safe by default with zero pool runs, and it is now one of the two
+things blocking main. Nothing was violated — the standard existed only inside #178's brief, and
+briefs do not read each other. I am the only shared memory between two builders who never meet. Filed
+#190 to invert the DEFAULT rather than add a rule someone must remember: a smoke undeclared is
+serial, so missing proof costs wall-clock (visible, self-correcting) instead of a red main every few
+gates (looks like a flake, gets retried).
+
+I also reconciled `project.tasks.md`, which was listing four already-merged tasks as open under a
+header dated 25 minutes after they merged — the "evidence has an age" defect applied to my own record.
+The ★ marker meant "a brief exists" and I had been reading it as "open"; that is now stated in the doc.
+
+**On the loop's standing ask for a creative next push:** I did not invent one. The user's own ordering
+already names what follows (#114 Wave B -> #122 -> #35), and a red main outranks all feature work.
+Manufacturing a feature task here would rank my invention above user-directed work, which is exactly
+what the surface-the-ordering correction forbids.
