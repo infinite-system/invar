@@ -1,26 +1,29 @@
 import { expect, test } from 'bun:test';
-import { ref } from 'vue';
 import type {
   LanguageCompletionContext,
-  LanguageDocument,
+  LanguageCompletionList,
   LanguageProvider,
-} from '../lsp/LanguageProvider.interface';
+} from '../workspace/LanguageProvider.interface';
+import { TextDocument } from '../editor/TextDocument';
 import { CompletionPopup } from './CompletionPopup';
 
-class MockRustProvider implements LanguageProvider {
+class MockRustProvider implements Pick<
+  LanguageProvider,
+  'completion' | 'completionTriggerCharacters'
+> {
   readonly completionTriggerCharacters = ['.'];
 
   async completion(
-    _document: LanguageDocument,
+    _document: TextDocument.Instance,
     _position: { line: number; column: number },
     _context: LanguageCompletionContext,
-  ) {
+  ): Promise<LanguageCompletionList> {
     return {
       isIncomplete: false,
       items: [
         {
           label: 'push_str',
-          kind: 2,
+          symbolClass: 'callable',
           insertText: null,
           textEdit: null,
           sortText: '01',
@@ -28,7 +31,7 @@ class MockRustProvider implements LanguageProvider {
         },
         {
           label: 'pop',
-          kind: 2,
+          symbolClass: 'callable',
           insertText: 'pop',
           textEdit: null,
           sortText: '02',
@@ -40,14 +43,9 @@ class MockRustProvider implements LanguageProvider {
 }
 
 test('a second provider feeds the same provider-neutral prefix filter', async () => {
-  const provider: LanguageProvider = new MockRustProvider();
-  const document: LanguageDocument = {
-    path: '/tmp/main.rs',
-    text: 'items.p',
-    lineCount: 1,
-    revision: ref(1),
-    line: () => 'items.p',
-  };
+  const provider = new MockRustProvider();
+  const document = new TextDocument.Class();
+  document.loadFromText('items.p', '/tmp/main.rs');
   const result = await provider.completion(
     document,
     { line: 0, column: 7 },
@@ -65,7 +63,7 @@ test('a second provider feeds the same provider-neutral prefix filter', async ()
 test('large completion lists are prefixed once before viewport rendering', () => {
   const items = Array.from({ length: 1_500 }, (_unusedValue, index) => ({
     label: `property${index}`,
-    kind: 10,
+    symbolClass: 'value' as const,
     insertText: null,
     textEdit: null,
     sortText: String(index).padStart(4, '0'),

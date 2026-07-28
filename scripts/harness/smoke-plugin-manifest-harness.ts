@@ -4,7 +4,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -54,6 +54,27 @@ await Bun.write(
   JSON.stringify({ 'inlineRewrite.enabled': true }),
 );
 await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\n');
+await Bun.write(
+  join(fixtureRoot, 'tsconfig.json'),
+  JSON.stringify({
+    compilerOptions: {
+      strict: true,
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'bundler',
+    },
+    include: ['*.ts'],
+  }),
+);
+await Bun.write(
+  join(fixtureRoot, 'z-language.ts'),
+  [
+    'export const languageProbe = 42;',
+    'const brokenValue: string = 1;',
+    'languageProbe;',
+    '',
+  ].join('\n'),
+);
 await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'manifest.ts']);
@@ -70,7 +91,7 @@ await Bun.write(join(fixtureRoot, 'manifest.ts'), 'manifest-line\nchanged\n');
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
-  columns: 110,
+  columns: 150,
   rows: 40,
   homeDirectory,
   environment: {
@@ -107,6 +128,7 @@ try {
         sections?.includes('File Tree') === true &&
         sections.includes('Git') &&
         sections.includes('Markdown') &&
+        sections.includes('Language') &&
         sections.includes('Inline Rewrite') &&
         Number(status.treeRows) > 2
       );
@@ -250,6 +272,7 @@ try {
       snapshot.findText('[x] File Tree') !== null &&
       snapshot.findText('[x] Git') !== null &&
       snapshot.findText('[x] Markdown') !== null &&
+      snapshot.findText('[x] Language Intelligence') !== null &&
       snapshot.findText('[x] Inline Rewrite') !== null,
   );
   driver.sendKeys('Down');
@@ -317,9 +340,155 @@ try {
   HarnessSmoke.Class.pass('Extensions reinstall restores both registrations');
 
   console.log(
-    '== plugin manifest: Inline Rewrite disable and re-enable are symmetric ==',
+    '== plugin manifest: Language provider disable has a legible fallback ==',
+  );
+  symlinkSync(
+    join(process.cwd(), 'node_modules'),
+    join(fixtureRoot, 'node_modules'),
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the language provider disable drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('z-language.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the language-provider fixture',
+    (status) =>
+      status.quickOpenQuery === 'z-language.ts' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  const openedLanguageStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File closes after activating the language-provider fixture',
+    (status) => status.quickOpenOpen === false,
+  );
+  HarnessSmoke.Class.requireCondition(
+    String(openedLanguageStatus.activeBuffer).endsWith('/z-language.ts'),
+    'the language-provider fixture opens in the editor',
+  );
+  driver.sendKeys('Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the installed provider starts and publishes diagnostics',
+    (status) =>
+      status.focus === 'editor' &&
+      typeof status.lspProvider === 'string' &&
+      status.lspProvider.length > 0 &&
+      Number(status.diagnosticsCount) > 0,
   );
   driver.sendKeys('Control+Shift+x', 'Down', 'Down');
+  await driver.awaitGridCondition(
+    'Language Intelligence is selected in Extensions',
+    (snapshot) => snapshot.findText('› [x] Language Intelligence') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall releases the provider and withdraws its settings',
+    (status) =>
+      !(status.settingsSections as string[] | undefined)?.includes(
+        'Language',
+      ) &&
+      status.lspProvider === null &&
+      Number(status.diagnosticsCount) === 0,
+  );
+  driver.sendKeys('Control+Shift+j');
+  const providerUnavailableStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'focus returns to the editor after language-provider uninstall',
+    (status) =>
+      status.focus === 'editor' &&
+      String(status.activeBuffer).endsWith('/z-language.ts'),
+  );
+  await driver.awaitGridCondition(
+    'the status bar explains the missing provider',
+    (snapshot) => snapshot.findText('Language features unavailable') !== null,
+  );
+  const cursorBeforeUnavailableGestures = providerUnavailableStatus.cursor;
+  const revisionBeforeUnavailableGestures = Number(
+    providerUnavailableStatus.bufferRevision,
+  );
+  driver.sendKeys('Control+Space', 'Control+]');
+  await driver.awaitQuiescence();
+  const unavailableGestureStatus = HarnessSmoke.Class.readStatus(statusPath);
+  HarnessSmoke.Class.requireCondition(
+    unavailableGestureStatus.completionOpen === false &&
+      JSON.stringify(unavailableGestureStatus.cursor) ===
+        JSON.stringify(cursorBeforeUnavailableGestures) &&
+      Number(unavailableGestureStatus.bufferRevision) ===
+        revisionBeforeUnavailableGestures &&
+      String(unavailableGestureStatus.activeBuffer).endsWith('/z-language.ts'),
+    'completion and definition gestures stay inert without mutating or navigating',
+  );
+  const languageProbePosition = driver.snapshot().findText('languageProbe;');
+  if (!languageProbePosition) {
+    throw new Error('Language hover probe is not visible');
+  }
+  driver.sendMouseWithoutFrameExpectation({
+    kind: 'move',
+    column: languageProbePosition.column + 2,
+    row: languageProbePosition.row,
+    button: 'none',
+  });
+  driver.sendKeys('Control+Shift+x');
+  await driver.awaitGridCondition(
+    'hover leaves the app live and the disabled provider row selected',
+    (snapshot) => snapshot.findText('› [ ] Language Intelligence') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'diagnostics clear and completion, definition, and hover degrade without a crash',
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the Language settings and provider process',
+    (status) =>
+      (status.settingsSections as string[] | undefined)?.includes(
+        'Language',
+      ) === true,
+  );
+  HarnessSmoke.Class.pass('Extensions reinstall restores the LSP provider');
+
+  console.log(
+    '== plugin manifest: Inline Rewrite disable and re-enable are symmetric ==',
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the Inline Rewrite manifest drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('manifest.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the dirty manifest fixture',
+    (status) =>
+      status.quickOpenQuery === 'manifest.ts' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter', 'Control+Shift+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the dirty manifest regains editor focus',
+    (status) =>
+      String(status.activeBuffer).endsWith('/manifest.ts') &&
+      status.focus === 'editor',
+  );
+  driver.sendKeys('Control+Shift+x', 'Down');
   await driver.awaitGridCondition(
     'Inline Rewrite is selected in Extensions',
     (snapshot) => snapshot.findText('› [x] Inline Rewrite') !== null,

@@ -48,15 +48,17 @@ one cached `GutterDecorations` snapshot for the visible document's stable handle
 **Scope:** The editor gutter contribution registry, repository diff marks, language diagnostics,
 `EditorPaneRenderer`, `OverviewRuler`, and `ScrollbarSync`.
 
-**Mechanism:** `Workspace` registers language diagnostics and plugins register their own
-`GutterDecorationContribution`. `GutterDecorations.snapshotFor` combines them once per contribution
-or document revision and returns the same snapshot identity until either changes; the gutter,
-in-body underline, and overview renderers project that snapshot instead of recomputing marks.
+**Mechanism:** Providers and contributors register their own
+`GutterDecorationContribution`. `GutterDecorations.snapshotFor` combines them
+once per contribution or document revision and returns the same snapshot
+identity until either changes; the gutter, in-body underline, and overview
+renderers project that snapshot instead of recomputing marks.
 
 **Generates:** One per-document decoration vocabulary for source-control changes and language
 diagnostics; one recompute shared by the visible-row and whole-document projections.
 
-**Evidence:** `GutterDecorations.ts`; `Workspace.ts` `languageDecorationsByLine`;
+**Evidence:** `GutterDecorations.ts`;
+`src/modules/lsp/LspWorkspaceProvider.ts` (`byLine`);
 `GitDocumentState.ts`; `EditorPaneRenderer.ts`; `OverviewRuler.ts`; snapshot identity tests in
 `GutterDecorations.test.ts` and `OverviewRuler.test.ts`.
 
@@ -66,7 +68,7 @@ every frame.
 
 **Verification:** `bun test src/modules/workspace/GutterDecorations.test.ts
 src/modules/git/GitDocumentState.test.ts src/modules/ui/OverviewRuler.test.ts && bash
-scripts/smoke-diagnostics.sh`.
+`scripts/harness/smoke-diagnostics-harness.ts`.
 
 **Status:** established
 

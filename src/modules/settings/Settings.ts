@@ -54,10 +54,6 @@ class $Settings {
     return new Set(['full-height', 'ends-at-panel']);
   }
 
-  protected static get $allowedTypeScriptServers(): ReadonlySet<TypeScriptServer> {
-    return new Set(['tsgo', 'typescript-language-server']);
-  }
-
   protected static get $allowedAgentProviders(): ReadonlySet<AgentProvider> {
     return new Set(['auto', 'claude', 'codex']);
   }
@@ -129,12 +125,6 @@ class $Settings {
   get rightDockVerticalSpan(): Ref<DockVerticalSpan> {
     return ref<DockVerticalSpan>('ends-at-panel');
   }
-  get typescriptServer(): Ref<TypeScriptServer> {
-    return ref<TypeScriptServer>('tsgo');
-  }
-  get lspFileSizeLimitKb(): Ref<number> {
-    return ref(2048);
-  }
   get agentProvider(): Ref<AgentProvider> {
     return ref<AgentProvider>('auto');
   }
@@ -203,8 +193,6 @@ class $Settings {
       panelAlignment: this.panelAlignment,
       leftDockVerticalSpan: this.leftDockVerticalSpan,
       rightDockVerticalSpan: this.rightDockVerticalSpan,
-      typescriptServer: this.typescriptServer,
-      lspFileSizeLimitKb: this.lspFileSizeLimitKb,
       agentProvider: this.agentProvider,
       agentSkipPermissions: this.agentSkipPermissions,
       agentTerminalFollowMode: this.agentTerminalFollowMode,
@@ -506,8 +494,6 @@ class $Settings {
       panelAlignment: 'center',
       leftDockVerticalSpan: 'full-height',
       rightDockVerticalSpan: 'ends-at-panel',
-      typescriptServer: 'tsgo',
-      lspFileSizeLimitKb: 2048,
       agentProvider: 'auto',
       agentSkipPermissions: true,
       agentTerminalFollowMode: 'off',
@@ -634,14 +620,6 @@ class $Settings {
         record.rightDockVerticalSpan as DockVerticalSpan;
     }
     if (
-      typeof record.typescriptServer === 'string' &&
-      this.$allowedTypeScriptServers.has(
-        record.typescriptServer as TypeScriptServer,
-      )
-    ) {
-      result.typescriptServer = record.typescriptServer as TypeScriptServer;
-    }
-    if (
       typeof record.agentProvider === 'string' &&
       this.$allowedAgentProviders.has(record.agentProvider as AgentProvider)
     ) {
@@ -668,7 +646,6 @@ class $Settings {
     if (typeof record.agentNarrationVoice === 'string')
       result.agentNarrationVoice = record.agentNarrationVoice;
     readNumber('agentNarrationRate');
-    readNumber('lspFileSizeLimitKb');
     readNumber('sidebarWidth');
     readNumber('rightDockWidth');
     const primaryDockContentOrder = this.sanitizeIdentifierOrder(
@@ -704,9 +681,6 @@ export type GlyphMode = 'auto' | 'nerd' | 'unicode' | 'ascii';
 /** Where the project-layer tab strip is mounted in the root frame. */
 export type WorkspaceTabPosition = 'top' | 'left';
 
-/** Which TypeScript language server backs LSP. */
-export type TypeScriptServer = 'tsgo' | 'typescript-language-server';
-
 /** Which engine backs the native agent pane. */
 export type AgentProvider = 'auto' | 'claude' | 'codex';
 
@@ -737,8 +711,6 @@ export interface SettingsValues {
   panelAlignment: PanelAlignment;
   leftDockVerticalSpan: DockVerticalSpan;
   rightDockVerticalSpan: DockVerticalSpan;
-  typescriptServer: TypeScriptServer;
-  lspFileSizeLimitKb: number;
   agentProvider: AgentProvider;
   agentSkipPermissions: boolean;
   agentTerminalFollowMode: AgentTerminalFollowMode;

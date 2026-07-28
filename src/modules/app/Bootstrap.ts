@@ -802,16 +802,16 @@ class $Bootstrap {
       () => settings.wordWrap.value,
       () => workspaceSet.active.editor.revealCursor(),
     );
-    // Language-server document sync: every edit bumps document.revision; this targeted watch pushes
-    // the new text as a revision-idempotent full-text didChange (LanguageClient skips versions it
+    // Language-provider document sync: every edit bumps document.revision; this targeted watch pushes
+    // the new text as a revision-idempotent update (providers skip versions they
     // already sent). A TARGETED watch, not a $watchEffect — the handler must depend on the revision
-    // signal only, never on the other state syncActiveDocumentWithLanguageServer reads.
+    // signal only, never on the other state syncActiveDocumentWithLanguageProviders reads.
     app.$watch(
       () => {
         const editor = workspaceSet.active.editor;
         return editor.hasDocument.value ? editor.document.revision.value : -1;
       },
-      () => workspaceSet.active.syncActiveDocumentWithLanguageServer(),
+      () => workspaceSet.active.syncActiveDocumentWithLanguageProviders(),
     );
 
     // Last mouse event seen (for the observability side channel — proves the mouse path is live).
@@ -1370,7 +1370,7 @@ class $Bootstrap {
             dismissCompletion();
         });
     };
-    // invariant: Completion is provider-neutral (src/modules/lsp/lsp.invariants.md)
+    // invariant: Plugin boundaries grant one authority (project.invariants.md)
     const scheduleIdentifierCompletionRequest = (): void => {
       if (
         identifierCompletionRequestScheduled ||

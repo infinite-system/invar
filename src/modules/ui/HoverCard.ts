@@ -28,10 +28,10 @@ import type { Theme } from '../theme/Theme';
 import type { Settings } from '../settings/Settings';
 import type {
   LanguageHover,
-  TextPosition,
-  TextRange,
-} from '../lsp/LanguageClient';
-import type { HoverDiagnostic } from '../workspace/Workspace';
+  LanguageHoverDiagnostic,
+  LanguagePosition,
+  LanguageRange,
+} from '../workspace/LanguageProvider.interface';
 class $HoverCard {
   protected get HoverCard() {
     return HoverCard.Class as unknown as typeof $HoverCard;
@@ -132,14 +132,14 @@ class $HoverCard {
    *  run WHILE a card is shown (a new symbol under it) — the shown card persists until this dwell lands
    *  a hover to replace it. Carries the anchor to apply only when it does. */
   protected pending: {
-    position: TextPosition;
+    position: LanguagePosition;
     key: string;
     anchorX: number;
     anchorY: number;
   } | null = null;
   /** The document range the SHOWN hover covers (the symbol's extent, from the server). While the
    *  pointer roams anywhere inside it the SAME card stays — moving within a symbol must not re-dwell. */
-  protected shownRange: TextRange | null = null;
+  protected shownRange: LanguageRange | null = null;
   /** Bumped on every NEW dwell — an async hover response whose captured generation no longer matches
    *  is stale (the pointer moved) and is dropped. */
   protected generation = 0;
@@ -372,7 +372,10 @@ class $HoverCard {
     return Math.max(0, this.contentMaxWidth - this.viewportColumns());
   }
   /** True when a document position falls within a hover's range (inclusive), so roaming the symbol keeps the card. */
-  protected positionInRange(position: TextPosition, range: TextRange): boolean {
+  protected positionInRange(
+    position: LanguagePosition,
+    range: LanguageRange,
+  ): boolean {
     const afterStart =
       position.line > range.start.line ||
       (position.line === range.start.line &&
@@ -387,7 +390,7 @@ class $HoverCard {
    * (pointer jitter within one cell must not reset the timer) and tracks the anchor; a DIFFERENT
    * position bumps the generation, hides any shown card, and restarts the dwell for the new symbol.
    */
-  pointAt(position: TextPosition, screenX: number, screenY: number): void {
+  pointAt(position: LanguagePosition, screenX: number, screenY: number): void {
     // The pointer is on a symbol → engaged; reset the idle grace either way.
     this.onSymbol = true;
     this.idleSeconds = 0;
@@ -658,7 +661,7 @@ class $HoverCard {
    */
   protected renderContents(
     markdown: string,
-    diagnostics: readonly HoverDiagnostic[] = [],
+    diagnostics: readonly LanguageHoverDiagnostic[] = [],
   ): void {
     this.rawContents = markdown;
     const palette = this.deps.theme.palette;
@@ -864,10 +867,12 @@ export interface HoverCardDeps {
   /** Scroll feel + scrollbar thickness come from the one settings source (via ScrollableTextViewport). */
   settings: Settings.Instance;
   /** Resolve the language server's hover for a document position (Workspace.hoverAt). */
-  requestHover: (position: TextPosition) => Promise<LanguageHover | null>;
+  requestHover: (position: LanguagePosition) => Promise<LanguageHover | null>;
   /** Diagnostics covering a document position (Workspace.diagnosticsAt) — surfaced in the card so an
    *  errored expression (whose hover type is often just `any`) still shows the real error message. */
-  diagnosticsAt: (position: TextPosition) => readonly HoverDiagnostic[];
+  diagnosticsAt: (
+    position: LanguagePosition,
+  ) => readonly LanguageHoverDiagnostic[];
   /** The syntax language of the active document — colours a fenced code block with no explicit tag. */
   languageForActive: () => LangId;
 }

@@ -7,7 +7,12 @@ export interface WorkspaceContributor {
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution;
 }
 
+export interface WorkspaceProvider {
+  readonly identifier: string;
+}
+
 export interface WorkspaceContribution {
+  readonly providers?: readonly WorkspaceProvider[];
   readonly renderRevision?: Readonly<Ref<number>>;
   opened(root: string): void;
   settingsAttached?(settings: Settings.Instance): void;

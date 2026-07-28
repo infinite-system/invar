@@ -121,7 +121,7 @@ test('completion maps the wire response and server trigger characters to the pro
       items: [
         {
           label: 'property',
-          kind: 10,
+          symbolClass: 'value',
           insertText: 'property',
           sortText: '01',
           filterText: 'property',

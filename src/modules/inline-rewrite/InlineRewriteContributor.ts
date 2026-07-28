@@ -4,7 +4,7 @@ import type {
 } from '../app/ApplicationContributor.interface';
 import type { Keybinding } from '../keybindings/KeybindingRegistry';
 import { CodexRewriteProvider } from '../lsp/CodexRewriteProvider';
-import type { RewriteProvider } from '../lsp/LanguageProvider.interface';
+import type { RewriteProvider } from './RewriteProvider.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
 import type {

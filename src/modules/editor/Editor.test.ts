@@ -31,7 +31,7 @@ test('completion applies the exact text edit as one undoable mutation', () => {
   editor.applyCompletion(
     {
       label: 'property',
-      kind: 10,
+      symbolClass: 'value',
       insertText: null,
       sortText: null,
       filterText: null,

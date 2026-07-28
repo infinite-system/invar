@@ -128,3 +128,6 @@ duplicated, unsound, or superseded by a stronger condition/content assertion.
   it is parser-level — independent of where the bindings are registered — so it
   still passes and still guards the #93 property that a chord must actually
   ARRIVE, not merely resolve.
+
+| `src/modules/settings/Settings.test.ts` | assertions 72 → 71, waits 12 → 12. The removed `typescriptServer` host-field assertion became invalid when LSP took ownership of that contributed setting; `src/modules/lsp/LspPlugin.test.ts` now proves its schema and uninstall lifecycle. |
+| `src/modules/keybindings/KeybindingDefaults.test.ts` | assertions 59 → 58, waits 20 → 20. The removed Ctrl+] assertion became invalid when LSP took ownership of `go.definition`; `src/modules/lsp/LspPlugin.test.ts` now proves the contributed binding and its uninstall removal. |

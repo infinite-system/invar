@@ -66,10 +66,14 @@ below.
 
 ---
 
-## Domain 1 — LANGUAGE / LSP (61 matching lines — the largest)
+## Domain 1 — LANGUAGE / LSP — **DONE**
 
-The biggest domain by far, and deeper than git ever was: the host does not merely *reference* the
-language client, it **owns its lifecycle and implements six of its request paths**.
+The measured table below records the pre-extraction state. As of 2026-07-27,
+`LspPlugin` contributes its settings, keybindings, and workspace lifecycle;
+`LspWorkspaceProvider` registers the existing `LanguageProvider` capability and
+owns `LanguageClient`; the host resolves that capability from the generic
+workspace contribution registry. The task's exact host-reference measurement
+now returns zero.
 
 ### Sites
 
@@ -94,32 +98,25 @@ language client, it **owns its lifecycle and implements six of its request paths
 | 550-551, 565-566 | METHOD | client disposal in `suspendOwnedResources` / `dispose` | SPECIFIC |
 | 904-908 | TYPE | `HoverDiagnostic` interface | SPECIFIC |
 
-### Verdict and the blocker
+### Starting verdict and resolved blocker
 
 **`GENERIC`: 1 site (`jumpToLocation`). `SPECIFIC`: the rest.** Language is real coupling, and it is
 the deepest.
 
-**But it is currently CONTRACTED coupling, not drift.** `project.invariants.md` → *The host canvas
-is complete without plugins* states the host canvas provides "workspaces, files, editing,
-**language intelligence**, **Markdown**, panes, popups, commands, and status contributions". Both
-LSP and Markdown are *named as host-canvas capabilities by a recorded invariant*.
+Task 103 supplied the owner decision that language is a provider. Wave A then
+removed the measured coupling without adding a registry, plugin kind, or
+manifest format.
 
-So extracting language is **not a refactor decision, it is a contract renegotiation** and needs the
-owner's word. Extracting Markdown (which the owner has now explicitly directed) already refines
-that record; see [Contract consequences](#contract-consequences).
-
-### Port needed
+### Port resolution
 
 A **language-provider plugin** needs ports 1 (document lifecycle) and 2 (gutter decorations) —
 both already exist and it is already their customer — plus a new **semantic-request port**:
 the host must be able to ask "definition / hover / completion / diagnostics at this position"
 without naming LSP.
 
-Two customers? Today: **one** (`LanguageClient`). The `LanguageProvider.interface.ts` file exists,
-which suggests the abstraction was anticipated — but a second provider does not exist.
-→ **`GUESS` until a second provider (or a non-LSP intelligence source) exists.** Do not build the
-semantic-request port speculatively; extract the *client lifecycle* first (ports 1 + 2 already
-cover it) and leave the six request methods as the host's single provider until a second arrives.
+The existing `LanguageProvider` port now covers only the questions the host
+already asked. `WorkspaceContribution.providers` publishes it through the
+existing contribution registry; `Workspace.provider` resolves it generically.
 
 ---
 
@@ -481,14 +478,10 @@ fallback identity is a field on `ApplicationContributor`, and horizontal scrollb
 projection on `PaneContent`. Host focus is now only `editor | primaryPane`; no host type or default
 names `files`.
 
-### 6. LANGUAGE → provider plugin — **READY, extraction is separate**
+### 6. LANGUAGE → provider plugin — **DONE**
 
-**Last because it is the largest (18 sites, 6 request methods, a vendor workaround).** Task 103
-supplied the missing owner decision: language is a provider plugin, not host canvas. Ports 1 and 2
-already carry its lifecycle. The extraction task should move the client lifecycle first, then make
-the six host requests consume the existing `LanguageProvider` boundary, broadening that domain
-contract only for the questions the host already asks. Task 103 names this path but deliberately
-does not perform it.
+`LspPlugin` owns the manifest, `LspWorkspaceProvider` owns lifecycle and the
+vendor re-hop, and the six host requests consume `LanguageProvider`.
 
 ## Scoreboard
 
@@ -499,7 +492,7 @@ does not perform it.
 | markdown | **0** | **0** | Gap A+B built; Gap D resolved by field addition | **done** 2026-07-26 |
 | image | 5 | 1 predicate | Gap A+B (reuse) | after diff/markdown |
 | file tree | **0** | **0** | dock-fallback field **built** | **done** 2026-07-26 |
-| language | 61 | 18 | broaden `LanguageProvider` from existing host questions | **ready** — separate extraction |
+| language | **0** | **0** | existing contribution registry + `LanguageProvider` | **done** 2026-07-27 |
 
 Guard collapse: **14 diff mode checks → 1 capability question**; **29 markdown mode checks → the
 second question**. Both done: 43 mode checks became 2 questions.

@@ -828,18 +828,18 @@ not a reason to couple it into the host.
 shipped domain plugins at the process edge; `Workspace` and `Bootstrap` consume only
 `WorkspaceContributor`, `ApplicationContributor`, and contribution contracts.
 
-**Refined 2026-07-26 — Markdown, language, and the file-tree view struck from the enumeration.**
-All three are plugins. Generic file opening stays in the host and is reachable without the tree
-through Quick Open, navigation, language jumps, and editor tabs. Markdown and the file tree ship as
-default contribution plugins. Language still lives in `Workspace` because task 103 names its
-provider boundary but explicitly defers the larger extraction; that placement is migration state,
-not canvas authority. See `project.canvas-census.md`, extraction step 6.
+**Refined 2026-07-27 — Markdown, language, and the file-tree view struck from
+the enumeration.** All three are plugins. Generic file opening stays in the
+host and is reachable without the tree through Quick Open, navigation,
+language jumps, and editor tabs. `LspPlugin` ships as the default language
+provider; `Workspace` resolves its `LanguageProvider` through the generic
+workspace contribution registry and never imports the LSP module.
 
 **Generates:** A usable plugin-free editor canvas; default shipped capabilities without
 host-to-domain imports; plugins that carry their own behavior.
 
-**Evidence:** `src/modules/plugins/DefaultPlugins.ts` (file tree, source control, Markdown,
-extensions);
+**Evidence:** `src/modules/plugins/DefaultPlugins.ts` (file tree, source
+control, Markdown, language, and extensions);
 `src/modules/filetree/FileTreeContributor.ts`;
 `src/modules/workspace/WorkspaceContributor.interface.ts`;
 `src/modules/app/ApplicationContributor.interface.ts`;
@@ -855,7 +855,7 @@ core importing, constructing, or typing a concrete plugin implementation.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### Plugin boundaries grant one authority
 
@@ -882,12 +882,14 @@ workspace lifecycle instead of making every application contributor fabricate it
 `ApplicationContributions` scopes settings, keybindings, and panes to the contributor activation and
 unregisters them together. The host calls `LanguageProvider` for semantic answers. `AgentSession`
 and `TerminalInstance` alone translate their injected backend streams into reactive state. Because
-authority comes from the outward contract, `LanguageClient` may privately own an LSP process without
-becoming a hosted-runtime plugin.
+authority comes from the outward contract, `LspWorkspaceProvider` may
+privately own a `LanguageClient` and its LSP process without becoming a
+hosted-runtime plugin.
 
 **Generates:** Separate contribution, provider, and hosted-runtime seams; an application-only
-Extensions contributor; a language extraction path that wires `LanguageProvider` without giving it
-canvas access; process backends that remain below reactive owners.
+Extensions contributor; an LSP plugin that wires `LanguageProvider` without
+giving that provider canvas authority; process backends that remain below
+reactive owners.
 
 **Rejected alternatives:** One universal plugin interface — grants unused hooks and lets provider
 or runtime authority leak into the canvas. Classify by private resources — misclassifies
@@ -896,7 +898,8 @@ Collapse providers and hosted runtimes — erases the request-answer versus owne
 
 **Evidence:** `src/modules/app/ApplicationContributor.interface.ts`;
 `src/modules/workspace/WorkspaceContributor.interface.ts`;
-`src/modules/lsp/LanguageProvider.interface.ts`; `src/modules/agent/AgentBackend.interface.ts`;
+`src/modules/workspace/LanguageProvider.interface.ts`;
+`src/modules/agent/AgentBackend.interface.ts`;
 `src/modules/terminal/TerminalBackend.interface.ts`; `src/modules/plugins/DefaultPlugins.test.ts`.
 
 **Impossible if true:** A provider painting or registering a pane; a contributor answering
@@ -909,7 +912,7 @@ src/modules/git/GitPlugin.test.ts && bash scripts/conventions-gate.sh`.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-27
 
 ### No action requires a memorized motion
 

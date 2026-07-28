@@ -1,11 +1,11 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
+import type { LanguageRange } from '../workspace/LanguageProvider.interface';
 import type {
-  LanguageRange,
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
-} from '../lsp/LanguageProvider.interface';
+} from './RewriteProvider.interface';
 import { EditorCoordinates } from '../editor/EditorCoordinates';
 
 class $InlineRewrite {

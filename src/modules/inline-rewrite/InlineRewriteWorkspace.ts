@@ -1,5 +1,5 @@
 import { bg, dim, fg, italic, type TextChunk } from '@opentui/core';
-import type { RewriteProvider } from '../lsp/LanguageProvider.interface';
+import type { RewriteProvider } from './RewriteProvider.interface';
 import type { Editor } from '../editor/Editor';
 import type { EditorContribution } from '../editor/EditorContributions';
 import { EditorCoordinates } from '../editor/EditorCoordinates';

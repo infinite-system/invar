@@ -1,10 +1,12 @@
 import type {
-  LanguagePosition,
-  LanguageRange,
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
-} from './LanguageProvider.interface';
+} from '../inline-rewrite/RewriteProvider.interface';
+import type {
+  LanguagePosition,
+  LanguageRange,
+} from '../workspace/LanguageProvider.interface';
 import { Processes, type SpawnedProcess } from '../system/Processes';
 import { Files } from '../system/Files';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';

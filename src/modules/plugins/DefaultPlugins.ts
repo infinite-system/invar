@@ -3,6 +3,7 @@ import type { ApplicationContributor } from '../app/ApplicationContributor.inter
 import { FileTreeContributor } from '../filetree/FileTreeContributor';
 import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
+import { LspPlugin } from '../lsp/LspPlugin';
 // prettier-ignore
 import {
   InlineRewriteContributor,
@@ -15,6 +16,7 @@ class $DefaultPlugins {
       new FileTreeContributor.Class(),
       new GitPlugin.Class(),
       new MarkdownPlugin.Class(),
+      new LspPlugin.Class(),
       new InlineRewriteContributor.Class(),
       new ExtensionsPlugin.Class(),
     ];

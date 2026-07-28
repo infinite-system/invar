@@ -277,7 +277,6 @@ test('every retired F-key chord resolves to the replacement it was given', () =>
   expect(resolveIn('agent', { name: 'm', ctrl: true, shift: true })).toBe(
     'agent.cycleTerminalFollowMode',
   );
-  expect(resolveIn('editor', { name: ']', ctrl: true })).toBe('go.definition');
   expect(resolveIn('editor', { name: 'j', ctrl: true, shift: true })).toBe(
     'focus.toggle',
   );

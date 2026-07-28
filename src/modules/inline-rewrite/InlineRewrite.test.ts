@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import type {
-  LanguageRange,
   RewriteCandidate,
   RewriteProvider,
   RewriteRequest,
-} from '../lsp/LanguageProvider.interface';
+} from './RewriteProvider.interface';
+import type { LanguageRange } from '../workspace/LanguageProvider.interface';
 import { InlineRewrite } from './InlineRewrite';
 
 class DeferredRewriteProvider implements RewriteProvider {
