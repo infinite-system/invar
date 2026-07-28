@@ -188,37 +188,53 @@ agent tool reading `TerminalEmulator` directly.
 
 ### One openpty allocator serves both PTY roles
 
-**Invariant:** If Invar or its byte-level test harness needs a pseudo-terminal, then both allocate,
-resize, read, write, and close it through `OpenPty`; neither consumer owns a second `openpty` FFI
-implementation.
+**Invariant:** If Invar or its byte-level test harness needs a pseudo-terminal, then on any one
+platform a SINGLE allocator serves the roles present there, and Invar owns at most one `openpty` FFI
+implementation. On Linux that allocator is `OpenPty` (the shared FFI wrapper) for BOTH the integrated
+terminal and the harness. On macOS the integrated terminal allocates through Bun's native PTY
+(`BunTerminalBackend` → `Bun.Terminal`) instead, because `bun:ffi` (1.3.14) cannot pass the variadic
+arguments of `OpenPty`'s `fcntl`/`ioctl` on the darwin arm64 ABI — `fcntl` silently fails to apply
+`O_NONBLOCK` and `ioctl(TIOCSWINSZ)` segfaults the process; the native PTY makes those calls in Bun's
+C++ layer with no FFI. The harness (`PtyTestDriver`) is not yet ported to the native allocator, so its
+role is unserved on macOS (the smokes run on Linux).
 
-**Scope:** `OpenPty`, `OpenPtyBackend`, and `scripts/harness/PtyTestDriver.ts`. Child command choice,
-environment, and lifecycle policy remain consumer-owned because the integrated terminal hosts a shell
-while the harness hosts Invar.
+**Scope:** `OpenPty`, `OpenPtyBackend`, `BunTerminalBackend`, `TerminalFactory` (the platform select),
+and `scripts/harness/PtyTestDriver.ts`. Child command choice, environment, and lifecycle policy remain
+consumer-owned because the integrated terminal hosts a shell while the harness hosts Invar.
 
 **Mechanism:** `OpenPty` is the one plain stateful resource that loads `openpty`, `ioctl`, and `write`,
-owns the master and slave file descriptors, exposes master-byte callbacks, and applies `TIOCSWINSZ`.
-`OpenPtyBackend` and `PtyTestDriver` each compose that allocator and only choose which child receives
-the slave descriptor.
+owns the master and slave file descriptors, exposes master-byte callbacks, and applies `TIOCSWINSZ`;
+`OpenPtyBackend` and `PtyTestDriver` compose it and only choose which child receives the slave
+descriptor. `BunTerminalBackend` composes `Bun.Terminal` — which owns the child spawn itself via
+`Bun.spawn(command, { terminal })` — behind the same `TerminalBackend` seam
+(`write`/`onData`/`resize`/`kill`/`onExit`). `TerminalFactory.createBackend` selects
+`BunTerminalBackend` on darwin and `OpenPtyBackend` elsewhere; nothing above the backend seam knows
+which allocator it got.
 
-**Generates:** one FFI maintenance point; role inversion without copied PTY code; identical byte and
-resize behavior for the integrated terminal and the harness.
+**Generates:** still exactly one FFI maintenance point (`OpenPty`); role inversion without copied PTY
+code; identical byte and resize behavior for the integrated terminal and the harness on Linux; a
+working integrated terminal on macOS, where the FFI allocator cannot run at all.
 
-**Rejected alternatives:** Copy the FFI declarations into the harness — two allocators can drift in
-window sizing, descriptor ownership, or platform fallback.
+**Rejected alternatives:** Copy the FFI declarations into a second allocator — two FFI allocators can
+drift in window sizing, descriptor ownership, or platform fallback. Force `OpenPty` onto macOS by
+swapping only its Linux ABI constants — necessary but insufficient: the variadic `fcntl`/`ioctl` calls
+underneath cannot execute on darwin arm64 through `bun:ffi` regardless of the constant values.
 
 **Evidence:** `src/modules/terminal/OpenPty.ts`; `src/modules/terminal/OpenPtyBackend.ts`;
-`scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`.
+`src/modules/terminal/BunTerminalBackend.ts`; `src/modules/terminal/BunTerminalBackend.test.ts`;
+`src/modules/terminal/TerminalFactory.ts`; `scripts/harness/PtyTestDriver.ts`;
+`scripts/harness/PtyTestDriver.test.ts`.
 
-**Impossible if true:** a second `openpty` symbol declaration in the harness; a harness resize that
-does not use the same `TIOCSWINSZ` path as the integrated terminal; either consumer closing a
-descriptor that the shared allocator does not own.
+**Impossible if true:** a second `openpty` FFI symbol declaration anywhere in Invar; a Linux harness
+resize that does not use the same `TIOCSWINSZ` path as the integrated terminal; either consumer
+closing a descriptor that the shared allocator does not own; a byte path to the child that bypasses
+the `TerminalBackend` seam on either allocator.
 
-**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && rg "openpty:" src/modules scripts/harness -g "*.ts"`
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts src/modules/terminal/BunTerminalBackend.test.ts && rg "openpty:" src/modules scripts/harness -g "*.ts"`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-28
 
 ### Shared PTY writes never block the event loop
 
