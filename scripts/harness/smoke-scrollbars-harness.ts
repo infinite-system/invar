@@ -1105,12 +1105,12 @@ async function proveVerticalDiffThumbStability(
         candidate.findText('Current (working)') !== null,
     );
     const lengthenedHorizontalFrame = await driver.awaitGridCondition(
-      'the refreshed diff paints a changed horizontal thumb',
+      'the refreshed diff paints a shorter horizontal thumb',
       (candidate) => {
         const frame = diffHorizontalScrollbarFrame(candidate);
         return (
           frame !== null &&
-          !byteArraysEqual(stableHorizontalFrame.rowBytes, frame.rowBytes)
+          frame.thumbLength < stableHorizontalFrame.thumbLength
         );
       },
     );
