@@ -333,3 +333,14 @@ were inline there and made it read as a log.
   start already fetches and the invariant checker already keeps honest — never as a standalone
   script library. `--click 45,7` is the anti-pattern: two integers encoding "the fold gutter of the
   first top-level region", true only for today's layout.
+- **A recipe carries TWO anchors, and they diverge** — user addition: record the branch a recipe came
+  from so a later agent can bisect. Refined into two fields, because one cannot do both jobs.
+  *Provenance* is the branch and task that produced it — WHY the gesture exists, and the line of work
+  whose reasoning explains it. *Last observed true* is a COMMIT, and it is the bisect lower bound: the
+  window a future agent searches is that commit to HEAD, so re-verifying a recipe shrinks the window
+  for everyone afterwards. They start equal and separate immediately; keeping only the first leaves the
+  search unbounded, keeping only the second discards the reasoning. Branch provenance is durable here
+  only because of the never-delete rule — branches are parked with `finished/`/`orphaned/` tags, so the
+  name still resolves years later. A recipe whose anchor is on a branch that never landed is still
+  informative: it says the behaviour existed on a line of work that was abandoned, which is usually the
+  answer to "why doesn't this work any more."
