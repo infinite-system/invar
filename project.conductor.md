@@ -2779,3 +2779,69 @@ instead of discarding work; never deleting branches is why the test branch is pa
 `orphaned/999-good-slug`; not rewriting history is why the test commit was reverted rather than
 reset. Three rules I have grumbled about internally, each of which converted a mistake into a
 recoverable one tonight.
+
+---
+
+## 2026-07-28 — the burden-of-proof rule paid for itself in one night
+
+### #169 was sent after the wrong subject, and measurement said so
+
+An outside review (ivue-repo Fable/Opus 5) established that every edit allocates four arrays of
+length n in `EditorWrap`, plus an unlisted sort copy, and that `buildFoldProjection` runs
+unconditionally even when the fold set is the identical reference. Every claim TRUE — I verified each
+against the source before dispatching.
+
+The user's directive was the thing that saved us: *it has to prove it's truly an invariant unlock…
+if that does not happen, we do not adopt the complexity.* Then, later: *make 500k already
+imperceptible.* So the brief measured first and gated implementation behind the number.
+
+    wrap index sync   100k: 1.327-3.763 ms      500k: under 9.124 ms     (goal: under 16 ms)
+    TextDocument      100k: 15.7-18.8 ms        500k: 65.7-86.9 ms       <- the actual cost
+      max-width rescan
+
+The candidate was already inside the goal at 500k. The real bottleneck is
+`TextDocument.replaceLineRange` marking the widest line deleted and rebuilding maximum width BEFORE
+comparing the replacement — so typing at the end of the longest line rescans every line, per
+character. Two to three dropped frames per keystroke at 500k.
+
+**Had we implemented the proposed Fenwick tree we would have added permanent complexity to a shared
+index AND left a 65-87 ms rescan in place.** Raised as #186, where the fix looks like a reduction:
+compare the replacement against the champion before deciding a scan is needed.
+
+**The transferable form: a precise structural finding is evidence about STRUCTURE, not about COST.**
+Four arrays of length n is a true fact that turned out to be 4% of the boundary it sits in. The
+review's stages were ordered by implementation cost rather than by evidence, which quietly assumes
+the fix is wanted — and I did not notice that when I first called the brief well-constructed. The
+user questioned the premise; I had only audited the reasoning inside it.
+
+### Both other builders declined part of their brief, correctly
+
+- **#178** was told to consider cutting the input-byte check from five sessions to three. It measured
+  the 55-entry history (p50 spans 2.326 ms to 13.014 ms), found three of five could materially move
+  the median for ~8 seconds, and refused: *"The variance does not justify that weakening."*
+- **#171** was offered scaffolding as a second resolution. It declined because Invar never creates or
+  intercepts task files, so seeding would mean overwriting user-owned configuration — a new
+  capability, not an extension.
+
+Two briefs, two suggestions of mine rejected with evidence. **A brief that offers ranked options
+gets a better answer than one that dictates**, because the builder can refuse the cheap option and
+say why. Keep offering options; keep expecting some to come back declined.
+
+### The lock does not do what I told the user it does
+
+I dispatched three builders and stated that the machine-wide quiet lock *"lets a second builder
+coexist without corrupting timings."* Wrong. It serializes when it can and after 120 seconds gives up
+and runs anyway, stamping the journal `degraded` — which is what #147 fixed: degradation is REPORTED,
+not PREVENTED. I read one guarantee as the other.
+
+Journal, unambiguous:
+
+    02:20:13  waiting   editor-edit-path-measurement   0
+    02:22:13  degraded  editor-edit-path-measurement   120005
+
+One of #169's samples was taken that way, and #178 flagged its own 4m02s as *"a conservative field
+measurement, not a perfectly isolated laboratory sample."* Raised as #183, including the operating
+rule: **only one measurement phase on the machine at a time, and never assume the lock enforces it.**
+
+Note the timeout is 120 seconds while a full gate is now four minutes — a threshold that predates the
+thing it guards.
