@@ -14,6 +14,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
 export PATH="$HOME/.bun/bin:$PATH"
+export INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1
 gate_started_seconds="$(date +%s)"
 # THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
 # `pkill -f merge-gate.sh` killed two BUILDER agents on 2026-07-26: every builder brief contains the
@@ -585,6 +586,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: hover harness" bun scripts/harness/smoke-hover-harness.ts
   # wave 4
   parallel_safe_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
+  parallel_safe_smoke "smoke: tasks harness" bun scripts/harness/smoke-tasks-harness.ts
   parallel_safe_smoke "smoke: terminal backpressure harness" bun scripts/harness/smoke-terminal-backpressure-harness.ts
   # Serial because it launches several terminal applications. Its blocking
   # verdict is ordering/count based: reduced motion paints the complete command

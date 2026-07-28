@@ -79,6 +79,8 @@ import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
+import { TaskLauncher } from '../tasks/TaskLauncher';
+import { Tasks } from '../tasks/Tasks';
 
 class $Bootstrap {
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
@@ -682,6 +684,55 @@ class $Bootstrap {
       terminalFollowController = null;
       connectTerminalFollow();
     };
+
+    const taskLauncher = new TaskLauncher.Class({
+      port: {
+        launch: (request) => {
+          // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
+          if (panelHost.has(request.identifier)) {
+            panelHost.removeContent(request.identifier);
+          }
+          panelHost.register(
+            TerminalFactory.Class.create({
+              identifier: request.identifier,
+              label: request.label,
+              kind: request.identifier,
+              heading: request.label,
+              columns: view.panelViewportColumns() || 80,
+              rows: view.panelViewportRows() || 24,
+              cwd: request.workspaceRoot,
+              command: request.command,
+              arguments: request.arguments,
+              environment: request.environment,
+              cleanPrompt: false,
+              typingSpeed: () => settings.agentTypingSpeed.value,
+              reducedMotion: () => settings.reducedMotion.value,
+            }),
+          );
+        },
+        present: (identifiers) => {
+          panelHost.split([...identifiers]);
+          panelHost.show();
+        },
+        has: (identifier) => panelHost.has(identifier),
+        remove: (identifier) => {
+          if (panelHost.has(identifier)) panelHost.removeContent(identifier);
+        },
+      },
+    });
+    const tasks = new Tasks.Class({
+      commands,
+      launcher: taskLauncher,
+      builtInDefaultEnabled:
+        Environment.Class.env('INVAR_TEST_SUPPRESS_BUILT_IN_TASK') !== '1',
+    });
+    const disposeTasksContribution = workspaceSet.registerContributor(tasks);
+    const disposeTasksStatus = statusProjectionContributions.register({
+      snapshot: () => tasks.statusSnapshot(),
+    });
+    app.onDispose(disposeTasksStatus);
+    app.onDispose(disposeTasksContribution);
+
     const addPanelContent = (kind: PanelContentKind): void => {
       primaryDockHost.blur();
       rightDockHost.blur();

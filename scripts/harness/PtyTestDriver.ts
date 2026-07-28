@@ -686,6 +686,7 @@ class $PtyTestDriver {
     }
     environment.TERM = 'xterm-256color';
     environment.COLORTERM = 'truecolor';
+    environment.INVAR_TEST_SUPPRESS_BUILT_IN_TASK = '1';
     if (options.homeDirectory) environment.HOME = options.homeDirectory;
     for (const [key, value] of Object.entries(options.environment ?? {})) {
       if (value === undefined) delete environment[key];
