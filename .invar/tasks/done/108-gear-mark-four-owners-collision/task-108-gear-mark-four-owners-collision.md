@@ -1,6 +1,6 @@
 # 108 — shell and yaml rows are indistinguishable in one column
 
-State: TODO
+State: DONE — merged 186f2d8, fix 82b746c (user accepted Pair A)
 Created: 2026-07-28
 
 ## Outline

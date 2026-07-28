@@ -1,6 +1,6 @@
 # 77 — vague records, padding within a file, semantic weakening
 
-State: TODO
+State: DONE — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
 Created: 2026-07-28
 
 ## Outline

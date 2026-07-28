@@ -1,6 +1,6 @@
 # 107 — two icons measure 2 cells and render 1; swap glyphs or fix the authority
 
-State: TODO
+State: DONE — glyphs swapped at 966c5d1; the exception list is now empty
 Created: 2026-07-28
 
 ## Outline
