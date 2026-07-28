@@ -16,6 +16,204 @@ cd "$ROOT"
 export PATH="$HOME/.bun/bin:$PATH"
 export INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1
 gate_started_seconds="$(date +%s)"
+failure_log_stable_path="/tmp/merge-gate-failures"
+failure_log_directory="${failure_log_stable_path}.$$"
+
+initialize_failure_log_directory() {
+  local displaced_failure_log_path
+
+  if ! mkdir "$failure_log_directory"; then
+    echo "merge-gate: refusing to replace existing run evidence at" >&2
+    echo "  $failure_log_directory" >&2
+    return 1
+  fi
+
+  # `ln -sfn` does not replace a real directory: it creates a child symlink
+  # inside it. Preserve that wrong-type directory before publishing the real
+  # link. The move retains any old logs and never follows its child symlinks
+  # into PID-qualified evidence directories.
+  if [ -e "$failure_log_stable_path" ] &&
+    [ ! -L "$failure_log_stable_path" ]
+  then
+    displaced_failure_log_path="$failure_log_stable_path.displaced.$(
+      date +%s%N
+    ).$$"
+    if mv -- "$failure_log_stable_path" "$displaced_failure_log_path"; then
+      echo "merge-gate: preserved wrong-type stable failure path at"
+      echo "  $displaced_failure_log_path"
+    elif [ -e "$failure_log_stable_path" ] &&
+      [ ! -L "$failure_log_stable_path" ]
+    then
+      echo "merge-gate: cannot replace wrong-type stable failure path:" >&2
+      echo "  $failure_log_stable_path" >&2
+      return 1
+    fi
+  fi
+
+  if ! ln -sfn "$failure_log_directory" "$failure_log_stable_path"; then
+    echo "merge-gate: cannot publish stable failure-log symlink:" >&2
+    echo "  $failure_log_stable_path" >&2
+    return 1
+  fi
+  if [ ! -L "$failure_log_stable_path" ]; then
+    echo "merge-gate: stable failure-log path is not a symlink:" >&2
+    echo "  $failure_log_stable_path" >&2
+    return 1
+  fi
+}
+
+preserve_failure_log() {
+  local destination_name="$1"
+  local source_log="$2"
+  cp "$source_log" "$failure_log_directory/$destination_name"
+}
+
+report_failure_log_provenance() {
+  local resolved_failure_log_path
+  resolved_failure_log_path="$(
+    readlink -f "$failure_log_stable_path" 2>/dev/null || true
+  )"
+  echo "merge-gate: this run's failure logs: $failure_log_directory"
+  if [ -n "$resolved_failure_log_path" ]; then
+    echo "merge-gate: stable failure logs resolve to $resolved_failure_log_path"
+  else
+    echo "merge-gate: stable failure logs do not resolve:" >&2
+    echo "  $failure_log_stable_path" >&2
+  fi
+}
+
+run_failure_log_provenance_probe() {
+  local probe_source_log="/tmp/merge-gate-provenance-probe-source.$$"
+
+  failure_log_stable_path="$(
+    printf '%s' \
+      "${INVAR_MERGE_GATE_FAILURE_LOG_PROBE_STABLE_PATH:-}"
+  )"
+  if [ -z "$failure_log_stable_path" ]; then
+    echo "merge-gate: provenance probe requires a stable-path override" >&2
+    return 2
+  fi
+  failure_log_directory="${failure_log_stable_path}.$$"
+  if ! initialize_failure_log_directory; then return 2; fi
+
+  printf '%s\n' \
+    "${INVAR_MERGE_GATE_FAILURE_LOG_PROBE_CONTENT:-}" \
+    >"$probe_source_log"
+  if ! preserve_failure_log \
+    "failure-log-provenance-probe.log" \
+    "$probe_source_log"
+  then
+    rm -f "$probe_source_log"
+    return 2
+  fi
+  rm -f "$probe_source_log"
+  echo "merge-gate: FAILURES — provenance probe"
+  report_failure_log_provenance
+  return 1
+}
+
+run_failure_log_provenance_self_test() {
+  local displaced_failure_log_path
+  local first_failure_log_path
+  local first_probe_exit_code
+  local first_probe_output
+  local provenance_test_directory
+  local second_failure_log_path
+  local second_probe_exit_code
+  local second_probe_output
+  local stable_failure_log_path
+
+  provenance_test_directory="$(
+    mktemp -d /tmp/merge-gate-failure-log-provenance.XXXXXX
+  )"
+  stable_failure_log_path="$provenance_test_directory/merge-gate-failures"
+  first_probe_output="$provenance_test_directory/first-probe.out"
+  second_probe_output="$provenance_test_directory/second-probe.out"
+  mkdir "$stable_failure_log_path"
+  printf '%s\n' "stale-directory-content" \
+    >"$stable_failure_log_path/stale.log"
+
+  INVAR_MERGE_GATE_FAILURE_LOG_PROBE_STABLE_PATH="$stable_failure_log_path" \
+    INVAR_MERGE_GATE_FAILURE_LOG_PROBE_CONTENT="first-run-content" \
+    bash "$ROOT/scripts/merge-gate.sh" --failure-log-provenance-probe \
+    >"$first_probe_output" 2>&1
+  first_probe_exit_code=$?
+  first_failure_log_path="$(
+    readlink -f "$stable_failure_log_path" 2>/dev/null || true
+  )"
+
+  INVAR_MERGE_GATE_FAILURE_LOG_PROBE_STABLE_PATH="$stable_failure_log_path" \
+    INVAR_MERGE_GATE_FAILURE_LOG_PROBE_CONTENT="second-run-content" \
+    bash "$ROOT/scripts/merge-gate.sh" --failure-log-provenance-probe \
+    >"$second_probe_output" 2>&1
+  second_probe_exit_code=$?
+  second_failure_log_path="$(
+    readlink -f "$stable_failure_log_path" 2>/dev/null || true
+  )"
+  displaced_failure_log_path="$(
+    find "$provenance_test_directory" \
+      -maxdepth 1 \
+      -type d \
+      -name 'merge-gate-failures.displaced.*' \
+      -print \
+      -quit
+  )"
+
+  if [ "$first_probe_exit_code" -ne 1 ] ||
+    [ "$second_probe_exit_code" -ne 1 ] ||
+    [ ! -L "$stable_failure_log_path" ] ||
+    [ -z "$first_failure_log_path" ] ||
+    [ -z "$second_failure_log_path" ] ||
+    [ "$first_failure_log_path" = "$second_failure_log_path" ] ||
+    [ ! -f "$first_failure_log_path/failure-log-provenance-probe.log" ] ||
+    [ "$(
+      cat "$first_failure_log_path/failure-log-provenance-probe.log"
+    )" != "first-run-content" ] ||
+    [ "$(
+      cat "$second_failure_log_path/failure-log-provenance-probe.log"
+    )" != "second-run-content" ] ||
+    [ -z "$displaced_failure_log_path" ] ||
+    [ "$(
+      cat "$displaced_failure_log_path/stale.log" 2>/dev/null || true
+    )" != "stale-directory-content" ] ||
+    ! grep -Fq \
+      "stable failure logs resolve to $first_failure_log_path" \
+      "$first_probe_output" ||
+    ! grep -Fq \
+      "stable failure logs resolve to $second_failure_log_path" \
+      "$second_probe_output"
+  then
+    echo "failure-log provenance self-test: FAIL" >&2
+    echo "  artifacts: $provenance_test_directory" >&2
+    echo "  first probe exit: $first_probe_exit_code" >&2
+    echo "  first run: $first_failure_log_path" >&2
+    echo "  second probe exit: $second_probe_exit_code" >&2
+    echo "  second run: $second_failure_log_path" >&2
+    return 1
+  fi
+
+  echo "failure-log provenance self-test: stale directory preserved at"
+  echo "  $displaced_failure_log_path"
+  echo "failure-log provenance self-test: first run retained at"
+  echo "  $first_failure_log_path"
+  echo "failure-log provenance self-test: stable path resolves to second run"
+  echo "  $stable_failure_log_path -> $second_failure_log_path"
+  rm -rf -- "$provenance_test_directory"
+}
+
+case "${1:-}" in
+  --failure-log-provenance-probe)
+    run_failure_log_provenance_probe
+    provenance_probe_exit_code=$?
+    exit "$provenance_probe_exit_code"
+    ;;
+  --failure-log-provenance-self-test)
+    run_failure_log_provenance_self_test
+    provenance_self_test_exit_code=$?
+    exit "$provenance_self_test_exit_code"
+    ;;
+esac
+
 # THE GATE PUBLISHES ITS OWN PID, so stopping it never requires a process SEARCH. This exists because a
 # `pkill -f merge-gate.sh` killed two BUILDER agents on 2026-07-26: every builder brief contains the
 # string "do NOT run scripts/merge-gate.sh", so the builders' command lines matched a pattern meant for
@@ -78,13 +276,10 @@ fail=0
 # Failing steps keep their FULL output here — tail-25 destroyed the failing condition three times
 # on 2026-07-25 (the evidence a red exists to provide). Wiped per gate run, never mid-run.
 # PER-RUN failure directory: two concurrent gates sharing one path would wipe each other's evidence
-# at start (the rm -rf below), which is the one thing this directory exists to prevent. The stable
+# at start, which is the one thing this directory exists to prevent. The stable
 # symlink /tmp/merge-gate-failures always points at the most recent run, so the habit of reading that
 # path still works for a single-gate workflow.
-failure_log_directory="/tmp/merge-gate-failures.$$"
-rm -rf "$failure_log_directory"
-mkdir -p "$failure_log_directory"
-ln -sfn "$failure_log_directory" /tmp/merge-gate-failures
+if ! initialize_failure_log_directory; then exit 2; fi
 step() {
   local name="$1"; shift
   local step_log="/tmp/merge-gate-step.$$.serial.log"
@@ -102,7 +297,7 @@ step() {
   # second timeout — is a defect and blocks. Both attempts' full logs are preserved.
   local serial_step_retried=0
   if grep -q 'Timed out' "$step_log"; then
-    cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
+    preserve_failure_log "$failure_slug.attempt1.log" "$step_log"
     echo "  RETRY $name — timeout-class failure; one quiet retry (attempt 1 log preserved)"
     serial_step_retried=1
     sleep 10
@@ -118,7 +313,7 @@ step() {
     fi
   fi
   if [ "$serial_step_retried" -eq 1 ]; then retried_fail_smoke_names+=("$name"); fi
-  cp "$step_log" "$failure_log_directory/$failure_slug.log"
+  preserve_failure_log "$failure_slug.log" "$step_log"
   echo "  FAIL  $name (full log: $failure_log_directory/$failure_slug.log)"
   tail -25 "$step_log" | sed 's/^/    | /'
   fail=1
@@ -252,7 +447,7 @@ execute_registered_smoke_job() {
     smoke_passed=1
   else
     if grep -q 'Timed out' "$step_log"; then
-      cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
+      preserve_failure_log "$failure_slug.attempt1.log" "$step_log"
       echo failed >"$retry_outcome_file"
       echo "  RETRY $smoke_name — timeout-class failure; one quiet retry (attempt 1 log preserved)" >>"$summary_log"
       sleep 10
@@ -267,7 +462,7 @@ execute_registered_smoke_job() {
   if [ "$smoke_passed" -eq 1 ]; then
     echo 0 >"$result_file"
   else
-    cp "$step_log" "$failure_log_directory/$failure_slug.log"
+    preserve_failure_log "$failure_slug.log" "$step_log"
     echo "  FAIL  $smoke_name (full log: $failure_log_directory/$failure_slug.log)" >>"$summary_log"
     tail -25 "$step_log" | sed 's/^/    | /' >>"$summary_log"
     echo 1 >"$result_file"
@@ -456,7 +651,14 @@ validate_smoke_classification() {
   return 1
 }
 
-# 0) BOOT CAPABILITY. Assert the runtime property, not the ivue version:
+# 0) FAILURE-LOG PROVENANCE. Two fake reds prove that the stable path replaces
+# a planted stale directory, resolves to the second run, and leaves the first
+# run's PID-qualified evidence reachable.
+# invariant: Completion is proven not declared (project.invariants.md)
+step \
+  "failure-log provenance self-test" \
+  bash scripts/merge-gate.sh --failure-log-provenance-self-test
+# 0b) BOOT CAPABILITY. Assert the runtime property, not the ivue version:
 #     flexible ranges and linked builds are valid, but Static() must cache
 #     get-only $ accessors. Clear the product escape hatch so CI checks its
 #     installed resolution.
@@ -744,5 +946,6 @@ if [ "$fail" = 0 ]; then
   echo "  +------------------------------------------------------------------------------------"
 else
   echo "merge-gate: FAILURES — commit/merge BLOCKED"
+  report_failure_log_provenance
 fi
 exit "$fail"
