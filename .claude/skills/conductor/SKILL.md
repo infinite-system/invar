@@ -256,6 +256,35 @@ Corollary for the conductor: when a builder reports bycatch as pre-existing, tha
 inheriting the builder's incentive to prefer it. Verify the first one yourself before converting the
 rest — it is minutes, and it changes whether you are opening tasks or reverting a merge.
 
+## THE CLASS IS "ASKING FOR EVIDENCE OF A CHANGE THAT WILL NOT HAPPEN"
+
+Name the class at the right level or the fix reproduces it. This happened in one night:
+
+- **#168** removed 75 waits that demanded "the next completed frame." Correct: an action whose target
+  is already painted emits no frame, so the wait could never complete. It even deleted the primitive.
+- **#188** then found that #168's OWN replacement did the same thing one level up. It converted the
+  editor smoke's loop to a generic `awaitScreenChange`, seeking two new tabs when the fixture had one
+  unopened file left. Once that file opened, the next gesture was inert at the last tree row — **no
+  screen change could exist.**
+
+The fix for waits-that-cannot-complete introduced a wait that cannot complete. So the class was
+never "frame ordinals":
+
+> **A result condition is only safe when the result is REACHABLE.** Frame ordinals are one way to ask
+> for the unreachable; a screen-change predicate on an idempotent gesture is another; #187's wheel at
+> a clamp is a third. Converting from one to another fixes nothing by itself.
+
+**The question to ask of every wait, in this order:**
+
+1. what must be TRUE after this action? (not "what will move")
+2. is that thing FALSE right now? — if it is already true, the correct wait is a no-op, not a timeout
+3. what makes it become true, and can that fail to happen in a valid ordering?
+
+Step 2 is the one that keeps getting skipped, and it is the whole defect. #159's mutation had no
+publication carrier, #161's settle preceded its own publisher, #168's frame 59 did not exist, #188's
+screen change had no cause, #187's clamped wheel had nothing to repaint. Five spellings, one
+question unasked.
+
 ## REMOVE THE CAPABILITY, NOT THE MISUSE — an API that does not exist cannot be misused
 
 #168 had 75 call sites waiting on "the next completed frame," a pattern an established invariant
