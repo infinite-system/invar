@@ -3188,3 +3188,41 @@ key choice is now re-read on every iteration rather than decided once.
 nothing. It fired `REPORT-REWRITTEN` during the deletion half of a rewrite, while the file did not
 exist. Corrected to: exists, non-empty, differs, and size-stable across two polls. Same lesson: I
 enumerated the state I wanted and not the states available.
+
+## 2026-07-28 16:14 EDT — the user caught two regressions the instruments called clean, and both gaps were WHICH FIXTURE
+
+**Twice today the ground truth came from the user driving, not from any check I ran.** First the tab
+re-activation delay, which they diagnosed correctly before I did. Then a flat-file editing regression
+after the fold work, while every count contract I had independently verified stayed green.
+
+The second one is the one worth doctrine, because the gap was structural and I walked past it. #203
+extended the editor for folding. Every latency table in both of its reports used the NESTED fixtures —
+its "unfolded" rows were nested JSON with nothing collapsed, NOT the flat `.ts` axis. `scale-edit` mode
+exists for exactly that axis and was never re-run. So the flat file that MOTIVATED the original
+flyweight work lost its measurement, and that is where the regression landed. I read both reports
+closely enough to verify their numbers and did not notice that an entire axis was absent.
+
+**The rule: when work extends a subsystem for a NEW case, re-measure the OLD case.** The new case gets
+attention by construction — it is the task. The old case is where regressions hide, because nobody is
+looking and its numbers are assumed to carry. And the report must ENUMERATE the axes it covered *and
+name the ones it did not*, because an unnamed axis reads as a covered axis.
+
+This is the same operator as the instrument lesson from three hours earlier — enumerate the space,
+don't verify against the case in front of you — so I extended that doctrine section rather than adding
+a second one. Applying to myself the discipline I had just asked the builder to apply: one rule
+reaching another case, not a new mechanism beside it.
+
+**And the sharper half: a green count contract is evidence about COUNTS.** Per-keystroke array-write
+counts were identical before and after — I verified that on my own run, twice, with a positive control
+proving the counter could move. The user still felt a clear slowdown. Both can be true, because a new
+cost can arrive in a currency the counter does not measure: comparisons, document reads, snapshot
+validation, or first-paint work landing inside the typing window. When a count and a human disagree,
+the count is the one with the narrower view. The repair therefore has two halves of equal weight — fix
+the cost, and add a counter for its currency — or the same regression is free to recur behind the same
+green.
+
+**Process note that worked.** The user stopped me from interrupting the builder mid-measurement to
+restate a requirement it had already demonstrated unprompted (it mirrored instrument assertions into
+`bun test` in round 2, 37 assertions including the counter's own positive control, with nobody asking).
+The cheap moment for that point is REVIEW OF THE ARTIFACT, not a mid-flight nudge. A queued
+interruption costs a live measurement; a review finding costs nothing.

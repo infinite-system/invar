@@ -1096,13 +1096,32 @@ fixtures should have covered three from the start.
 This is the impossibility boundary applied to instruments: name what the check must say NO to, not only
 what it must say YES to. A check verified against one state is a check with one tested outcome.
 
-Two corollaries earned the same day:
+Three corollaries earned the same day:
 
 - **Confirm on the channel, not on the payload's fate.** Every check that guessed *where the message
   text ended up* was wrong for some state; the one keyed on the input surface itself was not.
 - **A liveness or rewrite monitor must require EXISTENCE, not just difference.** A monitor keyed on
   "content hash differs from baseline" fired mid-rewrite while the file did not exist, because absence
   hashes to nothing and therefore differs from anything.
+- **The same operator applies to FIXTURES, and that is where it cost the most.** #203 extended the
+  editor for folding and every latency table in both of its reports used the NESTED fixtures — its
+  "unfolded" rows were nested JSON with nothing collapsed, not the flat `.ts` axis. The flat file that
+  MOTIVATED the original flyweight work quietly lost its measurement, and that is precisely where the
+  user found a regression, by driving, while every count contract stayed green. I read both reports and
+  did not notice that a whole axis was missing.
+
+  So: **when work extends a subsystem for a NEW case, re-measure the OLD case.** The new case gets
+  attention by construction — it is what the task is about. The old case is where the regression hides,
+  because nobody is looking at it and its numbers are assumed to carry over. Require a report to
+  ENUMERATE the fixtures and axes it covered *and name the ones it did not*, the same way a repaired
+  instrument must enumerate its subject's states. An unnamed axis reads as a covered axis.
+
+  Second-order, and the reason this is doctrine rather than a note: counts were flat and identical
+  before and after, verified independently, while the user felt a clear slowdown. When a count contract
+  and a human disagree, the count is the one with the narrower view — it measures one currency
+  (array writes) and a new cost can arrive in another (comparisons, document reads, snapshot
+  validation, first-paint work landing inside the typing window). A green count is evidence about
+  counts, not about speed.
 
 ## A PRE-SATISFIED WAIT LAUNDERS A NO-OP INTO A GREEN
 
