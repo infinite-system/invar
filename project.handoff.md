@@ -3,52 +3,70 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-27 23:35 UTC) — READ FIRST
+## RESUME ANCHOR (2026-07-28 01:30 UTC) — READ FIRST
 
-**USER IS AWAY (walking), and authorised spinning agents.** Three builders live. Land what comes
-back green; hold anything needing a feel call.
+**Main `82b746c`, clean, 2 commits AHEAD of origin — NETWORK IS DOWN (DNS fails on github.com).**
+Push `a7588bb` (MCP adapter mechanism) and `82b746c` (the `$`/`:` marks) the moment DNS returns.
+Published+gate-verified through `d5ba738`.
 
-**MAIN IS RED AND UNPUSHED at `bf57bcf`.** Local main is 2 ahead of `origin/main` (`eb91b52`).
-Do NOT push until `#158` resolves. `project.conductor.md` carries an uncommitted lesson.
+### ONE BUILDER LIVE — and it just found a REAL APP DEFECT
 
-### Live fleet — all cut from `bf57bcf`, all disjoint
+`fix-panel-chrome-flake` in `/tmp/conductor-panelchrome`, monitor `b7s5fmxn1`, brief
+`/tmp/TASK-panel-chrome-flake.md`, report will be `/tmp/panelchrome-READY.md`.
 
-| branch | task | worktree | log |
-|---|---|---|---|
-| `fix-glide-900-stall` | **#158** why 900ms easing hangs the smoothness instrument | `/tmp/conductor-glide900` | `/tmp/glide900-codex.log` |
-| `feat-tasks-capability` | **#156** `.invar/tasks.json` + `.vscode` compat + `runOn: folderOpen` | `/tmp/conductor-tasks` | `/tmp/tasks-codex.log` |
-| `design-mcp-bridge` | **#157** design: claude/codex/pi/hermes drive Invar over MCP | `/tmp/conductor-mcpdesign` | `/tmp/mcpdesign-codex.log` |
+Committed `dca84d2 fix(ui): preserve panel close publication across frame coalescing`. **That is an
+app fix, not a harness fix.** The panel-close condition WAS published and then LOST to frame
+coalescing before the poll observed it — the second of the two mechanisms the brief named. So the
+gate's retry has been laundering a real defect: a panel close that does not publish reliably.
+REVIEW THE REPORT before merging; the brief demanded a ≥20-run pass/fail SEQUENCE (not a rate) and
+population separation against `186f2d8` (pre-#156) vs `d5ba738`.
 
-Monitors: `bkvf45yn5` (glide900), `b3sy8xf6b` (tasks + mcpdesign). Both count commits against the
-RECORDED CUT `bf57bcf`, never `origin/main` — main is unpushed so that ref is stale.
+### Landed tonight (all gate-verified at `d5ba738`, ALL-PASS, 426s)
 
-### The blocking problem: #158
+#152 glide easing → user chose **900 ms** · #155 gate verdicts became ordering/counts, quiet lock
+gone from the blocking path · #158 the 900 ms hang (a probe keyed to an unreachable 14th moving
+frame — easing untouched) · #156 tasks capability · #157 MCP design + the user's public-API-default
+decision · #114 Wave A LSP as provider (host refs 4→0) · #108 `$`/`:` marks accepted and landed ·
+conventions rules 1.8/1.9/1.95 + `scripts/` scope fix + AppleDouble exclusion.
 
-The user drove 150/200/300/900ms glide easing and chose **900** ("that's perfect"). 900 is committed
-and preserved everywhere. It also makes `measure-scroll-smoothness` time out, reproducibly, standalone
-and in-gate. Full evidence and FOUR REFUTED HYPOTHESES are in task #158 — read it before theorising,
-and do not re-run the refuted four. **Never change the easing value to make the test pass**; that is
-the user's feel decision.
+### UNTRACKED BYCATCH — reported by builders, never converted to tasks. Convert these.
 
-### Landed tonight and pushed (all green through eb91b52)
+Only #160 (context-menu wheel double-dispatch: one physical wheel → two impulses, 10.2 then 22.78
+velocity, two reproductions) exists so far. STILL UNTRACKED:
 
-`737e183` #152 glide easing mechanism · `31fef2a` rule 1.9 (`const Class` illegal, 95-file sweep) ·
-`2db8f8b` rules 1.8+1.9 widened to `scripts` (the harness had escaped both) · `eb91b52` rule 1.95
-(the `Static()` wrapper lives at the `$Class` anchor; exempts in-place `Reactive()`) · `c79115f`
-AppleDouble exclusion (`._Foo.ts` from the Parallels mount was being read as source).
+1. **Quick Open opens the WRONG file** when the repo itself is the workspace. Publishes
+   `quickOpenSelected=0 quickOpenMatches=1`, visibly renders `TASK.md`, Enter opens
+   `project.tasks.md`. Reproduced repeatedly plus a dedicated second probe. Source: drivequick
+   builder, `/tmp/drivequick-READY.md`. **Highest severity of the five — silent wrong-file open.**
+2. **Status bar shows the retired name `Fable Test`** — in both before and after 120x40 frames.
+   Source: mdtables builder.
+3. **Settings reveal desync at 80x24** — `settingsSelectedLabel` updates while the selected row is
+   BELOW the painted viewport. Reproduced more than twice. Source: gfxtier builder.
+4. **Files pane blank at settled boot** on a non-empty workspace despite `treeRows=50`. Observed on
+   two commits (`063e3ab`, `5f22cd8`). Source: statics-cpu builder.
+5. **Narration contract drift** — contract and comments still say "any keystroke" barges in; shipped
+   behaviour requires explicit Escape and the harness proves typing does NOT barge in. Needs its own
+   atomic invariant-rename commit. Source: narration-flake builder.
 
-Unpushed on top: `bf57bcf` merge of **#155** — the gate's blocking verdicts are now ordering and
-counts, the quiet lock is gone from the blocking path, and the millisecond series survives as a
-non-blocking trend.
+The builders reported all of these correctly and correctly refused to fix them. The leak is at the
+CONDUCTOR end: a bycatch survives only if it becomes a task.
 
-### Owed to the user
+### Open decisions — none. Both of the user's questions are answered and landed.
 
-- **Collapse the easing constant into the glide-duration setting.** At 900 it equals the cap, so it
-  is no longer an independent parameter and must not become a second setting.
-- **The harness must READ the effective easing from the app's diagnostic report** instead of keeping
-  its own copy — two declarations of one number, hand-synced twice tonight.
-- If #158 lands on the from-rest-latency hypothesis, give the user the measured first-row latency at
-  150/300/900 so they can price the trade.
+### The flake class, likely one defect not four
+
+#109 (agent-permissions), #124 (terminal-follow), #159 (panel-chrome) all wait on PUBLISHED
+CONDITIONS. #158 was a wait whose condition was UNREACHABLE by construction; #159 looks like a
+condition that becomes true and is then COALESCED AWAY. Ask whether the remaining 15 harness
+deadlines (13 `FRAME_ARRIVAL_TIMEOUT_MILLISECONDS`, 2 `DEFAULT_TIMEOUT`) should all report WHICH
+they hit — late vs unreachable vs lost — the way #158's fix now names the count and phase it awaited.
+
+### Gate status: blocking verdicts are timing-free
+
+Measured on this tree: zero blocking steps compare a measured duration; `MEASUREMENT INVALID` is
+unreachable from a verdict; quiet lock is 0 references in `merge-gate.sh`, retained only in the soft
+`perf-baselines.sh`. Clocks remain only as configured inputs, report-only measurements, and
+condition-wait deadlines — and that last category is where every open flake lives.
 
 ## RESUME ANCHOR (2026-07-27 16:25 UTC) — SUPERSEDED by the anchor above
 
