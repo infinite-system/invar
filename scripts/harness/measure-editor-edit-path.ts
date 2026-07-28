@@ -15,20 +15,26 @@ import { QuietLock } from './QuietLock';
 class $CountingEditorWrap extends EditorWrap.$Class {
   static rowArrayAllocations = 0;
   static blockArrayAllocations = 0;
+  static foldHeaderArrayAllocations = 0;
   static rowWrites = 0;
   static blockWrites = 0;
+  static foldHeaderWrites = 0;
 
   static resetCounts(): void {
     this.rowArrayAllocations = 0;
     this.blockArrayAllocations = 0;
+    this.foldHeaderArrayAllocations = 0;
     this.rowWrites = 0;
     this.blockWrites = 0;
+    this.foldHeaderWrites = 0;
   }
 
   static counts(): WrapIndexOperationCounts {
     return {
       blockArrayAllocations: this.blockArrayAllocations,
       blockWrites: this.blockWrites,
+      foldHeaderArrayAllocations: this.foldHeaderArrayAllocations,
+      foldHeaderWrites: this.foldHeaderWrites,
       rowArrayAllocations: this.rowArrayAllocations,
       rowWrites: this.rowWrites,
     };
@@ -44,6 +50,13 @@ class $CountingEditorWrap extends EditorWrap.$Class {
   ): Uint32Array {
     this.blockArrayAllocations++;
     return super.allocateBlockRowCounts(blockCount);
+  }
+
+  protected static override allocateFoldHeaderByLine(
+    lineCount: number,
+  ): Uint32Array {
+    this.foldHeaderArrayAllocations++;
+    return super.allocateFoldHeaderByLine(lineCount);
   }
 
   protected static override writeRowCount(
@@ -62,6 +75,15 @@ class $CountingEditorWrap extends EditorWrap.$Class {
   ): void {
     this.blockWrites++;
     super.writeBlockRowCount(blockRowCounts, blockIndex, rowCount);
+  }
+
+  protected static override writeFoldHeader(
+    foldHeaderByLine: Uint32Array,
+    lineIndex: number,
+    foldHeaderLineIndex: number,
+  ): void {
+    this.foldHeaderWrites++;
+    super.writeFoldHeader(foldHeaderByLine, lineIndex, foldHeaderLineIndex);
   }
 }
 
@@ -455,6 +477,8 @@ class $EditorEditPathMeasurement {
     const expectedIncrementalCounts: WrapIndexOperationCounts = {
       blockArrayAllocations: 0,
       blockWrites: 0,
+      foldHeaderArrayAllocations: 0,
+      foldHeaderWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     };
@@ -476,12 +500,107 @@ class $EditorEditPathMeasurement {
           `the forced full rebuild: ${JSON.stringify(forcedFullRebuild)}`,
       );
     }
+    const levelZeroFoldRange = {
+      startLine: 1,
+      endLine: 138_622,
+      kind: 'delimiter' as const,
+    };
+    const nestedFixtureEditCases = [554_490, 970_356].flatMap((lineCount) =>
+      [false, true].map((collapsed) => {
+        const document = new TextDocument.Class();
+        const fixtureLines = this.flatFixtureLines(lineCount);
+        document.replaceAll(fixtureLines);
+        const foldedRanges = collapsed ? [levelZeroFoldRange] : [];
+        $CountingEditorWrap.totalVisualRows(
+          document,
+          this.WRAP_WIDTH,
+          foldedRanges,
+        );
+        $CountingEditorWrap.resetCounts();
+        document.setLine(0, `${fixtureLines[0] ?? ''}x`);
+        $CountingEditorWrap.totalVisualRows(
+          document,
+          this.WRAP_WIDTH,
+          foldedRanges,
+        );
+        return {
+          collapsed,
+          counts: $CountingEditorWrap.counts(),
+          lineCount,
+          targetLineIndex: 0,
+        };
+      }),
+    );
+    for (const measuredCase of nestedFixtureEditCases) {
+      if (
+        JSON.stringify(measuredCase.counts) !==
+        JSON.stringify(expectedIncrementalCounts)
+      ) {
+        throw new Error(
+          'Editor wrap-index edit operation count scaled with the fold or ' +
+            `nested-fixture size axis: ${JSON.stringify(nestedFixtureEditCases)}`,
+        );
+      }
+    }
+
+    const foldToggleCases = [554_490, 970_356].map((lineCount) => {
+      const document = new TextDocument.Class();
+      document.replaceAll(this.flatFixtureLines(lineCount));
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      $CountingEditorWrap.resetCounts();
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH, [
+        levelZeroFoldRange,
+      ]);
+      const collapseCounts = $CountingEditorWrap.counts();
+      $CountingEditorWrap.resetCounts();
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      return {
+        collapseCounts,
+        expandCounts: $CountingEditorWrap.counts(),
+        lineCount,
+      };
+    });
+    const expectedCollapseCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 34,
+      foldHeaderArrayAllocations: 1,
+      foldHeaderWrites: 138_621,
+      rowArrayAllocations: 0,
+      rowWrites: 138_621,
+    };
+    const expectedExpandCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 34,
+      foldHeaderArrayAllocations: 1,
+      foldHeaderWrites: 0,
+      rowArrayAllocations: 0,
+      rowWrites: 138_621,
+    };
+    for (const measuredCase of foldToggleCases) {
+      if (
+        JSON.stringify(measuredCase.collapseCounts) !==
+          JSON.stringify(expectedCollapseCounts) ||
+        JSON.stringify(measuredCase.expandCounts) !==
+          JSON.stringify(expectedExpandCounts)
+      ) {
+        throw new Error(
+          'Fold-toggle operation count scaled with nested-fixture size: ' +
+            JSON.stringify(foldToggleCases),
+        );
+      }
+    }
     return {
+      expectedCollapseCounts,
+      expectedExpandCounts,
+      expectedIncrementalCounts,
+      foldToggleCases,
       forcedFullRebuild,
       incremental,
+      nestedFixtureEditCases,
       requirement:
-        '2k and 1M same-line edits allocate no index arrays and perform ' +
-        'one row write; a forced rebuild must move the counter',
+        'same-line edits are identical across the folded and nested-fixture ' +
+        'size axes; fold toggles scale with the 138,622-line span rather ' +
+        'than total document size; a forced rebuild must move the counter',
       satisfied: true,
     };
   }
@@ -599,6 +718,8 @@ interface EditSyncCaseMeasurement {
 interface WrapIndexOperationCounts {
   readonly blockArrayAllocations: number;
   readonly blockWrites: number;
+  readonly foldHeaderArrayAllocations: number;
+  readonly foldHeaderWrites: number;
   readonly rowArrayAllocations: number;
   readonly rowWrites: number;
 }
@@ -610,10 +731,25 @@ interface WrapIndexOperationMeasurement {
 }
 
 interface OperationalScaleContract {
+  readonly expectedCollapseCounts: WrapIndexOperationCounts;
+  readonly expectedExpandCounts: WrapIndexOperationCounts;
+  readonly expectedIncrementalCounts: WrapIndexOperationCounts;
+  readonly foldToggleCases: readonly FoldToggleOperationMeasurement[];
   readonly forcedFullRebuild: WrapIndexOperationMeasurement;
   readonly incremental: readonly WrapIndexOperationMeasurement[];
+  readonly nestedFixtureEditCases: readonly FoldedEditOperationMeasurement[];
   readonly requirement: string;
   readonly satisfied: true;
+}
+
+interface FoldedEditOperationMeasurement extends WrapIndexOperationMeasurement {
+  readonly collapsed: boolean;
+}
+
+interface FoldToggleOperationMeasurement {
+  readonly collapseCounts: WrapIndexOperationCounts;
+  readonly expandCounts: WrapIndexOperationCounts;
+  readonly lineCount: number;
 }
 
 interface EditSyncSample {

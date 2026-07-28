@@ -96,6 +96,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
   protected collapsedFoldRangesDocumentRevision = -1;
   protected collapsedFoldRangesFoldRevision = -1;
+  protected collapsedFoldRangesSource: readonly FoldRange[] | null = null;
   protected collapsedFoldRangesValue: readonly FoldRange[] = [];
 
   attachFoldState(foldState: EditorFoldState): void {
@@ -127,13 +128,23 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
     if (collapsedLineStarts.size === 0) {
       this.collapsedFoldRangesValue = [];
+      this.collapsedFoldRangesSource = null;
       this.collapsedFoldRangesDocumentRevision = documentRevision;
       this.collapsedFoldRangesFoldRevision = foldRevision;
       return this.collapsedFoldRangesValue;
     }
-    this.collapsedFoldRangesValue = this.foldRanges().filter((range) =>
+    const foldRanges = this.foldRanges();
+    if (
+      this.collapsedFoldRangesSource === foldRanges &&
+      this.collapsedFoldRangesFoldRevision === foldRevision
+    ) {
+      this.collapsedFoldRangesDocumentRevision = documentRevision;
+      return this.collapsedFoldRangesValue;
+    }
+    this.collapsedFoldRangesValue = foldRanges.filter((range) =>
       collapsedLineStarts.has(range.startLine),
     );
+    this.collapsedFoldRangesSource = foldRanges;
     this.collapsedFoldRangesDocumentRevision = documentRevision;
     this.collapsedFoldRangesFoldRevision = foldRevision;
     return this.collapsedFoldRangesValue;

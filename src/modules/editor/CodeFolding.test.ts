@@ -104,6 +104,25 @@ describe('CodeFolding', () => {
     expect(readsByLineCount).toEqual([0, 0]);
   });
 
+  test('fold-marker lookup reuses the non-structural fold snapshot', () => {
+    const readsByLineCount = [554_490, 970_356].map((lineCount) => {
+      const document = new EditableFoldDocument(lineCount);
+      CodeFolding.Class.ranges(document, 'typescript');
+      document.editLine(
+        Math.floor(lineCount / 2) + 1,
+        '  const renamedValue = 2;',
+      );
+      document.lineReads = 0;
+
+      expect(CodeFolding.Class.startsAtLine(document, 'typescript', 0)).toBe(
+        true,
+      );
+      return document.lineReads;
+    });
+
+    expect(readsByLineCount).toEqual([0, 0]);
+  });
+
   test('a structural edit is the positive control that recomputes folds', () => {
     const document = new EditableFoldDocument(2_000);
     CodeFolding.Class.ranges(document, 'typescript');

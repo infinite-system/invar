@@ -365,11 +365,11 @@ fold gutters.
 
 **Mechanism:** `TextDocument.lastLineChange` crosses every document boundary and names the changed
 range. `CodeFolding` reuses its snapshot when indentation and structural delimiters are unchanged;
-gutter paint discovers open markers from visible lines.
-`EditorWrap.syncWrapIndex` owns reusable `Uint32Array` row counts, 4096-line block totals, and one
-exact total. A same-line edit writes one row and, only if its row count changes, one block plus the
-total; it allocates nothing and keeps no `lineTexts` shadow. The reactive revision publishes the
-in-place result. `visualRowsFromOffset` remains the shared window.
+the collapsed projection preserves that snapshot's identity. `EditorWrap.syncWrapIndex` owns
+reusable `Uint32Array` row counts, 4096-line block totals, and zero-default fold headers. A same-line
+edit writes one row and allocates nothing. A fold toggle rewrites only its merged body spans and
+touched block run. The reactive revision publishes the in-place result; `visualRowsFromOffset`
+remains the shared window.
 
 **Generates:** One folded/wrapped extent and window for gutter, code, caret, selection, and pointer
 mapping.
@@ -377,17 +377,19 @@ mapping.
 **Rejected alternatives:** Apply folding after wrap projection — different consumers can consult
 different maps and disagree about the same document position.
 
-**Evidence:** The three named editor modules and focused tests; the scale-edit mode of
-`scripts/harness/measure-input-byte-flush.ts`.
+**Evidence:** The three named editor modules and focused tests; the scale-edit and nested-fold-edit
+modes of `scripts/harness/measure-input-byte-flush.ts`.
 
 **Impossible if true:** Two disagreeing document-line-to-visual-row mappings consulted by different
-consumers; a same-line edit allocating or writing an amount that changes between 2,000 and
-1,000,000 lines; a wrapper dropping the change fact; an index array escaping `EditorWrap`.
+consumers; a same-line edit allocating or writing an amount that changes with document size or
+collapsed state; a fold toggle touching lines outside its folded spans; a wrapper dropping the
+change fact; an index array escaping `EditorWrap`.
 
 **Verification:** `bun test src/modules/editor/CodeFolding.test.ts
 src/modules/editor/EditorFrameAttribution.test.ts
 src/modules/editor/EditorWrapIndex.test.ts`; the three zero-match AST censuses in
 `scripts/conventions-gate.sh`; `INPUT_BYTE_FLUSH_MODE=scale-edit bun
+scripts/harness/measure-input-byte-flush.ts`; `INPUT_BYTE_FLUSH_MODE=nested-fold-edit bun
 scripts/harness/measure-input-byte-flush.ts`.
 
 **Status:** established

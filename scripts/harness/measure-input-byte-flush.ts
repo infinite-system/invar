@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // Default mode measures a tiny-file edit for the always-run gate. Set
-// INPUT_BYTE_FLUSH_MODE=scale-edit for the missing user boundary: a burst of
-// real editing inputs at 2k/20k/100k/500k/1M lines through the real app and
-// PTY.
+// INPUT_BYTE_FLUSH_MODE=scale-edit measures the flat 2k–1M scale axis.
+// INPUT_BYTE_FLUSH_MODE=nested-fold-edit measures the independent 554k/970k
+// and unfolded/folded axes with the 138,622-line shared nested fixture span.
 //
 // Scale edit boundary: immediately before the input byte is written to the PTY
 // master -> arrival of the first complete DEC 2026 frame whose emulator grid
@@ -18,13 +18,25 @@
 // invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 // invariant: Soft duration reports use a machine-wide quiet lock (scripts/harness/harness.invariants.md)
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { PtyTestDriver } from './PtyTestDriver';
 import { QuietLock } from './QuietLock';
 
 const repositoryRoot = process.cwd();
+
+if (process.env.INPUT_BYTE_FLUSH_MODE === 'nested-fold-edit') {
+  const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+    'nested-fold-edit-frame-measurement',
+    import.meta.path,
+  );
+  if (quietLockExitCode === null) {
+    await measureNestedFoldEditing();
+    process.exit(0);
+  }
+  process.exit(quietLockExitCode);
+}
 
 if (process.env.INPUT_BYTE_FLUSH_MODE === 'scale-edit') {
   const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
@@ -201,6 +213,361 @@ function percentile(samples: readonly number[], fraction: number): number {
   if (sample === undefined)
     throw new Error(`Missing percentile sample at index ${sampleIndex}`);
   return sample;
+}
+
+async function measureNestedFoldEditing(): Promise<void> {
+  requireAcquiredQuietLock();
+  const lineCounts = [554_490, 970_356] as const;
+  const sessionCount = positiveIntegerFromEnvironment(
+    'NESTED_FOLD_EDIT_SESSION_COUNT',
+    2,
+  );
+  const burstLength = positiveIntegerFromEnvironment(
+    'NESTED_FOLD_EDIT_BURST_LENGTH',
+    8,
+  );
+  const controlBurstLength = Math.min(
+    burstLength,
+    positiveIntegerFromEnvironment('NESTED_FOLD_EDIT_CONTROL_BURST_LENGTH', 3),
+  );
+  const measurementRoot = mkdtempSync(
+    join(tmpdir(), 'invar-nested-fold-edit-'),
+  );
+  const fixtureRootByLineCount = new Map<number, string>();
+
+  try {
+    for (const lineCount of lineCounts) {
+      const fixtureRoot = join(measurementRoot, String(lineCount));
+      generateNestedWorkspace(fixtureRoot, lineCount);
+      fixtureRootByLineCount.set(lineCount, fixtureRoot);
+    }
+    const caseOrder = [
+      { collapsed: true, lineCount: 970_356 },
+      { collapsed: false, lineCount: 554_490 },
+      { collapsed: false, lineCount: 970_356 },
+      { collapsed: true, lineCount: 554_490 },
+    ] as const;
+    const measurements: NestedFoldCaseMeasurement[] = [];
+    for (const measuredCase of caseOrder) {
+      const fixtureRoot = fixtureRootByLineCount.get(measuredCase.lineCount);
+      if (!fixtureRoot) {
+        throw new Error(
+          `Missing generated ${measuredCase.lineCount}-line nested fixture`,
+        );
+      }
+      const sessions: NestedFoldEditingSession[] = [];
+      for (
+        let sessionNumber = 1;
+        sessionNumber <= sessionCount;
+        sessionNumber++
+      ) {
+        sessions.push(
+          await measureNestedFoldEditingSession({
+            burstLength,
+            collapsed: measuredCase.collapsed,
+            fixtureRoot,
+            forceFullRebuild: false,
+            lineCount: measuredCase.lineCount,
+            sessionNumber,
+          }),
+        );
+      }
+      measurements.push({
+        collapsed: measuredCase.collapsed,
+        distribution: nestedFoldDistribution(sessions),
+        lineCount: measuredCase.lineCount,
+        sessions,
+      });
+    }
+
+    const controlFixtureRoot = fixtureRootByLineCount.get(554_490);
+    if (!controlFixtureRoot) {
+      throw new Error('Missing generated 554490-line nested fixture');
+    }
+    const controlSessions: NestedFoldEditingSession[] = [];
+    for (
+      let sessionNumber = 1;
+      sessionNumber <= sessionCount;
+      sessionNumber++
+    ) {
+      controlSessions.push(
+        await measureNestedFoldEditingSession({
+          burstLength: controlBurstLength,
+          collapsed: true,
+          fixtureRoot: controlFixtureRoot,
+          forceFullRebuild: true,
+          lineCount: 554_490,
+          sessionNumber,
+        }),
+      );
+    }
+    const baselineCase = measurements.find(
+      (measurement) =>
+        measurement.lineCount === 554_490 && measurement.collapsed,
+    );
+    if (!baselineCase) {
+      throw new Error('Missing 554490-line folded baseline');
+    }
+    const baselineMedianMilliseconds = baselineCase.distribution.p50;
+    const controlDistribution = nestedFoldDistribution(controlSessions);
+    const movementMultiple =
+      controlDistribution.p50 / baselineMedianMilliseconds;
+    if (movementMultiple < 10) {
+      throw new Error(
+        'Nested-fold edit positive control did not move the median by an ' +
+          `order of magnitude: baseline ${baselineMedianMilliseconds} ms, ` +
+          `forced ${controlDistribution.p50} ms, ` +
+          `${movementMultiple.toFixed(2)}x`,
+      );
+    }
+
+    console.log(
+      JSON.stringify(
+        {
+          boundary: {
+            end:
+              'first complete DEC 2026 frame whose emulator grid contains ' +
+              'the cumulative edit',
+            excludes: [
+              'fixture generation',
+              'file opening and initial fold discovery',
+              'fold toggle',
+              'filesystem saving',
+              'terminal display after frame bytes reach the PTY master',
+              'language-server work (isolated 1 KB suppression limit)',
+            ],
+            includes: [
+              'real PTY input routing',
+              'undo capture',
+              'document, fold-cache, and wrap-index mutation',
+              'reactive projection',
+              'paint and frame emission',
+            ],
+            start: 'immediately before the edit byte is written to the PTY',
+          },
+          burstLength,
+          fixture:
+            'scripts/make-nested-fold-fixture.ts at 554,490 and 970,356 ' +
+            'requested lines; folded cases collapse group0000 (138,622 lines)',
+          forcedFullRebuildPositiveControl: {
+            baselineMedianMilliseconds,
+            controlBurstLength,
+            controlDistribution,
+            controlSessions,
+            movementMultiple,
+            requirement:
+              'the pre-fix document rebuild moves the 554,490-line folded ' +
+              'median by at least 10x',
+            satisfied: true,
+          },
+          generatedAt: new Date().toISOString(),
+          measurements,
+          quietLock: {
+            holderName: process.env.INVAR_QUIET_LOCK_HOLDER_NAME,
+            mode: process.env.INVAR_QUIET_LOCK_MODE,
+            state: process.env.INVAR_QUIET_LOCK_STATE,
+            waitMilliseconds: process.env.INVAR_QUIET_LOCK_WAIT_MILLISECONDS,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    rmSync(measurementRoot, { recursive: true, force: true });
+  }
+}
+
+async function measureNestedFoldEditingSession(
+  options: NestedFoldEditingSessionOptions,
+): Promise<NestedFoldEditingSession> {
+  const isolatedHomeDirectory = mkdtempSync(
+    join(
+      tmpdir(),
+      `invar-nested-fold-home-${options.lineCount}-` +
+        `${options.collapsed ? 'folded' : 'unfolded'}-`,
+    ),
+  );
+  const settingsDirectory = join(isolatedHomeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    `${JSON.stringify({ lspFileSizeLimitKb: 1 })}\n`,
+  );
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: options.fixtureRoot,
+    repositoryRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: isolatedHomeDirectory,
+    command: options.forceFullRebuild
+      ? [
+          process.execPath,
+          'run',
+          '--preload',
+          join(
+            repositoryRoot,
+            'scripts/harness/force-editor-wrap-full-rebuild.ts',
+          ),
+          'src/main.ts',
+          options.fixtureRoot,
+        ]
+      : undefined,
+  });
+  try {
+    await openNestedFixture(driver);
+    if (options.collapsed) {
+      driver.sendMouse({
+        kind: 'press',
+        column: 50,
+        row: 7,
+        button: 'left',
+      });
+      driver.sendMouse({
+        kind: 'release',
+        column: 50,
+        row: 7,
+        button: 'left',
+      });
+      await driver.awaitSnapshot(
+        (snapshot) => snapshot.findText('Ln 2,') !== null,
+        15_000,
+      );
+      driver.sendKeys('Control+k', '[');
+      await driver.awaitGridCondition(
+        'the 138,622-line group0000 fold is visible',
+        (snapshot) => snapshot.findText('138624') !== null,
+        60_000,
+      );
+    } else {
+      driver.sendMouse({
+        kind: 'press',
+        column: 50,
+        row: 6,
+        button: 'left',
+      });
+      driver.sendMouse({
+        kind: 'release',
+        column: 50,
+        row: 6,
+        button: 'left',
+      });
+    }
+    const samples = await measureEditingBurstWithLoad(
+      driver,
+      '~',
+      options.burstLength,
+    );
+    return {
+      collapsed: options.collapsed,
+      forceFullRebuild: options.forceFullRebuild,
+      lineCount: options.lineCount,
+      samples,
+      sessionNumber: options.sessionNumber,
+    };
+  } finally {
+    await driver.dispose();
+    rmSync(isolatedHomeDirectory, { recursive: true, force: true });
+  }
+}
+
+async function openNestedFixture(driver: PtyTestDriver.Model): Promise<void> {
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('nested.json') !== null,
+    30_000,
+  );
+  driver.sendKeys('Control+p');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Go to File') !== null,
+    15_000,
+  );
+  driver.sendText('nested.json');
+  await driver.awaitGridCondition(
+    'Quick Open lists nested.json as the selected candidate',
+    (snapshot) => textOccurrenceCount(snapshot.text(), 'nested.json') >= 2,
+    30_000,
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitGridCondition(
+    'the generated nested JSON first group is painted',
+    (snapshot) => snapshot.findText('group0000') !== null,
+    60_000,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Large file — language') !== null,
+    15_000,
+  );
+}
+
+async function measureEditingBurstWithLoad(
+  driver: PtyTestDriver.Model,
+  insertedCharacter: string,
+  burstLength: number,
+): Promise<readonly NestedFoldEditSample[]> {
+  driver.sendKeys(insertedCharacter);
+  await driver.awaitScreenChange(15_000);
+  const samples: NestedFoldEditSample[] = [];
+  for (let pressNumber = 1; pressNumber <= burstLength; pressNumber++) {
+    const expectedSuffix = insertedCharacter.repeat(pressNumber + 1);
+    const currentLoadAverage = loadavg();
+    const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+      [insertedCharacter],
+      `nested edit contains suffix ${expectedSuffix}`,
+      (snapshot) => snapshot.text().includes(expectedSuffix),
+      60_000,
+    );
+    samples.push({
+      completedFramesUntilEdit: measurement.completedFramesUntilCondition,
+      inputToPaintMilliseconds: measurement.inputToFrameByteArrivalMilliseconds,
+      loadAverage: {
+        fifteenMinutes: currentLoadAverage[2] ?? Number.NaN,
+        fiveMinutes: currentLoadAverage[1] ?? Number.NaN,
+        oneMinute: currentLoadAverage[0] ?? Number.NaN,
+      },
+      pressNumber,
+    });
+  }
+  return samples;
+}
+
+function nestedFoldDistribution(
+  sessions: readonly NestedFoldEditingSession[],
+): NestedFoldDistribution {
+  const samples = sessions.flatMap((session) =>
+    session.samples.map((sample) => sample.inputToPaintMilliseconds),
+  );
+  return {
+    maximum: Math.max(...samples),
+    minimum: Math.min(...samples),
+    p50: percentile(samples, 0.5),
+    p95: percentile(samples, 0.95),
+    sampleCount: samples.length,
+  };
+}
+
+function generateNestedWorkspace(fixtureRoot: string, lineCount: number): void {
+  mkdirSync(fixtureRoot, { recursive: true });
+  const generation = Bun.spawnSync(
+    [
+      process.execPath,
+      'scripts/make-nested-fold-fixture.ts',
+      '--lines',
+      String(lineCount),
+      '--output',
+      join(fixtureRoot, 'nested.json'),
+    ],
+    {
+      cwd: repositoryRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
+  if (generation.exitCode !== 0) {
+    throw new Error(
+      `Nested fixture generation failed for ${lineCount} lines: ` +
+        new TextDecoder().decode(generation.stderr),
+    );
+  }
 }
 
 async function measureScaleEditing(): Promise<void> {
@@ -757,6 +1124,49 @@ interface ScaleEditingSession {
 interface EditingBurstMeasurement {
   readonly completedFramesUntilEdit: readonly number[];
   readonly inputToPaintMilliseconds: readonly number[];
+}
+
+interface NestedFoldEditingSessionOptions {
+  readonly burstLength: number;
+  readonly collapsed: boolean;
+  readonly fixtureRoot: string;
+  readonly forceFullRebuild: boolean;
+  readonly lineCount: number;
+  readonly sessionNumber: number;
+}
+
+interface NestedFoldEditingSession {
+  readonly collapsed: boolean;
+  readonly forceFullRebuild: boolean;
+  readonly lineCount: number;
+  readonly samples: readonly NestedFoldEditSample[];
+  readonly sessionNumber: number;
+}
+
+interface NestedFoldEditSample {
+  readonly completedFramesUntilEdit: number;
+  readonly inputToPaintMilliseconds: number;
+  readonly loadAverage: {
+    readonly fifteenMinutes: number;
+    readonly fiveMinutes: number;
+    readonly oneMinute: number;
+  };
+  readonly pressNumber: number;
+}
+
+interface NestedFoldDistribution {
+  readonly maximum: number;
+  readonly minimum: number;
+  readonly p50: number;
+  readonly p95: number;
+  readonly sampleCount: number;
+}
+
+interface NestedFoldCaseMeasurement {
+  readonly collapsed: boolean;
+  readonly distribution: NestedFoldDistribution;
+  readonly lineCount: number;
+  readonly sessions: readonly NestedFoldEditingSession[];
 }
 
 interface ScaleLineCountMeasurement {

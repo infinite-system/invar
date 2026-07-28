@@ -149,6 +149,19 @@ terminal display after bytes reach the PTY master, and language-server work
 (the isolated fixture sets a 1 KB suppression limit). The component
 `measure-editor-edit-path.ts` does not answer this end-to-end question.
 
+### `INPUT_BYTE_FLUSH_MODE=nested-fold-edit bun scripts/harness/measure-input-byte-flush.ts`
+The same editing-input-write to first complete DEC 2026 frame boundary across
+the shared 554,490- and 970,356-line nested JSON fixtures, both unfolded and
+with the 138,622-line first top-level group collapsed. Every ordered latency
+sample carries the contemporaneous 1 / 5 / 15-minute load averages. Its
+positive control preloads the removed per-revision full document rebuild and
+requires that defect to move the 554,490-line folded median by at least 10x.
+USE IT WHEN: changing fold snapshot identity, the fold projection, or the
+folded cumulative wrap index and claiming the real editing path stays flat.
+CAUTION: initial file load and the fold toggle are excluded from the latency
+boundary; their allocation/write counts belong to the cumulative-index
+instrument. The app and PTY path itself is real.
+
 ### `INVAR_REAL_CODEX_INLINE_REWRITE=1 bun scripts/harness/measure-inline-rewrite-codex.ts`
 One billed, real-Codex inline-rewrite drive through the PTY. It reports request-now-chord-to-visible
 latency and writes `artifacts/inline-rewrite-codex-latency.json`. A 350 ms mock run happens first as

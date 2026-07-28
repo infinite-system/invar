@@ -29,6 +29,7 @@ class $ForcedFullRebuildEditorWrap extends EditorWrap.$Class {
     {
       readonly revision: number;
       readonly foldedRanges: readonly FoldRange[];
+      readonly sourceFoldRanges: readonly FoldRange[];
     }
   >();
 
@@ -39,10 +40,15 @@ class $ForcedFullRebuildEditorWrap extends EditorWrap.$Class {
   ): DocumentWrapIndex {
     const revision = document.revision?.value ?? -1;
     const previous = this.forcedFoldRangesByDocument.get(document);
-    if (previous?.revision === revision) {
+    if (
+      previous?.revision === revision &&
+      previous.sourceFoldRanges === foldedRanges
+    ) {
       return super.syncWrapIndex(document, wrapWidth, previous.foldedRanges);
     }
-    this.performLegacyFullRebuild(document, wrapWidth, revision);
+    if (previous?.revision !== revision) {
+      this.performLegacyFullRebuild(document, wrapWidth, revision);
+    }
     const nextFoldRanges =
       foldedRanges.length === 0
         ? [
@@ -56,6 +62,7 @@ class $ForcedFullRebuildEditorWrap extends EditorWrap.$Class {
     this.forcedFoldRangesByDocument.set(document, {
       foldedRanges: nextFoldRanges,
       revision,
+      sourceFoldRanges: foldedRanges,
     });
     return super.syncWrapIndex(document, wrapWidth, nextFoldRanges);
   }

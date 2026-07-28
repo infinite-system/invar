@@ -81,30 +81,15 @@ class $CodeFolding {
     );
   }
 
-  /** Whether a visible line begins a fold, computed from only that line plus
-   *  the candidate range it opens. Gutter paint never builds the global fold
-   *  snapshot merely to draw the viewport's marker column. */
+  /** Whether a visible line begins a fold. Gutter paint shares the indexed
+   *  global snapshot: a root delimiter must not trigger a second
+   *  document-length forward scan on every edit. */
   static startsAtLine(
     document: FoldableDocument,
     language: LangId,
     lineIndex: number,
   ): boolean {
-    const lineText = document.line(lineIndex);
-    if (lineText.trim().length === 0) return false;
-    if (this.startsDelimiterRange(document, language, lineIndex, lineText)) {
-      return true;
-    }
-    const indentation = this.indentationColumns(lineText);
-    for (
-      let nextLineIndex = lineIndex + 1;
-      nextLineIndex < document.lineCount;
-      nextLineIndex++
-    ) {
-      const nextLineText = document.line(nextLineIndex);
-      if (nextLineText.trim().length === 0) continue;
-      return this.indentationColumns(nextLineText) > indentation;
-    }
-    return false;
+    return this.rangeAtLine(document, language, lineIndex) !== null;
   }
 
   protected static computeRanges(
@@ -192,50 +177,6 @@ class $CodeFolding {
               kind: 'delimiter',
             });
           }
-        }
-      }
-    }
-  }
-
-  protected static startsDelimiterRange(
-    document: FoldableDocument,
-    language: LangId,
-    lineIndex: number,
-    lineText: string,
-  ): boolean {
-    const delimiterStack: string[] = [];
-    this.updateDelimiterStack(delimiterStack, lineText, language);
-    if (delimiterStack.length === 0) return false;
-    for (
-      let candidateLineIndex = lineIndex + 1;
-      candidateLineIndex < document.lineCount;
-      candidateLineIndex++
-    ) {
-      this.updateDelimiterStack(
-        delimiterStack,
-        document.line(candidateLineIndex),
-        language,
-      );
-      if (delimiterStack.length === 0) return true;
-    }
-    return false;
-  }
-
-  protected static updateDelimiterStack(
-    delimiterStack: string[],
-    lineText: string,
-    language: LangId,
-  ): void {
-    for (const span of Highlighter.Class.highlightLine(lineText, language)) {
-      if (span.role !== 'operator') continue;
-      for (const delimiter of span.text) {
-        if (this.CLOSING_DELIMITER_FOR[delimiter]) {
-          delimiterStack.push(delimiter);
-          continue;
-        }
-        const openingDelimiter = this.MATCHING_OPENING_DELIMITER[delimiter];
-        if (openingDelimiter && delimiterStack.at(-1) === openingDelimiter) {
-          delimiterStack.pop();
         }
       }
     }

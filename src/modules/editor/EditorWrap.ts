@@ -312,6 +312,10 @@ class $EditorWrap {
     return new Uint32Array(blockCount);
   }
 
+  protected static allocateFoldHeaderByLine(lineCount: number): Uint32Array {
+    return new Uint32Array(lineCount);
+  }
+
   protected static writeRowCount(
     rowCounts: Uint32Array,
     lineIndex: number,
@@ -326,6 +330,14 @@ class $EditorWrap {
     rowCount: number,
   ): void {
     blockRowCounts[blockIndex] = rowCount;
+  }
+
+  protected static writeFoldHeader(
+    foldHeaderByLine: Uint32Array,
+    lineIndex: number,
+    foldHeaderLineIndex: number,
+  ): void {
+    foldHeaderByLine[lineIndex] = foldHeaderLineIndex + 1;
   }
 
   protected static buildBlockRowCounts(rowCounts: ArrayLike<number>): {
@@ -362,7 +374,7 @@ class $EditorWrap {
       this.writeRowCount(
         rowCounts,
         lineIndex,
-        foldProjection.visibleLineByLine[lineIndex] !== lineIndex
+        foldProjection.foldHeaderByLine[lineIndex] !== 0
           ? 0
           : width === null
             ? 1
@@ -378,7 +390,7 @@ class $EditorWrap {
       rowCounts,
       blockRowCounts,
       totalRowCount,
-      visibleLineByLine: foldProjection.visibleLineByLine,
+      foldHeaderByLine: foldProjection.foldHeaderByLine,
       foldedRangeByStartLine: foldProjection.foldedRangeByStartLine,
       lastVisibleLineIndex: foldProjection.lastVisibleLineIndex,
     };
@@ -408,10 +420,98 @@ class $EditorWrap {
     return rowCount;
   }
 
+  protected static foldBodyIntervals(
+    lineCount: number,
+    ...foldRangeSets: readonly (readonly FoldRange[])[]
+  ): FoldBodyInterval[] {
+    const intervals = foldRangeSets
+      .flatMap((foldRanges) =>
+        foldRanges.map((range) => ({
+          startLineIndex: Math.max(0, range.startLine + 1),
+          endLineIndex: Math.min(lineCount - 1, range.endLine),
+        })),
+      )
+      .filter((interval) => interval.startLineIndex <= interval.endLineIndex)
+      .sort(
+        (firstInterval, secondInterval) =>
+          firstInterval.startLineIndex - secondInterval.startLineIndex ||
+          firstInterval.endLineIndex - secondInterval.endLineIndex,
+      );
+    const mergedIntervals: FoldBodyInterval[] = [];
+    for (const interval of intervals) {
+      const previousInterval = mergedIntervals[mergedIntervals.length - 1];
+      if (
+        previousInterval &&
+        interval.startLineIndex <= previousInterval.endLineIndex + 1
+      ) {
+        previousInterval.endLineIndex = Math.max(
+          previousInterval.endLineIndex,
+          interval.endLineIndex,
+        );
+      } else {
+        mergedIntervals.push({ ...interval });
+      }
+    }
+    return mergedIntervals;
+  }
+
+  protected static patchFoldProjection(
+    document: WrappableDocument,
+    width: number | null,
+    index: DocumentWrapIndex,
+    foldedRanges: readonly FoldRange[],
+  ): void {
+    const lineCount = document.lineCount;
+    const foldProjection = this.buildFoldProjection(lineCount, foldedRanges);
+    const rowCountDeltaByBlock = new Map<number, number>();
+    let totalRowCountDelta = 0;
+    for (const interval of this.foldBodyIntervals(
+      lineCount,
+      index.foldedRanges,
+      foldedRanges,
+    )) {
+      for (
+        let lineIndex = interval.startLineIndex;
+        lineIndex <= interval.endLineIndex;
+        lineIndex++
+      ) {
+        const previousRowCount = index.rowCounts[lineIndex] ?? 0;
+        const nextRowCount =
+          foldProjection.foldHeaderByLine[lineIndex] !== 0
+            ? 0
+            : width === null
+              ? 1
+              : this.segmentsForLine(document.line(lineIndex), width).length;
+        if (nextRowCount === previousRowCount) continue;
+        this.writeRowCount(index.rowCounts, lineIndex, nextRowCount);
+        const rowCountDelta = nextRowCount - previousRowCount;
+        const blockIndex = lineIndex >> this.BLOCK_SHIFT;
+        rowCountDeltaByBlock.set(
+          blockIndex,
+          (rowCountDeltaByBlock.get(blockIndex) ?? 0) + rowCountDelta,
+        );
+        totalRowCountDelta += rowCountDelta;
+      }
+    }
+    for (const [blockIndex, rowCountDelta] of rowCountDeltaByBlock) {
+      this.writeBlockRowCount(
+        index.blockRowCounts,
+        blockIndex,
+        (index.blockRowCounts[blockIndex] ?? 0) + rowCountDelta,
+      );
+    }
+    index.totalRowCount += totalRowCountDelta;
+    index.foldedRanges = foldedRanges;
+    index.foldHeaderByLine = foldProjection.foldHeaderByLine;
+    index.foldedRangeByStartLine = foldProjection.foldedRangeByStartLine;
+    index.lastVisibleLineIndex = foldProjection.lastVisibleLineIndex;
+  }
+
   /** Bring the document's index current for `wrapWidth`: full build on first sight, width change,
-   *  fold-projection change, or an absent change fact. Otherwise patch only the published changed
-   *  range. A same-line edit reuses both typed arrays and updates one row, its block total when the
-   *  row count changed, and the exact document total. */
+   *  or an absent change fact. A fold-only change patches its collapsed spans and touched block
+   *  totals. Otherwise patch only the published changed range. A same-line edit reuses both typed
+   *  arrays and updates one row, its block total when the row count changed, and the exact document
+   *  total. */
   protected static syncWrapIndex(
     document: WrappableDocument,
     wrapWidth: number | null,
@@ -425,11 +525,27 @@ class $EditorWrap {
     const lineCount = document.lineCount;
     let index = this.$wrapIndexByDocument.get(document);
 
+    if (!index || index.width !== width) {
+      index = this.buildDocumentWrapIndex(
+        document,
+        width,
+        normalizedFoldRanges,
+        revision,
+      );
+      this.$wrapIndexByDocument.set(document, index);
+      return index;
+    }
+
     if (
-      !index ||
-      index.width !== width ||
-      index.foldedRanges !== normalizedFoldRanges
+      index.foldedRanges !== normalizedFoldRanges &&
+      index.revision === revision &&
+      index.rowCounts.length === lineCount
     ) {
+      this.patchFoldProjection(document, width, index, normalizedFoldRanges);
+      return index;
+    }
+
+    if (index.foldedRanges !== normalizedFoldRanges) {
       index = this.buildDocumentWrapIndex(
         document,
         width,
@@ -501,7 +617,7 @@ class $EditorWrap {
       const previousRowCount = rowCounts[lineIndex] ?? 0;
       const nextRowCount =
         normalizedFoldRanges.length > 0 &&
-        index.visibleLineByLine[lineIndex] !== lineIndex
+        index.foldHeaderByLine[lineIndex] !== 0
           ? 0
           : width === null
             ? 1
@@ -529,7 +645,7 @@ class $EditorWrap {
         lineCount,
         normalizedFoldRanges,
       );
-      index.visibleLineByLine = foldProjection.visibleLineByLine;
+      index.foldHeaderByLine = foldProjection.foldHeaderByLine;
       index.foldedRangeByStartLine = foldProjection.foldedRangeByStartLine;
       index.lastVisibleLineIndex = foldProjection.lastVisibleLineIndex;
     }
@@ -586,8 +702,9 @@ class $EditorWrap {
       0,
       Math.min(lineIndex, document.lineCount),
     );
+    const encodedFoldHeader = index.foldHeaderByLine[clampedLineIndex] ?? 0;
     const visibleLineIndex =
-      index.visibleLineByLine[clampedLineIndex] ?? clampedLineIndex;
+      encodedFoldHeader === 0 ? clampedLineIndex : encodedFoldHeader - 1;
     return this.rowCountBeforeLine(index, visibleLineIndex);
   }
 
@@ -712,10 +829,7 @@ class $EditorWrap {
     lineCount: number,
     foldedRanges: readonly FoldRange[],
   ): FoldProjection {
-    const visibleLineByLine = Array.from(
-      { length: lineCount },
-      (_unusedValue, lineIndex) => lineIndex,
-    );
+    const foldHeaderByLine = this.allocateFoldHeaderByLine(lineCount);
     const foldedRangeByStartLine = new Map<number, FoldRange>();
     const orderedRanges = [...foldedRanges].sort(
       (firstRange, secondRange) =>
@@ -723,23 +837,32 @@ class $EditorWrap {
         secondRange.endLine - firstRange.endLine,
     );
     for (const range of orderedRanges) {
-      if (visibleLineByLine[range.startLine] !== range.startLine) continue;
+      if (foldHeaderByLine[range.startLine] !== 0) continue;
       foldedRangeByStartLine.set(range.startLine, range);
       for (
         let lineIndex = range.startLine + 1;
         lineIndex <= Math.min(range.endLine, lineCount - 1);
         lineIndex++
       ) {
-        visibleLineByLine[lineIndex] = range.startLine;
+        this.writeFoldHeader(foldHeaderByLine, lineIndex, range.startLine);
       }
     }
     return {
-      visibleLineByLine,
+      foldHeaderByLine,
       foldedRangeByStartLine,
-      lastVisibleLineIndex:
-        visibleLineByLine[Math.max(0, lineCount - 1)] ??
+      lastVisibleLineIndex: this.visibleLineIndex(
+        foldHeaderByLine,
         Math.max(0, lineCount - 1),
+      ),
     };
+  }
+
+  protected static visibleLineIndex(
+    foldHeaderByLine: Uint32Array,
+    lineIndex: number,
+  ): number {
+    const encodedFoldHeader = foldHeaderByLine[lineIndex] ?? 0;
+    return encodedFoldHeader === 0 ? lineIndex : encodedFoldHeader - 1;
   }
 
   // Stateless capability class (project.conventions.md new-file rule): every operation is a pure
@@ -798,8 +921,8 @@ export interface DocumentWrapIndex {
   blockRowCounts: Uint32Array;
   /** Exact visual-row total maintained with the block sums. */
   totalRowCount: number;
-  /** O(1) line lookup: a hidden line maps to its visible collapsed header. */
-  visibleLineByLine: number[];
+  /** Zero means visible; a hidden line stores its collapsed header index plus one. */
+  foldHeaderByLine: Uint32Array;
   /** Only visible collapsed headers; nested hidden starts are absent. */
   foldedRangeByStartLine: ReadonlyMap<number, FoldRange>;
   /** O(1) past-end clamp even when a fold hides the document's physical final line. */
@@ -807,7 +930,13 @@ export interface DocumentWrapIndex {
 }
 
 export interface FoldProjection {
-  visibleLineByLine: number[];
+  /** Zero means visible; a hidden line stores its collapsed header index plus one. */
+  foldHeaderByLine: Uint32Array;
   foldedRangeByStartLine: ReadonlyMap<number, FoldRange>;
   lastVisibleLineIndex: number;
+}
+
+interface FoldBodyInterval {
+  startLineIndex: number;
+  endLineIndex: number;
 }
