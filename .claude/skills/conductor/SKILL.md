@@ -966,6 +966,38 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## A THRESHOLD I HAVE TO INVENT IS ONE I WILL GET WRONG
+
+#169 measured the wrap sync at "under 9.124 ms at 500k" and I accepted it against a 16 ms frame. The
+number was real; the COMPARISON was invented. I had no principled basis for giving one subsystem the
+whole frame budget, so I gave it the only figure I had, and the user then felt what I had called fine.
+
+The fix is not "pick a better fraction of 16 ms." It is to prefer a formulation that removes the
+choice. ivue's flyweight invariant supplies one:
+
+  Everything costs proportional to what's observed; nothing costs proportional to what exists.
+
+Rendered as an acceptance test: **count the array writes and allocations per keystroke, and require the
+count to be IDENTICAL at 2k and 500k lines.** No budget to apportion, nothing to argue about, and a
+faster machine cannot beat it — where a millisecond threshold is beaten by hardware every year. The
+repo already had the idiom from #133: "scale-invariance as the contract, asserted on load-invariant
+counts." I did not reach for it.
+
+So, before accepting any performance verdict: **is there a scale-invariant form of this claim?** If
+yes, that is the contract, and the millisecond figure becomes a report rather than a gate. Only when no
+invariant form exists does a threshold need inventing — and then say out loud that it was invented, and
+what share of what budget it assumes.
+
+### Read the SUBSTRATE's invariants, not only the module's
+
+The 2026-07-25 lesson was to read a subsystem's invariants file before changing it, because
+Rejected-alternatives sections are a design review that already happened. This is the same rule one
+level out. The acceptance test above was sitting in `ivue/examples/.../Flyweight.invariants.md` — our
+own substrate, with an impossibility boundary that already forbids what the editor does ("an
+interaction whose cost is O(total cells)"; "a full-document recalculation, ever"). The user had to
+point me at it. When a decision turns on cost or scale, check whether the substrate has already ruled
+on it.
+
 ## AN INSTRUCTION IS AN ASSERTION — RUN IT BEFORE YOU HAND IT OVER
 
 I generated a 500,000-line workspace for the user and printed

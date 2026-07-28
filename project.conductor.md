@@ -3052,3 +3052,41 @@ Also caught before it cost anything: `tsconfig.json` declares neither `include` 
 `tsc --noEmit` compiles every `.ts` under the repository root and `.gitignore` does not hide a file from
 the compiler. A 500k-line module in `tmp/` would have made the gate unusable. **Fifth instance of
 checkers walking the filesystem rather than the index.** The workspace lives outside the repo instead.
+
+## 2026-07-28 09:35 UTC — the user out-measured me twice, and the second time supplied the contract
+
+Two reversals in one exchange, both mine, both found by the user driving the real path.
+
+**#169's decline was a category error, not a measurement error.** The instrument put the wrap sync under
+9.124 ms at 500k; I compared one subsystem's cost against the WHOLE 16 ms frame and called it fine. The
+user typed in a real 500,000-line file and it was not fine. The comparison was invented, and I had no
+principled basis for the apportionment I chose.
+
+**Then they handed me the acceptance test I should have found myself.** ivue's flyweight invariants
+record — our own substrate — carries an impossibility boundary that already forbids the editor's
+behaviour: "an interaction whose cost is O(total cells)" and "a full-document recalculation, ever". A
+keystroke is the first; `buildPrefix` is the second. Rendered as a contract it needs no budget at all:
+count array writes per keystroke and require the count IDENTICAL at 2k and 500k. The repo already had
+that idiom from #133 and I did not reach for it. Doctrine now says: before accepting a performance
+verdict, ask whether a scale-invariant form of the claim exists; if it does, the millisecond figure is a
+report, not a gate.
+
+**The LSP hypothesis was theirs and it was right — my process evidence pointed the wrong way.** I
+measured tsgo as a child of Invar holding 623 MB after reading 51 MB, and inferred it had scanned the
+workspace on its own initiative. Then they said "I see types when I hover", which is a fact my inference
+could not survive: `transportFor` calls `ensureStarted` BEFORE any size check, so a single hover started
+the subprocess the suppression exists to avoid, and the request went out for a document we had refused
+to send. The guard was write-only; four request paths were unguarded. Fixed at one seam ahead of
+`ensureStarted`, with both directions asserted — and the over-budget test needed real responders
+registered, because without them it would have passed vacuously, returning null because nothing answered
+rather than because the guard declined. My own test, the same defect class I wrote doctrine about hours
+earlier.
+
+Then the second A/B, also theirs: types gone, typing still slow. That RULES OUT the LSP for the edit
+path by measurement rather than argument, and confirms #196's target instead of assuming it.
+
+**Held deliberately: no gate this cycle.** `fix/197-lsp-request-guard` is verified and unmerged, and a
+full gate spawns ~60 app instances. The user is interactively evaluating typing latency in that very
+tree right now, so a gate would both slow their app and corrupt the impression they are forming. The
+"conductor must not compete with its own fleet" rule extends to the user as a machine citizen. The gate
+runs when they are done testing.
