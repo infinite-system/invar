@@ -200,6 +200,35 @@ A second, SEPARATELY-BUDGETED weekly pool exists: **`gpt-5.3-codex-spark`** (dis
   semantic, or first-of-kind waves. Conductor attention is the scarce resource the routing
   actually optimizes.
 
+## BYCATCH TRIAGE — the inbound leg of delegation (7 reported, 2 converted, in one night)
+
+`AGENTS.md` makes it the builder's duty to report every defect it SEES and fix only the one it was
+SENT for. Builders honour that reliably. The duty it names for you — *"the conductor triages bycatch
+into tasks"* — is where it leaks, because a finding in a `/tmp/*-READY.md` file survives only if you
+convert it.
+
+**Read the `## Bycatch` section of every report BEFORE you merge the branch, and convert it in the
+same action.** Not after the gate, not at the next sweep. A merge closes the loop on the task; the
+bycatch has no loop of its own.
+
+For each item:
+
+- **Create a task immediately**, carrying the builder's exact evidence — reproduction steps, the
+  observed values, how many times it reproduced, which commits it was seen on. A bycatch restated
+  from memory a day later is worth a fraction of the report's own words.
+- **Classify honestly.** A user-visible defect (wrong file opens, stale product name on screen, a
+  pane that renders blank, a control that double-fires) is a real bug that arrived free. An
+  instrument-only observation (a smoke timing out once, a one-sample edge case) is debt, not a bug —
+  say which it is in the task, because the two deserve different urgency.
+- **TELL THE USER about the user-visible ones**, in the report where you land the branch. They came
+  from work the user paid for and they are the highest-value output of driving the real app.
+- **Dispatch an investigation** for anything that reproduces and is user-visible. It is already
+  reduced to a reproduction; a builder can take it straight to mechanism.
+
+**Never fix bycatch inline in the branch that found it.** That is the builder's rule and it is yours
+too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
+mixed into a merge whose message describes something else.
+
 ## When BLOCKED — delegate before deferring
 If a task is stuck (an agent can't crack it, the fix is ambiguous, or it's a genuinely hard
 problem), **do NOT default to escalating to the user.** Spin up a **codex or fable** subagent
