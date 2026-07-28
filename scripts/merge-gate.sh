@@ -558,6 +558,9 @@ if [ "${FAST:-0}" != "1" ]; then
   # every gate stayed green). This smoke is the only proof that the chords replacing the F-keys
   # actually arrive, so it runs by DEFAULT rather than behind INVAR_FULL_TMUX.
   parallel_safe_smoke "smoke: keyboard invariant" bash scripts/smoke-keyboard-invariant.sh
+  parallel_safe_smoke \
+    "smoke: reserved chord harness" \
+    bun scripts/harness/smoke-reserved-chord-harness.ts
   parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
   parallel_safe_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
