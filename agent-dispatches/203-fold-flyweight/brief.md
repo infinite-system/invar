@@ -211,3 +211,38 @@ control shown red then green, the exact exit codes, and anything you could NOT e
 negative or partial result is a valid deliverable; a confident claim that measurement does not
 support is not. If the level-0 slowness turns out to have a cause other than the chain above, say so
 plainly and report the cause you found instead — the traced chain is a strong lead, not a verdict.
+
+## AMENDMENT (sent to the live session 2026-07-28 14:20 EDT) — the complexity criterion reorders the work
+
+The user added a governing criterion after dispatch: *does the fix complexify everything downstream, or
+keep it simple?* It changes the ordering, and it is recorded here so a cold start or a resumed session
+still has it — the session channel is not a durable record.
+
+The criterion has force because of a measurement the user already made: **1M lines with NO folds is fast
+to edit.** So this is not an architecture problem. The flyweight is sound; a cache miss that should not
+happen is reverting it. That makes the correct fix SMALL, and it makes any large fix suspect.
+
+KEEP, in this order:
+
+1. **Identity-stable `collapsedFoldRanges`.** Local, and it REMOVES work rather than adding a concept —
+   no `EditorWrap` change, no new vocabulary, one memo in one getter. It is also the ONLY item that
+   fixes typing, because the dominant per-keystroke cost is the full re-wrap the identity miss triggers,
+   not the allocation.
+2. **`Uint32Array` for `visibleLineByLine`.** Indexing and the `?? fallback` guards behave identically
+   on a typed array, so no read site changes meaning. This is the item that helps LOAD and FOLD-TOGGLE,
+   which must walk every line regardless of what else is fixed.
+
+DEFER unless measurement justifies it:
+
+3. **The sentinel re-encoding (`0` means visible).** It changes what a stored value MEANS at every read
+   site and adds a decode step — real downstream complexity, spent to remove a fill worth a few tens of
+   milliseconds. Measure the fill's share of the toggle cost, report the number, and proceed only if it
+   is a large fraction. An honest "not worth the complexity, here is the number" is the PREFERRED
+   outcome, not a shortfall.
+
+DO NOT propose disabling folding above a size budget, even though the LSP size budget is local
+precedent. The two are not the same shape: an LSP's value FALLS on a large generated file, while
+folding's value RISES with file size — a giant nested JSON is precisely where structural navigation
+matters most. Suppressing the capability at the size where it is most useful is not the analogous move.
+If the bracket scan (`CodeFolding.Class.ranges`) proves to be the unavoidable cost, budget or cache THAT
+computation and say so; do not remove the capability.
