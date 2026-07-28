@@ -196,7 +196,7 @@ them. Prime from the single source of truth — never a copy, copies drift.
 
 | agent | how to prime |
 |---|---|
-| claude CLI | `--append-system-prompt-file=.claude/skills/ibr/IBR.md`; auto-reads `CLAUDE.md`; tell it to load `/ivue` + `/invariants` |
+| claude CLI | `--system-prompt USE_IBR_FOR_REASONING --append-system-prompt-file=.claude/skills/ibr/IBR.md` — the first flag EMPTIES the default system prompt down to the IBR trigger token, the second injects the framework, so the agent reasons with IBR instead of layering it on top of the stock prompt; auto-reads `CLAUDE.md`; tell it to load `/ivue` + `/invariants` |
 | claude in-harness | open the prompt with *"Read `.claude/skills/ibr/IBR.md` and the `/ivue` + `/invariants` skill docs in full before any governed work"* |
 | codex | auto-reads `AGENTS.md`; for governed code ALSO `cat .claude/skills/ibr/IBR.md` into the first prompt |
 | fable | same as claude |

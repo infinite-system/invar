@@ -143,7 +143,10 @@ nobody can find is not tooling.
 These skills live in this repo — read them, don't work from a second-hand summary:
 
 >  **`.claude/skills/ibr/IBR.md`** — the Invariant-Based Reasoning framework that governs this
->  codebase (this is the file to inject via `--append-system-prompt-file` for claude agents).
+>  codebase. For claude agents inject it as the WHOLE system prompt, not an addition:
+>  `--system-prompt USE_IBR_FOR_REASONING --append-system-prompt-file .claude/skills/ibr/IBR.md`
+>  — the first flag replaces the default system prompt with the IBR trigger token, the second
+>  appends the framework, so the agent reasons FROM IBR rather than layering it on the stock prompt.
 >  **`.claude/skills/ivue/`** and **`.claude/skills/invariants/`** — the ivue reactive/namespace
 >  conventions and the invariant-contract discipline.
 
