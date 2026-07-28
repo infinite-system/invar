@@ -925,6 +925,37 @@ else
   done
 fi
 gate_elapsed_seconds="$(( $(date +%s) - gate_started_seconds ))"
+
+# PERSIST THE TALLY, because a printed number is not a monitored number. The tally above has been
+# correct for days and the retry TREND was still invisible: it lived only in per-run /tmp logs, so
+# establishing "~27% of 121 runs were retry-clean" and later "1 of 11" both required hand-run censuses
+# reconstructed from logs that /tmp eventually reclaims. That is the same shape as the input-byte
+# history that accumulated twelve elevated samples while nothing read it — except worse, because there
+# was no file to read at all.
+#
+# One line per gate, append-only, beside the latency history. This is also the PREREQUISITE for
+# ratcheting retries down to a proven floor: a ratchet needs a recorded floor, not a remembered one.
+# Deliberately NOT a blocking check yet — the floor must be earned from several consecutive runs
+# before a rule is set on it, or the first ambient-load blip reds the gate and the rule gets unwound.
+retry_history_path="$repository_root/.perf-history/gate-retries.ndjson"
+mkdir -p "$(dirname "$retry_history_path")"
+retry_history_pass_list="$(printf '%s\n' "${retried_pass_smoke_names[@]+"${retried_pass_smoke_names[@]}"}" \
+  | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
+retry_history_fail_list="$(printf '%s\n' "${retried_fail_smoke_names[@]+"${retried_fail_smoke_names[@]}"}" \
+  | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
+printf '{"timestamp":"%s","commit":"%s","gateOutcome":"%s","retriedPassCount":%s,"retriedFailCount":%s,"retriedPassSmokes":[%s],"retriedFailSmokes":[%s],"totalSeconds":%s,"loadAverage":"%s"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  "$(git -C "$repository_root" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+  "$([ "$fail" = 0 ] && echo all-pass || echo failures)" \
+  "${#retried_pass_smoke_names[@]}" \
+  "${#retried_fail_smoke_names[@]}" \
+  "$retry_history_pass_list" \
+  "$retry_history_fail_list" \
+  "$gate_elapsed_seconds" \
+  "$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null || echo unknown)" \
+  >>"$retry_history_path"
+echo "RETRY TALLY: appended to .perf-history/gate-retries.ndjson ($(wc -l <"$retry_history_path" | tr -d ' ') runs recorded)"
+
 echo "merge-gate timing: total $(format_duration "$gate_elapsed_seconds")"
 echo ""
 if [ "$fail" = 0 ]; then
