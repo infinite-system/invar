@@ -303,9 +303,12 @@ class $OverlayLayer {
       visible: false,
       zIndex: 122,
     });
+    // invariant: Settings selection stays inside its viewport (src/modules/ui/ui.invariants.md)
     this.settingsText = new SelectableText.Class(renderer, {
       id: 'settings-panel-text',
       content: '',
+      wrapMode: 'none',
+      truncate: true,
       selectable: false,
     });
     this.settingsBox.add(this.settingsText);

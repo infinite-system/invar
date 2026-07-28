@@ -9,6 +9,7 @@
 // invariant: Overlay keyboard actions have visible mouse paths (src/modules/ui/ui.invariants.md)
 // invariant: Modal outside presses dismiss and consume (src/modules/ui/ui.invariants.md)
 // invariant: Wheel impulses start their own frame sequence (src/modules/ui/ui.invariants.md)
+// invariant: Settings selection stays inside its viewport (src/modules/ui/ui.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -209,6 +210,89 @@ function viewportExtent(
   const extents = status.overlayViewportExtents as
     Record<string, { contentRows: number; viewportRows: number }> | undefined;
   return extents?.[dialogName] ?? null;
+}
+
+function settingsSelectionMarkerInsideViewport(
+  snapshot: HarnessSnapshot.Model,
+  status: HarnessStatus,
+  selectedLabel: string,
+): boolean {
+  const bounds = dialogBounds(status, 'settingsPanel');
+  const extent = viewportExtent(status, 'settingsPanel');
+  if (!bounds || !extent) return false;
+  const visibleLabelPrefix = selectedLabel.slice(
+    0,
+    Math.min(selectedLabel.length, 16),
+  );
+  const markerPosition = markerPositionWithinBoundsOrNull(
+    snapshot,
+    bounds,
+    `› ${visibleLabelPrefix}`,
+  );
+  if (!markerPosition) return false;
+  const viewportRow = markerPosition.row - bounds.top - 1;
+  return viewportRow >= 0 && viewportRow < extent.viewportRows;
+}
+
+async function requireEverySettingsNavigationStepRevealed(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  geometryLabel: string,
+): Promise<void> {
+  let status = await awaitStatusPublication(
+    statusPath,
+    `Settings publishes its descriptor population at ${geometryLabel}`,
+    (candidate) =>
+      candidate.settingsOpen === true &&
+      candidate.settingsSelected === 0 &&
+      Array.isArray(candidate.settingsLabels) &&
+      candidate.settingsLabels.length > 0,
+  );
+  const settingsLabels = status.settingsLabels as string[];
+  const directions = [
+    {
+      keyName: 'Down',
+      indices: Array.from(
+        { length: settingsLabels.length - 1 },
+        (_unused, index) => index + 1,
+      ),
+    },
+    {
+      keyName: 'Up',
+      indices: Array.from(
+        { length: settingsLabels.length - 1 },
+        (_unused, index) => settingsLabels.length - index - 2,
+      ),
+    },
+  ] as const;
+
+  for (const direction of directions) {
+    for (const selectedIndex of direction.indices) {
+      driver.sendKeys(direction.keyName);
+      status = await awaitStatusPublication(
+        statusPath,
+        `Settings selection reaches descriptor ${selectedIndex} at ${geometryLabel}`,
+        (candidate) =>
+          candidate.settingsSelected === selectedIndex &&
+          candidate.settingsSelectedLabel === settingsLabels[selectedIndex],
+      );
+      const selectedLabel = settingsLabels[selectedIndex] ?? '';
+      await driver.awaitGridCondition(
+        `Settings descriptor ${selectedIndex} is painted inside its published viewport at ${geometryLabel}`,
+        (snapshot) =>
+          settingsSelectionMarkerInsideViewport(
+            snapshot,
+            status,
+            selectedLabel,
+          ),
+      );
+    }
+  }
+
+  pass(
+    `all ${settingsLabels.length} Settings descriptors stay revealed on every ` +
+      `Down and Up step at ${geometryLabel}`,
+  );
 }
 
 function dialogContentRowText(
@@ -850,13 +934,18 @@ try {
     (candidate) => String(candidate.activeBuffer).endsWith('/document.txt'),
   );
   driver.sendKeys('Control+,');
-  await awaitStatusPublication(
+  let status = await awaitStatusPublication(
     statusPath,
     'Settings is open before resize',
     (status) => status.settingsOpen === true,
   );
+  await requireEverySettingsNavigationStepRevealed(
+    driver,
+    statusPath,
+    '120x40',
+  );
   driver.resize(54, 12);
-  let status = await awaitStatusPublication(
+  status = await awaitStatusPublication(
     statusPath,
     'Settings publishes resized bounds',
     (candidate) => {
@@ -870,6 +959,7 @@ try {
   );
   let settingsBounds = dialogBounds(status, 'settingsPanel');
   requireBoundsInside(settingsBounds, 54, 12, 'Settings');
+  await requireEverySettingsNavigationStepRevealed(driver, statusPath, '54x12');
   snapshot = await driver.awaitGridCondition(
     'Settings title and close control remain visible after resize',
     (candidate) =>
