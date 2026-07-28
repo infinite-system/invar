@@ -418,6 +418,66 @@ yours.** Public API is to interfaces as internals mode is to `extends` — a sup
 promise, plus an escape hatch with power and no promise. One policy, applied twice, rather than two
 ad-hoc answers.
 
+### Mechanism: `mcp`-prefixed adapters on registered singletons
+
+**User proposal, 2026-07-28.** Each registered singleton — `Workspace` and every plugin singleton
+in the app — declares its published operations as `mcp`-prefixed methods that route to the ordinary
+internal method:
+
+    mcpCreateWorkspace(...) -> createWorkspace(...)
+
+The `mcp*` method is the PUBLISHED surface. The unprefixed method is the internal registry
+operation. This makes the two decided tiers mechanical rather than a policy someone maintains:
+**public API = the `mcp*` set; internals mode = everything else on those same singletons.** One
+invocation mechanism, two visible sets, exactly as decided above.
+
+**The prize is that the tool list is DERIVED, not maintained.** A separate hand-written MCP manifest
+would be a second copy of the truth, and second copies rot in one direction: the harness kept its
+own copy of the glide easing constant and had to be hand-synced twice in a night; AGENTS.md was
+restated inside briefs that then could not track its amendments; the conductor skill carried two
+gate-concurrency sections that disagreed. Discovering the surface from the code is the same move as
+the `$`-cache contract test discovering its own population instead of enumerating it.
+
+The prefix is also a marker in an idiom this repo has already proven: `$` marks
+cache-participating statics, SCREAMING_SNAKE marks literals that need no cache. A reader — and a
+syntax highlighter — sees "published to external harnesses" at a glance.
+
+#### The wrapper must be an ADAPTER, never an alias
+
+    mcpCreateWorkspace(...args) { return createWorkspace(...args) }   // WRONG — pure forwarding
+
+A pure forwarder is duplication that drifts: the two signatures diverge and nothing notices. The
+boundary has real work, and that work is what justifies the method existing at all:
+
+- validate UNTRUSTED input — internal callers are typed, MCP callers are not;
+- marshal to and from JSON — internal methods return live reactive models, MCP results must be
+  serializable and size-bounded;
+- attach the attribution and consent label, one per meaningful action;
+- carry the explicit revision and coordinate semantics this document already requires;
+- group the change for atomic undo.
+
+**If a wrapper is ever a pure alias, that is the tell it should not exist**: either the operation
+stays internal-only and reachable through internals mode, or its schema should be derived rather
+than hand-written.
+
+#### Two consequences to settle while they are cheap
+
+**Tool names are singleton-qualified.** `workspace.createWorkspace`, not bare `createWorkspace` —
+namespacing comes free and two plugins cannot collide.
+
+**Plugin install becomes a surface change.** Any registered plugin singleton carrying `mcp*` methods
+publishes to every connected agent automatically. That is the design's power and its sharp edge:
+installing a plugin silently grants external agents new operations. It must be decided against the
+consent model deliberately, not discovered later.
+
+#### Enforcement, in this repo's idiom
+
+Keep the prefix for locality, and add a conventions-gate rule that every `mcp*` method carries a
+schema and an attribution label — WITH a planted-red positive control, so a typo'd
+`mcpCreateWorksapce` fails loudly instead of silently publishing nothing. A naming convention with
+no checker is exactly the class of rule this repo has watched drift: `const Class` grew to 95 files
+against a documented rule because nothing enforced the form.
+
 ## Attribution and consent
 
 The bearer record, not client self-report, supplies the visible harness name and task title. MCP
