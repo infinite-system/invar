@@ -1,0 +1,12 @@
+{
+  "task": 184,
+  "slug": "failure-log-provenance",
+  "branch": "fleet/184-failure-log-provenance",
+  "worktree": ".invar/worktrees/184-failure-log-provenance",
+  "tmuxSession": "invar/184-failure-log-provenance",
+  "transcript": "tmp/transcripts/184-failure-log-provenance.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "cc273384defeb9cd3efbda2367ce63b7fe644e60",
+  "startedAt": "2026-07-28T05:15:26-04:00"
+}
