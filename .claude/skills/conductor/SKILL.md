@@ -229,6 +229,33 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## BYCATCH ON THE CHANGED TREE CANNOT TELL "I REVEALED THIS" FROM "I CAUSED THIS"
+
+#168 reported eight failing harnesses as *"candidates for defects the old over-broad waits were
+absorbing."* Plausible, attractive, and wrong for at least one of them. It ran every harness against
+its OWN worktree, which already contained its changes, and never compared against the merge base.
+
+Two minutes of separation settled it:
+
+    smoke-settings-applied at 4e7abd0 (before the change)   exit 0, ALL-PASS, 0 tree errors
+    smoke-settings-applied at d9e66e5 (the change alone)    exit 1, FAIL,    10 tree errors
+
+**It was reporting its own regressions as pre-existing findings**, which turned a fix into a red main
+and would have sent the next builder hunting phantom historical defects.
+
+**Require in every brief: a bycatch item must state whether it was verified at the merge base.** The
+method is cheap and should be named so nobody reinvents it — one `git worktree add --detach`,
+`bun install` ONCE, then `git checkout` between commits reusing `node_modules`.
+
+The asymmetry worth noticing: #168 applied this discipline flawlessly to someone ELSE'S change. It
+population-separated #178 across two detached worktrees and correctly exonerated it. **Builders audit
+other people's changes and trust their own** — the same shape as a conductor who follows a rule where
+it is written and misses the case it generalises to.
+
+Corollary for the conductor: when a builder reports bycatch as pre-existing, that is a HYPOTHESIS
+inheriting the builder's incentive to prefer it. Verify the first one yourself before converting the
+rest — it is minutes, and it changes whether you are opening tasks or reverting a merge.
+
 ## REMOVE THE CAPABILITY, NOT THE MISUSE — an API that does not exist cannot be misused
 
 #168 had 75 call sites waiting on "the next completed frame," a pattern an established invariant
