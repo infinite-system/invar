@@ -62,6 +62,7 @@ const EXCLUDED_DIRECTORY_PATHS = new Set([
   "scripts/retired-smokes",
   "tmp",
   "agent-dispatches",
+  ".invar",
 ]);
 const ANNOT_RE = /invariant:\s*([^(\n]+?)\s*\(([^)\n]*\.invariants\.md)\)/g;
 // annotation-shaped lines that DON'T parse (typo'd suffix, wrong brackets) — flagged, not silent
