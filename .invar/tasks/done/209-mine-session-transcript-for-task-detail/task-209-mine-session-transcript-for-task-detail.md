@@ -87,7 +87,7 @@ For each of the 53 thin task files, find in the transcript:
 ## Sources
 
 - The transcript named above (307 MB, this session, spans multiple compactions).
-- `project.ledger.md` — the index, with fuller specs for ~15 tasks.
+- `project.ledger.md` — the index that existed at the time (since consolidated into `project.tasks-ledger.md`; content in git history).
 - `agent-dispatches/_archive-2026-07-27/` — 139 briefs and reports whose headers carry NO task number
   and which are therefore still unplaced. The transcript may identify some of them; if it does, place
   them by the same number-declared-in-document rule, never by slug similarity.

@@ -68,8 +68,9 @@ as a SHAPE, not against a threshold. `3,3,3,3` glides; `5,1,5,1` stumbles at the
 ## ⚑ RULE ONE — THE LEDGER: A TASK’S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
 
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `todo`, `live`, `done`, `retired`. A
-task is MOVED between them; a folder is never deleted. `project.ledger.md` is the index;
-`project.tasks-ledger.md` is the full protocol (this section is its operative summary).
+task is MOVED between them; a folder is never deleted. `project.tasks-ledger.md` is the ONE
+companion doc — the full protocol plus the backlog priority ordering; this section is its operative
+summary. (`project.tasks.md` and `project.ledger.md` are consolidated into it and no longer exist.)
 
 | file | shape |
 |---|---|
@@ -695,7 +696,7 @@ whose content *begins with* `/compact <focus>`.
 the METHOD, not the live state. Read in order:
 
 1. `CLAUDE.md` → `AGENTS.md` → this skill → `project.conductor.md`
-2. `project.handoff.md` (top anchor = current status) → `project.ledger.md` → `.invar/tasks/`
+2. `project.handoff.md` (top anchor = current status) → `project.tasks-ledger.md` → `.invar/tasks/`
 3. `project.brief.md`, `project.requirements.md`, `project.architecture.md`, and `/ibr`, `/ivue`,
    `/invariants`
 4. **Ground-truth the docs against reality** — docs lag, git is authoritative:
