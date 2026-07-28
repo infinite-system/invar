@@ -155,14 +155,31 @@ fi
 #    DISPATCHER. A named session also gives precise identity for termination —
 #    `pkill -f` matches the builder's own brief text, and a kill is destructive.
 # ---------------------------------------------------------------------------
+# INTERACTIVE, not `exec`. `codex exec` / `claude -p` are one-shot with NO input loop, which
+# cost real time on 2026-07-28: three brief amendments were appended to TASK.md and sent with
+# tmux send-keys, and NONE reached the builder — there was nothing listening. Worse, `pipe-pane`
+# captures our own echoed keystrokes, so grepping the transcript for the message "confirmed"
+# delivery that never happened. Interactive also means the USER can attach and steer, which is
+# the whole point of dispatching into tmux rather than backgrounding a process.
+#
+# Driving is delegated to scripts/agent-tmux.sh (see .claude/skills/agent-tmux/SKILL.md) — do
+# NOT hand-roll send-keys here or in any caller. Its `send` verb splits text from Enter and then
+# CONFIRMS submission by polling the busy marker; a bare send-keys leaves a large paste sitting
+# unsubmitted in the composer, which is exactly what happened.
 case "$engine" in
-  codex)  agent_command="codex exec --dangerously-bypass-approvals-and-sandbox 'Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md.'";;
-  claude) agent_command="claude --dangerously-skip-permissions -p 'Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md.'";;
+  codex)  agent_command="codex --dangerously-bypass-approvals-and-sandbox";;
+  claude) agent_command="claude --dangerously-skip-permissions";;
 esac
 
-tmux new-session -d -s "$tmux_session" -c "$worktree_path" \
-  "export PATH=\$HOME/.bun/bin:\$PATH; ${agent_command}; echo \"CODEX_EXIT=\$?\" | tee -a '${transcript_path}'"
+AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/scripts/agent-tmux.sh" launch "$name" \
+  --cwd "$worktree_path" --profile "$engine" --timeout 90 \
+  -- env PATH="$HOME/.bun/bin:$PATH" $agent_command >/dev/null || {
+    echo "dispatch: agent-tmux launch failed for ${name}" >&2; exit 1; }
 tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
+
+# The opening turn goes through `send`, which confirms it submitted.
+AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/scripts/agent-tmux.sh" send "$name" \
+  "Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md." >/dev/null
 
 
 echo

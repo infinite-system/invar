@@ -127,6 +127,7 @@ rule in place instead of adding a section beside it.
 - **`.claude/skills/ibr/IBR.md`** — the reasoning framework. Load before any governed/architectural work.
 - **`.claude/skills/ivue/`** — the reactive substrate + namespace pattern. Load before touching `src/modules/**`.
 - **`.claude/skills/invariants/`** — the contract layer + checker (`node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs`). Load when adding/altering behavior in a contract-governed module; run the checker before every READY.
+- **`.claude/skills/agent-tmux/`** — driving an interactive claude/codex inside tmux (`scripts/agent-tmux.sh`: launch / send / wait / peek / status). Load before talking to ANY nested agent. NEVER hand-roll `tmux send-keys` — its `send` confirms submission by polling the busy marker, and a bare send-keys leaves a large paste unsubmitted in the composer. `scripts/fleet/dispatch.sh` launches every builder through it.
 - **`.claude/skills/ast-query/SKILL.md`** — parse-don't-grep structural search (`bun scripts/ast-query.ts`). Use for ANY code-structure question (call sites, constructions, censuses).
 - **`.claude/skills/generator-audit/SKILL.md`** — the independent review-as-reduction procedure. Use when asked to review/audit the codebase or a module.
 - **`.claude/skills/conductor/SKILL.md`** — fleet orchestration doctrine (conductor sessions; builders may read the clearance/verification sections to understand the gate protocol they operate under).

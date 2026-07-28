@@ -50,9 +50,24 @@ _profile() {
       BUSY_RE='esc to interrupt'
       LAUNCH_ENV='env -u CLAUDE_CODE_CHILD_SESSION CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1 '
       ;;
-    codex) # [UNVERIFIED] placeholders — confirm codex's interactive markers, then tune
-      READY_RE='to send|esc to interrupt'
-      BUSY_RE='esc to interrupt|Working|Thinking'
+    codex)
+      # VERIFIED 2026-07-28 against a live interactive codex (gpt-5.6-sol) in tui-editor.
+      # READY: the composer prompt sits at column 0 as a bare '>' glyph. NOTE it is always
+      # present (codex keeps a hint in the composer), so READY is NOT discriminating on its
+      # own — idle here means "matches READY and does NOT match BUSY", which works only
+      # because cmd_status/cmd_wait test BUSY first. Get BUSY right or both lie.
+      # Do NOT build READY on the 'gpt-<ver>-sol high . ~/path' status line either: it is
+      # permanently visible too, and with it as READY the verbs can only ever answer 'idle'
+      # (measured — that exact mistake reported a mid-turn session as idle).
+      # BUSY: codex has MORE THAN ONE busy footer — measured both:
+      #   '. Working (4s . esc to interrupt)'
+      #   '. Waiting for background terminal (58s . esc to interrupt) . 1 background terminal'
+      # so key on the substring COMMON to every variant, 'esc to interrupt'. A narrower
+      # 'Working \(' matched only the first and reported a session blocked 58s on a background
+      # terminal as IDLE — `wait` would then return on an unfinished turn. When in doubt widen
+      # the busy alternation: a false 'busy' costs a poll, a false 'idle' corrupts a result.
+      READY_RE='^\xe2\x80\xba'
+      BUSY_RE='esc to interrupt'
       LAUNCH_ENV=''
       ;;
     *)
