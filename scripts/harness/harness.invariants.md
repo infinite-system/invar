@@ -373,6 +373,41 @@ scripts/harness/SynchronizedOutputQuiescence.test.ts scripts/harness/HarnessSmok
 
 **Last refined:** 2026-07-26
 
+### Drive clicks resolve from roles and text
+
+**Invariant:** If `Drive` clicks a named UI element, then it resolves the current cell from the
+element role and visible text; raw coordinates remain available only for geometry-specific drives.
+
+**Scope:** `scripts/harness/Drive.ts` `--click` actions. The supported semantic roles are visible text
+and editor fold controls. Smokes with richer domain-specific geometry remain outside this command
+line vocabulary.
+
+**Mechanism:** `Drive.resolveClickTarget` locates the requested text in the current
+`HarnessSnapshot`, then either uses that text cell or searches left on the same row for a fold glyph
+from `ThemeIcons`. Resolution happens immediately before input, so a sidebar or dock shift moves the
+click with the element.
+
+**Generates:** `text=VISIBLE_TEXT` and `fold-control=HEADER_TEXT` targets; layout-independent drive
+recipes; explicit `COLUMN,ROW` targeting for geometry tests.
+
+**Rejected alternatives:** Store a fold-gutter coordinate — layout settings can move the gutter while
+the coordinate still clicks a different live cell and exits zero.
+
+**Evidence:** `scripts/harness/Drive.ts`; `scripts/harness/Drive.test.ts`; the shared 554,490-line
+nested fixture resolves the first group fold control at cell 45,7 with sidebar width 32 and cell 46,7
+with sidebar width 33.
+
+**Impossible if true:** A semantic fold-control drive clicking the old cell after the sidebar moves;
+a missing role or text silently falling back to a coordinate; changing the active fold glyph breaking
+target resolution.
+
+**Verification:** `bun test scripts/harness/Drive.test.ts && bun run drive --open
+scripts/harness/BracketedPasteInput.ts --click 'fold-control=class $BracketedPasteInput {'`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28
+
 ### Async-published state is always awaited
 
 **Invariant:** If a harness verdict depends on state published asynchronously through the status

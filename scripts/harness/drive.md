@@ -20,7 +20,46 @@ bun run drive --size 100000 --key End --wheel down --click 60,20
 
 `--key`, `--wheel`, and `--click` are repeatable. Key names use the existing
 harness vocabulary (`Down`, `Control+g`, `Escape`); wheel directions are
-`up`, `down`, `left`, or `right`; click coordinates are zero-based.
+`up`, `down`, `left`, or `right`.
+
+Every action carries one completion rule. Ordinary actions wait for a changed
+screen or native caret. Canonical multi-step chord prefixes are declared
+frame-silent from the keybinding data, so this sends the two-step fold gesture
+without waiting for the prefix to paint:
+
+```sh
+bun run drive --key Control+k --key '['
+```
+
+Use `--frame-silent` after another legitimate no-paint action. When repaint is
+not the real result, attach a named condition to the preceding action:
+
+```sh
+bun run drive \
+  --key Control+p --wait-for-text 'Go to File' \
+  --key Escape --wait-for-status 'quickOpenOpen=false'
+```
+
+Status values use JSON, including quotes around strings. A named condition
+that is already true before its action is rejected instead of laundering a
+no-op into a successful drive.
+
+Clicks should name the visible element. `text=...` clicks the first cell of
+the visible text. `fold-control=...` finds the fold glyph on the same row
+through the theme vocabulary:
+
+```sh
+bun run drive --open scripts/harness/BracketedPasteInput.ts \
+  --click 'fold-control=class $BracketedPasteInput {'
+```
+
+These targets resolve against the current grid immediately before the click,
+so width and dock changes may move them safely. Raw zero-based `COLUMN,ROW`
+coordinates remain available for genuine geometry tests:
+
+```sh
+bun run drive --click 60,20
+```
 
 Each grid row is `row │cells│`; the heading reports geometry and the native
 cursor. Below it, `name=JSON value` lines are the live status/probe
