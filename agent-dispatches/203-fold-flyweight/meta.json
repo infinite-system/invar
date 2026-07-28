@@ -1,0 +1,12 @@
+{
+  "task": 203,
+  "slug": "fold-flyweight",
+  "branch": "fleet/203-fold-flyweight",
+  "worktree": ".invar/worktrees/203-fold-flyweight",
+  "tmuxSession": "invar/203-fold-flyweight",
+  "transcript": "tmp/transcripts/203-fold-flyweight.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "21dddbf0cb7c11b7e7d0bcbac8948e8701e0301b",
+  "startedAt": "2026-07-28T14:09:15-04:00"
+}
