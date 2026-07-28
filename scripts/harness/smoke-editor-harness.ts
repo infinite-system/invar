@@ -5,6 +5,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Synchronized end markers bound complete frames (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -325,14 +326,25 @@ try {
   );
   pass('Option-wheel routes to horizontal scroll');
   for (let wheelEvent = 1; wheelEvent <= 8; wheelEvent++) {
-    driver.sendRawInput(`\x1b[<74;44;${wheelRow + 1}M`);
+    driver.sendRawInputWithoutFrameExpectation(`\x1b[<74;44;${wheelRow + 1}M`);
   }
-  await driver.awaitScreenChange();
-  driver.sendKeys('Home');
-  await awaitStatusPublication(
+  await HarnessSmoke.Class.awaitScrollPosition(
+    driver,
     statusPath,
-    'Home publishes a zero horizontal scroll offset',
-    (status) => status.editorScrollLeft === 0,
+    'leftward Option-wheel reaches the zero horizontal scroll clamp',
+    'editorScrollLeft',
+    0,
+  );
+  const satisfiedClampStatus = await HarnessSmoke.Class.awaitScrollPosition(
+    driver,
+    statusPath,
+    'the satisfied zero horizontal scroll clamp is a no-op wait',
+    'editorScrollLeft',
+    0,
+  );
+  requireCondition(
+    satisfiedClampStatus.editorScrollLeft === 0,
+    'an already-satisfied horizontal clamp completes without a repaint',
   );
 
   console.log(

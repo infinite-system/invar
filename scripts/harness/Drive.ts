@@ -93,8 +93,14 @@ class $Drive {
       this.printObservation(driver.snapshot(), statusPath, 'settled boot');
 
       for (const [actionIndex, action] of options.actions.entries()) {
-        this.sendAction(driver, action, options.columns, options.rows);
-        await driver.awaitScreenChange(options.timeoutMilliseconds);
+        await this.performAction(
+          driver,
+          statusPath,
+          action,
+          options.columns,
+          options.rows,
+          options.timeoutMilliseconds,
+        );
         this.printObservation(
           driver.snapshot(),
           statusPath,
@@ -386,6 +392,65 @@ class $Drive {
     await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
+  protected static async performAction(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    action: DriveAction,
+    columns: number,
+    rows: number,
+    timeoutMilliseconds: number,
+  ): Promise<void> {
+    const editorClampTarget = this.editorClampTarget(
+      action,
+      HarnessSmoke.Class.readStatus(statusPath),
+    );
+    if (editorClampTarget !== null && action.kind === 'wheel') {
+      this.sendActionWithoutFrameExpectation(driver, action, columns, rows);
+      await HarnessSmoke.Class.awaitScrollPosition(
+        driver,
+        statusPath,
+        `${this.actionDescription(action)} leaves the editor at its ` +
+          `${editorClampTarget.targetPosition} clamp`,
+        editorClampTarget.fieldName,
+        editorClampTarget.targetPosition,
+        timeoutMilliseconds,
+      );
+      return;
+    }
+
+    this.sendAction(driver, action, columns, rows);
+    await driver.awaitScreenChange(timeoutMilliseconds);
+  }
+
+  protected static editorClampTarget(
+    action: DriveAction,
+    status: ReturnType<typeof HarnessSmoke.Class.readStatus>,
+  ): DriveScrollTarget | null {
+    if (
+      action.kind !== 'wheel' ||
+      status.focus !== 'editor' ||
+      status.editorSurfaceIdentifier !== ''
+    ) {
+      return null;
+    }
+    const horizontal =
+      action.direction === 'left' || action.direction === 'right';
+    const fieldName = horizontal ? 'editorScrollLeft' : 'editorScrollTop';
+    const currentPosition = Number(status[fieldName]);
+    const maximumFieldName = horizontal
+      ? 'editorMaximumScrollLeft'
+      : 'editorMaximumScrollTop';
+    const targetPosition =
+      action.direction === 'left' || action.direction === 'up'
+        ? 0
+        : Number(status[maximumFieldName]);
+    return Number.isFinite(currentPosition) &&
+      Number.isFinite(targetPosition) &&
+      currentPosition === targetPosition
+      ? { fieldName, targetPosition }
+      : null;
+  }
+
   protected static sendAction(
     driver: PtyTestDriver.Model,
     action: DriveAction,
@@ -416,6 +481,20 @@ class $Drive {
       column: action.column,
       row: action.row,
       button: 'left',
+    });
+  }
+
+  protected static sendActionWithoutFrameExpectation(
+    driver: PtyTestDriver.Model,
+    action: Extract<DriveAction, { readonly kind: 'wheel' }>,
+    columns: number,
+    rows: number,
+  ): void {
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'wheel',
+      direction: action.direction,
+      column: Math.floor(columns / 2),
+      row: Math.floor(rows / 2),
     });
   }
 
@@ -506,6 +585,11 @@ type DriveWheelDirection = Extract<
   HarnessMouseEvent,
   { readonly kind: 'wheel' }
 >['direction'];
+
+interface DriveScrollTarget {
+  readonly fieldName: 'editorScrollLeft' | 'editorScrollTop';
+  readonly targetPosition: number;
+}
 
 try {
   await Drive.Class.main(process.argv.slice(2));

@@ -143,7 +143,17 @@ class $AppStatusProjection {
         (content) => content.id,
       ),
       editorScrollTop: editor.viewport.scrollTop.value,
+      editorMaximumScrollTop: editor.hasDocument.value
+        ? Math.max(0, editor.totalVisualRows() - editor.viewport.height.value)
+        : 0,
       editorScrollLeft: editor.viewport.scrollLeft.value,
+      editorMaximumScrollLeft:
+        editor.hasDocument.value && !editor.wordWrap.value
+          ? Math.max(
+              0,
+              editor.document.maximumLineWidth - editor.viewport.width.value,
+            )
+          : 0,
       editorVerticalScrollImpulseCount:
         editor.viewport.verticalScrollMomentum.value
           .restEquivalentGestureImpulseCount ?? 0,
