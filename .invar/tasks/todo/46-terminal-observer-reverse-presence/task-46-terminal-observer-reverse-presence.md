@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: opus-5
 Effort: high
+Priority: architecture-hygiene
 Assignment note: Must be designed WITH the MCP direction (#157) or it gets built twice.
 
 ## Outline

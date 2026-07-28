@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: opus-5
 Effort: high
+Priority: architecture-hygiene
 Assignment note: The hot-path carve-out is a physics argument, not a rule to apply mechanically.
 
 ## Outline

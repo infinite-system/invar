@@ -6,6 +6,7 @@ Engine: user
 Environment: any
 Model: —
 Effort: default
+Priority: performance-behaviour
 Assignment note: Blocked on one check: try the rapid-fire flicks. If the freeze is gone, this closes for free.
 
 ## Outline

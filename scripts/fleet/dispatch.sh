@@ -315,6 +315,8 @@ AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/sc
 
 
 echo
+# The active-backlog view regenerates as a BYPRODUCT of dispatching — never a separate step.
+bun scripts/tasks/tasks-status.ts write-active >/dev/null 2>&1 || true
 echo "dispatch: LAUNCHED #${task_number} ${slug}"
 echo "  attach:     tmux attach -t ${tmux_session}"
 echo "  transcript: ${transcript_path}"

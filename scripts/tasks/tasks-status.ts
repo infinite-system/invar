@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
-// The task ledger drifts in one direction: work finishes and the record stays put. That
+// The task record drifts in one direction: work finishes and the record stays put. That
 // is not hypothetical — on 2026-07-28 the user said "i think some things in todos are
 // actually completed" and three were. #108 had a DELIVERED REPORT sitting in its todo
 // folder; #107's fix had been in main since 966c5d1; #77's first two holes landed at
 // 4ab250f. Nothing noticed, because noticing was a person reading 61 folders.
 //
-// So this counts the ledger deterministically and reports the drift signals a human
+// So this counts the task folders deterministically and reports the drift signals a human
 // cannot see by inspection. It reports; it does not move anything. Moving a task is a
 // judgement about whether the work is actually done, and the signals here are evidence
 // for that judgement rather than a substitute for it.
@@ -19,11 +19,11 @@
 //                     One of the two is stale and neither can be trusted over the other.
 //   DONE-NO-EVIDENCE  a done folder with neither a report nor a commit named in its
 //                     State line. Possibly closed on an assumption.
-//   THIN              a task file at or under THIN_LINE_CEILING lines. The ledger
+//   THIN              a task file at or under THIN_LINE_CEILING lines. The
 //                     migration produced 53 of these by carrying only each subject; a
 //                     new one means a task was filed without its reasoning.
 //
-// POSITIVE CONTROL. `--self-test` builds a throwaway ledger in a temp directory
+// POSITIVE CONTROL. `--self-test` builds a throwaway task tree in a temp directory
 // containing one planted instance of each signal, runs the same analysis over it, and
 // requires every signal to fire. A checker whose only possible output is "clean" is
 // indistinguishable from a healthy repo, which is the defect class this repo has now
@@ -41,7 +41,7 @@ import {
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-export type LedgerState = 'todo' | 'live' | 'done' | 'retired';
+export type TaskState = 'todo' | 'live' | 'done' | 'retired';
 
 export type DriftSignal =
   'REPORT-IN-OPEN' | 'STATE-MISMATCH' | 'DONE-NO-EVIDENCE' | 'THIN';
@@ -49,25 +49,26 @@ export type DriftSignal =
 export interface TaskRecord {
   taskNumber: number;
   folderName: string;
-  directoryState: LedgerState;
+  directoryState: TaskState;
   declaredState: string | null;
   taskFileLineCount: number;
   briefCount: number;
   reportCount: number;
   summaryCount: number;
   namesACommit: boolean;
+  priorityGroup: string | null;
 }
 
 export interface DriftFinding {
   signal: DriftSignal;
   taskNumber: number;
   folderName: string;
-  directoryState: LedgerState;
+  directoryState: TaskState;
   detail: string;
 }
 
-const LEDGER_STATES: LedgerState[] = ['todo', 'live', 'done', 'retired'];
-const OPEN_STATES: LedgerState[] = ['todo', 'live'];
+const TASK_STATES: TaskState[] = ['todo', 'live', 'done', 'retired'];
+const OPEN_STATES: TaskState[] = ['todo', 'live'];
 const THIN_LINE_CEILING = 15;
 // A commit reference in a State line. Seven or more hex characters, so a word like
 // "added" or "deface" cannot masquerade as a short SHA.
@@ -75,7 +76,7 @@ const COMMIT_REFERENCE = /\b[0-9a-f]{7,40}\b/;
 
 function readTaskRecords(tasksRoot: string): TaskRecord[] {
   const records: TaskRecord[] = [];
-  for (const directoryState of LEDGER_STATES) {
+  for (const directoryState of TASK_STATES) {
     const statePath = join(tasksRoot, directoryState);
     if (!existsSync(statePath)) continue;
     for (const folderName of readdirSync(statePath).sort()) {
@@ -115,6 +116,12 @@ function readTaskRecords(tasksRoot: string): TaskRecord[] {
         namesACommit:
           declaredStateLine !== undefined &&
           COMMIT_REFERENCE.test(declaredStateLine),
+        priorityGroup:
+          taskFileText
+            .split('\n')
+            .find((line) => line.startsWith('Priority:'))
+            ?.slice('Priority:'.length)
+            .trim() ?? null,
       });
     }
   }
@@ -180,12 +187,72 @@ function findDrift(records: TaskRecord[]): DriftFinding[] {
   return findings;
 }
 
+const PRIORITY_ORDER = [
+  'user-directed',
+  'verification-integrity',
+  'flake-evidence',
+  'performance-behaviour',
+  'architecture-hygiene',
+];
+
+// The active view is DERIVED from the Priority: field in each task file, never maintained by hand.
+// A hand-written backlog needs a second edit per filed or landed task, and a record that needs a
+// second step eventually does not happen — that is how every prior task snapshot went stale.
+function backlog(tasksRoot: string, writeActiveFile: boolean): number {
+  const outputLines: string[] = [];
+  const emit = (line: string): void => {
+    outputLines.push(line);
+    console.log(line);
+  };
+  const records = readTaskRecords(tasksRoot).filter(
+    (record) =>
+      record.directoryState === 'todo' || record.directoryState === 'live',
+  );
+  const ungrouped = records.filter((record) => record.priorityGroup === null);
+  for (const group of PRIORITY_ORDER) {
+    const inGroup = records.filter((record) => record.priorityGroup === group);
+    if (inGroup.length === 0) continue;
+    emit(`## ${group.toUpperCase()} (${inGroup.length})`);
+    for (const record of inGroup) {
+      const liveMarker = record.directoryState === 'live' ? '  << LIVE' : '';
+      const stateSuffix =
+        record.declaredState !== null && record.declaredState !== 'TODO'
+          ? `  [${record.declaredState}]`
+          : '';
+      emit(
+        `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${stateSuffix}${liveMarker}`,
+      );
+    }
+    emit('');
+  }
+  if (ungrouped.length > 0) {
+    emit(
+      `## NO PRIORITY GROUP (${ungrouped.length}) — stamp Priority: into these task files`,
+    );
+    for (const record of ungrouped)
+      emit(`- #${record.taskNumber} ${record.folderName}`);
+  }
+  if (writeActiveFile) {
+    const header =
+      '# project.active-tasks.md — GENERATED, DO NOT EDIT\n\n' +
+      'Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits WILL be\n' +
+      'overwritten — this file exists so the active backlog is a BYPRODUCT of the instrument,\n' +
+      'never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.\n\n';
+    writeFileSync(
+      join(tasksRoot, '..', '..', 'project.active-tasks.md'),
+      header + outputLines.join('\n') + '\n',
+    );
+    console.log('wrote project.active-tasks.md');
+  }
+  return 0;
+}
+
 function report(tasksRoot: string): number {
   const records = readTaskRecords(tasksRoot);
   const findings = findDrift(records);
 
-  console.log('LEDGER COUNTS');
-  for (const state of LEDGER_STATES) {
+  console.log('TASKS');
+  for (const state of TASK_STATES) {
     const inState = records.filter((record) => record.directoryState === state);
     console.log(
       `  ${state.padEnd(8)} ${String(inState.length).padStart(3)}` +
@@ -231,7 +298,7 @@ function report(tasksRoot: string): number {
 
 // The positive control. Every signal gets a planted instance and must be named back.
 function selfTest(): number {
-  const root = mkdtempSync(join(tmpdir(), 'ledger-status-selftest-'));
+  const root = mkdtempSync(join(tmpdir(), 'tasks-status-selftest-'));
   const write = (
     state: string,
     folder: string,
@@ -327,8 +394,13 @@ function selfTest(): number {
 }
 
 const repositoryRoot = join(import.meta.dir, '..', '..');
+const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
 process.exit(
   process.argv.includes('--self-test')
     ? selfTest()
-    : report(join(repositoryRoot, '.invar', 'tasks')),
+    : process.argv.includes('backlog')
+      ? backlog(tasksRoot, false)
+      : process.argv.includes('write-active')
+        ? backlog(tasksRoot, true)
+        : report(tasksRoot),
 );

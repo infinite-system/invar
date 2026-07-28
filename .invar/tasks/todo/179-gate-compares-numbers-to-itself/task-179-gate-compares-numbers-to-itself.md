@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: high
+Priority: verification-integrity
 Assignment note: Trend detection needs calibration and a positive control, or it never fires.
 
 ## Outline

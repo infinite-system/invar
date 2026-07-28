@@ -1,14 +1,14 @@
 ---
-name: manage-tasks
+name: tasks
 description: >-
-  Operate a durable task ledger: one folder per task under .invar/tasks/, moved between
+  Operate the durable task system: one folder per task under .invar/tasks/, moved between
   todo/live/done/retired and never deleted. Use when filing, dispatching, steering, landing,
   retiring, or auditing tasks — each lifecycle step is a command, every file is named
-  number-first, and the tracker (scripts/tasks/ledger-status.ts) reports drift with a
+  number-first, and the tracker (scripts/tasks/tasks-status.ts) reports drift with a
   self-test. Built for the Invar repo and reusable by any repo that adopts the layout.
 ---
 
-# Manage tasks — the ledger protocol
+# Tasks — the task-system protocol
 
 One folder per task. A task lives in exactly one state directory and is MOVED between them; it is never
 copied, and a folder is never deleted (the repo rule is that things are parked, not removed).
@@ -45,11 +45,11 @@ final brief alone would have made the first two rounds' results unreadable.
 
 **Transcripts are not stored here.** They are gitignored under `tmp/transcripts/`.
 
-## Counting the ledger
+## Counting the task system
 
 ```
-bun scripts/tasks/ledger-status.ts             # counts + drift signals
-bun scripts/tasks/ledger-status.ts --self-test # positive control
+bun scripts/tasks/tasks-status.ts             # counts + drift signals
+bun scripts/tasks/tasks-status.ts --self-test # positive control
 ```
 
 It counts each state and reports four drift signals, strongest first: **REPORT-IN-OPEN** (a delivered
@@ -60,7 +60,7 @@ directory), **DONE-NO-EVIDENCE** (done with neither a report nor a commit in its
 It reports; it never moves anything. Deciding a task is finished is a judgement, and these are evidence
 for it.
 
-**Run `--self-test` before trusting a clean run.** It builds a throwaway ledger with one planted
+**Run `--self-test` before trusting a clean run.** It builds a throwaway task tree with one planted
 instance of each signal plus a clean control, and requires all four to fire and the control to stay
 silent. A checker whose only possible output is "clean" is indistinguishable from a healthy repo.
 
@@ -79,7 +79,7 @@ once: `fleet/205-flake-population` was labelled before its task existed and the 
 
 ## Where the other records live
 
-`project.ledger.md` is the index and carries the full spec per open task. `project.conductor.md` holds
+`project.active-tasks.md` is the GENERATED backlog view. `project.conductor.md` holds
 orchestration lessons, `project.decisions.md` settled design calls, `project.handoff.md` the resume
 anchor. This directory holds the per-task detail those files point at.
 
@@ -107,7 +107,9 @@ $EDITOR  .invar/tasks/todo/<n>-<slug>/task-<n>-<slug>.md
 ```
 
 The task file holds THE TASK and nothing else: heading `# <n> — <subject>`, then
-`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` (+ `Assignment note:`
+`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` / `Priority:`
+(user-directed | verification-integrity | flake-evidence | performance-behaviour |
+architecture-hygiene) (+ `Assignment note:`
 when the assignment needs explaining), then `## Outline` with mechanism, evidence, refutations, and
 `## Sources`. Pick the next number ABOVE the tracker's `highest task number` — never reuse, never
 guess at dispatch time.
@@ -162,8 +164,15 @@ git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits ex
 **7. AUDIT** — every reconciliation sweep, and before claiming the backlog state to the user:
 
 ```
-bun scripts/tasks/ledger-status.ts
+bun scripts/tasks/tasks-status.ts              # counts + drift
+bun scripts/tasks/tasks-status.ts backlog      # the active backlog, grouped by Priority
+bun scripts/tasks/tasks-status.ts write-active # regenerate project.active-tasks.md
 ```
+
+`project.active-tasks.md` is GENERATED — the at-a-glance root view derived from each task file's
+`Priority:` field. Never edit it by hand; a hand-maintained backlog needs a second edit per task,
+and a record that needs a second step eventually does not happen. `dispatch.sh` and step 5/6 moves
+regenerate it.
 
 Act on findings: REPORT-IN-OPEN → run step 5 or explain why not (a multi-wave task like #114
 legitimately holds a report while later waves are open — leave the signal firing rather than mute a
@@ -172,4 +181,4 @@ the commit from `git log` and write it into the State line; THIN → the task wa
 reasoning, recover it or mark the stub honest.
 
 **One task, one folder, forever.** `git mv` between states — never `cp`, never `rm`. A commit or
-`SKIP_GATE=1` commit accompanies every move so the ledger's history is the audit trail.
+`SKIP_GATE=1` commit accompanies every move so the task system's history is the audit trail.

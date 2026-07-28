@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: high
+Priority: verification-integrity
 Assignment note: Two live candidates and an empty output tail; picking one without measurement went 0-for-5 elsewhere.
 
 ## Outline

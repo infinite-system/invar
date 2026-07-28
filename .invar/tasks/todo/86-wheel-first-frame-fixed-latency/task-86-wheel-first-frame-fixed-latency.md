@@ -6,6 +6,7 @@ Engine: user
 Environment: any
 Model: —
 Effort: default
+Priority: performance-behaviour
 Assignment note: Is 85 ms the intended wheel feel? Measured, pre-existing, a product call.
 
 ## Outline

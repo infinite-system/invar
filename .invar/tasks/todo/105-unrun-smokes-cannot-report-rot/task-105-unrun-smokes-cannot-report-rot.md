@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: high
+Priority: verification-integrity
 Assignment note: Class-level: ~20 unrun smokes, three mechanisms in cost order.
 
 ## Outline

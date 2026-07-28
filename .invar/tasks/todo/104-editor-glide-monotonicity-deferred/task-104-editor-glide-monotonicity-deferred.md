@@ -6,6 +6,7 @@ Engine: user
 Environment: any
 Model: —
 Effort: default
+Priority: performance-behaviour
 Assignment note: Deferred by user decision; the trigger is the next scroll-domain bisect.
 
 ## Outline

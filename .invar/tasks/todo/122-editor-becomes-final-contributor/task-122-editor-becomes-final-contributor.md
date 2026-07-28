@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: opus-5
 Effort: high
+Priority: architecture-hygiene
 Assignment note: Capstone extraction, strictly after #114.
 
 ## Outline

@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: high
+Priority: verification-integrity
 Assignment note: Inverts a default across every smoke; the grandfathering call is the risk.
 
 ## Outline

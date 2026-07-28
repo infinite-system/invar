@@ -6,6 +6,7 @@ Engine: user
 Environment: any
 Model: —
 Effort: default
+Priority: performance-behaviour
 Assignment note: Keep the hover card at 80 and document why, or unify overlays to 220.
 
 ## Outline

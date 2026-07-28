@@ -65,14 +65,14 @@ as a SHAPE, not against a threshold. `3,3,3,3` glides; `5,1,5,1` stumbles at the
 
 ---
 
-## ⚑ RULE ONE — THE LEDGER: A TASK’S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
+## ⚑ RULE ONE — TASKS: A TASK’S RECORD IS A FOLDER, BUILT AS THE WORK HAPPENS
 
 **`.invar/tasks/<state>/<number>-<descriptive-name>/`.** States: `todo`, `live`, `done`, `retired`. A
 task is MOVED between them; a folder is never deleted. The protocol is the
 `manage-tasks` SKILL (`.claude/skills/manage-tasks/SKILL.md`) — shared with Invar users; this section
 is the conductor's operative summary. The priority ordering is `.invar/tasks/backlog.md` (state,
-living with the tasks it orders). `project.tasks.md`, `project.ledger.md`, and
-`project.tasks-ledger.md` no longer exist
+living with each task's Priority: field). `project.active-tasks.md` is GENERATED from those fields
+(`tasks-status.ts write-active`) — never hand-edited. The old root docs are retired
 
 | file | shape |
 |---|---|
@@ -107,8 +107,8 @@ task. The transcript carries agent identity so three runs by three agents produc
 **Run the tracker instead of reading the folders:**
 
 ```
-bun scripts/tasks/ledger-status.ts             # counts + drift signals
-bun scripts/tasks/ledger-status.ts --self-test # before trusting a clean run
+bun scripts/tasks/tasks-status.ts             # counts + drift signals
+bun scripts/tasks/tasks-status.ts --self-test # before trusting a clean run
 ```
 
 Signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how a
@@ -123,7 +123,7 @@ moves anything. Moving is the conductor's judgement, made with the lifecycle bel
 4. **DELIVER** — copy the READY report verbatim; convert `## Bycatch` BEFORE merging.
 5. **LAND** — `git mv` to `done/` + `State: DONE — <sha>` + `finished/` tag + summary, in the SAME action as the merge.
 6. **RETIRE** — `git mv` to `retired/` + reason + `retired/` tag when a branch exists.
-7. **AUDIT** — `ledger-status.ts` every sweep; act on each signal or say why not.
+7. **AUDIT** — `tasks-status.ts` every sweep; act on each signal or say why not.
 
 Load `.claude/skills/manage-tasks/SKILL.md` for the literal commands — it is the single source, and
 Invar users manage their own repos with the same skill. One task, one folder, forever: `git mv`
@@ -156,7 +156,7 @@ bash scripts/fleet/probe.sh builders          # /proc cwd + an impossible-path a
 bash scripts/fleet/probe.sh writes <dir> 15   # -mmin, plus a planted canary
 bash scripts/fleet/probe.sh gate              # a finished log must not read as running
 bash scripts/fleet/probe.sh exit <cmd...>     # the command's status, never a pipeline's
-bun  scripts/tasks/ledger-status.ts           # ledger counts + drift; --self-test
+bun  scripts/tasks/tasks-status.ts           # task counts + drift; --self-test
 DRY_RUN=1 scripts/fleet/dispatch.sh …         # every guard, no side effect
 ```
 
@@ -639,7 +639,7 @@ the METHOD, not the live state. Read in order:
    `/invariants`
 4. **Ground-truth the docs against reality** — docs lag, git is authoritative:
    `git log --oneline -15 --all`, `git tag -l 'finished/*'`, `git worktree list`, `git status`,
-   `bun scripts/tasks/ledger-status.ts`
+   `bun scripts/tasks/tasks-status.ts`
 
 **DURABLE vs EPHEMERAL:**
 

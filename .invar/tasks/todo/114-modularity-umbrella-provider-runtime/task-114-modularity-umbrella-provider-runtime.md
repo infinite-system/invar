@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: opus-5
 Effort: high
+Priority: architecture-hygiene
 Assignment note: Umbrella reduction — three plugin kinds and the contribution seam. Wave B.
 
 ## Outline

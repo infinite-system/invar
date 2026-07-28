@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: fable-5
 Effort: high
+Priority: verification-integrity
 Assignment note: A decision between three options with real trade-offs, not an implementation.
 
 ## Outline

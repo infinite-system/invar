@@ -6,6 +6,7 @@ Engine: claude
 Environment: linux
 Model: opus-5
 Effort: high
+Priority: verification-integrity
 Assignment note: Targeted mutation testing — choosing what to mutate is the whole task.
 
 ## Outline

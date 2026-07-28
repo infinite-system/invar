@@ -6,6 +6,7 @@ Engine: codex
 Environment: linux
 Model: 5.6-sol
 Effort: default
+Priority: user-directed
 
 ## Outline
 
