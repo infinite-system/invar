@@ -162,7 +162,7 @@ fi
 # delivery that never happened. Interactive also means the USER can attach and steer, which is
 # the whole point of dispatching into tmux rather than backgrounding a process.
 #
-# Driving is delegated to scripts/agent-tmux.sh (see .claude/skills/agent-tmux/SKILL.md) — do
+# Driving is delegated to .claude/skills/agent-tmux/scripts/agent-tmux.sh (see .claude/skills/agent-tmux/SKILL.md) — do
 # NOT hand-roll send-keys here or in any caller. Its `send` verb splits text from Enter and then
 # CONFIRMS submission by polling the busy marker; a bare send-keys leaves a large paste sitting
 # unsubmitted in the composer, which is exactly what happened.
@@ -171,14 +171,14 @@ case "$engine" in
   claude) agent_command="claude --dangerously-skip-permissions";;
 esac
 
-AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/scripts/agent-tmux.sh" launch "$name" \
+AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh" launch "$name" \
   --cwd "$worktree_path" --profile "$engine" --timeout 90 \
   -- env PATH="$HOME/.bun/bin:$PATH" $agent_command >/dev/null || {
     echo "dispatch: agent-tmux launch failed for ${name}" >&2; exit 1; }
 tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
 
 # The opening turn goes through `send`, which confirms it submitted.
-AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/scripts/agent-tmux.sh" send "$name" \
+AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh" send "$name" \
   "Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md." >/dev/null
 
 

@@ -1,45 +1,115 @@
 ---
 name: agent-tmux
 description: >-
-  Drive an interactive CLI agent (claude / codex) inside tmux — launch it, send prompts/turns, wait
-  for it to finish, peek its output, steer it, reap it. Use this WHENEVER you need to run, watch, or
-  converse with a nested claude/codex session through tmux (orchestration, the fleet/director,
-  cross-model review, or just steering a long-running agent). Do NOT hand-roll `tmux send-keys` — the
-  recipe is fragile (send races, startup dialogs, busy-detection) and is already encapsulated, tested,
-  in scripts/agent-tmux.sh. Read this before driving any agent in tmux.
+  Drive an interactive CLI agent (claude / codex) inside tmux — launch it, send prompts/turns, ask
+  whether its turn is really over, peek its output, steer it, resume it, reap it. Use this WHENEVER you
+  need to run, watch, or converse with a nested claude/codex session (the fleet, cross-model review, or
+  steering a long-running builder). Do NOT hand-roll `tmux send-keys`, and do NOT launch with
+  `codex exec` / `claude -p` — both are encapsulated in scripts/agent-tmux.sh beside this file. Read
+  this before driving any agent in tmux.
 ---
 
 # Driving interactive agents in tmux — use `scripts/agent-tmux.sh`
 
-**Rule: don't hand-roll `tmux send-keys`.** Driving an interactive agent through tmux is fragile in
-four ways (send races, startup/approval dialogs, "is the turn done?", bounded reads) — all of them
-already handled, deterministically, by `scripts/agent-tmux.sh`. Call its verbs.
+**Rule: don't hand-roll `tmux send-keys`.** Every caveat below was learned by getting it wrong in
+production on 2026-07-28; the script encapsulates the fixes.
 
 ```
-agent-tmux launch <name> [--cwd D] -- claude --model <m> [--dangerously-skip-permissions]
-agent-tmux send       <name> "<prompt / relayed verifier findings>"
-agent-tmux wait       <name> [cap]        # block until idle
-agent-tmux send-wait  <name> "<msg>"      # send + wait + return the reply
-agent-tmux peek       <name> [lines]      # bounded capture, plain text
-agent-tmux status     <name>              # idle | busy | starting | dead
-agent-tmux kill       <name>
-agent-tmux list
+agent-tmux launch <name> [--cwd D] [--profile claude|codex] [--ready RE] [--busy RE] -- <cmd...>
+agent-tmux send       <name> "<prompt>"      split-send + Enter, then CONFIRM it submitted
+agent-tmux state      <name> [window]        TRUST THIS — busy | idle | starting | dead | idle-unconfirmed
+agent-tmux status     <name>                 pane-only, cheap, CAN LIE (see below)
+agent-tmux rollout    <name> [window]        producer-side growth: grew | quiet | unknown
+agent-tmux wait       <name> [cap]           block until idle
+agent-tmux send-wait  <name> "<msg>" [cap]   send + wait + return the reply
+agent-tmux peek       <name> [lines]         bounded capture, plain text
+agent-tmux kill <name> · agent-tmux list
 ```
 
-Run it from the toolchain `scripts/` dir, e.g.
-`bash <repo>/.claude/worktrees/<wt>/scripts/agent-tmux.sh launch …`.
+Sessions are namespaced `at_<name>`, but **this repo overrides it to `invar/`** so a builder is
+`invar/<task>-<slug>` and `tmux attach -t invar/196-scale` works. `scripts/fleet/dispatch.sh` sets
+`AGENT_TMUX_PREFIX=invar/` and launches EVERY builder through this script — don't bypass it.
 
-Key facts (don't re-discover):
+## Interactive, never `exec` / `-p`
 
-- **Quota:** interactive sessions (what this drives) bill the **interactive** bucket — the one we
-  want. `claude -p` bills the small Agent-SDK pool; we don't use `-p`.
-- **Persistence:** the `claude` profile launches promoted + persisted, so a worker survives a
-  tmux/host death and is `--resume`-able.
-- **Single-owner:** a live session has one owner. A human watches/steers any worker live with
-  `tmux attach -t at_<name>`; don't expect two drivers on one session.
-- **Verdicts come from artifacts** (`tmp/STATUS` + `git`), not from scraping the pane.
-- **codex** profile markers are `[UNVERIFIED]` — confirm + tune before relying on codex auto-drive,
-  or pass `--ready`/`--busy` overrides.
+`codex exec` and `claude -p` are one-shot with **no input loop**. Three amendments were appended to a
+live builder's `TASK.md` and then sent with `tmux send-keys`; **none reached it**, because nothing was
+listening. It would have finished on a superseded brief.
 
-Full reference: `scripts/agent-tmux.readme.md`. Design context: `scripts/fleet.design.md`. Tests:
-`scripts/agent-tmux.test.sh` (`AGENT_TMUX_LIVE=1` for the live claude smoke).
+Two traps made that look like it had worked:
+
+- **A file is not a channel.** `dispatch.sh` writes the brief to three homes AT LAUNCH — the one
+  moment a file works. After launch the only live channel is the session's stdin.
+- **`pipe-pane` captures your own echoed keystrokes.** Grepping the transcript for the message you
+  just sent proves an ECHO, not receipt. It "confirmed" a delivery that never happened.
+
+Interactive also means a human can `tmux attach` and type, which is the reason to use tmux at all.
+
+## Turn state: use `state`, not `status`
+
+`status` reads the pane — a PROXY for what the agent DISPLAYS. It lied twice within one hour:
+
+- a marker built on codex's **permanently visible** `gpt-<ver>-sol high · ~/path` line is always true,
+  so `status` was structurally incapable of answering anything but `idle`; it called a mid-turn
+  session idle;
+- a narrow busy marker (`Working \(`) missed a SECOND busy footer,
+  `Waiting for background terminal (58s · esc to interrupt)`, so it called a blocked session idle —
+  `wait` would have returned on an unfinished turn.
+
+`state` requires two independent sources to agree before reporting idle: the pane marker AND
+quiescence of codex's append-only rollout at `~/.codex/sessions/<Y>/<M>/<D>/rollout-*.jsonl` — the
+producer's own record, unaffected by rendering, redraws, or unsubmitted composer text.
+
+**Honest limit.** That rollout carries `task_started` per turn and a `token_count` stream during one,
+but **no turn-complete event**, so it cannot prove idleness either. `state` is a conjunction, not a
+proof: two independent sources failing the same way is far less likely than one. When the rollout
+can't be identified it returns `idle-unconfirmed` rather than silently upgrading an unverifiable
+answer to `idle`. Prefer a false `busy` (costs a poll) over a false `idle` (corrupts a result).
+
+## Profiles
+
+**claude** — verified. The idle footer keeps `for agents` in both normal and
+`--dangerously-skip-permissions` modes (the latter replaces `? for shortcuts` with
+`⏵⏵ bypass permissions on …`). Launches promoted + persisted, so a worker survives a tmux/host death
+and is `--resume`-able. Interactive sessions bill the **interactive** quota bucket; `claude -p` bills
+the small Agent-SDK pool, which is a second reason not to use it.
+
+**codex** — verified 2026-07-28 against live interactive codex (gpt-5.6-sol), both directions:
+- `BUSY_RE='esc to interrupt'` — deliberately the substring COMMON to every observed busy footer.
+  Reported `busy` mid-turn and `idle` after.
+- `READY_RE='^›'` — **non-discriminating alone**: codex keeps a hint in the composer, so the prompt
+  glyph is always present. Idle means "matches READY and NOT BUSY", which works only because the verbs
+  test BUSY first. Get BUSY right or both lie.
+
+## Sending
+
+`send` splits the literal text from Enter (one call lands Enter mid-paste) and then **polls the busy
+marker to confirm the turn started**, nudging Enter once if it didn't. A bare `send-keys` of ~2000
+chars left the message in the composer as `[Pasted Content 1022 chars][Pasted Content 1020 chars]`,
+unsubmitted, while a pane-only check happily reported idle.
+
+## Resuming — a killed builder is not lost work
+
+`codex resume <SESSION_ID>` restores full context, and **an `exec` run leaves a resumable rollout**
+despite the flag saying "interactive". Find the session by matching the worktree path inside
+`~/.codex/sessions/.../rollout-*.jsonl`, then relaunch:
+
+```
+agent-tmux launch <name> --cwd <worktree> --profile codex \
+  -- codex resume <SESSION_ID> --dangerously-bypass-approvals-and-sandbox
+```
+
+Verified: a resumed session recited its own prior reasoning verbatim, including in-flight conclusions.
+WIP-commit the worktree first — files survive a kill regardless, but commit so the state is named.
+
+## Watching a builder
+
+An interactive agent **does not exit when it finishes** — it goes idle. A monitor keyed on process
+death never fires. Wake on: the READY artifact appearing, `state` reporting idle for two consecutive
+polls (turn ended — finished, or blocked and ASKING), or session death.
+
+**Single-owner:** a live session has one owner; a human attaches to watch and steer, but don't expect
+two drivers. **Verdicts come from artifacts** (`/tmp/<name>-READY.md`, `git`), never from the pane.
+
+Reference: `scripts/agent-tmux.readme.md`. Tests: `scripts/agent-tmux.test.sh`
+(`AGENT_TMUX_LIVE=1` for the live smoke).

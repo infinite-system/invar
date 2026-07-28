@@ -22,7 +22,9 @@
 #   wait       <name> [cap_seconds]    block until idle (default 300); prints idle|timeout|dead
 #   send-wait  <name> "<msg>" [cap]    send, wait for idle, then peek the reply
 #   peek       <name> [lines]          bounded capture-pane (default 40), plain text
-#   status     <name>                  idle | busy | starting | dead
+#   status     <name>                  PANE-ONLY: idle | busy | starting | dead
+#   state      <name> [window]         TRUST THIS: pane AND rollout must agree on idle
+#   rollout    <name> [window]         producer-side growth: grew | quiet | unknown
 #   kill       <name>
 #   list                               logical names of live agent-tmux sessions
 #
@@ -189,6 +191,56 @@ cmd_send_wait() {
   cmd_peek "$name" "$lines"
 }
 
+# --- deterministic-ish turn state ----------------------------------------------------------
+# Pane scraping is a PROXY: it reads what the agent DISPLAYS. Two ways it lied on 2026-07-28 —
+# a marker built on a permanently-visible status line could only ever answer "idle", and a
+# narrow busy marker missed a second busy footer and called a blocked session idle.
+#
+# codex writes an append-only rollout at ~/.codex/sessions/<Y>/<M>/<D>/rollout-*.jsonl. That is
+# the PRODUCER'S OWN record: unaffected by rendering, redraws, or unsubmitted composer text.
+# It carries `task_started` per turn and a stream of `token_count` events during one, but NO
+# turn-complete event — so it cannot prove idleness either. What it gives is growth: while a
+# turn runs the file grows.
+#
+# So `state` reports idle only when the pane marker AND rollout quiescence AGREE. That is a
+# conjunction, not a proof, and it is deliberately stated as such: two independent sources
+# failing the same way is far less likely than one.
+
+# Newest rollout touched by the session's cwd, or empty when it cannot be identified.
+_rollout() {
+  local cwd; cwd="$(tmux display-message -t "$(_sess "$1")" -p '#{pane_current_path}' 2>/dev/null)"
+  [ -n "$cwd" ] || return 0
+  local newest="" f
+  for f in $(ls -1t "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -40); do
+    if grep -qlF "$cwd" "$f" 2>/dev/null; then newest="$f"; break; fi
+  done
+  printf '%s' "$newest"
+}
+
+# grew | quiet | unknown — sampled over `window` seconds (default 6).
+cmd_rollout() {
+  local name="${1:?rollout: need a name}" window="${2:-6}"
+  local f; f="$(_rollout "$name")"
+  [ -n "$f" ] || { echo unknown; return 0; }
+  local a b; a="$(stat -c%s "$f" 2>/dev/null || echo 0)"
+  sleep "$window"
+  b="$(stat -c%s "$f" 2>/dev/null || echo 0)"
+  [ "$b" -gt "$a" ] && echo grew || echo quiet
+}
+
+# The verb to trust: busy | idle | starting | dead, requiring BOTH sources to agree on idle.
+cmd_state() {
+  local name="${1:?state: need a name}" window="${2:-6}"
+  local pane; pane="$(cmd_status "$name")"
+  [ "$pane" = "idle" ] || { echo "$pane"; return 0; }
+  local growth; growth="$(cmd_rollout "$name" "$window")"
+  case "$growth" in
+    grew)    echo busy;;                  # pane says idle, producer says otherwise — believe the producer
+    quiet)   echo idle;;
+    unknown) echo "idle-unconfirmed";;    # never silently upgrade an unverifiable answer to idle
+  esac
+}
+
 cmd_kill() { tmux kill-session -t "$(_sess "$1")" 2>/dev/null && echo "killed $1" || echo "no session '$1'"; }
 cmd_list() { tmux list-sessions -F '#{session_name}' 2>/dev/null | sed -n "s/^${SP}//p"; }
 
@@ -204,6 +256,8 @@ main() {
     send-wait) shift; cmd_send_wait "$@";;
     peek)      shift; cmd_peek "$@";;
     status)    shift; cmd_status "$@";;
+    state)     shift; cmd_state "$@";;
+    rollout)   shift; cmd_rollout "$@";;
     kill)      shift; cmd_kill "$@";;
     list)      cmd_list;;
     help|-h|--help) usage;;
