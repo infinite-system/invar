@@ -3317,3 +3317,35 @@ check can fire, and a check that fires on everything is as useless as one that n
 The generalisation worth keeping: **when the user names a pattern behind several of my mistakes, the
 pattern is the fix and the instances are not.** Building four separate guards would have left the fifth
 instance free to happen — and it did happen, an hour later, in the very work meant to prevent it.
+
+## 2026-07-28 19:25 — `orphaned/` becomes `retired/`, and the doctrine moves into the skill
+
+**Vocabulary change (user-directed):** the branch park-tag for work that never landed is now
+`retired/<branch>`, matching `.invar/tasks/retired/`. 31 tags migrated; the branches themselves were
+never touched, only the tag name. Full vocabulary: `finished/` (merged) · `retired/` (never landed) ·
+`reverted/` · `blocked/`.
+
+**Why it is worth a rename at all:** branch states and task states describe the same lifecycle, and
+having them use different words meant a reader had to learn two vocabularies for one idea. Earlier
+entries in THIS file still say `orphaned/` and are left alone — they are dated accounts of what was
+true when written, and rewriting a log to match current vocabulary is how a record stops being
+evidence. The live rule lives in `AGENTS.md` and the conductor skill, both updated.
+
+**Migration method, since renaming a tag means deleting one:** create the new tag, verify it resolves
+to the SAME commit, and only then remove the old name. Delete-then-create loses the pointer if the
+create fails — the same ordering defect as validate-late/act-early in `dispatch.sh`.
+
+**Doctrine relocation.** The user asked that this stop living only in a log: *"add all this where
+necessary into conductor skill, so you know how to operate, make it prominent so mistakes stop
+happening."* So the negative-space rule is now **RULE ONE** in the conductor skill, immediately after
+Rule Zero — the second thing read, not the four-hundredth line. It carries the instance table, the
+"a control that mutates the system is not a control" corollary, and the runnable tooling.
+
+The ledger protocol section gained the parts that were only in my head: the Engine/Environment/Model/
+Effort block, the number-first naming for every file kind, the park-tag vocabulary, and the tracker
+command with its self-test.
+
+**The general lesson about lessons:** a rule recorded in a chronological log is found only by someone
+who reads the log. A rule that must fire on every fire belongs where the reader starts. Appending here
+is how a lesson is CAPTURED; promoting it into the skill is how it becomes OPERATIVE, and those are
+two different acts. I had been doing only the first.

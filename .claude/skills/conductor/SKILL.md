@@ -85,6 +85,66 @@ tell which was current — the same defect as a stale duplicate cron prompt, whe
 copy re-imposes a retired rule with full authority. A stale instruction in an automated prompt does
 not become correct by repeating.
 
+## ⚑ RULE ONE — EVERY CHECK HAS TWO ARMS, AND YOU FORGET THE SECOND ONE
+
+**Read this second. It is the user's own diagnosis of the conductor's most repeated mistake
+(2026-07-28), and it retired four lessons that had been carried as independent:**
+
+> *"i think you would always forget the negative space, check for existence but not non existence
+> or vice versa."*
+
+It is ONE defect. A check run in a single polarity cannot distinguish **"the thing is absent"** from
+**"the check cannot see."** Both print zero.
+
+| instance | what was checked | what was never asked |
+|---|---|---|
+| `find -newermt '-10 minutes'` | "0 files written" | can the predicate match ANYTHING? (no — it matches nothing, ever) |
+| monitor on "hash differs" | difference | existence — it fired on the DELETION half of a rewrite |
+| `grep \| tail \|\| echo` | the success branch | is `\|\|` reachable? (no — `tail` succeeds on empty input) |
+| `pkill -f merge-gate.sh` | "a process matches" | argv holds INSTRUCTIONS — it matched builders told *not* to run it |
+| three dispatch guards | that they refuse | what does NOT refusing do? |
+
+**Before reading any result, supply both arms:**
+
+- the **PRESENT** arm must find something → proves the check can see;
+- the **ABSENT** arm must find nothing → proves the check can be silent.
+
+**If both arms agree, the instrument is broken — report THAT, never a number.** A positive control
+alone proves only that a check can fire, and a check that fires on everything is as useless as one
+that never fires.
+
+### A control that mutates the system is not a control
+
+The fifth instance above happened **while building the tooling for the other four.** Three refusal
+guards in `dispatch.sh` were verified by running them and watching them refuse. The fourth check was
+the negative control — proof the guard does not simply refuse everything — and it was run the same
+way, against a script with side effects. **"Did not refuse" meant it cut a worktree, committed a
+brief reading `brief`, and launched a codex on a task nobody had asked for.**
+
+The negative arm of a guard test needs a way to reach the guard without paying for the action.
+
+### Use the tooling — it exists so this stops depending on memory
+
+```
+bash scripts/fleet/probe.sh self-test        # prove the probes can fire AND stay silent
+bash scripts/fleet/probe.sh builders         # by /proc cwd + an impossible-path arm
+bash scripts/fleet/probe.sh writes <dir> 15  # -mmin, never -newermt, with a planted canary
+bash scripts/fleet/probe.sh gate             # a finished log must not read as running
+bash scripts/fleet/probe.sh exit <cmd...>    # the command's status, never a pipeline's last stage
+bun  scripts/tasks/ledger-status.ts          # ledger counts + drift; --self-test plants each signal
+DRY_RUN=1 scripts/fleet/dispatch.sh …        # every guard, no side effect — the negative arm
+```
+
+**Never hand-roll these idioms again.** `pgrep`+`readlink /proc/<pid>/cwd`, `-mmin`, and reading a
+command's own exit status are all already correct inside `probe.sh`; typing them fresh is how they go
+wrong.
+
+### The generalisation
+
+**When the user names the pattern behind several mistakes, the PATTERN is the fix and the instances
+are not.** Building four separate guards would have left the fifth free to happen — and it did, an
+hour later, inside the work meant to prevent it.
+
 ## When to use
 Any build with a fork/conductor coordinating one or more builder agents over a task backlog —
 e.g. the Invar (tui-editor) UI-task runs. Not needed for a single-shot task you do yourself.
@@ -634,13 +694,13 @@ the DEFAULT; destruction requires explicit, per-instance user authorization.**
   greppable via `git tag -l 'finished/*'`) and add a line to `project.delegation-log.md`
   (branch · tip · merged-into · date). Cleanup of accumulated finished branches happens ONLY in an
   explicit, user-authorized sweep — never inline, never automatic.
-- **Abandoned ≠ deleted — mark it ORPHANED.** A branch that will NEVER merge (superseded, a dead-end
+- **Abandoned ≠ deleted — mark it RETIRED.** A branch that will NEVER merge (superseded, a dead-end
   experiment, otherwise abandoned) is NOT deleted either. If it has unique commits worth keeping as a
-  recovery point: `git tag -a orphaned/<branch> -m '<why abandoned>'` + a `project.delegation-log.md`
+  recovery point: `git tag -a retired/<branch> -m '<why abandoned>'` + a `project.delegation-log.md`
   line. If it's empty / DOA (no unique commits vs main — nothing to preserve): a log line alone is
   enough, no tag. This completes the model — every branch is ACTIVE (untagged; a live worktree/agent),
-  FINISHED (`finished/`), or ORPHANED (`orphaned/`); the two terminal states are MARKED, never deleted,
-  and greppable (`git tag -l 'finished/*'` / `'orphaned/*'`). Pruning orphaned branches happens only in
+  FINISHED (`finished/`), or RETIRED (`retired/`); the two terminal states are MARKED, never deleted,
+  and greppable (`git tag -l 'finished/*'` / `'retired/*'`). Pruning retired branches happens only in
   an explicit, user-authorized sweep.
 
 ## Liveness & visibility
@@ -1136,6 +1196,64 @@ instrument defect this project keeps finding, applied to my own bookkeeping.
 `done`, `retired`; a task is MOVED between them and a folder is never deleted. Read
 `.invar/tasks/README.md` for the file layout. `project.ledger.md` is the index and carries the full
 spec per open task.
+
+### Every task names WHO runs it and WHERE (user-set 2026-07-28)
+
+Each task file carries a header block after `Created:`:
+
+```
+Engine: codex | claude | user
+Environment: linux | macos | any
+Model: 5.6-sol (codex ONLY) | fable-5 | opus-5 (claude)
+Effort: high | default
+Assignment note: <only when the assignment needs explaining>
+```
+
+**The ENVIRONMENT field is load-bearing, not bookkeeping.** #180's work cannot run on this host at
+all — `PtyTestDriver` is FFI-blocked on darwin, so the gate has never run on the user's machine — and
+before the field existed that task read as ordinary backlog. `dispatch.sh` now READS the assignment
+from the task file rather than from argv, so a dispatch cannot contradict the record:
+
+- `Environment: macos` on this Linux host → **refused** (exit 2);
+- `Engine: user` → **refused** — those are decisions, not builds;
+- asking for `codex` on a task that declares `claude` → **refused**, with "change the task file if the
+  assignment is wrong; do not override it at the prompt."
+
+Defaults: **codex is the default builder**; **claude** is for reductions where the judgement IS the
+work (architecture, a wrong premise costing a builder-day) and for macOS, which codex cannot reach
+from here; **user** is for feel and product calls.
+
+### Naming, all of it number-first
+
+| file | shape |
+|---|---|
+| task | `task-<number>-<name>.md` |
+| brief | `brief-<number>-<count>-<name>.md` — NUMBER leads, round count follows |
+| report | `report-<number>-<name>.md` |
+| summary | `summary-<number>-<name>.md` |
+| transcript | `transcript-<engine>-<model>-<effort>-<number>-<name>.md` (gitignored, `tmp/transcripts/`) |
+
+Number-first so a folder of several rounds sorts task-first, and a filename pasted into a message
+identifies its own task. The transcript carries the agent identity so three runs of one task by three
+different agents produce three readable files instead of one overwritten one.
+
+### Branch park-tags use the SAME vocabulary as the ledger
+
+`finished/<branch>` (merged) · `retired/<branch>` (never landed) · `reverted/` · `blocked/`.
+**`orphaned/` is RETIRED as a name** — 31 tags migrated 2026-07-28 so the branch states and the task
+states read alike. Branches themselves are never deleted; only the tag name changed.
+
+### Run the tracker instead of reading 63 folders
+
+```
+bun scripts/tasks/ledger-status.ts             # counts + drift signals
+bun scripts/tasks/ledger-status.ts --self-test # required before trusting a clean run
+```
+
+Four signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how
+#108 sat finished-but-unfiled until the user asked), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**,
+**THIN**. It reports and never moves anything: deciding a task is finished is a judgement, and these
+are evidence for it.
 
 Rules that are mine to keep, because the tooling cannot enforce them:
 

@@ -194,10 +194,10 @@ Non-negotiable conventions (summarized from the `ivue` + `invariants` skills and
    report the wrong command's status; capture the exit code of the command you actually mean.
 10. **Branches are NEVER deleted — parked and tagged.** Every branch ends in exactly one of two
    marked terminal states: `git tag -a finished/<branch>` (content fully merged into main) or
-   `git tag -a orphaned/<branch> -m '<why>'` (content never landed: superseded, unadopted, or
+   `git tag -a retired/<branch> -m '<why>'` (content never landed: superseded, unadopted, or
    replaced by a rebase — tag the pre-rebase twin too). No `git branch -D`, ever; cleanup removes
-   WORKTREES only (`git worktree remove`). In-flight branches get neither tag — pending ≠ orphaned.
-   Greppable: `git tag -l 'finished/*'` / `'orphaned/*'`.
+   WORKTREES only (`git worktree remove`). In-flight branches get neither tag — pending ≠ retired.
+   Greppable: `git tag -l 'finished/*'` / `'retired/*'`.
 11. The editor is named **Invar** (formerly "Fable").
 
 Also read on entry: `CLAUDE.md`, `project.conventions.md`, `project.ivue-reference.md`,
