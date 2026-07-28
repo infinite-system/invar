@@ -3,10 +3,38 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-28 09:40 UTC) — READ FIRST
+## RESUME ANCHOR (2026-07-28 ~21:00 UTC) — READ FIRST
 
-**Main `6456e7b`, clean. Many commits ahead of origin and that is FINE — the user pushes themselves
-("I will push myself later"). Do NOT report unpushed commits as a blocker.**
+**Main `d3721b2`, clean, checkout on main. 145 commits ahead of `origin/main` (`ac3622c`) and that is
+FINE — the user pushes themselves. Do NOT report unpushed commits as a blocker.**
+
+Landed together after one ALL-PASS gate (4m18s, three quiet retries): the editor FLYWEIGHT edit path
+(1 row write per keystroke, zero index allocations, size-independent), the LSP read-side size guard,
+FOLDED editing with scale-invariant fold toggles (collapse at 970k: 132 ms -> 24 ms, counts identical
+at 554k and 970k), and the reserved-chord fixture repair that unblocked all of it. Branches parked as
+`finished/203-fold-flyweight`, `finished/194-reserved-chord`, `finished/197-lsp-request-guard`.
+
+**THE DAY'S GOVERNING LESSON — read the two newest sections of the conductor skill before trusting any
+instrument.** Three regressions reached a tree every check called clean, and the USER found two of them
+by driving. Both gaps were WHICH FIXTURE got measured: every latency table used the nested JSON
+fixtures, so the flat `.ts` axis that motivated the original work silently lost its measurement, and a
+4x launch regression (634 ms -> 2,417 ms at 1M) plus ~600 MB of RSS landed behind green count
+contracts. Rules now in doctrine: when work extends a subsystem for a NEW case, re-measure the OLD
+case; a report must name the axes it did NOT cover; and a green count contract is evidence about
+COUNTS, not about speed.
+
+**AND: a builder's environment is not the conductor's.** reserved-chord resisted four sightings because
+codex bundles its own ripgrep (`~/.codex/packages/standalone/releases/*/codex-path/rg`) which its
+spawned app inherits, while this shell has `rg` only as a Claude Code shell FUNCTION no child can
+inherit. A cross-check against a builder's numbers is not a replication unless the environments were
+compared. Codex's extra tooling was also CONCEALING a real user-facing defect (#201).
+
+Scale fixtures live at `tmp/invar-scale-test/` (gitignored, so they do not travel to worktrees;
+regenerate with `scripts/make-scale-workspace.ts` and `scripts/make-nested-fold-fixture.ts`):
+`huge.ts` 500k, `huge-1m.ts` 1M flat, `nested.json` 554,490 and `nested-1m.json` 970,356 with fold
+regions spanning 33.8 blocks at level 0. `tsconfig.json` carries `"exclude": ["tmp"]` because tsc walks
+the FILESYSTEM and would otherwise ingest them (~125,000 errors). Open with
+`bun run dev <abs path>` — `bun run start` drops its argument (#195).
 
 Network: `systemd-resolved`'s stub at `127.0.0.53` fails for most names while `8.8.8.8` answers
 instantly. `git push` reports *"correct access rights"* for what is purely DNS — do not chase SSH
