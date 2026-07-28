@@ -25,6 +25,7 @@ import { TabStrip } from '../ui/TabStrip';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { CompletionPopup } from '../ui/CompletionPopup';
+import { RenderRequest } from '../ui/RenderRequest';
 import { OverlayCoordinator } from '../ui/OverlayCoordinator';
 import { ShortcutHelp } from '../ui/ShortcutHelp';
 import { Tooltip } from '../ui/Tooltip';
@@ -203,7 +204,7 @@ class $Bootstrap {
       // A completion request can open while the renderer still has that frame queued. OpenTUI
       // coalesces another request made in the same input turn, so retry on the next turn after the
       // popup's paint revision has republished the closed semantic state.
-      setTimeout(() => renderer.requestRender(), 0);
+      RenderRequest.Class.afterCurrentTurn(() => renderer.requestRender());
     };
     const tooltip = new Tooltip.Class();
     const settingsPanel = new SettingsPanel.Class(settings);

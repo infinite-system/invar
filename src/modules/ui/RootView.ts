@@ -75,6 +75,7 @@ import { Momentum } from '../system/Momentum';
 import type { TabStrip } from './TabStrip';
 import type { PanelHost } from './PanelHost';
 import { PanelContentsList } from './PanelContentsList';
+import { RenderRequest } from './RenderRequest';
 import {
   PanelHeading,
   type PanelHeadingAction,
@@ -490,6 +491,7 @@ class $RootView {
         Number(event.y) - Number(panelContentsListRenderable.y),
       );
       renderer.requestRender();
+      RenderRequest.Class.afterCurrentTurn(() => renderer.requestRender());
     };
     panelContentsListRenderable.onMouseDrag = (event) => {
       panelContentsList.pointerDrag(
