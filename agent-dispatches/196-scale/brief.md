@@ -255,3 +255,34 @@ The one thing that genuinely IS out of scope remains out: **a Fenwick tree.** Th
 reduction — per-block sums plus a running total give document-size-independent cost with a structure
 whose correctness is visible, and Fenwick buys a smaller constant for a subtler invariant. Blocks, not
 Fenwick. Everything else on the list ships.
+
+---
+
+# REQUIRED SKILLS (this supersedes the "Repo law" section's implied completeness)
+
+`AGENTS.md` at this worktree's root carries the skills index and notes that codex does not auto-see
+`.claude/skills/`. For THIS task the following are not optional, and the brief's "Repo law" section is a
+REMINDER OF A FEW RULES, **not** a substitute for any of them — treating that fragment as the complete
+discipline is the failure mode this section exists to prevent:
+
+- **`.claude/skills/ibr/IBR.md`** — load it. This task is architectural: it replaces a data structure on
+  the strength of an invariant, and the acceptance test is derived from an impossibility boundary rather
+  than a threshold. Reduce before building; the ladder in the main brief is a hypothesis about where the
+  cost lives, and measurement outranks it.
+- **`.claude/skills/ivue/`** — load it before touching `src/modules/editor/**`. You are changing the
+  reactive substrate's hot path. `$Class` anchoring, the `Static()`/`Reactive()` distinction, lazy
+  ref-getters and the `$`-cache all bear directly on whether an in-place-mutated typed array still
+  notifies correctly. The 80-column and naming rules in "Repo law" are the least of what this skill
+  governs.
+- **`.claude/skills/invariants/`** — load it, and run
+  `node .claude/skills/invariants/scripts/check_invariants.mjs --all --refs` before READY. You will be
+  editing `src/modules/editor/editor.invariants.md`, and the user's acceptance test is explicitly whether
+  that record gets SHORTER.
+- **`.claude/skills/ast-query/SKILL.md`** — use `bun scripts/ast-query.ts` for every structural question
+  (who reads `index.prefix`, who constructs the wrap index, which callers hold references to
+  `rowCounts`). Parse, do not grep. The claim that the index arrays never escape must be established
+  structurally, not by reading.
+
+Also read, because it is the reference this task ports FROM and it is not in the skills index:
+`../ivue/examples/playground/src/examples/flyweight-grid/` — with the reading order and the explicit
+SKIP list given in the main brief above. Do not port the dependency machinery.
