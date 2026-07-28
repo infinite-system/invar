@@ -67,10 +67,47 @@ git show-ref --verify --quiet "refs/heads/${branch}" || { echo "land: no branch 
 # 1. REFUSE if the builder is still running. A live agent mid-write would lose
 #    work to a merge, and "looks quiet" is not idle.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# 0. REFUSE unless the checkout is on main. `git merge` lands into whatever is CHECKED
+#    OUT, so a conductor whose checkout has drifted onto a feature branch silently
+#    merges a finished task into that branch instead of main — main stays behind while
+#    the record says the task landed. That happened on 2026-07-28: #196 merged into
+#    fix/197-lsp-request-guard, leaving main without it, minutes after the user warned
+#    that the checkout was not on main. Recoverable only because main was an ancestor.
+# ---------------------------------------------------------------------------
+current_branch="$(git -C "$repository_root" branch --show-current)"
+if [ "$current_branch" != "main" ]; then
+  echo "land: checkout is on '${current_branch}', not main — refusing." >&2
+  echo "      git merge lands into the CHECKED-OUT branch; landing here would leave main behind." >&2
+  echo "      Switch to main (or pass LAND_ON_BRANCH=1 if you truly mean to land elsewhere)." >&2
+  [ "${LAND_ON_BRANCH:-0}" = "1" ] || exit 1
+  echo "land: LAND_ON_BRANCH=1 acknowledged; landing onto '${current_branch}' deliberately." >&2
+fi
+
+# Builders are now launched INTERACTIVELY (see .claude/skills/agent-tmux/SKILL.md), and an
+# interactive agent NEVER EXITS when it finishes — it goes idle. So "a codex process has this
+# cwd" is no longer the same question as "it might still be writing"; as a liveness test it
+# would refuse every landing forever. The guard's INTENT is unchanged: never merge a tree the
+# builder may still be writing. The accurate condition is that the agent is not mid-turn.
+#
+# `state` requires the pane marker AND codex's append-only rollout to agree on idle before it
+# says idle, and returns 'idle-unconfirmed' when the rollout cannot be identified — which is
+# treated here as NOT safe, because an unverifiable answer must never license a merge.
+agent_tmux="${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh"
 for pid in $(pgrep -x codex 2>/dev/null || true); do
   if [ "$(readlink "/proc/${pid}/cwd" 2>/dev/null)" = "$worktree_path" ]; then
-    echo "land: builder STILL LIVE in $worktree_path (pid $pid) — refusing" >&2
-    exit 1
+    builder_state="$(AGENT_TMUX_PREFIX="invar/" bash "$agent_tmux" state "$name" 6 2>/dev/null)"
+    if [ "$builder_state" != "idle" ]; then
+      echo "land: builder is MID-TURN in $worktree_path (pid $pid, state=${builder_state:-unknown}) — refusing" >&2
+      exit 1
+    fi
+    # Idle is necessary but not sufficient: an idle agent that never wrote its report may be
+    # waiting on a QUESTION rather than finished. Require the artifact too.
+    if [ ! -f "/tmp/${name}-READY.md" ]; then
+      echo "land: builder is idle but wrote no /tmp/${name}-READY.md — it may be ASKING, not done — refusing" >&2
+      exit 1
+    fi
+    echo "land: builder idle with a READY report (pid $pid) — interactive session left running for inspection."
   fi
 done
 
