@@ -153,25 +153,53 @@ cmd_launch() {
 # So confirmation is the COMPOSER EMPTYING, which is true only if the input was consumed, and is
 # meaningful whether or not a turn was already in flight. A large paste renders as
 # `[Pasted Content N chars]`; while that marker is present nothing has been submitted.
-_composer_pending() {
-  _pane "$1" | grep -qE '\[Pasted Content [0-9]+ chars\]'
+# ...and THAT detector had the same disease it was written to cure. It recognised pending text ONLY
+# as the `[Pasted Content N chars]` placeholder, so against text delivered by `send-keys -l` — which
+# renders as ORDINARY VISIBLE COMPOSER LINES, no placeholder anywhere — it found nothing, reported
+# "not pending" on the first poll, and `send` printed `submitted` while ~1900 characters sat in the
+# composer. Caught by the human, who saw the text still sitting there. Pending text has (at least)
+# TWO renderings and the check knew one: partial coverage presenting as total.
+#
+# THE OTHER HALF, and the reason no number of Enter nudges could have helped: while a codex turn is
+# in flight the composer footer reads `tab to queue message`, and in that state **Enter is a no-op —
+# TAB is what queues**. Ten Enters against a busy session change nothing.
+_queue_affordance() {
+  _pane "$1" | grep -qF 'tab to queue message'
+}
+
+# A probe taken from the START of the message. The composer's first line begins at column 0, so a
+# short prefix is never split by wrapping — which a probe taken from the middle would be.
+_send_probe() {
+  printf '%s' "$1" | head -n 1 | head -c 30
 }
 
 cmd_send() {
   local name="${1:?send: need a name}" msg="${2?send: need a message}"
   _alive "$name" || { echo "send: no session '$name'" >&2; return 1; }
-  local s i; s="$(_sess "$name")"
+  local s i probe queued_before queued_now; s="$(_sess "$name")"
+  probe="$(_send_probe "$msg")"
+  # Count the queued markers BEFORE sending: an increase is positive proof of acceptance, whereas
+  # the mere PRESENCE of a marker only proves some earlier message was queued.
+  queued_before="$(_pane "$name" | grep -cF '↳' || true)"
   tmux send-keys -t "$s" -l -- "$msg"   # -l: literal text, no key-name interpretation
-  sleep 0.3
-  tmux send-keys -t "$s" Enter
-  # Up to ~8s of Enter nudges until the composer is empty. codex needs a second Enter when the
-  # text arrived as bracketed paste chunks — the first Enter is absorbed into the paste.
-  for ((i=0; i<10; i++)); do
-    sleep 0.8
-    _composer_pending "$name" || { echo submitted; return 0; }
-    tmux send-keys -t "$s" Enter
+  sleep 0.5
+  for ((i=0; i<12; i++)); do
+    # Which key SUBMITS depends on whether a turn is in flight. Ask every iteration: the turn can
+    # end (or begin) while we are nudging.
+    if _queue_affordance "$name"; then
+      tmux send-keys -t "$s" Tab
+    else
+      tmux send-keys -t "$s" Enter
+    fi
+    sleep 0.9
+    queued_now="$(_pane "$name" | grep -cF '↳' || true)"
+    # Two POSITIVE outcomes, matching the two things that can happen to consumed input:
+    #   queued    — a new `↳` marker appeared: accepted, will run after the current turn
+    #   submitted — the probe text is gone from the pane: consumed into a turn
+    if [ "$queued_now" -gt "$queued_before" ]; then echo queued; return 0; fi
+    if ! _pane "$name" | grep -qF -- "$probe"; then echo submitted; return 0; fi
   done
-  echo "send: NOT CONFIRMED — text may still sit unsubmitted in the composer" >&2
+  echo "send: NOT CONFIRMED — '$probe...' still visible and no new queued marker" >&2
   return 1
 }
 

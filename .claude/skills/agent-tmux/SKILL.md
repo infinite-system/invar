@@ -81,13 +81,28 @@ the small Agent-SDK pool, which is a second reason not to use it.
   glyph is always present. Idle means "matches READY and NOT BUSY", which works only because the verbs
   test BUSY first. Get BUSY right or both lie.
 
-## Sending
+## Sending — and the key that submits DEPENDS ON WHETHER A TURN IS RUNNING
 
-`send` splits the literal text from Enter — one call lands Enter mid-paste — then nudges Enter until
-the composer is empty, and **returns 1 if it never empties**. A bare `send-keys` of ~2000 chars left
-the message in the composer as `[Pasted Content 1022 chars][Pasted Content 1020 chars]`, unsubmitted,
-while a pane-only check happily reported idle. See the ladder below for why the confirmation is
-composer-empty rather than went-busy.
+**While codex is mid-turn, `Enter` is a no-op. `Tab` is what queues.** The footer says so —
+`tab to queue message` — and that footer is the state signal. Nudging Enter at a busy session, any
+number of times, leaves the text sitting in the composer. This cost a whole steering message on
+2026-07-28: `send` typed ~1900 characters, pressed Enter ten times, printed `submitted`, and the text
+was still visibly unsent when the human looked at the pane. One `Tab` queued it instantly.
+
+`send` therefore re-checks the affordance on every iteration (a turn can start or end while you
+nudge) and presses `Tab` or `Enter` accordingly. It confirms on one of two POSITIVE outcomes and
+`return 1`s otherwise:
+
+- **queued** — the count of `↳` markers INCREASED. Counting matters: the mere presence of a `↳` only
+  proves some earlier message was queued.
+- **submitted** — a 30-character probe taken from the START of the message is gone from the pane. The
+  probe comes from the start because the composer's first line begins at column 0 and so is never
+  split by wrapping.
+
+The detector this replaced recognised unsent text only as `[Pasted Content N chars]`. Text typed with
+`send-keys -l` renders as **ordinary visible composer lines** with no placeholder at all, so it found
+nothing, concluded "not pending" on the first poll, and reported success. Pending text has more than
+one rendering; a check that knows one of them is a check with one reachable outcome.
 
 ## What each delivery check actually proves — the ladder
 
@@ -99,8 +114,9 @@ delivery to a nested agent has FIVE distinguishable levels, and it matters which
 | the text appears in the pane | **nothing** — an unsubmitted composer looks identical |
 | the pane went busy | **nothing when it was ALREADY busy** — passes trivially |
 | `pipe-pane` transcript contains the text | **nothing** — it captures your own echoed keystrokes |
-| the composer emptied | the input was **consumed** |
-| a `↳` queued marker, or a transcript TURN | it is **accepted and will run** / it **ran** |
+| no `[Pasted Content]` placeholder | **nothing** — typed text never produces one; this read as "sent" for a composer full of visible text |
+| a probe from the message is GONE from the pane | the input was **consumed** |
+| the `↳` marker COUNT increased, or a transcript TURN | it is **accepted and will run** / it **ran** |
 
 `send` confirms at the composer-empty level, which is where a sender can honestly stop, and it now
 **fails loudly** (`return 1`) if the composer never empties. The version it replaced polled for busy
