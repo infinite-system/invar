@@ -168,9 +168,29 @@ into `agent-dispatches/`, matching report to brief by name, and commit. Unmatche
 measurements. This is a pure `cp` and one commit; it competes with nothing and can be done while
 builders run.
 
-**Phase 2 — the scripts.** Write `dispatch.sh` and `land.sh`. Test with a real dispatch, not a
-dry run: the failure modes here are occupied paths and missing `node_modules`, and neither shows
-up in a rehearsal.
+**Phase 2 — the scripts. DONE 2026-07-28 (`e0c7693`).** `scripts/fleet/dispatch.sh` and
+`scripts/fleet/land.sh`.
+
+`dispatch.sh` refuses to launch without committing the brief first — the one ordering the whole
+design rests on. It validates every argument, refuses on any collision (worktree path, dispatch
+record, branch, tmux session), cuts the worktree, runs `bun install`, places the brief in both
+homes, commits it, then launches into a named tmux session with `pipe-pane` writing the transcript.
+
+`land.sh` refuses while the builder is live, refuses on untracked source a merge would not carry,
+files the report beside its brief, then PRINTS THE BYCATCH and holds unless `BYCATCH_TRIAGED=1` —
+the conductor-side mechanism whose absence lost five findings. It merges, parks the branch with
+`finished/`, reclaims the worktree, closes the session, and deliberately neither gates nor pushes.
+
+**Still untested end to end**, and that is stated rather than glossed: a builder was
+mid-timing-measurement for #178, so running the full path would have contended with its numbers.
+Every REFUSAL path is exercised and leaves zero worktrees, zero dispatch records, zero branches and
+zero dirty files. The first real dispatch is the end-to-end test.
+
+One defect the guard test caught, worth keeping because it is the recurring shape: the first version
+validated the engine name at LAUNCH time, so a typo'd engine had already cut a worktree, run
+`bun install` and committed a brief before refusing. Validate-late/act-early — the same ordering
+error that made a worktree prune delete tracked files before the removal it was preparing could run.
+Guards precede side effects or they are not guards.
 
 **Phase 3 — cut over.** The next dispatch after Phase 2 uses the script. Old and new coexist; no
 flag day. When all `/tmp` builders have landed, `/tmp/conductor-*` becomes prunable — 2.5 GB back,

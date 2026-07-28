@@ -2736,3 +2736,46 @@ cannot be uttered by the thing being watched.
 **The transferable form:** a rule stated as an instance gets followed at that instance and nowhere
 else. When a rule is written, ask what the instance is an instance OF — otherwise the next site
 gets the same defect and the rule's presence in the file makes it harder to see, not easier.
+
+---
+
+## 2026-07-28 — the record became a byproduct, and validate-late bit twice more
+
+### dispatch.sh exists because a folder would not have worked
+
+The user asked for auditable briefs. The obvious reading is "a place to put them"; the actual
+requirement is an ORDERING. Seven bycatch findings were reported correctly and five were lost for
+one reason — recording them was a separate action from the work that produced them. Every brief
+written by hand had the same latent defect: it survived because someone chose to keep a copy, and
+nothing would have noticed otherwise.
+
+So `dispatch.sh` refuses to launch an agent without committing its brief first, and `land.sh`
+refuses to merge without printing the bycatch. Neither is a convenience. They are the two places
+where a record used to depend on someone remembering.
+
+`land.sh` holding on untriaged bycatch is the sharper of the two, because it inverts the default:
+the conductor now has to actively acknowledge (`BYCATCH_TRIAGED=1`) rather than actively remember.
+`AGENTS.md` had named the conductor as triager all along; what was missing was any mechanism that
+noticed when the conductor did not.
+
+### Validate-late/act-early, twice in one night
+
+The engine-name check sat at step 5 of `dispatch.sh`, so a typo'd engine had already cut a
+worktree, run `bun install`, and COMMITTED A BRIEF before refusing. My own guard test caught it —
+the test was worth running precisely because I expected it to pass.
+
+Hours earlier the same shape cost more: pruning merged worktrees, I `rm -rf`'d `.claude/` and
+`artifacts/` across 81 trees without checking whether they were TRACKED. Both are. That turned every
+worktree dirty with ` D` deletions, which is exactly the condition making `git worktree remove`
+refuse — so two passes removed zero while having already deleted things. I had dry-run the
+SELECTION and never the OPERATION.
+
+**The generalization: a guard placed after a side effect is not a guard, and a dry run that
+rehearses which items you will touch has not rehearsed what touching them does.** Verify the
+operation on ONE item, then batch.
+
+Repo law is what kept both cheap. `--force` being forbidden is why the worktree prune failed loudly
+instead of discarding work; never deleting branches is why the test branch is parked as
+`orphaned/999-good-slug`; not rewriting history is why the test commit was reverted rather than
+reset. Three rules I have grumbled about internally, each of which converted a mistake into a
+recoverable one tonight.
