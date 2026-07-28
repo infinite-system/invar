@@ -283,9 +283,10 @@ disposable per-render facades + a two-tier sparse revision overlay (fine per-ite
 per-block refs) with explicit eviction; a single frame effect pulls only the visible window
 through tracked accessors, subscribing to exactly the version refs it touches. Full-document
 aggregates that a frame consumes are revision-keyed snapshots or incrementally maintained scalars:
-fold ranges have line and collapsed-range indexes, serialized document length is a running count,
-and diff overview projection is cached by immutable alignment plus track height. Measured 4.7
-bytes/cell at 20M cells, +0.3 MB after 30 viewports.
+fold ranges preserve snapshot identity across non-structural edits and share one indexed snapshot
+with gutter markers, their collapsed projection is a compact typed mapping, serialized document
+length is a running count, and diff overview projection is cached by immutable alignment plus track
+height. Measured 4.7 bytes/cell at 20M cells, +0.3 MB after 30 viewports.
 
 **Generates:** The flyweight architecture; viewport rendering; packed highlight spans and
 `ScreenBuffer`; hot/warm/cold/disposed tiers; lazy LSP; `evict*` paths.
@@ -321,8 +322,11 @@ always-run byte-flush step: the edited glyph must be present in the first
 completed frame after its input byte. Its scale-edit mode extends that exact
 boundary through 30 editing keystrokes at 2k/20k/100k/500k/1M, while the wrap
 index contract requires identical typed-array writes and allocations at 2k
-and 1M. Millisecond samples remain report-only; the operation count is the
-blocking scale claim.
+and 1M. Its nested-fold-edit mode crosses the real PTY at 554,490 and 970,356
+lines with the 138,622-line top-level group both open and collapsed; the wrap
+index contract independently requires identical edit counts across both axes.
+Millisecond samples remain report-only; the operation count is the blocking
+scale claim.
 
 **Status:** established
 

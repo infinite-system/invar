@@ -224,14 +224,32 @@ test('collapsed fold projection is cached until document or fold state changes',
   editor.hasDocument.value = true;
   editor.toggleFoldAtLine(0);
 
+  const initialProjection = editor.collapsedFoldRanges;
   for (let readNumber = 0; readNumber < 10_000; readNumber++) {
-    expect(editor.collapsedFoldRanges).toHaveLength(1);
+    expect(editor.collapsedFoldRanges).toBe(initialProjection);
   }
   expect(editor.foldRangeReads).toBe(1);
 
   editor.document.setLine(1, '  answer: 43,');
-  expect(editor.collapsedFoldRanges).toHaveLength(1);
+  const nonStructuralEditProjection = editor.collapsedFoldRanges;
+  expect(nonStructuralEditProjection).toBe(initialProjection);
   expect(editor.foldRangeReads).toBe(2);
+
+  editor.document.setLine(1, '  answer: {');
+  expect(editor.collapsedFoldRanges).not.toBe(nonStructuralEditProjection);
+  expect(editor.foldRangeReads).toBe(3);
+});
+
+test('line-count edits invalidate a collapsed fold projection', () => {
+  const editor = new Editor.Class();
+  editor.document.loadFromText('const value = {\n  answer: 42,\n};', 'test.ts');
+  editor.hasDocument.value = true;
+  editor.toggleFoldAtLine(0);
+  const initialProjection = editor.collapsedFoldRanges;
+
+  editor.document.insertLine(0, '// inserted');
+
+  expect(editor.collapsedFoldRanges).not.toBe(initialProjection);
 });
 
 test('disabled code folding expands rows and performs zero structural reads', () => {

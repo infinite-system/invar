@@ -423,8 +423,10 @@ test('folded visual-row queries reuse one projection with O(1) line lookups', ()
   expect(CountingEditorWrap.foldProjectionBuildCount).toBe(1);
   expect(lineReads - readsAfterProjection).toBe(10_000);
 
+  const readsBeforeEquivalentFoldIdentity = lineReads;
   CountingEditorWrap.totalVisualRows(document, null, [...foldedRanges]);
-  expect(CountingEditorWrap.foldProjectionBuildCount).toBe(2);
+  expect(CountingEditorWrap.foldProjectionBuildCount).toBe(1);
+  expect(lineReads).toBe(readsBeforeEquivalentFoldIdentity);
 });
 
 test('property: segments partition, respect the width, and never split clusters', () => {

@@ -116,7 +116,9 @@ incremental sync. A second control restores the sole widest line to the
 shared fixture width and requires that forced maximum-width rescan mutation
 to be slower than every incremental 20k mutation. The same run measures
 visual-row-count hit rates over uniform line-length phases, exact wrap
-boundaries, and mid-row controls.
+boundaries, and mid-row controls. Its operational counter also drives
+collapse and expansion of the shared 138,621-line body at both nested-fixture
+sizes.
 USE IT WHEN: considering a change to `EditorWrap.syncWrapIndex` or claiming
 that cumulative-index edit work is user-visible.
 KNOWN RESULT (2026-07-28): incremental sync was 1.327–3.763 ms at 100k
@@ -128,6 +130,9 @@ separate `TextDocument` maximum-width-champion rescan. After replacements
 could inherit that championship before a rescan, 500k mutation measured
 0.007–0.045 ms and sync measured 7.015–11.488 ms; the 20k mutation control
 forced the legitimate shrink/rescan path to 4.272–4.496 ms.
+The nested fold-toggle counter measured identical collapse and expansion at
+554,490 and 970,356 lines: 138,621 visible-line writes, 138,621 row writes,
+34 block writes, and zero index-array allocations.
 CAUTION: the named boundary ends when `totalVisualRows` returns. It excludes
 PTY input, undo capture, reactive painting, and terminal output; use the
 input-byte-flush instrument for keypress-to-frame claims.
@@ -148,6 +153,23 @@ CAUTION: the boundary excludes fixture generation, target navigation, save,
 terminal display after bytes reach the PTY master, and language-server work
 (the isolated fixture sets a 1 KB suppression limit). The component
 `measure-editor-edit-path.ts` does not answer this end-to-end question.
+
+### `INPUT_BYTE_FLUSH_MODE=nested-fold-edit bun scripts/harness/measure-input-byte-flush.ts`
+The same editing-input-write to first complete DEC 2026 frame boundary across
+the shared 554,490- and 970,356-line nested JSON fixtures, both unfolded and
+with the 138,622-line first top-level group collapsed. Every ordered latency
+sample carries the contemporaneous 1 / 5 / 15-minute load averages. Its
+positive control preloads the removed per-revision full document rebuild and
+requires that defect to move the 554,490-line folded median by at least 10x.
+Folded sessions also measure collapse and expansion from the first chord byte
+to the first complete frame showing the requested state.
+USE IT WHEN: changing fold snapshot identity, the fold projection, or the
+folded cumulative wrap index and claiming the real editing path stays flat.
+CAUTION: initial file load and fold toggles are excluded from the editing
+latency boundary; toggles use their separately named chord-to-frame boundary.
+The component instrument separately reports the typed visible-line
+identity-fill duration and its share of alternating fold-toggle time. The app
+and PTY path itself is real.
 
 ### `INVAR_REAL_CODEX_INLINE_REWRITE=1 bun scripts/harness/measure-inline-rewrite-codex.ts`
 One billed, real-Codex inline-rewrite drive through the PTY. It reports request-now-chord-to-visible

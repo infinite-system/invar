@@ -59,23 +59,38 @@ class IndexProbeDocument {
 class $CountingEditorWrap extends EditorWrap.$Class {
   static rowArrayAllocations = 0;
   static blockArrayAllocations = 0;
+  static visibleLineArrayAllocations = 0;
   static rowWrites = 0;
   static blockWrites = 0;
+  static visibleLineWrites = 0;
 
   static resetCounts(): void {
     this.rowArrayAllocations = 0;
     this.blockArrayAllocations = 0;
+    this.visibleLineArrayAllocations = 0;
     this.rowWrites = 0;
     this.blockWrites = 0;
+    this.visibleLineWrites = 0;
   }
 
   static counts(): WrapIndexOperationCounts {
     return {
       blockArrayAllocations: this.blockArrayAllocations,
       blockWrites: this.blockWrites,
+      visibleLineArrayAllocations: this.visibleLineArrayAllocations,
+      visibleLineWrites: this.visibleLineWrites,
       rowArrayAllocations: this.rowArrayAllocations,
       rowWrites: this.rowWrites,
     };
+  }
+
+  static foldProjection(
+    lineCount: number,
+    foldedRanges: NonNullable<
+      Parameters<typeof EditorWrap.Class.totalVisualRows>[2]
+    >,
+  ) {
+    return this.buildFoldProjection(lineCount, foldedRanges);
   }
 
   protected static override allocateRowCounts(lineCount: number): Uint32Array {
@@ -88,6 +103,13 @@ class $CountingEditorWrap extends EditorWrap.$Class {
   ): Uint32Array {
     this.blockArrayAllocations++;
     return super.allocateBlockRowCounts(blockCount);
+  }
+
+  protected static override allocateVisibleLineByLine(
+    lineCount: number,
+  ): Uint32Array {
+    this.visibleLineArrayAllocations++;
+    return super.allocateVisibleLineByLine(lineCount);
   }
 
   protected static override writeRowCount(
@@ -107,11 +129,22 @@ class $CountingEditorWrap extends EditorWrap.$Class {
     this.blockWrites++;
     super.writeBlockRowCount(blockRowCounts, blockIndex, rowCount);
   }
+
+  protected static override writeVisibleLine(
+    visibleLineByLine: Uint32Array,
+    lineIndex: number,
+    visibleLineIndex: number,
+  ): void {
+    this.visibleLineWrites++;
+    super.writeVisibleLine(visibleLineByLine, lineIndex, visibleLineIndex);
+  }
 }
 
 interface WrapIndexOperationCounts {
   readonly blockArrayAllocations: number;
   readonly blockWrites: number;
+  readonly visibleLineArrayAllocations: number;
+  readonly visibleLineWrites: number;
   readonly rowArrayAllocations: number;
   readonly rowWrites: number;
 }
@@ -135,6 +168,15 @@ function makeLines(count: number): string[] {
 }
 
 describe('EditorWrap cumulative index', () => {
+  test('the typed fold projection preserves visible-line mapping semantics', () => {
+    const projection = $CountingEditorWrap.foldProjection(5, [
+      { startLine: 0, endLine: 3, kind: 'delimiter' },
+    ]);
+
+    expect(projection.visibleLineByLine).toBeInstanceOf(Uint32Array);
+    expect([...projection.visibleLineByLine]).toEqual([0, 0, 0, 0, 4]);
+  });
+
   test('extent equals the naive walk, and an unchanged revision costs ZERO document reads', () => {
     const document = new IndexProbeDocument(makeLines(200));
     const expected = naiveTotal(document, 10);
@@ -188,6 +230,8 @@ describe('EditorWrap cumulative index', () => {
     expect(countsByLineCount[0]).toEqual({
       blockArrayAllocations: 0,
       blockWrites: 0,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     });
@@ -210,6 +254,8 @@ describe('EditorWrap cumulative index', () => {
     expect($CountingEditorWrap.counts()).toEqual({
       blockArrayAllocations: 0,
       blockWrites: 1,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     });
@@ -229,9 +275,118 @@ describe('EditorWrap cumulative index', () => {
     expect($CountingEditorWrap.counts()).toEqual({
       blockArrayAllocations: 1,
       blockWrites: 2_000,
+      visibleLineArrayAllocations: 1,
+      visibleLineWrites: 2_000,
       rowArrayAllocations: 1,
       rowWrites: 2_000,
     });
+  });
+
+  test('edit counts are flat across the nested fixture fold and size axes', () => {
+    const levelZeroFoldRange = {
+      startLine: 1,
+      endLine: 138_622,
+      kind: 'delimiter' as const,
+    };
+    const cases = [554_490, 970_356].flatMap((lineCount) =>
+      [false, true].map((collapsed) => {
+        const document = new IndexProbeDocument(makeLines(lineCount));
+        const foldedRanges = collapsed ? [levelZeroFoldRange] : [];
+        const initialTotal = $CountingEditorWrap.totalVisualRows(
+          document,
+          80,
+          foldedRanges,
+        );
+        if (collapsed) {
+          expect(initialTotal).toBe(lineCount - 138_621);
+        }
+        $CountingEditorWrap.resetCounts();
+
+        document.editLine(0, `${document.line(0)}x`);
+        $CountingEditorWrap.totalVisualRows(document, 80, foldedRanges);
+        return {
+          collapsed,
+          counts: $CountingEditorWrap.counts(),
+          lineCount,
+        };
+      }),
+    );
+    const expectedCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 0,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
+      rowArrayAllocations: 0,
+      rowWrites: 1,
+    };
+
+    for (const measuredCase of cases) {
+      expect(measuredCase.counts).toEqual(expectedCounts);
+    }
+  });
+
+  test('fold toggles patch only the shared hidden body at both document sizes', () => {
+    const levelZeroFoldRange = {
+      startLine: 1,
+      endLine: 138_622,
+      kind: 'delimiter' as const,
+    };
+    const measurements = [554_490, 970_356].map((lineCount) => {
+      const document = new IndexProbeDocument(makeLines(lineCount));
+      expect($CountingEditorWrap.totalVisualRows(document, 80)).toBe(lineCount);
+      $CountingEditorWrap.resetCounts();
+
+      expect(
+        $CountingEditorWrap.totalVisualRows(document, 80, [levelZeroFoldRange]),
+      ).toBe(lineCount - 138_621);
+      const collapse = $CountingEditorWrap.counts();
+      $CountingEditorWrap.resetCounts();
+
+      expect($CountingEditorWrap.totalVisualRows(document, 80)).toBe(lineCount);
+      const expand = $CountingEditorWrap.counts();
+      return { collapse, expand, lineCount };
+    });
+    const expectedToggleCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 34,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 138_621,
+      rowArrayAllocations: 0,
+      rowWrites: 138_621,
+    };
+
+    for (const measurement of measurements) {
+      expect(measurement.collapse).toEqual(expectedToggleCounts);
+      expect(measurement.expand).toEqual(expectedToggleCounts);
+    }
+  });
+
+  test('fold patches preserve direct visible-line values through nested toggles', () => {
+    const document = new IndexProbeDocument(makeLines(10));
+    const outerRange = {
+      startLine: 0,
+      endLine: 8,
+      kind: 'delimiter' as const,
+    };
+    const innerRange = {
+      startLine: 2,
+      endLine: 5,
+      kind: 'delimiter' as const,
+    };
+
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [innerRange]),
+    ).toBe(2);
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [
+        outerRange,
+        innerRange,
+      ]),
+    ).toBe(0);
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [innerRange]),
+    ).toBe(2);
+    expect($CountingEditorWrap.visualRowOfLine(document, 4, 80)).toBe(4);
   });
 
   test('insertions and deletions realign the tail (head/tail identity trim)', () => {
