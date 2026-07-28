@@ -12,6 +12,59 @@ import { EditorWrap } from '../../src/modules/editor/EditorWrap';
 import { TextDocument } from '../../src/modules/editor/TextDocument';
 import { QuietLock } from './QuietLock';
 
+class $CountingEditorWrap extends EditorWrap.$Class {
+  static rowArrayAllocations = 0;
+  static blockArrayAllocations = 0;
+  static rowWrites = 0;
+  static blockWrites = 0;
+
+  static resetCounts(): void {
+    this.rowArrayAllocations = 0;
+    this.blockArrayAllocations = 0;
+    this.rowWrites = 0;
+    this.blockWrites = 0;
+  }
+
+  static counts(): WrapIndexOperationCounts {
+    return {
+      blockArrayAllocations: this.blockArrayAllocations,
+      blockWrites: this.blockWrites,
+      rowArrayAllocations: this.rowArrayAllocations,
+      rowWrites: this.rowWrites,
+    };
+  }
+
+  protected static override allocateRowCounts(lineCount: number): Uint32Array {
+    this.rowArrayAllocations++;
+    return super.allocateRowCounts(lineCount);
+  }
+
+  protected static override allocateBlockRowCounts(
+    blockCount: number,
+  ): Uint32Array {
+    this.blockArrayAllocations++;
+    return super.allocateBlockRowCounts(blockCount);
+  }
+
+  protected static override writeRowCount(
+    rowCounts: Uint32Array,
+    lineIndex: number,
+    rowCount: number,
+  ): void {
+    this.rowWrites++;
+    super.writeRowCount(rowCounts, lineIndex, rowCount);
+  }
+
+  protected static override writeBlockRowCount(
+    blockRowCounts: Uint32Array,
+    blockIndex: number,
+    rowCount: number,
+  ): void {
+    this.blockWrites++;
+    super.writeBlockRowCount(blockRowCounts, blockIndex, rowCount);
+  }
+}
+
 class $EditorEditPathMeasurement {
   protected static get LINE_COUNTS(): readonly number[] {
     return [2_000, 20_000, 100_000, 500_000];
@@ -76,6 +129,7 @@ class $EditorEditPathMeasurement {
     );
     const maximumWidthRescanPositiveControl =
       this.measureMaximumWidthRescanPositiveControl(measurements);
+    const operationalScaleContract = this.measureOperationalScaleContract();
     const visualRowCountHitRate = this.measureVisualRowCountHitRate();
     const hundredThousandLineMeasurements = measurements.filter(
       (measurement) => measurement.lineCount === 100_000,
@@ -107,6 +161,7 @@ class $EditorEditPathMeasurement {
           generatedAt: new Date().toISOString(),
           measurements,
           maximumWidthRescanPositiveControl,
+          operationalScaleContract,
           positiveControl,
           quietLock: {
             holderName: process.env.INVAR_QUIET_LOCK_HOLDER_NAME,
@@ -353,6 +408,84 @@ class $EditorEditPathMeasurement {
     };
   }
 
+  protected static measureOperationalScaleContract(): OperationalScaleContract {
+    const incremental = [2_000, 500_000].map((lineCount) => {
+      const document = new TextDocument.Class();
+      const fixtureLines = this.flatFixtureLines(lineCount);
+      document.replaceAll(fixtureLines);
+      const targetLineIndex = Math.floor(lineCount / 2);
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      $CountingEditorWrap.resetCounts();
+      document.setLine(
+        targetLineIndex,
+        `${fixtureLines[targetLineIndex] ?? ''}x`,
+      );
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      return {
+        counts: $CountingEditorWrap.counts(),
+        lineCount,
+        targetLineIndex,
+      };
+    });
+    const forcedFullRebuildDocument = new TextDocument.Class();
+    const forcedFullRebuildLines = this.flatFixtureLines(
+      this.POSITIVE_CONTROL_LINE_COUNT,
+    );
+    forcedFullRebuildDocument.replaceAll(forcedFullRebuildLines);
+    $CountingEditorWrap.totalVisualRows(
+      forcedFullRebuildDocument,
+      this.WRAP_WIDTH,
+    );
+    $CountingEditorWrap.resetCounts();
+    const targetLineIndex = Math.floor(this.POSITIVE_CONTROL_LINE_COUNT / 2);
+    forcedFullRebuildDocument.setLine(
+      targetLineIndex,
+      `${forcedFullRebuildLines[targetLineIndex] ?? ''}x`,
+    );
+    $CountingEditorWrap.totalVisualRows(
+      forcedFullRebuildDocument,
+      this.WRAP_WIDTH,
+      this.projectionNeutralFoldRanges(this.POSITIVE_CONTROL_LINE_COUNT),
+    );
+    const forcedFullRebuild = {
+      counts: $CountingEditorWrap.counts(),
+      lineCount: this.POSITIVE_CONTROL_LINE_COUNT,
+      targetLineIndex,
+    };
+    const expectedIncrementalCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 0,
+      rowArrayAllocations: 0,
+      rowWrites: 1,
+    };
+    if (
+      JSON.stringify(incremental[0]?.counts) !==
+        JSON.stringify(expectedIncrementalCounts) ||
+      JSON.stringify(incremental[1]?.counts) !==
+        JSON.stringify(expectedIncrementalCounts)
+    ) {
+      throw new Error(
+        `Editor wrap-index edit operation count scaled with line count: ${JSON.stringify(incremental)}`,
+      );
+    }
+    if (
+      forcedFullRebuild.counts.rowWrites <= expectedIncrementalCounts.rowWrites
+    ) {
+      throw new Error(
+        'Editor wrap-index operation counter positive control did not detect ' +
+          `the forced full rebuild: ${JSON.stringify(forcedFullRebuild)}`,
+      );
+    }
+    return {
+      forcedFullRebuild,
+      incremental,
+      requirement:
+        '2k and 500k same-line edits allocate no index arrays and perform ' +
+        'one row write; a forced rebuild must move the counter',
+      satisfied: true,
+    };
+  }
+
   protected static visualRowCountTrial(
     lineLength: number,
     wrapWidth: number,
@@ -461,6 +594,26 @@ interface EditSyncCaseMeasurement {
   readonly targetLineIndex: number;
   readonly wordWrap: WordWrapMode;
   readonly wrapWidth: number | null;
+}
+
+interface WrapIndexOperationCounts {
+  readonly blockArrayAllocations: number;
+  readonly blockWrites: number;
+  readonly rowArrayAllocations: number;
+  readonly rowWrites: number;
+}
+
+interface WrapIndexOperationMeasurement {
+  readonly counts: WrapIndexOperationCounts;
+  readonly lineCount: number;
+  readonly targetLineIndex: number;
+}
+
+interface OperationalScaleContract {
+  readonly forcedFullRebuild: WrapIndexOperationMeasurement;
+  readonly incremental: readonly WrapIndexOperationMeasurement[];
+  readonly requirement: string;
+  readonly satisfied: true;
 }
 
 interface EditSyncSample {

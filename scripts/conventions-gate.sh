@@ -49,6 +49,14 @@ if ! "$bun_binary" scripts/ast-query.ts text-input-census --require-zero; then
   fail=1
 fi
 
+# 1.55) WRAP-INDEX EDIT CENSUS: a same-line edit may loop over its changed range, never the
+#       document-sized line count or an array length.
+if ! "$bun_binary" scripts/ast-query.ts wrap-index-edit-loop-census \
+  --path src/modules/editor --require-zero; then
+  echo "CONVENTIONS FAIL: document-sized loop in EditorWrap.syncWrapIndex"
+  fail=1
+fi
+
 # 1.6) HASH-PRIVATE CENSUS: Static() publishes a subclass receiver, which
 #      cannot access a #private name declared by its superclass. Parse the
 #      syntax so comments and strings containing a hash cannot trip the ban.

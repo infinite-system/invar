@@ -11,6 +11,7 @@
 //   bun scripts/ast-query.ts private-members      # `private` modifiers + #private names (grammar debt)
 //   bun scripts/ast-query.ts hash-private-members # #private names only
 //   bun scripts/ast-query.ts text-input-census    # one-line input state + editing members outside TextInputModel
+//   bun scripts/ast-query.ts wrap-index-edit-loop-census # document-sized loops in syncWrapIndex
 // Flags: --tests (include *.test.ts)  --path <glob-root under repo, default src/modules>
 //        --require-zero (exit 1 when structural matches remain)
 import * as ts from 'typescript';
@@ -36,7 +37,8 @@ if (!queryMode) {
   console.error(
     'usage: bun scripts/ast-query.ts ' +
       '<calls|named-calls|news|identifiers|classes|module-functions|' +
-      'private-members|hash-private-members|text-input-census> ' +
+      'private-members|hash-private-members|text-input-census|' +
+      'wrap-index-edit-loop-census> ' +
       '[name] [--tests] [--path <root>]',
   );
   process.exit(2);
@@ -114,6 +116,52 @@ function textInputCensusLabel(node: ts.Node): string | null {
   return `class ${node.name?.text ?? '<anonymous>'} state=[${stateMembers.join(',')}] edits=[${editingMembers.join(',')}]`;
 }
 
+function isInsideNamedMethod(node: ts.Node, methodName: string): boolean {
+  let ancestor: ts.Node | undefined = node.parent;
+  while (ancestor !== undefined) {
+    if (
+      ts.isMethodDeclaration(ancestor) &&
+      ts.isIdentifier(ancestor.name) &&
+      ancestor.name.text === methodName
+    ) {
+      return true;
+    }
+    ancestor = ancestor.parent;
+  }
+  return false;
+}
+
+function wrapIndexEditLoopCensusLabel(node: ts.Node): string | null {
+  if (!isInsideNamedMethod(node, 'syncWrapIndex')) return null;
+  const condition = ts.isForStatement(node)
+    ? node.condition
+    : ts.isWhileStatement(node) || ts.isDoStatement(node)
+      ? node.expression
+      : null;
+  if (condition === null || condition === undefined) return null;
+
+  let documentSizedBound: string | null = null;
+  const visitCondition = (candidate: ts.Node): void => {
+    if (documentSizedBound !== null) return;
+    if (ts.isIdentifier(candidate) && candidate.text === 'lineCount') {
+      documentSizedBound = 'lineCount';
+      return;
+    }
+    if (
+      ts.isPropertyAccessExpression(candidate) &&
+      candidate.name.text === 'length'
+    ) {
+      documentSizedBound = candidate.getText();
+      return;
+    }
+    ts.forEachChild(candidate, visitCondition);
+  };
+  visitCondition(condition);
+  return documentSizedBound === null
+    ? null
+    : `${ts.SyntaxKind[node.kind]} bounded by ${documentSizedBound}`;
+}
+
 const predicateByMode: Record<string, MatchPredicate> = {
   calls: (node) =>
     ts.isCallExpression(node) &&
@@ -164,6 +212,7 @@ const predicateByMode: Record<string, MatchPredicate> = {
   'hash-private-members': (node) =>
     ts.isPrivateIdentifier(node) ? node.text : null,
   'text-input-census': (node) => textInputCensusLabel(node),
+  'wrap-index-edit-loop-census': (node) => wrapIndexEditLoopCensusLabel(node),
 };
 
 const predicate = predicateByMode[queryMode];
