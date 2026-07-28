@@ -141,19 +141,35 @@ cmd_launch() {
   echo "launch: timed out after ${timeout}s waiting for the prompt" >&2; return 1
 }
 
+# Confirmation is the hard part. The obvious check — "did the pane go busy?" — is a check with
+# ONE REACHABLE OUTCOME whenever the session was ALREADY busy: it passes trivially and cannot
+# distinguish "my message started a turn" from "a turn was already running." That false positive
+# lost a queued follow-up on 2026-07-28: send reported success while the text sat in the composer
+# as `[Pasted Content 1022 chars]`.
+#
+# So confirmation is the COMPOSER EMPTYING, which is true only if the input was consumed, and is
+# meaningful whether or not a turn was already in flight. A large paste renders as
+# `[Pasted Content N chars]`; while that marker is present nothing has been submitted.
+_composer_pending() {
+  _pane "$1" | grep -qE '\[Pasted Content [0-9]+ chars\]'
+}
+
 cmd_send() {
   local name="${1:?send: need a name}" msg="${2?send: need a message}"
   _alive "$name" || { echo "send: no session '$name'" >&2; return 1; }
-  local s busy i; s="$(_sess "$name")"; busy="$(_get "$name" busy)"
+  local s i; s="$(_sess "$name")"
   tmux send-keys -t "$s" -l -- "$msg"   # -l: literal text, no key-name interpretation
   sleep 0.3
   tmux send-keys -t "$s" Enter
-  for ((i=0; i<6; i++)); do             # confirm it submitted (turn went busy)
-    sleep 0.4
-    [ -n "$busy" ] && _pane "$name" | grep -qE "$busy" && return 0
+  # Up to ~8s of Enter nudges until the composer is empty. codex needs a second Enter when the
+  # text arrived as bracketed paste chunks — the first Enter is absorbed into the paste.
+  for ((i=0; i<10; i++)); do
+    sleep 0.8
+    _composer_pending "$name" || { echo submitted; return 0; }
+    tmux send-keys -t "$s" Enter
   done
-  tmux send-keys -t "$s" Enter          # belt-and-suspenders: nudge once (no-op at empty prompt)
-  return 0
+  echo "send: NOT CONFIRMED — text may still sit unsubmitted in the composer" >&2
+  return 1
 }
 
 cmd_wait() {

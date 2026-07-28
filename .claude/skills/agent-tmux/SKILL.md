@@ -88,6 +88,28 @@ marker to confirm the turn started**, nudging Enter once if it didn't. A bare `s
 chars left the message in the composer as `[Pasted Content 1022 chars][Pasted Content 1020 chars]`,
 unsubmitted, while a pane-only check happily reported idle.
 
+## What each delivery check actually proves — the ladder
+
+Three sends failed in one morning, each because a check could report only one answer. Confirming
+delivery to a nested agent has FIVE distinguishable levels, and it matters which one you have:
+
+| check | proves |
+|---|---|
+| the text appears in the pane | **nothing** — an unsubmitted composer looks identical |
+| the pane went busy | **nothing when it was ALREADY busy** — passes trivially |
+| `pipe-pane` transcript contains the text | **nothing** — it captures your own echoed keystrokes |
+| the composer emptied | the input was **consumed** |
+| a `↳` queued marker, or a transcript TURN | it is **accepted and will run** / it **ran** |
+
+`send` confirms at the composer-empty level, which is where a sender can honestly stop, and it now
+**fails loudly** (`return 1`) if the composer never empties. The version it replaced polled for busy
+and returned success unconditionally — so against an already-busy session it reported a delivered
+message that was sitting in the composer as `[Pasted Content 1022 chars]`.
+
+Note the asymmetry that makes the naive checks so tempting: all three useless ones are cheap and
+usually correlate with success. They only diverge in the exact situation you care about — steering a
+builder that is already mid-turn.
+
 ## Resuming — a killed builder is not lost work
 
 `codex resume <SESSION_ID>` restores full context, and **an `exec` run leaves a resumable rollout**
