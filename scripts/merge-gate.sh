@@ -124,22 +124,12 @@ step() {
   fail=1
   rm -f "$step_log"
 }
-# A SOFT step: it RUNS and REPORTS (so a regression surfaces in the gate), but a non-zero exit does
-# NOT block the commit. Use only where the numbers are informational and the load-bearing invariant is
-# hard-gated elsewhere (perf's idle-quiescence is enforced by behavioral-contracts).
-soft_step() {
-  local name="$1"; shift
-  echo "== merge-gate: $name (SOFT — reports, does not block) =="
-  if "$@" >/tmp/merge-gate-soft.$$.log 2>&1; then
-    echo "  OK    $name"
-  else
-    echo "  WARN  $name — target miss or measurement gap (soft, not blocking)"; tail -20 /tmp/merge-gate-soft.$$.log | sed 's/^/    | /'
-  fi
-  rm -f /tmp/merge-gate-soft.$$.log
-}
 # A reporting hard step: unlike step(), successful measurement output is part of the gate log.
 reporting_step() {
   local name="$1"; shift
+  local step_finished_milliseconds
+  local step_started_milliseconds
+  step_started_milliseconds="$(date +%s%3N)"
   echo "== merge-gate: $name =="
   if "$@" >/tmp/merge-gate-reporting.$$.log 2>&1; then
     sed 's/^/    | /' /tmp/merge-gate-reporting.$$.log
@@ -150,6 +140,11 @@ reporting_step() {
     fail=1
   fi
   rm -f /tmp/merge-gate-reporting.$$.log
+  step_finished_milliseconds="$(date +%s%3N)"
+  echo "merge-gate timing: serial step $(
+    format_duration_milliseconds \
+      "$((step_finished_milliseconds - step_started_milliseconds))"
+  ) — $name"
 }
 
 # SWAP (2026-07-24, user-approved): the PTY harness suite is the per-gate smoke phase and the
@@ -179,6 +174,7 @@ declare -a serial_smoke_sources=()
 # printed under "PASSED ONLY ON RETRY" — an instrument failing in the direction of reassurance.
 declare -a retried_pass_smoke_names=()
 declare -a retried_fail_smoke_names=()
+declare -a parallel_smoke_duration_records=()
 
 quoted_command() {
   local command_text=""
@@ -236,51 +232,60 @@ execute_registered_smoke_job() {
   local job_number="$2"
   local smoke_name="$3"
   local smoke_command="$4"
+  local duration_file="/tmp/merge-gate-duration.$$.${phase_name}.${job_number}"
   local step_log="/tmp/merge-gate-step.$$.${phase_name}.${job_number}.log"
   local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
   local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
   local retry_outcome_file="/tmp/merge-gate-retry-outcome.$$.${phase_name}.${job_number}"
   local failure_slug
+  local job_finished_milliseconds
+  local job_started_milliseconds
+  local smoke_passed=0
   failure_slug="$(echo "$smoke_name" | tr -cs 'a-zA-Z0-9' '-')"
+  job_started_milliseconds="$(date +%s%3N)"
 
   : >"$summary_log"
   echo none >"$retry_outcome_file"
   echo "== merge-gate: $smoke_name ==" >>"$summary_log"
   if bash -c "$smoke_command" >"$step_log" 2>&1; then
     echo "  OK    $smoke_name" >>"$summary_log"
-    echo 0 >"$result_file"
-    rm -f "$step_log"
-    return
-  fi
-
-  if grep -q 'Timed out' "$step_log"; then
-    cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
-    echo failed >"$retry_outcome_file"
-    echo "  RETRY $smoke_name — timeout-class failure; one quiet retry (attempt 1 log preserved)" >>"$summary_log"
-    sleep 10
-    if bash -c "$smoke_command" >"$step_log" 2>&1; then
-      echo "  OK    $smoke_name (clean on retry; first attempt was starvation-class)" >>"$summary_log"
-      echo passed >"$retry_outcome_file"
-      echo 0 >"$result_file"
-      rm -f "$step_log"
-      return
+    smoke_passed=1
+  else
+    if grep -q 'Timed out' "$step_log"; then
+      cp "$step_log" "$failure_log_directory/$failure_slug.attempt1.log"
+      echo failed >"$retry_outcome_file"
+      echo "  RETRY $smoke_name — timeout-class failure; one quiet retry (attempt 1 log preserved)" >>"$summary_log"
+      sleep 10
+      if bash -c "$smoke_command" >"$step_log" 2>&1; then
+        echo "  OK    $smoke_name (clean on retry; first attempt was starvation-class)" >>"$summary_log"
+        echo passed >"$retry_outcome_file"
+        smoke_passed=1
+      fi
     fi
   fi
 
-  cp "$step_log" "$failure_log_directory/$failure_slug.log"
-  echo "  FAIL  $smoke_name (full log: $failure_log_directory/$failure_slug.log)" >>"$summary_log"
-  tail -25 "$step_log" | sed 's/^/    | /' >>"$summary_log"
-  echo 1 >"$result_file"
+  if [ "$smoke_passed" -eq 1 ]; then
+    echo 0 >"$result_file"
+  else
+    cp "$step_log" "$failure_log_directory/$failure_slug.log"
+    echo "  FAIL  $smoke_name (full log: $failure_log_directory/$failure_slug.log)" >>"$summary_log"
+    tail -25 "$step_log" | sed 's/^/    | /' >>"$summary_log"
+    echo 1 >"$result_file"
+  fi
   rm -f "$step_log"
+  job_finished_milliseconds="$(date +%s%3N)"
+  echo "$((job_finished_milliseconds - job_started_milliseconds))" >"$duration_file"
 }
 
 collect_registered_smoke_job() {
   local phase_name="$1"
   local job_number="$2"
   local smoke_name="$3"
+  local duration_file="/tmp/merge-gate-duration.$$.${phase_name}.${job_number}"
   local summary_log="/tmp/merge-gate-summary.$$.${phase_name}.${job_number}.log"
   local result_file="/tmp/merge-gate-result.$$.${phase_name}.${job_number}"
   local retry_outcome_file="/tmp/merge-gate-retry-outcome.$$.${phase_name}.${job_number}"
+  local job_duration_milliseconds=0
   local job_result=1
   local retry_outcome=none
 
@@ -292,10 +297,24 @@ collect_registered_smoke_job() {
   fi
   if [ -f "$result_file" ]; then job_result="$(cat "$result_file")"; fi
   if [ -f "$retry_outcome_file" ]; then retry_outcome="$(cat "$retry_outcome_file")"; fi
+  if [ -f "$duration_file" ]; then
+    job_duration_milliseconds="$(cat "$duration_file")"
+  fi
   if [ "$job_result" -ne 0 ]; then fail=1; fi
   if [ "$retry_outcome" = passed ]; then retried_pass_smoke_names+=("$smoke_name"); fi
   if [ "$retry_outcome" = failed ]; then retried_fail_smoke_names+=("$smoke_name"); fi
-  rm -f "$summary_log" "$result_file" "$retry_outcome_file"
+  if [ "$phase_name" = "serial" ]; then
+    echo "merge-gate timing: serial step $(format_duration_milliseconds "$job_duration_milliseconds") — $smoke_name"
+  else
+    parallel_smoke_duration_records+=(
+      "$job_duration_milliseconds"$'\t'"$smoke_name"
+    )
+  fi
+  rm -f \
+    "$duration_file" \
+    "$summary_log" \
+    "$result_file" \
+    "$retry_outcome_file"
 }
 
 run_parallel_smoke_pool() {
@@ -339,6 +358,38 @@ run_serial_smokes() {
 format_duration() {
   local duration_seconds="$1"
   printf '%dm%02ds' "$((duration_seconds / 60))" "$((duration_seconds % 60))"
+}
+
+format_duration_milliseconds() {
+  local duration_milliseconds="$1"
+  local remaining_milliseconds="$((duration_milliseconds % 60000))"
+  printf '%dm%02d.%03ds' \
+    "$((duration_milliseconds / 60000))" \
+    "$((remaining_milliseconds / 1000))" \
+    "$((remaining_milliseconds % 1000))"
+}
+
+report_slowest_parallel_smoke_jobs() {
+  local displayed_job_count=0
+  local job_duration_milliseconds
+  local smoke_name
+  local slowest_job_count=10
+
+  if [ "${#parallel_smoke_duration_records[@]}" -lt "$slowest_job_count" ]; then
+    slowest_job_count="${#parallel_smoke_duration_records[@]}"
+  fi
+  echo "merge-gate timing: slowest parallel-safe jobs (top $slowest_job_count of ${#parallel_smoke_duration_records[@]})"
+  while IFS=$'\t' read -r job_duration_milliseconds smoke_name; do
+    displayed_job_count=$((displayed_job_count + 1))
+    printf 'merge-gate timing:   %2d. %s — %s\n' \
+      "$displayed_job_count" \
+      "$(format_duration_milliseconds "$job_duration_milliseconds")" \
+      "$smoke_name"
+    if [ "$displayed_job_count" -ge "$slowest_job_count" ]; then break; fi
+  done < <(
+    printf '%s\n' "${parallel_smoke_duration_records[@]}" |
+      sort -t $'\t' -k1,1nr
+  )
 }
 
 validate_smoke_classification() {
@@ -451,7 +502,11 @@ if [ "${FAST:-0}" != "1" ]; then
   # 4) Driving SMOKES — the real user paths.
   parallel_safe_full_tmux_smoke "smoke: editor"      bash scripts/smoke-editor.sh
   parallel_safe_smoke "smoke: editor harness" bun scripts/harness/smoke-editor-harness.ts
-  serial_smoke "smoke: inline rewrite harness" bun scripts/harness/smoke-inline-rewrite-harness.ts
+  # Pool-safe: its verdict is content and state based, and ten six-worker
+  # pool runs completed without a retry or failure.
+  parallel_safe_smoke \
+    "smoke: inline rewrite harness" \
+    bun scripts/harness/smoke-inline-rewrite-harness.ts
   # The dirty marker is content-derived: typing then BACKSPACING (no undo) must clear the marker, a
   # deleted-and-retyped line must read clean, and a mid-session save must move the baseline.
   parallel_safe_smoke "smoke: dirty-marker harness" bun scripts/harness/smoke-dirty-marker-harness.ts
@@ -588,10 +643,12 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_smoke "smoke: terminal harness" bun scripts/harness/smoke-terminal-harness.ts
   parallel_safe_smoke "smoke: tasks harness" bun scripts/harness/smoke-tasks-harness.ts
   parallel_safe_smoke "smoke: terminal backpressure harness" bun scripts/harness/smoke-terminal-backpressure-harness.ts
-  # Serial because it launches several terminal applications. Its blocking
-  # verdict is ordering/count based: reduced motion paints the complete command
-  # in its first typing frame, and slow typing produces more partial frames.
-  serial_smoke "smoke: terminal stage harness" bun scripts/harness/smoke-terminal-stage-harness.ts
+  # Pool-safe: its blocking verdict is ordering/count based. Reduced motion
+  # paints the complete command in its first typing frame, slow typing produces
+  # more partial frames, and ten six-worker pool runs completed cleanly.
+  parallel_safe_smoke \
+    "smoke: terminal stage harness" \
+    bun scripts/harness/smoke-terminal-stage-harness.ts
   parallel_safe_smoke "smoke: terminal follow harness" bun scripts/harness/smoke-terminal-follow-harness.ts
   parallel_safe_full_tmux_smoke "smoke: terminal"    bash scripts/smoke-terminal.sh
   parallel_safe_smoke "smoke: image-preview harness" bun scripts/harness/smoke-image-preview-harness.ts
@@ -613,6 +670,7 @@ echo "== merge-gate: parallel-safe smoke pool (${#parallel_smoke_names[@]} jobs,
 run_parallel_smoke_pool
 parallel_phase_elapsed_seconds="$(( $(date +%s) - parallel_phase_started_seconds ))"
 echo "merge-gate timing: parallel-safe phase $(format_duration "$parallel_phase_elapsed_seconds") (${#parallel_smoke_names[@]} jobs, $gate_worker_count workers)"
+report_slowest_parallel_smoke_jobs
 
 # invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
 serial_phase_started_seconds="$(date +%s)"
@@ -625,15 +683,6 @@ run_serial_tail() {
   reporting_step \
     "input byte first-frame ordering + timing trend (5 sessions)" \
     bun scripts/harness/input-byte-flush-gate.ts
-  # 6) Perf baselines are soft: the load-bearing idle-quiescence invariant is
-  # hard-gated above.
-  if [ "${FAST:-0}" != "1" ] && [ "${SKIP_PERF:-0}" != "1" ]; then
-    soft_step \
-      "perf-baselines (memory/CPU/latency)" \
-      bash scripts/perf-baselines.sh
-  elif [ "${FAST:-0}" != "1" ]; then
-    echo "== merge-gate: (SKIP_PERF=1) skipped perf-baselines =="
-  fi
 }
 run_serial_tail
 serial_phase_elapsed_seconds="$(( $(date +%s) - serial_phase_started_seconds ))"

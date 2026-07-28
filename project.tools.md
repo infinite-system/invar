@@ -130,6 +130,15 @@ plain fields, plus three report-only categories for construction-captured or mod
 reads. Refuses to run unless its positive-control fixture flags every category.
 USE IT WHEN: a value looks stale, or after moving state between owners.
 
+### `bash scripts/perf-baselines.sh`
+On-demand memory, idle CPU, lifecycle, startup, and input-latency report. The
+script takes the machine-wide quiet lock itself and records target misses
+without making them blocking verdicts. It is deliberately outside
+`scripts/merge-gate.sh`: its results are soft, while the corresponding
+load-bearing idle and input-ordering contracts remain in the blocking gate.
+USE IT WHEN: changing resource lifetime, startup, rendering, or input-path
+costs, and in scheduled nightly performance runs.
+
 ### `bun scripts/check-coverage-ratchet.ts` · `bun scripts/check-harness-wait-observation.ts`
 Gate checkers, but runnable alone while iterating. The ratchet verifies DECLARED counts against
 actual ones, so run it before assuming a decrease is disclosed.

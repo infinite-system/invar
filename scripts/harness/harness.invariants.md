@@ -522,7 +522,8 @@ The soft performance step is outside the blocking population.
 work counts; their FPS canaries call `warn`, never `bad`. Terminal-stage checks
 first-frame completeness and relative completed-frame counts. Input-byte
 blocking authority is `completedFramesUntilCondition === 1`, while its
-millisecond thresholds only warn. `perf-baselines` runs through `soft_step`.
+millisecond thresholds only warn. `perf-baselines.sh` remains an on-demand
+soft report outside `merge-gate.sh`.
 
 **Generates:** Gate verdicts independent of machine load; concurrent gates
 that can both reach valid blocking verdicts; retained diagnostic timings
@@ -531,7 +532,8 @@ without timing-based serialization.
 **Rejected alternatives:** Widen duration thresholds until contended runs pass
 — that hides regressions without removing load from the verdict.
 
-**Evidence:** `scripts/merge-gate.sh`; `scripts/behavioral-contracts.sh`;
+**Evidence:** `scripts/merge-gate.sh`; `scripts/perf-baselines.sh`;
+`project.tools.md`; `scripts/behavioral-contracts.sh`;
 `scripts/harness/measure-input-byte-flush.ts`;
 `scripts/harness/smoke-terminal-stage-harness.ts`.
 
@@ -545,7 +547,7 @@ scripts/behavioral-contracts.sh && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-28
 
 ### Soft duration reports use a machine-wide quiet lock
 

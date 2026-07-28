@@ -16,9 +16,11 @@ A pull request is **reviewable** when it arrives with:
 2. **A driving smoke.** Verification that drives the real user path — a PTY harness smoke
    (`scripts/harness/`) or tmux smoke (`scripts/`) that reproduces the problem red and proves
    your change green. Unit tests are welcome; they do not substitute for driving.
-3. **A green gate transcript.** `SKIP_PERF=1 bash scripts/merge-gate.sh` output from your
-   clone, attached to the PR. The gate travels with the repo — your machine proves the same
-   things ours does, including the input-latency budget.
+3. **A green gate transcript.** `bash scripts/merge-gate.sh` output from your
+   clone, attached to the PR. The gate travels with the repo — your machine
+   proves the same blocking contracts ours does. Run
+   `bash scripts/perf-baselines.sh` separately when a change affects memory,
+   idle CPU, lifecycle, startup, or input-path cost.
 
 PRs without these are not reviewed for merge — not as gatekeeping theater, but because the
 review model is *maintainers adjudicate invariants, not line counts*. The evidence IS the
