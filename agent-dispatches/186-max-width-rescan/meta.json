@@ -1,0 +1,12 @@
+{
+  "task": 186,
+  "slug": "max-width-rescan",
+  "branch": "fleet/186-max-width-rescan",
+  "worktree": ".invar/worktrees/186-max-width-rescan",
+  "tmuxSession": "invar/186-max-width-rescan",
+  "transcript": "tmp/transcripts/186-max-width-rescan.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "c604f1a6f6781dbd6cb0420b9a6bc4a24646b903",
+  "startedAt": "2026-07-28T03:15:26-04:00"
+}
