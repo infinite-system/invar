@@ -110,7 +110,84 @@ bun scripts/tasks/ledger-status.ts --self-test # before trusting a clean run
 
 Signals, strongest first: **REPORT-IN-OPEN** (a delivered report in `todo`/`live` — this is how a
 finished task sat unfiled), **STATE-MISMATCH**, **DONE-NO-EVIDENCE**, **THIN**. It reports; it never
-moves anything.
+moves anything. Moving is the conductor's judgement, made with the lifecycle below.
+
+### The lifecycle — every task walks these steps, and each step is a command
+
+**1. FILE** — the moment work is identified (user request, bycatch, your own finding):
+
+```
+mkdir -p .invar/tasks/todo/<number>-<three-word-minimum-slug>
+$EDITOR  .invar/tasks/todo/<n>-<slug>/task-<n>-<slug>.md
+```
+
+The task file holds THE TASK and nothing else: heading `# <n> — <subject>`, then
+`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` (+ `Assignment note:`
+when the assignment needs explaining), then `## Outline` with mechanism, evidence, refutations, and
+`## Sources`. Pick the next number ABOVE the tracker's `highest task number` — never reuse, never
+guess at dispatch time.
+
+**2. DISPATCH** — when a builder starts:
+
+```
+DRY_RUN=1 scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # guards only, no side effect
+          scripts/fleet/dispatch.sh <n> <slug> <brief-file> [engine]   # the real launch
+```
+
+`dispatch.sh` moves the folder to `live/`, writes `brief-<n>-1-<slug>.md` and `meta.json`, commits the
+brief BEFORE launching (a record that needs a second step eventually does not happen), cuts the
+worktree, runs `bun install`, and pipes the transcript to
+`tmp/transcripts/transcript-<engine>-<model>-<effort>-<n>-<slug>.md`. It refuses an engine or
+environment that contradicts the task file.
+
+**3. STEER** — every follow-up instruction to a running builder is a NEW file, next count up:
+
+```
+$EDITOR .invar/tasks/live/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
+```
+
+**4. DELIVER** — when the builder reports READY, copy the report verbatim into the folder:
+
+```
+cp /tmp/<n>-*-READY.md .invar/tasks/live/<n>-<slug>/report-<n>-<slug>.md
+```
+
+Read its `## Bycatch` section NOW and convert each item to a new task (step 1) before merging.
+
+**5. LAND** — gate green, merge, then move the record in the SAME action as the merge:
+
+```
+git mv .invar/tasks/live/<n>-<slug> .invar/tasks/done/
+sed -i '0,/^State: .*/s//State: DONE — <merge-commit-sha>/' .invar/tasks/done/<n>-<slug>/task-<n>-<slug>.md
+git tag finished/<branch> <merge-sha>
+$EDITOR .invar/tasks/done/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
+```
+
+The `State:` line MUST name the commit — a bare `DONE` is the tracker's DONE-NO-EVIDENCE signal, and
+eight of those were created in one evening by writing the SHA into the body instead.
+
+**6. RETIRE** — a task that will never be done (superseded, refuted, declined):
+
+```
+git mv .invar/tasks/todo/<n>-<slug> .invar/tasks/retired/
+sed -i '0,/^State: .*/s//State: RETIRED — <why, or SUPERSEDED BY #m>/' .invar/tasks/retired/<n>-<slug>/task-<n>-<slug>.md
+git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits exists
+```
+
+**7. AUDIT** — every reconciliation sweep, and before claiming the backlog state to the user:
+
+```
+bun scripts/tasks/ledger-status.ts
+```
+
+Act on findings: REPORT-IN-OPEN → run step 5 or explain why not (a multi-wave task like #114
+legitimately holds a report while later waves are open — leave the signal firing rather than mute a
+true positive); STATE-MISMATCH → one side is stale, find which from git; DONE-NO-EVIDENCE → resolve
+the commit from `git log` and write it into the State line; THIN → the task was filed without its
+reasoning, recover it or mark the stub honest.
+
+**One task, one folder, forever.** `git mv` between states — never `cp`, never `rm`. A commit or
+`SKIP_GATE=1` commit accompanies every move so the ledger's history is the audit trail.
 
 ---
 
