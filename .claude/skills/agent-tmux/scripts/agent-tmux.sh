@@ -167,17 +167,28 @@ _queue_affordance() {
   _pane "$1" | grep -qF 'tab to queue message'
 }
 
-# A probe taken from the START of the message. The composer's first line begins at column 0, so a
-# short prefix is never split by wrapping — which a probe taken from the middle would be.
-_send_probe() {
-  printf '%s' "$1" | head -n 1 | head -c 30
+# THE RIGHT OBSERVABLE, found on the third try. Two earlier confirmations each keyed on a proxy that
+# was only valid in one of the three states a sent message can be in:
+#   - "no [Pasted Content] placeholder"  -> blind to text TYPED into the composer (reported success
+#                                           while ~1900 characters sat there unsent)
+#   - "a probe from the message is gone" -> blind to a message that SUBMITTED, because codex echoes
+#                                           the submitted turn into the transcript, so the text stays
+#                                           on screen forever (reported failure on a real success)
+#
+# What actually distinguishes all three is the COMPOSER LINE ITSELF. codex renders it as `›` plus
+# either its content or an idle placeholder hint. Capturing that line while the composer is known
+# empty — immediately before sending — gives an environment-independent signature to compare against,
+# with no hardcoded placeholder text and no assumption about where the message text ends up.
+_composer_line() {
+  _pane "$1" | grep -F '›' | tail -n 1
 }
 
 cmd_send() {
   local name="${1:?send: need a name}" msg="${2?send: need a message}"
   _alive "$name" || { echo "send: no session '$name'" >&2; return 1; }
-  local s i probe queued_before queued_now; s="$(_sess "$name")"
-  probe="$(_send_probe "$msg")"
+  local s i empty_composer queued_before queued_now; s="$(_sess "$name")"
+  # Signature of the composer while it is still empty — the baseline both outcomes are measured against.
+  empty_composer="$(_composer_line "$name")"
   # Count the queued markers BEFORE sending: an increase is positive proof of acceptance, whereas
   # the mere PRESENCE of a marker only proves some earlier message was queued.
   queued_before="$(_pane "$name" | grep -cF '↳' || true)"
@@ -193,13 +204,15 @@ cmd_send() {
     fi
     sleep 0.9
     queued_now="$(_pane "$name" | grep -cF '↳' || true)"
-    # Two POSITIVE outcomes, matching the two things that can happen to consumed input:
-    #   queued    — a new `↳` marker appeared: accepted, will run after the current turn
-    #   submitted — the probe text is gone from the pane: consumed into a turn
+    # Two POSITIVE outcomes, matching what can actually happen to consumed input:
+    #   queued    — a NEW `↳` marker appeared: accepted, runs after the current turn
+    #   submitted — the composer line returned to its empty signature: consumed into a turn
     if [ "$queued_now" -gt "$queued_before" ]; then echo queued; return 0; fi
-    if ! _pane "$name" | grep -qF -- "$probe"; then echo submitted; return 0; fi
+    if [ -n "$empty_composer" ] && [ "$(_composer_line "$name")" = "$empty_composer" ]; then
+      echo submitted; return 0
+    fi
   done
-  echo "send: NOT CONFIRMED — '$probe...' still visible and no new queued marker" >&2
+  echo "send: NOT CONFIRMED — composer never returned to its pre-send state and no new queued marker" >&2
   return 1
 }
 
