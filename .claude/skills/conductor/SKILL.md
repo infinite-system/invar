@@ -229,6 +229,35 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## REMOVE THE CAPABILITY, NOT THE MISUSE — an API that does not exist cannot be misused
+
+#168 had 75 call sites waiting on "the next completed frame," a pattern an established invariant
+already forbade. The obvious fix is to correct 75 callers. What it did instead was **delete the
+primitive**: `awaitNextCompletedFrame`, `awaitQuiescence` and `awaitNextCompletedFrameSnapshot` are
+gone, verified by a structural post-check reporting zero remaining identifiers under
+`scripts/harness`.
+
+The difference is whether the defect can come back. Correcting callers leaves a loaded gun on the
+table for the next person who needs "just wait for a repaint." Removing the capability makes the
+wrong thing unwriteable.
+
+**When a brief targets a recurring misuse, ask whether the thing being misused should exist.** Three
+tells that it should not:
+
+- the misuse recurs across many independent sites (75 callers, 40 files) — a sign the API invites it;
+- an invariant record already forbids the pattern, so its existence contradicts the contract;
+- each correct use can be expressed as something narrower and more honest — here, "what should be
+  TRUE after this action," which three callers turned into a *narrower* claim than the repaint they
+  had been asking for.
+
+**Preserve the legitimate neighbour explicitly, or the removal reads as a regression.** Frame counts
+over already-completed history stayed and are still used for measurement; only the prediction that
+frame N+1 must exist was removed. Counting the past is sound, betting on the future is not, and
+#155's frame-count mode depended on that distinction surviving.
+
+Corollary: **a structural post-check is the proof.** "I converted all the callers" is a claim;
+`grep` reporting zero identifiers is a fact, and it keeps being true for the next reader.
+
 ## A STRUCTURAL FACT IS NOT A PROBLEM — make the change carry the burden of proof
 
 User directive, 2026-07-28, on the editor flyweight work: *we don't have a problem with the current
