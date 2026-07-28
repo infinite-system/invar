@@ -87,8 +87,8 @@ THE LADDER, do-less first. Report a measurement per step so we learn which one t
    `replaceLineRange` already knows the changed range. Deleting a data structure beats optimizing one;
    if it cannot go, say precisely why.
 
-Order matters for MEASUREMENT — do-less before make-cheaper — but ALL FIVE STEPS SHIP. See the
-CORRECTION addendum: they are one coherent change, not a menu.
+Order matters: steps 1-3 are "stop doing the work", steps 4-5 are "make what remains cheaper/smaller".
+Measuring in that order tells us whether the later ones are even needed.
 
 ## PROBLEM B — the load path, which the user asked about directly
 
@@ -171,3 +171,87 @@ lattice links / 0 problems), `bun scripts/check-coverage-ratchet.ts`,
 tables, the new scale-invariant contract, and a full merge-gate ALL-PASS.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean.
+
+---
+
+# ADDENDUM (arrived after dispatch — read this before trusting any existing instrument)
+
+The user's criticism, verbatim: *"it should have better test if the whole thing is slow, because you
+previously reported everything is fast, but your tests were garbage, not complete."* They are right, and
+the audit below is why. **Do not reuse the existing instruments to answer this task's question.**
+
+## The instrument matrix, and the hole in it
+
+| instrument | what it measures | scale axis | does it EDIT? |
+|---|---|---|---|
+| `scripts/harness/measure-input-byte-flush.ts` | keystroke -> frame boundary through the REAL PTY — genuinely end-to-end | **one line, `'abcdefghijklmnopqrstuvwxyz\n'`** | **no** — it drives `Right` arrows |
+| `scripts/harness/measure-editor-edit-path.ts` | `setLine` -> `totalVisualRows` — a component, with NO app, NO PTY, NO paint | 2k / 20k / 100k / 500k | yes |
+
+So the only end-to-end latency the gate has ever reported comes from a 27-character file moving a
+cursor, and the only large-scale number excludes input routing, the render pass, scrollbar/gutter/diff
+sync, and frame emission. **Nothing measures an EDITING keystroke on a LARGE file end-to-end.** That is
+precisely the cell the user occupies.
+
+`measure-editor-edit-path.ts` is not dishonest — its own header says *"The boundary is internal and
+deliberately narrower than keypress-to-frame latency."* The conductor read that line, quoted the file,
+and reported its number as though it answered the user's complaint. Do not repeat that. **Its numbers
+are a component baseline and must never be presented as the felt cost.**
+
+## What this task must additionally deliver
+
+Build the missing instrument, and make it permanent rather than a one-off measurement in your report:
+
+1. **Keystroke-to-painted-frame, while EDITING, across the size axis.** Real PTY, real app, the same
+   2k / 20k / 100k / 500k ladder the component instrument already uses. The measured span starts at the
+   input write and ends when the frame containing the edit's visible result has been observed — not when
+   an internal function returns. `measure-input-byte-flush.ts` already knows how to observe a frame
+   boundary through the real PTY; the shared fixture generator work in #136 is the natural home for the
+   large fixtures. Reuse rather than re-roll.
+2. **Type a BURST, not a single character.** The user's complaint is sustained typing, and the defect
+   queues: one keystroke fitting in a frame is not the same claim as thirty consecutive ones. Report the
+   per-keystroke distribution across a burst, not a single sample.
+3. **A positive control, in the direction that matters.** Force the old full-rebuild path and require the
+   new instrument's 500k number to move by an order of magnitude. An instrument that cannot see the
+   defect it was built for is the thing we are replacing.
+4. **State what the new instrument still EXCLUDES.** Every instrument has a boundary; the failure was an
+   undeclared one being over-read. Write the boundary in the file header, as
+   `measure-editor-edit-path.ts` correctly did.
+
+If the existing `measure-input-byte-flush.ts` can simply gain a size axis and an editing mode, that is
+the better answer than a new file — one instrument with two knobs beats two instruments with a gap
+between them. Say which you chose and why.
+
+The count-based acceptance test in the main brief still stands and is independent of all of this: a count
+is scale-invariant, a millisecond is not.
+
+---
+
+# CORRECTION (user, after the addendum) — ALL FIVE STEPS ARE REQUIRED
+
+The main brief said "steps 1-3 are stop-doing-the-work, steps 4-5 make what remains cheaper" and
+"measuring in that order tells us whether the later ones are even needed." **That framing is withdrawn.
+Do all five.** The user was explicit: all steps are needed.
+
+They are right, and not merely by instruction — the steps are not independent options, they are one
+coherent change that the earlier wording wrongly split into tiers:
+
+- **Step 2 (mutate in place) and step 4 (`Uint32Array`) are the same change.** A fixed-length typed
+  array is what makes in-place reuse across edits natural; reusing a `number[]` the same way is fighting
+  the representation. Doing 2 without 4 leaves 500,000 boxed JS numbers where 2 MB of `Uint32Array`
+  belongs.
+- **Step 5 (delete `index.lineTexts`) is what makes step 2 clean.** The shadow copy exists ONLY to give
+  the head/tail trim something to diff against. Keep it and the in-place path still maintains a 500k
+  duplicate of ground truth — which `Flyweight.invariants.md` forbids by name under "Ground Truth Lives
+  in Plain Storage."
+- **Steps 1 and 3 without 4 and 5** leave the interaction O(1) in time but still O(document) in
+  allocation and duplication. The master invariant is about cost proportional to observation, and memory
+  is a cost.
+
+So the ORDER stands — do-less before make-cheaper, and report a measurement per step so we learn each
+one's contribution. **The completion condition does not.** Partial completion is not an outcome here; a
+report that lands steps 1-3 and argues 4-5 were unnecessary is not accepted.
+
+The one thing that genuinely IS out of scope remains out: **a Fenwick tree.** That was the user's own
+reduction — per-block sums plus a running total give document-size-independent cost with a structure
+whose correctness is visible, and Fenwick buys a smaller constant for a subtler invariant. Blocks, not
+Fenwick. Everything else on the list ships.
