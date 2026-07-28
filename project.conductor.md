@@ -2911,3 +2911,37 @@ prompt is visibly on the grid while the compound prompt+colour predicate times o
 across 4 gates, pre-existing at the merge base, and #168's bycatch reported the same site weeks ago —
 and **#174** markdown's ragged row, third sighting, but passing at the merge base three times, which
 argues intermittent rather than the aligner bug I had assumed.
+
+## 2026-07-28 07:30 UTC — the instrument is now the dominant defect source, and that reframes what is missing
+
+A count worth stating plainly. Of every merge-gate red on 2026-07-27/28 whose cause was CONFIRMED, **all
+were defects in the harness, not in Invar.** Five harnesses regressed from #168's wait conversion;
+terminal-stage has failed eight attempts on a compound predicate whose subject is visibly on the grid;
+shortcut-help and panel-chrome each time out on generic waits. The single open candidate for a real
+product cause is #174's markdown row, and it passed three merge-base gates.
+
+The product defects tonight — #170's stolen keyboard, #171's displacement, #186's 500k rescan — were all
+found by the user or by review. **Not one was found by the gate.** The gate spent the night reporting on
+itself.
+
+So when the loop asks what the process is missing, the honest answer is not a feature. Both established
+harness invariants (`Harness waits observe conditions not frame ordinals`, `Every wait names itself`)
+HELD in every one of tonight's failures. They are necessary and not sufficient, because they constrain
+the FORM of a wait and never the AGREEMENT between its two claims — the NAME, which is a human sentence,
+and the PREDICATE, which is a machine test. #189's repair is the clean instance: the name promised a
+specific horizontal-extent refresh, the predicate accepted any byte change in the row.
+
+Staged as an experiment at `agent-dispatches/_staged/EXPERIMENT-wait-name-predicate-agreement.md`, on an
+`experiment/` branch, adoption the user's call. Its acceptance bar is named BEFORE implementation — it
+must flag all five known regressions at their pre-repair commits, state its precision as an adjudicated
+number rather than assert it, name at least one wait nobody has reported, and leave the legitimately
+generic sites a visible way to declare themselves. Six disqualifying signals are listed, including the
+one this class has already failed twice here: **if it needs a vocabulary or a word list to work, it is
+the rejected `.value` lint and the rejected timing-sensitivity classifier wearing a third costume.** A
+recorded negative result is a successful outcome; there is precedent.
+
+**Not dispatched.** #191's terminal condition is a full merge-gate ALL-PASS while it chases a
+timeout-class defect, and a second builder's verification produces exactly timeout-class contention. The
+exception rule — gate under load when a contention red would still be diagnostic — does not apply here,
+because contention reds are indistinguishable from the thing #191 is hunting. The brief is committed and
+dispatchable the moment #191 reports.
