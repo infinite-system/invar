@@ -229,6 +229,33 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## KNOWING A RULE IS NOT KNOWING WHERE IT BINDS — ask what the tool actually walks
+
+Three times in one night the same property mattered: **repo checkers walk the FILESYSTEM, not
+git, so `.gitignore` does not protect a directory from them.** I knew this. I still got it wrong
+twice in a row, in opposite directions:
+
+- I argued AGAINST worktrees at `.invar/worktrees/` because `check-file-grammar.ts` walks the tree.
+  It does — but `filesForArguments` defaults to `['src/modules']` and the gate invokes it with no
+  arguments, so it never sees the repo root. The fear was misplaced.
+- I then moved 1.1 GB of agent transcripts into `tmp/` without asking the same question, and reddened
+  the gate with hundreds of `contract not found`. `check_invariants.mjs` walks from the repo ROOT,
+  and builders quote `invariant:` lines constantly, so it read agent chatter as source.
+
+Holding the rule as a WORRY produced a false positive and a false negative. What settles it is one
+grep per tool — *what root does this walk start from, and what does it exclude?* — and it takes
+seconds:
+
+    grep -nE "EXCLUDED|readdir|process.argv|default.*\[" <the-checker>
+
+**A location decision is also a tooling decision.** Before moving a large or annotation-shaped
+directory into the repo, enumerate what scans the destination. The gitignore tells you what git
+does; it tells you nothing about what the checkers do.
+
+Corollary for exclusions: when you add one, prove it with a POSITIVE CONTROL rather than by the
+green that follows. Plant the thing the checker exists to catch, require the red, remove it,
+require the green. An exclusion that silently over-reaches looks exactly like a fix.
+
 ## EVIDENCE HAS AN AGE — a count tells you history, not status
 
 I called a healthy builder stuck for two consecutive sweeps on two proxies, both of which were
