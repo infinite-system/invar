@@ -256,6 +256,36 @@ still not belong in main because nobody asked for the problem to be solved.
 The tell that this rule is being violated: a brief whose first step is "implement the fix" rather
 than "establish the cost of not fixing it."
 
+### The sharper test the user named: GENERATIVITY, not cost/benefit
+
+*"It has to prove it's truly an invariant unlock. If a true invariant is found for this, it will
+generate solutions downstream rather than block further development — true invariants reinforce each
+other. If that does not happen, we do not adopt the complexity."*
+
+Cost/benefit is a judgement call, and once someone is invested in a diff it can be argued either way.
+Generativity is CHECKABLE, so make it the acceptance criterion:
+
+- **A true invariant generates.** Finding it makes neighbouring problems easier or dissolves them, and
+  it makes neighbouring invariant records SHORTER and more definite.
+- **A partial invariant blocks.** It needs exception rules, forces consumers to know things the seam
+  exists to hide, and increases branching.
+
+Operationally, and this is what makes it a test rather than a slogan: **name the specific downstream
+things that should get easier BEFORE implementing, then report against that list.** A prediction made
+afterwards is a rationalisation.
+
+Failure signals, any one of which is disqualifying regardless of the numbers:
+
+- a consumer must know which internal path produced its answer — that is leakage
+- an exception rule is required for some case
+- branching, states, or hot-path conditions increase
+- another invariant record must be weakened or qualified to accommodate it
+- the invariant record gets LONGER or more conditional
+- it is correct but nobody can explain it in a paragraph
+
+This is the acceptance form of what the repo already knows: a true invariant increases power while
+decreasing rules. If rules went up, it was not the invariant.
+
 ## READ LOGS AS A SERIES — three regressions hid in numbers that were already printed
 
 Every one of these was reported by an instrument that was working correctly. Nothing compared the
