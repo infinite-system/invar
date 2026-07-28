@@ -84,6 +84,15 @@ import { TaskLauncher } from '../tasks/TaskLauncher';
 import { Tasks } from '../tasks/Tasks';
 
 class $Bootstrap {
+  protected static awaitProjectedFrame(
+    renderer: Pick<CliRenderer, 'once' | 'requestRender'>,
+  ): Promise<void> {
+    return new Promise<void>((resolve) => {
+      renderer.once('frame', () => resolve());
+      renderer.requestRender();
+    });
+  }
+
   static async boot(options: BootOptions = {}): Promise<BootedApp> {
     Logging.Class.info('Boot start');
 
@@ -1216,11 +1225,13 @@ class $Bootstrap {
     app.onDispose(stopAnimationFrameCadence);
     app.onDispose(() => workspaceSet.dispose()); // stop all working-tree watchers + dispose open buffers
 
-    // Awaitable render for boot/resize/harness determinism: sync size, paint, wait one frame.
+    // Awaitable render for boot/resize/harness determinism: sync size, paint, then observe the
+    // completed frame requested for that projection. Renderer-wide idle also waits for unrelated
+    // terminal capability work, so it is broader than the first-paint condition boot requires.
     const render = async (): Promise<void> => {
       syncSize();
       paint();
-      await renderer.idle();
+      await this.awaitProjectedFrame(renderer);
     };
 
     let shuttingDown = false;
