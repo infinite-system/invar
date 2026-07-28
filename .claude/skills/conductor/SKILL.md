@@ -943,6 +943,37 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## A PRE-SATISFIED WAIT LAUNDERS A NO-OP INTO A GREEN
+
+The reachability class has an inverse that is worse than a timeout, and #192 found
+it. `smoke-scrollbars-harness` waited for "any dot anywhere" in the scrollbar as
+proof that an edit had painted an overview mark. File-tree and document dots already
+satisfied that predicate **before any edit** — and because focus was still `files`,
+the driven `End` and `X` never edited anything at all. The smoke then asserted the
+result of an edit that had not happened, and **passed.**
+
+So the diagnostic question I already had written down — *is the thing FALSE right
+now?* — has a second consequence I had not stated. A wait whose condition is already
+true does not merely fail to wait:
+
+- it lets the smoke proceed as though the action succeeded;
+- every later assertion runs against a state the action never produced;
+- and those assertions can PASS, because the fixture's resting state often satisfies
+  them.
+
+A timeout is loud. This is silent, and it is indistinguishable from coverage. The
+smoke was green for the wrong reason for an unknown length of time, and nothing in
+the retry tally, the coverage ratchet, or the assertion count could see it — the
+ratchet counts calls, and every call was still there.
+
+The tell is a predicate that would be satisfied by the fixture at rest. When
+reviewing any wait, ask what the screen looks like BEFORE the action, and whether
+the predicate is already true of it. If it is, the wait is load-bearing in name only.
+
+Corollary for briefs: when a smoke has been quietly green and then starts failing
+after a nearby change, the change may have made a REAL assertion reachable for the
+first time. Do not assume the change broke it.
+
 ## MY OWN MONITOR ASKED FOR EVIDENCE THE GATE NEVER PRODUCES
 
 On 2026-07-28 I armed a Monitor on `until grep -q 'GATE_EXIT=' <gate log>` and went

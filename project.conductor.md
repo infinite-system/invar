@@ -2982,3 +2982,40 @@ coordinate from an intermediate frame and clicked a row the agent turn had since
 pattern worth reusing: await published state proving the operation completed, then REACQUIRE the
 coordinate from the stable grid before acting. A coordinate must not be carried across a settling
 condition. That is now the second named pattern in #192 alongside #189's.
+
+## 2026-07-28 09:05 UTC — a wait that was already true let a smoke pass while doing nothing
+
+#192 landed at `cd96549`. Three of five waits repaired, two left alone because their predicates were
+already narrower than "something repainted" — the right answer to a brief that asked for an enumeration
+rather than a count of edits. A builder declining to change two of its five assigned sites, with the
+reason stated, is the behaviour I want and the fourth time a builder has correctly declined part of a
+brief this session.
+
+The finding worth keeping is not a proxy wait. `smoke-scrollbars-harness` waited for "any dot anywhere"
+as proof an edit had painted an overview mark. File-tree and document dots already satisfied that
+before any edit — and focus was still `files`, so the driven `End` and `X` **never edited anything.**
+The smoke asserted the result of an edit that had not happened, and passed.
+
+That is the inverse of the reachability class and it is worse than a timeout. A timeout is loud. A
+pre-satisfied wait is silent: the smoke proceeds as though the action succeeded, later assertions run
+against a state the action never produced, and they can pass because the fixture's resting state
+satisfies them. Nothing could see it — the coverage ratchet counts calls and every call was still
+there. Doctrine now carries the tell: **ask what the screen looks like BEFORE the action, and whether
+the predicate is already true of it.**
+
+It also carries a corollary I will need: when a quietly-green smoke starts failing after a nearby
+change, the change may have made a real assertion **reachable for the first time.** Do not assume the
+change broke it.
+
+Main's sole remaining blocker is now **#187**, escalated from a one-line bycatch note to the gate's only
+red. `smoke-editor-harness` sends six rightward Option-wheel events, confirms a greater
+`editorScrollLeft`, then sends EIGHT leftward events and waits for a generic screen change. The
+viewport clamps at `scrollLeft 0` and the remaining events have nothing to repaint. #192 proved it at
+the merge base properly — gate HEAD equal to base, no diff in the implicated files. It is the same
+defect `bun run drive` hit at the right clamp during #186, so #187 now has two consumers and one shape,
+and the brief asks whether they can share one "wheel until this scroll position, tolerating a clamp"
+generator instead of two local repairs.
+
+Sixth spelling of the same class. The ranked candidates in #187 name the fix that is NOT allowed:
+reducing the leftward count to match the rightward one would arrange for the clamp never to be reached,
+which hides the class until the next caller over-scrolls.
