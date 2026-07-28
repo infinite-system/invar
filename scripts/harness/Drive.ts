@@ -7,6 +7,7 @@
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
+// invariant: Drive clicks resolve from roles and text (scripts/harness/harness.invariants.md)
 import {
   copyFileSync,
   existsSync,
@@ -16,9 +17,12 @@ import {
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
+import { KeybindingDefaults } from '../../src/modules/keybindings/KeybindingDefaults';
+import type { ChordPattern } from '../../src/modules/keybindings/KeybindingRegistry';
+import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
-import type { HarnessMouseEvent } from './HarnessInput';
+import { HarnessInput, type HarnessMouseEvent } from './HarnessInput';
 import { PtyTestDriver } from './PtyTestDriver';
 
 class $Drive {
@@ -139,6 +143,14 @@ class $Drive {
         showHelp = true;
         continue;
       }
+      if (argument === '--frame-silent') {
+        this.replaceLastActionCompletion(actions, {
+          kind: 'frame-silent',
+          reason:
+            'the command line explicitly declared the action frame-silent',
+        });
+        continue;
+      }
       const value = argumentsList[argumentIndex + 1];
       if (!value) throw new Error(`${argument} requires a value`);
       argumentIndex++;
@@ -150,15 +162,33 @@ class $Drive {
       } else if (argument === '--size') {
         fixtureSize = this.parsePositiveInteger(value, '--size');
       } else if (argument === '--key') {
-        actions.push({ kind: 'key', keyName: value });
+        actions.push({
+          kind: 'key',
+          keyName: value,
+          completion: this.defaultKeyCompletion(value),
+        });
       } else if (argument === '--wheel') {
         actions.push({
           kind: 'wheel',
           direction: this.parseWheelDirection(value),
+          completion: { kind: 'screen-change' },
         });
       } else if (argument === '--click') {
-        const [column, row] = this.parseCoordinates(value);
-        actions.push({ kind: 'click', column, row });
+        actions.push({
+          kind: 'click',
+          target: this.parseClickTarget(value),
+          completion: { kind: 'screen-change' },
+        });
+      } else if (argument === '--wait-for-text') {
+        this.replaceLastActionCompletion(actions, {
+          kind: 'grid-text',
+          text: value,
+        });
+      } else if (argument === '--wait-for-status') {
+        this.replaceLastActionCompletion(
+          actions,
+          this.parseStatusCompletion(value),
+        );
       } else if (argument === '--timeout') {
         timeoutMilliseconds = this.parsePositiveInteger(value, '--timeout');
       } else {
@@ -179,6 +209,101 @@ class $Drive {
     };
   }
 
+  protected static defaultKeyCompletion(
+    keyName: string,
+  ): DriveActionCompletion {
+    const encodedKey = HarnessInput.Class.key(keyName);
+    const canonicalBindings = KeybindingDefaults.Class.canonicalBindings;
+    const isCanonicalChordPrefix = canonicalBindings.some((binding) => {
+      const firstStep = binding.steps?.[0];
+      if (!firstStep || (binding.steps?.length ?? 0) < 2) return false;
+      return this.chordPatternMatchesEncodedKey(firstStep, encodedKey);
+    });
+    const isAlsoCanonicalSingle = canonicalBindings.some((binding) => {
+      return (
+        binding.chord !== undefined &&
+        this.chordPatternMatchesEncodedKey(binding.chord, encodedKey)
+      );
+    });
+    return isCanonicalChordPrefix && !isAlsoCanonicalSingle
+      ? {
+          kind: 'frame-silent',
+          reason: 'the key is a canonical multi-step chord prefix',
+        }
+      : { kind: 'screen-change' };
+  }
+
+  protected static chordPatternMatchesEncodedKey(
+    chordPattern: ChordPattern,
+    encodedKey: string,
+  ): boolean {
+    const chordPatternKeyName = this.chordPatternKeyName(chordPattern);
+    if (chordPatternKeyName === null) return false;
+    try {
+      return HarnessInput.Class.key(chordPatternKeyName) === encodedKey;
+    } catch {
+      return false;
+    }
+  }
+
+  protected static chordPatternKeyName(
+    chordPattern: ChordPattern,
+  ): string | null {
+    if (chordPattern.super) return null;
+    const modifierNames: string[] = [];
+    if (chordPattern.ctrl) modifierNames.push('Control');
+    if (chordPattern.alt) modifierNames.push('Alt');
+    if (chordPattern.shift) modifierNames.push('Shift');
+    const baseKeyName =
+      chordPattern.key.length === 1
+        ? chordPattern.key
+        : chordPattern.key === 'return'
+          ? 'Enter'
+          : chordPattern.key
+              .split(/(?=[A-Z])/)
+              .map(
+                (part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`,
+              )
+              .join('');
+    return [...modifierNames, baseKeyName].join('+');
+  }
+
+  protected static replaceLastActionCompletion(
+    actions: DriveAction[],
+    completion: DriveActionCompletion,
+  ): void {
+    const action = actions.at(-1);
+    if (!action) {
+      throw new Error(
+        'A completion option must follow --key, --wheel, or --click',
+      );
+    }
+    actions[actions.length - 1] = { ...action, completion } as DriveAction;
+  }
+
+  protected static parseStatusCompletion(
+    value: string,
+  ): Extract<DriveActionCompletion, { readonly kind: 'status' }> {
+    const separatorIndex = value.indexOf('=');
+    if (separatorIndex <= 0 || separatorIndex === value.length - 1) {
+      throw new Error(
+        `Invalid --wait-for-status ${JSON.stringify(value)}; ` +
+          'expected FIELD=JSON_VALUE',
+      );
+    }
+    const fieldName = value.slice(0, separatorIndex);
+    const expectedValueText = value.slice(separatorIndex + 1);
+    let expectedValue: unknown;
+    try {
+      expectedValue = JSON.parse(expectedValueText);
+    } catch {
+      throw new Error(
+        `Invalid JSON value in --wait-for-status ${JSON.stringify(value)}`,
+      );
+    }
+    return { kind: 'status', fieldName, expectedValue };
+  }
+
   protected static parseGeometry(geometry: string): {
     columns: number;
     rows: number;
@@ -195,17 +320,35 @@ class $Drive {
     };
   }
 
-  protected static parseCoordinates(coordinates: string): [number, number] {
-    const match = coordinates.match(/^(\d+),(\d+)$/);
-    if (!match) {
+  protected static parseClickTarget(target: string): DriveClickTarget {
+    const coordinateMatch = target.match(/^(\d+),(\d+)$/);
+    if (coordinateMatch) {
+      return {
+        kind: 'coordinates',
+        column: this.parseNonnegativeInteger(
+          coordinateMatch[1] ?? '',
+          '--click column',
+        ),
+        row: this.parseNonnegativeInteger(
+          coordinateMatch[2] ?? '',
+          '--click row',
+        ),
+      };
+    }
+    const separatorIndex = target.indexOf('=');
+    const role = target.slice(0, separatorIndex);
+    const text = target.slice(separatorIndex + 1);
+    if (
+      separatorIndex <= 0 ||
+      !text ||
+      (role !== 'text' && role !== 'fold-control')
+    ) {
       throw new Error(
-        `Invalid --click ${JSON.stringify(coordinates)}; expected COLUMN,ROW`,
+        `Invalid --click ${JSON.stringify(target)}; expected COLUMN,ROW, ` +
+          'text=VISIBLE_TEXT, or fold-control=HEADER_TEXT',
       );
     }
-    return [
-      this.parseNonnegativeInteger(match[1] ?? '', '--click column'),
-      this.parseNonnegativeInteger(match[2] ?? '', '--click row'),
-    ];
+    return { kind: role, text };
   }
 
   protected static parsePositiveInteger(
@@ -400,16 +543,42 @@ class $Drive {
     rows: number,
     timeoutMilliseconds: number,
   ): Promise<void> {
+    const resolvedAction =
+      action.kind === 'click'
+        ? {
+            ...action,
+            resolvedPosition: this.resolveClickTarget(
+              driver.snapshot(),
+              action.target,
+            ),
+          }
+        : action;
+    if (
+      resolvedAction.kind === 'click' &&
+      resolvedAction.target.kind !== 'coordinates'
+    ) {
+      console.error(
+        `drive resolved ${resolvedAction.target.kind} ` +
+          `${JSON.stringify(resolvedAction.target.text)} to ` +
+          `${resolvedAction.resolvedPosition.column},` +
+          `${resolvedAction.resolvedPosition.row}`,
+      );
+    }
     const editorClampTarget = this.editorClampTarget(
-      action,
+      resolvedAction,
       HarnessSmoke.Class.readStatus(statusPath),
     );
-    if (editorClampTarget !== null && action.kind === 'wheel') {
-      this.sendActionWithoutFrameExpectation(driver, action, columns, rows);
+    if (editorClampTarget !== null && resolvedAction.kind === 'wheel') {
+      this.sendActionWithoutFrameExpectation(
+        driver,
+        resolvedAction,
+        columns,
+        rows,
+      );
       await HarnessSmoke.Class.awaitScrollPosition(
         driver,
         statusPath,
-        `${this.actionDescription(action)} leaves the editor at its ` +
+        `${this.actionDescription(resolvedAction)} leaves the editor at its ` +
           `${editorClampTarget.targetPosition} clamp`,
         editorClampTarget.fieldName,
         editorClampTarget.targetPosition,
@@ -418,12 +587,122 @@ class $Drive {
       return;
     }
 
-    this.sendAction(driver, action, columns, rows);
+    const completion = resolvedAction.completion;
+    if (completion.kind === 'frame-silent') {
+      const frameCountBeforeAction = driver.completedFrameObservationCount;
+      this.sendActionWithoutFrameExpectation(
+        driver,
+        resolvedAction,
+        columns,
+        rows,
+      );
+      const observedFrameCount =
+        driver.completedFrameObservationCount - frameCountBeforeAction;
+      if (observedFrameCount > 0) {
+        console.error(
+          `drive note: ${this.actionDescription(resolvedAction)} was ` +
+            `declared frame-silent because ${completion.reason}, but ` +
+            `${observedFrameCount} completed frame(s) arrived synchronously`,
+        );
+      }
+      return;
+    }
+    if (completion.kind === 'grid-text') {
+      if (driver.snapshot().findText(completion.text) !== null) {
+        throw new Error(
+          `Cannot wait for visible text already present before ` +
+            `${this.actionDescription(resolvedAction)}: ${completion.text}`,
+        );
+      }
+      this.sendAction(driver, resolvedAction, columns, rows);
+      await driver.awaitGridCondition(
+        `${this.actionDescription(resolvedAction)} paints text ` +
+          JSON.stringify(completion.text),
+        (snapshot) => snapshot.findText(completion.text) !== null,
+        timeoutMilliseconds,
+      );
+      return;
+    }
+    if (completion.kind === 'status') {
+      const currentStatus = HarnessSmoke.Class.readStatus(statusPath);
+      if (
+        this.statusValuesEqual(
+          currentStatus[completion.fieldName],
+          completion.expectedValue,
+        )
+      ) {
+        throw new Error(
+          `Cannot wait for status already satisfied before ` +
+            `${this.actionDescription(resolvedAction)}: ` +
+            `${completion.fieldName}=${JSON.stringify(completion.expectedValue)}`,
+        );
+      }
+      this.sendAction(driver, resolvedAction, columns, rows);
+      await HarnessSmoke.Class.awaitStatusWithoutFrame(
+        driver,
+        statusPath,
+        `${this.actionDescription(resolvedAction)} publishes ` +
+          `${completion.fieldName}=${JSON.stringify(completion.expectedValue)}`,
+        (status) =>
+          this.statusValuesEqual(
+            status[completion.fieldName],
+            completion.expectedValue,
+          ),
+        timeoutMilliseconds,
+      );
+      return;
+    }
+    this.sendAction(driver, resolvedAction, columns, rows);
     await driver.awaitScreenChange(timeoutMilliseconds);
   }
 
+  protected static statusValuesEqual(
+    actualValue: unknown,
+    expectedValue: unknown,
+  ): boolean {
+    return JSON.stringify(actualValue) === JSON.stringify(expectedValue);
+  }
+
+  protected static resolveClickTarget(
+    snapshot: HarnessSnapshot.Model,
+    target: DriveClickTarget,
+  ): DriveClickPosition {
+    if (target.kind === 'coordinates') {
+      if (target.column >= snapshot.columns || target.row >= snapshot.rows) {
+        throw new Error(
+          `Click coordinates ${target.column},${target.row} are outside ` +
+            `${snapshot.columns}x${snapshot.rows}`,
+        );
+      }
+      return { column: target.column, row: target.row };
+    }
+    const textPosition = snapshot.findText(target.text);
+    if (!textPosition) {
+      throw new Error(
+        `Click target text is not visible: ${target.text}\n${snapshot.text()}`,
+      );
+    }
+    if (target.kind === 'text') return textPosition;
+    const foldControlGlyphs = new Set(
+      (['nerd', 'unicode', 'ascii'] as const).flatMap((glyphLevel) => [
+        ThemeIcons.Class.glyphFor(glyphLevel, 'foldOpen'),
+        ThemeIcons.Class.glyphFor(glyphLevel, 'foldClosed'),
+      ]),
+    );
+    for (let column = textPosition.column - 1; column >= 0; column--) {
+      const cell = snapshot.cell(textPosition.row, column);
+      if (cell && foldControlGlyphs.has(cell.characters)) {
+        return { row: textPosition.row, column };
+      }
+    }
+    throw new Error(
+      `No fold-control role precedes visible text: ${target.text}\n` +
+        snapshot.rowText(textPosition.row),
+    );
+  }
+
   protected static editorClampTarget(
-    action: DriveAction,
+    action: DriveResolvedAction,
     status: ReturnType<typeof HarnessSmoke.Class.readStatus>,
   ): DriveScrollTarget | null {
     if (
@@ -453,7 +732,7 @@ class $Drive {
 
   protected static sendAction(
     driver: PtyTestDriver.Model,
-    action: DriveAction,
+    action: DriveResolvedAction,
     columns: number,
     rows: number,
   ): void {
@@ -470,38 +749,61 @@ class $Drive {
       });
       return;
     }
+    const resolvedPosition = action.resolvedPosition;
     driver.sendMouseWithoutFrameExpectation({
       kind: 'press',
-      column: action.column,
-      row: action.row,
+      column: resolvedPosition.column,
+      row: resolvedPosition.row,
       button: 'left',
     });
     driver.sendMouse({
       kind: 'release',
-      column: action.column,
-      row: action.row,
+      column: resolvedPosition.column,
+      row: resolvedPosition.row,
       button: 'left',
     });
   }
 
   protected static sendActionWithoutFrameExpectation(
     driver: PtyTestDriver.Model,
-    action: Extract<DriveAction, { readonly kind: 'wheel' }>,
+    action: DriveResolvedAction,
     columns: number,
     rows: number,
   ): void {
+    if (action.kind === 'key') {
+      driver.sendKeysWithoutFrameExpectation(action.keyName);
+      return;
+    }
+    if (action.kind === 'wheel') {
+      driver.sendMouseWithoutFrameExpectation({
+        kind: 'wheel',
+        direction: action.direction,
+        column: Math.floor(columns / 2),
+        row: Math.floor(rows / 2),
+      });
+      return;
+    }
     driver.sendMouseWithoutFrameExpectation({
-      kind: 'wheel',
-      direction: action.direction,
-      column: Math.floor(columns / 2),
-      row: Math.floor(rows / 2),
+      kind: 'press',
+      column: action.resolvedPosition.column,
+      row: action.resolvedPosition.row,
+      button: 'left',
+    });
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'release',
+      column: action.resolvedPosition.column,
+      row: action.resolvedPosition.row,
+      button: 'left',
     });
   }
 
   protected static actionDescription(action: DriveAction): string {
     if (action.kind === 'key') return `key ${action.keyName}`;
     if (action.kind === 'wheel') return `wheel ${action.direction}`;
-    return `click ${action.column},${action.row}`;
+    if (action.target.kind === 'coordinates') {
+      return `click ${action.target.column},${action.target.row}`;
+    }
+    return `click ${action.target.kind}=${JSON.stringify(action.target.text)}`;
   }
 
   protected static printObservation(
@@ -540,7 +842,10 @@ class $Drive {
       '  --size LINE_COUNT    generate and open a scale fixture under tmp/',
       '  --key NAME           send one named key; repeat to preserve order',
       '  --wheel DIRECTION    send one wheel notch at the grid center',
-      '  --click COLUMN,ROW   click a zero-based grid cell',
+      '  --click TARGET       click COLUMN,ROW, text=TEXT, or fold-control=TEXT',
+      '  --frame-silent      declare the preceding action needs no repaint',
+      '  --wait-for-text TEXT make the preceding action wait for new visible text',
+      '  --wait-for-status FIELD=JSON',
       '  --timeout MILLISECONDS',
       '  --help',
     ].join('\n');
@@ -563,16 +868,53 @@ interface DriveOptions {
 }
 
 type DriveAction =
-  | { readonly kind: 'key'; readonly keyName: string }
+  | {
+      readonly kind: 'key';
+      readonly keyName: string;
+      readonly completion: DriveActionCompletion;
+    }
   | {
       readonly kind: 'wheel';
       readonly direction: DriveWheelDirection;
+      readonly completion: DriveActionCompletion;
     }
   | {
       readonly kind: 'click';
+      readonly target: DriveClickTarget;
+      readonly completion: DriveActionCompletion;
+    };
+
+type DriveActionCompletion =
+  | { readonly kind: 'screen-change' }
+  | { readonly kind: 'frame-silent'; readonly reason: string }
+  | { readonly kind: 'grid-text'; readonly text: string }
+  | {
+      readonly kind: 'status';
+      readonly fieldName: string;
+      readonly expectedValue: unknown;
+    };
+
+type DriveClickTarget =
+  | {
+      readonly kind: 'coordinates';
       readonly column: number;
       readonly row: number;
+    }
+  | {
+      readonly kind: 'text' | 'fold-control';
+      readonly text: string;
     };
+
+interface DriveClickPosition {
+  readonly column: number;
+  readonly row: number;
+}
+
+type DriveResolvedAction =
+  | Exclude<DriveAction, { readonly kind: 'click' }>
+  | (Extract<DriveAction, { readonly kind: 'click' }> & {
+      readonly resolvedPosition: DriveClickPosition;
+    });
 
 interface DriveTarget {
   readonly workspaceRoot: string;
@@ -591,9 +933,11 @@ interface DriveScrollTarget {
   readonly targetPosition: number;
 }
 
-try {
-  await Drive.Class.main(process.argv.slice(2));
-} catch (error) {
-  console.error(`drive: ${String((error as Error).message ?? error)}`);
-  process.exitCode = 1;
+if (import.meta.main) {
+  try {
+    await Drive.Class.main(process.argv.slice(2));
+  } catch (error) {
+    console.error(`drive: ${String((error as Error).message ?? error)}`);
+    process.exitCode = 1;
+  }
 }
