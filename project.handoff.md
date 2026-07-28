@@ -3,145 +3,87 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-28 01:30 UTC) — READ FIRST
+## RESUME ANCHOR (2026-07-28 05:40 UTC) — READ FIRST
 
-**Main `82b746c`, clean, 2 commits AHEAD of origin — NETWORK IS DOWN (DNS fails on github.com).**
-Push `a7588bb` (MCP adapter mechanism) and `82b746c` (the `$`/`:` marks) the moment DNS returns.
-Published+gate-verified through `d5ba738`.
+**Main `a4e15a2`, clean. 20-odd commits AHEAD of origin and that is FINE — the user pushes
+themselves ("I will push myself later"). Do NOT report unpushed commits as a blocker.**
+Gate-verified green through `596ac50` (ALL-PASS, 6m31s).
 
-### ONE BUILDER LIVE — and it just found a REAL APP DEFECT
+Network note: `systemd-resolved`'s stub at `127.0.0.53` fails for almost every name while
+`8.8.8.8` answers instantly and `ping 8.8.8.8` is 9.5 ms. Only `chatgpt.com` resolves, cached,
+which is why codex works and `git push` does not. `git push` reports *"correct access rights"* for
+what is purely a DNS failure — do not go looking at SSH keys. One-line fix needs root:
+`sudo resolvectl dns enp0s5 8.8.8.8 1.1.1.1`.
 
-`fix-panel-chrome-flake` in `/tmp/conductor-panelchrome`, monitor `b7s5fmxn1`, brief
-`/tmp/TASK-panel-chrome-flake.md`, report will be `/tmp/panelchrome-READY.md`.
+### ONE BUILDER LIVE — #178, the gate reduction the user explicitly asked for
 
-Committed `dca84d2 fix(ui): preserve panel close publication across frame coalescing`. **That is an
-app fix, not a harness fix.** The panel-close condition WAS published and then LOST to frame
-coalescing before the poll observed it — the second of the two mechanisms the brief named. So the
-gate's retry has been laundering a real defect: a panel close that does not publish reliably.
-REVIEW THE REPORT before merging; the brief demanded a ≥20-run pass/fail SEQUENCE (not a rate) and
-population separation against `186f2d8` (pre-#156) vs `d5ba738`.
+`feat-gate-two-minute` in `/tmp/conductor-gate2min`, monitor `b59gt1lx6`, brief at
+`/tmp/TASK-gate-2min.md` (also `agent-dispatches/` once dispatched via the new scripts), report to
+`/tmp/gate2min-READY.md`.
 
-### Landed tonight (all gate-verified at `d5ba738`, ALL-PASS, 426s)
+**Its deliverable is a TIMING TABLE, so DO NOT DISPATCH ANYTHING ELSE until it lands.** Contention
+destroys the numbers. It has already modified `scripts/merge-gate.sh` — step 1 of its brief is
+adding per-step durations, which the gate does not currently print.
 
-#152 glide easing → user chose **900 ms** · #155 gate verdicts became ordering/counts, quiet lock
-gone from the blocking path · #158 the 900 ms hang (a probe keyed to an unreachable 14th moving
-frame — easing untouched) · #156 tasks capability · #157 MCP design + the user's public-API-default
-decision · #114 Wave A LSP as provider (host refs 4→0) · #108 `$`/`:` marks accepted and landed ·
-conventions rules 1.8/1.9/1.95 + `scripts/` scope fix + AppleDouble exclusion.
+Target: 6m31s -> 2-3 min. The shape of the problem: parallel phase is already 0m51s for 57 jobs;
+the serial tail is 5m16s for 7 steps. Inferred from two gates, `perf-baselines` is SOFT yet sits in
+the blocking path, and behavioral-contracts costs ~3m28s alone.
 
-### UNTRACKED BYCATCH — reported by builders, never converted to tasks. Convert these.
+### TONIGHT'S BIG LANDING: #172 took the gate from 18m29s to 6m31s
 
-Only #160 (context-menu wheel double-dispatch: one physical wheel → two impulses, 10.2 then 22.78
-velocity, two reproductions) exists so far. STILL UNTRACKED:
+`renderer.idle()` in boot waited for ALL OpenTUI quiescence, not for the frame it had requested.
+Single-launch smokes were unaffected (0.54s -> 0.53s); jobs that RELAUNCH the app paid it every
+time — settings-applied 23,034 ms -> 655,982 ms -> 24.07 s after the fix. Replaced with
+`Bootstrap.awaitProjectedFrame()`: no timeout, no false-success branch. #161's guarantee intact.
 
-1. **Quick Open opens the WRONG file** when the repo itself is the workspace. Publishes
-   `quickOpenSelected=0 quickOpenMatches=1`, visibly renders `TASK.md`, Enter opens
-   `project.tasks.md`. Reproduced repeatedly plus a dedicated second probe. Source: drivequick
-   builder, `/tmp/drivequick-READY.md`. **Highest severity of the five — silent wrong-file open.**
-2. **Status bar shows the retired name `Fable Test`** — in both before and after 120x40 frames.
-   Source: mdtables builder.
-3. **Settings reveal desync at 80x24** — `settingsSelectedLabel` updates while the selected row is
-   BELOW the painted viewport. Reproduced more than twice. Source: gfxtier builder.
-4. **Files pane blank at settled boot** on a non-empty workspace despite `treeRows=50`. Observed on
-   two commits (`063e3ab`, `5f22cd8`). Source: statics-cpu builder.
-5. **Narration contract drift** — contract and comments still say "any keystroke" barges in; shipped
-   behaviour requires explicit Escape and the harness proves typing does NOT barge in. Needs its own
-   atomic invariant-rename commit. Source: narration-flake builder.
+Boot itself is UNCHANGED at ~300 ms (308 default / 290 at 100k lines) — #175 is open to attribute
+that, and it is the half that would make the app faster for the USER rather than the suite.
 
-The builders reported all of these correctly and correctly refused to fix them. The leak is at the
-CONDUCTOR end: a bycatch survives only if it becomes a task.
+### FLEET PROCEDURE CHANGED — use the scripts, not hand-rolled dispatch
 
-### Open decisions — none. Both of the user's questions are answered and landed.
+`scripts/fleet/dispatch.sh <task> <slug> <brief> [engine]` and
+`scripts/fleet/land.sh <task> <slug> <report> <merge-message>` (`e0c7693`).
 
-### The flake class, likely one defect not four
+- dispatch REFUSES to launch without committing the brief first — that ordering is the whole point.
+- land REFUSES to merge until bycatch is triaged (`BYCATCH_TRIAGED=1` acknowledges).
+- Worktrees now at `.invar/worktrees/<task>-<slug>` (gitignored), records at
+  `agent-dispatches/<task>-<slug>/`, sessions named `invar/<task>-<slug>` — attach with
+  `tmux attach -t invar/<task>-<slug>`.
+- **The end-to-end path is UNTESTED.** Guards are verified to leave zero side effects; the first
+  real dispatch is the test. Read `project.fleet-operations.md` before using them.
 
-#109 (agent-permissions), #124 (terminal-follow), #159 (panel-chrome) all wait on PUBLISHED
-CONDITIONS. #158 was a wait whose condition was UNREACHABLE by construction; #159 looks like a
-condition that becomes true and is then COALESCED AWAY. Ask whether the remaining 15 harness
-deadlines (13 `FRAME_ARRIVAL_TIMEOUT_MILLISECONDS`, 2 `DEFAULT_TIMEOUT`) should all report WHICH
-they hit — late vs unreachable vs lost — the way #158's fix now names the count and phase it awaited.
+### BRIEFS STAGED AND READY — dispatch these two the moment #178 lands
 
-### Gate status: blocking verdicts are timing-free
+Neither is timing-sensitive, so they can run as a pair:
 
-Measured on this tree: zero blocking steps compare a measured duration; `MEASUREMENT INVALID` is
-unreachable from a verdict; quiet lock is 0 references in `merge-gate.sh`, retained only in the soft
-`perf-baselines.sh`. Clocks remain only as configured inputs, report-only measurements, and
-condition-wait deadlines — and that last category is where every open flake lives.
+- **#168** `/tmp/TASK-168-frame-ordinal-wait.md` — waits for "the next frame" instead of a
+  condition. THREE confirmed instances. Highest value: one is a gate step, so its retries launder
+  everything measured beside it.
+- **#171** `/tmp/TASK-171-tasks-json-displaces-builtin.md` — writing `.invar/tasks.json` silently
+  deletes the built-in Claude terminal. User-visible, and it BLOCKS fleet Phase 4.
 
-## RESUME ANCHOR (2026-07-27 16:25 UTC) — SUPERSEDED by the anchor above
+Timing-sensitive, must run SOLO on a quiet machine, in this order: **#177** (is the gate flake one
+shared cause? N>=15 pool runs), **#175** (attribute the 300 ms boot), **#169** (editor edit path
+allocates 4 arrays of length n per edit — from the Opus 5 review the user surfaced).
 
-**USER IS AWAKE AND IN THE LOOP.** Their live direction IS the backlog — no experiments, no
-autonomous scope choices. The overnight anchor below (02:20) is SUPERSEDED: it declares the user
-asleep, a goal hook active, and three builders in flight. All three are finished and merged; **zero
-builders are live**. It also names main `185abf9`, which is ~13 landings stale.
+### THE UNIFYING DEFECT CLASS — read this before diagnosing anything
 
-Main is `317e267` (`bun run drive`, #137). **Always ground-truth against git — this anchor lags
-too.**
+Roughly a dozen instances in two nights, and it keeps reappearing in new costumes:
+**a proxy was read and reported as the state.**
 
-**Live thread (user-directed):** the ivue statics convention. The ivue-repo Fable settled the
-**ANCHOR RULE** — a class declaring static members publishes `const $Class = Static($X)` and
-everything downstream keeps extending `$Class` bare. `extends X.Class` is FORBIDDEN (an `extends`
-clause is an eager snapshot of a mutable slot ⇒ load-order drift). Briefs:
-`tmp/anchor-rule-brief.md`, `tmp/ivue-2.2.1-live-go-brief.md`. Our migration brief is rewritten at
-`/tmp/TASK-ivue-221-migration.md` (#125) and the gate rules are #130. **An older revision of both
-said the opposite about test doubles — if you read "extend X.Class, safe as of 2.2.1" anywhere, it
-is stale.**
+- `pgrep -f` matching its own argv; grepping for my own wording of a rule; a monitor grepping a
+  builder's LOG for `quota` and matching the repo documentation the builder was reading aloud
+- `grep -c ERROR` = 7 reported as "erroring now" when six were startup lines of a 14,627-line log
+- `writes=0` reported as idle when the builder was working in worktrees it had created itself
+- `du` on hardlinked trees reporting 50 GB for 2.6 GB of actual bytes (`links=90`)
+- checkers that walk the FILESYSTEM, not git, so `.gitignore` does not protect them — this reddened
+  a gate when 1.1 GB of transcripts moved into `tmp/`
+- waits on frame ORDINALS rather than conditions (#158, #159, #164, #168)
+- validate-late/act-early: guards placed after the side effect they were meant to prevent
 
-**In flight:** #149 (`fix-scheduling-bound-contracts` in `/tmp/conductor-schedbounds`) re-gating
-after merging main — log `/tmp/gate-schedbounds3.log`. Its first green (`1d72df0`) was stale
-because main moved under it; see the "green gate names the commit, not the branch" lesson in
-`project.conductor.md`.
+The habit that catches all of them: **pair every absence check with a presence control**, and ask
+what the tool actually walks / what the counter actually counted / when the evidence was produced.
 
-**Uncommitted and deliberately held** (a commit launches a gate, and a second gate invalidates the
-in-flight timing measurement): `.claude/skills/conductor/SKILL.md` (gate-concurrency re-narrowing +
-merge-base/stale-green doctrine) and `project.conductor.md` (this fire's lessons). Commit both once
-`/tmp/gate-schedbounds3.log` shows `GATE_EXIT`.
-
----
-
-## RESUME ANCHOR (2026-07-27 ~02:20) — SUPERSEDED by the anchor above; historical
-
-USER IS ASLEEP; GOAL HOOK ACTIVE: "complete all 26 tasks one by one, off to bed". Their direction
-is the queue below. NO experiments. Land only gated work (SKIP_GATE only for markdown with the
-justification in the commit message, only while overlay-dialog blocks gates).
-
-Main (LOCAL) @ `185abf9`; remote has everything through `185abf9` (push confirmed via
-"Everything up-to-date" during a network window — NETWORK IS FLAPPING, DNS intermittent; a
-background task retries pushes; never conclude access problems from DNS errors).
-
-**IN FLIGHT (3 builders, at cap):**
-- foldfeel r3 (`/tmp/conductor-foldfeel`, #135): glide fix rounds 1-2 ACCEPTED (bisect found
-  `99f0550` ramp regression; ceiling-relative headroom envelope; defaults-first tables; sweep
-  120/220/320/480 all climbing). Gate 787893 found blast radius: `scrollbars` +
-  `settings-applied` smokes encode the OLD single-flick travel (envelope reserves velocity in
-  flick 1). R3 brief `/tmp/TASK-glide-round3.md`: QUANTIFY the single-gesture travel change at 220
-  (if >15% STOP and report — reservation fractions may need retuning, feel decision), then fix
-  both smokes to honest physics (more notches, never wider timeouts), then census ALL
-  wheel-consuming smokes (verification set must match a shared generator's BLAST RADIUS).
-- scaleinv (`/tmp/conductor-scaleinv`, #133): RESUMED from WIP `8438514`. Scale-invariance as the
-  contract: ratio ≈ 1 on COUNTS (reads-per-frame 2k == 100k), floors demoted to canaries,
-  positive control plants an O(document) cost. Brief `/tmp/TASK-scale-invariance.md`.
-- overlayfix (`/tmp/conductor-overlayfix`, NEW): overlay-dialog graduated from retry-flake to
-  HARD RED blocking every gate — the night's bottleneck, dispatched first. Brief
-  `/tmp/TASK-overlay-dialog-red.md`: reproduce by driving (~1/3 red, loop it), fix app or wait
-  (never timeout), prefer count verdicts, 20 consecutive greens acceptance.
-
-**LANDING ORDER AFTER THESE:** #125 SOLO (ivue-2.2.0 statics + SCREAMING_SNAKE; read
-tmp/static-cached-getters-2.2.0-brief.md — NOTE tmp/ is now gitignored but files persist locally)
-→ #99 graphics tier → #111 copyable panels → #115/#116/#119 chrome wave → #130 extend-$Class
-invariant → #136 shared scale fixtures → #114 (REDEFINED: terminal-hosted agents + Invar MCP
-provider + jsonl-translator switcher; wrapper = power-user tool; see task metadata) → #122 editor
-capstone → #102 tables → #131 autocomplete identifiers → then the parked findings queue
-(#105 unrun smokes, #108 gear mark [needs a user-facing proposal, prepare but do not change
-appearance without them], #90, #94, #86, #75, #31, #35, #46, #104, #109, #124) → #59/#62 LAST.
-
-**METHOD (Rule Zero, top of this file and AGENTS.md):** builders drive PTY first, iterate
-drive→change→drive, contract after the symptom dies, suite once; scale parity (2k AND 100k);
-defaults first (user settings are a second probe); feel-bisect for "used to work"; bycatch
-reported, small-and-obvious fixes allowed under the four conditions; counts over clocks.
-
-**CRONS:** hourly loop `7 * * * *` (e8d7b9dd) + sweep `11,41 * * * *` (a5e026ea) — re-arm from
-the conductor skill's verbatim copies if the session restarts.
 
 ## PRIOR ANCHOR (2026-07-26 ~13:25)
 
