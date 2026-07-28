@@ -3,86 +3,84 @@
 Full authority to build the whole thing to completion (brief Definition of Done + the §5.1 gate).
 Files on disk survive context compaction; this file + `project.progress.md` are the durable memory.
 
-## RESUME ANCHOR (2026-07-28 05:40 UTC) — READ FIRST
+## RESUME ANCHOR (2026-07-28 09:40 UTC) — READ FIRST
 
-**Main `a4e15a2`, clean. 20-odd commits AHEAD of origin and that is FINE — the user pushes
-themselves ("I will push myself later"). Do NOT report unpushed commits as a blocker.**
-Gate-verified green through `596ac50` (ALL-PASS, 6m31s).
+**Main `6456e7b`, clean. Many commits ahead of origin and that is FINE — the user pushes themselves
+("I will push myself later"). Do NOT report unpushed commits as a blocker.**
 
-Network note: `systemd-resolved`'s stub at `127.0.0.53` fails for almost every name while
-`8.8.8.8` answers instantly and `ping 8.8.8.8` is 9.5 ms. Only `chatgpt.com` resolves, cached,
-which is why codex works and `git push` does not. `git push` reports *"correct access rights"* for
-what is purely a DNS failure — do not go looking at SSH keys. One-line fix needs root:
-`sudo resolvectl dns enp0s5 8.8.8.8 1.1.1.1`.
+Network: `systemd-resolved`'s stub at `127.0.0.53` fails for most names while `8.8.8.8` answers
+instantly. `git push` reports *"correct access rights"* for what is purely DNS — do not chase SSH
+keys. Root-level fix: `sudo resolvectl dns enp0s5 8.8.8.8 1.1.1.1`.
 
-### ONE BUILDER LIVE — #178, the gate reduction the user explicitly asked for
+### SEVEN LANDINGS TONIGHT
 
-`feat-gate-two-minute` in `/tmp/conductor-gate2min`, monitor `b59gt1lx6`, brief at
-`/tmp/TASK-gate-2min.md` (also `agent-dispatches/` once dispatched via the new scripts), report to
-`/tmp/gate2min-READY.md`.
+| # | result |
+|---|---|
+| **178** | gate **6m31s -> 4m02s**, assertions 41->41. perf-baselines out of the blocking path; 2 smokes promoted with 10/10 proof |
+| **169** | edit path DECLINED with evidence — the wrap sync was already inside the 500k goal |
+| **186** | **500k editing now imperceptible**: mutation 68-87ms -> 0.007-0.045ms, combined max 11.5ms |
+| **171** | adopting `.invar/tasks.json` no longer silently deletes the built-in Claude terminal |
+| **168** | removed 75 frame-ordinal waits AND the primitive; fixed a deterministic red |
+| **170** | automatic tasks no longer steal the keyboard — a #156 regression, blast radius was every non-reserved chord |
+| **188** | repaired the two regressions #168 introduced; both harnesses ALL-PASS on 64c57b5 |
 
-**Its deliverable is a TIMING TABLE, so DO NOT DISPATCH ANYTHING ELSE until it lands.** Contention
-destroys the numbers. It has already modified `scripts/merge-gate.sh` — step 1 of its brief is
-adding per-step durations, which the gate does not currently print.
+### ONE BUILDER LIVE
 
-Target: 6m31s -> 2-3 min. The shape of the problem: parallel phase is already 0m51s for 57 jobs;
-the serial tail is 5m16s for 7 steps. Inferred from two gates, `perf-baselines` is SOFT yet sits in
-the blocking path, and behavioral-contracts costs ~3m28s alone.
+**#184** (`failure-log-provenance`) in `.invar/worktrees/184-failure-log-provenance`, monitor
+`bttlxyp23`, `tmux attach -t invar/184-failure-log-provenance`. Fixing `/tmp/merge-gate-failures`
+being a directory rather than a symlink, so the stable path can serve a PREVIOUS run's logs.
 
-### TONIGHT'S BIG LANDING: #172 took the gate from 18m29s to 6m31s
+**A full gate has not run since `715c980` failed.** Run one once #184 lands — that is the outstanding
+verification, and the two named harnesses already pass individually.
 
-`renderer.idle()` in boot waited for ALL OpenTUI quiescence, not for the frame it had requested.
-Single-launch smokes were unaffected (0.54s -> 0.53s); jobs that RELAUNCH the app paid it every
-time — settings-applied 23,034 ms -> 655,982 ms -> 24.07 s after the fix. Replaced with
-`Bootstrap.awaitProjectedFrame()`: no timeout, no false-success branch. #161's guarantee intact.
+### PR #1 IS REVIEWED, ACCEPTED, AND DELIBERATELY UNLANDED
 
-Boot itself is UNCHANGED at ~300 ms (308 default / 290 at 100k lines) — #175 is open to attribute
-that, and it is the half that would make the app faster for the USER rather than the suite.
+`origin/pr/1` — macOS native PTY backend, cross-platform installer. Fetch with
+`git fetch origin '+refs/pull/*/head:refs/remotes/origin/pr/*'` (gh has stale creds, HTTP 401; SSH
+works). Held only because main was red: landing it onto a red tree destroys attribution, which is the
+mistake that produced a wrong hypothesis when #168 and #170 landed together.
 
-### FLEET PROCEDURE CHANGED — use the scripts, not hand-rolled dispatch
+**Before merging: move `READY.macos-terminal.md` out of the repo root into `agent-dispatches/`** — its
+own commit message says "strip before landing". Then #181 and #182 become dispatchable.
 
-`scripts/fleet/dispatch.sh <task> <slug> <brief> [engine]` and
-`scripts/fleet/land.sh <task> <slug> <report> <merge-message>` (`e0c7693`).
+### THE DEFECT CLASS THAT DOMINATED THE NIGHT
 
-- dispatch REFUSES to launch without committing the brief first — that ordering is the whole point.
-- land REFUSES to merge until bycatch is triaged (`BYCATCH_TRIAGED=1` acknowledges).
-- Worktrees now at `.invar/worktrees/<task>-<slug>` (gitignored), records at
-  `agent-dispatches/<task>-<slug>/`, sessions named `invar/<task>-<slug>` — attach with
-  `tmux attach -t invar/<task>-<slug>`.
-- **The end-to-end path is UNTESTED.** Guards are verified to leave zero side effects; the first
-  real dispatch is the test. Read `project.fleet-operations.md` before using them.
+**Asking for evidence of a change that will not happen.** Five spellings, one unasked question:
 
-### BRIEFS STAGED AND READY — dispatch these two the moment #178 lands
+- #159 a mutation with no publication carrier; #161 a settle preceding its own publisher; #168 frame
+  59 that did not exist; #188 a screen change with no cause; #187 a clamped wheel with nothing to
+  repaint.
+- The question: **is the thing FALSE right now?** If already true, the correct wait is a no-op, not a
+  timeout. A result condition is only safe when the result is REACHABLE.
 
-Neither is timing-sensitive, so they can run as a pair:
+Second class, roughly a dozen instances, mostly in MY OWN probes: **a proxy read and reported as the
+state.** `pgrep -f` matching its own argv (11 times), `grep -c ERROR` counting startup lines,
+`writes=0` on a builder working in worktrees it created, `du` on hardlinked trees reporting 50GB for
+2.6GB, a monitor watching a transcript path the process never used, `is-ancestor` calling a
+zero-commit branch "merged". Pair every absence check with a presence control.
 
-- **#168** `/tmp/TASK-168-frame-ordinal-wait.md` — waits for "the next frame" instead of a
-  condition. THREE confirmed instances. Highest value: one is a gate step, so its retries launder
-  everything measured beside it.
-- **#171** `/tmp/TASK-171-tasks-json-displaces-builtin.md` — writing `.invar/tasks.json` silently
-  deletes the built-in Claude terminal. User-visible, and it BLOCKS fleet Phase 4.
+### PROCEDURE — use the scripts, they enforce what I forget
 
-Timing-sensitive, must run SOLO on a quiet machine, in this order: **#177** (is the gate flake one
-shared cause? N>=15 pool runs), **#175** (attribute the 300 ms boot), **#169** (editor edit path
-allocates 4 arrays of length n per edit — from the Opus 5 review the user surfaced).
+`scripts/fleet/dispatch.sh <task> <slug> <brief> [engine]` — refuses to launch without committing the
+brief first. `EXPERIMENT=1` names the branch `experiment/` and `land.sh` then refuses to merge it
+without `ADOPT_EXPERIMENT=1`.
 
-### THE UNIFYING DEFECT CLASS — read this before diagnosing anything
+`scripts/fleet/land.sh <task> <slug> <report> <merge-msg>` — refuses while the builder lives, refuses
+on untracked source, **PRINTS THE BYCATCH and HOLDS unless `BYCATCH_TRIAGED=1`**, then merges, parks
+`finished/`, prunes the worktree, closes the session. Six briefs staged at
+`agent-dispatches/_staged/`.
 
-Roughly a dozen instances in two nights, and it keeps reappearing in new costumes:
-**a proxy was read and reported as the state.**
+**#183 is unfixed and it bit once already: the quiet lock gives up after 120s and runs DEGRADED.** It
+reports degradation rather than preventing it. Only one measurement phase on the machine at a time,
+and check the journal for `degraded` before trusting any timing.
 
-- `pgrep -f` matching its own argv; grepping for my own wording of a rule; a monitor grepping a
-  builder's LOG for `quota` and matching the repo documentation the builder was reading aloud
-- `grep -c ERROR` = 7 reported as "erroring now" when six were startup lines of a 14,627-line log
-- `writes=0` reported as idle when the builder was working in worktrees it had created itself
-- `du` on hardlinked trees reporting 50 GB for 2.6 GB of actual bytes (`links=90`)
-- checkers that walk the FILESYSTEM, not git, so `.gitignore` does not protect them — this reddened
-  a gate when 1.1 GB of transcripts moved into `tmp/`
-- waits on frame ORDINALS rather than conditions (#158, #159, #164, #168)
-- validate-late/act-early: guards placed after the side effect they were meant to prevent
+### QUEUE, briefed and ordered
 
-The habit that catches all of them: **pair every absence check with a presence control**, and ask
-what the tool actually walks / what the counter actually counted / when the evidence was produced.
+**#187** Drive's clamp wait (third sighting of the reachability class) · **#173** grid predicates vs
+wrap · **#180** CRITICAL: no smoke runs on macOS, the gate has never run on the host · **#183** the
+lock · **#185** gate 4m->2-3m (behavioral-contracts is 62%) · **#179** the gate never compares its own
+numbers · **#177** one retry per gate, never the same smoke — possibly one shared cause · **#174**
+markdown ragged table (2 sightings) · **#164/#165/#166/#176** instrument debt.
 
 
 ## PRIOR ANCHOR (2026-07-26 ~13:25)
