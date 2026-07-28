@@ -138,6 +138,31 @@ agent_identity="${declared_engine:-$engine}-${declared_model:-unknown}-${declare
 transcript_path="${repository_root}/tmp/transcripts/transcript-${agent_identity}-${name}.md"
 
 # ---------------------------------------------------------------------------
+# DRY_RUN=1 stops HERE — after every guard, before the first side effect.
+#
+# This exists because of a specific mistake. Three refusal guards were verified by running them and
+# watching them refuse. The fourth check was meant to be the negative control — proof that the guard
+# does not simply refuse everything — and it was run the same way. But this script is not a query:
+# "did not refuse" meant it CUT A WORKTREE, committed a brief reading "brief", and launched a codex
+# on a task nobody had asked for.
+#
+# A control that mutates the system is not a control. The negative arm of any guard test needs a way
+# to reach the guard without paying for the action, and now there is one:
+#
+#   DRY_RUN=1 scripts/fleet/dispatch.sh 199 find-reveal-blank-target-line /tmp/brief.md codex
+# ---------------------------------------------------------------------------
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  echo "dispatch: DRY RUN — every guard passed, no side effect taken."
+  echo "  task:        #${task_number} ${slug}"
+  echo "  engine:      ${declared_engine:-$engine}   model: ${declared_model:-unknown}   effort: ${declared_effort:-default}"
+  echo "  environment: ${declared_environment:-unset} (host: $(uname -s | tr '[:upper:]' '[:lower:]'))"
+  echo "  branch:      ${branch}"
+  echo "  worktree:    ${worktree_path}"
+  echo "  transcript:  ${transcript_path}"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
 # 1. REFUSE on any collision. A leftover worktree has silently started a builder
 #    on the WRONG BASE three separate times; picking a new path costs nothing and
 #    reusing one costs a whole run.
