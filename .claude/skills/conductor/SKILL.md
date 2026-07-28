@@ -520,6 +520,29 @@ Operating rules that follow:
   (`PtyTestDriver` / the harness / `bun run drive`) or you have built an instrument that cannot
   fail — the exact defect class this file warns about, committed while diagnosing it.
 
+
+### Second instance, 2026-07-28: I compared one subsystem against the whole frame budget
+
+#169 declined a flyweight conversion because `measure-editor-edit-path.ts` put the wrap-index sync at
+1.327-3.763 ms at 100k and under 9.124 ms at 500k, against a 16 ms frame. I called that inside budget.
+
+The user then drove a real 500,000-line file and reported editing as "super slow." The measurement was
+not wrong. **The acceptance threshold was.** 9 ms is ONE subsystem; the same frame also runs the fold
+projection, the render, the scrollbar sync and the gutter. Sustained typing at 9 ms of sync per
+keystroke queues input, so "one keystroke fits in 16 ms" was never the same claim as "typing feels
+instant."
+
+The general error: **a component budget is not the frame budget.** When an instrument measures a
+boundary rather than the whole path, its number needs a share of the budget, not the whole of it — and
+the share has to be stated before the measurement is taken, or the comparison gets chosen to fit the
+result.
+
+Two things that made this recoverable rather than expensive. The user's report carried a detail that
+NARROWED the cause for free — "even not on the widest line" rules out the champion path #186 fixed and
+localizes the cost to the per-edit allocations. And the hand-test shipped a small-file control beside
+the large one, so "the app is broken" was excluded before the first question was asked.
+
+
 ## Stop a monitor in the ACTION that consumes its result
 
 A gate monitor exists to tell you the verdict once. The moment you act on that verdict — land the
