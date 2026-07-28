@@ -3226,3 +3226,42 @@ restate a requirement it had already demonstrated unprompted (it mirrored instru
 `bun test` in round 2, 37 assertions including the counter's own positive control, with nobody asking).
 The cheap moment for that point is REVIEW OF THE ARTIFACT, not a mid-flight nudge. A queued
 interruption costs a live measurement; a review finding costs nothing.
+
+## 2026-07-28 17:0x EDT — main landed four merges, and the flake that unblocked it was an environment difference
+
+**`reserved-chord` was never a race.** It resisted four gate sightings and three investigations. A
+builder measured 10/10 passing standalone and clean across eleven gates at `a93b7e8`; I measured 12/12
+failing on that same commit. Neither was fabricated. Codex bundles its own ripgrep at
+`~/.codex/packages/standalone/releases/*/codex-path/rg` (verified 15.1.0 and 15.2.0), which a
+codex-launched app inherits; my shell has `rg` only as a Claude Code shell FUNCTION, which no child can
+inherit. Quick Open enumerated zero files and the wait could not be satisfied.
+
+The gate provisions nothing — `parallel_safe_smoke` only records a command — but it INHERITS the
+environment of whatever launched it, and that launcher differs between me and every builder. Promoted to
+doctrine: a cross-check against a builder's numbers is not a replication unless the environments were
+compared, and when our measurements contradict, the first hypothesis is now the environment rather than
+an error by either party.
+
+The inverse bit is the uncomfortable one: codex's extra tooling was CONCEALING a real application defect
+— Quick Open silently returns nothing in a non-git folder on a machine without ripgrep. A builder better
+equipped than the user's machine will hide exactly the defects users hit.
+
+**Landing tally for the day, stated without gloss.** Main moved from `a93b7e8` to `d3721b2`, carrying
+the flyweight edit path, the LSP read guard, folded editing with scale-invariant toggles, and the
+fixture repair that unblocked all of it. Gate ALL-PASS in 4m18s, fast-forward so main is byte-identical
+to the gated tree. But: three regressions reached a tree every instrument called clean, and the USER
+found two of them by driving. Both times the gap was which fixture got measured. The gate needed three
+quiet retries to go green, which is the fourth day running that the retry population has been the
+loudest thing in verification, and it now has its own builder.
+
+**A numbering error worth not repeating.** I dispatched the flake investigation with the label `205`
+before creating its task, so the number was a guess; the task list then assigned #205 to something else.
+Branches are never renamed here, so the label now disagrees with the ID and both records carry a note
+explaining it. Create the task first, then dispatch with its real number.
+
+**A hold I took deliberately.** The user's directed drive-tool work (#204) was ready to dispatch
+alongside the flake investigation, and two builders is within cap. I held it anyway: the flake builder's
+entire deliverable is population separations on LOAD-SENSITIVE smokes, and a second builder spawning app
+instances would inflate the very timings it measures. The cap is about machine capacity; this was about
+not corrupting evidence I had just asked for. Concurrency limits should be reasoned per pair of tasks,
+not only per count.

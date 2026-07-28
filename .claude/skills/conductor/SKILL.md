@@ -1123,6 +1123,41 @@ Three corollaries earned the same day:
   validation, first-paint work landing inside the typing window). A green count is evidence about
   counts, not about speed.
 
+## A BUILDER'S ENVIRONMENT IS NOT MINE — SO OUR MEASUREMENTS ARE NOT COMPARABLE BY DEFAULT
+
+2026-07-28. `reserved-chord` resisted four gate sightings and three investigations. A builder measured
+it **10/10 passing** standalone and clean across eleven gates at `a93b7e8`; I measured **12/12 failing**
+on that same commit. Both were honest. Codex ships its own ripgrep at
+`~/.codex/packages/standalone/releases/*/codex-path/rg` — verified, 15.1.0 and 15.2.0 across three
+releases — which a codex-launched app **inherits**, while the conductor's shell has `rg` only as a
+Claude Code shell **function**, which no child process can inherit. The smoke's Quick Open silently
+enumerated zero files, so its wait could never be satisfied.
+
+Nothing in the gate provisions an environment: `parallel_safe_smoke` only records a command into an
+array. But the gate still **inherits the environment of whatever launched it**, and that launcher
+differs between me and every builder. That was the missing distinction, and it had cost three
+investigations.
+
+Consequences to act on:
+
+- **A cross-check against a builder's numbers is not a replication** unless the environments were
+  compared. When my measurement contradicts a builder's, the FIRST hypothesis is now an environment
+  difference, not that one of us is wrong. Two honest observations of different environments look
+  exactly like one fabricated result.
+- **A smoke whose external subject is ABSENT fails indistinguishably from a race.** Timeout-class
+  failures therefore say nothing about timing until the dependency question is settled.
+- **Enumerate each smoke's external dependencies and mark them provisioned or inherited** — binaries on
+  PATH, git presence, HOME contents, terminal capabilities, TMPDIR location. Inherited is the defect,
+  because it makes the contract's subject a property of the launcher.
+- When briefing a builder to reproduce something I measured, **state my environment** — at minimum the
+  results of `env <tool> --version` for every tool the path touches. "I saw X" is not reproducible
+  without it.
+
+The same reasoning applies in reverse: a builder that cannot reproduce MY failure may be right, and its
+extra tooling may be hiding a defect real users will hit. That is exactly what happened here — codex's
+bundled ripgrep concealed a genuine application defect (silent empty enumeration in a non-git folder),
+which is now its own task.
+
 ## A PRE-SATISFIED WAIT LAUNDERS A NO-OP INTO A GREEN
 
 The reachability class has an inverse that is worse than a timeout, and #192 found
