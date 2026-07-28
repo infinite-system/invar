@@ -943,6 +943,30 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## A MASS CONVERSION NEEDS PER-SITE PROOF, NOT CLASS-LEVEL PROOF
+
+#168 converted **75 wait sites** off a forbidden primitive and proved the class:
+zero identifiers remain under `scripts/harness`, structurally post-checked, plus
+10/10 serial behavioral runs green. That proof was real and it was not enough.
+Five harnesses have now regressed from that one task — two found by #188, three
+more by #189 — and every one failed the same way: the site received the GENERIC
+replacement predicate ("the driven input produces an observed screen change")
+where its actual claim was specific.
+
+A generic predicate is a PROXY at any site whose claim is narrower than "something
+repainted." #189's scrollbar case is the clean example: the wait observed any byte
+change in the scrollbar row, so an intermediate 44-cell thumb satisfied it before
+the exact horizontal extent arrived. The repair was to observe the claim itself —
+`frame.thumbLength < stableHorizontalFrame.thumbLength`.
+
+So when briefing a sweep over N sites, the deliverable is not "N sites converted
+and the census is zero." It is: for each site, **the named result it asserts** —
+and an explicit list of the sites that legitimately claim only "something
+repainted." #168 named three such sites and gave the other 72 the generic wait.
+The three it named were right; the ratio was the defect.
+
+Ask for the exceptions to be enumerated, not the conversions counted.
+
 ## A RETRY INSIDE THE POOL CANNOT RESCUE A POOL-CAUSED FAILURE
 
 The gate's retry-once runs in the same 60-job pool as the first attempt. So
@@ -951,24 +975,39 @@ any load-dependent failure the retry has no discriminating power at all, because
 it reproduces the condition it was meant to rule out. Read that line as "failed
 twice under load," never as "fails everywhere."
 
-The discriminating run is standalone and quiet. `reserved-chord` failed the gate
-twice on 2026-07-27 while passing standalone at both candidate commits — the
-gap between those two populations IS the finding, and reading the in-pool retry
-as determinism would have sent a builder hunting a defect in the smoke's logic
-instead of in its load assumptions.
+The discriminating run is standalone and quiet, and the honest reading of a
+double in-pool failure is "unexplained," not "deterministic."
+
+**The illustration I first wrote here was wrong, and how it failed is the more
+useful lesson.** I recorded `reserved-chord`'s two in-pool gate failures as a
+confirmed load-dependent flake and briefed it that way. #189 measured it: 5/5
+standalone PASS and **3/3 PASS in three actual six-worker merge-gate pools**. It
+also refuted the reachability mechanism I proposed, by reading the fixture —
+`await Bun.write(...small.txt)` completes before `PtyTestDriver` is even
+constructed, so the file cannot still be being written when the query runs.
+
+So the principle stands on its own logic — an in-pool retry cannot discriminate a
+load flake, because it reproduces the condition it was meant to rule out — but I
+had used it to license a conclusion the measurement did not support. Two gate
+failures at one commit and eight subsequent passes is an **unreproduced** red.
+Name it that way, and let the builder find the population rather than confirm mine.
 
 ## A PROOF STANDARD LIVES IN DOCTRINE OR IT DIES WITH THE BRIEF
 
 #178 required **10/10 pool runs** before promoting a smoke into the concurrent
 pool, and proved both of its promotions that way. Nine hours later #170 added a
-brand-new smoke to the pool as pool-safe by DEFAULT, with zero pool runs, and it
-became one of two things blocking main.
+brand-new smoke to the pool as pool-safe by DEFAULT, with zero pool runs.
 
-Nothing was violated: the standard existed only inside #178's brief, and briefs
+The gap is real and worth closing (#190). What I got wrong was the consequence I
+attached to it: I wrote that the unproven smoke "became one of two things blocking
+main," and #189 then measured it green 8/8. The registration gap did not cause the
+red. A gap in evidence is a gap in evidence — it does not become a diagnosis
+because a failure happened nearby.
+
+The transferable part: the standard existed only inside #178's brief, and briefs
 do not read each other. Any bar worth requiring twice belongs here, in the
-checkers, or in `project.tasks.md` — because the conductor is the only shared
-memory between two builders who never meet. When a task earns a rule, land the
-rule, not just the fix.
+checkers, or in `project.tasks.md` — the conductor is the only shared memory
+between two builders who never meet. When a task earns a rule, land the rule.
 
 ## Diagnosis rules earned 2026-07-25
 

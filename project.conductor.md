@@ -2875,3 +2875,39 @@ The ★ marker meant "a brief exists" and I had been reading it as "open"; that 
 already names what follows (#114 Wave B -> #122 -> #35), and a red main outranks all feature work.
 Manufacturing a feature task here would rank my invention above user-directed work, which is exactly
 what the surface-the-ordering correction forbids.
+
+## 2026-07-28 07:00 UTC — #189 refuted three of my claims, one of which I had already written into doctrine
+
+#189 landed at `4c4d248`. It resolved both assigned reds and overturned the framing I sent it with.
+
+**The scrollbars red was not #186.** #186's merge is PASS×5 and the commit before it is PASS×5; the
+failure enters with **#168's** wait conversion. That wait observed any byte change in the scrollbar
+row, so an intermediate 44-cell thumb satisfied it before the exact horizontal extent arrived. Fixed
+by observing the claim itself. #186's 500k win is untouched, which was the constraint that mattered.
+
+**`reserved-chord` did not reproduce**: 5/5 standalone and 3/3 in real six-worker pools from the merge
+base. It also refuted the reachability mechanism I proposed — by reading the fixture, where
+`Bun.write` completes before `PtyTestDriver` is constructed, so the file cannot still be being written
+when the query runs. The two failures at `52dcde4` stand unexplained.
+
+That second one had already reached doctrine. I wrote the in-pool-retry section using reserved-chord
+as its confirmed instance, and filed #190 saying the unproven registration "became one of two things
+blocking main." Both statements outran the evidence. The retry principle survives on its own logic —
+an in-pool retry reproduces the condition it was meant to rule out — but I used it to license a
+diagnosis I had not measured, and #190's premise is now corrected in place rather than quietly
+softened. **Two gate failures and eight subsequent passes is an unreproduced red.** Filing it as
+"pool-caused" would have sent a builder to confirm my population instead of finding the real one.
+
+**The lesson that actually generalises** is about #168, and it is now doctrine: a mass conversion needs
+per-site proof, not class-level proof. #168 converted 75 wait sites, proved the class (zero identifiers,
+10/10 behavioral runs), and gave 72 sites the generic "something repainted" predicate — which is a
+proxy at any site whose claim is narrower. Five harnesses have now regressed from that one task: two
+repaired by #188, one by #189, three open in #192. #168 named three sites as needing narrower
+conditions and was right about all three; the ratio was the defect. When briefing a sweep, ask for the
+exceptions to be **enumerated**, not the conversions counted.
+
+Main is still red, now for two causes neither #189 nor I introduced: **#191** terminal-stage, where the
+prompt is visibly on the grid while the compound prompt+colour predicate times out — 8 failed attempts
+across 4 gates, pre-existing at the merge base, and #168's bycatch reported the same site weeks ago —
+and **#174** markdown's ragged row, third sighting, but passing at the merge base three times, which
+argues intermittent rather than the aligner bug I had assumed.
