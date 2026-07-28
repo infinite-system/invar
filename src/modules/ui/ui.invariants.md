@@ -1828,6 +1828,36 @@ scripts/harness/smoke-diagnostics-harness.ts`
 
 **Last refined:** 2026-07-26
 
+### Settings selection stays inside its viewport
+
+**Invariant:** If `SettingsPanel.selectedIndex` changes while Settings is open, then the selected
+descriptor row is painted inside the published Settings viewport span.
+
+**Scope:** Keyboard selection changes in the Settings overlay at every terminal geometry. Pointer
+selection and manual wheel or thumb scrolling without a selection change are outside this rule.
+
+**Mechanism:** `OverlayLayer.settingsLines` emits one logical line per `settingsContentRows` row, and
+`settingsText` disables implicit wrapping so OpenTUI paints that same one-row geometry.
+`revealViewportRow` then moves `settingsViewport.scrollTop` until the selected line lies between zero
+and `settingsViewportRows - 1`.
+
+**Generates:** Step-wise reveal in both navigation directions; geometry-independent section
+boundaries; a Settings content extent that matches its painted row count.
+
+**Evidence:** `src/modules/ui/OverlayLayer.ts`;
+`scripts/harness/smoke-overlay-dialog-harness.ts`
+`requireEverySettingsNavigationStepRevealed`.
+
+**Impossible if true:** `settingsSelectedLabel` changing while no selected marker is painted inside
+the Settings viewport; a section boundary or wrapped label placing the selected row below the
+published span.
+
+**Verification:** `bun scripts/harness/smoke-overlay-dialog-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-27
+
 ### Settings are editable by mouse per widget kind
 
 **Invariant:** Every setting in the panel is editable by MOUSE, not only the keyboard — matching the
