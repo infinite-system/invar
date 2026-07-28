@@ -502,7 +502,7 @@ try {
     page += 1
   ) {
     driver.sendKeys('PageUp');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     snapshot = driver.snapshot();
   }
   const userTurnRow = firstRowContaining(snapshot, 'alpha-marker');
@@ -708,7 +708,7 @@ try {
     page++
   ) {
     driver.sendKeys('PageUp');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   snapshot = await driver.awaitGridCondition(
     'PageUp reveals the earliest transcript turn',

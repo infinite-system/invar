@@ -1,34 +1,41 @@
 import { describe, expect, test } from 'bun:test';
-import { SynchronizedOutputQuiescence } from './SynchronizedOutputQuiescence';
+import {
+  SynchronizedOutputQuiescence,
+  type CompletedSynchronizedFrame,
+} from './SynchronizedOutputQuiescence';
 
 const beginSynchronizedOutput = '\x1b[?2026h';
 const endSynchronizedOutput = '\x1b[?2026l';
 
 describe('SynchronizedOutputQuiescence', () => {
-  test('counts only complete paired frames from a recorded output shape', async () => {
+  test('counts only complete paired frames from a recorded output shape', () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
-    const completedFrame = quiescence.awaitNextCompletedFrame();
-    quiescence.observe(`terminal setup${endSynchronizedOutput}`);
+    expect(
+      quiescence.observe(`terminal setup${endSynchronizedOutput}`),
+    ).toEqual([]);
     expect(quiescence.completedFrameCount).toBe(0);
-    quiescence.observe(`${beginSynchronizedOutput}frame body`);
+    expect(quiescence.observe(`${beginSynchronizedOutput}frame body`)).toEqual(
+      [],
+    );
     expect(quiescence.isFrameOpen).toBe(true);
-    quiescence.observe(`${endSynchronizedOutput}terminal tail`);
-    await completedFrame;
+    const completedFrames = quiescence.observe(
+      `${endSynchronizedOutput}terminal tail`,
+    );
+    expect(completedFrames).toHaveLength(1);
     expect(quiescence.completedFrameCount).toBe(1);
     expect(quiescence.isFrameOpen).toBe(false);
   });
 
-  test('records byte arrival before downstream oracle work on a recorded stream', async () => {
+  test('records byte arrival before downstream oracle work on a recorded stream', () => {
     let currentTimestampMilliseconds = 3;
     const quiescence = new SynchronizedOutputQuiescence.Class(
       () => currentTimestampMilliseconds,
     );
-    const completedFrame = quiescence.awaitNextCompletedFrame();
     quiescence.observe(`terminal setup${beginSynchronizedOutput}frame body`);
     currentTimestampMilliseconds = 7;
-    quiescence.observe(endSynchronizedOutput);
+    const [observedFrame] = quiescence.observe(endSynchronizedOutput);
     currentTimestampMilliseconds = 21;
-    const observedFrame = await completedFrame;
+    if (!observedFrame) throw new Error('expected a completed frame');
 
     expect(observedFrame).toEqual({
       completedFrameCount: 1,
@@ -40,38 +47,41 @@ describe('SynchronizedOutputQuiescence', () => {
     expect(quiescence.lastCompletedFrame).toEqual(observedFrame);
   });
 
-  test('recognizes markers split at every PTY chunk boundary', async () => {
+  test('recognizes markers split at every PTY chunk boundary', () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
     const recordedFrame = `${beginSynchronizedOutput}paint${endSynchronizedOutput}`;
-    const completedFrame = quiescence.awaitNextCompletedFrame();
+    const completedFrames: CompletedSynchronizedFrame[] = [];
     for (const recordedByte of new TextEncoder().encode(recordedFrame)) {
-      quiescence.observe(new Uint8Array([recordedByte]));
+      completedFrames.push(
+        ...quiescence.observe(new Uint8Array([recordedByte])),
+      );
     }
-    await completedFrame;
+    expect(completedFrames).toHaveLength(1);
     expect(quiescence.completedFrameCount).toBe(1);
   });
 
-  test('does not complete until a nested synchronized frame closes', async () => {
+  test('does not complete until a nested synchronized frame closes', () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
-    const completedFrame = quiescence.awaitNextCompletedFrame();
-    quiescence.observe(`${beginSynchronizedOutput}${beginSynchronizedOutput}`);
-    quiescence.observe(endSynchronizedOutput);
+    expect(
+      quiescence.observe(
+        `${beginSynchronizedOutput}${beginSynchronizedOutput}`,
+      ),
+    ).toEqual([]);
+    expect(quiescence.observe(endSynchronizedOutput)).toEqual([]);
     expect(quiescence.completedFrameCount).toBe(0);
-    quiescence.observe(endSynchronizedOutput);
-    await completedFrame;
+    expect(quiescence.observe(endSynchronizedOutput)).toHaveLength(1);
     expect(quiescence.completedFrameCount).toBe(1);
   });
 
-  test('waits for a future completion event rather than resolving from a frame ordinal', async () => {
+  test('returns every completed frame already observed in the supplied bytes', () => {
     const quiescence = new SynchronizedOutputQuiescence.Class();
-    quiescence.observe(
-      `${beginSynchronizedOutput}first${endSynchronizedOutput}`,
-    );
-    const nextCompletedFrame = quiescence.awaitNextCompletedFrame();
-    quiescence.observe(
-      `${beginSynchronizedOutput}second${endSynchronizedOutput}`,
+    const completedFrames = quiescence.observe(
+      `${beginSynchronizedOutput}first${endSynchronizedOutput}` +
+        `${beginSynchronizedOutput}second${endSynchronizedOutput}`,
     );
 
-    expect((await nextCompletedFrame).completedFrameCount).toBe(2);
+    expect(completedFrames.map((frame) => frame.completedFrameCount)).toEqual([
+      1, 2,
+    ]);
   });
 });

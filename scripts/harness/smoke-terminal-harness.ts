@@ -249,7 +249,7 @@ try {
     bootStatus.terminalVisible === false,
     'terminal is hidden at boot',
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const statusBarRow = Number(bootStatus.height) - 1;
   const terminalButtonStart = driver
     .snapshot()

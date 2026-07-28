@@ -40,7 +40,7 @@ try {
 
   for (let warmupPressNumber = 1; warmupPressNumber <= 3; warmupPressNumber++) {
     driver.sendKeys('Right');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
 
   const initialPrefix = 'abc';
@@ -71,7 +71,7 @@ try {
         ),
       );
     }
-    await driver.awaitQuiescence(3_000);
+    await driver.awaitScreenChange(3_000);
     if (!driver.snapshot().text().includes(expectedLine)) {
       throw new Error(
         InputByteFlushVerdict.Class.drivenBehaviourFailureMessage(

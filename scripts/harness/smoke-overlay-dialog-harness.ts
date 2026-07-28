@@ -1173,7 +1173,7 @@ try {
 
   console.log('== harness overlays: modal outside presses are consumed ==');
   driver.resize(100, 32);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+,');
   status = await awaitStatusPublication(
     statusPath,

@@ -1109,7 +1109,12 @@ class $Bootstrap {
       // extending the selection.
       animating = view.tickDragAutoScroll(deltaTimeSeconds) || animating;
       // The mounted contributed surface advances its own glide + settle-repaint.
-      animating = view.tickContributedSurface(deltaTimeSeconds) || animating;
+      const contributedSurfaceAnimationIsActive =
+        view.tickContributedSurface(deltaTimeSeconds);
+      animating = contributedSurfaceAnimationIsActive || animating;
+      StatusChannel.Class.update({
+        contributedSurfaceAnimationAtRest: !contributedSurfaceAnimationIsActive,
+      });
       // Tooltip dwell: the frame tick advances the timer; it's just another animation source, so it
       // folds into the SAME single-live-request model (holds a frame while counting, false at rest).
       animating = tooltip.tick(deltaTimeSeconds) || animating;

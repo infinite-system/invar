@@ -20,11 +20,35 @@ function createRecordedStreamDriver(
   );
   const recordedStreamProgram = `
     const recordedFrames = ${JSON.stringify(recordedFrames)};
+    process.stdin.setRawMode?.(true);
+    process.stdin.resume();
     await Bun.sleep(20);
     for (const recordedFrame of recordedFrames) {
       process.stdout.write(recordedFrame);
       await Bun.sleep(${frameIntervalMilliseconds});
     }
+    await Bun.sleep(1_000);
+  `;
+  return new PtyTestDriver.Class({
+    workspaceRoot: process.cwd(),
+    repositoryRoot: process.cwd(),
+    columns: 40,
+    rows: 4,
+    command: [process.execPath, '-e', recordedStreamProgram],
+  });
+}
+
+function createSingleChunkRecordedStreamDriver(
+  frameTexts: readonly string[],
+): PtyTestDriver.Model {
+  const recordedStream = frameTexts
+    .map((frameText) => recordedFrame(frameText))
+    .join('');
+  const recordedStreamProgram = `
+    process.stdin.setRawMode?.(true);
+    process.stdin.resume();
+    await Bun.sleep(80);
+    process.stdout.write(${JSON.stringify(recordedStream)});
     await Bun.sleep(1_000);
   `;
   return new PtyTestDriver.Class({
@@ -153,7 +177,7 @@ describe('PtyTestDriver.awaitGridCondition', () => {
   test('resolves from the current grid when the condition is already satisfied', async () => {
     const driver = createRecordedStreamDriver(['ALREADY READY']);
     try {
-      await driver.awaitQuiescence();
+      await driver.awaitScreenChange();
       const snapshot = await driver.awaitGridCondition(
         'the recorded grid already contains READY',
         (candidateSnapshot) => candidateSnapshot.findText('READY') !== null,
@@ -240,6 +264,22 @@ describe('PtyTestDriver.awaitGridCondition', () => {
       await driver.dispose();
     }
   });
+
+  test('rejects when driven input produces no screen change or later frame', async () => {
+    const driver = createRecordedStreamDriver(['IDLE GRID']);
+    try {
+      await driver.awaitGridCondition(
+        'the no-op fixture reaches its idle grid',
+        (snapshot) => snapshot.findText('IDLE GRID') !== null,
+      );
+      driver.sendKeys('Right');
+      await expect(driver.awaitScreenChange(100)).rejects.toThrow(
+        'the driven input produces an observed screen or native caret change',
+      );
+    } finally {
+      await driver.dispose();
+    }
+  });
 });
 
 describe('PtyTestDriver.assertContentInvariantAcrossAction', () => {
@@ -311,20 +351,28 @@ describe('PtyTestDriver.assertContentInvariantAcrossAction', () => {
   });
 });
 
-describe('PtyTestDriver.awaitNextCompletedFrameSnapshot', () => {
-  test('returns the emulator grid paired with each future synchronized frame', async () => {
-    const driver = createRecordedStreamDriver(
-      ['FIRST FRAME', 'SECOND FRAME'],
-      60,
-    );
+describe('PtyTestDriver completed-frame observations', () => {
+  test('records the exact emulator grid at each frame boundary in one PTY chunk', async () => {
+    const driver = createSingleChunkRecordedStreamDriver([
+      'FIRST FRAME',
+      'SECOND FRAME',
+    ]);
     try {
-      const firstFrame = await driver.awaitNextCompletedFrameSnapshot();
-      expect(firstFrame.completedFrame.completedFrameCount).toBe(1);
-      expect(firstFrame.snapshot.findText('FIRST FRAME')).not.toBeNull();
-
-      const secondFrame = await driver.awaitNextCompletedFrameSnapshot();
-      expect(secondFrame.completedFrame.completedFrameCount).toBe(2);
-      expect(secondFrame.snapshot.findText('SECOND FRAME')).not.toBeNull();
+      const completedFrames =
+        await driver.collectCompletedFrameObservationsUntil({
+          conditionDescription: 'the recorded stream reaches SECOND FRAME',
+          condition: (snapshot) => snapshot.findText('SECOND FRAME') !== null,
+          performAction: () => undefined,
+        });
+      expect(completedFrames).toHaveLength(2);
+      expect(completedFrames[0]?.completedFrame.completedFrameCount).toBe(1);
+      expect(
+        completedFrames[0]?.snapshot.findText('FIRST FRAME'),
+      ).not.toBeNull();
+      expect(completedFrames[1]?.completedFrame.completedFrameCount).toBe(2);
+      expect(
+        completedFrames[1]?.snapshot.findText('SECOND FRAME'),
+      ).not.toBeNull();
     } finally {
       await driver.dispose();
     }

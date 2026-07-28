@@ -339,7 +339,7 @@ try {
   );
   snapshot = driver.snapshot();
   clickMarker(driver, snapshot, secondName.slice(0, 17));
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const firstSwitchedFrameStatus = await awaitStatus(
     driver,
     statusPath,
@@ -388,7 +388,7 @@ try {
   );
   await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Right');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Escape');
   snapshot = await driver.awaitGridCondition(
     'the left-oriented workspace strip stacks the second project in the left column',
@@ -424,7 +424,7 @@ try {
   );
   await selectVisibleSetting('Workspace tabs');
   driver.sendKeys('Left');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Escape');
   snapshot = await driver.awaitGridCondition(
     'the workspace strip returns to the top row',

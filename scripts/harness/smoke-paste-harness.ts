@@ -172,7 +172,7 @@ try {
     'word-left, word-right, and Alt+Backspace forward as readline meta sequences',
   );
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   console.log(
     '== harness paste: split markers and large payloads reach the terminal exactly ==',
@@ -184,7 +184,7 @@ try {
   );
   pass('10-byte paste split across both markers reaches the terminal');
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   for (const payloadByteCount of [1024, 65_536]) {
     const commandPrefix = "printf '";
@@ -204,7 +204,7 @@ try {
     // straddles a row boundary is layout-configuration arithmetic, so no single-row text wait can
     // gate here. Quiescence proves the paste bytes flushed and the echo settled; byte-exactness is
     // proven by the wc -c result below, which prints at pane column 0 and cannot straddle.
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     driver.sendKeys('Enter');
     await driver.awaitSnapshot(
       (snapshot) =>
@@ -262,7 +262,7 @@ try {
     button: 'left',
   });
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   console.log('== harness paste: agent paste inserts into the composer ==');
   driver.sendRawInput('\x1b[27;6;97~');
@@ -418,7 +418,7 @@ try {
   );
   pass('paste payload reaches readline intact while a command is staged');
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   const panelLayoutStatus = await awaitStatusPublication(
     statusPath,
@@ -493,7 +493,7 @@ try {
   );
   pass('paste payload reaches readline intact during visible typing');
   driver.sendKeys('Control+c');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Control+j');
   await awaitStatusPublication(
     statusPath,

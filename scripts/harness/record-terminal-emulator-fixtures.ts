@@ -56,7 +56,7 @@ class $TerminalEmulatorFixtureRecorder {
       await driver.awaitSnapshot(
         (snapshot) => snapshot.findText('Command Palette') !== null,
       );
-      await driver.awaitQuiescence();
+      await driver.awaitScreenChange();
       await this.writeFixture(
         'terminal-emulator-recorded-keypress-diff',
         driver.recordedOutput().slice(outputLengthBeforeKeypress),
@@ -112,7 +112,7 @@ class $TerminalEmulatorFixtureRecorder {
       (snapshot) => snapshot.findText('Files') !== null,
       15_000,
     );
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     return driver;
   }
 

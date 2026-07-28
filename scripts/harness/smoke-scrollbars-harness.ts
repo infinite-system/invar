@@ -684,35 +684,37 @@ async function collectAgentThumbFrames(
   wheelRow: number,
 ): Promise<readonly AgentThumbFrame[]> {
   const frames: AgentThumbFrame[] = [];
-  let nextFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
-  sendRepeatedWheel(driver, 'up', 18, wheelColumn, wheelRow);
-  for (let frameIndex = 0; frameIndex < 120; frameIndex += 1) {
-    let completed: Awaited<typeof nextFrame>;
-    try {
-      completed = await nextFrame;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        break;
-      }
-      throw error;
-    }
-    const status = HarnessSmoke.Class.readStatus(statusPath);
-    frames.push({
-      frame: Number(status.frame),
-      viewportRows: Number(status.agentViewportRows),
-      contentRows: Number(status.agentContentLineCount),
-      scrollTop: Number(status.agentScrollTop),
-      paintedThumbRows: agentThumbRowCount(completed.snapshot, panelRectangle),
-    });
-    if (frameIndex < 119) {
-      nextFrame = driver.awaitNextCompletedFrameSnapshot(150);
-    }
-  }
+  const scrollTopBeforeWheelBurst = Number(
+    HarnessSmoke.Class.readStatus(statusPath).agentScrollTop,
+  );
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription:
+      'the agent transcript moves upward and its momentum rests',
+    condition: () => {
+      const status = HarnessSmoke.Class.readStatus(statusPath);
+      return (
+        Number(status.agentScrollTop) < scrollTopBeforeWheelBurst &&
+        status.panelScrollMomentumAtRest === true
+      );
+    },
+    performAction: () => {
+      sendRepeatedWheel(driver, 'up', 18, wheelColumn, wheelRow);
+    },
+    observeFrame: (completed) => {
+      const status = HarnessSmoke.Class.readStatus(statusPath);
+      frames.push({
+        frame: Number(status.frame),
+        viewportRows: Number(status.agentViewportRows),
+        contentRows: Number(status.agentContentLineCount),
+        scrollTop: Number(status.agentScrollTop),
+        paintedThumbRows: agentThumbRowCount(
+          completed.snapshot,
+          panelRectangle,
+        ),
+      });
+    },
+    timeoutMilliseconds: 2_000,
+  });
   return frames;
 }
 
@@ -772,24 +774,40 @@ async function collectVerticalThumbFrames(
 ): Promise<VerticalThumbFrame[]> {
   const thumbFrames: VerticalThumbFrame[] = [];
   let reachedBottom = false;
-  for (let wheelBurst = 1; wheelBurst <= 40 && !reachedBottom; wheelBurst++) {
-    let nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
-    sendRepeatedWheel(driver, 'down', 12, 80, 10);
-    for (let frameNumber = 1; frameNumber <= 300; frameNumber++) {
-      let scrollFrame: Awaited<typeof nextScrollFrame>;
-      try {
-        scrollFrame = await nextScrollFrame;
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith(
-            'Timed out waiting for the next complete synchronized frame',
-          )
-        ) {
-          break;
-        }
-        throw error;
+  await driver.collectCompletedFrameObservationsUntil({
+    conditionDescription: `${modeLabel} vertical thumb reaches the bottom`,
+    condition: (snapshot) => {
+      const frameProof = scrollBarProof(snapshot);
+      return (
+        frameProof !== null &&
+        frameProof.thumbEndRow >=
+          frameProof.trackStartRow + frameProof.trackLength - 1
+      );
+    },
+    performAction: async () => {
+      for (
+        let wheelBurst = 1;
+        wheelBurst <= 40 && !reachedBottom;
+        wheelBurst++
+      ) {
+        const beforeBurstProof = scrollBarProof(driver.snapshot());
+        sendRepeatedWheel(driver, 'down', 12, 80, 10);
+        await driver.awaitGridCondition(
+          `${modeLabel} wheel burst ${wheelBurst} advances its thumb`,
+          (snapshot) => {
+            const frameProof = scrollBarProof(snapshot);
+            return (
+              frameProof !== null &&
+              (frameProof.thumbStartRow !== beforeBurstProof?.thumbStartRow ||
+                frameProof.thumbEndRow >=
+                  frameProof.trackStartRow + frameProof.trackLength - 1)
+            );
+          },
+          2_000,
+        );
       }
+    },
+    observeFrame: (scrollFrame) => {
       const frameProof = scrollBarProof(scrollFrame.snapshot);
       if (!frameProof) {
         const snapshot = scrollFrame.snapshot;
@@ -831,11 +849,9 @@ async function collectVerticalThumbFrames(
       reachedBottom =
         frameProof.thumbEndRow >=
         frameProof.trackStartRow + frameProof.trackLength - 1;
-      if (frameNumber < 300) {
-        nextScrollFrame = driver.awaitNextCompletedFrameSnapshot(150);
-      }
-    }
-  }
+    },
+    timeoutMilliseconds: 30_000,
+  });
   requireCondition(
     reachedBottom,
     `${modeLabel} wheel drive reaches the document bottom`,
@@ -914,7 +930,7 @@ async function proveVerticalEditorThumbStability(
       (candidate) => candidate.findText('Go to File') !== null,
     );
     driver.sendText('horizontal-thumb-stability');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     driver.sendKeys('Enter');
     await driver.awaitGridCondition(
       `the ${modeLabel} probe opens the mixed-width tall file`,
@@ -922,7 +938,7 @@ async function proveVerticalEditorThumbStability(
     );
     if (wordWrapEnabled) {
       driver.sendKeys('Alt+z');
-      await driver.awaitQuiescence();
+      await driver.awaitScreenChange();
     }
     // AWAIT THE THUMB, not the file text. The wait above observes the document's content; this claim
     // reads the SCROLLBAR THUMB, which the debug-bars probe paints in a later frame under load. Sampling
@@ -1075,7 +1091,7 @@ async function proveVerticalDiffThumbStability(
     driver.sendKeys('End');
     driver.sendText('X'.repeat(180));
     driver.sendKeys('Control+s');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     driver.sendKeys('Control+g');
     await driver.awaitGridCondition(
       'the edited diff fixture returns to the Git changes pane',
@@ -1127,20 +1143,13 @@ async function sendWheelUntil(
   for (let repeatIndex = 0; repeatIndex < maximumRepeatCount; repeatIndex++) {
     const currentSnapshot = driver.snapshot();
     if (predicate(currentSnapshot)) return currentSnapshot;
-    const nextCompletedFrame = driver.awaitNextCompletedFrameSnapshot(2_000);
+    const currentText = currentSnapshot.text();
     driver.sendMouse({ kind: 'wheel', column, row, direction, alt });
-    let snapshot: HarnessSnapshot.Model;
-    try {
-      snapshot = (await nextCompletedFrame).snapshot;
-    } catch (error) {
-      const latestSnapshot = driver.snapshot();
-      if (predicate(latestSnapshot)) return latestSnapshot;
-      console.log(
-        `  DIAG  stalled ${direction} wheel at (${column}, ${row})\n` +
-          latestSnapshot.text(),
-      );
-      throw error;
-    }
+    const snapshot = await driver.awaitGridCondition(
+      `${direction} wheel changes visible content or reaches its target`,
+      (candidate) => predicate(candidate) || candidate.text() !== currentText,
+      2_000,
+    );
     if (predicate(snapshot)) return snapshot;
   }
   throw new Error(
@@ -1404,7 +1413,7 @@ try {
     (candidate) => candidate.findText('Go to File') !== null,
   );
   overflowDriver.sendText('horizontal-thumb-stability');
-  await overflowDriver.awaitQuiescence();
+  await overflowDriver.awaitScreenChange();
   overflowDriver.sendKeys('Enter');
   snapshot = await overflowDriver.awaitGridCondition(
     'the mixed-width stability fixture is open in the editor',
@@ -1423,32 +1432,32 @@ try {
     'editor horizontal thumb is present',
   );
   const horizontalThumbLengths: number[] = [];
-  let nextScrollFrame = overflowDriver.awaitNextCompletedFrameSnapshot(2_000);
-  sendRepeatedWheel(overflowDriver, 'down', 25, 40, 10);
-  for (let frameNumber = 1; frameNumber <= 300; frameNumber++) {
-    let scrollFrame: Awaited<typeof nextScrollFrame>;
-    try {
-      scrollFrame = await nextScrollFrame;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.startsWith(
-          'Timed out waiting for the next complete synchronized frame',
-        )
-      ) {
-        break;
-      }
-      throw error;
-    }
+  const scrollTopBeforeWheelBurst = Number(
+    HarnessSmoke.Class.readStatus(statusPath).editorScrollTop,
+  );
+  const horizontalThumbFrames =
+    await overflowDriver.collectCompletedFrameObservationsUntil({
+      conditionDescription:
+        'the vertical wheel burst advances the editor and its momentum rests',
+      condition: () => {
+        const status = HarnessSmoke.Class.readStatus(statusPath);
+        return (
+          Number(status.editorScrollTop) > scrollTopBeforeWheelBurst &&
+          status.workspaceScrollMomentumAtRest === true
+        );
+      },
+      performAction: () => {
+        sendRepeatedWheel(overflowDriver, 'down', 25, 40, 10);
+      },
+      timeoutMilliseconds: 2_000,
+    });
+  for (const [frameIndex, scrollFrame] of horizontalThumbFrames.entries()) {
     const frameProof = horizontalEditorScrollBarProof(scrollFrame.snapshot);
     requireCondition(
       frameProof !== null,
-      `editor horizontal thumb remains present in scroll frame ${frameNumber}`,
+      `editor horizontal thumb remains present in scroll frame ${frameIndex + 1}`,
     );
     horizontalThumbLengths.push(frameProof.thumbLength);
-    if (frameNumber < 300) {
-      nextScrollFrame = overflowDriver.awaitNextCompletedFrameSnapshot(150);
-    }
   }
   const distinctHorizontalThumbLengths = [...new Set(horizontalThumbLengths)];
   requireCondition(

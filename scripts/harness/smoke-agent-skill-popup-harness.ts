@@ -76,7 +76,7 @@ try {
   await driver.awaitSnapshot(
     (snapshot) => snapshot.findText('Ask Claude') !== null,
   );
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   console.log('== skill popup: block scalars and bounded rows ==');
   driver.sendText('/');

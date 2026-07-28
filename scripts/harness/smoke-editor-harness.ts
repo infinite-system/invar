@@ -59,9 +59,9 @@ try {
   );
   pass('workspace is active');
   driver.sendKeys('Down');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Down');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   for (let openAttempt = 1; openAttempt <= 8; openAttempt++) {
     const openAttemptStatus = await awaitStatusPublication(
       statusPath,
@@ -70,9 +70,9 @@ try {
     );
     if (openAttemptStatus.activeBuffer) break;
     driver.sendKeys('Enter');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
     driver.sendKeys('Down');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   const openedBufferStatus = await awaitStatusPublication(
     statusPath,
@@ -87,7 +87,7 @@ try {
     '== harness editor: typing updates the document and native caret ==',
   );
   driver.sendKeys('Right');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   const typingBaselineStatus = await awaitStatusPublication(
     statusPath,
     'the buffer revision is published before typing',
@@ -164,7 +164,7 @@ try {
     );
     if (undoStatus.dirty === false) break;
     driver.sendKeys('Control+z');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   await awaitStatusPublication(
     statusPath,
@@ -258,7 +258,7 @@ try {
   const longLineHead = snapshot.findText('Fixture');
   requireCondition(longLineHead !== null, 'long fixture line is visible');
   clickCell(driver, longLineHead.column, longLineHead.row);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('End');
   await driver.awaitSnapshot(
     (candidate) => candidate.findText('desync)') !== null,
@@ -301,7 +301,7 @@ try {
     (status) => status.hasSelection === false,
   );
   driver.sendKeys('Home');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   console.log(
     '== harness editor: Option-wheel routes horizontally and reverses ==',
@@ -327,7 +327,7 @@ try {
   for (let wheelEvent = 1; wheelEvent <= 8; wheelEvent++) {
     driver.sendRawInput(`\x1b[<74;44;${wheelRow + 1}M`);
   }
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Home');
   await awaitStatusPublication(
     statusPath,
@@ -367,9 +367,9 @@ try {
     `edge hold auto-scrolled to ${edgeScrollLeft}`,
   );
   driver.sendKeys('Escape');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendKeys('Home');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
 
   console.log(
     '== harness editor: tree and editor clicks use one dispatch path ==',
@@ -421,7 +421,7 @@ try {
   );
   pass('editor click restores editor focus');
   clickCell(driver, editorClickPosition.column + 3, editorClickPosition.row);
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   snapshot = await driver.awaitGridCondition(
     'the source tree row is available after restoring editor focus',
     (candidate) => candidate.findText('src') !== null,
@@ -539,7 +539,7 @@ try {
       );
     }
     driver.sendRawInput('\x1b[B\r');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   const tabsAfterOpenStatus = await awaitStatusPublication(
     statusPath,
@@ -559,7 +559,7 @@ try {
     `flyweight keeps live documents ${liveAfterOpen} below tabs ${tabsAfterOpen}`,
   );
   driver.sendKeys('Control+w');
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   // The predicate must be UNSATISFIABLE BY PRE-Ctrl+W STATE. It used to accept
   // `typeof pendingCloseTab === 'number'`, which the status already satisfied with the
   // "nothing pending" sentinel before the key was ever sent: sampling stale skipped the
@@ -579,7 +579,7 @@ try {
   );
   if (Number(pendingCloseStatus.pendingCloseTab) >= 0) {
     driver.sendKeys('y');
-    await driver.awaitQuiescence();
+    await driver.awaitScreenChange();
   }
   await awaitStatusPublication(
     statusPath,

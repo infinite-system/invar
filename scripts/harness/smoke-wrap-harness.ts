@@ -349,7 +349,7 @@ try {
     row: continuationRow,
     button: 'left',
   });
-  await driver.awaitQuiescence();
+  await driver.awaitScreenChange();
   driver.sendText('X');
   const caretSnapshot = await driver.awaitGridCondition(
     'the typed glyph appears immediately before the native caret',
