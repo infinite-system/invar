@@ -49,6 +49,18 @@ missed keystroke.
    `terminalFocused=true` may be the defect itself, or a faithful report of a genuinely ambiguous
    state that something upstream created. Those need different fixes.
 
+## CONFLICT AVOIDANCE — put your driven assertion in a NEW smoke file
+
+A parallel builder (#168) currently has **40 files under `scripts/harness/` modified**, including
+`smoke-overlay-dialog-harness.ts` — the file where a Settings assertion would most naturally go.
+
+So do NOT extend an existing harness smoke. **Add a new focused one**, e.g.
+`scripts/harness/smoke-reserved-chord-harness.ts`, and register it. A new file cannot conflict, and
+the subject deserves its own smoke anyway: this is about reserved chords reaching their handler
+regardless of which surface holds focus, which is a distinct claim from "the overlay dialog behaves."
+
+Touching `src/` is fine — #168 is entirely inside `scripts/harness/`.
+
 ## The contract to lock in
 
 A reserved chord must reach its handler regardless of which surface holds focus, or must be
