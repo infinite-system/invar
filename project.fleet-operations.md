@@ -209,29 +209,48 @@ Nothing blocking. Two things to decide when we get there, neither of which chang
 
 ## `.invar/tasks.json` — SETTLED: `runOn: folderOpen`, and the file does not exist yet
 
-The tasks capability (#156) is live code reading a file that was never written. `TaskConfiguration`
-looks for `.invar/tasks.json`, falls back to `.vscode/tasks.json`, and this repo has neither — so
-the capability has never run outside its own fixtures. **A capability with no live configuration is
-the #105 shape one level up:** not a smoke the gate never runs, but a feature the product never
-exercises on itself, which rots exactly as invisibly.
+**CORRECTION.** I first reported that #156's capability was dormant because neither config file
+exists. That was wrong, and the user caught it by describing what they actually see: a Claude
+terminal auto-opening beside the terminal, plus the Invar agent pane on its button — three panels.
 
-`runOn: folderOpen` is confirmed as the intended mode. Two kinds of task, and only the second waits
-on the migration:
+`TaskConfiguration.resolve()` has a THIRD branch after the two file lookups
+(`TaskConfiguration.ts:30-46`):
 
-**A. The agent terminal — buildable today, independent of everything else.** This is the default
-#156 shipped and it needs no fleet infrastructure:
+    source: 'built-in',
+    tasks: [{ label: 'Claude',
+              command: 'claude --dangerously-skip-permissions --continue || '
+                     + 'claude --dangerously-skip-permissions',
+              presentationPanel: 'dedicated',
+              runOnFolderOpen: true }]
 
-    claude --dangerously-skip-permissions --continue || claude --dangerously-skip-permissions
+So the capability runs on every workspace with no configuration at all, and `dedicated` is what
+produces the extra panel. The method I read stops making sense fifteen lines before it ends; I
+checked for the FILE and inferred behaviour from its absence instead of reading the function that
+consumes it. An absence check with no presence control — the ninth instance of that class tonight
+and the third I authored myself.
 
-The `||` is deliberate and already recorded in `tasks.invariants.md`: `--continue` fails when there
-is no session to resume and the fallback starts a fresh one, where a single `|` would pipe one
-agent's stdout into another.
+### The consequence, which is a trap for Phase 4
 
-**B. Fleet attach-panes — only useful AFTER `dispatch.sh` exists.** These run
-`tmux attach -t invar/<task>-<slug>`, and with `runOn: folderOpen` they would fire on every open. A
-task attaching to a session that does not exist fails immediately and paints a dead pane, so these
-must be generated per-dispatch rather than checked in as a static list — `dispatch.sh` writes the
-entry, `land.sh` removes it. That keeps the roster honest: a pane exists if and only if a builder
-does.
+`tasks.invariants.md` records **One task source controls each workspace**, and #156 proved by
+driving that adoption is REPLACEMENT, not union — adding `.invar/tasks.json` made the `.vscode`
+tasks disappear rather than merge. The built-in is the lowest-priority source in that same chain.
 
-The ordering follows from that: A can land whenever, B is genuinely Phase 4.
+**Therefore: the moment we write `.invar/tasks.json` for fleet attach-panes, the built-in Claude
+task stops existing.** The user would lose the agent terminal they use daily, silently, as a side
+effect of fleet plumbing — and it would look like a regression in the agent, not a consequence of
+adopting a config file.
+
+So the file must re-declare the Claude task explicitly as its first entry, byte-identical to the
+built-in including the `||`. That fallback is deliberate and recorded: `--continue` fails when
+there is no session to resume and the second invocation starts a fresh one, where a single `|`
+would pipe one agent's stdout into another.
+
+`dispatch.sh` and `land.sh` then edit only the entries below it — they add and remove attach-panes
+and must never touch entry zero. A fleet pane runs `tmux attach -t invar/<task>-<slug>`, and with
+`runOnFolderOpen: true` firing on every open, a pane pointing at a session that no longer exists
+fails immediately and paints dead. Generated per-dispatch, removed on land: a pane exists if and
+only if a builder does.
+
+Worth a contract of its own: **adopting a task source must not silently remove a task the user was
+relying on.** Today nothing would notice — which is exactly the shape of defect this project keeps
+finding.
