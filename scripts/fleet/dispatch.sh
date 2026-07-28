@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# Dispatch a builder, and make its record a BYPRODUCT of dispatching.
+#
+# WHY THIS EXISTS
+#
+# Seven bycatch findings were reported correctly by builders on 2026-07-27 and
+# five were lost, for exactly one reason: recording them required a SEPARATE
+# ACTION from the work that produced them. Any record that depends on a second
+# step eventually does not happen. Every brief written by hand had the same
+# latent defect — it survived only because someone chose to keep a copy, and
+# nothing would have noticed if they had not.
+#
+# So this script REFUSES TO LAUNCH AN AGENT WITHOUT COMMITTING ITS BRIEF FIRST.
+# That single ordering is the whole design; everything else here is convenience.
+#
+# Usage:
+#   scripts/fleet/dispatch.sh <task-number> <slug> <brief-file> [engine]
+#
+#   scripts/fleet/dispatch.sh 168 frame-ordinal-wait /tmp/brief.md
+#   scripts/fleet/dispatch.sh 171 tasks-json-displaces-builtin /tmp/brief.md claude
+#
+# engine defaults to codex.
+
+set -euo pipefail
+
+if [ "$#" -lt 3 ]; then
+  echo "usage: $0 <task-number> <slug> <brief-file> [engine]" >&2
+  exit 2
+fi
+
+task_number="$1"
+slug="$2"
+brief_file="$3"
+engine="${4:-codex}"
+
+case "$task_number" in
+  ''|*[!0-9]*) echo "dispatch: task number must be digits, got '$task_number'" >&2; exit 2;;
+esac
+case "$slug" in
+  ''|*[!a-z0-9-]*) echo "dispatch: slug must be lowercase letters, digits, hyphens" >&2; exit 2;;
+esac
+[ -f "$brief_file" ] || { echo "dispatch: brief not found: $brief_file" >&2; exit 2; }
+
+# VALIDATE EVERY ARGUMENT BEFORE ANY SIDE EFFECT. The first version of this
+# script checked the engine name at launch time — step 5 — so a typo'd engine
+# had already cut a worktree, run `bun install`, and COMMITTED A BRIEF for a
+# dispatch that then refused to start. Validate-late/act-early is the same
+# ordering defect that made a worktree prune delete tracked files before the
+# removal it was preparing for could run. Guards go first or they are not guards.
+case "$engine" in
+  codex|claude) ;;
+  *) echo "dispatch: unknown engine '$engine' (codex|claude)" >&2; exit 2;;
+esac
+
+repository_root="$(git rev-parse --show-toplevel)"
+cd "$repository_root"
+
+name="${task_number}-${slug}"
+branch="fleet/${name}"
+worktree_path="${repository_root}/.invar/worktrees/${name}"
+dispatch_directory="${repository_root}/agent-dispatches/${name}"
+tmux_session="invar/${name}"
+transcript_path="${worktree_path}/../${name}.transcript.md"
+
+# ---------------------------------------------------------------------------
+# 1. REFUSE on any collision. A leftover worktree has silently started a builder
+#    on the WRONG BASE three separate times; picking a new path costs nothing and
+#    reusing one costs a whole run.
+# ---------------------------------------------------------------------------
+[ -e "$worktree_path" ] && { echo "dispatch: worktree path occupied: $worktree_path" >&2; exit 1; }
+[ -e "$dispatch_directory" ] && { echo "dispatch: dispatch record exists: $dispatch_directory" >&2; exit 1; }
+if git show-ref --verify --quiet "refs/heads/${branch}"; then
+  echo "dispatch: branch already exists: $branch" >&2; exit 1
+fi
+if tmux has-session -t "$tmux_session" 2>/dev/null; then
+  echo "dispatch: tmux session already live: $tmux_session" >&2; exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Cut the worktree, then INSTALL DEPENDENCIES.
+#    `git worktree add` copies tracked files only, so a fresh worktree has no
+#    node_modules. The resulting preflight red is clean, consistent and
+#    meaningless — and looks exactly like the defect the builder was sent to
+#    investigate. That cost one builder ten baseline runs on 2026-07-27.
+# ---------------------------------------------------------------------------
+echo "dispatch: cutting worktree $worktree_path on $branch"
+git worktree add -b "$branch" "$worktree_path" main >/dev/null
+
+echo "dispatch: installing dependencies (not optional, not the builder's job to discover)"
+( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
+  || { echo "dispatch: bun install FAILED — not launching" >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
+# 3. Place the brief in BOTH homes: the worktree (for the builder) and the
+#    dispatch record (for the audit trail).
+# ---------------------------------------------------------------------------
+mkdir -p "$dispatch_directory"
+cp "$brief_file" "$dispatch_directory/brief.md"
+cp "$brief_file" "$worktree_path/TASK.md"
+
+# ---------------------------------------------------------------------------
+# 4. COMMIT THE BRIEF BEFORE LAUNCHING. This is the step the whole script exists
+#    for. If it fails, no agent starts — an unrecorded dispatch is worse than no
+#    dispatch, because it produces work nobody can audit.
+#    SKIP_GATE: markdown only, and the gate is for landing, not for dispatching.
+# ---------------------------------------------------------------------------
+git add "$dispatch_directory/brief.md"
+if ! SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
+      -m "dispatch #${task_number}: ${slug}
+
+Brief committed before the agent starts, so the record cannot drift from what
+was actually asked. Branch ${branch}, worktree .invar/worktrees/${name},
+session ${tmux_session}, engine ${engine}." \
+      -- "$dispatch_directory/brief.md"; then
+  echo "dispatch: BRIEF COMMIT FAILED — refusing to launch" >&2
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Launch inside tmux so the session is ATTACHABLE BY SOMEONE WHO IS NOT THE
+#    DISPATCHER. A named session also gives precise identity for termination —
+#    `pkill -f` matches the builder's own brief text, and a kill is destructive.
+# ---------------------------------------------------------------------------
+case "$engine" in
+  codex)  agent_command="codex exec --dangerously-bypass-approvals-and-sandbox 'Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md.'";;
+  claude) agent_command="claude --dangerously-skip-permissions -p 'Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md.'";;
+esac
+
+tmux new-session -d -s "$tmux_session" -c "$worktree_path" \
+  "export PATH=\$HOME/.bun/bin:\$PATH; ${agent_command}; echo \"CODEX_EXIT=\$?\" | tee -a '${transcript_path}'"
+tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
+
+# ---------------------------------------------------------------------------
+# 6. Record what was launched, so reconciliation reads facts rather than guesses.
+# ---------------------------------------------------------------------------
+cat > "$dispatch_directory/meta.json" <<META
+{
+  "task": ${task_number},
+  "slug": "${slug}",
+  "branch": "${branch}",
+  "worktree": ".invar/worktrees/${name}",
+  "tmuxSession": "${tmux_session}",
+  "transcript": "${transcript_path}",
+  "engine": "${engine}",
+  "baseCommit": "$(git rev-parse HEAD)",
+  "startedAt": "$(date -Is)"
+}
+META
+
+echo
+echo "dispatch: LAUNCHED #${task_number} ${slug}"
+echo "  attach:     tmux attach -t ${tmux_session}"
+echo "  transcript: ${transcript_path}"
+echo "  worktree:   ${worktree_path}"
+echo "  report to:  /tmp/${name}-READY.md"
