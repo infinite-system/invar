@@ -229,6 +229,33 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## A STRUCTURAL FACT IS NOT A PROBLEM — make the change carry the burden of proof
+
+User directive, 2026-07-28, on the editor flyweight work: *we don't have a problem with the current
+implementation; if the solution complicates our stuff downstream we should hold off integrating it.
+First it has to be proven that the complexity it may provide does not outweigh the benefits.*
+
+An outside review found that every edit allocates four arrays of length n. Verified — the claim is
+true. **But nobody has ever reported slow editing.** Those are two different claims and it is easy to
+collapse them, because a precise structural finding FEELS like a mandate.
+
+The order that keeps this honest:
+
+1. **Prove the problem is felt.** Measure the thing a user would notice. If it is imperceptible at
+   the largest realistic scale, STOP AND REPORT THAT — a well-measured "not worth it" is a better
+   deliverable than a shipped optimisation nobody needed.
+2. **Prove the benefit exceeds the complexity cost, measured DOWNSTREAM rather than in the diff.** A
+   clever structure inside a shared index is paid by every future reader of it, forever — including
+   every agent that has to reason about it before touching anything nearby.
+3. **Prove nothing downstream got harder.** Enumerate the consumers and confirm each is unaffected.
+
+Such work builds on an `experiment-*` branch and **staying there indefinitely is a legitimate
+outcome.** Provenance decides main, not quality: a change can be correct, measured, and elegant, and
+still not belong in main because nobody asked for the problem to be solved.
+
+The tell that this rule is being violated: a brief whose first step is "implement the fix" rather
+than "establish the cost of not fixing it."
+
 ## READ LOGS AS A SERIES — three regressions hid in numbers that were already printed
 
 Every one of these was reported by an instrument that was working correctly. Nothing compared the
