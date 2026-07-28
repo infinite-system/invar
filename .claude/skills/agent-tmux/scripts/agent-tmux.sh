@@ -68,7 +68,10 @@ _profile() {
       # 'Working \(' matched only the first and reported a session blocked 58s on a background
       # terminal as IDLE — `wait` would then return on an unfinished turn. When in doubt widen
       # the busy alternation: a false 'busy' costs a poll, a false 'idle' corrupts a result.
-      READY_RE='^\xe2\x80\xba'
+      # NOTE: the literal glyph, NOT a \xNN escape — grep -E does not interpret those, and
+      # writing '^\xe2\x80\xba' here made `launch` time out for 90s against a session that
+      # was sitting at a perfectly good prompt.
+      READY_RE='^›'
       BUSY_RE='esc to interrupt'
       LAUNCH_ENV=''
       ;;
