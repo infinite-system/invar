@@ -943,6 +943,41 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## THE CONDUCTOR'S OWN NAMING IS PART OF THE TEST ENVIRONMENT
+
+#191's blocker — eight consecutive gate failures, "pre-existing at the merge base",
+the hard red that held main all night — resolved to a predicate that required the
+text `fixtures` in a themed terminal header. In a task worktree the header read
+
+  `parallels@ubuntu2:/home/parallels/.../191-terminal-stage-compound-p`
+
+clipped at the panel-heading boundary, so the suffix it wanted was **outside the
+cell**. The path was that long because I named the worktree
+`191-terminal-stage-compound-predicate`.
+
+Two things follow, and the second is the one I did not see coming.
+
+**The predicate was over-specified and the fix is right regardless** — it asserted a
+fixture suffix when the behaviour under test was "the header shows shell identity
+and a working directory."
+
+**But every observation of that failure came from a worktree**, and the fleet's
+worktree paths are the longest paths in this repo *because I choose the slugs.*
+Nothing about the product or the user's checkout was involved. "Pre-existing at the
+merge base" was true and misleading: it was pre-existing in every environment I had
+ever run it in, and those were all mine.
+
+The general form: **a probe that asserts text can be broken by the length of the
+path it runs in**, and the conductor supplies that path. Anything keyed to a
+rendered path — headers, breadcrumbs, tab titles, status bars — inherits the
+worktree name as a hidden input. This is the coordinate-coupling class one level
+out: not a hardcoded cell, but a hardcoded *string* whose visibility depends on how
+much room the environment left it.
+
+Operationally: keep dispatch slugs SHORT, and when a probe asserting rendered text
+fails only in worktrees, compare against the main checkout before believing the
+diff. The discriminator is one run.
+
 ## A MASS CONVERSION NEEDS PER-SITE PROOF, NOT CLASS-LEVEL PROOF
 
 #168 converted **75 wait sites** off a forbidden primitive and proved the class:

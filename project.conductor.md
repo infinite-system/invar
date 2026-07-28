@@ -2945,3 +2945,40 @@ timeout-class defect, and a second builder's verification produces exactly timeo
 exception rule — gate under load when a contention red would still be diagnostic — does not apply here,
 because contention reds are indistinguishable from the thing #191 is hunting. The brief is committed and
 dispatchable the moment #191 reports.
+
+## 2026-07-28 07:45 UTC — the hard blocker was the length of a name I chose
+
+#191 landed at `23a681b` with a **full merge gate at exit 0, ALL-PASS, no step passed only on retry.**
+Eight consecutive failures across four gates, the red that held main all night, and the cause was this:
+
+the predicate required the text `fixtures` in a themed terminal header, and in a task worktree the
+header read `parallels@ubuntu2:/home/parallels/.../191-terminal-stage-compound-p`, clipped at the
+panel-heading boundary. The suffix it wanted was outside the cell. **The path was that long because I
+named the worktree `191-terminal-stage-compound-predicate`.**
+
+The split did its job exactly as briefed and the first measurement named the half: `COLOR PASS -> TEXT
+FAIL`, five times standalone and four times in-pool, never alternating. So the conjunction-timing
+hypothesis and the colour-capability hypothesis were both killed by the same table — and the colour one
+twice over, since `PtyTestDriver.childEnvironment` supplies `COLORTERM=truecolor` to the application in
+both tiers regardless of the parent's empty value. Two of my three ranked candidates were wrong; the
+one that was right was right for a reason I had not guessed.
+
+Two things follow. The predicate was over-specified and the repair is correct regardless — it asserted a
+fixture suffix when the behaviour under test was "the header shows shell identity and a working
+directory." But **every observation of that failure came from a worktree**, and the fleet's worktree
+paths are the longest in this repo because I choose the slugs. "Pre-existing at the merge base" was
+true and thoroughly misleading: it was pre-existing in every environment anyone had run it in, and all
+of those were mine. Doctrine now carries it — a probe that asserts rendered text can be broken by the
+length of the path it runs in, and the conductor supplies that path. Keep slugs short.
+
+The other thing worth carrying is that **splitting a compound predicate localises rather than repairs.**
+The split commit did not fix the gate; the gate failed again right after it, and only then could the
+builder see which half to fix. I nearly read that intermediate red as the split being wrong. A
+conjunction reports one bit for two claims — the split buys legibility, and legibility is what the
+eight previous attempts lacked.
+
+#191's first repair then exposed a SECOND compound wait in the same smoke, which took a transcript
+coordinate from an intermediate frame and clicked a row the agent turn had since moved. Its repair is a
+pattern worth reusing: await published state proving the operation completed, then REACQUIRE the
+coordinate from the stable grid before acting. A coordinate must not be carried across a settling
+condition. That is now the second named pattern in #192 alongside #189's.
