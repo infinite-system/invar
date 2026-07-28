@@ -67,7 +67,10 @@ class $ThemeIcons {
         // presentation. It is one cell in both width authorities and keeps
         // enough solid structure to remain legible at terminal size.
         lockfile: '⚿',
-        shellScript: '⚙',
+        // $ DOLLAR SIGN: the shell prompt users already read inside these
+        // files. No platform association, no font dependency, and it is its
+        // own exact ASCII fallback.
+        shellScript: '$',
         stylesheet: '❖',
         markup: '◈',
         vueComponent: '◇',
@@ -77,7 +80,9 @@ class $ThemeIcons {
         // the ambiguous-width Geometric Shapes block.
         image: '▞',
         versionControl: '⑂',
-        configuration: '⚙',
+        // : COLON: the YAML key/value delimiter, read inside the file itself.
+        // Same properties as the shell mark, and the ASCII tier keeps it.
+        configuration: ':',
         // ƒ (U+0192), the function letterform: a method, a function, and a constructor are the one
         // thing you CALL, so they share one mark.
         callable: 'ƒ',
@@ -103,14 +108,14 @@ class $ThemeIcons {
         json: ' ',
         markdown: ' ',
         lockfile: ' ',
-        shellScript: ' ',
+        shellScript: '$',
         stylesheet: ' ',
         markup: ' ',
         vueComponent: ' ',
         webAssembly: ' ',
         image: ' ',
         versionControl: ' ',
-        configuration: ' ',
+        configuration: ':',
         // The code-symbol families still degrade LEGIBLY — one letter per family, and none of them
         // the folder/file marks that share this column when a completion list offers paths.
         callable: 'f',
@@ -261,13 +266,15 @@ class $ThemeIcons {
           'other entries fail: a mark may be shared only by owners that mean the same thing.',
       ],
       [
-        this.SYMBOL_MARKS.unicode.configuration,
-        'KNOWN, 2026-07-26. The gear means "settings" for the activity item and the status-bar ' +
-          'affordance (same meaning, fine) but ALSO "a shell script" and "a configuration file" ' +
-          '— two different things, and both land in the SAME mark column, so a `.sh` row and a ' +
-          '`.yaml` row are indistinguishable. That is the worse collision class, and resolving ' +
-          'it means choosing a new file-type mark, which moves the tree for every user. Left to ' +
-          'its own change deliberately rather than picked in passing.',
+        '\u2699',
+        'INTENDED, resolved 2026-07-28. The gear now has exactly two owners — the Settings ' +
+          'activity item and the status-bar settings affordance — and they mean the SAME ' +
+          'thing, so this is the versionControl case, not a collision. It was previously ' +
+          'KNOWN-bad: the gear ALSO marked shell scripts and configuration files, two ' +
+          'different things landing in the same column, so a `.sh` row and a `.yaml` row were ' +
+          'indistinguishable. Those two families moved to `$` and `:` — the syntax users ' +
+          'already read inside those files, one cell in both width authorities, and their own ' +
+          'exact ASCII fallbacks.',
       ],
       [
         this.TAB_SEPARATORS.unicode,
