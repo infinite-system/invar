@@ -362,6 +362,62 @@ The user's choice before the mutation wave is:
 
 No implementation wave may silently select among these.
 
+## DECIDED 2026-07-28 by the user: public API by default, internals mode opt-in
+
+The three options above were framed as exclusive. The user's answer is a synthesis: **ship the
+deliberate vocabulary as the default public API, and add a separate mode in which an agent can
+explore Invar's internals and invoke them from inside.** Default is the public API; the internals
+mode is never on by default.
+
+### The reduction: one invocation mechanism, two exposed sets
+
+Do NOT build two bridges. Both tiers are the same operation — *invoke a named thing with arguments
+and get a bounded result*. What differs is only which set of names is visible and what guarantees
+attach to them:
+
+| | public API (default) | internals mode (opt-in) |
+| --- | --- | --- |
+| names exposed | the curated semantic vocabulary | the registry: commands, settings schema, plugin manifests |
+| schemas | hand-written, explicit coordinate and revision semantics | derived from the registry |
+| stability | a contract; survives refactors | **none — a renamed command breaks the caller** |
+| discovery | fixed tool list | enumerate-then-invoke |
+| attribution | one consent label per meaningful action | attributed distinctly, because it is unstable by construction |
+
+Building one mechanism and gating the visible set means the mutation wave does not fork, and the
+internals mode cannot drift into a second protocol with its own bugs.
+
+### Read "explore internals" as REGISTRY reflection, not object-graph reflection
+
+Two readings are possible and only one is buildable:
+
+- **Registry reflection (recommended, and what this records).** Enumerate the command registry,
+  the settings schema, and the plugin manifests — structures Invar already publishes for #100's
+  one-manifest rule and #103's three plugin kinds — then invoke a registered command by name. There
+  is a real, enumerable surface here today.
+- **Object-graph reflection (rejected unless the user says otherwise).** Reflect over live classes
+  and call arbitrary methods. Over a reactive graph this has no stable contract at all, no schema to
+  derive, and no way to distinguish a query from a mutation. It would make every internal rename a
+  remote breakage with no signal.
+
+### Honest cost, stated so no wave can select it silently
+
+Internals mode has **no compatibility guarantee**. An agent script that fires an internal command
+breaks when that command is renamed, and nothing warns it. That is acceptable for exploration and
+unacceptable for anything a user comes to depend on, so the mode must be:
+
+- opt-in per workspace, never global and never default;
+- attributed distinctly in the UI from public-API actions;
+- documented as unstable AT THE POINT OF DISCOVERY — the enumeration response itself should say so,
+  not just a page someone read once.
+
+### This mirrors a policy the repo already has
+
+The same two-tier shape was settled earlier for extension: **interfaces are the published contract
+for distributable plugins; `extends $Class` is the enabled-but-unsupported path for making Invar
+yours.** Public API is to interfaces as internals mode is to `extends` — a supported surface with a
+promise, plus an escape hatch with power and no promise. One policy, applied twice, rather than two
+ad-hoc answers.
+
 ## Attribution and consent
 
 The bearer record, not client self-report, supplies the visible harness name and task title. MCP
