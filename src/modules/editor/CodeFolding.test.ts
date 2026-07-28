@@ -81,11 +81,39 @@ describe('CodeFolding', () => {
       endLine: 2,
       kind: 'indentation',
     });
+    for (let lineIndex = 1; lineIndex < document.lineCount; lineIndex++) {
+      CodeFolding.Class.rangeAtLine(document, 'plain', lineIndex);
+    }
     const readsAfterDiscovery = lineReads;
     for (let readNumber = 0; readNumber < 10_000; readNumber++) {
       CodeFolding.Class.rangeAtLine(document, 'plain', readNumber % 4);
     }
     expect(lineReads).toBe(readsAfterDiscovery);
+  });
+
+  test('flat gutter discovery reads only the observed lines at every document size', () => {
+    const readsByLineCount = [2_000, 1_000_000].map((lineCount) => {
+      let lineReads = 0;
+      const document = {
+        lineCount,
+        revision: { value: 1 },
+        line(lineIndex: number): string {
+          lineReads++;
+          return lineIndex % 2 === 0
+            ? `export const flatValue${lineIndex} = ${lineIndex} as const;`
+            : `export type FlatAlias${lineIndex} = string | null;`;
+        },
+      };
+
+      for (let lineIndex = 0; lineIndex < 15; lineIndex++) {
+        expect(
+          CodeFolding.Class.startsAtLine(document, 'typescript', lineIndex),
+        ).toBe(false);
+      }
+      return lineReads;
+    });
+
+    expect(readsByLineCount).toEqual([30, 30]);
   });
 
   test('non-structural typing preserves the fold snapshot with identical work at scale', () => {
@@ -107,7 +135,7 @@ describe('CodeFolding', () => {
   test('fold-marker lookup reuses the non-structural fold snapshot', () => {
     const readsByLineCount = [554_490, 970_356].map((lineCount) => {
       const document = new EditableFoldDocument(lineCount);
-      CodeFolding.Class.ranges(document, 'typescript');
+      const range = CodeFolding.Class.rangeAtLine(document, 'typescript', 0);
       document.editLine(
         Math.floor(lineCount / 2) + 1,
         '  const renamedValue = 2;',
@@ -117,10 +145,24 @@ describe('CodeFolding', () => {
       expect(CodeFolding.Class.startsAtLine(document, 'typescript', 0)).toBe(
         true,
       );
+      expect(CodeFolding.Class.rangeAtLine(document, 'typescript', 0)).toBe(
+        range,
+      );
       return document.lineReads;
     });
 
     expect(readsByLineCount).toEqual([0, 0]);
+  });
+
+  test('whole-document discovery preserves an already published local range', () => {
+    const document = documentFrom(['const object = {', '  value: 1,', '};']);
+    const localRange = CodeFolding.Class.rangeAtLine(document, 'typescript', 0);
+    if (localRange === null)
+      throw new Error('Expected a locally discovered range');
+
+    expect(CodeFolding.Class.ranges(document, 'typescript')[0]).toBe(
+      localRange,
+    );
   });
 
   test('a structural edit is the positive control that recomputes folds', () => {

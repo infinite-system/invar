@@ -96,7 +96,6 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
   protected collapsedFoldRangesDocumentRevision = -1;
   protected collapsedFoldRangesFoldRevision = -1;
-  protected collapsedFoldRangesSource: readonly FoldRange[] | null = null;
   protected collapsedFoldRangesValue: readonly FoldRange[] = [];
 
   attachFoldState(foldState: EditorFoldState): void {
@@ -128,23 +127,29 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const collapsedLineStarts = this.foldState.value.collapsedLineStarts;
     if (collapsedLineStarts.size === 0) {
       this.collapsedFoldRangesValue = [];
-      this.collapsedFoldRangesSource = null;
       this.collapsedFoldRangesDocumentRevision = documentRevision;
       this.collapsedFoldRangesFoldRevision = foldRevision;
       return this.collapsedFoldRangesValue;
     }
-    const foldRanges = this.foldRanges();
+    const foldRanges = [...collapsedLineStarts]
+      .map((startLine) => this.foldRangeAtLine(startLine))
+      .filter((range): range is FoldRange => range !== null)
+      .sort(
+        (firstRange, secondRange) =>
+          firstRange.startLine - secondRange.startLine,
+      );
     if (
-      this.collapsedFoldRangesSource === foldRanges &&
-      this.collapsedFoldRangesFoldRevision === foldRevision
+      this.collapsedFoldRangesFoldRevision === foldRevision &&
+      foldRanges.length === this.collapsedFoldRangesValue.length &&
+      foldRanges.every(
+        (range, rangeIndex) =>
+          range === this.collapsedFoldRangesValue[rangeIndex],
+      )
     ) {
       this.collapsedFoldRangesDocumentRevision = documentRevision;
       return this.collapsedFoldRangesValue;
     }
-    this.collapsedFoldRangesValue = foldRanges.filter((range) =>
-      collapsedLineStarts.has(range.startLine),
-    );
-    this.collapsedFoldRangesSource = foldRanges;
+    this.collapsedFoldRangesValue = foldRanges;
     this.collapsedFoldRangesDocumentRevision = documentRevision;
     this.collapsedFoldRangesFoldRevision = foldRevision;
     return this.collapsedFoldRangesValue;

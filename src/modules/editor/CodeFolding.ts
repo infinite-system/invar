@@ -2,8 +2,8 @@ import { Static } from 'ivue/extras';
 import { Highlighter, type LangId } from '../syntax/Highlighter';
 import { EditorCoordinates } from './EditorCoordinates';
 
-// Fold discovery is document work, not paint work. One revision-keyed snapshot is shared by the
-// gutter, movement, and the visual-row generator; unchanged frames only read the cached array.
+// Fold discovery is proportional to what asks for it: gutter paint caches exact ranges only for
+// visible starts, while whole-document commands share the global snapshot.
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 class $CodeFolding {
   protected static get $rangesByDocument(): WeakMap<
@@ -26,47 +26,54 @@ class $CodeFolding {
     return { '{': '}', '[': ']' };
   }
 
-  static ranges(
+  protected static snapshot(
     document: FoldableDocument,
     language: LangId,
-  ): readonly FoldRange[] {
+  ): FoldRangeSnapshot {
     const revision = document.revision?.value ?? -1;
     const cached = this.$rangesByDocument.get(document);
     if (
       cached &&
-      cached.revision === revision &&
-      cached.language === language &&
-      cached.lineCount === document.lineCount
-    ) {
-      return cached.ranges;
-    }
-    const lineChange = document.lastLineChange;
-    if (
-      cached &&
       cached.language === language &&
       cached.lineCount === document.lineCount &&
-      lineChange?.revision === revision &&
-      lineChange.deletedLineCount === lineChange.insertedLineCount &&
-      this.foldStructureUnchanged(lineChange, language)
+      (cached.revision === revision ||
+        this.canReuseFoldStructure(cached, document, language, revision))
     ) {
-      this.$rangesByDocument.set(document, {
-        ...cached,
-        revision,
-      });
-      return cached.ranges;
+      cached.revision = revision;
+      return cached;
     }
-
-    const ranges = this.computeRanges(document, language);
-    this.$rangesByDocument.set(document, {
+    const snapshot: FoldRangeSnapshot = {
       revision,
       language,
       lineCount: document.lineCount,
-      ranges,
-      rangesByStartLine: new Map(
-        ranges.map((range) => [range.startLine, range]),
-      ),
+      ranges: null,
+      rangesByStartLine: new Map(),
+    };
+    this.$rangesByDocument.set(document, snapshot);
+    return snapshot;
+  }
+
+  static ranges(
+    document: FoldableDocument,
+    language: LangId,
+  ): readonly FoldRange[] {
+    const snapshot = this.snapshot(document, language);
+    if (snapshot.ranges !== null) return snapshot.ranges;
+    snapshot.ranges = this.computeRanges(document, language).map((range) => {
+      const locallyDiscoveredRange = snapshot.rangesByStartLine.get(
+        range.startLine,
+      );
+      const publishedRange =
+        locallyDiscoveredRange !== null &&
+        locallyDiscoveredRange !== undefined &&
+        locallyDiscoveredRange.endLine === range.endLine &&
+        locallyDiscoveredRange.kind === range.kind
+          ? locallyDiscoveredRange
+          : range;
+      snapshot.rangesByStartLine.set(range.startLine, publishedRange);
+      return publishedRange;
     });
-    return ranges;
+    return snapshot.ranges;
   }
 
   static rangeAtLine(
@@ -74,22 +81,141 @@ class $CodeFolding {
     language: LangId,
     lineIndex: number,
   ): FoldRange | null {
-    this.ranges(document, language);
-    return (
-      this.$rangesByDocument.get(document)?.rangesByStartLine.get(lineIndex) ??
-      null
+    const snapshot = this.snapshot(document, language);
+    if (snapshot.rangesByStartLine.has(lineIndex)) {
+      return snapshot.rangesByStartLine.get(lineIndex) ?? null;
+    }
+    const range = this.discoverRangeAtLine(
+      document,
+      language,
+      lineIndex,
+      snapshot.rangesByStartLine,
     );
+    snapshot.rangesByStartLine.set(lineIndex, range);
+    return range;
   }
 
-  /** Whether a visible line begins a fold. Gutter paint shares the indexed
-   *  global snapshot: a root delimiter must not trigger a second
-   *  document-length forward scan on every edit. */
+  /** Whether a visible line begins a fold. Only the observed gutter line is
+   *  discovered, then its exact range survives non-structural revisions. */
   static startsAtLine(
     document: FoldableDocument,
     language: LangId,
     lineIndex: number,
   ): boolean {
     return this.rangeAtLine(document, language, lineIndex) !== null;
+  }
+
+  protected static canReuseFoldStructure(
+    cached: FoldRangeSnapshot,
+    document: FoldableDocument,
+    language: LangId,
+    revision: number,
+  ): boolean {
+    const lineChange = document.lastLineChange;
+    return (
+      cached.language === language &&
+      cached.lineCount === document.lineCount &&
+      lineChange?.revision === revision &&
+      lineChange.deletedLineCount === lineChange.insertedLineCount &&
+      this.foldStructureUnchanged(lineChange, language)
+    );
+  }
+
+  protected static discoverRangeAtLine(
+    document: FoldableDocument,
+    language: LangId,
+    lineIndex: number,
+    rangesByStartLine: Map<number, FoldRange | null>,
+  ): FoldRange | null {
+    if (lineIndex < 0 || lineIndex >= document.lineCount) return null;
+    const lineText = document.line(lineIndex);
+    if (lineText.trim().length === 0) return null;
+    const delimiterStack: Array<{ delimiter: string; lineIndex: number }> = [];
+    this.collectDelimiterRangesFromLine(
+      delimiterStack,
+      rangesByStartLine,
+      lineText,
+      language,
+      lineIndex,
+    );
+    if (delimiterStack.length > 0) {
+      for (
+        let candidateLineIndex = lineIndex + 1;
+        candidateLineIndex < document.lineCount;
+        candidateLineIndex++
+      ) {
+        this.collectDelimiterRangesFromLine(
+          delimiterStack,
+          rangesByStartLine,
+          document.line(candidateLineIndex),
+          language,
+          candidateLineIndex,
+        );
+        if (delimiterStack.length === 0)
+          return rangesByStartLine.get(lineIndex) ?? null;
+      }
+    }
+    const indentation = this.indentationColumns(lineText);
+    let indentationIncreased = false;
+    for (
+      let candidateLineIndex = lineIndex + 1;
+      candidateLineIndex < document.lineCount;
+      candidateLineIndex++
+    ) {
+      const candidateLine = document.line(candidateLineIndex);
+      if (candidateLine.trim().length === 0) continue;
+      if (!indentationIncreased) {
+        if (this.indentationColumns(candidateLine) <= indentation) return null;
+        indentationIncreased = true;
+        continue;
+      }
+      if (this.indentationColumns(candidateLine) <= indentation) {
+        return {
+          startLine: lineIndex,
+          endLine: candidateLineIndex - 1,
+          kind: 'indentation',
+        };
+      }
+    }
+    return indentationIncreased
+      ? {
+          startLine: lineIndex,
+          endLine: document.lineCount - 1,
+          kind: 'indentation',
+        }
+      : null;
+  }
+
+  protected static collectDelimiterRangesFromLine(
+    delimiterStack: Array<{ delimiter: string; lineIndex: number }>,
+    rangesByStartLine: Map<number, FoldRange | null>,
+    lineText: string,
+    language: LangId,
+    lineIndex: number,
+  ): void {
+    for (const span of Highlighter.Class.highlightLine(lineText, language)) {
+      if (span.role !== 'operator') continue;
+      for (const delimiter of span.text) {
+        if (this.CLOSING_DELIMITER_FOR[delimiter]) {
+          delimiterStack.push({ delimiter, lineIndex });
+          continue;
+        }
+        const openingDelimiter = this.MATCHING_OPENING_DELIMITER[delimiter];
+        const opening = delimiterStack.at(-1);
+        if (!openingDelimiter || opening?.delimiter !== openingDelimiter)
+          continue;
+        delimiterStack.pop();
+        if (lineIndex <= opening.lineIndex) continue;
+        const existingRange = rangesByStartLine.get(opening.lineIndex);
+        if (!existingRange || lineIndex > existingRange.endLine) {
+          rangesByStartLine.set(opening.lineIndex, {
+            startLine: opening.lineIndex,
+            endLine: lineIndex,
+            kind: 'delimiter',
+          });
+        }
+      }
+    }
   }
 
   protected static computeRanges(
@@ -280,9 +406,9 @@ export interface FoldableLineChange {
 }
 
 export interface FoldRangeSnapshot {
-  readonly revision: number;
+  revision: number;
   readonly language: LangId;
   readonly lineCount: number;
-  readonly ranges: readonly FoldRange[];
-  readonly rangesByStartLine: ReadonlyMap<number, FoldRange>;
+  ranges: readonly FoldRange[] | null;
+  readonly rangesByStartLine: Map<number, FoldRange | null>;
 }

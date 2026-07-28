@@ -24,7 +24,8 @@ import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { PtyTestDriver } from './PtyTestDriver';
 import { QuietLock } from './QuietLock';
 
-const repositoryRoot = process.cwd();
+const repositoryRoot =
+  process.env.INPUT_BYTE_FLUSH_REPOSITORY_ROOT ?? process.cwd();
 
 if (process.env.INPUT_BYTE_FLUSH_MODE === 'nested-fold-edit') {
   const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
@@ -394,6 +395,7 @@ async function measureNestedFoldEditing(): Promise<void> {
             state: process.env.INVAR_QUIET_LOCK_STATE,
             waitMilliseconds: process.env.INVAR_QUIET_LOCK_WAIT_MILLISECONDS,
           },
+          repositoryRoot,
         },
         null,
         2,
@@ -806,6 +808,7 @@ async function measureScaleEditing(): Promise<void> {
             state: process.env.INVAR_QUIET_LOCK_STATE,
             waitMilliseconds: process.env.INVAR_QUIET_LOCK_WAIT_MILLISECONDS,
           },
+          repositoryRoot,
         },
         null,
         2,
@@ -884,11 +887,13 @@ async function measureScaleEditingSession(
         championBurst?.completedFramesUntilEdit ?? null,
       championInputToPaintMilliseconds:
         championBurst?.inputToPaintMilliseconds ?? null,
+      championLoadAverages: championBurst?.loadAverages ?? null,
       forceFullRebuild: options.forceFullRebuild,
       launchToFirstPaintMilliseconds:
         launchFinishedMilliseconds - launchStartedMilliseconds,
       middleCompletedFramesUntilEdit: middleBurst.completedFramesUntilEdit,
       middleInputToPaintMilliseconds: middleBurst.inputToPaintMilliseconds,
+      middleLoadAverages: middleBurst.loadAverages,
       middleLineIndex,
       peakResidentBytes: launchPeakResidentBytes,
       processId: driver.processId,
@@ -1053,8 +1058,10 @@ async function measureEditingBurst(
   await driver.awaitScreenChange(15_000);
   const samples: number[] = [];
   const completedFramesUntilEdit: number[] = [];
+  const loadAverages: LoadAverageMeasurement[] = [];
   for (let pressNumber = 1; pressNumber <= burstLength; pressNumber++) {
     const expectedSuffix = insertedCharacter.repeat(pressNumber + 1);
+    const currentLoadAverage = loadavg();
     const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
       [insertedCharacter],
       `${targetDescription} contains suffix ${expectedSuffix}`,
@@ -1063,10 +1070,16 @@ async function measureEditingBurst(
     );
     samples.push(measurement.inputToFrameByteArrivalMilliseconds);
     completedFramesUntilEdit.push(measurement.completedFramesUntilCondition);
+    loadAverages.push({
+      fifteenMinutes: currentLoadAverage[2] ?? Number.NaN,
+      fiveMinutes: currentLoadAverage[1] ?? Number.NaN,
+      oneMinute: currentLoadAverage[0] ?? Number.NaN,
+    });
   }
   return {
     completedFramesUntilEdit,
     inputToPaintMilliseconds: samples,
+    loadAverages,
   };
 }
 
@@ -1195,10 +1208,12 @@ interface ScaleEditingSessionOptions {
 interface ScaleEditingSession {
   readonly championCompletedFramesUntilEdit: readonly number[] | null;
   readonly championInputToPaintMilliseconds: readonly number[] | null;
+  readonly championLoadAverages: readonly LoadAverageMeasurement[] | null;
   readonly forceFullRebuild: boolean;
   readonly launchToFirstPaintMilliseconds: number;
   readonly middleCompletedFramesUntilEdit: readonly number[];
   readonly middleInputToPaintMilliseconds: readonly number[];
+  readonly middleLoadAverages: readonly LoadAverageMeasurement[];
   readonly middleLineIndex: number;
   readonly peakResidentBytes: number;
   readonly processId: number;
@@ -1208,6 +1223,13 @@ interface ScaleEditingSession {
 interface EditingBurstMeasurement {
   readonly completedFramesUntilEdit: readonly number[];
   readonly inputToPaintMilliseconds: readonly number[];
+  readonly loadAverages: readonly LoadAverageMeasurement[];
+}
+
+interface LoadAverageMeasurement {
+  readonly fifteenMinutes: number;
+  readonly fiveMinutes: number;
+  readonly oneMinute: number;
 }
 
 interface NestedFoldEditingSessionOptions {

@@ -143,7 +143,10 @@ that cumulative edit, through the real app and PTY at 2k / 20k / 100k / 500k
 / 1M lines. It types 30-character bursts in the middle and, at 500k/1M, at
 the shared widest-line champion; reports every ordered sample, launch to
 first content, frames until edit, and launch-to-first-content peak resident
-memory (sampled before excluded target navigation). It
+memory (sampled before excluded target navigation). Every edit sample carries
+its contemporaneous 1 / 5 / 15-minute load averages. Set
+`INPUT_BYTE_FLUSH_REPOSITORY_ROOT` to launch another worktree through the same
+instrument when interleaving before/after arms. It
 requires the quiet lock, refuses any live `tsgo`, and forces the former
 full-wrap-index rebuild at 500k as a positive control that must move the
 median by at least 10x.
@@ -153,6 +156,14 @@ CAUTION: the boundary excludes fixture generation, target navigation, save,
 terminal display after bytes reach the PTY master, and language-server work
 (the isolated fixture sets a 1 KB suppression limit). The component
 `measure-editor-edit-path.ts` does not answer this end-to-end question.
+KNOWN RESULT (2026-07-28): the interleaved `b11100a`/`2dff07b` comparison
+found no settled flat typing regression at 1M (middle p50 8.069/7.861 ms,
+widest-line p50 9.066/8.418 ms), but found an eager fold-discovery load
+regression: first paint 634–636 ms became 2,417–2,526 ms and peak RSS
+704–708 MB became 1.28–1.31 GB. The load-invariant currency was gutter
+document reads: 30 at both 2k and 1M before, versus 4,000 and 2,000,000 after.
+Sparse observed-range discovery restored 30 reads, 1M first paint to
+645–649 ms, and peak RSS to 665–666 MB while retaining 23 ms nested collapse.
 
 ### `INPUT_BYTE_FLUSH_MODE=nested-fold-edit bun scripts/harness/measure-input-byte-flush.ts`
 The same editing-input-write to first complete DEC 2026 frame boundary across
