@@ -229,6 +229,34 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## EVIDENCE HAS AN AGE — a count tells you history, not status
+
+I called a healthy builder stuck for two consecutive sweeps on two proxies, both of which were
+facts about its PAST:
+
+- `grep -c ERROR` returned 7, so I reported it erroring. Six of the seven were startup lines 17-20
+  of a log that had reached 14,627 lines. **A count conflates "did this ever happen" with "is this
+  happening".** Ask WHERE the last one sits relative to the end, then read what came after it.
+- `git status` in the dispatched worktree showed 0 writes, so I reported it idle. Its brief asked
+  for a population separation, so it had created its OWN comparison worktrees and was working
+  there. **For a measurement-first task, writes in the dispatched tree are the wrong signal
+  entirely** — the first phase produces numbers, not files.
+
+Then I over-corrected to "all the errors are in the first 17 lines", which was also wrong: there
+were later ones at 4,500 and 13,555, both non-fatal. Correcting a bad read with another quick read
+repeats the mistake in the opposite direction.
+
+**What actually establishes a builder's state, cheapest first:**
+
+1. log SIZE GROWTH over a short interval — is output still being produced;
+2. log CONTENT at the tail — is it task work or retry noise;
+3. task-specific progress markers the brief itself implies (this one printed
+   `parallel-safe phase 0m46s` and `12m50s`, which was the deliverable appearing in real time);
+4. process liveness by `/proc/<pid>/cwd`;
+5. writes and commits — LAST, and only meaningful once the task should be producing them.
+
+I had the log the whole time and read a counter instead.
+
 ## THE FLEET DIES WITH DNS — know what work survives an outage
 
 Every builder is a cloud model. When name resolution fails, `codex exec` starts, spins on
