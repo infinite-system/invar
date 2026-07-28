@@ -690,6 +690,13 @@ class $LanguageClient {
     requestRevision: number,
   ): Promise<LspTransport.Model | null> {
     if (this.disposed || !document.path) return null;
+    // A document over the size budget answers NO requests. This guard sits ahead of
+    // `ensureStarted` on purpose: without it a single hover on a suppressed file starts the very
+    // subprocess the suppression exists to avoid, and then asks it about a document we refused to
+    // send. `synchronize` below already declines to transmit the content, so the request would go
+    // out and be answered from whatever the server discovered on its own — language features that
+    // look alive while the user-facing notice says they are off.
+    if (this.refreshSizeSuppression(document)) return null;
     const state = this.rememberDocument(document);
     if (!(await this.ensureStarted(document.path))) return null;
     if (document.revision.value !== requestRevision) return null;

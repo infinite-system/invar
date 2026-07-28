@@ -198,3 +198,94 @@ test('a missing server executable degrades to unavailable without throwing', asy
     await client.dispose();
   }
 });
+
+test('a document over the size budget answers no requests and never starts the server', async () => {
+  const fake = new FakeLspProcess(5099);
+  // Register real answers for every request. WITHOUT these the expectations below would pass
+  // vacuously — null because nothing responds, not because the guard declined — and the test
+  // could never fail in the direction it exists to check.
+  fake.responders.set('textDocument/hover', () => ({ contents: 'ok' }));
+  fake.responders.set('textDocument/definition', () => ({
+    uri: `file://${ROOT}/huge.ts`,
+    range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+  }));
+  fake.responders.set('textDocument/references', () => [
+    {
+      uri: `file://${ROOT}/huge.ts`,
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 1 },
+      },
+    },
+  ]);
+  fake.responders.set('textDocument/completion', () => ({
+    isIncomplete: false,
+    items: [{ label: 'filler' }],
+  }));
+  const client = new LanguageClient.Class({
+    rootPath: ROOT,
+    providers: [new FakeProvider()],
+    processFactory: () => fake,
+    // A one-kilobyte budget, so the document below is comfortably over it.
+    fileSizeLimitKb: () => 1,
+  });
+  try {
+    const overBudget = makeDocument(
+      `${ROOT}/huge.ts`,
+      'const filler = 1\n'.repeat(200),
+    );
+
+    // Every request path must decline. `hover` is the one a user reaches first.
+    expect(await client.hover(overBudget, { line: 0, column: 0 })).toBeNull();
+    expect(
+      await client.definition(overBudget, { line: 0, column: 0 }),
+    ).toBeNull();
+    expect(await client.references(overBudget, { line: 0, column: 0 })).toEqual(
+      [],
+    );
+    expect(
+      await client.completion(
+        overBudget,
+        { line: 0, column: 0 },
+        {
+          triggerKind: 'invoked',
+        },
+      ),
+    ).toEqual({ items: [], isIncomplete: false });
+
+    // THE load-bearing assertion. A guard placed after `ensureStarted` would let every
+    // expectation above pass while a subprocess had already been spawned and handed the
+    // workspace root — which is how language features stayed alive on a suppressed file.
+    await flush();
+    expect(fake.startCalled).toBe(false);
+    expect(client.isSizeSuppressed(overBudget)).toBe(true);
+    expect(client.sizeSuppressionNotice(overBudget)).toContain(
+      'language features off',
+    );
+  } finally {
+    await client.dispose();
+  }
+});
+
+test('a document UNDER the same budget still starts the server and answers hover', async () => {
+  const fake = new FakeLspProcess(5100);
+  fake.responders.set('textDocument/hover', () => ({ contents: 'ok' }));
+  const client = new LanguageClient.Class({
+    rootPath: ROOT,
+    providers: [new FakeProvider()],
+    processFactory: () => fake,
+    fileSizeLimitKb: () => 1,
+  });
+  try {
+    // The other half of the control: a guard that silences everything is not a fix.
+    const underBudget = makeDocument(`${ROOT}/small.ts`, 'const x = 1\n');
+    const hover = await client.hover(underBudget, { line: 0, column: 0 });
+
+    expect(hover?.contents).toBe('ok');
+    expect(fake.startCalled).toBe(true);
+    expect(client.isSizeSuppressed(underBudget)).toBe(false);
+    expect(client.sizeSuppressionNotice(underBudget)).toBeNull();
+  } finally {
+    await client.dispose();
+  }
+});
