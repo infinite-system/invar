@@ -159,8 +159,9 @@ requires that defect to move the 554,490-line folded median by at least 10x.
 USE IT WHEN: changing fold snapshot identity, the fold projection, or the
 folded cumulative wrap index and claiming the real editing path stays flat.
 CAUTION: initial file load and the fold toggle are excluded from the latency
-boundary; their allocation/write counts belong to the cumulative-index
-instrument. The app and PTY path itself is real.
+boundary. The component instrument separately reports the typed visible-line
+identity-fill duration and its share of alternating fold-toggle time. The app
+and PTY path itself is real.
 
 ### `INVAR_REAL_CODEX_INLINE_REWRITE=1 bun scripts/harness/measure-inline-rewrite-codex.ts`
 One billed, real-Codex inline-rewrite drive through the PTY. It reports request-now-chord-to-visible

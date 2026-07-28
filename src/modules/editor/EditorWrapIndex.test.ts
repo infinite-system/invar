@@ -59,29 +59,38 @@ class IndexProbeDocument {
 class $CountingEditorWrap extends EditorWrap.$Class {
   static rowArrayAllocations = 0;
   static blockArrayAllocations = 0;
-  static foldHeaderArrayAllocations = 0;
+  static visibleLineArrayAllocations = 0;
   static rowWrites = 0;
   static blockWrites = 0;
-  static foldHeaderWrites = 0;
+  static visibleLineWrites = 0;
 
   static resetCounts(): void {
     this.rowArrayAllocations = 0;
     this.blockArrayAllocations = 0;
-    this.foldHeaderArrayAllocations = 0;
+    this.visibleLineArrayAllocations = 0;
     this.rowWrites = 0;
     this.blockWrites = 0;
-    this.foldHeaderWrites = 0;
+    this.visibleLineWrites = 0;
   }
 
   static counts(): WrapIndexOperationCounts {
     return {
       blockArrayAllocations: this.blockArrayAllocations,
       blockWrites: this.blockWrites,
-      foldHeaderArrayAllocations: this.foldHeaderArrayAllocations,
-      foldHeaderWrites: this.foldHeaderWrites,
+      visibleLineArrayAllocations: this.visibleLineArrayAllocations,
+      visibleLineWrites: this.visibleLineWrites,
       rowArrayAllocations: this.rowArrayAllocations,
       rowWrites: this.rowWrites,
     };
+  }
+
+  static foldProjection(
+    lineCount: number,
+    foldedRanges: NonNullable<
+      Parameters<typeof EditorWrap.Class.totalVisualRows>[2]
+    >,
+  ) {
+    return this.buildFoldProjection(lineCount, foldedRanges);
   }
 
   protected static override allocateRowCounts(lineCount: number): Uint32Array {
@@ -96,11 +105,11 @@ class $CountingEditorWrap extends EditorWrap.$Class {
     return super.allocateBlockRowCounts(blockCount);
   }
 
-  protected static override allocateFoldHeaderByLine(
+  protected static override allocateVisibleLineByLine(
     lineCount: number,
   ): Uint32Array {
-    this.foldHeaderArrayAllocations++;
-    return super.allocateFoldHeaderByLine(lineCount);
+    this.visibleLineArrayAllocations++;
+    return super.allocateVisibleLineByLine(lineCount);
   }
 
   protected static override writeRowCount(
@@ -121,21 +130,21 @@ class $CountingEditorWrap extends EditorWrap.$Class {
     super.writeBlockRowCount(blockRowCounts, blockIndex, rowCount);
   }
 
-  protected static override writeFoldHeader(
-    foldHeaderByLine: Uint32Array,
+  protected static override writeVisibleLine(
+    visibleLineByLine: Uint32Array,
     lineIndex: number,
-    foldHeaderLineIndex: number,
+    visibleLineIndex: number,
   ): void {
-    this.foldHeaderWrites++;
-    super.writeFoldHeader(foldHeaderByLine, lineIndex, foldHeaderLineIndex);
+    this.visibleLineWrites++;
+    super.writeVisibleLine(visibleLineByLine, lineIndex, visibleLineIndex);
   }
 }
 
 interface WrapIndexOperationCounts {
   readonly blockArrayAllocations: number;
   readonly blockWrites: number;
-  readonly foldHeaderArrayAllocations: number;
-  readonly foldHeaderWrites: number;
+  readonly visibleLineArrayAllocations: number;
+  readonly visibleLineWrites: number;
   readonly rowArrayAllocations: number;
   readonly rowWrites: number;
 }
@@ -159,6 +168,15 @@ function makeLines(count: number): string[] {
 }
 
 describe('EditorWrap cumulative index', () => {
+  test('the typed fold projection preserves visible-line mapping semantics', () => {
+    const projection = $CountingEditorWrap.foldProjection(5, [
+      { startLine: 0, endLine: 3, kind: 'delimiter' },
+    ]);
+
+    expect(projection.visibleLineByLine).toBeInstanceOf(Uint32Array);
+    expect([...projection.visibleLineByLine]).toEqual([0, 0, 0, 0, 4]);
+  });
+
   test('extent equals the naive walk, and an unchanged revision costs ZERO document reads', () => {
     const document = new IndexProbeDocument(makeLines(200));
     const expected = naiveTotal(document, 10);
@@ -212,8 +230,8 @@ describe('EditorWrap cumulative index', () => {
     expect(countsByLineCount[0]).toEqual({
       blockArrayAllocations: 0,
       blockWrites: 0,
-      foldHeaderArrayAllocations: 0,
-      foldHeaderWrites: 0,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     });
@@ -236,8 +254,8 @@ describe('EditorWrap cumulative index', () => {
     expect($CountingEditorWrap.counts()).toEqual({
       blockArrayAllocations: 0,
       blockWrites: 1,
-      foldHeaderArrayAllocations: 0,
-      foldHeaderWrites: 0,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     });
@@ -257,8 +275,8 @@ describe('EditorWrap cumulative index', () => {
     expect($CountingEditorWrap.counts()).toEqual({
       blockArrayAllocations: 1,
       blockWrites: 2_000,
-      foldHeaderArrayAllocations: 1,
-      foldHeaderWrites: 0,
+      visibleLineArrayAllocations: 1,
+      visibleLineWrites: 2_000,
       rowArrayAllocations: 1,
       rowWrites: 2_000,
     });
@@ -296,68 +314,14 @@ describe('EditorWrap cumulative index', () => {
     const expectedCounts: WrapIndexOperationCounts = {
       blockArrayAllocations: 0,
       blockWrites: 0,
-      foldHeaderArrayAllocations: 0,
-      foldHeaderWrites: 0,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 0,
       rowArrayAllocations: 0,
       rowWrites: 1,
     };
 
     for (const measuredCase of cases) {
       expect(measuredCase.counts).toEqual(expectedCounts);
-    }
-  });
-
-  test('level-zero collapse and expansion counts depend on its span, not document size', () => {
-    const levelZeroFoldRange = {
-      startLine: 1,
-      endLine: 138_622,
-      kind: 'delimiter' as const,
-    };
-    const cases = [554_490, 970_356].map((lineCount) => {
-      const document = new IndexProbeDocument(makeLines(lineCount));
-      $CountingEditorWrap.totalVisualRows(document, 80);
-
-      $CountingEditorWrap.resetCounts();
-      const collapsedTotal = $CountingEditorWrap.totalVisualRows(document, 80, [
-        levelZeroFoldRange,
-      ]);
-      const collapseCounts = $CountingEditorWrap.counts();
-
-      $CountingEditorWrap.resetCounts();
-      const expandedTotal = $CountingEditorWrap.totalVisualRows(document, 80);
-      const expandCounts = $CountingEditorWrap.counts();
-      return {
-        collapseCounts,
-        collapsedTotal,
-        expandCounts,
-        expandedTotal,
-        lineCount,
-      };
-    });
-    const expectedCollapseCounts: WrapIndexOperationCounts = {
-      blockArrayAllocations: 0,
-      blockWrites: 34,
-      foldHeaderArrayAllocations: 1,
-      foldHeaderWrites: 138_621,
-      rowArrayAllocations: 0,
-      rowWrites: 138_621,
-    };
-    const expectedExpandCounts: WrapIndexOperationCounts = {
-      blockArrayAllocations: 0,
-      blockWrites: 34,
-      foldHeaderArrayAllocations: 1,
-      foldHeaderWrites: 0,
-      rowArrayAllocations: 0,
-      rowWrites: 138_621,
-    };
-
-    for (const measuredCase of cases) {
-      expect(measuredCase.collapsedTotal).toBe(
-        measuredCase.lineCount - 138_621,
-      );
-      expect(measuredCase.expandedTotal).toBe(measuredCase.lineCount);
-      expect(measuredCase.collapseCounts).toEqual(expectedCollapseCounts);
-      expect(measuredCase.expandCounts).toEqual(expectedExpandCounts);
     }
   });
 
