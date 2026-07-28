@@ -1,0 +1,12 @@
+{
+  "task": 192,
+  "slug": "waits",
+  "branch": "fleet/192-waits",
+  "worktree": ".invar/worktrees/192-waits",
+  "tmuxSession": "invar/192-waits",
+  "transcript": "tmp/transcripts/192-waits.transcript.md",
+  "engine": "codex",
+  "heldFromMain": false,
+  "baseCommit": "f3f313e45b0cf55a3aedcfa3c0a204fac8c360f6",
+  "startedAt": "2026-07-28T07:59:48-04:00"
+}
