@@ -1220,18 +1220,7 @@ class $Bootstrap {
     const render = async (): Promise<void> => {
       syncSize();
       paint();
-      await new Promise<void>((resolve) => {
-        let done = false;
-        const finish = (): void => {
-          if (done) return;
-          done = true;
-          renderer.off('frame', finish);
-          resolve();
-        };
-        renderer.once('frame', finish);
-        renderer.requestRender();
-        setTimeout(finish, 120);
-      });
+      await renderer.idle();
     };
 
     let shuttingDown = false;
@@ -2575,8 +2564,13 @@ class $Bootstrap {
     // targetFps loop at rest (the idle-leak fix: at-rest frame delta must be 0). Animations hold a
     // live request below and drop it on quiescence.
     renderer.auto();
-    app.markStarted();
     await render();
+    await new Promise<void>((resolve) => {
+      RenderRequest.Class.afterCurrentTurn(() => {
+        app.markStarted();
+        void render().then(resolve);
+      });
+    });
 
     Logging.Class.info('Boot complete');
     return {
