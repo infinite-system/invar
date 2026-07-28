@@ -3019,3 +3019,36 @@ generator instead of two local repairs.
 Sixth spelling of the same class. The ranked candidates in #187 name the fix that is NOT allowed:
 reducing the leftward count to match the rightward one would arrange for the clamp never to be reached,
 which hides the class until the next caller over-scrolls.
+
+## 2026-07-28 09:05 UTC — I handed the user a command I had never run
+
+The user asked for a 500,000-line TypeScript file to play with. I generated it, verified it properly —
+independently with `awk` rather than trusting the generator's own output: 500,000 lines, 39,048,738
+bytes, sole widest line at 250,000 — and then printed `bun run start <directory>` as the way to open it.
+
+**I never ran that command.** `start` is pinned to `bun src/main.ts .` and `AppLoader` reads only
+`process.argv[2]`, so the appended path became `argv[3]` and was dropped. Invar opened its own
+repository. The user reported the files did not exist.
+
+This is the night's dominant defect class landing in the one place it reaches a human: I asserted a
+behaviour without checking it was reachable. And the failure mode was the worst available — **correct
+work looked broken.** A silently ignored argument is indistinguishable from a missing file, so the
+user's reasonable conclusion was that I had generated nothing.
+
+Doctrine now carries it: an instruction is an assertion, so run it from the directory the reader will
+run it from before writing it down — including the ones too simple to fail. When a script prints the
+instruction, its self-test must cover the printed output and not only the file it produced. Filed #195
+for the underlying trap, because a wrapper that accepts an argument and ignores it is worse than one
+that rejects it; that is the interface form of a silent wait.
+
+Two things I got right and want to keep doing. I checked whether the 2 MB LSP limit actually existed
+rather than accepting the user's premise — it does, `lspFileSizeLimitKb` default 2048, with a
+user-visible notice so a suppressed file is never a silent no-op. And I shipped `small.ts` beside
+`huge.ts` as a positive control, because a file the language server never attached to looks exactly like
+one it deliberately gave up on; without the control, a quiet editor would have proved nothing. That is
+the same reasoning the fleet has been applying to waits all night, applied to a hand-test.
+
+Also caught before it cost anything: `tsconfig.json` declares neither `include` nor `exclude`, so
+`tsc --noEmit` compiles every `.ts` under the repository root and `.gitignore` does not hide a file from
+the compiler. A 500k-line module in `tmp/` would have made the gate unusable. **Fifth instance of
+checkers walking the filesystem rather than the index.** The workspace lives outside the repo instead.
