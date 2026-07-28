@@ -132,6 +132,33 @@ test('configuration issues launch legible dedicated error terminals', () => {
   expect(fixture.presentations[0]).toEqual([fixture.requests[0]!.identifier]);
 });
 
+test('reports remain discoverable without hiding the first task group', () => {
+  const fixture = launcherFixture();
+  const tasks = [
+    task(0, 'Left', { presentationGroup: 'split' }),
+    task(1, 'Right', { presentationGroup: 'split' }),
+  ];
+  const issues: TaskConfigurationIssue[] = [
+    {
+      configurationIndex: 2,
+      label: 'Displaced: Built In',
+      severity: 'warning',
+      message: 'file source displaces built-in task: "Built In"',
+    },
+  ];
+
+  fixture.launcher.launchFolderOpen('/workspace', tasks, issues);
+
+  expect(fixture.requests.map((request) => request.label)).toEqual([
+    'Left',
+    'Right',
+    'Displaced: Built In',
+  ]);
+  expect(fixture.presentations).toEqual([
+    [fixture.requests[0]!.identifier, fixture.requests[1]!.identifier],
+  ]);
+});
+
 test('disposing a workspace removes every terminal it launched', () => {
   const fixture = launcherFixture();
   fixture.launcher.launchFolderOpen(
