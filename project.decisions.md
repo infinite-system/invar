@@ -320,3 +320,16 @@ were inline there and made it read as a log.
 - **Discovery measurements** (pre-migration main) — 36 candidate files, 67 `$`-getters across 36
   classes, 67/67 identity-stable, 0 primitive, 0.14s wall, 92MB RSS. Importing all of `src` instead
   of scan-selected candidates hangs past 120s.
+- **Store the RECIPE, not the drive** — a corpus of replayable drive scripts was proposed and
+  declined by the user: "the drive stubs will pollute the repo." The reduction they then named is the
+  keeper — encode the INTENT, not the code. The asymmetry is the whole argument: a stored drive rots
+  silently (coordinates drift, it still exits 0, and it lies to a checker that cannot tell), while a
+  stored recipe is prose whose staleness is visible to a reader and which can never manufacture a
+  green. Non-executability is the feature. It also captures the expensive part: in the folded-flyweight
+  work the key names were cheap, while "use the NESTED fixture because the flat one structurally
+  cannot express the defect; collapse a LEVEL-0 region because it must span more than one block; type
+  at the root while the fold is active; page PAST the collapsed body" was the reasoning. Recipes
+  belong in the domain's invariant record beside the invariant they exercise — the artifact a cold
+  start already fetches and the invariant checker already keeps honest — never as a standalone
+  script library. `--click 45,7` is the anti-pattern: two integers encoding "the fold gutter of the
+  first top-level region", true only for today's layout.
