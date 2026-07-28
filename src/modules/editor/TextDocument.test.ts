@@ -3,10 +3,21 @@ import { TextDocument } from './TextDocument';
 
 class CountingTextDocument extends TextDocument.$Class {
   measurementCount = 0;
+  upperBoundEvaluationCount = 0;
+
+  protected override lineDisplayWidthUpperBound(line: string): number {
+    this.upperBoundEvaluationCount += 1;
+    return super.lineDisplayWidthUpperBound(line);
+  }
 
   protected override measureLineDisplayWidth(line: string): number {
     this.measurementCount += 1;
     return super.measureLineDisplayWidth(line);
+  }
+
+  resetWidthEvaluationCounts(): void {
+    this.measurementCount = 0;
+    this.upperBoundEvaluationCount = 0;
   }
 }
 
@@ -121,9 +132,29 @@ test('TextDocument measures only viable full-document width candidates', () => {
   expect(document.maximumLineWidth).toBe(120);
   expect(document.measurementCount).toBe(2);
 
+  document.resetWidthEvaluationCounts();
   document.setLine(399, '界'.repeat(80));
   expect(document.maximumLineWidth).toBe(160);
-  expect(document.measurementCount).toBe(4);
+  expect(document.upperBoundEvaluationCount).toBe(1);
+  expect(document.measurementCount).toBe(1);
+
+  // Positive control: shrinking the sole champion must still rescan and find the exact runner-up.
+  document.resetWidthEvaluationCounts();
+  document.setLine(399, 'x');
+  expect(document.maximumLineWidth).toBe(100);
+  expect(document.upperBoundEvaluationCount).toBe(lines.length);
+  expect(document.measurementCount).toBe(1);
+
+  // A multi-line paste is bounded by its own replacement lines when one inherits the championship.
+  document.resetWidthEvaluationCounts();
+  document.replaceRange(
+    { line: 0, col: 0 },
+    { line: 0, col: 100 },
+    `tiny\n${'界'.repeat(60)}`,
+  );
+  expect(document.maximumLineWidth).toBe(120);
+  expect(document.upperBoundEvaluationCount).toBe(2);
+  expect(document.measurementCount).toBe(1);
 });
 
 test('an edit sequence that cancels out reads as clean with no undo involved', () => {

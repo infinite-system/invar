@@ -112,8 +112,11 @@ measurements after lock degradation. Its positive control supplies a fresh,
 out-of-document fold range on every edit: the projection is unchanged, but
 the existing folded-range identity guard must take the full-rebuild branch,
 and the control fails unless every forced sync is slower than every
-incremental sync. The same run measures visual-row-count hit rates over
-uniform line-length phases, exact wrap boundaries, and mid-row controls.
+incremental sync. A second control restores the sole widest line to the
+shared fixture width and requires that forced maximum-width rescan mutation
+to be slower than every incremental 20k mutation. The same run measures
+visual-row-count hit rates over uniform line-length phases, exact wrap
+boundaries, and mid-row controls.
 USE IT WHEN: considering a change to `EditorWrap.syncWrapIndex` or claiming
 that cumulative-index edit work is user-visible.
 KNOWN RESULT (2026-07-28): incremental sync was 1.327–3.763 ms at 100k
@@ -121,8 +124,10 @@ lines and 6.837–9.124 ms at 500k. The 20k positive control moved
 0.342–0.685 ms incremental syncs to 51.284–53.824 ms forced full rebuilds.
 Uniform wrap phases changed row count on 4/320 insertions (1.25%); exact
 boundaries changed on 4/4 and mid-row controls on 0/4. The same run exposed a
-separate `TextDocument` maximum-width-champion rescan; that is not wrap-index
-time.
+separate `TextDocument` maximum-width-champion rescan. After replacements
+could inherit that championship before a rescan, 500k mutation measured
+0.007–0.045 ms and sync measured 7.015–11.488 ms; the 20k mutation control
+forced the legitimate shrink/rescan path to 4.272–4.496 ms.
 CAUTION: the named boundary ends when `totalVisualRows` returns. It excludes
 PTY input, undo capture, reactive painting, and terminal output; use the
 input-byte-flush instrument for keypress-to-frame claims.
