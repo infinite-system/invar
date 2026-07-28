@@ -544,15 +544,53 @@ class $EditorEditPathMeasurement {
         );
       }
     }
+    const expectedFoldToggleCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 34,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 138_621,
+      rowArrayAllocations: 0,
+      rowWrites: 138_621,
+    };
+    const nestedFixtureFoldToggleCases = [554_490, 970_356].map((lineCount) => {
+      const document = new TextDocument.Class();
+      document.replaceAll(this.flatFixtureLines(lineCount));
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      $CountingEditorWrap.resetCounts();
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH, [
+        levelZeroFoldRange,
+      ]);
+      const collapse = $CountingEditorWrap.counts();
+      $CountingEditorWrap.resetCounts();
+      $CountingEditorWrap.totalVisualRows(document, this.WRAP_WIDTH);
+      const expand = $CountingEditorWrap.counts();
+      return { collapse, expand, lineCount };
+    });
+    for (const measuredCase of nestedFixtureFoldToggleCases) {
+      if (
+        JSON.stringify(measuredCase.collapse) !==
+          JSON.stringify(expectedFoldToggleCounts) ||
+        JSON.stringify(measuredCase.expand) !==
+          JSON.stringify(expectedFoldToggleCounts)
+      ) {
+        throw new Error(
+          'Editor wrap-index fold-toggle operation count scaled with ' +
+            `document size: ${JSON.stringify(nestedFixtureFoldToggleCases)}`,
+        );
+      }
+    }
 
     return {
       expectedIncrementalCounts,
+      expectedFoldToggleCounts,
       forcedFullRebuild,
       incremental,
       nestedFixtureEditCases,
+      nestedFixtureFoldToggleCases,
       requirement:
         'same-line edits are identical across the folded and nested-fixture ' +
-        'size axes; a forced rebuild must move the counter',
+        'size axes, and fold toggles patch only their shared hidden body; a ' +
+        'forced rebuild must move the counter',
       satisfied: true,
     };
   }
@@ -773,15 +811,23 @@ interface WrapIndexOperationMeasurement {
 
 interface OperationalScaleContract {
   readonly expectedIncrementalCounts: WrapIndexOperationCounts;
+  readonly expectedFoldToggleCounts: WrapIndexOperationCounts;
   readonly forcedFullRebuild: WrapIndexOperationMeasurement;
   readonly incremental: readonly WrapIndexOperationMeasurement[];
   readonly nestedFixtureEditCases: readonly FoldedEditOperationMeasurement[];
+  readonly nestedFixtureFoldToggleCases: readonly FoldToggleOperationMeasurement[];
   readonly requirement: string;
   readonly satisfied: true;
 }
 
 interface FoldedEditOperationMeasurement extends WrapIndexOperationMeasurement {
   readonly collapsed: boolean;
+}
+
+interface FoldToggleOperationMeasurement {
+  readonly collapse: WrapIndexOperationCounts;
+  readonly expand: WrapIndexOperationCounts;
+  readonly lineCount: number;
 }
 
 interface FoldProjectionIdentityFillMeasurement {

@@ -368,8 +368,9 @@ range. `CodeFolding` reuses its snapshot when indentation and structural delimit
 gutter markers and the collapsed projection share that indexed snapshot, and the collapsed
 projection preserves its identity. `EditorWrap.syncWrapIndex` owns reusable `Uint32Array` row
 counts, 4096-line block totals, and a typed visible-line mapping with unchanged value semantics. A
-same-line edit writes one row and allocates nothing. The reactive revision publishes the in-place
-result; `visualRowsFromOffset` remains the shared window.
+known document change patches its rows; a fold toggle follows the same rule, patching only its
+changed body and touched block totals. Both reuse every index array. The reactive revision
+publishes the in-place result; `visualRowsFromOffset` remains the shared window.
 
 **Generates:** One folded/wrapped extent and window for gutter, code, caret, selection, and pointer
 mapping.
@@ -382,7 +383,8 @@ modes of `scripts/harness/measure-input-byte-flush.ts`.
 
 **Impossible if true:** Two disagreeing document-line-to-visual-row mappings consulted by different
 consumers; a same-line edit allocating or writing an amount that changes with document size or
-collapsed state; a wrapper dropping the change fact; an index array escaping `EditorWrap`.
+collapsed state; a fold toggle rebuilding document-sized arrays instead of patching its body; a
+wrapper dropping the change fact; an index array escaping `EditorWrap`.
 
 **Verification:** `bun test src/modules/editor/CodeFolding.test.ts
 src/modules/editor/EditorFrameAttribution.test.ts

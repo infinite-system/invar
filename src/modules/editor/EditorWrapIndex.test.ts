@@ -325,6 +325,70 @@ describe('EditorWrap cumulative index', () => {
     }
   });
 
+  test('fold toggles patch only the shared hidden body at both document sizes', () => {
+    const levelZeroFoldRange = {
+      startLine: 1,
+      endLine: 138_622,
+      kind: 'delimiter' as const,
+    };
+    const measurements = [554_490, 970_356].map((lineCount) => {
+      const document = new IndexProbeDocument(makeLines(lineCount));
+      expect($CountingEditorWrap.totalVisualRows(document, 80)).toBe(lineCount);
+      $CountingEditorWrap.resetCounts();
+
+      expect(
+        $CountingEditorWrap.totalVisualRows(document, 80, [levelZeroFoldRange]),
+      ).toBe(lineCount - 138_621);
+      const collapse = $CountingEditorWrap.counts();
+      $CountingEditorWrap.resetCounts();
+
+      expect($CountingEditorWrap.totalVisualRows(document, 80)).toBe(lineCount);
+      const expand = $CountingEditorWrap.counts();
+      return { collapse, expand, lineCount };
+    });
+    const expectedToggleCounts: WrapIndexOperationCounts = {
+      blockArrayAllocations: 0,
+      blockWrites: 34,
+      visibleLineArrayAllocations: 0,
+      visibleLineWrites: 138_621,
+      rowArrayAllocations: 0,
+      rowWrites: 138_621,
+    };
+
+    for (const measurement of measurements) {
+      expect(measurement.collapse).toEqual(expectedToggleCounts);
+      expect(measurement.expand).toEqual(expectedToggleCounts);
+    }
+  });
+
+  test('fold patches preserve direct visible-line values through nested toggles', () => {
+    const document = new IndexProbeDocument(makeLines(10));
+    const outerRange = {
+      startLine: 0,
+      endLine: 8,
+      kind: 'delimiter' as const,
+    };
+    const innerRange = {
+      startLine: 2,
+      endLine: 5,
+      kind: 'delimiter' as const,
+    };
+
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [innerRange]),
+    ).toBe(2);
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [
+        outerRange,
+        innerRange,
+      ]),
+    ).toBe(0);
+    expect(
+      $CountingEditorWrap.visualRowOfLine(document, 4, 80, [innerRange]),
+    ).toBe(2);
+    expect($CountingEditorWrap.visualRowOfLine(document, 4, 80)).toBe(4);
+  });
+
   test('insertions and deletions realign the tail (head/tail identity trim)', () => {
     const document = new IndexProbeDocument(makeLines(100));
     EditorWrap.Class.totalVisualRows(document, 10);

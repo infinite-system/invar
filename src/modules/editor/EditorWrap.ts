@@ -421,9 +421,8 @@ class $EditorWrap {
   }
 
   /** Bring the document's index current for `wrapWidth`: full build on first sight, width change,
-   *  fold-projection change, or an absent change fact. Otherwise patch only the published changed
-   *  range. A same-line edit reuses both typed arrays and updates one row, its block total when the
-   *  row count changed, and the exact document total. */
+   *  or an absent change fact. Otherwise patch the published changed extent, whether it came from
+   *  a document edit or a fold toggle. */
   protected static syncWrapIndex(
     document: WrappableDocument,
     wrapWidth: number | null,
@@ -436,6 +435,18 @@ class $EditorWrap {
     const revision = document.revision ? document.revision.value : -1;
     const lineCount = document.lineCount;
     let index = this.$wrapIndexByDocument.get(document);
+
+    if (
+      index &&
+      index.width === width &&
+      index.foldedRanges !== normalizedFoldRanges &&
+      index.revision === revision &&
+      revision !== -1 &&
+      index.rowCounts.length === lineCount
+    ) {
+      this.patchFoldChange(document, width, index, normalizedFoldRanges);
+      return index;
+    }
 
     if (
       !index ||
@@ -720,6 +731,128 @@ class $EditorWrap {
     return rows;
   }
 
+  protected static patchFoldChange(
+    document: WrappableDocument,
+    width: number | null,
+    index: DocumentWrapIndex,
+    foldedRanges: readonly FoldRange[],
+  ): void {
+    const lineCount = index.rowCounts.length;
+    const visibleFoldRanges = this.visibleFoldRanges(lineCount, foldedRanges);
+    const changedFoldRanges = [
+      ...index.foldedRanges.filter(
+        (previousRange) => !foldedRanges.includes(previousRange),
+      ),
+      ...foldedRanges.filter(
+        (nextRange) => !index.foldedRanges.includes(nextRange),
+      ),
+    ];
+    const blockRowCountDeltas = new Map<number, number>();
+    for (const changedFoldRange of changedFoldRanges) {
+      const changedBodyStartLine = Math.max(0, changedFoldRange.startLine + 1);
+      const changedBodyEndLine = Math.min(
+        lineCount - 1,
+        changedFoldRange.endLine,
+      );
+      let visibleFoldRangeIndex = visibleFoldRanges.findIndex(
+        (range) => range.endLine >= changedBodyStartLine,
+      );
+      if (visibleFoldRangeIndex < 0) {
+        visibleFoldRangeIndex = visibleFoldRanges.length;
+      }
+      for (
+        let lineIndex = changedBodyStartLine;
+        lineIndex <= changedBodyEndLine;
+        lineIndex++
+      ) {
+        while (
+          (visibleFoldRanges[visibleFoldRangeIndex]?.endLine ??
+            Number.POSITIVE_INFINITY) < lineIndex
+        ) {
+          visibleFoldRangeIndex++;
+        }
+        const visibleFoldRange = visibleFoldRanges[visibleFoldRangeIndex];
+        const nextVisibleLineIndex =
+          visibleFoldRange !== undefined &&
+          visibleFoldRange.startLine < lineIndex &&
+          lineIndex <= visibleFoldRange.endLine
+            ? visibleFoldRange.startLine
+            : lineIndex;
+        if (index.visibleLineByLine[lineIndex] === nextVisibleLineIndex) {
+          continue;
+        }
+        this.writeVisibleLine(
+          index.visibleLineByLine,
+          lineIndex,
+          nextVisibleLineIndex,
+        );
+        const previousRowCount = index.rowCounts[lineIndex] ?? 0;
+        const nextRowCount =
+          nextVisibleLineIndex !== lineIndex
+            ? 0
+            : width === null
+              ? 1
+              : this.segmentsForLine(document.line(lineIndex), width).length;
+        if (previousRowCount === nextRowCount) continue;
+        this.writeRowCount(index.rowCounts, lineIndex, nextRowCount);
+        const rowCountDelta = nextRowCount - previousRowCount;
+        const blockIndex = lineIndex >> this.BLOCK_SHIFT;
+        blockRowCountDeltas.set(
+          blockIndex,
+          (blockRowCountDeltas.get(blockIndex) ?? 0) + rowCountDelta,
+        );
+        index.totalRowCount += rowCountDelta;
+      }
+    }
+    for (const [blockIndex, rowCountDelta] of blockRowCountDeltas) {
+      if (rowCountDelta === 0) continue;
+      this.writeBlockRowCount(
+        index.blockRowCounts,
+        blockIndex,
+        (index.blockRowCounts[blockIndex] ?? 0) + rowCountDelta,
+      );
+    }
+    index.foldedRanges = foldedRanges;
+    index.foldedRangeByStartLine = new Map(
+      visibleFoldRanges.map((range) => [range.startLine, range]),
+    );
+    index.lastVisibleLineIndex =
+      index.visibleLineByLine[Math.max(0, lineCount - 1)] ??
+      Math.max(0, lineCount - 1);
+  }
+
+  protected static visibleFoldRanges(
+    lineCount: number,
+    foldedRanges: readonly FoldRange[],
+  ): readonly FoldRange[] {
+    const orderedRanges = [...foldedRanges]
+      .filter((range) => range.startLine >= 0 && range.startLine < lineCount)
+      .sort(
+        (firstRange, secondRange) =>
+          firstRange.startLine - secondRange.startLine ||
+          secondRange.endLine - firstRange.endLine,
+      );
+    const visibleRanges: FoldRange[] = [];
+    let visibleBodyStartLine = -1;
+    let visibleBodyEndLine = -1;
+    for (const range of orderedRanges) {
+      if (
+        range.startLine > visibleBodyStartLine &&
+        range.startLine <= visibleBodyEndLine
+      ) {
+        continue;
+      }
+      visibleRanges.push(range);
+      if (range.startLine > visibleBodyEndLine) {
+        visibleBodyStartLine = range.startLine;
+        visibleBodyEndLine = range.endLine;
+      } else if (range.startLine === visibleBodyStartLine) {
+        visibleBodyEndLine = Math.max(visibleBodyEndLine, range.endLine);
+      }
+    }
+    return visibleRanges;
+  }
+
   protected static buildFoldProjection(
     lineCount: number,
     foldedRanges: readonly FoldRange[],
@@ -729,13 +862,7 @@ class $EditorWrap {
       this.writeVisibleLine(visibleLineByLine, lineIndex, lineIndex);
     }
     const foldedRangeByStartLine = new Map<number, FoldRange>();
-    const orderedRanges = [...foldedRanges].sort(
-      (firstRange, secondRange) =>
-        firstRange.startLine - secondRange.startLine ||
-        secondRange.endLine - firstRange.endLine,
-    );
-    for (const range of orderedRanges) {
-      if (visibleLineByLine[range.startLine] !== range.startLine) continue;
+    for (const range of this.visibleFoldRanges(lineCount, foldedRanges)) {
       foldedRangeByStartLine.set(range.startLine, range);
       for (
         let lineIndex = range.startLine + 1;

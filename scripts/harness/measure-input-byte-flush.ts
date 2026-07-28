@@ -277,6 +277,12 @@ async function measureNestedFoldEditing(): Promise<void> {
         distribution: nestedFoldDistribution(sessions),
         lineCount: measuredCase.lineCount,
         sessions,
+        toggleDistributions: measuredCase.collapsed
+          ? {
+              collapse: nestedFoldToggleDistribution(sessions, 'collapse'),
+              expand: nestedFoldToggleDistribution(sessions, 'expand'),
+            }
+          : null,
       });
     }
 
@@ -344,6 +350,26 @@ async function measureNestedFoldEditing(): Promise<void> {
               'paint and frame emission',
             ],
             start: 'immediately before the edit byte is written to the PTY',
+          },
+          toggleBoundary: {
+            end:
+              'first complete DEC 2026 frame whose emulator grid shows the ' +
+              'requested folded or expanded state',
+            excludes: [
+              'fixture generation',
+              'file opening and initial fold discovery',
+              'filesystem saving',
+              'terminal display after frame bytes reach the PTY master',
+              'language-server work (isolated 1 KB suppression limit)',
+            ],
+            includes: [
+              'real PTY chord input routing',
+              'fold-state and wrap-index mutation',
+              'reactive projection',
+              'paint and frame emission',
+            ],
+            start:
+              'immediately before the first chord byte is written to the PTY',
           },
           burstLength,
           fixture:
@@ -416,6 +442,7 @@ async function measureNestedFoldEditingSession(
   });
   try {
     await openNestedFixture(driver);
+    let collapseToggle: NestedFoldToggleSample | null = null;
     if (options.collapsed) {
       driver.sendMouse({
         kind: 'press',
@@ -433,11 +460,11 @@ async function measureNestedFoldEditingSession(
         (snapshot) => snapshot.findText('Ln 2,') !== null,
         15_000,
       );
-      driver.sendKeys('Control+k', '[');
-      await driver.awaitGridCondition(
+      collapseToggle = await measureNestedFoldToggle(
+        driver,
+        ['Control+k', '['],
         'the 138,622-line group0000 fold is visible',
         (snapshot) => snapshot.findText('138624') !== null,
-        60_000,
       );
     } else {
       driver.sendMouse({
@@ -458,8 +485,18 @@ async function measureNestedFoldEditingSession(
       '~',
       options.burstLength,
     );
+    const expandToggle = options.collapsed
+      ? await measureNestedFoldToggle(
+          driver,
+          ['Control+l', ']'],
+          'the first child of group0000 is visible after expansion',
+          (snapshot) => snapshot.findText('group0000_00') !== null,
+        )
+      : null;
     return {
       collapsed: options.collapsed,
+      collapseToggle,
+      expandToggle,
       forceFullRebuild: options.forceFullRebuild,
       lineCount: options.lineCount,
       samples,
@@ -469,6 +506,32 @@ async function measureNestedFoldEditingSession(
     await driver.dispose();
     rmSync(isolatedHomeDirectory, { recursive: true, force: true });
   }
+}
+
+async function measureNestedFoldToggle(
+  driver: PtyTestDriver.Model,
+  keys: readonly string[],
+  description: string,
+  condition: Parameters<
+    PtyTestDriver.Model['sendKeysAndAwaitGridConditionByteArrival']
+  >[2],
+): Promise<NestedFoldToggleSample> {
+  const currentLoadAverage = loadavg();
+  const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+    keys,
+    description,
+    condition,
+    60_000,
+  );
+  return {
+    completedFramesUntilToggle: measurement.completedFramesUntilCondition,
+    inputToPaintMilliseconds: measurement.inputToFrameByteArrivalMilliseconds,
+    loadAverage: {
+      fifteenMinutes: currentLoadAverage[2] ?? Number.NaN,
+      fiveMinutes: currentLoadAverage[1] ?? Number.NaN,
+      oneMinute: currentLoadAverage[0] ?? Number.NaN,
+    },
+  };
 }
 
 async function openNestedFixture(driver: PtyTestDriver.Model): Promise<void> {
@@ -536,6 +599,27 @@ function nestedFoldDistribution(
   const samples = sessions.flatMap((session) =>
     session.samples.map((sample) => sample.inputToPaintMilliseconds),
   );
+  return {
+    maximum: Math.max(...samples),
+    minimum: Math.min(...samples),
+    p50: percentile(samples, 0.5),
+    p95: percentile(samples, 0.95),
+    sampleCount: samples.length,
+  };
+}
+
+function nestedFoldToggleDistribution(
+  sessions: readonly NestedFoldEditingSession[],
+  direction: 'collapse' | 'expand',
+): NestedFoldDistribution {
+  const samples = sessions.map((session) => {
+    const sample =
+      direction === 'collapse' ? session.collapseToggle : session.expandToggle;
+    if (sample === null) {
+      throw new Error(`Missing ${direction} toggle sample in folded session`);
+    }
+    return sample.inputToPaintMilliseconds;
+  });
   return {
     maximum: Math.max(...samples),
     minimum: Math.min(...samples),
@@ -1137,10 +1221,22 @@ interface NestedFoldEditingSessionOptions {
 
 interface NestedFoldEditingSession {
   readonly collapsed: boolean;
+  readonly collapseToggle: NestedFoldToggleSample | null;
+  readonly expandToggle: NestedFoldToggleSample | null;
   readonly forceFullRebuild: boolean;
   readonly lineCount: number;
   readonly samples: readonly NestedFoldEditSample[];
   readonly sessionNumber: number;
+}
+
+interface NestedFoldToggleSample {
+  readonly completedFramesUntilToggle: number;
+  readonly inputToPaintMilliseconds: number;
+  readonly loadAverage: {
+    readonly fifteenMinutes: number;
+    readonly fiveMinutes: number;
+    readonly oneMinute: number;
+  };
 }
 
 interface NestedFoldEditSample {
@@ -1167,6 +1263,10 @@ interface NestedFoldCaseMeasurement {
   readonly distribution: NestedFoldDistribution;
   readonly lineCount: number;
   readonly sessions: readonly NestedFoldEditingSession[];
+  readonly toggleDistributions: {
+    readonly collapse: NestedFoldDistribution;
+    readonly expand: NestedFoldDistribution;
+  } | null;
 }
 
 interface ScaleLineCountMeasurement {
