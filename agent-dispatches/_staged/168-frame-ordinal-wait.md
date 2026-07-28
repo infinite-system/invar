@@ -22,6 +22,39 @@ So when the app has nothing to repaint, frame 59 never arrives — on any machin
 gate labels these `starvation-class` and retries them, which is a contention story attached to an
 unreachability defect.
 
+## THIS IS NOW A HARD RED BLOCKING MAIN — and it is DETERMINISTIC
+
+Escalated 2026-07-28 02:47. The gate on `8b6b980` (#178 + #169 + #171) failed and **the retry did not
+rescue it**:
+
+    RETRY TALLY: 1 step(s) RETRIED AND STILL FAILED — timeout-class REDS, not hidden flakes
+    RETRY TALLY:   behavioral-contracts (felt invariants)
+    FAIL  plugin manifest drive failed
+    merge-gate: FAILURES — commit/merge BLOCKED
+
+**Both attempts reported the IDENTICAL count: `completed frames observed: 58`.** So did the earlier
+`gate-panelchrome` occurrence. Three sightings, one number.
+
+**That identical count is the strongest evidence in this task and it settles the mechanism.** A race
+produces different counts; 58 every time means the app deterministically produces 58 frames and then
+has nothing further to paint. Frame 59 is not late — **it does not exist.** The timeout was never
+measuring slowness.
+
+### Why it became deterministic now, and what NOT to conclude
+
+#178 landed hours earlier and rewrote `scripts/behavioral-contracts.sh` to run independent drives
+CONCURRENTLY (glide-cap drives, accumulation profiles, render-progress + input-coalescing overlapped).
+The most likely reading: that reordering removed whatever incidental extra frame used to arrive from a
+neighbouring drive and rescue the wait.
+
+**If so, #178 did not break anything — it stopped accidentally papering over this.** Do NOT revert
+#178's concurrency to make the red go away; that restores a 2m29s cost to hide a real defect, and the
+project's standing rule is that a retry-rescued green is debt, not a pass.
+
+But that IS a hypothesis. Check it cheaply: run behavioral-contracts at `1abe1d0` (#178's merge) and
+at its parent. If the parent also fails deterministically, #178 is irrelevant and the defect simply
+became visible. Report which.
+
 ## Three confirmed instances, all in gate logs
 
 1. **behavioral-contracts, plugin-manifest drive.** Timed out after 58 completed frames,
