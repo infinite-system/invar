@@ -229,6 +229,30 @@ For each item:
 too: a fix outside the dispatched scope arrives unreviewed, ungated against its own contract, and
 mixed into a merge whose message describes something else.
 
+## READ LOGS AS A SERIES — three regressions hid in numbers that were already printed
+
+Every one of these was reported by an instrument that was working correctly. Nothing compared the
+value to its own history, so it took a human reading runs in sequence to see it — and twice nobody
+did for a day.
+
+| what hid | the number that was already there |
+|---|---|
+| input latency doubled (#106) | TWELVE consecutive elevated samples in `.perf-history/input-byte-flush.ndjson`, straddling the FAIL line so the retry read passes as noise |
+| gate 17x slower (#172) | `parallel-safe phase 1m22s`, then `0m45s`, then `12m54s`, in three consecutive logs |
+| six "separate" flakes may be one (#177) | exactly one retry in four of five gates, a DIFFERENT smoke each time, never a repeat |
+
+**When you have more than two runs of anything, read them as a series before diagnosing any one of
+them.** A single run's number is not a fact about the system; the sequence is. The retry-tally shape
+was invisible in every individual gate and unmistakable across five.
+
+Two corollaries:
+
+- **A rate destroys the shape.** "50% failure" told nobody anything; a perfect 0,1 alternation named
+  wall-clock phase instantly. Always ask builders for ordered sequences, never rates — and apply the
+  same rule to your own reading.
+- **Prefer making the comparison automatic over remembering to do it** (#179). The conductor
+  noticing is the weakest possible mechanism, and it is the one that failed twice.
+
 ## KNOWING A RULE IS NOT KNOWING WHERE IT BINDS — ask what the tool actually walks
 
 Three times in one night the same property mattered: **repo checkers walk the FILESYSTEM, not
