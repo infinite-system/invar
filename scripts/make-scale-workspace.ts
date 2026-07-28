@@ -207,7 +207,10 @@ process.stdout.write(
     `runner-up:   ${runnerUpLineWidth} columns, ${runnerUpLineCount} lines tied`,
     `small.ts:    ${Bun.file(join(directory, 'small.ts')).size} bytes`,
     '',
-    `Open it:     bun run start ${directory}`,
+    // NOT `bun run start <dir>`: that script is pinned to `bun src/main.ts .`,
+    // and AppLoader reads only process.argv[2], so an appended path lands in
+    // argv[3] and is silently ignored — the repository opens instead.
+    `Open it:     bun src/main.ts ${directory}`,
     '',
   ].join('\n'),
 );
