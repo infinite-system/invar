@@ -1,0 +1,11 @@
+{
+  "task": 171,
+  "slug": "tasks-json-displaces-builtin",
+  "branch": "fleet/171-tasks-json-displaces-builtin",
+  "worktree": ".invar/worktrees/171-tasks-json-displaces-builtin",
+  "tmuxSession": "invar/171-tasks-json-displaces-builtin",
+  "transcript": "/home/parallels/dev/tui-editor/tmp/transcripts/171-tasks-json-displaces-builtin.transcript.md",
+  "engine": "codex",
+  "baseCommit": "3567f59eac0d8cf5faab24aea9b9c522e8523ca2",
+  "startedAt": "2026-07-28T02:14:44-04:00"
+}

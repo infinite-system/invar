@@ -19,8 +19,9 @@ nothing.
 
 And earlier: *"we don't have a problem with the current implementation."*
 
-**So the burden of proof is on the change, not on the status quo.** A well-measured "not worth it" is
-a SUCCESSFUL outcome of this task, not a failure. Do not arrive at a fix because you were dispatched.
+**The burden of proof is on the change, but the BAR IS NOW SET: 500k lines must be imperceptible
+to edit.** If measurement shows 500k already inside one frame, a well-measured "not worth it" is a
+successful outcome. If it does not, proceed — and the generativity test in Phase 2 governs HOW.
 
 ## Where this came from
 
@@ -46,27 +47,42 @@ implementation cost rather than by evidence, which quietly assumes the fix is wa
   `:576` is `buildFoldProjection`'s signature — the `Array.from` is at 580. It says "read them, don't
   re-hunt", so a builder trusting that finds `:386` blank.
 
-## PHASE 1 — prove the problem is FELT. Stop here if it is not.
+## PHASE 1 — measure against the 500k BAR. This is the target, not a stop-gate.
 
-Nobody has ever reported slow editing. The dramatic number from #172 — settings-applied at
-655,982 ms — was the SUITE's boot multiplier, not typing.
+**USER DIRECTIVE 2026-07-28: make a 500,000-line file already imperceptible to edit.**
 
-**No edit benchmark exists.** `.perf-history/` holds only `input-byte-flush.ndjson`, and the only
-editor harness is `smoke-editor-harness.ts`. So building the instrument is the first real work —
-budget for it, and give it a positive control: force the full-rebuild branch at `:326` and require
-the reported number to move.
+That sets the acceptance bar, and it replaces the earlier "stop if 100k is fine" framing. 100k being
+comfortable is not the finish line — 500k is. If 500k editing is NOT imperceptible today, the work is
+JUSTIFIED and you proceed to Phase 2.
 
-Measure edit-sync cost for one keystroke mid-document at **2k / 20k / 100k / 500k lines, wrap on and
-wrap off**, quiet lock held, load average recorded beside every number. Report the ordered
-measurements, not averages.
+**What "imperceptible" means here, concretely, so it is not a matter of taste.** The repo already
+targets 30 FPS at 100k lines (#123, #132), so one frame is 33 ms. Per-keystroke edit-sync cost must
+sit comfortably inside a single frame at 500k lines:
 
-Then answer one question plainly: **would a user notice?** Typing feels instant below roughly 16 ms
-and acceptable below ~50 ms. If 100k-line editing is already imperceptible, **STOP AND REPORT THAT.**
-That closes the task and it is worth knowing — nobody has measured it before.
+| verdict | per-edit sync cost at 500k |
+|---|---|
+| imperceptible — the goal | **< 16 ms** (inside a 60 FPS frame; typing feels instant) |
+| acceptable | < 33 ms (inside the 30 FPS budget the repo already commits to) |
+| FAILS THE BAR — work is justified | >= 33 ms, i.e. a keystroke can cost a dropped frame |
+
+Report the number at 500k first, since it is the one that decides the task. Then 2k / 20k / 100k, so
+the CURVE is visible — a flat curve and a steep one demand different fixes, and the shape is what
+tells you whether allocation or algorithmic cost dominates.
+
+**No edit benchmark exists.** `.perf-history/` holds only `input-byte-flush.ndjson`; the only editor
+harness is `smoke-editor-harness.ts`. Building the instrument is the first real work. Give it a
+positive control: force the full-rebuild branch at `:326` and require the reported number to move.
+
+Measure with wrap on AND off, quiet lock held, load average beside every number, ordered samples
+rather than averages. Two other builders are live — the lock is what makes your numbers valid.
 
 Also measure the hit rate the review's stage 2 depends on: how often does a keystroke change a line's
-visual-row count? It claims "most do not," which is true mid-line and FALSE at the wrap boundary.
-Stage 2's entire win is proportional to that rate. Measure it; do not assert it.
+visual-row count? It claims "most do not" — true mid-line, FALSE at the wrap boundary. Stage 2's win
+is proportional to that rate, so measure it rather than asserting it.
+
+**A 500k fixture may not exist yet.** #136 wants one shared scale-fixture generator with a cached
+corpus; if you have to build a 500k fixture, build it so #136 can adopt it rather than as a
+throwaway.
 
 ## PHASE 2 — only if Phase 1 shows a felt problem: is the fix an INVARIANT UNLOCK?
 
