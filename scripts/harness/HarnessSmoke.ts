@@ -5,6 +5,7 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import type { PtyTestDriver } from './PtyTestDriver';
 
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
+// invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Async-published state is always awaited (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 
@@ -109,6 +110,23 @@ class $HarnessSmoke {
       }
       await Bun.sleep(Math.min(5, remainingMilliseconds));
     }
+  }
+
+  static async awaitScrollPosition(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    description: string,
+    fieldName: string,
+    targetPosition: number,
+    timeoutMilliseconds = 30_000,
+  ): Promise<StatusSnapshot> {
+    return this.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      description,
+      (status) => Number(status[fieldName]) === targetPosition,
+      timeoutMilliseconds,
+    );
   }
 
   static clickText(

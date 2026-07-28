@@ -216,6 +216,11 @@ describe('AppStatusProjection', () => {
       },
     };
 
+    workspaceSet.active.editor.document.loadFromText(
+      Array.from({ length: 50 }, () => 'x'.repeat(90)).join('\n'),
+    );
+    workspaceSet.active.editor.hasDocument.value = true;
+    workspaceSet.active.editor.viewport.setSize(30, 20);
     const initialSnapshot = AppStatusProjection.Class.snapshot(ports);
     expect(initialSnapshot.mouse).toBeNull();
     expect(initialSnapshot.agentTitle).toBe('');
@@ -239,6 +244,8 @@ describe('AppStatusProjection', () => {
       'git',
       'extensions',
     ]);
+    expect(initialSnapshot.editorMaximumScrollLeft).toBe(60);
+    expect(initialSnapshot.editorMaximumScrollTop).toBe(30);
     expect(initialSnapshot.editorFrameAttribution).toEqual({
       latestFrame: {
         documentLineReads: 0,
