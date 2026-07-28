@@ -937,7 +937,7 @@ gate_elapsed_seconds="$(( $(date +%s) - gate_started_seconds ))"
 # ratcheting retries down to a proven floor: a ratchet needs a recorded floor, not a remembered one.
 # Deliberately NOT a blocking check yet — the floor must be earned from several consecutive runs
 # before a rule is set on it, or the first ambient-load blip reds the gate and the rule gets unwound.
-retry_history_path="$repository_root/.perf-history/gate-retries.ndjson"
+retry_history_path="$ROOT/.perf-history/gate-retries.ndjson"
 mkdir -p "$(dirname "$retry_history_path")"
 retry_history_pass_list="$(printf '%s\n' "${retried_pass_smoke_names[@]+"${retried_pass_smoke_names[@]}"}" \
   | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
@@ -945,7 +945,7 @@ retry_history_fail_list="$(printf '%s\n' "${retried_fail_smoke_names[@]+"${retri
   | sed '/^$/d' | sed 's/"/\\"/g' | sed 's/^/"/; s/$/"/' | paste -sd, -)"
 printf '{"timestamp":"%s","commit":"%s","gateOutcome":"%s","retriedPassCount":%s,"retriedFailCount":%s,"retriedPassSmokes":[%s],"retriedFailSmokes":[%s],"totalSeconds":%s,"loadAverage":"%s"}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  "$(git -C "$repository_root" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+  "$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
   "$([ "$fail" = 0 ] && echo all-pass || echo failures)" \
   "${#retried_pass_smoke_names[@]}" \
   "${#retried_fail_smoke_names[@]}" \
