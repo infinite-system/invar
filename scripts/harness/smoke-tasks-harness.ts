@@ -6,6 +6,7 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: One task source controls each workspace (src/modules/tasks/tasks.invariants.md)
+// invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
 // invariant: Folder open starts declared tasks (src/modules/tasks/tasks.invariants.md)
 // invariant: Each task owns one terminal (src/modules/tasks/tasks.invariants.md)
 // invariant: Unsupported tasks fail visibly (src/modules/tasks/tasks.invariants.md)
@@ -163,27 +164,33 @@ try {
   let status = await awaitTaskStatus(
     driven.driver,
     driven.homeDirectory,
-    'the VS Code task source launched two task terminals',
+    'the VS Code source launched two tasks and reported the displaced built-in',
     (candidate) =>
       taskSource(candidate) === '.vscode/tasks.json' &&
       taskIdentifiers(candidate).length === 2 &&
+      Array.isArray(candidate.taskErrors) &&
+      candidate.taskErrors.includes(
+        '.vscode/tasks.json displaces built-in task: "Claude"',
+      ) &&
       Array.isArray(candidate.panelCellColumns) &&
       candidate.panelCellColumns.length === 2,
   );
   await driven.driver.awaitGridCondition(
-    'both VS Code task processes publish their workspace paths',
+    'both VS Code task processes and the displaced built-in report are visible',
     (snapshot) =>
       snapshot.findText('VSCODE_LEFT:WORKSPACE_MATCH') !== null &&
-      snapshot.findText('VSCODE_RIGHT:WORKSPACE_MATCH') !== null,
+      snapshot.findText('VSCODE_RIGHT:WORKSPACE_MATCH') !== null &&
+      snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     new Set(taskIdentifiers(status)).size === 2,
-    'panel: dedicated gives each task its own terminal',
+    'panel: dedicated gives each configured task its own visible terminal',
   );
   HarnessSmoke.Class.requireCondition(
     taskLabels(status).includes('VS Code Left') &&
-      taskLabels(status).includes('VS Code Right'),
-    'labels become headings in the grouped terminal split',
+      taskLabels(status).includes('VS Code Right') &&
+      taskLabels(status).includes('Displaced: Claude'),
+    'task headings remain visible beside the named displacement report',
   );
   HarnessSmoke.Class.requireCondition(
     Array.isArray(status.panelCellColumns) &&
@@ -208,16 +215,25 @@ try {
     'the Invar task source replaced the VS Code source',
     (candidate) =>
       taskSource(candidate) === '.invar/tasks.json' &&
-      taskLabels(candidate).includes('Invar Wins'),
+      taskLabels(candidate).includes('Invar Wins') &&
+      Array.isArray(candidate.taskErrors) &&
+      candidate.taskErrors.includes(
+        '.invar/tasks.json displaces built-in task: "Claude"',
+      ),
   );
   await driven.driver.awaitGridCondition(
-    'the winning Invar task process publishes its workspace path',
-    (snapshot) => snapshot.findText('INVAR_WINS:WORKSPACE_MATCH') !== null,
+    'the winning Invar task and displaced built-in report are visible',
+    (snapshot) =>
+      snapshot.findText('INVAR_WINS:WORKSPACE_MATCH') !== null &&
+      snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     !taskLabels(status).includes('VS Code Left') &&
       !taskLabels(status).includes('VS Code Right'),
     '.invar/tasks.json replaces rather than unions .vscode/tasks.json',
+  );
+  HarnessSmoke.Class.pass(
+    'file adoption names the displaced Claude built-in without merging it',
   );
 
   console.log(
@@ -255,8 +271,9 @@ try {
   await driven.driver.awaitGridCondition(
     'unsupported errors are legible inside task-owned terminals',
     (snapshot) =>
-      snapshot.findText('Invar tasks: Task "Unsupported') !== null &&
-      snapshot.findText('variable: ${workspaceRoot}') !== null,
+      snapshot.findText('uses unsupported typ') !== null &&
+      snapshot.findText('variable: ${workspaceRoot}') !== null &&
+      snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
     taskIdentifiers(status).length === 2,

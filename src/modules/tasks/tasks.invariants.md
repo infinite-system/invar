@@ -71,6 +71,42 @@ scripts/harness/smoke-tasks-harness.ts`
 
 **Last refined:** 2026-07-27
 
+### File sources report displaced built-ins
+
+**Invariant:** If a file task source supersedes the built-in source, then one
+visible task report names every displaced built-in while the file tasks remain
+selected.
+
+**Scope:** `.invar/tasks.json` and `.vscode/tasks.json` source selection. The
+no-file built-in source does not report a displacement.
+
+**Mechanism:** `TaskConfiguration.reportDisplacedBuiltIns` derives one issue
+from the built-in task labels. `TaskLauncher.launchFolderOpen` launches the
+issue terminal but leaves the first configured task group presented, so its
+`Displaced: <labels>` heading remains visible in the terminal list without
+hiding the selected file tasks.
+
+**Generates:** A named warning at first file-source adoption; unchanged
+whole-file replacement; contributor-owned built-in labels instead of
+host-owned task-name checks.
+
+**Evidence:** `src/modules/tasks/TaskConfiguration.test.ts` `file sources name
+each displaced built-in exactly once`; `scripts/harness/smoke-tasks-harness.ts`
+drives the no-file and file-source states through real PTYs.
+
+**Impossible if true:** A file source removes a built-in while `taskErrors`
+and the terminal list name no displacement; the report merges the built-in
+task into the selected file source; the report hides the configured
+folder-open task group.
+
+**Verification:** `bun test src/modules/tasks/TaskConfiguration.test.ts
+src/modules/tasks/TaskLauncher.test.ts && bun
+scripts/harness/smoke-tasks-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-28
+
 ### Folder open starts declared tasks
 
 **Invariant:** If a resolved shell task declares

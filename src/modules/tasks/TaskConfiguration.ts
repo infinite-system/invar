@@ -8,6 +8,7 @@ class $TaskConfiguration {
 
   static resolve(workspaceRoot: string): TaskConfigurationResult {
     // invariant: One task source controls each workspace (src/modules/tasks/tasks.invariants.md)
+    const builtInConfiguration = this.builtInConfiguration();
     const invarPath = this.Files.join(workspaceRoot, '.invar', 'tasks.json');
     const visualStudioCodePath = this.Files.join(
       workspaceRoot,
@@ -15,19 +16,25 @@ class $TaskConfiguration {
       'tasks.json',
     );
     if (this.Files.exists(invarPath)) {
-      return this.readConfiguration(
-        workspaceRoot,
-        invarPath,
-        '.invar/tasks.json',
+      return this.reportDisplacedBuiltIns(
+        this.readConfiguration(workspaceRoot, invarPath, '.invar/tasks.json'),
+        builtInConfiguration.tasks,
       );
     }
     if (this.Files.exists(visualStudioCodePath)) {
-      return this.readConfiguration(
-        workspaceRoot,
-        visualStudioCodePath,
-        '.vscode/tasks.json',
+      return this.reportDisplacedBuiltIns(
+        this.readConfiguration(
+          workspaceRoot,
+          visualStudioCodePath,
+          '.vscode/tasks.json',
+        ),
+        builtInConfiguration.tasks,
       );
     }
+    return builtInConfiguration;
+  }
+
+  protected static builtInConfiguration(): TaskConfigurationResult {
     return {
       source: 'built-in',
       tasks: [
@@ -43,6 +50,38 @@ class $TaskConfiguration {
         },
       ],
       issues: [],
+    };
+  }
+
+  protected static reportDisplacedBuiltIns(
+    configuration: TaskConfigurationResult,
+    builtInTasks: readonly TaskDefinition[],
+  ): TaskConfigurationResult {
+    // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
+    if (builtInTasks.length === 0) return configuration;
+
+    const configurationIndex =
+      configuration.tasks.length + configuration.issues.length;
+    const displacedLabels = builtInTasks
+      .map((task) => JSON.stringify(task.label))
+      .join(', ');
+    const displacedTaskNames = builtInTasks
+      .map((task) => task.label)
+      .join(', ');
+    const taskNoun = builtInTasks.length === 1 ? 'task' : 'tasks';
+    return {
+      ...configuration,
+      issues: [
+        ...configuration.issues,
+        {
+          configurationIndex,
+          label: `Displaced: ${displacedTaskNames}`,
+          severity: 'warning',
+          message:
+            `${configuration.source} displaces built-in ${taskNoun}: ` +
+            displacedLabels,
+        },
+      ],
     };
   }
 
@@ -234,6 +273,7 @@ export interface TaskDefinition {
 export interface TaskConfigurationIssue {
   configurationIndex: number;
   label: string;
+  severity?: 'warning';
   message: string;
 }
 

@@ -31,15 +31,23 @@ class $TaskLauncher {
       launchedGroups.set(group, identifiers);
     }
 
-    const firstGroup = launchedGroups.values().next().value as
-      string[] | undefined;
-    if (firstGroup) this.options.port.present(firstGroup);
-
-    if (issues.length > 0) {
-      const issueIdentifiers = issues.map((issue) =>
-        this.report(workspaceRoot, issue),
-      );
-      this.options.port.present(issueIdentifiers);
+    const firstGroup =
+      (launchedGroups.values().next().value as string[] | undefined) ?? [];
+    const issueReports = issues.map((issue) => ({
+      identifier: this.report(workspaceRoot, issue),
+      severity: issue.severity,
+    }));
+    const errorIssueIdentifiers = issueReports
+      .filter((report) => report.severity !== 'warning')
+      .map((report) => report.identifier);
+    const allIssueIdentifiers = issueReports.map((report) => report.identifier);
+    // invariant: File sources report displaced built-ins (src/modules/tasks/tasks.invariants.md)
+    if (firstGroup.length > 0) {
+      this.options.port.present(firstGroup);
+    } else if (errorIssueIdentifiers.length > 0) {
+      this.options.port.present(errorIssueIdentifiers);
+    } else if (allIssueIdentifiers.length > 0) {
+      this.options.port.present(allIssueIdentifiers);
     }
   }
 

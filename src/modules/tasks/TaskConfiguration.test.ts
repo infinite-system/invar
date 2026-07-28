@@ -91,6 +91,41 @@ describe('TaskConfiguration', () => {
     expect(result.tasks[0]?.runOnFolderOpen).toBe(true);
   });
 
+  test('file sources name each displaced built-in exactly once', () => {
+    const fileSources = [
+      ['.invar', '.invar/tasks.json'],
+      ['.vscode', '.vscode/tasks.json'],
+    ] as const;
+    for (const [directoryName, source] of fileSources) {
+      const workspaceRoot = createWorkspace();
+      writeConfiguration(
+        workspaceRoot,
+        directoryName,
+        JSON.stringify({
+          tasks: [
+            {
+              label: 'Configured',
+              type: 'shell',
+              command: 'configured-command',
+            },
+          ],
+        }),
+      );
+
+      const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+      expect(result.tasks.map((task) => task.label)).toEqual(['Configured']);
+      expect(result.issues).toEqual([
+        {
+          configurationIndex: 1,
+          label: 'Displaced: Claude',
+          severity: 'warning',
+          message: `${source} displaces built-in task: "Claude"`,
+        },
+      ]);
+    }
+  });
+
   test('unsupported task forms and variables become named issues', () => {
     const workspaceRoot = createWorkspace();
     writeConfiguration(
@@ -125,6 +160,7 @@ describe('TaskConfiguration', () => {
       'Task "Process" uses unsupported type "process"',
       'Task "Compound" uses unsupported dependsOn',
       'Unsupported task variable: ${workspaceRoot}',
+      '.invar/tasks.json displaces built-in task: "Claude"',
     ]);
   });
 
@@ -147,7 +183,9 @@ describe('TaskConfiguration', () => {
     );
 
     const result = TaskConfiguration.Class.resolve(workspaceRoot);
-    expect(result.issues).toEqual([]);
+    expect(result.issues.map((issue) => issue.message)).toEqual([
+      '.invar/tasks.json displaces built-in task: "Claude"',
+    ]);
     expect(result.tasks[0]?.command).toBe('program');
     expect(result.tasks[0]?.arguments).toEqual(['argument']);
   });
