@@ -2,6 +2,11 @@
 
 State: TODO (deferred by user decision)
 Created: 2026-07-28
+Engine: user
+Environment: any
+Model: —
+Effort: default
+Assignment note: Deferred by user decision; the trigger is the next scroll-domain bisect.
 
 ## Outline
 

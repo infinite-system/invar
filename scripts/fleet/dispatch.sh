@@ -87,11 +87,55 @@ if [ "$slug_word_count" -lt 3 ]; then
   exit 2
 fi
 tmux_session="invar/${name}"
+
+# ---------------------------------------------------------------------------
+# THE ASSIGNMENT IS THE TASK FILE'S, NOT THE COMMAND LINE'S.
+#
+# Every task declares Engine / Environment / Model / Effort. Reading them here rather than accepting
+# them as arguments means the dispatch cannot disagree with the record: if a task says it needs a
+# claude on macOS, no amount of typing `codex` at the prompt makes that true.
+#
+# The environment check is the load-bearing one. #180's work CANNOT run on this host — PtyTestDriver
+# is FFI-blocked on darwin, so the gate has never run on the user's machine — and before the field
+# existed that task read as ordinary backlog. A dispatch here would have cut a worktree, installed
+# dependencies, and launched an agent that could not run a single smoke.
+# ---------------------------------------------------------------------------
+task_file="$(ls "${repository_root}"/.invar/tasks/*/"${name}"/task-"${name}".md 2>/dev/null | head -1)"
+if [ -n "$task_file" ]; then
+  read_field() { grep -m1 "^$1:" "$task_file" | sed "s/^$1:[[:space:]]*//" | tr -d '\r'; }
+  declared_engine="$(read_field Engine)"
+  declared_environment="$(read_field Environment)"
+  declared_model="$(read_field Model)"
+  declared_effort="$(read_field Effort)"
+
+  host_environment="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  case "$host_environment" in darwin) host_environment=macos;; esac
+  if [ -n "$declared_environment" ] && [ "$declared_environment" != "any" ] &&
+     [ "$declared_environment" != "$host_environment" ]; then
+    echo "dispatch: REFUSING — #${task_number} declares Environment: ${declared_environment}, this host is ${host_environment}." >&2
+    echo "  $(grep -m1 '^Assignment note:' "$task_file" 2>/dev/null || echo '  The task cannot run here.')" >&2
+    exit 2
+  fi
+
+  if [ -n "$declared_engine" ] && [ "$declared_engine" = "user" ]; then
+    echo "dispatch: REFUSING — #${task_number} declares Engine: user. It is a decision, not a build." >&2
+    exit 2
+  fi
+  if [ -n "$declared_engine" ] && [ "$declared_engine" != "$engine" ]; then
+    echo "dispatch: REFUSING — #${task_number} declares Engine: ${declared_engine}, you asked for ${engine}." >&2
+    echo "  Change the task file if the assignment is wrong; do not override it at the prompt." >&2
+    exit 2
+  fi
+fi
+# The agent identity, for the transcript name: engine + model + effort. Three runs of one task by
+# three different agents produce three distinguishable transcripts instead of one overwritten file.
+agent_identity="${declared_engine:-$engine}-${declared_model:-unknown}-${declared_effort:-default}"
+
 # Transcripts live with the other 171 in tmp/transcripts/ (gitignored; the user's decision on
 # 2026-07-27 was "no need to store in git history"). NOT beside the worktree dirs: .invar/worktrees/
 # gets pruned on landing, and co-mingling durable records with prunable scratch is what put 1.1 GB of
 # logs one reboot from gone in the first place.
-transcript_path="${repository_root}/tmp/transcripts/${name}.transcript.md"
+transcript_path="${repository_root}/tmp/transcripts/transcript-${agent_identity}-${name}.md"
 
 # ---------------------------------------------------------------------------
 # 1. REFUSE on any collision. A leftover worktree has silently started a builder
@@ -184,8 +228,11 @@ cat > "$dispatch_directory/meta.json" <<META
   "branch": "${branch}",
   "worktree": ".invar/worktrees/${name}",
   "tmuxSession": "${tmux_session}",
-  "transcript": "tmp/transcripts/${name}.transcript.md",
-  "engine": "${engine}",
+  "transcript": "tmp/transcripts/transcript-${agent_identity}-${name}.md",
+  "engine": "${declared_engine:-$engine}",
+  "environment": "${declared_environment:-linux}",
+  "model": "${declared_model:-unknown}",
+  "effort": "${declared_effort:-default}",
   "heldFromMain": $([ "${EXPERIMENT:-0}" = "1" ] && echo true || echo false),
   "baseCommit": "$(git rev-parse HEAD)",
   "startedAt": "$(date -Is)"

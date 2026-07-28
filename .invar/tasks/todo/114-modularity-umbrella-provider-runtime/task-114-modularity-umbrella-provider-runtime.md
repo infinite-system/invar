@@ -2,6 +2,11 @@
 
 State: TODO — Wave A landed, Wave B open
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: opus-5
+Effort: high
+Assignment note: Umbrella reduction — three plugin kinds and the contribution seam. Wave B.
 
 ## Outline
 

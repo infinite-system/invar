@@ -2,6 +2,11 @@
 
 State: TODO — premise corrected in place
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: high
+Assignment note: Inverts a default across every smoke; the grandfathering call is the risk.
 
 ## Outline
 

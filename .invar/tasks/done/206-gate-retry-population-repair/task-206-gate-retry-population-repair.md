@@ -2,6 +2,10 @@
 
 State: DONE — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: opus-5
+Effort: high
 
 ## Outline
 

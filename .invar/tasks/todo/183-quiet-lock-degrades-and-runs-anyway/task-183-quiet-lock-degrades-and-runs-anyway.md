@@ -2,6 +2,11 @@
 
 State: TODO — unfixed, and it has already cost samples
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: high
+Assignment note: A decision between three options with real trade-offs, not an implementation.
 
 ## Outline
 

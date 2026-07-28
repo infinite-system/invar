@@ -2,6 +2,11 @@
 
 State: TODO — blocked, strictly after #114
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: opus-5
+Effort: high
+Assignment note: Capstone extraction, strictly after #114.
 
 ## Outline
 

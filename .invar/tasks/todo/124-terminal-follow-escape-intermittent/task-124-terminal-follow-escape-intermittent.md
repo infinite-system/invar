@@ -2,6 +2,10 @@
 
 State: TODO — but see "State discrepancy" below; a fix was demonstrated and may have landed
 Created: 2026-07-28
+Engine: codex
+Environment: linux
+Model: 5.6-sol
+Effort: default
 
 ## Outline
 

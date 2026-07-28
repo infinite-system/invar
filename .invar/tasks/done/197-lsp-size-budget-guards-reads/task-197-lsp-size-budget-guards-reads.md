@@ -2,6 +2,10 @@
 
 State: DONE — 659b649
 Created: 2026-07-28
+Engine: codex
+Environment: linux
+Model: 5.6-sol
+Effort: default
 
 ## Outline
 

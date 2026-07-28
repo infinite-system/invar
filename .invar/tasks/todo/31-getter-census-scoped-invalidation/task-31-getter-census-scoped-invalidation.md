@@ -2,6 +2,11 @@
 
 State: TODO — hold, partly overtaken
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: high
+Assignment note: On hold pending #110; resuming means re-judging whether it is still worth doing.
 
 ## Outline
 

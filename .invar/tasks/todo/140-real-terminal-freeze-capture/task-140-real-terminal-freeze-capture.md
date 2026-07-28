@@ -2,6 +2,11 @@
 
 State: TODO — deliberately NOT dispatched; waiting on one user check
 Created: 2026-07-28
+Engine: user
+Environment: any
+Model: —
+Effort: default
+Assignment note: Blocked on one check: try the rapid-fire flicks. If the freeze is gone, this closes for free.
 
 ## Outline
 

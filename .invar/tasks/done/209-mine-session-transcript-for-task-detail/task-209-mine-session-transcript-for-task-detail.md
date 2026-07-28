@@ -2,6 +2,10 @@
 
 State: DONE — 4e23b88, 3e31e4a
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: opus-5
+Effort: high
 Priority: USER-DIRECTED, next task
 
 ## Outline

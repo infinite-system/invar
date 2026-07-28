@@ -2,6 +2,10 @@
 
 State: DONE — glyphs swapped at 966c5d1; the exception list is now empty
 Created: 2026-07-28
+Engine: codex
+Environment: linux
+Model: 5.6-sol
+Effort: default
 
 ## Outline
 

@@ -2,6 +2,10 @@
 
 State: DONE — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: high
 
 ## Outline
 

@@ -2,6 +2,11 @@
 
 State: TODO — WAITING ON THE USER (a feel decision, not a defect)
 Created: 2026-07-28
+Engine: user
+Environment: any
+Model: —
+Effort: default
+Assignment note: Is 85 ms the intended wheel feel? Measured, pre-existing, a product call.
 
 ## Outline
 

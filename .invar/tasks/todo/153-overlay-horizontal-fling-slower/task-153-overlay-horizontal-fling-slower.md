@@ -2,6 +2,11 @@
 
 State: TODO — WAITING ON THE USER (a feel call)
 Created: 2026-07-28
+Engine: user
+Environment: any
+Model: —
+Effort: default
+Assignment note: Keep the hover card at 80 and document why, or unify overlays to 220.
 
 ## Outline
 

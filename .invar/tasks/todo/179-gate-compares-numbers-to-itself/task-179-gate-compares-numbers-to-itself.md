@@ -2,6 +2,11 @@
 
 State: TODO — partially addressed; the general form is open
 Created: 2026-07-28
+Engine: claude
+Environment: linux
+Model: fable-5
+Effort: high
+Assignment note: Trend detection needs calibration and a positive control, or it never fires.
 
 ## Outline
 
