@@ -2654,3 +2654,85 @@ Corollary, learned the same night: when a single grep returns an alarming answer
 before announcing a loss. Looking costs one command; a false alarm spends the credibility that a
 real finding earns.
 
+
+---
+
+## 2026-07-27 — the bycatch leak was mine, and the eighth proxy defect was in my own monitor
+
+### Nine reports carried bycatch; two had become tasks
+
+The user asked whether any agents had detected bycatch. Sweeping every `/tmp/*READY*.md` for a
+`## Bycatch` heading: nine reports carried entries, and two had been converted. Seven findings had
+been reported correctly, sat in `/tmp`, and died there.
+
+Builders held their end every single time — including the harder half, refusing to fix what they
+found. `AGENTS.md` already named the conductor as the one who triages. The conductor SKILL.md had
+no bycatch section at all, so the duty existed in the law and nowhere in the order. That asymmetry
+is the whole explanation, and it is worth naming precisely because nothing looked wrong: every
+individual merge was clean, every report was read, and the loss was invisible because it consisted
+of things that never got written down.
+
+Converted into #161–#167. Three were user-visible defects: Quick Open opening `project.tasks.md`
+while publishing and rendering `TASK.md`; the Files pane blank at settled boot with `treeRows=50`
+published; the Settings selection moving below the painted viewport at 80x24. A user would have
+hit all three, and none of them came from anyone looking for them.
+
+**The retrieval lesson:** a bycatch item is worth a fraction of its value when restated from
+memory a day later. The reports carried exact reproductions — fresh isolated HOME, the specific
+geometry, how many times it reproduced, which two commits. Converting them meant copying that
+evidence verbatim, not summarizing it. A finding recorded as "Quick Open is flaky" would have been
+worthless; the published-state detail (`quickOpenSelected=0`, `quickOpenMatches=1`, right file
+rendered) is what turns it into a one-paragraph diagnosis.
+
+One item I was carrying from memory — a stale `Fable Test` label — **did not exist in the tree**.
+Grep found nothing in `src` or `scripts`. Verifying before recording cost one command and avoided
+dispatching someone at a defect that had already been fixed.
+
+### The fourth unreachable-condition instance, found in the gate that verified the third
+
+`1597f40` (#159's merge) went ALL-PASS, `GATE_EXIT=0`, 9m47s — and its retry tally named
+`behavioral-contracts (felt invariants)` as passing only on retry. The gate annotated the failure
+`timeout-class` and `starvation-class`, which is a contention story. The preserved attempt says
+otherwise:
+
+    error: Timed out waiting for the next complete synchronized frame
+           (completed frames observed: 58)
+       at scripts/harness/SynchronizedOutputQuiescence.ts:63
+
+"The next complete synchronized frame" is a wait for frame 59 to EXIST. It is not a condition on
+content. This repo already has an ESTABLISHED invariant that harness waits observe conditions and
+not frame ordinals, whose rejected-alternatives section gives the reason: an action whose target is
+already painted emits no frame. If nothing needs repainting, frame 59 never arrives — on any
+machine, at any load. The gate's contention label is a story attached to an unreachability defect.
+
+That is four in two days: #158 (a probe keyed to the fourteenth moving frame of a glide that
+stopped producing fourteen), #159 (a panel close whose publication had no carrier after
+coalescing), #164 (panel-chrome expand-heading, pre-existing on both populations), #168 (this).
+The audit is `mutation -> reachable publisher -> observed condition`.
+
+**Why #168 outranks the other three:** it is a GATE STEP in the serial tail. Each retry consumes
+the quiet window and its eventual green launders everything measured beside it into ALL-PASS. A
+flaky sieve is worse than a missing one, because a missing sieve does not certify.
+
+### The eighth proxy defect, and the first I built myself
+
+In the reconciliation sweep I resolved builder liveness by `/proc/<pid>/cwd`, correctly, because
+the rule says to. Ninety seconds later I armed a monitor that grepped the builders' LOGS for
+`quota|rate limit|401`. It fired `QUOTA/AUTH BLOCK` on both live builders, matching line 474 of
+the log — repo documentation reading *"CAUTION: it consumes Codex quota"*. Both were healthy and
+90 seconds in. Worse, having "resolved" both, the monitor exited: the false verdict also removed
+the instrument.
+
+The rule was right and I followed it. It was written scoped to argv, and I applied it there. The
+class is wider: **a builder's log contains the brief, the repo docs, and the agent's narration of
+both — so it contains every word you would search it for.** Same shape as `pgrep -f` matching its
+own argv, grepping for my own phrasing of a rule the builder had rephrased, `sed` re-matching a
+duplicated bare value, `src.index('    unicode: [')` hitting the wrong key.
+
+The generalization is now in SKILL.md with what to key on instead: an exit-code sentinel the
+WRAPPER writes, process existence resolved by cwd, log mtime via `-mmin`, commit counts. Those
+cannot be uttered by the thing being watched.
+
+**The transferable form:** a rule stated as an instance gets followed at that instance and nowhere
+else. When a rule is written, ask what the instance is an instance OF — otherwise the next site
+gets the same defect and the rule's presence in the file makes it harder to see, not easier.
