@@ -44,4 +44,4 @@ Sequence after the drive-tool work; it lengthens every future gate.
 
 ## Sources
 
-- `brief-1-205-gate-launch-time-and-memory-ceiling.md`
+- `brief-205-1-gate-launch-time-and-memory-ceiling.md`

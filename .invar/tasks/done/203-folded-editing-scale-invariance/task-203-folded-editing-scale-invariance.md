@@ -10,4 +10,4 @@ folded editing, scale-invariant fold toggles, and the flat-file first-paint regr
 
 ## Sources
 
-- `brief-1-203-folded-editing-scale-invariance.md`
+- `brief-203-1-folded-editing-scale-invariance.md`

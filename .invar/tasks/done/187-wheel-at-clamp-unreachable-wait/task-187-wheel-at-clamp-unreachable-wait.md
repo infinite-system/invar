@@ -9,5 +9,5 @@ Drive and smoke-editor-harness awaited a repaint the clamp cannot produce.
 
 ## Sources
 
-- `brief-1-187-wheel-at-clamp-unreachable-wait.md`
+- `brief-187-1-wheel-at-clamp-unreachable-wait.md`
 - `report-187-wheel-at-clamp-unreachable-wait.md`

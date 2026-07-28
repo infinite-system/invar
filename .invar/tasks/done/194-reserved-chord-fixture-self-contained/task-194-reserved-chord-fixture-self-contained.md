@@ -10,4 +10,4 @@ Quick Open timeout was an inherited-PATH difference, not a race.
 
 ## Sources
 
-- `brief-1-194-reserved-chord-fixture-self-contained.md`
+- `brief-194-1-reserved-chord-fixture-self-contained.md`

@@ -18,11 +18,15 @@ meant; `folded-editing-scale-invariance` does not. A folder name is read far mor
 
 | File | Holds |
 | --- | --- |
-| `task.md` | the outline — what the task IS, its state, its resolution |
-| `brief-N-<date>.md` | each brief sent to an agent, in send order |
-| `report.md` | the agent's READY report, verbatim |
-| `summary.md` | what actually happened, written after landing |
+| `task-<number>-<name>.md` | the outline — what the task IS, its state, its resolution |
+| `brief-<number>-<count>-<name>.md` | each brief sent to an agent; `count` is the send order |
+| `report-<number>-<name>.md` | the agent's READY report, verbatim |
+| `summary-<number>-<name>.md` | what actually happened, written after landing |
 | `meta.json` | branch, worktree, engine, base commit, timestamps |
+
+**The task NUMBER leads every filename, before the round count.** A folder holding several rounds then
+sorts task-first rather than round-first, and a filename pasted into a message identifies its task
+without needing the directory it came from.
 
 **A follow-up brief is a NEW file, never an edit of the previous one.** Steering that overwrites its
 predecessor destroys the record of what the agent was actually working from when it made a decision —

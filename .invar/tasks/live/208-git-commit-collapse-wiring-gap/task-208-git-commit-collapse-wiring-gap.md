@@ -10,4 +10,4 @@ an expanded commit cannot be folded back — UI calls expand() where it should t
 
 ## Sources
 
-- `brief-1-208-git-commit-collapse-wiring-gap.md`
+- `brief-208-1-git-commit-collapse-wiring-gap.md`

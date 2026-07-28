@@ -10,4 +10,4 @@ drive requires every action to repaint, and targets cells by number.
 
 ## Sources
 
-- `brief-1-204-drive-tool-step-model-and-targeting.md`
+- `brief-204-1-drive-tool-step-model-and-targeting.md`

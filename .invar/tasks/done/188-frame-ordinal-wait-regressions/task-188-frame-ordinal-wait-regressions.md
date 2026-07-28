@@ -9,5 +9,5 @@ Created: 2026-07-28
 
 ## Sources
 
-- `brief-1-188-frame-ordinal-wait-regressions.md`
+- `brief-188-1-frame-ordinal-wait-regressions.md`
 - `report-188-frame-ordinal-wait-regressions.md`

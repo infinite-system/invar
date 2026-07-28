@@ -9,5 +9,5 @@ five residual waits from the mass conversion — one audit, not five fixes.
 
 ## Sources
 
-- `brief-1-192-residual-harness-wait-audit.md`
+- `brief-192-1-residual-harness-wait-audit.md`
 - `report-192-residual-harness-wait-audit.md`

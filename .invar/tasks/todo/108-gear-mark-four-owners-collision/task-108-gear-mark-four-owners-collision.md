@@ -25,5 +25,5 @@ families move. Worth surfacing with a proposed pair rather than asking cold.
 
 ## Sources
 
-- `brief-1-108-gear-mark-four-owners-collision.md`
+- `brief-108-1-gear-mark-four-owners-collision.md`
 - `report-108-gear-mark-four-owners-collision.md`

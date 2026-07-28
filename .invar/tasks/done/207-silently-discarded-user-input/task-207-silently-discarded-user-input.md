@@ -10,4 +10,4 @@ two surfaces accepted input and discarded it without a word.
 
 ## Sources
 
-- `brief-1-207-silently-discarded-user-input.md`
+- `brief-207-1-silently-discarded-user-input.md`

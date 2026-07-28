@@ -27,4 +27,4 @@ itself the tell:** a list that grows is a signal the authority is wrong, not tha
 
 ## Sources
 
-- `brief-1-107-emoji-width-authority-disagreement.md`
+- `brief-107-1-emoji-width-authority-disagreement.md`

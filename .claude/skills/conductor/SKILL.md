@@ -1142,11 +1142,13 @@ Rules that are mine to keep, because the tooling cannot enforce them:
 - **Create the task folder BEFORE dispatching.** A number chosen at dispatch time is a guess; I did
   that once and the tracker assigned the number elsewhere, so a branch now disagrees with its task ID
   permanently — branches are never renamed here.
-- **A follow-up brief is a NEW dated file.** Never edit the previous one. On the day this was written,
-  one task took three rounds of steering that each CHANGED THE ACCEPTANCE CRITERIA; had I overwritten,
-  the first two rounds' results would have become unreadable — you could no longer tell what the agent
-  was working from when it made a decision. `dispatch.sh` writes `brief-1-<date>.md`; I write
-  `brief-2-<date>.md` and onward by hand when I steer.
+- **A follow-up brief is a NEW numbered file.** Never edit the previous one. On the day this was
+  written, one task took three rounds of steering that each CHANGED THE ACCEPTANCE CRITERIA; had I
+  overwritten, the first two rounds' results would have become unreadable — you could no longer tell
+  what the agent was working from when it made a decision. The name is
+  **`brief-<task-number>-<count>-<slug>.md`** — the NUMBER leads, the round count follows, so a folder
+  of several rounds sorts task-first and a filename pasted into a message identifies its own task.
+  `dispatch.sh` writes the next unused count automatically; when I steer by hand I increment it.
 - **Write `summary.md` after landing, not the report.** The report is the agent's own account. The
   summary is what actually happened: what was refuted, what I got wrong, what was left undone. #203's
   summary has to record that my stale-coordinate hypothesis was refuted by measurement — that is the

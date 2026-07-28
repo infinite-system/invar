@@ -9,5 +9,5 @@ Created: 2026-07-28
 
 ## Sources
 
-- `brief-1-196-editor-flyweight-edit-path.md`
+- `brief-196-1-editor-flyweight-edit-path.md`
 - `report-196-editor-flyweight-edit-path.md`

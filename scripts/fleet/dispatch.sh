@@ -161,7 +161,15 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 #    dispatch record (for the audit trail).
 # ---------------------------------------------------------------------------
 mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
-brief_dated_name="brief-1-$(date +%Y-%m-%d).md"
+# Brief naming is brief-<task-number>-<sequence>-<slug>.md — the NUMBER leads, so every file in the
+# folder sorts under its task and a directory listing groups by task before it groups by round. The
+# sequence is the next unused one, so a follow-up brief is a NEW file and never overwrites the brief
+# the builder was actually working from.
+brief_sequence=1
+while [ -e "$dispatch_directory/brief-${task_number}-${brief_sequence}-${slug}.md" ]; do
+  brief_sequence=$((brief_sequence + 1))
+done
+brief_dated_name="brief-${task_number}-${brief_sequence}-${slug}.md"
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
 cp "$brief_file" "$worktree_path/TASK.md"
 
