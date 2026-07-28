@@ -20,10 +20,30 @@ clickable affordance, and no capability requires a memorized motion.
 > And the binary is **`iv`** — which is `vi`, reversed. On purpose. Same terminal,
 > opposite philosophy: nothing to memorize, everything visible.
 
+## Install
+
+The only hard requirement is **[Bun](https://bun.com) ≥ 1.3.14** — it is the runtime, bundler,
+test runner, and package manager. Node/npm are not needed.
+
+**One command (macOS & Linux)** — installs Bun if missing, installs dependencies, and optionally
+sets up `ripgrep` (find-in-files):
+
+```bash
+bash scripts/install.sh          # add --build to also compile the standalone binary
+```
+
+The script is idempotent — re-run it any time. If you just cloned and hit *"missing packages"* or
+*"command not found: bun"*, this is the fix.
+
+**Or do it by hand** if you already have Bun:
+
+```bash
+bun install                      # populate node_modules
+```
+
 ## Quickstart
 
 ```bash
-bun install
 bun run start          # open the current directory as the workspace
 bun run dev <dir>      # open a specific directory
 ```
@@ -37,6 +57,18 @@ Build a standalone binary:
 bun run build          # → dist/iv  (self-contained executable)
 ./dist/iv .
 ```
+
+> **Platforms:** macOS (Apple Silicon & Intel) and Linux are supported. `ripgrep` (`rg`) is
+> optional — it powers find-in-files, and the editor degrades gracefully without it.
+
+### Troubleshooting
+
+- **`command not found: bun`** — Bun isn't on your `PATH`. Run `bash scripts/install.sh`, or add
+  `export PATH="$HOME/.bun/bin:$PATH"` to your shell profile.
+- **Missing packages / module-not-found on start** — you haven't installed dependencies yet:
+  run `bun install` (or `bash scripts/install.sh`) from the repo root.
+- **Find-in-files does nothing** — install `ripgrep` (`brew install ripgrep`, `apt install ripgrep`,
+  …) or re-run `bash scripts/install.sh` and accept the ripgrep step.
 
 ## Built with Invariant-Based Reasoning (IBR)
 
