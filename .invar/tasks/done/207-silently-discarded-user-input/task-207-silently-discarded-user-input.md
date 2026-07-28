@@ -1,6 +1,6 @@
 # 207 — accepted input no longer disappears silently
 
-State: DONE
+State: DONE — fb199cb
 Created: 2026-07-28
 
 ## Outline

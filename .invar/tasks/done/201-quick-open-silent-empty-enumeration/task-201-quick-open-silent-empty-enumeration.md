@@ -1,6 +1,6 @@
 # 201 — Quick Open silently finds NO files in a folder that is not a git repo
 
-State: DONE
+State: DONE — fb199cb
 Created: 2026-07-28
 
 ## Outline

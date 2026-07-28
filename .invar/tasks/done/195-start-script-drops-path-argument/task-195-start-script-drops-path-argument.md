@@ -1,6 +1,6 @@
 # 195 — `bun run start <path>` silently ignores the path
 
-State: DONE
+State: DONE — fb199cb
 Created: 2026-07-28
 
 ## Outline

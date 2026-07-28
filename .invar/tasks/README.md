@@ -35,6 +35,29 @@ final brief alone would have made the first two rounds' results unreadable.
 
 **Transcripts are not stored here.** They are gitignored under `tmp/transcripts/`.
 
+## Counting the ledger
+
+```
+bun scripts/tasks/ledger-status.ts             # counts + drift signals
+bun scripts/tasks/ledger-status.ts --self-test # positive control
+```
+
+It counts each state and reports four drift signals, strongest first: **REPORT-IN-OPEN** (a delivered
+report sitting in `todo`/`live`), **STATE-MISMATCH** (the file's `State:` line disagrees with its
+directory), **DONE-NO-EVIDENCE** (done with neither a report nor a commit in its `State:` line), and
+**THIN** (a task filed without its reasoning).
+
+It reports; it never moves anything. Deciding a task is finished is a judgement, and these are evidence
+for it.
+
+**Run `--self-test` before trusting a clean run.** It builds a throwaway ledger with one planted
+instance of each signal plus a clean control, and requires all four to fire and the control to stay
+silent. A checker whose only possible output is "clean" is indistinguishable from a healthy repo.
+
+**One standing finding is expected**: #114 holds a report because Wave A landed (`d5ba738`) while
+Wave B is open. The signal is correct — the report IS delivered work — and it is left firing rather
+than suppressed. If standing findings ever outnumber real ones, the signal needs refining, not muting.
+
 ## Numbers
 
 Permanent. A number is never reused, even for an abandoned task, because branches carry it

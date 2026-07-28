@@ -1,6 +1,6 @@
 # 194 — reserved-chord's Quick Open timeout
 
-State: DONE
+State: DONE — d3721b2
 Created: 2026-07-28
 
 ## Outline

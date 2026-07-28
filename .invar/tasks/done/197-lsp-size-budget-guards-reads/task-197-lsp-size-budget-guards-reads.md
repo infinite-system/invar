@@ -1,6 +1,6 @@
 # 197 — the LSP size budget guards writes but not reads
 
-State: DONE
+State: DONE — 659b649
 Created: 2026-07-28
 
 ## Outline

@@ -1,6 +1,6 @@
 # 203 — #196's O(1) keystroke may hold ONLY when nothing is folded
 
-State: DONE
+State: DONE — e479b98
 Created: 2026-07-28
 
 ## Outline
