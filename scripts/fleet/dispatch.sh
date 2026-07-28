@@ -98,8 +98,43 @@ fi
 #    meaningless — and looks exactly like the defect the builder was sent to
 #    investigate. That cost one builder ten baseline runs on 2026-07-27.
 # ---------------------------------------------------------------------------
+# THE BASE MUST BE CONSCIOUS. This line read `... "$worktree_path" main` — hardcoded, silent, and
+# ignoring the conductor's own HEAD. On 2026-07-28 a task whose brief said in so many words "you are
+# branching off the flyweight work, not off main" was cut from main anyway, WITHOUT the block tier the
+# task existed to extend. The builder noticed the mismatch and fast-forwarded itself; had it not, it
+# would have spent its whole run measuring an editor that could not exhibit the defect, and the
+# conductor had already told the user the base was correct.
+#
+# Defaulting to HEAD instead would be the opposite failure: builders would silently chain onto
+# unlanded work, and "experiments fork off LATEST main" would quietly stop being true. Neither
+# default is safe, so there is no default when the two disagree — dispatch REFUSES and makes the
+# caller name the base. Override with BASE_REF.
+base_ref="${BASE_REF:-}"
+if [ -z "$base_ref" ]; then
+  conductor_head="$(git rev-parse --verify HEAD)"
+  main_head="$(git rev-parse --verify main)"
+  if [ "$conductor_head" = "$main_head" ]; then
+    base_ref=main
+  else
+    echo "dispatch: REFUSING — the conductor's checkout is not on main, so the intended base is ambiguous." >&2
+    echo "  conductor HEAD : $(git rev-parse --short HEAD) ($(git branch --show-current))" >&2
+    echo "  main           : $(git rev-parse --short main)" >&2
+    echo "  Name it explicitly, e.g.  BASE_REF=HEAD $0 $*   (build on the current branch)" >&2
+    echo "                       or   BASE_REF=main $0 $*   (fork off main, the default for experiments)" >&2
+    exit 2
+  fi
+fi
+base_commit="$(git rev-parse --short "$base_ref")"
 echo "dispatch: cutting worktree $worktree_path on $branch"
-git worktree add -b "$branch" "$worktree_path" main >/dev/null
+echo "dispatch: BASE = $base_ref ($base_commit)"
+git worktree add -b "$branch" "$worktree_path" "$base_ref" >/dev/null
+# Assert the worktree really landed on that base. `worktree add` has been trusted here for weeks; the
+# one time its base was wrong, nothing checked.
+worktree_head="$(git -C "$worktree_path" rev-parse --short HEAD)"
+if [ "$worktree_head" != "$base_commit" ]; then
+  echo "dispatch: worktree HEAD $worktree_head != requested base $base_commit" >&2
+  exit 1
+fi
 
 echo "dispatch: installing dependencies (not optional, not the builder's job to discover)"
 ( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
