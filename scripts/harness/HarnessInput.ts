@@ -5,6 +5,15 @@
 import { Static } from 'ivue/extras';
 
 export type HarnessMouseButton = 'left' | 'middle' | 'right' | 'none';
+export interface HarnessMouseClick {
+  column: number;
+  row: number;
+  button?: HarnessMouseButton;
+  shift?: boolean;
+  alt?: boolean;
+  control?: boolean;
+}
+
 export type HarnessMouseEvent =
   | {
       kind: 'press' | 'release' | 'move';
@@ -28,6 +37,7 @@ export type HarnessMouseEvent =
 class $HarnessInput {
   static key = $key;
   static mouse = $mouse;
+  static mouseClick = $mouseClick;
   static paste = $paste;
 }
 
@@ -178,6 +188,12 @@ function $mouse(event: HarnessMouseEvent): string {
   return (
     `\x1b[<${buttonCode};${Math.max(0, event.column) + 1};` +
     `${Math.max(0, event.row) + 1}${finalByte}`
+  );
+}
+
+function $mouseClick(click: HarnessMouseClick): string {
+  return (
+    $mouse({ kind: 'press', ...click }) + $mouse({ kind: 'release', ...click })
   );
 }
 

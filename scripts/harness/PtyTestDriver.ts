@@ -12,7 +12,11 @@
 // invariant: Harness output history stays bounded (scripts/harness/harness.invariants.md)
 import { OpenPty } from '../../src/modules/terminal/OpenPty';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
-import { HarnessInput, type HarnessMouseEvent } from './HarnessInput';
+import {
+  HarnessInput,
+  type HarnessMouseClick,
+  type HarnessMouseEvent,
+} from './HarnessInput';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
 import {
   TerminalOutputAudit,
@@ -318,6 +322,11 @@ class $PtyTestDriver {
   sendMouse(event: HarnessMouseEvent): void {
     this.markFrameExpected();
     this.openPty.write(HarnessInput.Class.mouse(event));
+  }
+
+  sendMouseClick(click: HarnessMouseClick): void {
+    this.markFrameExpected();
+    this.openPty.write(HarnessInput.Class.mouseClick(click));
   }
 
   sendMouseWithoutFrameExpectation(event: HarnessMouseEvent): void {

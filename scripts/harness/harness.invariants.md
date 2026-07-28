@@ -57,24 +57,31 @@ encoders and recorded-stream quiescence are intentionally process-free.
 as the terminal and Invar owns the slave as its stdin, stdout, and stderr. The child environment
 declares `TERM=xterm-256color` and `COLORTERM=truecolor`. It also sets
 `INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1` so an unrelated subsystem smoke does not start the no-config
-convenience process or alter its panel geometry. The tasks smoke explicitly sets the value to `0`
-and drives the real built-in path.
+convenience process or alter its panel geometry. A non-drag mouse click encodes its press and release
+as one `HarnessInput.mouseClick` PTY write, so application scheduling cannot split that one user
+gesture across render or input batches. The tasks smoke explicitly sets the value to `0` and drives
+the real built-in path.
 
 **Generates:** real termios and terminal-protocol behavior; named key encoding; SGR mouse input;
-bracketed paste; resize through the same PTY generator as the integrated terminal.
+atomic non-drag clicks; bracketed paste; resize through the same PTY generator as the integrated
+terminal.
 
-**Evidence:** `scripts/harness/PtyTestDriver.ts`; the fourteen `smoke-*-harness.ts` files.
+**Evidence:** `scripts/harness/HarnessInput.ts`; `scripts/harness/PtyTestDriver.ts`;
+`scripts/harness/PtyTestDriver.test.ts`; `scripts/harness/smoke-terminal-stage-harness.ts`; the
+registered `smoke-*-harness.ts` files.
 
-**Impossible if true:** a smoke calling an app model directly; bytes bypassing the PTY; a test-only
-input or rendering hook inside Invar.
+**Impossible if true:** a smoke calling an app model directly; bytes bypassing the PTY; the press and
+release halves of one non-drag click sent as separate PTY writes; a test-only input or rendering hook
+inside Invar.
 
 **Verification:** `for smoke in editor find comment-styling bracket-match indent-guides move-line
 word-delete paste tabs workspace-tabs mode-coherence wrap selection scrollbars; do bun
-"scripts/harness/smoke-${smoke}-harness.ts" || exit; done`
+"scripts/harness/smoke-${smoke}-harness.ts" || exit; done && bun test
+scripts/harness/PtyTestDriver.test.ts && bun scripts/harness/smoke-terminal-stage-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-24
+**Last refined:** 2026-07-28
 
 ### Latency measurements name their observation boundary
 

@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import type { StatusSnapshot } from '../../src/modules/system/StatusChannel';
 import { HarnessSmoke } from './HarnessSmoke';
 import { dragBetweenCells } from './HarnessSmokeSupport';
+import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import type { ClipboardEmission } from './TerminalOutputAudit';
 
@@ -129,6 +130,18 @@ async function selectVisibleText(
     position.row,
   );
   return position;
+}
+
+function activeTerminalOutputPosition(
+  snapshot: HarnessSnapshot.Model,
+): { column: number; row: number } | null {
+  for (const [rowIndex, rowText] of snapshot.textRows().entries()) {
+    const outputMatch = /ACTIVE-TERMINAL-\d{3}/.exec(rowText);
+    if (outputMatch?.index !== undefined) {
+      return { column: outputMatch.index, row: rowIndex };
+    }
+  }
+  return null;
 }
 
 function panelCellBodyPoint(
@@ -426,11 +439,22 @@ try {
   // output assertion below prints at pane column 0 and cannot straddle a row boundary.
   await driver.awaitScreenChange();
   driver.sendKeys('Enter');
-  await driver.awaitGridCondition(
-    'the shell loop emits its first changing terminal row',
-    (snapshot) => snapshot.findText('ACTIVE-TERMINAL-001') !== null,
+  const activeTerminalOutputSnapshot = await driver.awaitGridCondition(
+    'the shell loop emits a numbered changing terminal output row',
+    (snapshot) => activeTerminalOutputPosition(snapshot) !== null,
   );
-  await selectVisibleText('ACTIVE-TERMINAL');
+  const activeTerminalPosition = activeTerminalOutputPosition(
+    activeTerminalOutputSnapshot,
+  );
+  if (!activeTerminalPosition)
+    throw new Error('Active terminal output row disappeared before selection');
+  await dragBetweenCells(
+    driver,
+    activeTerminalPosition.column,
+    activeTerminalPosition.row,
+    activeTerminalPosition.column + 'ACTIVE-TERMINAL'.length - 1,
+    activeTerminalPosition.row,
+  );
   await copySelectionRepeatedly(
     'ACTIVE-TERMINAL',
     activeCopyRunCount,

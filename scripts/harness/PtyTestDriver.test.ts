@@ -125,6 +125,13 @@ describe('HarnessInput', () => {
         alt: true,
       }),
     ).toBe('\x1b[<75;10;5M');
+    expect(
+      HarnessInput.Class.mouseClick({
+        column: 9,
+        row: 4,
+        button: 'left',
+      }),
+    ).toBe('\x1b[<0;10;5M\x1b[<0;10;5m');
     expect(HarnessInput.Class.paste('two\nlines')).toBe(
       '\x1b[200~two\nlines\x1b[201~',
     );
