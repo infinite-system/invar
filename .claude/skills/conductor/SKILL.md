@@ -1043,6 +1043,36 @@ Corollary worth carrying: a wrapper that accepts an argument and ignores it is
 worse than one that rejects it. Silence at the interface is the same defect as
 silence in a wait.
 
+## PARTIAL COVERAGE THAT PRESENTS AS TOTAL — the day's most repeated defect
+
+Three instances in one day, each found by someone else, each invisible because the thing
+still WORKED — just never on the path that mattered:
+
+- **#197** — the LSP size budget guarded every WRITE (openDocument, syncDocument, synchronize)
+  and no READ. Four request methods queried a document we had refused to send, so hover
+  returned types while the notice said "language features off."
+- **My brief's "Repo law"** — restated a fragment of the ivue rules (anchor, Static/Reactive,
+  80 columns) in a way that reads as the complete discipline, so nothing prompts a builder to
+  load the actual skill.
+- **#196's `EditorFrameAttribution`** — wrapped the document for read counting and forwarded
+  most of it, but silently dropped `lastLineChange`. The renderer's document identity could
+  therefore never take the new incremental path: a 1.8-second cost, from one unforwarded fact.
+
+The generator: **a boundary that covers part of a surface, with nothing at the boundary that
+knows the surface has more.** A guard listing three call sites cannot tell you about the fourth.
+A decorator forwarding nine fields cannot tell you about the tenth. A restated fragment cannot
+tell you it is a fragment.
+
+So when reviewing any wrapper, guard, adapter, or restatement, do not ask "does it handle the
+cases named here." **Enumerate the surface independently — from the interface, from an AST
+census, from the producer — and diff it against what the boundary covers.** #197's fix was one
+guard at the shared seam rather than four call sites precisely so a fifth method inherits it;
+prefer the seam that cannot be partially covered over the list that can.
+
+The tell in all three: it worked, so nothing failed loudly. A partially-covered boundary does
+not error — it quietly takes the slow path, or answers when it should decline, or lets a reader
+believe they have the whole rule.
+
 ## A PRE-SATISFIED WAIT LAUNDERS A NO-OP INTO A GREEN
 
 The reachability class has an inverse that is worse than a timeout, and #192 found
