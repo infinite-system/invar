@@ -943,6 +943,43 @@ threshold or declare the measurement invalid. The machine-wide quiet lock
 belongs only to soft performance reports and never narrows blocking gate
 concurrency.
 
+## MY OWN MONITOR ASKED FOR EVIDENCE THE GATE NEVER PRODUCES
+
+On 2026-07-28 I armed a Monitor on `until grep -q 'GATE_EXIT=' <gate log>` and went
+back to work. **`scripts/merge-gate.sh` never prints `GATE_EXIT`.** Every older log
+containing that string got it from a wrapper that echoed `GATE_EXIT=$?` after the
+run. The gate finished at 07:54 with two hard reds; I learned that at 07:58 from the
+reconciliation sweep, and the monitor would have spun to its timeout in silence.
+
+This is the night's dominant defect class — asking for evidence of a change that will
+not happen — committed by me, inside the instrument whose whole job is to notice the
+evidence. It is the second instance in one hour: earlier the same sweep read
+`grep … | tail -1 || echo RUNNING`, where the `||` cannot fire because `tail` succeeds
+on empty input, so a live gate reported as finished.
+
+Both have the same shape as every wait the fleet has been repairing all night, and
+both would have been caught by the rule already written down for probes: **a check
+that can only fail toward one answer needs a positive control.** I never once
+confirmed the sentinel existed in a log the gate itself had written.
+
+### How to watch a gate I launched myself
+
+Key on what the script actually prints at its two terminal outcomes —
+`merge-gate: ALL-PASS` and `merge-gate: FAILURES — commit/merge BLOCKED` — and cover
+process death as well, so a crash before either line still wakes the lane:
+
+    until grep -qE 'merge-gate: (ALL-PASS|FAILURES)' "$log" || ! kill -0 "$gate_pid" 2>/dev/null
+    do sleep 20; done
+
+If a sentinel is wanted, the launcher must WRITE it:
+`bash scripts/merge-gate.sh > "$log" 2>&1; echo "GATE_EXIT=$?" >> "$log"`. Do not
+inherit a sentinel from another wrapper's habit — verify it in the target log before
+arming anything on it.
+
+Generalises past gates: **before waiting on a string, grep the producer for it.** One
+`grep -n` in the script that is supposed to emit it. If the producer does not contain
+the string, the wait is already dead.
+
 ## THE CONDUCTOR'S OWN NAMING IS PART OF THE TEST ENVIRONMENT
 
 #191's blocker — eight consecutive gate failures, "pre-existing at the merge base",
