@@ -105,14 +105,10 @@ class $EditorPaneRenderer {
     const foldMarkerFor = (lineIndex: number): string => {
       if (!context.codeFoldingEnabled) return ' ';
       context.frameAttribution.recordFoldProjectionLookup();
-      const foldRange = editor.foldRangeAtLine(lineIndex);
-      if (
-        foldRange &&
-        editor.foldState.value.collapsedLineStarts.has(lineIndex)
-      ) {
+      if (editor.foldState.value.collapsedLineStarts.has(lineIndex)) {
         return context.foldClosedGlyph;
       }
-      return foldRange ? context.foldOpenGlyph : ' ';
+      return editor.foldStartsAtLine(lineIndex) ? context.foldOpenGlyph : ' ';
     };
     const decorationColor = (color: EditorDecorationColor): string => {
       if (color === 'added') return palette.added;

@@ -65,3 +65,26 @@ test('reuses one attributed document without counting outside a frame', () => {
     layoutComputations: 0,
   });
 });
+
+test('forwards the document change fact through the attribution boundary', () => {
+  const attribution = new EditorFrameAttribution.Class();
+  const lastLineChange = {
+    deletedLineCount: 1,
+    insertedLineCount: 1,
+    revision: 2,
+    startLineIndex: 500_000,
+  };
+  const document = {
+    lineCount: 1_000_000,
+    revision: { value: 2 },
+    lastLineChange,
+    line(): string {
+      return 'line';
+    },
+  };
+
+  const attributedDocument = attribution.attributedDocument(document);
+  expect(attributedDocument.lastLineChange).toBe(lastLineChange);
+  lastLineChange.startLineIndex = 500_001;
+  expect(attributedDocument.lastLineChange?.startLineIndex).toBe(500_001);
+});

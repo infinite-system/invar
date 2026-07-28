@@ -87,6 +87,55 @@ describe('CodeFolding', () => {
     }
     expect(lineReads).toBe(readsAfterDiscovery);
   });
+
+  test('non-structural typing preserves the fold snapshot with identical work at scale', () => {
+    const readsByLineCount = [2_000, 100_000].map((lineCount) => {
+      const document = new EditableFoldDocument(lineCount);
+      const ranges = CodeFolding.Class.ranges(document, 'typescript');
+      document.lineReads = 0;
+      document.editLine(
+        Math.floor(lineCount / 2) + 1,
+        '  const renamedValue = 2;',
+      );
+      expect(CodeFolding.Class.ranges(document, 'typescript')).toBe(ranges);
+      return document.lineReads;
+    });
+
+    expect(readsByLineCount).toEqual([0, 0]);
+  });
+
+  test('a structural edit is the positive control that recomputes folds', () => {
+    const document = new EditableFoldDocument(2_000);
+    CodeFolding.Class.ranges(document, 'typescript');
+    document.lineReads = 0;
+
+    document.editLine(1_001, '  const renamedValue = {');
+    CodeFolding.Class.ranges(document, 'typescript');
+
+    expect(document.lineReads).toBeGreaterThan(document.lineCount);
+  });
+
+  test('local fold-marker discovery agrees with the global snapshot', () => {
+    const document = documentFrom([
+      'const object = {',
+      '  value: 1,',
+      '};',
+      'heading',
+      '  child',
+      'tail',
+    ]);
+    const starts = new Set(
+      CodeFolding.Class.ranges(document, 'typescript').map(
+        (range) => range.startLine,
+      ),
+    );
+
+    for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
+      expect(
+        CodeFolding.Class.startsAtLine(document, 'typescript', lineIndex),
+      ).toBe(starts.has(lineIndex));
+    }
+  });
 });
 
 function documentFrom(lines: readonly string[]) {
@@ -94,4 +143,49 @@ function documentFrom(lines: readonly string[]) {
     lineCount: lines.length,
     line: (index: number) => lines[index] ?? '',
   };
+}
+
+class EditableFoldDocument {
+  lineReads = 0;
+  lastLineChange: {
+    deletedLineCount: number;
+    deletedLines: readonly string[];
+    insertedLineCount: number;
+    insertedLines: readonly string[];
+    revision: number;
+  } | null = null;
+  readonly revision = { value: 0 };
+  protected readonly lines: string[];
+
+  constructor(lineCount: number) {
+    this.lines = Array.from({ length: lineCount }, (_unusedValue, lineIndex) =>
+      lineIndex % 8 === 0
+        ? 'const object = {'
+        : lineIndex % 8 === 7
+          ? '};'
+          : `  const value${lineIndex} = 1;`,
+    );
+  }
+
+  get lineCount(): number {
+    return this.lines.length;
+  }
+
+  line(lineIndex: number): string {
+    this.lineReads++;
+    return this.lines[lineIndex] ?? '';
+  }
+
+  editLine(lineIndex: number, insertedLine: string): void {
+    const deletedLine = this.lines[lineIndex] ?? '';
+    this.lines[lineIndex] = insertedLine;
+    this.revision.value++;
+    this.lastLineChange = {
+      deletedLineCount: 1,
+      deletedLines: [deletedLine],
+      insertedLineCount: 1,
+      insertedLines: [insertedLine],
+      revision: this.revision.value,
+    };
+  }
 }

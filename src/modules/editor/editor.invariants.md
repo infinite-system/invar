@@ -89,20 +89,13 @@ the never-dehydrate-a-dirty-buffer rule), `TabBarRenderer`'s marker cell, and th
 `AppStatusProjection` publishes. Per open document. Out of scope: git's modified-versus-HEAD gutter
 markers, which compare against a COMMIT, not against the file on disk.
 
-**Mechanism:** `dirty` is a plain derived getter with no setter: it answers
-`!matchesSaved()`, where `matchesSaved()` compares the current content with the baseline
-`captureSavedBaseline()` snapshotted on load AND on save (so "original" means LAST SAVED). Cost is
-the design: the baseline is three facts checked cheapest-first — line count, then Σ line length
-(maintained incrementally inside `replaceLineRange`, so an edit pays O(edited lines) and no query
-ever rescans), and only when BOTH match — i.e. clean is actually plausible — the order-sensitive
-FNV-1a content signature. The answer is memoized on the pair (`revision`, `savedBaselineVersion`),
-which are also the two refs the getter reads, so a per-frame read at unchanged keys is two integer
-comparisons and cannot go stale: content changes bump `revision`, a moved baseline bumps
-`savedBaselineVersion`, and nothing else can change the answer. `markSaved()` deliberately bumps
-only the baseline version — bumping `revision` would tell the async consumers of *Async results are
-revision-stamped and stale results discarded* that the text changed when it did not. While typing
-forward the length always differs from the baseline, so the hash is never reached; it runs at the
-one moment the answer can flip back to clean.
+**Mechanism:** `dirty` is a derived getter with no setter. The baseline checks line count, then
+incrementally maintained serialized length, then exact content. A file load records a known-clean
+revision instead of hashing the bytes it just read; if later edits restore plausible baseline
+shape, an unchanged file timestamp permits an exact streaming comparison with disk. Text-only
+loads and saves retain the order-sensitive FNV-1a signature because they have no authoritative
+disk read to compare. The answer is memoized on (`revision`, `savedBaselineVersion`), so unchanged
+frame reads are integer comparisons; content changes and baseline moves cannot leave it stale.
 
 **Generates:** the tab-strip `●`; the `name ●` window title; the never-dehydrate-while-dirty rule
 in `OpenBufferSet`; the `dirty` field the harness asserts; the absence of any `dirty` write
@@ -140,7 +133,8 @@ clean; two swapped lines (identical line count AND length) read DIRTY, which pro
 order-sensitive rather than merely cheap; `markSaved()` rebaselines without bumping `revision`; and,
 on a 20,000-line document, a counting subclass asserts 10,000 per-frame reads while typing perform
 ZERO content hashes and the read that lands back on the baseline length performs exactly ONE
-(positive control: the count does move, so the instrument can fail). Driven:
+(positive control: the count does move, so the instrument can fail). A file-load counting subclass
+performs zero signatures, including after an edit returns exactly to disk. Driven:
 `bun scripts/harness/smoke-dirty-marker-harness.ts` types a character and BACKSPACES it with no undo,
 asserting the published `dirty` field and the tab's marker cell both clear; then deletes and retypes a
 line; then saves mid-session and shows the ORIGINAL loaded content now reads dirty while the SAVED
@@ -158,29 +152,27 @@ size, not the document size.
 
 **Scope:** `storage/UndoStore` + `Editor.captureBefore`.
 
-**Mechanism:** Undo stores the inverse edit (range + removed/inserted text) against the piece
-table, not a full `_lines.slice()`. Realizes *Cost tracks the actively observed set* for edit
-history.
+**Mechanism:** `TextDocument.replaceLineRange` publishes one localized replacement fact.
+`Editor.captureBefore` begins a pending group and `UndoStore.recordChange` retains copies of only
+its deleted and inserted lines. Typing coalesces small deltas; undo applies them in reverse and
+redo applies them forward through the same document write path.
 
-**Generates:** O(edit) undo memory; the piece-table delta store; bounded history that scales to
-large files.
+**Generates:** O(edit) undo capture and memory; bounded coalesced history; one mutation seam for
+ordinary edits, undo, and redo.
 
-**Evidence:** currently VIOLATED — `Editor.ts:41` snapshots `document.snapshot()` (`_lines.slice()`)
-per keystroke, O(document) each; `storage/UndoStore.ts` is the snapshot fallback. The piece table
-named in `project.decisions.md` #7 is unbuilt.
+**Evidence:** `src/modules/editor/TextDocument.ts` (`onLineChange`, `applyLineChange`);
+`src/modules/editor/Editor.ts`; `src/modules/storage/UndoStore.ts` and its tests.
 
-**Impossible if true:** undo memory that grows with file size rather than with the number/size of
-edits.
+**Impossible if true:** a typing path calling `document.snapshot()` or undo memory growing with
+file size rather than edit size.
 
-**Open question:** rework replaces snapshot-undo with a piece-table delta store; until then this
-is the known cost stress on large files.
+**Verification:** `bun test src/modules/editor/Editor.test.ts
+src/modules/storage/UndoStore.test.ts`; `bun scripts/ast-query.ts named-calls snapshot --path
+src/modules/editor --require-zero`.
 
-**Verification:** a test editing a large document and asserting per-step undo memory is bounded by
-edit size, not line count.
+**Status:** established
 
-**Status:** provisional
-
-**Last refined:** 2026-07-21
+**Last refined:** 2026-07-28
 
 ### Selection is an anchor plus the cursor and edits replace it
 
@@ -368,39 +360,39 @@ is the single `setSize` edge, asserted not to run inside the frame effect.
 cumulative index is the only mapping authority, with wrapping contributing segment counts and
 folding contributing zero-row hidden lines.
 
-**Scope:** Editor rendering, caret placement, vertical and horizontal line-crossing movement,
-selection projection, mouse hit-testing, wheel and drag scrolling, scrollbar extent, gutter fold
-controls, and programmatic navigation.
+**Scope:** Editor rendering, navigation, selection, pointer mapping, scrolling, scrollbars, and
+fold gutters.
 
-**Mechanism:** `CodeFolding.ranges` computes one revision-keyed structural snapshot with an O(1)
-start-line index, and `Editor` memoizes the collapsed subset by document revision plus fold
-revision. An unchanged frame therefore performs only viewport-many fold lookups; it never rebuilds
-a map or filters every discovered range. `EditorWrap.syncWrapIndex` combines wrap segments and
-collapsed ranges into one `rowCounts` and `prefix` index; `visualRowsFromOffset` returns the window
-that `EditorPaneRenderer`, `EditorPane`, and `RootView` share.
+**Mechanism:** `TextDocument.lastLineChange` crosses every document boundary and names the changed
+range. `CodeFolding` reuses its snapshot when indentation and structural delimiters are unchanged;
+gutter paint discovers open markers from visible lines.
+`EditorWrap.syncWrapIndex` owns reusable `Uint32Array` row counts, 4096-line block totals, and one
+exact total. A same-line edit writes one row and, only if its row count changes, one block plus the
+total; it allocates nothing and keeps no `lineTexts` shadow. The reactive revision publishes the
+in-place result. `visualRowsFromOffset` remains the shared window.
 
-**Generates:** Folded rows that every consumer skips; one scroll extent for wrap and folding; one
-rendered window for gutter, code, caret, selection, and pointer mapping.
+**Generates:** One folded/wrapped extent and window for gutter, code, caret, selection, and pointer
+mapping.
 
 **Rejected alternatives:** Apply folding after wrap projection — different consumers can consult
 different maps and disagree about the same document position.
 
-**Evidence:** `src/modules/editor/EditorWrap.ts`; `src/modules/editor/CodeFolding.ts`;
-`src/modules/editor/EditorWrapIndex.test.ts`; `src/modules/editor/Editor.test.ts`;
-`scripts/harness/smoke-code-folding-harness.ts`; the 100k cost ratchets in
-`CodeFolding.test.ts` and `Editor.test.ts`.
+**Evidence:** The three named editor modules and focused tests; the scale-edit mode of
+`scripts/harness/measure-input-byte-flush.ts`.
 
 **Impossible if true:** Two disagreeing document-line-to-visual-row mappings consulted by different
-consumers; a caret, selection endpoint, gutter marker, mouse hit, scrollbar, or rendered row naming
-different visual rows for one document position.
+consumers; a same-line edit allocating or writing an amount that changes between 2,000 and
+1,000,000 lines; a wrapper dropping the change fact; an index array escaping `EditorWrap`.
 
 **Verification:** `bun test src/modules/editor/CodeFolding.test.ts
-src/modules/editor/EditorWrapIndex.test.ts src/modules/editor/Editor.test.ts && bun
-scripts/harness/smoke-code-folding-harness.ts`.
+src/modules/editor/EditorFrameAttribution.test.ts
+src/modules/editor/EditorWrapIndex.test.ts`; the three zero-match AST censuses in
+`scripts/conventions-gate.sh`; `INPUT_BYTE_FLUSH_MODE=scale-edit bun
+scripts/harness/measure-input-byte-flush.ts`.
 
-**Status:** provisional
+**Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-28
 
 ### Editor frame work is independent of document length
 

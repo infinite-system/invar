@@ -1,9 +1,11 @@
-// Undo/redo as a bounded stack of document snapshots with time+kind coalescing, so a run of
-// typed characters collapses into one undo step. Snapshot-based (correct and simple); a
-// piece-table delta store is the performance refinement (see KNOWN_LIMITATIONS.md).
+// Undo/redo as a bounded stack of localized line replacements. A typing run
+// coalesces by appending its small deltas to one state; no edit snapshots or
+// copies the document-sized line array.
+//
 // invariant: Cost tracks the actively observed set (project.invariants.md)
-//   — the stack is bounded; the oldest states are evicted, not retained forever.
+// invariant: Undo records deltas not whole-document snapshots (src/modules/editor/editor.invariants.md)
 import { Static } from 'ivue/extras';
+
 class $UndoStore {
   protected static get MAXIMUM_DEPTH(): number {
     return 500;
@@ -15,10 +17,14 @@ class $UndoStore {
 
   protected undoStack: UndoState[] = [];
   protected redoStack: UndoState[] = [];
+  protected activeState: UndoState | null = null;
+  protected activeStateIsPending = false;
 
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.activeState = null;
+    this.activeStateIsPending = false;
   }
 
   get canUndo(): boolean {
@@ -32,12 +38,13 @@ class $UndoStore {
   }
 
   /**
-   * Record the state BEFORE an edit. Coalesces with the previous record when the edit is the
-   * same kind and within COALESCE_MS (typing runs become one step). `now` is injected so the
-   * store is deterministically testable.
+   * Begin the state BEFORE an edit. The state is not retained until the
+   * document publishes its first localized change, so a no-op never pollutes
+   * history or clears redo.
    */
-  record(state: UndoState, now: number): void {
-    this.redoStack = [];
+  begin(state: UndoStateStart, now: number): void {
+    this.activeState = null;
+    this.activeStateIsPending = false;
     const previous = this.undoStack[this.undoStack.length - 1];
     if (
       previous &&
@@ -46,33 +53,64 @@ class $UndoStore {
       now - previous.at <
         (this.constructor as typeof $UndoStore).COALESCE_MILLISECONDS
     ) {
-      // Keep the earlier pre-edit state; just refresh its timestamp so the run keeps coalescing.
       previous.at = now;
+      this.activeState = previous;
       return;
     }
-    this.undoStack.push(state);
-    if (
-      this.undoStack.length >
-      (this.constructor as typeof $UndoStore).MAXIMUM_DEPTH
-    ) {
-      this.undoStack.shift();
-    }
+    this.activeState = {
+      at: state.at,
+      beforeCursor: state.beforeCursor,
+      changes: [],
+      kind: state.kind,
+    };
+    this.activeStateIsPending = true;
   }
 
-  /** Pop an undo state; caller must pass the CURRENT state to push onto redo. */
-  undo(current: UndoState): UndoState | null {
+  /** Append the localized replacement emitted by the document's one write
+   *  path. Multiple replacements inside one command remain one undo step. */
+  recordChange(change: UndoChange): void {
+    const activeState = this.activeState;
+    if (activeState === null) return;
+    if (this.activeStateIsPending) {
+      this.redoStack = [];
+      this.undoStack.push(activeState);
+      this.activeStateIsPending = false;
+      if (
+        this.undoStack.length >
+        (this.constructor as typeof $UndoStore).MAXIMUM_DEPTH
+      ) {
+        this.undoStack.shift();
+      }
+    }
+    activeState.changes.push({
+      deletedLines: [...change.deletedLines],
+      insertedLines: [...change.insertedLines],
+      startLineIndex: change.startLineIndex,
+    });
+  }
+
+  /** Move the newest delta group to redo and remember its post-edit cursor. */
+  undo(currentCursor: UndoCursor): UndoState | null {
+    this.endActiveState();
     const target = this.undoStack.pop();
     if (!target) return null;
-    this.redoStack.push(current);
+    target.afterCursor = { ...currentCursor };
+    this.redoStack.push(target);
     return target;
   }
 
-  /** Pop a redo state; caller passes the CURRENT state to push back onto undo. */
-  redo(current: UndoState): UndoState | null {
+  /** Move the newest redo delta group back to undo. */
+  redo(): UndoState | null {
+    this.endActiveState();
     const target = this.redoStack.pop();
     if (!target) return null;
-    this.undoStack.push(current);
+    this.undoStack.push(target);
     return target;
+  }
+
+  protected endActiveState(): void {
+    this.activeState = null;
+    this.activeStateIsPending = false;
   }
 }
 
@@ -84,9 +122,27 @@ export namespace UndoStore {
 
 export type EditKind = 'insert' | 'delete' | 'newline' | 'paste' | 'other';
 
+export interface UndoCursor {
+  readonly line: number;
+  readonly col: number;
+}
+
+export interface UndoChange {
+  readonly deletedLines: readonly string[];
+  readonly insertedLines: readonly string[];
+  readonly startLineIndex: number;
+}
+
+export interface UndoStateStart {
+  readonly beforeCursor: UndoCursor;
+  readonly kind: EditKind;
+  readonly at: number;
+}
+
 export interface UndoState {
-  lines: string[];
-  cursor: { line: number; col: number };
-  kind: EditKind;
   at: number;
+  readonly beforeCursor: UndoCursor;
+  readonly changes: UndoChange[];
+  readonly kind: EditKind;
+  afterCursor?: UndoCursor;
 }

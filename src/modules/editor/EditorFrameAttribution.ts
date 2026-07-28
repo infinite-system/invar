@@ -61,6 +61,9 @@ class $EditorFrameAttribution {
       get revision() {
         return document.revision;
       },
+      get lastLineChange() {
+        return document.lastLineChange;
+      },
       line(lineIndex: number): string {
         return attribution.documentLine(document, lineIndex);
       },

@@ -318,12 +318,15 @@ at least 1,000 rows of real wheel input. Unit cost ratchets in
 unchanged-frame lookups do not rescan their document-scale inputs. Idle CPU
 remains ~0 after activity. Continuous input-path evidence comes from the
 always-run byte-flush step: the edited glyph must be present in the first
-completed frame after its input byte. Millisecond p50/p95 samples remain
-commit-addressed and trend-compared as report-only warnings.
+completed frame after its input byte. Its scale-edit mode extends that exact
+boundary through 30 editing keystrokes at 2k/20k/100k/500k/1M, while the wrap
+index contract requires identical typed-array writes and allocations at 2k
+and 1M. Millisecond samples remain report-only; the operation count is the
+blocking scale claim.
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-28
 
 ### Held key movement accelerates within a ceiling
 

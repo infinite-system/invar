@@ -3,10 +3,18 @@
 // revision — they used to walk every line per RootView update), edits must resync only the delta,
 // and every answer must equal the naive full walk.
 import { test, expect, describe } from 'bun:test';
+import { effect, stop } from 'vue';
 import { EditorWrap } from './EditorWrap';
+import { TextDocument } from './TextDocument';
 
 class IndexProbeDocument {
   lineReads = 0;
+  lastLineChange: {
+    deletedLineCount: number;
+    insertedLineCount: number;
+    revision: number;
+    startLineIndex: number;
+  } | null = null;
   readonly revision = { value: 0 };
   constructor(protected readonly lines: string[]) {}
   get lineCount(): number {
@@ -18,16 +26,94 @@ class IndexProbeDocument {
   }
   editLine(index: number, text: string): void {
     this.lines[index] = text;
+    this.lastLineChange = {
+      deletedLineCount: 1,
+      insertedLineCount: 1,
+      revision: this.revision.value + 1,
+      startLineIndex: index,
+    };
     this.revision.value++;
   }
   insertLine(index: number, text: string): void {
     this.lines.splice(index, 0, text);
+    this.lastLineChange = {
+      deletedLineCount: 0,
+      insertedLineCount: 1,
+      revision: this.revision.value + 1,
+      startLineIndex: index,
+    };
     this.revision.value++;
   }
   removeLine(index: number): void {
     this.lines.splice(index, 1);
+    this.lastLineChange = {
+      deletedLineCount: 1,
+      insertedLineCount: 0,
+      revision: this.revision.value + 1,
+      startLineIndex: index,
+    };
     this.revision.value++;
   }
+}
+
+class $CountingEditorWrap extends EditorWrap.$Class {
+  static rowArrayAllocations = 0;
+  static blockArrayAllocations = 0;
+  static rowWrites = 0;
+  static blockWrites = 0;
+
+  static resetCounts(): void {
+    this.rowArrayAllocations = 0;
+    this.blockArrayAllocations = 0;
+    this.rowWrites = 0;
+    this.blockWrites = 0;
+  }
+
+  static counts(): WrapIndexOperationCounts {
+    return {
+      blockArrayAllocations: this.blockArrayAllocations,
+      blockWrites: this.blockWrites,
+      rowArrayAllocations: this.rowArrayAllocations,
+      rowWrites: this.rowWrites,
+    };
+  }
+
+  protected static override allocateRowCounts(lineCount: number): Uint32Array {
+    this.rowArrayAllocations++;
+    return super.allocateRowCounts(lineCount);
+  }
+
+  protected static override allocateBlockRowCounts(
+    blockCount: number,
+  ): Uint32Array {
+    this.blockArrayAllocations++;
+    return super.allocateBlockRowCounts(blockCount);
+  }
+
+  protected static override writeRowCount(
+    rowCounts: Uint32Array,
+    lineIndex: number,
+    rowCount: number,
+  ): void {
+    this.rowWrites++;
+    super.writeRowCount(rowCounts, lineIndex, rowCount);
+  }
+
+  protected static override writeBlockRowCount(
+    blockRowCounts: Uint32Array,
+    blockIndex: number,
+    rowCount: number,
+  ): void {
+    this.blockWrites++;
+    super.writeBlockRowCount(blockRowCounts, blockIndex, rowCount);
+  }
+}
+
+interface WrapIndexOperationCounts {
+  readonly blockArrayAllocations: number;
+  readonly blockWrites: number;
+  readonly rowArrayAllocations: number;
+  readonly rowWrites: number;
 }
 
 /** The naive ground truth: wrap every line and sum. */
@@ -85,6 +171,67 @@ describe('EditorWrap cumulative index', () => {
         segmentIndex: 0,
       });
     }
+  });
+
+  test('same-line edit work is identical at 2k and 1M lines', () => {
+    const countsByLineCount = [2_000, 1_000_000].map((lineCount) => {
+      const document = new IndexProbeDocument(makeLines(lineCount));
+      const targetLineIndex = Math.floor(lineCount / 2);
+      $CountingEditorWrap.totalVisualRows(document, 80);
+      $CountingEditorWrap.resetCounts();
+
+      document.editLine(targetLineIndex, `${document.line(targetLineIndex)}x`);
+      $CountingEditorWrap.totalVisualRows(document, 80);
+      return $CountingEditorWrap.counts();
+    });
+
+    expect(countsByLineCount[0]).toEqual({
+      blockArrayAllocations: 0,
+      blockWrites: 0,
+      rowArrayAllocations: 0,
+      rowWrites: 1,
+    });
+    expect(countsByLineCount[1]).toEqual(countsByLineCount[0]);
+  });
+
+  test('the document revision publishes an in-place typed-array update', () => {
+    const document = new TextDocument.Class();
+    document.loadFromText('12345\nsecond');
+    const observedTotals: number[] = [];
+    const projectionEffect = effect(() => {
+      document.revision.value;
+      observedTotals.push($CountingEditorWrap.totalVisualRows(document, 5));
+    });
+    $CountingEditorWrap.resetCounts();
+
+    document.insertInline(0, 5, 'x');
+
+    expect(observedTotals).toEqual([3, 4]);
+    expect($CountingEditorWrap.counts()).toEqual({
+      blockArrayAllocations: 0,
+      blockWrites: 1,
+      rowArrayAllocations: 0,
+      rowWrites: 1,
+    });
+    stop(projectionEffect);
+  });
+
+  test('operation counter positive control detects a forced full rebuild', () => {
+    const document = new IndexProbeDocument(makeLines(2_000));
+    $CountingEditorWrap.totalVisualRows(document, 80);
+    $CountingEditorWrap.resetCounts();
+    document.editLine(1_000, `${document.line(1_000)}x`);
+
+    $CountingEditorWrap.totalVisualRows(document, 80, [
+      { startLine: 2_000, endLine: 2_000, kind: 'delimiter' },
+    ]);
+
+    expect($CountingEditorWrap.counts()).toEqual({
+      blockArrayAllocations: 1,
+      blockWrites: 2_000,
+      rowArrayAllocations: 1,
+      rowWrites: 2_000,
+    });
   });
 
   test('insertions and deletions realign the tail (head/tail identity trim)', () => {

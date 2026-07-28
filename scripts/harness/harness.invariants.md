@@ -250,7 +250,10 @@ rejects any `completedFramesUntilCondition` other than one.
 `input-byte-flush-gate.ts` launches five independent sessions, rejects a
 boundary mismatch, appends the median p50 and p95, warns above the reviewed
 individual threshold, and runs `InputByteFlushTrend` over the comparable
-trailing window. Instrument failures and wrong driven behavior remain distinct.
+trailing window. Its opt-in `INPUT_BYTE_FLUSH_MODE=scale-edit` drives sustained
+visible edits through the same PTY at 2k/20k/100k/500k/1M lines and refuses
+the result unless a forced old wrap-index rebuild moves the 500k median by at
+least 10x. Instrument failures and wrong driven behavior remain distinct.
 
 **Generates:** an always-run load-independent first-frame contract under
 `SKIP_PERF` and `FAST`; commit-addressed millisecond history; individual and
@@ -276,7 +279,8 @@ delay is not user-visible; the report-only trend remains sensitive to it.
 the glyph while the gate stays green; `SKIP_PERF=1` bypassing the ordering
 check; a measured p50 or p95 changing the process exit code; a history line
 without sha, timestamp, p50, p95, and boundary; five shifted comparable
-samples producing no warning that names their sustained span.
+samples producing no warning that names their sustained span; a scale-edit
+report whose forced full rebuild cannot expose an order-of-magnitude defect.
 
 **Verification:** `bun test scripts/harness/InputByteFlushTrend.test.ts
 scripts/harness/InputByteFlushVerdict.test.ts && bun
@@ -284,7 +288,7 @@ scripts/harness/input-byte-flush-gate.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-28
 
 ### Harness waits observe conditions not frame ordinals
 

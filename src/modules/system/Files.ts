@@ -12,6 +12,9 @@ import {
   mkdirSync,
   mkdtempSync,
   rmSync,
+  openSync,
+  readSync,
+  closeSync,
 } from 'node:fs';
 import {
   join,
@@ -141,15 +144,31 @@ class $Files {
 
   /** Heuristic binary sniff: a NUL byte in the first 8 KB. */
   static looksBinary(path: string): boolean {
+    let fileDescriptor: number | null = null;
     try {
-      const buffer = readFileSync(path);
-      const scanLimit = Math.min(buffer.length, 8192);
-      for (let index = 0; index < scanLimit; index++) {
-        if (buffer[index] === 0) return true;
+      fileDescriptor = openSync(path, 'r');
+      const prefixBytes = Buffer.allocUnsafe(8192);
+      const bytesRead = readSync(
+        fileDescriptor,
+        prefixBytes,
+        0,
+        prefixBytes.length,
+        0,
+      );
+      for (let byteIndex = 0; byteIndex < bytesRead; byteIndex++) {
+        if (prefixBytes[byteIndex] === 0) return true;
       }
       return false;
     } catch {
       return false;
+    } finally {
+      if (fileDescriptor !== null) {
+        try {
+          closeSync(fileDescriptor);
+        } catch {
+          // A close failure does not turn a prefix-sniff heuristic into an app failure.
+        }
+      }
     }
   }
 }

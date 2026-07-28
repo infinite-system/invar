@@ -142,7 +142,9 @@ markers converge after buffer edits, saves, active-document changes, and git rec
 through `GitCommands.fileAtRef` and rejects stale completions.
 `GitDocumentState.beginHeadRequest` keeps the last applied HEAD text
 authoritative while that request is in flight, and applying identical text
-does not advance its decoration revision. `GutterDiff.marksByLine` projects
+does not advance its decoration revision. An unavailable HEAD is `null` and
+produces no projection; a valid tracked empty file remains the distinct `''`.
+`GutterDiff.marksByLine` projects
 `DiffAlignment.align` rows into a buffer-line map. A deleted run is placed on
 the following real line, or the final real line at end of file. When that line
 is also modified, modified color wins (`modified` priority exceeds `deleted`)

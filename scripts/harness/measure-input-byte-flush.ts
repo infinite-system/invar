@@ -1,13 +1,43 @@
 #!/usr/bin/env bun
+// Default mode measures a tiny-file edit for the always-run gate. Set
+// INPUT_BYTE_FLUSH_MODE=scale-edit for the missing user boundary: a burst of
+// real editing inputs at 2k/20k/100k/500k/1M lines through the real app and
+// PTY.
+//
+// Scale edit boundary: immediately before the input byte is written to the PTY
+// master -> arrival of the first complete DEC 2026 frame whose emulator grid
+// contains the cumulative edit. It INCLUDES input routing, undo capture,
+// document/index mutation, reactive projection, painting, and frame emission.
+// It EXCLUDES fixture generation, navigation to the target line, filesystem
+// saving, terminal-display latency after bytes reach the PTY master, and
+// language-server work (the isolated setting suppresses LSP for every size).
+// Peak resident memory is sampled from process VmHWM immediately after first
+// content paint, before excluded target navigation can raise the high-water
+// mark.
 // invariant: Latency measurements name their observation boundary (scripts/harness/harness.invariants.md)
 // invariant: Blocking gate verdicts use ordering and counts (scripts/harness/harness.invariants.md)
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+// invariant: Soft duration reports use a machine-wide quiet lock (scripts/harness/harness.invariants.md)
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InputByteFlushVerdict } from './InputByteFlushVerdict';
 import { PtyTestDriver } from './PtyTestDriver';
+import { QuietLock } from './QuietLock';
 
 const repositoryRoot = process.cwd();
+
+if (process.env.INPUT_BYTE_FLUSH_MODE === 'scale-edit') {
+  const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
+    'large-file-edit-frame-measurement',
+    import.meta.path,
+  );
+  if (quietLockExitCode === null) {
+    await measureScaleEditing();
+    process.exit(0);
+  }
+  process.exit(quietLockExitCode);
+}
+
 const latencySampleCount = Number(process.env.LATENCY_SAMPLE_COUNT ?? 20);
 const measurementRoot = mkdtempSync(join(tmpdir(), 'invar-byte-flush-'));
 const isolatedHomeDirectory = join(measurementRoot, 'home');
@@ -144,7 +174,6 @@ try {
   process.exitCode = 1;
 } finally {
   await driver.dispose();
-  await Promise.race([driver.exitCode(), Bun.sleep(1_000)]);
   rmSync(measurementRoot, { recursive: true, force: true });
 }
 
@@ -172,4 +201,565 @@ function percentile(samples: readonly number[], fraction: number): number {
   if (sample === undefined)
     throw new Error(`Missing percentile sample at index ${sampleIndex}`);
   return sample;
+}
+
+async function measureScaleEditing(): Promise<void> {
+  requireAcquiredQuietLock();
+  const lineCounts = [1_000_000, 500_000, 100_000, 20_000, 2_000] as const;
+  const sessionCount = positiveIntegerFromEnvironment(
+    'SCALE_EDIT_SESSION_COUNT',
+    3,
+  );
+  const burstLength = positiveIntegerFromEnvironment(
+    'SCALE_EDIT_BURST_LENGTH',
+    30,
+  );
+  const positiveControlBurstLength = Math.min(
+    burstLength,
+    positiveIntegerFromEnvironment('SCALE_EDIT_CONTROL_BURST_LENGTH', 3),
+  );
+  const scaleMeasurementRoot = mkdtempSync(join(tmpdir(), 'invar-scale-edit-'));
+  const fixtureRootByLineCount = new Map<number, string>();
+
+  try {
+    for (const lineCount of lineCounts) {
+      const fixtureRoot = join(scaleMeasurementRoot, String(lineCount));
+      generateScaleWorkspace(fixtureRoot, lineCount);
+      fixtureRootByLineCount.set(lineCount, fixtureRoot);
+    }
+
+    const measurements: ScaleLineCountMeasurement[] = [];
+    for (const lineCount of lineCounts) {
+      const fixtureRoot = fixtureRootByLineCount.get(lineCount);
+      if (fixtureRoot === undefined) {
+        throw new Error(`Missing generated ${lineCount}-line fixture`);
+      }
+      const sessions: ScaleEditingSession[] = [];
+      for (
+        let sessionNumber = 1;
+        sessionNumber <= sessionCount;
+        sessionNumber++
+      ) {
+        assertNoTypeScriptGoProcess(
+          `${lineCount}-line session ${sessionNumber} before launch`,
+        );
+        sessions.push(
+          await measureScaleEditingSession({
+            burstLength,
+            fixtureRoot,
+            forceFullRebuild: false,
+            lineCount,
+            sessionNumber,
+          }),
+        );
+      }
+      measurements.push({ lineCount, sessions });
+    }
+
+    const fiveHundredThousandFixture = fixtureRootByLineCount.get(500_000);
+    if (fiveHundredThousandFixture === undefined) {
+      throw new Error('Missing generated 500000-line fixture');
+    }
+    const forcedFullRebuildSessions: ScaleEditingSession[] = [];
+    for (
+      let sessionNumber = 1;
+      sessionNumber <= sessionCount;
+      sessionNumber++
+    ) {
+      assertNoTypeScriptGoProcess(
+        `forced-full-rebuild session ${sessionNumber} before launch`,
+      );
+      forcedFullRebuildSessions.push(
+        await measureScaleEditingSession({
+          burstLength: positiveControlBurstLength,
+          fixtureRoot: fiveHundredThousandFixture,
+          forceFullRebuild: true,
+          lineCount: 500_000,
+          sessionNumber,
+        }),
+      );
+    }
+
+    const fiveHundredThousandIncrementalSamples = measurements
+      .find((measurement) => measurement.lineCount === 500_000)
+      ?.sessions.flatMap((session) => session.middleInputToPaintMilliseconds);
+    if (fiveHundredThousandIncrementalSamples === undefined) {
+      throw new Error('Missing 500000-line incremental samples');
+    }
+    const forcedFullRebuildSamples = forcedFullRebuildSessions.flatMap(
+      (session) => session.middleInputToPaintMilliseconds,
+    );
+    const incrementalMedianMilliseconds = percentile(
+      fiveHundredThousandIncrementalSamples,
+      0.5,
+    );
+    const forcedFullRebuildMedianMilliseconds = percentile(
+      forcedFullRebuildSamples,
+      0.5,
+    );
+    const movementMultiple =
+      forcedFullRebuildMedianMilliseconds / incrementalMedianMilliseconds;
+    if (movementMultiple < 10) {
+      throw new Error(
+        'Large-file edit positive control did not move the 500k median by ' +
+          `an order of magnitude: incremental ` +
+          `${incrementalMedianMilliseconds.toFixed(3)} ms, forced ` +
+          `${forcedFullRebuildMedianMilliseconds.toFixed(3)} ms, ` +
+          `${movementMultiple.toFixed(2)}x`,
+      );
+    }
+
+    console.log(
+      JSON.stringify(
+        {
+          boundary: {
+            end:
+              'first complete DEC 2026 frame whose emulator grid contains ' +
+              'the cumulative edit',
+            excludes: [
+              'fixture generation',
+              'navigation to the target line',
+              'filesystem saving',
+              'terminal display after frame bytes reach the PTY master',
+              'language-server work (isolated 1 KB suppression limit)',
+            ],
+            includes: [
+              'real PTY input routing',
+              'undo capture',
+              'document and wrap-index mutation',
+              'reactive projection',
+              'paint and frame emission',
+            ],
+            start: 'immediately before the edit byte is written to the PTY',
+          },
+          burstLength,
+          fixture:
+            'scripts/make-scale-workspace.ts; edits target a generated line ' +
+            'near the middle and, at 500k/1M, WIDEST-LINE-CHAMPION',
+          forcedFullRebuildPositiveControl: {
+            burstLength: positiveControlBurstLength,
+            forcedFullRebuildMedianMilliseconds,
+            forcedFullRebuildSessions,
+            incrementalMedianMilliseconds,
+            movementMultiple,
+            requirement:
+              'forced pre-fix wrap-index rebuild moves the 500k median by ' +
+              'at least 10x',
+            satisfied: true,
+          },
+          generatedAt: new Date().toISOString(),
+          measurements,
+          quietLock: {
+            holderName: process.env.INVAR_QUIET_LOCK_HOLDER_NAME,
+            mode: process.env.INVAR_QUIET_LOCK_MODE,
+            state: process.env.INVAR_QUIET_LOCK_STATE,
+            waitMilliseconds: process.env.INVAR_QUIET_LOCK_WAIT_MILLISECONDS,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    rmSync(scaleMeasurementRoot, { recursive: true, force: true });
+  }
+}
+
+async function measureScaleEditingSession(
+  options: ScaleEditingSessionOptions,
+): Promise<ScaleEditingSession> {
+  const isolatedHomeDirectory = mkdtempSync(
+    join(
+      tmpdir(),
+      `invar-scale-home-${options.lineCount}-` +
+        `${options.forceFullRebuild ? 'control' : 'normal'}-`,
+    ),
+  );
+  const settingsDirectory = join(isolatedHomeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    `${JSON.stringify({ lspFileSizeLimitKb: 1 })}\n`,
+  );
+  const projectSettingsDirectory = join(options.fixtureRoot, '.invar');
+  mkdirSync(projectSettingsDirectory, { recursive: true });
+  await Bun.write(
+    join(projectSettingsDirectory, 'settings.json'),
+    `${JSON.stringify({ lspFileSizeLimitKb: 1 })}\n`,
+  );
+  const launchStartedMilliseconds = performance.now();
+  const driver = new PtyTestDriver.Class({
+    workspaceRoot: options.fixtureRoot,
+    repositoryRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: isolatedHomeDirectory,
+    command: options.forceFullRebuild
+      ? [
+          process.execPath,
+          'run',
+          '--preload',
+          join(
+            repositoryRoot,
+            'scripts/harness/force-editor-wrap-full-rebuild.ts',
+          ),
+          'src/main.ts',
+          options.fixtureRoot,
+        ]
+      : undefined,
+  });
+
+  try {
+    const launchFinishedMilliseconds = await openGeneratedHugeFile(driver);
+    const launchPeakResidentBytes = peakResidentBytes(driver.processId);
+    const middleLineIndex = middleMeasurementLineIndex(options.lineCount);
+    await navigateToGeneratedLine(driver, middleLineIndex);
+    const middleBurst = await measureEditingBurst(
+      driver,
+      '~',
+      options.burstLength,
+      `middle line ${middleLineIndex + 1}`,
+    );
+    const championBurst =
+      options.lineCount >= 250_000
+        ? await measureChampionBurst(driver, options.burstLength)
+        : null;
+    assertNoTypeScriptGoProcess(
+      `${options.lineCount}-line session ${options.sessionNumber} ` +
+        'while measured app is alive',
+    );
+    return {
+      championCompletedFramesUntilEdit:
+        championBurst?.completedFramesUntilEdit ?? null,
+      championInputToPaintMilliseconds:
+        championBurst?.inputToPaintMilliseconds ?? null,
+      forceFullRebuild: options.forceFullRebuild,
+      launchToFirstPaintMilliseconds:
+        launchFinishedMilliseconds - launchStartedMilliseconds,
+      middleCompletedFramesUntilEdit: middleBurst.completedFramesUntilEdit,
+      middleInputToPaintMilliseconds: middleBurst.inputToPaintMilliseconds,
+      middleLineIndex,
+      peakResidentBytes: launchPeakResidentBytes,
+      processId: driver.processId,
+      sessionNumber: options.sessionNumber,
+    };
+  } finally {
+    await driver.dispose();
+    rmSync(isolatedHomeDirectory, { recursive: true, force: true });
+  }
+}
+
+async function openGeneratedHugeFile(
+  driver: PtyTestDriver.Model,
+): Promise<number> {
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('huge.ts') !== null,
+    30_000,
+  );
+  driver.sendKeys('Control+p');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Go to File') !== null,
+    15_000,
+  );
+  driver.sendText('huge.ts');
+  await driver.awaitGridCondition(
+    'Quick Open lists huge.ts as the selected candidate',
+    (snapshot) => textOccurrenceCount(snapshot.text(), 'huge.ts') >= 2,
+    30_000,
+  );
+  const firstPaintMeasurement =
+    await driver.sendKeysAndAwaitGridConditionByteArrival(
+      ['Enter'],
+      'the generated first line is painted in the editor',
+      (snapshot) => snapshot.findText('ScaleRecord0000000') !== null,
+      60_000,
+    );
+  driver.sendKeys('Control+Shift+j');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('[Files]') === null,
+    15_000,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) =>
+      snapshot.findText('Large file — language features off') !== null,
+    15_000,
+  );
+  return firstPaintMeasurement.completedFrame.byteArrivalTimestampMilliseconds;
+}
+
+async function navigateToGeneratedLine(
+  driver: PtyTestDriver.Model,
+  lineIndex: number,
+): Promise<void> {
+  const marker = String(lineIndex).padStart(7, '0');
+  driver.sendKeys('Control+f');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Find') !== null,
+    15_000,
+  );
+  driver.sendPaste(marker);
+  await driver.awaitGridCondition(
+    `Find resolves generated line marker ${marker}`,
+    (snapshot) =>
+      snapshot.findText(marker) !== null &&
+      snapshot.findText('1 of 1') !== null,
+    60_000,
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(`Ln ${lineIndex + 1},`) !== null,
+    15_000,
+  );
+  driver.sendKeys('Escape');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('╭─Find') === null,
+    15_000,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(`Ln ${lineIndex + 1},`) !== null,
+    15_000,
+  );
+  driver.sendKeys('Down');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(`Ln ${lineIndex + 2},`) !== null,
+    15_000,
+  );
+  driver.sendKeys('Up');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText(`Ln ${lineIndex + 1},`) !== null,
+    15_000,
+  );
+  driver.sendKeys('End');
+  await driver.awaitScreenChange(15_000);
+}
+
+async function measureChampionBurst(
+  driver: PtyTestDriver.Model,
+  burstLength: number,
+): Promise<EditingBurstMeasurement> {
+  driver.sendKeys('Control+f');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Find') !== null,
+    15_000,
+  );
+  driver.sendKeys(
+    'Backspace',
+    'Backspace',
+    'Backspace',
+    'Backspace',
+    'Backspace',
+    'Backspace',
+    'Backspace',
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('1 of 1') === null,
+    15_000,
+  );
+  driver.sendPaste('WIDEST-LINE-CHAMPION');
+  await driver.awaitGridCondition(
+    'Find resolves WIDEST-LINE-CHAMPION',
+    (snapshot) =>
+      snapshot.findText('WIDEST-LINE-CHAMPION') !== null &&
+      snapshot.findText('1 of 1') !== null,
+    60_000,
+  );
+  driver.sendKeys('Enter');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Ln 250000,') !== null,
+    15_000,
+  );
+  driver.sendKeys('Escape');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('╭─Find') === null,
+    15_000,
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Ln 250000,') !== null,
+    15_000,
+  );
+  driver.sendKeys('Down');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Ln 250001,') !== null,
+    15_000,
+  );
+  driver.sendKeys('Up');
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Ln 250000,') !== null,
+    15_000,
+  );
+  driver.sendKeys('End');
+  await driver.awaitScreenChange(15_000);
+  return measureEditingBurst(driver, '!', burstLength, 'WIDEST-LINE-CHAMPION');
+}
+
+async function measureEditingBurst(
+  driver: PtyTestDriver.Model,
+  insertedCharacter: string,
+  burstLength: number,
+  targetDescription: string,
+): Promise<EditingBurstMeasurement> {
+  driver.sendKeys(insertedCharacter);
+  await driver.awaitScreenChange(15_000);
+  const samples: number[] = [];
+  const completedFramesUntilEdit: number[] = [];
+  for (let pressNumber = 1; pressNumber <= burstLength; pressNumber++) {
+    const expectedSuffix = insertedCharacter.repeat(pressNumber + 1);
+    const measurement = await driver.sendKeysAndAwaitGridConditionByteArrival(
+      [insertedCharacter],
+      `${targetDescription} contains suffix ${expectedSuffix}`,
+      (snapshot) => snapshot.text().includes(expectedSuffix),
+      60_000,
+    );
+    samples.push(measurement.inputToFrameByteArrivalMilliseconds);
+    completedFramesUntilEdit.push(measurement.completedFramesUntilCondition);
+  }
+  return {
+    completedFramesUntilEdit,
+    inputToPaintMilliseconds: samples,
+  };
+}
+
+function middleMeasurementLineIndex(lineCount: number): number {
+  const fraction = lineCount >= 500_000 ? 0.4 : 0.5;
+  const approximateLineIndex = Math.floor(lineCount * fraction);
+  const cycleAlignedLineIndex =
+    approximateLineIndex - (approximateLineIndex % 8) + 4;
+  return Math.min(lineCount - 1, cycleAlignedLineIndex);
+}
+
+function generateScaleWorkspace(fixtureRoot: string, lineCount: number): void {
+  const generation = Bun.spawnSync(
+    [
+      process.execPath,
+      'scripts/make-scale-workspace.ts',
+      '--directory',
+      fixtureRoot,
+      '--lines',
+      String(lineCount),
+    ],
+    {
+      cwd: repositoryRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
+  if (generation.exitCode !== 0) {
+    throw new Error(
+      `Scale fixture generation failed for ${lineCount} lines: ` +
+        new TextDecoder().decode(generation.stderr),
+    );
+  }
+}
+
+function peakResidentBytes(processId: number): number {
+  const status = readFileSync(`/proc/${processId}/status`, 'utf8');
+  const peakResidentMatch = /^VmHWM:\s+(\d+)\s+kB$/m.exec(status);
+  if (peakResidentMatch?.[1] === undefined) {
+    throw new Error(`VmHWM is absent for process ${processId}`);
+  }
+  return Number(peakResidentMatch[1]) * 1024;
+}
+
+function textOccurrenceCount(text: string, marker: string): number {
+  let count = 0;
+  let searchOffset = 0;
+  while (true) {
+    const occurrenceOffset = text.indexOf(marker, searchOffset);
+    if (occurrenceOffset < 0) return count;
+    count++;
+    searchOffset = occurrenceOffset + marker.length;
+  }
+}
+
+function assertNoTypeScriptGoProcess(context: string): void {
+  const result = Bun.spawnSync(['pgrep', '-x', 'tsgo'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (result.exitCode === 1) return;
+  const processIdentifiers = new TextDecoder().decode(result.stdout).trim();
+  const processDetails =
+    processIdentifiers.length === 0
+      ? ''
+      : new TextDecoder()
+          .decode(
+            Bun.spawnSync(
+              [
+                'ps',
+                '-o',
+                'pid,ppid,tty,cmd',
+                '-p',
+                processIdentifiers.replaceAll('\n', ','),
+              ],
+              { stdout: 'pipe', stderr: 'pipe' },
+            ).stdout,
+          )
+          .trim();
+  throw new Error(
+    `Contaminated ${context}: tsgo process exists` +
+      (processIdentifiers.length > 0 ? ` (${processIdentifiers})` : '') +
+      (processDetails.length > 0 ? `; ${processDetails}` : ''),
+  );
+}
+
+function requireAcquiredQuietLock(): void {
+  const degradation = QuietLock.Class.degradation(process.env);
+  if (degradation !== null) {
+    throw new Error(
+      `Scale edit measurement quiet lock degraded: ` +
+        JSON.stringify(degradation),
+    );
+  }
+  if (
+    process.env.INVAR_QUIET_LOCK_MODE !== 'quiet-exclusive' ||
+    process.env.INVAR_QUIET_LOCK_STATE !== 'acquired'
+  ) {
+    throw new Error(
+      'Scale edit measurement requires an acquired quiet-exclusive lock',
+    );
+  }
+}
+
+function positiveIntegerFromEnvironment(
+  environmentName: string,
+  defaultValue: number,
+): number {
+  const parsedValue = Number(
+    process.env[environmentName] ?? String(defaultValue),
+  );
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new Error(`${environmentName} must be a positive integer`);
+  }
+  return parsedValue;
+}
+
+interface ScaleEditingSessionOptions {
+  readonly burstLength: number;
+  readonly fixtureRoot: string;
+  readonly forceFullRebuild: boolean;
+  readonly lineCount: number;
+  readonly sessionNumber: number;
+}
+
+interface ScaleEditingSession {
+  readonly championCompletedFramesUntilEdit: readonly number[] | null;
+  readonly championInputToPaintMilliseconds: readonly number[] | null;
+  readonly forceFullRebuild: boolean;
+  readonly launchToFirstPaintMilliseconds: number;
+  readonly middleCompletedFramesUntilEdit: readonly number[];
+  readonly middleInputToPaintMilliseconds: readonly number[];
+  readonly middleLineIndex: number;
+  readonly peakResidentBytes: number;
+  readonly processId: number;
+  readonly sessionNumber: number;
+}
+
+interface EditingBurstMeasurement {
+  readonly completedFramesUntilEdit: readonly number[];
+  readonly inputToPaintMilliseconds: readonly number[];
+}
+
+interface ScaleLineCountMeasurement {
+  readonly lineCount: number;
+  readonly sessions: readonly ScaleEditingSession[];
 }
