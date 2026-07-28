@@ -83,10 +83,11 @@ the small Agent-SDK pool, which is a second reason not to use it.
 
 ## Sending
 
-`send` splits the literal text from Enter (one call lands Enter mid-paste) and then **polls the busy
-marker to confirm the turn started**, nudging Enter once if it didn't. A bare `send-keys` of ~2000
-chars left the message in the composer as `[Pasted Content 1022 chars][Pasted Content 1020 chars]`,
-unsubmitted, while a pane-only check happily reported idle.
+`send` splits the literal text from Enter — one call lands Enter mid-paste — then nudges Enter until
+the composer is empty, and **returns 1 if it never empties**. A bare `send-keys` of ~2000 chars left
+the message in the composer as `[Pasted Content 1022 chars][Pasted Content 1020 chars]`, unsubmitted,
+while a pane-only check happily reported idle. See the ladder below for why the confirmation is
+composer-empty rather than went-busy.
 
 ## What each delivery check actually proves — the ladder
 
