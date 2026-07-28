@@ -373,18 +373,17 @@ async function driveAnimatedTerminalTools(
     );
     if (!readResultSummary)
       throw new Error('readTerminalInput result summary disappeared');
-    driver.sendMouse({
-      kind: 'press',
+    driver.sendMouseClick({
       column: readResultSummary.column,
       row: readResultSummary.row,
       button: 'left',
     });
-    driver.sendMouse({
-      kind: 'release',
-      column: readResultSummary.column,
-      row: readResultSummary.row,
-      button: 'left',
-    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'clicking the readTerminalInput result expands exactly one tool row',
+      (candidate) => candidate.agentExpandedCount === 1,
+    );
     snapshot = await driver.awaitGridCondition(
       'the expanded tool result shows the current terminal input',
       (candidate) =>
