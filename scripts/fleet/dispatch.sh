@@ -113,20 +113,39 @@ mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 cp "$brief_file" "$dispatch_directory/brief.md"
 cp "$brief_file" "$worktree_path/TASK.md"
 
+# meta.json is written BEFORE the commit so it lands WITH the brief. Written afterwards it stayed
+# untracked and never became part of the audit record — the same "a record that needs a second step
+# eventually does not happen" defect this whole script exists to remove, reintroduced inside it.
+# baseCommit is therefore the commit the worktree was CUT FROM, which is the more useful fact anyway.
+cat > "$dispatch_directory/meta.json" <<META
+{
+  "task": ${task_number},
+  "slug": "${slug}",
+  "branch": "${branch}",
+  "worktree": ".invar/worktrees/${name}",
+  "tmuxSession": "${tmux_session}",
+  "transcript": "tmp/transcripts/${name}.transcript.md",
+  "engine": "${engine}",
+  "heldFromMain": $([ "${EXPERIMENT:-0}" = "1" ] && echo true || echo false),
+  "baseCommit": "$(git rev-parse HEAD)",
+  "startedAt": "$(date -Is)"
+}
+META
+
 # ---------------------------------------------------------------------------
 # 4. COMMIT THE BRIEF BEFORE LAUNCHING. This is the step the whole script exists
 #    for. If it fails, no agent starts — an unrecorded dispatch is worse than no
 #    dispatch, because it produces work nobody can audit.
 #    SKIP_GATE: markdown only, and the gate is for landing, not for dispatching.
 # ---------------------------------------------------------------------------
-git add "$dispatch_directory/brief.md"
+git add "$dispatch_directory/brief.md" "$dispatch_directory/meta.json"
 if ! SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
       -m "dispatch #${task_number}: ${slug}
 
 Brief committed before the agent starts, so the record cannot drift from what
 was actually asked. Branch ${branch}, worktree .invar/worktrees/${name},
 session ${tmux_session}, engine ${engine}." \
-      -- "$dispatch_directory/brief.md"; then
+      -- "$dispatch_directory/brief.md" "$dispatch_directory/meta.json"; then
   echo "dispatch: BRIEF COMMIT FAILED — refusing to launch" >&2
   exit 1
 fi
@@ -145,22 +164,6 @@ tmux new-session -d -s "$tmux_session" -c "$worktree_path" \
   "export PATH=\$HOME/.bun/bin:\$PATH; ${agent_command}; echo \"CODEX_EXIT=\$?\" | tee -a '${transcript_path}'"
 tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
 
-# ---------------------------------------------------------------------------
-# 6. Record what was launched, so reconciliation reads facts rather than guesses.
-# ---------------------------------------------------------------------------
-cat > "$dispatch_directory/meta.json" <<META
-{
-  "task": ${task_number},
-  "slug": "${slug}",
-  "branch": "${branch}",
-  "worktree": ".invar/worktrees/${name}",
-  "tmuxSession": "${tmux_session}",
-  "transcript": "${transcript_path}",
-  "engine": "${engine}",
-  "baseCommit": "$(git rev-parse HEAD)",
-  "startedAt": "$(date -Is)"
-}
-META
 
 echo
 echo "dispatch: LAUNCHED #${task_number} ${slug}"
