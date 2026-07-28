@@ -65,11 +65,26 @@ class $QuickOpenRenderer {
     if (openingWorkspace) {
       return ['  Type an existing folder path', '  Enter opens · Esc cancels'];
     }
-    return [
-      quickOpen.query.value
-        ? '  (no matching files)'
-        : '  (type to filter project files)',
-    ];
+    // invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
+    if (quickOpen.fileEnumerationState.value === 'loading') {
+      return ['  (loading project files)'];
+    }
+    if (quickOpen.fileEnumerationState.value === 'failed') {
+      return [
+        `  ${quickOpen.fileEnumerationMessage.value}`,
+        '  Check ripgrep, Git, or folder permissions',
+      ];
+    }
+    const emptyResultMessage = quickOpen.query.value
+      ? '  (no matching files)'
+      : '  (no project files)';
+    if (quickOpen.fileEnumerationState.value === 'degraded') {
+      return [
+        `  ${quickOpen.fileEnumerationMessage.value}`,
+        emptyResultMessage,
+      ];
+    }
+    return [emptyResultMessage];
   }
 
   public static render(context: QuickOpenRenderContext): QuickOpenRenderResult {

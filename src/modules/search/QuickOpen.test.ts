@@ -46,6 +46,116 @@ describe('QuickOpen', () => {
       { path: 'src/show-a-value-everywhere.ts', score: 0 },
     ]);
     expect(quickOpen.selectedIndex.value).toBe(0);
+    expect(quickOpen.fileEnumerationState.value).toBe('complete');
+    expect(quickOpen.fileEnumerationMessage.value).toBe('');
+  });
+
+  test('failed external enumerators fall back to a bounded directory walk and publish degradation', async () => {
+    const processArguments: string[][] = [];
+    const quickOpen = new QuickOpen.Class({
+      runProcess: async (argumentVector) => {
+        processArguments.push(argumentVector);
+        return {
+          code: argumentVector[0] === 'rg' ? -1 : 128,
+          stdout: '',
+          stderr:
+            argumentVector[0] === 'rg'
+              ? 'Executable not found'
+              : 'fatal: not a git repository',
+          ok: false,
+        };
+      },
+      listDirectoryNames: (directory) => {
+        if (directory === '/project') {
+          return ['src', 'readme.md', 'broken-entry'];
+        }
+        if (directory === '/project/src') return ['main.ts'];
+        return [];
+      },
+      isDirectory: (path) => {
+        if (path === '/project/broken-entry') {
+          throw new Error('ELOOP: broken entry');
+        }
+        return path === '/project/src';
+      },
+    });
+
+    await quickOpen.show('/project');
+
+    expect(processArguments).toEqual([
+      ['rg', '--files'],
+      ['git', 'ls-files', '--cached', '--others', '--exclude-standard'],
+    ]);
+    expect(quickOpen.matches.value.map((match) => match.path)).toEqual([
+      'readme.md',
+      'src/main.ts',
+    ]);
+    expect(quickOpen.fileEnumerationState.value).toBe('degraded');
+    expect(quickOpen.fileEnumerationMessage.value).toBe('Bounded folder scan');
+  });
+
+  test('an empty ripgrep result is complete rather than a failed enumeration', async () => {
+    const processArguments: string[][] = [];
+    const quickOpen = new QuickOpen.Class({
+      runProcess: async (argumentVector) => {
+        processArguments.push(argumentVector);
+        return { code: 1, stdout: '', stderr: '', ok: false };
+      },
+    });
+
+    await quickOpen.show('/empty-project');
+
+    expect(processArguments).toEqual([['rg', '--files']]);
+    expect(quickOpen.matches.value).toEqual([]);
+    expect(quickOpen.fileEnumerationState.value).toBe('complete');
+    expect(quickOpen.fileEnumerationMessage.value).toBe('');
+  });
+
+  test('every failed enumeration strategy publishes failure instead of empty', async () => {
+    const quickOpen = new QuickOpen.Class({
+      runProcess: async () => ({
+        code: -1,
+        stdout: '',
+        stderr: 'unavailable',
+        ok: false,
+      }),
+      listDirectoryNames: () => {
+        throw new Error('EACCES: project root');
+      },
+    });
+
+    await quickOpen.show('/unreadable-project');
+
+    expect(quickOpen.matches.value).toEqual([]);
+    expect(quickOpen.fileEnumerationState.value).toBe('failed');
+    expect(quickOpen.fileEnumerationMessage.value).toBe(
+      'Project files unavailable',
+    );
+  });
+
+  test('the directory-walk fallback stops at its total entry ceiling', async () => {
+    const entryNames = Array.from(
+      { length: 2500 },
+      (_unused, entryIndex) => `file-${entryIndex}.txt`,
+    );
+    const quickOpen = new QuickOpen.Class({
+      runProcess: async () => ({
+        code: -1,
+        stdout: '',
+        stderr: 'unavailable',
+        ok: false,
+      }),
+      listDirectoryNames: () => entryNames,
+      isDirectory: () => false,
+    });
+
+    await quickOpen.show('/large-project');
+
+    expect(quickOpen.matches.value.length).toBe(2000);
+    expect(quickOpen.fileEnumerationState.value).toBe('degraded');
+    expect(quickOpen.fileEnumerationMessage.value).toBe(
+      'Bounded folder scan reached 2000 entries',
+    );
   });
 
   test('setQuery filters subsequences and ranks tighter matches first', async () => {
@@ -269,6 +379,8 @@ describe('QuickOpen', () => {
     expect(quickOpen.query.value).toBe('');
     expect(quickOpen.matches.value).toEqual([]);
     expect(quickOpen.selectedIndex.value).toBe(-1);
+    expect(quickOpen.fileEnumerationState.value).toBe('idle');
+    expect(quickOpen.fileEnumerationMessage.value).toBe('');
     expect(quickOpen.activate()).toBeNull();
   });
 });

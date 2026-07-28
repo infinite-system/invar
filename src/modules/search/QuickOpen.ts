@@ -5,12 +5,16 @@ import { CommandScoring } from '../commands/CommandScoring';
 import { TextInputModel, type TextInputAction } from '../editor/TextInputModel';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
-import { Processes } from '../system/Processes';
+import { Processes, type RunResult } from '../system/Processes';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
 class $QuickOpen {
   /** Upper bound on entries the open-project navigator classifies per listing. */
   protected static get SIBLING_FOLDER_ENTRY_LIMIT(): number {
+    return 2000;
+  }
+
+  protected static get PROJECT_FILE_ENTRY_LIMIT(): number {
     return 2000;
   }
 
@@ -40,6 +44,14 @@ class $QuickOpen {
   }
 
   get errorMessage() {
+    return ref('');
+  }
+
+  get fileEnumerationState() {
+    return ref<ProjectFileEnumerationState>('idle');
+  }
+
+  get fileEnumerationMessage() {
     return ref('');
   }
 
@@ -85,17 +97,23 @@ class $QuickOpen {
     this.mode.value = 'files';
     this.queryInput.clear();
     this.errorMessage.value = '';
+    this.fileEnumerationState.value = 'loading';
+    this.fileEnumerationMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];
     this.selectedIndex.value = -1;
     this.hoveredIndex.value = -1;
     this.workspacePathOpenable.value = true;
 
-    let enumeratedProjectFiles: readonly string[] = [];
+    let enumerationResult: ProjectFileEnumerationResult;
     try {
-      enumeratedProjectFiles = await this.enumerateProjectFiles(projectRoot);
+      enumerationResult = await this.enumerateProjectFiles(projectRoot);
     } catch {
-      enumeratedProjectFiles = [];
+      enumerationResult = {
+        files: [],
+        state: 'failed',
+        message: 'Project file scan failed',
+      };
     }
 
     // invariant: An async result can outlive the state it described (project.invariants.md)
@@ -107,7 +125,9 @@ class $QuickOpen {
       return;
     }
 
-    this.projectFiles = enumeratedProjectFiles;
+    this.projectFiles = enumerationResult.files;
+    this.fileEnumerationState.value = enumerationResult.state;
+    this.fileEnumerationMessage.value = enumerationResult.message;
     this.refilter();
   }
 
@@ -158,6 +178,8 @@ class $QuickOpen {
     this.mode.value = 'workspacePath';
     this.queryInput.clear();
     this.errorMessage.value = '';
+    this.fileEnumerationState.value = 'idle';
+    this.fileEnumerationMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];
     this.selectedIndex.value = -1;
@@ -247,6 +269,8 @@ class $QuickOpen {
     this.mode.value = 'files';
     this.queryInput.clear();
     this.errorMessage.value = '';
+    this.fileEnumerationState.value = 'idle';
+    this.fileEnumerationMessage.value = '';
     this.projectFiles = [];
     this.matches.value = [];
     this.selectedIndex.value = -1;
@@ -257,32 +281,151 @@ class $QuickOpen {
 
   protected async enumerateProjectFiles(
     projectRoot: string,
-  ): Promise<readonly string[]> {
+  ): Promise<ProjectFileEnumerationResult> {
+    // invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
     if (this.options.enumerateProjectFiles) {
-      return this.options.enumerateProjectFiles(projectRoot);
+      return {
+        files: await this.options.enumerateProjectFiles(projectRoot),
+        state: 'complete',
+        message: '',
+      };
     }
 
-    const ripgrepResult = await Processes.Class.run(
-      ['rg', '--files'],
-      projectRoot,
-    );
-    if (ripgrepResult.ok) {
-      return ripgrepResult.stdout
-        .split('\n')
-        .filter((filePath) => filePath.length > 0);
+    const ripgrepResult = await this.runProcess(['rg', '--files'], projectRoot);
+    if (
+      ripgrepResult.ok ||
+      (ripgrepResult.code === 1 && ripgrepResult.stderr.length === 0)
+    ) {
+      return {
+        files: this.pathsFromProcessOutput(ripgrepResult.stdout),
+        state: 'complete',
+        message: '',
+      };
     }
     // Fallback when ripgrep is not installed: git's tracked + untracked-non-ignored files (the same
     // .gitignore-respecting set rg --files gives). Keeps go-to-file working on a machine without rg.
-    const gitResult = await Processes.Class.run(
+    const gitResult = await this.runProcess(
       ['git', 'ls-files', '--cached', '--others', '--exclude-standard'],
       projectRoot,
     );
     if (gitResult.ok) {
-      return gitResult.stdout
-        .split('\n')
-        .filter((filePath) => filePath.length > 0);
+      return {
+        files: this.pathsFromProcessOutput(gitResult.stdout),
+        state: 'complete',
+        message: '',
+      };
     }
-    return [];
+
+    const directoryWalkResult =
+      this.enumerateProjectFilesByDirectoryWalk(projectRoot);
+    if (directoryWalkResult.ok) {
+      const projectFileEntryLimit = (this.constructor as typeof $QuickOpen)
+        .PROJECT_FILE_ENTRY_LIMIT;
+      return {
+        files: directoryWalkResult.files,
+        state: 'degraded',
+        message: directoryWalkResult.entryLimitReached
+          ? `Bounded folder scan reached ${projectFileEntryLimit} entries`
+          : 'Bounded folder scan',
+      };
+    }
+    return {
+      files: [],
+      state: 'failed',
+      message: 'Project files unavailable',
+    };
+  }
+
+  protected runProcess(
+    argumentVector: string[],
+    workingDirectory: string,
+  ): Promise<RunResult> {
+    if (this.options.runProcess) {
+      return this.options.runProcess(argumentVector, workingDirectory);
+    }
+    return Processes.Class.run(argumentVector, workingDirectory);
+  }
+
+  protected pathsFromProcessOutput(output: string): readonly string[] {
+    return output.split('\n').filter((filePath) => filePath.length > 0);
+  }
+
+  protected enumerateProjectFilesByDirectoryWalk(
+    projectRoot: string,
+  ): ProjectFileWalkResult {
+    const pendingRelativeDirectories = [''];
+    const projectFiles: string[] = [];
+    const projectFileEntryLimit = (this.constructor as typeof $QuickOpen)
+      .PROJECT_FILE_ENTRY_LIMIT;
+    let nextDirectoryIndex = 0;
+    let inspectedEntryCount = 0;
+    let entryLimitReached = false;
+
+    while (nextDirectoryIndex < pendingRelativeDirectories.length) {
+      const relativeDirectory =
+        pendingRelativeDirectories[nextDirectoryIndex++] ?? '';
+      const directoryPath =
+        relativeDirectory.length === 0
+          ? projectRoot
+          : Files.Class.join(projectRoot, relativeDirectory);
+      const listingResult = this.listDirectoryNamesResult(directoryPath);
+      if (!listingResult.ok) {
+        if (relativeDirectory.length === 0) {
+          return { ok: false, files: [], entryLimitReached: false };
+        }
+        continue;
+      }
+
+      const entryNames = [...listingResult.entryNames].sort();
+      for (const entryName of entryNames) {
+        if (inspectedEntryCount >= projectFileEntryLimit) {
+          entryLimitReached = true;
+          break;
+        }
+        inspectedEntryCount++;
+        if (entryName === '.git') continue;
+
+        const relativeEntryPath =
+          relativeDirectory.length === 0
+            ? entryName
+            : Files.Class.join(relativeDirectory, entryName);
+        const entryPath = Files.Class.join(projectRoot, relativeEntryPath);
+        let entryIsDirectory: boolean;
+        try {
+          entryIsDirectory = this.isDirectory(entryPath);
+        } catch {
+          continue;
+        }
+        if (entryIsDirectory) {
+          pendingRelativeDirectories.push(relativeEntryPath);
+        } else {
+          projectFiles.push(relativeEntryPath);
+        }
+      }
+      if (entryLimitReached) break;
+    }
+
+    return { ok: true, files: projectFiles, entryLimitReached };
+  }
+
+  protected listDirectoryNamesResult(
+    directory: string,
+  ): DirectoryNameListingResult {
+    if (this.options.listDirectoryNames) {
+      try {
+        return {
+          ok: true,
+          entryNames: this.options.listDirectoryNames(directory),
+        };
+      } catch {
+        return { ok: false, entryNames: [] };
+      }
+    }
+    const listingResult = Files.Class.listNamesResult(directory);
+    return {
+      ok: listingResult.ok,
+      entryNames: listingResult.entryNames,
+    };
   }
 
   /**
@@ -448,6 +591,10 @@ export interface QuickOpenMatch {
 export type ProjectFileEnumerator = (
   projectRoot: string,
 ) => Promise<readonly string[]>;
+export type ProcessRunner = (
+  argumentVector: string[],
+  workingDirectory: string,
+) => Promise<RunResult>;
 export type SiblingFolderEnumerator = (
   parentDirectory: string,
 ) => readonly string[];
@@ -456,9 +603,29 @@ export type DirectoryPredicate = (path: string) => boolean;
 
 export interface QuickOpenOptions {
   enumerateProjectFiles?: ProjectFileEnumerator;
+  runProcess?: ProcessRunner;
   enumerateSiblingFolders?: SiblingFolderEnumerator;
   listDirectoryNames?: DirectoryNameLister;
   isDirectory?: DirectoryPredicate;
 }
 
 export type QuickOpenMode = 'files' | 'workspacePath';
+export type ProjectFileEnumerationState =
+  'idle' | 'loading' | 'complete' | 'degraded' | 'failed';
+
+export interface ProjectFileEnumerationResult {
+  files: readonly string[];
+  state: Exclude<ProjectFileEnumerationState, 'idle' | 'loading'>;
+  message: string;
+}
+
+export interface ProjectFileWalkResult {
+  ok: boolean;
+  files: readonly string[];
+  entryLimitReached: boolean;
+}
+
+export interface DirectoryNameListingResult {
+  ok: boolean;
+  entryNames: readonly string[];
+}
