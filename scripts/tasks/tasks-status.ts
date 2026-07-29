@@ -993,6 +993,10 @@ function gradientWord(word: string, shift: number): string {
     .join('');
 }
 
+// Folders whose worktree has shown at least one changed line this session —
+// the sticky exploring→building transition.
+const firstEditSeen = new Set<string>();
+
 // The round stamp from a task's meta.json, written by round-brief.sh at the
 // filing act. Absent (or unreadable) for round-1 tasks and pre-round history.
 function roundStamp(
@@ -1059,12 +1063,22 @@ function live(
       breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
     const roundSuffix =
       round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
+    // EXPLORING vs BUILDING. Until the worktree diff shows one changed line,
+    // the builder is READING — records, code, the brief. The first ±line flips
+    // the word to building, stickily (a later revert to ±0 does not demote it;
+    // firstEditSeen remembers per watch session).
+    const delta = lineDeltaCache.get(record.folderName) ?? null;
+    const hasEdits = delta !== null && delta.added + delta.removed > 0;
+    if (hasEdits) firstEditSeen.add(record.folderName);
+    const phaseWord = firstEditSeen.has(record.folderName)
+      ? 'building'
+      : 'exploring';
     const statusBadge = ready
       ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
       : `${buildingGlyph} ${
           spinnerFrame === undefined
-            ? paint('38;5;44', 'building')
-            : gradientWord('building', spinnerFrame)
+            ? paint('38;5;44', phaseWord)
+            : gradientWord(phaseWord, spinnerFrame)
         }${roundSuffix}`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
