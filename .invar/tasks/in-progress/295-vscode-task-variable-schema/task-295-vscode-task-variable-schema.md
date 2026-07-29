@@ -1,6 +1,6 @@
 # 295 — .vscode tasks: support the VSCode variable schema (env:, predefined), keep fail-before-shell
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

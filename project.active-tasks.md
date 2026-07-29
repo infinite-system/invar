@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #295 [vscode-task-variable-schema](.invar/tasks/in-progress/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md)  [building]
+  `tmux attach -t invar/295-vscode-task-variable-schema`
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/in-progress/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md)  [building]
   `tmux attach -t invar/294-lsp-structure-dead-in-secondary-workspace`
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/in-progress/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)  [building]

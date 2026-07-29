@@ -1,0 +1,15 @@
+{
+  "task": 295,
+  "slug": "vscode-task-variable-schema",
+  "branch": "fleet/295-vscode-task-variable-schema",
+  "worktree": ".invar/worktrees/295-vscode-task-variable-schema",
+  "tmuxSession": "invar/295-vscode-task-variable-schema",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-295-vscode-task-variable-schema.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "e11321c2fa82570b13a60b8d0c28f0ead32b354e",
+  "startedAt": "2026-07-29T16:40:28-04:00"
+}
