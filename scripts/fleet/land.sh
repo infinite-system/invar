@@ -1,38 +1,41 @@
 #!/usr/bin/env bash
-# Land a finished dispatch: file its report, merge, park the branch, reclaim the
-# worktree, and close its tmux session.
-#
-# WHY THE ORDER IS FIXED
-#
-# The report is committed BEFORE the merge, for the same reason dispatch.sh
-# commits the brief before launching: a record that depends on a later step
-# eventually does not happen. Five bycatch findings died in /tmp on 2026-07-27
-# because converting them was a separate action from merging.
-#
-# It also PRINTS THE BYCATCH and refuses to proceed silently past it. AGENTS.md
-# makes reporting the builder's duty and names the conductor as the one who
-# triages; the conductor side had no mechanism at all, and that asymmetry lost
-# five real defects in one night.
+# land.sh — lifecycle step 5, one command. Merge first is NOT required: this
+# script merges, then moves the record, in the guarded order below.
 #
 # Usage:
-#   scripts/fleet/land.sh <task-number> <slug> <report-file> <merge-message-file>
+#   scripts/fleet/land.sh <task-number> <slug> <merge-message-file> <summary...>
 #
-# Landing is DELIBERATE: this script does not run the gate and does not push.
-# The conductor gates before calling this, and pushing is a separate decision.
+# WHY ONE COMMAND
+#
+# Step 5 was six hand-typed commands. The hand-typed State edit missed twice on
+# 2026-07-28 (a sed matching the wrong literal left State: IN-PROGRESS inside
+# completed/, silently — the tasks:done lens caught one, drift signals the
+# other). This script replaces the FIRST State: line whatever it says, verifies
+# it took, and records timing into meta.json as a byproduct:
+#   startedAt (from dispatch) + landedAt + durationMinutes + mergeCommit.
+#
+# GUARDS KEPT FROM THE PREVIOUS GENERATION (each bought by an incident):
+#   - refuse off main (a landing merged into a feature branch on 2026-07-28)
+#   - experiment branches held without ADOPT_EXPERIMENT=1 (provenance decides)
+#   - refuse a mid-turn builder; idle needs the READY report too
+#   - refuse untracked source in the worktree (a merge will not carry it)
+#   - surface bycatch and HOLD without BYCATCH_TRIAGED=1
+#
+# Landing is DELIBERATE: no gate here (gate the combined tree BEFORE), no push.
 
 set -euo pipefail
 
 if [ "$#" -lt 4 ]; then
-  echo "usage: $0 <task-number> <slug> <report-file> <merge-message-file>" >&2
+  echo "usage: $0 <task-number> <slug> <merge-message-file> <summary...>" >&2
   exit 2
 fi
 
 task_number="$1"
 slug="$2"
-report_file="$3"
-merge_message_file="$4"
+merge_message_file="$3"
+shift 3
+summary="$*"
 
-[ -f "$report_file" ] || { echo "land: report not found: $report_file" >&2; exit 2; }
 [ -f "$merge_message_file" ] || { echo "land: merge message not found: $merge_message_file" >&2; exit 2; }
 
 repository_root="$(git rev-parse --show-toplevel)"
@@ -41,148 +44,120 @@ cd "$repository_root"
 name="${task_number}-${slug}"
 branch="fleet/${name}"
 worktree_path="${repository_root}/.invar/worktrees/${name}"
-dispatch_directory="${repository_root}/agent-dispatches/${name}"
+task_directory=".invar/tasks/in-progress/${name}"
 tmux_session="invar/${name}"
 
-[ -d "$dispatch_directory" ] || { echo "land: no dispatch record for $name" >&2; exit 1; }
+[ -d "$task_directory" ] || { echo "land: no in-progress record at ${task_directory}" >&2; exit 1; }
 
-# An EXPERIMENT branch is held from main pending proof. Refuse by default, so "provenance decides
-# main, not quality" stops being a rule the conductor recalls and becomes one the tooling enforces.
-# A change can be correct, measured and elegant and still not belong in main because nobody asked for
-# the problem to be solved — and the acceptance test is generativity: does it make neighbouring
-# problems easier and neighbouring invariant records SHORTER, or does it demand exception rules?
+# Experiment branches are HELD FROM MAIN pending the user's adoption call.
 if git show-ref --verify --quiet "refs/heads/experiment/${name}"; then
   branch="experiment/${name}"
   if [ "${ADOPT_EXPERIMENT:-0}" != "1" ]; then
-    echo "land: ${branch} is HELD FROM MAIN." >&2
-    echo "land: it lands only when its report shows an invariant unlock — downstream problems got" >&2
-    echo "      EASIER and no exception rule was needed. Re-run with ADOPT_EXPERIMENT=1 to accept." >&2
+    echo "land: ${branch} is HELD FROM MAIN. Re-run with ADOPT_EXPERIMENT=1 to accept." >&2
     exit 4
   fi
-  echo "land: ADOPT_EXPERIMENT=1 — accepting an experiment branch into main."
 fi
-git show-ref --verify --quiet "refs/heads/${branch}" || { echo "land: no branch $branch" >&2; exit 1; }
+git show-ref --verify --quiet "refs/heads/${branch}" || { echo "land: no branch ${branch}" >&2; exit 1; }
 
-# ---------------------------------------------------------------------------
-# 1. REFUSE if the builder is still running. A live agent mid-write would lose
-#    work to a merge, and "looks quiet" is not idle.
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# 0. REFUSE unless the checkout is on main. `git merge` lands into whatever is CHECKED
-#    OUT, so a conductor whose checkout has drifted onto a feature branch silently
-#    merges a finished task into that branch instead of main — main stays behind while
-#    the record says the task landed. That happened on 2026-07-28: #196 merged into
-#    fix/197-lsp-request-guard, leaving main without it, minutes after the user warned
-#    that the checkout was not on main. Recoverable only because main was an ancestor.
-# ---------------------------------------------------------------------------
-current_branch="$(git -C "$repository_root" branch --show-current)"
-if [ "$current_branch" != "main" ]; then
-  echo "land: checkout is on '${current_branch}', not main — refusing." >&2
-  echo "      git merge lands into the CHECKED-OUT branch; landing here would leave main behind." >&2
-  echo "      Switch to main (or pass LAND_ON_BRANCH=1 if you truly mean to land elsewhere)." >&2
-  [ "${LAND_ON_BRANCH:-0}" = "1" ] || exit 1
-  echo "land: LAND_ON_BRANCH=1 acknowledged; landing onto '${current_branch}' deliberately." >&2
+# Refuse off main — git merge lands into whatever is checked out.
+current_branch="$(git branch --show-current)"
+if [ "$current_branch" != "main" ] && [ "${LAND_ON_BRANCH:-0}" != "1" ]; then
+  echo "land: checkout is on '${current_branch}', not main — refusing (LAND_ON_BRANCH=1 to override)." >&2
+  exit 1
 fi
 
-# Builders are now launched INTERACTIVELY (see .claude/skills/agent-tmux/SKILL.md), and an
-# interactive agent NEVER EXITS when it finishes — it goes idle. So "a codex process has this
-# cwd" is no longer the same question as "it might still be writing"; as a liveness test it
-# would refuse every landing forever. The guard's INTENT is unchanged: never merge a tree the
-# builder may still be writing. The accurate condition is that the agent is not mid-turn.
-#
-# `state` requires the pane marker AND codex's append-only rollout to agree on idle before it
-# says idle, and returns 'idle-unconfirmed' when the rollout cannot be identified — which is
-# treated here as NOT safe, because an unverifiable answer must never license a merge.
+# Refuse a mid-turn builder; an idle builder still needs its delivered report.
+report_file="${task_directory}/report-${name}.md"
 agent_tmux="${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh"
-for pid in $(pgrep -x codex 2>/dev/null || true); do
-  if [ "$(readlink "/proc/${pid}/cwd" 2>/dev/null)" = "$worktree_path" ]; then
-    builder_state="$(AGENT_TMUX_PREFIX="invar/" bash "$agent_tmux" state "$name" 6 2>/dev/null)"
-    if [ "$builder_state" != "idle" ]; then
-      echo "land: builder is MID-TURN in $worktree_path (pid $pid, state=${builder_state:-unknown}) — refusing" >&2
-      exit 1
-    fi
-    # Idle is necessary but not sufficient: an idle agent that never wrote its report may be
-    # waiting on a QUESTION rather than finished. Require the artifact too.
-    if [ ! -f "/tmp/${name}-READY.md" ]; then
-      echo "land: builder is idle but wrote no /tmp/${name}-READY.md — it may be ASKING, not done — refusing" >&2
-      exit 1
-    fi
-    echo "land: builder idle with a READY report (pid $pid) — interactive session left running for inspection."
+if tmux has-session -t "$tmux_session" 2>/dev/null; then
+  builder_state="$(AGENT_TMUX_PREFIX="invar/" bash "$agent_tmux" state "$name" 6 2>/dev/null || echo unknown)"
+  if [ "$builder_state" != "idle" ]; then
+    echo "land: builder state is '${builder_state}', not idle — refusing." >&2
+    exit 1
   fi
-done
+fi
+if [ ! -f "$report_file" ]; then
+  ls "$task_directory"/report-* >/dev/null 2>&1 || {
+    echo "land: no report in ${task_directory} — the builder may be ASKING, not done. Refusing." >&2
+    exit 1
+  }
+fi
 
-# ---------------------------------------------------------------------------
-# 2. REFUSE on untracked source. `git merge` does not carry untracked files, so a
-#    file the builder created but never added would silently not land — and a SKIP
-#    is not a PASS.
-# ---------------------------------------------------------------------------
+# Refuse untracked source in the worktree — a merge will not carry it.
 if [ -d "$worktree_path" ]; then
   untracked_source="$(git -C "$worktree_path" status --porcelain | awk '/^\?\? /{print substr($0,4)}' | grep -E '^(src|scripts)/' || true)"
   if [ -n "$untracked_source" ]; then
-    echo "land: worktree holds UNTRACKED SOURCE that a merge will not carry:" >&2
+    echo "land: worktree holds UNTRACKED SOURCE a merge will not carry:" >&2
     echo "$untracked_source" >&2
-    echo "land: add and commit it in the worktree first, or decide it is scratch." >&2
     exit 1
   fi
 fi
 
-# ---------------------------------------------------------------------------
-# 3. File the report, and SURFACE THE BYCATCH before anything is merged.
-# ---------------------------------------------------------------------------
-report_target="$dispatch_directory/report.md"
-round=1
-while [ -e "$report_target" ]; do
-  round=$((round + 1))
-  report_target="$dispatch_directory/report-round${round}.md"
-done
-cp "$report_file" "$report_target"
-
-echo
-echo "==================== BYCATCH — convert BEFORE merging ===================="
-if awk '/^## *[Bb]ycatch/{found=1} found' "$report_file" | grep -qiE '^[-*] |^[0-9]+\.'; then
-  awk '/^## *[Bb]ycatch/{found=1} found' "$report_file"
-  echo
-  echo "land: the above is the conductor's duty per AGENTS.md — create a task for"
-  echo "      each item, carrying the builder's exact evidence, and tell the user"
-  echo "      about anything user-visible. Re-run with BYCATCH_TRIAGED=1 to land."
-  if [ "${BYCATCH_TRIAGED:-0}" != "1" ]; then
-    echo "land: HOLDING. Nothing merged, report filed at ${report_target#$repository_root/}." >&2
-    exit 3
+# Surface bycatch and HOLD until it is triaged into tasks.
+bycatch_source="$(ls "$task_directory"/report-* 2>/dev/null | tail -1)"
+if [ -n "$bycatch_source" ] && awk '/^## *[Bb]ycatch/{found=1} found' "$bycatch_source" | grep -qiE '^[-*] |^[0-9]+\.'; then
+  if ! awk '/^## *[Bb]ycatch/{found=1} found' "$bycatch_source" | grep -qiE 'none observed|no out-of-scope'; then
+    if [ "${BYCATCH_TRIAGED:-0}" != "1" ]; then
+      echo "land: the report carries BYCATCH. Convert each item to a task, then re-run with BYCATCH_TRIAGED=1." >&2
+      awk '/^## *[Bb]ycatch/{found=1} found' "$bycatch_source" | head -20 >&2
+      exit 3
+    fi
   fi
-  echo "land: BYCATCH_TRIAGED=1 acknowledged; proceeding."
-else
-  echo "(none reported)"
 fi
-echo "=========================================================================="
-echo
 
-git add "$report_target"
-SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
-  -m "report #${task_number}: ${slug}
+# ---- The landing itself -----------------------------------------------------
 
-Builder's report, verbatim, filed beside its brief. Round ${round}." \
-  -- "$report_target"
-
-# ---------------------------------------------------------------------------
-# 4. Merge, park the branch, reclaim the worktree, close the session.
-#    Branches are NEVER deleted — parked with finished/ so `git show` can
-#    reconstruct any landed change after the worktree is gone.
-# ---------------------------------------------------------------------------
 git merge --no-ff "$branch" -F "$merge_message_file" -q
-git tag -f "finished/${branch#fleet/}" "$branch" >/dev/null 2>&1 || true
+merge_commit="$(git rev-parse --short HEAD)"
 
-if [ -d "$worktree_path" ]; then
-  git -C "$worktree_path" checkout -- . 2>/dev/null || true
-  git -C "$worktree_path" status --porcelain | awk '/^\?\? /{print substr($0,4)}' | while read -r untracked; do
-    rm -rf "$worktree_path/$untracked"
-  done
-  git worktree remove "$worktree_path" 2>/dev/null \
-    || echo "land: worktree not removed (still dirty) — left in place deliberately, never --force"
+git mv "$task_directory" ".invar/tasks/completed/${name}"
+completed_directory=".invar/tasks/completed/${name}"
+
+task_file="${completed_directory}/task-${name}.md"
+sed -i "0,/^State: .*/s//State: COMPLETED — ${merge_commit} — $(printf '%s' "$summary" | sed 's/[&/\\]/\\&/g')/" "$task_file"
+grep -q "^State: COMPLETED — ${merge_commit}" "$task_file" \
+  || { echo "land: FAIL — the State line did not take" >&2; exit 1; }
+
+# Timing into meta.json, mechanically. Refuse a double landing.
+meta_file="${completed_directory}/meta.json"
+duration_minutes="unknown"
+if [ -f "$meta_file" ]; then
+  grep -q '"landedAt"' "$meta_file" && { echo "land: FAIL — meta.json already has landedAt" >&2; exit 1; }
+  landed_at="$(date -Is)" merge_commit_env="$merge_commit" python3 - "$meta_file" <<'PY'
+import json, os, sys
+from datetime import datetime
+path = sys.argv[1]
+data = json.load(open(path))
+landed_at = os.environ['landed_at']
+data['landedAt'] = landed_at
+started_at = data.get('startedAt')
+if started_at:
+    try:
+        delta = datetime.fromisoformat(landed_at) - datetime.fromisoformat(started_at)
+        data['durationMinutes'] = int(delta.total_seconds() // 60)
+    except ValueError:
+        data['durationMinutes'] = None
+data['mergeCommit'] = os.environ['merge_commit_env']
+open(path, 'w').write(json.dumps(data, indent=2) + '\n')
+PY
+  duration_minutes="$(grep -o '"durationMinutes": *[0-9]*' "$meta_file" | grep -o '[0-9]*' || echo unknown)"
+  grep -q '"landedAt"' "$meta_file" || { echo "land: FAIL — landedAt did not take" >&2; exit 1; }
+else
+  echo "land: WARNING — no meta.json; timing not recorded" >&2
 fi
 
-tmux kill-session -t "$tmux_session" 2>/dev/null || true
+git tag "finished/${branch#*/}" "$branch" 2>/dev/null || echo "land: tag finished/${branch#*/} already exists"
 
-echo "land: MERGED #${task_number} ${slug} -> $(git rev-parse --short HEAD)"
-echo "  parked: finished/${branch#fleet/}"
-echo "  record: agent-dispatches/${name}/"
-echo "  NOT pushed and NOT gated — both are the conductor's separate decisions."
+bash scripts/fleet/archive-session.sh "$name" \
+  || echo "land: WARNING — session archive failed; run archive-session.sh by hand" >&2
+
+PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/tasks-status.ts write-active >/dev/null 2>&1 \
+  || echo "land: WARNING — write-active failed" >&2
+
+git add -A -- .invar/tasks project.active-tasks.md project.tasks-completed.md
+SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
+  -m "tasks: #${task_number} COMPLETED (${merge_commit}); landed via land.sh, ${duration_minutes}m" \
+  -- .invar/tasks project.active-tasks.md project.tasks-completed.md
+
+echo "land: OK #${task_number} ${slug} -> ${merge_commit} (${duration_minutes}m dispatch-to-landing)"
+echo "  worktree and tmux session left in place — remove/close deliberately, never as a side effect."

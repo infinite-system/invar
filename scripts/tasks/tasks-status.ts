@@ -566,6 +566,58 @@ function selfTest(): number {
 // Command-line lenses, one per state the user asks about. `live` answers "what
 // is running and how do I join it"; `active` answers "what is waiting, in what
 // order"; `completed` answers "what landed, with which commit".
+// Durations are computed at VIEW time from meta.json's startedAt (written at
+// dispatch) — never stored, so the generated files stay byte-deterministic.
+function startedAtMilliseconds(
+  tasksRoot: string,
+  record: TaskRecord,
+): number | null {
+  const metaPath = join(
+    tasksRoot,
+    record.directoryState,
+    record.folderName,
+    'meta.json',
+  );
+  if (!existsSync(metaPath)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(metaPath, 'utf8')) as {
+      startedAt?: string;
+    };
+    if (typeof parsed.startedAt !== 'string') return null;
+    const milliseconds = Date.parse(parsed.startedAt);
+    return Number.isNaN(milliseconds) ? null : milliseconds;
+  } catch {
+    return null;
+  }
+}
+
+function formatDuration(milliseconds: number): string {
+  const totalMinutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+// End time for a completed task: the last commit that touched its folder —
+// the landing's lifecycle commit, which happens in the same action as the
+// merge. One git call per completed task, so this runs only in the lens.
+function landedAtMilliseconds(record: TaskRecord): number | null {
+  const gitResult = Bun.spawnSync(
+    [
+      'git',
+      'log',
+      '-1',
+      '--format=%ct',
+      '--',
+      `.invar/tasks/completed/${record.folderName}`,
+    ],
+    { cwd: join(import.meta.dir, '..', '..') },
+  );
+  const seconds = Number.parseInt(gitResult.stdout.toString().trim(), 10);
+  return Number.isNaN(seconds) ? null : seconds * 1000;
+}
+
 function live(tasksRoot: string): number {
   const records = readTaskRecords(tasksRoot)
     .filter((record) => record.directoryState === 'in-progress')
@@ -580,8 +632,11 @@ function live(tasksRoot: string): number {
       record.reportCount > 0
         ? 'READY delivered — awaiting landing'
         : 'building';
+    const startedAt = startedAtMilliseconds(tasksRoot, record);
+    const runningFor =
+      startedAt === null ? '' : `  ${formatDuration(Date.now() - startedAt)}`;
     console.log(
-      `  #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}  [${builderStatus}]`,
+      `  #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}  [${builderStatus}]${runningFor}`,
     );
     console.log(`      tmux attach -t invar/${record.folderName}`);
   }
@@ -617,8 +672,21 @@ function completedOnly(tasksRoot: string): number {
     console.log('COMPLETED: none.');
     return 0;
   }
-  console.log(`COMPLETED (${completedCount}) — latest first`);
-  console.log(renderCompletedLog(records));
+  console.log(
+    `COMPLETED (${completedCount}) — latest first, duration = dispatch to landing`,
+  );
+  const completed = records
+    .filter((record) => record.directoryState === 'completed')
+    .sort(byNumberDescending);
+  for (const record of completed) {
+    const startedAt = startedAtMilliseconds(tasksRoot, record);
+    const landedAt = startedAt === null ? null : landedAtMilliseconds(record);
+    const duration =
+      startedAt !== null && landedAt !== null && landedAt > startedAt
+        ? `  [${formatDuration(landedAt - startedAt)}]`
+        : '';
+    console.log(`${completedLine(record)}${duration}`);
+  }
   return 0;
 }
 

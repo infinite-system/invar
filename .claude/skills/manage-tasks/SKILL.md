@@ -167,7 +167,7 @@ A follow-up round's report is a NEW numbered file, like a follow-up brief.
 **5. LAND** — gate green, merge, then move the record in the same action as the merge:
 
 ```
-git mv .invar/tasks/in-progress/<n>-<slug> .invar/tasks/completed/
+bash scripts/fleet/land.sh <n> <slug> <merge-message-file> "<one-line summary>"
 sed -i '0,/^State: .*/s//State: COMPLETED — <merge-commit-sha>/' .invar/tasks/completed/<n>-<slug>/task-<n>-<slug>.md
 git tag finished/<branch> <merge-sha>
 bash scripts/fleet/archive-session.sh <n>-<slug>             # native session file -> tmp/native-sessions/
