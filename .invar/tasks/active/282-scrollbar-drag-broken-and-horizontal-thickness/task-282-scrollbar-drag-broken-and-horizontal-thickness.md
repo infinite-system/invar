@@ -20,11 +20,15 @@ User report, verbatim-derived, observed live on current main (post-#274):
    FIRST on current main, then bisect: main vs pre-#274 vs pre-#259 tips
    for the drag gesture specifically (press on thumb, move, release).
    Track clicks reportedly still work; the DRAG path is what broke.
-2. **The lower (horizontal) scrollbar should be THINNER** — one cell
-   high reads too thick today? Compare with the vertical bar's width and
-   the editor chrome; make the horizontal bar visually thinner per the
-   user's ask (whatever "thinner" maps to in cells/glyphs — half-block
-   glyphs are the likely vocabulary; argue the choice, both themes).
+2. **The lower (horizontal) scrollbar should be THINNER — EVERYWHERE in
+   the app, not just the editor** (user clarified 10:0x). Fix at the
+   shared scrollbar generator so every horizontal bar (editor, panes,
+   any pane content that projects one) thins together — enumerate the
+   consumers, change the ONE generator, verify each surface. Whatever
+   "thinner" maps to in cells/glyphs — half-block glyphs are the likely
+   vocabulary; argue the choice, both themes. A consumer that hand-rolls
+   its own horizontal bar instead of projecting the shared one is a seam
+   violation — name it, fix it through the seam.
 
 Drag verification must be DRIVEN: press-move-release through the PTY
 driver with the mouse protocol, asserting scrollTop/scrollLeft track the
