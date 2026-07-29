@@ -1,0 +1,15 @@
+{
+  "task": 290,
+  "slug": "scrollbar-corner-vertical-owns-bottom",
+  "branch": "fleet/290-scrollbar-corner-vertical-owns-bottom",
+  "worktree": ".invar/worktrees/290-scrollbar-corner-vertical-owns-bottom",
+  "tmuxSession": "invar/290-scrollbar-corner-vertical-owns-bottom",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-290-scrollbar-corner-vertical-owns-bottom.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "805e0d779db6a880a960bb67e00d955c5d2c6302",
+  "startedAt": "2026-07-29T15:08:58-04:00"
+}
