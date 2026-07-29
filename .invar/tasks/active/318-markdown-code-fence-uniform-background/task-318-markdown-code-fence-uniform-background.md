@@ -37,3 +37,14 @@ Provenance: USER-DIRECTED 2026-07-29
 PTY drive of a fenced bash block: identical bg across header/body/
 footer cells, readable label, prose unaffected, at both scales and
 across a live theme switch; planted transparent header row goes red.
+
+## User's follow-up (verbatim, GOVERNS — added 2026-07-29)
+
+> also if it can be rounded, would be great
+
+The fence border uses rounded corner glyphs (╭ ╮ ╰ ╯) instead of the
+square ┌ ┐ └ ┘ — if the current border comes from a shared box-drawing
+generator, add/select the rounded variant there rather than inline
+literals; nerd/plain tier behaviour recorded (rounded corners are plain
+Unicode box drawing, so both tiers can carry them unless the records
+say otherwise).
