@@ -1,6 +1,6 @@
 # 276 — project.active-tasks.md and task files link into the task records, walkable by click
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux

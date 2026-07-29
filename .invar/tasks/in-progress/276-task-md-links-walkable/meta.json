@@ -1,0 +1,15 @@
+{
+  "task": 276,
+  "slug": "task-md-links-walkable",
+  "branch": "fleet/276-task-md-links-walkable",
+  "worktree": ".invar/worktrees/276-task-md-links-walkable",
+  "tmuxSession": "invar/276-task-md-links-walkable",
+  "transcript": "tmp/transcripts/transcript-claude-fable-5-medium-276-task-md-links-walkable.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "fable-5",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "40b483a008d2e5b9922df22e5589a6f112c16d37",
+  "startedAt": "2026-07-29T09:29:34-04:00"
+}
