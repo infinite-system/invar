@@ -1,6 +1,6 @@
 # 202 — the flyweight covers storage but not the switch interaction
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux

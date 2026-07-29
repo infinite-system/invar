@@ -6,12 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #202 tab-reactivation-rereads-whole-file
 - #114 modularity-umbrella-provider-runtime
 
-## USER-DIRECTED (3)
+## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
-- #202 tab-reactivation-rereads-whole-file
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (11)
