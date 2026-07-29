@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #276 task-md-links-walkable  [building]
+## IN-PROGRESS (1)
+- #276 task-md-links-walkable  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/276-task-md-links-walkable`
-- #275 db-navigator-real-connection  [building]
-  `tmux attach -t invar/275-db-navigator-real-connection`
 
 ## USER-DIRECTED (3)
 - #256 editor-stray-glyph-after-emoji
@@ -87,7 +85,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 54 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 55 — full log: project.tasks-completed.md)
+- #275 db-navigator-real-connection — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 - #274 structure-scrollbar-depth-filter — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
@@ -102,4 +101,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 - #238 structure-default-right-and-md-toc — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
-- #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser

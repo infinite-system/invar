@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #275 db-navigator-real-connection — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 - #274 structure-scrollbar-depth-filter — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
