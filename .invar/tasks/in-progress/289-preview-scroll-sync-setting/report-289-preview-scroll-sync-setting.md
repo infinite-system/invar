@@ -20,9 +20,11 @@ Commits:
 
 - `05777485d2176b5d2690bacfa391c9a590eea491` — bidirectional scroll sync and contributed setting.
 - `6bfbdc6fd17063ab9c1c236eb39659d5ba3fa858` — shared preview scrollbars and gated drag arm.
+- `b957c9baa214343610ce358573a2a72cbc2b7a18` — current-main union and semantic activity-bar
+  settings locator.
 
-The current-main merge resolution remains staged. The worktree is not clean because the required
-normal pre-commit gate blocked the merge commit. I did not bypass the gate.
+The current-main merge is committed. The worktree is clean. The normal pre-commit hook passed
+without a gate bypass.
 
 ## Round 3 merge and gate outcome
 
@@ -89,6 +91,42 @@ Both activity-bar attempts are preserved in `/tmp/merge-gate-failures.380351`. T
 create the merge commit. The conductor ordered a stop if either earlier red reproduced on the quiet
 run, so I left the resolved current-main merge staged.
 
+## Round 4 harness repair and final gate
+
+I read the [round-four brief](brief-289-4-4.md). A solo drive reproduced the activity-bar failure
+after the mirror-setting arm:
+
+> Timed out waiting for the Structure dock-side setting is selected at its default
+
+The product setting was correct. The harness pressed Down 14 times and required
+`settingsSelected === 40` for `Dock side`. The new `markdownPreviewScrollSync` contribution added
+one settings row, so the fixed position selected a different row.
+
+The structural sweep found one other instance of the same defect in this harness. The mirror arm
+pressed Down 26 times to find `Mirror activity bar on right`. Both arms now use one
+`selectSettingByLabel` helper. The helper:
+
+- starts from the first settings row using the published current index;
+- walks Down until the published label matches;
+- bounds the walk with the published `settingsLabels` length;
+- waits for each observed one-row advance;
+- requires the selected label to be visible; and
+- throws a timeout that names an absent label after the bounded walk.
+
+No absolute settings index or fixed Down count remains in the activity-bar harness. The remaining
+`settingsSelected` reads derive the reset count, list bound, and one-step progress from live status.
+
+The repaired activity-bar smoke passed twice solo. The missing-label arm passed with
+`Absent activity-bar locator control`. For its positive control, I temporarily changed the
+supposedly absent label to the real `Theme` label. The harness went red:
+
+> FAIL an absent Settings label exhausts the bounded walk and names itself
+
+I removed the plant. The final normal pre-commit hook ran for 3m30s and reported
+`merge-gate: ALL-PASS`. Activity bar and panel chrome passed on their first attempts. Panel split
+had one starvation-class timeout and passed its built-in quiet retry. The hook created merge commit
+`b957c9baa214343610ce358573a2a72cbc2b7a18`.
+
 ## Driven evidence
 
 The sync baseline had no continuous follow. Two source Page Down inputs moved the source from `0`
@@ -146,7 +184,12 @@ For the scrollbar arm, I temporarily returned from the preview horizontal bar's 
 > FAIL 500-line markdownPreviewHorizontal drag advances after every pressed-pointer move
 > (0→0→0→0)
 
-I removed both planted defects. The final contracts passed.
+For the round-four missing-label arm, I temporarily supplied the real `Theme` label as the absent
+control. The activity-bar smoke exited 1:
+
+> FAIL an absent Settings label exhausts the bounded walk and names itself
+
+I removed all three planted defects. The final contracts passed.
 
 ## Invariant review
 
@@ -190,9 +233,11 @@ gated gesture is in
 - `bun scripts/harness/smoke-scrollbars-harness.ts` — ALL-PASS.
 - `bash scripts/conventions-gate.sh` — PASS.
 - `git diff --check` — PASS.
-- Normal pre-commit merge gate — BLOCKED by the reproduced activity-bar timeout quoted in
-  [Round 3 merge and gate outcome](#round-3-merge-and-gate-outcome). Panel chrome passed its retry.
-  The Markdown and scrollbar gate jobs passed.
+- `bun scripts/harness/smoke-activitybar-harness.ts` — ALL-PASS twice after the repair.
+- Normal pre-commit merge gate — ALL-PASS in 3m30s. Activity bar, panel chrome, Markdown, and
+  scrollbars passed. Panel split passed its quiet retry.
+- `git status --short --branch` — clean branch after commit
+  `b957c9baa214343610ce358573a2a72cbc2b7a18`.
 
 ## Bycatch
 
@@ -214,8 +259,8 @@ gated gesture is in
 - The round-one pre-commit merge gate saw one starvation-class timeout in the panel-split harness.
   Its one quiet retry passed cleanly, so the fault did not reproduce on the second run. I did not
   change that unrelated harness.
-- The current-main normal merge gate saw a reproducible timeout-class red in the activity-bar
-  harness. It failed its first attempt and one quiet retry. Panel chrome failed once and passed its
-  retry. The exact reproduced failure and preserved log path appear in
-  [Round 3 merge and gate outcome](#round-3-merge-and-gate-outcome). I stopped without changing
-  either unrelated seam.
+- The first current-main gate exposed the activity-bar harness's fixed-position settings locator.
+  The [round-four brief](brief-289-4-4.md) put that repair in scope. The final gate passed the
+  repaired activity-bar arm.
+- The final normal merge gate saw one starvation-class panel-split timeout. Its quiet retry passed.
+  I did not change that unrelated harness.

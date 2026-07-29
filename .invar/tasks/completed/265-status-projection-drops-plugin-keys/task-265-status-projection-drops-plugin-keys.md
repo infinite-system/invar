@@ -1,6 +1,6 @@
 # 265 — uninstalling a plugin turns its status keys undefined, not false
 
-State: IN-PROGRESS
+State: COMPLETED — eb4879b0 — Plugin status keys: absent on uninstall is the contract — recorded, two-layer regression test, 97-key census, permissive assert fixed
 Created: 2026-07-29
 Engine: codex
 Environment: linux
