@@ -1138,8 +1138,13 @@ function live(
         : `  ${cyan(formatDuration(Date.now() - startedAt))}`;
     const identity = agentIdentity(record);
     const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
+    // Two-line row: the name owns its line; the status lives under it — the
+    // row stays whole on narrow screens instead of wrapping mid-badge.
     console.log(
-      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
+      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}`,
+    );
+    console.log(
+      `      ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
     );
     console.log(dim(`      tmux attach -t invar/${record.folderName}`));
   }
