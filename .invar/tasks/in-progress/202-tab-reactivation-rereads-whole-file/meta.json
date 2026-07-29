@@ -1,0 +1,15 @@
+{
+  "task": 202,
+  "slug": "tab-reactivation-rereads-whole-file",
+  "branch": "fleet/202-tab-reactivation-rereads-whole-file",
+  "worktree": ".invar/worktrees/202-tab-reactivation-rereads-whole-file",
+  "tmuxSession": "invar/202-tab-reactivation-rereads-whole-file",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-202-tab-reactivation-rereads-whole-file.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "b5ab867160b1ea86167b7d01f40d148f3dc725c4",
+  "startedAt": "2026-07-28T22:19:49-04:00"
+}
