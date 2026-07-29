@@ -1,6 +1,6 @@
 # 277 — Markdown preview body viewport stays stale after parent growth
 
-State: IN-PROGRESS
+State: COMPLETED — 04812029 — Preview body viewport follows parent growth/shrink live; remount workaround removed; both scales
 Created: 2026-07-29
 Engine: codex
 Environment: linux
