@@ -2446,3 +2446,65 @@ scripts/harness/smoke-selection-harness.ts`
 **Status:** provisional
 
 **Last refined:** 2026-07-29
+
+### The editor column's default occupant is a contribution
+
+**Invariant:** If the editor column shows anything, then a registered contribution put it there. The
+host owns the SLOT — the bordered box, its background, its border, its extents — and knows the
+occupant only as a `PaneContent` obtained from `EditorColumnDefault`. With no contribution
+registered the column is EMPTY and says so.
+
+**Scope:** `EditorColumnDefault`, `ApplicationContributionContext.registerEditorColumnDefault`,
+`EditorPlugin`, and the editor-column sites in `RootView` (title, paint, caret, tick, viewport
+width, scrollbar anchor, dispose). The CLAIMANTS of the column — a source-control comparison, a
+Markdown split — are governed separately by `EditorSurfaceContents`; this rule is about the default
+underneath them. Keyboard routing for source text is not here: the pane still declares no keybinding
+context.
+
+**Components:**
+- One default, registered — `register` accepts one provider and refuses a second by name. Two
+  contents painting one slot is a defect, not a precedence question.
+- Built late, from a host-supplied context — providers register during plugin activation, which runs
+  before the view exists, so the content is created lazily on the first read after the view attaches
+  the slot. That is the order `EditorSurfaceContents` already uses.
+- Host services are named ports, not typed fields — the LSP hover card, the raster projection, and
+  the frame-attribution counter reach the content through `hostCapability(identifier)`, so the mount
+  context names no editor type and a host offering none of them still yields a working column.
+- Uninstall releases what it built — the contribution's `disposeApplication` calls `releaseContent`
+  BEFORE withdrawing its provider. Withdrawal releases nothing on its own, the same split
+  `PaneRuntimeHostPort` draws between `releasePane` and `dispose`, so a contribution that forgets
+  the release leaves a visible leak rather than a silently-cleaned one.
+- An empty column states its affordance — the host paints an empty-slot notice naming Extensions
+  while nothing occupies the column. A blank pane reads as an empty document, which is the blank lie
+  the notice exists to prevent, and the application stays live around it.
+
+**Mechanism:** `Bootstrap` builds `EditorColumnDefault` before plugin activation and passes it to
+both `ApplicationContributions` and `RootView`. `EditorPlugin.activateApplication` registers itself
+as the provider; `RootView.attachHost` supplies the slot, the extents, and the named ports;
+`RootView.update` reads `content`, `nativeSurface`, and `providerIdentifier` each frame and paints
+the notice when they are null.
+
+**Generates:** an editor that can be uninstalled and reinstalled from Extensions like any other
+contribution, with `editorColumnContent` and `sourceTextViewsForOpenBuffers` published as the
+observable proof; a host that constructs no editor and imports no source-text view.
+
+**Rejected alternatives:** Make the source-text content a claimant in `EditorSurfaceContents` — a
+claimant answers "do I take the column over right now"; the default answers "what is the column".
+Forcing one registry to carry both would make the editor implement ten members it has no meaning
+for, which is the tell that a boundary is in the wrong place.
+
+**Evidence:** `src/modules/ui/EditorColumnDefault.ts`; `src/modules/ui/EditorColumnDefault.test.ts`;
+`src/modules/editor/EditorPlugin.ts`; `src/modules/editor/EditorPlugin.test.ts`;
+`src/modules/ui/RootView.ts`; `scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Impossible if true:** `RootView` constructing `SourceTextPaneContent`; a second default provider
+occupying the column; an uninstalled editor still painting; a blank editor column with no stated
+reason.
+
+**Verification:** `bun test src/modules/ui/EditorColumnDefault.test.ts
+src/modules/editor/EditorPlugin.test.ts && bash scripts/conventions-gate.sh && bun
+scripts/harness/smoke-plugin-manifest-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29

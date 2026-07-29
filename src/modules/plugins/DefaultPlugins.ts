@@ -1,5 +1,6 @@
 import { Static } from 'ivue/extras';
 import type { ApplicationContributor } from '../app/ApplicationContributor.interface';
+import { EditorPlugin } from '../editor/EditorPlugin';
 import { FileTreeContributor } from '../filetree/FileTreeContributor';
 import { GitPlugin } from '../git/GitPlugin';
 import { MarkdownPlugin } from '../markdown/MarkdownPlugin';
@@ -20,6 +21,7 @@ class $DefaultPlugins {
       new LspPlugin.Class(),
       new TerminalPlugin.Class(),
       new InlineRewriteContributor.Class(),
+      new EditorPlugin.Class(),
       new ExtensionsPlugin.Class(),
     ];
   }

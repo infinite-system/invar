@@ -12,6 +12,10 @@ import type {
   PaneRuntimeHostPort,
 } from '../ui/PaneRuntime.interface';
 import type { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
+import type {
+  EditorColumnDefaultHostPort,
+  EditorColumnDefaultProvider,
+} from '../ui/EditorColumnDefault';
 import type { StatusBarSegments } from '../ui/StatusBarSegments';
 import type { WorkspaceSet } from '../workspace/WorkspaceSet';
 import type { WorkspaceContributor } from '../workspace/WorkspaceContributor.interface';
@@ -50,6 +54,11 @@ export interface ApplicationContributionContext {
   readonly statusProjectionContributions: StatusProjectionContributions.Model;
   /** Register an occupant of the editor column (a comparison, a rendered preview). */
   readonly editorSurfaceContents: EditorSurfaceContents.Model;
+  /** Register the editor column's DEFAULT occupant — what sits there when nothing claims it. The
+   *  host owns the slot only; the content, and its release, belong to the contribution. */
+  readonly registerEditorColumnDefault: (
+    provider: EditorColumnDefaultProvider,
+  ) => EditorColumnDefaultHostPort;
   readonly applicationContributions: ApplicationContributionCatalog;
   readonly registerKeybindings: (bindings: readonly Keybinding[]) => void;
   readonly registerKeybindingGuard: (

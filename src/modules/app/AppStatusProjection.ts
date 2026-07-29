@@ -4,13 +4,11 @@ import { Static } from 'ivue/extras';
 import { AgentPaneContent } from '../agent/AgentPaneContent';
 import type { AgentSkillPopup } from '../agent/AgentSkillPopup';
 import { CommandRegistry } from '../commands/CommandRegistry';
-import { BracketMatch } from '../editor/BracketMatch';
 import { NarrationProjection } from '../narration/NarrationProjection';
 import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Settings } from '../settings/Settings';
 import { SettingsPanel } from '../settings/SettingsPanel';
-import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
@@ -269,38 +267,18 @@ class $AppStatusProjection {
       splitterRegions: ports.view.splitterRegions(),
       // Active buffer is an image the editor renders as half-block cells (drives smoke-image-preview).
       activeFileIsImage: ports.workspaceSet.active.activeFileIsImage,
-      // Bracket match: the matched partner cell for the cursor's bracket (line,col 0-based), or -1/-1
-      // when the cursor is not on a bracket — the driving smoke reads this alongside the frame bg.
-      matchingBracketLine: (() => {
-        if (
-          !editor.hasDocument.value ||
-          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
-        )
-          return -1;
-        return (
-          BracketMatch.Class.findInDocument(
-            editor.document,
-            editor.cursor.line.value,
-            editor.cursor.col.value,
-            LanguageRegistry.Class.forPath(editor.document.path),
-          )?.match.line ?? -1
-        );
-      })(),
-      matchingBracketColumn: (() => {
-        if (
-          !editor.hasDocument.value ||
-          !ports.workspaceSet.active.editorSurfaces.activeDocumentIsPresented
-        )
-          return -1;
-        return (
-          BracketMatch.Class.findInDocument(
-            editor.document,
-            editor.cursor.line.value,
-            editor.cursor.col.value,
-            LanguageRegistry.Class.forPath(editor.document.path),
-          )?.match.column ?? -1
-        );
-      })(),
+      // Bracket match is an EDITOR question, so the editor contributes it (matchingBracketLine /
+      // matchingBracketColumn arrive through statusProjectionContributions below). With no editor
+      // installed the keys are absent, which is honest — nothing paints a match nobody can see.
+      // Which contribution occupies the editor column, or null when it stands empty, and how many
+      // views its content still holds for open buffers. Together they are uninstall symmetry made
+      // observable: a withdrawn contribution leaves no occupant AND no live view.
+      // invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
+      editorColumnContent: ports.view.editorColumnContentIdentifier(),
+      sourceTextViewsForOpenBuffers: ports.workspaceSet.entries.value.reduce(
+        (total, workspace) => total + workspace.sourceTextViewsForOpenBuffers,
+        0,
+      ),
       // Audio narration (third projection): the toggle, how many assistant turns have been spoken, and
       // the last spoken text — the driving smoke reads these to prove it speaks completed turns when ON
       // and NOTHING when off, all through the silent mock backend (no audio in CI).
@@ -496,6 +474,7 @@ export interface AppStatusProjectionPorts {
     | 'overlayScrollPositions'
     | 'overlayViewportExtents'
     | 'editorFrameAttribution'
+    | 'editorColumnContentIdentifier'
   >;
   readonly mouse: AppStatusMouseEvent | null;
   readonly narration: Pick<

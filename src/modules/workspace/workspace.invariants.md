@@ -61,10 +61,19 @@ cost N live documents*.
   to assert what a buffer is.
 - *Lazy provider* — the provider resolves on first use, so a workspace built only to carry
   contributions (source control, language, file tree) needs no view at all.
-- *One releaser* — `releaseSourceTextViews` disposes every view in `viewsByLiveBuffer` plus the
-  empty view, drops the provider, and leaves the documents alone. One creator needs one release
-  path, or withdrawing the provider leaves live views behind — the orphaned-pane defect #114 found
-  for runtimes, one layer down. The next read of `editor` builds a fresh view from the provider.
+- *One releaser* — `releaseSourceTextViews` releases every view the provider made, through the
+  buffer set's own dehydration, plus the empty view, and leaves the documents and the open tabs
+  alone. One creator needs one release path, or withdrawing the pane that shows these views leaves
+  live views behind — the orphaned-pane defect #114 found for runtimes, one layer down. A released
+  tab rebuilds its view on its next activation, so the release is reversible and an uninstalled
+  editor can be reinstalled.
+- *A release goes through the buffer set, not around it* — the release never disposes a buffer view
+  directly. The set owns hydration state, and an entry left pointing at a disposed buffer is a tab
+  that can never be shown again. For the same reason a DIRTY entry keeps its buffer: unsaved edits
+  live in the view and nowhere else, which is the rule the eviction path already obeys.
+- *A release keeps the provider* — the provider carries the per-workspace contribution registry that
+  OTHER contributions attached to (`InlineRewriteWorkspace` registers into it). Dropping it on the
+  withdrawal of one pane would silently unregister contributions that pane does not own.
 
 **Mechanism:** `WorkspaceOptions.createSourceTextViews` supplies the provider, lazily, on first
 use; `src/modules/editor/EditorSourceTextViews` is the one implementation, and `Bootstrap` is the

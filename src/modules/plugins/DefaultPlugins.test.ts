@@ -15,6 +15,7 @@ test('the shipped application registers its built in contributions', () => {
     ['language', 'Language Intelligence'],
     ['terminal', 'Terminal'],
     ['inline-rewrite', 'Inline Rewrite'],
+    ['source-text-editor', 'Source Text Editor'],
     ['extensions', 'Extensions'],
   ]);
   expect(
@@ -26,5 +27,5 @@ test('the shipped application registers its built in contributions', () => {
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
-  ).toEqual([true, true, true, true, false, true, false]);
+  ).toEqual([true, true, true, true, false, true, false, false]);
 });

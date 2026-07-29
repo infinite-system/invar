@@ -173,6 +173,16 @@ class $OpenBufferSet {
     this.activeIndex.value = -1;
   }
 
+  /** Release every live buffer the flyweight is allowed to release, keeping the TABS. Used when the
+   *  provider that made those buffers is withdrawn: an entry must never be left pointing at a
+   *  disposed buffer, so the release goes through the same dehydration the eviction path uses and
+   *  each entry rehydrates on its next activation. A DIRTY entry keeps its buffer, because unsaved
+   *  edits live in the buffer and nowhere else — the same rule the eviction path already obeys. */
+  releaseHydratedBuffers(): void {
+    for (const entry of this.entries.value) this.dehydrateIfClean(entry);
+    this.recentlyActiveEntries.value = [];
+  }
+
   /** Dehydrate clean recent documents while their workspace is not the observed project. */
   deactivate(): void {
     for (const entry of this.recentlyActiveEntries.value) {

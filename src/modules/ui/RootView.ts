@@ -39,7 +39,7 @@ import { TabBar } from './TabBar';
 import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
 import { Sidebar } from './Sidebar';
 import { ActivityBar } from './ActivityBar';
-import { SourceTextPaneContent } from '../editor/SourceTextPaneContent';
+import { EditorColumnDefault } from './EditorColumnDefault';
 import { EditorContentMount } from './EditorContentMount';
 import { ImagePreview } from '../image/ImagePreview';
 import { ImageRenderers } from '../image/ImageRenderers';
@@ -57,6 +57,7 @@ import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import type {
   PaneContent,
+  PaneNativeSurfacePort,
   PaneScrollPort,
   PaneSurfaceRegion,
 } from './PaneContent.interface';
@@ -119,6 +120,7 @@ class $RootView {
     rightDockHost: PanelHost.Instance,
     statusBarSegments: StatusBarSegments.Model,
     editorSurfaceContents: EditorSurfaceContents.Model,
+    editorColumnDefault: EditorColumnDefault.Model,
     toggleTerminal: () => void,
     toggleAgent: () => void,
     openPanelAddPopup: (anchor: { column: number; row: number }) => void,
@@ -261,8 +263,38 @@ class $RootView {
       title: 'Editor',
     });
     // The gutter and code renderables are NOT built here: the editor area is the SLOT, and the
-    // source-text pane content mounts its own surfaces into it (below), exactly as a terminal owns
+    // registered default content mounts its own surfaces into it (below), exactly as a terminal owns
     // its own. invariant: The source text editor is a pane content citizen (ui.invariants.md)
+    // The empty-slot notice. It is mounted ONLY while no content occupies the column, so an editor
+    // that is simply not installed reads as a stated affordance rather than an empty document or a
+    // crash. Built here because the SLOT is the host's, and so is the sentence about it being empty.
+    const editorColumnEmptyNotice = new TextRenderable(renderer, {
+      id: 'editor-column-empty',
+      content: '',
+      flexGrow: 1,
+    });
+    let editorColumnEmptyNoticeMounted = false;
+    function synchronizeEmptyColumnNotice(
+      content: PaneContent | null,
+      palette: Palette,
+    ): void {
+      const shouldMount = content === null;
+      if (shouldMount !== editorColumnEmptyNoticeMounted) {
+        if (shouldMount) editorArea.add(editorColumnEmptyNotice);
+        else editorArea.remove(editorColumnEmptyNotice);
+        editorColumnEmptyNoticeMounted = shouldMount;
+      }
+      if (!shouldMount) return;
+      editorColumnEmptyNotice.fg = palette.dim;
+      editorColumnEmptyNotice.content = [
+        '',
+        '   No editor content is installed.',
+        '',
+        '   The workspace is still open — files, search, and tabs all work.',
+        '   Install a source-text editor in Extensions (Ctrl+Shift+X).',
+        '',
+      ].join('\n');
+    }
     editorColumn.add(tabBar);
     editorColumn.add(breadcrumbBar);
     editorColumn.add(editorArea);
@@ -1207,13 +1239,14 @@ class $RootView {
     // column the overlay vertical scrollbar occupies — so the final column of a line is always
     // reachable and visible at max scrollLeft.
     const editorViewportWidth = () => {
-      const laidOut = sourceTextSurface.surfaceRegion()?.columns ?? 0;
+      const laidOut = columnSurface()?.surfaceRegion()?.columns ?? 0;
       if (laidOut > 1) return Math.max(1, laidOut - 1);
       return Math.max(1, (editorArea.width as number) - 2 - 6);
     };
-    // WHERE the source-text caret is belongs to the content that owns the renderable it sits in.
+    // WHERE the caret is belongs to the content that owns the renderable it sits in — and an empty
+    // column owns no renderable, so it anchors nothing.
     const editorCaretAnchor = (): { column: number; row: number } | null =>
-      sourceTextSurface.caretAnchor();
+      columnSurface()?.caretAnchor() ?? null;
     /** Grapheme-safe window over display columns; never splits a wide glyph at either edge. */
     // displayColumnWindow / padToDisplayWidth now live on TextCoordinates (the display-column-math
     // capability) so every pane renderer shares one horizontal-windowing primitive. Local aliases keep
@@ -1366,9 +1399,10 @@ class $RootView {
       // the redundant '╭─README.md' legend. Safe: the app's find/paste source identity is the
       // document PATH, never this display title. The title and its colour come from the content —
       // a content only names a colour when the colour carries meaning.
-      editorArea.title = sourceTextPane.title;
+      const editorColumnContent = columnContent();
+      editorArea.title = editorColumnContent?.title ?? '';
       editorArea.titleColor =
-        sourceTextPane.titleColor ??
+        editorColumnContent?.titleColor ??
         (sourcePaneFocused ? palette.accent : palette.dim);
       // A surface presenting something other than the active buffer has no editor buffer tabs. Reclaim
       // that row for the surface; source buffers keep the stable one-row strip.
@@ -1406,18 +1440,24 @@ class $RootView {
         : '';
       sidebarBody.fg = palette.fg;
       synchronizePrimaryDockSplitters(palette);
-      // The editor column is painted through the SAME seam as every dock and panel cell. The source
-      // text pane is the one native-surface citizen: the resolver hands it the region, it paints the
-      // renderables it owns, and it returns no cells for the host to assign.
+      // The editor column is painted through the SAME seam as every dock and panel cell. Its default
+      // content is the one native-surface citizen: the resolver hands it the region, it paints the
+      // renderables it owns, and it returns no cells for the host to assign. With no content
+      // registered the column paints its own empty-slot notice instead — an app with a stated
+      // affordance, never a blank pane that reads as an empty document.
       // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
-      PaneProjection.Class.paint(sourceTextPane, {
-        width: editorViewportWidth(),
-        height: editorViewportHeight(),
-        palette,
-        glyphLevel: theme.glyphLevel.value,
-        colorDepth: theme.colorDepth.value,
-        focused: sourcePaneFocused,
-      });
+      // invariant: The editor column's default occupant is a contribution (src/modules/ui/ui.invariants.md)
+      synchronizeEmptyColumnNotice(editorColumnContent, palette);
+      if (editorColumnContent) {
+        PaneProjection.Class.paint(editorColumnContent, {
+          width: editorViewportWidth(),
+          height: editorViewportHeight(),
+          palette,
+          glyphLevel: theme.glyphLevel.value,
+          colorDepth: theme.colorDepth.value,
+          focused: sourcePaneFocused,
+        });
+      }
       if (rightDockHost.visible.value) {
         const rightDockFocused = rightDockHost.focused.value;
         const rightDockContent = rightDockHost.activeContent;
@@ -1701,7 +1741,7 @@ class $RootView {
         workspaceSet.active.editorSurfaces.activeDocumentIsKeyboardTarget &&
         !commands.open.value;
       const caretAnchor = sourceTextOwnsKeyboard
-        ? sourceTextSurface.caretAnchor()
+        ? (columnSurface()?.caretAnchor() ?? null)
         : null;
       if (caretAnchor) {
         renderer.setCursorPosition(
@@ -1739,7 +1779,7 @@ class $RootView {
       const paneViewportGeometryChanged =
         scrollbarSync.syncPaneViewportGeometry();
       return (
-        (sourceTextPane.tickScroll?.(deltaTimeSeconds) ?? false) ||
+        (columnContent()?.tickScroll?.(deltaTimeSeconds) ?? false) ||
         paneViewportGeometryChanged
       );
     }
@@ -1873,41 +1913,51 @@ class $RootView {
       }
       return '';
     };
-    // The source-text editor as a pane-content citizen. It builds its own gutter and code surfaces
-    // into the slot above, owns the controller that maps, selects, drags, and scrolls them, and
-    // publishes `native-surface` so the host paints it through the one resolver.
-    // invariant: The source text editor is a pane content citizen (src/modules/ui/ui.invariants.md)
-    const sourceTextPane = new SourceTextPaneContent.Class({
+    // Hand the editor column's slot and the host services that go with it to whichever contribution
+    // registered the column's default occupant. The host builds NO content here: it publishes the
+    // slot, three named ports, and the extents it owns, then reads back whatever was registered.
+    // invariant: The editor column's default occupant is a contribution (src/modules/ui/ui.invariants.md)
+    editorColumnDefault.attachHost({
       renderer,
       slot: editorArea,
       workspaceSet,
-      findBar,
       settings,
       theme,
-      frameAttribution: editorFrameAttribution,
+      findBar,
       tooltip,
       readPalette,
       viewportRows: editorViewportHeight,
       viewportColumns: editorViewportWidth,
       focusSourceEditor: () =>
         editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor(),
-      hover: {
-        pointAt: (position, screenX, screenY) =>
-          hoverCard.pointAt(position, screenX, screenY),
-        clear: () => hoverCard.clear(),
-        pointerOffSymbol: () => hoverCard.pointerOffSymbol(),
-      },
-      rasterProjection,
-      releaseSourceTextViews: () => {
-        for (const workspace of workspaceSet.entries.value) {
-          workspace.releaseSourceTextViews();
+      requestRender: () => renderer.requestRender(),
+      hostCapability<Port>(identifier: string): Port | null {
+        switch (identifier) {
+          case EditorColumnDefault.Class.SYMBOL_HOVER_CAPABILITY:
+            return {
+              pointAt: (
+                position: { line: number; column: number },
+                screenX: number,
+                screenY: number,
+              ) => hoverCard.pointAt(position, screenX, screenY),
+              clear: () => hoverCard.clear(),
+              pointerOffSymbol: () => hoverCard.pointerOffSymbol(),
+            } as Port;
+          case EditorColumnDefault.Class.RASTER_PROJECTION_CAPABILITY:
+            return rasterProjection as Port;
+          case EditorColumnDefault.Class.FRAME_ATTRIBUTION_CAPABILITY:
+            return editorFrameAttribution as Port;
+          default:
+            return null;
         }
       },
     });
-    // Resolved once: every later read of the editor's caret, painted region, or paint goes through
-    // the seam, so the host holds no editor-specific handle at all.
-    const sourceTextSurface =
-      PaneProjection.Class.requireNativeSurface(sourceTextPane);
+    // Every later read of the column content's caret, painted region, title, or paint goes through
+    // the registry, so the host holds no editor-specific handle at all — and holds NOTHING when the
+    // contribution is uninstalled.
+    const columnContent = (): PaneContent | null => editorColumnDefault.content;
+    const columnSurface = (): PaneNativeSurfacePort | null =>
+      editorColumnDefault.nativeSurface;
     // The scrollbar geometry controller derives every bar's track from the live layout each frame and
     // converges the panes' viewport extents. RootView constructs the bars (their onChange handlers call
     // scrollbarSync.trueScrollPosition + read applyingGeometry); update() calls syncScrollbars() and the
@@ -1936,10 +1986,10 @@ class $RootView {
       editorArea,
       codeSurface: {
         get x(): number {
-          return sourceTextSurface.surfaceRegion()?.column ?? 0;
+          return columnSurface()?.surfaceRegion()?.column ?? 0;
         },
         get width(): number {
-          return sourceTextSurface.surfaceRegion()?.columns ?? 0;
+          return columnSurface()?.surfaceRegion()?.columns ?? 0;
         },
       },
       sidebar,
@@ -2020,6 +2070,8 @@ class $RootView {
       editorViewportHeight,
       editorViewportWidth,
       editorCaretAnchor,
+      editorColumnContentIdentifier: () =>
+        editorColumnDefault.providerIdentifier,
       tickDragAutoScroll,
       // Frame-loop hook (runs every frame with FRESH layout, unlike the reactive paint): let the
       // mounted contributed surface advance its own momentum glide AND repaint once its container has
@@ -2103,7 +2155,7 @@ class $RootView {
       activityBarItemIdentifiers: () => activityBar.itemIdentifiers(),
       dispose() {
         try {
-          sourceTextPane.dispose();
+          editorColumnDefault.releaseContent();
           editorContentMount.dispose();
           root.remove(column);
           column.destroyRecursively();
@@ -2144,6 +2196,8 @@ export interface RootView {
   editorViewportHeight(): number;
   editorViewportWidth(): number;
   editorCaretAnchor(): { column: number; row: number } | null;
+  /** Which contribution occupies the editor column, or null when none does. */
+  editorColumnContentIdentifier(): string | null;
   /** Frame-tick hook: advance drag-edge auto-scroll; true while active (keep frames coming). */
   tickDragAutoScroll(dtSeconds: number): boolean;
   /** Frame-tick hook: advance the mounted contributed surface's own animations; true while live. */

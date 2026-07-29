@@ -59,7 +59,6 @@ import type {
 import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
-import { BracketMatch } from '../editor/BracketMatch';
 import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { TextInputAction } from '../text/TextInputModel';
@@ -82,6 +81,7 @@ import { dirname, join } from 'node:path';
 import type { ApplicationContributor } from './ApplicationContributor.interface';
 import { StatusProjectionContributions } from './StatusProjectionContributions';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
+import { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import { StatusBarSegments } from '../ui/StatusBarSegments';
 import { CoreStatusBarSegments } from '../ui/CoreStatusBarSegments';
 import { ApplicationContributions } from './ApplicationContributions';
@@ -264,6 +264,11 @@ class $Bootstrap {
     // (which runs before buildRootView), so a provider registers early and its content is built
     // lazily at mount time from a view-supplied context.
     const editorSurfaceContents = new EditorSurfaceContents.Class();
+    // The editor column's DEFAULT occupant, registered by a contributor rather than built here.
+    // Created before activation for the same reason: the provider registers early, and its content
+    // is built lazily once the view attaches the slot.
+    // invariant: The editor column's default occupant is a contribution (src/modules/ui/ui.invariants.md)
+    const editorColumnDefault = new EditorColumnDefault.Class();
     let editorInteractionIsAvailable = (): boolean => false;
     let dismissEditorSuggestions = (): void => {};
     const pluginPrimaryDockContentIdentifiers = (options.plugins ?? []).flatMap(
@@ -285,6 +290,7 @@ class $Bootstrap {
         statusBarSegments,
         statusProjectionContributions,
         editorSurfaceContents,
+        editorColumnDefault,
         paneRuntimes,
         visiblePaneOfKind: (kind) => panelHost.visibleContentOfKind(kind),
         releasePane: (identifier) => {
@@ -397,6 +403,7 @@ class $Bootstrap {
       rightDockHost,
       statusBarSegments,
       editorSurfaceContents,
+      editorColumnDefault,
       toggleTerminal,
       toggleAgent,
       (anchor) => panelAddPopup?.show(anchor),
