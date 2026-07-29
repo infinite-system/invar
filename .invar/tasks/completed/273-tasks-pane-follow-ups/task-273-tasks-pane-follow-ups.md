@@ -1,6 +1,6 @@
 # 273 — tasks pane follow-ups: fleet extras, wall-display auto-show
 
-State: IN-PROGRESS
+State: COMPLETED — 6ad6acc6 — Tasks pane cockpit: watch motion, tmux attach pane, row action icons, fleet glance, show-by-default setting
 Created: 2026-07-29
 Engine: codex
 Environment: linux
