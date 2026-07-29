@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
 import { HarnessInput } from './HarnessInput';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
@@ -441,6 +444,67 @@ describe('PtyTestDriver.dispose', () => {
     expect(resolvedBeforeChildExit).toBeFalse();
     await disposalPromise;
     expect(await driver.exitCode()).toBe(0);
+  });
+});
+
+describe('PtyTestDriver child environment', () => {
+  // invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
+  test('a supplied home gets complete HOME and XDG state', async () => {
+    const temporaryRoot = mkdtempSync(
+      join(tmpdir(), 'invar-pty-environment-test-'),
+    );
+    const homeDirectory = join(temporaryRoot, 'home');
+    const environmentCapturePath = join(temporaryRoot, 'environment.json');
+    const recordedStreamProgram = `
+      await Bun.write(
+        ${JSON.stringify(environmentCapturePath)},
+        JSON.stringify({
+          HOME: process.env.HOME,
+          XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+          XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+          XDG_STATE_HOME: process.env.XDG_STATE_HOME,
+          XDG_CACHE_HOME: process.env.XDG_CACHE_HOME,
+          INVAR_TEST_SUPPRESS_BUILT_IN_TASK:
+            process.env.INVAR_TEST_SUPPRESS_BUILT_IN_TASK,
+        }),
+      );
+      process.stdout.write(${JSON.stringify(recordedFrame('HOME READY'))});
+      await Bun.sleep(1_000);
+    `;
+    const driver = new PtyTestDriver.Class({
+      workspaceRoot: process.cwd(),
+      repositoryRoot: process.cwd(),
+      columns: 40,
+      rows: 4,
+      homeDirectory,
+      command: [process.execPath, '-e', recordedStreamProgram],
+    });
+
+    try {
+      await driver.awaitGridCondition(
+        'the child has captured its isolated user environment',
+        (snapshot) => snapshot.findText('HOME READY') !== null,
+      );
+      expect(JSON.parse(readFileSync(environmentCapturePath, 'utf8'))).toEqual({
+        HOME: homeDirectory,
+        XDG_CONFIG_HOME: join(homeDirectory, '.config'),
+        XDG_DATA_HOME: join(homeDirectory, '.local', 'share'),
+        XDG_STATE_HOME: join(homeDirectory, '.local', 'state'),
+        XDG_CACHE_HOME: join(homeDirectory, '.cache'),
+        INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '1',
+      });
+      for (const directoryPath of [
+        join(homeDirectory, '.config', 'invar'),
+        join(homeDirectory, '.local', 'share', 'invar'),
+        join(homeDirectory, '.local', 'state'),
+        join(homeDirectory, '.cache'),
+      ]) {
+        expect(existsSync(directoryPath)).toBeTrue();
+      }
+    } finally {
+      await driver.dispose();
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 });
 

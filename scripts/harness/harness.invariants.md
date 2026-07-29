@@ -44,6 +44,70 @@ across PTY chunks being missed; a fixed sleep being the condition that declares 
 
 ## Chosen invariants
 
+### Declared harness geometry reaches Invar
+
+**Invariant:** If the tmux harness launches a `COLUMNSxROWS` contract session, then its only pane has
+exactly that geometry before Invar starts.
+
+**Scope:** Legacy contract sessions launched through `scripts/tui-harness.sh`. PTY drivers own their
+slave geometry directly and are outside the tmux mechanism.
+
+**Mechanism:** Each new tmux test window switches from the server default `window-size latest` to
+manual sizing, resizes the window, and checks the resulting pane dimensions before it sends the app
+command.
+
+**Generates:** width-sensitive wrap fixtures that wrap at their declared width; stable layout
+geometry independent of any attached tmux client; a launch failure instead of a silently different
+test terminal.
+
+**Evidence:** `scripts/tui-harness.sh`; the wrap extent contract in
+`scripts/behavioral-contracts.sh`.
+
+**Impossible if true:** a `120x40` contract app publishing a 219-column editor inside a 256-column
+layout; a test result changing when an unrelated tmux client is resized.
+
+**Verification:** Launch a `120x40` session through `scripts/tui-harness.sh`, then require
+`tmux display-message -p -t SESSION:0.0 '#{pane_width}x#{pane_height}'` to print `120x40`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Harness app homes are complete and isolated
+
+**Invariant:** If a behavioral contract or `Drive` launches Invar, then that run owns a fresh user
+home with config, data, state, and cache directories. It never reads or writes the caller's user
+settings.
+
+**Scope:** `scripts/behavioral-contracts.sh`, `scripts/tui-harness.sh`, `scripts/harness/Drive.ts`,
+and app launches through `PtyTestDriver` that supply `homeDirectory`. Recorded-stream unit fixtures
+that do not launch Invar are outside this rule.
+
+**Mechanism:** The behavioral suite resolves Bun before it creates and exports one run-scoped
+temporary home. It seeds the deliberate settings fixture there and removes the home at exit.
+`tui-harness.sh` passes that home and its four XDG paths to every tmux session. `Drive` already owns a
+new temporary home for each invocation. `PtyTestDriver` completes every supplied home, sets the four
+XDG paths, and suppresses the built-in first-run task unless a drive explicitly enables it.
+
+**Generates:** default-first drives; explicit contract settings that cannot be shadowed by user
+preferences; no harness write to `~/.config/invar/settings.json`; working Bun lookup after HOME
+isolation.
+
+**Evidence:** `scripts/behavioral-contracts.sh`; `scripts/tui-harness.sh`;
+`scripts/harness/PtyTestDriver.ts`; `scripts/harness/PtyTestDriver.test.ts`;
+`.invar/tasks/active/233-wrap-contract-red-settings-leak/233-drive-wrap-settings-polarity.ts`.
+
+**Impossible if true:** a behavioral result changing when the caller changes `wordWrap`; an empty
+probe because Bun was looked up below a new bare home; a contract or drive rewriting the caller's
+settings file.
+
+**Verification:** `bun test scripts/harness/PtyTestDriver.test.ts && bun run drive --size 10 &&
+bun run drive --size 100000 && scripts/behavioral-contracts.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Harness input and output use the real PTY
 
 **Invariant:** If a harness smoke drives Invar, then it spawns the real `src/main.ts` entry on an

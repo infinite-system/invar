@@ -19,11 +19,24 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 H="$DIR/tui-harness.sh"
-# tui-harness.sh launches every app with this worktree-local HOME. Write the contract settings to
-# that SAME isolated path; writing the caller's real $HOME makes the drive depend on stale harness
-# state and can silently run the wrap contract with wordWrap=false.
-SET="$ROOT/artifacts/home/.config/invar/settings.json"
-export PATH="$HOME/.bun/bin:$PATH"
+BUN="${BUN:-$(command -v bun)}"
+if [ -z "$BUN" ]; then
+  echo "behavioral-contracts: bun is not available" >&2
+  exit 1
+fi
+# invariant: Harness app homes are complete and isolated (scripts/harness/harness.invariants.md)
+# One run owns one complete user environment. Resolve Bun before replacing HOME, seed the config
+# explicitly, and suppress the convenience first-run task through tui-harness.sh.
+CONTRACT_HOME="$(mktemp -d /tmp/invar-behavioral-home.XXXXXX)"
+export INVAR_HARNESS_HOME="$CONTRACT_HOME"
+export HOME="$CONTRACT_HOME"
+export XDG_CONFIG_HOME="$CONTRACT_HOME/.config"
+export XDG_DATA_HOME="$CONTRACT_HOME/.local/share"
+export XDG_STATE_HOME="$CONTRACT_HOME/.local/state"
+export XDG_CACHE_HOME="$CONTRACT_HOME/.cache"
+export BUN
+export PATH="$(dirname "$BUN"):$PATH"
+SET="$XDG_CONFIG_HOME/invar/settings.json"
 fail=0
 SESSIONS=""
 pass() { echo "  PASS  $1"; }
@@ -32,12 +45,16 @@ warn() { echo "  WARN  $1"; }
 skip() { echo "  SKIP  $1"; }
 
 # Neutral scroll settings so the assertions are deterministic (one row per notch, no fast modifier).
-mkdir -p "$(dirname "$SET")"
+mkdir -p \
+  "$(dirname "$SET")" \
+  "$XDG_DATA_HOME/invar" \
+  "$XDG_STATE_HOME" \
+  "$XDG_CACHE_HOME"
 python3 -c "import json,os;p=os.path.expanduser('$SET');d=json.load(open(p)) if os.path.exists(p) else {};d.update({'linesPerNotch':1,'wordWrap':False,'fastScrollModifier':'none','horizontalScrollModifier':'alt'});json.dump(d,open(p,'w'),indent=2)"
 
 LONG=$(mktemp -d /tmp/tui-bc-long.XXXXXX); python3 -c "open('$LONG/l.txt','w').write(''.join('line %04d content\n'%i for i in range(800)))"
 TREE=$(mktemp -d /tmp/tui-bc-tree.XXXXXX); for n in $(seq -w 1 200); do printf 'x\n' > "$TREE/file-$n.txt"; done
-trap 'rm -rf "$LONG" "$TREE"; for s in $SESSIONS; do "$H" kill "$s" >/dev/null 2>&1; done' EXIT INT TERM
+trap 'rm -rf "$LONG" "$TREE" "$CONTRACT_HOME"; for s in $SESSIONS; do "$H" kill "$s" >/dev/null 2>&1; done' EXIT INT TERM
 
 open_file() { for _ in 1 2 3 4; do b="$("$H" field "$1" activeBuffer 2>/dev/null)"; [ -n "$b" ] && [ "$b" != "null" ] && return 0; "$H" send "$1" Enter >/dev/null; sleep 0.2; done; }
 
@@ -47,6 +64,27 @@ await_workspace_momentum_at_rest() {
   for attempt_number in $(seq 1 100); do
     if [ "$("$H" field "$session_name" workspaceScrollMomentumAtRest)" = \
          "true" ]; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  return 1
+}
+
+# invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
+await_session_field_after_frame() {
+  local session_name="$1"
+  local field_name="$2"
+  local expected_value="$3"
+  local frame_before_input="$4"
+  local attempt_number
+  local current_frame
+  local current_value
+  for attempt_number in $(seq 1 100); do
+    current_frame="$("$H" field "$session_name" frame)"
+    current_value="$("$H" field "$session_name" "$field_name")"
+    if [ "${current_frame:-0}" -gt "$frame_before_input" ] 2>/dev/null \
+       && [ "$current_value" = "$expected_value" ]; then
       return 0
     fi
     sleep 0.05
@@ -1016,6 +1054,11 @@ python3 -c "import json,os;p=os.path.expanduser('$SET');d=json.load(open(p));d['
 S="bc-wrap-$$"; SESSIONS="$SESSIONS $S"
 "$H" launch "$S" 120x40 bun run src/main.ts "$WRAP" >/dev/null; "$H" ready "$S" 20 >/dev/null
 open_file "$S"
+if [ "$("$H" field "$S" wordWrap)" = "true" ]; then
+  pass "wrap-mode fixture applies its run-scoped wordWrap=true setting"
+else
+  bad "wrap-mode fixture did not apply its run-scoped wordWrap=true setting"
+fi
 tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12M')"; tmux send-keys -t "$S" -l "$(printf '\033[<0;60;12m')"; sleep 0.2  # focus
 tmux send-keys -t "$S" -l "$(printf '\033[<65;60;12M')"   # ONE wheel-down
 sleep 0.12; wearly="$("$H" field "$S" editorScrollTop)"
@@ -1040,9 +1083,14 @@ if [ "${wsingle:-0}" -ge 1 ] 2>/dev/null \
 else
   bad "wrap-mode NO progressive gain/decay (gain=$wgain single=$wsingle singleRest=$wsingle_rest ramped=$wramped rest=$wrest early=$wearly)"
 fi
-# Extent: PageDown to the end reaches a visual-row scrollTop that EXCEEDS the 200 logical lines (a
-# logical-line extent would cap near lineCount-height ~162; visual rows go much further).
-for _ in $(seq 1 25); do "$H" send "$S" PageDown >/dev/null 2>&1; done; sleep 0.3; "$H" settle "$S" >/dev/null 2>&1
+# Extent: the document-end gesture reaches a visual-row scrollTop that EXCEEDS the 200 logical lines.
+# The old settle call accepted renderQuiescent=true from before its 25 PageDown inputs. It read the
+# intermediate value 151 while wrap was already on. Await the post-input cursor condition instead.
+wrap_end_frame_before="$("$H" field "$S" frame)"
+"$H" chord "$S" Control+End >/dev/null 2>&1
+if ! await_session_field_after_frame "$S" cursorLineIndex 200 "$wrap_end_frame_before"; then
+  bad "wrap-mode document-end gesture did not publish the last cursor line"
+fi
 wbottom="$("$H" field "$S" editorScrollTop)"
 if [ "${wbottom:-0}" -gt 200 ] 2>/dev/null; then
   pass "wrap-mode reaches true last visual row (scrollTop=$wbottom > 200 logical lines)"
