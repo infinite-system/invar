@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Driven Markdown split-preview contract: real tab-bar click, rendered output, file-reference hover
-# chord, persisted splitter, preview drag/autoscroll/copy + source paste, and independent pane find.
+# Driven Markdown split-preview contract: auto-opened LEFT preview, real tab-bar click, rendered
+# output, file-reference hover chord, persisted splitter, preview drag/autoscroll/copy + source
+# paste, and independent pane find.
 set -uo pipefail
 SCRIPT_DIRECTORY="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIRECTORY/.." && pwd)"
@@ -50,34 +51,37 @@ texts = [row.get('text', '') for row in rows]
 content_offset = int(os.environ.get('CONTENT_OFFSET', '0'))
 tab_bar_row = 1 + content_offset
 operation = sys.argv[1]
+# The preview pane sits LEFT of the source by default (#237), so preview scans must stop at the
+# pane's own closing corner or they silently match raw source text painted further right.
+border_row = next((text for text in texts if '╭─Preview' in text), '')
+preview_column = border_row.find('╭─Preview')
+preview_right = border_row.find('╮', preview_column) if preview_column >= 0 else -1
+if preview_right < 0:
+    preview_right = len(border_row)
 if operation == 'preview-button-column':
     print(texts[tab_bar_row].find('1/1') - 3)
 elif operation == 'preview-border-column':
-    print(next((text.find('╭─Preview') for text in texts if '╭─Preview' in text), -1))
+    print(preview_column)
 elif operation == 'source-border-column':
-    # The source pane's border is the LEFTMOST box corner on the split's border row (the same row
-    # carries '╭─Preview' further right). Locate it structurally, NOT by the pane's title text —
-    # the title (filename legend) is cosmetic and may be blank, so keying off it would couple this
-    # probe to a display value it has no business depending on.
-    row = next((text for text in texts if '╭─Preview' in text), '')
-    print(row.find('╭'))
+    # The source pane's border is the NEXT box corner right of the preview pane on the split's
+    # border row. Locate it structurally, NOT by the pane's title text — the title (filename
+    # legend) is cosmetic and may be blank, so keying off it would couple this probe to a display
+    # value it has no business depending on.
+    print(border_row.find('╭', preview_column + 1))
 elif operation == 'reference-cell':
-    preview_column = next((text.find('╭─Preview') for text in texts if '╭─Preview' in text), -1)
     for row_index, text in enumerate(texts):
         column = text.find('target.ts', preview_column)
-        if column >= 0:
+        if 0 <= column < preview_right:
             print(f'{column},{row_index}')
             break
 elif operation == 'markdown-link-cell':
-    preview_column = next((text.find('╭─Preview') for text in texts if '╭─Preview' in text), -1)
     for row_index, text in enumerate(texts):
         column = text.find('the target', preview_column)
-        if column >= 0:
+        if 0 <= column < preview_right:
             print(f'{column},{row_index}')
             break
 elif operation == 'rendered-heading':
-    preview_column = next((text.find('╭─Preview') for text in texts if '╭─Preview' in text), -1)
-    right = '\n'.join(text[preview_column:] for text in texts if preview_column >= 0)
+    right = '\n'.join(text[preview_column:preview_right] for text in texts if preview_column >= 0)
     print('yes' if 'Rendered heading' in right and '# Rendered heading' not in right else 'no')
 PY
 }
@@ -93,28 +97,26 @@ tab_bar_row=$((1 + content_offset))
 "$HARNESS" send "$SESSION_NAME" Enter >/dev/null
 sleep 0.7
 settle
-if [ "$(field activeBuffer)" = "$FIXTURE_ROOT/README.md" ] && [ "$(field markdownPreviewOpen)" = "false" ]; then
-  pass 'Markdown opens source-only by default'
+if [ "$(field activeBuffer)" = "$FIXTURE_ROOT/README.md" ] && [ "$(field markdownPreviewOpen)" = "true" ] && [ "$(field markdownPreviewSide)" = "left" ]; then
+  pass 'Markdown auto-opens its preview LEFT of the source'
 else
-  fail "unexpected open state buffer=$(field activeBuffer) preview=$(field markdownPreviewOpen)"
+  fail "unexpected open state buffer=$(field activeBuffer) preview=$(field markdownPreviewOpen) side=$(field markdownPreviewSide)"
 fi
 
-echo '== click the tab-bar preview button and verify rendered Markdown =='
-preview_button_column="$(frame_value preview-button-column)"
-"$HARNESS" click "$SESSION_NAME" "$preview_button_column" "$tab_bar_row" >/dev/null
-sleep 0.8
-settle
-if [ "$(field markdownPreviewOpen)" = "true" ] && [ "$(frame_value rendered-heading)" = "yes" ]; then
-  pass 'tab-bar button mounted source and rendered preview panes'
+echo '== the auto-opened preview renders; the tab-bar button closes and reopens it =='
+if [ "$(frame_value rendered-heading)" = "yes" ]; then
+  pass 'the auto-opened split rendered the heading without raw Markdown punctuation'
 else
   fail 'split did not render the heading without raw Markdown punctuation'
 fi
+preview_button_column="$(frame_value preview-button-column)"
 "$HARNESS" click "$SESSION_NAME" "$preview_button_column" "$tab_bar_row" >/dev/null
 sleep 0.4
-if [ "$(field markdownPreviewOpen)" = "false" ]; then pass 'second click returned to source-only'; else fail 'second click did not close preview'; fi
+if [ "$(field markdownPreviewOpen)" = "false" ]; then pass 'button click closed the auto-opened preview'; else fail 'button click did not close preview'; fi
 "$HARNESS" click "$SESSION_NAME" "$preview_button_column" "$tab_bar_row" >/dev/null
 sleep 0.7
 settle
+if [ "$(field markdownPreviewOpen)" = "true" ]; then pass 'button click reopened the hand-closed preview'; else fail 'button click did not reopen preview'; fi
 
 echo '== hover a backtick file reference and open it with Ctrl+Enter =='
 reference_cell="$(frame_value reference-cell)"
@@ -161,23 +163,24 @@ sleep 0.8
 settle
 
 echo '== drag the preview splitter and verify live plus persisted geometry =='
-preview_column_before="$(frame_value preview-border-column)"
-divider_column=$((preview_column_before - 1))
+# The preview sits LEFT, so the SOURCE pane's border is the edge the divider moves.
+source_column_before="$(frame_value source-border-column)"
+divider_column=$((source_column_before - 1))
 ratio_before_drag="$(field markdownSplitRatio)"
 if awk "BEGIN { exit !($ratio_before_drag <= 0.3) }"; then
-  divider_target_column=$((divider_column + 10))
-else
   divider_target_column=$((divider_column - 10))
+else
+  divider_target_column=$((divider_column + 10))
 fi
 "$HARNESS" drag "$SESSION_NAME" "$divider_column" $((9 + content_offset)) "$divider_target_column" $((9 + content_offset)) >/dev/null
 sleep 0.7
 settle
 persisted_ratio="$(field markdownSplitRatio)"
-preview_column_after="$(frame_value preview-border-column)"
-if [ "$preview_column_after" != "$preview_column_before" ] && [ "$persisted_ratio" != "$ratio_before_drag" ]; then
-  pass "splitter moved preview edge $preview_column_before -> $preview_column_after and persisted ratio $persisted_ratio"
+source_column_after="$(frame_value source-border-column)"
+if [ "$source_column_after" != "$source_column_before" ] && [ "$persisted_ratio" != "$ratio_before_drag" ]; then
+  pass "splitter moved source edge $source_column_before -> $source_column_after and persisted ratio $persisted_ratio"
 else
-  fail "splitter did not resize panes (columns $preview_column_before -> $preview_column_after, ratio $persisted_ratio)"
+  fail "splitter did not resize panes (columns $source_column_before -> $source_column_after, ratio $persisted_ratio)"
 fi
 preview_button_column="$(frame_value preview-button-column)"
 "$HARNESS" click "$SESSION_NAME" "$preview_button_column" "$tab_bar_row" >/dev/null
@@ -185,7 +188,7 @@ sleep 0.3
 "$HARNESS" click "$SESSION_NAME" "$preview_button_column" "$tab_bar_row" >/dev/null
 sleep 0.7
 settle
-if [ "$(field markdownSplitRatio)" = "$persisted_ratio" ] && [ "$(frame_value preview-border-column)" = "$preview_column_after" ]; then
+if [ "$(field markdownSplitRatio)" = "$persisted_ratio" ] && [ "$(frame_value source-border-column)" = "$source_column_after" ]; then
   pass 'reopened preview reused the completed split drag'
 else
   fail 'reopened preview reset its persisted split geometry'

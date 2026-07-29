@@ -91,3 +91,20 @@ test('unchanged frames do not materialize the whole preview document', () => {
   splitView.synchronizeForTest();
   expect(wholePreviewMaterializationCount).toBe(1);
 });
+
+// invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+test('the preview side defaults to left and follows the option', () => {
+  const defaultSplitView = Object.create(
+    MarkdownSplitView.$Class.prototype,
+  ) as InstanceType<typeof MarkdownSplitView.$Class>;
+  Object.defineProperty(defaultSplitView, 'options', { value: {} });
+  expect(defaultSplitView.previewSide).toBe('left');
+
+  const rightSplitView = Object.create(
+    MarkdownSplitView.$Class.prototype,
+  ) as InstanceType<typeof MarkdownSplitView.$Class>;
+  Object.defineProperty(rightSplitView, 'options', {
+    value: { previewSide: 'right' },
+  });
+  expect(rightSplitView.previewSide).toBe('right');
+});
