@@ -57,7 +57,23 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
-- 02:3x — #230 LANDED (c669256f): ui.lattice.md, all 61 records woven,
+- 02:5x — THE DISK INCIDENT + BOTH PROOFS READY. #233 READY: your settings
+  file was NEVER leaked into (sha unchanged; the 01:29 write was your own
+  interactive app boot rewriting the snapshot) — the contract red was tmux
+  geometry (`window-size latest` gave 256x54 for a 120x40 request) plus a
+  settle race; harness-only fix, wrap contract now green at scrollTop=569.
+  #35 READY AND THE PROOF PASSED: the structure navigator landed with a
+  ZERO-LINE diff over ui/app/workspace — the capstone's claim survives its
+  first citizen. During their batch gate the root disk hit 100% (13MB free):
+  every app boot extracts a fresh ~200MB claude-agent-sdk binary into hidden
+  /tmp dirs, never reaped — ~13G by 02:40. You were briefly up, saw the app
+  spawn it at boot, and decided the fix: LAZY — nothing spawns until the
+  agent pane is actually used (#244, dispatches first after landing).
+  Recovered ~40G total (SDK dirs + caches + 24 retired /tmp worktrees, their
+  scratches swept into .invar/rescue — ShortcutsView.ts may be unlanded
+  work). Filed #244-#250 (leak, provider-seam decision for you, four
+  distill/hygiene bycatch). Poisoned gate aborted by the abort test; clean
+  gate rerunning with an interim extraction reaper armed. (c669256f): ui.lattice.md, all 61 records woven,
   77->217 resolved links, five generators + three recurring shapes + eight
   compositions. Its bycatch ran the full new taxonomy: six findings ->
   #239 (citation repairs, DISPATCHED into the freed lane), #240 (Momentum
