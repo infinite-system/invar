@@ -10,6 +10,13 @@
   through a full gate. If completion smoke reds again: capture the failing
   status.json tail from the gate failure log; #35's builder needs it, or it
   routes to #233's tui-harness env.
+- ON RESTART ARM ALL FOUR LOOPS (user caught the gap 05:0x — the anchor
+  had named only the first two): (1) fleet-watch Monitor (persistent);
+  (2) the /loop ScheduleWakeup chain; (3) the 30-min RECONCILIATION SWEEP
+  cron `11,41 * * * *`; (4) the HOURLY ORCHESTRATION cron `7 * * * *` —
+  verbatim prompts for (3)+(4) live in conductor SKILL.md `## Live cron
+  prompts`; crons are session-only and die with the session, the words in
+  the skill are the durable artifact.
 - PROTOCOL (all mechanical, user-directed tonight): (1) dispatch REFUSES
   without fleet-watch's heartbeat (arm: Monitor bash
   scripts/fleet/fleet-watch.sh, persistent — ONE watcher, idempotent);
