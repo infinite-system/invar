@@ -1,5 +1,5 @@
-// The structure navigator as a primary-dock pane content citizen: a cells citizen — the host
-// paints the StyledText this returns — switchable beside Files, Git, and Extensions with zero
+// The structure navigator as a right-dock pane content citizen: a cells citizen — the host
+// paints the StyledText this returns — occupying the dock beside the file it outlines with zero
 // host wiring. It projects the ACTIVE workspace's outline, resolved late through the injected
 // accessor, exactly like the file-tree pane.
 //
@@ -80,9 +80,7 @@ class $StructurePaneContent implements PaneContent {
     const innerWidth = Math.max(1, context.width);
     return StructurePaneRenderer.Class.render({
       outline,
-      structureFocused:
-        this.application.workspaceSet.active.focus.value === 'primaryPane' &&
-        this.application.primaryDockHost.focused.value,
+      structureFocused: context.focused,
       palette: context.palette,
       symbolMarks: ThemeIcons.Class.symbolMarksFor(context.glyphLevel),
       height: Math.max(1, context.height),
@@ -121,7 +119,8 @@ class $StructurePaneContent implements PaneContent {
     const rowIndex = outline.windowTop() + row;
     if (rowIndex < 0 || rowIndex >= outline.rows.value.length) return false;
     outline.setSelection(rowIndex);
-    workspace.activateSelected();
+    // The jump lands IN the editor, so the keyboard follows it out of the dock.
+    if (workspace.activateSelected()) this.application.rightDockHost.blur();
     this.application.requestRender();
     return true;
   }
@@ -138,9 +137,7 @@ class $StructurePaneContent implements PaneContent {
     }
   }
 
-  onFocus(): void {
-    this.application.workspaceSet.active.focusPrimaryPane('structure');
-  }
+  onFocus(): void {}
 
   onBlur(): void {}
 

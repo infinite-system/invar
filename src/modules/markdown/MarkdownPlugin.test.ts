@@ -3,6 +3,7 @@ import { MarkdownPlugin } from './MarkdownPlugin';
 import { EditorSurfaceClaims } from '../workspace/EditorSurfaceClaims';
 import { EditorSurfaceContents } from '../ui/EditorSurfaceContents';
 import { CommandRegistry } from '../commands/CommandRegistry';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { Workspace } from '../workspace/Workspace';
 import { ref } from 'vue';
@@ -10,6 +11,7 @@ import { ref } from 'vue';
 function createHostWorkspace(path: string) {
   const workspace = {
     editorSurfaces: new EditorSurfaceClaims.Class(),
+    providers: new ProviderRegistry.Class(),
     root: '/project',
     activeDocumentHandle: { path },
     editor: { hasDocument: { value: true }, document: { path } },

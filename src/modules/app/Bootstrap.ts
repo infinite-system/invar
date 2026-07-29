@@ -288,6 +288,7 @@ class $Bootstrap {
         commands,
         keybindings,
         primaryDockHost,
+        rightDockHost,
         contextMenu,
         boundedListPopup,
         overlayCoordinator,
@@ -2164,6 +2165,28 @@ class $Bootstrap {
         rightDockHost.visible.value &&
         rightDockHost.focused.value
       ) {
+        // Same contract as the primary dock above: a focused dock content that declares its own
+        // keybinding context resolves in it (structure's Up/Down/Enter), then raw keys fall
+        // through to handleKey. The host reads no content type and no action vocabulary.
+        const rightDockContent = rightDockHost.focusedContent;
+        const rightDockContext = rightDockContent?.keybindingContext;
+        if (rightDockContext) {
+          const rightDockResolution = keybindings.resolve(
+            {
+              name: key.name,
+              ctrl: key.ctrl,
+              shift: key.shift,
+              option: key.option || key.meta,
+              super: key.super,
+            },
+            rightDockContext,
+            Date.now(),
+          );
+          if (rightDockResolution.action) {
+            dispatchAction(rightDockResolution.action, key);
+            return;
+          }
+        }
         rightDockHost.handleKey(key);
         return;
       }

@@ -283,6 +283,19 @@ class $PanelHost {
     if (addedIndex >= 0) this.focusCell(addedIndex);
     this.focus();
   }
+  /** Make one registered content the visible single-pane occupant WITHOUT taking the keyboard —
+   *  the reveal a default-visibility policy performs. `showContent` stays the user's own gesture
+   *  and focuses; this one never steals the keys from the surface the user is driving. No-op for
+   *  an unknown id. */
+  revealContent(id: string): void {
+    if (!this.contents.has(id)) return;
+    this.retargetFocus(() => {
+      this.layout.value = [];
+      this.activeId.value = id;
+      this.focusedIndex.value = 0;
+    });
+    this.visible.value = true;
+  }
   /** Move registered content one row in the user order and immediately reflow any live split. */
   moveContent(id: string, direction: -1 | 1): void {
     const registeredIdentifiers = this.orderedContents.map(

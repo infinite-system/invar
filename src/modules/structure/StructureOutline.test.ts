@@ -207,6 +207,62 @@ test('a truncated result states the cap instead of presenting a shorter outline'
   }
 });
 
+test('with several sources installed, the newest one that supports the document answers', async () => {
+  const context = makeWorkspace(makeDocument('/tmp/multi.md'));
+  const codeSource = makeSource(READY_RESULT, {
+    supportsDocument: (document) => document.path.endsWith('.ts'),
+  });
+  const markdownResult: StructureOutlineResult = {
+    truncated: false,
+    symbols: [
+      {
+        name: 'Heading',
+        symbolClass: 'module',
+        line: 0,
+        column: 0,
+        endLine: 3,
+        children: [],
+      },
+    ],
+  };
+  const markdownSource = makeSource(markdownResult, {
+    supportsDocument: (document) => document.path.endsWith('.md'),
+  });
+  const disposeCode = context.workspace.providers.register(
+    'structure',
+    codeSource,
+  );
+  const disposeMarkdown = context.workspace.providers.register(
+    'structure',
+    markdownSource,
+  );
+  const outline = new StructureOutline.Class(context.workspace, () => true);
+  try {
+    // The .md document routes past the code source to the markdown source.
+    await outline.refresh();
+    expect(outline.status.value).toBe('ready');
+    expect(outline.rows.value.map((row) => row.name)).toEqual(['Heading']);
+    expect(codeSource.requests).toBe(0);
+    expect(markdownSource.requests).toBe(1);
+
+    // The .ts document still reaches the earlier-registered code source.
+    context.setDocument(makeDocument('/tmp/multi.ts'));
+    await outline.refresh();
+    expect(outline.status.value).toBe('ready');
+    expect(codeSource.requests).toBe(1);
+
+    // A document neither source supports states the file-type affordance.
+    context.setDocument(makeDocument('/tmp/multi.css'));
+    await outline.refresh();
+    expect(outline.status.value).toBe('unavailable');
+    expect(outline.notice.value).toContain('file type');
+  } finally {
+    disposeCode();
+    disposeMarkdown();
+    outline.dispose();
+  }
+});
+
 test('an unobserved outline issues no request at any document size', async () => {
   const context = makeWorkspace(makeDocument('/tmp/f.ts'));
   const source = makeSource(READY_RESULT);

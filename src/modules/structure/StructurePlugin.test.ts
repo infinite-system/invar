@@ -1,69 +1,74 @@
 import { expect, test } from 'bun:test';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { Workspace } from '../workspace/Workspace';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import { TextDocument } from '../text/TextDocument';
 import { ProviderRegistry } from '../plugins/ProviderRegistry';
+import { PanelHost } from '../ui/PanelHost';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import { StructurePlugin } from './StructurePlugin';
 
 interface RecordingContext {
   context: ApplicationContributionContext;
+  rightDockHost: PanelHost.Instance;
   dockContents: PaneContent[];
   keybindings: number;
   commandIds: string[];
   commandDisposals: number;
   statusDisposals: number;
+  settingIdentifiers: string[];
+  settingDisposals: number;
+  showByDefault: ReturnType<typeof ref<boolean>>;
   snapshot: () => Record<string, unknown>;
-  dockVisible: ReturnType<typeof ref<boolean>>;
-  setActiveDockContent: (id: string | null) => void;
 }
 
 function makeContext(workspace: Workspace.Model): RecordingContext {
   const dockContents: PaneContent[] = [];
   const commandIds: string[] = [];
-  const dockVisible = ref(true);
-  const activeDockContentId = ref<string | null>(null);
+  const settingIdentifiers: string[] = [];
+  // The REAL right-dock host: the plugin's default-visibility policy drives it, so the tests
+  // observe genuine visibility transitions instead of a hand-rolled stub's.
+  const rightDockHost = new PanelHost.Class({
+    showWhenContentRegistered: true,
+  });
+  const showByDefault = ref(true);
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const recording: RecordingContext = {
+    rightDockHost,
     dockContents,
     keybindings: 0,
     commandIds,
     commandDisposals: 0,
     statusDisposals: 0,
-    dockVisible,
+    settingIdentifiers,
+    settingDisposals: 0,
+    showByDefault,
     snapshot: () => snapshotProvider?.() ?? {},
-    setActiveDockContent: (id) => {
-      activeDockContentId.value = id;
-    },
     context: {
       workspaceSet: {
         active: workspace,
         activeWorkspaceIndex: ref(0),
       },
-      primaryDockHost: {
-        get visible() {
-          return dockVisible;
-        },
-        get activeContent() {
-          const id = activeDockContentId.value;
-          return id
-            ? (dockContents.find((content) => content.id === id) ?? null)
-            : null;
-        },
-        showContent: (id: string) => {
-          activeDockContentId.value = id;
-        },
-        focused: ref(true),
-      },
+      rightDockHost,
       settings: { scrollbarThickness: ref(1) },
       theme: { glyphLevel: ref('unicode') },
       registerKeybindings: () => {
         recording.keybindings += 1;
       },
-      registerPrimaryDockContent: (content: PaneContent) => {
+      registerRightDockContent: (content: PaneContent) => {
         dockContents.push(content);
+        rightDockHost.register(content);
+      },
+      registerSetting: (contribution: { identifier: string }) => {
+        settingIdentifiers.push(contribution.identifier);
+        return {
+          value: showByDefault,
+          save: () => {},
+          dispose: () => {
+            recording.settingDisposals += 1;
+          },
+        };
       },
       statusProjectionContributions: {
         register: (contribution: {
@@ -90,7 +95,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
   return recording;
 }
 
-test('activation registers the pane, commands, keybindings, and status keys', () => {
+test('activation registers the right-dock pane, commands, keybindings, setting, and status keys', () => {
   const plugin = new StructurePlugin.Class();
   const workspace = new Workspace.Class();
   plugin.attachWorkspace(workspace);
@@ -98,14 +103,16 @@ test('activation registers the pane, commands, keybindings, and status keys', ()
 
   plugin.activateApplication(recording.context);
 
-  expect(plugin.primaryDockContentIdentifiers).toEqual(['structure']);
   expect(plugin.workspaceContributor).toBe(plugin);
   expect(recording.dockContents.map((content) => content.id)).toEqual([
     'structure',
   ]);
+  expect(recording.rightDockHost.has('structure')).toBe(true);
   expect(recording.keybindings).toBe(1);
+  expect(recording.settingIdentifiers).toEqual(['structureShowByDefault']);
   expect(recording.commandIds).toEqual([
     'view.showStructure',
+    'structure.focusEditor',
     'structure.up',
     'structure.down',
     'structure.activate',
@@ -116,9 +123,10 @@ test('activation registers the pane, commands, keybindings, and status keys', ()
     structureRows: 0,
     structureRequests: 0,
   });
+  plugin.disposeApplication();
 });
 
-test('the outline is observed only while the dock shows the structure pane', async () => {
+test('the outline is observed only while the right dock shows the structure pane', async () => {
   const plugin = new StructurePlugin.Class();
   const document = new TextDocument.Class();
   document.loadFromText('class A {}\n', '/tmp/observed.ts');
@@ -130,26 +138,30 @@ test('the outline is observed only while the dock shows the structure pane', asy
   plugin.attachWorkspace(workspace);
   const recording = makeContext(workspace);
   plugin.activateApplication(recording.context);
+  await nextTick();
 
-  // Hidden pane: a refresh issues no request even with a source installed.
+  // No source installed: the default-visibility policy keeps the dock hidden, and a hidden pane
+  // issues no request.
+  expect(recording.rightDockHost.visible.value).toBe(false);
+  const outline = plugin.controllerFor(workspace).outline;
+  await outline.refresh();
+  expect(outline.requestCount.value).toBe(0);
+
+  // A source that answers for the document reveals the pane, and the same refresh now asks it.
   const source = {
     supportsDocument: () => true,
     documentSymbols: async () => ({ symbols: [], truncated: false }),
     structureNotice: () => null,
   };
   const disposeSource = workspace.providers.register('structure', source);
-  const outline = plugin.controllerFor(workspace).outline;
-  recording.setActiveDockContent(null);
-  await outline.refresh();
-  expect(outline.requestCount.value).toBe(0);
-
-  // Shown pane: the same refresh asks the source.
-  recording.setActiveDockContent('structure');
+  await nextTick();
+  expect(recording.rightDockHost.isContentVisible('structure')).toBe(true);
   await outline.refresh();
   expect(outline.requestCount.value).toBe(1);
 
-  // Dock hidden again: back to zero-cost.
-  recording.dockVisible.value = false;
+  // Dock hidden by hand: back to zero-cost.
+  recording.rightDockHost.hide();
+  await nextTick();
   await outline.refresh();
   expect(outline.requestCount.value).toBe(1);
 

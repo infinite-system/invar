@@ -47,6 +47,8 @@ export interface ApplicationContributionContext {
   readonly theme: Theme.Instance;
   readonly commands: CommandRegistry.Instance;
   readonly primaryDockHost: PanelHost.Instance;
+  /** The empty-by-default dock at the editor's right edge — same generic host as the primary dock. */
+  readonly rightDockHost: PanelHost.Instance;
   readonly contextMenu: ContextMenu.Instance;
   readonly boundedListPopup: BoundedListPopup.Instance;
   readonly overlayCoordinator: OverlayCoordinator.Instance;
@@ -69,6 +71,7 @@ export interface ApplicationContributionContext {
     contribution: SettingContribution<Value>,
   ) => RegisteredSetting<Value>;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
+  readonly registerRightDockContent: (content: PaneContent) => void;
   /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
    *  host answers only which of that kind is visible; everything else stays inside the runtime. */
   readonly registerPaneRuntime: (runtime: PaneRuntime) => PaneRuntimeHostPort;

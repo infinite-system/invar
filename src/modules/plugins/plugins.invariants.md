@@ -56,6 +56,10 @@ outside the registry.
   type only when it resolves its own interface.
 - *Last registration wins* — a later provider can substitute for an earlier provider without
   changing the consumer. Withdrawal reveals the earlier provider again.
+- *A consumer can enumerate* — `resolveAll` returns every registration for a capability,
+  oldest first, for capabilities whose providers each answer a subset of subjects (the
+  structure sources, per file type). The pick among them belongs to the consumer; the registry
+  stays type-blind.
 - *Reactive withdrawal* — register, withdraw, and dispose advance the revision.
 
 **Mechanism:** The host owns only identifier-to-value storage and lifetime. Providers register
@@ -74,18 +78,19 @@ provider — fixes the implementation edge and prevents substitution. A typed un
 **Evidence:** `src/modules/plugins/ProviderRegistry.ts`;
 `src/modules/workspace/Workspace.ts`;
 `src/modules/lsp/LspWorkspaceProvider.ts`;
+`src/modules/markdown/MarkdownWorkspace.ts` (the markdown structure source registration);
 `src/modules/structure/StructureOutline.ts`;
 `src/modules/inline-rewrite/InlineRewriteContributor.ts`;
 `src/modules/database/DatabaseProviderPlugin.ts`;
 `src/modules/database/DatabaseConsumerWorkspace.ts`;
-`.invar/tasks/active/245-provider-seam-open-or-bless-decision/census-245-provider-rendezvous.ts`.
+`.invar/tasks/completed/245-provider-seam-open-or-bless-decision/census-245-provider-rendezvous.ts`.
 
 **Impossible if true:** A second provider registry; a peer consumer constructing a concrete
 provider from another module; an uninstalled provider still resolving; the host importing a
 consumer-owned provider interface.
 
 **Verification:** `bun
-.invar/tasks/active/245-provider-seam-open-or-bless-decision/census-245-provider-rendezvous.ts
+.invar/tasks/completed/245-provider-seam-open-or-bless-decision/census-245-provider-rendezvous.ts
 --require-one`; `bun test src/modules/plugins/ProviderRegistry.test.ts
 src/modules/structure/StructureOutline.test.ts
 src/modules/inline-rewrite/InlineRewriteContributor.test.ts

@@ -1,7 +1,8 @@
-// The structure navigator plugin: an ordinary contribution — a manifest row, a primary-dock pane,
-// keybindings, commands, and a status projection — registered through the same seams every other
-// citizen uses. It consumes a StructureSource another plugin registers; it starts no process and
-// owns no protocol.
+// The structure navigator plugin: an ordinary contribution — a manifest row, a right-dock pane,
+// keybindings, commands, a contributed setting, and a status projection — registered through the
+// same seams every other citizen uses. It consumes a StructureSource another plugin registers; it
+// starts no process and owns no protocol. The pane sits in the RIGHT dock beside the file it
+// outlines, and its default-visibility policy shows it unbidden for documents a source answers.
 //
 // Uninstall symmetry from day one: disposing the application contribution withdraws the commands,
 // the status projection, and the pane reference; the host unregisters the pane, settings, and
@@ -21,13 +22,13 @@ import type {
   WorkspaceContribution,
   WorkspaceContributor,
 } from '../workspace/WorkspaceContributor.interface';
+import { StructureDefaultVisibility } from './StructureDefaultVisibility';
 import { StructurePaneContent } from './StructurePaneContent';
 import { StructureWorkspace } from './StructureWorkspace';
 
 class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   readonly identifier = 'structure-navigator';
   readonly name = 'Structure Navigator';
-  readonly primaryDockContentIdentifiers = ['structure'] as const;
   readonly workspaceContributor: WorkspaceContributor = this;
   protected readonly workspaces = new WeakMap<
     Workspace.Model,
@@ -35,6 +36,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   >();
   protected application: ApplicationContributionContext | null = null;
   protected paneContent: StructurePaneContent.Model | null = null;
+  protected defaultVisibility: StructureDefaultVisibility.Model | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
 
@@ -51,7 +53,11 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         chord: { key: 'u', ctrl: true, shift: true },
         action: 'view.showStructure',
       },
-      { chord: { key: 'tab' }, action: 'focus.toggle', context: 'structure' },
+      {
+        chord: { key: 'tab' },
+        action: 'structure.focusEditor',
+        context: 'structure',
+      },
       { chord: { key: 'up' }, action: 'structure.up', context: 'structure' },
       {
         chord: { key: 'down' },
@@ -70,7 +76,18 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       },
     ]);
     this.paneContent = this.createPaneContent(context);
-    context.registerPrimaryDockContent(this.paneContent);
+    context.registerRightDockContent(this.paneContent);
+    const showByDefaultSetting = context.registerSetting({
+      identifier: 'structureShowByDefault',
+      label: 'Show structure for supported files',
+      section: this.name,
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
+    this.defaultVisibility = this.createDefaultVisibility(
+      context,
+      () => showByDefaultSetting.value.value,
+    );
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -95,21 +112,35 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     );
   }
 
-  /** True while THIS workspace's outline is on screen: the dock is visible, the structure pane is
-   *  its active content, and the workspace is the active one. The outline gates every source
-   *  request on this, so a hidden pane costs zero requests. */
+  protected createDefaultVisibility(
+    context: ApplicationContributionContext,
+    showByDefault: () => boolean,
+  ): StructureDefaultVisibility.Model {
+    return new StructureDefaultVisibility.Class({
+      rightDockHost: context.rightDockHost,
+      workspaceSet: context.workspaceSet,
+      showByDefault,
+      requestRender: () => context.requestRender(),
+    });
+  }
+
+  /** True while THIS workspace's outline is on screen: the right dock is visible, the structure
+   *  pane is its active content, and the workspace is the active one. The outline gates every
+   *  source request on this, so a hidden pane costs zero requests. */
   protected paneIsObserved(workspace: Workspace.Model): boolean {
     const application = this.application;
     if (!application) return false;
     return (
-      application.primaryDockHost.visible.value &&
-      application.primaryDockHost.activeContent?.id === 'structure' &&
+      application.rightDockHost.visible.value &&
+      application.rightDockHost.activeContent?.id === 'structure' &&
       application.workspaceSet.active === workspace
     );
   }
 
   disposeApplication(): void {
     this.paneContent = null;
+    this.defaultVisibility?.dispose();
+    this.defaultVisibility = null;
     this.disposeCommands?.();
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
@@ -136,8 +167,13 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   protected registerCommands(context: ApplicationContributionContext): void {
     const active = () => this.activeWorkspace();
     const show = (): void => {
-      context.primaryDockHost.showContent('structure');
-      context.workspaceSet.active.focusPrimaryPane('structure');
+      // The explicit gesture re-endorses the pane for this document before it shows and focuses.
+      this.defaultVisibility?.noteManualShow();
+      // The keyboard moves WITH the gesture: pull workspace focus off the primary pane and blur
+      // that dock, or the input ladder would keep routing keys there ahead of the right dock.
+      context.workspaceSet.active.focusEditor();
+      context.primaryDockHost.blur();
+      context.rightDockHost.showContent('structure');
     };
     this.disposeCommands = context.commands.registerAll([
       {
@@ -145,6 +181,15 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         title: 'View: Show Structure',
         category: 'View',
         run: show,
+      },
+      {
+        id: 'structure.focusEditor',
+        title: 'Structure: Focus Editor',
+        category: 'Structure',
+        run: () => {
+          context.rightDockHost.blur();
+          context.workspaceSet.active.focusEditor();
+        },
       },
       {
         id: 'structure.up',
@@ -168,7 +213,10 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         id: 'structure.activate',
         title: 'Structure: Go to Symbol',
         category: 'Structure',
-        run: () => void active().activateSelected(),
+        run: () => {
+          // The jump lands IN the editor, so the keyboard follows it out of the dock.
+          if (active().activateSelected()) context.rightDockHost.blur();
+        },
       },
       {
         id: 'structure.refresh',

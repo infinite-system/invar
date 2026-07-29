@@ -317,6 +317,52 @@ src/modules/theme/ThemeIcons.test.ts && bun scripts/harness/smoke-markdown-harne
 
 **Last refined:** 2026-07-27
 
+### Markdown headings are the document's structure
+
+**Invariant:** If a `.md` document is asked for its structure, then the markdown plugin's own
+`MarkdownStructureSource` answers with the document's headings — document-ordered, nested by
+level, each anchored at its heading line with its section's extent — registered through the
+host `ProviderRegistry` under the `structure` capability and consumed by the structure pane
+through the unchanged `StructureSource` seam; no LSP is involved, and a headingless markdown
+document answers an empty list, never `null`.
+
+**Scope:** `MarkdownStructureSource`, its registration and withdrawal in `MarkdownWorkspace`,
+and the one markdown-path predicate both share. Not the pane, the dock, or the jump — those
+are the structure module's records.
+
+**Mechanism:** The source reuses the module's own `MarkdownParser`, so heading recognition is
+the SAME rule the preview renders by (a fenced code block's `# comment` is not a heading; ATX
+and setext headings both count). A level stack nests each heading under the nearest shallower
+one and closes sections at the next same-or-shallower heading. `supportsDocument` is a path
+test only; the parse happens per outline request, debounced and observation-gated by the
+consumer.
+
+**Generates:** The table of contents in the structure pane for every markdown file; the
+`isMarkdownPath` predicate `MarkdownWorkspace.activeFileIsMarkdown` reuses; withdrawal of the
+TOC when the Markdown extension uninstalls.
+
+**Rejected alternatives:** A line-scan for `#` prefixes in the structure module — re-rolls the
+parser's heading rule and lies inside fenced code blocks. Serving headings through the LSP
+seam — the outline is the plugin's own knowledge, and coupling it to Language Intelligence
+would withdraw the TOC with the wrong extension.
+
+**Evidence:** `src/modules/markdown/MarkdownStructureSource.ts`;
+`src/modules/markdown/MarkdownWorkspace.ts` (registration, `disposed()` withdrawal);
+`src/modules/markdown/MarkdownStructureSource.test.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts` (the TOC and Markdown-uninstall arms).
+
+**Impossible if true:** A markdown TOC that lists a code-block comment as a heading; heading
+rows out of document order; a TOC that survives uninstalling the Markdown extension; a second
+markdown-ness predicate in this module; a headingless document reported as "cannot answer".
+
+**Verification:** `bun test src/modules/markdown/MarkdownStructureSource.test.ts
+src/modules/markdown/MarkdownWorkspace.test.ts` and
+`bun scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### A Markdown file offers a live source preview split
 
 **Invariant:** If the active editor tab is a Markdown file and preview mode is enabled, then the
