@@ -843,10 +843,13 @@ export const TASKS_MOTION_PAINTS_PER_STEP = 5;
 // Lines of code, live, as the agents write: each in-progress task's worktree
 // diffed against its merge-base with main — committed AND uncommitted edits
 // both count, because the point is watching the code grow under the cursor.
-// The merge-base is cached (it never moves during a run); the diff is one
-// spawn per builder per data tick.
-const mergeBaseCache = new Map<string, string | null>();
-
+//
+// The merge-base is recomputed every tick, NOT cached: a builder that merges
+// main moves its base forward, and a stale cached base counts every landed
+// line since dispatch as the builder's own (2026-07-29: #289 read +5,037
+// while its true authored delta was +1,331). For the same reason a worktree
+// with an in-flight uncommitted merge (MERGE_HEAD present) is measured
+// committed-only — mid-merge working-tree content is main's, not authored.
 export function readTaskLineDelta(
   fleetRepositoryRoot: string,
   folderName: string,
@@ -858,20 +861,20 @@ export function readTaskLineDelta(
     folderName,
   );
   if (!existsSync(worktreePath)) return null;
-  let base = mergeBaseCache.get(worktreePath);
-  if (base === undefined) {
-    const baseResult = Bun.spawnSync(['git', 'merge-base', 'main', 'HEAD'], {
+  const baseResult = Bun.spawnSync(['git', 'merge-base', 'main', 'HEAD'], {
+    cwd: worktreePath,
+  });
+  const base =
+    baseResult.exitCode === 0 ? baseResult.stdout.toString().trim() : null;
+  if (base === null || base === '') return null;
+  const mergeInFlight =
+    Bun.spawnSync(['git', 'rev-parse', '-q', '--verify', 'MERGE_HEAD'], {
       cwd: worktreePath,
-    });
-    base =
-      baseResult.exitCode === 0 ? baseResult.stdout.toString().trim() : null;
-    mergeBaseCache.set(worktreePath, base);
-  }
-  if (base === null) return null;
-  const diffResult = Bun.spawnSync(
-    ['git', 'diff', '--shortstat', base, '--', 'src', 'scripts'],
-    { cwd: worktreePath },
-  );
+    }).exitCode === 0;
+  const diffArguments = mergeInFlight
+    ? ['git', 'diff', '--shortstat', base, 'HEAD', '--', 'src', 'scripts']
+    : ['git', 'diff', '--shortstat', base, '--', 'src', 'scripts'];
+  const diffResult = Bun.spawnSync(diffArguments, { cwd: worktreePath });
   const summary = diffResult.stdout.toString();
   const added = /(\d+) insertion/.exec(summary);
   const removed = /(\d+) deletion/.exec(summary);
