@@ -173,9 +173,13 @@ bun scripts/tasks/tasks-status.ts write-active # regenerate project.active-tasks
 
 Two sibling files, one owner each — named so they sit together in a file viewer:
 
-- `project.active-tasks.md` — GENERATED from each task file's `Priority:` field; never
+- `project.active-tasks.md` — GENERATED: IN-PROGRESS first (latest first), then active grouped by
+  `Priority:` (latest first within each group), then the last 15 completed; never
   hand-edited. `dispatch.sh` and the step 5/6 moves regenerate it; a hand edit is destroyed on
   the next regeneration and reads as STALE-ACTIVE-VIEW until then.
+- `project.tasks-completed.md` — GENERATED: every completed task ever, latest first, with its
+  landing commit — the infinite completion log, derivable forever because completed folders are
+  never deleted.
 - `project.active-priority-tasks.md` — HAND-WRITTEN priority log (named to sit beside its generated sibling in a file viewer): dated reasons for the current
   ordering, re-prioritisation decisions, holds. No tooling reads or writes it.
 

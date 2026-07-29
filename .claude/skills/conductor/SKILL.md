@@ -76,7 +76,9 @@ is the conductor's operative summary.
 each task's header (user-directed | verification-integrity | flake-evidence | performance-behaviour |
 architecture-hygiene). Everything else is DERIVED: `project.active-tasks.md` is GENERATED from those
 fields by `tasks-status.ts write-active` and never hand-edited — an agent cannot forget to update
-a file no agent updates. Its hand-written sibling `project.active-priority-tasks.md` holds the
+a file no agent updates. Layout: IN-PROGRESS first, then active by priority (latest first), then
+the last 15 completed; `project.tasks-completed.md` (also generated) is the infinite completion
+log, latest first, each line carrying its landing commit. Its hand-written sibling `project.active-priority-tasks.md` holds the
 priority LOG (dated ordering decisions); no tooling touches it, and the names keep the pair
 adjacent in a file viewer. The old root docs (`project.tasks.md`, `project.ledger.md`,
 `project.tasks-ledger.md`, `backlog.md`) are all retired.

@@ -7,55 +7,71 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## USER-DIRECTED (3)
-- #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
-- #202 tab-reactivation-rereads-whole-file
 - #205 gate-launch-time-and-memory-ceiling
+- #202 tab-reactivation-rereads-whole-file
+- #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (11)
-- #105 unrun-smokes-cannot-report-rot
-- #177 gate-retry-ratchet-and-floor  [ACTIVE — needs 3–5 clean gates before the ratchet can tighten]
-- #179 gate-compares-numbers-to-itself  [ACTIVE — partially addressed; the general form is open]
-- #180 no-smoke-runs-on-macos  [ACTIVE — CRITICAL]
-- #181 terminal-factory-platform-untested  [ACTIVE — pairs with #180]
-- #182 collect-until-false-success-wait
-- #183 quiet-lock-degrades-and-runs-anyway  [ACTIVE — unfixed, and it has already cost samples]
-- #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]
 - #210 mutation-probes-for-semantic-weakening
-- #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
+- #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]
+- #183 quiet-lock-degrades-and-runs-anyway  [ACTIVE — unfixed, and it has already cost samples]
+- #182 collect-until-false-success-wait
+- #181 terminal-factory-platform-untested  [ACTIVE — pairs with #180]
+- #180 no-smoke-runs-on-macos  [ACTIVE — CRITICAL]
+- #179 gate-compares-numbers-to-itself  [ACTIVE — partially addressed; the general form is open]
+- #177 gate-retry-ratchet-and-floor  [ACTIVE — needs 3–5 clean gates before the ratchet can tighten]
+- #105 unrun-smokes-cannot-report-rot
 - #90 harness-diagnostic-provenance-guard
+- #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
 ## FLAKE-EVIDENCE (12)
-- #109 agent-permissions-quiet-tail-flake  [ACTIVE — dispatch condition: no other builder live]
-- #124 terminal-follow-escape-intermittent  [ACTIVE — but see "State discrepancy" below; a fix was demonstrated and may have landed]
-- #164 panel-chrome-ascii-tier-timeout  [ACTIVE — pre-existing, reproduced on BOTH populations]
-- #165 glide-canary-zero-margin-boundary
-- #166 latency-instrument-crashes-at-one-sample
-- #167 audio-narration-pool-timeout
-- #173 grid-predicates-assume-contiguous-text
-- #174 markdown-preview-omits-ragged-table
-- #176 tabs-harness-retry-only-pass
-- #193 fold-dense-contract-row-shortfall  [ACTIVE — single unexplained miss]
-- #198 selection-harness-pre-satisfied-wheels
 - #200 input-byte-latency-above-baseline
+- #198 selection-harness-pre-satisfied-wheels
+- #193 fold-dense-contract-row-shortfall  [ACTIVE — single unexplained miss]
+- #176 tabs-harness-retry-only-pass
+- #174 markdown-preview-omits-ragged-table
+- #173 grid-predicates-assume-contiguous-text
+- #167 audio-narration-pool-timeout
+- #166 latency-instrument-crashes-at-one-sample
+- #165 glide-canary-zero-margin-boundary
+- #164 panel-chrome-ascii-tier-timeout  [ACTIVE — pre-existing, reproduced on BOTH populations]
+- #124 terminal-follow-escape-intermittent  [ACTIVE — but see "State discrepancy" below; a fix was demonstrated and may have landed]
+- #109 agent-permissions-quiet-tail-flake  [ACTIVE — dispatch condition: no other builder live]
 
 ## PERFORMANCE-BEHAVIOUR (9)
-- #104 editor-glide-monotonicity-deferred  [ACTIVE (deferred by user decision)]
-- #140 real-terminal-freeze-capture  [ACTIVE — deliberately NOT dispatched; waiting on one user check]
-- #153 overlay-horizontal-fling-slower  [ACTIVE — WAITING ON THE USER (a feel call)]
-- #154 perf-baselines-reach-no-verdict
-- #160 context-menu-wheel-double-dispatch
-- #175 attribute-boot-time-irreducible-cost  [ACTIVE — brief not yet written]
 - #185 behavioral-contracts-shared-fixtures
-- #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
+- #175 attribute-boot-time-irreducible-cost  [ACTIVE — brief not yet written]
+- #160 context-menu-wheel-double-dispatch
+- #154 perf-baselines-reach-no-verdict
+- #153 overlay-horizontal-fling-slower  [ACTIVE — WAITING ON THE USER (a feel call)]
+- #140 real-terminal-freeze-capture  [ACTIVE — deliberately NOT dispatched; waiting on one user check]
+- #104 editor-glide-monotonicity-deferred  [ACTIVE (deferred by user decision)]
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
+- #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
 ## ARCHITECTURE-HYGIENE (8)
-- #114 modularity-umbrella-provider-runtime  [ACTIVE — Wave A landed, Wave B open]
-- #122 editor-becomes-final-contributor  [ACTIVE — blocked, strictly after #114]
 - #136 shared-scale-fixture-corpus-cache
-- #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
-- #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
-- #46 terminal-observer-reverse-presence  [ACTIVE — design doc exists, no branch cut]
-- #59 prettier-format-gate-and-reformat  [ACTIVE — deliberately LAST]
+- #122 editor-becomes-final-contributor  [ACTIVE — blocked, strictly after #114]
+- #114 modularity-umbrella-provider-runtime  [ACTIVE — Wave A landed, Wave B open]
 - #62 parameter-count-ports-object-sweep
+- #59 prettier-format-gate-and-reformat  [ACTIVE — deliberately LAST]
+- #46 terminal-observer-reverse-presence  [ACTIVE — design doc exists, no branch cut]
+- #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
+- #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
+## RECENTLY COMPLETED (last 15 of 20 — full log: project.tasks-completed.md)
+- #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
+- #208 git-commit-collapse-wiring-gap — merged 15f51dc
+- #207 silently-discarded-user-input — fb199cb
+- #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
+- #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
+- #203 folded-editing-scale-invariance — e479b98
+- #201 quick-open-silent-empty-enumeration — fb199cb
+- #197 lsp-size-budget-guards-reads — 659b649
+- #196 editor-flyweight-edit-path
+- #195 start-script-drops-path-argument — fb199cb
+- #194 reserved-chord-fixture-self-contained — d3721b2
+- #192 residual-harness-wait-audit
+- #191 terminal-stage-compound-predicate
+- #189 gate-reds-population-separation
+- #188 frame-ordinal-wait-regressions

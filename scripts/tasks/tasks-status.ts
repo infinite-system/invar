@@ -22,7 +22,8 @@
 //   THIN              a task file at or under THIN_LINE_CEILING lines. The
 //                     migration produced 53 of these by carrying only each subject; a
 //                     new one means a task was filed without its reasoning.
-//   STALE-ACTIVE-VIEW project.active-tasks.md disagrees with a fresh render — a move
+//   STALE-ACTIVE-VIEW a generated view (project.active-tasks.md or project.tasks-completed.md)
+//                     disagrees with a fresh render — a move
 //                     happened and write-active did not run. The repair is always the
 //                     one command, never a hand edit to individual entries.
 //
@@ -222,33 +223,51 @@ function activeViewPath(tasksRoot: string): string {
   return join(tasksRoot, '..', '..', 'project.active-tasks.md');
 }
 
+const RECENTLY_COMPLETED_COUNT = 15;
+
+// Task numbers are permanent and monotonic, so number-descending is "latest first" without needing
+// a timestamp nobody records. True completion CHRONOLOGY lives in the git history of the folder
+// moves; these views are ordering by recency of FILING, which is the stable, derivable proxy.
+function byNumberDescending(left: TaskRecord, right: TaskRecord): number {
+  return right.taskNumber - left.taskNumber;
+}
+
+function taskLine(record: TaskRecord): string {
+  const stateSuffix =
+    record.declaredState !== null &&
+    record.declaredState !== 'ACTIVE' &&
+    record.declaredState !== 'IN-PROGRESS'
+      ? `  [${record.declaredState}]`
+      : '';
+  return `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${stateSuffix}`;
+}
+
 function renderActiveView(records: TaskRecord[]): string {
   const outputLines: string[] = [];
-  const openRecords = records.filter(
-    (record) =>
-      record.directoryState === 'active' ||
-      record.directoryState === 'in-progress',
+
+  // IN-PROGRESS first — the tasks someone is actually on outrank everything waiting.
+  const inProgress = records
+    .filter((record) => record.directoryState === 'in-progress')
+    .sort(byNumberDescending);
+  if (inProgress.length > 0) {
+    outputLines.push(`## IN-PROGRESS (${inProgress.length})`);
+    for (const record of inProgress) outputLines.push(taskLine(record));
+    outputLines.push('');
+  }
+
+  const activeRecords = records.filter(
+    (record) => record.directoryState === 'active',
   );
-  const ungrouped = openRecords.filter(
+  const ungrouped = activeRecords.filter(
     (record) => record.priorityGroup === null,
   );
   for (const group of PRIORITY_ORDER) {
-    const inGroup = openRecords.filter(
-      (record) => record.priorityGroup === group,
-    );
+    const inGroup = activeRecords
+      .filter((record) => record.priorityGroup === group)
+      .sort(byNumberDescending);
     if (inGroup.length === 0) continue;
     outputLines.push(`## ${group.toUpperCase()} (${inGroup.length})`);
-    for (const record of inGroup) {
-      const liveMarker =
-        record.directoryState === 'in-progress' ? '  << IN-PROGRESS' : '';
-      const stateSuffix =
-        record.declaredState !== null && record.declaredState !== 'ACTIVE'
-          ? `  [${record.declaredState}]`
-          : '';
-      outputLines.push(
-        `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${stateSuffix}${liveMarker}`,
-      );
-    }
+    for (const record of inGroup) outputLines.push(taskLine(record));
     outputLines.push('');
   }
   if (ungrouped.length > 0) {
@@ -257,27 +276,78 @@ function renderActiveView(records: TaskRecord[]): string {
     );
     for (const record of ungrouped)
       outputLines.push(`- #${record.taskNumber} ${record.folderName}`);
+    outputLines.push('');
   }
-  return outputLines.join('\n');
+
+  // The recent tail of completed work, for at-a-glance momentum; the FULL log is the sibling file.
+  const completed = records
+    .filter((record) => record.directoryState === 'completed')
+    .sort(byNumberDescending);
+  if (completed.length > 0) {
+    outputLines.push(
+      `## RECENTLY COMPLETED (last ${Math.min(RECENTLY_COMPLETED_COUNT, completed.length)} of ${completed.length} — full log: project.tasks-completed.md)`,
+    );
+    for (const record of completed.slice(0, RECENTLY_COMPLETED_COUNT))
+      outputLines.push(completedLine(record));
+  }
+  return outputLines.join('\n').trimEnd();
+}
+
+// One line per completed task: the subject as the short message, and whatever the State line
+// carries after COMPLETED — usually the landing commit — attached.
+function completedLine(record: TaskRecord): string {
+  const stateRemainder =
+    record.declaredState?.replace(/^COMPLETED\s*[—-]?\s*/, '').trim() ?? '';
+  const attachment = stateRemainder.length > 0 ? ` — ${stateRemainder}` : '';
+  return `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${attachment}`;
+}
+
+const COMPLETED_LOG_HEADER =
+  '# project.tasks-completed.md — AUTO-GENERATED, NEVER EDIT BY HAND\n\n' +
+  'Every completed task, latest first — the infinite log; entries only accumulate because a\n' +
+  'completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts write-active`,\n' +
+  'derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the\n' +
+  'task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.\n\n';
+
+function completedLogPath(tasksRoot: string): string {
+  return join(tasksRoot, '..', '..', 'project.tasks-completed.md');
+}
+
+function renderCompletedLog(records: TaskRecord[]): string {
+  const completed = records
+    .filter((record) => record.directoryState === 'completed')
+    .sort(byNumberDescending);
+  return completed.map(completedLine).join('\n');
 }
 
 // The generated view can lag the folders in exactly ONE way: a move happened and nobody re-ran
 // write-active. So the check is not "which entries are wrong" — it is a byte comparison against a
 // fresh render, and the repair is always the same single command. Prompting an agent to hand-edit
 // individual stale entries would reintroduce the hand-maintained backlog this file exists to end.
+// Both generated files are covered by the ONE staleness check: either disagreeing with a fresh
+// render means a move happened and write-active did not run — the same single repair.
 function activeViewIsStale(tasksRoot: string, records: TaskRecord[]): boolean {
-  const filePath = activeViewPath(tasksRoot);
-  if (!existsSync(filePath)) return true;
-  const expected = ACTIVE_VIEW_HEADER + renderActiveView(records) + '\n';
-  return readFileSync(filePath, 'utf8') !== expected;
+  const viewPath = activeViewPath(tasksRoot);
+  const logPath = completedLogPath(tasksRoot);
+  if (!existsSync(viewPath) || !existsSync(logPath)) return true;
+  const expectedView = ACTIVE_VIEW_HEADER + renderActiveView(records) + '\n';
+  const expectedLog = COMPLETED_LOG_HEADER + renderCompletedLog(records) + '\n';
+  return (
+    readFileSync(viewPath, 'utf8') !== expectedView ||
+    readFileSync(logPath, 'utf8') !== expectedLog
+  );
 }
 
-// The self-test writes the view exactly the way write-active does — through the SAME code path —
+// The self-test writes the views exactly the way write-active does — through the SAME code path —
 // so the arms exercise the real writer rather than a test-local imitation of it.
 function backlogWriteForTest(tasksRoot: string, records: TaskRecord[]): void {
   writeFileSync(
     activeViewPath(tasksRoot),
     ACTIVE_VIEW_HEADER + renderActiveView(records) + '\n',
+  );
+  writeFileSync(
+    completedLogPath(tasksRoot),
+    COMPLETED_LOG_HEADER + renderCompletedLog(records) + '\n',
   );
 }
 
@@ -287,7 +357,7 @@ function backlog(tasksRoot: string, writeActiveFile: boolean): number {
   console.log(view);
   if (writeActiveFile) {
     backlogWriteForTest(tasksRoot, records);
-    console.log('wrote project.active-tasks.md');
+    console.log('wrote project.active-tasks.md + project.tasks-completed.md');
   }
   return 0;
 }
