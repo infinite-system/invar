@@ -1,6 +1,24 @@
 # Overnight briefing — started 2026-07-29 00:28
 
-## RESUME ANCHOR 3 (06:2x — supersedes ANCHOR 2; 07:0x update below)
+## RESUME ANCHOR 4 (08:0x — supersedes ANCHOR 3)
+
+- THE #237/#238 WAVE IS FULLY LANDED, MAIN GREEN: #268 → 5c9965a4,
+  #238 → 578b728a (154m, three rounds: build → absorb-main conflict
+  resolution → seven-smoke default-ON adaptation + file grammar). All
+  landings on READ verdicts (GATE_LOG). Sessions archived (both claude
+  session-links needed the by-timestamp repair — recurring defect,
+  UNRESOLVED at dispatch for claude engine; fix candidate: a task).
+- FLEET NOW: #264 (boot-save settings ERASER, data loss, codex·sol·high)
+  and #259 (right-dock double-focus click, codex·sol·high) BUILDING.
+  NOTE: a codex pane's bottom line always shows the placeholder composer —
+  scrollback is where the work shows; do not misread idle-looking panes.
+- QUEUE after a lane frees: #235 (tasks dashboard pane; PTY-widget interim
+  per user), #269 (geometry-assuming smokes sweep), #270 (preview one
+  revision behind source vs record), #263 #265 #266 #267 #255-#258
+  #260-#262. WAIT FOR USER: #241, #242.
+- Gate scratch tree /tmp/gate-tree-268-238 reusable (reset+merge).
+
+## RESUME ANCHOR 3 (06:2x — superseded by ANCHOR 4)
 
 - 07:0x: MAIN IS GREEN AGAIN — #268 landed 5c9965a4 (gate
   /tmp/gate-268-only.log GATE_EXIT=0, read). The COMBINED gate with #238
