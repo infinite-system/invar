@@ -1,6 +1,6 @@
 # 239 — repair ui.invariants.md: dead symbols, wrong paths, duplicated paragraph
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

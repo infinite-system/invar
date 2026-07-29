@@ -1,0 +1,15 @@
+{
+  "task": 239,
+  "slug": "ui-contract-citation-repairs",
+  "branch": "fleet/239-ui-contract-citation-repairs",
+  "worktree": ".invar/worktrees/239-ui-contract-citation-repairs",
+  "tmuxSession": "invar/239-ui-contract-citation-repairs",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-239-ui-contract-citation-repairs.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "8d565b40d25af527eba5ef0aea3f2e70ac161ad8",
+  "startedAt": "2026-07-29T02:02:17-04:00"
+}
