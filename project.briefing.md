@@ -30,6 +30,16 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 01:1x-01:2x — batch gate CLEAN GREEN, zero retries. #216 landed (03b61df:
+  degraded enumeration, on-ramp in system temp) and #219 landed (43b6002: the
+  editor is a PaneContent citizen via native-surface; the paint-then-selection
+  order rule became a tested invariant; fingerprints unchanged at all scales).
+  #219's boundaries filed as #228 (keyboard routing) and #229 (scale-parity
+  selection smoke). New wave dispatched at cap: #220 (capstone final —
+  manifest + uninstall symmetry, claude), #215 (send-confirm false negative,
+  codex), #221 (uncited view-state invariant, codex). All three session links
+  resolved. Capstone status: after #220 lands, #35 becomes the proof task.
+
 - 01:1x — #222 landed docs-only (a666159). Its analysis corrected the brief
   twice (Momentum impure, Processes unneeded) and shrank #223's conversion to
   3 files. Bycatch filed: #224 (Momentum ambient clock), #225 (rotted system
