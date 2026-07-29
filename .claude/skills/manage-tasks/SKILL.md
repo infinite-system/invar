@@ -159,9 +159,14 @@ A follow-up round's report is a NEW numbered file, like a follow-up brief.
 git mv .invar/tasks/in-progress/<n>-<slug> .invar/tasks/completed/
 sed -i '0,/^State: .*/s//State: COMPLETED — <merge-commit-sha>/' .invar/tasks/completed/<n>-<slug>/task-<n>-<slug>.md
 git tag finished/<branch> <merge-sha>
+bash scripts/fleet/archive-session.sh <n>-<slug>             # native session file -> tmp/native-sessions/
 $EDITOR .invar/tasks/completed/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
 bun scripts/tasks/tasks-status.ts write-active               # the landed task leaves the active view
 ```
+
+The archive step copies the engine's own structured record (full tool inputs and
+outputs) into the repo, because upstream retention is not ours to trust. The link
+was written at dispatch: `tmp/transcripts/session-link-<n>-<slug>.txt`.
 
 The `State:` line must name the commit. A bare `COMPLETED` fires DONE-NO-EVIDENCE. Eight of
 those appeared in one evening because the sha went into the body instead of the State line.

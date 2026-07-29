@@ -379,6 +379,14 @@ case "$engine" in
   claude) agent_command="claude --dangerously-skip-permissions";;
 esac
 
+# A marker taken BEFORE launch makes the native-session link deterministic:
+# the engine's store file created after this instant belongs to this launch.
+native_session_marker="$(mktemp /tmp/dispatch-session-marker-XXXXXX)"
+case "$engine" in
+  codex)  native_session_store="$HOME/.codex/sessions";;
+  claude) native_session_store="$HOME/.claude/projects";;
+esac
+
 AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh" launch "$name" \
   --cwd "$worktree_path" --profile "$engine" --timeout 90 \
   -- env PATH="$HOME/.bun/bin:$PATH" $agent_command >/dev/null || {
@@ -395,6 +403,20 @@ if [ ! -s "$transcript_path" ]; then
   echo "dispatch: WARNING — transcript pipe captured nothing in 15s (${transcript_path});" >&2
   echo "          the builder is running but UNRECORDED. Re-arm with:" >&2
   echo "          tmux pipe-pane -t ${tmux_session} -o \"cat >> '${transcript_path}'\"" >&2
+fi
+
+# Resolve the native session file (the engine's own structured record — full tool
+# inputs/outputs our pane transcript truncates). Newest store file created after the
+# pre-launch marker belongs to this launch. The link lives beside the transcript
+# (main repo, gitignored, reboot-safe); archive-session.sh copies the file at LAND.
+native_session_file="$(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null | head -1 || true)"
+rm -f "$native_session_marker"
+session_link_path="${repository_root}/tmp/transcripts/session-link-${name}.txt"
+if [ -n "$native_session_file" ]; then
+  echo "$native_session_file" > "$session_link_path"
+else
+  echo "dispatch: WARNING — no native session file appeared in ${native_session_store} after launch" >&2
+  echo "UNRESOLVED — no store file newer than the launch marker" > "$session_link_path"
 fi
 
 # The opening turn goes through `send`, which confirms it submitted.
