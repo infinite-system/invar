@@ -1,6 +1,6 @@
 # 243 — ui contract sibling rot, round two: three more drifted citations
 
-State: IN-PROGRESS
+State: COMPLETED — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 Created: 2026-07-29
 Engine: codex
 Environment: linux
