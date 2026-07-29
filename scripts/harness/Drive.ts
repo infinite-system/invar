@@ -60,7 +60,12 @@ class $Drive {
           Boolean(status.activeBuffer) &&
           'structureStatus' in status &&
           (status.structureStatus === 'no-document' ||
-            status.structureStatus === 'loading'),
+            status.structureStatus === 'loading') &&
+          (status.structureStatus === 'loading' ||
+            (status.primaryDockVisible === true &&
+              status.sidebarView === 'structure') ||
+            (status.rightDockVisible === true &&
+              status.rightDockActiveContent === 'structure')),
       },
     ]);
   }

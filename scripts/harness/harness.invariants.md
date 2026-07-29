@@ -517,7 +517,7 @@ scripts/harness/BracketedPasteInput.ts --click 'fold-control=class $BracketedPas
 **Invariant:** If `Drive` labels a boot observation settled, then every
 registered status condition is quiescent in the same published frame. A
 Markdown preview matches the active buffer revision, and an installed
-structure pane has refreshed the active file.
+and observed structure pane has refreshed the active file.
 
 **Scope:** `scripts/harness/Drive.ts` settled boot observations. Action
 observations keep their named completion rules and are outside this registry.
@@ -526,9 +526,11 @@ Missing plugin status keys are outside that plugin's condition.
 **Components:**
 - *Markdown work is current* — `markdownParsing` is false when present, and
   an active Markdown document's `markdownRevision` equals `bufferRevision`.
-- *Structure work has started and finished* — with an active file and the
-  structure projection installed, `structureStatus` is neither `no-document`
-  nor `loading`.
+- *Structure work has started and finished* — `structureStatus="loading"`
+  always holds settlement. With an active file and the structure projection
+  visible in either dock, `structureStatus="no-document"` also holds
+  settlement until the observed outline starts its refresh. A hidden
+  unsupported file can correctly stay `no-document`.
 - *The registry is explicit* — each pending state has a stable name in
   `$settledStatusRules`.
 
@@ -538,8 +540,9 @@ flushes after a settled render, so a matching status condition and the
 printed grid describe the same completed frame.
 
 **Generates:** A settled Markdown preview instead of `Parsing Markdown…`; a
-current structure headline instead of `No file is open.`; a revision equality
-check that rejects a preview from the prior source revision.
+current visible structure headline instead of `No file is open.`; a hidden
+unsupported structure projection that declines without work; a revision
+equality check that rejects a preview from the prior source revision.
 
 **Rejected alternatives:** Widen the timeout or wait for another frame. Time
 does not name the work, and frame arrival does not prove that debounced work
@@ -551,8 +554,10 @@ finished.
 
 **Impossible if true:** A `settled boot` print with
 `markdownParsing=true`; a parsed preview whose `markdownRevision` differs
-from `bufferRevision`; an active file beside the structure headline
-`No file is open.`; a new fixed sleep in the settle path.
+from `bufferRevision`; an active file beside a visible structure headline
+`No file is open.`; a settled observation with
+`structureStatus="loading"`; a hidden unsupported file timing out on
+`structureStatus="no-document"`; a new fixed sleep in the settle path.
 
 **Verification:** `bun test scripts/harness/Drive.test.ts && bun run drive
 --open README.md && bun run drive --open project.conductor.archive.md`
