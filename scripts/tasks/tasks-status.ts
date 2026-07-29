@@ -53,7 +53,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
