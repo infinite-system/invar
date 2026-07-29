@@ -1,0 +1,15 @@
+{
+  "task": 216,
+  "slug": "drive-onramp-quick-open-blind-enumeration",
+  "branch": "fleet/216-drive-onramp-quick-open-blind-enumeration",
+  "worktree": ".invar/worktrees/216-drive-onramp-quick-open-blind-enumeration",
+  "tmuxSession": "invar/216-drive-onramp-quick-open-blind-enumeration",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-216-drive-onramp-quick-open-blind-enumeration.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "910f39d651c96f4d10edaceba7b53a34c1507a6a",
+  "startedAt": "2026-07-29T00:27:52-04:00"
+}

@@ -6,19 +6,20 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #222 provider-seam-analysis-and-convention  [building]
   `tmux attach -t invar/222-provider-seam-analysis-and-convention`
 - #219 source-text-view-onto-pane-content-seam  [building]
   `tmux attach -t invar/219-source-text-view-onto-pane-content-seam`
+- #216 drive-onramp-quick-open-blind-enumeration  [building]
+  `tmux attach -t invar/216-drive-onramp-quick-open-blind-enumeration`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (14)
+## VERIFICATION-INTEGRITY (13)
 - #221 editor-owns-no-view-state-uncited
-- #216 drive-onramp-quick-open-blind-enumeration
 - #215 agent-tmux-send-confirm-false-negative
 - #210 mutation-probes-for-semantic-weakening
 - #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]

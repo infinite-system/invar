@@ -1,6 +1,6 @@
 # 216 — drive's on-ramp cannot open its own file, and the empty scan reports complete
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux
