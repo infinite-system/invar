@@ -475,20 +475,32 @@ class $Workspace {
     this.emptySourceTextView = null;
   }
 
-  /** Release every view this workspace's provider made, and the provider with them. The DOCUMENTS
-   *  stay — they are the buffers' own, on their stable handles — and so do the open tabs. A
-   *  released buffer has no view until it is opened again, so `editor` reads the empty view
-   *  meanwhile, which a fresh provider builds on demand.
+  /** How many views are bound to open buffers right now. A LOAD-INVARIANT count, and the observable
+   *  proof that a release really released: it goes to zero when the pane showing these views is
+   *  withdrawn, and back up as buffers are opened again. The document-less empty view is excluded —
+   *  it is rebuilt on demand by any reader, so counting it would hide the leak this measures. */
+  get sourceTextViewsForOpenBuffers(): number {
+    return this.viewsByLiveBuffer.size;
+  }
+
+  /** Release every view this workspace's provider made. The DOCUMENTS stay — they are the buffers'
+   *  own, on their stable handles — and so do the open TABS. A released tab has no view until it is
+   *  activated again, and rebuilds one then, so `editor` reads the empty view meanwhile.
    *
    *  This is the release path the pane that SHOWS these views calls when it is withdrawn. One
-   *  creator needs one releaser: without it a withdrawn provider leaves live views behind, which
-   *  is the orphaned-pane defect #114 found for runtimes, one layer down.
+   *  creator needs one releaser: without it a withdrawn pane leaves live views behind, which is the
+   *  orphaned-pane defect #114 found for runtimes, one layer down.
+   *
+   *  Two things it deliberately does NOT do. It does not dispose a buffer view behind the buffer
+   *  SET's back — the set owns the hydration state, and a disposed buffer left in an entry is a
+   *  tab that can never be shown again. And it does not drop the PROVIDER: the provider carries the
+   *  per-workspace contribution registry that OTHER contributions attached to, which is not the
+   *  withdrawn pane's to destroy.
    *  invariant: One provider creates every workspace buffer view (workspace.invariants.md) */
   releaseSourceTextViews(): void {
-    for (const view of this.sourceTextViewsInUse) view.dispose();
-    this.viewsByLiveBuffer.clear();
+    this.buffers.releaseHydratedBuffers();
+    this.emptySourceTextView?.dispose();
     this.emptySourceTextView = null;
-    this.sourceTextViewProvider = null;
   }
 
   toggleFocus(): void {

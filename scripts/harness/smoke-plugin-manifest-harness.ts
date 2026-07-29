@@ -681,6 +681,178 @@ try {
   HarnessSmoke.Class.pass(
     'Extensions reinstall restores the Terminal runtime and its pane',
   );
+
+  // The CONTRIBUTOR positive control for the editor column itself. The source-text editor is an
+  // ordinary contribution now, so uninstalling it must release BOTH what it painted (its gutter and
+  // code renderables) and what it held (every view its workspaces' provider made), leave the column
+  // with a stated affordance rather than a blank pane, and leave the application live.
+  console.log(
+    '== plugin manifest: the source-text editor uninstalls and reinstalls ==',
+  );
+  // Close the terminal panel before driving anything the host must answer. With the panel OPEN and
+  // the workspace focus back on the editor, Ctrl+P never reaches Quick Open — a pre-existing defect
+  // (see the #220 report's bycatch), reproduced on the unmodified tree, and not this arm's subject.
+  driver.sendKeys('Control+j');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the terminal panel closes before the editor-contribution drive',
+    (status) => status.terminalVisible === false,
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the editor-contribution drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('manifest.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the manifest fixture again',
+    (status) =>
+      status.quickOpenQuery === 'manifest.ts' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the manifest fixture is open again before the editor-contribution drive',
+    (status) => status.quickOpenOpen === false,
+  );
+  // Save first. A view holding UNSAVED edits is not released, because the edits live in the view and
+  // nowhere else — so an unsaved buffer would measure the exception rather than the rule.
+  driver.sendKeys('Control+s');
+  const editorInstalledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the installed editor contribution occupies the column and holds a saved view',
+    (status) =>
+      status.dirty === false &&
+      status.editorColumnContent === 'source-text-editor' &&
+      Number(status.sourceTextViewsForOpenBuffers) > 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    Number(editorInstalledStatus.matchingBracketLine) === -1,
+    'the editor contribution projects its bracket-match keys while installed',
+  );
+  await driver.awaitGridCondition(
+    'the installed editor paints the fixture text',
+    (snapshot) => snapshot.findText('manifest-line') !== null,
+  );
+
+  driver.sendKeys('Control+Shift+x');
+  driver.sendKeysWithoutFrameExpectation(
+    ...Array.from({ length: 12 }, () => 'Up'),
+  );
+  await driver.awaitGridCondition(
+    'the Extensions selection is anchored on its first row',
+    (snapshot) => snapshot.findText('› [x] File Tree') !== null,
+  );
+  for (
+    let selectionStep = 0;
+    selectionStep < 12 &&
+    driver.snapshot().findText('› [x] Source Text Editor') === null;
+    selectionStep++
+  ) {
+    driver.sendKeys('Down');
+    await driver.awaitScreenChange();
+  }
+  await driver.awaitGridCondition(
+    'Source Text Editor is selected in Extensions',
+    (snapshot) => snapshot.findText('› [x] Source Text Editor') !== null,
+  );
+  driver.sendKeys('Space');
+  const editorUninstalledStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstalling the editor empties the column and releases every open-buffer view',
+    (status) =>
+      status.editorColumnContent === null &&
+      Number(status.sourceTextViewsForOpenBuffers) === 0,
+  );
+  HarnessSmoke.Class.requireCondition(
+    editorUninstalledStatus.matchingBracketLine === undefined &&
+      editorUninstalledStatus.matchingBracketColumn === undefined,
+    'uninstall withdraws the editor status projection instead of projecting a stale match',
+  );
+  // An empty column must SAY it is empty. A blank pane reads as an empty document, which is the
+  // blank lie this affordance exists to prevent.
+  await driver.awaitGridCondition(
+    'the empty editor column states its affordance',
+    (snapshot) =>
+      snapshot.findText('No editor content is installed.') !== null &&
+      snapshot.findText('manifest-line') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'the editor contribution uninstalls, releasing its surfaces and its views',
+  );
+
+  const bufferBeforeInertEditorGestures = String(
+    HarnessSmoke.Class.readStatus(statusPath).activeBuffer,
+  );
+  driver.sendKeysWithoutFrameExpectation('Control+Shift+j', 'Down', 'Down');
+  await Bun.sleep(500);
+  const inertEditorGestureStatus = HarnessSmoke.Class.readStatus(statusPath);
+  HarnessSmoke.Class.requireCondition(
+    String(inertEditorGestureStatus.activeBuffer) ===
+      bufferBeforeInertEditorGestures &&
+      inertEditorGestureStatus.editorColumnContent === null &&
+      Number(inertEditorGestureStatus.sourceTextViewsForOpenBuffers) === 0,
+    'editor gestures stay inert with no editor installed and nothing crashes',
+  );
+  HarnessSmoke.Class.pass(
+    'the application stays live and honest with an empty editor column',
+  );
+
+  driver.sendKeys('Control+Shift+x');
+  await driver.awaitGridCondition(
+    'the disabled Source Text Editor row remains selected for reinstall',
+    (snapshot) => snapshot.findText('› [ ] Source Text Editor') !== null,
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall puts the editor contribution back in the column',
+    (status) =>
+      status.editorColumnContent === 'source-text-editor' &&
+      status.matchingBracketLine !== undefined,
+  );
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens after the editor contribution is reinstalled',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('manifest.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the manifest fixture after reinstall',
+    (status) => Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled editor builds a fresh view for the reopened buffer',
+    (status) =>
+      status.quickOpenOpen === false &&
+      Number(status.sourceTextViewsForOpenBuffers) > 0,
+  );
+  await driver.awaitGridCondition(
+    'the reinstalled editor paints the fixture text again',
+    (snapshot) =>
+      snapshot.findText('manifest-line') !== null &&
+      snapshot.findText('No editor content is installed.') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'Extensions reinstall restores the editor column and its views',
+  );
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);

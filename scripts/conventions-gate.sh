@@ -95,6 +95,23 @@ if [ -n "$host_view_back_edges" ]; then
   fail=1
 fi
 
+# 1.58) EDITOR-COLUMN OCCUPANCY: the editor column's default occupant is a CONTRIBUTION. `RootView`
+#       registers a SLOT and reads back whatever registered; it must not construct, import, or name
+#       a source-text view. One such construction and the editor stops being uninstallable, which is
+#       the whole of #220 — and the host silently regains a branch only the editor can carry.
+#       `Bootstrap`'s `createSourceTextViews` is deliberately NOT covered: a workspace holds
+#       documents with or without an editor pane, and it has no null view to fall back on yet.
+editor_column_host_construction=$(
+  grep -n "SourceTextPaneContent\|EditorSourceTextViews\|EditorColumnHostCapabilities\.\w* =" \
+    src/modules/ui/RootView.ts \
+    | grep -v '^\s*[0-9]*:\s*//' || true
+)
+if [ -n "$editor_column_host_construction" ]; then
+  echo "CONVENTIONS FAIL: the host names a source-text view instead of registering a slot:"
+  echo "$editor_column_host_construction"
+  fail=1
+fi
+
 # 1.55) WRAP-INDEX EDIT CENSUS: a same-line edit may loop over its changed range, never the
 #       document-sized line count or an array length.
 if ! "$bun_binary" scripts/ast-query.ts wrap-index-edit-loop-census \

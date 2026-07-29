@@ -132,6 +132,7 @@ describe('AppStatusProjection', () => {
       statusProjectionContributions,
       pluginPrimaryDockContentIdentifiers: ['git', 'extensions'],
       view: {
+        editorColumnContentIdentifier: () => 'source-text-editor',
         editorFrameAttribution: () => ({
           latestFrame: {
             documentLineReads: 0,

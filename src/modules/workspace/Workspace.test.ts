@@ -246,6 +246,34 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     // The next read builds a fresh view through the provider, so the pane can come back.
     expect(workspace.editor).toBeDefined();
     expect(builtViewCount).toBe(4);
+    // And the count of views bound to OPEN buffers is zero — the load-invariant observable a drive
+    // reads to see that a release really released.
+    expect(workspace.sourceTextViewsForOpenBuffers).toBe(0);
+
+    // The release is REVERSIBLE: activating a released tab rebuilds its view and shows its text
+    // again. Without this, an uninstalled editor could never be reinstalled — the entry would keep
+    // pointing at a disposed buffer and the tab could never be shown.
+    workspace.buffers.activate(0);
+    expect(workspace.sourceTextViewsForOpenBuffers).toBe(1);
+    expect(workspace.editor.document.path).toBe(filePaths[0]!);
+    expect(workspace.editor.hasDocument.value).toBe(true);
+  });
+
+  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  test('a release keeps the view of a buffer holding unsaved edits', () => {
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
+    workspace.openFileInTab(filePaths[0]!);
+    workspace.editor.insertText('unsaved');
+    expect(workspace.editor.dirty).toBe(true);
+
+    workspace.releaseSourceTextViews();
+
+    // Unsaved edits live in the view and nowhere else, so releasing that view would destroy them.
+    expect(workspace.sourceTextViewsForOpenBuffers).toBe(1);
+    expect(workspace.editor.dirty).toBe(true);
+    expect(workspace.editor.document.text).toContain('unsaved');
   });
 
   // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)

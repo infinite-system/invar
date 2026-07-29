@@ -4,6 +4,7 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import type { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import type {
   ApplicationContributionCatalog,
   ApplicationContributionContext,
@@ -85,6 +86,13 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
           this.options.primaryDockHost.removeContent(content.id),
         );
       },
+      registerEditorColumnDefault: (provider) => {
+        const port = this.options.editorColumnDefault.register(provider);
+        // Withdrawal is the disposer's job; RELEASE is the contribution's own, so a contributor
+        // that forgets it leaves a visible leak instead of a silently-cleaned one.
+        registrationDisposers.push(() => port.dispose());
+        return port;
+      },
       registerPaneRuntime: (runtime) => {
         const unregister = this.options.paneRuntimes.register(runtime);
         registrationDisposers.push(unregister);
@@ -158,9 +166,12 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerSetting'
   | 'registerPrimaryDockContent'
   | 'registerPaneRuntime'
+  | 'registerEditorColumnDefault'
 > & {
   keybindings: KeybindingRegistry.Instance;
   settings: Settings.Instance;
+  /** The host's registry for the editor column's default occupant. */
+  editorColumnDefault: EditorColumnDefault.Model;
   /** The host's registry of contributed pane runtimes. */
   paneRuntimes: PaneRuntimes.Model;
   /** The one panel question a runtime cannot answer for itself. */
