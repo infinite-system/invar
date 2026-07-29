@@ -41,6 +41,22 @@ case "$slug" in
 esac
 [ -f "$brief_file" ] || { echo "dispatch: brief not found: $brief_file" >&2; exit 2; }
 
+# THE INVARIANT DIALOGUE IS MECHANICAL. A brief without its two sections does
+# not launch — the loop cannot depend on the conductor remembering it.
+#   ## Invariants in scope   — enumerated records, or the explicit word "none"
+#   ## Bycatch expected      — the standing order restated, with the taxonomy pointer
+if ! grep -q "^## Invariants in scope" "$brief_file"; then
+  echo "dispatch: REFUSING — the brief has no '## Invariants in scope' section." >&2
+  echo "  Enumerate the records this task implicates (name, path, why), or write 'none'." >&2
+  exit 2
+fi
+if ! grep -q "^## Bycatch expected" "$brief_file"; then
+  echo "dispatch: REFUSING — the brief has no '## Bycatch expected' section." >&2
+  echo "  Restate the standing order with the AGENTS.md taxonomy pointer; the READY report" >&2
+  echo "  must carry '## Bycatch' even when it reads 'None observed'." >&2
+  exit 2
+fi
+
 # VALIDATE EVERY ARGUMENT BEFORE ANY SIDE EFFECT. The first version of this
 # script checked the engine name at launch time — step 5 — so a typo'd engine
 # had already cut a worktree, run `bun install`, and COMMITTED A BRIEF for a
