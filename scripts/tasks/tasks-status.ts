@@ -11,7 +11,7 @@
 // judgement about whether the work is actually done, and the signals here are evidence
 // for that judgement rather than a substitute for it.
 //
-// Four signals, in descending strength:
+// Five signals, in descending strength:
 //
 //   REPORT-IN-OPEN    a todo/live folder holds a report-*.md. An agent delivered. This
 //                     is the strongest tell and it is what was missed for #108.
@@ -22,6 +22,9 @@
 //   THIN              a task file at or under THIN_LINE_CEILING lines. The
 //                     migration produced 53 of these by carrying only each subject; a
 //                     new one means a task was filed without its reasoning.
+//   STALE-ACTIVE-VIEW project.active-tasks.md disagrees with a fresh render — a move
+//                     happened and write-active did not run. The repair is always the
+//                     one command, never a hand edit to individual entries.
 //
 // POSITIVE CONTROL. `--self-test` builds a throwaway task tree in a temp directory
 // containing one planted instance of each signal, runs the same analysis over it, and
@@ -44,7 +47,11 @@ import { tmpdir } from 'node:os';
 export type TaskState = 'todo' | 'live' | 'done' | 'retired';
 
 export type DriftSignal =
-  'REPORT-IN-OPEN' | 'STATE-MISMATCH' | 'DONE-NO-EVIDENCE' | 'THIN';
+  | 'REPORT-IN-OPEN'
+  | 'STATE-MISMATCH'
+  | 'DONE-NO-EVIDENCE'
+  | 'THIN'
+  | 'STALE-ACTIVE-VIEW';
 
 export interface TaskRecord {
   taskNumber: number;
@@ -198,50 +205,70 @@ const PRIORITY_ORDER = [
 // The active view is DERIVED from the Priority: field in each task file, never maintained by hand.
 // A hand-written backlog needs a second edit per filed or landed task, and a record that needs a
 // second step eventually does not happen — that is how every prior task snapshot went stale.
-function backlog(tasksRoot: string, writeActiveFile: boolean): number {
+const ACTIVE_VIEW_HEADER =
+  '# project.active-tasks.md — GENERATED, DO NOT EDIT\n\n' +
+  'Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits WILL be\n' +
+  'overwritten — this file exists so the active backlog is a BYPRODUCT of the instrument,\n' +
+  'never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.\n\n';
+
+function activeViewPath(tasksRoot: string): string {
+  return join(tasksRoot, '..', '..', 'project.active-tasks.md');
+}
+
+function renderActiveView(records: TaskRecord[]): string {
   const outputLines: string[] = [];
-  const emit = (line: string): void => {
-    outputLines.push(line);
-    console.log(line);
-  };
-  const records = readTaskRecords(tasksRoot).filter(
+  const openRecords = records.filter(
     (record) =>
       record.directoryState === 'todo' || record.directoryState === 'live',
   );
-  const ungrouped = records.filter((record) => record.priorityGroup === null);
+  const ungrouped = openRecords.filter(
+    (record) => record.priorityGroup === null,
+  );
   for (const group of PRIORITY_ORDER) {
-    const inGroup = records.filter((record) => record.priorityGroup === group);
+    const inGroup = openRecords.filter(
+      (record) => record.priorityGroup === group,
+    );
     if (inGroup.length === 0) continue;
-    emit(`## ${group.toUpperCase()} (${inGroup.length})`);
+    outputLines.push(`## ${group.toUpperCase()} (${inGroup.length})`);
     for (const record of inGroup) {
       const liveMarker = record.directoryState === 'live' ? '  << LIVE' : '';
       const stateSuffix =
         record.declaredState !== null && record.declaredState !== 'TODO'
           ? `  [${record.declaredState}]`
           : '';
-      emit(
+      outputLines.push(
         `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${stateSuffix}${liveMarker}`,
       );
     }
-    emit('');
+    outputLines.push('');
   }
   if (ungrouped.length > 0) {
-    emit(
+    outputLines.push(
       `## NO PRIORITY GROUP (${ungrouped.length}) — stamp Priority: into these task files`,
     );
     for (const record of ungrouped)
-      emit(`- #${record.taskNumber} ${record.folderName}`);
+      outputLines.push(`- #${record.taskNumber} ${record.folderName}`);
   }
+  return outputLines.join('\n');
+}
+
+// The generated view can lag the folders in exactly ONE way: a move happened and nobody re-ran
+// write-active. So the check is not "which entries are wrong" — it is a byte comparison against a
+// fresh render, and the repair is always the same single command. Prompting an agent to hand-edit
+// individual stale entries would reintroduce the hand-maintained backlog this file exists to end.
+function activeViewIsStale(tasksRoot: string, records: TaskRecord[]): boolean {
+  const expected = ACTIVE_VIEW_HEADER + renderActiveView(records) + '\n';
+  const filePath = activeViewPath(tasksRoot);
+  if (!existsSync(filePath)) return true;
+  return readFileSync(filePath, 'utf8') !== expected;
+}
+
+function backlog(tasksRoot: string, writeActiveFile: boolean): number {
+  const records = readTaskRecords(tasksRoot);
+  const view = renderActiveView(records);
+  console.log(view);
   if (writeActiveFile) {
-    const header =
-      '# project.active-tasks.md — GENERATED, DO NOT EDIT\n\n' +
-      'Regenerate with `bun scripts/tasks/tasks-status.ts write-active`. Hand edits WILL be\n' +
-      'overwritten — this file exists so the active backlog is a BYPRODUCT of the instrument,\n' +
-      'never a record an agent must remember to update. Detail: `.invar/tasks/<state>/<folder>/`.\n\n';
-    writeFileSync(
-      join(tasksRoot, '..', '..', 'project.active-tasks.md'),
-      header + outputLines.join('\n') + '\n',
-    );
+    writeFileSync(activeViewPath(tasksRoot), ACTIVE_VIEW_HEADER + view + '\n');
     console.log('wrote project.active-tasks.md');
   }
   return 0;
@@ -269,9 +296,22 @@ function report(tasksRoot: string): number {
   );
   console.log(`  highest task number: #${highestNumber}`);
 
+  // STALE-ACTIVE-VIEW: a task moved states and nobody regenerated the derived view — a done task
+  // still listed as active, or a filed task missing. Detected by byte-diff against a fresh render,
+  // and the repair is always the one command, never an edit to individual entries.
+  if (activeViewIsStale(tasksRoot, records)) {
+    findings.push({
+      signal: 'STALE-ACTIVE-VIEW',
+      taskNumber: 0,
+      folderName: 'project.active-tasks.md',
+      detail:
+        'the generated view disagrees with the folders — run `bun scripts/tasks/tasks-status.ts write-active`',
+    });
+  }
+
   console.log('');
   if (findings.length === 0) {
-    console.log('DRIFT: none of the four signals fired.');
+    console.log('DRIFT: none of the five signals fired.');
     return 0;
   }
 
@@ -283,6 +323,7 @@ function report(tasksRoot: string): number {
     'STATE-MISMATCH',
     'DONE-NO-EVIDENCE',
     'THIN',
+    'STALE-ACTIVE-VIEW',
   ] as DriftSignal[]) {
     const ofSignal = findings.filter((finding) => finding.signal === signal);
     if (ofSignal.length === 0) continue;
@@ -298,7 +339,12 @@ function report(tasksRoot: string): number {
 
 // The positive control. Every signal gets a planted instance and must be named back.
 function selfTest(): number {
-  const root = mkdtempSync(join(tmpdir(), 'tasks-status-selftest-'));
+  // The tasks root sits TWO levels inside the sandbox, mirroring .invar/tasks/ inside the repo, so
+  // activeViewPath's ../../ resolves to the sandbox — not to / (the first run tried to write
+  // /project.active-tasks.md, and the EACCES was the only thing that stopped it).
+  const sandbox = mkdtempSync(join(tmpdir(), 'tasks-status-selftest-'));
+  const root = join(sandbox, '.invar', 'tasks');
+  mkdirSync(root, { recursive: true });
   const write = (
     state: string,
     folder: string,
@@ -359,8 +405,23 @@ function selfTest(): number {
     'delivered',
   );
 
-  const findings = findDrift(readTaskRecords(root));
-  rmSync(root, { recursive: true, force: true });
+  const plantedRecords = readTaskRecords(root);
+  const findings = findDrift(plantedRecords);
+
+  // STALE-ACTIVE-VIEW, both arms. A view containing a task that is DONE must read stale; the freshly
+  // generated view must read fresh. The temp root gives the check its own project.active-tasks.md
+  // two directories up, so nothing touches the real one.
+  writeFileSync(
+    activeViewPath(root),
+    ACTIVE_VIEW_HEADER + '- #903 planted-done-no-evidence\n',
+  );
+  const staleDetected = activeViewIsStale(root, plantedRecords);
+  writeFileSync(
+    activeViewPath(root),
+    ACTIVE_VIEW_HEADER + renderActiveView(plantedRecords) + '\n',
+  );
+  const freshMisreported = activeViewIsStale(root, plantedRecords);
+  rmSync(sandbox, { recursive: true, force: true });
 
   const expected: Array<[DriftSignal, number]> = [
     ['REPORT-IN-OPEN', 901],
@@ -369,6 +430,14 @@ function selfTest(): number {
     ['THIN', 904],
   ];
   let failures = 0;
+  console.log(
+    `  ${staleDetected ? 'PASS' : 'FAIL'}  STALE-ACTIVE-VIEW fires when a done task is still listed`,
+  );
+  if (!staleDetected) failures++;
+  console.log(
+    `  ${freshMisreported ? 'FAIL' : 'PASS'}  a freshly generated view reads fresh`,
+  );
+  if (freshMisreported) failures++;
   for (const [signal, taskNumber] of expected) {
     const fired = findings.some(
       (finding) =>
