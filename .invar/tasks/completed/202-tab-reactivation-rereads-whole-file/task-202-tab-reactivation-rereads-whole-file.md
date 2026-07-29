@@ -1,6 +1,6 @@
 # 202 — the flyweight covers storage but not the switch interaction
 
-State: IN-PROGRESS
+State: COMPLETED — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
 Created: 2026-07-28
 Engine: codex
 Environment: linux

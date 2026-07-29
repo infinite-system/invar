@@ -1,6 +1,6 @@
 # 46 — TerminalObserver: reverse presence
 
-State: ACTIVE — design doc exists, no branch cut
+State: COMPLETED — 5e10f43 — resolved by #114 Wave B: both waves were already built (TerminalObserver + follow modes); the open question (where the presence channel lives) settled as the terminal-observation capability on the pane; no observer registry; #157 shares the payload vocabulary, not the channel
 Created: 2026-07-28
 Engine: claude
 Environment: linux

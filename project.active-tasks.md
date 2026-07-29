@@ -6,12 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #202 tab-reactivation-rereads-whole-file  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/202-tab-reactivation-rereads-whole-file`
-- #114 modularity-umbrella-provider-runtime  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/114-modularity-umbrella-provider-runtime`
-
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
@@ -56,15 +50,14 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (6)
+## ARCHITECTURE-HYGIENE (5)
 - #136 shared-scale-fixture-corpus-cache
 - #122 editor-becomes-final-contributor  [ACTIVE — blocked, strictly after #114]
 - #62 parameter-count-ports-object-sweep
-- #46 terminal-observer-reverse-presence  [ACTIVE — design doc exists, no branch cut]
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 23 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 26 — full log: project.tasks-completed.md)
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
@@ -72,6 +65,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
 - #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
 - #203 folded-editing-scale-invariance — e479b98
+- #202 tab-reactivation-rereads-whole-file — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
 - #201 quick-open-silent-empty-enumeration — fb199cb
 - #197 lsp-size-budget-guards-reads — 659b649
 - #196 editor-flyweight-edit-path
@@ -79,4 +73,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #194 reserved-chord-fixture-self-contained — d3721b2
 - #192 residual-harness-wait-audit
 - #191 terminal-stage-compound-predicate
-- #189 gate-reds-population-separation
