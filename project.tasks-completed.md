@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview

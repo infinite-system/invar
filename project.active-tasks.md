@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #295 [vscode-task-variable-schema](.invar/tasks/in-progress/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md)  [building]
-  `tmux attach -t invar/295-vscode-task-variable-schema`
-
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
@@ -81,7 +77,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 75 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 76 — full log: project.tasks-completed.md)
+- #295 [vscode-task-variable-schema](.invar/tasks/completed/295-vscode-task-variable-schema/task-295-vscode-task-variable-schema.md) — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
 - #294 [lsp-structure-dead-in-secondary-workspace](.invar/tasks/completed/294-lsp-structure-dead-in-secondary-workspace/task-294-lsp-structure-dead-in-secondary-workspace.md) — e23235c3 — Secondary-workspace LSP/structure: does not reproduce on main; two-workspace contract + process-root fingerprint added; realized driven clean
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/completed/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md) — bbbed70f — Deep hover window-bound: 100k hover 1.1s->15ms, next input 12.5ms; border hover owned; scale-parity contract
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
@@ -96,4 +93,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #281 [structure-pane-round-two-refinements](.invar/tasks/completed/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md) — 35151464 — Structure round two: no import/heritage noise, visibility+cache+override+getter marks, own ⛭ depth gear in-pane
 - #280 [comment-drift-panecontent-scrollbarsync](.invar/tasks/completed/280-comment-drift-panecontent-scrollbarsync/task-280-comment-drift-panecontent-scrollbarsync.md) — ae310859 — Comment drift: PaneContent citizens, ScrollbarSync ownership, Workspace doc blocks — code-evidenced corrections only
 - #279 [drive-settle-unsupported-file-structure](.invar/tasks/completed/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md) — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
-- #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/completed/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md) — 83554f14 — activity surface serves both docks; dockSide is a live setting; optional right mirror

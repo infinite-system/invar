@@ -1,6 +1,6 @@
 # 295 — .vscode tasks: support the VSCode variable schema (env:, predefined), keep fail-before-shell
 
-State: IN-PROGRESS
+State: COMPLETED — 371cbdb7 — VS Code task variables: env + predefined set, boundary refusals
 Created: 2026-07-29
 Engine: codex
 Environment: linux
