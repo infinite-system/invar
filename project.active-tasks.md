@@ -6,19 +6,20 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/289-preview-scroll-sync-setting`
 - #281 [structure-pane-round-two-refinements](.invar/tasks/in-progress/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md)  [building]
   `tmux attach -t invar/281-structure-pane-round-two-refinements`
+- #279 [drive-settle-unsupported-file-structure](.invar/tasks/in-progress/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md)  [building]
+  `tmux attach -t invar/279-drive-settle-unsupported-file-structure`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (22)
-- #279 [drive-settle-unsupported-file-structure](.invar/tasks/active/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md)
+## VERIFICATION-INTEGRITY (21)
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/active/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
 - #265 [status-projection-drops-plugin-keys](.invar/tasks/active/265-status-projection-drops-plugin-keys/task-265-status-projection-drops-plugin-keys.md)

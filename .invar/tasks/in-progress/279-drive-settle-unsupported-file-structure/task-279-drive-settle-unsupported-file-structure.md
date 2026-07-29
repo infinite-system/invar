@@ -1,6 +1,6 @@
 # 279 — the drive treats a hidden structure pane's "no-document" as unsettled
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
