@@ -30,6 +30,18 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 01:3x — Your late-night refinements, all mechanical now: (1) every brief
+  MUST carry `## Invariants in scope` + `## Bycatch expected` — dispatch.sh
+  refuses to launch without them (both guard arms proven); (2) bycatch
+  taxonomy grew to seven categories (runtime, invariant violations, comment
+  drift, distillation possibilities, generator drift, plain nonsense,
+  contract-layer gaps); (3) #230 filed for ui.lattice.md (after #220);
+  (4) #221 landed (2bd6790): the uncited record was subsumed, folded with a
+  pointer, lattice 67->77; (5) durations everywhere — tasks:live shows
+  running time, tasks:done shows dispatch-to-landing, and land.sh (modernized
+  from the old generation, guards kept) records landedAt + durationMinutes +
+  mergeCommit into meta.json mechanically and kills the State-line sed class.
+
 - 01:1x-01:2x — batch gate CLEAN GREEN, zero retries. #216 landed (03b61df:
   degraded enumeration, on-ramp in system temp) and #219 landed (43b6002: the
   editor is a PaneContent citizen via native-surface; the paint-then-selection
