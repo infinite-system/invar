@@ -71,7 +71,14 @@ report_file="${task_directory}/report-${name}.md"
 agent_tmux="${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh"
 if tmux has-session -t "$tmux_session" 2>/dev/null; then
   builder_state="$(AGENT_TMUX_PREFIX="invar/" bash "$agent_tmux" state "$name" 6 2>/dev/null || echo unknown)"
-  if [ "$builder_state" != "idle" ]; then
+  task_engine="$(grep -o '"engine": *"[^"]*"' "${task_directory}/meta.json" 2>/dev/null | sed 's/.*: *"//; s/"//')"
+  if [ "$builder_state" = "idle-unconfirmed" ] && [ "$task_engine" = "claude" ]; then
+    # `state` confirms idle by cross-checking the CODEX rollout, which a claude
+    # session does not have — so claude can never confirm past idle-unconfirmed
+    # and the guard would refuse every claude landing forever. The pane marker
+    # said idle; the delivered report (checked below) is the second witness.
+    echo "land: claude session pane-idle with rollout unconfirmable — accepting with the report as second witness."
+  elif [ "$builder_state" != "idle" ]; then
     echo "land: builder state is '${builder_state}', not idle — refusing." >&2
     exit 1
   fi

@@ -60,3 +60,13 @@ Per AGENTS.md's taxonomy, all seven categories. The READY report carries
 
 - This session's classification run (three logs above).
 - `feedback-smoke-isolate-persisted-home` lesson (per-run mktemp HOME).
+
+### Isolated-arm result (filed after)
+
+The first isolated-HOME run FAILS DIFFERENTLY: `scrollTop=` EMPTY (not 151) —
+the probe published nothing under the bare mktemp HOME, so the arm broke the
+instrument instead of deciding the question (`/tmp/bc-isolated-r2.log`). The
+151 mechanism still fits wordWrap:false; the decisive isolated arm must build
+a complete hermetic environment (config + data + whatever first-run write the
+app needs), and the empty-value mode is itself evidence for how the contract
+reads settings. Both modes need explaining, not just the first.
