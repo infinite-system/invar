@@ -28,6 +28,10 @@ import {
 import { tmpdir } from 'node:os';
 
 class $Files {
+  static get pathSeparator(): string {
+    return sep;
+  }
+
   static exists(path: string): boolean {
     return existsSync(path);
   }

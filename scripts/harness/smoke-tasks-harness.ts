@@ -52,6 +52,13 @@ function shellTask(label: string, marker: string): DrivenTask {
       `if [ "\${workspaceFolder}" = "$PWD" ]; then ` +
         `printf '${marker}:WORKSPACE_MATCH\\n'; ` +
         `else printf '${marker}:WORKSPACE_MISMATCH\\n'; fi; ` +
+        `if [ "\${workspaceFolderBasename}" = "$(basename "$PWD")" ] && ` +
+        `[ "\${cwd}" = "$PWD" ] && [ "\${pathSeparator}" = "/" ] && ` +
+        `[ "\${userHome}" = "$HOME" ] && ` +
+        `[ "\${env:INVAR_TASK_DEFINED}" = "defined-environment" ] && ` +
+        `[ -z "\${env:INVAR_TASK_UNDEFINED}" ]; then ` +
+        `printf '${marker}:VARIABLES_MATCH\\n'; ` +
+        `else printf '${marker}:VARIABLES_MISMATCH\\n'; fi; ` +
         'exec /bin/sh -i',
     ],
     presentation: {
@@ -104,6 +111,7 @@ async function createDriver(
       TUI_STATUS_PATH: join(homeDirectory, 'status.json'),
       INVAR_AGENT_BACKEND: 'echo',
       INVAR_TEST_SUPPRESS_BUILT_IN_TASK: '0',
+      INVAR_TASK_DEFINED: 'defined-environment',
       ...environment,
     },
   });
@@ -186,7 +194,9 @@ try {
     'both VS Code task processes and the displaced built-in report are visible',
     (snapshot) =>
       snapshot.findText('VSCODE_LEFT:WORKSPACE_MATCH') !== null &&
+      snapshot.findText('VSCODE_LEFT:VARIABLES_MATCH') !== null &&
       snapshot.findText('VSCODE_RIGHT:WORKSPACE_MATCH') !== null &&
+      snapshot.findText('VSCODE_RIGHT:VARIABLES_MATCH') !== null &&
       snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
@@ -205,7 +215,7 @@ try {
     'the shared presentation group is visibly split side by side',
   );
   HarnessSmoke.Class.pass(
-    '${workspaceFolder} resolves before each task reaches its shell',
+    'workspace, environment, and context-free predefined variables resolve before each shell',
   );
 
   console.log(
@@ -259,6 +269,18 @@ try {
         ...shellTask('Unsupported Variable', 'UNREACHABLE'),
         args: ['-lc', 'printf "${workspaceRoot}"'],
       },
+      {
+        ...shellTask('Missing File Context', 'UNREACHABLE'),
+        args: ['-lc', 'printf "${file}"'],
+      },
+      {
+        ...shellTask('Unsupported Input', 'UNREACHABLE'),
+        args: ['-lc', 'printf "${input:target}"'],
+      },
+      {
+        ...shellTask('Unsupported Command', 'UNREACHABLE'),
+        args: ['-lc', 'printf "${command:target}"'],
+      },
     ]),
   );
   driven = await nextDriver();
@@ -273,21 +295,33 @@ try {
       ) &&
       candidate.taskErrors.some((message) =>
         String(message).includes('${workspaceRoot}'),
+      ) &&
+      candidate.taskErrors.some((message) =>
+        String(message).includes('${file} requires an active document'),
+      ) &&
+      candidate.taskErrors.some((message) =>
+        String(message).includes('${input:target}'),
+      ) &&
+      candidate.taskErrors.some((message) =>
+        String(message).includes('${command:target}'),
       ),
   );
   await driven.driver.awaitGridCondition(
     'unsupported errors are legible inside task-owned terminals',
     (snapshot) =>
-      snapshot.findText('uses unsupported typ') !== null &&
-      snapshot.findText('variable: ${workspaceRoot}') !== null &&
+      snapshot.findText('Unsupported Proces') !== null &&
+      snapshot.findText('Unsupported Variab') !== null &&
+      snapshot.findText('Missing File Conte') !== null &&
+      snapshot.findText('Unsupported Input') !== null &&
+      snapshot.findText('Unsupported Comman') !== null &&
       snapshot.findText('Displaced: Claude') !== null,
   );
   HarnessSmoke.Class.requireCondition(
-    taskIdentifiers(status).length === 2,
-    'the positive control rendered both planted errors',
+    taskIdentifiers(status).length === 5,
+    'the positive control rendered all five planted errors',
   );
   HarnessSmoke.Class.pass(
-    'unsupported type and variable checks were observed RED by users',
+    'missing file context and unsupported variable classes were observed RED by users',
   );
 
   console.log(

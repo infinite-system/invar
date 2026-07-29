@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { basename, dirname, extname, join, relative, sep } from 'node:path';
 import { TaskConfiguration } from './TaskConfiguration';
 
 const temporaryDirectories: string[] = [];
@@ -159,9 +159,168 @@ describe('TaskConfiguration', () => {
     expect(result.issues.map((issue) => issue.message)).toEqual([
       'Task "Process" uses unsupported type "process"',
       'Task "Compound" uses unsupported dependsOn',
-      'Unsupported task variable: ${workspaceRoot}',
+      'Unsupported task variable: ${workspaceRoot}. Supported task variables: ' +
+        '${workspaceFolder}, ${workspaceFolderBasename}, ${file}, ' +
+        '${fileBasename}, ${fileDirname}, ${fileExtname}, ${relativeFile}, ' +
+        '${cwd}, ${pathSeparator}, ${userHome}, ${env:NAME}',
       '.invar/tasks.json displaces built-in task: "Claude"',
     ]);
+  });
+
+  test('environment variables resolve from the app environment and undefined values become empty', () => {
+    const workspaceRoot = createWorkspace();
+    const environmentVariableName = 'INVAR_TASK_CONFIGURATION_DEFINED';
+    const previousValue = process.env[environmentVariableName];
+    process.env[environmentVariableName] = 'defined-value';
+    writeConfiguration(
+      workspaceRoot,
+      '.vscode',
+      JSON.stringify({
+        tasks: [
+          {
+            label: 'Environment',
+            type: 'shell',
+            command: '${env:INVAR_TASK_CONFIGURATION_DEFINED}',
+            args: ['before-${env:INVAR_TASK_CONFIGURATION_UNDEFINED}-after'],
+          },
+        ],
+      }),
+    );
+
+    try {
+      delete process.env.INVAR_TASK_CONFIGURATION_UNDEFINED;
+      const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+      expect(result.tasks[0]?.command).toBe('defined-value');
+      expect(result.tasks[0]?.arguments).toEqual(['before--after']);
+    } finally {
+      if (previousValue === undefined)
+        delete process.env[environmentVariableName];
+      else process.env[environmentVariableName] = previousValue;
+    }
+  });
+
+  test('predefined variables use the selected workspace root and active document', () => {
+    for (const workspaceName of ['first-workspace', 'second-workspace']) {
+      const parentDirectory = createWorkspace();
+      const workspaceRoot = join(parentDirectory, workspaceName);
+      mkdirSync(workspaceRoot);
+      const activeDocumentPath = join(
+        workspaceRoot,
+        'nested',
+        'active.document.ts',
+      );
+      writeConfiguration(
+        workspaceRoot,
+        '.vscode',
+        JSON.stringify({
+          tasks: [
+            {
+              label: 'Predefined',
+              type: 'shell',
+              command: '${workspaceFolder}',
+              args: [
+                '${workspaceFolderBasename}',
+                '${file}',
+                '${fileBasename}',
+                '${fileDirname}',
+                '${fileExtname}',
+                '${relativeFile}',
+                '${cwd}',
+                '${pathSeparator}',
+                '${userHome}',
+              ],
+            },
+          ],
+        }),
+      );
+
+      const result = TaskConfiguration.Class.resolve(
+        workspaceRoot,
+        activeDocumentPath,
+      );
+
+      expect(result.tasks[0]?.command).toBe(workspaceRoot);
+      expect(result.tasks[0]?.arguments).toEqual([
+        basename(workspaceRoot),
+        activeDocumentPath,
+        basename(activeDocumentPath),
+        dirname(activeDocumentPath),
+        extname(activeDocumentPath),
+        relative(workspaceRoot, activeDocumentPath),
+        workspaceRoot,
+        sep,
+        homedir(),
+      ]);
+    }
+  });
+
+  test('each file variable refuses resolution without an active document', () => {
+    const workspaceRoot = createWorkspace();
+    const fileVariableNames = [
+      'file',
+      'fileBasename',
+      'fileDirname',
+      'fileExtname',
+      'relativeFile',
+    ];
+    writeConfiguration(
+      workspaceRoot,
+      '.vscode',
+      JSON.stringify({
+        tasks: fileVariableNames.map((variableName) => ({
+          label: variableName,
+          type: 'shell',
+          command: `\${${variableName}}`,
+        })),
+      }),
+    );
+
+    const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+    expect(result.tasks).toEqual([]);
+    expect(result.issues.slice(0, -1).map((issue) => issue.message)).toEqual(
+      fileVariableNames.map(
+        (variableName) =>
+          `Task variable \${${variableName}} requires an active document`,
+      ),
+    );
+  });
+
+  test('input and command variables stay outside the supported boundary', () => {
+    const workspaceRoot = createWorkspace();
+    writeConfiguration(
+      workspaceRoot,
+      '.vscode',
+      JSON.stringify({
+        tasks: [
+          {
+            label: 'Input',
+            type: 'shell',
+            command: '${input:target}',
+          },
+          {
+            label: 'Command',
+            type: 'shell',
+            command: '${command:selectTarget}',
+          },
+        ],
+      }),
+    );
+
+    const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+    expect(result.tasks).toEqual([]);
+    for (const variable of ['${input:target}', '${command:selectTarget}']) {
+      expect(
+        result.issues.some(
+          (issue) =>
+            issue.message.startsWith(
+              `Unsupported task variable: ${variable}.`,
+            ) && issue.message.includes('${env:NAME}'),
+        ),
+      ).toBe(true);
+    }
   });
 
   test('problemMatcher is accepted without changing process launch data', () => {

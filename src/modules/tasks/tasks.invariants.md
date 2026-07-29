@@ -8,35 +8,47 @@ terminal-process launch adapter. The task shape is compatible with
 
 ### Unsupported variables fail before the shell
 
-**Invariant:** If a task contains a `${...}` variable other than
-`${workspaceFolder}`, then configuration resolution stops that task and names
-the unsupported variable before any shell starts.
+**Invariant:** If a task contains a supported `${...}` variable, then
+configuration resolution replaces it from that task's workspace, active
+document, or app environment before the shell starts. If a file variable has
+no active document, or the variable is unsupported, then resolution stops that
+task and names the refused variable before any shell starts.
 
 **Scope:** Variable substitution in task `command` and `args`. Ordinary shell
 variables that do not use the `${...}` task-variable form remain shell input.
+Supported variables are `${workspaceFolder}`, `${workspaceFolderBasename}`,
+`${file}`, `${fileBasename}`, `${fileDirname}`, `${fileExtname}`,
+`${relativeFile}`, `${cwd}`, `${pathSeparator}`, `${userHome}`, and
+`${env:NAME}`. `${input:...}` and `${command:...}` remain unsupported.
 
-**Mechanism:** `TaskConfiguration.substituteWorkspaceFolder` recognizes the
-one supported task variable and throws a configuration issue for every other
-matched name. `TaskLauncher.report` renders that issue through a dedicated
-terminal.
+**Mechanism:** `TaskConfiguration.substituteTaskVariables` resolves the
+supported schema from its explicit workspace root and active document, plus
+the app `Environment`. Undefined environment variables resolve to an empty
+string, which matches VS Code. The method throws a configuration issue for a
+missing file context or an unsupported variable. `TaskLauncher.report` renders
+that issue through a dedicated terminal.
 
 **Generates:** Config-origin errors instead of shell-dependent `bad
 substitution` messages or literal dollar-brace commands.
 
-**Evidence:** `src/modules/tasks/TaskConfiguration.test.ts` `unsupported task
-forms and variables become named issues`;
+**Evidence:** `src/modules/tasks/TaskConfiguration.test.ts` `environment
+variables resolve from the app environment and undefined values become empty`,
+`predefined variables use the selected workspace root and active document`,
+`each file variable refuses resolution without an active document`, and `input
+and command variables stay outside the supported boundary`;
 `scripts/harness/smoke-tasks-harness.ts` `unsupported inputs report visibly`.
 
 **Impossible if true:** A task process receives an unresolved
-`${workspaceRoot}` string; an unsupported variable disappears without a
-visible error naming it.
+`${workspaceRoot}` string; a file variable reaches a shell without an active
+document; `${input:...}` or `${command:...}` reaches a shell; an unsupported
+variable disappears without a visible error naming it.
 
 **Verification:** `bun test src/modules/tasks/TaskConfiguration.test.ts && bun
 scripts/harness/smoke-tasks-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-27
+**Last refined:** 2026-07-29
 
 ## Chosen invariants
 
