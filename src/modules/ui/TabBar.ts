@@ -121,14 +121,11 @@ class $TabBar {
   renderBreadcrumb(): StyledText {
     const { bufferTabStrip, breadcrumbBar, workspaceSet, readPalette } =
       this.dependencies;
-    const navigationHistory = workspaceSet.active.navigationHistory;
     const result = TabBarRenderer.Class.renderBreadcrumb({
       strip: bufferTabStrip,
       palette: readPalette(),
       barWidth: breadcrumbBar.width as number,
       projectRoot: workspaceSet.active.root,
-      canGoBack: navigationHistory.canGoBack,
-      canGoForward: navigationHistory.canGoForward,
       hoveredSourceIndex: this.breadcrumbHoveredSourceIndex,
     });
     this.breadcrumbSegments = result.segments;
@@ -403,7 +400,7 @@ class $TabBar {
     };
   }
   protected wireBreadcrumbHandlers(): void {
-    const { breadcrumbBar, workspaceSet, tooltip, keybindings, renderer } =
+    const { breadcrumbBar, workspaceSet, tooltip, renderer } =
       this.dependencies;
     const controlsShown = (): boolean =>
       workspaceSet.active.editor.hasDocument.value &&
@@ -412,16 +409,6 @@ class $TabBar {
       if (!controlsShown()) return;
       tooltip.clear();
       const localColumn = event.x - Number(breadcrumbBar.x);
-      const navigationButton =
-        TabBarRenderer.Class.breadcrumbNavButtonAt(localColumn);
-      if (navigationButton === 'back') {
-        workspaceSet.active.navigateBack();
-        return;
-      }
-      if (navigationButton === 'forward') {
-        workspaceSet.active.navigateForward();
-        return;
-      }
       const segment = this.breadcrumbSegmentAt(localColumn);
       if (!segment) return;
       this.breadcrumbPicker.show(segment, {
@@ -432,33 +419,9 @@ class $TabBar {
     breadcrumbBar.onMouseMove = (event) => {
       if (!controlsShown()) return;
       const localColumn = event.x - Number(breadcrumbBar.x);
-      const navigationButton =
-        TabBarRenderer.Class.breadcrumbNavButtonAt(localColumn);
       const segment = this.breadcrumbSegmentAt(localColumn);
-      const nextHoveredSourceIndex = navigationButton
-        ? null
-        : (segment?.sourceIndex ?? null);
-      if (navigationButton === 'back') {
-        const bindingHint = keybindings.bindingHint(
-          'navigation.back',
-          'editor',
-        );
-        tooltip.point(
-          `Go Back${bindingHint ? ` (${bindingHint})` : ''}`,
-          event.x,
-          event.y,
-        );
-      } else if (navigationButton === 'forward') {
-        const bindingHint = keybindings.bindingHint(
-          'navigation.forward',
-          'editor',
-        );
-        tooltip.point(
-          `Go Forward${bindingHint ? ` (${bindingHint})` : ''}`,
-          event.x,
-          event.y,
-        );
-      } else if (segment) {
+      const nextHoveredSourceIndex = segment?.sourceIndex ?? null;
+      if (segment) {
         tooltip.point(`Browse ${segment.label}`, event.x, event.y);
       } else {
         tooltip.clear();
