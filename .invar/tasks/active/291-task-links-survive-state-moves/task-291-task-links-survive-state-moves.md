@@ -38,6 +38,18 @@ Both polarities throughout; the linter's moved-vs-dead distinction is
 the load-bearing new behavior — a dead link must NOT pass because the
 fallback exists.
 
+## Scope constraint (user, 13:2x): the wildcard applies ONLY to task-state paths
+
+The state-fallback and any --fix rewriting fire ONLY when the resolved
+path matches `.invar/tasks/<state>/<task-folder>/...` — a structural
+match on the four state dirs and a task-folder-shaped name. EVERY other
+relative link (src/, scripts/, project.*.md, docs) keeps plain
+resolution: exists, or dead. No fuzzy search, no basename hunting, no
+"smart" recovery outside the one seam whose move semantics we OWN —
+guessing at general paths would repair typos into wrong targets and
+launder real rot. Negative arm in the self-test: a dead src/ link must
+NOT be rescued by any fallback.
+
 ## Arm 5 (user, 13:2x): the preview paints dead links RED
 
 The markdown preview styles a relative link by the resolver's verdict:
