@@ -14,7 +14,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [building]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
-## USER-DIRECTED (2)
+## USER-DIRECTED (6)
+- #238 structure-default-right-and-md-toc
+- #237 markdown-preview-left-and-auto-open
+- #236 markdown-terminal-stylesheet-readable
+- #235 tasks-dashboard-pane-live-active-done
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 

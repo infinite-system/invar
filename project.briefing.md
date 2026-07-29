@@ -30,6 +30,23 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 02:1x — THE CAPSTONE LANDED (#220 -> 219f160a, 53m). The modularity umbrella
+  is complete: git, filetree, markdown, LSP, terminal, text primitives, and
+  the editor itself — uninstallable, reversible, honest censuses. Its report
+  found the FOURTH VERSE: a rule living only in the fact that nobody had ever
+  run the code (#219's release path passed its tests and was wrong; the
+  reinstall arm caught it). Gate red classified PRE-EXISTING -> #233 (your
+  real settings.json was written at 01:29 by something, wordWrap:false leaks
+  into the wrap contract; isolated-arm evidence in the task; I did NOT touch
+  your settings file). Landed over it under the narrow rule. NOW RUNNING:
+  #35 (THE PROOF — structure navigator, zero host edits allowed), #230 (ui
+  lattice), #233 (settings leak, sol high). YOUR ROADMAP FILED: #235 (tasks
+  dashboard pane with cycling overview), #236 (markdown terminal stylesheet),
+  #237 (preview left + auto-open), #238 (structure default-on right + md
+  TOC) — all sequenced after #35 per your ordering. Also: #234 (navigation
+  getters + hop ratchet) filed; land.sh learned claude sessions; dispatch's
+  read_field silent-death fixed (4th member of that class tonight).
+
 - 01:5x — USER CAUGHT A REAL ONE from a tmux footer: claude builders ran at
   MEDIUM effort all night while task files said high — the assignment was
   enforced at dispatch but never transmitted (no --model/--effort flags).
