@@ -309,19 +309,6 @@ fi
 base_commit="$(git rev-parse --short "$base_ref")"
 echo "dispatch: cutting worktree $worktree_path on $branch"
 echo "dispatch: BASE = $base_ref ($base_commit)"
-git worktree add -b "$branch" "$worktree_path" "$base_ref" >/dev/null
-# Assert the worktree really landed on that base. `worktree add` has been trusted here for weeks; the
-# one time its base was wrong, nothing checked.
-worktree_head="$(git -C "$worktree_path" rev-parse --short HEAD)"
-if [ "$worktree_head" != "$base_commit" ]; then
-  echo "dispatch: worktree HEAD $worktree_head != requested base $base_commit" >&2
-  exit 1
-fi
-
-echo "dispatch: installing dependencies (not optional, not the builder's job to discover)"
-( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
-  || { echo "dispatch: bun install FAILED — not launching" >&2; exit 1; }
-
 # ---------------------------------------------------------------------------
 # 3. Place the brief in BOTH homes: the worktree (for the builder) and the
 #    dispatch record (for the audit trail).
@@ -344,7 +331,6 @@ while [ -e "$dispatch_directory/brief-${task_number}-${brief_sequence}-${slug}.m
 done
 brief_dated_name="brief-${task_number}-${brief_sequence}-${slug}.md"
 cp "$brief_file" "$dispatch_directory/$brief_dated_name"
-cp "$brief_file" "$worktree_path/TASK.md"
 
 # meta.json is written BEFORE the commit so it lands WITH the brief. Written afterwards it stayed
 # untracked and never became part of the audit record — the same "a record that needs a second step
@@ -405,6 +391,38 @@ if [ "${RECORD_ONLY:-0}" = "1" ]; then
   echo "dispatch: RECORD_ONLY — record committed on main, no agent launched."
   exit 0
 fi
+
+# ---------------------------------------------------------------------------
+# 4b. CUT THE WORKTREE FROM THE RECORD COMMIT. The record (active/ ->
+#     in-progress/ move, brief, meta) is already committed, so the builder's
+#     tree is BORN seeing in-progress/<name>/ — a builder filing scratches
+#     into its own task folder at the pre-dispatch active/ path was the whole
+#     conflict class land.sh's rename-follow arm exists for (2026-07-29,
+#     user-directed reorder). base_ref/base_commit above remain the CONTENT
+#     base recorded in meta.json; the actual cut point is that base plus the
+#     record commit, verified to differ only in .invar/tasks and views.
+# ---------------------------------------------------------------------------
+cut_ref="$base_ref"
+if [ "$base_ref" = "main" ]; then
+  cut_ref="main"
+  non_record_drift="$(git diff --name-only "$base_commit" main -- . ':(exclude).invar/tasks' ':(exclude)project.active-tasks.md' ':(exclude)project.tasks-completed.md')"
+  if [ -n "$non_record_drift" ]; then
+    echo "dispatch: REFUSING — main moved beyond the record between base resolution and cut:" >&2
+    printf '%s\n' "$non_record_drift" >&2
+    exit 1
+  fi
+fi
+git worktree add -b "$branch" "$worktree_path" "$cut_ref" >/dev/null
+worktree_head="$(git -C "$worktree_path" rev-parse --short HEAD)"
+echo "dispatch: worktree cut at $worktree_head (content base $base_commit + the record commit)"
+[ -d "$worktree_path/.invar/tasks/in-progress/${name}" ] \
+  || { echo "dispatch: worktree does not see its own in-progress record — refusing" >&2; exit 1; }
+
+echo "dispatch: installing dependencies (not optional, not the builder's job to discover)"
+( cd "$worktree_path" && PATH="$HOME/.bun/bin:$PATH" bun install >/dev/null 2>&1 ) \
+  || { echo "dispatch: bun install FAILED — not launching" >&2; exit 1; }
+
+cp "$brief_snapshot" "$worktree_path/TASK.md"
 
 # ---------------------------------------------------------------------------
 # 5. Launch inside tmux so the session is ATTACHABLE BY SOMEONE WHO IS NOT THE
