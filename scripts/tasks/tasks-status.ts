@@ -674,10 +674,11 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
 // hold still. One glyph per task, not per line — motion marks the task, the
 // details stay readable.
-// Four dots, one lap: a single dot walking the cell's corners (user's call —
-// four over the six-dot braille cell). At 30 fps the walk advances every
-// third paint, one lap ≈ 400 ms.
-const SPINNER_FRAMES = ['▖', '▘', '▝', '▗'];
+// Four small braille dots, one lap: a single dot walking the cell's four
+// corners (top-left, top-right, bottom-right, bottom-left). Same fine dots
+// as the classic braille spinner, four frames instead of ten. Advances every
+// third paint at 30 fps; one lap ~400 ms.
+const SPINNER_FRAMES = ['⠁', '⠈', '⠠', '⠄'];
 const SPINNER_PAINTS_PER_STEP = 3;
 
 function live(
