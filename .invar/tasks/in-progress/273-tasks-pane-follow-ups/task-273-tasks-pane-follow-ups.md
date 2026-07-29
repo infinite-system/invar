@@ -1,6 +1,6 @@
 # 273 — tasks pane follow-ups: fleet extras, wall-display auto-show
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

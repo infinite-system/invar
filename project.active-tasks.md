@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [building]
   `tmux attach -t invar/289-preview-scroll-sync-setting`
+- #273 [tasks-pane-follow-ups](.invar/tasks/in-progress/273-tasks-pane-follow-ups/task-273-tasks-pane-follow-ups.md)  [building]
+  `tmux attach -t invar/273-tasks-pane-follow-ups`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
