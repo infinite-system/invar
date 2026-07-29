@@ -1,6 +1,6 @@
 # 244 — every app boot extracts a fresh 200MB agent-sdk binary; a gate run leaks ~13GB
 
-State: IN-PROGRESS
+State: COMPLETED — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 Created: 2026-07-29
 Engine: codex
 Environment: linux

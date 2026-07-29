@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
-- #244 sdk-binary-extraction-leak-fills-disk  [building]
-  `tmux attach -t invar/244-sdk-binary-extraction-leak-fills-disk`
+## IN-PROGRESS (2)
 - #233 wrap-contract-red-settings-leak  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
 - #35 structure-navigator-plugin-pane  [READY delivered — builder idle, awaiting landing]
@@ -82,7 +80,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 36 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 37 — full log: project.tasks-completed.md)
+- #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
@@ -97,4 +96,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
 - #207 silently-discarded-user-input — fb199cb
 - #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
-- #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
