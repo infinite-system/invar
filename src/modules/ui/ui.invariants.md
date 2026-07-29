@@ -2329,3 +2329,120 @@ scripts/harness/smoke-reserved-chord-harness.ts && bash scripts/smoke-keyboard-i
 **Status:** provisional
 
 **Last refined:** 2026-07-28
+
+### A pane content projects through exactly one surface
+
+**Invariant:** If a content occupies a pane slot, then it projects through EXACTLY ONE surface:
+either it returns a `StyledText` from `render` and the host paints that into a host-owned body, or
+it declares the `native-surface` capability and paints the OpenTUI renderables it owns itself.
+Never both, and never neither.
+
+**Scope:** `PaneContent.render`, `PaneNativeSurfacePort`, `PaneProjection` (the one resolver every
+host paint site calls), and the four paint sites that use it — the primary dock body, the right
+dock body, each visible bottom-panel cell body, and the editor column.
+
+**Components:**
+- One resolver — every host paint site calls `PaneProjection.paint(content, region)`. It asks for
+  the native capability FIRST; a content that has it paints itself and the resolver returns null,
+  so the host assigns nothing. Otherwise it calls `render` and hands the cells back.
+- Neither is a defect, not a default — a content with no `render` and no native capability makes
+  `PaneProjection.paint` throw and names the content. A silent blank pane would otherwise read as
+  an empty document.
+- Paint then selection, one pass — a native surface applies its native selection and reports its
+  caret anchor inside the same `paint` call that set the content, so a selection can never map
+  onto the buffer of the previous frame.
+- The host owns the slot, the content owns its surfaces — a native content receives the slot box
+  and mounts its own renderables into it, and it reports the painted region back so host-owned
+  overlays (a scrollbar track, an out-of-band image placement) anchor to what was actually drawn.
+- Pointer events follow ownership — a native content's renderables carry their own OpenTUI mouse
+  handlers, so the optional host-forwarding hooks (`onPointerDown`, `onWheel`) stay absent for it
+  instead of being routed twice.
+
+**Mechanism:** `render` is optional on `PaneContent` and `capability('native-surface')` returns a
+`PaneNativeSurfacePort` with `paint`, `caretAnchor`, and `surfaceRegion`. The host asks the
+resolver, never the content's class. `SourceTextPaneContent` is the one native citizen today;
+`TerminalPaneContent`, `AgentPaneContent`, and `FileTreePaneContent` are cells citizens and did not
+change.
+
+**Generates:** an editor painted through the same seam as a terminal; a host with no source-text
+render call; a second native pane (a canvas, a raster viewer) that costs one capability and no host
+branch.
+
+**Rejected alternatives:** Keep `render` required and have a native content return an empty
+`StyledText` — that is a content suppressing the seam's core to use it, which is the tell that the
+boundary is drawn in the wrong place. Add a `kind: 'native' | 'cells'` discriminant on the content
+— the host would then switch on the content's own answer instead of resolving a capability, and
+every later surface kind would be another host branch.
+
+**Evidence:** `src/modules/ui/PaneContent.interface.ts`; `src/modules/ui/PaneProjection.ts`;
+`src/modules/ui/PaneProjection.test.ts`; `src/modules/editor/SourceTextPaneContent.ts`;
+`src/modules/editor/SourceTextPaneContent.test.ts`; `src/modules/ui/RootView.ts`.
+
+**Impossible if true:** a host paint site reading `content.render` directly; a content that paints
+nothing rendering as an empty pane without an error; a native surface whose selection is applied
+before its content is set.
+
+**Verification:** `bun test src/modules/ui/PaneProjection.test.ts
+src/modules/editor/SourceTextPaneContent.test.ts && bash scripts/conventions-gate.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### The source text editor is a pane content citizen
+
+**Invariant:** If the editor column shows source text, then it is projected by
+`SourceTextPaneContent` through the `PaneContent` seam: the host mounts the slot box, calls the
+seam, and holds no source-text render, selection, caret, or hit-test call of its own.
+
+**Scope:** `SourceTextPaneContent`, the `EditorPane` controller it owns, the editor column mount in
+`RootView`, and the caret ladder in `RootView.update`. Registration through a manifest, and routing
+the editor's keystrokes through `handleKey`, are the next step and are outside this rule.
+
+**Components:**
+- One render call — the gutter and code renderables belong to the content, which builds them,
+  mounts them into the host's slot box, and paints them in `paint`. `RootView` never calls
+  `EditorPane` or `EditorPaneRenderer`.
+- Where versus whether — the content answers WHERE its caret is (`caretAnchor`, in screen cells,
+  because it owns the renderable the caret sits in). The host answers WHETHER this pane owns the
+  keyboard, in the same ladder that already ranks a modal overlay over the right dock over the
+  bottom panel over the editor.
+- One copy surface — the content publishes `text-selection`, the same capability a terminal
+  publishes, so the clipboard path resolves an identifier and not a class.
+- A raster document is a projection, not a branch — when the active document is an image, the
+  content asks its injected raster projection what the code cells must show and paints that. The
+  half-block floor and the out-of-band pixel tiers are unchanged and stay with the image module.
+- Release is expressible — the content's `dispose` releases the views its provider created, through
+  `Workspace.releaseSourceTextViews`, so withdrawing the source-text pane leaves no live view. This
+  is what `PaneRuntimeHostPort.releasePane` is for a runtime.
+
+**Mechanism:** `RootView` builds the bordered editor area, hands it to `SourceTextPaneContent`, and
+calls `PaneProjection.paint` for it exactly as it does for the docks and the panel. The content
+constructs the gutter and code renderables, owns the `EditorPane` controller (wrap window,
+coordinate mapping, native selection sync, drag, go-to-definition, wheel), and reports its painted
+region so the editor scrollbars and the image placement anchor to it.
+
+**Generates:** an editor whose frame cost is unchanged — `documentLineReads`,
+`foldProjectionLookups`, `wrapProjectionLookups`, and `layoutComputations` identical at 10, 100,000
+and 500,000 lines; native mouse selection, copy, and the native terminal caret unchanged; a host
+that names no editor class.
+
+**Rejected alternatives:** Rewrite the editor's native render into a `StyledText` that the host
+paints — it discards `SelectableText`'s native selection and the layout-anchored caret on the
+hottest surface of the product, to make one seam look uniform.
+
+**Evidence:** `src/modules/editor/SourceTextPaneContent.ts`;
+`src/modules/editor/SourceTextPaneContent.test.ts`; `src/modules/ui/RootView.ts`;
+`scripts/conventions-gate.sh` rule 1.54; `scripts/harness/smoke-editor-harness.ts`;
+`scripts/harness/smoke-selection-harness.ts`.
+
+**Impossible if true:** `RootView` importing `EditorPane`; the editor's selection or caret being
+computed by the host; a source-text view surviving the disposal of the pane that showed it.
+
+**Verification:** `bun test src/modules/editor/SourceTextPaneContent.test.ts && bash
+scripts/conventions-gate.sh && bun scripts/harness/smoke-editor-harness.ts && bun
+scripts/harness/smoke-selection-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29

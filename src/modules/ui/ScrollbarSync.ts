@@ -322,9 +322,9 @@ class $ScrollbarSync {
       top: 0,
       left: Math.max(
         0,
-        this.dependencies.codeBody.x - (this.dependencies.editorArea.x + 1),
+        this.dependencies.codeSurface.x - (this.dependencies.editorArea.x + 1),
       ),
-      width: Math.max(1, Number(this.dependencies.codeBody.width)),
+      width: Math.max(1, Number(this.dependencies.codeSurface.width)),
       height: editorHeight,
     };
     this.applyBar(this.editorVerticalBar, 'vertical', editorRegion, {
@@ -380,7 +380,9 @@ export interface ScrollbarSyncDependencies {
   workspaceSet: WorkspaceSet.Instance;
   theme: Theme.Instance;
   editorArea: BoxRenderable;
-  codeBody: { x: number; width: number | string };
+  /** The source-text content's painted region, reported by the content that owns it — the host
+   *  does not hold that renderable. Only the left edge and width matter to a scrollbar track. */
+  codeSurface: { x: number; width: number | string };
   sidebar: BoxRenderable;
   primaryDockHost: import('./PanelHost').PanelHost.Instance;
   tooltip: Tooltip.Instance;
