@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [building]
   `tmux attach -t invar/289-preview-scroll-sync-setting`
-- #287 [preview-renders-header-block-as-block](.invar/tasks/in-progress/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md)  [building]
-  `tmux attach -t invar/287-preview-renders-header-block-as-block`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -87,8 +85,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 60 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 61 — full log: project.tasks-completed.md)
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
+- #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/completed/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md) — 83554f14 — activity surface serves both docks; dockSide is a live setting; optional right mirror
@@ -102,4 +101,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #259 [right-dock-click-leaves-double-focus](.invar/tasks/completed/259-right-dock-click-leaves-double-focus/task-259-right-dock-click-leaves-double-focus.md) — 587eed67 — one focus-set owner across docks; click path double-focus fixed
 - #254 [gate-workers-validated-after-side-effects](.invar/tasks/completed/254-gate-workers-validated-after-side-effects/task-254-gate-workers-validated-after-side-effects.md) — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 - #253 [ui-contract-systematic-citation-sweep](.invar/tasks/completed/253-ui-contract-systematic-citation-sweep/task-253-ui-contract-systematic-citation-sweep.md) — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
-- #251 [gate-refuses-unlinked-node-modules](.invar/tasks/completed/251-gate-refuses-unlinked-node-modules/task-251-gate-refuses-unlinked-node-modules.md) — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate

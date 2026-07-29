@@ -1,6 +1,6 @@
 # 287 — the preview collapses task-header lines into one line
 
-State: IN-PROGRESS
+State: COMPLETED — 98c25506 — metadata stacks render as stacks; H1 color not underline
 Created: 2026-07-29
 Engine: codex
 Environment: linux
