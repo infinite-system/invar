@@ -1,6 +1,6 @@
 # 280 — comment drift: PaneContent.interface.ts and RootView ScrollbarSync
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

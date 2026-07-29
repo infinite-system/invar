@@ -1,0 +1,15 @@
+{
+  "task": 280,
+  "slug": "comment-drift-panecontent-scrollbarsync",
+  "branch": "fleet/280-comment-drift-panecontent-scrollbarsync",
+  "worktree": ".invar/worktrees/280-comment-drift-panecontent-scrollbarsync",
+  "tmuxSession": "invar/280-comment-drift-panecontent-scrollbarsync",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-low-280-comment-drift-panecontent-scrollbarsync.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "low",
+  "heldFromMain": false,
+  "baseCommit": "8119d7a1261e18dac24994dc284cc56283ce98c0",
+  "startedAt": "2026-07-29T15:31:53-04:00"
+}
