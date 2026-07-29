@@ -112,6 +112,7 @@ but checks that can be wrong out loud.
 | 07-25 19:30 | the quiet tail was made of the wrong thing entirely — all 20 smokes qualified by CALLING a frame-silence helper, ZERO derived a duration. The classification was invented, not derived |
 | 07-27 05:10 | a liveness predicate must observe what the brief ASKS FOR at that phase — the heartbeat called two healthy builders STALL on "no source file written in 20 min" while one was actively driving the app |
 | 07-28 22:0x | my markdown control run failed on plain main, the builder's passed — the "deterministic red" was a timing race, and one control run is one sample |
+| 07-29 08:3x | a BUILDER classified its own twice-reproduced red as "unrelated bycatch" with no main control; the conductor's control ran main GREEN — the red was the builder's change. "Outside my diff" is a hypothesis; the polarity check is the evidence. Landing-time rule: any red a report classifies as pre-existing gets a MAIN CONTROL before the classification is accepted |
 | 07-29 05:5x | I LANDED #237 ON A RED GATE: land.sh was chained behind a wrapper whose exit code was the trailing echo's, not the gate's — GATE_EXIT=1 sat unread in the log. A verdict must be READ from the sentinel, never inferred from a wrapper exit. land.sh now refuses without GATE_LOG showing GATE_EXIT=0 or a written GATE_OVERRIDE (exit 6, all four arms probe-tested) |
 
 **Corollary — `in_progress` requires a named driver:** a worktree, a brief, a log. A status
