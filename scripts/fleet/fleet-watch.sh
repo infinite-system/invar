@@ -18,6 +18,17 @@
 #   SILENT: #<n> <slug>      an in-progress task's transcript is silent > SILENT_MINUTES
 #                            while its tmux session is gone (builder likely died)
 #   GATE_DONE: <log> <line>  a watched gate log reached its GATE_EXIT sentinel
+#   SPRAWL: <reason>         the filesystem is filling faster than any healthy run fills it,
+#                            or free space fell under the floor. Born from the night the
+#                            agent-sdk import leaked 131 x 200MB per gate run (#244) and the
+#                            disk hit 100% twice before damage was visible in any lens.
+#
+# THE HEARTBEAT. Every cycle stamps /tmp/fleet-watch.heartbeat. dispatch.sh REFUSES to
+# launch a builder while the stamp is stale (>3 minutes) — a builder must never run
+# unwatched. Arming is ONE idempotent action (this script derives its whole watch set
+# from disk, so re-arming after an interrupt never duplicates anything):
+#
+#   Monitor(command: "bash scripts/fleet/fleet-watch.sh", persistent: true)
 #
 # Self-test: fleet-watch.sh --self-test builds a sandbox and requires each event to
 # fire (present arm) and a clean sandbox to stay silent (absent arm).
@@ -29,6 +40,16 @@ tasks_in_progress="${repository_root}/.invar/tasks/in-progress"
 transcripts_directory="${repository_root}/tmp/transcripts"
 SILENT_MINUTES="${SILENT_MINUTES:-20}"
 CYCLE_SECONDS="${CYCLE_SECONDS:-30}"
+SPRAWL_FLOOR_GB="${SPRAWL_FLOOR_GB:-10}"
+# Rate calibration: the #244 leak measured ~1.3G per 30s cycle and STILL filled the
+# disk twice in a night; a healthy gate churns hundreds of MB, not gigabytes. 1G per
+# cycle sits between the two with margin on both sides.
+SPRAWL_RATE_GB="${SPRAWL_RATE_GB:-1}"
+SPRAWL_ENTRY_RATE="${SPRAWL_ENTRY_RATE:-300}"
+SPRAWL_THROTTLE_MINUTES="${SPRAWL_THROTTLE_MINUTES:-5}"
+SPRAWL_STATE_FILE="${SPRAWL_STATE_FILE:-/tmp/fleet-watch-disk.prev}"
+SPRAWL_THROTTLE_STAMP="${SPRAWL_THROTTLE_STAMP:-/tmp/fleet-watch-sprawl.throttle}"
+HEARTBEAT_FILE="${HEARTBEAT_FILE:-/tmp/fleet-watch.heartbeat}"
 
 emit_ready_events() {
   local ready_file
@@ -109,6 +130,51 @@ emit_gate_events() {
   done < /tmp/fleet-watch-gates
 }
 
+# THE SENTINEL ANALYZES; IT NEVER DELETES. A monitor that removes files it does not
+# own will one day remove a project it does not know. On a breach it names the top
+# recent growers so the responder can kill the GROWTH SOURCE (a leaking process, a
+# runaway loop) or sweep a pattern the fleet provably owns — and nothing else.
+sample_disk_available_kb() { df -Pk / | awk 'NR==2 {print $4}'; }
+sample_tmp_entry_count() { ls -A /tmp 2>/dev/null | wc -l | tr -d ' '; }
+
+describe_top_growers() {
+  # Only runs on a breach (bounded cost): the five largest /tmp entries touched
+  # in the last ten minutes, sizes included — analysis, never action.
+  find /tmp -maxdepth 1 -mmin -10 2>/dev/null | head -200 | xargs -r du -s 2>/dev/null \
+    | sort -rn | head -5 | awk '{printf "    %.1fMB %s\n", $1/1024, $2}'
+}
+
+emit_sprawl_events() {
+  local available_kb entry_count previous_kb="" previous_entries=""
+  available_kb="${SPRAWL_TEST_AVAIL_KB:-$(sample_disk_available_kb)}"
+  entry_count="${SPRAWL_TEST_ENTRY_COUNT:-$(sample_tmp_entry_count)}"
+  [ -f "$SPRAWL_STATE_FILE" ] && read -r previous_kb previous_entries < "$SPRAWL_STATE_FILE"
+  echo "${available_kb} ${entry_count}" > "$SPRAWL_STATE_FILE"
+
+  # One alert per throttle window: a sustained fill must not shout every cycle.
+  if [ -n "$(find "$SPRAWL_THROTTLE_STAMP" -mmin "-${SPRAWL_THROTTLE_MINUTES}" 2>/dev/null)" ]; then
+    return 0
+  fi
+
+  local floor_kb=$((SPRAWL_FLOOR_GB * 1024 * 1024))
+  local rate_kb=$((SPRAWL_RATE_GB * 1024 * 1024))
+  local reasons=""
+  if [ "$available_kb" -lt "$floor_kb" ]; then
+    reasons="disk floor breached: $((available_kb / 1024 / 1024))G free < ${SPRAWL_FLOOR_GB}G"
+  fi
+  if [ -n "$previous_kb" ] && [ $((previous_kb - available_kb)) -gt "$rate_kb" ]; then
+    reasons="${reasons:+${reasons}; }rapid fill: $(((previous_kb - available_kb) / 1024 / 1024))G consumed in one cycle"
+  fi
+  if [ -n "$previous_entries" ] && [ $((entry_count - previous_entries)) -gt "$SPRAWL_ENTRY_RATE" ]; then
+    reasons="${reasons:+${reasons}; }/tmp entry surge: +$((entry_count - previous_entries)) entries in one cycle"
+  fi
+  if [ -n "$reasons" ]; then
+    echo "SPRAWL: ${reasons} — top recent growers (analysis only, nothing deleted):"
+    describe_top_growers
+    touch "$SPRAWL_THROTTLE_STAMP"
+  fi
+}
+
 if [ "${1:-}" = "--self-test" ]; then
   sandbox="$(mktemp -d /tmp/fleet-watch-selftest-XXXXXX)"
   failures=0
@@ -127,6 +193,31 @@ if [ "${1:-}" = "--self-test" ]; then
   [ "$first" = "1" ] || { echo "FAIL gate present arm (got $first)"; failures=1; }
   [ "$second" = "0" ] || { echo "FAIL gate reported-stamp arm (got $second)"; failures=1; }
   rm -f /tmp/fleet-watch-gates "${gate_log}.reported"
+  # SPRAWL arms run against a sandboxed state file so the live sentinel's memory
+  # is never disturbed.
+  SPRAWL_STATE_FILE="$sandbox/disk.prev"
+  SPRAWL_THROTTLE_STAMP="$sandbox/sprawl.throttle"
+  # PRESENT arm: a planted floor breach must fire.
+  first="$(SPRAWL_TEST_AVAIL_KB=1048576 SPRAWL_TEST_ENTRY_COUNT=100 emit_sprawl_events | grep -c SPRAWL || true)"
+  [ "$first" = "1" ] || { echo "FAIL sprawl floor arm (got $first)"; failures=1; }
+  # THROTTLE arm: the same breach inside the window must stay silent.
+  second="$(SPRAWL_TEST_AVAIL_KB=1048576 SPRAWL_TEST_ENTRY_COUNT=100 emit_sprawl_events | grep -c SPRAWL || true)"
+  [ "$second" = "0" ] || { echo "FAIL sprawl throttle arm (got $second)"; failures=1; }
+  # RATE arm: fresh throttle, healthy floor, but a 3G one-cycle drop must fire.
+  rm -f "$SPRAWL_THROTTLE_STAMP"
+  echo "52428800 100" > "$SPRAWL_STATE_FILE"
+  third="$(SPRAWL_TEST_AVAIL_KB=49283072 SPRAWL_TEST_ENTRY_COUNT=100 emit_sprawl_events | grep -c SPRAWL || true)"
+  [ "$third" = "1" ] || { echo "FAIL sprawl rate arm (got $third)"; failures=1; }
+  # ENTRY-SURGE arm: fresh throttle, stable disk, +500 entries must fire.
+  rm -f "$SPRAWL_THROTTLE_STAMP"
+  echo "52428800 100" > "$SPRAWL_STATE_FILE"
+  fourth="$(SPRAWL_TEST_AVAIL_KB=52428800 SPRAWL_TEST_ENTRY_COUNT=600 emit_sprawl_events | grep -c SPRAWL || true)"
+  [ "$fourth" = "1" ] || { echo "FAIL sprawl entry-surge arm (got $fourth)"; failures=1; }
+  # ABSENT arm for sprawl: healthy values must stay silent.
+  rm -f "$SPRAWL_THROTTLE_STAMP"
+  echo "52428800 100" > "$SPRAWL_STATE_FILE"
+  calm="$(SPRAWL_TEST_AVAIL_KB=52428800 SPRAWL_TEST_ENTRY_COUNT=110 emit_sprawl_events | grep -c . || true)"
+  [ "$calm" = "0" ] || { echo "FAIL sprawl absent arm — events while healthy: $calm"; failures=1; }
   # ABSENT arm: with nothing planted, no event may fire.
   quiet="$( { emit_ready_events; emit_gate_events; } | grep -c . || true)"
   [ "$quiet" = "0" ] || { echo "FAIL absent arm — events with nothing planted: $quiet"; failures=1; }
@@ -139,9 +230,11 @@ if [ "${1:-}" = "--self-test" ]; then
 fi
 
 while true; do
+  touch "$HEARTBEAT_FILE"
   emit_ready_events
   emit_folder_report_events
   emit_silent_events
   emit_gate_events
+  emit_sprawl_events
   sleep "$CYCLE_SECONDS"
 done

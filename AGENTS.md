@@ -126,6 +126,14 @@ rides the merge home and outlives your worktree. Tooling written to `/tmp`
 dies with the machine; tooling in the task folder becomes part of the record
 (#222's censuses and proposed checker are the founding example).
 
+**The filesystem is watched.** A fleet sentinel samples disk-free and /tmp
+growth every cycle and alerts the conductor on rapid accumulation (the #244
+night: one leaked import extracted 200MB per app boot and filled the disk
+twice). Two consequences for you: keep bulk scratch (fixtures, generated
+workspaces) bounded and under your own recognizable names, and never write a
+cleanup that deletes files you did not create — analysis first, deletion only
+for what you provably own.
+
 Three requirements, so the conductor and the user can pick your tools up cold:
 
 1. **Descriptive names, full words** — the same naming law as code (convention

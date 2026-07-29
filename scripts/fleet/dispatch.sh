@@ -57,6 +57,21 @@ if ! grep -q "^## Bycatch expected" "$brief_file"; then
   exit 2
 fi
 
+# A BUILDER NEVER RUNS UNWATCHED. fleet-watch stamps /tmp/fleet-watch.heartbeat
+# every cycle; a stale stamp means no sentinel is watching for READY, death, OR
+# file sprawl (the #244 night: 131 x 200MB extractions per gate, disk to 100%
+# twice before any lens showed it). Arming is one idempotent action — the watcher
+# derives its whole watch set from disk, so re-arming never duplicates anything.
+if [ "${SENTINEL_ACK:-0}" != "1" ]; then
+  if [ -z "$(find /tmp/fleet-watch.heartbeat -mmin -3 2>/dev/null)" ]; then
+    echo "dispatch: REFUSING — fleet-watch heartbeat is missing or stale (>3m)." >&2
+    echo "  Arm the ONE watcher (idempotent):" >&2
+    echo "    Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)" >&2
+    echo "  Deliberate exception only: SENTINEL_ACK=1" >&2
+    exit 2
+  fi
+fi
+
 # VALIDATE EVERY ARGUMENT BEFORE ANY SIDE EFFECT. The first version of this
 # script checked the engine name at launch time — step 5 — so a typo'd engine
 # had already cut a worktree, run `bun install`, and COMMITTED A BRIEF for a

@@ -563,6 +563,17 @@ looks identical to that tool in a text search over command lines.**
   session start and at resume. The reconciliation sweep's STALE-MONITOR check re-arms it
   when TaskList shows none. Register a gate log by appending its path to
   `/tmp/fleet-watch-gates`. Self-test before trusting: `fleet-watch.sh --self-test`.
+- **The watcher is also the SPRAWL sentinel, and dispatch enforces it.** Each cycle
+  stamps `/tmp/fleet-watch.heartbeat` and samples disk-free + /tmp entry count; it emits
+  `SPRAWL:` on a floor breach (<10G), a rapid fill (>1G/cycle — the #244 leak measured
+  ~1.3G/cycle and filled the disk twice in one night), or an entry surge (>300/cycle),
+  throttled to one alert per 5m, WITH the top recent growers named in the event.
+  `dispatch.sh` REFUSES to launch while the heartbeat is stale (>3m) — a builder never
+  runs unwatched (`SENTINEL_ACK=1` is the deliberate exception). On a SPRAWL event:
+  ANALYZE, never bulk-delete. Kill the growth SOURCE (the leaking process or loop);
+  delete only patterns the fleet provably owns (its own scratch globs, the agent-sdk
+  extraction dirs). Unknown files may be another project's — a wrong sweep is worse
+  than a full disk.
 - **Arm a dedicated Monitor on a long gate's log** whose result must be acted on now
   (fleet-watch's cycle also catches registered gates). The tracked-bg completion re-invoke
   is unreliable. **Stop a monitor in the ACTION that consumes its result.** Arming a

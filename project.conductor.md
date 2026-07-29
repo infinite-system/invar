@@ -290,6 +290,16 @@ including what the agent was told not to do. Guards go first or they are not gua
 | 07-28 19:15 | a negative control with side effects cut a worktree and launched an agent (see family 2) |
 | — | `land.sh` merged into the wrong branch because I left the checkout off main AFTER being warned |
 | 07-28 23:0x | dispatch's record commit named only the brief; the staged task-folder move stayed uncommitted and the next merge tripped over it — now a pathspec commit of the whole record, always on main |
+| 07-29 02:4x | the agent-sdk import leaked 131×200MB per gate run; disk hit 100% TWICE before any lens showed it (#244) |
+
+**The sprawl corollary (user directive, 07-29).** The filesystem is fleet
+infrastructure and gets a standing instrument: fleet-watch's SPRAWL arm (floor <10G,
+fill >1G/cycle, entries >300/cycle, 5m throttle) plus the heartbeat that `dispatch.sh`
+requires before any launch — a builder never runs unwatched. The sentinel ANALYZES and
+never deletes: on a breach it names the top growers; the responder kills the growth
+SOURCE, and deletion is reserved for patterns the fleet provably owns. An unknown file
+may be another project. A wrong sweep is worse than a full disk, because a full disk
+recovers.
 
 ---
 

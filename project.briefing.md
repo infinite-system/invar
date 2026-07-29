@@ -57,6 +57,24 @@ before merge, session archived at land.
 
 ## Log (latest first)
 
+- 03:1x — THE SPRAWL SENTINEL IS MECHANICAL (your directive, encoded).
+  fleet-watch gained the SPRAWL arm (floor <10G, fill >1G/cycle — calibrated
+  against the leak's measured 1.3G/cycle — entry surge >300/cycle, 5m
+  throttle, top growers named in the event) plus a per-cycle heartbeat;
+  dispatch.sh now REFUSES to launch a builder while the heartbeat is stale
+  (>3m; SENTINEL_ACK=1 is the deliberate exception). Idempotent by
+  construction — one watcher, watch set derived from disk, re-arming never
+  duplicates. Your second constraint encoded everywhere: the sentinel
+  ANALYZES and never deletes; kill the growth source; delete only owned
+  patterns. Self-test: five sprawl arms + both dispatch polarities green.
+  Encoded for cold start in conductor SKILL.md, project.conductor.md §10,
+  AGENTS.md scratch section. Also this hour: you ordered #244 FIRST — gate
+  aborted, #244 dispatched (codex) and steered with the measured diagnosis:
+  the extraction is IMPORT-TIME (SdkStreamBackend.ts:31 static import loads
+  at every boot; the spawned process exits instantly — nothing ever used it).
+  On its READY: land #244, then ONE combined gate (its fix makes the gate
+  safe by construction), then land #233 and #35, then #243 + roadmap.
+
 - 02:5x — THE DISK INCIDENT + BOTH PROOFS READY. #233 READY: your settings
   file was NEVER leaked into (sha unchanged; the 01:29 write was your own
   interactive app boot rewriting the snapshot) — the contract red was tmux
