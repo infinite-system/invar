@@ -133,6 +133,13 @@ readable files.
 
 **Rules the tooling cannot enforce:**
 
+- **Every follow-up round is `round-brief.sh`'s act, FILED BEFORE THE STEER.**
+  Round 1 is dispatch.sh; round N is
+  `scripts/fleet/round-brief.sh <folder-name> <brief-file>` — it copies the
+  brief in, stamps meta.json (round + roundBriefedAtMs) at the filing moment,
+  and the lenses key READY on report-newer-than-stamp. A steer that lives only
+  in a tmux message is a record nobody can replay, and a brief backfilled
+  after the answer inverts causal order (the #35 one-second race, 07-29).
 - **Create the task folder BEFORE dispatching.** A number chosen at dispatch time is a guess.
   One such guess left a branch permanently disagreeing with its task ID.
 - **Numbers are permanent.** Never reuse one, even for an abandoned task. Branches carry them,

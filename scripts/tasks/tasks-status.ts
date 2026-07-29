@@ -993,6 +993,33 @@ function gradientWord(word: string, shift: number): string {
     .join('');
 }
 
+// The round stamp from a task's meta.json, written by round-brief.sh at the
+// filing act. Absent (or unreadable) for round-1 tasks and pre-round history.
+function roundStamp(
+  tasksRoot: string,
+  record: TaskRecord,
+): { round: number; roundBriefedAtMs: number } | null {
+  try {
+    const metaPath = join(
+      tasksRoot,
+      record.directoryState,
+      record.folderName,
+      'meta.json',
+    );
+    if (!existsSync(metaPath)) return null;
+    const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+    if (
+      typeof meta.round === 'number' &&
+      typeof meta.roundBriefedAtMs === 'number'
+    ) {
+      return { round: meta.round, roundBriefedAtMs: meta.roundBriefedAtMs };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function live(
   tasksRoot: string,
   spinnerFrame?: number,
@@ -1012,15 +1039,18 @@ function live(
   }
   console.log(bold(`⛭ IN-PROGRESS (${records.length})`));
   for (const record of records) {
-    // ROUNDS. Each conductor brief in the folder is a round (brief-<n>-<count>-…).
-    // A new brief after a delivered report re-enters building — spinner, deltas,
-    // and clock resume — as round N. Round-2+ reports are updated IN PLACE, so
-    // the READY signal is temporal, not a count: the report was touched after
-    // the newest brief.
-    const round = Math.max(1, record.briefCount);
+    // ROUNDS. Round 1 is dispatch.sh's act; later rounds are round-brief.sh's,
+    // which stamps meta.json (round + roundBriefedAtMs) AT FILING TIME. The
+    // stamp is the authoritative anchor: a report newer than it is READY, older
+    // is an unanswered round (building round N — spinner, deltas, clock resume).
+    // A backfilled brief file cannot demote a delivered report, because the
+    // anchor is the filing act, not a file mtime. Folders without a stamp fall
+    // back to newest-brief mtime (pre-round-brief history).
+    const stamp = roundStamp(tasksRoot, record);
+    const round = stamp?.round ?? Math.max(1, record.briefCount);
+    const roundAnchorMs = stamp?.roundBriefedAtMs ?? record.newestBriefMtimeMs;
     const ready =
-      record.reportCount > 0 &&
-      record.newestReportMtimeMs > record.newestBriefMtimeMs;
+      record.reportCount > 0 && record.newestReportMtimeMs > roundAnchorMs;
     const breath =
       spinnerFrame === undefined
         ? null
