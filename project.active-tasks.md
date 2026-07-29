@@ -7,14 +7,15 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (1)
-- #122 editor-becomes-final-contributor  [building]
+- #122 editor-becomes-final-contributor  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/122-editor-becomes-final-contributor`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (12)
+## VERIFICATION-INTEGRITY (13)
+- #216 drive-onramp-quick-open-blind-enumeration
 - #215 agent-tmux-send-confirm-false-negative
 - #210 mutation-probes-for-semantic-weakening
 - #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]
@@ -55,7 +56,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (4)
+## ARCHITECTURE-HYGIENE (5)
+- #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache
 - #62 parameter-count-ports-object-sweep
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
