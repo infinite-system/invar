@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #218 workspace-buffer-splits-document-from-view  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/218-workspace-buffer-splits-document-from-view`
-
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
@@ -68,7 +64,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 27 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 28 — full log: project.tasks-completed.md)
+- #218 workspace-buffer-splits-document-from-view — IN-PROGRESS
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
@@ -83,4 +80,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #195 start-script-drops-path-argument — fb199cb
 - #194 reserved-chord-fixture-self-contained — d3721b2
 - #192 residual-harness-wait-audit
-- #191 terminal-stage-compound-predicate
