@@ -396,8 +396,12 @@ class $Settings {
     );
   }
 
-  protected persistenceSnapshot(): Record<string, SettingValue> {
-    const values: Record<string, SettingValue> = { ...this.snapshot() };
+  // invariant: Persistence preserves unrecognized user settings (src/modules/settings/settings.invariants.md)
+  protected persistenceSnapshot(): Record<string, unknown> {
+    const values: Record<string, unknown> = {
+      ...this.storedUserRecord,
+      ...this.snapshot(),
+    };
     for (const [identifier, record] of this.contributedSettings) {
       values[identifier] = record.value.value;
     }
