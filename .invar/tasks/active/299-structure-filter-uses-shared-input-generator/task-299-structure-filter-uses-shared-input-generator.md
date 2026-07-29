@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: codex
 Environment: linux
 Model: 5.6-sol
-Effort: medium
+Effort: high
 Priority: USER-DIRECTED (2026-07-29 ~17:1x, verbatim)
 
 ## Outline
