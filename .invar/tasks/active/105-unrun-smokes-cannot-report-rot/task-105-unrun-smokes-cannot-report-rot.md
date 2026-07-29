@@ -44,3 +44,11 @@ passes today, but it is an appearance dependency of the class that re-broke twic
 ## Sources
 
 None. Only the subject line above survives — no brief was written for this task.
+
+## Evidence fold (2026-07-29, #267 + #290)
+
+Legacy scripts/smoke-editor.sh observed red twice today on trees where
+the modern editor PTY harness was ALL-PASS (stale wrap/gutter, drag,
+wheel, click, gear checks). The gate skips it without INVAR_FULL_TMUX=1
+— exactly this task's class: an unrun smoke rots silently and then
+reads as signal when someone does run it.

@@ -82,3 +82,9 @@ This RAISES the census arm from name-them to FIX-THEM-ALL:
 Both polarities everywhere: copy copies exactly the selection;
 inputs that legitimately differ (multi-line editor) are OUT of the
 single-line census.
+
+## Census note (from #267's landing)
+
+The "One painter draws every single-line text field" Scope enumeration
+now trails the code (go-to-line consumer missing). #299's census pass
+updates that enumeration as part of arm 4.
