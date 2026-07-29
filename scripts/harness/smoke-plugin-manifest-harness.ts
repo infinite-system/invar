@@ -122,6 +122,11 @@ await Bun.write(
 );
 
 await Bun.write(
+  join(fixtureRoot, 'semantic-parent.ts'),
+  ['export class SemanticParent {', '  overriddenArm() {}', '}', ''].join('\n'),
+);
+
+await Bun.write(
   join(fixtureRoot, 'z-language.ts'),
   [
     'export const languageProbe = 42;',
@@ -138,6 +143,15 @@ await Bun.write(
       (_, symbolIndex) =>
         `export const overflowSymbol${symbolIndex} = ${symbolIndex};`,
     ),
+    '',
+    "import { SemanticParent as importedOutlineNoise } from './semantic-parent';",
+    'export class SemanticChild extends importedOutlineNoise {',
+    '  public publicVisibleArm() {}',
+    '  private privateVisibleArm() {}',
+    '  #hashPrivateArm = 1;',
+    '  get $cachedGetterArm() { return 1; }',
+    '  overriddenArm() {}',
+    '}',
     '',
   ].join('\n'),
 );
@@ -1025,7 +1039,7 @@ try {
     'the structure pane paints the outline rows',
     (snapshot) =>
       snapshot.findText('Structure') !== null &&
-      snapshot.findText('languageProbe :1') !== null,
+      snapshot.findText('languageProbe :') !== null,
   );
   HarnessSmoke.Class.pass(
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
@@ -1073,6 +1087,122 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the structure scrollbar and keyboard navigation mutate one scroll projection',
+  );
+
+  const clickVisibleText = (text: string): void => {
+    const position = driver.snapshot().findText(text);
+    HarnessSmoke.Class.requireCondition(
+      position !== null,
+      `${text} is visible before its click`,
+    );
+    if (!position) throw new Error(`The checked ${text} position is absent`);
+    driver.sendMouseClick({
+      column: position.column,
+      row: position.row,
+    });
+  };
+
+  clickVisibleText('⚙ 1');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the in-pane depth gear opens the shared context menu',
+    (status) => status.contextMenuOpen === true,
+  );
+  await driver.awaitGridCondition(
+    'the depth selector paints its second-depth choice',
+    (snapshot) => snapshot.findText('Depth 2') !== null,
+  );
+  clickVisibleText('Depth 2');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the depth selector writes the contributed default-depth setting',
+    (status) =>
+      status.contextMenuOpen === false &&
+      status.structureDefaultDepth === 2 &&
+      status.structureDepth === 2 &&
+      status.structureDepthIsOverridden === false,
+  );
+  clickVisibleText('⚙ 2');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the depth gear reopens over the updated setting',
+    (status) => status.contextMenuOpen === true,
+  );
+  clickVisibleText('Depth 1');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the selector restores the default depth before later structure arms',
+    (status) =>
+      status.contextMenuOpen === false &&
+      status.structureDefaultDepth === 1 &&
+      status.structureDepth === 1 &&
+      status.structureDepthIsOverridden === false &&
+      Number(status.structureRows) === initialStructureRows,
+  );
+  HarnessSmoke.Class.pass(
+    'the in-pane gear is a second surface on the contributed depth setting',
+  );
+
+  const requireSemanticLabel = async (
+    query: string,
+    label: string,
+  ): Promise<void> => {
+    driver.sendText(query);
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${query} narrows the outline to one semantic row`,
+      (status) =>
+        status.structureFilter === query && Number(status.structureRows) === 1,
+    );
+    await driver.awaitGridCondition(
+      `${query} paints its semantic marks`,
+      (snapshot) => snapshot.findText(label) !== null,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${query} clears back to the default projection`,
+      (status) =>
+        status.structureFilter === '' &&
+        Number(status.structureRows) === initialStructureRows,
+    );
+  };
+
+  driver.sendText('importedOutlineNoise');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'imports and the inheritance clause are absent at the analyzer boundary',
+    (status) =>
+      status.structureFilter === 'importedOutlineNoise' &&
+      Number(status.structureRows) === 0,
+  );
+  await driver.awaitGridCondition(
+    'the removed analyzer noise produces an honest empty filter result',
+    (snapshot) => snapshot.findText('No matching symbols.') !== null,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the analyzer-noise query clears to the default projection',
+    (status) =>
+      status.structureFilter === '' &&
+      Number(status.structureRows) === initialStructureRows,
+  );
+  await requireSemanticLabel('publicVisibleArm', '+    publicVisible');
+  await requireSemanticLabel('privateVisibleArm', '−    privateVisib');
+  await requireSemanticLabel('#hashPrivateArm', '−    #hashPriv');
+  await requireSemanticLabel('$cachedGetterArm', '+↤$  $cachedGet');
+  await requireSemanticLabel('overriddenArm', '+  ↑ overriddenArm');
+  HarnessSmoke.Class.pass(
+    'the analyzer removes declaration noise and paints visibility, cache, getter, and override semantics',
   );
 
   driver.sendText('dsm');

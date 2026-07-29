@@ -7,6 +7,8 @@ import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { PanelHost } from '../ui/PanelHost';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type { PaneContent } from '../ui/PaneContent.interface';
+import { ContextMenu } from '../ui/ContextMenu';
+import { ThemePalettes } from '../theme/ThemePalettes';
 import { StructurePlugin } from './StructurePlugin';
 
 interface RecordingContext {
@@ -21,6 +23,9 @@ interface RecordingContext {
   settingDisposals: number;
   showByDefault: ReturnType<typeof ref<boolean>>;
   defaultDepth: ReturnType<typeof ref<number>>;
+  contextMenu: ContextMenu.Model;
+  settingWrites: { identifier: string; value: unknown }[];
+  settingSaves: string[];
   snapshot: () => Record<string, unknown>;
 }
 
@@ -33,6 +38,10 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
   const rightDockHost = new PanelHost.Class();
   const showByDefault = ref(true);
   const defaultDepth = ref(1);
+  const contextMenu = new ContextMenu.Class();
+  const settingWrites: { identifier: string; value: unknown }[] = [];
+  const settingSaves: string[] = [];
+  const settingChangeHandlers = new Map<string, () => void>();
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const recording: RecordingContext = {
     rightDockHost,
@@ -45,6 +54,9 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
     settingDisposals: 0,
     showByDefault,
     defaultDepth,
+    contextMenu,
+    settingWrites,
+    settingSaves,
     snapshot: () => snapshotProvider?.() ?? {},
     context: {
       workspaceSet: {
@@ -52,8 +64,23 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
         activeWorkspaceIndex: ref(0),
       },
       rightDockHost,
-      settings: { scrollbarThickness: ref(1) },
+      settings: {
+        scrollbarThickness: ref(1),
+        setContributed: (identifier: string, value: unknown) => {
+          settingWrites.push({ identifier, value });
+          if (identifier === 'structureDefaultDepth') {
+            defaultDepth.value = Number(value);
+          }
+          settingChangeHandlers.get(identifier)?.();
+        },
+      },
       theme: { glyphLevel: ref('unicode') },
+      contextMenu,
+      overlayCoordinator: {
+        openExclusiveOverlay: (_name: string, openOverlay: () => void): void =>
+          openOverlay(),
+      },
+      renderer: { width: 120, height: 40 },
       registerKeybindings: () => {
         recording.keybindings += 1;
       },
@@ -82,14 +109,25 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
           },
         };
       },
-      registerSetting: (contribution: { identifier: string }) => {
+      registerSetting: (contribution: {
+        identifier: string;
+        changed?: () => void;
+      }) => {
         settingIdentifiers.push(contribution.identifier);
+        if (contribution.changed) {
+          settingChangeHandlers.set(
+            contribution.identifier,
+            contribution.changed,
+          );
+        }
         return {
           value:
             contribution.identifier === 'structureDefaultDepth'
               ? defaultDepth
               : showByDefault,
-          save: () => {},
+          save: () => {
+            settingSaves.push(contribution.identifier);
+          },
           dispose: () => {
             recording.settingDisposals += 1;
           },
@@ -206,6 +244,43 @@ test('the outline is observed only while its dock shows the structure pane', asy
   disposeSource();
   plugin.disposeApplication();
   outline.dispose();
+});
+
+test('the in-pane depth selector writes and saves the contributed depth setting', () => {
+  const plugin = new StructurePlugin.Class();
+  const workspace = new Workspace.Class();
+  plugin.attachWorkspace(workspace);
+  const recording = makeContext(workspace);
+  plugin.activateApplication(recording.context);
+  const pane = recording.dockContents[0]!;
+  pane.render?.({
+    width: 30,
+    height: 10,
+    palette: ThemePalettes.Class.DARK,
+    glyphLevel: 'unicode',
+    colorDepth: 'truecolor',
+    focused: true,
+  });
+
+  pane.onPointerDown?.(27, 0, {
+    screenColumn: 80,
+    screenRow: 4,
+    button: 0,
+    modifiers: { alt: false, shift: false, ctrl: false },
+  });
+  recording.contextMenu.runAt(3);
+
+  expect(recording.settingWrites).toEqual([
+    { identifier: 'structureDefaultDepth', value: 3 },
+  ]);
+  expect(recording.settingSaves).toEqual(['structureDefaultDepth']);
+  expect(recording.defaultDepth.value).toBe(3);
+  expect(recording.snapshot()).toMatchObject({
+    structureDefaultDepth: 3,
+    structureDepth: 3,
+    structureDepthIsOverridden: false,
+  });
+  plugin.disposeApplication();
 });
 
 test('uninstall withdraws everything it registered and a reinstall rebuilds it', () => {

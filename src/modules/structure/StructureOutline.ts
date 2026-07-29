@@ -14,6 +14,7 @@
 //
 // invariant: Outline cost tracks the observed document (src/modules/structure/structure.invariants.md)
 // invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
+// invariant: Outline labels expose source semantics (src/modules/structure/structure.invariants.md)
 // invariant: The outline projection has one depth and filter policy (src/modules/structure/structure.invariants.md)
 // invariant: Symbol selection jumps through the source-text view contract (src/modules/structure/structure.invariants.md)
 import { Reactive } from 'ivue';
@@ -24,7 +25,9 @@ import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 import type { Workspace } from '../workspace/Workspace';
 import type { SymbolClass } from '../theme/ThemeIcons';
 import type {
+  StructureAccessorKind,
   StructureDocument,
+  StructureMemberVisibility,
   StructureOutlineResult,
   StructureSource,
   StructureSymbol,
@@ -315,6 +318,10 @@ class $StructureOutline {
         depth,
         name: symbol.name,
         symbolClass: symbol.symbolClass,
+        visibility: symbol.visibility,
+        cached: symbol.cached,
+        override: symbol.override,
+        accessor: symbol.accessor,
         line: symbol.line,
         column: symbol.column,
         endLine: symbol.endLine,
@@ -597,6 +604,10 @@ export interface StructureRow {
   readonly depth: number;
   readonly name: string;
   readonly symbolClass: SymbolClass;
+  readonly visibility?: StructureMemberVisibility | null;
+  readonly cached?: boolean;
+  readonly override?: boolean;
+  readonly accessor?: StructureAccessorKind | null;
   readonly line: number;
   readonly column: number;
   readonly endLine: number;

@@ -418,6 +418,12 @@ class $RootView {
       rightDockHost.activeContent?.onPointerDown?.(
         Number(event.x) - Number(rightDockBody.x),
         Number(event.y) - Number(rightDockBody.y),
+        {
+          screenColumn: Number(event.x),
+          screenRow: Number(event.y),
+          button: event.button,
+          modifiers: event.modifiers,
+        },
       );
       renderer.requestRender();
     };
@@ -828,7 +834,12 @@ class $RootView {
           }
         } else {
           const content = panelHost.resolvedCells[index]?.content;
-          content?.onPointerDown?.(localColumn, localRow);
+          content?.onPointerDown?.(localColumn, localRow, {
+            screenColumn: Number(event.x),
+            screenRow: Number(event.y),
+            button: event.button,
+            modifiers: event.modifiers,
+          });
         }
         renderer.requestRender();
       };

@@ -8,6 +8,7 @@ import { StructurePaneContent } from './StructurePaneContent';
 import type { StructureWorkspace } from './StructureWorkspace';
 import { ThemeIcons, type SymbolMarkSet } from '../theme/ThemeIcons';
 import { ThemePalettes } from '../theme/ThemePalettes';
+import { ContextMenu } from '../ui/ContextMenu';
 
 function renderedText(styled: { chunks: unknown }): string {
   return (styled.chunks as { text: string }[])
@@ -49,8 +50,13 @@ function seedRows(outline: StructureOutline.Model): void {
 function makePane(
   outline: StructureOutline.Model,
   activations: { count: number },
+  depthState: { value: number; writes: number[] } = {
+    value: 1,
+    writes: [],
+  },
 ) {
   const workspaceFocus = ref<'editor' | 'primaryPane'>('editor');
+  const contextMenu = new ContextMenu.Class();
   const pane = new StructurePaneContent.Class(
     {
       workspaceSet: {
@@ -65,6 +71,12 @@ function makePane(
       rightDockHost: { focused: ref(true), blur: () => {} },
       settings: { scrollbarThickness: ref(1) },
       theme: { glyphLevel: ref('unicode') },
+      contextMenu,
+      overlayCoordinator: {
+        openExclusiveOverlay: (_name: string, openOverlay: () => void): void =>
+          openOverlay(),
+      },
+      renderer: { width: 120, height: 40 },
       requestRender: () => {},
     } as never,
     () =>
@@ -76,8 +88,13 @@ function makePane(
           return true;
         },
       }) as unknown as StructureWorkspace.Model,
+    () => depthState.value,
+    (depth) => {
+      depthState.value = depth;
+      depthState.writes.push(depth);
+    },
   );
-  return { pane, workspaceFocus };
+  return { pane, workspaceFocus, contextMenu, depthState };
 }
 
 describe('StructurePaneContent', () => {
@@ -198,6 +215,48 @@ describe('StructurePaneContent', () => {
       } as never),
     ).toBe(true);
     expect(outline.filterInput.value).toBe('Wid ');
+    outline.dispose();
+  });
+
+  test('the filter-row gear selects the same default depth exposed by the pane', () => {
+    const outline = makeOutline();
+    seedRows(outline);
+    const depthState = { value: 1, writes: [] as number[] };
+    const { pane, contextMenu } = makePane(outline, { count: 0 }, depthState);
+    pane.render({
+      width: 30,
+      height: 10,
+      palette: ThemePalettes.Class.DARK,
+      glyphLevel: 'unicode',
+      colorDepth: 'truecolor',
+      focused: true,
+    });
+
+    expect(pane.tooltipAt(27, 0)).toContain('Default symbol depth: 1');
+    expect(
+      pane.onPointerDown(27, 0, {
+        screenColumn: 80,
+        screenRow: 4,
+        button: 0,
+        modifiers: { alt: false, shift: false, ctrl: false },
+      }),
+    ).toBe(true);
+    expect(contextMenu.open.value).toBe(true);
+    expect(contextMenu.items.value.map((item) => item.label)).toEqual([
+      'Depth 0',
+      'Depth 1 (current)',
+      'Depth 2',
+      'Depth 3',
+      'Depth 4',
+      'Depth 5',
+      'Depth 6',
+      'Depth 7',
+      'Depth 8',
+    ]);
+
+    contextMenu.runAt(4);
+    expect(contextMenu.open.value).toBe(false);
+    expect(depthState).toEqual({ value: 4, writes: [4] });
     outline.dispose();
   });
 });

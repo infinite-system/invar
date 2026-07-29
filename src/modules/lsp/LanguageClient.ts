@@ -10,6 +10,7 @@ import { Logging } from '../system/Logging';
 import { StatusChannel } from '../system/StatusChannel';
 import { CompletionItemKinds } from './CompletionItemKinds';
 import { SymbolKinds } from './SymbolKinds';
+import { TypeScriptStructureAnalyzer } from './TypeScriptStructureAnalyzer';
 import type {
   StructureOutlineResult,
   StructureSymbol,
@@ -461,7 +462,13 @@ class $LanguageClient {
         { textDocument: { uri: this.uriFor(document.path) } },
       );
       if (document.revision.value !== requestRevision) return null;
-      return this.parseDocumentSymbols(result, this.uriFor(document.path));
+      const parsed = this.parseDocumentSymbols(
+        result,
+        this.uriFor(document.path),
+      );
+      return this.provider?.id === 'typescript'
+        ? await TypeScriptStructureAnalyzer.Class.refine(document, parsed)
+        : parsed;
     } catch (reason) {
       this.containFailure(reason);
       return null;
