@@ -14,7 +14,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
-## USER-DIRECTED (6)
+## USER-DIRECTED (7)
+- #245 provider-seam-open-or-bless-decision
 - #238 structure-default-right-and-md-toc
 - #237 markdown-preview-left-and-auto-open
 - #236 markdown-terminal-stylesheet-readable
@@ -69,14 +70,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (11)
+## ARCHITECTURE-HYGIENE (10)
 - #242 shared-paint-hit-generator-decision
 - #241 ui-contract-split-decision
 - #234 navigation-getters-and-hop-depth-ratchet
 - #228 source-text-keys-through-pane-context
 - #226 clock-freeze-hook-and-getter-conversion
 - #224 momentum-ambient-clock-default-parameter
-- #223 database-plugin-proves-provider-seam
 - #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache
 - #62 parameter-count-ports-object-sweep
