@@ -1,6 +1,6 @@
 # 223 — a database plugin proves the provider seam (sqlite first, pg second)
 
-State: ACTIVE
+State: FOLDED into #245 (2026-07-29, user decision) — the provider-seam opening and this proof plugin ship as one task
 Created: 2026-07-29
 Engine: claude
 Environment: linux
