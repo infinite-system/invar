@@ -24,8 +24,8 @@ Commit: `64b80a2d Make the activity surface dock agnostic`
 - Plugin uninstall removes its activity membership for content that currently lives on
   either side. Reinstall restores it once.
 - Contributed dotted setting keys survive an unknown-key boot and save round trip.
-- The activity, host-transfer, and focus records in `ui.invariants.md` now describe this
-  shared generator. `ui.lattice.md` links the records.
+- The activity, host-transfer, and focus records in [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) now describe this
+  shared generator. [ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) links the records.
 
 ## Driven evidence
 

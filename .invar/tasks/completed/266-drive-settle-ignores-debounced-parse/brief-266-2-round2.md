@@ -33,7 +33,7 @@ Requirements unchanged from round 1, plus:
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The refreshed READY report carries `## Bycatch`
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The refreshed READY report carries `## Bycatch`
 even if it reads `None observed`.
 
 ## End state (mechanical)

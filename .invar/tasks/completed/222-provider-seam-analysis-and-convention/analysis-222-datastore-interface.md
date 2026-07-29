@@ -15,7 +15,7 @@ Its properties are already the answer:
 - Children are read only when a node is expanded (`FileTree.ts:19`, the listings cache).
 - The visible list is a flattened plain getter over expansion state, not a reactive node per
   item.
-- It cites *Cost tracks the actively observed set* (`project.invariants.md`) at
+- It cites *Cost tracks the actively observed set* ([project.invariants.md](../../../../project.invariants.md)) at
   `src/modules/filetree/FileTree.ts:11`.
 
 A schema tree asks the same four questions and no others:
@@ -207,7 +207,7 @@ every connection that did not choose gets it. The slot answers "what does this p
 default". The getter answers "what does THIS connection do". #223 step 2 must prove the swap
 WITHOUT touching the slot. If it cannot, the seam is in the wrong place.
 
-This is the same split the whole convention rests on. See `analysis-222-convention.md`.
+This is the same split the whole convention rests on. See [analysis-222-convention.md](analysis-222-convention.md).
 
 ## What `src/modules/datastore/datastore.invariants.md` should record
 

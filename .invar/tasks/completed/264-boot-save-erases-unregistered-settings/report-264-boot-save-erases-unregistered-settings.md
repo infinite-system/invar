@@ -33,7 +33,7 @@ Ordering one boot sequence cannot protect settings that remain unknown at that s
 - `src/modules/settings/Settings.ts` preserves unknown user keys in `persistenceSnapshot()`.
 - `src/modules/settings/Settings.test.ts` proves unknown object and array values survive a save.
   The same test proves a malformed known value persists as its sanitized default.
-- `src/modules/settings/settings.invariants.md` adds
+- [src/modules/settings/settings.invariants.md](../../../../src/modules/settings/settings.invariants.md) adds
   `Persistence preserves unrecognized user settings`.
 - `scripts/harness/smoke-plugin-manifest-harness.ts` seeds
   `markdownPreviewSide: "right"`. It proves the late Markdown contribution applies it and the
@@ -111,8 +111,8 @@ start the full merge gate directly.
 ## Invariant review
 
 Scope came from the changed `settings` paths, the new settings annotation, and the boot-save terms.
-`src/modules/settings/settings.invariants.md`, `src/modules/app/app.invariants.md`, and
-`project.invariants.md` were checked.
+[src/modules/settings/settings.invariants.md](../../../../src/modules/settings/settings.invariants.md), [src/modules/app/app.invariants.md](../../../../src/modules/app/app.invariants.md), and
+[project.invariants.md](../../../../project.invariants.md) were checked.
 
 The change strengthens `Plugin settings live in contributed schema`. It adds one missing persistence
 rule at the common snapshot seam. It does not change settings precedence, project-file ownership,

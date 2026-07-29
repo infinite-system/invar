@@ -80,7 +80,7 @@ No timeout was widened.
 
 Scope was derived from
 `scripts/harness/smoke-scrollbars-harness.ts`, implicating
-`scripts/harness/harness.invariants.md`.
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md).
 
 The change strengthens `Harness waits observe conditions not frame ordinals`:
 the named wait now observes the exact shorter-thumb result before the visual

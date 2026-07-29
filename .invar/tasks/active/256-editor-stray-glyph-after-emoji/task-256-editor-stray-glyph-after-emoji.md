@@ -32,7 +32,7 @@ UTF-16 units. Lock with a cell-level assertion on that exact fixture row.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — wrong-unit siblings especially; this family now
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — wrong-unit siblings especially; this family now
 has three members in two days. The READY report carries `## Bycatch` even
 if it reads `None observed`.
 

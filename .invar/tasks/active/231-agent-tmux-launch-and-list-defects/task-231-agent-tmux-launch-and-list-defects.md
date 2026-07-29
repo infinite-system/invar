@@ -40,7 +40,7 @@ skill docs claim otherwise.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

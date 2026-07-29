@@ -14,7 +14,7 @@ Bycatch of #235: `.invar/tasks/` layout, meta.json stamps (startedAt,
 roundBriefedAtMs, landedAt), the drift signals, and the readiness rule now
 feed a production UI (the tasks dashboard) AND the fleet tooling — but the
 law lives only in `scripts/tasks/tasks-status.ts` header comments and the
-manage-tasks skill. Author `scripts/tasks/tasks.invariants.md` (or extend
+manage-tasks skill. Author [scripts/tasks/tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md) (or extend
 the manage-tasks contract — decide against the seam rule and say why):
 the folder-state machine (active → in-progress → completed/retired), the
 round-stamp readiness rule (report newer than roundBriefedAtMs), the
@@ -25,14 +25,21 @@ tasks-status.ts:56 (#235's nonsense bycatch).
 
 ## Invariants in scope
 
-- NEW `scripts/tasks/tasks.invariants.md`; `tasks-dashboard.invariants.md`
+- NEW [scripts/tasks/tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md); [tasks-dashboard.invariants.md](../../../../src/modules/tasks-dashboard/tasks-dashboard.invariants.md)
   (its reality record will cite the new contract).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources
 
 - `report-235-...md`, Bycatch 2-3.
+
+## Bycatch fold (2026-07-29, from #291)
+
+The #291 sweep left 316 non-mechanically-fixable bare references and one
+illustrative dead link across 48 legacy records (no unique target — the
+linter refuses to choose). Manual triage belongs to this task's record-
+system pass.

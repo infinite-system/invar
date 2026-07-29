@@ -60,5 +60,5 @@ to emphasise.
 
 ## Sources
 
-- `brief-203-1-folded-editing-scale-invariance.md`
+- [brief-203-1-folded-editing-scale-invariance.md](brief-203-1-folded-editing-scale-invariance.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

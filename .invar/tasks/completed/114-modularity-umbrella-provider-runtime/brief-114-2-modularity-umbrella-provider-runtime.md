@@ -1,11 +1,11 @@
 # Brief — #114 Wave B: the terminal becomes a hosted runtime (host references 4 → 0)
 
 Read first, in order:
-1. `.invar/tasks/active/114-modularity-umbrella-provider-runtime/task-114-modularity-umbrella-provider-runtime.md`
-2. `brief-114-1-modularity-umbrella-provider-runtime.md` in the same folder — Wave A's brief. ALL
+1. [.invar/tasks/active/114-modularity-umbrella-provider-runtime/task-114-modularity-umbrella-provider-runtime.md](task-114-modularity-umbrella-provider-runtime.md)
+2. [brief-114-1-modularity-umbrella-provider-runtime.md](brief-114-1-modularity-umbrella-provider-runtime.md) in the same folder — Wave A's brief. ALL
    its conventions, ivue Static-manifest rules, anchor rules, invariant-record rules, and
    verification commands apply verbatim to this wave. Do not re-derive them; read them.
-3. `report-114-modularity-umbrella-provider-runtime.md` — Wave A's result (LSP as provider,
+3. [report-114-modularity-umbrella-provider-runtime.md](report-114-modularity-umbrella-provider-runtime.md) — Wave A's result (LSP as provider,
    host references 4 → 0). Wave B repeats that shape for the terminal.
 
 ## The objective
@@ -24,8 +24,8 @@ extract, then drive again. Contracts AFTER the extraction holds.
 
 Agents are NOT a plugin. They arrive through a terminal profile: launch claude/codex (later any
 CLI agent) in a PTY pane, `cwd` = workspace folder, context VERIFIED present (codex reads
-`AGENTS.md`; claude reads `CLAUDE.md`; IBR via `--append-system-prompt-file
-.claude/skills/ibr/IBR.md` for the claude lineage). Verification means checked, not assumed — the
+[AGENTS.md](../../../../AGENTS.md); claude reads [CLAUDE.md](../../../../CLAUDE.md); IBR via `--append-system-prompt-file
+[.claude/skills/ibr/IBR.md](../../../../.claude/skills/ibr/IBR.md)` for the claude lineage). Verification means checked, not assumed — the
 silent-failure mode is a pane that launches without its context. Wave B's runtime seam must make
 this profile expressible without the host knowing what an "agent" is.
 
@@ -53,4 +53,4 @@ Everything Wave A's brief lists, exact exit codes quoted, plus:
 
 Do not run `scripts/merge-gate.sh`; commit with
 `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean.
-Report bycatch explicitly; write the report to `/tmp/114-wave-b-READY.md` when done.
+Report bycatch explicitly; write the report to [/tmp/114-wave-b-READY.md](../../../../../../../../../../../tmp/114-wave-b-READY.md) when done.

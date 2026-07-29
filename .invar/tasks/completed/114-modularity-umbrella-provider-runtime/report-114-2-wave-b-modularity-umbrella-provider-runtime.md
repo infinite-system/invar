@@ -125,7 +125,7 @@ Each returned to green when the plant was removed.
   (strengthening, not weakening: it asserts something the smoke previously did
   not check at all).
 - New invariant `A focused pane consumes only its own scoped bindings`
-  (`ui.invariants.md`), and a released-panes component added to `A pane runtime
+  ([ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)), and a released-panes component added to `A pane runtime
   owns its processes`.
 
 ## Both reported smokes, driven green
@@ -238,6 +238,6 @@ orphaned-pane defect was the same shape one layer down: uninstall symmetry had
 been asserted for *registrations* but never for *panes*, so the hole survived
 until a stricter routing rule made it visible.
 
-The v1 report at `/tmp/114-modularity-umbrella-provider-runtime-READY.md` remains
+The v1 report at [/tmp/114-modularity-umbrella-provider-runtime-READY.md](../../../../../../../../../../../tmp/114-modularity-umbrella-provider-runtime-READY.md) remains
 accurate for everything else — the runtime seam, the agent-profile design, the
 #46 / #157 finding, the seven relocated invariants, and the named residuals.

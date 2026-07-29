@@ -147,7 +147,7 @@ above.
   undefined` to `mkdirSync`, and `scripts/tasks/tasks-status.ts` constructing
   a `DriftFinding` without `directoryState`.
 - PRE-EXISTING, seen in the automatic pre-commit gate: conventions reports
-  `.claude/skills/manage-tasks` missing from the `AGENTS.md` skills index.
+  `.claude/skills/manage-tasks` missing from the [AGENTS.md](../../../../AGENTS.md) skills index.
 - PRE-EXISTING, reproduced twice by the automatic gate: the
   `smoke-horizontal-extent-harness` grid-condition wait timed out on both the
   initial attempt and its retry. Evidence:

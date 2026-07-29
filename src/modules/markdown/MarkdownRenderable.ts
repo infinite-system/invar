@@ -29,6 +29,8 @@ class $MarkdownRenderable extends BoxRenderable {
   readonly bodyRenderable: SelectableText.Model;
   protected visibleRowsSnapshot: PreviewRow[] = [];
   protected hoveredReferenceKey: string | null = null;
+  protected referenceIsDeadProvider: ((target: string) => boolean) | null =
+    null;
   protected findEngineProvider: (() => FindInBuffer.Instance | null) | null =
     null;
 
@@ -63,6 +65,10 @@ class $MarkdownRenderable extends BoxRenderable {
 
   setHoveredReferenceKey(referenceKey: string | null): void {
     this.hoveredReferenceKey = referenceKey;
+  }
+
+  attachReferenceIsDeadProvider(provider: (target: string) => boolean): void {
+    this.referenceIsDeadProvider = provider;
   }
 
   attachFindEngineProvider(provider: () => FindInBuffer.Instance | null): void {
@@ -406,7 +412,17 @@ class $MarkdownRenderable extends BoxRenderable {
 
     if (inlineSelector === 'inlineLink') {
       const target = links[linkIndexPlusOne - 1];
-      if (target) chunk = terminalLink(target)(chunk);
+      if (target) {
+        chunk = terminalLink(target)(chunk);
+        // invariant: Dead relative Markdown links have one revision-stamped verdict (src/modules/markdown/markdown.invariants.md)
+        if (this.referenceIsDeadProvider?.(target) === true) {
+          chunk = this.styledWrap(
+            chunk,
+            stylesheet.deadReferenceStyle,
+            palette,
+          );
+        }
+      }
     }
     if (referenceHovered) {
       chunk = this.styledWrap(chunk, stylesheet.referenceHoverStyle, palette);

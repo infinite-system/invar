@@ -50,6 +50,6 @@ Bycatch from the landing gate went to #198 and #199.
 
 ## Sources
 
-- `brief-187-1-wheel-at-clamp-unreachable-wait.md`
-- `report-187-wheel-at-clamp-unreachable-wait.md`
+- [brief-187-1-wheel-at-clamp-unreachable-wait.md](brief-187-1-wheel-at-clamp-unreachable-wait.md)
+- [report-187-wheel-at-clamp-unreachable-wait.md](report-187-wheel-at-clamp-unreachable-wait.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

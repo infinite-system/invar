@@ -44,11 +44,11 @@ The task system is now visible inside Invar as an ordinary dock contributor:
 - **Degrade.** A workspace without `.invar/tasks/` states "No task system in this workspace."
   plus a hint; empty lenses state the CLI's own wording (`IN-PROGRESS: none.` etc.).
 
-- **Contract.** `src/modules/tasks-dashboard/tasks-dashboard.invariants.md`: one reality
+- **Contract.** [src/modules/tasks-dashboard/tasks-dashboard.invariants.md](../../../../src/modules/tasks-dashboard/tasks-dashboard.invariants.md): one reality
   record (*Task truth lives in the folders the CLI reads*) and three chosen records (*The CLI
   lenses are the dashboard's one generator*, *The tasks dashboard is a pane content citizen*,
   *An absent task tree is stated, never blank*, *Selection opens the record through the
-  workspace open seam*). A NEW record rather than extending `tasks.invariants.md`, and the
+  workspace open seam*). A NEW record rather than extending [tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md), and the
   contract says why: `src/modules/tasks` governs process launching; this module consumes the
   task-record folders — different generators, so the seam rule separates the contracts.
   Checker: `--all --refs` → 0 problems (1076 annotations resolved).
@@ -150,8 +150,8 @@ gate run.
 - **Contract-layer gap:** the task-record system itself (`.invar/tasks/` layout, meta.json
   stamps, the drift signals) has no `*.invariants.md` domain record — its law lives in the
   script's header comment and the manage-tasks skill. Now that the readers feed a production
-  UI, a `scripts/tasks/tasks.invariants.md` (or extension of the manage-tasks contract) is
-  owed. Not authored inside this task per AGENTS.md.
+  UI, a [scripts/tasks/tasks.invariants.md](../../../../src/modules/tasks/tasks.invariants.md) (or extension of the manage-tasks contract) is
+  owed. Not authored inside this task per [AGENTS.md](../../../../AGENTS.md).
 - **Smoke-assumption drift (fixed in-task, own hunk):** the manifest smoke's
   `rightDockVisible === false` assumption encoded "structure is the only right-dock citizen";
   updated with a comment naming the surviving-citizen rule.

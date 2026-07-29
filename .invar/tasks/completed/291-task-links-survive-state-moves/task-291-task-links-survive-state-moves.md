@@ -1,6 +1,6 @@
 # 291 — task links survive state moves: the name is the identity, the state is a wildcard
 
-State: IN-PROGRESS
+State: COMPLETED — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 Created: 2026-07-29
 Engine: codex
 Environment: linux

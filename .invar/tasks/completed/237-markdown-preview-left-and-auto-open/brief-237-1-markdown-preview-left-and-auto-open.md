@@ -22,24 +22,24 @@ then change, then watch again. The deliverables:
    main, and touch presentation ONLY through the stylesheet seam (the
    census test will red you otherwise, which is correct).
 
-Done-test, driven: a fresh workspace, open README.md — the preview is
+Done-test, driven: a fresh workspace, open [README.md](../../../../README.md) — the preview is
 open, on the left, styled; flip the setting — right; disable the plugin —
 no auto-open, no stale pane. Uninstall/reinstall symmetry per #220's law
 (the manifest smoke's markdown arm extends if it does not cover auto-open).
 
 ## Invariants in scope
 
-- `src/modules/markdown/markdown.invariants.md` — the stylesheet record
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — the stylesheet record
   (#236) must survive; add the auto-open/placement record where it
   belongs.
 - The settings records for contributed settings; MarkdownSplitView's
   persisted-ratio record.
-- `src/modules/ui/ui.invariants.md` — untouched; a diff there is a
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — untouched; a diff there is a
   finding.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Verification

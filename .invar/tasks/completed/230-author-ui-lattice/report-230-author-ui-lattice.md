@@ -3,29 +3,29 @@
 State: READY
 Branch: `fleet/230-author-ui-lattice`
 Commit: `8378fab` — `contracts: author src/modules/ui/ui.lattice.md (#230)`
-Files: `src/modules/ui/ui.lattice.md` (new, 538 lines). No production code.
+Files: [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) (new, 538 lines). No production code.
 Tree: clean.
 
 ## What was done
 
-`src/modules/ui/ui.invariants.md` holds 61 records — the largest contract in the
-repo, more than project.invariants.md (32) and agent (20). It had no lattice.
-The new `src/modules/ui/ui.lattice.md` records which records GENERATE which and
-which BOUND which, in the form `scroll.lattice.md` set.
+[src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) holds 61 records — the largest contract in the
+repo, more than [project.invariants.md](../../../../project.invariants.md) (32) and agent (20). It had no lattice.
+The new [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) records which records GENERATE which and
+which BOUND which, in the form [scroll.lattice.md](../../../../src/modules/ui/scroll.lattice.md) set.
 
 ## The placement decision
 
-New file, `src/modules/ui/ui.lattice.md`. Not more sections in
-`project.lattice.md`.
+New file, [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md). Not more sections in
+[project.lattice.md](../../../../project.lattice.md).
 
 The criterion is in scroll's own header: "How the records in
-`scroll.invariants.md` hold together." A lattice unifies the records of ONE
+[scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md) hold together." A lattice unifies the records of ONE
 sibling contract. The checker enforces that reading — `checkLattice` reports
 coverage for a `*.lattice.md` against the `*.invariants.md` with the same stem
 in the same directory (`check_invariants.mjs:645-649`). A ui lattice written
-into `project.lattice.md` would get no coverage duty at all.
+into [project.lattice.md](../../../../project.lattice.md) would get no coverage duty at all.
 
-`project.lattice.md` keeps compositions whose MEMBERS cross contracts. #221's
+[project.lattice.md](../../../../project.lattice.md) keeps compositions whose MEMBERS cross contracts. #221's
 *Source text state survives replaceable projection* is one of those — it joins
 project, workspace, and ui records. The new file JOINS it: the placement
 section names it, and the *The editor is an ordinary citizen* composition says
@@ -68,8 +68,8 @@ references:
   withdrawal would leave live views behind: the orphaned-pane defect #114 fixed
   one layer up. The edge runs one way — ui may not name the view class, and the
   workspace record may not name a pane.
-- `scroll.invariants.md` holds the cross-surface generator; the five ui scroll
-  records are named as its surface bindings, and `scroll.lattice.md` keeps how
+- [scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md) holds the cross-surface generator; the five ui scroll
+  records are named as its surface bindings, and [scroll.lattice.md](../../../../src/modules/ui/scroll.lattice.md) keeps how
   those five hold together. *Driven scroll contracts derive their quantities*
   is named as the constraint on how the ui scroll records may be VERIFIED.
 - The seven project roots the family stands on.
@@ -102,9 +102,9 @@ editor is an ordinary citizen.
 
 ## Bycatch
 
-**Comment drift — three symbols cited by `ui.invariants.md` exist nowhere in
+**Comment drift — three symbols cited by [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) exist nowhere in
 `src/`.** `grep -rn` over `src/` finds `renderEditorStyled`, `renderTree`, and
-`renderGitPanel` in NO file except `ui.invariants.md` itself. `RootView.ts` has
+`renderGitPanel` in NO file except [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) itself. `RootView.ts` has
 zero occurrences of all three. The records that cite them:
 
 - *Only the visible window is rendered* (Mechanism): "`renderEditorStyled`
@@ -119,7 +119,7 @@ zero occurrences of all three. The records that cite them:
 The BEHAVIOR each record states still holds — the work moved into
 `FileTreePaneContent`/`TreePaneRenderer` and the pane-content extraction. Only
 the citations rotted. Not fixed: three records in a contract file, which
-AGENTS.md's small-and-obvious rule excludes ("never a contract file").
+[AGENTS.md](../../../../AGENTS.md)'s small-and-obvious rule excludes ("never a contract file").
 
 **Comment drift — the contract disagrees with itself on two module paths.**
 `src/modules/ui/EditorPaneRenderer.ts` and `src/modules/ui/EditorPane.ts` do
@@ -152,7 +152,7 @@ scroll position*: two near-identical statements in sibling contracts. The
 lattice states the relation honestly (ui as the surface binding), but the
 placement is a real design call someone should make.
 
-**Contract-layer gap — `ui.invariants.md` is due a split.** 61 records, against
+**Contract-layer gap — [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) is due a split.** 61 records, against
 32 for project and 20 for the next-largest module. The families are clean and
 the new lattice names them: the pane seam, the bounded-popup geometry, the
 modal slot, the scrollbars, and the editor-body projection. `scroll` was split
@@ -184,10 +184,10 @@ code path and no seam.
 ## Follow-on tasks this suggests
 
 1. Repair the three dead symbol citations and the two wrong module paths in
-   `ui.invariants.md`, and delete the duplicated selection paragraph. One
+   [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md), and delete the duplicated selection paragraph. One
    contract-only pass, ~6 edits.
 2. Decide where the two `Momentum`-scoped records belong — ui or scroll — and
    move or refine accordingly.
-3. Consider splitting `ui.invariants.md` along the five families the lattice
+3. Consider splitting [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) along the five families the lattice
    names.
 4. Consider the shared paint-and-hit generator as a project record.

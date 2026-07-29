@@ -43,13 +43,13 @@ per arm.
 
 ## Invariants in scope
 
-- ui.invariants.md (activity bar records, right-dock records, #259's
+- [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) (activity bar records, right-dock records, #259's
   one-focus-owner); the PanelHost content-set records; settings records
   (new keys); #262's task (fold or close with evidence).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

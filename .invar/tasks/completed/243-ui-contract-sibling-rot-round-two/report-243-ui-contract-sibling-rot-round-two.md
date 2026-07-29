@@ -4,17 +4,17 @@ State: READY
 Branch: `fleet/243-ui-contract-sibling-rot-round-two`
 Commit: `849dd408baa6b76f8b9b32bac5d68615c1aaa6c3`
 Subject: `contracts: repair ui citation drift (#243)`
-Files: `src/modules/ui/ui.invariants.md` only
+Files: [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) only
 Tree: clean
 
 ## Scope
 
-The changed contract is `src/modules/ui/ui.invariants.md`. The task named
+The changed contract is [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md). The task named
 three stale citation areas in that file. The neighborhood review found stale
 claims in two adjacent editor records and deeper stale formulas in the
 selection record.
 
-`src/modules/ui/ui.lattice.md` is also in scope. The change did not edit it.
+[src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) is also in scope. The change did not edit it.
 Its resolved link count had to stay at 217.
 
 ## What changed
@@ -74,7 +74,7 @@ I read every replacement owner before the edit. I used
 ## Is the rot exhausted?
 
 No. The honest next step is a separate systematic sweep of every citation in
-`ui.invariants.md`.
+[ui.invariants.md](../../../../src/modules/ui/ui.invariants.md).
 
 The three filed areas exposed more stale claims in their neighborhoods. A
 path-only census then checked 99 explicit `src/...` citations and found one
@@ -142,7 +142,7 @@ changed.
 - **Generator drift or introduced variance:** None observed. The change
   updates contract pointers and formulas only.
 - **Plain nonsense:** None beyond the dead symbols and paths named above.
-- **Contract-layer gap:** The `ui.invariants.md` header says the contract
+- **Contract-layer gap:** The [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) header says the contract
   governs `src/modules/ui/`, but these records now depend on owners in
   `editor`, `filetree`, and `git`. The contract boundary has not followed the
   pane extractions.

@@ -26,13 +26,13 @@ unless your one-owner fix collapses them naturally.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the right-dock toggle record #238
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the right-dock toggle record #238
   extended; any record naming dock focus; the NEW at-most-one-dock-focused
   record if absent.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## End state (mechanical)

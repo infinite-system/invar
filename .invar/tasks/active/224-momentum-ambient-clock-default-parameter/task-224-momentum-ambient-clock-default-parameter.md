@@ -32,4 +32,4 @@ identical before and after at both scales.
 ## Sources
 
 - `.invar/tasks/completed/222-provider-seam-analysis-and-convention/` — report
-  Bycatch item 1 and `analysis-222-classification.md`.
+  Bycatch item 1 and [analysis-222-classification.md](../../completed/222-provider-seam-analysis-and-convention/analysis-222-classification.md).

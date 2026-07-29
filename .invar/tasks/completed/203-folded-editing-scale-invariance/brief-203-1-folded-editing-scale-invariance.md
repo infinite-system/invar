@@ -24,10 +24,10 @@ base you are given.
 The builder that did the flyweight port is not in this session, and you do not need it to be. Its
 full brief and its full report are committed in this repo:
 
-- `agent-dispatches/196-scale/brief.md` — the structural frame it was given, including where the
+- [agent-dispatches/196-scale/brief.md](../../../../agent-dispatches/196-scale/brief.md) — the structural frame it was given, including where the
   editor legitimately differs from a cell grid (a scroll extent depends on every line, so per-line
   row counts cannot be evicted to O(viewport)).
-- `agent-dispatches/196-scale/report.md` — what it actually did and measured: the block tier instead
+- [agent-dispatches/196-scale/report.md](../../../../agent-dispatches/196-scale/report.md) — what it actually did and measured: the block tier instead
   of a Fenwick tree, the identical per-keystroke counts at 2k and 1M, the load-path fast path, the
   downstream deletions, and the limits it explicitly left standing.
 
@@ -48,7 +48,7 @@ from an omission that was missed, and the two call for different repairs.
 - `.claude/skills/invariants/` — record format, annotation discipline, the checker.
 - IBR: reduce to the load-bearing generator before writing code. Two of the three defects below are
   the SAME defect (a full-length allocation on an interaction path); do not fix them as three.
-- `src/modules/editor/editor.invariants.md` and `scroll.invariants.md` — the existing records this
+- [src/modules/editor/editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) and [scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md) — the existing records this
   work must extend rather than contradict.
 
 ## The chain, already traced — verify each link, then reduce

@@ -1,6 +1,6 @@
 # TASK #59 — prettier format gate + one-shot repo reformat + the blank-line grammar rule
 
-You are a codex builder in a fresh worktree cut from main. Read AGENTS.md first (you do this
+You are a codex builder in a fresh worktree cut from main. Read [AGENTS.md](../../../../AGENTS.md) first (you do this
 automatically); the invariant and convention skills it points at govern this work.
 
 ## What already exists — do NOT rebuild it

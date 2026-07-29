@@ -41,5 +41,5 @@ success. In both cases the repair is the same: make the failure expressible, the
 
 ## Sources
 
-- `brief-207-1-silently-discarded-user-input.md`
+- [brief-207-1-silently-discarded-user-input.md](brief-207-1-silently-discarded-user-input.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

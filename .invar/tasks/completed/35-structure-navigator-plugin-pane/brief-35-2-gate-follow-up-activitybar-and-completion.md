@@ -41,7 +41,7 @@ bycatch.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The follow-up report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The follow-up report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## Verification

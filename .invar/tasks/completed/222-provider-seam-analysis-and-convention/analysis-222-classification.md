@@ -27,7 +27,7 @@ question can run in the gate. A criterion that needs judgement is a criterion th
 
 The tool is `bun scripts/ast-query.ts` for the ready questions. Two questions the ready modes do
 not cover were run from `census-222.ts`, a one-off census in this task folder that uses the
-three-move pattern from `.claude/skills/ast-query/SKILL.md`. Copy it to the repository root to
+three-move pattern from [.claude/skills/ast-query/SKILL.md](../../../../.claude/skills/ast-query/SKILL.md). Copy it to the repository root to
 run it. It needs `typescript` to resolve, so run it from inside the repository.
 
 ```sh
@@ -145,7 +145,7 @@ a real process, a real disk, or a real voice.
 **One file already holds the complete pattern.** `src/modules/lsp/LanguageClient.ts:104` to
 `:121` declares five seam getters in a row: `TextCoordinates`, `Environment`, `Files`, `Logging`,
 `StatusChannel`. Four of the five are effectful. The convention proposed in
-`analysis-222-convention.md` is that file, generalised.
+[analysis-222-convention.md](analysis-222-convention.md) is that file, generalised.
 
 **And `TtsFactory` is the mature form.** `src/modules/narration/TtsFactory.ts:15` and `:19` wrap
 the two backends behind getters, and `:27` reads `INVAR_TTS_BACKEND` to pick between them. That
@@ -232,7 +232,7 @@ The four files that already wrap `Files` are `src/modules/image/ImagePreview.ts:
 **Zero module-level sites, for every namespace.** Every bare access already sits inside a class
 member, so every one of them can read a getter on `this` with no restructuring. A static member
 reads a `static get`, an instance member reads a plain `get`. That is why the migration cost in
-`analysis-222-convention.md` is a straight line and not a risk.
+[analysis-222-convention.md](analysis-222-convention.md) is a straight line and not a risk.
 
 `bun census-222-classes.ts Files Processes Clock` counts the classes that touch each namespace:
 26 for `Files`, 10 for `Processes`, 2 for `Clock`. One class per file in every case, so the

@@ -33,15 +33,15 @@ pane states its affordance (#35's degrade arms extend).
 
 ## Invariants in scope
 
-- `src/modules/structure/structure.invariants.md` — #35's records must
+- [src/modules/structure/structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — #35's records must
   survive; the default-visibility record joins them.
 - The plugins ProviderRegistry record from #245 — one rendezvous, still.
-- `src/modules/markdown/markdown.invariants.md` — the TOC source record;
+- [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md) — the TOC source record;
   presentation through #236's stylesheet only.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — generator drift
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — generator drift
 especially (a second rendezvous, a re-rolled outline renderer). The READY
 report carries `## Bycatch` even if it reads `None observed`.
 

@@ -4,6 +4,7 @@
 //
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
 // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
+// invariant: Dead relative Markdown links have one revision-stamped verdict (src/modules/markdown/markdown.invariants.md)
 import { BoxRenderable, type CliRenderer } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
@@ -42,6 +43,8 @@ class $MarkdownSplitView {
   protected renderedPreviewWidth = -1;
   protected renderedPreviewBorderSignature = '';
   protected pendingSourceRevealLine: number | null = null;
+  protected referenceVerdictRevision = -1;
+  protected referenceDeadByTarget = new Map<string, boolean>();
 
   get focusedPane() {
     return ref<MarkdownSplitPane>('source');
@@ -124,6 +127,9 @@ class $MarkdownSplitView {
     this.previewRenderable.attachFindEngineProvider(() =>
       options.findBar.engineFor(this.previewFindTargetIdentifier()),
     );
+    this.previewRenderable.attachReferenceIsDeadProvider((target) =>
+      this.referenceIsDead(target),
+    );
     this.preview.open(options.source, this.previewRenderable);
     this.update();
   }
@@ -144,6 +150,27 @@ class $MarkdownSplitView {
     const textBuffer = new ReadOnlyTextBuffer.Class();
     textBuffer.openText(`${this.options.sourcePath} (rendered preview)`, '');
     return textBuffer;
+  }
+
+  protected referenceIsDead(target: string): boolean {
+    // The first paint for a new parse revision refreshes every authored target once. Later
+    // paints read only this map, so the render loop performs no repeated filesystem probes.
+    this.refreshReferenceVerdicts();
+    return this.referenceDeadByTarget.get(target) ?? false;
+  }
+
+  protected refreshReferenceVerdicts(): void {
+    if (this.referenceVerdictRevision === this.preview.parsedRevision) return;
+    this.referenceVerdictRevision = this.preview.parsedRevision;
+    this.referenceDeadByTarget.clear();
+    for (const target of this.preview.referenceTargets()) {
+      if (this.referenceDeadByTarget.has(target)) continue;
+      this.referenceDeadByTarget.set(
+        target,
+        !this.options.referenceIsExternal(target) &&
+          this.options.resolveReference(target) === null,
+      );
+    }
   }
 
   /** Which side of the source the rendered pane sits on. Fixed for the life of one split: the
@@ -635,6 +662,7 @@ export interface MarkdownSplitViewOptions {
   previewSide?: MarkdownPreviewSide;
   findBar: FindBar.Instance;
   resolveReference(reference: string): string | null;
+  referenceIsExternal(reference: string): boolean;
   openReference(path: string): void;
   showReferenceTooltip(
     path: string,

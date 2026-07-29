@@ -69,7 +69,7 @@ will conflict, so avoid it and say so if you needed it.
 
 `export let Class = $Class`; the `Static()` wrapper lives at the `$Class` anchor; `Reactive()` is
 exempt. Invariant records at `src/modules/<domain>/<domain>.invariants.md` — git contracts in
-`src/modules/git/git.invariants.md` — cited by ROOT-RELATIVE path. Full descriptive identifier names.
+[src/modules/git/git.invariants.md](../../../../src/modules/git/git.invariants.md) — cited by ROOT-RELATIVE path. Full descriptive identifier names.
 80 columns. A fragment, not a substitute for the conventions and skills.
 
 ## Verification — quote exact exit codes, never read `$?` after a pipeline
@@ -80,6 +80,6 @@ count off this tree), `bun scripts/check-coverage-ratchet.ts`, `bash scripts/beh
 plus the drive evidence above.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean. Report to
-`/tmp/208-commit-collapse-READY.md`: the reproduction, the per-call-site decision with justification,
+[/tmp/208-commit-collapse-READY.md](../../../../../../../../../../../tmp/208-commit-collapse-READY.md): the reproduction, the per-call-site decision with justification,
 the drive evidence before/after, the positive control red then green, whether you found a second
 tested-but-unwired capability, and anything you could not establish.

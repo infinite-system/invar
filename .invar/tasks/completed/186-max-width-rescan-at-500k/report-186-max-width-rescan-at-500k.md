@@ -19,7 +19,7 @@ discarding the current maximum-width champion:
 - No consumer knows or can observe whether a rescan occurred.
 
 The `Geometry aggregates match their consumers` mechanism in
-`src/modules/editor/editor.invariants.md` became shorter (five lines replaced
+[src/modules/editor/editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) became shorter (five lines replaced
 by four) while stating the sharper equal-or-wider handoff rule.
 
 ## Maximum-width consumers
@@ -164,7 +164,7 @@ was rerun against exact commit `caa0a73`.
 | `bun scripts/check-coverage-ratchet.ts` | exit 0 — 319 files, no undeclared decrease |
 | `bun scripts/harness/smoke-horizontal-extent-harness.ts` | exit 0 — ALL-PASS |
 
-Per TASK.md, `scripts/merge-gate.sh` was not run; main's unrelated
+Per [TASK.md](../../../../TASK.md), `scripts/merge-gate.sh` was not run; main's unrelated
 #168 (deterministic frame-ordinal wait) red was not investigated.
 
 ## Bycatch

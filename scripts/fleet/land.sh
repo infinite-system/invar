@@ -117,6 +117,11 @@ if [ ! -f "$report_file" ]; then
   }
 fi
 report_link_source="$(ls "$task_directory"/report-* 2>/dev/null | tail -1)"
+task_link_source="${task_directory}/task-${name}.md"
+PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/lint-task-links.ts \
+  --fix --moved-only "$report_link_source"
+PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/lint-task-links.ts \
+  --fix --moved-only "$task_link_source"
 if [ -n "$report_link_source" ] &&
    ! PATH="$HOME/.bun/bin:$PATH" bun scripts/tasks/lint-task-links.ts "$report_link_source"; then
   echo "land: WARNING — the report has dead or bare document references." >&2

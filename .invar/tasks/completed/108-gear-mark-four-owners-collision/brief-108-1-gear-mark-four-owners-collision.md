@@ -1,7 +1,7 @@
 # TASK — #108: propose distinct marks for the shell-script and YAML families (PROPOSAL ONLY)
 
 Work ONLY in `/tmp/conductor-gearmark` (branch `docs-gear-mark-proposal`, cut off `bf57bcf`).
-Do NOT run `scripts/merge-gate.sh`; do NOT push/merge/tag/delete. Report to `/tmp/gearmark-READY.md`.
+Do NOT run `scripts/merge-gate.sh`; do NOT push/merge/tag/delete. Report to [/tmp/gearmark-READY.md](../../../../../../../../../../../tmp/gearmark-READY.md).
 `export PATH=$HOME/.bun/bin:$PATH`, then `bun install`.
 
 ## THIS TASK DOES NOT CHANGE APPEARANCE

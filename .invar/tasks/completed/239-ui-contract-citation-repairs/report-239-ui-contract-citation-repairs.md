@@ -4,7 +4,7 @@ State: READY
 Branch: `fleet/239-ui-contract-citation-repairs`
 Commit: `e3d8d04d8d931dcfd239403016bb7d9eed83a591`
 Subject: `contracts: repair ui contract citations (#239)`
-Files: `src/modules/ui/ui.invariants.md` only
+Files: [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) only
 Tree: clean
 
 ## What changed

@@ -1,6 +1,6 @@
 # 279 — the drive treats a hidden structure pane's "no-document" as unsettled
 
-State: ACTIVE
+State: COMPLETED — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 Created: 2026-07-29
 Engine: codex
 Environment: linux
@@ -32,13 +32,13 @@ timeout.
 
 ## Invariants in scope
 
-- harness.invariants.md — #266's "Drive settled observations include
+- [harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — #266's "Drive settled observations include
   declared debounced work" record (refine, don't weaken);
-  structure.invariants.md answers-or-declines.
+  [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) answers-or-declines.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

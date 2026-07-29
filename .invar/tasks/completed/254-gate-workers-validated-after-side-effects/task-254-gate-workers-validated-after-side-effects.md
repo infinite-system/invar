@@ -14,7 +14,7 @@ Bycatch of #251, confirmed by inspection: `scripts/merge-gate.sh` validates
 `INVAR_GATE_WORKERS` at line ~407, but PID publication, orphan reaping, and
 failure-log publication run at lines ~279-338 first. An invalid worker value
 exits 2 AFTER those side effects — the guards-go-first rule (three prior
-bites, project.conductor.md family 10) violated inside the gate itself.
+bites, [project.conductor.md](../../../../project.conductor.md) family 10) violated inside the gate itself.
 
 Move the validation into the preflight block #251 established (guards
 cluster at entry). Prove both arms outside the apparatus, #251's way: an
@@ -28,7 +28,7 @@ polarities); a valid value passes preflight silently.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — you are in the gate's entry neighborhood; #251
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — you are in the gate's entry neighborhood; #251
 found this one by looking, look for its siblings. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 

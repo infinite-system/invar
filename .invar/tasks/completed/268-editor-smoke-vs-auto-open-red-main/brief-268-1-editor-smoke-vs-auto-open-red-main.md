@@ -6,7 +6,7 @@ Read first:
 
 The one-paragraph version: main (d42f2af0) fails `smoke-editor-harness`
 deterministically — "wrap-off keeps consecutive logical lines on consecutive
-terminal rows". The smoke tree-walks into `fixtures/README.md`; since #237,
+terminal rows". The smoke tree-walks into [fixtures/README.md](../../../../fixtures/README.md); since #237,
 opening markdown auto-opens the preview split, the editor pane narrows, and
 the smoke's row/gutter assertions — written against a full-width editor —
 displace. The smoke is stale, not the feature.
@@ -32,12 +32,12 @@ in the same gate — known classes, do not touch.
   cites) — the wrap-off property must survive with its citation intact.
 - #237's auto-open record in the markdown module — read it; do not weaken
   the default it protects.
-- `scripts/harness/harness.invariants.md` — the settled-frame contract, if
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — the settled-frame contract, if
   you touch waits.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`. Especially watch for OTHER smokes that hard-code
 full-width editor geometry — name them, do not fix them here.
 
@@ -49,6 +49,6 @@ quoted from main in your report; the positive control quoted.
 ## End state (mechanical)
 
 Your READY report at
-`.invar/tasks/in-progress/268-editor-smoke-vs-auto-open-red-main/report-268-editor-smoke-vs-auto-open-red-main.md`
+[.invar/tasks/in-progress/268-editor-smoke-vs-auto-open-red-main/report-268-editor-smoke-vs-auto-open-red-main.md](report-268-editor-smoke-vs-auto-open-red-main.md)
 with `## Bycatch` (even if "None observed"). Main goes green when this lands
 — that is the whole point of the task.

@@ -26,7 +26,7 @@ Two user-reported defects in the markdown/structure jump path:
    generator; do not write a third).
 
 Verify by DRIVING at 140x40 with a long document
-(project.conductor.archive.md class): click a deep TOC heading, assert
+([project.conductor.archive.md](../../../../project.conductor.archive.md) class): click a deep TOC heading, assert
 the heading row paints in the TOP third of both panes and is not the
 last body row (the #285 dead-row family — coordinate, don't fix that
 one). Positive control: break the follow, watch the assertion red.
@@ -39,10 +39,10 @@ one). Positive control: break the follow, watch the assertion red.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## Sources
 
 - User message 2026-07-29 12:1x; [#274](../274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) (depth/filter);
-  [#285](../285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) (dead last row).
+  [#285](../../active/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) (dead last row).

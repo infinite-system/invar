@@ -137,7 +137,7 @@ Stable `readTerminalInput` boundary:
 
 Derived scope:
 `scripts/harness/smoke-terminal-stage-harness.ts` implicates
-`scripts/harness/harness.invariants.md`.
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md).
 
 - **Strengthened — Harness waits observe conditions not frame ordinals.**
   Compound and intermediate-frame predicates became independently observable

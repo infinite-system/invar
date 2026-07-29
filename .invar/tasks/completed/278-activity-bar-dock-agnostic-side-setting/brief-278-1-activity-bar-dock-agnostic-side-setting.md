@@ -24,13 +24,13 @@ never assumed (#268 doctrine). Positive control per arm.
 
 ## Invariants in scope
 
-- ui.invariants.md (activity bar records, right-dock records, #259's
+- [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) (activity bar records, right-dock records, #259's
   one-focus-owner); PanelHost content-set records; settings records;
   #262 (fold or close with evidence).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## End state (mechanical)

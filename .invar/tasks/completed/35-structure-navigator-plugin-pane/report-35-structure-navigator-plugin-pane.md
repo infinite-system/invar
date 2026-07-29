@@ -78,7 +78,7 @@ built the second without deciding the first; the decision is a design call above
 - `StructurePlugin.ts` — the contributor: manifest row `structure-navigator`, the pane, five
   commands, six keybindings, the `structure*` status projection, and `paneIsObserved` — the gate
   that makes a hidden pane cost zero requests.
-- `structure.invariants.md` — the new domain record: one reality invariant (*Symbol structure is
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — the new domain record: one reality invariant (*Symbol structure is
   analyzer knowledge*) and four chosen (*pane content citizen*, *answers or declines never
   blanks*, *cost tracks the observed document*, *jumps through the source-text view contract*).
 
@@ -96,7 +96,7 @@ built the second without deciding the first; the decision is a design call above
 - `LspWorkspaceProvider` — implements `StructureSource`; registers on construction, withdraws on
   disposal; `supportsDocument` is the cheap path check (no server start);
   `structureNotice` relays the size-budget message.
-- `lsp.invariants.md` — *LSP is a provider plugin* refined in place: Scope gains document
+- [lsp.invariants.md](../../../../src/modules/lsp/lsp.invariants.md) — *LSP is a provider plugin* refined in place: Scope gains document
   symbols, and the Components name the structure-source registration as a peer-plugin port that
   leaves the host-never-imports-LSP clause untouched.
 
@@ -153,7 +153,7 @@ ABSENT not stale, its chord inert) and reinstalls to a `ready` outline with the 
 | empty affordance (DRIVEN) | `render` returned a blank for zero rows | smoke exit 1: `Timed out waiting for grid condition: the unsupported degrade is painted, never a blank pane` |
 
 Each returned to green when the plant was removed. (The driven control's first read looked like
-exit 0 because I read `$?` after a pipeline — the exact mistake AGENTS.md rule 9 names; the
+exit 0 because I read `$?` after a pipeline — the exact mistake [AGENTS.md](../../../../AGENTS.md) rule 9 names; the
 rerun captured the smoke's own exit 1.)
 
 ## Verification — exact exit codes
@@ -203,7 +203,7 @@ runner: `FAILED: none` on both sides. The after-side run includes the extended m
   fling physics); a third copy will appear with the next scrolling pane. Sites:
   `src/modules/filetree/FileTreeWorkspace.ts:40` and
   `src/modules/structure/StructureWorkspace.ts:44`. Not unified — the seam call is a design
-  decision (AGENTS.md bycatch rule).
+  decision ([AGENTS.md](../../../../AGENTS.md) bycatch rule).
 - **Distillation possibility: the selectable-row-list renderer.** `TreePaneRenderer` and now
   `StructurePaneRenderer` share the row loop: window slice, indent, mark, width-clamp, pad,
   selection-over-hover background, focus-dimmed intensity. `GitPaneRenderer` has relatives of
@@ -217,7 +217,7 @@ runner: `FAILED: none` on both sides. The after-side run includes the extended m
   the rule "no host edits" and the rule "fix small drift where you see it" can collide.
 - **`Enter` on a freshly opened directory workspace still does not open the selected tree row**
   (focus starts on the editor). Unchanged from #219's bycatch; it cost this task's first drive
-  one wrong turn, exactly as predicted there. `drive.md` still does not say it.
+  one wrong turn, exactly as predicted there. [drive.md](../../../../scripts/harness/drive.md) still does not say it.
 - **`bun run drive --size N` still cannot open the file it creates** (ripgrep absent, Quick Open
   falls back to `git ls-files`, `.gitignore` hides `tmp/`). Unchanged from #218/#219/#122/#220;
   worked around with self-made workspaces, `git init`, and tree clicks, as every predecessor did.

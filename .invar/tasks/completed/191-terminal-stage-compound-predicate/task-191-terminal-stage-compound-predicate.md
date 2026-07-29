@@ -39,6 +39,6 @@ its fifth site).
 
 ## Sources
 
-- `brief-191-1-terminal-stage-compound-predicate.md`
-- `report-191-terminal-stage-compound-predicate.md`
+- [brief-191-1-terminal-stage-compound-predicate.md](brief-191-1-terminal-stage-compound-predicate.md)
+- [report-191-terminal-stage-compound-predicate.md](report-191-terminal-stage-compound-predicate.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

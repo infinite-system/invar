@@ -30,15 +30,15 @@ mechanism names the divergence before any behavioral run can leak.
 
 ## Invariants in scope
 
-- `scripts/harness/harness.invariants.md` — the isolated-home record #233
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — the isolated-home record #233
   added; extend rather than duplicate.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources
 
-- `report-233-wrap-contract-red-settings-leak.md`, Bycatch, distillation
+- [report-233-wrap-contract-red-settings-leak.md](../../completed/233-wrap-contract-red-settings-leak/report-233-wrap-contract-red-settings-leak.md), Bycatch, distillation
   item.

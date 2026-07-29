@@ -7,7 +7,7 @@ show very well, present .md files properly (tables blockquotes, etc, make a
 sort of css in terminal approach)". Reading is the new writing.
 
 Drive first (RULE ZERO): open real markdown files in the preview —
-project.briefing.md, a README with tables, blockquotes, nested lists, code
+[project.briefing.md](../../../../project.briefing.md), a README with tables, blockquotes, nested lists, code
 fences — LOOK at them, then improve, then look again. Your inner loop is
 seconds. The deliverable is a STYLESHEET SEAM: one place where markdown
 element classes (heading levels, paragraph, table, blockquote, code fence,
@@ -34,7 +34,7 @@ outside the stylesheet seam.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Verification

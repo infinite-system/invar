@@ -54,7 +54,7 @@ I removed the plant. The same smoke then passed.
 
 ## Contract changes
 
-I added `Explicit jumps use one reading position` to `src/modules/text/text.invariants.md`.
+I added `Explicit jumps use one reading position` to [src/modules/text/text.invariants.md](../../../../src/modules/text/text.invariants.md).
 I refined the Markdown split record to require same-revision preview follow. I refined the
 Structure jump record to require reading placement and same-document projection follow.
 
@@ -69,8 +69,8 @@ The invariant checker resolved 1,112 annotations and 217 lattice links with 0 pr
 - `bun scripts/harness/smoke-plugin-manifest-harness.ts` — PASS, including the Structure navigator
   outline, jump, degradation, and reinstall arm.
 - `python3 .claude/skills/ste-expression/scripts/ste-lint.py
-  src/modules/text/text.invariants.md src/modules/markdown/markdown.invariants.md
-  src/modules/structure/structure.invariants.md` — completed with no flagged lines.
+  [src/modules/text/text.invariants.md](../../../../src/modules/text/text.invariants.md) [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md)
+  [src/modules/structure/structure.invariants.md](../../../../src/modules/structure/structure.invariants.md)` — completed with no flagged lines.
 - The mandatory pre-commit merge gate — ALL-PASS.
 
 ## Bycatch

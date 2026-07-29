@@ -86,7 +86,7 @@ exact comparison only when needed.
   produces 20,000 row writes, 20,000 block writes, and one allocation of each
   array at the 20k control size.
 - Prediction: the invariant should reduce the contract record. Outcome:
-  `src/modules/editor/editor.invariants.md` is shorter than merge base
+  [src/modules/editor/editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) is shorter than merge base
   `a93b7e8`: 629 to 621 lines and 4,664 to 4,558 words (8 lines and 106 words
   removed).
 

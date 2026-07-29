@@ -36,6 +36,6 @@ while a clean `0,1,0,1` alternation names wall-clock phase instantly.
 
 ## Sources
 
-- `brief-189-1-gate-reds-population-separation.md`
-- `report-189-gate-reds-population-separation.md`
+- [brief-189-1-gate-reds-population-separation.md](brief-189-1-gate-reds-population-separation.md)
+- [report-189-gate-reds-population-separation.md](report-189-gate-reds-population-separation.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

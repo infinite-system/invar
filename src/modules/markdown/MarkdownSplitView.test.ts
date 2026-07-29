@@ -201,3 +201,52 @@ test('an unresolved authored link stays a reference; unresolved backtick text do
   ).referenceAtForTest(0, 0);
   expect(resolvedCode?.path).toBe('/root/src/main.ts');
 });
+
+test('link resolution verdicts are cached for one parse revision', () => {
+  let resolutionCount = 0;
+  class $ProbedMarkdownSplitView extends MarkdownSplitView.$Class {
+    referenceIsDeadForTest(target: string): boolean {
+      return this.referenceIsDead(target);
+    }
+  }
+  const preview = {
+    parsedRevision: 7,
+    referenceTargets: () => [
+      'missing.md',
+      'present.md',
+      'https://example.com/docs',
+      'missing.md',
+    ],
+  };
+  const splitView = Object.create(
+    $ProbedMarkdownSplitView.prototype,
+  ) as $ProbedMarkdownSplitView;
+  Object.defineProperties(splitView, {
+    preview: { value: preview },
+    referenceVerdictRevision: { value: -1, writable: true },
+    referenceDeadByTarget: { value: new Map<string, boolean>() },
+    options: {
+      value: {
+        referenceIsExternal: (target: string) => target.startsWith('https:'),
+        resolveReference: (target: string) => {
+          resolutionCount += 1;
+          return target === 'present.md' ? '/workspace/present.md' : null;
+        },
+      },
+    },
+  });
+
+  expect(splitView.referenceIsDeadForTest('missing.md')).toBe(true);
+  expect(splitView.referenceIsDeadForTest('present.md')).toBe(false);
+  expect(splitView.referenceIsDeadForTest('https://example.com/docs')).toBe(
+    false,
+  );
+  expect(resolutionCount).toBe(2);
+
+  expect(splitView.referenceIsDeadForTest('missing.md')).toBe(true);
+  expect(resolutionCount).toBe(2);
+
+  preview.parsedRevision = 8;
+  expect(splitView.referenceIsDeadForTest('missing.md')).toBe(true);
+  expect(resolutionCount).toBe(4);
+});

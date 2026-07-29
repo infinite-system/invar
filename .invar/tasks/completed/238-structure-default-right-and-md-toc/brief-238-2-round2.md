@@ -32,11 +32,11 @@ on; everything you own must be green.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The refreshed READY report carries `## Bycatch`
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The refreshed READY report carries `## Bycatch`
 even if it reads `None observed`.
 
 ## End state (mechanical)
 
-An UPDATED report at `report-238-structure-default-right-and-md-toc.md`
+An UPDATED report at [report-238-structure-default-right-and-md-toc.md](report-238-structure-default-right-and-md-toc.md)
 (newer than this round's filing stamp) stating: merge commit sha, the
 resolution taken in each of the three files, and the green smoke evidence.
