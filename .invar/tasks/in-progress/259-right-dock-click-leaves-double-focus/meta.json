@@ -1,0 +1,15 @@
+{
+  "task": 259,
+  "slug": "right-dock-click-leaves-double-focus",
+  "branch": "fleet/259-right-dock-click-leaves-double-focus",
+  "worktree": ".invar/worktrees/259-right-dock-click-leaves-double-focus",
+  "tmuxSession": "invar/259-right-dock-click-leaves-double-focus",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-259-right-dock-click-leaves-double-focus.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "cd5220bb0a6c6620d25b12c50a4a0c186562dfcc",
+  "startedAt": "2026-07-29T07:48:18-04:00"
+}
