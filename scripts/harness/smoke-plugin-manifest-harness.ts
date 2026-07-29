@@ -88,6 +88,12 @@ await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
 // A file no structure source supports — the structure arm proves the stated degrade on it.
 await Bun.write(join(fixtureRoot, 'notes.txt'), 'plain notes\n');
 
+// A Markdown file for the auto-open uninstall-symmetry arm.
+await Bun.write(
+  join(fixtureRoot, 'z-auto-notes.md'),
+  '# Z auto notes\n\nThe preview of this file opens itself.\n',
+);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'manifest.ts']);
@@ -1215,6 +1221,88 @@ try {
   );
   HarnessSmoke.Class.pass(
     'the database provider and consumer uninstall and reinstall symmetrically',
+  );
+
+  console.log(
+    '== plugin manifest: Markdown auto-open uninstalls and reinstalls symmetrically ==',
+  );
+  // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File opens before the Markdown auto-open drive',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('z-auto-notes.md');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the Markdown fixture',
+    (status) =>
+      status.quickOpenQuery === 'z-auto-notes.md' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Markdown tab auto-opens its preview without a keystroke',
+    (status) =>
+      String(status.activeBuffer).endsWith('/z-auto-notes.md') &&
+      status.markdownPreviewOpen === true &&
+      status.markdownPreviewSide === 'left',
+  );
+  await driver.awaitGridCondition(
+    'the auto-opened preview pane is painted',
+    (snapshot) => snapshot.findText('╭─Preview') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'an enabled Markdown plugin auto-opens the preview for a Markdown tab',
+  );
+  await selectExtensionsRow('[x] Markdown');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'the Markdown row unchecks on uninstall',
+    (snapshot) => snapshot.findText('› [ ] Markdown') !== null,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall withdraws the Markdown settings schema',
+    (status) =>
+      !(status.settingsSections as string[] | undefined)?.includes('Markdown'),
+  );
+  // The plugin's status projection leaves with it, so the key reads undefined — anything but true.
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'uninstall closes the auto-opened preview',
+    (status) => status.markdownPreviewOpen !== true,
+  );
+  await driver.awaitGridCondition(
+    'no stale preview pane survives the Markdown uninstall',
+    (snapshot) => snapshot.findText('╭─Preview') === null,
+  );
+  HarnessSmoke.Class.pass(
+    'uninstalling Markdown removes the pane and the auto-open behaviour',
+  );
+  driver.sendKeys('Space');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'reinstall restores the Markdown schema and re-applies auto-open to the active tab',
+    (status) =>
+      (status.settingsSections as string[] | undefined)?.includes(
+        'Markdown',
+      ) === true && status.markdownPreviewOpen === true,
+  );
+  await driver.awaitGridCondition(
+    'the reinstalled plugin auto-opens the preview pane again',
+    (snapshot) => snapshot.findText('╭─Preview') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'Markdown auto-open uninstalls and reinstalls symmetrically',
   );
 } finally {
   await driver.dispose();

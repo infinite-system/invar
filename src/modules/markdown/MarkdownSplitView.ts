@@ -91,11 +91,27 @@ class $MarkdownSplitView {
     this.paneSplitter = this.splitterElement.model;
     this.previewSelectionDragBehavior = this.createSelectionDragBehavior();
 
-    this.rootRenderable.add(options.sourceRenderable);
+    // The RENDERED view reads left-to-right first, so the preview sits LEFT by default; the
+    // contributed `markdownPreviewSide` setting flips the order. Only the child order and the
+    // splitter's pointer direction change — the persisted ratio keeps meaning "source pane share".
+    // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
+    const childRenderables =
+      this.previewSide === 'left'
+        ? [
+            this.previewPaneRenderable,
+            this.dividerRenderable,
+            options.sourceRenderable,
+          ]
+        : [
+            options.sourceRenderable,
+            this.dividerRenderable,
+            this.previewPaneRenderable,
+          ];
+    for (const childRenderable of childRenderables) {
+      this.rootRenderable.add(childRenderable);
+    }
     options.sourceRenderable.flexGrow = 0;
     options.sourceRenderable.flexShrink = 0;
-    this.rootRenderable.add(this.dividerRenderable);
-    this.rootRenderable.add(this.previewPaneRenderable);
     options.parentRenderable.add(this.rootRenderable);
     this.bindPreviewEvents();
     this.previewRenderable.attachFindEngineProvider(() =>
@@ -123,12 +139,22 @@ class $MarkdownSplitView {
     return textBuffer;
   }
 
+  /** Which side of the source the rendered pane sits on. Fixed for the life of one split: the
+   *  mount identity includes the side, so a settings flip rebuilds the split. */
+  get previewSide(): MarkdownPreviewSide {
+    return this.options.previewSide ?? 'left';
+  }
+
   protected createSplitterElement(): SplitterElement.Model {
     return new SplitterElement.Class({
       renderer: this.renderer,
       identifier: 'markdown-preview-divider',
       orientation: 'vertical',
       reportUnit: 'ratio',
+      // The tracked size is ALWAYS the source pane's share. With the preview on the left the
+      // source pane sits right of the divider, so a rightward pointer move SHRINKS it — the
+      // inverted pointer direction keeps the divider following the pointer on either side.
+      pointerDirection: () => (this.previewSide === 'left' ? -1 : 1),
       initialSize: this.splitRatioSetting.value.value,
       minimumSize: 0.2,
       maximumSize: 0.8,
@@ -545,6 +571,8 @@ export namespace MarkdownSplitView {
   export type Instance = typeof Class.Instance;
 }
 
+export type MarkdownPreviewSide = 'left' | 'right';
+
 export interface MarkdownSplitViewOptions {
   source: MarkdownSource;
   sourcePath: string;
@@ -552,6 +580,8 @@ export interface MarkdownSplitViewOptions {
   parentRenderable: BoxRenderable;
   settings: Settings.Instance;
   splitRatioSetting?: RegisteredSetting<number>;
+  /** Which side of the source the rendered pane occupies. Defaults to 'left'. */
+  previewSide?: MarkdownPreviewSide;
   findBar: FindBar.Instance;
   resolveReference(reference: string): string | null;
   openReference(path: string): void;

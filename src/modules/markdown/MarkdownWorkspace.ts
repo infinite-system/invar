@@ -13,9 +13,18 @@ import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 // `showingMarkdownPreview`, `toggleMarkdownPreview`) — including the `.md` extension test, in host
 // core. The host now knows only that SOMETHING may occupy the editor surface.
 //
+// The preview OPENS ITSELF: while this contribution is attached (the plugin is enabled), a Markdown
+// tab that becomes the active presented document gains its preview without a keystroke. A preview
+// the user closed by hand is remembered per path and never auto-reopened; uninstalling the plugin
+// disposes this contribution and the behaviour with it.
+//
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
+  declare $watch: typeof import('vue').watch;
+  declare $stopEffects: () => void;
+
   constructor(
     readonly workspace: Workspace.Model,
     /** Whether the MOUNTED preview pane currently holds the keyboard. Supplied by the plugin, which
@@ -23,6 +32,15 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     protected readonly mountedPreviewFocused: () => boolean,
   ) {
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
+    // Sync flush: the auto-open must land in the same flush as the tab activation, so the mount
+    // sync that runs on the next paint already sees the claim. The getter consults the surface
+    // capability, which is safe in a WATCH (an action-time read, like togglePreview's guard) —
+    // only the claim's own getters must never ask the registry about itself.
+    this.$watch(
+      () => this.autoOpenCandidatePath(),
+      (path) => this.autoOpenPreview(path),
+      { immediate: true, flush: 'sync' },
+    );
   }
 
   protected readonly disposeEditorSurfaceClaim: () => void;
@@ -31,6 +49,33 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
    *  so switching away and back does not silently discard the user's view choice. */
   get previewPaths() {
     return shallowRef<ReadonlySet<string>>(new Set());
+  }
+
+  /** File paths whose preview the user closed BY HAND. Auto-open respects this choice: a dismissed
+   *  document stays source-only until its own toggle opens it again, while every other Markdown
+   *  document keeps the open-by-default behaviour. */
+  get dismissedPreviewPaths() {
+    return shallowRef<ReadonlySet<string>>(new Set());
+  }
+
+  /** The path the preview should auto-open for right now, or '' when there is none: the active tab
+   *  must be a presented Markdown document with no preview showing and no recorded hand-close. */
+  protected autoOpenCandidatePath(): string {
+    if (!this.previewToggleAvailable) return '';
+    const path = this.activeTabPath();
+    if (this.previewPaths.value.has(path)) return '';
+    if (this.dismissedPreviewPaths.value.has(path)) return '';
+    return path;
+  }
+
+  /** Open the preview for an auto-open candidate. Deliberately does NOT move focus: the user did
+   *  not ask for this pane, so the keyboard stays where it is and the split's own default keeps the
+   *  SOURCE pane as the focused pane. */
+  protected autoOpenPreview(path: string): void {
+    if (path === '') return;
+    const nextPaths = new Set(this.previewPaths.value);
+    nextPaths.add(path);
+    this.previewPaths.value = nextPaths;
   }
 
   /** The active TAB's path, read from the buffer set rather than through `Workspace.editor`.
@@ -72,8 +117,18 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     if (!this.previewToggleAvailable) return;
     const path = this.activeTabPath();
     const nextPaths = new Set(this.previewPaths.value);
-    if (nextPaths.has(path)) nextPaths.delete(path);
-    else nextPaths.add(path);
+    const nextDismissed = new Set(this.dismissedPreviewPaths.value);
+    if (nextPaths.has(path)) {
+      // A hand-close is a per-document choice auto-open must respect.
+      nextPaths.delete(path);
+      nextDismissed.add(path);
+    } else {
+      nextPaths.add(path);
+      nextDismissed.delete(path);
+    }
+    // Dismissal FIRST: the auto-open watcher flushes synchronously on the previewPaths write, and
+    // it must already see the hand-close, or it re-opens the pane between the two writes.
+    this.dismissedPreviewPaths.value = nextDismissed;
     this.previewPaths.value = nextPaths;
     this.workspace.focusEditor();
   }
@@ -109,7 +164,9 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   resumed(): void {}
   disposed(): void {
     this.disposeEditorSurfaceClaim();
+    this.$stopEffects();
     this.previewPaths.value = new Set();
+    this.dismissedPreviewPaths.value = new Set();
   }
 }
 

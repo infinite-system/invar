@@ -17,6 +17,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
   constructor(
     protected readonly activeWorkspace: () => MarkdownWorkspace.Model | null,
     protected readonly splitRatioSetting: RegisteredSetting<number>,
+    protected readonly previewSideSetting: RegisteredSetting<string>,
   ) {}
 
   readonly identifier = 'markdown.preview';
@@ -29,18 +30,25 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
     return this.mountIdentity() === '' ? null : this.content;
   }
 
-  /** Empty while no tab is showing its preview. Otherwise root + source path, so switching to another
-   *  Markdown tab rebuilds the split against that tab's document. */
+  /** The contributed side, normalized: any value other than 'right' means the default left. */
+  previewSide(): 'left' | 'right' {
+    return this.previewSideSetting.value.value === 'right' ? 'right' : 'left';
+  }
+
+  /** Empty while no tab is showing its preview. Otherwise root + source path + side, so switching
+   *  to another Markdown tab — or flipping the side setting — rebuilds the split for that shape. */
   mountIdentity(): string {
     const markdownWorkspace = this.activeWorkspace();
     if (!markdownWorkspace || !markdownWorkspace.showingPreview) return '';
     const workspace = markdownWorkspace.workspace;
-    return `${workspace.root}:preview:${workspace.editor.document.path}`;
+    return `${workspace.root}:preview:${workspace.editor.document.path}:${this.previewSide()}`;
   }
 
-  /** The split's pane ratio is persisted, so a divider drag must repaint the host. */
+  /** The split's pane ratio and side are persisted, so a divider drag or a settings flip must
+   *  repaint the host. */
   observePaintSignals(): void {
     void this.splitRatioSetting.value.value;
+    void this.previewSideSetting.value.value;
   }
 
   create(context: EditorSurfaceContentContext): EditorSurfaceContent {
@@ -62,6 +70,7 @@ class $MarkdownPreviewSurface implements EditorSurfaceContentProvider {
       markdownWorkspace.workspace,
       context,
       this.splitRatioSetting,
+      this.previewSide(),
     );
   }
 }

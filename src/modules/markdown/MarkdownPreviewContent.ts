@@ -1,5 +1,8 @@
 import { Files } from '../system/Files';
-import { MarkdownSplitView } from './MarkdownSplitView';
+import {
+  MarkdownSplitView,
+  type MarkdownPreviewSide,
+} from './MarkdownSplitView';
 import type { FindBarTarget } from '../search/FindBar';
 import type {
   EditorSurfaceContent,
@@ -23,6 +26,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
     protected readonly workspace: Workspace.Model,
     protected readonly context: EditorSurfaceContentContext,
     protected readonly splitRatioSetting: RegisteredSetting<number>,
+    protected readonly previewSide: MarkdownPreviewSide = 'left',
   ) {
     this.view = this.createSplitView();
   }
@@ -38,6 +42,7 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       parentRenderable: context.container,
       settings: context.settings,
       splitRatioSetting: this.splitRatioSetting,
+      previewSide: this.previewSide,
       findBar: context.findBar,
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),
