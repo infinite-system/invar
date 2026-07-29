@@ -39,8 +39,10 @@ The panel renders exactly the visible pane content cells each frame
         ├─► The source text editor is a pane content citizen
         └─► The editor column's default occupant is a contribution
 
-The active activity item determines the sidebar content
-  └─► Activity bar order is one persisted sequence
+The active activity item determines its dock content
+  ├─► Activity bar order is one persisted sequence
+  └─► A contributed dock side moves one live pane
+        └─► One panel host owns keyboard focus
 Panel content order is one persisted sequence
   └─► The panel contents list mirrors open content   ◄── Each panel instance owns one session
 
@@ -134,10 +136,13 @@ frame][panel-projection] is the root of the ui family. It says a host projects a
   editor is an ordinary citizen, the column's occupant can be REGISTERED, so the editor becomes
   uninstallable like any other contribution.
 
-**Membership and order.** [The active activity item determines the sidebar content][activity-active]
-gives the primary dock one active identity. [Activity bar order is one persisted
-sequence][activity-order] adds the second axis: membership comes from registration, order comes from
-settings, and a disabled plugin keeps its slot. [Panel content order is one persisted
+**Membership and order.** [The active activity item determines its dock content][activity-active]
+gives every registered dock content one activity identity. [Activity bar order is one persisted
+sequence][activity-order] adds the second axis: membership comes from every dock registration, order
+comes from one setting, and a disabled plugin keeps its slot. [A contributed dock side moves one
+live pane][dock-side] changes which host owns a registration without changing the activity identity;
+[One panel host owns keyboard focus][host-focus] makes the visible pane's focus follow that move.
+[Panel content order is one persisted
 sequence][panel-order] is the same generator for the bottom panel, and [The panel contents list
 mirrors open content][contents-list] is its visible projection — it stands on [panel-order] for the
 sequence and on [instance-session] for what a row means.
@@ -385,7 +390,7 @@ allows.
 
 ### Order and identity survive a restart
 
-**Members:** [panel order][panel-order] · [activity order][activity-order] ·
+**Members:** [panel order][panel-order] · [activity order][activity-order] · [dock side][dock-side] ·
 [contents list][contents-list] · [instance sessions][instance-session] ·
 [headed regions][headed-regions] · [split cells][split-cells].
 
@@ -475,7 +480,9 @@ questions from it.
 [headed-regions]: ui.invariants.md#visible-panel-contents-own-separate-headed-regions
 [status-edge]: ui.invariants.md#the-right-dock-control-owns-the-status-edge
 [tab-bars]: ui.invariants.md#tab-bars-share-paint-and-hit-geometry
-[activity-active]: ui.invariants.md#the-active-activity-item-determines-the-sidebar-content
+[activity-active]: ui.invariants.md#the-active-activity-item-determines-its-dock-content
+[dock-side]: ui.invariants.md#a-contributed-dock-side-moves-one-live-pane
+[host-focus]: ui.invariants.md#one-panel-host-owns-keyboard-focus
 [indent-guides]: ui.invariants.md#indent-guides-mark-leading-whitespace-without-shifting-columns
 [modal-slot]: ui.invariants.md#input-overlays-share-one-modal-slot
 [modal-withdraws]: ui.invariants.md#modal-focus-withdraws-host-terminal-projections

@@ -420,18 +420,22 @@ scripts/harness/smoke-panel-split-harness.ts`
 
 ### Activity bar order is one persisted sequence
 
-**Invariant:** If primary-dock content is registered, removed, reordered, or registered again, then
-the activity bar derives membership from registered `PaneContent` and order from
+**Invariant:** If dock content is registered, removed, reordered, moved between docks, or registered
+again, then the activity surface derives membership from registered `PaneContent` across every dock
+and order from
 `Settings.primaryDockContentOrder`.
 
-**Scope:** `ActivityBar`, the primary `PanelHost`, `Settings.primaryDockContentOrder`, plugin
-registration and removal, pointer drag reorder, and activity-context Alt+Up or Alt+Down reorder.
+**Scope:** `ActivitySurface`, every dock `PanelHost`, both `ActivityBar` projections,
+`Settings.primaryDockContentOrder`, plugin registration and removal, pointer drag reorder, and
+activity-context Alt+Up or Alt+Down reorder.
 Bottom-panel session removal remains governed by *Panel content order is one persisted sequence*.
 
-**Mechanism:** `Bootstrap` injects `Settings.primaryDockContentOrder` into `PanelHost` with dormant-id
-retention. `PanelHost.orderedContents` filters unregistered identifiers without deleting them,
-registration appends only unseen identifiers, and `moveContentTo` writes one persisted sequence.
-`ActivityBar` and `PanelContentsList` delegate pointer state to `ContentOrderDrag`.
+**Mechanism:** `Bootstrap` injects one `Settings.primaryDockContentOrder` into both dock hosts with
+dormant-id retention and into one `ActivitySurface`. The surface unions the hosts' registered
+contents and resolves them through that shared sequence. `PanelHost.orderedContents` filters
+unregistered identifiers without deleting them, registration appends only unseen identifiers, and
+`ActivitySurface.moveContentTo` writes one persisted sequence. Both activity bars delegate pointer
+state to `ContentOrderDrag` over that surface.
 
 **Generates:** Stable icon slots across plugin disable and re-enable; deterministic end insertion for
 new plugins; inert missing identifiers; drag reorder; Alt+Up and Alt+Down reorder; restart
@@ -452,7 +456,44 @@ scripts/harness/smoke-activitybar-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
+
+### A contributed dock side moves one live pane
+
+**Invariant:** If a plugin registers `PaneContent` through `registerDockContent`, then its
+`<pane>.dockSide` setting is `left | right`, starts at the plugin's suggested side, and moves that
+same live content instance to the selected dock. Visibility and the one focus claim follow a visible
+pane. Uninstall removes the pane from whichever side owns it then.
+
+**Scope:** `ApplicationContributionContext.registerDockContent`, contributed settings,
+`PanelHost.moveContentToHost`, Structure, Tasks, and plugin uninstall.
+
+**Mechanism:** `ApplicationContributions` contributes the enum setting and closes one registration
+handle over its current host. The setting's change callback asks the source `PanelHost` to detach the
+content without disposal and register it on the target host. The returned handle resolves show,
+reveal, visibility, blur, and default-visibility actions against the current host. The activation
+disposer also resolves the current host late.
+
+**Generates:** Plugin-suggested defaults; live right-to-left and left-to-right moves; the same pane
+state after a move; no fallback pane revealed in the source dock; uninstall symmetry on both sides.
+
+**Evidence:** `src/modules/app/ApplicationContributions.ts`;
+`src/modules/app/ApplicationContributor.interface.ts`; `src/modules/ui/PanelHost.ts`;
+`src/modules/structure/StructurePlugin.ts`; `src/modules/tasks-dashboard/TasksDashboardPlugin.ts`;
+`src/modules/app/ApplicationContributions.test.ts`; `src/modules/ui/PanelHost.test.ts`;
+`scripts/harness/smoke-activitybar-harness.ts`.
+
+**Impossible if true:** A side change disposes and rebuilds the pane; the old and new hosts both
+register it; a visible move reveals an unrelated fallback in the old host; a command still targets
+the plugin's suggested side after the user moves it; uninstall leaves an activity entry behind.
+
+**Verification:** `bun test src/modules/app/ApplicationContributions.test.ts
+src/modules/ui/PanelHost.test.ts src/modules/settings/Settings.test.ts && bun
+scripts/harness/smoke-activitybar-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
 
 ### The panel contents list mirrors open content
 
@@ -662,38 +703,44 @@ terminal column.
 
 **Last refined:** 2026-07-24
 
-### The active activity item determines the sidebar content
+### The active activity item determines its dock content
 
 **Invariant:** If the activity bar shows an item as ACTIVE (its left accent bar `▎` is drawn), then
-the sidebar renders exactly that registered `PaneContent`; clicking its button or invoking its
-activity action switches the same `PanelHost` selection. Exactly one item is active at a time.
+its owning dock renders exactly that registered `PaneContent`; clicking its button toggles and
+focuses the host where the content is registered. Invoking its activity action shows that same
+current host. Exactly one item is active at a time. If the optional right activity bar is enabled,
+both bars project this same membership and active identity.
 
-**Scope:** `ActivityBar`, the primary `PanelHost`, registered file-tree and plugin pane contents,
-and the sidebar projection in `RootView.update`.
+**Scope:** `ActivitySurface`, both `ActivityBar` projections, every dock `PanelHost`, registered
+file-tree and plugin pane contents, and dock projection in `RootView.update`.
 
-**Mechanism:** `PanelHost.activeId` is the single active identity. `ActivityBar` derives its rows
-from persisted `PanelHost.orderedContents`, calls `showContent`, and highlights only `activeId`.
-`RootView.update` renders `PanelHost.activeContent`, so accent and content cannot diverge.
+**Mechanism:** `ActivitySurface` derives one row per registered content across its hosts, resolves
+the content's current host, and chooses the active identity from the focused visible host. An
+activity press calls `toggleContent`; a show runs the content's action, while a hide does not
+immediately reopen it. `PanelHostFocusSet` leaves one focused host. `RootView` builds its optional
+right activity bar over the same `ActivitySurface`, so the mirror has no registry of its own.
 
 **Generates:** a clickable, self-explaining view switcher (button + name/shortcut tooltip + palette
 entry) that satisfies the product north star's visible-affordance rule; per-workspace view memory;
 keyboard parity that can never disagree with what the bar shows.
 
-**Evidence:** `src/modules/ui/ActivityBar.ts`; `src/modules/ui/PanelHost.ts`;
+**Evidence:** `src/modules/ui/ActivitySurface.ts`; `src/modules/ui/ActivityBar.ts`;
+`src/modules/ui/PanelHost.ts`;
 `src/modules/ui/RootView.ts`; `src/modules/filetree/FileTreePaneContent.ts`;
-`src/modules/git/GitPaneContent.ts`; `scripts/smoke-activitybar.sh`.
+`src/modules/git/GitPaneContent.ts`; `scripts/harness/smoke-activitybar-harness.ts`.
 
 **Impossible if true:** the bar highlighting one view while the sidebar shows another; two items
 active at once; a click or chord that moves the accent without switching the rendered sidebar content
 (or the reverse); an activity view reachable only by keyboard with no clickable button.
 
-**Verification:** `bash scripts/smoke-activitybar.sh` — click each button and assert the sidebar
-content switches (rendered cells) AND the accent moves to the clicked item; press each chord and
-assert the same switch; confirm a glyph renders in the default (no-Nerd-Font) fallback tier.
+**Verification:** `bun scripts/harness/smoke-activitybar-harness.ts` — assert every registered dock
+content appears once; click a right-dock item and assert show, focus, and second-click hide; move the
+pane both ways and assert the same activity item follows; enable the mirror and assert its exact
+surface membership.
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### Indent guides mark leading whitespace without shifting columns
 

@@ -373,11 +373,45 @@ class $PanelHost {
   closeOpenContent(id: string): void {
     this.removeContent(id);
   }
+
+  /** Move one registered content instance to another host without disposing it. Visibility and
+   *  keyboard ownership follow a live pane, while a hidden pane stays hidden. */
+  // invariant: A contributed dock side moves one live pane (src/modules/ui/ui.invariants.md)
+  moveContentToHost(id: string, targetHost: PanelHost.Instance): boolean {
+    if (targetHost.has(id)) return false;
+    const contentWasVisible = this.isContentVisible(id);
+    const sourceHadOtherVisibleContent = this.resolvedCells.some(
+      (cell) => cell.content.id !== id,
+    );
+    const contentOwnedFocus =
+      this.focused.value && this.focusedContent?.id === id;
+    const targetWasVisible = targetHost.visible.value;
+    const content = this.detachContent(id);
+    if (!content) return false;
+    if (contentWasVisible && !sourceHadOtherVisibleContent) this.hide();
+    targetHost.register(content);
+    if (contentWasVisible) {
+      targetHost.revealContent(id);
+      if (contentOwnedFocus) targetHost.focus();
+    } else if (!targetWasVisible && targetHost.visible.value) {
+      targetHost.hide();
+    }
+    return true;
+  }
+
   /** Close one owned session: remove it from visibility and the contents list, release its resources,
    *  and select a surviving open instance when it was the final visible cell. */
   removeContent(id: string): void {
-    const content = this.contents.get(id);
+    const content = this.detachContent(id);
     if (!content) return;
+    content.dispose();
+    this.options.onContentRemoved?.(content);
+  }
+
+  /** Withdraw one registration while preserving the content instance for a host-to-host move. */
+  protected detachContent(id: string): PaneContent | null {
+    const content = this.contents.get(id);
+    if (!content) return null;
     const remainingVisibleIdentifiers = this.resolvedCells
       .map((cell) => cell.content.id)
       .filter((identifier) => identifier !== id);
@@ -422,11 +456,10 @@ class $PanelHost {
       this.focused.value = false;
       this.expanded.value = false;
     }
-    content.dispose();
-    this.options.onContentRemoved?.(content);
     if (!this.options.retainUnregisteredContentOrder) {
       this.options.persistContentOrder?.();
     }
+    return content;
   }
   /** Collapse any split back to the single active content. */
   unsplit(): void {

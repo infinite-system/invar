@@ -48,11 +48,7 @@ function makeContext(workspaceRoot: string): RecordingContext {
   const commandIds: string[] = [];
   const commandRunners = new Map<string, () => void>();
   const settingIdentifiers: string[] = [];
-  // The REAL right-dock host options (Bootstrap registers with reveal-on-registration), so the
-  // take-back-the-reveal behavior is observed against genuine host semantics.
-  const rightDockHost = new PanelHost.Class({
-    showWhenContentRegistered: true,
-  });
+  const rightDockHost = new PanelHost.Class();
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
   const recording: RecordingContext = {
     rightDockHost,
@@ -90,6 +86,25 @@ function makeContext(workspaceRoot: string): RecordingContext {
         dockContents.push(content);
         rightDockHost.register(content);
       },
+      registerDockContent: (contribution: {
+        content: PaneContent;
+        settingIdentifier: string;
+      }) => {
+        dockContents.push(contribution.content);
+        settingIdentifiers.push(contribution.settingIdentifier);
+        rightDockHost.register(contribution.content);
+        return {
+          value: ref<'left' | 'right'>('right'),
+          host: () => rightDockHost,
+          isVisible: () =>
+            rightDockHost.isContentVisible(contribution.content.id),
+          reveal: () => rightDockHost.revealContent(contribution.content.id),
+          show: () => rightDockHost.showContent(contribution.content.id),
+          blur: () => rightDockHost.blur(),
+          save: () => {},
+          dispose: () => {},
+        };
+      },
       registerSetting: (contribution: { identifier: string }) => {
         settingIdentifiers.push(contribution.identifier);
         return { value: ref(10), save: () => {}, dispose: () => {} };
@@ -122,7 +137,7 @@ function makeContext(workspaceRoot: string): RecordingContext {
   return recording;
 }
 
-test('activation registers the right-dock pane, commands, keybindings, setting, and status keys', () => {
+test('activation registers the dock pane, commands, keybindings, setting, and status keys', () => {
   const workspaceRoot = makeWorkspaceRoot(true);
   const plugin = new TasksDashboardPlugin.Class();
   const recording = makeContext(workspaceRoot);
@@ -131,7 +146,10 @@ test('activation registers the right-dock pane, commands, keybindings, setting, 
     'tasks',
   ]);
   expect(recording.keybindings).toBe(1);
-  expect(recording.settingIdentifiers).toEqual(['tasksDashboardCycleSeconds']);
+  expect(recording.settingIdentifiers).toEqual([
+    'tasksDashboardCycleSeconds',
+    'tasks.dockSide',
+  ]);
   expect(recording.commandIds).toContain('view.showTasks');
   expect(recording.commandIds).toContain('tasks.open');
   expect(recording.commandIds).toContain('tasks.toggleCycle');
@@ -149,7 +167,7 @@ test('registration does not reveal a hidden dock; the pane shows only by gesture
   const recording = makeContext(workspaceRoot);
   expect(recording.rightDockHost.visible.value).toBe(false);
   plugin.activateApplication(recording.context);
-  // The host's reveal-on-registration is taken back: boot leaves the dock exactly as found.
+  // Registration leaves the dock exactly as found.
   expect(recording.rightDockHost.visible.value).toBe(false);
   recording.commandRunners.get('view.showTasks')?.();
   expect(recording.rightDockHost.visible.value).toBe(true);
@@ -172,6 +190,7 @@ test('activation leaves an already-visible dock alone', () => {
     onBlur: () => {},
     dispose: () => {},
   } as never);
+  recording.rightDockHost.showContent('other');
   expect(recording.rightDockHost.visible.value).toBe(true);
   plugin.activateApplication(recording.context);
   expect(recording.rightDockHost.visible.value).toBe(true);

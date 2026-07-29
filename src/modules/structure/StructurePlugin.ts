@@ -1,8 +1,8 @@
-// The structure navigator plugin: an ordinary contribution — a manifest row, a right-dock pane,
+// The structure navigator plugin: an ordinary contribution — a manifest row, a dock pane,
 // keybindings, commands, contributed settings, and a status projection — registered through the
 // same seams every other citizen uses. It consumes a StructureSource another plugin registers; it
-// starts no process and owns no protocol. The pane sits in the RIGHT dock beside the file it
-// outlines, and its default-visibility policy shows it unbidden for documents a source answers.
+// starts no process and owns no protocol. The plugin suggests the right dock, the reader can move
+// the pane, and its default-visibility policy shows it for documents a source answers.
 //
 // Uninstall symmetry from day one: disposing the application contribution withdraws the commands,
 // the status projection, and the pane reference; the host unregisters the pane, settings, and
@@ -16,6 +16,7 @@
 import type {
   ApplicationContributionContext,
   ApplicationContributor,
+  RegisteredDockContent,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
@@ -44,6 +45,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected defaultDepthSetting: RegisteredSetting<number> | null = null;
+  protected dockContent: RegisteredDockContent | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const structureWorkspace = this.createWorkspaceContribution(workspace);
@@ -110,7 +112,13 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       }),
     ]);
     this.paneContent = this.createPaneContent(context);
-    context.registerRightDockContent(this.paneContent);
+    this.dockContent = context.registerDockContent({
+      content: this.paneContent,
+      settingIdentifier: 'structure.dockSide',
+      settingLabel: 'Dock side',
+      section: this.name,
+      suggestedSide: 'right',
+    });
     const showByDefaultSetting = context.registerSetting({
       identifier: 'structureShowByDefault',
       label: 'Show structure for supported files',
@@ -176,24 +184,31 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     showByDefault: () => boolean,
   ): StructureDefaultVisibility.Model {
     return new StructureDefaultVisibility.Class({
-      rightDockHost: context.rightDockHost,
+      dockContent: this.requireDockContent(),
       workspaceSet: context.workspaceSet,
       showByDefault,
       requestRender: () => context.requestRender(),
     });
   }
 
-  /** True while THIS workspace's outline is on screen: the right dock is visible, the structure
-   *  pane is its active content, and the workspace is the active one. The outline gates every
+  /** True while THIS workspace's outline is on screen: its dock is visible, the structure pane
+   *  is its active content, and the workspace is the active one. The outline gates every
    *  source request on this, so a hidden pane costs zero requests. */
   protected paneIsObserved(workspace: Workspace.Model): boolean {
     const application = this.application;
-    if (!application) return false;
+    const dockContent = this.dockContent;
+    if (!application || !dockContent) return false;
     return (
-      application.rightDockHost.visible.value &&
-      application.rightDockHost.activeContent?.id === 'structure' &&
-      application.workspaceSet.active === workspace
+      dockContent.isVisible() && application.workspaceSet.active === workspace
     );
+  }
+
+  protected requireDockContent(): RegisteredDockContent {
+    const dockContent = this.dockContent;
+    if (!dockContent) {
+      throw new Error('Structure dock content is not registered');
+    }
+    return dockContent;
   }
 
   disposeApplication(): void {
@@ -205,6 +220,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     this.defaultDepthSetting = null;
+    this.dockContent = null;
     this.application = null;
   }
 
@@ -229,11 +245,8 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
     const show = (): void => {
       // The explicit gesture re-endorses the pane for this document before it shows and focuses.
       this.defaultVisibility?.noteManualShow();
-      // The keyboard moves WITH the gesture: pull workspace focus off the primary pane and blur
-      // that dock, or the input ladder would keep routing keys there ahead of the right dock.
       context.workspaceSet.active.focusEditor();
-      context.primaryDockHost.blur();
-      context.rightDockHost.showContent('structure');
+      this.requireDockContent().show();
     };
     this.disposeCommands = context.commands.registerAll([
       {
@@ -247,7 +260,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         title: 'Structure: Focus Editor',
         category: 'Structure',
         run: () => {
-          context.rightDockHost.blur();
+          this.requireDockContent().blur();
           context.workspaceSet.active.focusEditor();
         },
       },
@@ -275,7 +288,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
         category: 'Structure',
         run: () => {
           // The jump lands IN the editor, so the keyboard follows it out of the dock.
-          if (active().activateSelected()) context.rightDockHost.blur();
+          if (active().activateSelected()) this.requireDockContent().blur();
         },
       },
       {

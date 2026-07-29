@@ -39,6 +39,7 @@ import { TabBar } from './TabBar';
 import { ScrollGesture, type WheelModifiers } from './ScrollGesture';
 import { Sidebar } from './Sidebar';
 import { ActivityBar } from './ActivityBar';
+import type { ActivitySurface } from './ActivitySurface';
 import { EditorColumnDefault } from './EditorColumnDefault';
 import { EditorContentMount } from './EditorContentMount';
 import { ImagePreview } from '../image/ImagePreview';
@@ -118,6 +119,7 @@ class $RootView {
     panelHost: PanelHost.Instance,
     primaryDockHost: PanelHost.Instance,
     rightDockHost: PanelHost.Instance,
+    activitySurface: ActivitySurface.Model,
     statusBarSegments: StatusBarSegments.Model,
     editorSurfaceContents: EditorSurfaceContents.Model,
     editorColumnDefault: EditorColumnDefault.Model,
@@ -342,7 +344,17 @@ class $RootView {
     // its keybindings switch the per-workspace Workspace.sidebarView through Workspace.showSidebarView.
     const activityBar = new ActivityBar.Class({
       renderer,
-      primaryDockHost,
+      identifier: 'activity-bar',
+      activitySurface,
+      tooltip,
+      keybindings,
+      commands,
+      activityAccent: () => theme.glyph('activityAccentBar'),
+    });
+    const rightActivityBar = new ActivityBar.Class({
+      renderer,
+      identifier: 'right-activity-bar',
+      activitySurface,
       tooltip,
       keybindings,
       commands,
@@ -379,6 +391,7 @@ class $RootView {
     layoutCanvas.add(sidebar);
     layoutCanvas.add(sidebarDivider);
     layoutCanvas.add(editorColumn);
+    layoutCanvas.add(rightActivityBar.bar);
     const rightDockBox = new BoxRenderable(renderer, {
       id: 'right-dock',
       position: 'absolute',
@@ -1086,6 +1099,15 @@ class $RootView {
           y < boxTop + Number(rightDockBox.height))
       );
     };
+    const activityBarContainsPoint = (x: number, y: number): boolean => {
+      const contains = (bar: BoxRenderable): boolean =>
+        bar.visible &&
+        x >= Number(bar.x) &&
+        x < Number(bar.x) + Number(bar.width) &&
+        y >= Number(bar.y) &&
+        y < Number(bar.y) + Number(bar.height);
+      return contains(activityBar.bar) || contains(rightActivityBar.bar);
+    };
     let layoutSlotGeometry: LayoutSlotGeometry = LayoutModel.Class.resolve({
       totalColumns: 1,
       totalRows: 1,
@@ -1096,6 +1118,7 @@ class $RootView {
       sidebarPosition: settings.sidebarPosition.value,
       rightDockVisible: rightDockHost.visible.value,
       rightDockColumns: settings.rightDockWidth.value,
+      rightActivityBarVisible: settings.showRightActivityBar.value,
       bottomPanelVisible: panelHost.visible.value,
       bottomPanelExpanded: panelHost.expanded.value,
       bottomPanelRows: panelHeightRows,
@@ -1130,6 +1153,7 @@ class $RootView {
         sidebarPosition: settings.sidebarPosition.value,
         rightDockVisible: rightDockHost.visible.value,
         rightDockColumns: settings.rightDockWidth.value,
+        rightActivityBarVisible: settings.showRightActivityBar.value,
         bottomPanelVisible: panelHost.visible.value,
         bottomPanelExpanded: panelHost.expanded.value,
         bottomPanelRows: panelHeightRows,
@@ -1143,6 +1167,11 @@ class $RootView {
       activityBar.bar.top = layoutSlotGeometry.activityBar.top;
       activityBar.bar.width = layoutSlotGeometry.activityBar.width;
       activityBar.bar.height = layoutSlotGeometry.activityBar.height;
+      rightActivityBar.bar.position = 'absolute';
+      rightActivityBar.bar.left = layoutSlotGeometry.rightActivityBar.left;
+      rightActivityBar.bar.top = layoutSlotGeometry.rightActivityBar.top;
+      rightActivityBar.bar.width = layoutSlotGeometry.rightActivityBar.width;
+      rightActivityBar.bar.height = layoutSlotGeometry.rightActivityBar.height;
       sidebar.left = layoutSlotGeometry.sidebar.left;
       sidebar.top = layoutSlotGeometry.sidebar.top;
       sidebar.width = layoutSlotGeometry.sidebar.width;
@@ -1354,12 +1383,12 @@ class $RootView {
       synchronizePanelMount();
       editorContentMount.sync();
       column.backgroundColor = palette.bg;
-      activityBar.setVisible(
-        primaryDockHost.visible.value && settings.showActivityBar.value,
-      );
+      activityBar.setVisible(settings.showActivityBar.value);
+      rightActivityBar.setVisible(settings.showRightActivityBar.value);
       synchronizeLayoutGeometry();
       commandBar.update();
       activityBar.update(palette);
+      rightActivityBar.update(palette);
       sidebar.backgroundColor = palette.panel;
       const sidebarViewFocused =
         workspaceSet.active.focus.value === 'primaryPane';
@@ -2117,6 +2146,7 @@ class $RootView {
       rightDockViewportColumns,
       rightDockViewportRows,
       rightDockContainsPoint,
+      activityBarContainsPoint,
       layoutGeometry: () => layoutSlotGeometry,
       splitterRegions: () => {
         const regions: Record<
@@ -2250,6 +2280,7 @@ export interface RootView {
   rightDockViewportColumns(): number;
   rightDockViewportRows(): number;
   rightDockContainsPoint(x: number, y: number): boolean;
+  activityBarContainsPoint(x: number, y: number): boolean;
   layoutGeometry(): LayoutSlotGeometry;
   splitterRegions(): Record<
     string,

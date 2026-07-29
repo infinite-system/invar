@@ -52,6 +52,7 @@ import {
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
 import { PanelHost } from '../ui/PanelHost';
+import { ActivitySurface } from '../ui/ActivitySurface';
 import { PanelHostFocusSet } from '../ui/PanelHostFocusSet';
 import { PanelAddPopup } from '../ui/PanelAddPopup';
 import type {
@@ -289,7 +290,14 @@ class $Bootstrap {
     });
     const rightDockHost = new PanelHost.Class({
       focusSet: panelHostFocusSet,
-      showWhenContentRegistered: true,
+      contentOrder: settings.primaryDockContentOrder,
+      persistContentOrder: () => settings.save(),
+      retainUnregisteredContentOrder: true,
+    });
+    const activitySurface = new ActivitySurface.Class({
+      hosts: [primaryDockHost, rightDockHost],
+      contentOrder: settings.primaryDockContentOrder,
+      persistContentOrder: () => settings.save(),
     });
 
     const overlayCoordinator = new OverlayCoordinator.Class({
@@ -443,6 +451,7 @@ class $Bootstrap {
       panelHost,
       primaryDockHost,
       rightDockHost,
+      activitySurface,
       statusBarSegments,
       editorSurfaceContents,
       editorColumnDefault,
@@ -855,8 +864,8 @@ class $Bootstrap {
       if (identifier) panelHost.moveOpenContent(identifier, direction);
     };
     const moveActivityItem = (direction: -1 | 1): void => {
-      const identifier = primaryDockHost.activeId.value;
-      if (identifier) primaryDockHost.moveContent(identifier, direction);
+      const identifier = activitySurface.activeIdentifier;
+      if (identifier) activitySurface.moveContent(identifier, direction);
     };
     const closeActivePanelContent = (): void => {
       const identifier = panelHost.focusedContent?.id;
@@ -2028,11 +2037,10 @@ class $Bootstrap {
       // invariant: Input overlays share one modal slot (src/modules/ui/ui.invariants.md)
       const modalOverlayOwnsScreen = view.modalOverlayOwnsScreen();
 
-      if (
-        !modalOverlayOwnsScreen &&
-        primaryDockHost.visible.value &&
-        primaryDockHost.focused.value
-      ) {
+      const dockOwnsKeyboard =
+        (primaryDockHost.visible.value && primaryDockHost.focused.value) ||
+        (rightDockHost.visible.value && rightDockHost.focused.value);
+      if (!modalOverlayOwnsScreen && dockOwnsKeyboard) {
         const activityResolution = keybindings.resolve(
           {
             name: key.name,
@@ -2048,6 +2056,13 @@ class $Bootstrap {
           dispatchAction(activityResolution.action, key);
           return;
         }
+      }
+
+      if (
+        !modalOverlayOwnsScreen &&
+        primaryDockHost.visible.value &&
+        primaryDockHost.focused.value
+      ) {
         const content = primaryDockHost.focusedContent;
         const contentContext = content?.keybindingContext;
         if (contentContext) {
@@ -2589,7 +2604,8 @@ class $Bootstrap {
           if (
             event.type === 'down' &&
             rightDockHost.focused.value &&
-            !view.rightDockContainsPoint(event.x, event.y)
+            !view.rightDockContainsPoint(event.x, event.y) &&
+            !view.activityBarContainsPoint(event.x, event.y)
           ) {
             rightDockHost.blur();
           }

@@ -1,4 +1,4 @@
-// The tasks dashboard as a right-dock pane content citizen: a cells citizen — the host paints
+// The tasks dashboard as a dock pane content citizen: a cells citizen — the host paints
 // the StyledText this returns — projecting the task system's three lenses beside the editor.
 // Selection opens the task's own record file through the workspace's one open seam.
 //

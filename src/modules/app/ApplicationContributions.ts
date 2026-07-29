@@ -4,12 +4,14 @@ import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Settings } from '../settings/Settings';
 import type { PaneContent } from '../ui/PaneContent.interface';
 import type { PaneRuntimes } from '../ui/PaneRuntimes';
+import type { PanelHost } from '../ui/PanelHost';
 import type { EditorColumnDefault } from '../ui/EditorColumnDefault';
 import type {
   ApplicationContributionCatalog,
   ApplicationContributionContext,
   ApplicationContributionEntry,
   ApplicationContributor,
+  DockSide,
 } from './ApplicationContributor.interface';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
@@ -80,6 +82,42 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
         registrationDisposers.push(() => registeredSetting.dispose());
         return registeredSetting;
       },
+      // invariant: A contributed dock side moves one live pane (src/modules/ui/ui.invariants.md)
+      registerDockContent: (contribution) => {
+        let activeHost: PanelHost.Instance;
+        const registeredSetting = this.options.settings.registerSetting({
+          identifier: contribution.settingIdentifier,
+          label: contribution.settingLabel,
+          section: contribution.section,
+          defaultValue: contribution.suggestedSide,
+          spec: { kind: 'enum', options: ['left', 'right'] },
+          changed: (side) => {
+            const nextHost = this.dockHost(side);
+            if (nextHost === activeHost) return;
+            if (
+              !activeHost.moveContentToHost(contribution.content.id, nextHost)
+            ) {
+              return;
+            }
+            activeHost = nextHost;
+            this.options.requestRender();
+          },
+        });
+        registrationDisposers.push(() => registeredSetting.dispose());
+        activeHost = this.dockHost(registeredSetting.value.value);
+        activeHost.register(contribution.content);
+        registrationDisposers.push(() =>
+          activeHost.removeContent(contribution.content.id),
+        );
+        return {
+          ...registeredSetting,
+          host: () => activeHost,
+          isVisible: () => activeHost.isContentVisible(contribution.content.id),
+          reveal: () => activeHost.revealContent(contribution.content.id),
+          show: () => activeHost.showContent(contribution.content.id),
+          blur: () => activeHost.blur(),
+        };
+      },
       registerPrimaryDockContent: (content) => {
         this.options.primaryDockHost.register(content);
         registrationDisposers.push(() =>
@@ -135,6 +173,12 @@ class $ApplicationContributions implements ApplicationContributionCatalog {
     }
   }
 
+  protected dockHost(side: DockSide): PanelHost.Instance {
+    return side === 'left'
+      ? this.options.primaryDockHost
+      : this.options.rightDockHost;
+  }
+
   protected deactivate(contributor: ApplicationContributor): void {
     const active = this.activeContributions.get(contributor.identifier);
     if (!active) return;
@@ -170,6 +214,7 @@ export type ApplicationContributionsOptions = Omit<
   | 'registerKeybindings'
   | 'registerKeybindingGuard'
   | 'registerSetting'
+  | 'registerDockContent'
   | 'registerPrimaryDockContent'
   | 'registerRightDockContent'
   | 'registerPaneRuntime'

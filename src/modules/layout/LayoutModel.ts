@@ -107,10 +107,9 @@ class $LayoutModel {
     const totalColumns = Math.max(1, Math.floor(options.totalColumns));
     const totalRows = Math.max(1, Math.floor(options.totalRows));
     const primaryDockVisible = options.primaryDockVisible;
-    const activityBarColumns =
-      primaryDockVisible && options.activityBarVisible
-        ? Math.max(0, Math.floor(options.activityBarColumns))
-        : 0;
+    const activityBarColumns = options.activityBarVisible
+      ? Math.max(0, Math.floor(options.activityBarColumns))
+      : 0;
     const sidebarColumns = primaryDockVisible
       ? Math.max(1, Math.floor(options.sidebarColumns))
       : 0;
@@ -119,9 +118,13 @@ class $LayoutModel {
     const rightDockColumns = options.rightDockVisible
       ? Math.max(1, Math.floor(options.rightDockColumns))
       : 0;
-    const rightDockGroupColumns = options.rightDockVisible
-      ? rightDockColumns + rightDockSplitterColumns
+    const rightActivityBarColumns = options.rightActivityBarVisible
+      ? Math.max(0, Math.floor(options.activityBarColumns))
       : 0;
+    const rightDockGroupColumns =
+      (options.rightDockVisible
+        ? rightDockColumns + rightDockSplitterColumns
+        : 0) + rightActivityBarColumns;
     const primaryDockGroupColumns =
       activityBarColumns + sidebarColumns + primaryDockSplitterColumns;
     const editorColumns = Math.max(
@@ -150,6 +153,7 @@ class $LayoutModel {
         ? editorRight
         : activityBarLeft + activityBarColumns;
     const rightDockLeft = rightDockSplitterLeft + rightDockSplitterColumns;
+    const rightActivityBarLeft = rightDockLeft + rightDockColumns;
 
     const bottomPanelExpanded =
       options.bottomPanelVisible && (options.bottomPanelExpanded ?? false);
@@ -198,7 +202,7 @@ class $LayoutModel {
     let panelRight = this.panelRight(
       options.panelAlignment,
       editorRight,
-      totalColumns,
+      totalColumns - rightActivityBarColumns,
     );
     if (
       options.rightDockVisible &&
@@ -212,7 +216,7 @@ class $LayoutModel {
         left: activityBarLeft,
         top: 0,
         width: activityBarColumns,
-        height: primaryDockRows,
+        height: activityBarColumns > 0 ? totalRows : 0,
       },
       sidebar: {
         left: sidebarLeft,
@@ -243,6 +247,12 @@ class $LayoutModel {
         top: 0,
         width: rightDockColumns,
         height: rightDockRows,
+      },
+      rightActivityBar: {
+        left: rightActivityBarLeft,
+        top: 0,
+        width: rightActivityBarColumns,
+        height: rightActivityBarColumns > 0 ? totalRows : 0,
       },
       bottomPanelSplitter: {
         left: panelLeft,
@@ -327,6 +337,7 @@ export interface LayoutModelOptions {
   primaryDockVisible: boolean;
   activityBarVisible: boolean;
   activityBarColumns: number;
+  rightActivityBarVisible?: boolean;
   sidebarColumns: number;
   sidebarPosition: SidebarPosition;
   rightDockVisible: boolean;
@@ -346,6 +357,7 @@ export interface LayoutSlotGeometry {
   editorCenter: LayoutRectangle;
   rightDockSplitter: LayoutRectangle;
   rightDock: LayoutRectangle;
+  rightActivityBar: LayoutRectangle;
   bottomPanelSplitter: LayoutRectangle;
   bottomPanel: LayoutRectangle;
 }

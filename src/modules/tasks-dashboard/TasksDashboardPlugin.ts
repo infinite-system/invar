@@ -1,4 +1,4 @@
-// The tasks dashboard plugin: an ordinary contribution — a manifest row, a right-dock pane,
+// The tasks dashboard plugin: an ordinary contribution — a manifest row, a dock pane,
 // keybindings, commands, a contributed setting, and a status projection — registered through the
 // same seams every other citizen uses. It projects the durable task system (.invar/tasks/) through
 // the CLI lens readers; it starts no process and owns no protocol.
@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs';
 import type {
   ApplicationContributionContext,
   ApplicationContributor,
+  RegisteredDockContent,
 } from '../app/ApplicationContributor.interface';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import { TasksDashboardOverview } from './TasksDashboardOverview';
@@ -29,6 +30,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
   protected paneContent: TasksDashboardPaneContent.Model | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
+  protected dockContent: RegisteredDockContent | null = null;
 
   activateApplication(context: ApplicationContributionContext): void {
     this.application = context;
@@ -86,14 +88,13 @@ class $TasksDashboardPlugin implements ApplicationContributor {
       () => cycleSecondsSetting.value.value,
     );
     this.paneContent = this.createPaneContent(context);
-    // The host reveals a dock-style slot on registration. The tasks pane summons itself only by
-    // gesture (Ctrl+Shift+T, the activity action, the palette), so take back exactly the reveal
-    // this registration itself caused — a dock that was already visible is left alone.
-    const dockWasVisible = context.rightDockHost.visible.value;
-    context.registerRightDockContent(this.paneContent);
-    if (!dockWasVisible && context.rightDockHost.visible.value) {
-      context.rightDockHost.hide();
-    }
+    this.dockContent = context.registerDockContent({
+      content: this.paneContent,
+      settingIdentifier: 'tasks.dockSide',
+      settingLabel: 'Dock side',
+      section: this.name,
+      suggestedSide: 'right',
+    });
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -124,15 +125,18 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     );
   }
 
-  /** True while the tasks pane is on screen: the right dock is visible and this pane is its
-   *  active content. The overview gates every tree read on this, so a hidden pane costs zero. */
+  /** True while the tasks pane is on screen. The overview gates every tree read on this, so a
+   *  hidden pane costs zero. */
   protected paneIsObserved(): boolean {
-    const application = this.application;
-    if (!application) return false;
-    return (
-      application.rightDockHost.visible.value &&
-      application.rightDockHost.activeContent?.id === 'tasks'
-    );
+    return this.dockContent?.isVisible() ?? false;
+  }
+
+  protected requireDockContent(): RegisteredDockContent {
+    const dockContent = this.dockContent;
+    if (!dockContent) {
+      throw new Error('Tasks dock content is not registered');
+    }
+    return dockContent;
   }
 
   protected requireOverview(): TasksDashboardOverview.Model {
@@ -163,6 +167,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
+    this.dockContent = null;
     this.application = null;
   }
 
@@ -170,11 +175,10 @@ class $TasksDashboardPlugin implements ApplicationContributor {
     const overview = () => this.requireOverview();
     const show = (): void => {
       // The pane is about to be looked at — refresh so the first paint is current, then move the
-      // keyboard WITH the gesture: pull workspace focus off the primary dock before showing.
+      // keyboard with the gesture to whichever dock owns it.
       overview().refresh();
       context.workspaceSet.active.focusEditor();
-      context.primaryDockHost.blur();
-      context.rightDockHost.showContent('tasks');
+      this.requireDockContent().show();
     };
     this.disposeCommands = context.commands.registerAll([
       {
@@ -188,7 +192,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         title: 'Tasks: Focus Editor',
         category: 'Tasks',
         run: () => {
-          context.rightDockHost.blur();
+          this.requireDockContent().blur();
           context.workspaceSet.active.focusEditor();
         },
       },
@@ -222,7 +226,7 @@ class $TasksDashboardPlugin implements ApplicationContributor {
         category: 'Tasks',
         run: () => {
           // The record lands IN the editor, so the keyboard follows it out of the dock.
-          if (this.openSelectedRecord()) context.rightDockHost.blur();
+          if (this.openSelectedRecord()) this.requireDockContent().blur();
         },
       },
       {

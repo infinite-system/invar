@@ -38,12 +38,23 @@ function makeFixture(options: { showByDefault?: boolean } = {}) {
     activeDocumentHandle,
   } as unknown as Workspace.Model;
   const rightDockHost = new PanelHost.Class({
-    showWhenContentRegistered: true,
+    retainUnregisteredContentOrder: true,
   });
   rightDockHost.register(structurePaneStub());
+  const dockSide = ref<'left' | 'right'>('right');
+  const dockContent = {
+    value: dockSide,
+    host: () => rightDockHost,
+    isVisible: () => rightDockHost.isContentVisible('structure'),
+    reveal: () => rightDockHost.revealContent('structure'),
+    show: () => rightDockHost.showContent('structure'),
+    blur: () => rightDockHost.blur(),
+    save: () => {},
+    dispose: () => {},
+  };
   const showByDefault = ref(options.showByDefault ?? true);
   const policy = new StructureDefaultVisibility.Class({
-    rightDockHost,
+    dockContent,
     workspaceSet: { active: workspace, activeWorkspaceIndex: ref(0) },
     showByDefault: () => showByDefault.value,
     requestRender: () => {},
@@ -73,7 +84,7 @@ function makeFixture(options: { showByDefault?: boolean } = {}) {
 test('a supported document reveals the pane unbidden and without focus', async () => {
   const fixture = makeFixture();
   await nextTick();
-  // Registration revealed the dock, but nothing is open yet — the policy takes it back.
+  // Registration leaves the dock hidden until a supported document needs the pane.
   expect(fixture.rightDockHost.visible.value).toBe(false);
 
   fixture.providers.register('structure', fixture.source);

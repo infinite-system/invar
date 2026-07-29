@@ -303,6 +303,30 @@ describe('Settings', () => {
     expect(restored.value.value).toBe(true);
   });
 
+  test('a dotted dock-side key survives load before its plugin registers', () => {
+    const { settings, store } = makeStore({
+      [USER_PATH]: JSON.stringify({
+        'structure.dockSide': 'left',
+        futurePluginSetting: 'preserved',
+      }),
+    });
+    settings.load({ userPath: USER_PATH, projectPath: PROJECT_PATH });
+
+    const dockSide = settings.registerSetting<'left' | 'right'>({
+      identifier: 'structure.dockSide',
+      label: 'Dock side',
+      section: 'Structure Navigator',
+      defaultValue: 'right',
+      spec: { kind: 'enum', options: ['left', 'right'] },
+    });
+
+    expect(dockSide.value.value).toBe('left');
+    settings.save();
+    const written = JSON.parse(store.get(USER_PATH) as string);
+    expect(written['structure.dockSide']).toBe('left');
+    expect(written.futurePluginSetting).toBe('preserved');
+  });
+
   test('setContributed notifies a plugin only when its value changes', () => {
     const { settings } = makeStore();
     const changedValues: boolean[] = [];
