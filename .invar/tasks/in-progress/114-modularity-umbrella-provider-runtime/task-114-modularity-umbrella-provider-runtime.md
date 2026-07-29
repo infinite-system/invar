@@ -1,6 +1,6 @@
 # 114 — the modularity umbrella
 
-State: ACTIVE — Wave A landed, Wave B open
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: claude
 Environment: linux

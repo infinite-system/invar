@@ -1,6 +1,6 @@
 # 174 — markdown preview omitted a ragged table visible in source
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux

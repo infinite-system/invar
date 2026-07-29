@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (2)
+- #211 horizontal-extent-grid-wait-timeout
+- #174 markdown-preview-omits-ragged-table
+
 ## USER-DIRECTED (3)
 - #205 gate-launch-time-and-memory-ceiling
 - #202 tab-reactivation-rereads-whole-file
@@ -24,13 +28,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (13)
-- #211 horizontal-extent-grid-wait-timeout
+## FLAKE-EVIDENCE (11)
 - #200 input-byte-latency-above-baseline
 - #198 selection-harness-pre-satisfied-wheels
 - #193 fold-dense-contract-row-shortfall  [ACTIVE — single unexplained miss]
 - #176 tabs-harness-retry-only-pass
-- #174 markdown-preview-omits-ragged-table
 - #173 grid-predicates-assume-contiguous-text
 - #167 audio-narration-pool-timeout
 - #166 latency-instrument-crashes-at-one-sample

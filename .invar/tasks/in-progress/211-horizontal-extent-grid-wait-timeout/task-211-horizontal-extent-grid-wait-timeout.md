@@ -1,6 +1,6 @@
 # 211 — smoke-horizontal-extent's grid-condition wait timed out, attempt AND retry
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux
