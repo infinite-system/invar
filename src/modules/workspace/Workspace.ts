@@ -449,11 +449,12 @@ class $Workspace {
     return '';
   }
 
-  open(root: string): void {
+  open(root: string, beforeContributionsOpen?: () => void): void {
     this.root = root;
     const absoluteRoot = Files.Class.absolute(root);
     this.name.value = Files.Class.basename(absoluteRoot) || absoluteRoot;
     this.focus.value = 'editor';
+    beforeContributionsOpen?.();
     for (const contribution of this.contributions) contribution.opened(root);
   }
 

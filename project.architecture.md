@@ -71,13 +71,14 @@ the ivue `$stopEffects()` deactivate/reactivate cycle + explicit eviction of key
 durable truth lives outside the reactive overlay so it survives teardown. Nothing is merely
 hidden — inactive resources are cooled or disposed.
 
-**Documented exception (2026-07-24): persistent panel sessions.** The bottom panel's terminal PTY
-and agent session are deliberately SESSION-persistent: hiding the panel hides the projection but
-keeps the child process / transcript alive (a shell or an in-flight agent turn must survive a panel
-toggle). Their release point is app disposal, not visibility. The honest cost rule for these:
-*projection* cost tracks visibility (hidden panes don't repaint, and animation timers must gate on
-visibility — enforced by the idle-quiescence contract), while *session* cost is user-owned until
-quit. This is the recorded scope-narrowing of "nothing is merely hidden", not a violation of it.
+**Documented exception (2026-07-24, refined 2026-07-29): persistent panel sessions.** Each workspace
+owns one bottom-panel world. Its terminal PTYs and agent sessions are deliberately
+SESSION-persistent: hiding the panel or selecting another workspace hides the projection but keeps
+the child process, scrollback, transcript, and layout alive. A shell or an in-flight agent turn must
+survive either projection change. A session releases when the user closes it, its owning workspace
+closes, its runtime withdraws, or the app disposes. The honest cost rule for these: *projection*
+cost tracks visibility, while *session* cost is user-owned until one of those explicit disposal
+events. This is the recorded scope-narrowing of "nothing is merely hidden", not a violation of it.
 
 ## Boot
 

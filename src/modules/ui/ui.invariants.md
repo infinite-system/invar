@@ -2153,20 +2153,24 @@ another content's region.
 
 ### Each panel instance owns one independent session
 
-**Invariant:** If Add creates another Terminal or Agent instance, then it receives a unique instance
-identifier and label, owns a newly constructed backend/session, remains registered while hidden, and
-releases that owned session only when its heading or contents-list row is closed.
+**Invariant:** If Add creates another Terminal or Agent instance, then it receives an
+application-unique identifier and a workspace-local instance label, owns a newly constructed
+backend/session, remains registered while its pane or workspace is hidden, and releases that owned
+session only when its heading or contents-list row closes, its owning workspace closes, its runtime
+withdraws, or the app disposes.
 
 **Scope:** `PaneRuntimes` (the one instance-identity allocator), each contributed `PaneRuntime`,
 `AgentFactory`, their `PaneContent` implementations, and the bottom `PanelHost`. Output and Problems
 content kinds are outside this wave.
 
-**Mechanism:** `PaneRuntimes.allocateInstanceIdentity` mints `<kind>`/`<kind>-N` identities and the
-matching `<Label>`/`<Label> N` names for every kind, and the owning runtime builds the session behind
-them; the host-owned agent pane uses the same numbering shape. `PanelHost` retains all instances in one ordered registry but
-projects at most one visible instance of each kind; selecting another same-kind row swaps the
-visible cell without disposal. `removeContent` unregisters exactly that identity and calls its
-`dispose` seam, while other instances and their session state survive.
+**Mechanism:** `PaneRuntimes.allocateInstanceIdentity` mints scoped opaque identifiers and
+workspace-local `<Label>`/`<Label> N` names for every kind, and the owning runtime builds the session
+behind them; the host-owned agent pane uses the same numbering shape. Each workspace's
+`PanelContentSet` retains its own ordered registry but projects at most one visible instance of each
+kind; selecting another same-kind row swaps the visible cell without disposal. `removeContent`
+unregisters exactly that identity and calls its `dispose` seam, while other instances and their
+session state survive. Workspace-world disposal and runtime withdrawal reach the same disposal
+seam for every owned instance.
 
 **Generates:** Independent Terminal 2 and Agent 2 sessions; hidden live instances selectable from the
 contents list; one terminal plus one agent visible side by side; instance-scoped close.
@@ -2178,9 +2182,9 @@ contents list; one terminal plus one agent visible side by side; instance-scoped
 `src/modules/terminal/TerminalFactory.test.ts`; `src/modules/agent/AgentFactory.test.ts`;
 `scripts/harness/smoke-panel-chrome-harness.ts`.
 
-**Impossible if true:** Terminal 2 sharing Terminal 1's backend; selecting a hidden instance
-destroying the prior instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying
-simultaneous cells.
+**Impossible if true:** Terminal 2 sharing Terminal 1's backend; workspace B's first terminal being
+labelled Terminal 2 because workspace A owns one; selecting a hidden instance destroying the prior
+instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying simultaneous cells.
 
 **Verification:** `bun test src/modules/ui/PaneRuntimes.test.ts
 src/modules/terminal/TerminalFactory.test.ts src/modules/agent/AgentFactory.test.ts
@@ -2188,7 +2192,7 @@ src/modules/ui/PanelHost.test.ts && bun scripts/harness/smoke-panel-chrome-harne
 
 **Status:** provisional
 
-**Last refined:** 2026-07-28
+**Last refined:** 2026-07-29
 
 ### A focused panel routes keystrokes to its active pane content
 
@@ -2370,7 +2374,8 @@ records above; what a specific runtime starts is that runtime's own record.
   optional `process` declaration. A CLI agent profile is that shape and nothing more, so the host
   can host one without an agent concept.
 - Pull-based liveness — a runtime receives a `PaneRuntimeHostPort` whose only question is which of
-  its panes is visible. Everything else it answers itself, so the host keeps no per-kind registry.
+  its panes is current in the active workspace world. Everything else it answers itself, so the
+  host keeps no per-kind registry.
 - Contributed projection — a runtime's status reaches probes through
   `StatusProjectionContributions`, so disabling it withdraws its keys instead of leaving host-owned
   defaults behind.

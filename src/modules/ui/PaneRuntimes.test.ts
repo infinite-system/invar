@@ -102,6 +102,28 @@ test('instance identity numbering is shared by every kind', () => {
   expect(paneRuntimes.allocateInstanceIdentity('output', false)).toBeNull();
 });
 
+test('instance labels restart in each workspace scope while identifiers stay unique', () => {
+  const paneRuntimes = new PaneRuntimes.Class();
+  paneRuntimes.register(fakeRuntime('terminal'));
+
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', false, '2')).toEqual(
+    {
+      identifier: 'terminal@2',
+      label: 'Terminal',
+    },
+  );
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', true, '2')).toEqual({
+    identifier: 'terminal@2-2',
+    label: 'Terminal 2',
+  });
+  expect(paneRuntimes.allocateInstanceIdentity('terminal', false, '3')).toEqual(
+    {
+      identifier: 'terminal@3',
+      label: 'Terminal',
+    },
+  );
+});
+
 test('the add menu offers only the kinds that ask to be offered', () => {
   const paneRuntimes = new PaneRuntimes.Class();
   paneRuntimes.register(fakeRuntime('terminal'));

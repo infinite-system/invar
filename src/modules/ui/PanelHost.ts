@@ -34,13 +34,20 @@ class $PanelHost {
     return this.PanelHost.MINIMUM_CELL_RATIO;
   }
   protected readonly unregisterFromFocusSet: () => void;
+  protected readonly contentSets = new Set<PanelContentSet>();
+  protected readonly initialContentOrder: string[];
+  protected selectedContentSet: PanelContentSet;
 
   constructor(readonly options: PanelHostOptions = {}) {
     this.unregisterFromFocusSet =
       this.options.focusSet?.register(this) ?? (() => {});
+    this.initialContentOrder = [...(this.options.contentOrder?.value ?? [])];
+    this.selectedContentSet = this.createContentSet();
   }
   /** The registry, keyed by content id. Non-reactive — `order`/`layout` drive what shows. */
-  protected readonly contents = new Map<string, PaneContent>();
+  protected get contents(): Map<string, PaneContent> {
+    return this.selectedContentSet.contents;
+  }
   /** Whether the slot is shown at all (VS Code: the bottom panel is toggled). */
   get visible() {
     return ref(false);
@@ -72,6 +79,10 @@ class $PanelHost {
   get focusedIndex() {
     return ref(0);
   }
+  /** The content set currently projected by this stable host. */
+  get activeContentSet(): PanelContentSet {
+    return this.selectedContentSet;
+  }
   /** True when two or more cells share the slot. */
   get isSplit(): boolean {
     return this.resolvedCells.length > 1;
@@ -80,12 +91,188 @@ class $PanelHost {
   get panelListVisible(): boolean {
     return this.visible.value && this.orderedContents.length > 1;
   }
+  /** Create one independent set of pane sessions and host projection state. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
+  createContentSet(): PanelContentSet {
+    const ownedIdentifiers = new Set(
+      [...this.contentSets].flatMap((contentSet) => [
+        ...contentSet.contents.keys(),
+      ]),
+    );
+    const contentSet: PanelContentSet = {
+      contents: new Map(),
+      order: this.initialContentOrder.filter(
+        (identifier) => !ownedIdentifiers.has(identifier),
+      ),
+      visible: false,
+      focused: false,
+      expanded: false,
+      activeId: null,
+      layout: [],
+      focusedIndex: 0,
+    };
+    this.contentSets.add(contentSet);
+    return contentSet;
+  }
+  /** Project another owned content set without disposing the set that becomes hidden. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
+  selectContentSet(contentSet: PanelContentSet): void {
+    if (
+      contentSet === this.selectedContentSet ||
+      !this.contentSets.has(contentSet)
+    ) {
+      return;
+    }
+    const previousFocusedContent = this.focused.value
+      ? this.focusedContent
+      : null;
+    this.synchronizeSelectedContentSet();
+    previousFocusedContent?.onBlur();
+    this.selectedContentSet = contentSet;
+    this.restoreSelectedContentSet();
+    if (this.focused.value) this.focusedContent?.onFocus();
+  }
+  /** Dispose one hidden world. Closing a workspace calls this and leaves every other world alive. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
+  disposeContentSet(contentSet: PanelContentSet): void {
+    if (!this.contentSets.has(contentSet)) return;
+    const contentSetIsSelected = contentSet === this.selectedContentSet;
+    const focusedContent =
+      contentSetIsSelected && this.focused.value ? this.focusedContent : null;
+    const contentInstances = [...contentSet.contents.values()];
+    contentSet.contents.clear();
+    contentSet.order = [];
+    contentSet.visible = false;
+    contentSet.focused = false;
+    contentSet.expanded = false;
+    contentSet.activeId = null;
+    contentSet.layout = [];
+    contentSet.focusedIndex = 0;
+    if (contentSetIsSelected) {
+      focusedContent?.onBlur();
+      this.visible.value = false;
+      this.focused.value = false;
+      this.expanded.value = false;
+      this.activeId.value = null;
+      this.layout.value = [];
+      this.focusedIndex.value = 0;
+    }
+    this.contentSets.delete(contentSet);
+    for (const content of contentInstances) {
+      content.dispose();
+      this.options.onContentRemoved?.(content);
+    }
+  }
+  /** Remove one runtime-owned pane from whichever content set owns that exact identifier. */
+  removeContentFromAnySet(identifier: string): void {
+    for (const contentSet of this.contentSets) {
+      if (!contentSet.contents.has(identifier)) continue;
+      if (contentSet === this.selectedContentSet) {
+        this.removeContent(identifier);
+      } else {
+        this.removeContentFromHiddenSet(contentSet, identifier);
+      }
+      return;
+    }
+  }
+  protected synchronizeSelectedContentSet(): void {
+    this.selectedContentSet.order = [...this.order.value];
+    this.selectedContentSet.visible = this.visible.value;
+    this.selectedContentSet.focused = this.focused.value;
+    this.selectedContentSet.expanded = this.expanded.value;
+    this.selectedContentSet.activeId = this.activeId.value;
+    this.selectedContentSet.layout = this.layout.value.map((cell) => ({
+      ...cell,
+    }));
+    this.selectedContentSet.focusedIndex = this.focusedIndex.value;
+  }
+  protected restoreSelectedContentSet(): void {
+    this.order.value = [...this.selectedContentSet.order];
+    this.visible.value = this.selectedContentSet.visible;
+    this.focused.value = this.selectedContentSet.focused;
+    this.expanded.value = this.selectedContentSet.expanded;
+    this.activeId.value = this.selectedContentSet.activeId;
+    this.layout.value = this.selectedContentSet.layout.map((cell) => ({
+      ...cell,
+    }));
+    this.focusedIndex.value = this.selectedContentSet.focusedIndex;
+  }
+  protected setOrder(order: string[]): void {
+    this.order.value = order;
+    this.selectedContentSet.order = [...order];
+  }
+  protected removeContentFromHiddenSet(
+    contentSet: PanelContentSet,
+    identifier: string,
+  ): void {
+    const content = contentSet.contents.get(identifier);
+    if (!content) return;
+    contentSet.contents.delete(identifier);
+    if (!this.options.retainUnregisteredContentOrder) {
+      contentSet.order = contentSet.order.filter(
+        (candidateIdentifier) => candidateIdentifier !== identifier,
+      );
+    }
+    const remainingVisibleIdentifiers = contentSet.layout
+      .map((cell) => cell.id)
+      .filter(
+        (candidateIdentifier) =>
+          candidateIdentifier !== identifier &&
+          contentSet.contents.has(candidateIdentifier),
+      );
+    if (remainingVisibleIdentifiers.length === 0) {
+      contentSet.layout = [];
+      contentSet.activeId =
+        contentSet.order.find((candidateIdentifier) =>
+          contentSet.contents.has(candidateIdentifier),
+        ) ?? null;
+      contentSet.focusedIndex = 0;
+    } else if (remainingVisibleIdentifiers.length === 1) {
+      contentSet.layout = [];
+      contentSet.activeId = remainingVisibleIdentifiers[0] ?? null;
+      contentSet.focusedIndex = 0;
+    } else {
+      const ratio = 1 / remainingVisibleIdentifiers.length;
+      contentSet.layout = remainingVisibleIdentifiers.map(
+        (candidateIdentifier) => ({
+          id: candidateIdentifier,
+          ratio,
+        }),
+      );
+      contentSet.focusedIndex = Math.min(
+        contentSet.focusedIndex,
+        remainingVisibleIdentifiers.length - 1,
+      );
+      contentSet.activeId =
+        remainingVisibleIdentifiers[contentSet.focusedIndex] ??
+        remainingVisibleIdentifiers[0] ??
+        null;
+    }
+    if (contentSet.contents.size === 0) {
+      contentSet.visible = false;
+      contentSet.focused = false;
+      contentSet.expanded = false;
+    }
+    content.dispose();
+    this.options.onContentRemoved?.(content);
+  }
   /** Register a content. The first one registered becomes active. Idempotent per id. */
   register(content: PaneContent): void {
     if (this.contents.has(content.id)) return;
+    for (const contentSet of this.contentSets) {
+      if (contentSet === this.selectedContentSet) continue;
+      if (contentSet.contents.has(content.id)) {
+        throw new Error(
+          `Panel content identifier is already owned by another content set: ${content.id}`,
+        );
+      }
+      contentSet.order = contentSet.order.filter(
+        (identifier) => identifier !== content.id,
+      );
+    }
     this.contents.set(content.id, content);
     if (!this.order.value.includes(content.id)) {
-      this.order.value = [...this.order.value, content.id];
+      this.setOrder([...this.order.value, content.id]);
       this.options.persistContentOrder?.();
     }
     if (this.activeId.value === null) this.activeId.value = content.id;
@@ -349,7 +536,7 @@ class $PanelHost {
       openCells.map((cell) => [cell.content.id, cell.ratio]),
     );
     this.retargetFocus(() => {
-      this.order.value = nextOrder;
+      this.setOrder(nextOrder);
       this.layout.value = nextOrder
         .filter((identifier) => ratiosByIdentifier.has(identifier))
         .map((identifier) => ({
@@ -420,7 +607,7 @@ class $PanelHost {
       : this.order.value.filter((identifier) => identifier !== id);
     this.retargetFocus(() => {
       this.contents.delete(id);
-      this.order.value = remainingOrder;
+      this.setOrder(remainingOrder);
       const remainingVisibleCells = remainingVisibleIdentifiers
         .map((identifier) => this.contents.get(identifier))
         .filter(
@@ -664,12 +851,15 @@ class $PanelHost {
   }
   dispose(): void {
     this.unregisterFromFocusSet();
-    for (const content of this.contents.values()) {
-      content.dispose();
-      this.options.onContentRemoved?.(content);
+    for (const contentSet of this.contentSets) {
+      for (const content of contentSet.contents.values()) {
+        content.dispose();
+        this.options.onContentRemoved?.(content);
+      }
+      contentSet.contents.clear();
     }
-    this.contents.clear();
-    if (!this.options.contentOrder) this.order.value = [];
+    this.contentSets.clear();
+    if (!this.options.contentOrder) this.setOrder([]);
     this.activeId.value = null;
     this.layout.value = [];
     this.focusedIndex.value = 0;
@@ -709,4 +899,16 @@ export interface PanelHostOptions {
   persistContentOrder?: () => void;
   retainUnregisteredContentOrder?: boolean;
   onContentRemoved?: (content: PaneContent) => void;
+}
+
+/** One independently retained pane world. The stable host copies this state on selection. */
+export interface PanelContentSet {
+  readonly contents: Map<string, PaneContent>;
+  order: string[];
+  visible: boolean;
+  focused: boolean;
+  expanded: boolean;
+  activeId: string | null;
+  layout: PanelCell[];
+  focusedIndex: number;
 }

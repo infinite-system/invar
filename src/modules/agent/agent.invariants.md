@@ -549,7 +549,8 @@ bypasses `onEvent`.
 terminal uses, and when both are visible the agent owns a separate headed region with the same
 `render`/`handleKey`/`caret`/`renderRevision`/`dispose` shape and zero host rewiring.
 
-**Scope:** `AgentPaneContent`, its mount in `PanelHost`, and the Bootstrap toggle that registers it.
+**Scope:** `AgentPaneContent`, its mount in the active workspace's `PanelContentSet`, and the
+Bootstrap toggle that registers it.
 
 **Mechanism:** `AgentPaneContent implements PaneContent`: `render()` delegates to `AgentPaneRenderer`;
 `handleKey()` edits the composer (printable → append, Backspace → delete, Enter → send); `caret()`
@@ -557,10 +558,12 @@ pins to the composer; `renderRevision` fuses the session pulse with composer edi
 through the one frame effect. Bootstrap lazily creates it on first toggle (idle cost zero).
 
 **Generates:** the agent pane composes with splits, focus, z-order, and pane-presence controls for
-free; the same seam hosts multi-session regions later.
+free; the same seam hosts multi-session regions later; switching workspaces selects that
+workspace's agent sessions without disposing the hidden workspace's sessions.
 
 **Impossible if true:** a bespoke agent-only render/input path outside `PaneContent`; the host
-special-casing the agent pane; agent content rendering under the terminal heading.
+special-casing the agent pane; agent content rendering under the terminal heading; an agent created
+in workspace B appearing in workspace A.
 
 **Evidence:** `scripts/harness/smoke-agent-harness.ts` toggles the pane through the normal panel path,
 types a prompt, and asserts the echoed reply renders; `scripts/harness/smoke-panel-split-harness.ts`
@@ -571,7 +574,7 @@ scripts/harness/smoke-panel-split-harness.ts`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
 
 ### Agent footer stays within its pane
 

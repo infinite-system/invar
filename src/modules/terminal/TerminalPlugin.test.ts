@@ -47,7 +47,7 @@ function keyboardEvent(name: string, modifiers: { alt?: boolean } = {}) {
   };
 }
 
-function activatedTerminalPlugin(visiblePane: () => PaneContent | null) {
+function activatedTerminalPlugin(currentPane: () => PaneContent | null) {
   const releasedPaneIdentifiers: string[] = [];
   const settings = new Settings.Class();
   const keybindings = new KeybindingRegistry.Class();
@@ -64,7 +64,7 @@ function activatedTerminalPlugin(visiblePane: () => PaneContent | null) {
     theme: new Theme.Class(),
     paneRuntimes,
     statusProjectionContributions,
-    visiblePaneOfKind: () => visiblePane(),
+    currentPaneOfKind: () => currentPane(),
     releasePane: (identifier: string) => {
       releasedPaneIdentifiers.push(identifier);
       paneRuntimes.paneRemoved({ id: identifier, kind: 'terminal' } as never);
@@ -160,9 +160,9 @@ test('the terminal registers as a runtime and withdraws it symmetrically', () =>
   context.manager.dispose();
 });
 
-test('the runtime builds panes and publishes the visible one as current', () => {
-  let visiblePane: PaneContent | null = null;
-  const context = activatedTerminalPlugin(() => visiblePane);
+test('the runtime builds panes and publishes the active workspace pane as current', () => {
+  let currentPane: PaneContent | null = null;
+  const context = activatedTerminalPlugin(() => currentPane);
   const runtimePlugin = context.paneRuntimes;
   context.manager.activateAll();
 
@@ -186,9 +186,12 @@ test('the runtime builds panes and publishes the visible one as current', () => 
   const runtime = context.paneRuntimes.runtime(
     'terminal',
   ) as TerminalPlugin.Model;
-  // With nothing visible the oldest live instance is current; the visible one always wins.
+  // The host reports only the active workspace world. A live terminal in another world is not
+  // current merely because it is the runtime's oldest instance.
+  expect(runtime.currentPane()).toBeNull();
+  currentPane = first;
   expect(runtime.currentPane()?.id).toBe('terminal');
-  visiblePane = second;
+  currentPane = second;
   expect(runtime.currentPane()?.id).toBe('terminal-2');
 
   // A declared task owns its own switching identity and must never become "the" terminal.
@@ -203,9 +206,10 @@ test('the runtime builds panes and publishes the visible one as current', () => 
     process: { command: 'printf', arguments: ['%s\n', 'built'] },
   });
   expect(task?.kind).toBe('build');
-  visiblePane = null;
-  expect(runtime.currentPane()?.id).toBe('terminal');
+  currentPane = null;
+  expect(runtime.currentPane()).toBeNull();
 
+  currentPane = second;
   runtimePlugin.paneRemoved(first as PaneContent);
   expect(runtime.currentPane()?.id).toBe('terminal-2');
 

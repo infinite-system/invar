@@ -44,6 +44,46 @@ function createSettings(): Settings.Instance {
 }
 
 describe('WorkspaceSet project-layer flyweight', () => {
+  test('workspace lifecycle events bracket contributor open and final disposal', () => {
+    const events: string[] = [];
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      contributors: [
+        {
+          attachWorkspace: () => ({
+            opened: (root) => events.push(`opened:${root}`),
+            suspended: () => {},
+            resumed: () => {},
+            disposed: () => events.push('contribution-disposed'),
+          }),
+        },
+      ],
+    });
+    workspaceSet.onActiveWorkspaceChanged((workspace) =>
+      events.push(`active:${workspace.root}`),
+    );
+    workspaceSet.onWorkspaceDisposed((workspace) =>
+      events.push(`world-disposed:${workspace.root}`),
+    );
+
+    workspaceSet.open(workspaceRoots[0]!);
+    workspaceSet.open(workspaceRoots[1]!);
+    expect(events.slice(0, 4)).toEqual([
+      `active:${workspaceRoots[0]}`,
+      `opened:${workspaceRoots[0]}`,
+      `active:${workspaceRoots[1]}`,
+      `opened:${workspaceRoots[1]}`,
+    ]);
+
+    events.length = 0;
+    workspaceSet.closeActive();
+    expect(events).toEqual([
+      'contribution-disposed',
+      `active:${workspaceRoots[0]}`,
+      `world-disposed:${workspaceRoots[1]}`,
+    ]);
+    workspaceSet.dispose();
+  });
+
   test('host code-folding capability attaches to every workspace editor', () => {
     const codeFoldingEnabled = ref(false);
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {

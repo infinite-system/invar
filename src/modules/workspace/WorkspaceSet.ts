@@ -9,6 +9,12 @@ import type { SourceTextViewProvider } from './SourceTextView.interface';
 // invariant: Workspace and file navigation are separate layers (src/modules/workspace/workspace.invariants.md)
 class $WorkspaceSet {
   protected readonly contributors: WorkspaceContributor[];
+  protected readonly activeWorkspaceListeners = new Set<
+    (workspace: Workspace.Instance) => void
+  >();
+  protected readonly disposedWorkspaceListeners = new Set<
+    (workspace: Workspace.Instance) => void
+  >();
 
   constructor(
     protected readonly settings: Settings.Instance,
@@ -55,17 +61,33 @@ class $WorkspaceSet {
       return existingWorkspaceIndex;
     }
 
-    if (this.activeWorkspaceIndex.value >= 0) {
-      this.active.suspendOwnedResources();
-    }
+    const previousWorkspaceIndex = this.activeWorkspaceIndex.value;
+    const previousWorkspace = previousWorkspaceIndex >= 0 ? this.active : null;
+    previousWorkspace?.suspendOwnedResources();
     const workspace = this.createWorkspace();
     workspace.attachSettings(this.settings);
     if (this.options.codeFoldingEnabled) {
       workspace.attachCodeFolding(this.options.codeFoldingEnabled);
     }
-    workspace.open(root);
-    this.entries.value = [...this.entries.value, workspace];
-    this.activeWorkspaceIndex.value = this.entries.value.length - 1;
+    try {
+      workspace.open(root, () => {
+        this.entries.value = [...this.entries.value, workspace];
+        this.activeWorkspaceIndex.value = this.entries.value.length - 1;
+        this.notifyActiveWorkspaceChanged(workspace);
+      });
+    } catch (error) {
+      workspace.dispose();
+      this.entries.value = this.entries.value.filter(
+        (candidateWorkspace) => candidateWorkspace !== workspace,
+      );
+      this.activeWorkspaceIndex.value = previousWorkspaceIndex;
+      if (previousWorkspace) {
+        this.notifyActiveWorkspaceChanged(previousWorkspace);
+        previousWorkspace.resumeOwnedResources();
+      }
+      this.notifyWorkspaceDisposed(workspace);
+      throw error;
+    }
     return this.activeWorkspaceIndex.value;
   }
 
@@ -81,6 +103,7 @@ class $WorkspaceSet {
     if (this.activeWorkspaceIndex.value >= 0)
       this.active.suspendOwnedResources();
     this.activeWorkspaceIndex.value = workspaceIndex;
+    this.notifyActiveWorkspaceChanged(this.active);
     this.active.resumeOwnedResources();
   }
 
@@ -111,10 +134,12 @@ class $WorkspaceSet {
         workspaceIndex,
         this.entries.value.length - 1,
       );
+      this.notifyActiveWorkspaceChanged(this.active);
       this.active.resumeOwnedResources();
     } else if (workspaceIndex < this.activeWorkspaceIndex.value) {
       this.activeWorkspaceIndex.value -= 1;
     }
+    this.notifyWorkspaceDisposed(workspace);
     return true;
   }
 
@@ -123,9 +148,32 @@ class $WorkspaceSet {
   }
 
   dispose(): void {
-    for (const workspace of this.entries.value) workspace.dispose();
+    for (const workspace of this.entries.value) {
+      workspace.dispose();
+      this.notifyWorkspaceDisposed(workspace);
+    }
     this.entries.value = [];
     this.activeWorkspaceIndex.value = -1;
+    this.activeWorkspaceListeners.clear();
+    this.disposedWorkspaceListeners.clear();
+  }
+
+  /** Observe the synchronous ownership switch before the selected workspace starts its work. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
+  onActiveWorkspaceChanged(
+    listener: (workspace: Workspace.Instance) => void,
+  ): () => void {
+    this.activeWorkspaceListeners.add(listener);
+    return () => this.activeWorkspaceListeners.delete(listener);
+  }
+
+  /** Observe final workspace disposal after another active workspace has taken ownership. */
+  // invariant: Each workspace owns one panel world (src/modules/workspace/workspace.invariants.md)
+  onWorkspaceDisposed(
+    listener: (workspace: Workspace.Instance) => void,
+  ): () => void {
+    this.disposedWorkspaceListeners.add(listener);
+    return () => this.disposedWorkspaceListeners.delete(listener);
   }
 
   registerContributor(contributor: WorkspaceContributor): () => void {
@@ -157,6 +205,14 @@ class $WorkspaceSet {
         createSourceTextViews: this.options.createSourceTextViews,
       })
     );
+  }
+
+  protected notifyActiveWorkspaceChanged(workspace: Workspace.Instance): void {
+    for (const listener of this.activeWorkspaceListeners) listener(workspace);
+  }
+
+  protected notifyWorkspaceDisposed(workspace: Workspace.Instance): void {
+    for (const listener of this.disposedWorkspaceListeners) listener(workspace);
   }
 }
 
