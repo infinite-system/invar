@@ -34,11 +34,14 @@
 // found eight times. The control fails loudly and exits non-zero.
 
 import {
+  closeSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
+  readSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -754,6 +757,95 @@ function refreshLineDeltas(records: TaskRecord[]): void {
   }
 }
 
+// THE GATE GLANCE. The merge gate registers its log in /tmp/fleet-watch-gates
+// (the same registry fleet-watch consumes). The glance derives, mechanically:
+//   phase   — the last `== merge-gate: <phase> ==` banner in the log tail
+//   timer   — since the run START. The log FILE is truncated between runs, so
+//             birthtime lies for reruns; the watch detects a size DROP (a new
+//             run truncating the log) and re-anchors the timer at that moment.
+//   verdict — the GATE_EXIT=<n> sentinel, once present.
+// Flyweight: one stat + one 16KB tail read per data tick, cached between.
+interface GateGlance {
+  phase: string;
+  startedAtMilliseconds: number;
+  exitCode: number | null;
+}
+let gateGlanceCache: GateGlance | null = null;
+let gateRunAnchor: {
+  logPath: string;
+  sizeAtLastTick: number;
+  startedAtMilliseconds: number;
+} | null = null;
+
+function refreshGateGlance(): void {
+  gateGlanceCache = null;
+  try {
+    const registryPath = '/tmp/fleet-watch-gates';
+    if (!existsSync(registryPath)) return;
+    const registered = readFileSync(registryPath, 'utf8')
+      .trim()
+      .split('\n')
+      .filter((line) => line.length > 0);
+    for (let index = registered.length - 1; index >= 0; index -= 1) {
+      const logPath = registered[index] ?? '';
+      if (!existsSync(logPath)) continue;
+      const stats = statSync(logPath);
+      if (
+        gateRunAnchor === null ||
+        gateRunAnchor.logPath !== logPath ||
+        stats.size < gateRunAnchor.sizeAtLastTick
+      ) {
+        // First sighting, or the log shrank: a new run truncated it. Anchor
+        // the timer now (birthtime as the cold-start fallback for a log that
+        // was never seen larger).
+        const coldStart =
+          gateRunAnchor === null && stats.birthtimeMs > 0
+            ? stats.birthtimeMs
+            : Date.now();
+        gateRunAnchor = {
+          logPath,
+          sizeAtLastTick: stats.size,
+          startedAtMilliseconds: coldStart,
+        };
+      } else {
+        gateRunAnchor.sizeAtLastTick = stats.size;
+      }
+      const sliceSize = Math.min(stats.size, 16384);
+      const buffer = Buffer.alloc(sliceSize);
+      const descriptor = openSync(logPath, 'r');
+      readSync(descriptor, buffer, 0, sliceSize, stats.size - sliceSize);
+      closeSync(descriptor);
+      const tail = buffer.toString('utf8');
+      const exitMatch = tail.match(/GATE_EXIT=(\d+)/);
+      const banners = [...tail.matchAll(/== merge-gate: ([^=]+?) ==/g)];
+      const lastBanner = banners.at(-1)?.[1] ?? 'starting';
+      gateGlanceCache = {
+        phase: lastBanner.replace(/\s*\(.*$/, '').trim(),
+        startedAtMilliseconds: gateRunAnchor.startedAtMilliseconds,
+        exitCode: exitMatch ? Number(exitMatch[1]) : null,
+      };
+      return;
+    }
+  } catch {
+    gateGlanceCache = null;
+  }
+}
+
+function gateBadge(spinnerFrame?: number): string {
+  if (gateGlanceCache === null) return '';
+  const glance = gateGlanceCache;
+  if (glance.exitCode === 0) return `  ${green('⛩ gate green ✓ land now')}`;
+  if (glance.exitCode !== null)
+    return `  ${red(`⛩ gate red (exit ${glance.exitCode})`)}`;
+  const elapsed = formatDuration(Date.now() - glance.startedAtMilliseconds);
+  const breath =
+    spinnerFrame === undefined
+      ? null
+      : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
+  const glyph = breath === null ? '⛩' : paint(breath[1], '⛩');
+  return `  ${glyph} ${paint('38;5;179', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
+}
+
 function fleetDeltaTotals(): {
   added: number;
   removed: number;
@@ -881,7 +973,10 @@ function live(
   preloadedRecords?: TaskRecord[],
 ): number {
   const allRecords = preloadedRecords ?? readTaskRecords(tasksRoot);
-  if (preloadedRecords === undefined) refreshLineDeltas(allRecords);
+  if (preloadedRecords === undefined) {
+    refreshLineDeltas(allRecords);
+    refreshGateGlance();
+  }
   const records = allRecords
     .filter((record) => record.directoryState === 'in-progress')
     .sort(byNumberDescending);
@@ -899,7 +994,7 @@ function live(
     const buildingGlyph =
       breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
     const statusBadge = ready
-      ? green('◉ READY — awaiting landing')
+      ? `${green('◉ READY')}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
       : `${buildingGlyph} ${
           spinnerFrame === undefined
             ? paint('38;5;44', 'building')
@@ -1154,6 +1249,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       // Builder diffs always refresh on the tick — the worktrees are where
       // the motion IS, and it is one cached-base spawn per builder.
       refreshLineDeltas(cachedRecords);
+      refreshGateGlance();
     }
     if (frame % STATS_EVERY_FRAMES === 0 && frame > 0) {
       const commitsNow = commitsToday();
