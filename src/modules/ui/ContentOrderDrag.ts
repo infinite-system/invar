@@ -1,10 +1,8 @@
-import type { PanelHost } from './PanelHost';
-
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 class $ContentOrderDrag {
   protected draggingIdentifier: string | null = null;
 
-  constructor(protected readonly panelHost: PanelHost.Instance) {}
+  constructor(protected readonly contentOrderTarget: ContentOrderTarget) {}
 
   pointerDown(identifier: string): void {
     this.draggingIdentifier = identifier;
@@ -12,7 +10,7 @@ class $ContentOrderDrag {
 
   pointerDrag(targetIndex: number): boolean {
     if (this.draggingIdentifier === null) return false;
-    this.panelHost.moveContentTo(this.draggingIdentifier, targetIndex);
+    this.contentOrderTarget.moveContentTo(this.draggingIdentifier, targetIndex);
     return true;
   }
 
@@ -25,4 +23,8 @@ export namespace ContentOrderDrag {
   export const $Class = $ContentOrderDrag;
   export let Class = $ContentOrderDrag;
   export type Model = InstanceType<typeof Class>;
+}
+
+export interface ContentOrderTarget {
+  moveContentTo(identifier: string, targetIndex: number): void;
 }

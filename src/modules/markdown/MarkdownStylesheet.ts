@@ -36,10 +36,7 @@ class $MarkdownStylesheet {
   > {
     const inherit = null;
     const rules: Record<MarkdownElementSelector, MarkdownElementRule> = {
-      heading1: this.buildRule(2, 1, 'accent', inherit, {
-        bold: true,
-        underline: true,
-      }),
+      heading1: this.buildRule(2, 1, 'keyword', inherit, { bold: true }),
       heading2: this.buildRule(2, 1, 'accent', inherit, { bold: true }),
       heading3: this.buildRule(1, 1, 'accent', inherit, {}),
       heading4: this.buildRule(1, 1, 'fg', inherit, { bold: true }),
@@ -101,6 +98,10 @@ class $MarkdownStylesheet {
     return this.buildTextStyle('accent', null, { bold: true, underline: true });
   }
 
+  protected static get $deadReferenceStyle(): MarkdownTextStyle {
+    return this.buildTextStyle('error', null, { underline: true });
+  }
+
   /** Structural vocabulary: quote bar, list markers, code frame, rule glyph. */
   protected static get $vocabulary(): MarkdownStyleVocabulary {
     const vocabulary: MarkdownStyleVocabulary = Object.freeze({
@@ -146,6 +147,10 @@ class $MarkdownStylesheet {
 
   static get referenceHoverStyle(): MarkdownTextStyle {
     return this.$referenceHoverStyle;
+  }
+
+  static get deadReferenceStyle(): MarkdownTextStyle {
+    return this.$deadReferenceStyle;
   }
 
   /** The element selector for a whole block, used for margin accounting. */

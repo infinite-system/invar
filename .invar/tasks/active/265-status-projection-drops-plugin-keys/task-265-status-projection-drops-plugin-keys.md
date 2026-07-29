@@ -31,7 +31,7 @@ not rediscover it.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

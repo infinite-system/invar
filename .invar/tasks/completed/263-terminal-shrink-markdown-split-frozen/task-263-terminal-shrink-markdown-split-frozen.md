@@ -36,7 +36,7 @@ Reproductions committed in #237's folder:
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — this smells like a sibling of #260 (first click
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — this smells like a sibling of #260 (first click
 lands nowhere): both look like pointer-armed lazy state. If one diagnosis
 explains both, say so and the conductor folds them. The READY report
 carries `## Bycatch` even if it reads `None observed`.

@@ -18,7 +18,7 @@ members, from #268's report:
    `slice(37,44)` gutter window; suspect red under the auto-open default
    when the `INVAR_FULL_TMUX=1` tier runs (the gate skips it). CONFIRM the
    red first, then fix by measurement. The wrap-off record's Evidence and
-   Verification lines in `src/modules/ui/ui.invariants.md` cite this legacy
+   Verification lines in [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) cite this legacy
    check — update the citations if the instrument changes.
 2. `scripts/harness/smoke-wrap-harness.ts:357,363` — clicks at fixed
    column 60 (holds today only because its fixture is not markdown).
@@ -43,14 +43,14 @@ assertion catch it.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` wrap-off record (its Evidence cites the
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) wrap-off record (its Evidence cites the
   legacy check); the harness records for each smoke touched.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources
 
-- `report-268-editor-smoke-vs-auto-open-red-main.md`, Bycatch 1, 2, 4.
+- [report-268-editor-smoke-vs-auto-open-red-main.md](../../completed/268-editor-smoke-vs-auto-open-red-main/report-268-editor-smoke-vs-auto-open-red-main.md), Bycatch 1, 2, 4.

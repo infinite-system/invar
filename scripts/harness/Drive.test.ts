@@ -156,7 +156,7 @@ describe('Drive action completion', () => {
 });
 
 describe('Drive settled observations', () => {
-  test('names pending Markdown and structure work', () => {
+  test('names pending Markdown and observed structure work', () => {
     expect(
       TestDrive.pendingStatusNames({
         activeBuffer: '/tmp/README.md',
@@ -165,6 +165,8 @@ describe('Drive settled observations', () => {
         markdownParsing: true,
         markdownRevision: 3,
         structureStatus: 'no-document',
+        rightDockActiveContent: 'structure',
+        rightDockVisible: true,
       }),
     ).toEqual([
       'markdownParsing=true',
@@ -179,6 +181,8 @@ describe('Drive settled observations', () => {
         markdownParsing: false,
         markdownRevision: 4,
         structureStatus: 'ready',
+        rightDockActiveContent: 'structure',
+        rightDockVisible: true,
       }),
     ).toEqual([]);
     expect(
@@ -187,6 +191,41 @@ describe('Drive settled observations', () => {
         structureStatus: 'no-document',
       }),
     ).toEqual([]);
+  });
+
+  test('settles hidden unsupported structure but holds loading work', () => {
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/notes.txt',
+        rightDockActiveContent: 'structure',
+        rightDockVisible: false,
+        structureStatus: 'no-document',
+      }),
+    ).toEqual([]);
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/source.ts',
+        primaryDockVisible: true,
+        sidebarView: 'structure',
+        structureStatus: 'no-document',
+      }),
+    ).toEqual(['structureStatus has not refreshed the active file']);
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/source.ts',
+        rightDockActiveContent: 'structure',
+        rightDockVisible: true,
+        structureStatus: 'loading',
+      }),
+    ).toEqual(['structureStatus has not refreshed the active file']);
+    expect(
+      TestDrive.pendingStatusNames({
+        activeBuffer: '/tmp/source.ts',
+        rightDockActiveContent: 'structure',
+        rightDockVisible: false,
+        structureStatus: 'loading',
+      }),
+    ).toEqual(['structureStatus has not refreshed the active file']);
   });
 
   test('prints a large Markdown file only after preview and structure work settle', async () => {

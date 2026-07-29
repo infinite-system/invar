@@ -101,7 +101,7 @@ Rank them by what your probe actually shows, and say which you eliminated and ho
 `onData` → `establishBlockingReadState`, which runs when the app registers its terminal read
 callback — the real startup path, not a test-only one. If flags can be set to garbage without an
 error, the app's terminal can end up in the wrong blocking mode, and the recorded invariant
-*Shared PTY writes never block the event loop* (`src/modules/terminal/terminal.invariants.md`)
+*Shared PTY writes never block the event loop* ([src/modules/terminal/terminal.invariants.md](../../../../src/modules/terminal/terminal.invariants.md))
 depends on those exact flags being what was requested. Read that record; it was written after a real
 freeze risk (#81) in this same shared-flag design.
 
@@ -133,7 +133,7 @@ Only after the probe. Whatever you choose, it must satisfy:
   under deliberate load** (two concurrent `bun test` runs alongside) and report the failure rate
   before and after your change, with iteration counts. A single clean run proves nothing here — the
   defect's whole signature is that it passes when you look at it.
-- Declare any assertion/wait count movement in `project.coverage-deltas.md` with the counted grammar.
+- Declare any assertion/wait count movement in [project.coverage-deltas.md](../../../../project.coverage-deltas.md) with the counted grammar.
 
 ## Coordination
 

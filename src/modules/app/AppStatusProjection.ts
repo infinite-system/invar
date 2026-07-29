@@ -167,6 +167,7 @@ class $AppStatusProjection {
           )
         : [],
       showActivityBar: ports.settings.showActivityBar.value,
+      showRightActivityBar: ports.settings.showRightActivityBar.value,
       contextMenuOpen: ports.contextMenu.open.value,
       boundedListPopupOpen: ports.boundedListPopup.open.value,
       boundedListPopupQuery: ports.boundedListPopup.query.value,
@@ -261,7 +262,9 @@ class $AppStatusProjection {
       rightDockVisible: ports.rightDockHost.visible.value,
       rightDockFocused: ports.rightDockHost.focused.value,
       rightDockActiveContent: ports.rightDockHost.activeId.value,
-      rightDockContentIds: ports.rightDockHost.order.value,
+      rightDockContentIds: ports.rightDockHost.orderedContents.map(
+        (content) => content.id,
+      ),
       rightDockColumns: ports.view.rightDockViewportColumns(),
       rightDockRows: ports.view.rightDockViewportRows(),
       layoutSlots: ports.view.layoutGeometry(),
@@ -372,6 +375,7 @@ export interface AppStatusProjectionPorts {
     | 'agentNarrationVoice'
     | 'agentNarrationRate'
     | 'showActivityBar'
+    | 'showRightActivityBar'
     | 'sidebarWidth'
     | 'rightDockWidth'
     | 'agentAudioNarration'
@@ -459,6 +463,7 @@ export interface AppStatusProjectionPorts {
     | 'order'
     | 'resolvedCells'
     | 'focusedContent'
+    | 'orderedContents'
   >;
   readonly view: Pick<
     RootView,

@@ -100,7 +100,7 @@ to exit 0.
 
 ## Contracts
 
-`src/modules/lsp/lsp.invariants.md` now states `LSP is a provider plugin` and
+[src/modules/lsp/lsp.invariants.md](../../../../src/modules/lsp/lsp.invariants.md) now states `LSP is a provider plugin` and
 records manifest activation, provider registration, uninstall symmetry, the
 host import prohibition, and verification commands. Related root, workspace,
 UI, and canvas records were updated to remove the former migration-state

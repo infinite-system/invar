@@ -24,7 +24,7 @@ top third of BOTH panes. Positive control: break the follow, red. #285
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## End state (mechanical)

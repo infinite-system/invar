@@ -1,6 +1,6 @@
 # 273 — tasks pane follow-ups: fleet extras, wall-display auto-show
 
-State: ACTIVE
+State: COMPLETED — 6ad6acc6 — Tasks pane cockpit: watch motion, tmux attach pane, row action icons, fleet glance, show-by-default setting
 Created: 2026-07-29
 Engine: codex
 Environment: linux
@@ -21,7 +21,7 @@ Named follow-ups from #235's report, deferred at the seam:
 
 The user's cycling-wall-display intent (#235 outline) is the driver for
 both. Do not re-implement any reader; the seam law from
-tasks-dashboard.invariants.md governs.
+[tasks-dashboard.invariants.md](../../../../src/modules/tasks-dashboard/tasks-dashboard.invariants.md) governs.
 
 ## Arms added by the user (2026-07-29 12:3x, verbatim intent)
 
@@ -43,12 +43,12 @@ tasks-dashboard.invariants.md governs.
 
 ## Invariants in scope
 
-- `tasks-dashboard.invariants.md`; the settings records for the new key;
+- [tasks-dashboard.invariants.md](../../../../src/modules/tasks-dashboard/tasks-dashboard.invariants.md); the settings records for the new key;
   fleet-watch's registry format if the glance ports.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

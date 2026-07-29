@@ -33,7 +33,7 @@ Evidence base, already gathered shallowly:
    marked pure or effectful, with the criterion written down (does it touch
    process, fs, network, clock, audio, terminal). TextSegmentation, Momentum,
    UndoStore are pure — the folder does not decide, the effect does.
-2. **The convention text**, ready to paste as AGENTS.md convention 12: getter
+2. **The convention text**, ready to paste as [AGENTS.md](../../../../AGENTS.md) convention 12: getter
    for effectful, direct for pure, slot as global default, and the
    interface-honesty requirement (no provider may have to suppress the seam's
    core — the tell from convention 2).

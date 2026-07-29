@@ -1,13 +1,13 @@
 # Brief — #122: the editor becomes the final contributor (capstone extraction)
 
 Read first, in order:
-1. `.invar/tasks/active/122-editor-becomes-final-contributor/task-122-editor-becomes-final-contributor.md`
+1. [.invar/tasks/active/122-editor-becomes-final-contributor/task-122-editor-becomes-final-contributor.md](task-122-editor-becomes-final-contributor.md)
 2. `.invar/tasks/completed/114-modularity-umbrella-provider-runtime/` — Wave B's brief
    (`brief-114-2-...`) and BOTH reports. All conventions there apply verbatim. Wave B built
    the seam you will use: `PaneRuntime` / `PaneRuntimes`, `PaneContent.capability`,
    `claimsContextAction`, pane-declared keybinding contexts, `registerPaneRuntime` on
    `ApplicationContributionContext`.
-3. `project.decisions.md` — the Wave B design decision and the agent-profile reasoning.
+3. [project.decisions.md](../../../../project.decisions.md) — the Wave B design decision and the agent-profile reasoning.
 
 ## The objective
 
@@ -59,5 +59,5 @@ scales.
 
 Do not run `scripts/merge-gate.sh`; commit with
 `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean.
-Write prose per `.claude/skills/ste-expression/SKILL.md` (flavored). Report bycatch
-explicitly. Report to `/tmp/122-editor-becomes-final-contributor-READY.md`.
+Write prose per [.claude/skills/ste-expression/SKILL.md](../../../../.claude/skills/ste-expression/SKILL.md) (flavored). Report bycatch
+explicitly. Report to [/tmp/122-editor-becomes-final-contributor-READY.md](../../../../../../../../../../../tmp/122-editor-becomes-final-contributor-READY.md).

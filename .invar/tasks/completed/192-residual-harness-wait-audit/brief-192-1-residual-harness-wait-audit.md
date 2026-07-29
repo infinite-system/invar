@@ -1,7 +1,7 @@
 # TASK — #192: five residual generic waits from #168. One audit, not five fixes.
 
 Work ONLY in this worktree. Branch `fleet/192-waits`. Do NOT push, merge, tag or delete. Report to
-`/tmp/192-waits-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
+[/tmp/192-waits-READY.md](../../../../../../../../../../../tmp/192-waits-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
 
 **YOU ARE THE ONLY BUILDER.** You may run `scripts/merge-gate.sh`. Take the machine-wide quiet lock for
 timing runs and **check `/tmp/invar-quiet-lock.journal` for a `degraded` entry afterwards** — the lock
@@ -99,7 +99,7 @@ verified it at the merge base.**
 ## Repo law
 
 `export let Class = $Class`; the `Static()` wrapper lives at the `$Class` anchor; `Reactive()` is exempt.
-Harness invariant records at `scripts/harness/harness.invariants.md`, cited by ROOT-RELATIVE path. Full
+Harness invariant records at [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md), cited by ROOT-RELATIVE path. Full
 descriptive identifier names. 80 columns.
 
 ## Verification — quote exact exit codes, never read `$?` after a pipeline

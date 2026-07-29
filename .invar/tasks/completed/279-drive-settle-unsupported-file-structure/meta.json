@@ -1,0 +1,18 @@
+{
+  "task": 279,
+  "slug": "drive-settle-unsupported-file-structure",
+  "branch": "fleet/279-drive-settle-unsupported-file-structure",
+  "worktree": ".invar/worktrees/279-drive-settle-unsupported-file-structure",
+  "tmuxSession": "invar/279-drive-settle-unsupported-file-structure",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-279-drive-settle-unsupported-file-structure.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "a805114897fbaaa8998be82d71866656510d6776",
+  "startedAt": "2026-07-29T13:58:49-04:00",
+  "landedAt": "2026-07-29T14:12:37-04:00",
+  "durationMinutes": 13,
+  "mergeCommit": "bfa860d8"
+}

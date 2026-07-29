@@ -38,7 +38,7 @@ is the synthesis, not a naive opening:
    extend).
 
 Read `#222`'s analysis documents first (provider-seam analysis, slot vs
-getter convention) and `report-35-structure-navigator-plugin-pane.md`'s seam
+getter convention) and [report-35-structure-navigator-plugin-pane.md](../35-structure-navigator-plugin-pane/report-35-structure-navigator-plugin-pane.md)'s seam
 finding — the cost and the escape are both named there.
 
 ## Invariants in scope
@@ -46,22 +46,22 @@ finding — the cost and the escape are both named there.
 - `src/modules/plugins/` records — the contribution contract gains the
   registry record: *a provider rendezvous is host-carried, interface-blind,
   and withdraws on dispose*.
-- `structure.invariants.md` — the pane's source citation moves to the host
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — the pane's source citation moves to the host
   registry; its records must survive the migration.
-- The lsp records (`lsp.invariants.md`) — `LspWorkspaceProvider`'s
+- The lsp records ([lsp.invariants.md](../../../../src/modules/lsp/lsp.invariants.md)) — `LspWorkspaceProvider`'s
   registration clause updates; host-never-imports-LSP stays untouched.
-- `ui.invariants.md` — untouched; a diff there is a finding.
+- [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — untouched; a diff there is a finding.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — generator drift especially:
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — generator drift especially:
 you are collapsing two rendezvous into one; any third rendezvous your census
 finds is the exact drift this task exists to kill. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources
 
-- `report-35-structure-navigator-plugin-pane.md` — the seam finding.
+- [report-35-structure-navigator-plugin-pane.md](../35-structure-navigator-plugin-pane/report-35-structure-navigator-plugin-pane.md) — the seam finding.
 - `.invar/tasks/retired/223-database-plugin-proves-provider-seam/` — the
   folded scope (retired with a pointer here).
 - #222's analysis documents in its completed folder.

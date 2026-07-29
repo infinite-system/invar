@@ -1,0 +1,18 @@
+{
+  "task": 287,
+  "slug": "preview-renders-header-block-as-block",
+  "branch": "fleet/287-preview-renders-header-block-as-block",
+  "worktree": ".invar/worktrees/287-preview-renders-header-block-as-block",
+  "tmuxSession": "invar/287-preview-renders-header-block-as-block",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-287-preview-renders-header-block-as-block.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "02c08e01e151bf0082327fa59cabca2f3e221295",
+  "startedAt": "2026-07-29T12:31:58-04:00",
+  "landedAt": "2026-07-29T12:44:40-04:00",
+  "durationMinutes": 12,
+  "mergeCommit": "98c25506"
+}

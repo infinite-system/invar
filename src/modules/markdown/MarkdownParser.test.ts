@@ -44,6 +44,23 @@ test('parses a paragraph as a single joined block', () => {
   expect(blocks[0]!.text).toBe('one line two line three');
 });
 
+test('preserves consecutive metadata fields while prose still reflows', () => {
+  const [metadataFields] = parse(
+    'State: IN-PROGRESS\nCreated: 2026-07-29\nEngine: codex',
+  );
+  expect(metadataFields!.kind).toBe('paragraph');
+  expect(metadataFields!.text).toBe(
+    'State: IN-PROGRESS\nCreated: 2026-07-29\nEngine: codex',
+  );
+
+  const [prose] = parse(
+    'A normal prose paragraph can wrap in its source.\nIts authored newline is not semantic.',
+  );
+  expect(prose!.text).toBe(
+    'A normal prose paragraph can wrap in its source. Its authored newline is not semantic.',
+  );
+});
+
 test('parses ordered and unordered list items with markers', () => {
   const bullets = parse('- first\n- second\n  - nested');
   // a container 'list' block plus one 'listitem' per row

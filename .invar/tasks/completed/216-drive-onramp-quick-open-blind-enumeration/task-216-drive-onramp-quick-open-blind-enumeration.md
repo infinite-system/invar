@@ -37,4 +37,4 @@ treating as real.
 
 ## Sources
 
-- `report-122-editor-becomes-final-contributor.md` in #122's folder, Bycatch.
+- [report-122-editor-becomes-final-contributor.md](../122-editor-becomes-final-contributor/report-122-editor-becomes-final-contributor.md) in #122's folder, Bycatch.

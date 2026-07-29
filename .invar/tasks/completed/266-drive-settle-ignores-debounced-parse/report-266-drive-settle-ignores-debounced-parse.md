@@ -45,7 +45,7 @@ Before the fix, `bun run drive --open README.md` printed:
 - `structureRequests=0`
 - `structureStatus="no-document"`
 
-The 3,352-line `project.conductor.archive.md` showed the same stale state.
+The 3,352-line [project.conductor.archive.md](../../../../project.conductor.archive.md) showed the same stale state.
 
 After the fix, the 59-line README drive printed rendered preview text and four
 structure rows. It published:
@@ -91,8 +91,8 @@ The captured output also contained `No file is open.`,
 passed with 10 tests and 26 expectations.
 
 The new chosen record is *Drive settled observations include declared
-debounced work* in `scripts/harness/harness.invariants.md`.
-`scripts/harness/drive.md` now explains the registry.
+debounced work* in [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md).
+[scripts/harness/drive.md](../../../../scripts/harness/drive.md) now explains the registry.
 
 Round two adds a missing-frame positive control. It calls the existing
 first-frame verdict with `observed=false, complete=false` and requires a red
@@ -110,8 +110,8 @@ that timing polarity.
 
 - `scripts/harness/Drive.ts`
 - `scripts/harness/Drive.test.ts`
-- `scripts/harness/drive.md`
-- `scripts/harness/harness.invariants.md`
+- [scripts/harness/drive.md](../../../../scripts/harness/drive.md)
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md)
 - `scripts/harness/smoke-terminal-stage-harness.ts`
 
 No scratch tooling was needed.
@@ -141,7 +141,7 @@ No scratch tooling was needed.
 
 ## Invariants
 
-Scope was `scripts/harness/harness.invariants.md`, derived from the changed
+Scope was [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md), derived from the changed
 Drive path and its annotations.
 
 - *Harness waits observe conditions not frame ordinals*: strengthened.

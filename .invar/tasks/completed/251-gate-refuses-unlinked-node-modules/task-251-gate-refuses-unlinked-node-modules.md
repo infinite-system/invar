@@ -36,7 +36,7 @@ The fix, in merge-gate.sh's preflight (guards go first):
    a healthy tree passes preflight silently.
 
 Changes to the verification apparatus need verification from OUTSIDE the
-apparatus (project.conductor.md family 3 corollary): prove the guard on
+apparatus ([project.conductor.md](../../../../project.conductor.md) family 3 corollary): prove the guard on
 both arms in a scratch tree before trusting any gate that carries it.
 
 ## Invariants in scope
@@ -47,7 +47,7 @@ both arms in a scratch tree before trusting any gate that carries it.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

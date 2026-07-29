@@ -66,5 +66,5 @@ this record cannot distinguish them.
 
 ## Sources
 
-- `brief-124-1-terminal-follow-escape-intermittent.md`
+- [brief-124-1-terminal-follow-escape-intermittent.md](brief-124-1-terminal-follow-escape-intermittent.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

@@ -26,12 +26,12 @@ encoding reds it.
 
 ## Invariants in scope
 
-- `scripts/harness/harness.invariants.md` — the driver records; add the
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — the driver records; add the
   one-encoder clause where it belongs.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — wrong-unit/wrong-encoding siblings; this family
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — wrong-unit/wrong-encoding siblings; this family
 keeps growing. The READY report carries `## Bycatch` even if it reads
 `None observed`.
 

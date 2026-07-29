@@ -1,6 +1,6 @@
 # 287 — the preview collapses task-header lines into one line
 
-State: ACTIVE
+State: COMPLETED — 98c25506 — metadata stacks render as stacks; H1 color not underline
 Created: 2026-07-29
 Engine: codex
 Environment: linux
@@ -47,7 +47,7 @@ refine that record, keep its label.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## Sources

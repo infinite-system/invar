@@ -7,10 +7,10 @@ Short form: build `scripts/tasks/lint-task-links.ts` (resolve-check all
 relative md links; flag bare task/report/brief/probe references with the
 suggested link; --fix rewrites unambiguous ones; both-polarity
 self-test). Wire it: dispatch.sh + round-brief.sh REFUSE a failing brief
-(same law as the two-section guard); AGENTS.md report contract gains
+(same law as the two-section guard); [AGENTS.md](../../../../AGENTS.md) report contract gains
 "lint links before READY" with the exact command; land.sh WARNS on
 report dead links (legacy folders must not block landings). Record the
-convention in the manage-tasks skill + AGENTS.md. NO retro-sweep of
+convention in the manage-tasks skill + [AGENTS.md](../../../../AGENTS.md). NO retro-sweep of
 existing folders here — name it as the follow-up.
 
 The linter is an instrument: it must fail loudly (planted dead link
@@ -18,12 +18,12 @@ reds, planted bare ref reds, clean file silent — quote all three runs).
 
 ## Invariants in scope
 
-- manage-tasks skill contract; dispatch/round-brief guards; AGENTS.md
+- manage-tasks skill contract; dispatch/round-brief guards; [AGENTS.md](../../../../AGENTS.md)
   report contract; #276's link-walk records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## End state (mechanical)

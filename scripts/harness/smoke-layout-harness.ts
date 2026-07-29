@@ -886,17 +886,22 @@ try {
       candidate.rightDockVisible === false &&
       candidate.terminalVisible === false,
   );
+  const focusActivityBar = layoutSlot(status, 'activityBar');
   const focusSidebar = layoutSlot(status, 'sidebar');
   const focusRightDock = layoutSlot(status, 'rightDock');
   const focusEditorCenter = layoutSlot(status, 'editorCenter');
   HarnessSmoke.Class.requireCondition(
-    focusSidebar.width === 0 &&
+    focusActivityBar.left === 0 &&
+      focusActivityBar.width > 0 &&
+      focusActivityBar.top === focusEditorCenter.top &&
+      focusActivityBar.height === focusEditorCenter.height &&
+      focusSidebar.width === 0 &&
       focusSidebar.height === 0 &&
       focusRightDock.width === 0 &&
       focusRightDock.height === 0 &&
-      focusEditorCenter.left === 0 &&
+      focusEditorCenter.left === rectangleRight(focusActivityBar) &&
       rectangleRight(focusEditorCenter) === Number(status.width),
-    'Focus preset hides both docks and gives their exact columns to the editor',
+    'Focus preset hides both docks, keeps the activity bar, and gives the remaining columns to the editor',
   );
 
   status = await selectLayoutPreset(

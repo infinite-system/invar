@@ -29,5 +29,5 @@ before treating them as two defects.
 
 ## Sources
 
-- `/tmp/114-wave-b-READY-v2.md` — Bycatch section (copied into
+- [/tmp/114-wave-b-READY-v2.md](../../../../../../../../../../../tmp/114-wave-b-READY-v2.md) — Bycatch section (copied into
   `.invar/tasks/completed/114-.../` at #114's landing).

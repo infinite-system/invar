@@ -1,0 +1,18 @@
+{
+  "task": 291,
+  "slug": "task-links-survive-state-moves",
+  "branch": "fleet/291-task-links-survive-state-moves",
+  "worktree": ".invar/worktrees/291-task-links-survive-state-moves",
+  "tmuxSession": "invar/291-task-links-survive-state-moves",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-291-task-links-survive-state-moves.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "95f0103529d2ed14215841afa0f0819bdbf3f1e2",
+  "startedAt": "2026-07-29T13:02:37-04:00",
+  "landedAt": "2026-07-29T13:58:04-04:00",
+  "durationMinutes": 55,
+  "mergeCommit": "41aa3654"
+}

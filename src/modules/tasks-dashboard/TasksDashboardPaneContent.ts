@@ -1,4 +1,4 @@
-// The tasks dashboard as a right-dock pane content citizen: a cells citizen — the host paints
+// The tasks dashboard as a dock pane content citizen: a cells citizen — the host paints
 // the StyledText this returns — projecting the task system's three lenses beside the editor.
 // Selection opens the task's own record file through the workspace's one open seam.
 //
@@ -15,12 +15,16 @@ import type {
 } from '../ui/PaneContent.interface';
 import type { TasksDashboardOverview } from './TasksDashboardOverview';
 import { TasksDashboardPaneRenderer } from './TasksDashboardPaneRenderer';
+import type { TasksDashboardAction } from './TasksDashboardPaneRenderer';
 
 class $TasksDashboardPaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly overview: TasksDashboardOverview.Model,
-    protected readonly openSelected: () => boolean,
+    protected readonly performAction: (
+      action: TasksDashboardAction,
+      rowIndex: number,
+    ) => boolean,
   ) {}
 
   get id(): string {
@@ -66,6 +70,9 @@ class $TasksDashboardPaneContent implements PaneContent {
       this.overview.scrollTop.value,
       this.overview.viewportHeight.value,
       this.overview.viewportWidth.value,
+      this.overview.animationPaint.value,
+      this.overview.gateGlance.value?.exitCode,
+      this.overview.actionNotice.value?.message,
     ].join(':');
   }
 
@@ -84,6 +91,10 @@ class $TasksDashboardPaneContent implements PaneContent {
       height: Math.max(1, context.height),
       innerWidth,
       viewportWidth: Math.max(1, innerWidth - this.scrollbarThicknessCells),
+      animationPaint: this.overview.animationPaint.value,
+      gateGlance: this.overview.gateGlance.value,
+      actionNotice: this.overview.actionNotice.value,
+      taskActionIcons: this.application.theme.taskActionIcons,
     });
   }
 
@@ -120,6 +131,38 @@ class $TasksDashboardPaneContent implements PaneContent {
     this.overview.hoveredIndex.value = -1;
   }
 
+  tooltipAt(column: number, row: number): string | null {
+    if (row <= 0) return null;
+    const taskRow = this.overview.rows.value[this.rowIndexAt(row)];
+    if (!taskRow) return null;
+    const action = TasksDashboardPaneRenderer.Class.taskActionAt(
+      {
+        rows: this.overview.rows.value,
+        lens: this.overview.lens.value,
+        cycling: this.overview.cycling.value,
+        available: this.overview.available.value,
+        windowTop: this.overview.windowTop(),
+        selectedIndex: this.overview.selectedIndex.value,
+        hoveredIndex: this.overview.hoveredIndex.value,
+        paneFocused: false,
+        palette: this.application.theme.palette,
+        height: this.overview.viewportHeight.value + 1,
+        innerWidth:
+          this.overview.viewportWidth.value + this.scrollbarThicknessCells,
+        viewportWidth: this.overview.viewportWidth.value,
+        animationPaint: this.overview.animationPaint.value,
+        gateGlance: this.overview.gateGlance.value,
+        actionNotice: this.overview.actionNotice.value,
+        taskActionIcons: this.application.theme.taskActionIcons,
+      },
+      taskRow,
+      column,
+    );
+    return action === null
+      ? null
+      : TasksDashboardPaneRenderer.Class.tooltipForAction(action);
+  }
+
   onPointerDown(column: number, row: number): boolean {
     this.onFocus();
     if (row === 0) {
@@ -131,9 +174,45 @@ class $TasksDashboardPaneContent implements PaneContent {
       return true;
     }
     const rowIndex = this.rowIndexAt(row);
+    const taskRow = this.overview.rows.value[rowIndex];
+    if (!taskRow) return false;
+    if (taskRow.kind === 'detail') {
+      const action = TasksDashboardPaneRenderer.Class.taskActionAt(
+        {
+          rows: this.overview.rows.value,
+          lens: this.overview.lens.value,
+          cycling: this.overview.cycling.value,
+          available: this.overview.available.value,
+          windowTop: this.overview.windowTop(),
+          selectedIndex: this.overview.selectedIndex.value,
+          hoveredIndex: this.overview.hoveredIndex.value,
+          paneFocused: true,
+          palette: this.application.theme.palette,
+          height: this.overview.viewportHeight.value + 1,
+          innerWidth:
+            this.overview.viewportWidth.value + this.scrollbarThicknessCells,
+          viewportWidth: this.overview.viewportWidth.value,
+          animationPaint: this.overview.animationPaint.value,
+          gateGlance: this.overview.gateGlance.value,
+          actionNotice: this.overview.actionNotice.value,
+          taskActionIcons: this.application.theme.taskActionIcons,
+        },
+        taskRow,
+        column,
+      );
+      if (action === null) return false;
+      const performed = this.performAction(action, rowIndex);
+      if (
+        performed &&
+        (action === 'task' || action === 'brief' || action === 'report')
+      ) {
+        this.application.rightDockHost.blur();
+      }
+      return performed;
+    }
     if (!this.overview.setSelection(rowIndex)) return false;
-    // The record lands IN the editor, so the keyboard follows it out of the dock.
-    if (this.openSelected()) this.application.rightDockHost.blur();
+    if (this.performAction('task', rowIndex))
+      this.application.rightDockHost.blur();
     this.application.requestRender();
     return true;
   }

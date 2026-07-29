@@ -10,7 +10,7 @@ Worktree: clean
 
 Compaction: one automatic context compaction before round two
 
-Conventions: `project.conventions.md` at `2e6c207555c2aeecd49d460e5d8ca3ed8ba030af`
+Conventions: [project.conventions.md](../../../../project.conventions.md) at `2e6c207555c2aeecd49d460e5d8ca3ed8ba030af`
 
 ## Result
 
@@ -41,7 +41,7 @@ after the renderer had accepted 60.
   requested geometry when the ioctl fails.
 - `src/modules/terminal/OpenPty.test.ts` proves that a broken resize reports
   `OpenPty TIOCSWINSZ failed with errno 9 for 60x25`.
-- `src/modules/terminal/terminal.invariants.md` now owns the runtime boundary as
+- [src/modules/terminal/terminal.invariants.md](../../../../src/modules/terminal/terminal.invariants.md) now owns the runtime boundary as
   **A controlling PTY resize reaches the renderer**.
 
 No `node_modules` file changed. No harness-only resize signal was added.

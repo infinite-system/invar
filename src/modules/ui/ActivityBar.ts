@@ -10,11 +10,11 @@ import { Reactive } from 'ivue';
 import type { CommandRegistry } from '../commands/CommandRegistry';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { Palette } from '../theme/ThemePalettes';
+import type { ActivitySurface } from './ActivitySurface';
 import { ContentOrderDrag } from './ContentOrderDrag';
-import type { PanelHost } from './PanelHost';
 import type { Tooltip } from './Tooltip';
 
-// invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
+// invariant: The active activity item determines its dock content (src/modules/ui/ui.invariants.md)
 // invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
 class $ActivityBar {
   readonly bar: BoxRenderable;
@@ -24,14 +24,14 @@ class $ActivityBar {
 
   constructor(protected readonly dependencies: ActivityBarDependencies) {
     this.bar = new BoxRenderable(dependencies.renderer, {
-      id: 'activity-bar',
+      id: dependencies.identifier,
       width: 4,
       height: '100%',
       flexShrink: 0,
       flexDirection: 'column',
     });
     this.body = new TextRenderable(dependencies.renderer, {
-      id: 'activity-bar-body',
+      id: `${dependencies.identifier}-body`,
       content: '',
       width: 4,
       height: '100%',
@@ -39,7 +39,7 @@ class $ActivityBar {
       selectable: false,
     });
     this.contentOrderDrag = new ContentOrderDrag.Class(
-      dependencies.primaryDockHost,
+      dependencies.activitySurface,
     );
     this.bar.add(this.body);
     this.wireHandlers();
@@ -47,12 +47,12 @@ class $ActivityBar {
 
   protected itemAtRow(screenRow: number) {
     const index = Math.floor((screenRow - this.bar.y) / 2);
-    const content = this.dependencies.primaryDockHost.orderedContents[index];
+    const content = this.dependencies.activitySurface.orderedContents[index];
     return index >= 0 && content ? { index, content } : null;
   }
 
   protected dragTargetIndexAtRow(screenRow: number): number {
-    const itemCount = this.dependencies.primaryDockHost.orderedContents.length;
+    const itemCount = this.dependencies.activitySurface.orderedContents.length;
     return Math.max(
       0,
       Math.min(Math.floor((screenRow - this.bar.y) / 2), itemCount - 1),
@@ -69,15 +69,15 @@ class $ActivityBar {
   }
 
   protected wireHandlers(): void {
-    const { renderer, primaryDockHost, tooltip, keybindings, commands } =
+    const { renderer, activitySurface, tooltip, keybindings, commands } =
       this.dependencies;
     this.bar.onMouseDown = (event) => {
       const hit = this.itemAtRow(event.y);
       if (!hit) return;
       this.capturePointer();
       this.contentOrderDrag.pointerDown(hit.content.id);
-      primaryDockHost.showContent(hit.content.id);
-      if (hit.content.activityAction) {
+      const activityResult = activitySurface.toggleContent(hit.content.id);
+      if (activityResult === 'shown' && hit.content.activityAction) {
         commands.run(hit.content.activityAction);
       }
       tooltip.clear();
@@ -124,9 +124,9 @@ class $ActivityBar {
 
   update(palette: Palette): void {
     this.bar.backgroundColor = palette.panel;
-    const activeIdentifier = this.dependencies.primaryDockHost.activeId.value;
+    const activeIdentifier = this.dependencies.activitySurface.activeIdentifier;
     const chunks: TextChunk[] = [];
-    this.dependencies.primaryDockHost.orderedContents.forEach(
+    this.dependencies.activitySurface.orderedContents.forEach(
       (content, index) => {
         const isActive = activeIdentifier === content.id;
         const isHovered = this.hoveredItemIndex === index;
@@ -151,7 +151,7 @@ class $ActivityBar {
         );
         if (
           index <
-          this.dependencies.primaryDockHost.orderedContents.length - 1
+          this.dependencies.activitySurface.orderedContents.length - 1
         ) {
           chunks.push(fg(palette.fg)('\n'));
         }
@@ -161,7 +161,7 @@ class $ActivityBar {
   }
 
   itemIdentifiers(): string[] {
-    return this.dependencies.primaryDockHost.orderedContents.map(
+    return this.dependencies.activitySurface.orderedContents.map(
       (content) => content.id,
     );
   }
@@ -180,7 +180,8 @@ export namespace ActivityBar {
 
 export interface ActivityBarDependencies {
   renderer: CliRenderer;
-  primaryDockHost: PanelHost.Instance;
+  identifier: string;
+  activitySurface: ActivitySurface.Model;
   tooltip: Tooltip.Instance;
   keybindings: KeybindingRegistry.Instance;
   commands: CommandRegistry.Instance;

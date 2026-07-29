@@ -28,11 +28,9 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
   const dockContents: PaneContent[] = [];
   const commandIds: string[] = [];
   const settingIdentifiers: string[] = [];
-  // The REAL right-dock host: the plugin's default-visibility policy drives it, so the tests
+  // The real suggested host: the plugin's default-visibility policy drives it, so the tests
   // observe genuine visibility transitions instead of a hand-rolled stub's.
-  const rightDockHost = new PanelHost.Class({
-    showWhenContentRegistered: true,
-  });
+  const rightDockHost = new PanelHost.Class();
   const showByDefault = ref(true);
   const defaultDepth = ref(1);
   let snapshotProvider: (() => Record<string, unknown>) | null = null;
@@ -62,6 +60,27 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
       registerRightDockContent: (content: PaneContent) => {
         dockContents.push(content);
         rightDockHost.register(content);
+      },
+      registerDockContent: (contribution: {
+        content: PaneContent;
+        settingIdentifier: string;
+      }) => {
+        dockContents.push(contribution.content);
+        settingIdentifiers.push(contribution.settingIdentifier);
+        rightDockHost.register(contribution.content);
+        return {
+          value: ref<'left' | 'right'>('right'),
+          host: () => rightDockHost,
+          isVisible: () =>
+            rightDockHost.isContentVisible(contribution.content.id),
+          reveal: () => rightDockHost.revealContent(contribution.content.id),
+          show: () => rightDockHost.showContent(contribution.content.id),
+          blur: () => rightDockHost.blur(),
+          save: () => {},
+          dispose: () => {
+            recording.settingDisposals += 1;
+          },
+        };
       },
       registerSetting: (contribution: { identifier: string }) => {
         settingIdentifiers.push(contribution.identifier);
@@ -101,7 +120,7 @@ function makeContext(workspace: Workspace.Model): RecordingContext {
   return recording;
 }
 
-test('activation registers the right-dock pane, commands, keybindings, setting, and status keys', () => {
+test('activation registers the dock pane, commands, keybindings, setting, and status keys', () => {
   const plugin = new StructurePlugin.Class();
   const workspace = new Workspace.Class();
   plugin.attachWorkspace(workspace);
@@ -116,6 +135,7 @@ test('activation registers the right-dock pane, commands, keybindings, setting, 
   expect(recording.rightDockHost.has('structure')).toBe(true);
   expect(recording.keybindings).toBe(1);
   expect(recording.settingIdentifiers).toEqual([
+    'structure.dockSide',
     'structureShowByDefault',
     'structureDefaultDepth',
   ]);
@@ -144,7 +164,7 @@ test('activation registers the right-dock pane, commands, keybindings, setting, 
   plugin.disposeApplication();
 });
 
-test('the outline is observed only while the right dock shows the structure pane', async () => {
+test('the outline is observed only while its dock shows the structure pane', async () => {
   const plugin = new StructurePlugin.Class();
   const document = new TextDocument.Class();
   document.loadFromText('class A {}\n', '/tmp/observed.ts');

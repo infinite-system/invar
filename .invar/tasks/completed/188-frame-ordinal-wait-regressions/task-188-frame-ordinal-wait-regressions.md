@@ -39,6 +39,6 @@ name, per site, what the action actually produces.
 
 ## Sources
 
-- `brief-188-1-frame-ordinal-wait-regressions.md`
-- `report-188-frame-ordinal-wait-regressions.md`
+- [brief-188-1-frame-ordinal-wait-regressions.md](brief-188-1-frame-ordinal-wait-regressions.md)
+- [report-188-frame-ordinal-wait-regressions.md](report-188-frame-ordinal-wait-regressions.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

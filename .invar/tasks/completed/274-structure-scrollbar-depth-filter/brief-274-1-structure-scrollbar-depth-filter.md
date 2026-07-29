@@ -23,12 +23,12 @@ panes, never assume widths (#268 doctrine; helpers exist).
 
 ## Invariants in scope
 
-- `structure.invariants.md`; the scrollbar projection record; settings
-  records (new keys); `ui.invariants.md` right-dock records.
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md); the scrollbar projection record; settings
+  records (new keys); [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) right-dock records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## End state (mechanical)

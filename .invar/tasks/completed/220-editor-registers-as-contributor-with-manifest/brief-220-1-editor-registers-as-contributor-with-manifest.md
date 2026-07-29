@@ -1,7 +1,7 @@
 # Brief — #220: the editor registers as a contributor with a manifest
 
 Read first, in order:
-1. `.invar/tasks/active/220-editor-registers-as-contributor-with-manifest/task-220-editor-registers-as-contributor-with-manifest.md`
+1. [.invar/tasks/active/220-editor-registers-as-contributor-with-manifest/task-220-editor-registers-as-contributor-with-manifest.md](task-220-editor-registers-as-contributor-with-manifest.md)
 2. `report-219-...md` in #219's completed folder — `SourceTextPaneContent`,
    `PaneProjection`, and the release path (`releaseSourceTextViews`) you will
    wire to uninstall. Boundary 2 there (scrollbar projection getters) stays
@@ -39,7 +39,7 @@ consumer and why it is honest).
 Exact exit codes: tsc, bun test, conventions-gate, prettier, check_invariants
 (at or above 972/67/0), coverage ratchet. Drive the manifest smoke including
 the new uninstall arms; every smoke you cite must be driven green before your
-first edit too. Scratch tooling per AGENTS.md: your task folder, full names,
+first edit too. Scratch tooling per [AGENTS.md](../../../../AGENTS.md): your task folder, full names,
 header comments.
 
 Do not run `scripts/merge-gate.sh`. Commit with

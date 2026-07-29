@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { ThemePalettes } from '../theme/ThemePalettes';
+import { TASKS_BUILDING_BREATH_FRAMES } from '../../../scripts/tasks/tasks-status';
 import {
   TasksDashboardPaneRenderer,
   type TasksDashboardRenderContext,
@@ -18,11 +19,18 @@ function taskRow(overrides: Partial<TasksDashboardRow>): TasksDashboardRow {
     label: 'planted-task',
     taskNumber: 901,
     standing: null,
+    phase: null,
     round: 1,
     durationLabel: '',
     identity: '',
     attachment: '',
+    addedLines: null,
+    removedLines: null,
+    sessionName: null,
+    worktreePath: null,
     taskFilePath: null,
+    latestBriefFilePath: null,
+    latestReportFilePath: null,
     ...overrides,
   };
 }
@@ -43,6 +51,15 @@ function makeContext(
     height: 10,
     innerWidth: 60,
     viewportWidth: 59,
+    animationPaint: 0,
+    gateGlance: null,
+    actionNotice: null,
+    taskActionIcons: {
+      workspace: 'W',
+      taskRecord: 'T',
+      latestBrief: 'B',
+      latestReport: 'R',
+    },
     ...overrides,
   };
 }
@@ -72,7 +89,7 @@ test('the live lens paints the standing vocabulary: READY holds, building marks 
   expect(rendered).toContain('LIVE');
   expect(rendered).toContain('◉');
   expect(rendered).toContain('#902 planted-ready READY round 2');
-  expect(rendered).toContain('●');
+  expect(rendered).toContain(TASKS_BUILDING_BREATH_FRAMES[0]!.glyph);
   expect(rendered).toContain('#901 planted-building  10m');
   expect(rendered).toContain('codex·unknown·default');
 });
@@ -160,4 +177,38 @@ test('the cycling glyph reflects play and pause', () => {
   );
   expect(paused).toContain('▷');
   expect(playing).toContain('▶');
+});
+
+test('building motion advances through the CLI-exported breath frames', () => {
+  const row = taskRow({ standing: 'building', phase: 'building' });
+  const first = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({ rows: [row], animationPaint: 0 }),
+    ),
+  );
+  const second = renderedText(
+    TasksDashboardPaneRenderer.Class.render(
+      makeContext({ rows: [row], animationPaint: 10 }),
+    ),
+  );
+  expect(first).toContain(TASKS_BUILDING_BREATH_FRAMES[0]!.glyph);
+  expect(second).toContain(TASKS_BUILDING_BREATH_FRAMES[2]!.glyph);
+  expect(second).not.toBe(first);
+});
+
+test('the pinned row actions share one hit and tooltip geometry', () => {
+  const context = makeContext({});
+  const row = taskRow({
+    kind: 'detail',
+    sessionName: 'invar/901-planted-task',
+  });
+  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 5)).toBe(
+    'session',
+  );
+  expect(TasksDashboardPaneRenderer.Class.taskActionAt(context, row, 57)).toBe(
+    'report',
+  );
+  expect(TasksDashboardPaneRenderer.Class.tooltipForAction('report')).toBe(
+    'Open the latest report',
+  );
 });

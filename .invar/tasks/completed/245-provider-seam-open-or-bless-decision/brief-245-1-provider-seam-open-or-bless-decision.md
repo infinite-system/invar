@@ -3,7 +3,7 @@
 Read first:
 `.invar/tasks/in-progress/245-provider-seam-open-or-bless-decision/task-245-*.md`
 — the user's decision and the four-part shape are there. Then #222's analysis
-documents (its completed folder) and `report-35-structure-navigator-plugin-pane.md`'s
+documents (its completed folder) and [report-35-structure-navigator-plugin-pane.md](../35-structure-navigator-plugin-pane/report-35-structure-navigator-plugin-pane.md)'s
 seam finding. The retired #223 folder holds the folded database-plugin scope.
 
 The shape, compressed: the host carries the phone book, not the
@@ -34,16 +34,16 @@ Drive first, contract after (RULE ZERO). The done-tests:
 - `src/modules/plugins/` records — the registry record this task adds: *a
   provider rendezvous is host-carried, interface-blind, and withdraws on
   dispose*.
-- `src/modules/structure/structure.invariants.md` — source citation moves;
+- [src/modules/structure/structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — source citation moves;
   records survive the migration.
-- `src/modules/lsp/lsp.invariants.md` — registration clause updates;
+- [src/modules/lsp/lsp.invariants.md](../../../../src/modules/lsp/lsp.invariants.md) — registration clause updates;
   host-never-imports-LSP untouched.
-- `src/modules/ui/ui.invariants.md` — untouched; any diff there is a
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — untouched; any diff there is a
   finding.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — generator drift above all:
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — generator drift above all:
 you are collapsing two rendezvous into one; any THIRD rendezvous your census
 finds is the drift this task exists to kill. The READY report carries
 `## Bycatch` even if it reads `None observed`.

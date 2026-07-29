@@ -40,9 +40,9 @@ reading-position. Positive control: break the follow direction, red.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if
 it reads `None observed`.
 
 ## Sources
 
-- User message 2026-07-29 12:2x; [#286](../286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md).
+- User message 2026-07-29 12:2x; [#286](../../completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md).

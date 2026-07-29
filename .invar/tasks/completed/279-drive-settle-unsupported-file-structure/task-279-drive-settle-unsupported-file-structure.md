@@ -1,6 +1,6 @@
 # 279 — the drive treats a hidden structure pane's "no-document" as unsettled
 
-State: ACTIVE
+State: COMPLETED — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 Created: 2026-07-29
 Engine: codex
 Environment: linux
@@ -21,15 +21,24 @@ positive control: the .txt drive settles fast, AND a genuinely-loading
 structure still holds the settle (both polarities). Never widen the
 timeout.
 
+## Two more family members (from #278's landing, 2026-07-29 13:0x)
+
+- #278 reproduced the 100k-quiescence hold twice (frame complete, all
+  glyphs painted, settle never finished — did not widen the timeout).
+- New member shape: `settingsOpen=true` published BEFORE the settings
+  labels painted — a text click missed. The settle/status contract must
+  not publish an interactable state before its interactables paint.
+  Decide whether this is the same registry condition or its own arm.
+
 ## Invariants in scope
 
-- harness.invariants.md — #266's "Drive settled observations include
+- [harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — #266's "Drive settled observations include
   declared debounced work" record (refine, don't weaken);
-  structure.invariants.md answers-or-declines.
+  [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) answers-or-declines.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

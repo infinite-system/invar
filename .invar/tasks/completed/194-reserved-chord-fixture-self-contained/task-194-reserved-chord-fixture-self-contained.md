@@ -48,5 +48,5 @@ arm.
 
 ## Sources
 
-- `brief-194-1-reserved-chord-fixture-self-contained.md`
+- [brief-194-1-reserved-chord-fixture-self-contained.md](brief-194-1-reserved-chord-fixture-self-contained.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

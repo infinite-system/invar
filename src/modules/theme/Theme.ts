@@ -20,6 +20,7 @@ import {
   type InterfaceGlyphVocabulary,
   type SymbolClass,
   type SymbolMarkSet,
+  type TaskActionIconSet,
   type TableBorderGlyphSet,
 } from './ThemeIcons';
 
@@ -66,6 +67,10 @@ class $Theme {
   /** Git changes-row action button glyphs at the current glyph level (nerd → unicode → ascii). */
   get actionIcons(): ActionIconSet {
     return ThemeIcons.Class.actionIconsFor(this.glyphLevel.value);
+  }
+  /** Tasks-pane row actions at the active glyph fallback tier. */
+  get taskActionIcons(): TaskActionIconSet {
+    return ThemeIcons.Class.taskActionIconsFor(this.glyphLevel.value);
   }
   /** Staging-checkbox glyphs (unchecked/checked) at the current glyph level. */
   get checkboxIcons(): CheckboxIconSet {

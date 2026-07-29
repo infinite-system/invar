@@ -17,7 +17,7 @@ record nobody cites is a claim nothing enforces — the same class as an unrun
 smoke.
 
 Timing makes it worth doing now: #218 just recorded *Fold state is
-document-adjacent persistence, not a view property* in `project.decisions.md`,
+document-adjacent persistence, not a view property* in [project.decisions.md](../../../../project.decisions.md),
 which is the same claim from the other side. Either the old record is true and
 should be cited from the code that upholds it (the fold-state seam, the
 dehydration path), or it no longer says anything the newer records do not, and
@@ -26,5 +26,5 @@ Zero problems from the checker afterward, citations root-relative.
 
 ## Sources
 
-- `report-218-workspace-buffer-splits-document-from-view.md` in #218's folder,
+- [report-218-workspace-buffer-splits-document-from-view.md](../218-workspace-buffer-splits-document-from-view/report-218-workspace-buffer-splits-document-from-view.md) in #218's folder,
   Bycatch.

@@ -42,8 +42,8 @@ arithmetic, and being charged for a dependency on the source-text view to do it.
 
 The contract layer already knew. `TextInputModel` cites *Editable text fields share one input
 model*. `WrapBreakOpportunity` cites *Wrapped surfaces share one break generator*. `TextEditing`
-cites *Seams are drawn at the shared generator*. All three records live in `project.invariants.md`,
-not `editor.invariants.md`. AGENTS.md convention 2 names `TextEditing` word-edits as a shared
+cites *Seams are drawn at the shared generator*. All three records live in [project.invariants.md](../../../../project.invariants.md),
+not [editor.invariants.md](../../../../src/modules/editor/editor.invariants.md). [AGENTS.md](../../../../AGENTS.md) convention 2 names `TextEditing` word-edits as a shared
 generator in the convention text itself. `EditorCoordinates` described itself in its own doc
 comment as "the shared horizontal-scroll primitive for every list/text pane".
 
@@ -58,7 +58,7 @@ not.
 IS the false signal census 3 kept reporting, so moving it without renaming would have left the
 measurement lying in the other direction.
 
-**Moved four invariant records with them** into a new `src/modules/text/text.invariants.md`: *A
+**Moved four invariant records with them** into a new [src/modules/text/text.invariants.md](../../../../src/modules/text/text.invariants.md): *A
 cursor position resolves to three distinct coordinates*, *Every document mutation bumps the
 revision exactly once*, *The dirty marker is derived from content, never asserted*, *Word deletion
 uses navigation boundaries*. The rules did not change. Their recorded owner did.
@@ -84,7 +84,7 @@ scroll extents and scrollbar proportions" and names `TextDocument.maximumLineWid
 `EditorWrap.totalVisualRows` as its components. The three host files cite them because they are
 CONSUMERS of editor geometry.
 
-Relocating those records into `ui.invariants.md` would zero census 1 and record a false owner. I
+Relocating those records into [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) would zero census 1 and record a false owner. I
 left them. Census 1 stays at 3, honestly, rather than reaching 0 dishonestly. Those three go to
 zero when the host stops consuming editor geometry — which is the capstone itself, not a record
 move.
@@ -93,7 +93,7 @@ One genuine refinement I did NOT act on, and flag for triage: *Geometry aggregat
 consumers* fuses two rules with different generators. Its "Exact hard boundaries" component is
 editor geometry. Its "Exact proportional inputs" component is thumb quantization, which is generic
 — `SolidThumbScrollBar` serves `ScrollableTextViewport`, `DiffView`, and `RootView`. Splitting it
-would move one half to `ui.invariants.md` legitimately. That is a contract change and needs its own
+would move one half to [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) legitimately. That is a contract change and needs its own
 task.
 
 ## Hazard 2 — uninstall symmetry
@@ -165,7 +165,7 @@ Smokes driven green after the change: `smoke-editor-harness`, `smoke-scrollbars-
 0, all ALL-PASS.
 
 Seven test files moved. The coverage ratchet reads a move as a removal, so each is declared in
-`project.coverage-deltas.md` with its before counts and its new path. No assertion was dropped.
+[project.coverage-deltas.md](../../../../project.coverage-deltas.md) with its before counts and its new path. No assertion was dropped.
 
 ## What is left, and why it is not one task
 
@@ -239,7 +239,7 @@ extract, drive — which needs each step to end in a working app.
   Seen once while probing the above (`--key Control+p --key s --key c --key a --key l --key e`
   ended with `quickOpenOpen=false`). Not chased, because the on-ramp defect above was the blocker I
   actually needed to clear. Reported so it is not mistaken for a symptom of this branch.
-- **The empty-category note in `editor.invariants.md`.** Moving the one reality-based record out
+- **The empty-category note in [editor.invariants.md](../../../../src/modules/editor/editor.invariants.md).** Moving the one reality-based record out
   leaves that section empty, and the checker emits `one category is empty — fine while
   bootstrapping`. It is a note, not a problem, and the file states in place that the record moved
   and where. Flagged so a later reader does not read the empty heading as rot.
@@ -255,5 +255,5 @@ from extracted. The real number was 33, and 25 of those were the app using its o
 through a door labelled "editor". The done-test and the goal had drifted apart, and the done-test
 was the more convincing of the two because it produced a number.
 
-The contract layer was right the whole time. Three of the moved files cited `project.invariants.md`
+The contract layer was right the whole time. Three of the moved files cited [project.invariants.md](../../../../project.invariants.md)
 records that describe them as SHARED. Nobody had to discover that. It only had to be read.

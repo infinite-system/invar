@@ -30,9 +30,16 @@ against the current AST before writing.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources
 
 - report-274, Bycatch 2-3.
+
+## Bycatch fold (2026-07-29, from #291)
+
+Workspace.ts: two adjacent documentation blocks before
+`referenceIsExternal`; the first describes `resolveFileReference` and
+attaches to the wrong method. Pre-existing drift, same class as this
+task — fix here.

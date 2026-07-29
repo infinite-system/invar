@@ -1,4 +1,4 @@
-# Brief — #253: the systematic sweep — every ui.invariants.md citation verified
+# Brief — #253: the systematic sweep — every [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) citation verified
 
 Read first:
 `.invar/tasks/in-progress/253-ui-contract-systematic-citation-sweep/task-253-*.md`
@@ -6,7 +6,7 @@ Read first:
 seeds, and the checker question.
 
 The method is #239/#243's, applied exhaustively: enumerate EVERY citation in
-`src/modules/ui/ui.invariants.md` (Mechanism, Evidence, Scope, Verification).
+[src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) (Mechanism, Evidence, Scope, Verification).
 For each: the path exists AND the named symbol is owned by the cited file —
 AST via `bun scripts/ast-query.ts identifiers <name> --tests`; existence
 alone cannot validate ownership. Read each replacement owner before any
@@ -24,15 +24,15 @@ verified" is checkable, not claimed.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the whole file.
-- `src/modules/ui/ui.lattice.md` — 217 links stable, counts quoted before
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the whole file.
+- [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) — 217 links stable, counts quoted before
   and after.
 - `.claude/skills/invariants/scripts/check_invariants.mjs` if the
   short-form decision changes it.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — the contract-boundary gap especially: evidence
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — the contract-boundary gap especially: evidence
 that ui records now depend on editor/filetree/git owners belongs to #241
 (the user's split decision); report toward it, do not decide it.
 

@@ -241,7 +241,7 @@ describe('LayoutModel', () => {
     },
   );
 
-  test('hiding the primary dock gives its complete width to the editor', () => {
+  test('hiding the primary dock leaves the activity surface available', () => {
     const geometry = resolve({
       primaryDockVisible: false,
       rightDockVisible: false,
@@ -251,13 +251,30 @@ describe('LayoutModel', () => {
     expect(geometry.activityBar).toEqual({
       left: 0,
       top: 0,
-      width: 0,
-      height: 0,
+      width: 4,
+      height: 39,
     });
     expect(geometry.sidebar.width).toBe(0);
     expect(geometry.sidebar.height).toBe(0);
     expect(geometry.sidebarSplitter.width).toBe(0);
-    expect(geometry.editorCenter.left).toBe(0);
-    expect(geometry.editorCenter.width).toBe(120);
+    expect(geometry.editorCenter.left).toBe(4);
+    expect(geometry.editorCenter.width).toBe(116);
+  });
+
+  test('the optional right activity bar owns the outer edge without requiring the right dock', () => {
+    const geometry = resolve({
+      rightDockVisible: false,
+      rightActivityBarVisible: true,
+      panelAlignment: 'right',
+    });
+
+    expect(geometry.rightActivityBar).toEqual({
+      left: 116,
+      top: 0,
+      width: 4,
+      height: 39,
+    });
+    expect(geometry.editorCenter.left + geometry.editorCenter.width).toBe(116);
+    expect(geometry.bottomPanel.left + geometry.bottomPanel.width).toBe(116);
   });
 });

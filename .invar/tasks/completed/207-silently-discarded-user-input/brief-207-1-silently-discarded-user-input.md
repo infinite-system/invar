@@ -93,5 +93,5 @@ count off this tree), `bun scripts/check-coverage-ratchet.ts`, `bash scripts/beh
 plus the real-app drives above.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean. Report to
-`/tmp/207-silent-input-dropping-READY.md`: your own `env rg` result, the before/after drive evidence,
+[/tmp/207-silent-input-dropping-READY.md](../../../../../../../../../../../tmp/207-silent-input-dropping-READY.md): your own `env rg` result, the before/after drive evidence,
 each positive control red then green, the shared-class verdict, and anything you could not establish.

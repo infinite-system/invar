@@ -28,5 +28,5 @@ changing the tool; if it will not reproduce, record the attempt and park.
 
 ## Sources
 
-- `/tmp/202-tab-reactivation-rereads-whole-file-READY.md` — Bycatch section
+- [/tmp/202-tab-reactivation-rereads-whole-file-READY.md](../../../../../../../../../../../tmp/202-tab-reactivation-rereads-whole-file-READY.md) — Bycatch section
   (copied into `.invar/tasks/completed/202-.../` at #202's landing).

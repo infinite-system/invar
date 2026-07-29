@@ -36,7 +36,7 @@ invariant and require that some assertion fails.**
 
 A full mutation run is far too slow for a commit gate. The valuable form is **targeted**:
 
-> For each invariant in `project.invariants.md` that claims an IMPOSSIBILITY, mutate the line its
+> For each invariant in [project.invariants.md](../../../../project.invariants.md) that claims an IMPOSSIBILITY, mutate the line its
 > annotation sits on and require a red.
 
 Scope it to a handful of load-bearing modules and run it **outside** the merge gate — nightly or on

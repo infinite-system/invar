@@ -151,7 +151,7 @@ persist settings. No app harness in the census runs against the real HOME.
   - Completes config, data, state, and cache paths for supplied homes.
 - `scripts/harness/PtyTestDriver.test.ts`
   - Locks the complete child environment.
-- `scripts/harness/harness.invariants.md`
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md)
   - Adds the isolated-home and declared-geometry records.
 - Task probes
   - `233-drive-wrap-settings-polarity.ts`

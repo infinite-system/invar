@@ -1,19 +1,23 @@
 #!/usr/bin/env bun
-// Byte-level Markdown split-preview contract: the auto-opened LEFT preview, bidirectional
-// user-led scroll sync and its contributed switch, per-document hand-close memory, the
-// contributed side setting, rendered links, persisted splitter, edge-selection
-// autoscroll/copy/paste, and independent source/preview find all cross the real PTY.
+// Byte-level Markdown split-preview contract: task metadata line breaks, heading styles in both
+// themes, dead-link painting, the auto-opened LEFT preview, bidirectional user-led scroll sync and
+// its contributed switch, per-document hand-close memory, the contributed side setting, rendered
+// links, persisted splitter, edge-selection autoscroll/copy/paste, and independent source/preview
+// find all cross the real PTY.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
+// invariant: Metadata fields preserve authored lines (src/modules/markdown/markdown.invariants.md)
+// invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 // invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 // invariant: A controlling PTY resize reaches the renderer (src/modules/terminal/terminal.invariants.md)
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
+import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
@@ -229,6 +233,146 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+function packedThemeColor(color: string): number {
+  return Number.parseInt(color.slice(1), 16);
+}
+
+async function driveTaskPresentationInTheme(
+  theme: 'dark' | 'light',
+): Promise<void> {
+  const taskFixtureRoot = mkdtempSync(
+    join(tmpdir(), `tui-markdown-task-${theme}-`),
+  );
+  const taskHomeDirectory = mkdtempSync(
+    join(tmpdir(), `tui-markdown-task-home-${theme}-`),
+  );
+  const taskStatusPath = join(taskHomeDirectory, 'status.json');
+  const settingsDirectory = join(taskHomeDirectory, '.config', 'invar');
+  mkdirSync(settingsDirectory, { recursive: true });
+  await Bun.write(
+    join(settingsDirectory, 'settings.json'),
+    JSON.stringify({ theme }),
+  );
+  await Bun.write(
+    join(taskFixtureRoot, 'README.md'),
+    [
+      '# Task presentation',
+      '',
+      'State: IN-PROGRESS',
+      'Created: 2026-07-29',
+      'Engine: codex',
+      '',
+      'Prose joins',
+      'across source lines.',
+      '',
+      '[current link](README.md)',
+      '',
+      '[dead link](missing-link-target.md)',
+      '',
+      '[external link](https://example.com/docs)',
+      '',
+      '## Existing section',
+      '',
+    ].join('\n'),
+  );
+  const taskDriver = new PtyTestDriver.Class({
+    workspaceRoot: taskFixtureRoot,
+    columns: 180,
+    rows: 36,
+    homeDirectory: taskHomeDirectory,
+    environment: {
+      TUI_STATUS_PATH: taskStatusPath,
+      LANG: 'C.UTF-8',
+      NERD_FONT: '0',
+    },
+  });
+
+  try {
+    await taskDriver.awaitSnapshot(
+      (candidate) => candidate.findText('README.md') !== null,
+      15_000,
+    );
+    taskDriver.sendKeys('Enter');
+    await HarnessSmoke.Class.awaitStatus(
+      taskDriver,
+      taskStatusPath,
+      `${theme} task preview opens and finishes parsing`,
+      (status) =>
+        String(status.activeBuffer).endsWith('/README.md') &&
+        status.markdownPreviewOpen === true &&
+        status.markdownParsing === false,
+    );
+    const snapshot = await taskDriver.awaitGridCondition(
+      `${theme} task metadata and prose paint in the preview`,
+      (candidate) =>
+        candidate.findText('╭─Preview') !== null &&
+        previewHasMarker(candidate, 'Task presentation') &&
+        previewHasMarker(candidate, 'State: IN-PROGRESS') &&
+        previewHasMarker(candidate, 'Created: 2026-07-29') &&
+        previewHasMarker(candidate, 'Engine: codex') &&
+        previewHasMarker(candidate, 'Prose joins across source lines.') &&
+        previewHasMarker(candidate, 'current link') &&
+        previewHasMarker(candidate, 'dead link') &&
+        previewHasMarker(candidate, 'external link') &&
+        previewHasMarker(candidate, 'Existing section'),
+    );
+    const state = previewMarkerPosition(snapshot, 'State: IN-PROGRESS');
+    const created = previewMarkerPosition(snapshot, 'Created: 2026-07-29');
+    const engine = previewMarkerPosition(snapshot, 'Engine: codex');
+    HarnessSmoke.Class.requireCondition(
+      created.row === state.row + 1 && engine.row === created.row + 1,
+      `${theme} task metadata keeps one authored field per preview row`,
+    );
+
+    const heading1 = previewMarkerPosition(snapshot, 'Task presentation');
+    const heading2 = previewMarkerPosition(snapshot, 'Existing section');
+    const prose = previewMarkerPosition(
+      snapshot,
+      'Prose joins across source lines.',
+    );
+    const heading1Cell = snapshot.cell(heading1.row, heading1.column);
+    const heading2Cell = snapshot.cell(heading2.row, heading2.column);
+    const proseCell = snapshot.cell(prose.row, prose.column);
+    HarnessSmoke.Class.requireCondition(
+      heading1Cell?.isUnderline === false &&
+        heading1Cell.isBold === true &&
+        heading1Cell.foreground !== proseCell?.foreground,
+      `${theme} H1 uses bold distinct color without an underline`,
+    );
+    HarnessSmoke.Class.requireCondition(
+      heading2Cell?.isUnderline === false &&
+        heading2Cell.isBold === true &&
+        heading2Cell.foreground !== heading1Cell?.foreground &&
+        heading2Cell.foreground !== proseCell?.foreground,
+      `${theme} H2 keeps its bold accent treatment`,
+    );
+    const palette =
+      theme === 'dark' ? ThemePalettes.Class.DARK : ThemePalettes.Class.LIGHT;
+    const currentLink = previewMarkerPosition(snapshot, 'current link');
+    const deadLink = previewMarkerPosition(snapshot, 'dead link');
+    const externalLink = previewMarkerPosition(snapshot, 'external link');
+    HarnessSmoke.Class.requireCondition(
+      snapshot.cell(currentLink.row, currentLink.column)?.foreground ===
+        packedThemeColor(palette.accent) &&
+        snapshot.cell(deadLink.row, deadLink.column)?.foreground ===
+          packedThemeColor(palette.error) &&
+        snapshot.cell(externalLink.row, externalLink.column)?.foreground ===
+          packedThemeColor(palette.accent),
+      `${theme} paints dead relative links red and leaves resolving or external links normal`,
+    );
+  } finally {
+    await taskDriver.dispose();
+    await HarnessSmoke.Class.removeTemporaryDirectory(taskFixtureRoot);
+    await HarnessSmoke.Class.removeTemporaryDirectory(taskHomeDirectory);
+  }
+}
+
+console.log(
+  '== harness markdown: task fields and heading styles hold in both themes ==',
+);
+await driveTaskPresentationInTheme('dark');
+await driveTaskPresentationInTheme('light');
+
 async function driveTerminalShrinkAtScale(
   fixtureLineCount: number,
 ): Promise<void> {
@@ -241,7 +385,7 @@ async function driveTerminalShrinkAtScale(
   const scaleStatusPath = join(scaleHomeDirectory, 'status.json');
   const jumpSourceLine =
     fixtureLineCount <= 40
-      ? Math.max(3, Math.floor(fixtureLineCount * 0.4))
+      ? Math.max(7, Math.floor(fixtureLineCount * 0.7))
       : Math.floor(fixtureLineCount * 0.75);
   const jumpMarker = `Jump ${fixtureLineCount}`;
   const scrollDepths = [0.2, 0.45, 0.65].map((depthRatio, depthIndex) => ({
@@ -255,6 +399,11 @@ async function driveTerminalShrinkAtScale(
     { length: fixtureLineCount },
     (_unusedValue, lineIndex) => {
       if (lineIndex === 0) return `# Scale fixture ${fixtureLineCount}`;
+      if (lineIndex === 1) return '[current scale link](README.md)';
+      if (lineIndex === 2 || lineIndex === 4 || lineIndex === 6) return '';
+      if (lineIndex === 3) return '[dead scale link](missing-scale.md)';
+      if (lineIndex === 5)
+        return '[external scale link](https://example.com/docs)';
       if (lineIndex === jumpSourceLine) return `## ${jumpMarker}`;
       const scrollMarker = scrollMarkerBySourceLine.get(lineIndex);
       return scrollMarker
@@ -329,6 +478,24 @@ async function driveTerminalShrinkAtScale(
           return false;
         }
       },
+    );
+    const currentScaleLink = previewMarkerPosition(
+      tocSnapshot,
+      'current scale link',
+    );
+    const deadScaleLink = previewMarkerPosition(tocSnapshot, 'dead scale link');
+    const externalScaleLink = previewMarkerPosition(
+      tocSnapshot,
+      'external scale link',
+    );
+    HarnessSmoke.Class.requireCondition(
+      tocSnapshot.cell(currentScaleLink.row, currentScaleLink.column)
+        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
+        tocSnapshot.cell(deadScaleLink.row, deadScaleLink.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error) &&
+        tocSnapshot.cell(externalScaleLink.row, externalScaleLink.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent),
+      `${fixtureLineCount}-line preview paints dead links red without changing current or external links`,
     );
     const tocMarker = structureMarkerPosition(tocSnapshot, jumpMarker);
     clickCell(scaleDriver, tocMarker.column, tocMarker.row);
@@ -1052,6 +1219,21 @@ try {
     driver.snapshot(),
     'the docs',
   );
+  const missingLinkPaintPosition = previewMarkerPosition(
+    driver.snapshot(),
+    'the missing note',
+  );
+  HarnessSmoke.Class.requireCondition(
+    driver
+      .snapshot()
+      .cell(externalLinkPosition.row, externalLinkPosition.column)
+      ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent) &&
+      driver
+        .snapshot()
+        .cell(missingLinkPaintPosition.row, missingLinkPaintPosition.column)
+        ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.error),
+    'a missing relative link paints red while an external link stays normal',
+  );
   driver.sendMouse({
     kind: 'move',
     column: externalLinkPosition.column,
@@ -1128,10 +1310,91 @@ try {
     'a missing-target link answers the click with the stated miss',
   );
 
-  // A later successful open withdraws the owed notice.
+  // Repair the same authored link through the source watcher. Its written state is stale
+  // (`active`) while the task folder now lives under `completed`; the task name and file tail
+  // are unchanged. The new parse revision must repaint the link normally before it opens.
+  const movedTaskFolderName = '999-task-state-link-control';
+  const movedTaskFolder = join(
+    fixtureRoot,
+    '.invar',
+    'tasks',
+    'completed',
+    movedTaskFolderName,
+  );
+  mkdirSync(movedTaskFolder, { recursive: true });
+  await Bun.write(
+    join(movedTaskFolder, `task-${movedTaskFolderName}.md`),
+    '# Moved task target\n',
+  );
+  const revisionBeforeRepair = Number(
+    HarnessSmoke.Class.readStatus(statusPath).bufferRevision,
+  );
+  const repairedMarkdownText = `${markdownLines
+    .map((line) =>
+      line.replace(
+        '[the missing note](missing-note.md)',
+        `[the missing note](.invar/tasks/active/${movedTaskFolderName}/task-${movedTaskFolderName}.md)`,
+      ),
+    )
+    .join('\n')}\n`;
+  const repairSourceColumn = sourceBorderColumn(driver.snapshot()) + 8;
+  clickCell(
+    driver,
+    repairSourceColumn,
+    previewBorder(driver.snapshot()).row + 3,
+  );
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the source pane receives focus before the repair edit',
+    (status) => status.markdownPaneFocus === 'source',
+  );
+  driver.sendKeys('Control+a');
+  driver.sendPaste(repairedMarkdownText);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the watcher repair reaches a matching parsed revision',
+    (status) =>
+      Number(status.bufferRevision) > revisionBeforeRepair &&
+      status.markdownParsing === false &&
+      Number(status.markdownRevision) === Number(status.bufferRevision),
+  );
+  // The full-document paste leaves the source cursor at the end. Scroll sync honestly follows
+  // that user-led source position, so return to the repaired link before judging its new paint.
+  driver.sendKeys('Control+Home');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the repaired source returns to its first row before its link paint is judged',
+    (status) => Number(status.editorScrollTop) === 0,
+  );
+  const repairedSnapshot = await driver.awaitGridCondition(
+    'the repaired moved-state link repaints with the normal link color',
+    (candidate) => {
+      const repairedPosition = previewMarkerPosition(
+        candidate,
+        'the missing note',
+      );
+      return (
+        candidate.cell(repairedPosition.row, repairedPosition.column)
+          ?.foreground === packedThemeColor(ThemePalettes.Class.DARK.accent)
+      );
+    },
+  );
+  HarnessSmoke.Class.pass(
+    'a watcher revision repaints the repaired moved-state link normally',
+  );
+  driver.sendKeys('Control+s');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the repaired source saves before later tab-layout contracts run',
+    (status) => status.dirty === false,
+  );
   const resolvableLinkPosition = previewMarkerPosition(
-    driver.snapshot(),
-    'the target',
+    repairedSnapshot,
+    'the missing note',
   );
   driver.sendMouse({
     kind: 'press',
@@ -1147,21 +1410,53 @@ try {
     button: 'left',
     control: true,
   });
+  const movedTaskTargetStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the moved-state task link opens and clears the link notice',
+    (status) =>
+      String(status.activeBuffer).endsWith(`/task-${movedTaskFolderName}.md`) &&
+      status.markdownLinkNotice === null,
+  );
+  HarnessSmoke.Class.pass(
+    'a moved-state task link opens the current file and clears the stated notice',
+  );
+  driver.sendKeys('Control+w');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'a successful open clears the link notice',
+    'closing the moved task target removes its tab',
     (status) =>
-      String(status.activeBuffer).endsWith('/target.ts') &&
-      status.markdownLinkNotice === null,
+      !String(status.activeBuffer).endsWith(
+        `/task-${movedTaskFolderName}.md`,
+      ) &&
+      Number(status.bufferTabCount) <
+        Number(movedTaskTargetStatus.bufferTabCount),
   );
-  HarnessSmoke.Class.pass('a successful open clears the stated notice');
-  const tabPositionAfterNotice = driver.snapshot().findText('README.md');
-  if (!tabPositionAfterNotice) throw new Error('FAIL README tab missing');
-  clickCell(
+  driver.sendKeys('Control+p');
+  await HarnessSmoke.Class.awaitStatus(
     driver,
-    tabPositionAfterNotice.column + 2,
-    tabPositionAfterNotice.row,
+    statusPath,
+    'Go to File opens for the repaired README',
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText('README.md');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the repaired README',
+    (status) =>
+      status.quickOpenQuery === 'README.md' &&
+      Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File returns to the repaired source preview',
+    (status) =>
+      String(status.activeBuffer).endsWith('/README.md') &&
+      status.markdownPreviewOpen === true,
   );
   snapshot = await driver.awaitSnapshot((candidate) =>
     previewHasMarker(candidate, 'Rendered heading'),

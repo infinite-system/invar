@@ -1,4 +1,4 @@
-// The structure navigator as a right-dock pane content citizen: a cells citizen — the host
+// The structure navigator as a dock pane content citizen: a cells citizen — the host
 // paints the StyledText this returns — occupying the dock beside the file it outlines with zero
 // host wiring. It projects the ACTIVE workspace's outline, resolved late through the injected
 // accessor, exactly like the file-tree pane.

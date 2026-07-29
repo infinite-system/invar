@@ -105,7 +105,7 @@ defect.
   0. It resolved 998 annotations and 217 lattice links with 0 problems.
 - `bun scripts/harness/smoke-sdk-extraction-harness.ts`: exit 0.
 
-I did not run `scripts/merge-gate.sh`. TASK.md embargoes that gate until this
+I did not run `scripts/merge-gate.sh`. [TASK.md](../../../../TASK.md) embargoes that gate until this
 fix lands. The commit used the required `SKIP_GATE=1` bypass.
 
 ## Interim reaper

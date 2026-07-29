@@ -36,6 +36,8 @@ const coveredSettingNames = new Set([
   'theme',
   'wordWrap',
   'showActivityBar',
+  // Live mirror apply and exact glyph parity live in the activity-bar smoke.
+  'showRightActivityBar',
   'showIndentGuides',
   'reducedMotion',
   'workspaceTabPosition',

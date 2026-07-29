@@ -40,6 +40,6 @@ remaining edit cost to `syncWrapIndex` allocating four arrays per edit. That bec
 
 ## Sources
 
-- `brief-186-1-max-width-rescan-at-500k.md`
-- `report-186-max-width-rescan-at-500k.md`
+- [brief-186-1-max-width-rescan-at-500k.md](brief-186-1-max-width-rescan-at-500k.md)
+- [report-186-max-width-rescan-at-500k.md](report-186-max-width-rescan-at-500k.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

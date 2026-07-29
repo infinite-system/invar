@@ -1,0 +1,18 @@
+{
+  "task": 273,
+  "slug": "tasks-pane-follow-ups",
+  "branch": "fleet/273-tasks-pane-follow-ups",
+  "worktree": ".invar/worktrees/273-tasks-pane-follow-ups",
+  "tmuxSession": "invar/273-tasks-pane-follow-ups",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-273-tasks-pane-follow-ups.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "5d4e4e68af0352c4aa37ae84e696c5c9c8174ba2",
+  "startedAt": "2026-07-29T12:45:14-04:00",
+  "landedAt": "2026-07-29T13:26:17-04:00",
+  "durationMinutes": 41,
+  "mergeCommit": "6ad6acc6"
+}

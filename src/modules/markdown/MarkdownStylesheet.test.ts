@@ -49,6 +49,17 @@ test('row selectors resolve every role and heading level', () => {
 
 test('heading levels carry a distinct intensity ramp', () => {
   const stylesheet = MarkdownStylesheet.Class;
+  const heading1 = stylesheet.textStyle('heading1');
+  const heading2 = stylesheet.textStyle('heading2');
+  expect(heading1.colorSlot).toBe('keyword');
+  expect(heading1.bold).toBe(true);
+  expect(heading1.underline).toBe(false);
+  expect(heading2).toMatchObject({
+    colorSlot: 'accent',
+    bold: true,
+    italic: false,
+    underline: false,
+  });
   const rampKeys = [1, 2, 3, 4, 5, 6].map((level) => {
     const style = stylesheet.textStyle(stylesheet.headingSelector(level));
     return `${style.colorSlot}:${style.bold}:${style.italic}:${style.underline}`;
@@ -66,6 +77,10 @@ test('inline styles overlay the element style through the stylesheet', () => {
   expect(stylesheet.inlineTextStyle('inlineEmphasis').colorSlot).toBe(null);
   expect(stylesheet.inlineTextStyle('inlineStrong').bold).toBe(true);
   expect(stylesheet.inlineTextStyle('inlineLink').underline).toBe(true);
+  expect(stylesheet.deadReferenceStyle).toMatchObject({
+    colorSlot: 'error',
+    underline: true,
+  });
 });
 
 test('pane padding gives body text breathing room from the pane edges', () => {

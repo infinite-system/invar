@@ -20,7 +20,7 @@ It contributes exactly two things and releases both:
    claimant answers "do I take the column over right now" (a source-control comparison, a Markdown
    split, both temporary). The default answers "what IS the column". Forcing one registry to carry
    both would have made the editor implement ten `EditorSurfaceContent` members it has no meaning
-   for — AGENTS.md rule 2's own tell that the boundary is in the wrong place.
+   for — [AGENTS.md](../../../../AGENTS.md) rule 2's own tell that the boundary is in the wrong place.
 2. **The bracket-match status projection.** `matchingBracketLine` / `matchingBracketColumn` left
    `AppStatusProjection` for `EditorPlugin.statusSnapshot`, the same way the terminal projects its
    own. With the editor uninstalled the keys are ABSENT, not stale: nothing paints a match nobody
@@ -262,12 +262,12 @@ smoke-workspace-tabs-harness          smoke-field-caret-harness
 
 Per the #114 lesson. Two records, both written before the branches came out.
 
-**New: *The editor column's default occupant is a contribution*** (`ui.invariants.md`). Five
+**New: *The editor column's default occupant is a contribution*** ([ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)). Five
 components: one default registered (a second is refused by name); built late from a host-supplied
 context; host services are named ports, not typed fields; uninstall releases what it built, with
 withdrawal releasing nothing on its own; an empty column states its affordance.
 
-**Amended: *One provider creates every workspace buffer view*** (`workspace.invariants.md`). *One
+**Amended: *One provider creates every workspace buffer view*** ([workspace.invariants.md](../../../../src/modules/workspace/workspace.invariants.md)). *One
 releaser* now says the release goes through the buffer set and is REVERSIBLE, and gains two
 components: *A release goes through the buffer set, not around it* (with the dirty-entry rule) and
 *A release keeps the provider*.
@@ -311,7 +311,7 @@ own exemption in place: `Bootstrap`'s `createSourceTextViews` is not covered, an
   it is one line inside the same file and the same subject (the host's editor imports) — flagged
   here so it is reviewed rather than discovered.
 - **The invariant record *The editor owns no view state* still has no citing annotation**, and
-  `editor.invariants.md` still emits `one category is empty — fine while bootstrapping`. Both
+  [editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) still emits `one category is empty — fine while bootstrapping`. Both
   pre-existing, both already on the record from #219 and #122.
 - No mispainted cell, focus jump, stall, or wrong glyph was seen in any drive, at any of the three
   scales, before or after.
@@ -335,6 +335,6 @@ lines of the new smoke: reinstall, reopen, and look at the screen.
 
 The other finding is smaller and about seam shape. `EditorSurfaceContents` and `EditorColumnDefault`
 look like the same registry and are not. One holds contenders for a slot; the other holds the slot's
-identity. Merging them was the tempting move, and the tell against it was AGENTS.md rule 2's: the
+identity. Merging them was the tempting move, and the tell against it was [AGENTS.md](../../../../AGENTS.md) rule 2's: the
 editor would have had to implement — and suppress — ten members of a contract about being a
 temporary claimant, in order to say the permanent thing.

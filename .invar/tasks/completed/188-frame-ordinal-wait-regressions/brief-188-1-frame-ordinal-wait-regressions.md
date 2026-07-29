@@ -2,7 +2,7 @@
 
 Work ONLY in this worktree. Do NOT run `scripts/merge-gate.sh` as your own verification — it is red
 for the reason you are fixing. Do NOT push, merge, tag or delete. Report to
-`/tmp/188-frame-wait-regressions-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then `bun install`
+[/tmp/188-frame-wait-regressions-READY.md](../../../../../../../../../../../tmp/188-frame-wait-regressions-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then `bun install`
 FIRST — a fresh worktree has no `node_modules`.
 
 ## The population separation is already done. Start from it.

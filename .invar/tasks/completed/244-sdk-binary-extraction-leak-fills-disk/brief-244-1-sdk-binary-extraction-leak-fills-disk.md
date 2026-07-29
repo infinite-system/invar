@@ -1,7 +1,7 @@
 # Brief — #244: stop the agent-sdk extraction leak; spawn nothing until the agent pane works
 
 Read first:
-`.invar/tasks/active/244-sdk-binary-extraction-leak-fills-disk/task-244-sdk-binary-extraction-leak-fills-disk.md`
+[.invar/tasks/active/244-sdk-binary-extraction-leak-fills-disk/task-244-sdk-binary-extraction-leak-fills-disk.md](task-244-sdk-binary-extraction-leak-fills-disk.md)
 — it carries the user's decision, the measured rate, and your first
 diagnostic thread.
 
@@ -50,11 +50,11 @@ Done-test, both polarities:
 
 - The agent module's records (add one if none exists: an app boot leaves no
   unreaped binary extraction; the agent backend spawns on first use only).
-- `scripts/harness/harness.invariants.md` — smoke boots are disk-bounded.
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — smoke boots are disk-bounded.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories — runtime defects especially:
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories — runtime defects especially:
 you are reading the boot path and the agent backend, where an
 immediately-dying eager spawn already hid for days. Why did nothing report
 its death? A spawn that fails silently on every boot is its own finding.

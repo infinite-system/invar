@@ -2,6 +2,7 @@
 // all with plain fake PaneContents (the host is content-agnostic by construction).
 import { test, expect } from 'bun:test';
 import { PanelHost } from './PanelHost';
+import { PanelHostFocusSet } from './PanelHostFocusSet';
 import type { PaneContent } from './PaneContent.interface';
 import { ref, type Ref } from 'vue';
 import type { StyledText, KeyEvent } from '@opentui/core';
@@ -135,6 +136,41 @@ test('retained dormant ids return to their persisted activity slot', () => {
     'extensions',
   ]);
   expect(persistenceCount).toBe(0);
+});
+
+test('moving content between hosts preserves its instance visibility and focus', () => {
+  const order = ref(['files', 'structure', 'tasks']);
+  const focusSet = new PanelHostFocusSet.Class();
+  const primaryDockHost = new PanelHost.Class({
+    contentOrder: order,
+    focusSet,
+    retainUnregisteredContentOrder: true,
+  });
+  const rightDockHost = new PanelHost.Class({
+    contentOrder: order,
+    focusSet,
+    retainUnregisteredContentOrder: true,
+  });
+  const structure = fakeContent('structure');
+  rightDockHost.register(fakeContent('tasks'));
+  rightDockHost.register(structure);
+  rightDockHost.revealContent('structure');
+  rightDockHost.focus();
+
+  expect(rightDockHost.moveContentToHost('structure', primaryDockHost)).toBe(
+    true,
+  );
+  expect(rightDockHost.has('structure')).toBe(false);
+  expect(rightDockHost.visible.value).toBe(false);
+  expect(primaryDockHost.content('structure')).toBe(structure);
+  expect(primaryDockHost.visible.value).toBe(true);
+  expect(primaryDockHost.focused.value).toBe(true);
+  expect(primaryDockHost.activeId.value).toBe('structure');
+  expect(structure.disposed).toBe(false);
+  expect(order.value).toEqual(['files', 'structure', 'tasks']);
+
+  primaryDockHost.removeContent('structure');
+  expect(structure.disposed).toBe(true);
 });
 
 test('registered content reorder persists and ignores dormant identifiers', () => {

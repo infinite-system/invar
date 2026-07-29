@@ -1,7 +1,7 @@
 # TASK — #189: two gate reds blocking main. Separate before fixing.
 
 Work ONLY in this worktree. Branch `fleet/189-gate-reds-separation`. Do NOT push, merge, tag or
-delete. Report to `/tmp/189-gate-reds-separation-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then
+delete. Report to [/tmp/189-gate-reds-separation-READY.md](../../../../../../../../../../../tmp/189-gate-reds-separation-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then
 `bun install` FIRST — a fresh worktree has no `node_modules`.
 
 **YOU ARE THE ONLY BUILDER.** You may run `scripts/merge-gate.sh` — you need the POOL to reproduce

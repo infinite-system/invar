@@ -62,6 +62,6 @@ that way rather than as an unqualified pass.
 
 ## Sources
 
-- `brief-196-1-editor-flyweight-edit-path.md`
-- `report-196-editor-flyweight-edit-path.md`
+- [brief-196-1-editor-flyweight-edit-path.md](brief-196-1-editor-flyweight-edit-path.md)
+- [report-196-editor-flyweight-edit-path.md](report-196-editor-flyweight-edit-path.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

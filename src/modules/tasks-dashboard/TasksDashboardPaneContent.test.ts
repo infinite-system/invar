@@ -31,9 +31,26 @@ function makeFixture() {
     isObserved: () => true,
     requestRender: () => {},
     cycleSeconds: () => 10,
+    fleetRepositoryRoot: () => root,
+    readTaskFleetFacts: (_fleetRepositoryRoot, record) => ({
+      lineDelta: { added: 1, removed: 0 },
+      phase: 'building',
+      worktreePath: join(root, '.invar', 'worktrees', record.folderName),
+      sessionName: `invar/${record.folderName}`,
+    }),
+    readFleetGateGlance: () => null,
   });
   const application = {
-    theme: { glyphLevel: ref('unicode') },
+    theme: {
+      glyphLevel: ref('unicode'),
+      palette: ThemePalettes.Class.DARK,
+      taskActionIcons: {
+        workspace: 'W',
+        taskRecord: 'T',
+        latestBrief: 'B',
+        latestReport: 'R',
+      },
+    },
     settings: { scrollbarThickness: ref(1) },
     rightDockHost: {
       blur: () => {
@@ -42,6 +59,7 @@ function makeFixture() {
     },
     requestRender: () => {},
   } as never as ApplicationContributionContext;
+  overview.startObservation();
   const pane = new TasksDashboardPaneContent.Class(
     application,
     overview,
@@ -94,9 +112,9 @@ test('a pointer-down on a body row selects the task and opens it, blurring the d
   const fixture = makeFixture();
   const { pane, overview } = fixture;
   pane.onResize(60, 10);
-  // Screen row 0 is the tab line; row 2 is the second lens row (#901).
-  expect(pane.onPointerDown(5, 2)).toBe(true);
-  expect(overview.selectedIndex.value).toBe(1);
+  // Screen row 0 is the tab line; row 3 is the second task row (#901).
+  expect(pane.onPointerDown(5, 3)).toBe(true);
+  expect(overview.selectedIndex.value).toBe(2);
   expect(fixture.openCount.value).toBe(1);
   expect(fixture.blurCount.value).toBe(1);
   fixture.dispose();

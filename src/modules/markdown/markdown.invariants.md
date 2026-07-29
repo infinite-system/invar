@@ -235,14 +235,15 @@ the active palette, so a theme change restyles the preview without touching the 
 **Mechanism:** One rule table maps element selectors (`heading1`…`heading6`, `paragraph`,
 `blockquote`, `listItem`, `codeBlock`, `table`…, `rule`) to margins and text styles, one
 vocabulary object holds the structural glyphs, and `spacingBetween` collapses adjacent margins
-CSS-style. `blockSelector`/`rowSelector` are the only translation from parsed blocks and row
-roles into selectors.
+CSS-style. The level-one heading uses the `keyword` slot with bold text and no underline. The
+level-two heading keeps its bold `accent` style. `blockSelector`/`rowSelector` are the only
+translation from parsed blocks and row roles into selectors.
 
 **Generates:** uniform pane padding (the breathing room between text and pane edges); the
-heading intensity ramp; single-spaced list runs that still separate from paragraphs; the quote
-bar on every wrapped quote row; code frames whose right edge stays on one content column while long
-physical code rows remain reachable by horizontal scroll; consistent presentation across every
-element without per-element literals.
+color-and-intensity heading ramp with no H1 underline; single-spaced list runs that still separate
+from paragraphs; the quote bar on every wrapped quote row; code frames whose right edge stays on
+one content column while long physical code rows remain reachable by horizontal scroll; consistent
+presentation across every element without per-element literals.
 
 **Rejected alternatives:** per-element literals scattered through projection and paint — the
 pre-#236 state, where the quote bar and code frame dropped off continuation rows because each
@@ -252,14 +253,94 @@ call site re-rolled its own prefix policy.
 `MarkdownPreview.ts` (`visitBlock`, `collectRows`, `totalRows` consume metrics);
 `MarkdownRenderable.ts` (`styledChunk`, `decorateText` consume text styles);
 `MarkdownStylesheet.test.ts` (the census test proves the consumers hold no presentation
-vocabulary).
+vocabulary); `scripts/harness/smoke-markdown-harness.ts` (H1 and H2 terminal cell attributes in
+both themes).
 
 **Impossible if true:** a box-drawing or bullet glyph literal inside `MarkdownPreview.ts` or
 `MarkdownRenderable.ts`; a palette slot chosen in the painter outside the stylesheet (the pane
-fg/bg defaults excepted); two elements resolving the same presentation question through
-different code paths.
+fg/bg defaults excepted); an underlined H1; H1 and H2 with identical terminal attributes; two
+elements resolving the same presentation question through different code paths.
 
-**Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts`
+**Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Dead relative Markdown links have one revision-stamped verdict
+
+**Invariant:** If an authored relative Markdown link does not resolve to a workspace file, then its
+preview text uses the theme error color and underline. A resolving relative link and an external
+link keep the normal link style.
+
+**Scope:** Authored Markdown links in the rendered preview. Inline-code references and opening
+external links are outside this appearance rule.
+
+**Mechanism:** `MarkdownPreview.referenceTargets` exposes the parsed document's authored targets.
+`MarkdownSplitView` resolves each distinct non-external target once per parsed revision and caches
+the dead verdict. `MarkdownRenderable` reads that cache while painting and obtains the error
+presentation from `MarkdownStylesheet`. A watcher edit creates a new source and parse revision, so
+the next paint rebuilds the verdicts without reopening the preview.
+
+**Generates:** Red underlined dead links in both themes; normal current and moved task-state links;
+live repair after file creation or link editing; no repeated filesystem probes on unchanged
+frames.
+
+**Rejected alternatives:** Probe the filesystem from every painted span on every frame — document
+size and frame rate would multiply filesystem work. Treat every unresolved target as dead —
+external links are not workspace files and remain visually valid.
+
+**Evidence:** `MarkdownSplitView.ts` (`referenceDeadByTarget`, `refreshReferenceVerdicts`);
+`MarkdownRenderable.ts` (dead-link decoration); `MarkdownStylesheet.ts`
+(`deadReferenceStyle`); `MarkdownSplitView.test.ts` (one resolution pass per parse revision);
+`MarkdownStylesheet.test.ts`; `scripts/harness/smoke-markdown-harness.ts` (both themes, live
+repair, and 10-line/100,000-line scale arms).
+
+**Impossible if true:** A missing relative link using the normal accent style; an HTTP link painted
+as dead because it is not a workspace file; an unchanged frame repeating filesystem resolution;
+a watcher-driven repair that stays red after the new parse revision paints.
+
+**Verification:** `bun test src/modules/markdown/MarkdownSplitView.test.ts
+src/modules/markdown/MarkdownStylesheet.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### Metadata fields preserve authored lines
+
+**Invariant:** If a paragraph contains two or more consecutive `Key: value` metadata fields, then
+each field keeps its authored line boundary in the preview, while ordinary prose lines still join
+and reflow as one paragraph.
+
+**Scope:** `MarkdownParser.readParagraph`, metadata labels made from letters, digits, spaces,
+underscores, or hyphens, and the rows that `MarkdownPreview.visitWrapped` projects from the parsed
+paragraph. A single field line and mixed prose remain ordinary reflowing paragraphs.
+
+**Mechanism:** `MarkdownParser.isMetadataFieldLine` recognizes a complete paragraph only when every
+line has the metadata-field shape and the paragraph has at least two lines. `readParagraph` joins
+that block with newline characters and joins every other paragraph with spaces. The shared wrapped
+text path turns only preserved newline characters into preview rows.
+
+**Generates:** readable task-file header stacks; definition-like metadata blocks; unchanged
+CommonMark-style reflow for ordinary source-wrapped prose.
+
+**Rejected alternatives:** Treat every Markdown soft break as a line break — ordinary prose would
+stop reflowing. Special-case task filenames or known field labels — the semantic would depend on
+one repository format instead of the authored block shape.
+
+**Evidence:** `src/modules/markdown/MarkdownParser.ts` (`readParagraph`,
+`isMetadataFieldLine`); `MarkdownParser.test.ts` (`preserves consecutive metadata fields while
+prose still reflows`); `scripts/harness/smoke-markdown-harness.ts` (task fields and prose through
+the real PTY).
+
+**Impossible if true:** a task header painting `State:`, `Created:`, and `Engine:` on one preview
+row; an ordinary two-line prose paragraph painting an authored line break.
+
+**Verification:** `bun test src/modules/markdown/MarkdownParser.test.ts && bun
+scripts/harness/smoke-markdown-harness.ts`
 
 **Status:** provisional
 
@@ -505,18 +586,22 @@ confinement with no markdown in it, and rendered documents are simply its first 
 fragments, rejects external schemes and escapes, and confirms the target exists before
 `MarkdownPreviewContent` routes it through `Workspace.openFileInTab` and moves keyboard focus to
 the editor, so the jump is immediately navigable (Back/Forward record both ends through the
-navigation records). A Bootstrap routing guard clears a non-dragging native selection residue on
-Ctrl+left-down — OpenTUI otherwise consumes the down as "extend selection" after any click on
-selectable text, and the link click silently dies before reaching the pane.
+navigation records). If an exact `.invar/tasks/<state>/<task-name>/<tail>` target is absent,
+`TaskStatePath` retries the same task name and tail in the other three lifecycle states while
+retaining the workspace confinement check. A Bootstrap routing guard clears a non-dragging native
+selection residue on Ctrl+left-down — OpenTUI otherwise consumes the down as "extend selection"
+after any click on selectable text, and the link click silently dies before reaching the pane.
 
 **Generates:** clickable standard Markdown links; clickable backtick file paths; hover emphasis and
 an explanatory tooltip; a keyboard activation chord; focus following the opened file; the stated
-outcome for external or missing targets (`An unresolvable Markdown link states why`).
+outcome for external or missing targets (`An unresolvable Markdown link states why`); task-record
+links that survive lifecycle-state moves without basename guessing.
 
 **Evidence:** `src/modules/markdown/MarkdownRenderable.ts` (`referenceAtCell`);
 `src/modules/markdown/MarkdownSplitView.ts` (`referenceAt`, `openHoveredReference`);
 `src/modules/markdown/MarkdownPreviewContent.ts` (`openReference` wiring);
 `src/modules/workspace/Workspace.ts` (`resolveFileReference`);
+`src/modules/system/TaskStatePath.ts` (the structural task-state fallback);
 `src/modules/app/Bootstrap.ts` (the Ctrl+click routing guard); `scripts/smoke-markdown.sh`;
 `scripts/harness/smoke-markdown-harness.ts`.
 
@@ -524,7 +609,8 @@ outcome for external or missing targets (`An unresolvable Markdown link states w
 activation; an HTTP URL or path escaping the workspace being opened as an editor file; the drawn
 reference text and its clickable cells disagreeing; a Ctrl+click on a rendered link dying because
 an earlier click left a native selection residue; a click-opened file whose editor does not hold
-the keyboard.
+the keyboard; a task-state fallback resolving a different task name, a different tail, or a path
+outside `.invar/tasks`.
 
 **Verification:** `bash scripts/smoke-markdown.sh && bun scripts/harness/smoke-markdown-harness.ts`.
 

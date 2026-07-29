@@ -17,10 +17,10 @@ report is the only file written outside the worktree.
 
 | file | what it settles |
 | --- | --- |
-| `analysis-222-classification.md` | the criterion, the 11 namespaces, the getter census, the site census |
-| `analysis-222-convention.md` | convention 12 text, gate rule 1.58 with five positive controls, the cost table |
-| `analysis-222-datastore-interface.md` | the `DataStore` seam, five invariant records, four honesty risks |
-| `analysis-222-minimal-conversion-set.md` | three existing files, not 51 |
+| [analysis-222-classification.md](analysis-222-classification.md) | the criterion, the 11 namespaces, the getter census, the site census |
+| [analysis-222-convention.md](analysis-222-convention.md) | convention 12 text, gate rule 1.58 with five positive controls, the cost table |
+| [analysis-222-datastore-interface.md](analysis-222-datastore-interface.md) | the `DataStore` seam, five invariant records, four honesty risks |
+| [analysis-222-minimal-conversion-set.md](analysis-222-minimal-conversion-set.md) | three existing files, not 51 |
 | `proposed-222-check-effect-seams.ts` | the checker, written and run, NOT merged |
 | `proposed-222-effect-seam-baseline.txt` | its 71-row shrinking baseline, NOT merged |
 | `census-222.ts`, `census-222-classes.ts` | the one-off censuses, so every number is reproducible |
@@ -102,7 +102,7 @@ neither of them a capability.
 ## The gate rule, and its five positive controls
 
 Rule 1.58 in `scripts/conventions-gate.sh`, backed by `scripts/check-effect-seams.ts`. Both are
-written, run, and quoted in `analysis-222-convention.md`. Neither is committed to production.
+written, run, and quoted in [analysis-222-convention.md](analysis-222-convention.md). Neither is committed to production.
 
 Two properties it obeys deliberately:
 
@@ -196,7 +196,7 @@ belong entirely to existing files. #223 is greenfield.
 
 **Three existing files. Three getters. Five sites.** The other 48 files convert by attrition,
 held by a gate rule that blocks every new bare site today. Every deferral carries its reason in
-`analysis-222-minimal-conversion-set.md`.
+[analysis-222-minimal-conversion-set.md](analysis-222-minimal-conversion-set.md).
 
 One clarification recorded there: a PROVIDER is allowed to touch its engine. The sqlite provider
 imports `bun:sqlite` and the pg provider reads `Bun.sql`. The convention governs consumers
@@ -241,15 +241,15 @@ linter reads as long paragraphs.
   `src/modules/system/Clock.ts:14`, called only from `src/modules/system/Clock.test.ts:6` and
   `:9`. It exists because nothing could substitute `Clock`. Tier 1 above deletes it. Recorded
   separately because it is a live defect even if #223 never happens.
-- **`src/modules/system/system.invariants.md` enumerates its own population, and the list has
+- **[src/modules/system/system.invariants.md](../../../../src/modules/system/system.invariants.md) enumerates its own population, and the list has
   rotted.** Line 3 says the layer is "(`Files`, `Clock`, `Environment`, `Logging`, `Processes`,
   `StatusChannel`)". The layer holds ten namespaces. `Clipboard`, `FrameProbe`, `Momentum`, and
   `TextSegmentation` are missing, and the record *Capability classes are stateless and Static
   wrapped* repeats the same six in its Evidence. This is the enumeration-instead-of-discovery
-  failure that `project.conventions.md` names, one level up in the contract layer. NOT fixed —
+  failure that [project.conventions.md](../../../../project.conventions.md) names, one level up in the contract layer. NOT fixed —
   contract edits need their own task.
 - **The same line cites "the vendored `Static.ts`", which no longer exists.**
-  `src/modules/system/` holds no `Static.ts`, and `project.conventions.md` requires
+  `src/modules/system/` holds no `Static.ts`, and [project.conventions.md](../../../../project.conventions.md) requires
   `import { Static } from 'ivue/extras'` and says never vendored. A stale clause in a record
   header. NOT fixed, same reason.
 - **The task file's "~65 getter-wrapped" figure is 42 under a parse.** Not a defect, but the

@@ -282,6 +282,12 @@ class $SettingsPanel {
         },
       },
       {
+        key: 'showRightActivityBar',
+        label: 'Mirror activity bar on right',
+        section: 'Layout',
+        spec: { kind: 'boolean' },
+      },
+      {
         key: 'sidebarPosition',
         label: 'Sidebar position',
         section: 'Layout',
