@@ -131,7 +131,11 @@ reports; it never moves anything. Moving is the conductor's judgement, made with
 ### The lifecycle — seven steps; the commands live in the `manage-tasks` skill
 
 1. **FILE** — folder + task file with the header block (incl. `Priority:`, `State: ACTIVE`); next number above the tracker's highest.
-2. **DISPATCH** — `DRY_RUN=1` first, then `dispatch.sh` (moves to `live/`, commits the brief BEFORE launching, regenerates the active view as a byproduct).
+2. **DISPATCH** — `DRY_RUN=1` first, then `dispatch.sh` (moves to `in-progress/`, commits the brief
+   BEFORE launching, regenerates the active view as a byproduct). **Always state the attach command
+   in the report to the user** — `tmux attach -t invar/<n>-<slug>` — so they can join the session
+   and observe or steer at any point. The session is interactive by design; an attach line the user
+   has to ask for is a session they effectively cannot reach.
 3. **STEER** — a NEW brief at the next count; a brief is read at LAUNCH.
 4. **DELIVER** — copy the READY report verbatim; convert `## Bycatch` BEFORE merging.
 5. **LAND** — `git mv` to `done/` + `State: COMPLETED — <sha>` + `finished/` tag + summary + `write-active`, in the SAME action as the merge.
