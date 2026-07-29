@@ -219,6 +219,51 @@ screen.
 
 **Last refined:** 2026-07-21
 
+### Markdown presentation resolves through one stylesheet
+
+**Invariant:** If a markdown element reaches the terminal, then every presentation decision for
+it — pane padding, vertical margins, list indents, quote and frame glyphs, palette color slots,
+and text attributes — resolves through `MarkdownStylesheet`; neither the projection
+(`MarkdownPreview`) nor the painter (`MarkdownRenderable`) holds presentation vocabulary of its
+own.
+
+**Scope:** `MarkdownStylesheet` (the seam), `MarkdownPreview` (geometry consumer: padding,
+margins, prefixes, frames), `MarkdownRenderable` (paint consumer: color slots, attributes).
+Themes stay upstream: the stylesheet names palette SLOTS and the painter resolves them against
+the active palette, so a theme change restyles the preview without touching the stylesheet.
+
+**Mechanism:** One rule table maps element selectors (`heading1`…`heading6`, `paragraph`,
+`blockquote`, `listItem`, `codeBlock`, `table`…, `rule`) to margins and text styles, one
+vocabulary object holds the structural glyphs, and `spacingBetween` collapses adjacent margins
+CSS-style. `blockSelector`/`rowSelector` are the only translation from parsed blocks and row
+roles into selectors.
+
+**Generates:** uniform pane padding (the breathing room between text and pane edges); the
+heading intensity ramp; single-spaced list runs that still separate from paragraphs; the quote
+bar on every wrapped quote row; code frames whose right edge stays on one column; consistent
+presentation across every element without per-element literals.
+
+**Rejected alternatives:** per-element literals scattered through projection and paint — the
+pre-#236 state, where the quote bar and code frame dropped off continuation rows because each
+call site re-rolled its own prefix policy.
+
+**Evidence:** `src/modules/markdown/MarkdownStylesheet.ts` (the rule tables);
+`MarkdownPreview.ts` (`visitBlock`, `collectRows`, `totalRows` consume metrics);
+`MarkdownRenderable.ts` (`styledChunk`, `decorateText` consume text styles);
+`MarkdownStylesheet.test.ts` (the census test proves the consumers hold no presentation
+vocabulary).
+
+**Impossible if true:** a box-drawing or bullet glyph literal inside `MarkdownPreview.ts` or
+`MarkdownRenderable.ts`; a palette slot chosen in the painter outside the stylesheet (the pane
+fg/bg defaults excepted); two elements resolving the same presentation question through
+different code paths.
+
+**Verification:** `bun test src/modules/markdown/MarkdownStylesheet.test.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Markdown tables align by display cells
 
 **Invariant:** If a valid Markdown table is previewed, then its parsed cells share fixed

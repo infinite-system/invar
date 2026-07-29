@@ -144,6 +144,110 @@ test('close releases the document and leaves no active render effect', async () 
   expect(renders).toBe(rendersAfterClose);
 });
 
+// invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
+test('body rows carry the stylesheet pane padding and headings pull extra air', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource('First paragraph.\n\n## Section\n\nSecond paragraph.'),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const rows = preview.allRows(60, ThemeIcons.Class.tableBordersFor('unicode'));
+  const texts = rows.map((row) => preview.textForRow(row));
+  expect(texts[0]).toBe(''); // pane top padding
+  expect(texts[1]).toBe('  First paragraph.'); // left padding
+  // two blank rows between a paragraph and an h2 (collapsed margin of 2)
+  expect(texts.slice(2, 4)).toEqual(['', '']);
+  expect(texts[4]).toBe('  Section');
+});
+
+test('the quote bar runs down every wrapped blockquote row', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource(
+      '> A quoted passage long enough to wrap onto several rows inside a narrow pane.',
+    ),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const quoteRows = preview
+    .allRows(30, ThemeIcons.Class.tableBordersFor('unicode'))
+    .filter((row) => row.role === 'quote');
+  expect(quoteRows.length).toBeGreaterThan(1);
+  for (const row of quoteRows) {
+    expect(preview.textForRow(row).startsWith('  │ ')).toBe(true);
+  }
+});
+
+test('list items sit single-spaced while the list still separates from paragraphs', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource('Intro.\n\n- alpha\n- beta\n- gamma\n\nOutro.'),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const texts = preview
+    .allRows(60, ThemeIcons.Class.tableBordersFor('unicode'))
+    .map((row) => preview.textForRow(row));
+  const alphaIndex = texts.indexOf('  • alpha');
+  expect(alphaIndex).toBeGreaterThan(0);
+  expect(texts[alphaIndex + 1]).toBe('  • beta');
+  expect(texts[alphaIndex + 2]).toBe('  • gamma');
+  expect(texts[alphaIndex - 1]).toBe(''); // one blank between intro and the list
+  expect(texts[alphaIndex + 3]).toBe(''); // one blank between the list and outro
+});
+
+test('code fence borders stay aligned on every row including continuations', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource(
+      '```ts\nconst shortLine = 1;\nconst aMuchLongerLineThatMustWrapAcrossRows = computeSomething(argument);\n```',
+    ),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const rows = preview.allRows(40, ThemeIcons.Class.tableBordersFor('unicode'));
+  const codeRows = rows.filter((row) => row.role === 'codeContent');
+  expect(codeRows.length).toBeGreaterThan(2);
+  for (const row of codeRows) {
+    const text = preview.textForRow(row);
+    // left frame edge on every row, right frame edge on one shared column
+    expect(text.startsWith('  │ ')).toBe(true);
+    expect(text.endsWith(' │')).toBe(true);
+    expect(TextCoordinates.Class.lineWidth(text)).toBe(38);
+  }
+});
+
+test('prose wraps by display cells so CJK rows never overflow the pane', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(createSource('漢'.repeat(40)), null, { debounceMs: 0 });
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const width = 30;
+  const rows = preview
+    .allRows(width, ThemeIcons.Class.tableBordersFor('unicode'))
+    .filter((row) => row.role === 'content');
+  expect(rows.length).toBeGreaterThan(1);
+  for (const row of rows) {
+    expect(
+      TextCoordinates.Class.lineWidth(preview.textForRow(row)),
+    ).toBeLessThanOrEqual(width);
+  }
+});
+
 test('table columns align in display cells with left center and right content', async () => {
   const preview = new MarkdownPreview.Class();
   preview.open(
@@ -180,22 +284,23 @@ test('table columns align in display cells with left center and right content', 
       .map(({ column }) => column),
   );
 
+  // The stylesheet insets tables by the pane padding (left 2, right 2 at width 38 → inner 34).
   expect(boundaryColumns).toEqual([
-    [0, 13, 25, 37],
+    [2, 13, 24, 35],
     [],
-    [0, 13, 25, 37],
-    [0, 13, 25, 37],
+    [2, 13, 24, 35],
+    [2, 13, 24, 35],
   ]);
   expect(
     tableRows.map((row) =>
       TextCoordinates.Class.lineWidth(preview.textForRow(row)),
     ),
-  ).toEqual([38, 38, 38, 38]);
+  ).toEqual([36, 36, 36, 36]);
 
   const bodyText = preview.textForRow(tableRows[2]!);
-  expect(bodyText.indexOf('alpha')).toBe(2);
+  expect(bodyText.indexOf('alpha')).toBe(4);
   expect(bodyText.indexOf('middle')).toBe(16);
-  expect(bodyText.indexOf('7')).toBe(35);
+  expect(bodyText.indexOf('7')).toBe(33);
 });
 
 test('table projection measures only visible rows at small and large scale', async () => {
@@ -242,7 +347,8 @@ test('table projection measures only visible rows at small and large scale', asy
     await waitForTaskTurn();
 
     materializedTableRowCount = 0;
-    expect(preview.totalRows(32)).toBe(bodyRowCount + 3);
+    // top pane padding (1) + header + separator + body rows + trailing margin (1)
+    expect(preview.totalRows(32)).toBe(bodyRowCount + 4);
     expect(materializedTableRowCount).toBe(0);
     preview.scrollTo(Math.max(0, bodyRowCount - 3), 32, 6);
     preview.visibleRows(32, 6, ThemeIcons.Class.tableBordersFor('unicode'));
@@ -250,5 +356,5 @@ test('table projection measures only visible rows at small and large scale', asy
     preview.close();
   }
 
-  expect(materializedCounts).toEqual([5, 5]);
+  expect(materializedCounts).toEqual([6, 6]);
 });

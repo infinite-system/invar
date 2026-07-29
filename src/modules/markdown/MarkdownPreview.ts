@@ -13,8 +13,16 @@ import type {
   TableColumnAlignment,
 } from './MarkdownParser';
 import { TextCoordinates } from '../text/TextCoordinates';
+import {
+  WrapBreakOpportunity,
+  type WrapBreakProfile,
+} from '../text/WrapBreakOpportunity';
 import { StatusChannel } from '../system/StatusChannel';
 import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
+import {
+  MarkdownStylesheet,
+  type MarkdownElementSelector,
+} from './MarkdownStylesheet';
 
 // invariant: Parsing starts only after opening (src/modules/markdown/markdown.invariants.md)
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
@@ -170,14 +178,23 @@ class $MarkdownPreview {
     return `${row.prefix}${row.block.text.slice(row.textStart, row.textEnd)}${row.suffix}`;
   }
 
+  // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
   totalRows(width: number): number {
     const document = this.document.value;
     if (!document) return 0;
+    const stylesheet = MarkdownStylesheet.Class;
     let rowCount = 0;
+    let previousSelector: MarkdownElementSelector | null = null;
     const rowWidth = Math.max(1, Math.floor(width));
     for (const block of document.blocks.value) {
       if (block.kind === 'list') continue;
-      rowCount += this.rowCountForBlock(block, rowWidth) + 1;
+      const selector = stylesheet.blockSelector(block);
+      rowCount += stylesheet.spacingBetween(previousSelector, selector);
+      rowCount += this.rowCountForBlock(block, rowWidth);
+      previousSelector = selector;
+    }
+    if (previousSelector !== null) {
+      rowCount += stylesheet.spacingBetween(previousSelector, null);
     }
     return rowCount;
   }
@@ -205,13 +222,28 @@ class $MarkdownPreview {
     visibleCount: number,
     tableBorders: TableBorderGlyphSet,
   ): PreviewRow[] {
+    const stylesheet = MarkdownStylesheet.Class;
     const rows: PreviewRow[] = [];
     let rowIndex = 0;
     const endVisible = firstVisible + visibleCount;
+    let previousSelector: MarkdownElementSelector | null = null;
+
+    const pushSpacers = (spacerCount: number): void => {
+      for (let spacerIndex = 0; spacerIndex < spacerCount; spacerIndex++) {
+        if (rowIndex >= firstVisible && rowIndex < endVisible) {
+          rows.push(this.spacerRow());
+        }
+        rowIndex++;
+      }
+    };
 
     for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
       const block = blocks[blockIndex]!;
       if (block.kind === 'list') continue;
+      const selector = stylesheet.blockSelector(block);
+      pushSpacers(stylesheet.spacingBetween(previousSelector, selector));
+      previousSelector = selector;
+      if (rowIndex >= endVisible) break;
       const blockRowCount = this.rowCountForBlock(block, width);
       const blockEndRow = rowIndex + blockRowCount;
 
@@ -262,21 +294,24 @@ class $MarkdownPreview {
       }
 
       rowIndex = blockEndRow;
-      if (rowIndex >= firstVisible && rowIndex < endVisible) {
-        rows.push({
-          block: null,
-          blockIndex: -1,
-          textStart: 0,
-          textEnd: 0,
-          prefix: '',
-          suffix: '',
-          role: 'spacer',
-        });
-      }
-      rowIndex++;
       if (rowIndex >= endVisible) break;
     }
+    if (previousSelector !== null && rowIndex < endVisible) {
+      pushSpacers(stylesheet.spacingBetween(previousSelector, null));
+    }
     return rows;
+  }
+
+  protected spacerRow(): PreviewRow {
+    return {
+      block: null,
+      blockIndex: -1,
+      textStart: 0,
+      textEnd: 0,
+      prefix: '',
+      suffix: '',
+      role: 'spacer',
+    };
   }
 
   protected rowCountForBlock(block: BlockRecord, width: number): number {
@@ -289,52 +324,71 @@ class $MarkdownPreview {
     return rowCount;
   }
 
+  // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
   protected visitBlock(
     block: BlockRecord,
     blockIndex: number,
     width: number,
     emit: EmitRow,
   ): boolean {
+    const stylesheet = MarkdownStylesheet.Class;
+    const panePaddingText = stylesheet.panePaddingText;
+    const innerWidth = Math.max(1, width - stylesheet.panePadding.right);
     switch (block.kind) {
       case 'code':
         return this.visitCode(block, blockIndex, width, emit);
-      case 'blockquote':
-        return this.visitWrapped(
-          block,
-          blockIndex,
-          width,
-          '│ ',
-          '',
-          'quote',
-          emit,
-        );
+      case 'blockquote': {
+        const quotePrefix =
+          panePaddingText + stylesheet.vocabulary.quoteBarPrefix;
+        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
+          firstPrefix: quotePrefix,
+          continuationPrefix: quotePrefix,
+          suffix: '',
+          role: 'quote',
+          breakProfile: 'prose',
+          fillWidth: false,
+        });
+      }
       case 'table':
         return false;
-      case 'hr':
-        return emit(block, blockIndex, 0, 0, '', '', 'rule', '─'.repeat(width));
-      case 'listitem': {
-        const indentation = '  '.repeat(Math.max(0, (block.level ?? 1) - 1));
-        const prefix = `${indentation}${block.marker ?? '•'} `;
-        return this.visitWrapped(
+      case 'hr': {
+        const ruleWidth = Math.max(
+          0,
+          width - panePaddingText.length - stylesheet.panePadding.right,
+        );
+        return emit(
           block,
           blockIndex,
-          width,
-          prefix,
+          0,
+          0,
           '',
-          'content',
-          emit,
+          '',
+          'rule',
+          panePaddingText + stylesheet.vocabulary.ruleGlyph.repeat(ruleWidth),
         );
       }
+      case 'listitem': {
+        const indentation = stylesheet.listIndentText(block.level);
+        const marker = block.marker ?? stylesheet.vocabulary.listMarkerFallback;
+        const firstPrefix = `${panePaddingText}${indentation}${marker} `;
+        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
+          firstPrefix,
+          continuationPrefix: ' '.repeat(firstPrefix.length),
+          suffix: '',
+          role: 'content',
+          breakProfile: 'prose',
+          fillWidth: false,
+        });
+      }
       default:
-        return this.visitWrapped(
-          block,
-          blockIndex,
-          width,
-          '',
-          '',
-          'content',
-          emit,
-        );
+        return this.visitWrapped(block, blockIndex, innerWidth, emit, {
+          firstPrefix: panePaddingText,
+          continuationPrefix: panePaddingText,
+          suffix: '',
+          role: 'content',
+          breakProfile: 'prose',
+          fillWidth: false,
+        });
     }
   }
 
@@ -344,8 +398,15 @@ class $MarkdownPreview {
     width: number,
     emit: EmitRow,
   ): boolean {
+    const stylesheet = MarkdownStylesheet.Class;
+    const panePaddingText = stylesheet.panePaddingText;
+    const frame = stylesheet.vocabulary.codeFrame;
+    const frameWidth = Math.max(
+      2,
+      width - panePaddingText.length - stylesheet.panePadding.right,
+    );
     const label = block.language ? ` ${block.language} ` : '';
-    const remaining = Math.max(0, width - label.length - 2);
+    const topFill = Math.max(0, frameWidth - 2 - label.length);
     if (
       emit(
         block,
@@ -355,20 +416,29 @@ class $MarkdownPreview {
         '',
         '',
         'codeBorder',
-        `┌${label}${'─'.repeat(remaining)}┐`.slice(0, width),
+        `${panePaddingText}${frame.topLeft}${label}${frame.horizontal.repeat(topFill)}${frame.topRight}`.slice(
+          0,
+          width,
+        ),
       )
     ) {
       return true;
     }
+    const framePrefix = `${panePaddingText}${frame.vertical} `;
     if (
       this.visitWrapped(
         block,
         blockIndex,
-        width,
-        '│ ',
-        ' │',
-        'codeContent',
+        Math.max(1, width - stylesheet.panePadding.right),
         emit,
+        {
+          firstPrefix: framePrefix,
+          continuationPrefix: framePrefix,
+          suffix: ` ${frame.vertical}`,
+          role: 'codeContent',
+          breakProfile: 'code',
+          fillWidth: true,
+        },
       )
     )
       return true;
@@ -380,73 +450,159 @@ class $MarkdownPreview {
       '',
       '',
       'codeBorder',
-      `└${'─'.repeat(Math.max(0, width - 2))}┘`.slice(0, width),
+      `${panePaddingText}${frame.bottomLeft}${frame.horizontal.repeat(Math.max(0, frameWidth - 2))}${frame.bottomRight}`.slice(
+        0,
+        width,
+      ),
     );
   }
 
+  // invariant: Wrapped surfaces share one break generator (project.invariants.md)
   protected visitWrapped(
     block: BlockRecord,
     blockIndex: number,
-    width: number,
-    firstPrefix: string,
-    suffix: string,
-    role: PreviewRowRole,
+    availableWidth: number,
     emit: EmitRow,
+    options: WrappedVisitOptions,
   ): boolean {
     const contentWidth = Math.max(
       1,
-      width - firstPrefix.length - suffix.length,
+      availableWidth -
+        TextCoordinates.Class.lineWidth(options.firstPrefix) -
+        TextCoordinates.Class.lineWidth(options.suffix),
     );
     let lineStart = 0;
-    let isFirst = true;
+    let isFirstLine = true;
 
     while (lineStart <= block.text.length) {
       const newline = block.text.indexOf('\n', lineStart);
       const physicalEnd = newline < 0 ? block.text.length : newline;
-      if (physicalEnd === lineStart) {
-        if (
-          emit(
-            block,
-            blockIndex,
-            lineStart,
-            lineStart,
-            isFirst ? firstPrefix : ' '.repeat(firstPrefix.length),
-            suffix,
-            role,
-          )
-        ) {
-          return true;
-        }
-      } else {
-        let segmentStart = lineStart;
-        while (segmentStart < physicalEnd) {
-          let segmentEnd = Math.min(physicalEnd, segmentStart + contentWidth);
-          if (segmentEnd < physicalEnd) {
-            const candidate = block.text.lastIndexOf(' ', segmentEnd);
-            if (candidate > segmentStart) segmentEnd = candidate;
-          }
-          if (
-            emit(
-              block,
-              blockIndex,
-              segmentStart,
-              segmentEnd,
-              isFirst ? firstPrefix : ' '.repeat(firstPrefix.length),
-              suffix,
-              role,
-            )
-          ) {
-            return true;
-          }
-          isFirst = false;
-          segmentStart = segmentEnd;
-          while (segmentStart < physicalEnd && block.text[segmentStart] === ' ')
-            segmentStart++;
-        }
+      if (
+        this.visitWrappedLine(
+          block,
+          blockIndex,
+          lineStart,
+          physicalEnd,
+          contentWidth,
+          isFirstLine,
+          emit,
+          options,
+        )
+      ) {
+        return true;
       }
-      isFirst = false;
+      isFirstLine = false;
       if (newline < 0) break;
       lineStart = newline + 1;
+    }
+    return false;
+  }
+
+  protected visitWrappedLine(
+    block: BlockRecord,
+    blockIndex: number,
+    lineStart: number,
+    physicalEnd: number,
+    contentWidth: number,
+    isFirstLine: boolean,
+    emit: EmitRow,
+    options: WrappedVisitOptions,
+  ): boolean {
+    const rowSuffix = (segmentWidth: number): string =>
+      options.fillWidth
+        ? ' '.repeat(Math.max(0, contentWidth - segmentWidth)) + options.suffix
+        : options.suffix;
+
+    if (physicalEnd === lineStart) {
+      return emit(
+        block,
+        blockIndex,
+        lineStart,
+        lineStart,
+        isFirstLine ? options.firstPrefix : options.continuationPrefix,
+        rowSuffix(0),
+        options.role,
+      );
+    }
+
+    const lineText = block.text.slice(lineStart, physicalEnd);
+    const graphemes = TextCoordinates.Class.graphemes(lineText);
+    const utf16Offsets: number[] = new Array(graphemes.length + 1);
+    utf16Offsets[0] = 0;
+    for (
+      let graphemeIndex = 0;
+      graphemeIndex < graphemes.length;
+      graphemeIndex++
+    ) {
+      utf16Offsets[graphemeIndex + 1] =
+        utf16Offsets[graphemeIndex]! + graphemes[graphemeIndex]!.length;
+    }
+
+    let segmentStart = 0;
+    let isFirstSegment = isFirstLine;
+    while (segmentStart < graphemes.length) {
+      let segmentEnd = segmentStart;
+      let segmentWidth = 0;
+      while (segmentEnd < graphemes.length) {
+        const graphemeWidth = TextCoordinates.Class.lineWidth(
+          graphemes[segmentEnd]!,
+        );
+        if (
+          segmentEnd > segmentStart &&
+          segmentWidth + graphemeWidth > contentWidth
+        ) {
+          break;
+        }
+        segmentWidth += graphemeWidth;
+        segmentEnd++;
+      }
+      if (segmentEnd < graphemes.length) {
+        const preferredBreak =
+          WrapBreakOpportunity.Class.previousBreakOpportunity(
+            graphemes,
+            segmentStart,
+            segmentEnd,
+            options.breakProfile,
+          );
+        if (preferredBreak > segmentStart && preferredBreak < segmentEnd) {
+          segmentEnd = preferredBreak;
+          segmentWidth = 0;
+          for (
+            let graphemeIndex = segmentStart;
+            graphemeIndex < segmentEnd;
+            graphemeIndex++
+          ) {
+            segmentWidth += TextCoordinates.Class.lineWidth(
+              graphemes[graphemeIndex]!,
+            );
+          }
+        }
+      }
+      if (
+        emit(
+          block,
+          blockIndex,
+          lineStart + utf16Offsets[segmentStart]!,
+          lineStart + utf16Offsets[segmentEnd]!,
+          isFirstSegment ? options.firstPrefix : options.continuationPrefix,
+          rowSuffix(segmentWidth),
+          options.role,
+        )
+      ) {
+        return true;
+      }
+      isFirstSegment = false;
+      segmentStart = segmentEnd;
+      while (
+        segmentStart < graphemes.length &&
+        WrapBreakOpportunity.Class.breakKindBetween(
+          graphemes[segmentStart]!,
+          undefined,
+          options.breakProfile,
+        ) === 'whitespace'
+      ) {
+        segmentStart++;
+      }
     }
     return false;
   }
@@ -463,8 +619,9 @@ class $MarkdownPreview {
     // invariant: Markdown tables align by display cells (src/modules/markdown/markdown.invariants.md)
     const table = block.table;
     if (!table || table.rows.length === 0) return;
+    const panePadding = MarkdownStylesheet.Class.panePadding;
     const contentWidths = this.tableContentWidths(
-      width,
+      Math.max(1, width - panePadding.left - panePadding.right),
       table.alignments.length,
     );
 
@@ -526,8 +683,9 @@ class $MarkdownPreview {
     contentWidths: readonly number[],
     tableBorders: TableBorderGlyphSet,
   ): PreviewRow {
-    let overrideText = tableBorders.vertical;
-    let nextCellColumn = 1;
+    const panePaddingText = MarkdownStylesheet.Class.panePaddingText;
+    let overrideText = panePaddingText + tableBorders.vertical;
+    let nextCellColumn = panePaddingText.length + 1;
     const previewCells: PreviewTableCell[] = [];
 
     for (
@@ -614,6 +772,7 @@ class $MarkdownPreview {
       suffix: '',
       role: 'tableSeparator',
       overrideText:
+        MarkdownStylesheet.Class.panePaddingText +
         tableBorders.leftJunction +
         segments.join(tableBorders.intersection) +
         tableBorders.rightJunction,
@@ -630,7 +789,7 @@ class $MarkdownPreview {
       prefix: '',
       suffix: '',
       role: 'status',
-      overrideText: text,
+      overrideText: MarkdownStylesheet.Class.panePaddingText + text,
     };
   }
 }
@@ -680,6 +839,17 @@ export interface PreviewTableCell {
   leadingPadding: string;
   trailingPadding: string;
   textStartDisplayColumn: number;
+}
+
+interface WrappedVisitOptions {
+  readonly firstPrefix: string;
+  readonly continuationPrefix: string;
+  /** Painted after the row text; with fillWidth the row is space-padded to contentWidth first
+   *  so a right frame edge stays on one column. */
+  readonly suffix: string;
+  readonly role: PreviewRowRole;
+  readonly breakProfile: WrapBreakProfile;
+  readonly fillWidth: boolean;
 }
 
 type EmitRow = (

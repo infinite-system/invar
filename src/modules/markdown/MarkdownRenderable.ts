@@ -13,6 +13,11 @@ import {
 } from '@opentui/core';
 import { MarkdownParser, type BlockRecord } from './MarkdownParser';
 import { MarkdownPreview, type PreviewRow } from './MarkdownPreview';
+import {
+  MarkdownStylesheet,
+  type MarkdownInlineSelector,
+  type MarkdownTextStyle,
+} from './MarkdownStylesheet';
 import type { Palette } from '../theme/ThemePalettes';
 import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 import { SelectableText } from '../ui/SelectableText';
@@ -180,30 +185,28 @@ class $MarkdownRenderable extends BoxRenderable {
     this.backgroundColor = palette.bg;
   }
 
+  // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)
   protected appendRow(
     chunks: TextChunk[],
     row: PreviewRow,
     visibleRowIndex: number,
     palette: Palette,
   ): void {
+    const stylesheet = MarkdownStylesheet.Class;
     if (row.role === 'spacer') {
       chunks.push(fg(palette.fg)(''));
       return;
     }
-    if (row.role === 'status') {
-      chunks.push(italic(fg(palette.dim)(row.overrideText ?? '')));
-      return;
-    }
     if (
+      row.role === 'status' ||
       row.role === 'rule' ||
       row.role === 'codeBorder' ||
       row.role === 'tableSeparator'
     ) {
-      chunks.push(
-        fg(row.role === 'rule' ? palette.dim : palette.border)(
-          row.overrideText ?? '',
-        ),
+      const rowStyle = stylesheet.textStyle(
+        stylesheet.rowSelector(row.role, row.block?.kind ?? null, undefined),
       );
+      chunks.push(this.styledChunk(row.overrideText ?? '', rowStyle, palette));
       return;
     }
     if (row.role === 'tableHeader' || row.role === 'tableBody') {
@@ -213,7 +216,15 @@ class $MarkdownRenderable extends BoxRenderable {
 
     const block = row.block;
     if (!block) return;
-    chunks.push(this.decoratePrefix(row.prefix, row, palette));
+    // The pane padding stays unstyled so a framed row (code) never paints its background
+    // into the breathing room at the pane edge.
+    const panePaddingText = stylesheet.panePaddingText;
+    let prefixText = row.prefix;
+    if (panePaddingText.length > 0 && prefixText.startsWith(panePaddingText)) {
+      chunks.push(fg(palette.fg)(panePaddingText));
+      prefixText = prefixText.slice(panePaddingText.length);
+    }
+    if (prefixText) chunks.push(this.decoratePrefix(prefixText, row, palette));
     this.appendInline(chunks, block, row, visibleRowIndex, palette);
     if (row.suffix) chunks.push(this.decoratePrefix(row.suffix, row, palette));
   }
@@ -302,15 +313,61 @@ class $MarkdownRenderable extends BoxRenderable {
     }
   }
 
+  /** Apply one stylesheet text style to a chunk of row text. */
+  protected styledChunk(
+    text: string,
+    style: MarkdownTextStyle,
+    palette: Palette,
+  ): TextChunk {
+    const stylesheet = MarkdownStylesheet.Class;
+    let chunk = fg(stylesheet.paletteColor(palette, style.colorSlot))(text);
+    if (style.backgroundSlot !== null) {
+      chunk = bg(stylesheet.paletteColor(palette, style.backgroundSlot))(chunk);
+    }
+    if (style.bold) chunk = bold(chunk);
+    if (style.italic) chunk = italic(chunk);
+    if (style.underline) chunk = underline(chunk);
+    return chunk;
+  }
+
+  /** Wrap an already-built chunk with a stylesheet style (used for overlays that must keep the
+   *  inner chunk, like a hovered link). */
+  protected styledWrap(
+    chunk: TextChunk,
+    style: MarkdownTextStyle,
+    palette: Palette,
+  ): TextChunk {
+    const stylesheet = MarkdownStylesheet.Class;
+    if (style.colorSlot !== null) {
+      chunk = fg(stylesheet.paletteColor(palette, style.colorSlot))(chunk);
+    }
+    if (style.backgroundSlot !== null) {
+      chunk = bg(stylesheet.paletteColor(palette, style.backgroundSlot))(chunk);
+    }
+    if (style.bold) chunk = bold(chunk);
+    if (style.italic) chunk = italic(chunk);
+    if (style.underline) chunk = underline(chunk);
+    return chunk;
+  }
+
   protected decoratePrefix(
     text: string,
     row: PreviewRow,
     palette: Palette,
   ): TextChunk {
-    if (row.role === 'codeContent')
-      return bg(palette.panel)(fg(palette.border)(text));
-    if (row.role === 'quote') return bold(fg(palette.accent)(text));
-    return fg(palette.accent)(text);
+    const stylesheet = MarkdownStylesheet.Class;
+    return this.styledChunk(text, stylesheet.prefixStyle(row.role), palette);
+  }
+
+  protected inlineSelectorFor(
+    inlineStyle: number,
+  ): MarkdownInlineSelector | null {
+    const inlineStyles = MarkdownParser.Class.inlineStyles;
+    if (inlineStyle === inlineStyles.code) return 'inlineCode';
+    if (inlineStyle === inlineStyles.emphasis) return 'inlineEmphasis';
+    if (inlineStyle === inlineStyles.strong) return 'inlineStrong';
+    if (inlineStyle === inlineStyles.link) return 'inlineLink';
+    return null;
   }
 
   protected decorateText(
@@ -324,45 +381,44 @@ class $MarkdownRenderable extends BoxRenderable {
     palette: Palette,
     links: readonly string[] = block.links,
   ): TextChunk {
-    const color = this.blockColor(block.kind, row, palette);
-    let chunk = fg(color)(text);
+    const stylesheet = MarkdownStylesheet.Class;
+    const elementStyle = stylesheet.textStyle(
+      stylesheet.rowSelector(row.role, block.kind, block.level),
+    );
+    const inlineSelector =
+      row.role === 'codeContent' ? null : this.inlineSelectorFor(inlineStyle);
+    const overlayStyle =
+      inlineSelector !== null
+        ? stylesheet.inlineTextStyle(inlineSelector)
+        : null;
+    const mergedStyle: MarkdownTextStyle = overlayStyle
+      ? {
+          colorSlot: overlayStyle.colorSlot ?? elementStyle.colorSlot,
+          backgroundSlot:
+            overlayStyle.backgroundSlot ?? elementStyle.backgroundSlot,
+          bold: elementStyle.bold || overlayStyle.bold,
+          italic: elementStyle.italic || overlayStyle.italic,
+          underline: elementStyle.underline || overlayStyle.underline,
+        }
+      : elementStyle;
+    let chunk = this.styledChunk(text, mergedStyle, palette);
 
-    if (
-      row.role === 'codeContent' ||
-      inlineStyle === MarkdownParser.Class.inlineStyles.code
-    ) {
-      chunk = bg(palette.panel)(fg(palette.string)(chunk));
-    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.emphasis) {
-      chunk = italic(chunk);
-    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.strong) {
-      chunk = bold(chunk);
-    } else if (inlineStyle === MarkdownParser.Class.inlineStyles.link) {
-      chunk = underline(fg(palette.accent)(chunk));
+    if (inlineSelector === 'inlineLink') {
       const target = links[linkIndexPlusOne - 1];
       if (target) chunk = terminalLink(target)(chunk);
     }
-
-    if (referenceHovered) chunk = bold(underline(fg(palette.accent)(chunk)));
-    if (findHighlighted) chunk = bg(palette.cursorLine)(chunk);
-
-    if (block.kind === 'heading' || row.role === 'tableHeader') {
-      chunk = bold(chunk);
+    if (referenceHovered) {
+      chunk = this.styledWrap(chunk, stylesheet.referenceHoverStyle, palette);
+    }
+    if (findHighlighted) {
+      const highlightStyle = stylesheet.findHighlightStyle;
+      if (highlightStyle.backgroundSlot !== null) {
+        chunk = bg(
+          stylesheet.paletteColor(palette, highlightStyle.backgroundSlot),
+        )(chunk);
+      }
     }
     return chunk;
-  }
-
-  protected blockColor(
-    kind: BlockRecord['kind'],
-    row: PreviewRow,
-    palette: Palette,
-  ): string {
-    if (kind === 'heading') return palette.accent;
-    if (row.role === 'quote') return palette.dim;
-    if (row.role === 'tableHeader' || row.role === 'tableBody') {
-      return palette.fg;
-    }
-    if (row.role === 'codeContent') return palette.string;
-    return palette.fg;
   }
 
   protected referenceKey(
@@ -442,12 +498,19 @@ class $MarkdownRenderable extends BoxRenderable {
   ): void {
     // invariant: Markdown tables align by display cells (src/modules/markdown/markdown.invariants.md)
     if (!row.block || !row.tableCells || !row.tableBorders) return;
-    chunks.push(fg(palette.border)(row.tableBorders.vertical));
+    const stylesheet = MarkdownStylesheet.Class;
+    const borderStyle = stylesheet.textStyle('tableBorder');
+    chunks.push(fg(palette.fg)(stylesheet.panePaddingText));
+    chunks.push(
+      this.styledChunk(row.tableBorders.vertical, borderStyle, palette),
+    );
     for (const previewCell of row.tableCells) {
       chunks.push(fg(palette.fg)(previewCell.leadingPadding));
       this.appendTableCellText(chunks, row, previewCell, palette);
       chunks.push(fg(palette.fg)(previewCell.trailingPadding));
-      chunks.push(fg(palette.border)(row.tableBorders.vertical));
+      chunks.push(
+        this.styledChunk(row.tableBorders.vertical, borderStyle, palette),
+      );
     }
   }
 

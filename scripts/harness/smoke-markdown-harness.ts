@@ -78,6 +78,27 @@ function tableBoundaryColumns(
   return verticalColumns.slice(0, -1);
 }
 
+/** The GRID column where needle starts, at or after fromColumn. Snapshot row text carries one
+ *  GRAPHEME per grid cell (wide glyphs already carry their spacer cell, combining marks merge
+ *  into their base cell), so the grid column is the grapheme index — a raw String.indexOf
+ *  drifts by one UTF-16 unit for every surrogate pair (emoji) and every combining mark painted
+ *  earlier in the same screen row, while rowCells columns do not. */
+function displayColumnOfText(
+  rowText: string,
+  needle: string,
+  fromColumn: number,
+): number {
+  const graphemes = TextCoordinates.Class.graphemes(rowText);
+  let utf16Offset = 0;
+  for (let column = 0; column < graphemes.length; column++) {
+    if (column >= fromColumn && rowText.startsWith(needle, utf16Offset)) {
+      return column;
+    }
+    utf16Offset += graphemes[column]!.length;
+  }
+  return -1;
+}
+
 function findPreviewButton(
   snapshot: HarnessSnapshot.Model,
 ): { row: number; column: number } | null {
@@ -243,16 +264,16 @@ try {
   const secondContentWidth = headerBoundaries[2]! - headerBoundaries[1]! - 3;
   const thirdContentWidth = headerBoundaries[3]! - headerBoundaries[2]! - 3;
   HarnessSmoke.Class.requireCondition(
-    asciiRowText.indexOf('alpha', headerBoundaries[0]) ===
+    displayColumnOfText(asciiRowText, 'alpha', headerBoundaries[0]!) ===
       headerBoundaries[0]! + 2 &&
-      asciiRowText.indexOf('middle', headerBoundaries[1]) ===
+      displayColumnOfText(asciiRowText, 'middle', headerBoundaries[1]!) ===
         headerBoundaries[1]! +
           2 +
           Math.floor(
             (secondContentWidth - TextCoordinates.Class.lineWidth('middle')) /
               2,
           ) &&
-      asciiRowText.indexOf('7', headerBoundaries[2]) ===
+      displayColumnOfText(asciiRowText, '7', headerBoundaries[2]!) ===
         headerBoundaries[2]! +
           2 +
           thirdContentWidth -
