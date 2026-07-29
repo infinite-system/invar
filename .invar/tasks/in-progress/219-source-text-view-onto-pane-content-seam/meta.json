@@ -1,0 +1,15 @@
+{
+  "task": 219,
+  "slug": "source-text-view-onto-pane-content-seam",
+  "branch": "fleet/219-source-text-view-onto-pane-content-seam",
+  "worktree": ".invar/worktrees/219-source-text-view-onto-pane-content-seam",
+  "tmuxSession": "invar/219-source-text-view-onto-pane-content-seam",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-high-219-source-text-view-onto-pane-content-seam.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "f80800138225e03e0362aa5778f66f17a0a2b595",
+  "startedAt": "2026-07-29T00:22:47-04:00"
+}

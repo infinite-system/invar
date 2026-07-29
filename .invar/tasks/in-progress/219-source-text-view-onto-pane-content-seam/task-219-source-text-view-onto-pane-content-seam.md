@@ -1,6 +1,6 @@
 # 219 — retrofit the source-text view onto the PaneContent seam
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux
