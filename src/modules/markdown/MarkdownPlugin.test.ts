@@ -99,6 +99,7 @@ describe('MarkdownPlugin', () => {
     expect(snapshot.markdownPaneFocus).toBe('source');
     expect(snapshot.markdownSplitRatio).toBe(0.5);
     expect(snapshot.markdownPreviewSide).toBe('left');
+    expect(snapshot.markdownPreviewScrollSync).toBe(true);
   });
 
   it('unregisters its surface on application disposal', () => {

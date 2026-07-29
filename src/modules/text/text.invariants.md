@@ -203,7 +203,10 @@ placement. Document-edge clamping can reduce the context margin.
 **Mechanism:** `TextViewport.scrollTopForTarget` owns nearest and reading placement. An explicit
 source jump calls the editor's reading reveal, then `EditorSurfaceClaims` forwards the source line
 to the occupying same-document surface. `MarkdownPreview` maps that source block to its first
-rendered row after the parsed revision matches, then calls the same reading placement.
+rendered row after the parsed revision matches, then calls the same reading placement. The block
+lookup and continuous Markdown scroll follow consume one cached source-line/rendered-row anchor map;
+the explicit jump selects the exact preceding block anchor, while continuous follow interpolates
+between those same anchors.
 
 **Generates:** A two-row reading margin for source jumps; Markdown table-of-contents follow; normal
 cursor movement that stays minimally revealing; one placement formula across wrapped source and
@@ -222,7 +225,8 @@ formulas drift.
 
 **Impossible if true:** A deep table-of-contents click leaving the preview at its old scroll
 position; a jump painting its target on the trailing body row when two context rows and a full page
-remain; source and preview using different target-placement formulas.
+remain; source and preview using different target-placement formulas; Markdown explicit and
+continuous follow building separate source-to-rendered maps.
 
 **Verification:** `bun test src/modules/text/TextViewport.test.ts
 src/modules/editor/Editor.test.ts src/modules/markdown/MarkdownPreview.test.ts

@@ -79,6 +79,62 @@ function clickCell(
   driver.sendMouse({ kind: 'release', column, row, button: 'left' });
 }
 
+async function selectSettingByLabel(
+  driver: PtyTestDriver.Model,
+  statusPath: string,
+  settingLabel: string,
+): Promise<void> {
+  let selectionStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    `the Settings list is published before locating ${settingLabel}`,
+    (status) =>
+      Array.isArray(status.settingsLabels) &&
+      status.settingsLabels.length > 0 &&
+      typeof status.settingsSelected === 'number' &&
+      typeof status.settingsSelectedLabel === 'string',
+  );
+  const settingsLabels = selectionStatus.settingsLabels as string[];
+  const startingIndex = Number(selectionStatus.settingsSelected);
+  if (startingIndex > 0) {
+    driver.sendKeys(...Array.from({ length: startingIndex }, () => 'Up'));
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Settings returns to its first row before locating ${settingLabel}`,
+      (status) => Number(status.settingsSelected) === 0,
+    );
+  }
+
+  for (
+    let inspectedRowCount = 0;
+    inspectedRowCount < settingsLabels.length;
+    inspectedRowCount += 1
+  ) {
+    if (selectionStatus.settingsSelectedLabel === settingLabel) {
+      await driver.awaitGridCondition(
+        `${settingLabel} is the visibly selected Settings row`,
+        (snapshot) => snapshot.findText(`› ${settingLabel}`) !== null,
+      );
+      return;
+    }
+    const selectedIndex = Number(selectionStatus.settingsSelected);
+    if (selectedIndex >= settingsLabels.length - 1) break;
+    driver.sendKeys('Down');
+    selectionStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `Settings advances toward ${settingLabel}`,
+      (status) => Number(status.settingsSelected) === selectedIndex + 1,
+    );
+  }
+
+  throw new Error(
+    `Timed out locating Settings label "${settingLabel}" after inspecting ` +
+      `${settingsLabels.length} rows`,
+  );
+}
+
 async function driveActivityGlyphTier(
   fixtureRoot: string,
   glyphLevel: 'nerd' | 'unicode',
@@ -381,7 +437,11 @@ try {
     'Settings opens before the mirrored activity-bar drive',
     (status) => status.settingsOpen === true,
   );
-  driver.sendKeys(...Array.from({ length: 26 }, () => 'Down'));
+  await selectSettingByLabel(
+    driver,
+    statusPath,
+    'Mirror activity bar on right',
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -448,13 +508,12 @@ try {
       status.primaryDockFocused === false,
   );
   driver.sendKeys('Control+,');
-  driver.sendKeys(...Array.from({ length: 14 }, () => 'Down'));
+  await selectSettingByLabel(driver, statusPath, 'Dock side');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the Structure dock-side setting is selected at its default',
     (status) =>
-      status.settingsSelected === 40 &&
       status.settingsSelectedLabel === 'Dock side' &&
       status.settingsSelectedValue === 'right',
   );
@@ -504,6 +563,20 @@ try {
       !(status.sidebarViewIdentifiers as string[]).includes('structure') &&
       (status.rightDockContentIds as string[]).includes('structure') &&
       status.rightDockFocused === true,
+  );
+  const absentSettingLabel = 'Absent activity-bar locator control';
+  let absentSettingFailure: unknown = null;
+  try {
+    await selectSettingByLabel(driver, statusPath, absentSettingLabel);
+  } catch (error) {
+    absentSettingFailure = error;
+  }
+  HarnessSmoke.Class.requireCondition(
+    absentSettingFailure instanceof Error &&
+      absentSettingFailure.message ===
+        `Timed out locating Settings label "${absentSettingLabel}" after inspecting ` +
+          `${(HarnessSmoke.Class.readStatus(statusPath).settingsLabels as string[]).length} rows`,
+    'an absent Settings label exhausts the bounded walk and names itself',
   );
   driver.sendKeys('Escape');
   await HarnessSmoke.Class.awaitStatus(

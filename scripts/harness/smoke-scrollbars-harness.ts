@@ -15,6 +15,7 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 import {
+  deriveMarkdownPreviewScrollbarThumbDragTargets,
   deriveScrollbarThumbDragTargets,
   dragScrollbarThumb,
 } from './ScrollbarThumbDrag';
@@ -123,6 +124,22 @@ async function proveContinuousScrollbarThumbDrag(
     join(fixtureRoot, 'scrollbar-drag-scale.ts'),
     `${lines.join('\n')}\n`,
   );
+  const markdownLines = [
+    '# Preview scrollbar drag',
+    '',
+    '```text',
+    `horizontal-${'x'.repeat(180)}`,
+    '```',
+    '',
+    ...Array.from(
+      { length: lineCount },
+      (_unusedValue, lineIndex) => `Preview row ${lineIndex}`,
+    ),
+  ];
+  await Bun.write(
+    join(fixtureRoot, 'scrollbar-drag-scale.md'),
+    `${markdownLines.join('\n')}\n`,
+  );
   const driver = new PtyTestDriver.Class({
     workspaceRoot: fixtureRoot,
     columns: 120,
@@ -142,7 +159,7 @@ async function proveContinuousScrollbarThumbDrag(
       `${lineCount}-line drag fixture opens Quick Open`,
       (snapshot) => snapshot.findText('Go to File') !== null,
     );
-    driver.sendText('scrollbar-drag-scale');
+    driver.sendText('scrollbar-drag-scale.ts');
     await driver.awaitScreenChange();
     driver.sendKeys('Enter');
     await driver.awaitGridCondition(
@@ -212,6 +229,182 @@ async function proveContinuousScrollbarThumbDrag(
           finalStatus.terminalFocused === true
         ),
       `${lineCount}-line scrollbar drags leave one panel host focused`,
+    );
+
+    driver.sendKeys('Control+p');
+    await driver.awaitGridCondition(
+      `${lineCount}-line preview drag fixture opens Quick Open`,
+      (candidate) => candidate.findText('Go to File') !== null,
+    );
+    driver.sendText('scrollbar-drag-scale.md');
+    await driver.awaitScreenChange();
+    driver.sendKeys('Enter');
+    const previewStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line Markdown preview publishes both overflowing axes`,
+      (candidate) =>
+        candidate.markdownPreviewOpen === true &&
+        candidate.markdownParsing === false &&
+        Number(candidate.markdownPreviewContentRows) >
+          Number(candidate.markdownPreviewViewportRows) &&
+        Number(candidate.markdownPreviewContentColumns) >
+          Number(candidate.markdownPreviewViewportColumns),
+      60_000,
+    );
+    const previewSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line Markdown preview paints its long fenced row`,
+      (candidate) =>
+        candidate.findText('╭─Preview') !== null &&
+        candidate.findText('Preview scrollbar') !== null,
+      60_000,
+    );
+    const armedPreviewStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line Markdown preview settles after its bars paint`,
+      (candidate) =>
+        candidate.renderQuiescent === true &&
+        Number(candidate.frame) > Number(previewStatus.frame),
+      60_000,
+    );
+    const previewBorder = previewSnapshot.findText('╭─Preview');
+    if (!previewBorder) {
+      throw new Error('The Markdown preview border disappeared.');
+    }
+    const previewTargets = deriveMarkdownPreviewScrollbarThumbDragTargets(
+      previewSnapshot,
+      armedPreviewStatus,
+    );
+    requireCondition(
+      previewTargets.map((target) => target.name).join(',') ===
+        'markdownPreviewHorizontal,markdownPreviewVertical',
+      `${lineCount}-line drive finds both Markdown preview bars`,
+    );
+    const previewHorizontalTarget = previewTargets[0];
+    requireCondition(
+      previewHorizontalTarget !== undefined &&
+        previewSnapshot
+          .rowCells(previewHorizontalTarget.pressRow)
+          .filter((cell) => cell.characters === '▄').length >= 10 &&
+        previewSnapshot
+          .rowCells(previewHorizontalTarget.pressRow)
+          .every((cell) => cell.characters !== '█' && cell.characters !== '▀'),
+      `${lineCount}-line Markdown preview horizontal bar is lower-half cells only`,
+    );
+    const visibleSourceMarker = driver.snapshot().findEditorText('Preview row');
+    if (!visibleSourceMarker) {
+      throw new Error('The visible Markdown source marker disappeared.');
+    }
+    driver.sendMouseClick({
+      column: visibleSourceMarker.column,
+      row: visibleSourceMarker.row,
+    });
+    driver.sendKeys('Control+Home');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line source returns to its first row before preview bar input`,
+      (candidate) =>
+        candidate.markdownPaneFocus === 'source' &&
+        Number(candidate.editorScrollTop) === 0,
+    );
+    const horizontalPositions = await dragScrollbarThumb(
+      driver,
+      statusPath,
+      previewHorizontalTarget,
+    );
+    requireCondition(
+      horizontalPositions.length === 4 &&
+        horizontalPositions.every(
+          (position, positionIndex) =>
+            positionIndex === 0 ||
+            position > (horizontalPositions[positionIndex - 1] ?? position),
+        ),
+      `${lineCount}-line ${previewHorizontalTarget.name} drag advances after every pressed-pointer move ` +
+        `(${horizontalPositions.join('→')})`,
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line horizontal preview bar input claims preview leadership`,
+      (candidate) => candidate.markdownPaneFocus === 'preview',
+    );
+    const sourceMarker = driver.snapshot().findEditorText('Preview row');
+    if (!sourceMarker) {
+      throw new Error('The Markdown source marker disappeared.');
+    }
+    driver.sendMouseClick({
+      column: sourceMarker.column,
+      row: sourceMarker.row,
+    });
+    const sourceLedStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line source regains leadership before vertical bar input`,
+      (candidate) => candidate.markdownPaneFocus === 'source',
+    );
+    const sourcePositionBeforePreviewDrag = Number(
+      sourceLedStatus.editorScrollTop,
+    );
+    const previewVerticalTarget = previewTargets[1];
+    if (!previewVerticalTarget) {
+      throw new Error('The Markdown preview vertical drag target is absent.');
+    }
+    const verticalPositions = await dragScrollbarThumb(
+      driver,
+      statusPath,
+      previewVerticalTarget,
+    );
+    requireCondition(
+      verticalPositions.length === 4 &&
+        verticalPositions.every(
+          (position, positionIndex) =>
+            positionIndex === 0 ||
+            position > (verticalPositions[positionIndex - 1] ?? position),
+        ),
+      `${lineCount}-line ${previewVerticalTarget.name} drag advances after every pressed-pointer move ` +
+        `(${verticalPositions.join('→')})`,
+    );
+    const previewDragStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line preview scrollbar drag leads source follow`,
+      (candidate) =>
+        candidate.markdownPaneFocus === 'preview' &&
+        Number(candidate.editorScrollTop) > sourcePositionBeforePreviewDrag,
+    );
+    const settledPreviewDragStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line preview vertical drag settles before track input`,
+      (candidate) =>
+        candidate.renderQuiescent === true &&
+        Number(candidate.frame) > Number(previewDragStatus.frame),
+      60_000,
+    );
+    driver.sendMouseClick({
+      column: previewVerticalTarget.pressColumn,
+      row: (previewVerticalTarget.moveRows.at(-1) ?? 0) + 3,
+    });
+    const previewTrackClickStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line preview scrollbar track click moves preview`,
+      (candidate) =>
+        candidate.markdownPaneFocus === 'preview' &&
+        Number(candidate.markdownPreviewScrollTop) >
+          Number(settledPreviewDragStatus.markdownPreviewScrollTop),
+    );
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line preview scrollbar track click leads source follow`,
+      (candidate) =>
+        Number(candidate.editorScrollTop) >
+          Number(settledPreviewDragStatus.editorScrollTop) &&
+        Number(candidate.markdownPreviewScrollTop) ===
+          Number(previewTrackClickStatus.markdownPreviewScrollTop),
     );
     driver.sendKeys('Control+q');
   } finally {

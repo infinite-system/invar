@@ -18,7 +18,11 @@ interface Rectangle {
 export interface ScrollbarThumbDragTarget {
   readonly name: string;
   readonly positionName:
-    'editorScrollTop' | 'editorScrollLeft' | 'structureScrollTop';
+    | 'editorScrollTop'
+    | 'editorScrollLeft'
+    | 'structureScrollTop'
+    | 'markdownPreviewScrollTop'
+    | 'markdownPreviewScrollLeft';
   readonly pressColumn: number;
   readonly pressRow: number;
   readonly moveColumns: readonly number[];
@@ -112,6 +116,77 @@ export function deriveScrollbarThumbDragTargets(
         rightDockVerticalStartRow + 3,
         rightDockVerticalStartRow + 6,
         rightDockVerticalStartRow + 9,
+      ],
+    });
+  }
+  return targets;
+}
+
+export function deriveMarkdownPreviewScrollbarThumbDragTargets(
+  snapshot: HarnessSnapshot.Model,
+  status: StatusSnapshot,
+): readonly ScrollbarThumbDragTarget[] {
+  const previewBorder = snapshot.findText('╭─Preview');
+  if (!previewBorder) {
+    throw new Error(
+      'The drag probe could not find the Markdown preview border.',
+    );
+  }
+  const openingRowText = snapshot.rowText(previewBorder.row);
+  const previewRightBorderColumn = openingRowText.indexOf(
+    '╮',
+    previewBorder.column,
+  );
+  const previewBottomBorderRow = snapshot
+    .textRows()
+    .findIndex(
+      (rowText, rowIndex) =>
+        rowIndex > previewBorder.row &&
+        rowText[previewBorder.column] === '╰' &&
+        rowText[previewRightBorderColumn] === '╯',
+    );
+  if (previewRightBorderColumn < 0 || previewBottomBorderRow < 0) {
+    throw new Error(
+      'The drag probe could not derive the Markdown preview border.',
+    );
+  }
+
+  const targets: ScrollbarThumbDragTarget[] = [];
+  const horizontalStartColumn = previewBorder.column + 1;
+  const horizontalRow = previewBottomBorderRow - 1;
+  if (
+    Number(status.markdownPreviewContentColumns) >
+    Number(status.markdownPreviewViewportColumns)
+  ) {
+    targets.push({
+      name: 'markdownPreviewHorizontal',
+      positionName: 'markdownPreviewScrollLeft',
+      pressColumn: horizontalStartColumn,
+      pressRow: horizontalRow,
+      moveColumns: [
+        horizontalStartColumn + 5,
+        horizontalStartColumn + 10,
+        horizontalStartColumn + 15,
+      ],
+      moveRows: [horizontalRow, horizontalRow, horizontalRow],
+    });
+  }
+  if (
+    Number(status.markdownPreviewContentRows) >
+    Number(status.markdownPreviewViewportRows)
+  ) {
+    const verticalColumn = previewRightBorderColumn - 1;
+    const verticalStartRow = previewBorder.row + 1;
+    targets.push({
+      name: 'markdownPreviewVertical',
+      positionName: 'markdownPreviewScrollTop',
+      pressColumn: verticalColumn,
+      pressRow: verticalStartRow,
+      moveColumns: [verticalColumn, verticalColumn, verticalColumn],
+      moveRows: [
+        verticalStartRow + 3,
+        verticalStartRow + 6,
+        verticalStartRow + 9,
       ],
     });
   }

@@ -19,6 +19,7 @@ import type { RegisteredSetting } from '../settings/SettingContribution.interfac
 //
 // invariant: The host canvas is complete without plugins (project.invariants.md)
 // invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+// invariant: Plugin settings live in contributed schema (src/modules/settings/settings.invariants.md)
 class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   readonly identifier = 'markdown';
   readonly name = 'Markdown';
@@ -35,6 +36,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   protected disposeStatusBar: (() => void) | null = null;
   protected splitRatioSetting: RegisteredSetting<number> | null = null;
   protected previewSideSetting: RegisteredSetting<string> | null = null;
+  protected scrollSyncSetting: RegisteredSetting<boolean> | null = null;
 
   attachWorkspace(workspace: Workspace.Model): WorkspaceContribution {
     const markdownWorkspace = new MarkdownWorkspace.Class(
@@ -70,6 +72,13 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       defaultValue: 'left',
       spec: { kind: 'enum', options: ['left', 'right'] },
     });
+    this.scrollSyncSetting = context.registerSetting({
+      identifier: 'markdownPreviewScrollSync',
+      label: 'Scroll source and preview together',
+      section: this.name,
+      defaultValue: true,
+      spec: { kind: 'boolean' },
+    });
     context.registerKeybindings([
       {
         chord: { key: 'v', ctrl: true, shift: true },
@@ -86,6 +95,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       () => this.workspaces.get(context.workspaceSet.active) ?? null,
       this.splitRatioSetting,
       this.previewSideSetting,
+      this.scrollSyncSetting,
     );
     this.disposeSurface = context.editorSurfaceContents.register(this.surface);
     this.disposeStatusProjection =
@@ -117,6 +127,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     this.surface = null;
     this.splitRatioSetting = null;
     this.previewSideSetting = null;
+    this.scrollSyncSetting = null;
     this.application = null;
   }
 
@@ -169,12 +180,19 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     const markdownWorkspace = this.activeWorkspace();
     const previewContent = this.surface?.previewContent ?? null;
     const splitView = previewContent?.splitView ?? null;
+    const previewScroll = splitView?.previewScrollSnapshot() ?? null;
     return {
       markdownPreviewOpen: markdownWorkspace.showingPreview,
       markdownPaneFocus: splitView?.focusedPane.value ?? 'source',
       markdownSplitRatio: this.splitRatioSetting?.value.value ?? 0.5,
       markdownPreviewSide: this.surface?.previewSide() ?? 'left',
-      markdownPreviewScrollTop: splitView?.preview.scrollTop.value ?? 0,
+      markdownPreviewScrollSync: this.scrollSyncSetting?.value.value ?? true,
+      markdownPreviewScrollTop: previewScroll?.scrollTop ?? 0,
+      markdownPreviewScrollLeft: previewScroll?.scrollLeft ?? 0,
+      markdownPreviewContentRows: previewScroll?.contentRows ?? 0,
+      markdownPreviewContentColumns: previewScroll?.contentColumns ?? 0,
+      markdownPreviewViewportRows: previewScroll?.viewportRows ?? 0,
+      markdownPreviewViewportColumns: previewScroll?.viewportColumns ?? 0,
       markdownPreviewSelectionChars: splitView?.selectionCharacterCount() ?? 0,
       markdownHoveredReference: splitView?.hoveredReferencePath.value ?? null,
       markdownLinkNotice: splitView?.linkNotice.value ?? null,

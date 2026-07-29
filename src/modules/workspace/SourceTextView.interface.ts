@@ -59,6 +59,10 @@ export interface SourceTextView extends LiveBuffer {
   /** The wrap column when wrapping, else null — the one question a scrollbar asks. */
   visualWrapWidth(): number | null;
   totalVisualRows(): number;
+  /** The logical document line currently at the top of the visual-row viewport. */
+  lineAtViewportTop(): number;
+  /** Place a logical document line at the viewport top without moving the cursor. */
+  scrollLineToViewportTop(lineIndex: number): void;
   toggleWordWrap(): void;
 
   // --- movement and selection --------------------------------------------

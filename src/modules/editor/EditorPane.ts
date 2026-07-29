@@ -369,6 +369,7 @@ class $EditorPane {
     } = this.deps;
     editorArea.onMouseScroll = (event) => {
       if (!workspaceSet.active.editor.hasDocument.value) return;
+      focusSourceEditor();
       // Scrolling the DOCUMENT dismisses any open hover card — its anchored symbol is moving away; a
       // new dwell on the newly-hovered symbol re-shows one. (A wheel over the card's OWN box scrolls
       // the card instead — that handler lives on the box, which sits above the editor.)

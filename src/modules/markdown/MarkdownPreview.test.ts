@@ -101,6 +101,34 @@ test('reveals the block for a source line at the shared reading position', async
   expect(targetRow! - preview.scrollTop.value).toBe(2);
 });
 
+test('one block-anchor map converts source and rendered reading positions both ways', async () => {
+  const preview = new MarkdownPreview.Class();
+  preview.open(
+    createSource(
+      '# First\n\nline one\nline two\nline three\nline four\n\n## Second\n\nend',
+    ),
+    null,
+    { debounceMs: 0 },
+  );
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const headingSourceLine = 7;
+  const headingRenderedRow = preview.firstRenderedRowForSourceLine(
+    headingSourceLine,
+    80,
+  );
+  expect(preview.renderedRowForSourceLine(headingSourceLine, 80)).toBe(
+    headingRenderedRow,
+  );
+
+  const interpolatedRenderedRow = preview.renderedRowForSourceLine(4, 80);
+  expect(interpolatedRenderedRow).not.toBeNull();
+  expect(preview.sourceLineForRenderedRow(interpolatedRenderedRow!, 80)).toBe(
+    4,
+  );
+});
+
 // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
 test('exposes the complete rendered row domain for preview find and selection mapping', async () => {
   const preview = new MarkdownPreview.Class();
@@ -226,7 +254,7 @@ test('list items sit single-spaced while the list still separates from paragraph
   expect(texts[alphaIndex + 3]).toBe(''); // one blank between the list and outro
 });
 
-test('code fence borders stay aligned on every row including continuations', async () => {
+test('code fence borders stay aligned while long rows create horizontal overflow', async () => {
   const preview = new MarkdownPreview.Class();
   preview.open(
     createSource(
@@ -240,13 +268,15 @@ test('code fence borders stay aligned on every row including continuations', asy
 
   const rows = preview.allRows(40, ThemeIcons.Class.tableBordersFor('unicode'));
   const codeRows = rows.filter((row) => row.role === 'codeContent');
-  expect(codeRows.length).toBeGreaterThan(2);
+  const contentColumns = preview.totalColumns(40);
+  expect(codeRows).toHaveLength(2);
+  expect(contentColumns).toBeGreaterThan(40);
   for (const row of codeRows) {
     const text = preview.textForRow(row);
     // left frame edge on every row, right frame edge on one shared column
     expect(text.startsWith('  │ ')).toBe(true);
     expect(text.endsWith(' │')).toBe(true);
-    expect(TextCoordinates.Class.lineWidth(text)).toBe(38);
+    expect(TextCoordinates.Class.lineWidth(text)).toBe(contentColumns);
   }
 });
 

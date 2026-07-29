@@ -242,7 +242,8 @@ translation from parsed blocks and row roles into selectors.
 **Generates:** uniform pane padding (the breathing room between text and pane edges); the
 color-and-intensity heading ramp with no H1 underline; single-spaced list runs that still separate
 from paragraphs; the quote bar on every wrapped quote row; code frames whose right edge stays on
-one column; consistent presentation across every element without per-element literals.
+one content column while long physical code rows remain reachable by horizontal scroll; consistent
+presentation across every element without per-element literals.
 
 **Rejected alternatives:** per-element literals scattered through projection and paint — the
 pre-#236 state, where the quote bar and code frame dropped off continuation rows because each
@@ -448,13 +449,32 @@ src/modules/markdown/MarkdownWorkspace.test.ts` and
 
 **Invariant:** If the active editor tab is a Markdown file and preview mode is enabled, then the
 editable source and the rendered current document appear together in two resizable panes, and an
-explicit source jump reveals the same source block in both panes.
+explicit source jump reveals the same source block in both panes. While
+`markdownPreviewScrollSync` is true, the pane that receives user input leads continuous scroll and
+the other pane follows the same reading position. While the setting is false, each pane scrolls
+independently.
 
 **Scope:** `MarkdownWorkspace` (the per-tab preview mode and its editor-surface claim),
 `MarkdownPreviewSurface` / `MarkdownPreviewContent` (the mounted occupant), `EditorContentMount`
 (the generic host mount), `MarkdownSplitView`, `MarkdownPreview`, and the contributed editor-title
 action the tab strip renders from the `markdown.togglePreview` command. Source-jump follow crosses
-the generic `EditorSurfaceClaims` seam.
+the generic `EditorSurfaceClaims` seam. Continuous follow also includes
+`MarkdownPlugin.markdownPreviewScrollSync` and the editor's logical-line viewport projection.
+
+**Components:**
+- *One live split* — the source and rendered projection share one mounted document and one
+  resizable editor-column surface.
+- *Explicit jumps share reading placement* — a source jump reveals the same block with the shared
+  text-viewport reading margin.
+- *User input names the scroll leader* — source input makes the source lead, preview input makes
+  the preview lead, and programmatic follower movement does not change that identity.
+- *The preview is one shared scroll surface* — wheel, pointer selection, edge autoscroll, and both
+  overflowing axes compose `ScrollableTextViewport`; its bars compose `SolidThumbScrollBar`.
+- *One position map serves both directions* — exact rendered block anchors, including headings,
+  map source to preview; interpolation between the same anchors maps continuous positions in
+  either direction.
+- *The contributed switch is symmetric* — the default is on, and off suppresses both follow
+  directions without suppressing either pane's own scroll.
 
 **Mechanism:** The tab-strip affordance and the `markdown.togglePreview` command are the SAME
 command — the button is rendered from its `editorTitleIcon`, so there is one action, not two — and it
@@ -465,23 +485,37 @@ moves into its left pane, and `MarkdownPreview` opens on the active `TextDocumen
 explicit source jump reaches the occupying Markdown claim through `EditorSurfaceClaims`;
 `MarkdownSplitView` waits for the matching parsed revision, maps the source line to its rendered
 block row, and uses `TextViewport.scrollTopForTarget` for the same reading placement as the source.
+`MarkdownPreview` caches one source-line/rendered-row anchor map per parsed revision and pane width.
+`MarkdownSplitView` reads the focused pane as the leader, interpolates the follower position from
+that map, applies it without changing focus, and captures both resulting positions before another
+frame can consider follow. Disabling the contributed setting captures current positions and skips
+all follower writes. The split supplies preview extents, selection writes, and cell mapping to one
+`ScrollableTextViewport`; the shared viewport owns momentum, wheel routing, both bars, native bar
+input, and selection drag. Fenced code keeps physical lines intact, so its widest line supplies the
+horizontal extent while prose remains viewport-bound.
 
 **Generates:** the auto-opened preview default (see `The Markdown preview opens itself and sits on
 the configured side`); source and preview together; table-of-contents jumps that reveal both panes;
-live edit reparsing; one clickable and keyboard-bound toggle; persistent pane geometry.
+live edit reparsing; bidirectional input-led scroll follow; the default-on
+`markdownPreviewScrollSync` contributed setting; independent scrolling while it is off; one
+clickable and keyboard-bound toggle; vertical and horizontal preview bars; persistent pane geometry.
 
-**Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; `MarkdownWorkspace.test.ts`,
-`MarkdownPreviewSurface.test.ts`, `MarkdownPreviewContent.test.ts`, `MarkdownPlugin.test.ts`; the
-generic mount in `src/modules/ui/EditorContentMount.ts`; `scripts/smoke-markdown.sh` toggle and
-splitter drives.
+**Evidence:** `src/modules/markdown/MarkdownSplitView.ts`; `MarkdownPreview.ts`;
+`MarkdownSplitView.test.ts`; `MarkdownPreview.test.ts`; `MarkdownWorkspace.test.ts`;
+`MarkdownPreviewSurface.test.ts`; `MarkdownPreviewContent.test.ts`; `MarkdownPlugin.test.ts`; the
+generic mount in `src/modules/ui/EditorContentMount.ts`; `scripts/smoke-markdown.sh`;
+`scripts/harness/smoke-markdown-harness.ts`; `scripts/harness/smoke-scrollbars-harness.ts`.
 
 **Impossible if true:** enabling preview on an active Markdown tab while only raw source remains;
 editing source while the visible preview remains on an older revision; a deep table-of-contents
 click moving only the source; dragging the divider while both pane widths stay fixed; reopening the
-split at the default ratio after a completed drag.
+split at the default ratio after a completed drag; a follower write taking leadership and causing a
+feedback loop; source and preview using separate position maps; either pane moving its follower
+while `markdownPreviewScrollSync` is false; an overflowing preview axis with no shared scrollbar;
+a preview scrollbar input that leaves the source pane as scroll leader.
 
 **Verification:** `bash scripts/smoke-markdown.sh && bun
-scripts/harness/smoke-markdown-harness.ts`.
+scripts/harness/smoke-markdown-harness.ts && bun scripts/harness/smoke-scrollbars-harness.ts`.
 
 **Status:** established
 
@@ -633,12 +667,13 @@ stated; a plain backtick word acquiring a miss message.
 **Invariant:** If a user drags a selection in the rendered preview, then the shared drag-edge
 behavior extends one preview text range, autoscrolls that pane, and Ctrl C copies exactly that range.
 
-**Scope:** `MarkdownSplitView.createSelectionDragBehavior`, its preview `ReadOnlyTextBuffer`,
-`MarkdownRenderable` cell mapping, and Bootstrap copy routing.
+**Scope:** `MarkdownSplitView.createPreviewViewport`, its preview `ReadOnlyTextBuffer`,
+`MarkdownRenderable` cell mapping, `ScrollableTextViewport`, and Bootstrap copy routing.
 
-**Mechanism:** `SelectionDragBehavior` receives preview-specific cell mapping and scroll callbacks,
-while the range lives in `ReadOnlyTextBuffer.cursor` and paints through `SelectableText`. The source
-editor keeps its own selection and remains the only paste target.
+**Mechanism:** `ScrollableTextViewport` constructs `SelectionDragBehavior` from preview-specific
+cell mapping and selection writes, and supplies the same scroll offsets that its wheel and shared
+bars use. The range lives in `ReadOnlyTextBuffer.cursor` and paints through `SelectableText`. The
+source editor keeps its own selection and remains the only paste target.
 
 **Generates:** preview drag selection; edge autoscroll; exact rendered-text copy; editable-source
 paste without a third selection model.

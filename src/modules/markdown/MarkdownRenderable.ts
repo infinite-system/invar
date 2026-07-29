@@ -91,7 +91,8 @@ class $MarkdownRenderable extends BoxRenderable {
       line: this.preview.scrollTop.value + visibleRowIndex,
       column: TextCoordinates.Class.graphemeAtDisplayColumn(
         rowText,
-        Math.max(0, screenColumn - this.bodyRenderable.x),
+        this.preview.scrollLeft.value +
+          Math.max(0, screenColumn - this.bodyRenderable.x),
       ),
     };
   }
@@ -104,7 +105,9 @@ class $MarkdownRenderable extends BoxRenderable {
     const row = this.visibleRowsSnapshot[visibleRowIndex];
     if (!row?.block) return null;
     const rowText = this.preview.textForRow(row);
-    const rowDisplayColumn = Math.max(0, screenColumn - this.bodyRenderable.x);
+    const rowDisplayColumn =
+      this.preview.scrollLeft.value +
+      Math.max(0, screenColumn - this.bodyRenderable.x);
     if (row.tableCells && row.tableRowIndex !== undefined) {
       return this.tableReferenceAtDisplayColumn(row, rowDisplayColumn);
     }
@@ -184,12 +187,58 @@ class $MarkdownRenderable extends BoxRenderable {
     const chunks: TextChunk[] = [];
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-      this.appendRow(chunks, rows[rowIndex]!, rowIndex, palette);
+      const rowChunks: TextChunk[] = [];
+      this.appendRow(rowChunks, rows[rowIndex]!, rowIndex, palette);
+      chunks.push(
+        ...this.windowChunks(
+          rowChunks,
+          this.preview.scrollLeft.value,
+          width,
+          palette,
+        ),
+      );
       if (rowIndex < rows.length - 1) chunks.push(fg(palette.fg)('\n'));
     }
     this.bodyRenderable.content = new StyledText(chunks);
     this.bodyRenderable.fg = palette.fg;
     this.backgroundColor = palette.bg;
+  }
+
+  /** Clip styled chunks to one display-cell window while preserving their styles. */
+  protected windowChunks(
+    rowChunks: readonly TextChunk[],
+    startColumn: number,
+    width: number,
+    palette: Palette,
+  ): TextChunk[] {
+    const endColumn = startColumn + width;
+    const visibleChunks: TextChunk[] = [];
+    let displayColumn = 0;
+    for (const chunk of rowChunks) {
+      let visibleText = '';
+      for (const grapheme of TextCoordinates.Class.graphemes(chunk.text)) {
+        const graphemeWidth = TextCoordinates.Class.lineWidth(grapheme);
+        const graphemeStart = displayColumn;
+        const graphemeEnd = displayColumn + graphemeWidth;
+        displayColumn = graphemeEnd;
+        if (graphemeEnd <= startColumn) continue;
+        if (graphemeStart >= endColumn) break;
+        if (graphemeStart < startColumn || graphemeEnd > endColumn) {
+          visibleText += ' '.repeat(
+            Math.max(
+              0,
+              Math.min(graphemeEnd, endColumn) -
+                Math.max(graphemeStart, startColumn),
+            ),
+          );
+        } else {
+          visibleText += grapheme;
+        }
+      }
+      if (visibleText) visibleChunks.push({ ...chunk, text: visibleText });
+      if (displayColumn >= endColumn) break;
+    }
+    return visibleChunks.length > 0 ? visibleChunks : [fg(palette.fg)(' ')];
   }
 
   // invariant: Markdown presentation resolves through one stylesheet (src/modules/markdown/markdown.invariants.md)

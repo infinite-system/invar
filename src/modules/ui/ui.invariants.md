@@ -1633,10 +1633,10 @@ same property: any row you can scroll to, you can select to. A surface that scro
 drag-select (or selects only what is already on screen) violates this.
 
 **Scope:** every scrollable text surface — the editor code body, the diff view, the LSP hover card,
-and the Settings overlay. Not plain non-scrolling labels (status bar, tab titles), which have
-nothing to scroll to.
+the rendered Markdown preview, and the Settings overlay. Not plain non-scrolling labels (status
+bar, tab titles), which have nothing to scroll to.
 
-**Mechanism:** all four compose the SAME `SelectionDragBehavior` — the host supplies only
+**Mechanism:** all five compose the SAME `SelectionDragBehavior` — the host supplies only
 coordinate mapping (`positionAtCell`), selection-model writes (`begin`/`extend`/`finishSelection`),
 and a `scrollRows`/`scrollColumns` pair; the behavior owns the pointer-drag lifecycle and the
 edge-overshoot rate integration. Because the edge autoscroll is wired to the SAME `scrollBy` the
@@ -1659,8 +1659,9 @@ construction the moment it wires the shared behavior — no per-pane drag/autosc
 
 **Evidence:** `EditorPane` and `DiffView` have composed `SelectionDragBehavior` since the selection
 work; `HoverCard` composes the identical behavior on BOTH axes; `OverlayLayer` wires Settings through
-`TextSelectionModel`, `SelectableText`, and `ScrollableTextViewport`; the clipboard boundary harness
-drag-selects `Scrolling`, observes the selection background, and copies exactly that text.
+`TextSelectionModel`, `SelectableText`, and `ScrollableTextViewport`; `MarkdownSplitView` supplies
+its rendered-text selection model to the same viewport; the clipboard boundary harness drag-selects
+`Scrolling`, observes the selection background, and copies exactly that text.
 
 **Impossible if true:** a pane with a working scrollbar whose off-screen rows cannot be selected; a
 drag that selects but never auto-scrolls at the edge; two scrollable panes with divergent drag rules.
@@ -1686,7 +1687,7 @@ half of its trailing row so both orientations have the same apparent weight in a
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
 changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
-scrollback, the structure right dock, and any future pane).
+scrollback, the rendered Markdown preview, the structure right dock, and any future pane).
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
@@ -1699,6 +1700,7 @@ clipped content; grabbable thumbs; no phantom bars; equal apparent weight across
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
 `scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
+both rendered Markdown preview axes, continuous preview thumb drag, and preview track click);
 `scripts/harness/smoke-plugin-manifest-harness.ts` (overflowing structure rows, live right-dock
 geometry, track click, and keyboard parity);
 `scripts/harness/smoke-terminal-harness.ts` (long terminal scrollback and solid vertical thumb),
@@ -1804,7 +1806,9 @@ block-element glyphs in vertical bars, contiguous multi-cell bg-fill vertical th
 cells only in horizontal bars, and per-completed-frame editor wrap-off, editor wrap-on, and diff
 probes that record constant viewport/total inputs, moving scroll positions, and byte-identical thumb
 extents. At 500 and 100,000 lines, its real PTY drag probe records a new scroll position after every
-pressed-pointer move on both editor axes and the structure right-dock bar. Its agent probe holds
+pressed-pointer move on both editor axes, both Markdown preview axes, and the structure right-dock
+bar. A preview vertical drag and track click both claim preview leadership and move the synchronized
+source. Its agent probe holds
 `viewportRows=14` and `contentRows=181` while 20 changing positions all paint a 2-row thumb.
 `scripts/harness/smoke-terminal-harness.ts` proves the same solid multi-cell thumb on real terminal
 scrollback. `src/modules/ui/SolidThumbScrollBar.test.ts` exhausts half-cell start parity and the
