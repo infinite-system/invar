@@ -30,3 +30,13 @@ purity is pending #224 and word the record so it stays true either way.
 
 - `.invar/tasks/completed/222-provider-seam-analysis-and-convention/` — report
   Bycatch items 3 and 4.
+
+## Fold (2026-07-29, #294 bycatch)
+
+Files confinement drift: the "File access is confined to a single root"
+record says every read/list calls the confinement guard, but Files.read,
+readBytes, list, listNamesResult accept paths directly — record and
+implementation disagree. Also: no record claims the exact boundary that
+a language server's cwd/rootUri/workspace folder match its OWNING
+workspace after every switch (#294's new contract asserts it; the
+record should claim it).
