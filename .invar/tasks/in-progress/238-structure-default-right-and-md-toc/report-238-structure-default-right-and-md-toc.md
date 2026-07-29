@@ -1,6 +1,40 @@
 # READY — #238: structure shows by default on the right, and markdown gets a TOC
 
-Branch: `fleet/238-structure-default-right-and-md-toc`. Commit: `f32a17e6`. Tree clean.
+Branch: `fleet/238-structure-default-right-and-md-toc`. Round-1 commit: `f32a17e6`.
+Round-2 merge commit: `31874403` (main absorbed, #237 included). Tree clean.
+
+## Round 2 — main merged, conflicts resolved
+
+Merge commit `31874403` brings main (through `afc6eecf`) into the branch. #237 (preview
+LEFT + auto-open, landed as `d42f2af0`) is absorbed, not undone. Four unmerged paths, all
+resolved by me as both-intents-kept:
+
+- `src/modules/markdown/MarkdownWorkspace.ts` (two hunks): the constructor keeps BOTH
+  additions — my structure-source registration through `workspace.providers` AND #237's
+  sync-flush auto-open watch; `disposed()` keeps all three releases — my
+  `disposeStructureSource()` + `structureSource.dispose()` AND main's `$stopEffects()`.
+- `src/modules/markdown/MarkdownWorkspace.test.ts`: both imports kept
+  (`ProviderRegistry` from my round 1, `EditorSurfaceClaim` type from #237).
+- `scripts/harness/smoke-plugin-manifest-harness.ts`: both fixtures kept — my
+  `outline.md` (TOC arm) and #237's `z-auto-notes.md` (auto-open symmetry arm).
+- `.invar/tasks/in-progress/238-…/probe-238-outline-watch-chain.ts`: main moved the task
+  folder from `active/` to `in-progress/`; my probe follows the move (kept at the
+  in-progress path).
+
+Coexistence, driven: a fresh `.md` shows the rendered preview LEFT, the source middle, and
+the structure TOC RIGHT — all unbidden in one frame (`Alpha/Beta/Gamma` rendered left,
+`▤ Alpha :1 … ▤ Omega :17` outlined right, `structureStatus="ready"`).
+
+Round-2 verification (exact exit codes): `bun test` 1852 pass, 0 fail — exit 0;
+`bunx tsc --noEmit` — exit 0; invariants checker — 1058 annotations, 0 problems — exit 0;
+rendezvous census `--require-one` — total 1 — exit 0;
+`bun scripts/harness/smoke-plugin-manifest-harness.ts` — ALL-PASS (my structure arms and
+#237's auto-open arms both green) — exit 0; `bash scripts/smoke-markdown.sh` — ALL-PASS —
+exit 0. The known main red on `smoke-editor-harness` (#268's wrap-off rows) was not
+touched and not run as part of my ownership; nothing I own is red.
+
+Round-2 bycatch: none observed beyond round 1's list (the conductor has since filed
+#259-#262 from those items; no new defects surfaced during the merge or the re-drives).
 
 ## What landed
 

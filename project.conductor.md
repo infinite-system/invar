@@ -112,6 +112,7 @@ but checks that can be wrong out loud.
 | 07-25 19:30 | the quiet tail was made of the wrong thing entirely — all 20 smokes qualified by CALLING a frame-silence helper, ZERO derived a duration. The classification was invented, not derived |
 | 07-27 05:10 | a liveness predicate must observe what the brief ASKS FOR at that phase — the heartbeat called two healthy builders STALL on "no source file written in 20 min" while one was actively driving the app |
 | 07-28 22:0x | my markdown control run failed on plain main, the builder's passed — the "deterministic red" was a timing race, and one control run is one sample |
+| 07-29 05:5x | I LANDED #237 ON A RED GATE: land.sh was chained behind a wrapper whose exit code was the trailing echo's, not the gate's — GATE_EXIT=1 sat unread in the log. A verdict must be READ from the sentinel, never inferred from a wrapper exit. land.sh now refuses without GATE_LOG showing GATE_EXIT=0 or a written GATE_OVERRIDE (exit 6, all four arms probe-tested) |
 
 **Corollary — `in_progress` requires a named driver:** a worktree, a brief, a log. A status
 that asserts attention without one fails in the same direction as the other seven.
@@ -291,6 +292,7 @@ including what the agent was told not to do. Guards go first or they are not gua
 | — | `land.sh` merged into the wrong branch because I left the checkout off main AFTER being warned |
 | 07-28 23:0x | dispatch's record commit named only the brief; the staged task-folder move stayed uncommitted and the next merge tripped over it — now a pathspec commit of the whole record, always on main |
 | 07-29 02:4x | the agent-sdk import leaked 131×200MB per gate run; disk hit 100% TWICE before any lens showed it (#244) |
+| 07-29 06:3x | a `;`-separated merge ran in MAIN after its worktree-add guard failed (`worktree add main` refuses when main is checked out — needed `--detach`): #238 merged into main ungated, caught in seconds, `git reset --keep` restored. Same genus as the wrapper-exit landing: a compound command whose later step ACTS while an earlier failure is invisible. A destructive step never follows `;` — every link that precedes an acting git command must be `&&`, and the acting step belongs in its OWN command once the guards are seen to pass |
 
 **The sprawl corollary (user directive, 07-29).** The filesystem is fleet
 infrastructure and gets a standing instrument: fleet-watch's SPRAWL arm (floor <10G,
