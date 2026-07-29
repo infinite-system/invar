@@ -1,13 +1,12 @@
 // The composable-view seam: the honest minimal shape of "a thing that occupies a pane slot". A
-// PanelHost hosts a SWITCHABLE SET of these, and each is interchangeable — the terminal is the first
-// citizen today; an Output view, a Problems list, or a plugin panel is the same shape tomorrow with
-// zero host rewiring. Deliberately NOT retrofitted onto the existing editor/git/tree/markdown panes
-// yet (that is an incremental follow-up) — this defines the seam and proves it with one instance.
+// PanelHost hosts a SWITCHABLE SET of these, and each is interchangeable. An Output view, a Problems
+// list, or another plugin pane can use the same shape with zero host rewiring.
 //
 // A pane content renders its region to cells, consumes focused input, and owns a reactive paint
-// signal so async producers (a PTY, a log tail) repaint through the single frame effect. The terminal,
-// agent, file tree, and the source-text editor are citizens today; git and the Markdown panes remain
-// incremental follow-ups. A content knows nothing about the host, the split, or where it is mounted.
+// signal so async producers (a PTY, a log tail) repaint through the single frame effect. The
+// terminal, agent, file tree, Git, database, extensions, structure, tasks dashboard, and source-text
+// editor are citizens today; the Markdown panes remain an incremental follow-up. A content knows
+// nothing about the host, the split, or where it is mounted.
 //
 // A content projects through EXACTLY ONE surface. Most return a StyledText from `render` and the
 // host paints it into a host-owned body. One that owns native OpenTUI renderables — the source-text

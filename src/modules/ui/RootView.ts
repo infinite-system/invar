@@ -2019,10 +2019,9 @@ class $RootView {
     const columnContent = (): PaneContent | null => editorColumnDefault.content;
     const columnSurface = (): PaneNativeSurfacePort | null =>
       editorColumnDefault.nativeSurface;
-    // The scrollbar geometry controller derives every bar's track from the live layout each frame and
-    // converges the panes' viewport extents. RootView constructs the bars (their onChange handlers call
-    // scrollbarSync.trueScrollPosition + read applyingGeometry); update() calls syncScrollbars() and the
-    // frame loop calls syncPaneViewportGeometry().
+    // ScrollbarSync constructs and owns the editor and dock bars. It derives each track from the live
+    // layout, maps widget positions back to true scroll positions, and converges pane viewport extents.
+    // RootView calls syncScrollbars() during update and syncPaneViewportGeometry() from the frame loop.
     // The overlay layer constructs + drives every modal/floating overlay (palette, find, quick-open,
     // confirm, settings, shortcut sheet, context menu, tooltip). update() calls overlayLayer.update().
     const overlayLayer = new OverlayLayer.Class({
