@@ -2,7 +2,7 @@
 
 // The task record drifts in one direction: work finishes and the record stays put. That
 // is not hypothetical — on 2026-07-28 the user said "i think some things in todos are
-// actually completed" and three were. #108 had a DELIVERED REPORT sitting in its todo
+// actually completed" and three were. #108 had a DELIVERED REPORT sitting in its open
 // folder; #107's fix had been in main since 966c5d1; #77's first two holes landed at
 // 4ab250f. Nothing noticed, because noticing was a person reading 61 folders.
 //
@@ -13,7 +13,7 @@
 //
 // Five signals, in descending strength:
 //
-//   REPORT-IN-OPEN    a todo/live folder holds a report-*.md. An agent delivered. This
+//   REPORT-IN-OPEN    an active/in-progress folder holds a report-*.md. An agent delivered. This
 //                     is the strongest tell and it is what was missed for #108.
 //   STATE-MISMATCH    the task file's `State:` line disagrees with its parent directory.
 //                     One of the two is stale and neither can be trusted over the other.
@@ -44,7 +44,7 @@ import {
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-export type TaskState = 'todo' | 'live' | 'done' | 'retired';
+export type TaskState = 'active' | 'in-progress' | 'completed' | 'retired';
 
 export type DriftSignal =
   | 'REPORT-IN-OPEN'
@@ -74,8 +74,13 @@ export interface DriftFinding {
   detail: string;
 }
 
-const TASK_STATES: TaskState[] = ['todo', 'live', 'done', 'retired'];
-const OPEN_STATES: TaskState[] = ['todo', 'live'];
+const TASK_STATES: TaskState[] = [
+  'active',
+  'in-progress',
+  'completed',
+  'retired',
+];
+const OPEN_STATES: TaskState[] = ['active', 'in-progress'];
 const THIN_LINE_CEILING = 15;
 // A commit reference in a State line. Seven or more hex characters, so a word like
 // "added" or "deface" cannot masquerade as a short SHA.
@@ -155,7 +160,7 @@ function findDrift(records: TaskRecord[]): DriftFinding[] {
     // The declared state is prose ("DONE — merged abc1234", "TODO — hold"), so match the
     // leading word rather than the whole line.
     const declaredWord =
-      record.declaredState?.split(/[\s—-]/)[0]?.toUpperCase() ?? null;
+      record.declaredState?.split(/[\s—]/)[0]?.toUpperCase() ?? null;
     if (
       declaredWord !== null &&
       declaredWord !== record.directoryState.toUpperCase()
@@ -168,7 +173,7 @@ function findDrift(records: TaskRecord[]): DriftFinding[] {
     }
 
     if (
-      record.directoryState === 'done' &&
+      record.directoryState === 'completed' &&
       record.reportCount === 0 &&
       !record.namesACommit
     ) {
@@ -221,7 +226,8 @@ function renderActiveView(records: TaskRecord[]): string {
   const outputLines: string[] = [];
   const openRecords = records.filter(
     (record) =>
-      record.directoryState === 'todo' || record.directoryState === 'live',
+      record.directoryState === 'active' ||
+      record.directoryState === 'in-progress',
   );
   const ungrouped = openRecords.filter(
     (record) => record.priorityGroup === null,
@@ -233,9 +239,10 @@ function renderActiveView(records: TaskRecord[]): string {
     if (inGroup.length === 0) continue;
     outputLines.push(`## ${group.toUpperCase()} (${inGroup.length})`);
     for (const record of inGroup) {
-      const liveMarker = record.directoryState === 'live' ? '  << LIVE' : '';
+      const liveMarker =
+        record.directoryState === 'in-progress' ? '  << IN-PROGRESS' : '';
       const stateSuffix =
-        record.declaredState !== null && record.declaredState !== 'TODO'
+        record.declaredState !== null && record.declaredState !== 'ACTIVE'
           ? `  [${record.declaredState}]`
           : '';
       outputLines.push(
@@ -370,47 +377,47 @@ function selfTest(): number {
 
   // REPORT-IN-OPEN: a delivered report sitting in todo — the #108 shape.
   write(
-    'todo',
+    'active',
     '901-planted-report-in-open',
     'task-901-planted-report-in-open.md',
-    fullTask('TODO'),
+    fullTask('ACTIVE'),
   );
   write(
-    'todo',
+    'active',
     '901-planted-report-in-open',
     'report-901-planted-report-in-open.md',
     'delivered',
   );
   // STATE-MISMATCH: file says DONE, folder says todo.
   write(
-    'todo',
+    'active',
     '902-planted-state-mismatch',
     'task-902-planted-state-mismatch.md',
-    fullTask('DONE'),
+    fullTask('COMPLETED'),
   );
   // DONE-NO-EVIDENCE: done, no report, no commit named.
   write(
-    'done',
+    'completed',
     '903-planted-done-no-evidence',
     'task-903-planted-done-no-evidence.md',
-    fullTask('DONE'),
+    fullTask('COMPLETED'),
   );
   // THIN: a stub.
   write(
-    'todo',
+    'active',
     '904-planted-thin',
     'task-904-planted-thin.md',
-    '# 904 — planted\n\nState: TODO\n\nstub.\n',
+    '# 904 — planted\n\nState: ACTIVE\n\nstub.\n',
   );
   // A clean control that must produce NOTHING, so the checker is not merely firing on everything.
   write(
-    'done',
+    'completed',
     '905-planted-clean',
     'task-905-planted-clean.md',
-    fullTask('DONE — merged 1a2b3c4d'),
+    fullTask('COMPLETED — merged 1a2b3c4d'),
   );
   write(
-    'done',
+    'completed',
     '905-planted-clean',
     'report-905-planted-clean.md',
     'delivered',

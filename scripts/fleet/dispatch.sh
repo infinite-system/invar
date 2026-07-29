@@ -69,16 +69,16 @@ else
   branch="fleet/${name}"
 fi
 worktree_path="${repository_root}/.invar/worktrees/${name}"
-# THE TASK FOLDER IS THE RECORD, and a dispatched task is LIVE by definition. `.invar/tasks/` replaced
+# THE TASK FOLDER IS THE RECORD, and a dispatched task is IN-PROGRESS by definition. `.invar/tasks/` replaced
 # `agent-dispatches/` on 2026-07-28: the old layout kept one brief per task, so a follow-up brief either
 # overwrote its predecessor or lived only in a tmux session, and steering that overwrites its
 # predecessor destroys the record of what the agent was working from when it made a decision. Briefs are
-# now numbered and dated, never edited. The conductor moves the folder between todo/live/done/retired.
+# now numbered and dated, never edited. The conductor moves the folder between active/in-progress/completed/retired.
 #
 # A SLUG MUST BE DESCRIPTIVE — three words minimum. `fold-flyweight` required opening the brief to learn
 # what it meant; `folded-editing-scale-invariance` does not. A folder name is read far more often than
 # it is typed.
-dispatch_directory="${repository_root}/.invar/tasks/live/${name}"
+dispatch_directory="${repository_root}/.invar/tasks/in-progress/${name}"
 slug_word_count="$(printf '%s' "$slug" | tr '-' '\n' | grep -c .)"
 if [ "$slug_word_count" -lt 3 ]; then
   echo "dispatch: REFUSING — slug '$slug' has $slug_word_count word(s); 3 minimum." >&2

@@ -2,7 +2,7 @@
 name: manage-tasks
 description: >-
   Operate the durable task system: one folder per task under .invar/tasks/, moved between
-  todo/live/done/retired and never deleted. Use when filing, dispatching, steering, landing,
+  active/in-progress/completed/retired and never deleted. Use when filing, dispatching, steering, landing,
   retiring, or auditing tasks — each lifecycle step is a command, every file is named
   number-first, and the tracker (scripts/tasks/tasks-status.ts) reports drift with a
   self-test. Built for the Invar repo and reusable by any repo that adopts the layout.
@@ -14,9 +14,9 @@ One folder per task. A task lives in exactly one state directory and is MOVED be
 copied, and a folder is never deleted (the repo rule is that things are parked, not removed).
 
 ```
-.invar/tasks/todo/     not started
-.invar/tasks/live/     dispatched, an agent is working
-.invar/tasks/done/     landed on main
+.invar/tasks/active/       actionable, not yet dispatched
+.invar/tasks/in-progress/  dispatched — an agent is working on it
+.invar/tasks/completed/    landed on main
 .invar/tasks/retired/  abandoned, declined, or superseded — kept with the reason
 ```
 
@@ -102,12 +102,12 @@ number. They are not lost and not misfiled — they are unplaced, and placing on
 **1. FILE** — the moment work is identified (user request, bycatch, your own finding):
 
 ```
-mkdir -p .invar/tasks/todo/<number>-<three-word-minimum-slug>
-$EDITOR  .invar/tasks/todo/<n>-<slug>/task-<n>-<slug>.md
+mkdir -p .invar/tasks/active/<number>-<three-word-minimum-slug>
+$EDITOR  .invar/tasks/active/<n>-<slug>/task-<n>-<slug>.md
 ```
 
 The task file holds THE TASK and nothing else: heading `# <n> — <subject>`, then
-`State: TODO` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` / `Priority:`
+`State: ACTIVE` / `Created:` / `Engine:` / `Environment:` / `Model:` / `Effort:` / `Priority:`
 (user-directed | verification-integrity | flake-evidence | performance-behaviour |
 architecture-hygiene) (+ `Assignment note:`
 when the assignment needs explaining), then `## Outline` with mechanism, evidence, refutations, and
@@ -130,13 +130,13 @@ environment that contradicts the task file.
 **3. STEER** — every follow-up instruction to a running builder is a NEW file, next count up:
 
 ```
-$EDITOR .invar/tasks/live/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
+$EDITOR .invar/tasks/in-progress/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
 ```
 
 **4. DELIVER** — when the builder reports READY, copy the report verbatim into the folder:
 
 ```
-cp /tmp/<n>-*-READY.md .invar/tasks/live/<n>-<slug>/report-<n>-<slug>.md
+cp /tmp/<n>-*-READY.md .invar/tasks/in-progress/<n>-<slug>/report-<n>-<slug>.md
 ```
 
 Read its `## Bycatch` section NOW and convert each item to a new task (step 1) before merging.
@@ -144,20 +144,20 @@ Read its `## Bycatch` section NOW and convert each item to a new task (step 1) b
 **5. LAND** — gate green, merge, then move the record in the SAME action as the merge:
 
 ```
-git mv .invar/tasks/live/<n>-<slug> .invar/tasks/done/
-sed -i '0,/^State: .*/s//State: DONE — <merge-commit-sha>/' .invar/tasks/done/<n>-<slug>/task-<n>-<slug>.md
+git mv .invar/tasks/in-progress/<n>-<slug> .invar/tasks/completed/
+sed -i '0,/^State: .*/s//State: COMPLETED — <merge-commit-sha>/' .invar/tasks/completed/<n>-<slug>/task-<n>-<slug>.md
 git tag finished/<branch> <merge-sha>
-$EDITOR .invar/tasks/done/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
+$EDITOR .invar/tasks/completed/<n>-<slug>/summary-<n>-<slug>.md   # what ACTUALLY happened, incl. refutations
 bun scripts/tasks/tasks-status.ts write-active               # the landed task leaves the active view
 ```
 
-The `State:` line MUST name the commit — a bare `DONE` is the tracker's DONE-NO-EVIDENCE signal, and
+The `State:` line MUST name the commit — a bare `COMPLETED` is the tracker's DONE-NO-EVIDENCE signal, and
 eight of those were created in one evening by writing the SHA into the body instead.
 
 **6. RETIRE** — a task that will never be done (superseded, refuted, declined):
 
 ```
-git mv .invar/tasks/todo/<n>-<slug> .invar/tasks/retired/
+git mv .invar/tasks/active/<n>-<slug> .invar/tasks/retired/
 sed -i '0,/^State: .*/s//State: RETIRED — <why, or SUPERSEDED BY #m>/' .invar/tasks/retired/<n>-<slug>/task-<n>-<slug>.md
 git tag -a retired/<branch> -m '<why>' # only if a branch with unique commits exists
 bun scripts/tasks/tasks-status.ts write-active  # the retired task leaves the active view
