@@ -20,6 +20,7 @@
 #   - refuse a mid-turn builder; idle needs the READY report too
 #   - refuse untracked source in the worktree (a merge will not carry it)
 #   - surface bycatch and HOLD without BYCATCH_TRIAGED=1
+#   - warn about report link findings without blocking legacy records
 #   - REFUSE WITHOUT A READ GATE VERDICT (2026-07-29: the conductor chained
 #     land.sh behind an unchecked wrapper exit and landed #237 on GATE_EXIT=1;
 #     the wrapper's exit was the echo's, not the gate's). GATE_LOG=<path> must
@@ -114,6 +115,12 @@ if [ ! -f "$report_file" ]; then
     echo "land: no report in ${task_directory} — the builder may be ASKING, not done. Refusing." >&2
     exit 1
   }
+fi
+report_link_source="$(ls "$task_directory"/report-* 2>/dev/null | tail -1)"
+if [ -n "$report_link_source" ] &&
+   ! bun scripts/tasks/lint-task-links.ts "$report_link_source"; then
+  echo "land: WARNING — the report has dead or bare document references." >&2
+  echo "  Landing continues because legacy task records can contain old references." >&2
 fi
 
 # Refuse untracked source in the worktree — a merge will not carry it.

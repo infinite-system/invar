@@ -28,6 +28,11 @@ Write all task prose in plain language. Follow `.claude/skills/ste-expression/SK
 flavored mode. This applies to task files, briefs, reports, and summaries. Keep exact paths,
 counts, and hashes. Lint a brief before dispatch:
 `python3 .claude/skills/ste-expression/scripts/ste-lint.py <brief-file>`.
+Write every document reference as a Markdown link. Make the destination relative to the file
+that contains it. Before dispatch or steering, run
+`bun scripts/tasks/lint-task-links.ts <brief-file>`. If the draft is outside its task folder,
+add `--base-directory <task-folder>`. Before READY, run
+`bun scripts/tasks/lint-task-links.ts <report-file>` and fix every finding.
 
 ## Files
 

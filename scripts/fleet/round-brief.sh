@@ -11,7 +11,8 @@
 #
 # What it does, in order:
 #   1. guards: the folder is in-progress; the brief carries the two
-#      invariant-dialogue sections (same law as dispatch).
+#      invariant-dialogue sections and resolving document links (same law as
+#      dispatch).
 #   2. copies the brief in as brief-<number>-<round>-<original-name>.md.
 #   3. stamps meta.json: round + roundBriefedAtMs, AT FILING TIME. The lens
 #      reads this stamp — a report older than it is an unanswered round
@@ -40,6 +41,12 @@ grep -q "^## Invariants in scope" "$brief_file" || {
   echo "round-brief: REFUSING — the brief has no '## Invariants in scope' section." >&2; exit 2; }
 grep -q "^## Bycatch expected" "$brief_file" || {
   echo "round-brief: REFUSING — the brief has no '## Bycatch expected' section." >&2; exit 2; }
+if ! bun "${repository_root}/scripts/tasks/lint-task-links.ts" \
+     --base-directory "$task_folder" "$brief_file"; then
+  echo "round-brief: REFUSING — the brief has dead or bare document references." >&2
+  echo "  Fix them, or run: bun scripts/tasks/lint-task-links.ts --fix --base-directory ${task_folder} ${brief_file}" >&2
+  exit 2
+fi
 
 task_number="${task_folder_name%%-*}"
 existing_briefs="$(ls "$task_folder"/brief-* 2>/dev/null | wc -l | tr -d ' ')"
