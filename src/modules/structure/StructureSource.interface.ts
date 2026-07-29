@@ -14,7 +14,7 @@
 import type { SymbolClass } from '../theme/ThemeIcons';
 import type { TextDocument } from '../text/TextDocument';
 
-/** A per-workspace symbol source. Registered through `StructureSources`; consumed by the pane. */
+/** A per-workspace symbol source. Registered through the host registry; consumed by the pane. */
 export interface StructureSource {
   /** True when this source can answer for the document — MUST be cheap and MUST NOT start a
    *  server or any other process; it is asked on ordinary pane refreshes. */

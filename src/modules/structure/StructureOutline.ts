@@ -23,9 +23,9 @@ import type { SymbolClass } from '../theme/ThemeIcons';
 import type {
   StructureDocument,
   StructureOutlineResult,
+  StructureSource,
   StructureSymbol,
 } from './StructureSource.interface';
-import { StructureSources } from './StructureSources';
 
 class $StructureOutline {
   declare $watch: typeof import('vue').watch;
@@ -122,10 +122,6 @@ class $StructureOutline {
     return shallowRef(Momentum.Class.halt());
   }
 
-  protected get StructureSources() {
-    return StructureSources.Class;
-  }
-
   protected get editRefreshDelay(): number {
     const outlineClass = this.constructor as typeof $StructureOutline;
     return outlineClass.EDIT_REFRESH_DELAY_MILLISECONDS;
@@ -149,7 +145,7 @@ class $StructureOutline {
     return [
       this.isObserved() ? 'observed' : 'hidden',
       document?.path ?? '',
-      this.StructureSources.revision.value,
+      this.workspace.providers.revision.value,
       document?.revision.value ?? -1,
     ].join(':');
   }
@@ -175,7 +171,8 @@ class $StructureOutline {
       this.applyEmpty('no-document', null);
       return;
     }
-    const source = this.StructureSources.sourceFor(this.workspace);
+    const source =
+      this.workspace.providers.resolve<StructureSource>('structure');
     if (!source) {
       this.applyEmpty(
         'unavailable',

@@ -1,8 +1,9 @@
 # Inline Rewrite — Invariants
 
-Load-bearing rules for `src/modules/inline-rewrite/`, its `RewriteProvider`
-seam in `src/modules/lsp/`, and the generic editor contribution boundary it
-uses. Stands on `project.invariants.md`.
+Load-bearing rules for `src/modules/inline-rewrite/`, its consumer-owned
+`RewriteProvider` seam, the provider implementation in `src/modules/lsp/`,
+and the generic editor contribution boundary it uses. Stands on
+`project.invariants.md`.
 
 ## Reality-based invariants
 
@@ -115,15 +116,18 @@ or rewrite-driven frame exists.
 and the generic editor contribution registry.
 
 **Mechanism:** The setting's `changed` callback registers the editor
-contribution only when enabled. Disabling unregisters it and disposes every
-controller, which aborts requests and timers; disabling the plugin also
+contribution only when enabled and a `RewriteProviderFactory` resolves from
+the workspace registry. The factory creates one provider for each observed
+editor controller. Disabling unregisters the editor contribution and disposes
+every controller, which aborts requests and timers; disabling the plugin also
 removes commands, keybindings, guards, settings, status projection, and its
-workspace contribution. The host reads only the empty generic registry.
+workspace contribution.
 
-**Generates:** Lazy provider construction; complete Extensions symmetry; a
-feature-off frame graph with no rewrite refs.
+**Generates:** Lazy provider construction through the consumer-owned factory;
+complete Extensions symmetry; a feature-off frame graph with no rewrite refs.
 
-**Evidence:** `InlineRewriteContributor.ts`; `InlineRewriteWorkspace.ts`;
+**Evidence:** `InlineRewriteContributor.ts`; `RewriteProvider.interface.ts`;
+`src/modules/lsp/CodexRewriteProviderFactory.ts`; `InlineRewriteWorkspace.ts`;
 `InlineRewriteWorkspace.test.ts`;
 `src/modules/app/ApplicationContributions.ts`;
 `scripts/harness/smoke-inline-rewrite-harness.ts` feature-off and

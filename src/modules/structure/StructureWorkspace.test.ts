@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import { TextDocument } from '../text/TextDocument';
 import type { Workspace } from '../workspace/Workspace';
@@ -10,6 +11,7 @@ function makeWorkspaceStub() {
   document.loadFromText('function alpha() {}\n', '/tmp/momentum.ts');
   const workspace = {
     documentLifecycle: new DocumentLifecycle.Class(),
+    providers: new ProviderRegistry.Class(),
     activeDocumentHandle: { document },
     editor: {
       placeCursor: (line: number, column: number) => {

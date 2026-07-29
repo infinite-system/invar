@@ -111,20 +111,20 @@ budget), no symbols in the document, or a truncated answer — and a source expr
 answer" as `null` distinctly from "the document has no symbols" as an empty list. A blank
 structure pane is impossible.
 
-**Scope:** `StructureSource.interface.ts` (the answer contract), `StructureSources` (the
-per-workspace registry), `StructureOutline` (the states), and `StructurePaneRenderer` (the
-stated affordances). Both directions of install asymmetry: the pane without a source, and a
-source without the pane.
+**Scope:** `StructureSource.interface.ts` (the answer contract), the workspace provider
+registry, `StructureOutline` (the states), and `StructurePaneRenderer` (the stated
+affordances). Both directions of install asymmetry: the pane without a source, and a source
+without the pane.
 
 **Components:**
-- *Consumer-owned seam* — the interface and registry live in the consumer module (the
-  `RewriteProvider.interface` precedent); a source plugin imports them and registers per
-  workspace; neither plugin names the other's concrete class.
+- *Consumer-owned seam* — the interface lives in the consumer module. A source plugin imports
+  it and registers through the type-blind workspace registry; neither plugin names the
+  other's concrete class.
 - *Registration is reversible* — `register` returns the disposer; the LSP provider's
   `disposed()` withdraws its source, and the pane degrades to its stated affordance; a
   re-registration restores it.
-- *The registry is reactive* — a revision signal re-resolves the pane when a source plugin is
-  installed or uninstalled mid-session.
+- *The host registry is reactive* — its revision signal re-resolves the pane when a source
+  plugin is installed or uninstalled mid-session.
 
 **Mechanism:** Stands on *Symbol structure is analyzer knowledge*. The outline maps each absent
 answer to a named status plus a user-facing notice; the renderer paints a headline for every
@@ -134,12 +134,12 @@ refusal (the LSP size budget) surfaces in the pane in the provider's own words.
 **Generates:** The `no-document` / `unavailable` / `loading` / `ready` states; the notice text
 the pane paints; the honest size-budget message on huge files; the truncation banner.
 
-**Rejected alternatives:** Reusing the host's `Workspace.provider` registry — it is protected,
-host-only, and closed to peer consumers (reported as this task's seam finding). An empty pane
-for unsupported files — the blank-lie shape the degraded-affordance precedent exists to prevent.
+**Rejected alternatives:** A structure-owned source registry — duplicates the host registry's
+identifier, lifetime, and reactivity generator. An empty pane for unsupported files — the
+blank-lie shape the degraded-affordance precedent exists to prevent.
 
 **Evidence:** `src/modules/structure/StructureSource.interface.ts`;
-`src/modules/structure/StructureSources.ts`; `src/modules/structure/StructureOutline.ts`
+`src/modules/plugins/ProviderRegistry.ts`; `src/modules/structure/StructureOutline.ts`
 (`applyEmpty` and the `null` branch of `refresh`);
 `src/modules/structure/StructurePaneRenderer.ts` (`renderEmptyState`);
 `src/modules/lsp/LspWorkspaceProvider.ts` (source registration and `structureNotice`).

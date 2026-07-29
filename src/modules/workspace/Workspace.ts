@@ -34,6 +34,7 @@ import type {
   SourceTextViewProvider,
 } from './SourceTextView.interface';
 import type { TextDocument } from '../text/TextDocument';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 
 // A workspace: one project root with its open buffers, documents, and generic contribution
 // lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
@@ -62,6 +63,10 @@ class $Workspace {
   // Contributions claim the editor surface here and the host asks them capability questions. It
   // never learns which surface is up.
   editorSurfaces = new EditorSurfaceClaims.Class();
+  // The host carries one type-blind phone book per workspace. Consumer-owned interfaces supply
+  // typing only at register and resolve call sites.
+  // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
+  providers = new ProviderRegistry.Class();
   protected readonly contributions: WorkspaceContribution[] = [];
   protected readonly contributorDisposers = new Map<
     WorkspaceContributor,
@@ -76,6 +81,9 @@ class $Workspace {
       this as unknown as Workspace.Model,
     );
     this.contributions.push(contribution);
+    const providerDisposers = (contribution.providers ?? []).map((provider) =>
+      this.providers.register(provider.identifier, provider),
+    );
     if (this.settingsSource) {
       contribution.settingsAttached?.(this.settingsSource);
     }
@@ -91,6 +99,13 @@ class $Workspace {
       const contributionIndex = this.contributions.indexOf(contribution);
       if (contributionIndex >= 0) {
         this.contributions.splice(contributionIndex, 1);
+      }
+      for (
+        let providerDisposerIndex = providerDisposers.length - 1;
+        providerDisposerIndex >= 0;
+        providerDisposerIndex--
+      ) {
+        providerDisposers[providerDisposerIndex]?.();
       }
       contribution.disposed();
     };
@@ -200,18 +215,7 @@ class $Workspace {
   protected provider<Provider extends WorkspaceProvider>(
     identifier: string,
   ): Provider | null {
-    for (
-      let contributionIndex = this.contributions.length - 1;
-      contributionIndex >= 0;
-      contributionIndex--
-    ) {
-      const contribution = this.contributions[contributionIndex];
-      const provider = contribution?.providers?.find(
-        (candidate) => candidate.identifier === identifier,
-      );
-      if (provider) return provider as Provider;
-    }
-    return null;
+    return this.providers.resolve<Provider>(identifier);
   }
 
   protected get languageProvider(): LanguageProvider | null {
@@ -473,6 +477,7 @@ class $Workspace {
     this.buffers.disposeAll();
     this.emptySourceTextView?.dispose();
     this.emptySourceTextView = null;
+    this.providers.dispose();
   }
 
   /** How many views are bound to open buffers right now. A LOAD-INVARIANT count, and the observable

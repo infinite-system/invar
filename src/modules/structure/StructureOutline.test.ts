@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { DocumentLifecycle } from '../workspace/DocumentLifecycle';
 import { TextDocument } from '../text/TextDocument';
 import type { Workspace } from '../workspace/Workspace';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import { StructureOutline } from './StructureOutline';
-import { StructureSources } from './StructureSources';
 import type {
   StructureOutlineResult,
   StructureSource,
@@ -22,6 +22,7 @@ function makeWorkspace(document: TextDocument.Instance | null) {
     focusEditor: 0,
   };
   const workspace = {
+    providers: new ProviderRegistry.Class(),
     documentLifecycle: new DocumentLifecycle.Class(),
     activeDocumentHandle: document ? { document } : null,
     editor: {
@@ -109,7 +110,7 @@ const READY_RESULT: StructureOutlineResult = {
 test('a refresh flattens the symbol tree into depth-ordered document-order rows', async () => {
   const context = makeWorkspace(makeDocument('/tmp/a.ts'));
   const source = makeSource(READY_RESULT);
-  const dispose = StructureSources.Class.register(context.workspace, source);
+  const dispose = context.workspace.providers.register('structure', source);
   const outline = new StructureOutline.Class(context.workspace, () => true);
   try {
     await outline.refresh();
@@ -156,8 +157,8 @@ test('every rows-absent state carries a stated reason, never a blank', async () 
   const unsupportedSource = makeSource(READY_RESULT, {
     supportsDocument: () => false,
   });
-  const disposeUnsupported = StructureSources.Class.register(
-    unsupported.workspace,
+  const disposeUnsupported = unsupported.workspace.providers.register(
+    'structure',
     unsupportedSource,
   );
   const unsupportedOutline = new StructureOutline.Class(
@@ -176,8 +177,8 @@ test('every rows-absent state carries a stated reason, never a blank', async () 
   const decliningSource = makeSource(null, {
     structureNotice: () => 'Large file — language features off',
   });
-  const disposeDeclined = StructureSources.Class.register(
-    declined.workspace,
+  const disposeDeclined = declined.workspace.providers.register(
+    'structure',
     decliningSource,
   );
   const declinedOutline = new StructureOutline.Class(
@@ -194,7 +195,7 @@ test('every rows-absent state carries a stated reason, never a blank', async () 
 test('a truncated result states the cap instead of presenting a shorter outline', async () => {
   const context = makeWorkspace(makeDocument('/tmp/e.ts'));
   const source = makeSource({ ...READY_RESULT, truncated: true });
-  const dispose = StructureSources.Class.register(context.workspace, source);
+  const dispose = context.workspace.providers.register('structure', source);
   const outline = new StructureOutline.Class(context.workspace, () => true);
   try {
     await outline.refresh();
@@ -209,7 +210,7 @@ test('a truncated result states the cap instead of presenting a shorter outline'
 test('an unobserved outline issues no request at any document size', async () => {
   const context = makeWorkspace(makeDocument('/tmp/f.ts'));
   const source = makeSource(READY_RESULT);
-  const dispose = StructureSources.Class.register(context.workspace, source);
+  const dispose = context.workspace.providers.register('structure', source);
   const outline = new StructureOutline.Class(context.workspace, () => false);
   try {
     await outline.refresh();
@@ -228,7 +229,7 @@ test('an answer for text the document moved past is discarded and the rows keep'
   const source = makeSource(READY_RESULT, {
     documentSymbols: async () => resultToServe,
   });
-  const dispose = StructureSources.Class.register(context.workspace, source);
+  const dispose = context.workspace.providers.register('structure', source);
   const outline = new StructureOutline.Class(context.workspace, () => true);
   try {
     await outline.refresh();
@@ -253,7 +254,7 @@ test('an answer for text the document moved past is discarded and the rows keep'
 test('selection moves clamped, stays visible, and jumps through the view contract', async () => {
   const context = makeWorkspace(makeDocument('/tmp/h.ts'));
   const source = makeSource(READY_RESULT);
-  const dispose = StructureSources.Class.register(context.workspace, source);
+  const dispose = context.workspace.providers.register('structure', source);
   const outline = new StructureOutline.Class(context.workspace, () => true);
   try {
     await outline.refresh();

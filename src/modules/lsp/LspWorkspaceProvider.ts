@@ -26,8 +26,8 @@ import type {
   StructureOutlineResult,
   StructureSource,
 } from '../structure/StructureSource.interface';
-import { StructureSources } from '../structure/StructureSources';
 import { LanguageClient } from './LanguageClient';
+import { CodexRewriteProviderFactory } from './CodexRewriteProviderFactory';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: LSP is a provider plugin (src/modules/lsp/lsp.invariants.md)
@@ -46,6 +46,7 @@ class $LspWorkspaceProvider
   protected disposeDocumentLifecycle: (() => void) | null = null;
   protected disposeGutterDecorations: (() => void) | null = null;
   protected disposeStructureSource: (() => void) | null = null;
+  protected disposeRewriteProviderFactory: (() => void) | null = null;
 
   constructor(
     protected readonly workspace: Workspace.Model,
@@ -57,11 +58,15 @@ class $LspWorkspaceProvider
       closed: (handle) => this.closeDocument(handle),
     });
     this.disposeGutterDecorations = workspace.gutterDecorations.register(this);
-    // The structure pane consumes THIS provider through the consumer-owned registry, so
-    // uninstalling Language Intelligence withdraws the outline source symmetrically.
-    this.disposeStructureSource = StructureSources.Class.register(
-      workspace,
+    // The structure pane consumes THIS provider through the host registry, so uninstalling
+    // Language Intelligence withdraws the outline source symmetrically.
+    this.disposeStructureSource = workspace.providers.register(
+      'structure',
       this,
+    );
+    this.disposeRewriteProviderFactory = workspace.providers.register(
+      'inline-rewrite',
+      CodexRewriteProviderFactory.Class,
     );
   }
 
@@ -90,6 +95,8 @@ class $LspWorkspaceProvider
     this.disposeGutterDecorations = null;
     this.disposeStructureSource?.();
     this.disposeStructureSource = null;
+    this.disposeRewriteProviderFactory?.();
+    this.disposeRewriteProviderFactory = null;
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
     this.releaseClient();
   }

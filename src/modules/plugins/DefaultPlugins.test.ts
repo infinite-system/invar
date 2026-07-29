@@ -13,20 +13,34 @@ test('the shipped application registers its built in contributions', () => {
     ['git', 'Git'],
     ['markdown', 'Markdown'],
     ['language', 'Language Intelligence'],
+    ['database-provider', 'SQLite Provider'],
     ['terminal', 'Terminal'],
     ['inline-rewrite', 'Inline Rewrite'],
     ['source-text-editor', 'Source Text Editor'],
     ['structure-navigator', 'Structure Navigator'],
+    ['database-consumer', 'Database Explorer'],
     ['extensions', 'Extensions'],
   ]);
   expect(
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['files', 'git', 'structure', 'extensions']);
+  ).toEqual(['files', 'git', 'structure', 'database', 'extensions']);
   expect(
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
-  ).toEqual([true, true, true, true, false, true, false, true, false]);
+  ).toEqual([
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+  ]);
 });

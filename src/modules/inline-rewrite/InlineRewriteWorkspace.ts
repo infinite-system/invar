@@ -151,14 +151,19 @@ class $InlineRewriteWorkspace
   ): InlineRewrite.Instance | null {
     const existing = this.controllers.get(editor);
     if (existing || !create || !this.enabled) return existing ?? null;
-    const controller = this.createController(editor);
+    const provider = this.options.createProvider();
+    if (!provider) return null;
+    const controller = this.createController(editor, provider);
     this.controllers.set(editor, controller);
     return controller;
   }
 
-  protected createController(editor: SourceTextView): InlineRewrite.Instance {
+  protected createController(
+    editor: SourceTextView,
+    provider: RewriteProvider,
+  ): InlineRewrite.Instance {
     const controller = new InlineRewrite.Class({
-      provider: this.options.createProvider(),
+      provider,
       snapshot: (region) => {
         if (!editor.hasDocument.value) return null;
         return {
@@ -231,7 +236,7 @@ export namespace InlineRewriteWorkspace {
 
 export interface InlineRewriteWorkspaceOptions {
   enabled: boolean;
-  createProvider: () => RewriteProvider;
+  createProvider: () => RewriteProvider | null;
   eligible: () => boolean;
   palette: () => Palette;
   bindingHint: (action: string, context: string) => string;
