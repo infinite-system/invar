@@ -40,22 +40,43 @@ test('diagnostics are stored only for the current document revision and stale ba
     const current = document.revision.value; // the version stamped onto didOpen
 
     // A batch older than the current revision is discarded, never applied.
-    fake.pushDiagnostics(uri, current - 1, [makeDiagnostic('stale a'), makeDiagnostic('stale b'), makeDiagnostic('stale c')]);
+    fake.pushDiagnostics(uri, current - 1, [
+      makeDiagnostic('stale a'),
+      makeDiagnostic('stale b'),
+      makeDiagnostic('stale c'),
+    ]);
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(0);
 
     // A batch naming the exact current revision is accepted.
-    fake.pushDiagnostics(uri, current, [makeDiagnostic('real 1'), makeDiagnostic('real 2')]);
+    fake.pushDiagnostics(uri, current, [
+      makeDiagnostic('real 1'),
+      makeDiagnostic('real 2'),
+    ]);
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(2);
-    expect(client.diagnosticSlice(uri, 0, 10).map((diagnostic) => diagnostic.message)).toEqual(['real 1', 'real 2']);
-    expect(client.diagnosticSlice(uri, 0, 10).every((diagnostic) => diagnostic.version === current)).toBe(true);
+    expect(
+      client
+        .diagnosticSlice(uri, 0, 10)
+        .map((diagnostic) => diagnostic.message),
+    ).toEqual(['real 1', 'real 2']);
+    expect(
+      client
+        .diagnosticSlice(uri, 0, 10)
+        .every((diagnostic) => diagnostic.version === current),
+    ).toBe(true);
 
     // Edit the document: it advances past `current`. A late batch computed against the old
     // revision must not overwrite the accepted one.
     document.insertInline(0, 0, 'y');
     expect(document.revision.value).toBeGreaterThan(current);
-    fake.pushDiagnostics(uri, current, [makeDiagnostic('z1'), makeDiagnostic('z2'), makeDiagnostic('z3'), makeDiagnostic('z4'), makeDiagnostic('z5')]);
+    fake.pushDiagnostics(uri, current, [
+      makeDiagnostic('z1'),
+      makeDiagnostic('z2'),
+      makeDiagnostic('z3'),
+      makeDiagnostic('z4'),
+      makeDiagnostic('z5'),
+    ]);
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(2); // unchanged — the stale batch was dropped
   } finally {
@@ -89,7 +110,9 @@ test('a versionless batch (real typescript-language-server 5.x) is accepted for 
     });
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(1);
-    expect(client.diagnosticSlice(uri, 0, 1)[0]?.version).toBe(document.revision.value);
+    expect(client.diagnosticSlice(uri, 0, 1)[0]?.version).toBe(
+      document.revision.value,
+    );
 
     // After an un-synced edit the synced revision is stale, so a versionless batch is dropped.
     const synced = document.revision.value;
@@ -97,7 +120,10 @@ test('a versionless batch (real typescript-language-server 5.x) is accepted for 
     expect(document.revision.value).toBeGreaterThan(synced);
     fake.pushNotification('textDocument/publishDiagnostics', {
       uri,
-      diagnostics: [makeDiagnostic('computed against stale text'), makeDiagnostic('extra')],
+      diagnostics: [
+        makeDiagnostic('computed against stale text'),
+        makeDiagnostic('extra'),
+      ],
     });
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(1); // unchanged
@@ -125,7 +151,9 @@ test('diagnostic storage is capped at maxDiagnosticsPerDocument', async () => {
     await fake.waitFor('textDocument/didOpen');
     await flush();
 
-    const many = Array.from({ length: 10 }, (_, index) => makeDiagnostic(`d${index}`));
+    const many = Array.from({ length: 10 }, (_, index) =>
+      makeDiagnostic(`d${index}`),
+    );
     fake.pushDiagnostics(uri, document.revision.value, many);
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(3); // bounded, not 10
@@ -142,8 +170,13 @@ async function waitReal(milliseconds: number): Promise<void> {
 
 test('pull-model server (tsgo): diagnostics are pulled via textDocument/diagnostic and stored', async () => {
   const fake = new FakeLspProcess(6101);
-  fake.onInitialize = () => ({ capabilities: { diagnosticProvider: { identifier: 'typescript' } } });
-  let report: unknown = { kind: 'full', items: [makeDiagnostic('pulled 1'), makeDiagnostic('pulled 2')] };
+  fake.onInitialize = () => ({
+    capabilities: { diagnosticProvider: { identifier: 'typescript' } },
+  });
+  let report: unknown = {
+    kind: 'full',
+    items: [makeDiagnostic('pulled 1'), makeDiagnostic('pulled 2')],
+  };
   fake.responders.set('textDocument/diagnostic', () => report);
   const client = new LanguageClient.Class({
     rootPath: ROOT,
@@ -163,7 +196,10 @@ test('pull-model server (tsgo): diagnostics are pulled via textDocument/diagnost
     await fake.waitFor('textDocument/diagnostic');
     await waitReal(80);
     expect(client.diagnosticCountFor(uri)).toBe(2);
-    expect(client.diagnosticSlice(uri, 0, 10).map((d) => d.message)).toEqual(['pulled 1', 'pulled 2']);
+    expect(client.diagnosticSlice(uri, 0, 10).map((d) => d.message)).toEqual([
+      'pulled 1',
+      'pulled 2',
+    ]);
 
     // A fresh full report that no longer lists the errors REPLACES the batch (clears stale).
     report = { kind: 'full', items: [] };
@@ -180,9 +216,15 @@ test('pull-model server: an unchanged report keeps the prior batch and echoes pr
   const fake = new FakeLspProcess(6102);
   fake.onInitialize = () => ({ capabilities: { diagnosticProvider: {} } });
   const seenPreviousResultIds: Array<unknown> = [];
-  let report: unknown = { kind: 'full', resultId: 'r1', items: [makeDiagnostic('first')] };
+  let report: unknown = {
+    kind: 'full',
+    resultId: 'r1',
+    items: [makeDiagnostic('first')],
+  };
   fake.responders.set('textDocument/diagnostic', (params) => {
-    seenPreviousResultIds.push((params as { previousResultId?: unknown })?.previousResultId);
+    seenPreviousResultIds.push(
+      (params as { previousResultId?: unknown })?.previousResultId,
+    );
     return report;
   });
   const client = new LanguageClient.Class({
@@ -235,12 +277,15 @@ test('push-model server (typescript-language-server): the client never sends tex
     await waitReal(120); // well past the open-debounce window
 
     const sentDiagnosticPull = fake.received.some(
-      (message) => 'method' in message && message.method === 'textDocument/diagnostic',
+      (message) =>
+        'method' in message && message.method === 'textDocument/diagnostic',
     );
     expect(sentDiagnosticPull).toBe(false);
 
     // The push path still populates the same store.
-    fake.pushDiagnostics(uri, document.revision.value, [makeDiagnostic('pushed')]);
+    fake.pushDiagnostics(uri, document.revision.value, [
+      makeDiagnostic('pushed'),
+    ]);
     await flush();
     expect(client.diagnosticCountFor(uri)).toBe(1);
   } finally {

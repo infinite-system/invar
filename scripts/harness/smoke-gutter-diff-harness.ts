@@ -12,7 +12,9 @@ import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const modifiedColor = 0x6183bb;
+
 const addedColor = 0x41a6b5;
+
 const deletedColor = 0xdb4b4b;
 
 function markerHasForeground(
@@ -60,19 +62,27 @@ async function openTrackedFile(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-gutter-diff-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-gutter-diff-harness-home-'),
 );
+
 const trackedPath = join(fixtureRoot, 'tracked.txt');
+
 const switchedTrackedPath = join(fixtureRoot, 'switched-modified.txt');
+
 await Bun.write(trackedPath, 'alpha\nbeta\ngamma\n');
+
 await Bun.write(switchedTrackedPath, 'before switch\nstable\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   'add',
   'tracked.txt',
   'switched-modified.txt',
 ]);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=gutter-diff@example.test',
@@ -82,9 +92,11 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'fixture',
 ]);
+
 await Bun.write(switchedTrackedPath, 'after switch\nstable\n');
 
 const editStatusPath = join(homeDirectory, 'edit-status.json');
+
 const editDriver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 100,
@@ -92,6 +104,7 @@ const editDriver = new PtyTestDriver.Class({
   homeDirectory,
   environment: { TUI_STATUS_PATH: editStatusPath, COLORTERM: 'truecolor' },
 });
+
 let deleteDriver: PtyTestDriver.Model | null = null;
 
 try {

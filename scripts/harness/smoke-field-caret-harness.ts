@@ -45,9 +45,13 @@ interface CaretCellStatus {
 // than hover) is proven in src/modules/ui/TextFieldPainter.test.ts; here the three are also asserted
 // pairwise different in observed cells.
 const palette = ThemePalettes.Class.DARK;
+
 const idleTone = TextFieldPainter.Class.toneFor(palette, 'idle');
+
 const focusedTone = TextFieldPainter.Class.toneFor(palette, 'focused');
+
 const hoveredTone = TextFieldPainter.Class.toneFor(palette, 'hovered');
+
 const searchFieldPrefix = ` ${ThemeIcons.Class.findIconsFor('unicode').search} `;
 
 function colorNumber(hexColor: string | null): number {
@@ -154,12 +158,17 @@ async function assertModelCaretIsPainted(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-field-caret-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-field-caret-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
 
 await Bun.write(join(fixtureRoot, 'alphafile.txt'), 'caret fixture content\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=a@b.c',
@@ -170,6 +179,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-m',
   'field caret fixture',
 ]);
+
 for (let branchNumber = 1; branchNumber <= 30; branchNumber += 1) {
   HarnessSmoke.Class.runGit(fixtureRoot, [
     'branch',

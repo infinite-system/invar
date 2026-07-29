@@ -37,6 +37,7 @@ import type {
 import type { QuickOpen } from '../search/QuickOpen';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import { BreadcrumbPicker } from './BreadcrumbPicker';
+
 class $TabBar {
   protected workspaceSegments: WorkspaceTabBarSegment[] = [];
   protected workspaceHover: WorkspaceTabBarHover = null;
@@ -476,11 +477,13 @@ class $TabBar {
     };
   }
 }
+
 export namespace TabBar {
   export const $Class = $TabBar;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface TabBarDependencies {
   renderer: CliRenderer;
   tabBar: TextRenderable;

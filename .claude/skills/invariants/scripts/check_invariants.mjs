@@ -31,26 +31,41 @@
 // Requires node >= 18. No dependencies. CRLF and BOM are normalized on read; fenced code
 // blocks and HTML comments are inert (headings/annotations/links inside them are ignored).
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, relative, resolve, dirname, basename } from "node:path";
-import { execSync } from "node:child_process";
-import process from "node:process";
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, relative, resolve, dirname, basename } from 'node:path';
+import { execSync } from 'node:child_process';
+import process from 'node:process';
 
 // Bump when schema fields or validation semantics change.
-const VERSION = "2.2.1";
+const VERSION = '2.2.1';
 
-const REALITY = "## Reality-based invariants";
-const CHOSEN = "## Chosen invariants";
-const CHOSEN_ALIAS = "## Designed invariants"; // legacy heading, accepted
+const REALITY = '## Reality-based invariants';
+const CHOSEN = '## Chosen invariants';
+const CHOSEN_ALIAS = '## Designed invariants'; // legacy heading, accepted
 const HEAD_RE = /^### (.*\S)$/;
 const LEGACY_ID_RE = /^([A-Z][A-Z0-9]*)-([RCD])([0-9]{3})(?:\s+—\s+(.*))?$/;
 const FIELD_RE = /^(?:-\s+)?\*\*?([^*:]+):\*\*?\s*(.*)$/;
-const REQUIRED = ["Invariant", "Scope", "Mechanism", "Evidence", "Impossible if true",
-  "Verification", "Status", "Last refined"];
-const OPTIONAL = ["Renegotiable at", "Components", "Generates", "Rejected alternatives", "Open question", "Enforcement"];
-const STATUSES = new Set(["established", "provisional"]);
+const REQUIRED = [
+  'Invariant',
+  'Scope',
+  'Mechanism',
+  'Evidence',
+  'Impossible if true',
+  'Verification',
+  'Status',
+  'Last refined',
+];
+const OPTIONAL = [
+  'Renegotiable at',
+  'Components',
+  'Generates',
+  'Rejected alternatives',
+  'Open question',
+  'Enforcement',
+];
+const STATUSES = new Set(['established', 'provisional']);
 const DATE_RE = /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
-const EXCLUDED_DIRS = new Set(["node_modules", ".git", ".claude"]);
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.claude']);
 // `tmp/` is gitignored scratch and `agent-dispatches/` is archived agent
 // correspondence. Neither holds contracts, but both are FULL of annotation-shaped
 // text: builders quote `invariant:` lines in their transcripts and briefs cite
@@ -59,14 +74,15 @@ const EXCLUDED_DIRS = new Set(["node_modules", ".git", ".claude"]);
 // FILESYSTEM, not git, so .gitignore does not protect it — the same property that
 // once made a macOS `._Foo.ts` artifact red the grammar gate.
 const EXCLUDED_DIRECTORY_PATHS = new Set([
-  "scripts/retired-smokes",
-  "tmp",
-  "agent-dispatches",
-  ".invar",
+  'scripts/retired-smokes',
+  'tmp',
+  'agent-dispatches',
+  '.invar',
 ]);
 const ANNOT_RE = /invariant:\s*([^(\n]+?)\s*\(([^)\n]*\.invariants\.md)\)/g;
 // annotation-shaped lines that DON'T parse (typo'd suffix, wrong brackets) — flagged, not silent
-const ANNOT_LOOSE_RE = /invariant:\s*\S[^\n]*?[([][^)\]\n]*\.(?:md|invariants)\b[^)\]\n]*[)\]]/i;
+const ANNOT_LOOSE_RE =
+  /invariant:\s*\S[^\n]*?[([][^)\]\n]*\.(?:md|invariants)\b[^)\]\n]*[)\]]/i;
 const HEADING_SUFFIX_RE = /\s*_\(.*\)_\s*$/; // strip italic asides in local headings
 const MAX_SCAN_BYTES = 2_000_000;
 const NAME_CHARSET_RE = /[^A-Za-z0-9 -]/; // canonical name charset: letters/digits/spaces/hyphens
@@ -76,7 +92,7 @@ const NAME_CHARSET_RE = /[^A-Za-z0-9 -]/; // canonical name charset: letters/dig
 
 function readText(path) {
   // BOM stripped, CRLF/CR normalized — Windows-edited files parse identically
-  return readFileSync(path, "utf-8").replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  return readFileSync(path, 'utf-8').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
 }
 
 function maskInert(lines) {
@@ -101,15 +117,16 @@ function maskInert(lines) {
     }
     if (inComment) {
       active[i] = false;
-      if (line.includes("-->")) inComment = false;
+      if (line.includes('-->')) inComment = false;
       continue;
     }
     // same-line HTML comments: blank the commented spans but keep the line active
     let l = line;
-    if (l.includes("<!--")) {
-      l = l.replace(/<!--.*?-->/g, (m) => " ".repeat(m.length));
-      if (l.includes("<!--")) { // comment opens and doesn't close on this line
-        l = l.slice(0, l.indexOf("<!--"));
+    if (l.includes('<!--')) {
+      l = l.replace(/<!--.*?-->/g, (m) => ' '.repeat(m.length));
+      if (l.includes('<!--')) {
+        // comment opens and doesn't close on this line
+        l = l.slice(0, l.indexOf('<!--'));
         inComment = true;
       }
       lines[i] = l; // masked copy — callers pass their own array
@@ -119,14 +136,14 @@ function maskInert(lines) {
 }
 
 function readMasked(path) {
-  const lines = readText(path).split("\n");
+  const lines = readText(path).split('\n');
   const active = maskInert(lines);
   return { lines, active };
 }
 
 function stripInlineCode(line) {
   // `code spans` are inert for annotation/link scanning
-  return line.replace(/`[^`]*`/g, (m) => " ".repeat(m.length));
+  return line.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length));
 }
 
 // ---------------------------------------------------------------------------
@@ -135,14 +152,18 @@ function stripInlineCode(line) {
 // Canonical slug: lowercase, strip everything but letters/digits (any script),
 // spaces and hyphens, spaces -> dashes. Matches GitHub's rendered heading anchors.
 function slugify(name) {
-  return name.toLowerCase().replace(/[^\p{L}\p{N} -]/gu, "").replace(/ /g, "-");
+  return name
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N} -]/gu, '')
+    .replace(/ /g, '-');
 }
 
 // ---------------------------------------------------------------------------
 // contract parsing + validation
 
 function bounds(lines, active) {
-  const reality = [], chosen = [];
+  const reality = [],
+    chosen = [];
   lines.forEach((line, i) => {
     if (!active[i]) return;
     const t = line.trim();
@@ -150,12 +171,20 @@ function bounds(lines, active) {
     if (t === CHOSEN || t === CHOSEN_ALIAS) chosen.push(i);
   });
   if (reality.length !== 1 || chosen.length !== 1)
-    return [null, ["document: exactly one reality and one chosen (or legacy designed) heading required"]];
+    return [
+      null,
+      [
+        'document: exactly one reality and one chosen (or legacy designed) heading required',
+      ],
+    ];
   if (reality[0] >= chosen[0])
-    return [null, ["document: reality section must precede chosen section"]];
+    return [null, ['document: reality section must precede chosen section']];
   let end = lines.length;
   for (let i = chosen[0] + 1; i < lines.length; i++) {
-    if (active[i] && lines[i].startsWith("## ")) { end = i; break; }
+    if (active[i] && lines[i].startsWith('## ')) {
+      end = i;
+      break;
+    }
   }
   return [[reality[0] + 1, chosen[0], chosen[0] + 1, end], []];
 }
@@ -166,13 +195,26 @@ function parseSection(lines, active, start, end) {
   const records = [];
   let i = start;
   while (i < end) {
-    if (!active[i] || !lines[i].startsWith("### ")) { i++; continue; }
+    if (!active[i] || !lines[i].startsWith('### ')) {
+      i++;
+      continue;
+    }
     const head = HEAD_RE.exec(lines[i]);
-    if (!head) { records.push({ name: null, line: i + 1, fields: {} }); i++; continue; }
+    if (!head) {
+      records.push({ name: null, line: i + 1, fields: {} });
+      i++;
+      continue;
+    }
     const rec = { name: head[1].trim(), line: i + 1, fields: {} };
     i++;
     let current = null;
-    while (i < end && !(active[i] && (lines[i].startsWith("### ") || lines[i].startsWith("## ")))) {
+    while (
+      i < end &&
+      !(
+        active[i] &&
+        (lines[i].startsWith('### ') || lines[i].startsWith('## '))
+      )
+    ) {
       if (active[i]) {
         const t = lines[i].trim();
         const f = FIELD_RE.exec(t);
@@ -180,7 +222,8 @@ function parseSection(lines, active, start, end) {
           current = f[1].trim();
           rec.fields[current] = f[2].trim();
         } else if (t && current) {
-          rec.fields[current] = (rec.fields[current] ? rec.fields[current] + " " : "") + t;
+          rec.fields[current] =
+            (rec.fields[current] ? rec.fields[current] + ' ' : '') + t;
         }
       }
       i++;
@@ -190,7 +233,14 @@ function parseSection(lines, active, start, end) {
   return records;
 }
 
-function validateRecords(records, isReality, seenNames, seenSlugs, errors, notes) {
+function validateRecords(
+  records,
+  isReality,
+  seenNames,
+  seenSlugs,
+  errors,
+  notes,
+) {
   let count = 0;
   for (const rec of records) {
     if (rec.name === null) {
@@ -200,31 +250,41 @@ function validateRecords(records, isReality, seenNames, seenSlugs, errors, notes
     const name = rec.name;
     const legacy = LEGACY_ID_RE.exec(name);
     if (legacy) {
-      notes.push(`'${name}': numbered heading — canonical style is an unnumbered name;` +
-        " reference invariants by name, not number");
-      if (isReality && legacy[2] !== "R")
+      notes.push(
+        `'${name}': numbered heading — canonical style is an unnumbered name;` +
+          ' reference invariants by name, not number',
+      );
+      if (isReality && legacy[2] !== 'R')
         errors.push(`'${name}': chosen-lettered ID in the reality section`);
-      if (!isReality && legacy[2] === "R")
+      if (!isReality && legacy[2] === 'R')
         errors.push(`'${name}': reality-lettered ID in the chosen section`);
     }
     if (seenNames.has(name)) errors.push(`'${name}': duplicate invariant name`);
     seenNames.add(name);
     if (!legacy && NAME_CHARSET_RE.test(name)) {
-      notes.push(`'${name}': name contains punctuation — canonical charset is letters/digits/` +
-        "spaces/hyphens: code annotations match byte-exactly (smart-quote/dash editor drift " +
-        "creates invisible orphans), and platform heading anchors only agree on this charset");
+      notes.push(
+        `'${name}': name contains punctuation — canonical charset is letters/digits/` +
+          'spaces/hyphens: code annotations match byte-exactly (smart-quote/dash editor drift ' +
+          'creates invisible orphans), and platform heading anchors only agree on this charset',
+      );
     }
     if (!legacy && /^-|-$|--/.test(name)) {
-      notes.push(`'${name}': hyphens must be word-internal (no leading/trailing/double hyphens)`);
+      notes.push(
+        `'${name}': hyphens must be word-internal (no leading/trailing/double hyphens)`,
+      );
     }
     const slug = slugify(name);
     if (!/[\p{L}\p{N}]/u.test(slug)) {
-      errors.push(`'${name}': name has no sluggable characters — anchors are reference identity` +
-        " and this name produces an empty one");
+      errors.push(
+        `'${name}': name has no sluggable characters — anchors are reference identity` +
+          ' and this name produces an empty one',
+      );
     } else {
       if (seenSlugs.has(slug) && seenSlugs.get(slug) !== name) {
-        errors.push(`'${name}': slug collision with '${seenSlugs.get(slug)}' (both -> #${slug}) — ` +
-          "anchors are reference identity, slugs must be unique per file");
+        errors.push(
+          `'${name}': slug collision with '${seenSlugs.get(slug)}' (both -> #${slug}) — ` +
+            'anchors are reference identity, slugs must be unique per file',
+        );
       }
       seenSlugs.set(slug, name);
     }
@@ -234,18 +294,24 @@ function validateRecords(records, isReality, seenNames, seenSlugs, errors, notes
     }
     for (const label of Object.keys(fields)) {
       if (!REQUIRED.includes(label) && !OPTIONAL.includes(label)) {
-        errors.push(`'${name}': unknown field '${label}' (tolerated fields: ` +
-          `${[...REQUIRED, ...OPTIONAL].join(", ")}) — if this field is from a newer schema, ` +
-          `update this checker (--version prints ${VERSION})`);
+        errors.push(
+          `'${name}': unknown field '${label}' (tolerated fields: ` +
+            `${[...REQUIRED, ...OPTIONAL].join(', ')}) — if this field is from a newer schema, ` +
+            `update this checker (--version prints ${VERSION})`,
+        );
       }
     }
-    if (fields["Renegotiable at"] && !isReality) {
-      errors.push(`'${name}': 'Renegotiable at' is only valid on reality records —` +
-        " chosen invariants are renegotiable by decision at their own scope");
+    if (fields['Renegotiable at'] && !isReality) {
+      errors.push(
+        `'${name}': 'Renegotiable at' is only valid on reality records —` +
+          ' chosen invariants are renegotiable by decision at their own scope',
+      );
     }
-    if (fields["Status"] && !STATUSES.has(fields["Status"]))
-      errors.push(`'${name}': invalid Status (want: ${[...STATUSES].sort().join("|")})`);
-    if (fields["Last refined"] && !DATE_RE.test(fields["Last refined"]))
+    if (fields['Status'] && !STATUSES.has(fields['Status']))
+      errors.push(
+        `'${name}': invalid Status (want: ${[...STATUSES].sort().join('|')})`,
+      );
+    if (fields['Last refined'] && !DATE_RE.test(fields['Last refined']))
       errors.push(`'${name}': Last refined must match YYYY-MM-DD`);
     count++;
   }
@@ -258,32 +324,71 @@ function checkFile(path) {
   try {
     ({ lines, active } = readMasked(path));
   } catch (error) {
-    return { status: "fail", errors: [`document: cannot read UTF-8: ${error.message}`], notes: [], summary: "" };
+    return {
+      status: 'fail',
+      errors: [`document: cannot read UTF-8: ${error.message}`],
+      notes: [],
+      summary: '',
+    };
   }
   if (!lines.some((l, i) => active[i] && l.trim() === REALITY))
-    return { status: "noncanonical", errors: [], notes: [], summary: "no canonical section headings (local format)" };
+    return {
+      status: 'noncanonical',
+      errors: [],
+      notes: [],
+      summary: 'no canonical section headings (local format)',
+    };
   const [sectionBounds, errors] = bounds(lines, active);
   const notes = [];
   lines.forEach((l, i) => {
     if (!active[i] && /^### \S/.test(l)) {
-      notes.push(`line ${i + 1}: record-shaped heading inside a fence/comment is INERT — ` +
-        "fencing a record removes it from enforcement without a visible deletion");
+      notes.push(
+        `line ${i + 1}: record-shaped heading inside a fence/comment is INERT — ` +
+          'fencing a record removes it from enforcement without a visible deletion',
+      );
     }
   });
-  let realityCount = 0, chosenCount = 0, summary = "";
+  let realityCount = 0,
+    chosenCount = 0,
+    summary = '';
   if (sectionBounds) {
     const seenNames = new Set();
     const seenSlugs = new Map();
-    const realityRecords = parseSection(lines, active, sectionBounds[0], sectionBounds[1]);
-    const chosenRecords = parseSection(lines, active, sectionBounds[2], sectionBounds[3]);
-    realityCount = validateRecords(realityRecords, true, seenNames, seenSlugs, errors, notes);
-    chosenCount = validateRecords(chosenRecords, false, seenNames, seenSlugs, errors, notes);
-    if (realityCount + chosenCount < 1) errors.push("document: at least one invariant is required");
+    const realityRecords = parseSection(
+      lines,
+      active,
+      sectionBounds[0],
+      sectionBounds[1],
+    );
+    const chosenRecords = parseSection(
+      lines,
+      active,
+      sectionBounds[2],
+      sectionBounds[3],
+    );
+    realityCount = validateRecords(
+      realityRecords,
+      true,
+      seenNames,
+      seenSlugs,
+      errors,
+      notes,
+    );
+    chosenCount = validateRecords(
+      chosenRecords,
+      false,
+      seenNames,
+      seenSlugs,
+      errors,
+      notes,
+    );
+    if (realityCount + chosenCount < 1)
+      errors.push('document: at least one invariant is required');
     else if (realityCount === 0 || chosenCount === 0)
-      notes.push("one category is empty — fine while bootstrapping");
+      notes.push('one category is empty — fine while bootstrapping');
     summary = `${realityCount} reality, ${chosenCount} chosen invariants`;
   }
-  return { status: errors.length ? "fail" : "pass", errors, notes, summary };
+  return { status: errors.length ? 'fail' : 'pass', errors, notes, summary };
 }
 
 function canonicalRecords(path) {
@@ -298,14 +403,18 @@ function canonicalRecords(path) {
       ...parseSection(lines, active, sectionBounds[0], sectionBounds[1]),
       ...parseSection(lines, active, sectionBounds[2], sectionBounds[3]),
     ].filter((r) => r.name !== null);
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function isCanonicalShaped(path) {
   try {
     const { lines, active } = readMasked(path);
     return lines.some((l, i) => active[i] && l.trim() === REALITY);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 function contractNames(path) {
@@ -317,12 +426,14 @@ function contractNames(path) {
       if (!active[i]) continue;
       const m = /^#{2,3} (.*\S)$/.exec(lines[i]);
       if (!m) continue;
-      const name = m[1].trim().replace(HEADING_SUFFIX_RE, "");
+      const name = m[1].trim().replace(HEADING_SUFFIX_RE, '');
       const legacy = LEGACY_ID_RE.exec(name);
       if (legacy && legacy[4]) names.add(legacy[4].trim());
       names.add(name);
     }
-  } catch { /* unreadable -> empty */ }
+  } catch {
+    /* unreadable -> empty */
+  }
   return names;
 }
 
@@ -338,17 +449,25 @@ function* walk(dir, root = dir) {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
-  } catch { return; }
+  } catch {
+    return;
+  }
   for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (EXCLUDED_DIRS.has(e.name)) continue;
     const p = join(dir, e.name);
-    if (e.isSymbolicLink()) { SKIPPED_SYMLINKS.add(p); continue; }
+    if (e.isSymbolicLink()) {
+      SKIPPED_SYMLINKS.add(p);
+      continue;
+    }
     if (e.isDirectory()) {
-      const relativeDirectoryPath = relative(root, p).replaceAll("\\", "/");
+      const relativeDirectoryPath = relative(root, p).replaceAll('\\', '/');
       if (EXCLUDED_DIRECTORY_PATHS.has(relativeDirectoryPath)) continue;
       // a nested directory with its own .git is another checkout (worktree/vendored
       // clone) — its files shadow this checkout's reality; skip it loudly
-      if (existsSync(join(p, ".git"))) { SKIPPED_CHECKOUTS.add(p); continue; }
+      if (existsSync(join(p, '.git'))) {
+        SKIPPED_CHECKOUTS.add(p);
+        continue;
+      }
       yield* walk(p, root);
     } else if (e.isFile()) yield p;
   }
@@ -359,28 +478,46 @@ function reportSkipsAndNearMisses(root) {
     console.log(`note: skipped nested checkout ${relative(root, p)}`);
   }
   for (const p of SKIPPED_SYMLINKS) {
-    console.log(`note: symlink not followed (contracts/annotations behind it are invisible): ${relative(root, p)}`);
+    console.log(
+      `note: symlink not followed (contracts/annotations behind it are invisible): ${relative(root, p)}`,
+    );
   }
   for (const p of SKIPPED_LARGE) {
-    console.log(`note: file exceeds ${MAX_SCAN_BYTES} bytes — not scanned for annotations: ${relative(root, p)}`);
+    console.log(
+      `note: file exceeds ${MAX_SCAN_BYTES} bytes — not scanned for annotations: ${relative(root, p)}`,
+    );
   }
-  SKIPPED_CHECKOUTS.clear(); SKIPPED_SYMLINKS.clear(); SKIPPED_LARGE.clear();
+  SKIPPED_CHECKOUTS.clear();
+  SKIPPED_SYMLINKS.clear();
+  SKIPPED_LARGE.clear();
   for (const p of walk(root)) {
     const b = basename(p);
-    if (!b.endsWith(".md") || b.endsWith(".invariants.md") || b.endsWith(".lattice.md")) continue;
+    if (
+      !b.endsWith('.md') ||
+      b.endsWith('.invariants.md') ||
+      b.endsWith('.lattice.md')
+    )
+      continue;
     // near-miss = basename that ENDS with "invariants" modulo decoration — the shape of a
     // mis-named contract ("x._invariants_.md", "x-invariants.md"), not a paper title
-    const stem = b.slice(0, -3).toLowerCase().replace(/[^a-z0-9]+$/, "");
-    if (stem.endsWith("invariants")) {
-      console.log(`note: near-miss filename (looks like a contract but does not match ` +
-        `*.invariants.md — NOT scanned): ${relative(root, p)}`);
+    const stem = b
+      .slice(0, -3)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+$/, '');
+    if (stem.endsWith('invariants')) {
+      console.log(
+        `note: near-miss filename (looks like a contract but does not match ` +
+          `*.invariants.md — NOT scanned): ${relative(root, p)}`,
+      );
     }
   }
-  SKIPPED_CHECKOUTS.clear(); SKIPPED_SYMLINKS.clear(); SKIPPED_LARGE.clear();
+  SKIPPED_CHECKOUTS.clear();
+  SKIPPED_SYMLINKS.clear();
+  SKIPPED_LARGE.clear();
 }
 
 function discover(root) {
-  return [...walk(root)].filter((p) => p.endsWith(".invariants.md"));
+  return [...walk(root)].filter((p) => p.endsWith('.invariants.md'));
 }
 
 // ---------------------------------------------------------------------------
@@ -392,32 +529,63 @@ function extractLinks(text) {
   // Reference links: [text][key], collapsed [text][], definitions [key]: <target> "title".
   const links = [];
   const defs = new Map();
-  const lineOf = (idx) => text.slice(0, idx).split("\n").length;
+  const lineOf = (idx) => text.slice(0, idx).split('\n').length;
 
-  for (const m of text.matchAll(/^[ \t]*\[([^\]]+)\]:\s*(?:<([^>\n]+)>|(\S+))(?:[ \t]+["'(].*)?$/gm)) {
+  for (const m of text.matchAll(
+    /^[ \t]*\[([^\]]+)\]:\s*(?:<([^>\n]+)>|(\S+))(?:[ \t]+["'(].*)?$/gm,
+  )) {
     defs.set(m[1].toLowerCase(), (m[2] ?? m[3]).trim());
   }
-  const TEXT = "((?:[^\\[\\]]|\\[[^\\]]*\\])*)"; // one nesting level, newlines allowed
-  const inline = new RegExp(`\\[${TEXT}\\]\\((?:<([^>\\n]*)>|([^)\\s]+))\\)`, "g");
+  const TEXT = '((?:[^\\[\\]]|\\[[^\\]]*\\])*)'; // one nesting level, newlines allowed
+  const inline = new RegExp(
+    `\\[${TEXT}\\]\\((?:<([^>\\n]*)>|([^)\\s]+))\\)`,
+    'g',
+  );
   for (const m of text.matchAll(inline)) {
-    links.push({ text: m[1].replace(/\s+/g, " ").trim(), target: (m[2] ?? m[3]).trim(), line: lineOf(m.index) });
+    links.push({
+      text: m[1].replace(/\s+/g, ' ').trim(),
+      target: (m[2] ?? m[3]).trim(),
+      line: lineOf(m.index),
+    });
   }
-  const refRe = new RegExp(`\\[${TEXT}\\]\\[([^\\]]*)\\]`, "g");
+  const refRe = new RegExp(`\\[${TEXT}\\]\\[([^\\]]*)\\]`, 'g');
   for (const m of text.matchAll(refRe)) {
-    const textPart = m[1].replace(/\s+/g, " ").trim();
+    const textPart = m[1].replace(/\s+/g, ' ').trim();
     const key = (m[2] || textPart).toLowerCase();
-    if (defs.has(key)) links.push({ text: textPart, target: defs.get(key), line: lineOf(m.index) });
-    else links.push({ text: textPart, target: null, key: m[2] || textPart, line: lineOf(m.index) });
+    if (defs.has(key))
+      links.push({
+        text: textPart,
+        target: defs.get(key),
+        line: lineOf(m.index),
+      });
+    else
+      links.push({
+        text: textPart,
+        target: null,
+        key: m[2] || textPart,
+        line: lineOf(m.index),
+      });
   }
   return links;
 }
 
-function checkLattice(root, path, slugsByFile, namesBySlugByFile, globalSlugs, problems) {
+function checkLattice(
+  root,
+  path,
+  slugsByFile,
+  namesBySlugByFile,
+  globalSlugs,
+  problems,
+) {
   let text;
   try {
     const { lines, active } = readMasked(path);
-    text = lines.map((l, i) => (active[i] ? stripInlineCode(l) : "")).join("\n");
-  } catch { return { resolved: 0 }; }
+    text = lines
+      .map((l, i) => (active[i] ? stripInlineCode(l) : ''))
+      .join('\n');
+  } catch {
+    return { resolved: 0 };
+  }
   let resolved = 0;
   const referenced = new Set();
   for (const link of extractLinks(text)) {
@@ -426,11 +594,19 @@ function checkLattice(root, path, slugsByFile, namesBySlugByFile, globalSlugs, p
       problems.push(`${where}: undefined link reference [${link.key}]`);
       continue;
     }
-    const decoded = (() => { try { return decodeURIComponent(link.target); } catch { return link.target; } })();
-    if (!decoded.includes(".invariants.md")) continue;
-    const [file, anchor] = decoded.split("#");
+    const decoded = (() => {
+      try {
+        return decodeURIComponent(link.target);
+      } catch {
+        return link.target;
+      }
+    })();
+    if (!decoded.includes('.invariants.md')) continue;
+    const [file, anchor] = decoded.split('#');
     if (!anchor) {
-      problems.push(`${where}: contract link needs an anchor — the anchor is the reference identity`);
+      problems.push(
+        `${where}: contract link needs an anchor — the anchor is the reference identity`,
+      );
       continue;
     }
     let target = resolve(dirname(path), file);
@@ -441,15 +617,25 @@ function checkLattice(root, path, slugsByFile, namesBySlugByFile, globalSlugs, p
       continue;
     }
     if (!slugs.has(anchor)) {
-      const hint = slugs.has(slugify(link.text)) ? ` — did you mean '#${slugify(link.text)}'?` : "";
-      problems.push(`${where}: anchor '#${anchor}' does not resolve in ${file}${hint}`);
+      const hint = slugs.has(slugify(link.text))
+        ? ` — did you mean '#${slugify(link.text)}'?`
+        : '';
+      problems.push(
+        `${where}: anchor '#${anchor}' does not resolve in ${file}${hint}`,
+      );
       continue;
     }
     const textSlug = slugify(link.text);
-    if (/[\p{L}\p{N}]/u.test(textSlug) && textSlug !== anchor && globalSlugs.has(textSlug)) {
+    if (
+      /[\p{L}\p{N}]/u.test(textSlug) &&
+      textSlug !== anchor &&
+      globalSlugs.has(textSlug)
+    ) {
       const other = globalSlugs.get(textSlug);
-      problems.push(`${where}: link text names '${link.text}' (a record in ${relative(root, other)}) ` +
-        `but the anchor points to '#${anchor}' — misleading reference`);
+      problems.push(
+        `${where}: link text names '${link.text}' (a record in ${relative(root, other)}) ` +
+          `but the anchor points to '#${anchor}' — misleading reference`,
+      );
       continue;
     }
     resolved++;
@@ -457,16 +643,22 @@ function checkLattice(root, path, slugsByFile, namesBySlugByFile, globalSlugs, p
   }
   // unwoven coverage against the sibling home contract (informational, names not slugs;
   // lattice files only — other md files get link validation but no coverage duty)
-  const home = path.endsWith(".lattice.md")
-    ? resolve(dirname(path), basename(path).replace(/\.lattice\.md$/, ".invariants.md"))
+  const home = path.endsWith('.lattice.md')
+    ? resolve(
+        dirname(path),
+        basename(path).replace(/\.lattice\.md$/, '.invariants.md'),
+      )
     : null;
   const homeSlugs = home === null ? undefined : slugsByFile.get(home);
   if (homeSlugs) {
     const nameOf = namesBySlugByFile.get(home) ?? new Map();
-    const unwoven = [...homeSlugs].filter((sl) => !referenced.has(`${home} ${sl}`))
+    const unwoven = [...homeSlugs]
+      .filter((sl) => !referenced.has(`${home} ${sl}`))
       .map((sl) => nameOf.get(sl) ?? sl);
     if (unwoven.length) {
-      console.log(`coverage ${relative(root, path)}: never referenced: ${unwoven.join(" · ")}`);
+      console.log(
+        `coverage ${relative(root, path)}: never referenced: ${unwoven.join(' · ')}`,
+      );
     }
   }
   return { resolved };
@@ -478,14 +670,25 @@ function checkLattice(root, path, slugsByFile, namesBySlugByFile, globalSlugs, p
 function checkRefs(root) {
   // per contract: precise records if canonical-shaped (broken canonical files yield
   // EMPTY sets — never the loose harvest), loose heading harvest for local formats
-  const recordsByFile = new Map(discover(root).map((p) => [resolve(p), canonicalRecords(p)]));
-  const contracts = new Map([...recordsByFile].map(([p, recs]) =>
-    [p, recs.length ? new Set(recs.map((r) => r.name))
-      : (isCanonicalShaped(p) ? new Set() : contractNames(p))]));
+  const recordsByFile = new Map(
+    discover(root).map((p) => [resolve(p), canonicalRecords(p)]),
+  );
+  const contracts = new Map(
+    [...recordsByFile].map(([p, recs]) => [
+      p,
+      recs.length
+        ? new Set(recs.map((r) => r.name))
+        : isCanonicalShaped(p)
+          ? new Set()
+          : contractNames(p),
+    ]),
+  );
   for (const [p, recs] of recordsByFile) {
     if (!recs.length && !isCanonicalShaped(p)) {
-      console.log(`note: local-format contract (loose heading harvest — schema and coverage ` +
-        `unchecked; any ##/### heading resolves as a target): ${relative(root, p)}`);
+      console.log(
+        `note: local-format contract (loose heading harvest — schema and coverage ` +
+          `unchecked; any ##/### heading resolves as a target): ${relative(root, p)}`,
+      );
     }
   }
   const byRel = new Map([...contracts].map(([p, n]) => [relative(root, p), n]));
@@ -493,23 +696,31 @@ function checkRefs(root) {
   const referenced = new Set(); // `${resolvedContractPath} ${name-or-slug}`
   let valid = 0;
   for (const p of walk(root)) {
-    if (p.endsWith(".invariants.md")) continue;
-    if (basename(p) === "check_invariants.test.mjs") continue; // own spec's fixtures aren't annotations
-    if (basename(p) === "SKILL.md") continue; // skill docs carry instructional examples, not annotations
+    if (p.endsWith('.invariants.md')) continue;
+    if (basename(p) === 'check_invariants.test.mjs') continue; // own spec's fixtures aren't annotations
+    if (basename(p) === 'SKILL.md') continue; // skill docs carry instructional examples, not annotations
     let text;
     try {
-      if (statSync(p).size > MAX_SCAN_BYTES) { SKIPPED_LARGE.add(p); continue; }
+      if (statSync(p).size > MAX_SCAN_BYTES) {
+        SKIPPED_LARGE.add(p);
+        continue;
+      }
       const buf = readFileSync(p);
-      if (buf.includes(0)) { // binary
-        if (buf.includes("invariant:")) {
-          console.log(`note: binary file contains 'invariant:' but cannot be scanned: ${relative(root, p)}`);
+      if (buf.includes(0)) {
+        // binary
+        if (buf.includes('invariant:')) {
+          console.log(
+            `note: binary file contains 'invariant:' but cannot be scanned: ${relative(root, p)}`,
+          );
         }
         continue;
       }
-      text = buf.toString("utf-8").replace(/^﻿/, "").replace(/\r\n?/g, "\n");
-    } catch { continue; }
+      text = buf.toString('utf-8').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    } catch {
+      continue;
+    }
     if (!/invariant:/i.test(text)) continue;
-    const fileLines = text.split("\n");
+    const fileLines = text.split('\n');
     const active = maskInert(fileLines);
     fileLines.forEach((rawLine, idx) => {
       if (!active[idx]) return;
@@ -521,26 +732,42 @@ function checkRefs(root) {
         const cpath = m[2].trim();
         const where = `${relative(root, p)}:${idx + 1}`;
         let targetPath = resolve(root, cpath);
-        let target = byRel.get(cpath) !== undefined ? contracts.get(targetPath) : undefined;
+        let target =
+          byRel.get(cpath) !== undefined
+            ? contracts.get(targetPath)
+            : undefined;
         if (target === undefined) {
           targetPath = resolve(dirname(p), cpath);
           target = contracts.get(targetPath);
         }
-        if (target === undefined) orphans.push(`${where}: contract not found: ${cpath}`);
-        else if (!target.has(name)) orphans.push(`${where}: invariant '${name}' not found in ${cpath}`);
-        else { valid++; referenced.add(`${targetPath} ${name}`); }
+        if (target === undefined)
+          orphans.push(`${where}: contract not found: ${cpath}`);
+        else if (!target.has(name))
+          orphans.push(`${where}: invariant '${name}' not found in ${cpath}`);
+        else {
+          valid++;
+          referenced.add(`${targetPath} ${name}`);
+        }
       }
       if (!matchedHere && ANNOT_LOOSE_RE.test(line)) {
-        orphans.push(`${relative(root, p)}:${idx + 1}: annotation-shaped comment does not parse ` +
-          `(target must be a (path ending in .invariants.md)) — fix it or it protects nothing`);
+        orphans.push(
+          `${relative(root, p)}:${idx + 1}: annotation-shaped comment does not parse ` +
+            `(target must be a (path ending in .invariants.md)) — fix it or it protects nothing`,
+        );
         return;
       }
-      if (!matchedHere && !p.endsWith(".md") && /(?:\/\/|#|\/\*|--|;)\s*invariant:\s*\S/i.test(line) && !/[([]/.test(line)) {
-        orphans.push(`${relative(root, p)}:${idx + 1}: pathless annotation ('invariant: Name' with no ` +
-          `contract path) — it validates nothing and will never be checked; add the (path.invariants.md)`);
+      if (
+        !matchedHere &&
+        !p.endsWith('.md') &&
+        /(?:\/\/|#|\/\*|--|;)\s*invariant:\s*\S/i.test(line) &&
+        !/[([]/.test(line)
+      ) {
+        orphans.push(
+          `${relative(root, p)}:${idx + 1}: pathless annotation ('invariant: Name' with no ` +
+            `contract path) — it validates nothing and will never be checked; add the (path.invariants.md)`,
+        );
         return;
       }
-
     });
   }
 
@@ -569,10 +796,17 @@ function checkRefs(root) {
     // contract-targeting md links are validated wherever they live (READMEs, design docs,
     // even other contracts) — a broken anchor is rot regardless of the file's name; only
     // .lattice.md files additionally get sibling coverage reporting
-    if (!p.endsWith(".md")) continue;
+    if (!p.endsWith('.md')) continue;
     const b = basename(p);
-    if (b === "SKILL.md" || b === "check_invariants.test.mjs") continue;
-    latticeResolved += checkLattice(root, p, slugsByFile, namesBySlugByFile, globalSlugs, latticeProblems).resolved;
+    if (b === 'SKILL.md' || b === 'check_invariants.test.mjs') continue;
+    latticeResolved += checkLattice(
+      root,
+      p,
+      slugsByFile,
+      namesBySlugByFile,
+      globalSlugs,
+      latticeProblems,
+    ).resolved;
   }
   orphans.push(...latticeProblems);
 
@@ -580,9 +814,14 @@ function checkRefs(root) {
   // coverage: canonical records never referenced by any annotation (informational).
   // File-qualified so same-named records in other contracts don't mask each other;
   // records declaring review-time Enforcement are exempt by design.
-  COVERAGE_COUNTS.unreferenced = 0; COVERAGE_COUNTS.exempt = 0;
+  COVERAGE_COUNTS.unreferenced = 0;
+  COVERAGE_COUNTS.exempt = 0;
   for (const [p, recs] of recordsByFile) {
-    const exempt = recs.filter((r) => r.fields["Enforcement"] && /review-time|no code locus/i.test(r.fields["Enforcement"]));
+    const exempt = recs.filter(
+      (r) =>
+        r.fields['Enforcement'] &&
+        /review-time|no code locus/i.test(r.fields['Enforcement']),
+    );
     COVERAGE_COUNTS.exempt += exempt.length;
     const unreferenced = recs
       .filter((r) => !exempt.includes(r))
@@ -590,28 +829,46 @@ function checkRefs(root) {
       .map((r) => r.name);
     if (unreferenced.length) {
       COVERAGE_COUNTS.unreferenced += unreferenced.length;
-      console.log(`coverage ${relative(root, p)}: no annotations reference: ${unreferenced.join(" · ")}`);
+      console.log(
+        `coverage ${relative(root, p)}: no annotations reference: ${unreferenced.join(' · ')}`,
+      );
     }
     if (exempt.length) {
-      console.log(`coverage-exempt ${relative(root, p)} (Enforcement): ${exempt.map((r) => r.name).join(" · ")}`);
+      console.log(
+        `coverage-exempt ${relative(root, p)} (Enforcement): ${exempt.map((r) => r.name).join(' · ')}`,
+      );
     }
     for (const r of exempt) {
-      if (/[\w-]+\.(js|ts|mjs|py|go|rs|sh|rb|java)\b|\//.test(r.fields["Mechanism"] ?? "")) {
-        console.log(`note: '${r.name}' in ${relative(root, p)} claims review-time Enforcement but its ` +
-          `Mechanism names code — reconcile (annotate the code, or correct the Mechanism)`);
+      if (
+        /[\w-]+\.(js|ts|mjs|py|go|rs|sh|rb|java)\b|\//.test(
+          r.fields['Mechanism'] ?? '',
+        )
+      ) {
+        console.log(
+          `note: '${r.name}' in ${relative(root, p)} claims review-time Enforcement but its ` +
+            `Mechanism names code — reconcile (annotate the code, or correct the Mechanism)`,
+        );
       }
     }
   }
-  console.log(`${valid} annotation(s) resolved, ${latticeResolved} lattice link(s) resolved, ${orphans.length} problem(s)`);
-  return { code: orphans.length ? 1 : 0, valid, latticeResolved, problems: orphans.length,
-    coverage: COVERAGE_COUNTS.unreferenced, exempt: COVERAGE_COUNTS.exempt };
+  console.log(
+    `${valid} annotation(s) resolved, ${latticeResolved} lattice link(s) resolved, ${orphans.length} problem(s)`,
+  );
+  return {
+    code: orphans.length ? 1 : 0,
+    valid,
+    latticeResolved,
+    problems: orphans.length,
+    coverage: COVERAGE_COUNTS.unreferenced,
+    exempt: COVERAGE_COUNTS.exempt,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // reporting + entry
 
 function report(path, { status, errors, notes, summary }, strict = false) {
-  if (status === "noncanonical") {
+  if (status === 'noncanonical') {
     if (strict) {
       console.error(`FAIL ${path}: non-canonical (--strict)`);
       return true;
@@ -620,7 +877,7 @@ function report(path, { status, errors, notes, summary }, strict = false) {
     return false;
   }
   for (const note of notes) console.log(`note ${path}: ${note}`);
-  if (status === "fail") {
+  if (status === 'fail') {
     for (const error of errors) console.error(`${path}: ${error}`);
     return true;
   }
@@ -630,8 +887,11 @@ function report(path, { status, errors, notes, summary }, strict = false) {
 
 function gitToplevel() {
   try {
-    return execSync("git rev-parse --show-toplevel", { stdio: ["ignore", "pipe", "ignore"] })
-      .toString().trim();
+    return execSync('git rev-parse --show-toplevel', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
   } catch {
     return process.cwd();
   }
@@ -661,7 +921,16 @@ pass it explicitly when outside a git checkout. Exit: 0 ok, 1 findings, 2 usage/
 CRLF/BOM normalized; fenced code blocks and HTML comments are inert; nested checkouts,
 symlinks, files over 2MB, and scripts/retired-smokes are skipped.`;
 
-const KNOWN_FLAGS = new Set(["--all", "--refs", "--refs-for", "--strict", "--help", "-h", "--version", "--score"]);
+const KNOWN_FLAGS = new Set([
+  '--all',
+  '--refs',
+  '--refs-for',
+  '--strict',
+  '--help',
+  '-h',
+  '--version',
+  '--score',
+]);
 
 // --refs-for <name>: locate every code annotation + contract that declares ONE named invariant.
 // The retirement-sweep primitive — "is this invariant still witnessed in code, and where?"
@@ -670,76 +939,101 @@ function refsFor(root, targetName) {
   const definedIn = [];
   for (const p of discover(root)) {
     const recs = canonicalRecords(p);
-    const names = recs.length ? recs.map((r) => r.name)
-      : (isCanonicalShaped(p) ? [] : [...contractNames(p)]);
+    const names = recs.length
+      ? recs.map((r) => r.name)
+      : isCanonicalShaped(p)
+        ? []
+        : [...contractNames(p)];
     if (names.some((n) => n === wanted)) definedIn.push(relative(root, p));
   }
   const refs = [];
   for (const p of walk(root)) {
-    if (p.endsWith(".invariants.md")) continue;
+    if (p.endsWith('.invariants.md')) continue;
     const b = basename(p);
-    if (b === "check_invariants.test.mjs" || b === "SKILL.md") continue;
+    if (b === 'check_invariants.test.mjs' || b === 'SKILL.md') continue;
     let text;
     try {
       if (statSync(p).size > MAX_SCAN_BYTES) continue;
       const buf = readFileSync(p);
       if (buf.includes(0)) continue;
-      text = buf.toString("utf-8").replace(/^﻿/, "").replace(/\r\n?/g, "\n");
-    } catch { continue; }
+      text = buf.toString('utf-8').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    } catch {
+      continue;
+    }
     if (!/invariant:/i.test(text)) continue;
-    const fileLines = text.split("\n");
+    const fileLines = text.split('\n');
     const active = maskInert(fileLines);
     fileLines.forEach((rawLine, idx) => {
       if (!active[idx]) return;
       for (const m of stripInlineCode(rawLine).matchAll(ANNOT_RE)) {
-        if (m[1].trim() === wanted) refs.push(`${relative(root, p)}:${idx + 1}  (${m[2].trim()})`);
+        if (m[1].trim() === wanted)
+          refs.push(`${relative(root, p)}:${idx + 1}  (${m[2].trim()})`);
       }
     });
   }
   console.log(`invariant: ${wanted}`);
-  console.log(definedIn.length
-    ? `  defined in: ${definedIn.join(", ")}`
-    : `  (not declared in any *.invariants.md contract under this root)`);
+  console.log(
+    definedIn.length
+      ? `  defined in: ${definedIn.join(', ')}`
+      : `  (not declared in any *.invariants.md contract under this root)`,
+  );
   console.log(`  code annotations: ${refs.length}`);
   for (const r of refs) console.log(`    ${r}`);
   if (refs.length === 0 && definedIn.length) {
-    console.log(`  note: no code annotation witnesses this invariant. If you just removed the last, it ` +
-      `survives only as chosen/reality doctrine with no code locus — flag it for a retirement sweep.`);
+    console.log(
+      `  note: no code annotation witnesses this invariant. If you just removed the last, it ` +
+        `survives only as chosen/reality doctrine with no code locus — flag it for a retirement sweep.`,
+    );
   }
   return { code: 0, name: wanted, definedIn, refCount: refs.length };
 }
 
 function main() {
   const args = process.argv.slice(2);
-  const flags = new Set(args.filter((a) => a.startsWith("--") || a === "-h"));
+  const flags = new Set(args.filter((a) => a.startsWith('--') || a === '-h'));
   const positional = args.filter((a) => !flags.has(a));
   const pathArg = positional[0];
 
   for (const f of flags) {
     if (!KNOWN_FLAGS.has(f)) {
-      console.error(`unknown flag: ${f} (known: ${[...KNOWN_FLAGS].join(", ")})`);
+      console.error(
+        `unknown flag: ${f} (known: ${[...KNOWN_FLAGS].join(', ')})`,
+      );
       return 2;
     }
   }
-  if (flags.has("--help") || flags.has("-h")) { console.log(HELP); return 0; }
-  if (flags.has("--version")) { console.log(VERSION); return 0; }
-  if (flags.has("--strict") && flags.has("--refs")) {
-    console.log("note: --strict has no effect with --refs (it applies to --all)");
+  if (flags.has('--help') || flags.has('-h')) {
+    console.log(HELP);
+    return 0;
+  }
+  if (flags.has('--version')) {
+    console.log(VERSION);
+    return 0;
+  }
+  if (flags.has('--strict') && flags.has('--refs')) {
+    console.log(
+      'note: --strict has no effect with --refs (it applies to --all)',
+    );
   }
 
-  if (flags.has("--refs-for")) {
+  if (flags.has('--refs-for')) {
     const name = positional[0];
-    if (!name) { console.error("usage: check_invariants.mjs --refs-for '<Invariant Name>' [ROOT]"); return 2; }
+    if (!name) {
+      console.error(
+        "usage: check_invariants.mjs --refs-for '<Invariant Name>' [ROOT]",
+      );
+      return 2;
+    }
     const root = resolve(positional[1] ?? gitToplevel());
     console.log(`root ${root}`);
     return refsFor(root, name).code;
   }
 
-  if (flags.has("--all") || flags.has("--refs")) {
+  if (flags.has('--all') || flags.has('--refs')) {
     const root = resolve(pathArg ?? gitToplevel());
     console.log(`root ${root}`);
     let code = 0;
-    if (flags.has("--all")) {
+    if (flags.has('--all')) {
       const files = discover(root);
       if (!files.length) {
         reportSkipsAndNearMisses(root);
@@ -748,18 +1042,18 @@ function main() {
       }
       let failed = 0;
       for (const f of files) {
-        if (report(f, checkFile(f), flags.has("--strict"))) failed++;
+        if (report(f, checkFile(f), flags.has('--strict'))) failed++;
       }
       code = failed ? 1 : 0;
     }
-    if (flags.has("--refs")) {
+    if (flags.has('--refs')) {
       code = Math.max(code, checkRefs(root).code);
     }
     reportSkipsAndNearMisses(root);
     return code;
   }
 
-  if (flags.has("--score")) {
+  if (flags.has('--score')) {
     // mechanical components for the invariant score (rubric lives in the skill's
     // references/score.md — this emits facts, never a headline). JSON is the LAST line.
     const root = resolve(pathArg ?? gitToplevel());
@@ -768,27 +1062,42 @@ function main() {
     const schema = { pass: 0, skip: 0, fail: 0, records: 0 };
     for (const f of files) {
       const r = checkFile(f);
-      if (r.status === "pass") schema.pass++;
-      else if (r.status === "noncanonical") schema.skip++;
+      if (r.status === 'pass') schema.pass++;
+      else if (r.status === 'noncanonical') schema.skip++;
       else schema.fail++;
-      const m = /(\d+) reality, (\d+) chosen/.exec(r.summary ?? "");
-      if (m) schema.records += (+m[1]) + (+m[2]);
+      const m = /(\d+) reality, (\d+) chosen/.exec(r.summary ?? '');
+      if (m) schema.records += +m[1] + +m[2];
     }
-    const refs = files.length ? checkRefs(root) : { valid: 0, latticeResolved: 0, problems: 0, coverage: 0, exempt: 0 };
+    const refs = files.length
+      ? checkRefs(root)
+      : { valid: 0, latticeResolved: 0, problems: 0, coverage: 0, exempt: 0 };
     reportSkipsAndNearMisses(root);
-    console.log(JSON.stringify({ version: VERSION, contracts: files.length, schema,
-      annotations: refs.valid, latticeLinks: refs.latticeResolved, problems: refs.problems,
-      coverageGaps: refs.coverage, exempt: refs.exempt,
-      scored: files.length > 0 }));
+    console.log(
+      JSON.stringify({
+        version: VERSION,
+        contracts: files.length,
+        schema,
+        annotations: refs.valid,
+        latticeLinks: refs.latticeResolved,
+        problems: refs.problems,
+        coverageGaps: refs.coverage,
+        exempt: refs.exempt,
+        scored: files.length > 0,
+      }),
+    );
     return 0;
   }
 
   if (!pathArg) {
-    console.error("usage: check_invariants.mjs PATH | --all [ROOT] [--strict] | --refs [ROOT] (--help for details)");
+    console.error(
+      'usage: check_invariants.mjs PATH | --all [ROOT] [--strict] | --refs [ROOT] (--help for details)',
+    );
     return 2;
   }
   if (existsSync(pathArg) && statSync(pathArg).isDirectory()) {
-    console.error(`document: '${pathArg}' is a directory — pass a contract file, or use --all ${pathArg}`);
+    console.error(
+      `document: '${pathArg}' is a directory — pass a contract file, or use --all ${pathArg}`,
+    );
     return 2;
   }
   if (!existsSync(pathArg) || !statSync(pathArg).isFile()) {

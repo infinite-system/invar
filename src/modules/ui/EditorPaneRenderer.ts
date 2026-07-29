@@ -38,6 +38,7 @@ import type {
   EditorLineDecoration,
 } from '../workspace/GutterDecorations';
 import { GutterDecorations } from '../workspace/GutterDecorations';
+
 class $EditorPaneRenderer {
   protected static get INDENT_GUIDE_TAB_WIDTH() {
     return 4;
@@ -536,10 +537,12 @@ class $EditorPaneRenderer {
     };
   }
 }
+
 export namespace EditorPaneRenderer {
   export const $Class = Static($EditorPaneRenderer);
   export let Class = $Class;
 }
+
 export interface EditorPaneRenderContext {
   workspace: Workspace.Instance;
   palette: Palette;
@@ -563,6 +566,7 @@ export interface EditorPaneRenderContext {
    *  visible" is automatic. Empty/omitted when the cursor is not on a bracket. */
   bracketHighlights?: readonly BracketCell[];
 }
+
 export interface EditorPaneRender {
   gutter: StyledText;
   code: StyledText;

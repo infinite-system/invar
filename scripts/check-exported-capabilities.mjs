@@ -23,7 +23,10 @@ if (configurationPath === undefined) {
   process.exit(2);
 }
 
-const configurationRead = typescript.readConfigFile(configurationPath, typescript.sys.readFile);
+const configurationRead = typescript.readConfigFile(
+  configurationPath,
+  typescript.sys.readFile,
+);
 if (configurationRead.error !== undefined) {
   process.stderr.write(
     `${typescript.formatDiagnostic(configurationRead.error, {
@@ -48,12 +51,18 @@ const typeChecker = program.getTypeChecker();
 const modulesRootPrefix = `${resolve(projectRoot, 'src/modules')}${sep}`;
 
 function hasModifier(node, modifierKind) {
-  return node.modifiers?.some((modifier) => modifier.kind === modifierKind) ?? false;
+  return (
+    node.modifiers?.some((modifier) => modifier.kind === modifierKind) ?? false
+  );
 }
 
 function isModuleSource(sourceFile) {
   const absoluteFileName = resolve(sourceFile.fileName);
-  if (!absoluteFileName.startsWith(modulesRootPrefix) || sourceFile.isDeclarationFile) return false;
+  if (
+    !absoluteFileName.startsWith(modulesRootPrefix) ||
+    sourceFile.isDeclarationFile
+  )
+    return false;
   const projectRelativeFileName = relative(projectRoot, absoluteFileName);
   return (
     !projectRelativeFileName.includes(`${sep}__tests__${sep}`) &&
@@ -85,12 +94,18 @@ function isFunctionExpression(expression) {
 
 function callableTypeAt(node) {
   const type = typeChecker.getTypeAtLocation(node);
-  return typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Call).length > 0;
+  return (
+    typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Call)
+      .length > 0
+  );
 }
 
 function constructableTypeAt(node) {
   const type = typeChecker.getTypeAtLocation(node);
-  return typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Construct).length > 0;
+  return (
+    typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Construct)
+      .length > 0
+  );
 }
 
 function resolvedSymbolAt(node) {
@@ -106,20 +121,28 @@ function callableSymbolAt(node) {
   const symbol = resolvedSymbolAt(node);
   if (symbol === undefined) return false;
   const type = typeChecker.getTypeOfSymbolAtLocation(symbol, node);
-  return typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Call).length > 0;
+  return (
+    typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Call)
+      .length > 0
+  );
 }
 
 function constructableSymbolAt(node) {
   const symbol = resolvedSymbolAt(node);
   if (symbol === undefined) return false;
   const type = typeChecker.getTypeOfSymbolAtLocation(symbol, node);
-  return typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Construct).length > 0;
+  return (
+    typeChecker.getSignaturesOfType(type, typescript.SignatureKind.Construct)
+      .length > 0
+  );
 }
 
 const violations = [];
 
 function recordViolation(sourceFile, node, exportedName, exportShape) {
-  const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const position = sourceFile.getLineAndCharacterOfPosition(
+    node.getStart(sourceFile),
+  );
   violations.push({
     fileName: relative(projectRoot, sourceFile.fileName),
     line: position.line + 1,
@@ -165,7 +188,8 @@ function inspectNode(sourceFile, node) {
     for (const declaration of node.declarationList.declarations) {
       if (!typescript.isIdentifier(declaration.name)) continue;
       if (
-        (declaration.initializer !== undefined && isFunctionExpression(declaration.initializer)) ||
+        (declaration.initializer !== undefined &&
+          isFunctionExpression(declaration.initializer)) ||
         callableTypeAt(declaration.name) ||
         constructableTypeAt(declaration.name)
       ) {
@@ -191,10 +215,8 @@ function inspectNode(sourceFile, node) {
     for (const exportSpecifier of node.exportClause.elements) {
       if (
         exportSpecifier.isTypeOnly ||
-        (
-          !callableSymbolAt(exportSpecifier.name) &&
-          !constructableSymbolAt(exportSpecifier.name)
-        )
+        (!callableSymbolAt(exportSpecifier.name) &&
+          !constructableSymbolAt(exportSpecifier.name))
       ) {
         continue;
       }
@@ -212,10 +234,7 @@ function inspectNode(sourceFile, node) {
   if (
     typescript.isExportAssignment(node) &&
     node.parent === sourceFile &&
-    (
-      callableTypeAt(node.expression) ||
-      constructableTypeAt(node.expression)
-    )
+    (callableTypeAt(node.expression) || constructableTypeAt(node.expression))
   ) {
     recordViolation(
       sourceFile,
@@ -227,17 +246,20 @@ function inspectNode(sourceFile, node) {
     );
   }
 
-  typescript.forEachChild(node, (childNode) => inspectNode(sourceFile, childNode));
+  typescript.forEachChild(node, (childNode) =>
+    inspectNode(sourceFile, childNode),
+  );
 }
 
 for (const sourceFile of program.getSourceFiles()) {
   if (isModuleSource(sourceFile)) inspectNode(sourceFile, sourceFile);
 }
 
-violations.sort((left, right) =>
-  left.fileName.localeCompare(right.fileName) ||
-  left.line - right.line ||
-  left.column - right.column,
+violations.sort(
+  (left, right) =>
+    left.fileName.localeCompare(right.fileName) ||
+    left.line - right.line ||
+    left.column - right.column,
 );
 
 if (violations.length > 0) {

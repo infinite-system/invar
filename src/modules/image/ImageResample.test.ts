@@ -17,10 +17,7 @@ test('toRgbGrid averages alpha-weighted pixels over the background', () => {
   const image: DecodedImage = {
     width: 2,
     height: 1,
-    rgba: Uint8Array.from([
-      255, 0, 0, 255,
-      0, 0, 255, 0,
-    ]),
+    rgba: Uint8Array.from([255, 0, 0, 255, 0, 0, 255, 0]),
   };
 
   expect(

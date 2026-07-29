@@ -22,7 +22,9 @@ class ControllableScheduler implements TerminalCommandScheduler {
   }
 }
 
-function controllerFixture(options: { idle?: boolean; reducedMotion?: boolean } = {}) {
+function controllerFixture(
+  options: { idle?: boolean; reducedMotion?: boolean } = {},
+) {
   const writes: string[] = [];
   const events: TerminalCommandEvent[] = [];
   const scheduler = new ControllableScheduler();
@@ -56,7 +58,9 @@ function controllerFixture(options: { idle?: boolean; reducedMotion?: boolean } 
 
 test('staging sanitizes the full payload and never writes a newline', async () => {
   const fixture = controllerFixture();
-  const completion = fixture.controller.stageTerminalCommand('printf one\nprintf two');
+  const completion = fixture.controller.stageTerminalCommand(
+    'printf one\nprintf two',
+  );
   fixture.scheduler.runAll();
   await completion;
   expect(fixture.writes).toEqual(Array.from('printf oneprintf two'));
@@ -79,7 +83,9 @@ test('run writes each visible character before emitting Enter', async () => {
 
 test('a busy prompt queues and drains only after an idle notification', async () => {
   const fixture = controllerFixture({ idle: false, reducedMotion: true });
-  expect(await fixture.controller.stageTerminalCommand('printf queued')).toEqual({
+  expect(
+    await fixture.controller.stageTerminalCommand('printf queued'),
+  ).toEqual({
     state: 'queued',
     command: 'printf queued',
   });
@@ -102,7 +108,8 @@ test('user execution records an edit diff and Ctrl+C aborts animated run before 
   });
 
   const animatedFixture = controllerFixture();
-  const abortedCompletion = animatedFixture.controller.runTerminalCommand('printf never-runs');
+  const abortedCompletion =
+    animatedFixture.controller.runTerminalCommand('printf never-runs');
   expect(animatedFixture.controller.handleUserInput('\x03')).toBe(true);
   animatedFixture.scheduler.runAll();
   expect(await abortedCompletion).toEqual({
@@ -115,7 +122,9 @@ test('user execution records an edit diff and Ctrl+C aborts animated run before 
 
 test('human Enter during visible staging completes and executes the full sanitized command', async () => {
   const fixture = controllerFixture();
-  const completion = fixture.controller.stageTerminalCommand('printf complete > proof.txt');
+  const completion = fixture.controller.stageTerminalCommand(
+    'printf complete > proof.txt',
+  );
   expect(fixture.writes).toEqual(['p']);
 
   const enterConsumed = fixture.controller.handleUserInput('\r');

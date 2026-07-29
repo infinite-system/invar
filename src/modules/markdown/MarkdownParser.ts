@@ -1,5 +1,6 @@
 // invariant: Markdown blocks stay compact (src/modules/markdown/markdown.invariants.md)
 import { Static } from 'ivue/extras';
+
 class $MarkdownParser {
   protected static get $inlineStyles(): InlineStyles {
     const inlineStyles: InlineStyles = Object.freeze({

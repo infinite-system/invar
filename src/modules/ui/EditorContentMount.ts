@@ -102,11 +102,13 @@ class $EditorContentMount {
     this.surface?.dispose();
   }
 }
+
 export namespace EditorContentMount {
   export const $Class = $EditorContentMount;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface EditorContentMountDeps {
   renderer: CliRenderer;
   theme: Theme.Instance;

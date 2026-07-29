@@ -83,44 +83,56 @@ async function openThroughQuickOpen(
 }
 
 const pngPath = '/tmp/ivue-cart-dark.png';
+
 HarnessSmoke.Class.requireCondition(
   await Bun.file(pngPath).exists(),
   `real PNG fixture exists at ${pngPath}`,
 );
 
 console.log('== harness image-preview: decoder and half-block unit layer ==');
+
 const unitResult = Bun.spawnSync(
   [process.execPath, 'test', 'src/modules/image/'],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
+
 HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'image module unit tests',
 );
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-image-preview-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-image-preview-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 copyFileSync(pngPath, join(fixtureRoot, 'picture.png'));
+
 await Bun.write(
   join(fixtureRoot, 'sample.ts'),
   'export const answer = 42;\nconst greeting = "hello";\n',
 );
+
 await Bun.write(
   join(fixtureRoot, 'data.bin'),
   new Uint8Array([66, 73, 78, 0, 0, 68, 65, 84, 65, 0, 1, 2, 3]),
 );
 
 const jpegWidth = 600;
+
 const jpegHeight = 399;
+
 const jpegPixels = new Uint8Array(jpegWidth * jpegHeight * 4);
+
 const bandColors = [
   [255, 0, 0],
   [0, 255, 0],
   [0, 0, 255],
 ] as const;
+
 for (let row = 0; row < jpegHeight; row++) {
   const bandIndex = Math.min(2, Math.floor(row / (jpegHeight / 3)));
   const bandColor = bandColors[bandIndex] ?? bandColors[2];
@@ -132,20 +144,25 @@ for (let row = 0; row < jpegHeight; row++) {
     jpegPixels[pixelOffset + 3] = 255;
   }
 }
+
 await Bun.write(
   join(fixtureRoot, 'photo.jpg'),
   encodeJpeg({ data: jpegPixels, width: jpegWidth, height: jpegHeight }, 95)
     .data,
 );
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 console.log(
   '== harness image-preview: independent real-file decode cross-checks ==',
 );
+
 const decodedPng = PngDecoder.Class.decode(
   new Uint8Array(await Bun.file(pngPath).arrayBuffer()),
 );
+
 const pngDistinctColors = new Set<string>();
+
 for (
   let pixelOffset = 0;
   pixelOffset < decodedPng.rgba.length && pngDistinctColors.size < 5;
@@ -156,6 +173,7 @@ for (
       `${decodedPng.rgba[pixelOffset + 2]}`,
   );
 }
+
 HarnessSmoke.Class.requireCondition(
   decodedPng.width > 0 &&
     decodedPng.height > 0 &&
@@ -163,23 +181,32 @@ HarnessSmoke.Class.requireCondition(
     pngDistinctColors.size >= 2,
   `real PNG decodes to ${decodedPng.width}x${decodedPng.height} varied RGBA pixels`,
 );
+
 const jpegDecoder = ImageDecoders.Class.decoderFor('.jpg');
+
 HarnessSmoke.Class.requireCondition(
   jpegDecoder !== null,
   'registry supplies the .jpg decoder',
 );
+
 if (!jpegDecoder) throw new Error('FAIL .jpg decoder disappeared');
+
 const decodedJpeg = jpegDecoder(
   new Uint8Array(await Bun.file(join(fixtureRoot, 'photo.jpg')).arrayBuffer()),
 );
+
 function jpegBandPixelOffset(bandIndex: number): number {
   const row =
     Math.floor(jpegHeight / 6) + bandIndex * Math.floor(jpegHeight / 3);
   return (row * jpegWidth + Math.floor(jpegWidth / 2)) * 4;
 }
+
 const redBandOffset = jpegBandPixelOffset(0);
+
 const greenBandOffset = jpegBandPixelOffset(1);
+
 const blueBandOffset = jpegBandPixelOffset(2);
+
 HarnessSmoke.Class.requireCondition(
   decodedJpeg.width === jpegWidth &&
     decodedJpeg.height === jpegHeight &&

@@ -186,14 +186,21 @@ async function drivePlantedPanelOrderProfile(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-activitybar-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-activitybar-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await Bun.write(join(fixtureRoot, 'tree-marker.txt'), 'unchanged tree file\n');
+
 await Bun.write(join(fixtureRoot, 'change-me.txt'), 'original\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '.']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.name=activitybar-smoke',
@@ -203,8 +210,11 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'base',
 ]);
+
 await Bun.write(join(fixtureRoot, 'change-me.txt'), 'original\nedited\n');
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   '{"glyphMode":"ascii"}\n',
@@ -221,6 +231,7 @@ const driver = new PtyTestDriver.Class({
     INVAR_AGENT_BACKEND: 'echo',
   },
 });
+
 let restartDriver: PtyTestDriver.Model | null = null;
 
 try {

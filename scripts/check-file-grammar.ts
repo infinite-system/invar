@@ -30,6 +30,7 @@ export type FileGrammarRule =
   | 'namespace-manifest'
   | 'private-modifier'
   | 'test-colocation'
+  | 'top-level-declaration-spacing'
   | 'type-before-eponymous';
 
 export interface FileGrammarViolation {
@@ -116,6 +117,39 @@ function isTypeStatement(statement: typescript.Statement): boolean {
     typescript.isTypeAliasDeclaration(statement) ||
     typescript.isInterfaceDeclaration(statement)
   );
+}
+
+function inspectTopLevelDeclarationSpacing(
+  sourceFile: typescript.SourceFile,
+): FileGrammarViolation[] {
+  const violations: FileGrammarViolation[] = [];
+  for (
+    let statementIndex = 1;
+    statementIndex < sourceFile.statements.length;
+    statementIndex++
+  ) {
+    const previousStatement = sourceFile.statements[statementIndex - 1]!;
+    const statement = sourceFile.statements[statementIndex]!;
+    if (isImportStatement(previousStatement) && isImportStatement(statement)) {
+      continue;
+    }
+
+    const separator = sourceFile.text.slice(
+      previousStatement.end,
+      statement.getStart(sourceFile),
+    );
+    if (/\r?\n[ \t]*\r?\n/.test(separator)) continue;
+
+    violations.push(
+      createViolation(
+        sourceFile,
+        statement,
+        'top-level-declaration-spacing',
+        'top-level declarations must have one blank line between them',
+      ),
+    );
+  }
+  return violations;
 }
 
 function hasModifier(
@@ -711,7 +745,10 @@ function inspectSource(file: FileGrammarInput): {
     return { hasEponymousClass: false, violations: [] };
   }
 
-  const violations = [...inspectClassMembers(sourceFile)];
+  const violations = [
+    ...inspectTopLevelDeclarationSpacing(sourceFile),
+    ...inspectClassMembers(sourceFile),
+  ];
   const eponymousName = eponymousNameFor(fileName);
   if (isContractInterfaceFile(fileName)) {
     violations.push(...inspectContractInterfaceContent(sourceFile));

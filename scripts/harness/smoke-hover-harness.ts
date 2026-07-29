@@ -49,12 +49,14 @@ function hoverCardTextSpan(
 }
 
 const repositoryRoot = process.cwd();
+
 const serverBinary = join(
   repositoryRoot,
   'node_modules',
   '.bin',
   'typescript-language-server',
 );
+
 if (
   !Bun.file(serverBinary).size ||
   !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
@@ -67,17 +69,22 @@ if (
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-hover-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-hover-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 symlinkSync(
   join(repositoryRoot, 'node_modules'),
   join(fixtureRoot, 'node_modules'),
 );
+
 await Bun.write(
   join(fixtureRoot, 'tsconfig.json'),
   '{ "compilerOptions": { "target": "ES2022", "module": "ESNext", ' +
     '"moduleResolution": "bundler", "strict": true }, "include": ["*.ts"] }\n',
 );
+
 await Bun.write(
   join(fixtureRoot, 'answer.ts'),
   'export const answer: number = 42;\nexport const doubled = answer * 2;\n',

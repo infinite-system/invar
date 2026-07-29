@@ -30,6 +30,7 @@ import {
 } from './SelectionDragBehavior';
 import type { Settings } from '../settings/Settings';
 import { Logging } from '../system/Logging';
+
 class $ScrollableTextViewport {
   protected scrollTopValue = 0;
   protected scrollLeftValue = 0;
@@ -369,11 +370,13 @@ class $ScrollableTextViewport {
     }
   }
 }
+
 export namespace ScrollableTextViewport {
   export const $Class = $ScrollableTextViewport;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 /** Total content size and how much of it is visible — supplied by the host each frame (cells). */
 export interface ViewportExtent {
   contentRows: number;
@@ -381,6 +384,7 @@ export interface ViewportExtent {
   viewportRows: number;
   viewportColumns: number;
 }
+
 /** The interior cell rect the bars derive from (relative to the frame the host positions bars in),
  *  plus the absolute screen origin of the content's first cell (for pointer→content mapping). */
 export interface ViewportRegion {
@@ -389,6 +393,7 @@ export interface ViewportRegion {
   width: number;
   height: number;
 }
+
 export interface ScrollableTextViewportDeps {
   renderer: CliRenderer;
   settings: Settings.Instance;

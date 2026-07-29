@@ -20,7 +20,10 @@ try {
   const frame = JSON.parse(readFileSync(framePath, 'utf8'));
   const rows = frame.rows ?? [];
   let firstBoxRow = 0;
-  while (firstBoxRow < rows.length && !boxDrawing.test(rows[firstBoxRow].text ?? '')) {
+  while (
+    firstBoxRow < rows.length &&
+    !boxDrawing.test(rows[firstBoxRow].text ?? '')
+  ) {
     firstBoxRow += 1;
   }
   process.stdout.write(String(Math.max(0, firstBoxRow - 1)));

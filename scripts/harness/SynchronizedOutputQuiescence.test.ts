@@ -5,6 +5,7 @@ import {
 } from './SynchronizedOutputQuiescence';
 
 const beginSynchronizedOutput = '\x1b[?2026h';
+
 const endSynchronizedOutput = '\x1b[?2026l';
 
 describe('SynchronizedOutputQuiescence', () => {

@@ -623,9 +623,13 @@ async function driveAsciiHeadingControls(): Promise<void> {
 }
 
 console.log('== harness panel-chrome: boot and prove the quiet baseline ==');
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-panel-chrome-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await forceGlyphLevel(homeDirectory, 'unicode');
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: join(process.cwd(), 'fixtures'),
   columns: 120,
@@ -1000,5 +1004,7 @@ try {
 console.log(
   '== harness panel-chrome: repeat every heading interaction at the ascii tier ==',
 );
+
 await driveAsciiHeadingControls();
+
 console.log('smoke-panel-chrome-harness: ALL-PASS');

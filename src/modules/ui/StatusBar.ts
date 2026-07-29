@@ -21,6 +21,7 @@ import type { Theme } from '../theme/Theme';
 import type { SettingsPanel } from '../settings/SettingsPanel';
 import type { PanelHost } from './PanelHost';
 import type { StatusBarSegments } from './StatusBarSegments';
+
 class $StatusBar {
   /** The status-bar box; RootView mounts this into the layout column. */
   readonly bar: BoxRenderable;
@@ -377,11 +378,13 @@ class $StatusBar {
     this.clock.fg = palette.dim;
   }
 }
+
 export namespace StatusBar {
   export const $Class = $StatusBar;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface StatusBarDeps {
   renderer: CliRenderer;
   workspaceSet: WorkspaceSet.Instance;

@@ -17,12 +17,16 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-comment-styling-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-comment-styling-harness-home-'),
 );
+
 const statusPath = join(fixtureRoot, 'status.json');
+
 const filler =
   'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike';
+
 await Bun.write(
   join(fixtureRoot, 'comment.ts'),
   [

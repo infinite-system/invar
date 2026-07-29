@@ -36,7 +36,8 @@ class $EchoAgentBackend implements AgentBackend {
     }
     const reply = `You said: “${prompt}”. This is the local echo backend — real Claude arrives when CliStreamBackend is wired (phase 2).`;
     // Stream the reply as word-sized deltas so the pane shows real incremental accumulation.
-    for (const word of reply.split(' ')) this.emit({ kind: 'text-delta', text: `${word} ` });
+    for (const word of reply.split(' '))
+      this.emit({ kind: 'text-delta', text: `${word} ` });
 
     // Permission-flow driving path (env-gated): PAUSE a scripted Bash tool behind a permission-request,
     // exactly like the SDK backend's canUseTool — allow/always-allow runs it, deny blocks it and the
@@ -45,8 +46,18 @@ class $EchoAgentBackend implements AgentBackend {
     if (process.env.INVAR_AGENT_ECHO_PERMISSION === '1') {
       const toolInput = { command: `echo gated for: ${prompt}` };
       const runTool = (): void => {
-        this.emit({ kind: 'tool-use', id: `echo-gated-${Date.now()}`, name: 'Bash', input: toolInput });
-        this.emit({ kind: 'tool-result', id: `echo-gated-${Date.now()}`, result: `gated for: ${prompt}`, isError: false });
+        this.emit({
+          kind: 'tool-use',
+          id: `echo-gated-${Date.now()}`,
+          name: 'Bash',
+          input: toolInput,
+        });
+        this.emit({
+          kind: 'tool-result',
+          id: `echo-gated-${Date.now()}`,
+          result: `gated for: ${prompt}`,
+          isError: false,
+        });
         this.emit({ kind: 'session-end', reason: 'completed' });
       };
       if (this.autoAllowedTools.has('Bash')) {
@@ -64,7 +75,10 @@ class $EchoAgentBackend implements AgentBackend {
           settled = true;
           if (decision === 'always-allow') this.autoAllowedTools.add('Bash');
           if (decision === 'deny') {
-            this.emit({ kind: 'text-delta', text: 'Understood — I will not run that command (denied). ' });
+            this.emit({
+              kind: 'text-delta',
+              text: 'Understood — I will not run that command (denied). ',
+            });
             this.emit({ kind: 'session-end', reason: 'completed' });
             return;
           }
@@ -77,20 +91,26 @@ class $EchoAgentBackend implements AgentBackend {
     // Driving-smoke path (env-gated, off by default so the hermetic smoke-agent stays synchronous): emit
     // a scripted tool-use so the pane holds a busy state (spinner animates) and a COLLAPSIBLE tool row,
     // then finish the turn after the delay with a multi-line tool-result to expand.
-    const delayMilliseconds = Number(process.env.INVAR_AGENT_ECHO_DELAY_MS ?? 0);
+    const delayMilliseconds = Number(
+      process.env.INVAR_AGENT_ECHO_DELAY_MS ?? 0,
+    );
     if (delayMilliseconds > 0) {
       this.emit({
         kind: 'tool-use',
         id: 'echo-demo-tool',
         name: 'Bash',
-        input: { command: 'echo hello from the demo tool', note: 'scripted tool call for the agent-pane-ux smoke' },
+        input: {
+          command: 'echo hello from the demo tool',
+          note: 'scripted tool call for the agent-pane-ux smoke',
+        },
       });
       this.pendingTimer = setTimeout(() => {
         this.pendingTimer = null;
         this.emit({
           kind: 'tool-result',
           id: 'echo-demo-tool',
-          result: 'hello from the demo tool\nline two of the tool output\nline three of the tool output',
+          result:
+            'hello from the demo tool\nline two of the tool output\nline three of the tool output',
           isError: false,
         });
         this.emit({ kind: 'session-end', reason: 'completed' });
@@ -129,11 +149,16 @@ class $EchoAgentBackend implements AgentBackend {
   protected async handleTerminalToolPrompt(prompt: string): Promise<void> {
     const terminalTools = this.options.terminalTools;
     if (!terminalTools) {
-      this.emit({ kind: 'error', message: 'No integrated terminal tool port is attached.' });
+      this.emit({
+        kind: 'error',
+        message: 'No integrated terminal tool port is attached.',
+      });
       this.emit({ kind: 'session-end', reason: 'error' });
       return;
     }
-    const bypassPermissions = AgentPermissions.Class.resolveLive(this.options.skipPermissions);
+    const bypassPermissions = AgentPermissions.Class.resolveLive(
+      this.options.skipPermissions,
+    );
     const definitions = AgentTerminalTools.Class.definitions(
       bypassPermissions,
       terminalTools,
@@ -171,9 +196,8 @@ class $EchoAgentBackend implements AgentBackend {
       this.emit({ kind: 'session-end', reason: 'completed' });
       return;
     }
-    const scrollbackMatch = /^terminal-tools:scrollback(?::(\d+)|:range:(\d+):(\d+))?$/.exec(
-      prompt,
-    );
+    const scrollbackMatch =
+      /^terminal-tools:scrollback(?::(\d+)|:range:(\d+):(\d+))?$/.exec(prompt);
     if (scrollbackMatch) {
       const definition = definitions.find(
         (candidate) => candidate.name === 'readTerminalScrollback',
@@ -208,13 +232,14 @@ class $EchoAgentBackend implements AgentBackend {
       return;
     }
     const match = /^terminal-tools:(stage|replace|run):(.*)$/s.exec(prompt);
-    const toolName = match?.[1] === 'run'
-      ? 'runTerminalCommand'
-      : match?.[1] === 'replace'
-        ? 'replaceTerminalInput'
-      : match?.[1] === 'stage'
-        ? 'stageTerminalCommand'
-        : null;
+    const toolName =
+      match?.[1] === 'run'
+        ? 'runTerminalCommand'
+        : match?.[1] === 'replace'
+          ? 'replaceTerminalInput'
+          : match?.[1] === 'stage'
+            ? 'stageTerminalCommand'
+            : null;
     const definition = toolName
       ? definitions.find((candidate) => candidate.name === toolName)
       : null;

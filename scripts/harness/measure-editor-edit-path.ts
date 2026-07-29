@@ -922,6 +922,7 @@ const quietLockExitCode = await QuietLock.Class.rerunEntryPointQuietExclusive(
   'editor-edit-path-measurement',
   EditorEditPathMeasurement.Class.entryPointPath,
 );
+
 if (quietLockExitCode === null) {
   await EditorEditPathMeasurement.Class.main();
 } else {

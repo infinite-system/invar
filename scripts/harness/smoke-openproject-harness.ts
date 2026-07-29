@@ -13,7 +13,10 @@ import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
-function markerHasSelectionBackground(snapshot: HarnessSnapshot.Model, marker: string): boolean {
+function markerHasSelectionBackground(
+  snapshot: HarnessSnapshot.Model,
+  marker: string,
+): boolean {
   const position = snapshot.findText(marker);
   if (!position) return false;
   const cell = snapshot.cell(position.row, position.column);
@@ -21,16 +24,31 @@ function markerHasSelectionBackground(snapshot: HarnessSnapshot.Model, marker: s
 }
 
 const navigatorBase = mkdtempSync(join(tmpdir(), 'tui-openproject-harness-'));
+
 const fixtureRoot = join(navigatorBase, 'proj');
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-openproject-harness-home-'));
+
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-openproject-harness-home-'),
+);
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(fixtureRoot);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 await Bun.write(join(fixtureRoot, 'file.txt'), 'x\n');
+
 for (let folderNumber = 0; folderNumber <= 39; folderNumber++) {
-  mkdirSync(join(navigatorBase, `folder-${String(folderNumber).padStart(2, '0')}`));
+  mkdirSync(
+    join(navigatorBase, `folder-${String(folderNumber).padStart(2, '0')}`),
+  );
 }
-symlinkSync('/nonexistent/definitely/not/here', join(navigatorBase, 'broken-link'));
+
+symlinkSync(
+  '/nonexistent/definitely/not/here',
+  join(navigatorBase, 'broken-link'),
+);
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
@@ -46,12 +64,21 @@ const driver = new PtyTestDriver.Class({
 });
 
 try {
-  console.log('== harness open-project: navigator enumerates without the broken symlink ==');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('file.txt') !== null, 15_000);
+  console.log(
+    '== harness open-project: navigator enumerates without the broken symlink ==',
+  );
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('file.txt') !== null,
+    15_000,
+  );
   driver.sendKeys('F1');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Command Palette') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Command Palette') !== null,
+  );
   driver.sendText('Open Folder');
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('Open Folder') !== null);
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('Open Folder') !== null,
+  );
   driver.sendKeys('Enter');
   const openedStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -73,33 +100,41 @@ try {
     (candidate) => markerHasSelectionBackground(candidate, 'folder-00'),
   );
 
-  console.log('== harness open-project: deep keyboard selection stays in the drawn window ==');
-  for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
+  console.log(
+    '== harness open-project: deep keyboard selection stays in the drawn window ==',
+  );
+  for (let movementIndex = 0; movementIndex < 20; movementIndex++)
+    driver.sendKeys('Down');
   const deepStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.quickOpenSelected === 20",
+    'status condition: status.quickOpenSelected === 20',
     (status) => status.quickOpenSelected === 20,
   );
-  let snapshot = await driver.awaitSnapshot(
-    (candidate) => markerHasSelectionBackground(candidate, 'folder-20'),
+  let snapshot = await driver.awaitSnapshot((candidate) =>
+    markerHasSelectionBackground(candidate, 'folder-20'),
   );
   HarnessSmoke.Class.requireCondition(
     deepStatus.quickOpenSelected === 20,
     'arrowing down 20x advanced the selection (app stayed responsive)',
   );
-  HarnessSmoke.Class.pass('the selected folder-20 is drawn with a selection background');
+  HarnessSmoke.Class.pass(
+    'the selected folder-20 is drawn with a selection background',
+  );
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('folder-00') === null,
     'the list scrolled and the original top row is off-screen',
   );
 
-  console.log('== harness open-project: last row remains visible and wraps to the top ==');
-  for (let movementIndex = 0; movementIndex < 20; movementIndex++) driver.sendKeys('Down');
+  console.log(
+    '== harness open-project: last row remains visible and wraps to the top ==',
+  );
+  for (let movementIndex = 0; movementIndex < 20; movementIndex++)
+    driver.sendKeys('Down');
   const lastFolderStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.quickOpenSelected === 40",
+    'status condition: status.quickOpenSelected === 40',
     (status) => status.quickOpenSelected === 40,
   );
   snapshot = await driver.awaitGridCondition(
@@ -110,12 +145,14 @@ try {
     lastFolderStatus.quickOpenSelected === 40,
     'reached the last folder (index 40), visible, never froze',
   );
-  HarnessSmoke.Class.pass('the last folder is visible with a selection background');
+  HarnessSmoke.Class.pass(
+    'the last folder is visible with a selection background',
+  );
   driver.sendKeys('Down');
   const wrappedFolderStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    "status condition: status.quickOpenSelected === 0",
+    'status condition: status.quickOpenSelected === 0',
     (status) => status.quickOpenSelected === 0,
   );
   snapshot = await driver.awaitGridCondition(
@@ -126,7 +163,9 @@ try {
     wrappedFolderStatus.quickOpenSelected === 0,
     'arrowing past the last wraps back to the top (index 0)',
   );
-  HarnessSmoke.Class.pass('after wrap the top folder is visible again with the selection background');
+  HarnessSmoke.Class.pass(
+    'after wrap the top folder is visible again with the selection background',
+  );
 
   console.log('== harness open-project: click drills into a visible folder ==');
   HarnessSmoke.Class.clickText(driver, snapshot, 'folder-05', 2);

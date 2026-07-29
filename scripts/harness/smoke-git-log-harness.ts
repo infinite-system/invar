@@ -29,23 +29,41 @@ function commit(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-log-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-git-log-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
+
 await Bun.write(join(fixtureRoot, 'base.txt'), 'base\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 commit(fixtureRoot, 'root-subject-A');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['branch', 'feature']);
+
 await Bun.write(join(fixtureRoot, 'main.txt'), 'main\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 commit(fixtureRoot, 'main-only-B');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['checkout', '-q', 'feature']);
+
 await Bun.write(join(fixtureRoot, 'feat1.txt'), 'feat1\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 commit(fixtureRoot, 'feat-only-1');
+
 await Bun.write(join(fixtureRoot, 'feat2.txt'), 'feat2 content line\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 commit(fixtureRoot, 'feat-only-2');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['checkout', '-q', 'main']);
 
 const driver = new PtyTestDriver.Class({

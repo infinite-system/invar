@@ -25,14 +25,21 @@ function initializeRepository(repositoryRoot: string): void {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-watch-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-git-watch-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(join(fixtureRoot, 'src'));
+
 await Bun.write(join(fixtureRoot, 'src', 'nested.ts'), 'a\n');
+
 await Bun.write(join(fixtureRoot, 'root.txt'), 'root\n');
+
 await Bun.write(join(fixtureRoot, 'src', 'doomed.ts'), 'gone\n');
+
 initializeRepository(fixtureRoot);
 
 const driver = new PtyTestDriver.Class({
@@ -42,8 +49,11 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: { TUI_STATUS_PATH: statusPath },
 });
+
 let directoryDriver: PtyTestDriver.Model | null = null;
+
 let directoryFixtureRoot: string | null = null;
+
 let symlinkTargetRoot: string | null = null;
 
 try {

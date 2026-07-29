@@ -41,6 +41,7 @@ class $GoToDefinitionLanguageProvider extends LspWorkspaceProvider.$Class {
     });
   }
 }
+
 const GoToDefinitionLanguageProvider = Reactive(
   $GoToDefinitionLanguageProvider,
 );
@@ -60,16 +61,20 @@ class $GoToDefinitionWorkspace extends Workspace.$Class {
     this.registerContributor(contributor);
   }
 }
+
 const GoToDefinitionWorkspace = Reactive($GoToDefinitionWorkspace);
 
 let workspaceDirectory = '';
+
 let declarationPath = '';
+
 let usagePath = '';
 
 const DECLARATION_RANGE = {
   start: { line: 0, character: 16 },
   end: { line: 0, character: 27 },
 };
+
 const IMPORT_SPECIFIER_RANGE = {
   start: { line: 0, character: 9 },
   end: { line: 0, character: 20 },

@@ -9,6 +9,8 @@ process.env.NODE_ENV ??= 'production';
 import('./modules/app/AppLoader')
   .then(({ AppLoader }) => AppLoader.Class.main())
   .catch((error: unknown) => {
-    process.stderr.write(`fatal: ${String((error as { stack?: unknown })?.stack ?? error)}\n`);
+    process.stderr.write(
+      `fatal: ${String((error as { stack?: unknown })?.stack ?? error)}\n`,
+    );
     process.exit(1);
   });

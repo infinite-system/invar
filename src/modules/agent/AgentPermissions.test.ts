@@ -10,9 +10,15 @@ test('a plain boolean passes through and undefined is false', () => {
 test('a getter is read live each call', () => {
   let bypassPermissions = true;
   const resolveBypassPermissions = () => bypassPermissions;
-  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(true);
+  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(
+    true,
+  );
   bypassPermissions = false;
-  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(false);
+  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(
+    false,
+  );
   bypassPermissions = true;
-  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(true);
+  expect(AgentPermissions.Class.resolveLive(resolveBypassPermissions)).toBe(
+    true,
+  );
 });

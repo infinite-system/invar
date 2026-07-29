@@ -5,6 +5,7 @@ import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
 import { PtyTestDriver } from './PtyTestDriver';
 
 const beginSynchronizedOutput = '\x1b[?2026h';
+
 const endSynchronizedOutput = '\x1b[?2026l';
 
 function recordedFrame(frameText: string): string {

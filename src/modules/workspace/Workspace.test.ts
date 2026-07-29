@@ -13,6 +13,7 @@ import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
 
 let workspaceDirectory = '';
+
 const filePaths: string[] = [];
 
 beforeEach(() => {

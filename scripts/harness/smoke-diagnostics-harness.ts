@@ -335,6 +335,7 @@ async function runServerCase(
 }
 
 const repositoryRoot = process.cwd();
+
 if (
   !Bun.file(join(repositoryRoot, 'node_modules', 'typescript', 'package.json'))
     .size
@@ -348,9 +349,11 @@ await runServerCase(
   'tsgo',
   join(repositoryRoot, 'node_modules', '.bin', 'tsgo'),
 );
+
 await runServerCase(
   repositoryRoot,
   'typescript-language-server',
   join(repositoryRoot, 'node_modules', '.bin', 'typescript-language-server'),
 );
+
 console.log('smoke-diagnostics-harness: ALL-PASS');

@@ -12,7 +12,9 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const focusedSelectionColor = 0x2b2f41;
+
 const focusedChangesSelectionColor = 0x283457;
+
 const unfocusedSelectionColor = 0x1e202e;
 
 function pass(label: string): void {
@@ -102,25 +104,34 @@ function runGit(repositoryRoot: string, commandArguments: string[]): void {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-selection-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-selection-harness-home-'),
 );
+
 for (let directoryNumber = 1; directoryNumber <= 20; directoryNumber++) {
   mkdirSync(
     join(fixtureRoot, `directory-${String(directoryNumber).padStart(2, '0')}`),
   );
 }
+
 for (let fileNumber = 1; fileNumber <= 35; fileNumber++) {
   await Bun.write(
     join(fixtureRoot, `file-${String(fileNumber).padStart(2, '0')}.txt`),
     `base ${fileNumber}\n`,
   );
 }
+
 runGit(fixtureRoot, ['init', '-q']);
+
 runGit(fixtureRoot, ['config', 'user.name', 'selection-harness']);
+
 runGit(fixtureRoot, ['config', 'user.email', 'selection-harness@example.test']);
+
 runGit(fixtureRoot, ['add', '.']);
+
 runGit(fixtureRoot, ['commit', '-qm', 'base']);
+
 for (let commitNumber = 1; commitNumber <= 24; commitNumber++) {
   const changedFilePath = join(fixtureRoot, 'file-35.txt');
   const existingText = await Bun.file(changedFilePath).text();
@@ -132,6 +143,7 @@ for (let commitNumber = 1; commitNumber <= 24; commitNumber++) {
     `commit-${String(commitNumber).padStart(2, '0')} selection subject`,
   ]);
 }
+
 for (let fileNumber = 1; fileNumber <= 25; fileNumber++) {
   const changedFilePath = join(
     fixtureRoot,

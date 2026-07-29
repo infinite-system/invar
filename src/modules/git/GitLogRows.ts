@@ -160,6 +160,7 @@ export interface CommitHeaderRow {
   record: CommitRecord | undefined;
   expanded: boolean;
 }
+
 export interface CommitFileRow {
   kind: 'commitFile';
   commitIndex: number;
@@ -169,11 +170,13 @@ export interface CommitFileRow {
   glyph: string;
   originalPath?: string;
 }
+
 export interface CommitLoadingRow {
   kind: 'loading';
   commitIndex: number;
   sha: string;
 }
+
 export type CommitLogRow = CommitHeaderRow | CommitFileRow | CommitLoadingRow;
 
 /** Stateless capability: pure flat-row arithmetic + window construction for the commit log. */

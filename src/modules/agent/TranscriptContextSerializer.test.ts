@@ -8,14 +8,24 @@ const serialize = (transcript: TranscriptEntry[], budget?: number) =>
 describe('TranscriptContextSerializer.serialize', () => {
   test('an empty (or note-only) transcript serializes to the empty string', () => {
     expect(serialize([])).toBe('');
-    expect(serialize([{ role: 'system', text: 'switched to codex' }, { role: 'error', text: 'oops' }])).toBe('');
+    expect(
+      serialize([
+        { role: 'system', text: 'switched to codex' },
+        { role: 'error', text: 'oops' },
+      ]),
+    ).toBe('');
   });
 
   test('renders user/assistant/tool turns as a bounded, header/footer-framed preamble', () => {
     const preamble = serialize([
       { role: 'user', text: 'What is the capital of France?' },
       { role: 'assistant', text: 'Paris.' },
-      { role: 'tool-use', id: 't1', name: 'Bash', input: { command: 'echo hi' } },
+      {
+        role: 'tool-use',
+        id: 't1',
+        name: 'Bash',
+        input: { command: 'echo hi' },
+      },
       { role: 'tool-result', id: 't1', result: 'hi', isError: false },
     ]);
     expect(preamble).toContain('[Context ported from the previous engine');
@@ -41,7 +51,8 @@ describe('TranscriptContextSerializer.serialize', () => {
 
   test('a tight budget keeps the NEWEST turns and marks the elision', () => {
     const many: TranscriptEntry[] = [];
-    for (let index = 0; index < 30; index += 1) many.push({ role: 'user', text: `turn number ${index} with some words` });
+    for (let index = 0; index < 30; index += 1)
+      many.push({ role: 'user', text: `turn number ${index} with some words` });
     const preamble = serialize(many, 200);
     expect(preamble).toContain('(…earlier turns elided…)');
     expect(preamble).toContain('turn number 29'); // the newest survived

@@ -91,6 +91,7 @@ import type {
   EditorSurfaceContent,
   EditorSurfaceContents,
 } from './EditorSurfaceContents';
+
 // invariant: Construction goes through overridable seams (project.invariants.md)
 class $RootView {
   public static buildRootView(
@@ -2169,10 +2170,12 @@ class $RootView {
     }
   }
 }
+
 export namespace RootView {
   export const $Class = Static($RootView);
   export let Class = $Class;
 }
+
 // roleColor moved to EditorPaneRenderer with the editor render that used it.
 export interface RootView {
   update(): void;

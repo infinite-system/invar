@@ -19,7 +19,9 @@ interface IndentGuideProof {
   textRow: number;
 }
 
-function indentGuideProof(snapshot: HarnessSnapshot.Model): IndentGuideProof | null {
+function indentGuideProof(
+  snapshot: HarnessSnapshot.Model,
+): IndentGuideProof | null {
   const deepPosition = snapshot.findText('deep(');
   if (!deepPosition || deepPosition.column < 12) return null;
   const indentCells = snapshot
@@ -38,18 +40,29 @@ function indentGuideProof(snapshot: HarnessSnapshot.Model): IndentGuideProof | n
   };
 }
 
-async function openNested(driver: PtyTestDriver.Model): Promise<HarnessSnapshot.Model> {
-  await driver.awaitSnapshot((snapshot) => snapshot.findText('nested.ts') !== null, 15_000);
+async function openNested(
+  driver: PtyTestDriver.Model,
+): Promise<HarnessSnapshot.Model> {
+  await driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('nested.ts') !== null,
+    15_000,
+  );
   driver.sendKeys('Enter');
-  return driver.awaitSnapshot((snapshot) => snapshot.findText('deep(') !== null);
+  return driver.awaitSnapshot(
+    (snapshot) => snapshot.findText('deep(') !== null,
+  );
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-indent-guides-harness-'));
-const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-indent-guides-harness-home-'));
+
+const homeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-indent-guides-harness-home-'),
+);
+
 await Bun.write(
   join(fixtureRoot, 'nested.ts'),
-  'function outer() {\n    const a = 1;\n    if (a) {\n        const b = 2;\n'
-    + '        while (b) {\n            deep();\n        }\n    }\n}\n',
+  'function outer() {\n    const a = 1;\n    if (a) {\n        const b = 2;\n' +
+    '        while (b) {\n            deep();\n        }\n    }\n}\n',
 );
 
 const guidesOnDriver = new PtyTestDriver.Class({
@@ -58,13 +71,19 @@ const guidesOnDriver = new PtyTestDriver.Class({
   rows: 40,
   homeDirectory,
 });
+
 let guidesOffDriver: PtyTestDriver.Model | null = null;
 
 try {
-  console.log('== harness indent guides: default setting paints three dim guides ==');
+  console.log(
+    '== harness indent guides: default setting paints three dim guides ==',
+  );
   let snapshot = await openNested(guidesOnDriver);
   const guidesOnProof = indentGuideProof(snapshot);
-  requireCondition(guidesOnProof?.guideCount === 3, 'three guides paint on the indent-12 line');
+  requireCondition(
+    guidesOnProof?.guideCount === 3,
+    'three guides paint on the indent-12 line',
+  );
   requireCondition(
     guidesOnProof.guideForeground !== guidesOnProof.textForeground,
     'guide foreground differs from code text foreground',
@@ -84,12 +103,17 @@ try {
     button: 'left',
   });
   snapshot = await guidesOnDriver.awaitSnapshot(
-    (candidate) => candidate.cursorColumn === guidesOnProof.textColumn
-      && candidate.cursorRow === guidesOnProof.textRow,
+    (candidate) =>
+      candidate.cursorColumn === guidesOnProof.textColumn &&
+      candidate.cursorRow === guidesOnProof.textRow,
   );
-  pass(`native caret lands on deep() at terminal cell ${snapshot.cursorColumn},${snapshot.cursorRow}`);
+  pass(
+    `native caret lands on deep() at terminal cell ${snapshot.cursorColumn},${snapshot.cursorRow}`,
+  );
 
-  console.log('== harness indent guides: disabled setting paints only spaces ==');
+  console.log(
+    '== harness indent guides: disabled setting paints only spaces ==',
+  );
   mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
   await Bun.write(
     join(homeDirectory, '.config', 'invar', 'settings.json'),
@@ -103,9 +127,13 @@ try {
   });
   snapshot = await openNested(guidesOffDriver);
   const deepPosition = snapshot.findText('deep(');
-  requireCondition(deepPosition !== null, 'deep() remains visible with guides disabled');
   requireCondition(
-    snapshot.rowCells(deepPosition.row)
+    deepPosition !== null,
+    'deep() remains visible with guides disabled',
+  );
+  requireCondition(
+    snapshot
+      .rowCells(deepPosition.row)
       .slice(deepPosition.column - 12, deepPosition.column)
       .every((cell) => cell.characters === ' '),
     'no guide glyphs paint when showIndentGuides is false',

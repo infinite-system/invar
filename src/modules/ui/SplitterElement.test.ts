@@ -11,7 +11,9 @@ import { SplitterElement } from './SplitterElement';
 const darkPalette = ThemePalettes.Class.DARK;
 
 let renderer: TestRenderer | null = null;
+
 let mockMouse: MockMouse | null = null;
+
 let renderOnce: (() => Promise<void>) | null = null;
 
 afterEach(() => {

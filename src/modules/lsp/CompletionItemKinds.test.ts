@@ -4,6 +4,7 @@ import { ThemeIcons } from '../theme/ThemeIcons';
 import { CompletionItemKinds } from './CompletionItemKinds';
 
 const glyphLevels = ['nerd', 'unicode', 'ascii'] as const;
+
 const everyCompletionItemKind = Array.from(
   { length: 25 },
   (_unusedValue, index) => index + 1,

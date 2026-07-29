@@ -20,6 +20,7 @@ import type { Palette } from '../theme/ThemePalettes';
 import type { FindIconSet } from '../theme/ThemeIcons';
 import type { FindBar } from '../search/FindBar';
 import { TextFieldPainter } from './TextFieldPainter';
+
 class $FindBarRenderer {
   public static render(context: FindBarRenderContext): FindBarRenderResult {
     const { findBar, palette, findIcons } = context;
@@ -125,12 +126,15 @@ class $FindBarRenderer {
     }).chunks;
   }
 }
+
 export namespace FindBarRenderer {
   export const $Class = Static($FindBarRenderer);
   export let Class = $Class;
 }
+
 export type FindBarButtonAction =
   'previous' | 'next' | 'toggleCase' | 'replace' | 'replaceAll' | 'toggleMode';
+
 /** A drawn button's hit-rect in the bar body's own coordinates (row 0 = the bar's first content line). */
 export interface FindBarButtonZone {
   action: FindBarButtonAction;
@@ -138,10 +142,12 @@ export interface FindBarButtonZone {
   startColumn: number;
   endColumn: number;
 }
+
 export interface FindBarRenderResult {
   text: StyledText;
   buttons: FindBarButtonZone[];
 }
+
 export interface FindBarRenderContext {
   findBar: FindBar.Instance;
   palette: Palette;

@@ -54,6 +54,7 @@ function paintedText(styled: StyledText): string {
   const chunks = styled.chunks as unknown as { text: string }[];
   return chunks.map((chunk) => chunk.text).join('');
 }
+
 function chunkTexts(styled: StyledText): string[] {
   return (styled.chunks as unknown as { text: string }[]).map(
     (chunk) => chunk.text,

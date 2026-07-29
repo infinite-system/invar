@@ -6,6 +6,7 @@ import type {
 import { StatusChannel } from '../../src/modules/system/StatusChannel';
 
 let requestCount = 0;
+
 let responseCount = 0;
 
 class $InlineRewriteMockProvider extends CodexRewriteProvider.$Class {

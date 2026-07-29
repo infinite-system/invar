@@ -179,14 +179,21 @@ async function exerciseSharedInput(
 }
 
 const navigatorBase = mkdtempSync(join(tmpdir(), 'tui-text-input-harness-'));
+
 const fixtureRoot = join(navigatorBase, 'workspace');
+
 const drillTarget = join(navigatorBase, 'drill-target');
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-text-input-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(fixtureRoot);
+
 mkdirSync(drillTarget);
+
 await Bun.write(
   join(fixtureRoot, 'document.txt'),
   'The fixture deliberately does not contain the input smoke tokens.\n',

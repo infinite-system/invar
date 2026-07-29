@@ -24,10 +24,13 @@ function findQueryRow(textRows: readonly string[]): string {
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-word-delete-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-word-delete-harness-home-'),
 );
+
 const statusPath = join(fixtureRoot, 'status.json');
+
 await Bun.write(join(fixtureRoot, 'word-delete.txt'), '');
 
 const driver = new PtyTestDriver.Class({

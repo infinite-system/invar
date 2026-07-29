@@ -6,6 +6,7 @@
 // invariant: The wheel gesture resolves through one settings-sourced step (src/modules/ui/ui.invariants.md)
 import { Static } from 'ivue/extras';
 import type { ScrollModifier, Settings } from '../settings/Settings';
+
 class $ScrollGesture {
   public static modifierHeld(
     event: WheelModifiers,
@@ -33,10 +34,12 @@ class $ScrollGesture {
     return notch * fast;
   }
 }
+
 export namespace ScrollGesture {
   export const $Class = Static($ScrollGesture);
   export let Class = $Class;
 }
+
 export interface WheelModifiers {
   modifiers: {
     alt: boolean;

@@ -81,8 +81,11 @@ const TASK_STATES: TaskState[] = [
   'completed',
   'retired',
 ];
+
 const OPEN_STATES: TaskState[] = ['active', 'in-progress'];
+
 const THIN_LINE_CEILING = 15;
+
 // A commit reference in a State line. Seven or more hex characters, so a word like
 // "added" or "deface" cannot masquerade as a short SHA.
 const COMMIT_REFERENCE = /\b[0-9a-f]{7,40}\b/;
@@ -549,7 +552,9 @@ function selfTest(): number {
 }
 
 const repositoryRoot = join(import.meta.dir, '..', '..');
+
 const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
+
 process.exit(
   process.argv.includes('--self-test')
     ? selfTest()

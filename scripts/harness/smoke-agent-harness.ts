@@ -36,17 +36,24 @@ function runAgentUnitTests(repositoryRoot: string): void {
 }
 
 const repositoryRoot = process.cwd();
+
 const fixtureRoot = join(repositoryRoot, 'fixtures');
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-agent-harness-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 mkdirSync(settingsDirectory, { recursive: true });
+
 await Bun.write(
   join(settingsDirectory, 'settings.json'),
   '{"glyphMode":"unicode"}\n',
 );
 
 console.log('== harness agent: deterministic backend/session tests ==');
+
 runAgentUnitTests(repositoryRoot);
 
 const driver = new PtyTestDriver.Class({

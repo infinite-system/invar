@@ -82,10 +82,13 @@ async function proveQuitFromOverlay(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-mode-coherence-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-mode-coherence-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await Bun.write(
   join(fixtureRoot, 'document.txt'),
   'alpha\nbeta target\ngamma target\n',

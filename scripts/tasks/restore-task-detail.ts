@@ -233,6 +233,7 @@ Sequence after the drive-tool work; it lengthens every future gate.`,
 };
 
 let enriched = 0;
+
 let singleLine = 0;
 
 for (const stateDirectory of ['todo', 'live', 'done', 'retired']) {
@@ -261,6 +262,7 @@ for (const stateDirectory of ['todo', 'live', 'done', 'retired']) {
 }
 
 console.log(`restored full detail to ${enriched} task files`);
+
 console.log(
   `${singleLine} task files have no richer source than their one-line entry — that is the honest floor`,
 );

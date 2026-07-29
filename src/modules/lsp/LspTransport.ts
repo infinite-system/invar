@@ -58,13 +58,18 @@ class $LspTransport {
     this.reader = output.getReader();
     void this.pump();
     void this.process.exited.then((code) => {
-      if (this.active) this.close(new Error(`Language server exited with code ${code}`));
+      if (this.active)
+        this.close(new Error(`Language server exited with code ${code}`));
     });
     return true;
   }
 
-  async request<Result = unknown>(method: string, params?: unknown): Promise<Result> {
-    if (!this.active) throw this.closeReason ?? new Error('LSP transport is not running');
+  async request<Result = unknown>(
+    method: string,
+    params?: unknown,
+  ): Promise<Result> {
+    if (!this.active)
+      throw this.closeReason ?? new Error('LSP transport is not running');
     const pending = this.rpc.createRequest<Result>(method, params);
     try {
       await this.send(pending.message);
@@ -80,7 +85,11 @@ class $LspTransport {
     await this.send(message);
   }
 
-  async respond(id: JsonRpcId, result: unknown, error?: JsonRpcError): Promise<void> {
+  async respond(
+    id: JsonRpcId,
+    result: unknown,
+    error?: JsonRpcError,
+  ): Promise<void> {
     const message: JsonRpcResponse = error
       ? { jsonrpc: '2.0', id, error }
       : { jsonrpc: '2.0', id, result };
@@ -98,7 +107,8 @@ class $LspTransport {
   }
 
   protected async send(message: JsonRpcMessage): Promise<void> {
-    if (!this.active) throw this.closeReason ?? new Error('LSP transport is not running');
+    if (!this.active)
+      throw this.closeReason ?? new Error('LSP transport is not running');
     const input = this.process.stdin;
     if (!input) throw new Error('Language server stdin is unavailable');
     try {
@@ -121,7 +131,8 @@ class $LspTransport {
           this.close(new Error('Language server stdout closed'));
           break;
         }
-        for (const message of this.rpc.push(result.value)) this.dispatch(message);
+        for (const message of this.rpc.push(result.value))
+          this.dispatch(message);
       }
     } catch (reason) {
       this.close(this.toError(reason));
@@ -142,9 +153,9 @@ class $LspTransport {
       return;
     }
     try {
-      void Promise.resolve(this.notificationHandler?.(message.method, message.params)).catch(
-        () => undefined,
-      );
+      void Promise.resolve(
+        this.notificationHandler?.(message.method, message.params),
+      ).catch(() => undefined);
     } catch {
       // Notification handlers cannot be allowed to terminate the byte-stream pump.
     }
@@ -156,14 +167,20 @@ class $LspTransport {
     params: unknown,
   ): Promise<void> {
     if (!this.requestHandler) {
-      await this.respond(id, null, { code: -32601, message: `Method not found: ${method}` });
+      await this.respond(id, null, {
+        code: -32601,
+        message: `Method not found: ${method}`,
+      });
       return;
     }
     try {
       const result = await this.requestHandler(method, params);
       await this.respond(id, result ?? null);
     } catch (reason) {
-      await this.respond(id, null, { code: -32603, message: this.toError(reason).message });
+      await this.respond(id, null, {
+        code: -32603,
+        message: this.toError(reason).message,
+      });
     }
   }
 
@@ -190,8 +207,10 @@ export type LspNotificationHandler = (
   method: string,
   params: unknown,
 ) => void | Promise<void>;
+
 export type LspRequestHandler = (
   method: string,
   params: unknown,
 ) => unknown | Promise<unknown>;
+
 export type LspCloseHandler = (reason: Error) => void;

@@ -3,10 +3,15 @@ import { test, expect } from 'bun:test';
 import { RelativeTime } from './RelativeTime';
 
 const NOW = 1_700_000_000_000;
+
 const SECOND = 1000;
+
 const MINUTE = 60 * SECOND;
+
 const HOUR = 60 * MINUTE;
+
 const DAY = 24 * HOUR;
+
 const ago = (ms: number) => RelativeTime.Class.format(NOW - ms, NOW);
 
 test('under 45s reads "just now"', () => {

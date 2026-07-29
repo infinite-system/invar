@@ -10,21 +10,25 @@ import { relative, resolve } from 'node:path';
 import * as typescript from 'typescript';
 
 const repositoryRoot = resolve(import.meta.dir, '..');
+
 const assertionCallNames: ReadonlySet<string> = new Set([
   'assertContentInvariantAcrossAction',
   'expect',
   'pass',
   'requireCondition',
 ]);
+
 const conditionWaitCallNames: ReadonlySet<string> = new Set([
   'awaitGridCondition',
   'awaitSnapshot',
 ]);
+
 const externalDependencyCallNames: ReadonlySet<string> = new Set([
   'runGit',
   'spawn',
   'spawnSync',
 ]);
+
 const diskObservationCallNames: ReadonlySet<string> = new Set([
   'exists',
   'existsSync',
@@ -413,6 +417,7 @@ const typeScriptPaths = [
     cwd: repositoryRoot,
   }),
 ].sort();
+
 const shellSmokePaths = [
   ...new Bun.Glob('scripts/smoke-*.sh').scanSync({
     cwd: repositoryRoot,
@@ -420,14 +425,18 @@ const shellSmokePaths = [
 ].sort();
 
 let typeScriptAssertionCount = 0;
+
 let typeScriptWaitCount = 0;
+
 const candidates: Candidate[] = [];
+
 for (const filePath of typeScriptPaths) {
   const result = inspectTypeScriptFile(filePath);
   typeScriptAssertionCount += result.assertionCount;
   typeScriptWaitCount += result.waitCount;
   candidates.push(...result.candidates);
 }
+
 const shellVerdictCount = shellSmokePaths.reduce(
   (count, filePath) => count + shellAssertionCount(filePath),
   0,
@@ -438,10 +447,12 @@ console.log(
     `${typeScriptAssertionCount} assertion calls, ` +
     `${typeScriptWaitCount} condition waits`,
 );
+
 console.log(
   `census: ${shellSmokePaths.length} shell smokes, ` +
     `${shellVerdictCount} PASS verdict branches`,
 );
+
 for (const candidate of candidates.sort(
   (left, right) =>
     left.filePath.localeCompare(right.filePath) ||
@@ -453,6 +464,7 @@ for (const candidate of candidates.sort(
       `${candidate.lineNumber}: ${candidate.description}`,
   );
 }
+
 console.log(
   `report-only: ${candidates.length} candidate(s); semantic review required`,
 );

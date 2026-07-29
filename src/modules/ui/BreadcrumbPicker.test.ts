@@ -15,6 +15,7 @@ import { BreadcrumbPicker } from './BreadcrumbPicker';
 // The picker under test resolves marks through the SAME resolver the file tree paints with, so the
 // stub forwards to `ThemeIcons` instead of inventing glyphs a second time.
 const unicodeSymbolMarks = ThemeIcons.Class.symbolMarksFor('unicode');
+
 const themeIconStub = {
   icon: (name: string, isDirectory: boolean, open = false): string =>
     ThemeIcons.Class.iconFor('unicode', name, isDirectory, open),

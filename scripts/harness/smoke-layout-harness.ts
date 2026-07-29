@@ -29,6 +29,7 @@ interface SplitterRegion extends Rectangle {
 }
 
 type SplitterName = 'sidebar' | 'git' | 'bottomPanel' | 'rightDock';
+
 type LayoutSettingName =
   | 'sidebarPosition'
   | 'panelAlignment'
@@ -644,29 +645,45 @@ async function assertSplitterStates(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-layout-harness-fixture-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-layout-harness-home-'));
+
 const compactHomeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-layout-harness-compact-home-'),
 );
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 const compactSettingsDirectory = join(compactHomeDirectory, '.config', 'invar');
+
 const statusPath = join(homeDirectory, 'status.json');
+
 const compactStatusPath = join(compactHomeDirectory, 'status.json');
+
 mkdirSync(settingsDirectory, { recursive: true });
+
 mkdirSync(compactSettingsDirectory, { recursive: true });
+
 await Bun.write(
   join(settingsDirectory, 'settings.json'),
   '{"glyphMode":"ascii"}\n',
 );
+
 await Bun.write(
   join(compactSettingsDirectory, 'settings.json'),
   '{"glyphMode":"ascii","panelAlignment":"justify"}\n',
 );
+
 await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\n');
+
 await Bun.write(join(fixtureRoot, 'left-pane.txt'), 'left pane file\n');
+
 await Bun.write(join(fixtureRoot, 'right-pane.txt'), 'right pane file\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '.']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.name=layout-smoke',
@@ -676,6 +693,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'base',
 ]);
+
 await Bun.write(join(fixtureRoot, 'layout.txt'), 'layout geometry\nchanged\n');
 
 const driver = new PtyTestDriver.Class({

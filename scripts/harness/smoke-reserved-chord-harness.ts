@@ -17,10 +17,15 @@ import { PtyTestDriver } from './PtyTestDriver';
 const workspaceRoot = mkdtempSync(
   join(tmpdir(), 'invar-reserved-chord-workspace-'),
 );
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'invar-reserved-chord-home-'));
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(join(workspaceRoot, '.invar'));
+
 await Bun.write(join(workspaceRoot, 'small.txt'), 'small\n');
+
 await Bun.write(
   join(workspaceRoot, '.invar', 'tasks.json'),
   `${JSON.stringify(
@@ -45,6 +50,7 @@ await Bun.write(
     2,
   )}\n`,
 );
+
 HarnessSmoke.Class.runGit(workspaceRoot, ['init', '--quiet']);
 
 const driver = new PtyTestDriver.Class({

@@ -8,11 +8,13 @@ class $TerminalCommandController {
   protected readonly pendingRequests: TerminalCommandRequest[] = [];
   protected activeRequest: TerminalCommandRequest | null = null;
   protected activeTimer: unknown = null;
-  protected activeResolve: ((outcome: TerminalCommandTypingOutcome) => void) | null = null;
+  protected activeResolve:
+    ((outcome: TerminalCommandTypingOutcome) => void) | null = null;
   protected typedCharacterCount = 0;
   protected activeGraphemes: readonly string[] = [];
   protected stagedCommand: string | null = null;
-  protected eventCallback: ((event: TerminalCommandEvent) => void) | null = null;
+  protected eventCallback: ((event: TerminalCommandEvent) => void) | null =
+    null;
   protected disposed = false;
 
   constructor(protected readonly options: TerminalCommandControllerOptions) {}
@@ -21,22 +23,32 @@ class $TerminalCommandController {
     this.eventCallback = callback;
   }
 
-  async stageTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+  async stageTerminalCommand(
+    command: string,
+  ): Promise<TerminalCommandRequestResult> {
     return this.request('stage', command);
   }
 
-  async runTerminalCommand(command: string): Promise<TerminalCommandRequestResult> {
+  async runTerminalCommand(
+    command: string,
+  ): Promise<TerminalCommandRequestResult> {
     return this.request('run', command);
   }
 
-  async replaceTerminalInput(command: string): Promise<TerminalCommandRequestResult> {
+  async replaceTerminalInput(
+    command: string,
+  ): Promise<TerminalCommandRequestResult> {
     const replacedCommand = this.options.currentInputLine() ?? '';
     this.options.write('\x15');
     return this.request('stage', command, replacedCommand);
   }
 
   notifyTerminalChanged(): void {
-    if (this.activeRequest || this.pendingRequests.length === 0 || !this.options.isPromptIdle()) {
+    if (
+      this.activeRequest ||
+      this.pendingRequests.length === 0 ||
+      !this.options.isPromptIdle()
+    ) {
       return;
     }
     const nextRequest = this.pendingRequests.shift();
@@ -44,10 +56,7 @@ class $TerminalCommandController {
   }
 
   handleUserInput(bytes: string): boolean {
-    if (
-      this.activeRequest
-      && (bytes === '\r' || bytes === '\n')
-    ) {
+    if (this.activeRequest && (bytes === '\r' || bytes === '\n')) {
       const activeExecution = this.activeRequest.execution;
       const activeCommand = this.activeRequest.command;
       this.completeActiveTypingImmediately();
@@ -115,7 +124,8 @@ class $TerminalCommandController {
     replacedCommand?: string,
   ): Promise<TerminalCommandRequestResult> {
     const sanitizedCommand = TerminalCommandSanitizer.Class.sanitize(command);
-    if (!sanitizedCommand) return { state: 'rejected-empty', command: sanitizedCommand };
+    if (!sanitizedCommand)
+      return { state: 'rejected-empty', command: sanitizedCommand };
     const request = { execution, command: sanitizedCommand, replacedCommand };
     if (this.activeRequest || !this.options.isPromptIdle()) {
       this.pendingRequests.push(request);
@@ -131,7 +141,10 @@ class $TerminalCommandController {
     if (outcome === 'aborted') {
       return { state: 'aborted', command: sanitizedCommand };
     }
-    return { state: execution === 'stage' ? 'staged' : 'executed', command: sanitizedCommand };
+    return {
+      state: execution === 'stage' ? 'staged' : 'executed',
+      command: sanitizedCommand,
+    };
   }
 
   // Typed bytes are written PLAIN, not bracketed-paste-wrapped: bash readline buffers a bracketed
@@ -140,7 +153,9 @@ class $TerminalCommandController {
   // bytes from the full payload before the first byte is written, so the payload cannot inject its
   // own submission. Plain echo also exposes prefixes before animation completes; an early human
   // Enter therefore fast-forwards the sanitized remainder before the one Enter reaches the PTY.
-  protected typeRequest(request: TerminalCommandRequest): Promise<TerminalCommandTypingOutcome> {
+  protected typeRequest(
+    request: TerminalCommandRequest,
+  ): Promise<TerminalCommandTypingOutcome> {
     if (this.disposed) return Promise.resolve('aborted');
     this.activeRequest = request;
     this.typedCharacterCount = 0;
@@ -182,13 +197,10 @@ class $TerminalCommandController {
     this.options.write(grapheme);
     this.typedCharacterCount = characterIndex + 1;
     const delayMilliseconds = delays[characterIndex] ?? 0;
-    this.activeTimer = this.options.scheduler.setTimeout(
-      () => {
-        this.activeTimer = null;
-        this.typeCharacter(characterIndex + 1, graphemes, delays);
-      },
-      delayMilliseconds,
-    );
+    this.activeTimer = this.options.scheduler.setTimeout(() => {
+      this.activeTimer = null;
+      this.typeCharacter(characterIndex + 1, graphemes, delays);
+    }, delayMilliseconds);
   }
 
   protected finishRequest(): void {
@@ -277,7 +289,11 @@ export type TerminalCommandEvent =
       currentWorkingDirectory: string;
     }
   | { kind: 'user-executed'; command: string }
-  | { kind: 'user-edited-then-executed'; command: string; executedCommand: string }
+  | {
+      kind: 'user-edited-then-executed';
+      command: string;
+      executedCommand: string;
+    }
   | { kind: 'agent-executed'; command: string; currentWorkingDirectory: string }
   | { kind: 'aborted'; command: string }
   | { kind: 'rejected'; command: string };

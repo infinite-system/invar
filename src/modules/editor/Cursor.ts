@@ -1,5 +1,5 @@
-import { Reactive } from "ivue";
-import { ref, shallowRef } from "vue";
+import { Reactive } from 'ivue';
+import { ref, shallowRef } from 'vue';
 
 // Cursor position (line/col, 0-based; col = grapheme index) plus a goal column for vertical
 // movement and an optional selection anchor.

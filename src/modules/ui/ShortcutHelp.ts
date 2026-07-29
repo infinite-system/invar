@@ -10,6 +10,7 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import type { KeybindingRegistry } from '../keybindings/KeybindingRegistry';
 import type { CommandRegistry } from '../commands/CommandRegistry';
+
 class $ShortcutHelp {
   protected get ShortcutHelp() {
     return ShortcutHelp.Class as unknown as typeof $ShortcutHelp;
@@ -172,11 +173,13 @@ class $ShortcutHelp {
     return flatRows;
   }
 }
+
 export namespace ShortcutHelp {
   export const $Class = Static($ShortcutHelp);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface ShortcutHelpRow {
   kind: 'category' | 'binding';
   /** The category name for a category row; the action's human title for a binding row. */

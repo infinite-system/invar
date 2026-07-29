@@ -43,8 +43,11 @@ function badgePosition(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-tabs-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-tabs-harness-home-'));
+
 const statusPath = join(fixtureRoot, 'status.json');
+
 for (let fileNumber = 1; fileNumber <= 9; fileNumber++) {
   await Bun.write(join(fixtureRoot, `file-${fileNumber}.txt`), 'x\n');
 }

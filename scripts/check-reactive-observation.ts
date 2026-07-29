@@ -38,14 +38,19 @@ import { relative, resolve } from 'node:path';
 import type * as typescriptTypes from 'typescript';
 
 const requireFromProject = createRequire(import.meta.url);
+
 const typescript: typeof typescriptTypes = requireFromProject('typescript');
 
 const repositoryRoot = resolve(import.meta.dir, '..');
+
 const inspectedSourceGlob = 'src/**/*.ts';
+
 const positiveControlFixturePath =
   'scripts/fixtures/reactive-observation-positive-control.ts.fixture';
+
 const positiveControlVirtualPath =
   'scripts/fixtures/reactive-observation-positive-control.ts';
+
 const positiveControlExpectedCategories: readonly CandidateCategory[] = [
   'construction-captured-reactive-read',
   'module-scope-captured-reactive-read',
@@ -58,6 +63,7 @@ const referenceTypeNames: ReadonlySet<string> = new Set([
   'ComputedRef',
   'WritableComputedRef',
 ]);
+
 const payloadMutatingMemberNames: ReadonlySet<string> = new Set([
   'add',
   'clear',

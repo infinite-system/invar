@@ -1,12 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
 import { MockTtsBackend } from './MockTtsBackend';
-import {
-  SystemTtsBackend,
-  type SystemTtsOptions,
-} from './SystemTtsBackend';
+import { SystemTtsBackend, type SystemTtsOptions } from './SystemTtsBackend';
 import { TtsFactory } from './TtsFactory';
 
 const originalBackendSelection = process.env.INVAR_TTS_BACKEND;
+
 let constructedSystemOptions: SystemTtsOptions | null = null;
 
 class RecordingMockTtsBackend extends MockTtsBackend.$Class {}

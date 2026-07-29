@@ -24,12 +24,16 @@ import {
 import { join } from 'node:path';
 
 const repositoryRoot = '/home/parallels/dev/tui-editor';
+
 const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
+
 const dispatchRoot = join(repositoryRoot, 'agent-dispatches');
+
 const dryRun = process.argv.includes('--dry-run');
 
 /** The four states a task can occupy. A task lives in exactly one. */
 const STATE_DIRECTORIES = ['todo', 'live', 'done', 'retired'] as const;
+
 type TaskState = (typeof STATE_DIRECTORIES)[number];
 
 interface TaskRecord {
@@ -512,7 +516,9 @@ ${task.subject}.
 }
 
 const plan: string[] = [];
+
 let created = 0;
+
 let migrated = 0;
 
 for (const stateDirectory of STATE_DIRECTORIES) {
@@ -560,9 +566,11 @@ for (const task of TASKS) {
 }
 
 console.log(plan.join('\n'));
+
 console.log(
   `\n${dryRun ? 'DRY RUN — ' : ''}${TASKS.length} tasks; ${created} outlines created; ${migrated} dispatch files migrated.`,
 );
+
 console.log(
   `states: ${STATE_DIRECTORIES.map((state) => `${state}=${TASKS.filter((task) => task.state === state).length}`).join(' ')}`,
 );

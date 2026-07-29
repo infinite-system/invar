@@ -26,6 +26,7 @@ beforeEach(() => {
     );
   }
 });
+
 afterEach(() => removeSync(treeRoot, { recursive: true, force: true }));
 
 describe('FileTree independent scroll window', () => {

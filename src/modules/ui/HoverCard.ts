@@ -32,6 +32,7 @@ import type {
   LanguagePosition,
   LanguageRange,
 } from '../workspace/LanguageProvider.interface';
+
 class $HoverCard {
   protected get HoverCard() {
     return HoverCard.Class as unknown as typeof $HoverCard;
@@ -856,11 +857,13 @@ class $HoverCard {
     });
   }
 }
+
 export namespace HoverCard {
   export const $Class = Static($HoverCard);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export interface HoverCardDeps {
   renderer: CliRenderer;
   theme: Theme.Instance;

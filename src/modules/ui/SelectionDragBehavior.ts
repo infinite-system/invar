@@ -143,11 +143,13 @@ class $SelectionDragBehavior {
     );
   }
 }
+
 export namespace SelectionDragBehavior {
   export const $Class = $SelectionDragBehavior;
   export let Class = $Class;
   export type Model = InstanceType<typeof Class>;
 }
+
 // Shared pointer-selection behavior for every text viewport. The host supplies coordinate mapping,
 // selection-model writes, and scroll writes; this class owns only the pointer drag lifecycle and
 // edge-rate integration. The normal editor and read-only diff panes therefore cannot drift into
@@ -156,12 +158,14 @@ export interface SelectionDragPosition {
   line: number;
   column: number;
 }
+
 export interface SelectionDragViewportRectangle {
   leftColumn: number;
   rightColumn: number;
   topRow: number;
   bottomRow: number;
 }
+
 export interface SelectionDragBehaviorOptions {
   viewportRectangle: () => SelectionDragViewportRectangle;
   positionAtCell: (

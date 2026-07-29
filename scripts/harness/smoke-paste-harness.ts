@@ -19,8 +19,11 @@ import { PtyTestDriver } from './PtyTestDriver';
 import { HarnessSmoke } from './HarnessSmoke';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-paste-harness-'));
+
 const homeDirectory = mkdtempSync(join(tmpdir(), 'tui-paste-harness-home-'));
+
 const statusPath = join(fixtureRoot, 'status.json');
+
 await Bun.write(join(fixtureRoot, 'paste.txt'), 'paste fixture\n');
 
 const driver = new PtyTestDriver.Class({
@@ -33,6 +36,7 @@ const driver = new PtyTestDriver.Class({
     INVAR_AGENT_BACKEND: 'echo',
   },
 });
+
 driver.outputSequenceCount('\x1b[?2004h');
 
 function emittedClipboardTexts(): string[] {

@@ -1,5 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
+
 /**
  * Shared state for a viewport over an ordered tab layer. Rendering stays in RootView, while this
  * model owns the orientation and pan position used by both workspace tabs and editor-buffer tabs.
@@ -44,12 +45,15 @@ class $TabStrip {
     );
   }
 }
+
 export namespace TabStrip {
   export const $Class = $TabStrip;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
 export type TabStripOrientation = 'horizontal' | 'vertical';
+
 export interface TabStripItem {
   identifier: string;
   label: string;

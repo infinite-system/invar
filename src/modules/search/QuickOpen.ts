@@ -591,14 +591,18 @@ export interface QuickOpenMatch {
 export type ProjectFileEnumerator = (
   projectRoot: string,
 ) => Promise<readonly string[]>;
+
 export type ProcessRunner = (
   argumentVector: string[],
   workingDirectory: string,
 ) => Promise<RunResult>;
+
 export type SiblingFolderEnumerator = (
   parentDirectory: string,
 ) => readonly string[];
+
 export type DirectoryNameLister = (directory: string) => readonly string[];
+
 export type DirectoryPredicate = (path: string) => boolean;
 
 export interface QuickOpenOptions {
@@ -610,6 +614,7 @@ export interface QuickOpenOptions {
 }
 
 export type QuickOpenMode = 'files' | 'workspacePath';
+
 export type ProjectFileEnumerationState =
   'idle' | 'loading' | 'complete' | 'degraded' | 'failed';
 

@@ -124,17 +124,22 @@ function visibleNeedleBackgroundCounts(snapshot: HarnessSnapshot.Model): {
 }
 
 const repositoryRoot = process.cwd();
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-agent-search-harness-home-'),
 );
+
 mkdirSync(join(homeDirectory, '.config', 'invar'), { recursive: true });
+
 await Bun.write(
   join(homeDirectory, '.config', 'invar', 'settings.json'),
   JSON.stringify({ glyphMode: 'unicode' }),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
 
 console.log('== harness agent search: deterministic projection tests ==');
+
 runProjectionUnitTests(repositoryRoot);
 
 const driver = new PtyTestDriver.Class({

@@ -78,7 +78,8 @@ describe('NavigationHistory', () => {
 
   test('the list caps at 100, dropping the oldest', () => {
     const history = new NavigationHistory.Class();
-    for (let index = 0; index < 150; index += 1) history.record(at(`file${index}.ts`, index));
+    for (let index = 0; index < 150; index += 1)
+      history.record(at(`file${index}.ts`, index));
     expect(history.size).toBe(100);
     expect(history.currentEntry).toEqual(at('file149.ts', 149));
     // Walk all the way back: the oldest surviving entry is file50 (the first 50 were dropped).

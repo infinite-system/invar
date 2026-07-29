@@ -668,6 +668,9 @@ step \
   bun scripts/check-ivue-static-getter-capability.ts
 # 1) Fast inner gate: tsc + conventions + unwired-capability.
 step "conventions-gate (tsc + conventions + unwired)" bash scripts/conventions-gate.sh
+# 1a) WHOLE-REPOSITORY FORMAT. Prettier owns presentation inside the scope declared by
+#     .prettierignore; a format drift is a blocking source-shape failure beside typechecking.
+step "prettier format check" bunx prettier --check .
 # 1b) The INVARIANT CONTRACT LAYER — the lattice itself. --all: every *.invariants.md is structurally
 #     valid (both headings, required fields, non-empty Evidence). --refs: every `// invariant:` code
 #     annotation resolves to a real record (no dangling references) + coverage report. This was RED and

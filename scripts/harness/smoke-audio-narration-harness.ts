@@ -76,17 +76,23 @@ async function driveTurn(
 }
 
 const repositoryRoot = process.cwd();
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-audio-narration-harness-home-'),
 );
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 const settingsPath = join(settingsDirectory, 'settings.json');
+
 mkdirSync(settingsDirectory, { recursive: true });
 
 console.log('== harness audio narration: deterministic projection tests ==');
+
 runNarrationUnitTests(repositoryRoot);
 
 let driver: PtyTestDriver.Model | null = null;
+
 try {
   console.log('== harness audio narration: disabled setting speaks nothing ==');
   await writeNarrationSetting(settingsPath, false);

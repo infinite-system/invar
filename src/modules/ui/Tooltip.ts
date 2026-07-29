@@ -10,6 +10,7 @@
 import { Static } from 'ivue/extras';
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
+
 class $Tooltip {
   protected get Tooltip() {
     return Tooltip.Class as unknown as typeof $Tooltip;
@@ -94,14 +95,17 @@ class $Tooltip {
     return false;
   }
 }
+
 export namespace Tooltip {
   export const $Class = Static($Tooltip);
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
 }
+
 /** Where the tooltip sits relative to its anchor row. 'auto' = above, flipping below near the top. */
 export type TooltipPlacement = 'above' | 'below' | 'auto';
+
 interface PendingTooltip {
   text: string;
   anchorX: number;

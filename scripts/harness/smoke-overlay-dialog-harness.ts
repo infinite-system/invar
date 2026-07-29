@@ -872,12 +872,17 @@ async function driveContextMenuWheelAndBranchCoverage(
 }
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-overlay-dialog-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-overlay-dialog-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await Bun.write(join(fixtureRoot, 'document.txt'), 'alpha\nbeta\ngamma\n');
+
 await Bun.write(join(fixtureRoot, 'other.txt'), 'other\n');
+
 for (let fixtureFileIndex = 0; fixtureFileIndex < 30; fixtureFileIndex++) {
   await Bun.write(
     join(
@@ -887,8 +892,11 @@ for (let fixtureFileIndex = 0; fixtureFileIndex < 30; fixtureFileIndex++) {
     `scroll fixture ${fixtureFileIndex}\n`,
   );
 }
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q', '-b', 'main']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', '-A']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.email=overlay@example.test',
@@ -899,11 +907,15 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-m',
   'overlay fixture',
 ]);
+
 for (const branchName of ['branch-alpha', 'branch-beta']) {
   HarnessSmoke.Class.runGit(fixtureRoot, ['branch', branchName]);
 }
+
 await Bun.write(join(fixtureRoot, 'other.txt'), 'other changed on disk\n');
+
 await driveContextMenuWheelAndBranchCoverage(fixtureRoot);
+
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
   columns: 120,

@@ -1378,17 +1378,23 @@ async function buildFitsFixture(fixtureRoot: string): Promise<void> {
 const overflowFixtureRoot = mkdtempSync(
   join(tmpdir(), 'tui-scrollbars-harness-overflow-'),
 );
+
 const fitsFixtureRoot = mkdtempSync(
   join(tmpdir(), 'tui-scrollbars-harness-fits-'),
 );
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-scrollbars-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 await buildOverflowFixture(overflowFixtureRoot);
+
 await buildFitsFixture(fitsFixtureRoot);
 
 const probeTarget = process.env.INVAR_SCROLLBAR_PROBE_TARGET ?? 'all';
+
 if (
   probeTarget !== 'diff' &&
   process.env.INVAR_SCROLLBAR_PROBE_WRAP_MODE !== 'on'
@@ -1402,6 +1408,7 @@ if (
     false,
   );
 }
+
 if (
   probeTarget !== 'diff' &&
   process.env.INVAR_SCROLLBAR_PROBE_WRAP_MODE !== 'off'
@@ -1415,6 +1422,7 @@ if (
     true,
   );
 }
+
 if (
   probeTarget !== 'editor' &&
   process.env.INVAR_PROBE_REPOSITORY_ROOT === undefined
@@ -1424,6 +1432,7 @@ if (
   );
   await proveVerticalDiffThumbStability(overflowFixtureRoot, homeDirectory);
 }
+
 if (process.env.INVAR_SCROLLBAR_BREATHING_PROBE_ONLY === '1') {
   await HarnessSmoke.Class.removeTemporaryDirectory(overflowFixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(fitsFixtureRoot);
@@ -1445,6 +1454,7 @@ const overflowDriver = new PtyTestDriver.Class({
 });
 
 let fitsDriver: PtyTestDriver.Model | null = null;
+
 try {
   console.log(
     '== harness scrollbars: prove the vertical thumb from cell backgrounds ==',

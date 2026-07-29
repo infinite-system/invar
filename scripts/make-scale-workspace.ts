@@ -25,6 +25,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DEFAULT_DIRECTORY = '/home/parallels/dev/invar-scale';
+
 const DEFAULT_LINE_COUNT = 500_000;
 
 /** Lines per generated chunk — bounds peak string size while writing. */
@@ -115,6 +116,7 @@ function generateLine(lineIndex: number): string {
 }
 
 const { directory, lineCount } = parseArguments(Bun.argv.slice(2));
+
 mkdirSync(directory, { recursive: true });
 
 await Bun.write(
@@ -163,11 +165,17 @@ await Bun.write(
 );
 
 const hugeFilePath = join(directory, 'huge.ts');
+
 const hugeFile = Bun.file(hugeFilePath);
+
 const writer = hugeFile.writer();
+
 let widestLineIndex = 0;
+
 let widestLineWidth = 0;
+
 let runnerUpLineWidth = 0;
+
 let runnerUpLineCount = 0;
 
 for (
@@ -192,9 +200,11 @@ for (
   writer.write(`${chunkLines.join('\n')}\n`);
   await writer.flush();
 }
+
 await writer.end();
 
 const byteLength = Bun.file(hugeFilePath).size;
+
 const kilobytes = Math.round(byteLength / 1024);
 
 process.stdout.write(

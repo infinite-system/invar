@@ -1,18 +1,18 @@
-import { expect, test } from "bun:test";
-import { CodexStreamBackend } from "./CodexStreamBackend";
+import { expect, test } from 'bun:test';
+import { CodexStreamBackend } from './CodexStreamBackend';
 
-test("a disposed codex stream backend ignores later sends", () => {
-  const backend = new CodexStreamBackend.Class({ codexPath: "/missing/codex" });
+test('a disposed codex stream backend ignores later sends', () => {
+  const backend = new CodexStreamBackend.Class({ codexPath: '/missing/codex' });
   const events: unknown[] = [];
   backend.onEvent((event) => events.push(event));
 
   backend.dispose();
-  backend.send("ignored");
+  backend.send('ignored');
 
   expect(events).toEqual([]);
 });
 
-test("child exit completes a codex turn even while stdout never closes", async () => {
+test('child exit completes a codex turn even while stdout never closes', async () => {
   class ExitFirstCodexStreamBackend extends CodexStreamBackend.$Class {
     protected override spawn(_argumentsAfterExecutable: string[]) {
       return {
@@ -28,16 +28,16 @@ test("child exit completes a codex turn even while stdout never closes", async (
     }
   }
   const backend = new ExitFirstCodexStreamBackend({
-    codexPath: "unused",
+    codexPath: 'unused',
   });
   const events: unknown[] = [];
   backend.onEvent((event) => events.push(event));
 
-  backend.send("hang");
+  backend.send('hang');
   await Bun.sleep(0);
 
   expect(events).toContainEqual({
-    kind: "session-end",
-    reason: "completed",
+    kind: 'session-end',
+    reason: 'completed',
   });
 });

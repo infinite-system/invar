@@ -1,4 +1,5 @@
 import { Static } from 'ivue/extras';
+
 class $JsonRpc {
   protected static get $headerEnd(): Uint8Array {
     const headerEnd = new Uint8Array([13, 10, 13, 10]);

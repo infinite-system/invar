@@ -8,6 +8,7 @@
 //
 // invariant: A scrollbar track is derived per frame from its region rect (ui.invariants.md)
 import { Static } from 'ivue/extras';
+
 class $ScrollbarGeometry {
   public static get MINIMUM_THUMB_CELLS() {
     return 2;
@@ -58,10 +59,12 @@ class $ScrollbarGeometry {
     };
   }
 }
+
 export namespace ScrollbarGeometry {
   export const $Class = Static($ScrollbarGeometry);
   export let Class = $Class;
 }
+
 export interface RegionRect {
   /** Content-box cells of the region the bar scrolls (relative to whatever frame the caller uses —
    *  consistency is the caller's job; this function never mixes frames). */
@@ -70,11 +73,13 @@ export interface RegionRect {
   width: number;
   height: number;
 }
+
 export interface ScrollState {
   scrollSize: number;
   viewportSize: number;
   scrollPosition: number;
 }
+
 export interface BarGeometry {
   /** Track placement, same coordinate frame as the region rect. */
   trackTop: number;

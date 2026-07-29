@@ -72,20 +72,28 @@ function warningAlert(snapshot: HarnessSnapshot.Model): {
 }
 
 const navigatorBase = mkdtempSync(join(tmpdir(), 'tui-search-mouse-harness-'));
+
 const fixtureRoot = join(navigatorBase, 'proj');
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-search-mouse-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 mkdirSync(fixtureRoot);
+
 for (const directoryName of ['sibling-alpha', 'sibling-beta', 'zebra']) {
   mkdirSync(join(navigatorBase, directoryName));
 }
+
 await Bun.write(
   join(fixtureRoot, 'sample.txt'),
   'Alpha alpha ALPHA beta\nsecond line\nAlpha again here\n',
 );
+
 await Bun.write(join(fixtureRoot, 'other.txt'), 'nothing here\n');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
 
 const driver = new PtyTestDriver.Class({

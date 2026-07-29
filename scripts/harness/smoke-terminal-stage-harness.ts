@@ -774,8 +774,11 @@ async function driveTerminalCleanPromptDisabled(
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-terminal-stage-harness-home-'),
 );
+
 const settingsDirectory = join(homeDirectory, '.config', 'invar');
+
 const settingsPath = join(settingsDirectory, 'settings.json');
+
 mkdirSync(settingsDirectory, { recursive: true });
 
 try {

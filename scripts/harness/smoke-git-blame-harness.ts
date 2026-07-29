@@ -13,6 +13,7 @@ import { PtyTestDriver } from './PtyTestDriver';
 console.log(
   '== harness git-blame: deterministic parser and relative-time tests ==',
 );
+
 const unitResult = Bun.spawnSync(
   [
     process.execPath,
@@ -22,28 +23,37 @@ const unitResult = Bun.spawnSync(
   ],
   { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' },
 );
+
 HarnessSmoke.Class.requireCondition(
   unitResult.exitCode === 0,
   'blame unit tests (porcelain parse, metadata reuse, uncommitted, relative-date buckets)',
 );
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'tui-git-blame-harness-'));
+
 const homeDirectory = mkdtempSync(
   join(tmpdir(), 'tui-git-blame-harness-home-'),
 );
+
 const statusPath = join(homeDirectory, 'status.json');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['config', 'user.name', 'Blame Tester']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   'config',
   'user.email',
   'blame@test.local',
 ]);
+
 await Bun.write(
   join(fixtureRoot, 'tracked.txt'),
   'first line\nsecond line\nthird line\n',
 );
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['add', 'tracked.txt']);
+
 HarnessSmoke.Class.runGit(fixtureRoot, [
   '-c',
   'user.name=Blame Tester',
@@ -53,6 +63,7 @@ HarnessSmoke.Class.runGit(fixtureRoot, [
   '-qm',
   'add tracked file',
 ]);
+
 await Bun.write(
   join(fixtureRoot, 'untracked.txt'),
   'untracked one\nuntracked two\n',

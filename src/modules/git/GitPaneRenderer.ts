@@ -19,6 +19,7 @@ import { GitLogRows, type CommitLogRow } from './GitLogRows';
 import type { Palette } from '../theme/ThemePalettes';
 import type { ActionIconSet, CheckboxIconSet } from '../theme/ThemeIcons';
 import type { GitWorkspace } from './GitWorkspace';
+
 class $GitPaneRenderer {
   protected static changeRowText(
     row: ChangeRow,
@@ -355,10 +356,12 @@ class $GitPaneRenderer {
     return { text: new StyledText(chunks), geometry };
   }
 }
+
 export namespace GitPaneRenderer {
   export const $Class = Static($GitPaneRenderer);
   export let Class = $Class;
 }
+
 /** Sidebar-relative geometry the hit-testers and scrollbars read; produced by render(). */
 export interface GitPanelGeometry {
   changesTop: number;
@@ -370,6 +373,7 @@ export interface GitPanelGeometry {
   logTop: number;
   logRows: number;
 }
+
 export interface GitPaneRenderContext {
   /** The active workspace (git repo, git-panel view state, commit log/expansion, focus, split). */
   workspace: GitWorkspace.Instance;

@@ -145,5 +145,7 @@ class $MockCompletionLanguageClient extends LanguageClient.$Class {
 }
 
 BoundedListPopup.Class = Reactive($MeasuredBoundedListPopup);
+
 CompletionPopup.Class = Reactive($MeasuredCompletionPopup);
+
 LanguageClient.Class = Reactive($MockCompletionLanguageClient);

@@ -2,16 +2,27 @@ import { describe, expect, test } from 'bun:test';
 import { CodexAppServerMapping } from './CodexAppServerMapping';
 
 const mapping = CodexAppServerMapping.Class;
-const map = (method: string, params: unknown, state = mapping.createTurnState()) =>
-  mapping.mapNotification({ method, params }, state);
+
+const map = (
+  method: string,
+  params: unknown,
+  state = mapping.createTurnState(),
+) => mapping.mapNotification({ method, params }, state);
 
 describe('CodexAppServerMapping.mapNotification', () => {
   test('thread/started → session-start; turn/completed → session-end by status', () => {
     expect(map('thread/started', {})).toEqual([{ kind: 'session-start' }]);
-    expect(map('turn/completed', { turn: { status: 'completed' } })).toEqual([{ kind: 'session-end', reason: 'completed' }]);
-    expect(map('turn/completed', { turn: { status: 'interrupted' } })).toEqual([{ kind: 'session-end', reason: 'interrupted' }]);
+    expect(map('turn/completed', { turn: { status: 'completed' } })).toEqual([
+      { kind: 'session-end', reason: 'completed' },
+    ]);
+    expect(map('turn/completed', { turn: { status: 'interrupted' } })).toEqual([
+      { kind: 'session-end', reason: 'interrupted' },
+    ]);
     expect(map('turn/completed', { turn: { status: 'failed' } })).toEqual([
-      { kind: 'error', message: 'codex: the turn failed (no error detail from the app-server)' },
+      {
+        kind: 'error',
+        message: 'codex: the turn failed (no error detail from the app-server)',
+      },
       { kind: 'session-end', reason: 'error' },
     ]);
   });
@@ -22,61 +33,125 @@ describe('CodexAppServerMapping.mapNotification', () => {
       map('turn/completed', {
         turn: {
           status: 'failed',
-          error: { message: '401 Unauthorized: run `codex login` to authenticate' },
+          error: {
+            message: '401 Unauthorized: run `codex login` to authenticate',
+          },
         },
       }),
     ).toEqual([
-      { kind: 'error', message: '401 Unauthorized: run `codex login` to authenticate' },
+      {
+        kind: 'error',
+        message: '401 Unauthorized: run `codex login` to authenticate',
+      },
       { kind: 'session-end', reason: 'error' },
     ]);
   });
 
   test("a server 'error' NOTIFICATION maps to an error event (both wire dialects)", () => {
     // Nested dialect: { error: { message } } — codex-rs app-server v2.
-    expect(map('error', { error: { message: 'stream disconnected before completion' } })).toEqual([
+    expect(
+      map('error', {
+        error: { message: 'stream disconnected before completion' },
+      }),
+    ).toEqual([
       { kind: 'error', message: 'stream disconnected before completion' },
     ]);
     // Flat dialect: { message }.
-    expect(map('error', { message: 'unexpected status 401 Unauthorized' })).toEqual([
+    expect(
+      map('error', { message: 'unexpected status 401 Unauthorized' }),
+    ).toEqual([
       { kind: 'error', message: 'unexpected status 401 Unauthorized' },
     ]);
     // Detail-less: still surfaces SOMETHING, never a silent drop.
     expect(map('error', {})).toEqual([
-      { kind: 'error', message: 'codex: the app-server reported an error (no detail)' },
+      {
+        kind: 'error',
+        message: 'codex: the app-server reported an error (no detail)',
+      },
     ]);
   });
 
   test('agentMessage deltas stream as text-deltas; the item completion does NOT re-emit streamed text', () => {
     const state = mapping.createTurnState();
-    expect(map('item/agentMessage/delta', { itemId: 'm1', delta: 'Hel' }, state)).toEqual([{ kind: 'text-delta', text: 'Hel' }]);
-    expect(map('item/agentMessage/delta', { itemId: 'm1', delta: 'lo' }, state)).toEqual([{ kind: 'text-delta', text: 'lo' }]);
-    expect(map('item/completed', { item: { type: 'agentMessage', id: 'm1', text: 'Hello' } }, state)).toEqual([]);
+    expect(
+      map('item/agentMessage/delta', { itemId: 'm1', delta: 'Hel' }, state),
+    ).toEqual([{ kind: 'text-delta', text: 'Hel' }]);
+    expect(
+      map('item/agentMessage/delta', { itemId: 'm1', delta: 'lo' }, state),
+    ).toEqual([{ kind: 'text-delta', text: 'lo' }]);
+    expect(
+      map(
+        'item/completed',
+        { item: { type: 'agentMessage', id: 'm1', text: 'Hello' } },
+        state,
+      ),
+    ).toEqual([]);
   });
 
   test('a DELTA-LESS agentMessage completion emits its full text once (fallback path)', () => {
     const state = mapping.createTurnState();
-    expect(map('item/completed', { item: { type: 'agentMessage', id: 'm2', text: 'Whole reply' } }, state)).toEqual([
-      { kind: 'text-delta', text: 'Whole reply' },
-    ]);
+    expect(
+      map(
+        'item/completed',
+        { item: { type: 'agentMessage', id: 'm2', text: 'Whole reply' } },
+        state,
+      ),
+    ).toEqual([{ kind: 'text-delta', text: 'Whole reply' }]);
   });
 
   test('commandExecution lifecycle → tool-use on start, tool-result on completion', () => {
-    const started = map('item/started', { item: { type: 'commandExecution', id: 'c1', command: "/bin/bash -lc 'echo hi'" } });
-    expect(started).toEqual([{ kind: 'tool-use', id: 'c1', name: 'Bash', input: { command: "/bin/bash -lc 'echo hi'" } }]);
-    const completed = map('item/completed', {
-      item: { type: 'commandExecution', id: 'c1', status: 'completed', aggregatedOutput: 'hi\n', exitCode: 0 },
+    const started = map('item/started', {
+      item: {
+        type: 'commandExecution',
+        id: 'c1',
+        command: "/bin/bash -lc 'echo hi'",
+      },
     });
-    expect(completed).toEqual([{ kind: 'tool-result', id: 'c1', result: 'hi\n', isError: false }]);
+    expect(started).toEqual([
+      {
+        kind: 'tool-use',
+        id: 'c1',
+        name: 'Bash',
+        input: { command: "/bin/bash -lc 'echo hi'" },
+      },
+    ]);
+    const completed = map('item/completed', {
+      item: {
+        type: 'commandExecution',
+        id: 'c1',
+        status: 'completed',
+        aggregatedOutput: 'hi\n',
+        exitCode: 0,
+      },
+    });
+    expect(completed).toEqual([
+      { kind: 'tool-result', id: 'c1', result: 'hi\n', isError: false },
+    ]);
   });
 
   test('a DECLINED command maps to an error tool-result carrying the denial', () => {
-    const completed = map('item/completed', { item: { type: 'commandExecution', id: 'c1', status: 'declined' } });
-    expect(completed).toEqual([{ kind: 'tool-result', id: 'c1', result: 'The user denied this command.', isError: true }]);
+    const completed = map('item/completed', {
+      item: { type: 'commandExecution', id: 'c1', status: 'declined' },
+    });
+    expect(completed).toEqual([
+      {
+        kind: 'tool-result',
+        id: 'c1',
+        result: 'The user denied this command.',
+        isError: true,
+      },
+    ]);
   });
 
   test('a non-zero exit code marks the result as an error', () => {
     const completed = map('item/completed', {
-      item: { type: 'commandExecution', id: 'c1', status: 'completed', aggregatedOutput: 'boom', exitCode: 2 },
+      item: {
+        type: 'commandExecution',
+        id: 'c1',
+        status: 'completed',
+        aggregatedOutput: 'boom',
+        exitCode: 2,
+      },
     });
     expect(completed[0]).toMatchObject({ isError: true, result: 'boom' });
   });
@@ -85,26 +160,41 @@ describe('CodexAppServerMapping.mapNotification', () => {
     expect(map('item/reasoning/textDelta', { delta: 'thinking' })).toEqual([]);
     expect(map('thread/tokenUsage/updated', {})).toEqual([]);
     expect(map('account/rateLimits/updated', {})).toEqual([]);
-    expect(map('item/completed', { item: { type: 'reasoning', id: 'r1' } })).toEqual([]);
+    expect(
+      map('item/completed', { item: { type: 'reasoning', id: 'r1' } }),
+    ).toEqual([]);
   });
 });
 
 describe('CodexAppServerMapping.approvalOf', () => {
   test('commandExecution approval → Bash descriptor with the command string', () => {
-    const approval = mapping.approvalOf('item/commandExecution/requestApproval', {
-      command: "/bin/bash -lc 'rm -rf /tmp/x'",
-      reason: 'outside sandbox',
+    const approval = mapping.approvalOf(
+      'item/commandExecution/requestApproval',
+      {
+        command: "/bin/bash -lc 'rm -rf /tmp/x'",
+        reason: 'outside sandbox',
+      },
+    );
+    expect(approval).toMatchObject({
+      toolName: 'Bash',
+      input: { command: "/bin/bash -lc 'rm -rf /tmp/x'" },
     });
-    expect(approval).toMatchObject({ toolName: 'Bash', input: { command: "/bin/bash -lc 'rm -rf /tmp/x'" } });
   });
 
   test('an ARRAY command (v1 shape) joins to one string', () => {
-    const approval = mapping.approvalOf('execCommandApproval', { command: ['bash', '-lc', 'echo hi'] });
-    expect(approval).toMatchObject({ toolName: 'Bash', input: { command: 'bash -lc echo hi' } });
+    const approval = mapping.approvalOf('execCommandApproval', {
+      command: ['bash', '-lc', 'echo hi'],
+    });
+    expect(approval).toMatchObject({
+      toolName: 'Bash',
+      input: { command: 'bash -lc echo hi' },
+    });
   });
 
   test('fileChange approval → ApplyPatch descriptor; non-approval methods → null', () => {
-    expect(mapping.approvalOf('item/fileChange/requestApproval', {})).toMatchObject({ toolName: 'ApplyPatch' });
+    expect(
+      mapping.approvalOf('item/fileChange/requestApproval', {}),
+    ).toMatchObject({ toolName: 'ApplyPatch' });
     expect(mapping.approvalOf('item/agentMessage/delta', {})).toBeNull();
   });
 });
@@ -125,21 +215,36 @@ describe('permissions-profile approval (review B4)', () => {
     });
     expect(approval).not.toBeNull();
     expect(approval!.toolName).toBe('Permissions');
-    expect(approval!.input).toMatchObject({ reason: 'Allow network access for npm install?' });
+    expect(approval!.input).toMatchObject({
+      reason: 'Allow network access for npm install?',
+    });
   });
 
   test('its response builder GRANTS the requested profile on allow (turn) / always-allow (session)', () => {
     const requested = { network: { enabled: true } };
-    const approval = mapping.approvalOf('item/permissions/requestApproval', { permissions: requested })!;
-    expect(approval.respondWith('allow')).toEqual({ permissions: requested, scope: 'turn' });
-    expect(approval.respondWith('always-allow')).toEqual({ permissions: requested, scope: 'session' });
+    const approval = mapping.approvalOf('item/permissions/requestApproval', {
+      permissions: requested,
+    })!;
+    expect(approval.respondWith('allow')).toEqual({
+      permissions: requested,
+      scope: 'turn',
+    });
+    expect(approval.respondWith('always-allow')).toEqual({
+      permissions: requested,
+      scope: 'session',
+    });
     expect(approval.respondWith('deny')).toEqual({ permissions: {} }); // a VALID empty grant, never silence
   });
 
   test('command/patch approvals still answer the decision enum through their builder', () => {
-    const command = mapping.approvalOf('item/commandExecution/requestApproval', { command: 'x' })!;
+    const command = mapping.approvalOf(
+      'item/commandExecution/requestApproval',
+      { command: 'x' },
+    )!;
     expect(command.respondWith('allow')).toEqual({ decision: 'accept' });
-    expect(command.respondWith('always-allow')).toEqual({ decision: 'acceptForSession' });
+    expect(command.respondWith('always-allow')).toEqual({
+      decision: 'acceptForSession',
+    });
     expect(command.respondWith('deny')).toEqual({ decision: 'decline' });
   });
 });
