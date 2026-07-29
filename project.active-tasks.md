@@ -14,7 +14,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (11)
+## VERIFICATION-INTEGRITY (12)
+- #215 agent-tmux-send-confirm-false-negative
 - #210 mutation-probes-for-semantic-weakening
 - #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]
 - #183 quiet-lock-degrades-and-runs-anyway  [ACTIVE — unfixed, and it has already cost samples]
