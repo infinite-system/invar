@@ -46,3 +46,11 @@ it reads `None observed`.
 
 - #278 completed report (the recorded miss); #279 report (generator
   split, two non-reproductions).
+
+## Evidence from #299 (2026-07-29)
+
+Merge-gate Drive.test.ts Markdown-settle captured a stale "Parsing
+Markdown…" frame while status already reported markdownParsing=false —
+status led the paint; exact same-tree rerun passed 11/11. This is this
+record's defect class observed in the wild (status/paint ordering), not a
+new one.

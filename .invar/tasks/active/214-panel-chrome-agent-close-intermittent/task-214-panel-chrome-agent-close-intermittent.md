@@ -44,3 +44,5 @@ before treating them as two defects.
   starvation-timeout, both passed on retry (5th/6th pool-only today).
 - 2026-07-29 #296 gate: panel-chrome (pool starvation) + overlay-dialog
   (serial tail) each timed out once, quiet retry passed (7th/8th today).
+- 2026-07-29 #299 gate: scrollbar + panel-chrome timeout-class, both passed
+  built-in retry (9th/10th today).
