@@ -1,5 +1,31 @@
 # Overnight briefing — started 2026-07-29 00:28
 
+## RESUME ANCHOR 2 (04:3x — supersedes the 02:26 anchor below)
+
+- FLEET: #233 and #35 READY round 2; gate 2 running on the combined tree
+  (main+#233+#35 incl. 215724d1). On green: land #233 then #35 via land.sh,
+  then dispatch #245 (provider seam + database proof, BEFORE #238 — both
+  touch structure/) alongside #243 and the markdown wave #236/#237; #235
+  after. #244 LANDED (c44c23db): lazy SDK import; extraction count stayed 0
+  through a full gate. If completion smoke reds again: capture the failing
+  status.json tail from the gate failure log; #35's builder needs it, or it
+  routes to #233's tui-harness env.
+- PROTOCOL (all mechanical, user-directed tonight): (1) dispatch REFUSES
+  without fleet-watch's heartbeat (arm: Monitor bash
+  scripts/fleet/fleet-watch.sh, persistent — ONE watcher, idempotent);
+  (2) SPRAWL sentinel inside fleet-watch: floor 10G, 600MB/cycle,
+  2G/5m window, +300 entries/cycle; ANALYZES, never deletes — kill the
+  growth source, delete only owned patterns; (3) rounds: round-brief.sh
+  files + stamps before any steer — A BRIEF IS A CONTRACT with a
+  mechanically checkable end state; (4) gate logs register in
+  /tmp/fleet-watch-gates (rm the log before a rerun so the watch timer is
+  true); (5) interim SDK reaper pid in /tmp/sdk-reaper.pid — retire it
+  after one more clean gate.
+- Decisions taken by the user tonight: #245 = OPEN the provider seam
+  (phone-book shape, consumer-owned interfaces, #223 folded in as proof).
+  Still his: #241, #242. Rescued scratches in .invar/rescue (ShortcutsView
+  may be unlanded work).
+
 ## RESUME ANCHOR (written at 02:26 before context compaction)
 
 - FLEET: #35 (structure navigator, THE PROOF, fable·medium, ~35m) and #233

@@ -146,11 +146,21 @@ worktree, runs `bun install`, and pipes the transcript to
 environment that contradicts the task file. It prints the tmux attach command. Relay that
 command to the user.
 
-**3. STEER** — every follow-up instruction to a running builder is a new file, next count up:
+**3. STEER** — every follow-up round is a MECHANICAL act, filed before the steer:
 
 ```
-$EDITOR .invar/tasks/in-progress/<n>-<slug>/brief-<n>-2-<slug>.md   # then send it; a brief is read at LAUNCH
+$EDITOR /tmp/brief-<n>-round2.md                                # write it (both dialogue sections required)
+scripts/fleet/round-brief.sh <n>-<slug> /tmp/brief-<n>-round2.md   # file + stamp, THEN steer
 ```
+
+`round-brief.sh` copies the brief in as `brief-<n>-<round>-…md` and stamps
+`meta.json` (`round`, `roundBriefedAtMs`) at the filing moment. **A brief is a
+contract: every briefing act declares a mechanically checkable end state.**
+Round 1's end state is "a report file exists" (dispatch enforces it); round
+N's is "the report is newer than the filing stamp" — the lenses key READY on
+exactly that, so a backfilled brief can never demote a delivered report, and
+a live round always shows `building round N`. A steer that lives only in a
+tmux message is a record nobody can replay: file first, steer second.
 
 **4. DELIVER** — the report is born in the task folder. `dispatch.sh` points the builder at
 `.invar/tasks/in-progress/<n>-<slug>/report-<n>-<slug>.md` (absolute path), so delivery
