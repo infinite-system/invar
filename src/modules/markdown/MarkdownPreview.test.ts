@@ -81,6 +81,53 @@ test('renders only the visible window of rows', async () => {
   ).toBe(false);
 });
 
+test('deep visible-row projection visits the same block count at small and large scale', async () => {
+  let rowCountCallCount = 0;
+  class $MeasuredMarkdownPreview extends MarkdownPreview.$Class {
+    protected override rowCountForBlock(
+      block: BlockRecord,
+      width: number,
+    ): number {
+      rowCountCallCount++;
+      return super.rowCountForBlock(block, width);
+    }
+  }
+  const MeasuredMarkdownPreview = Reactive($MeasuredMarkdownPreview);
+  const projectionCallCounts: number[] = [];
+  const viewportWidth = 40;
+  const viewportHeight = 8;
+
+  for (const sourceLineCount of [500, 100_000]) {
+    const sourceLines = Array.from(
+      { length: sourceLineCount },
+      (_unusedValue, lineIndex) =>
+        lineIndex === sourceLineCount - 1
+          ? `## Final heading ${sourceLineCount}`
+          : `Source line ${String(lineIndex + 1)} content`,
+    );
+    const preview = new MeasuredMarkdownPreview();
+    preview.open(createSource(sourceLines.join('\n\n')), null, {
+      debounceMs: 0,
+    });
+    await waitForTaskTurn();
+    await waitForTaskTurn();
+
+    preview.scrollTo(Number.MAX_SAFE_INTEGER, viewportWidth, viewportHeight);
+    rowCountCallCount = 0;
+    const visibleRows = preview.visibleRows(
+      viewportWidth,
+      viewportHeight,
+      ThemeIcons.Class.tableBordersFor('unicode'),
+    );
+    expect(visibleRows.length).toBeLessThanOrEqual(viewportHeight);
+    projectionCallCounts.push(rowCountCallCount);
+    preview.close();
+  }
+
+  expect(projectionCallCounts[0]).toBeGreaterThan(0);
+  expect(projectionCallCounts[1]).toBe(projectionCallCounts[0]);
+});
+
 test('reveals the block for a source line at the shared reading position', async () => {
   const sourceLines = Array.from(
     { length: 40 },

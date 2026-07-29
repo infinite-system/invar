@@ -648,13 +648,23 @@ class $MarkdownSplitView {
       }
       this.renderer.requestRender();
     };
-    previewBody.onMouseOut = () => {
-      this.hoveredReferenceKey.value = null;
-      this.hoveredReferencePath.value = null;
-      this.previewRenderable.setHoveredReferenceKey(null);
-      this.options.clearReferenceTooltip();
-      this.renderer.requestRender();
+    previewBody.onMouseOut = () => this.clearHoveredReference();
+    this.previewPaneRenderable.onMouseMove = (event) => {
+      const pointerIsInsideBody =
+        event.x >= previewBody.x &&
+        event.x < previewBody.x + previewBody.width &&
+        event.y >= previewBody.y &&
+        event.y < previewBody.y + previewBody.height;
+      if (!pointerIsInsideBody) this.clearHoveredReference();
     };
+  }
+
+  protected clearHoveredReference(): void {
+    this.hoveredReferenceKey.value = null;
+    this.hoveredReferencePath.value = null;
+    this.previewRenderable.setHoveredReferenceKey(null);
+    this.options.clearReferenceTooltip();
+    this.renderer.requestRender();
   }
 
   /** The reference under a cell, resolved where possible. An authored link stays a reference even
