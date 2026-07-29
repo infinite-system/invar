@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #268 editor-smoke-vs-auto-open-red-main  [building]
+  `tmux attach -t invar/268-editor-smoke-vs-auto-open-red-main`
 - #238 structure-default-right-and-md-toc  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/238-structure-default-right-and-md-toc`
 
