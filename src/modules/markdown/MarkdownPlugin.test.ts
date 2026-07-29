@@ -32,6 +32,7 @@ function activate(path = '/project/notes.md') {
     editorSurfaceContents,
     settings: { markdownSplitRatio: { value: 0.5 } },
     statusProjectionContributions: { register: () => {} },
+    statusBarSegments: { register: () => () => {} },
     registerKeybindings: () => {},
     registerSetting: (contribution: { defaultValue: number }) => ({
       value: ref(contribution.defaultValue),

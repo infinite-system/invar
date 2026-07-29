@@ -108,3 +108,44 @@ test('the preview side defaults to left and follows the option', () => {
   });
   expect(rightSplitView.previewSide).toBe('right');
 });
+
+// invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+test('an unresolved authored link stays a reference; unresolved backtick text does not', () => {
+  class $ProbedMarkdownSplitView extends MarkdownSplitView.$Class {
+    referenceAtForTest(screenColumn: number, screenRow: number) {
+      return this.referenceAt(screenColumn, screenRow);
+    }
+  }
+  const buildSplitView = (
+    hit: { key: string; target: string; explicitLink: boolean } | null,
+    resolvedPath: string | null,
+  ) => {
+    const splitView = Object.create(
+      $ProbedMarkdownSplitView.prototype,
+    ) as $ProbedMarkdownSplitView;
+    Object.defineProperties(splitView, {
+      previewRenderable: { value: { referenceAtCell: () => hit } },
+      options: { value: { resolveReference: () => resolvedPath } },
+    });
+    return splitView;
+  };
+
+  const unresolvedLink = buildSplitView(
+    { key: '0:0:4:5', target: 'https://example.com', explicitLink: true },
+    null,
+  ).referenceAtForTest(0, 0);
+  expect(unresolvedLink?.hit.target).toBe('https://example.com');
+  expect(unresolvedLink?.path).toBeNull();
+
+  const unresolvedCode = buildSplitView(
+    { key: '0:0:4:6', target: 'not a path', explicitLink: false },
+    null,
+  ).referenceAtForTest(0, 0);
+  expect(unresolvedCode).toBeNull();
+
+  const resolvedCode = buildSplitView(
+    { key: '0:0:4:6', target: 'src/main.ts', explicitLink: false },
+    '/root/src/main.ts',
+  ).referenceAtForTest(0, 0);
+  expect(resolvedCode?.path).toBe('/root/src/main.ts');
+});

@@ -60,6 +60,14 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
         );
       },
       clearReferenceTooltip: () => context.tooltip.clear(),
+      // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+      notifyUnresolvedReference: (target, screenColumn, screenRow, gesture) => {
+        const message = workspace.referenceIsExternal(target)
+          ? `External link — not opened here: ${target}`
+          : `Link target not found: ${target}`;
+        context.tooltip.point(message, screenColumn, screenRow);
+        if (gesture === 'activate') this.view.linkNotice.value = message;
+      },
     });
   }
 

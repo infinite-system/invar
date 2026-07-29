@@ -131,6 +131,7 @@ class $MarkdownRenderable extends BoxRenderable {
       return {
         key: this.referenceKey(row.blockIndex, spanStart, spanEnd, inlineStyle),
         target,
+        explicitLink: inlineStyle === MarkdownParser.Class.inlineStyles.link,
       };
     }
     return null;
@@ -485,6 +486,7 @@ class $MarkdownRenderable extends BoxRenderable {
             inlineStyle,
           ),
           target,
+          explicitLink: inlineStyle === MarkdownParser.Class.inlineStyles.link,
         };
       }
     }
@@ -603,4 +605,8 @@ export type MarkdownRenderableOptions = Omit<BoxOptions, 'flexDirection'>;
 export interface MarkdownReferenceHit {
   key: string;
   target: string;
+  /** True for an authored `[label](target)` link span; false for an inline-code path. An authored
+   *  link that does not resolve still owes the user an explanation, where stray backtick text
+   *  does not. */
+  explicitLink: boolean;
 }

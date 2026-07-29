@@ -318,6 +318,8 @@ const markdownLines = [
   '',
   'Open `target.ts` or [the target](target.ts).',
   '',
+  'See [the docs](https://example.com/docs) or [the missing note](missing-note.md).',
+  '',
   'Rendered preview find term.',
   '',
   '| Left | Center | Right |',
@@ -779,6 +781,120 @@ try {
   const readmeTabPosition = snapshot.findText('README.md');
   if (!readmeTabPosition) throw new Error('FAIL README tab missing');
   clickCell(driver, readmeTabPosition.column + 2, readmeTabPosition.row);
+  snapshot = await driver.awaitSnapshot((candidate) =>
+    previewHasMarker(candidate, 'Rendered heading'),
+  );
+
+  console.log(
+    '== harness markdown: an unresolvable link states why, never silently ==',
+  );
+  // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+  const externalLinkPosition = previewMarkerPosition(snapshot, 'the docs');
+  driver.sendMouse({
+    kind: 'press',
+    column: externalLinkPosition.column,
+    row: externalLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: externalLinkPosition.column,
+    row: externalLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  const externalNoticeStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Ctrl-clicking an external link states the no-op',
+    (status) =>
+      status.markdownLinkNotice ===
+      'External link — not opened here: https://example.com/docs',
+  );
+  if (!String(externalNoticeStatus.activeBuffer).endsWith('/README.md')) {
+    throw new Error(
+      `FAIL external link changed the buffer: ${String(externalNoticeStatus.activeBuffer)}`,
+    );
+  }
+  await driver.awaitGridCondition(
+    'the external-link notice paints in the status bar',
+    (candidate) =>
+      candidate.findText('External link — not opened here') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'an external link answers the click with a stated no-op, buffer unchanged',
+  );
+
+  const missingLinkPosition = previewMarkerPosition(
+    driver.snapshot(),
+    'the missing note',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: missingLinkPosition.column,
+    row: missingLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: missingLinkPosition.column,
+    row: missingLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  const missingNoticeStatus = await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Ctrl-clicking a missing-target link states the miss',
+    (status) =>
+      status.markdownLinkNotice === 'Link target not found: missing-note.md',
+  );
+  if (!String(missingNoticeStatus.activeBuffer).endsWith('/README.md')) {
+    throw new Error(
+      `FAIL missing-target link changed the buffer: ${String(missingNoticeStatus.activeBuffer)}`,
+    );
+  }
+  HarnessSmoke.Class.pass(
+    'a missing-target link answers the click with the stated miss',
+  );
+
+  // A later successful open withdraws the owed notice.
+  const resolvableLinkPosition = previewMarkerPosition(
+    driver.snapshot(),
+    'the target',
+  );
+  driver.sendMouse({
+    kind: 'press',
+    column: resolvableLinkPosition.column,
+    row: resolvableLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  driver.sendMouse({
+    kind: 'release',
+    column: resolvableLinkPosition.column,
+    row: resolvableLinkPosition.row,
+    button: 'left',
+    control: true,
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a successful open clears the link notice',
+    (status) =>
+      String(status.activeBuffer).endsWith('/target.ts') &&
+      status.markdownLinkNotice === null,
+  );
+  HarnessSmoke.Class.pass('a successful open clears the stated notice');
+  const tabPositionAfterNotice = driver.snapshot().findText('README.md');
+  if (!tabPositionAfterNotice) throw new Error('FAIL README tab missing');
+  clickCell(
+    driver,
+    tabPositionAfterNotice.column + 2,
+    tabPositionAfterNotice.row,
+  );
   snapshot = await driver.awaitSnapshot((candidate) =>
     previewHasMarker(candidate, 'Rendered heading'),
   );

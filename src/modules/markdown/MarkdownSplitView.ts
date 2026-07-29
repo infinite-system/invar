@@ -51,6 +51,12 @@ class $MarkdownSplitView {
   get hoveredReferenceKey() {
     return ref<string | null>(null);
   }
+  /** The last stated outcome of activating an UNRESOLVABLE link (external scheme or missing
+   *  file), for the status bar. Cleared by the next successful open; null while nothing is owed.
+   *  invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md) */
+  get linkNotice() {
+    return ref<string | null>(null);
+  }
   get selectionRevision() {
     return ref(0);
   }
@@ -437,15 +443,27 @@ class $MarkdownSplitView {
     const previewBody = this.previewRenderable.bodyRenderable;
     previewBody.onMouseDown = (event) => {
       this.focusPreview();
-      const resolvedReference = this.resolvedReferenceAt(event.x, event.y);
+      const reference = this.referenceAt(event.x, event.y);
       // OpenTUI exposes terminal Meta/Super mouse modifiers through the SGR alt bit. Supporting
       // ctrl OR alt therefore covers Ctrl-click and terminal Cmd/Meta-click without a second path.
       if (
         event.button === 0 &&
         (event.modifiers.ctrl || event.modifiers.alt) &&
-        resolvedReference
+        reference
       ) {
-        this.options.openReference(resolvedReference.path);
+        if (reference.path !== null) {
+          this.linkNotice.value = null;
+          this.options.openReference(reference.path);
+        } else {
+          // An authored link that cannot open still answers the activation — never silently.
+          // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+          this.options.notifyUnresolvedReference(
+            reference.hit.target,
+            event.x,
+            event.y,
+            'activate',
+          );
+        }
         return;
       }
       this.synchronizeRenderedPreviewDocument();
@@ -465,17 +483,21 @@ class $MarkdownSplitView {
       );
     };
     previewBody.onMouseMove = (event) => {
-      const resolvedReference = this.resolvedReferenceAt(event.x, event.y);
-      this.hoveredReferenceKey.value = resolvedReference?.hit.key ?? null;
-      this.hoveredReferencePath.value = resolvedReference?.path ?? null;
+      const reference = this.referenceAt(event.x, event.y);
+      this.hoveredReferenceKey.value = reference?.hit.key ?? null;
+      this.hoveredReferencePath.value = reference?.path ?? null;
       this.previewRenderable.setHoveredReferenceKey(
         this.hoveredReferenceKey.value,
       );
-      if (resolvedReference) {
-        this.options.showReferenceTooltip(
-          resolvedReference.path,
+      if (reference?.path != null) {
+        this.options.showReferenceTooltip(reference.path, event.x, event.y);
+      } else if (reference) {
+        // Hovering an unresolvable authored link explains it before any click is spent.
+        this.options.notifyUnresolvedReference(
+          reference.hit.target,
           event.x,
           event.y,
+          'hover',
         );
       } else {
         this.options.clearReferenceTooltip();
@@ -491,14 +513,18 @@ class $MarkdownSplitView {
     };
   }
 
-  protected resolvedReferenceAt(
+  /** The reference under a cell, resolved where possible. An authored link stays a reference even
+   *  when its target does not resolve — the user must hear WHY it will not open. An inline-code
+   *  span is only a reference while it resolves; unresolved backtick text is ordinary prose. */
+  protected referenceAt(
     screenColumn: number,
     screenRow: number,
-  ): { hit: MarkdownReferenceHit; path: string } | null {
+  ): { hit: MarkdownReferenceHit; path: string | null } | null {
     const hit = this.previewRenderable.referenceAtCell(screenColumn, screenRow);
     if (!hit) return null;
     const path = this.options.resolveReference(hit.target);
-    return path ? { hit, path } : null;
+    if (path === null && !hit.explicitLink) return null;
+    return { hit, path };
   }
 
   protected paneExtentWidth(): number {
@@ -591,6 +617,14 @@ export interface MarkdownSplitViewOptions {
     screenRow: number,
   ): void;
   clearReferenceTooltip(): void;
+  /** State why an authored link cannot open (external scheme, or no such file). `hover` explains
+   *  in place; `activate` additionally answers the spent click where the status bar shows it. */
+  notifyUnresolvedReference(
+    target: string,
+    screenColumn: number,
+    screenRow: number,
+    gesture: 'hover' | 'activate',
+  ): void;
 }
 
 type MarkdownSplitPane = 'source' | 'preview';

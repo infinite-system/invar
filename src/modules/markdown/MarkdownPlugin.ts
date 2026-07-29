@@ -32,6 +32,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
   protected disposeSurface: (() => void) | null = null;
   protected disposeCommands: (() => void) | null = null;
   protected disposeStatusProjection: (() => void) | null = null;
+  protected disposeStatusBar: (() => void) | null = null;
   protected splitRatioSetting: RegisteredSetting<number> | null = null;
   protected previewSideSetting: RegisteredSetting<string> | null = null;
 
@@ -89,7 +90,17 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
       });
+    // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+    this.disposeStatusBar = context.statusBarSegments.register(this);
     this.registerCommands(context);
+  }
+
+  /** The plugin's own status-bar contribution: the stated outcome of the last unresolvable-link
+   *  activation, while one is owed. */
+  segments(): readonly string[] {
+    const notice =
+      this.surface?.previewContent?.splitView.linkNotice.value ?? null;
+    return notice === null ? [] : [notice];
   }
 
   disposeApplication(): void {
@@ -99,6 +110,8 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     this.disposeCommands = null;
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
+    this.disposeStatusBar?.();
+    this.disposeStatusBar = null;
     this.surface = null;
     this.splitRatioSetting = null;
     this.previewSideSetting = null;
@@ -162,6 +175,7 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
       markdownPreviewScrollTop: splitView?.preview.scrollTop.value ?? 0,
       markdownPreviewSelectionChars: splitView?.selectionCharacterCount() ?? 0,
       markdownHoveredReference: splitView?.hoveredReferencePath.value ?? null,
+      markdownLinkNotice: splitView?.linkNotice.value ?? null,
       markdownPreviewFindQuery: previewContent?.previewFindQuery() ?? '',
     };
   }
