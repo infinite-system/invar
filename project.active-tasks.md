@@ -7,7 +7,7 @@ hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (2)
-- #219 source-text-view-onto-pane-content-seam  [building]
+- #219 source-text-view-onto-pane-content-seam  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/219-source-text-view-onto-pane-content-seam`
 - #216 drive-onramp-quick-open-blind-enumeration  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/216-drive-onramp-quick-open-blind-enumeration`
@@ -16,7 +16,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (15)
+## VERIFICATION-INTEGRITY (16)
+- #229 scale-parity-selection-smoke
 - #227 dispatch-cuts-worktree-after-record-commit
 - #225 system-invariants-rotted-enumeration
 - #221 editor-owns-no-view-state-uncited
@@ -60,7 +61,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (9)
+## ARCHITECTURE-HYGIENE (10)
+- #228 source-text-keys-through-pane-context
 - #226 clock-freeze-hook-and-getter-conversion
 - #224 momentum-ambient-clock-default-parameter
 - #223 database-plugin-proves-provider-seam
