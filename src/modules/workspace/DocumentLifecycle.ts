@@ -1,6 +1,6 @@
 import type { DocumentHandle } from './DocumentHandle';
 
-// invariant: Document identity survives document instance replacement (workspace.invariants.md)
+// invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 class $DocumentLifecycle {
   protected readonly contributions = new Set<DocumentLifecycleContribution>();
 

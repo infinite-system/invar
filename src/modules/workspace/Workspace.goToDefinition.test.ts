@@ -243,7 +243,7 @@ function createEmbeddingClaim() {
   };
 }
 
-// invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+// invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
 describe('language requests follow the editor-surface capability, not a plugin mode', () => {
   test('a surface that replaces the active document suppresses every language request', async () => {
     const workspace = buildWorkspace();

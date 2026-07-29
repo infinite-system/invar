@@ -6,9 +6,9 @@ import { ref, shallowRef } from 'vue';
 // action id, with optional context + guard); resolution is a pure lookup over layers where LATER
 // layers shadow earlier ones (canonical floor ← platform overlays ← plugin defaults ← user
 // rebinds). Multi-step chords are step-list data with a timeout — not bespoke state code.
-// invariant: Bindings are intent addressed (keybindings.invariants.md)
-// invariant: Resolution is layered and later layers shadow earlier (keybindings.invariants.md)
-// invariant: Focus owns the keystroke (keybindings.invariants.md)
+// invariant: Bindings are intent addressed (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Resolution is layered and later layers shadow earlier (src/modules/keybindings/keybindings.invariants.md)
+// invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
 class $KeybindingRegistry {
   protected static get CHORD_TIMEOUT_MILLISECONDS(): number {
     return 2000;
@@ -20,7 +20,7 @@ class $KeybindingRegistry {
    * letter: 0x0A is Ctrl+J, but OpenTUI names that byte `linefeed`, so a `{ key: 'j', ctrl: true }`
    * pattern never matched it and the panel toggle silently did nothing on such terminals. Chord
    * patterns stay intent-addressed; the artefact is repaired here, not in every call site.
-   * invariant: A terminal delivers encoded sequences not keys (keybindings.invariants.md)
+   * invariant: A terminal delivers encoded sequences not keys (src/modules/keybindings/keybindings.invariants.md)
    */
   protected normalizeChordEvent(event: ChordEvent): ChordEvent {
     if (event.name === 'linefeed' && !event.ctrl) {
@@ -50,7 +50,7 @@ class $KeybindingRegistry {
     this.registerTieredLayer(name, bindings, name === 'user' ? 'user' : 'host');
   }
 
-  // invariant: Plugin bindings cannot reserve chords (keybindings.invariants.md)
+  // invariant: Plugin bindings cannot reserve chords (src/modules/keybindings/keybindings.invariants.md)
   registerPluginLayer(
     name: string,
     bindings: readonly Keybinding[],
@@ -235,7 +235,7 @@ class $KeybindingRegistry {
    * normal resolve(), on every key, without disturbing an in-flight chord. Returns the action id or
    * null. Only single `chord` bindings marked `reserved` match (steps are excluded — the check must
    * be stateless). This is how a focused modal/search input lets quit PASS THROUGH instead of
-   * swallowing it. invariant: Reserved global chords fire from any mode (keybindings.invariants.md)
+   * swallowing it. invariant: Reserved global chords fire from any mode (src/modules/keybindings/keybindings.invariants.md)
    */
   resolveReservedGlobal(rawEvent: ChordEvent): string | null {
     const event = this.normalizeChordEvent(rawEvent);
@@ -271,8 +271,8 @@ class $KeybindingRegistry {
    * protocol AND the user is on a Cmd keyboard; the platform overlay is registered unconditionally, so
    * without this rule a Linux user's cheat-sheet would advertise `Cmd+P` for Go to File — a chord that
    * cannot arrive for them. Hints must name a chord the CURRENT session can deliver.
-   * invariant: Advertised bindings are deliverable bindings (keybindings.invariants.md)
-   * invariant: Modifier fidelity varies by protocol (keybindings.invariants.md)
+   * invariant: Advertised bindings are deliverable bindings (src/modules/keybindings/keybindings.invariants.md)
+   * invariant: Modifier fidelity varies by protocol (src/modules/keybindings/keybindings.invariants.md)
    */
   effectiveBindings(context: string): Map<string, Keybinding> {
     void this.revision.value; // subscribe
@@ -332,7 +332,7 @@ class $KeybindingRegistry {
    * bounded exception: it produces no character and is kept only as the deliverability fallback for
    * a total-loss action (quit), at the stated cost that a full-screen TUI binding the same F-key
    * loses it. See project.keyboard.md §5.
-   * invariant: Focus owns the keystroke (keybindings.invariants.md)
+   * invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md)
    */
   reservedSetProblems(): string[] {
     const problems: string[] = [];
@@ -369,7 +369,7 @@ class $KeybindingRegistry {
   }
 
   /** Every action bound with `super` must also be reachable without it (the canonical floor).
-   *  invariant: The canonical layer is the floor (keybindings.invariants.md) */
+   *  invariant: The canonical layer is the floor (src/modules/keybindings/keybindings.invariants.md) */
   actionsMissingCanonicalFloor(): string[] {
     const superActions = new Set<string>();
     const floorActions = new Set<string>();
@@ -417,7 +417,7 @@ export interface Keybinding {
   /** The WARRANT for a `reserved` claim, inline on the binding so the justification can never be
    *  separated from the theft it justifies. Names which admission clause admits it (trap avoidance
    *  or toggle symmetry) — see project.keyboard.md §2.
-   *  invariant: Focus owns the keystroke (keybindings.invariants.md) */
+   *  invariant: Focus owns the keystroke (src/modules/keybindings/keybindings.invariants.md) */
   reservedBecause?: string;
 }
 

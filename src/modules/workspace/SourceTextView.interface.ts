@@ -10,7 +10,7 @@
 // scratch buffer, a remote buffer) is a second provider, not an edit here.
 //
 // invariant: The host canvas is complete without plugins (project.invariants.md)
-// invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+// invariant: One provider creates every workspace buffer view (src/modules/workspace/workspace.invariants.md)
 import type { Ref } from 'vue';
 import type { TextChunk } from '@opentui/core';
 import type { TextDocument } from '../text/TextDocument';

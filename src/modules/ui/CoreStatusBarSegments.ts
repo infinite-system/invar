@@ -4,7 +4,7 @@ import type {
   StatusBarSegmentContribution,
 } from './StatusBarSegments';
 
-// invariant: Status text is assembled from ordered contributions (ui.invariants.md)
+// invariant: Status text is assembled from ordered contributions (src/modules/ui/ui.invariants.md)
 class $CoreStatusBarSegments {
   static segments(context: StatusBarSegmentContext): readonly string[] {
     const workspace = context.workspaceSet.active;

@@ -14,8 +14,8 @@ import { ContentOrderDrag } from './ContentOrderDrag';
 import type { PanelHost } from './PanelHost';
 import type { Tooltip } from './Tooltip';
 
-// invariant: The active activity item determines the sidebar content (ui.invariants.md)
-// invariant: Activity bar order is one persisted sequence (ui.invariants.md)
+// invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
+// invariant: Activity bar order is one persisted sequence (src/modules/ui/ui.invariants.md)
 class $ActivityBar {
   readonly bar: BoxRenderable;
   protected readonly body: TextRenderable;

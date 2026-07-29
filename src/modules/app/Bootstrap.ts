@@ -3,7 +3,7 @@
 //
 // invariant: The app is built only after the kernel is sealed (project.invariants.md)
 // invariant: Data flows one way (project.invariants.md)
-// invariant: Rendering is one coarse frame effect (app.invariants.md)
+// invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
 // invariant: SDK extraction cleanup stays bounded (src/modules/agent/agent.invariants.md)
 import {
@@ -966,7 +966,7 @@ class $Bootstrap {
     // The editor viewport size derives from the rendered layout (non-reactive), so it is synced on
     // the external triggers (boot, resize) — NOT inside the frame effect, which would be a
     // projection→model write feeding the effect it observes.
-    // invariant: Rendering is one coarse frame effect (app.invariants.md)
+    // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
     const syncSize = (): void => {
       workspaceSet.active.editor.viewport.setSize(
         view.editorViewportWidth(),
@@ -977,7 +977,7 @@ class $Bootstrap {
     // The single coarse reactive frame effect: observe the load-bearing signals and repaint on ANY
     // change — keyboard input OR an async producer. This lets contributed state or an LSP
     // diagnostic repaint the screen without a keypress.
-    // invariant: Rendering is one coarse frame effect (app.invariants.md)
+    // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
     app.$watchEffect(() => {
       const editor = workspaceSet.active.editor;
       // The whole paint pass is exception-isolated: a throw while projecting model→renderables must
@@ -1129,7 +1129,7 @@ class $Bootstrap {
       const workspaceScrollMomentumIsActive =
         workspaceSet.active.tickScrollAnimations(deltaTimeSeconds);
       animating = workspaceScrollMomentumIsActive || animating;
-      // invariant: Rendering is one coarse frame effect (app.invariants.md)
+      // invariant: Rendering is one coarse frame effect (src/modules/app/app.invariants.md)
       StatusChannel.Class.update({
         workspaceScrollMomentumAtRest: !workspaceScrollMomentumIsActive,
       });

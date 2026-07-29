@@ -1,7 +1,7 @@
 import type { TextDocument } from '../text/TextDocument';
 import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
 
-// invariant: Document identity survives document instance replacement (workspace.invariants.md)
+// invariant: Document identity survives document instance replacement (src/modules/workspace/workspace.invariants.md)
 class $DocumentHandle {
   constructor(
     readonly identifier: symbol,

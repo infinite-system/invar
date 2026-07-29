@@ -16,9 +16,9 @@ import { ScrollbarGeometry } from './ScrollbarGeometry';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 import type { Tooltip } from './Tooltip';
 
-// invariant: A scrollbar track is derived per frame from its region rect (ui.invariants.md)
-// invariant: One writer per scroll regime per frame (ui.invariants.md)
-// invariant: The editor overview derives from the decoration snapshot (ui.invariants.md)
+// invariant: A scrollbar track is derived per frame from its region rect (src/modules/ui/ui.invariants.md)
+// invariant: One writer per scroll regime per frame (src/modules/ui/ui.invariants.md)
+// invariant: The editor overview derives from the decoration snapshot (src/modules/ui/ui.invariants.md)
 class $ScrollbarSync {
   protected readonly barScales = new Map<object, number>();
   protected applying = false;

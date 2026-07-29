@@ -14,7 +14,7 @@
 // editor, whose native selection and layout-anchored caret are the point — declares the
 // `native-surface` capability instead and paints them itself. Hosts never choose between those two:
 // they call `PaneProjection.paint`, which resolves the capability.
-// invariant: A pane content projects through exactly one surface (ui.invariants.md)
+// invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
 import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
@@ -130,7 +130,7 @@ export interface PaneContent {
  *
  *  A native surface pays for that autonomy by answering two questions the host can no longer
  *  derive: where its caret sits, and which screen region it actually painted.
- *  invariant: A pane content projects through exactly one surface (ui.invariants.md) */
+ *  invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md) */
 export interface PaneNativeSurfacePort {
   /** Project for this region by painting the renderables this content owns. Native selection is
    *  applied inside this call, after the content is set, so a selection never maps onto the

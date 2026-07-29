@@ -638,8 +638,8 @@ are outside the gap-chunk rule but still return their hit segments from the pain
 - *One gap chunk* — unused width advances the cursor by its full width but allocates one styled chunk.
 
 **Mechanism:** `TabBarRenderer.appendHorizontalGap` emits one repeated-space chunk, then
-`renderWorkspaceTabBar` and `renderBufferTabBar` advance their existing column cursors by the same
-gap width before painting and recording right controls.
+`TabBarRenderer.renderWorkspace` and `TabBarRenderer.renderBuffer` advance their existing column
+cursors by the same gap width before painting and recording right controls.
 
 **Generates:** right-pinned controls; hit targets that stay on their painted glyphs; styled-chunk cost
 that scales with visible tabs and controls instead of terminal width.
@@ -764,7 +764,7 @@ command palette beneath it; Ctrl+F then Ctrl+H creating two bars instead of chan
 replace mode; Ctrl+Q being swallowed by Find, Quick Open, or the command palette.
 
 **Verification:** `bun test src/modules/ui/OverlayCoordinator.test.ts
-src/modules/keybindings/__tests__/registry.test.ts && bash scripts/smoke-mode-coherence.sh`
+src/modules/keybindings/KeybindingRegistry.test.ts && bash scripts/smoke-mode-coherence.sh`
 
 **Status:** established
 
@@ -1639,7 +1639,7 @@ scrollback, and any future pane).
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
-fits. `ScrollbarSync.applyBarGeometry` applies the configured cross-axis cell count; every bar is a
+fits. `ScrollbarSync.applyBar` applies the configured cross-axis cell count; every bar is a
 `SolidThumbScrollBar` (both axes render plain at the settings thickness, keeping OpenTUI's native
 drag geometry).
 

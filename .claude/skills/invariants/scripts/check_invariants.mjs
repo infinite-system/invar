@@ -21,7 +21,8 @@
 //                                        files are reported and skipped, not failed;
 //                                        exits 2 if zero contracts exist under ROOT
 //   --strict                             with --all: non-canonical files fail instead of skip
-//   check_invariants.mjs --refs [ROOT]   scan code for 'invariant: <Name> (<contract path>)'
+//   check_invariants.mjs --refs [ROOT]   scan code for
+//                                        'invariant: <Name> (<root-relative contract path>)'
 //                                        annotations and *.lattice.md links; fail on orphans
 //                                        (name, anchor, or contract path that no longer
 //                                        resolves); report per-record annotation coverage
@@ -37,7 +38,7 @@ import { execSync } from 'node:child_process';
 import process from 'node:process';
 
 // Bump when schema fields or validation semantics change.
-const VERSION = '2.2.1';
+const VERSION = '2.2.2';
 
 const REALITY = '## Reality-based invariants';
 const CHOSEN = '## Chosen invariants';
@@ -737,8 +738,14 @@ function checkRefs(root) {
             ? contracts.get(targetPath)
             : undefined;
         if (target === undefined) {
-          targetPath = resolve(dirname(p), cpath);
-          target = contracts.get(targetPath);
+          const fileRelativeTargetPath = resolve(dirname(p), cpath);
+          if (contracts.has(fileRelativeTargetPath)) {
+            orphans.push(
+              `${where}: contract path must be root-relative: ${cpath} ` +
+                `(use ${relative(root, fileRelativeTargetPath)})`,
+            );
+            continue;
+          }
         }
         if (target === undefined)
           orphans.push(`${where}: contract not found: ${cpath}`);
@@ -906,7 +913,7 @@ usage:
   node <path-to>/check_invariants.mjs --all [ROOT]      validate every *.invariants.md
                                                         (exit 2 if none exist under ROOT)
   node <path-to>/check_invariants.mjs --refs [ROOT]     verify code annotations + lattice
-                                                        links resolve; report coverage
+                                                        links resolve from root; report coverage
   node <path-to>/check_invariants.mjs --refs-for '<Name>' [ROOT]
                                                         every code annotation + contract declaring
                                                         ONE named invariant (retirement-sweep primitive)

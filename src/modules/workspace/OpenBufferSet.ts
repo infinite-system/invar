@@ -10,8 +10,8 @@ import { DocumentHandle } from './DocumentHandle';
 // any dirty background buffer, whose unsaved edits must survive) holds live documents; other clean
 // buffers are dehydrated to a light handle (path + cursor/scroll) and rehydrated on activation.
 //
-// invariant: N open tabs do not cost N live documents (workspace.invariants.md)
-// invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
+// invariant: N open tabs do not cost N live documents (src/modules/workspace/workspace.invariants.md)
+// invariant: Workspace and file navigation are separate layers (src/modules/workspace/workspace.invariants.md)
 
 class $OpenBufferSet {
   // Two documents cover the dominant compare-and-edit gesture while bounding clean document

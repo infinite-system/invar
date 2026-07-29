@@ -13,7 +13,7 @@ import type {
 } from '../workspace/WorkspaceContributor.interface';
 import { InlineRewriteWorkspace } from './InlineRewriteWorkspace';
 
-// invariant: One contributor owns rewrites (inline-rewrite.invariants.md)
+// invariant: One contributor owns rewrites (src/modules/inline-rewrite/inline-rewrite.invariants.md)
 class $InlineRewriteContributor
   implements ApplicationContributor, WorkspaceContributor
 {

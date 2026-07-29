@@ -4,16 +4,14 @@
 // `lastLocalSelection` (local text-buffer coords) and re-applies it via the protected
 // `refreshLocalSelection()` whenever content changes; we set that field and refresh.
 //
-// Coordinates are viewport-local cells: x = display column, y = visual line index within the
-// currently-rendered window (the editor renders only the visible window, so y = documentLine -
-// scrollTop). TextBufferRenderable synchronizes its TextBufferView viewport in onResize();
-// setLocalSelection then adds that viewport's scroll offsets when resolving the cell to a text
-// offset. The code buffer holds ONLY code (no gutter), so a multi-line selection never shades a
-// gutter.
+// Coordinates are viewport-local cells. EditorPane.visualRowsWindow maps document positions through
+// folding and wrapping into the rendered window's visual rows. setSelectionRange writes OpenTUI's
+// lastLocalSelection, calls refreshLocalSelection(), and requests a render. The code buffer holds
+// only code, with no gutter, so a multi-line selection never shades a gutter.
 import { TextRenderable } from '@opentui/core';
 
 class $SelectableText extends TextRenderable {
-  // invariant: The selected range renders with a background (ui.invariants.md)
+  // invariant: The selected range renders with a background (src/modules/ui/ui.invariants.md)
   setSelectionRange(
     anchorX: number,
     anchorY: number,

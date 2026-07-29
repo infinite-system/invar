@@ -296,7 +296,7 @@ test('--refs resolves valid annotations, fails orphans, harvests local headings'
   cleanup();
 });
 
-test("--refs tolerates paths relative to the annotated file's directory", () => {
+test('--refs rejects paths relative to the annotated file directory', () => {
   const { dir, cleanup } = tmp();
   mkdirSync(join(dir, 'sub'), { recursive: true });
   writeFileSync(
@@ -308,8 +308,12 @@ test("--refs tolerates paths relative to the annotated file's directory", () => 
     '// invariant: Real Rule (demo.invariants.md)\n',
   );
   const r = run(['--refs', dir]);
-  assert.equal(r.code, 0);
-  assert.match(r.stdout, /1 annotation\(s\) resolved, .*0 problem\(s\)/);
+  assert.equal(r.code, 1);
+  assert.match(r.stdout, /0 annotation\(s\) resolved, .*1 problem\(s\)/);
+  assert.match(
+    r.stderr,
+    /contract path must be root-relative: demo\.invariants\.md \(use sub\/demo\.invariants\.md\)/,
+  );
   cleanup();
 });
 
