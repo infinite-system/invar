@@ -38,6 +38,18 @@ Both polarities throughout; the linter's moved-vs-dead distinction is
 the load-bearing new behavior — a dead link must NOT pass because the
 fallback exists.
 
+## Arm 5 (user, 13:2x): the preview paints dead links RED
+
+The markdown preview styles a relative link by the resolver's verdict:
+resolves (normal link style), resolves-under-another-state (normal — it
+works), DEAD (red, both themes). The click-time stated-miss stays; the
+red is the same truth surfaced at render. Verdicts are computed per
+parse revision and cached (no per-frame fs probing — the settled-frame
+contract must not gain filesystem work per paint). http(s) links are
+out of scope for the check (no network). Both polarities driven: a dead
+link paints red; fixing the file live (watcher revision) repaints it
+normal.
+
 ## Invariants in scope
 
 - #276's link-walk records (extend with the wildcard-state component);
