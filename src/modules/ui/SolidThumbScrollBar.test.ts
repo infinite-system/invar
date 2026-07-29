@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { RGBA } from '@opentui/core';
 import { createTestRenderer, type TestRenderer } from '@opentui/core/testing';
 import { SolidThumbScrollBar } from './SolidThumbScrollBar';
 
@@ -26,6 +27,68 @@ class TestSolidThumbScrollBar extends SolidThumbScrollBar.$Class {
 test('solid-thumb scrollbars remain constructible through their class seam', () => {
   expect(SolidThumbScrollBar.Class).toBeDefined();
 });
+
+test('scrollbars stay above later default-layer content without overriding a stronger caller priority', async () => {
+  const setup = await createTestRenderer({ width: 20, height: 10 });
+  renderer = setup.renderer;
+  const defaultPriorityBar = new SolidThumbScrollBar.Class(renderer, {
+    id: 'default-priority',
+    orientation: 'vertical',
+  });
+  const callerPriorityBar = new SolidThumbScrollBar.Class(renderer, {
+    id: 'caller-priority',
+    orientation: 'vertical',
+    zIndex: 50,
+  });
+
+  expect(defaultPriorityBar.zIndex).toBe(1);
+  expect(callerPriorityBar.zIndex).toBe(50);
+});
+
+test.each([
+  ['dark', '#1a1b26', '#7aa2f7'],
+  ['light', '#e1e2e7', '#2e7de9'],
+] as const)(
+  'horizontal bars paint one lower half-cell in the %s palette',
+  async (_paletteName, trackColor, thumbColor) => {
+    const setup = await createTestRenderer({ width: 20, height: 4 });
+    renderer = setup.renderer;
+    const scrollBar = new SolidThumbScrollBar.Class(renderer, {
+      id: 'horizontal-half-cell',
+      orientation: 'horizontal',
+      position: 'absolute',
+      width: 12,
+      height: 1,
+      showArrows: false,
+      trackOptions: {
+        backgroundColor: trackColor,
+        foregroundColor: thumbColor,
+      },
+    });
+    renderer.root.add(scrollBar);
+    scrollBar.scrollSize = 100;
+    scrollBar.viewportSize = 20;
+    scrollBar.scrollPosition = 40;
+
+    await setup.renderOnce();
+
+    const paintedRow = setup.captureCharFrame().split('\n')[0] ?? '';
+    expect(paintedRow.slice(0, 12)).toBe('▄'.repeat(12));
+    expect(paintedRow).not.toContain('█');
+    expect(paintedRow).not.toContain('▀');
+    const paintedForegrounds = new Set(
+      (setup.captureSpans().lines[0]?.spans ?? [])
+        .filter((span) => span.text.includes('▄'))
+        .map((span) => span.fg.toString()),
+    );
+    expect(paintedForegrounds).toEqual(
+      new Set([
+        RGBA.fromHex(trackColor).toString(),
+        RGBA.fromHex(thumbColor).toString(),
+      ]),
+    );
+  },
+);
 
 test('whole-cell thumb length is independent of half-cell start parity', () => {
   const trackLength = 21;

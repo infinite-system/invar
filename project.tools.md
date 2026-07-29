@@ -16,6 +16,21 @@ was six commits of flat numbers. Reach for an instrument BEFORE briefing a cause
 
 ## The instruments
 
+### `bun .invar/tasks/*/282-scrollbar-drag-broken-and-horizontal-thickness/282-scrollbar-drag-history-probe.ts [repository-root] [line-count] [theme] [focus-click]`
+Real PTY press-move-release fingerprints for the editor's horizontal and vertical thumbs and the
+structure right-dock thumb. It builds a bounded fixture with 500 structure symbols and extends it
+with comment rows for a requested document scale. Each sequence reports the starting scroll offset
+and the offsets after three pressed-pointer moves. A growing sequence means the thumb handled every
+move; a flat sequence means visible paint did not receive the gesture. The paint fingerprint counts
+lower-half and full-block cells and lists their foreground colours. Pass another worktree as
+`repository-root` to compare the same gesture across history.
+USE IT WHEN: a scrollbar is visible but dragging feels inert, a pointer-order change may cover a
+bar, or horizontal paint changes shape. Use 500 and 100000 lines for scale parity.
+KNOWN RESULT (2026-07-29): commit `bb7ce7bb` moved the editor horizontal position
+`0→13→11→25` and vertical position `0→48→97→145`; commit `ce748915` made both sequences flat.
+The repaired 500-line path moves `0→23→47→70` and `0→48→97→145`; the 100,000-line path moves
+`0→25→50→75` and `0→10341→20683→31024`.
+
 ### `bun scripts/harness/measure-scroll-smoothness.ts`
 Per-frame glide behaviour on the real app through the PTY. Generates 2k, 26,635, and 100k-line
 fixtures at run time (nothing large is committed), then measures both the bare editor and side-by-side

@@ -57,7 +57,7 @@ One painter draws every single-line text field
 
 A scrollable pane height is an input not an output  (reality)
   ├─► A scrollbar track is derived per frame from its region rect
-  │     ├─► A scrollbar thumb is painted as background fill, never block glyphs
+  │     ├─► One scrollbar painter gives each axis equal visual weight
   │     └─► The editor overview derives from the decoration snapshot
   │           └─► TS diagnostics render as an underline and overview mark
   └─► Only the visible window is rendered
@@ -175,9 +175,9 @@ differs.
 one reality record here, and it is the floor for every windowed surface: a height derived from
 rendered content makes the render window feed itself. [A scrollbar track is derived per frame from
 its region rect][scrollbar-track] stands on it — the track can only be derived per frame if the
-region is not a function of what was drawn. [A scrollbar thumb is painted as background fill, never
-block glyphs][solid-thumb] refines the same bar into ONE painter whose normalized rect also drives
-the native hit test. [The editor overview derives from the decoration snapshot][overview] adds
+region is not a function of what was drawn. [One scrollbar painter gives each axis equal visual
+weight][solid-thumb] refines the same bar into ONE painter whose normalized rect also drives the
+native hit test. [The editor overview derives from the decoration snapshot][overview] adds
 marks to that bar without touching track or thumb geometry, and [TS diagnostics render as an
 underline and overview mark][diagnostics] is one contributor into that projection, plus the reason
 the diff gutter carries no diagnostic.
@@ -500,7 +500,7 @@ questions from it.
 [drag-select]: ui.invariants.md#a-scrollable-text-surface-is-drag-selectable-with-edge-auto-scroll
 [scrollbar-track]: ui.invariants.md#a-scrollbar-track-is-derived-per-frame-from-its-region-rect
 [overview]: ui.invariants.md#the-editor-overview-derives-from-the-decoration-snapshot
-[solid-thumb]: ui.invariants.md#a-scrollbar-thumb-is-painted-as-background-fill-never-block-glyphs
+[solid-thumb]: ui.invariants.md#one-scrollbar-painter-gives-each-axis-equal-visual-weight
 [list-selection]: ui.invariants.md#selection-is-item-anchored-click-set-keyboard-moved-and-stays
 [diagnostics]: ui.invariants.md#ts-diagnostics-render-as-an-underline-and-overview-mark
 [settings-reveal]: ui.invariants.md#settings-selection-stays-inside-its-viewport

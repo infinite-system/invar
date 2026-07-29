@@ -1,16 +1,20 @@
-// Scrollbar whose thumb is SOLID: painted as BACKGROUND colour on blank cells, never as foreground
-// block glyphs. macOS Terminal.app rasterizes block glyphs (█ U+2588, ▀ U+2580, ▄ U+2584, …) with
-// inter-line gaps — a glyph-built thumb shows darker horizontal lines through it — while a background
-// fill covers every pixel of the cell, so the artifact cannot exist. OpenTUI's SliderRenderable
-// hard-codes the glyph painter (no bg-fill style option) and ScrollBarRenderable constructs its slider
-// internally, so the seam is this subclass replacing the slider's whole-cell thumb rect and repainting
-// its cells (the HitTransparentText pattern: an instance override where OpenTUI offers no flag).
+// Shared scrollbar painter. A vertical bar uses BACKGROUND colour on blank cells because macOS
+// Terminal.app can rasterize stacked block glyphs with horizontal seams. A horizontal bar uses the
+// lower-half block `▄`: terminal cells are about twice as tall as they are wide, so the glyph makes
+// both axes read at the same visual weight while its transparent background preserves the pane.
+// OpenTUI's SliderRenderable hard-codes its painter and ScrollBarRenderable constructs its slider
+// internally, so the seam is this subclass replacing the slider's whole-cell thumb rect and painter
+// (the HitTransparentText pattern: an instance override where OpenTUI offers no flag).
 // OpenTUI rounds both moving half-cell endpoints independently, which makes the whole-cell rect alternate
 // in length as its start crosses odd half-cells. This seam instead rounds the position-independent virtual
 // thumb size once, then clamps its start to the track. The painted rect IS the slider's mouse hit-test
 // rect, so the renderer and hit-test still share one geometry model. Every scrollbar in the app
 // (editor/pane bars via ScrollbarSync, the shared ScrollableTextViewport bars, the diff bars) constructs
 // THIS class.
+//
+// Every bar also has a positive z-index. SourceTextPaneContent is installed lazily after ScrollbarSync
+// and therefore paints later at the default z-index; without this shared priority, the editor's bar
+// remains visible but its pointer events fall through to the source body.
 //
 // It also heals an OpenTUI ordering bug at the same seam: ScrollBarRenderable's viewportSize setter
 // assigns slider.viewPortSize BEFORE updateSliderFromScrollState() raises slider.max, so the slider
@@ -19,7 +23,7 @@
 // AFTER each scroll-state write passes the now-correct clamp; the slider setter's equality guard makes
 // the per-frame re-assert free.
 //
-// invariant: A scrollbar thumb is painted as background fill, never block glyphs (src/modules/ui/ui.invariants.md)
+// invariant: One scrollbar painter gives each axis equal visual weight (src/modules/ui/ui.invariants.md)
 // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
 import { Static } from 'ivue/extras';
 import {
@@ -34,7 +38,10 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
   protected overviewMarks: readonly ScrollbarOverviewMark[] = [];
 
   constructor(context: RenderContext, options: ScrollBarOptions) {
-    super(context, options);
+    super(context, {
+      ...options,
+      zIndex: Math.max(1, options.zIndex ?? 1),
+    });
     const slider = this.slider;
     const paintSurface = slider as unknown as SliderPaintSurface;
     const selectedClass = this.constructor as typeof $SolidThumbScrollBar;
@@ -61,24 +68,54 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
           };
     };
     // Instance-level override shadows the prototype's glyph painter (render() dispatches through
-    // `this.renderSelf`). Track first, thumb over it — both as background fill on blank cells. The
-    // same overridden getThumbRect above is what SliderRenderable's mouse-down hit-test calls.
+    // `this.renderSelf`). The same overridden getThumbRect above is what SliderRenderable's
+    // mouse-down hit-test calls.
     paintSurface.renderSelf = (buffer: OptimizedBuffer): void => {
-      buffer.fillRect(
-        slider.x,
-        slider.y,
-        slider.width,
-        slider.height,
-        slider.backgroundColor,
-      );
       const thumbRect = paintSurface.getThumbRect();
-      buffer.fillRect(
-        thumbRect.x,
-        thumbRect.y,
-        thumbRect.width,
-        thumbRect.height,
-        slider.foregroundColor,
-      );
+      if (slider.orientation === 'vertical') {
+        buffer.fillRect(
+          slider.x,
+          slider.y,
+          slider.width,
+          slider.height,
+          slider.backgroundColor,
+        );
+        buffer.fillRect(
+          thumbRect.x,
+          thumbRect.y,
+          thumbRect.width,
+          thumbRect.height,
+          slider.foregroundColor,
+        );
+      } else {
+        const paintRow = slider.y + Math.max(0, slider.height - 1);
+        for (
+          let trackColumn = slider.x;
+          trackColumn < slider.x + slider.width;
+          trackColumn++
+        ) {
+          buffer.setCellWithAlphaBlending(
+            trackColumn,
+            paintRow,
+            '▄',
+            slider.backgroundColor,
+            selectedClass.$transparentBackground,
+          );
+        }
+        for (
+          let thumbColumn = thumbRect.x;
+          thumbColumn < thumbRect.x + thumbRect.width;
+          thumbColumn++
+        ) {
+          buffer.setCellWithAlphaBlending(
+            thumbColumn,
+            paintRow,
+            '▄',
+            slider.foregroundColor,
+            selectedClass.$transparentBackground,
+          );
+        }
+      }
       for (const overviewMark of this.overviewMarks) {
         if (
           overviewMark.trackOffset < 0 ||
@@ -135,6 +172,11 @@ class $SolidThumbScrollBar extends ScrollBarRenderable {
     );
     return { start, length };
   }
+
+  protected static get $transparentBackground(): RGBA {
+    return RGBA.fromValues(0, 0, 0, 0);
+  }
+
   /** Re-assert the slider's viewport AFTER the scroll state settled — the slider clamps viewPortSize
    *  against max-min at assignment time, and the base class assigns it before max is updated. */
   protected reassertSliderViewport(): void {
