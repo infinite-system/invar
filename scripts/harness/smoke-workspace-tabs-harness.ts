@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 // Byte-level workspace-tabs port: roots are added and switched through the painted strip and settings.
+// Each root also proves its own LSP process, diagnostics, structure, and type hover.
 //
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Workspace activation is view-only (src/modules/workspace/workspace.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import {
@@ -72,6 +73,123 @@ async function selectVisibleSetting(label: string): Promise<void> {
   );
 }
 
+async function languageServerProcesses(
+  status: Record<string, unknown>,
+): Promise<Array<{ pid: number; command: string; cwd: string }>> {
+  const subprocessPids = Array.isArray(status.subprocessPids)
+    ? status.subprocessPids
+    : [];
+  const processes: Array<{ pid: number; command: string; cwd: string }> = [];
+  for (const publishedPid of subprocessPids) {
+    const pid = Number(publishedPid);
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+    try {
+      const command = (await Bun.file(`/proc/${pid}/cmdline`).text())
+        .replaceAll('\0', ' ')
+        .trim();
+      if (
+        !command.includes('tsgo') &&
+        !command.includes('typescript-language-server')
+      ) {
+        continue;
+      }
+      processes.push({
+        pid,
+        command,
+        cwd: readlinkSync(`/proc/${pid}/cwd`),
+      });
+    } catch {
+      // A process that exits during inspection cannot satisfy the feature waits below.
+    }
+  }
+  return processes;
+}
+
+async function openLanguageFixture(
+  root: string,
+  fileName: string,
+  valueName: string,
+  shapeName: string,
+): Promise<void> {
+  driver.sendKeys('Control+p');
+  await awaitStatus(
+    driver,
+    statusPath,
+    `Go to File opens before ${fileName}`,
+    (status) => status.quickOpenOpen === true,
+  );
+  driver.sendText(fileName);
+  await awaitStatus(
+    driver,
+    statusPath,
+    `Go to File finds ${fileName}`,
+    (status) =>
+      status.quickOpenQuery === fileName && Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  const readyStatus = await awaitStatus(
+    driver,
+    statusPath,
+    `${fileName} gains language diagnostics and structure`,
+    (status) =>
+      status.activeWorkspaceRoot === root &&
+      String(status.activeBuffer).endsWith(`/${fileName}`) &&
+      typeof status.lspProvider === 'string' &&
+      Number(status.diagnosticsCount) > 0 &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) > 0,
+  );
+  let snapshot = await driver.awaitGridCondition(
+    `${fileName} paints its editor text and structure row`,
+    (candidate) =>
+      candidate.findText(`${valueName};`) !== null &&
+      candidate.findText('Structure') !== null,
+  );
+  const target = snapshot.findText(`${valueName};`);
+  requireCondition(target !== null, `${fileName} hover target is visible`);
+  if (!target) throw new Error(`${fileName} hover target disappeared`);
+  driver.sendMouse({
+    kind: 'move',
+    column: target.column + 2,
+    row: target.row,
+    button: 'none',
+  });
+  await driver.awaitScreenChange();
+  snapshot = await driver.awaitSnapshot(
+    (candidate) =>
+      candidate
+        .textRows()
+        .some(
+          (rowText) =>
+            rowText.includes(`const ${valueName}:`) &&
+            rowText.includes(shapeName) &&
+            !rowText.includes('export'),
+        ),
+    30_000,
+  );
+  requireCondition(
+    snapshot
+      .textRows()
+      .some(
+        (rowText) =>
+          rowText.includes(`const ${valueName}:`) &&
+          rowText.includes(shapeName) &&
+          !rowText.includes('export'),
+      ),
+    `${fileName} paints the language-server type hover`,
+  );
+  const languageProcesses = await languageServerProcesses(readyStatus);
+  requireCondition(
+    languageProcesses.length === 1 && languageProcesses[0]?.cwd === root,
+    `${fileName} has one language server rooted at its active workspace`,
+  );
+  pass(
+    `${fileName}: diagnostics=${readyStatus.diagnosticsCount}, structureRows=${readyStatus.structureRows}, cwd=${languageProcesses[0]?.cwd}`,
+  );
+  driver.sendKeys('Escape');
+  await driver.awaitScreenChange();
+}
+
 mkdirSync(join(firstRoot, 'tracked'), { recursive: true });
 
 for (
@@ -85,6 +203,35 @@ for (
 await Bun.write(join(firstRoot, 'FIRST_TREE_ONLY.txt'), 'first tree\n');
 
 await Bun.write(join(firstRoot, 'first-root-change.txt'), 'first committed\n');
+
+await Bun.write(
+  join(firstRoot, 'first-types.ts'),
+  'export interface FirstShape { label: string }\n',
+);
+
+await Bun.write(
+  join(firstRoot, 'first-language.ts'),
+  [
+    "import type { FirstShape } from './first-types';",
+    "export const firstValue: FirstShape = { label: 'first' };",
+    'const firstDiagnostic: string = 1;',
+    'firstValue;',
+    '',
+  ].join('\n'),
+);
+
+await Bun.write(
+  join(firstRoot, 'tsconfig.json'),
+  JSON.stringify({
+    compilerOptions: {
+      strict: true,
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'bundler',
+    },
+    include: ['*.ts'],
+  }),
+);
 
 runGit(firstRoot, ['init', '-q']);
 
@@ -125,6 +272,35 @@ for (
 await Bun.write(join(secondRoot, '.gitignore'), 'ignored-cache/\n');
 
 await Bun.write(join(secondRoot, 'SECOND_TREE_ONLY.txt'), 'second tree\n');
+
+await Bun.write(
+  join(secondRoot, 'second-types.ts'),
+  'export interface SecondShape { label: string }\n',
+);
+
+await Bun.write(
+  join(secondRoot, 'second-language.ts'),
+  [
+    "import type { SecondShape } from './second-types';",
+    "export const secondValue: SecondShape = { label: 'second' };",
+    'const secondDiagnostic: string = 1;',
+    'secondValue;',
+    '',
+  ].join('\n'),
+);
+
+await Bun.write(
+  join(secondRoot, 'tsconfig.json'),
+  JSON.stringify({
+    compilerOptions: {
+      strict: true,
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'bundler',
+    },
+    include: ['*.ts'],
+  }),
+);
 
 await Bun.write(
   join(secondRoot, 'second-root-change.txt'),
@@ -316,6 +492,53 @@ try {
     branchCell?.foreground === settledSecondNameForeground,
     'active workspace detail foreground matches the readable name foreground',
   );
+
+  console.log(
+    '== harness workspace tabs: language features follow each workspace root ==',
+  );
+  await openLanguageFixture(
+    secondRoot,
+    'second-language.ts',
+    'secondValue',
+    'SecondShape',
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, firstName.slice(0, 17));
+  await awaitStatus(
+    driver,
+    statusPath,
+    'the first workspace is active before its language arm',
+    (status) => status.activeWorkspaceRoot === firstRoot,
+  );
+  await openLanguageFixture(
+    firstRoot,
+    'first-language.ts',
+    'firstValue',
+    'FirstShape',
+  );
+  snapshot = driver.snapshot();
+  clickMarker(driver, snapshot, secondName.slice(0, 17));
+  const restoredSecondLanguageStatus = await awaitStatus(
+    driver,
+    statusPath,
+    'the second workspace language features return after switching back',
+    (status) =>
+      status.activeWorkspaceRoot === secondRoot &&
+      String(status.activeBuffer).endsWith('/second-language.ts') &&
+      typeof status.lspProvider === 'string' &&
+      Number(status.diagnosticsCount) > 0 &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) > 0,
+  );
+  const restoredSecondLanguageProcesses = await languageServerProcesses(
+    restoredSecondLanguageStatus,
+  );
+  requireCondition(
+    restoredSecondLanguageProcesses.length === 1 &&
+      restoredSecondLanguageProcesses[0]?.cwd === secondRoot,
+    'switching back recreates the language server at the second workspace root',
+  );
+  pass('language features retarget through second, first, and second roots');
 
   console.log(
     '== harness workspace tabs: git panel follows the active root ==',
