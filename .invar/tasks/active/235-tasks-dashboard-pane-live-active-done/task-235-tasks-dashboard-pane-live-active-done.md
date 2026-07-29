@@ -23,6 +23,16 @@ User's shape, verbatim intent:
   `task-<n>-<slug>.md` (and from there the folder's briefs/reports) in the
   editor. Reading is the new writing.
 
+THE CLI LENSES ARE THE PRIMITIVE (user, 2026-07-29 ~02:2x: "that will be a
+primitive for the Tasks module in invar"). `tasks-status.ts` already owns the
+readers (`readTaskRecords`, the drift signals, durations from meta.json, the
+priority grouping) and the motion semantics (`tasks:watch`). The pane PLUGS
+INTO that generator — import its exported readers, reuse its vocabulary
+(building spins, READY holds still, durations tick) — and adds only what a
+pane can do that a terminal cannot: ivue reactivity instead of redraw polling,
+selection, and opening the linked md files in the editor. Re-implementing any
+reader is the seam failure this repo names.
+
 Structure notes:
 - The data generator already exists: `scripts/tasks/tasks-status.ts` reads the
   folders deterministically. The pane must share that generator, not re-parse
