@@ -24,7 +24,7 @@ import type { StructureOutline } from './StructureOutline';
 class $StructurePaneRenderer {
   static render(context: StructurePaneRenderContext): StyledText {
     const { outline, palette, innerWidth } = context;
-    const depthControl = ` ${context.settingsGlyph} ${context.defaultDepth}`;
+    const depthControl = ` ${context.structureMarks.structureDepth} ${context.defaultDepth}`;
     const filterWidth = Math.max(1, innerWidth - depthControl.length);
     const filterField = TextFieldPainter.Class.paint({
       prefix: `${context.searchGlyph ?? '/'} `,
@@ -250,10 +250,10 @@ export interface StructurePaneRenderContext {
     | 'structureOverride'
     | 'structureGetter'
     | 'structureSetter'
+    | 'structureDepth'
   >;
   filterInput?: TextInputModel.Model;
   searchGlyph?: string;
-  settingsGlyph: string;
   defaultDepth: number;
   foldOpenGlyph?: string;
   foldClosedGlyph?: string;

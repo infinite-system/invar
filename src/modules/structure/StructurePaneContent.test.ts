@@ -148,6 +148,9 @@ describe('StructurePaneContent', () => {
     );
     const marks: SymbolMarkSet = ThemeIcons.Class.symbolMarksFor('unicode');
     expect(rendered).toContain(ThemeIcons.Class.findIconsFor('unicode').search);
+    expect(rendered).toContain(
+      ThemeIcons.Class.glyphFor('unicode', 'structureDepth'),
+    );
     expect(rendered).toContain(`${marks.type} Widget :1`);
     expect(rendered).toContain(`  ${marks.callable} render :2`);
     outline.dispose();

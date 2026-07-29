@@ -45,6 +45,39 @@ and shared menu gesture. [StructurePlugin.ts](../../../../src/modules/structure/
 writes the existing setting. The new record extends
 [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md#outline-labels-expose-source-semantics).
 
+## Round 2
+
+The reported status-bar failure reproduced before the fix. The editor harness found the first
+visible `⚙`, which was now the Structure depth control on row 4. It clicked that control and
+correctly opened the depth menu. It did not click the status-bar Settings control on row 39, so
+`status.settingsOpen` stayed false. The Structure control did not swallow or shadow another
+overlay. The two unrelated controls had one discoverable glyph.
+
+[ThemeIcons.ts](../../../../src/modules/theme/ThemeIcons.ts) now gives the Structure depth selector
+its own `structureDepth` semantic slot. Its Unicode and Nerd Font mark is `⛭`; its ASCII mark is
+`#`. The mark-ownership census names the Structure selector as the Unicode mark's owner.
+[StructurePaneRenderer.ts](../../../../src/modules/structure/StructurePaneRenderer.ts) consumes
+that slot instead of the global Settings glyph. The Structure invariant now requires the two
+owners to remain distinct.
+
+Both real paths passed after the change:
+
+- `bun scripts/harness/smoke-editor-harness.ts` opened the F1 command palette and then opened
+  Settings from the status-bar `⚙`.
+- `bun run drive --open src/modules/structure/StructureOutline.ts --geometry 140x38 --click
+  'text=⛭' --wait-for-status contextMenuOpen=true --click 'text=Depth 2' --wait-for-status
+  structureDefaultDepth=2 --wait-for-status structureDepth=2` opened the Structure menu and
+  selected depth 2.
+- `bun scripts/harness/smoke-plugin-manifest-harness.ts` opened `⛭ 1`, selected depth 2, observed
+  `⛭ 2`, and restored depth 1.
+
+The round-two positive control changed `structureDepth` back to `⚙`. The ownership test failed
+because the Structure and Settings glyphs were equal. The plant was removed, and the focused
+ThemeIcons, Structure content, and Structure renderer tests passed 32 tests with 383 expectations.
+
+Current main was merged before the fix. The merge commit is
+`0b6f3ae6ebb757b666678aa1908e2fbba2a07bbd`.
+
 ## Driven evidence
 
 Defaults came first.
@@ -55,7 +88,7 @@ Defaults came first.
   marks or depth gear.
 - After the change, the same default dark-theme drive published `structureRows=88` and
   `structureDepth=1`. Import rows were absent. `$watch` painted public and cache marks. Protected
-  getters painted protected and getter marks. The filter row painted `⚙ 1`.
+  getters painted protected and getter marks. The filter row painted `⛭ 1`.
 - Clicking the gear in that drive opened the real context menu. Clicking `Depth 2` published
   `structureDefaultDepth=2`, `structureDepth=2`, `structureDepthIsOverridden=false`, and
   `structureRows=150`.
@@ -66,7 +99,7 @@ Defaults came first.
 - The manifest PTY fixture drove one real TypeScript server answer. The query
   `importedOutlineNoise` returned zero rows, which proved that both the import and heritage
   pseudo-row were absent. Focused queries painted public, private, hash-private, cached getter,
-  and inherited override marks. The same drive clicked `⚙ 1`, selected `Depth 2`, observed the
+  and inherited override marks. The same drive clicked `⛭ 1`, selected `Depth 2`, observed the
   setting and projection change, then selected `Depth 1` and restored the default projection.
 - The 500-line TypeScript scale drive painted `symbol000000 :1`. Its right-dock thumb sequence was
   `0→47→93→140`.
@@ -111,8 +144,22 @@ All seven plants were removed. The focused checks returned green before the fina
 - `bash scripts/conventions-gate.sh` passed.
 - `git diff --check` passed.
 
-The commits used `SKIP_GATE=1` only to avoid repeating the completed verification from the
-pre-commit hook. The exact final state had already passed the commands above.
+The round-one commits used `SKIP_GATE=1` after the commands above. The round-two commit uses the
+normal pre-commit hook, as requested.
+
+The first round-two `bash scripts/merge-gate.sh` pass was green on conventions, formatting,
+invariants, coverage, the reactive audit, all completed smoke harnesses, behavioral contracts, and
+agent permissions. The editor and manifest smokes both passed. The gate was red only because
+[Drive.test.ts](../../../../scripts/harness/Drive.test.ts) found `Parsing Markdown…` in one settled
+large-Markdown observation. That test belongs to active
+[#292 (drive action status waits for painted target)](../../active/292-drive-action-status-waits-for-paint/task-292-drive-action-status-waits-for-paint.md).
+The exact failing test passed when rerun alone: 1 passed, 0 failed, with 6 expectations. No
+round-two code, harness wait, or timeout changed in response.
+
+The normal pre-commit hook then ran the exact staged round-two state. The merge gate passed in
+3m21s with no retries. It passed 1,929 unit tests, all 62 parallel PTY smokes, behavioral
+contracts, agent permissions, the overlay-dialog smoke, and the five-session input-ordering probe.
+This clean pass included both gear polarities and the small and 100,000-line Structure scale arms.
 
 ## Bycatch
 
@@ -129,3 +176,11 @@ pre-commit hook. The exact final state had already passed the commands above.
   invariant links. The invariant checker first reported both as missing contracts. The local
   wrapper links now resolve from the worktree root. That wrapper is untracked, so this produced no
   repository commit.
+- Comment drift, confirmed on a second read:
+  [theme.invariants.md](../../../../src/modules/theme/theme.invariants.md) still presents the
+  shell/config gear collision as an open proposal. The current glyph vocabulary already uses `$`
+  and `:`, and the completed mark-ownership record says that collision was resolved. Not fixed.
+- The full round-two gate saw the active
+  [#292 (drive action status waits for painted target)](../../active/292-drive-action-status-waits-for-paint/task-292-drive-action-status-waits-for-paint.md)
+  settled-output test fail in the suite and pass alone. It did not reproduce in the focused rerun.
+  Not fixed.

@@ -195,9 +195,11 @@ workspace session. They are not saved to settings or written into the document.
   selection and Enter still use the normal jump contract, and Escape clears the query.
 - *One scroll projection* — keyboard reveal, wheel momentum, and the shared right-dock scrollbar
   read and write `StructureOutline.scrollTop`; the filter row stays above that viewport.
-- *One default-depth setting with two surfaces* — Settings and the gear beside the filter both
+- *One default-depth setting with two surfaces* — Settings and the depth gear beside the filter both
   read and write `structureDefaultDepth`. The gear opens the shared context menu with depths zero
-  through eight. It does not own another value or bypass the contributed-setting save path.
+  through eight. Its `structureDepth` semantic glyph is distinct from the global Settings gear, so
+  glyph-based pointer discovery cannot address the wrong owner. It does not own another value or
+  bypass the contributed-setting save path.
 
 **Mechanism:** The outline retains the flattened source rows and computes paintable rows from the
 active path's depth and fold sets. A non-empty query switches the projection to fuzzy-score order
@@ -224,7 +226,7 @@ it duplicates shared geometry or ordering policy.
 **Impossible if true:** Two files sharing an override; depth two issuing a second source request; a
 filter missing a matching depth-hidden row; Escape leaving filtered rows behind; a scrollbar,
 wheel, and keyboard movement disagreeing about the first visible row; or the gear depth and
-Settings depth disagreeing.
+Settings depth disagreeing; or the depth selector and global Settings control sharing a glyph.
 
 **Verification:** `bun test src/modules/structure/StructureOutline.test.ts
 src/modules/structure/StructurePaneContent.test.ts

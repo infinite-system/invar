@@ -1106,7 +1106,7 @@ try {
     });
   };
 
-  clickVisibleText('⚙ 1');
+  clickVisibleText('⛭ 1');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -1128,7 +1128,7 @@ try {
       status.structureDepth === 2 &&
       status.structureDepthIsOverridden === false,
   );
-  clickVisibleText('⚙ 2');
+  clickVisibleText('⛭ 2');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,

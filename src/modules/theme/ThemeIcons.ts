@@ -218,6 +218,10 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.foldOpen, owner: 'the open fold control' },
       { mark: unicodeVocabulary.foldClosed, owner: 'the closed fold control' },
       {
+        mark: unicodeVocabulary.structureDepth,
+        owner: 'the structure depth selector',
+      },
+      {
         mark: this.TAB_SEPARATORS.unicode,
         owner: 'the buffer-tab separator',
       },
@@ -450,6 +454,7 @@ class $ThemeIcons {
         structureOverride: '↑',
         structureGetter: '↤',
         structureSetter: '↦',
+        structureDepth: '⛭',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -487,6 +492,7 @@ class $ThemeIcons {
         structureOverride: '↑',
         structureGetter: '↤',
         structureSetter: '↦',
+        structureDepth: '⛭',
       },
       ascii: {
         activityFiles: 'F',
@@ -511,6 +517,7 @@ class $ThemeIcons {
         structureOverride: '^',
         structureGetter: 'g',
         structureSetter: 's',
+        structureDepth: '#',
       },
     };
   }
@@ -912,6 +919,7 @@ export interface InterfaceGlyphVocabulary {
   structureOverride: string;
   structureGetter: string;
   structureSetter: string;
+  structureDepth: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

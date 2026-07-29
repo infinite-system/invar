@@ -104,7 +104,6 @@ class $StructurePaneContent implements PaneContent {
       structureMarks: interfaceGlyphs,
       filterInput: outline.filterInput,
       searchGlyph: ThemeIcons.Class.findIconsFor(context.glyphLevel).search,
-      settingsGlyph: ThemeIcons.Class.settingsIconFor(context.glyphLevel),
       defaultDepth: this.defaultDepth(),
       foldOpenGlyph: ThemeIcons.Class.glyphFor(context.glyphLevel, 'foldOpen'),
       foldClosedGlyph: ThemeIcons.Class.glyphFor(

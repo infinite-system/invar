@@ -166,6 +166,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
     'overviewMark',
     'foldOpen',
     'foldClosed',
+    'structureDepth',
   ] as const;
   const expectedVocabularies = {
     nerd: [
@@ -183,6 +184,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '•',
       '⌄',
       '›',
+      '⛭',
     ],
     unicode: [
       '≡',
@@ -199,6 +201,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '•',
       '⌄',
       '›',
+      '⛭',
     ],
     ascii: [
       'F',
@@ -215,6 +218,7 @@ test('semantic interface glyph slots resolve through every capability tier', () 
       '.',
       'v',
       ']',
+      '#',
     ],
   } as const;
 
@@ -262,6 +266,20 @@ test('activity and panel control glyphs stay pairwise distinct at every tier', (
     );
     expect(new Set(glyphs).size).toBe(distinctGlyphSlots.length);
   }
+});
+
+test('structure depth and global settings controls have distinct owned glyphs', () => {
+  for (const level of ['nerd', 'unicode', 'ascii'] as const) {
+    const depthGlyph = ThemeIcons.Class.glyphFor(level, 'structureDepth');
+    const settingsGlyph = ThemeIcons.Class.settingsIconFor(level);
+    expect(depthGlyph).not.toBe(settingsGlyph);
+    expect(TextCoordinates.Class.lineWidth(depthGlyph)).toBe(1);
+  }
+  expect(
+    ThemeIcons.Class.markOwnersFor(
+      ThemeIcons.Class.glyphFor('unicode', 'structureDepth'),
+    ),
+  ).toEqual(['the structure depth selector']);
 });
 
 test('file icon sets keep every file mark one cell at every tier', () => {
@@ -618,6 +636,7 @@ test('every semantic interface icon is one display cell and avoids reserved mark
     'overviewMark',
     'foldOpen',
     'foldClosed',
+    'structureDepth',
   ] as const;
   const reservedMarkers = new Set(['▎', '●', '❯']);
 
