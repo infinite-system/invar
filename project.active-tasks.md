@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #278 activity-bar-dock-agnostic-side-setting  [building]
+  `tmux attach -t invar/278-activity-bar-dock-agnostic-side-setting`
 - #276 task-md-links-walkable  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/276-task-md-links-walkable`
 

@@ -1,6 +1,6 @@
 # 278 — the activity surface is dock-agnostic; a pane's side is the user's setting
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

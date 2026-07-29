@@ -1,0 +1,15 @@
+{
+  "task": 278,
+  "slug": "activity-bar-dock-agnostic-side-setting",
+  "branch": "fleet/278-activity-bar-dock-agnostic-side-setting",
+  "worktree": ".invar/worktrees/278-activity-bar-dock-agnostic-side-setting",
+  "tmuxSession": "invar/278-activity-bar-dock-agnostic-side-setting",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-278-activity-bar-dock-agnostic-side-setting.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "cac36582c5b47d95c5f8e4d191a2b49a200a6ad4",
+  "startedAt": "2026-07-29T11:38:46-04:00"
+}
