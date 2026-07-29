@@ -126,7 +126,7 @@ describe('TaskConfiguration', () => {
     }
   });
 
-  test('unsupported task forms and variables become named issues', () => {
+  test('unsupported task forms become named issues', () => {
     const workspaceRoot = createWorkspace();
     writeConfiguration(
       workspaceRoot,
@@ -145,25 +145,54 @@ describe('TaskConfiguration', () => {
             dependsOn: 'Process',
           },
           {
-            label: 'Variable',
+            label: 'Supported',
             type: 'shell',
             command: 'printf',
-            args: ['${workspaceRoot}'],
           },
         ],
       }),
     );
 
     const result = TaskConfiguration.Class.resolve(workspaceRoot);
-    expect(result.tasks).toEqual([]);
+    expect(result.tasks.map((task) => task.label)).toEqual(['Supported']);
     expect(result.issues.map((issue) => issue.message)).toEqual([
       'Task "Process" uses unsupported type "process"',
       'Task "Compound" uses unsupported dependsOn',
-      'Unsupported task variable: ${workspaceRoot}. Supported task variables: ' +
-        '${workspaceFolder}, ${workspaceFolderBasename}, ${file}, ' +
-        '${fileBasename}, ${fileDirname}, ${fileExtname}, ${relativeFile}, ' +
-        '${cwd}, ${pathSeparator}, ${userHome}, ${env:NAME}',
       '.invar/tasks.json displaces built-in task: "Claude"',
+    ]);
+  });
+
+  test('unknown task variables pass through unchanged in command and args', () => {
+    const workspaceRoot = createWorkspace();
+    writeConfiguration(
+      workspaceRoot,
+      '.vscode',
+      JSON.stringify({
+        tasks: [
+          {
+            label: 'Unknown',
+            type: 'shell',
+            command:
+              '${workspaceFolder}:${LOCAL_DIR#/some/prefix}:${workspaceRoot}',
+            args: [
+              '${inputMode:target}',
+              '${commander:selectTarget}',
+              '${workspaceFolderBasename}',
+            ],
+          },
+        ],
+      }),
+    );
+
+    const result = TaskConfiguration.Class.resolve(workspaceRoot);
+
+    expect(result.tasks[0]?.command).toBe(
+      `${workspaceRoot}:\${LOCAL_DIR#/some/prefix}:\${workspaceRoot}`,
+    );
+    expect(result.tasks[0]?.arguments).toEqual([
+      '${inputMode:target}',
+      '${commander:selectTarget}',
+      basename(workspaceRoot),
     ]);
   });
 
@@ -302,7 +331,18 @@ describe('TaskConfiguration', () => {
           {
             label: 'Command',
             type: 'shell',
-            command: '${command:selectTarget}',
+            command: 'printf',
+            args: ['${command:selectTarget}'],
+          },
+          {
+            label: 'Input-like unknown',
+            type: 'shell',
+            command: '${inputMode:target}',
+          },
+          {
+            label: 'Command-like unknown',
+            type: 'shell',
+            command: '${commander:selectTarget}',
           },
         ],
       }),
@@ -310,7 +350,10 @@ describe('TaskConfiguration', () => {
 
     const result = TaskConfiguration.Class.resolve(workspaceRoot);
 
-    expect(result.tasks).toEqual([]);
+    expect(result.tasks.map((task) => task.command)).toEqual([
+      '${inputMode:target}',
+      '${commander:selectTarget}',
+    ]);
     for (const variable of ['${input:target}', '${command:selectTarget}']) {
       expect(
         result.issues.some(

@@ -277,7 +277,7 @@ class $TaskConfiguration {
     workspaceRoot: string,
     activeDocumentPath: string | null,
   ): string {
-    return value.replace(/\$\{([^}]+)\}/g, (_match, variableName: string) => {
+    return value.replace(/\$\{([^}]+)\}/g, (match, variableName: string) => {
       switch (variableName) {
         case 'workspaceFolder':
         case 'cwd':
@@ -311,11 +311,18 @@ class $TaskConfiguration {
       if (variableName.startsWith('env:') && variableName.length > 4) {
         return this.Environment.env(variableName.slice(4)) ?? '';
       }
-      // invariant: Unsupported variables fail before the shell (src/modules/tasks/tasks.invariants.md)
-      throw new Error(
-        `Unsupported task variable: \${${variableName}}. ` +
-          `Supported task variables: ${this.supportedVariables}`,
-      );
+      if (
+        variableName.startsWith('input:') ||
+        variableName.startsWith('command:')
+      ) {
+        // invariant: Task variables resolve pass through or refuse (src/modules/tasks/tasks.invariants.md)
+        throw new Error(
+          `Unsupported task variable: \${${variableName}}. ` +
+            `Supported task variables: ${this.supportedVariables}`,
+        );
+      }
+      // invariant: Task variables resolve pass through or refuse (src/modules/tasks/tasks.invariants.md)
+      return match;
     });
   }
 
