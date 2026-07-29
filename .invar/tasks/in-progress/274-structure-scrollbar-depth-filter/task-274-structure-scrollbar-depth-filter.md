@@ -1,6 +1,6 @@
 # 274 — structure pane: scrollbar, per-file depth (fold internals by default), filter
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

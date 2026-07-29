@@ -6,10 +6,12 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #274 structure-scrollbar-depth-filter  [building]
+  `tmux attach -t invar/274-structure-scrollbar-depth-filter`
 - #263 terminal-shrink-markdown-split-frozen  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/263-terminal-shrink-markdown-split-frozen`
-- #235 tasks-dashboard-pane-live-active-done  [building]
+- #235 tasks-dashboard-pane-live-active-done  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/235-tasks-dashboard-pane-live-active-done`
 
 ## USER-DIRECTED (3)
@@ -70,7 +72,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (12)
+## ARCHITECTURE-HYGIENE (13)
+- #272 task-record-system-contract
 - #267 go-to-line-does-not-exist
 - #262 structure-activity-action-orphaned
 - #242 shared-paint-hit-generator-decision
