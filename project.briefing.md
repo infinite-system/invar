@@ -1,5 +1,32 @@
 # Overnight briefing — started 2026-07-29 00:28
 
+## RESUME ANCHOR (written at 02:26 before context compaction)
+
+- FLEET: #35 (structure navigator, THE PROOF, fable·medium, ~35m) and #233
+  (settings-leak diagnosis, sol·high, ~33m) BUILDING. #243 (sibling rot round
+  2) queued next free lane. fleet-watch monitor + /loop wakeup armed; re-arm
+  fleet-watch (Monitor: bash scripts/fleet/fleet-watch.sh, persistent) and the
+  /loop on resume if missing.
+- ON #35 READY: zero-host-edit done-test is the point; gate combined tree,
+  land via land.sh (BYCATCH_TRIAGED=1 after converting), then dispatch #238 /
+  #235 (user roadmap: structure default+TOC, tasks dashboard) and the
+  markdown wave #236/#237. #223 + decisions #241/#242 WAIT FOR USER.
+- ON #233 READY: it is the gate blocker (wrap contract red on main; user's
+  real settings.json had wordWrap:false written 01:29 — never edit their
+  file).
+- TOOLING TONIGHT: land.sh (step 5 one command, timing into meta.json),
+  fleet-watch, tasks:live/active/done/all/watch (30fps, breathing gradient
+  dot, shimmer 'building', per-builder line deltas, rolling odometer numbers,
+  fade pops, flyweight mtime-gated reads). UNVERIFIED: watch showed
+  'tonight +3,000' once — possibly a tween artifact vs real growth; check
+  fleetDeltaTotals math against per-task rows on resume.
+- POLICY: sol high always; fable/opus medium (high only explicit); dispatch
+  transmits flags; briefs REQUIRE '## Invariants in scope' + '## Bycatch
+  expected' (guard enforces); reports born in task folders; archive at land.
+- Landed tonight: #59 #211 #174 #202 #114 #46 #122 #218 #216 #219 #221 #222
+  #220(capstone) #230(ui lattice) #239 #215. Read project.tasks.md for lens
+  commands; bun run tasks gives counts+drift.
+
 Written for your return. Latest entries at the top of the log section. #223
 (database plugin) is parked for you, per your instruction.
 
