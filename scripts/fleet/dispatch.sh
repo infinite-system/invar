@@ -398,30 +398,35 @@ fi
 # are not valid CLI aliases); codex 5.6-sol -> gpt-5.6-sol (matches the footer
 # of every codex session tonight). Effort: claude --effort <level>; codex
 # -c model_reasoning_effort=<level>; 'default' means say nothing.
+# FLEET DEFAULTS (user policy 2026-07-29), applied when the task file is
+# silent; an explicit field ALWAYS wins, including one-off overrides like
+# "sol medium" or "sonnet" written into the task file:
+#   codex          -> gpt-5.6-sol at HIGH, always
+#   claude general -> fable at MEDIUM (high only for complex work, by explicit
+#                     assignment with the reason in Assignment note)
+#   opus           -> MEDIUM, always, unless the user says otherwise
 model_flags=""
 case "$engine" in
   codex)
     agent_command="codex --dangerously-bypass-approvals-and-sandbox"
     case "${declared_model:-}" in
-      5.6-sol) model_flags=" -m gpt-5.6-sol";;
-      "" ) ;;
+      5.6-sol|"") model_flags=" -m gpt-5.6-sol";;
       *) model_flags=" -m ${declared_model}";;
     esac
-    if [ -n "${declared_effort:-}" ] && [ "$declared_effort" != "default" ]; then
-      model_flags="${model_flags} -c model_reasoning_effort=${declared_effort}"
-    fi
+    effective_effort="${declared_effort:-high}"
+    [ "$effective_effort" = "default" ] && effective_effort="high"
+    model_flags="${model_flags} -c model_reasoning_effort=${effective_effort}"
     ;;
   claude)
     agent_command="claude --dangerously-skip-permissions"
     case "${declared_model:-}" in
-      opus-5)  model_flags=" --model opus";;
-      fable-5) model_flags=" --model fable";;
-      "" ) ;;
+      opus-5)     model_flags=" --model opus";;
+      fable-5|"") model_flags=" --model fable";;
       *) model_flags=" --model ${declared_model}";;
     esac
-    if [ -n "${declared_effort:-}" ] && [ "$declared_effort" != "default" ]; then
-      model_flags="${model_flags} --effort ${declared_effort}"
-    fi
+    effective_effort="${declared_effort:-medium}"
+    [ "$effective_effort" = "default" ] && effective_effort="medium"
+    model_flags="${model_flags} --effort ${effective_effort}"
     ;;
 esac
 agent_command="${agent_command}${model_flags}"

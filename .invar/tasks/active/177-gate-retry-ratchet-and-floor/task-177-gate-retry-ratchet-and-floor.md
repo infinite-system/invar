@@ -5,7 +5,7 @@ Created: 2026-07-28
 Engine: claude
 Environment: linux
 Model: fable-5
-Effort: high
+Effort: medium
 Priority: verification-integrity
 Assignment note: Sets a ratchet from measured data; needs 3-5 clean gates first.
 

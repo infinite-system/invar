@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: claude
 Environment: linux
 Model: opus-5
-Effort: high
+Effort: medium
 Priority: architecture-hygiene
 Assignment note: The revamp, tried on a citizen that needs it. Strictly after #222 (uses its convention + interface sketch).
 

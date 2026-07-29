@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: claude
 Environment: linux
 Model: opus-5
-Effort: high
+Effort: medium
 Priority: verification-integrity
 Assignment note: User-identified gap 2026-07-29. Best after #220 lands — the pane-seam records are still moving until then.
 

@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: claude
 Environment: linux
 Model: opus-5
-Effort: high
+Effort: medium
 Priority: architecture-hygiene
 Assignment note: #219's named boundary 1. Keyboard ROUTING, deliberately kept out of the render retrofit. After #220 is a sensible slot; it is not a blocker for it.
 

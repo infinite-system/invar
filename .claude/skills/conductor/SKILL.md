@@ -290,14 +290,24 @@ Every task declares:
 ```
 Engine: codex | claude | user
 Environment: linux | macos | any
-Model: 5.6-sol (codex ONLY) | fable-5 | opus-5 (claude)
-Effort: high | default
+Model: 5.6-sol (codex ONLY) | fable-5 | opus-5 (claude) | any explicit user choice (e.g. sonnet)
+Effort: high | medium | low
 ```
 
 `dispatch.sh` reads these and refuses to contradict them: `Environment: macos` on a Linux
 host, `Engine: user` (a decision, not a build), or an engine mismatch. **The environment
 field is load-bearing.** #180's work cannot run on this host at all. Before the field
 existed, that task read as ordinary backlog.
+
+**Fleet defaults (user policy 2026-07-29), and dispatch TRANSMITS them as real
+flags — an assignment that is not transmitted is a lie the lens repeats:**
+
+- codex: `gpt-5.6-sol` at HIGH, always.
+- claude general work: `fable` at MEDIUM. HIGH only for complex work, assigned
+  explicitly with the reason in `Assignment note:`.
+- opus: MEDIUM always, unless the user says otherwise.
+- Any explicit user choice ("sol medium", "sonnet") goes into the task file's
+  fields verbatim and wins over every default.
 
 ---
 
