@@ -384,6 +384,18 @@ AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/sc
   -- env PATH="$HOME/.bun/bin:$PATH" $agent_command >/dev/null || {
     echo "dispatch: agent-tmux launch failed for ${name}" >&2; exit 1; }
 tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
+# The pipe has to prove it captures: a failed pipe-pane leaves no transcript and
+# nothing else notices for 20 minutes. The agent's boot output arrives within
+# seconds, so an empty file after the wait is a loud failure, not a maybe.
+transcript_deadline=$((SECONDS + 15))
+until [ -s "$transcript_path" ] || [ "$SECONDS" -ge "$transcript_deadline" ]; do
+  sleep 1
+done
+if [ ! -s "$transcript_path" ]; then
+  echo "dispatch: WARNING — transcript pipe captured nothing in 15s (${transcript_path});" >&2
+  echo "          the builder is running but UNRECORDED. Re-arm with:" >&2
+  echo "          tmux pipe-pane -t ${tmux_session} -o \"cat >> '${transcript_path}'\"" >&2
+fi
 
 # The opening turn goes through `send`, which confirms it submitted.
 # The report is born in its durable home — the task folder in the MAIN checkout — so
