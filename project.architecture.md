@@ -64,8 +64,9 @@ The bottom panel is a `PanelHost` of switchable/splittable `PaneContent` cells (
 
 ## Lifecycle tiers
 
-Hot (visible, effects + parser + LSP + watcher active) → Warm (recently used, compact state,
-minimal watchers) → Cold (serialized metadata only) → Disposed (resources released). Realized via
+Hot (visible, effects + parser + LSP + watcher active) → Warm (one of two recently active editor
+documents, with hydrated document and undo state under a constant bound) → Cold (serialized metadata
+only) → Disposed (resources released). Realized via
 the ivue `$stopEffects()` deactivate/reactivate cycle + explicit eviction of keyed overlays;
 durable truth lives outside the reactive overlay so it survives teardown. Nothing is merely
 hidden — inactive resources are cooled or disposed.

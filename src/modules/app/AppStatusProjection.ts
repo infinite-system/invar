@@ -226,7 +226,7 @@ class $AppStatusProjection {
       rightDockVerticalSpan: ports.settings.rightDockVerticalSpan.value,
       rightDockWidth: ports.settings.rightDockWidth.value,
       // Editor buffer tabs (item 10a). liveBufferCount proves the FLYWEIGHT: it must stay far below
-      // tabCount (only the active + any dirty background buffer holds a live document).
+      // tabCount (the two-document recent set + any dirty background buffer stay live).
       bufferTabCount: ports.workspaceSet.active.buffers.count,
       bufferLiveCount: ports.workspaceSet.active.buffers.liveCount,
       activeBufferIndex: ports.workspaceSet.active.buffers.activeIndex.value,

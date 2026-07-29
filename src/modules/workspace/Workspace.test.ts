@@ -1,6 +1,6 @@
 // Item 10a: the Workspace-level editor buffer-tab integration — opening a file adds/focuses a tab
-// (never replaces), the flyweight keeps N clean tabs at ONE live document, closing disposes, and a
-// dirty tab requires a close confirmation. Uses real Editors over real temp files (end-to-end).
+// (never replaces), the flyweight keeps a bounded recent clean set, closing disposes, and a dirty
+// tab requires a close confirmation. Uses real Editors over real temp files (end-to-end).
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test';
 import { Workspace } from './Workspace';
 import {
@@ -49,21 +49,20 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.editor.document.path).toBe(filePaths[0]!);
   });
 
-  test('FLYWEIGHT: N clean tabs cost ONE live document', () => {
+  test('FLYWEIGHT: N clean tabs cost a bounded two live documents', () => {
     const workspace = new Workspace.Class();
     for (const path of filePaths) workspace.openFileInTab(path);
     expect(workspace.buffers.count).toBe(4);
-    // Only the active buffer holds a live document; the three clean background tabs are dehydrated.
-    expect(workspace.buffers.liveCount).toBe(1);
+    expect(workspace.buffers.liveCount).toBe(2);
   });
 
-  test('cycleTab wraps and rehydrates; a rehydrated clean tab is still one live document', () => {
+  test('cycleTab wraps and keeps the live document count bounded', () => {
     const workspace = new Workspace.Class();
     for (const path of filePaths) workspace.openFileInTab(path); // active = 3
     workspace.cycleTab(1); // wraps to 0
     expect(workspace.buffers.activeIndex.value).toBe(0);
     expect(workspace.editor.document.path).toBe(filePaths[0]!);
-    expect(workspace.buffers.liveCount).toBe(1); // outgoing dehydrated, incoming hydrated
+    expect(workspace.buffers.liveCount).toBe(2);
     workspace.cycleTab(-1); // wraps back to the last
     expect(workspace.buffers.activeIndex.value).toBe(3);
   });

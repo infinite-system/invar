@@ -346,13 +346,21 @@ try {
       (status) => Number(status.bufferTabCount) > previousBufferCount,
     );
   }
-  await HarnessSmoke.Class.awaitStatus(
+  const openedBufferStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the fixture publishes exactly 103 open buffers',
-    (status) => status.bufferTabCount === totalFixtureBufferCount,
+    (status) =>
+      status.bufferTabCount === totalFixtureBufferCount &&
+      typeof status.bufferLiveCount === 'number',
   );
   HarnessSmoke.Class.pass('fixture exposes exactly 103 open buffers');
+  // invariant: N open tabs do not cost N live documents (src/modules/workspace/workspace.invariants.md)
+  HarnessSmoke.Class.requireCondition(
+    openedBufferStatus.bufferLiveCount === 2,
+    `103 clean tabs retain two live documents ` +
+      `(got ${String(openedBufferStatus.bufferLiveCount)})`,
+  );
   driver.sendKeys('Control+PageDown');
   await HarnessSmoke.Class.awaitStatus(
     driver,

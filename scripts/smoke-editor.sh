@@ -259,8 +259,8 @@ done
 tabs_after_open="$(f bufferTabCount)"
 live_after_open="$(f bufferLiveCount)"
 if [ "${tabs_after_open:-0}" -gt "${tabs_before:-0}" ] 2>/dev/null; then echo "  PASS  opening files ADDS tabs ($tabs_before->$tabs_after_open)"; else echo "  FAIL  opening files did not add tabs ($tabs_before->$tabs_after_open)"; fail=1; fi
-# FLYWEIGHT: with clean background tabs open, fewer documents are LIVE than there are tabs (only the
-# active + any dirty background buffer stays hydrated; clean background tabs dehydrate).
+# FLYWEIGHT: with clean background tabs open, fewer documents are LIVE than there are tabs (the
+# two-document recent set + any dirty background buffer stays hydrated; older clean tabs dehydrate).
 if [ "${live_after_open:-99}" -lt "${tabs_after_open:-0}" ] 2>/dev/null; then echo "  PASS  flyweight: liveDocs($live_after_open) < tabs($tabs_after_open)"; else echo "  FAIL  flyweight broke: liveDocs($live_after_open) not < tabs($tabs_after_open)"; fail=1; fi
 # Ctrl+W closes the active tab; if the active tab is dirty it opens a close-confirm — answer y.
 "$H" send "$S" C-w >/dev/null
