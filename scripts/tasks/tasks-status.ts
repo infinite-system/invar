@@ -695,6 +695,129 @@ const SPINNER_FRAMES: Array<[string, string]> = [
 ];
 const SPINNER_PAINTS_PER_STEP = 5;
 
+// Lines of code, live, as the agents write: each in-progress task's worktree
+// diffed against its merge-base with main — committed AND uncommitted edits
+// both count, because the point is watching the code grow under the cursor.
+// The merge-base is cached (it never moves during a run); the diff is one
+// spawn per builder per data tick.
+const mergeBaseCache = new Map<string, string | null>();
+
+function worktreeLineDelta(
+  folderName: string,
+): { added: number; removed: number } | null {
+  const worktreePath = join(
+    import.meta.dir,
+    '..',
+    '..',
+    '.invar',
+    'worktrees',
+    folderName,
+  );
+  if (!existsSync(worktreePath)) return null;
+  let base = mergeBaseCache.get(folderName);
+  if (base === undefined) {
+    const baseResult = Bun.spawnSync(['git', 'merge-base', 'main', 'HEAD'], {
+      cwd: worktreePath,
+    });
+    base =
+      baseResult.exitCode === 0 ? baseResult.stdout.toString().trim() : null;
+    mergeBaseCache.set(folderName, base);
+  }
+  if (base === null) return null;
+  const diffResult = Bun.spawnSync(
+    ['git', 'diff', '--shortstat', base, '--', 'src', 'scripts'],
+    { cwd: worktreePath },
+  );
+  const summary = diffResult.stdout.toString();
+  const added = /(\d+) insertion/.exec(summary);
+  const removed = /(\d+) deletion/.exec(summary);
+  if (added === null && removed === null) return { added: 0, removed: 0 };
+  return {
+    added: added === null ? 0 : Number.parseInt(added[1] ?? '0', 10),
+    removed: removed === null ? 0 : Number.parseInt(removed[1] ?? '0', 10),
+  };
+}
+
+// Deltas refresh on the DATA tick, never per paint — 30 fps must not mean
+// 30 git spawns a second. The badge reads the cache; refreshLineDeltas()
+// fills it (watch calls it every ~2 s; the static lens once).
+const lineDeltaCache = new Map<
+  string,
+  { added: number; removed: number } | null
+>();
+
+function refreshLineDeltas(records: TaskRecord[]): void {
+  for (const record of records) {
+    if (record.directoryState !== 'in-progress') continue;
+    lineDeltaCache.set(record.folderName, worktreeLineDelta(record.folderName));
+  }
+}
+
+function fleetDeltaTotals(): {
+  added: number;
+  removed: number;
+  builders: number;
+} {
+  let added = 0;
+  let removed = 0;
+  let builders = 0;
+  for (const delta of lineDeltaCache.values()) {
+    if (delta === null) continue;
+    builders += 1;
+    added += delta.added;
+    removed += delta.removed;
+  }
+  return { added, removed, builders };
+}
+
+function lineDeltaBadge(folderName: string): string {
+  const delta = lineDeltaCache.get(folderName) ?? null;
+  if (delta === null) return '';
+  if (delta.added === 0 && delta.removed === 0) return dim('  ±0');
+  const parts = [];
+  if (delta.added > 0)
+    parts.push(rollingBadge(`added-${folderName}`, delta.added, '+', green));
+  if (delta.removed > 0)
+    parts.push(rollingBadge(`removed-${folderName}`, delta.removed, '-', red));
+  return `  ${parts.join(' ')}`;
+}
+
+// Odometer numbers: when a tracked value changes, the displayed value ROLLS
+// toward it over ~half a second (ease-out: 20% of the remaining gap per
+// paint, minimum 1), glowing bright while in motion. A number seen for the
+// first time snaps — only CHANGES animate.
+const numberTweens = new Map<string, number>();
+
+function rollingNumber(
+  key: string,
+  target: number,
+): {
+  shown: number;
+  rolling: boolean;
+} {
+  const previous = numberTweens.get(key);
+  if (previous === undefined || previous === target) {
+    numberTweens.set(key, target);
+    return { shown: target, rolling: false };
+  }
+  const gap = target - previous;
+  const step = Math.sign(gap) * Math.max(1, Math.floor(Math.abs(gap) * 0.2));
+  const shown = Math.abs(gap) <= 1 ? target : previous + step;
+  numberTweens.set(key, shown);
+  return { shown, rolling: shown !== target };
+}
+
+function rollingBadge(
+  key: string,
+  target: number,
+  prefixText: string,
+  colour: (t: string) => string,
+): string {
+  const { shown, rolling } = rollingNumber(key, target);
+  const rendered = `${prefixText}${shown.toLocaleString('en-US')}`;
+  return rolling ? paint('1;38;5;51', rendered) : colour(rendered);
+}
+
 // The word itself carries the current: a cool gradient flows through the
 // letters, one step per spinner advance — Claude Code's shimmer, in teal.
 const GRADIENT_RAMP = [
@@ -723,7 +846,9 @@ function live(
   spinnerFrame?: number,
   preloadedRecords?: TaskRecord[],
 ): number {
-  const records = (preloadedRecords ?? readTaskRecords(tasksRoot))
+  const allRecords = preloadedRecords ?? readTaskRecords(tasksRoot);
+  if (preloadedRecords === undefined) refreshLineDeltas(allRecords);
+  const records = allRecords
     .filter((record) => record.directoryState === 'in-progress')
     .sort(byNumberDescending);
   if (records.length === 0) {
@@ -754,7 +879,7 @@ function live(
     const identity = agentIdentity(record);
     const identitySuffix = identity === null ? '' : `  ${dim(identity)}`;
     console.log(
-      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}${identitySuffix}`,
+      `  ${bold(`#${record.taskNumber}`)} ${record.folderName.replace(/^\d+-/, '')}  ${statusBadge}${runningFor}${lineDeltaBadge(record.folderName)}${identitySuffix}`,
     );
     console.log(dim(`      tmux attach -t invar/${record.folderName}`));
   }
@@ -959,9 +1084,10 @@ async function watchLenses(tasksRoot: string): Promise<number> {
   let cachedRecords = readTaskRecords(tasksRoot);
   let cachedLanded = baselineLanded;
   for (;;) {
-    if (frame % DATA_EVERY_FRAMES === 0 && frame > 0) {
+    if (frame % DATA_EVERY_FRAMES === 0 || frame === 0) {
       cachedRecords = readTaskRecords(tasksRoot);
       cachedLanded = landedTodayStats(tasksRoot).landedToday;
+      refreshLineDeltas(cachedRecords);
     }
     if (frame % STATS_EVERY_FRAMES === 0 && frame > 0) {
       sampledCommits = commitsToday();
@@ -986,14 +1112,18 @@ async function watchLenses(tasksRoot: string): Promise<number> {
       now !== null && base !== null && now > base
         ? green(` +${now - base}`)
         : '';
+    const fleet = fleetDeltaTotals();
+    console.log(
+      `⌨ fleet diff ${rollingBadge('fleet-added', fleet.added, '+', green)} ${rollingBadge('fleet-removed', fleet.removed, '-', red)} ${dim(`across ${fleet.builders} builder(s)`)}`,
+    );
     console.log(
       dim(`◫ ${activeCount} active · ✔ ${completedCount} completed`) +
         dim('  ·  ') +
         `⚡${cachedLanded} landed today${delta(cachedLanded, baselineLanded)}` +
         dim('  ·  ') +
-        `⎘ ${sampledCommits ?? '?'} commits${delta(sampledCommits, baselineCommits)}` +
+        `⎘ ${rollingBadge('commits', sampledCommits ?? 0, '', (t) => t)} commits${delta(sampledCommits, baselineCommits)}` +
         dim('  ·  ') +
-        `≡ ${sampledLines?.toLocaleString('en-US') ?? '?'} src lines${delta(sampledLines, baselineLines)}`,
+        `≡ ${rollingBadge('src-lines', sampledLines ?? 0, '', (t) => t)} src lines${delta(sampledLines, baselineLines)}`,
     );
     frame += 1;
     await Bun.sleep(PAINT_MILLISECONDS);
