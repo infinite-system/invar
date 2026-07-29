@@ -260,13 +260,32 @@ class $MarkdownParser {
     blocks.push(
       this.createInlineBlock(
         'blockquote',
-        content.join('\n'),
+        this.reflowQuoteParagraphs(content),
         startLine,
         endLine,
         lines,
       ),
     );
     return endLine;
+  }
+
+  /** Hard-wrapped quote lines reflow like paragraph lines do: runs of non-blank lines join with
+   *  a space, and a blank quoted line separates paragraphs inside the quote. */
+  protected reflowQuoteParagraphs(content: readonly string[]): string {
+    const quoteParagraphs: string[] = [];
+    let currentRun: string[] = [];
+    for (const contentLine of content) {
+      if (contentLine.trim() === '') {
+        if (currentRun.length > 0) {
+          quoteParagraphs.push(currentRun.join(' '));
+          currentRun = [];
+        }
+        continue;
+      }
+      currentRun.push(contentLine.trim());
+    }
+    if (currentRun.length > 0) quoteParagraphs.push(currentRun.join(' '));
+    return quoteParagraphs.join('\n\n');
   }
 
   protected readList(

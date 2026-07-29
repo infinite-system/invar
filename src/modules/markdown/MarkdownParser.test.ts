@@ -68,10 +68,16 @@ test('parses a fenced code block with language', () => {
   expect(code!.spans).toHaveLength(0);
 });
 
-test('parses a blockquote joining stripped lines', () => {
+test('parses a blockquote reflowing hard-wrapped lines like a paragraph', () => {
   const [quote] = parse('> quoted line\n> second quote');
   expect(quote!.kind).toBe('blockquote');
-  expect(quote!.text).toBe('quoted line\nsecond quote');
+  expect(quote!.text).toBe('quoted line second quote');
+});
+
+test('a blank quoted line separates quote paragraphs', () => {
+  const [quote] = parse('> first paragraph\n>\n> second paragraph');
+  expect(quote!.kind).toBe('blockquote');
+  expect(quote!.text).toBe('first paragraph\n\nsecond paragraph');
 });
 
 test('parses table cells and column alignment without painting syntax', () => {
