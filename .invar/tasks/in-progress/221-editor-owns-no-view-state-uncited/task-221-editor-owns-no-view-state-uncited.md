@@ -1,6 +1,6 @@
 # 221 — the record "The editor owns no view state" has no citing annotation
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

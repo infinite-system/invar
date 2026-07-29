@@ -1,0 +1,15 @@
+{
+  "task": 221,
+  "slug": "editor-owns-no-view-state-uncited",
+  "branch": "fleet/221-editor-owns-no-view-state-uncited",
+  "worktree": ".invar/worktrees/221-editor-owns-no-view-state-uncited",
+  "tmuxSession": "invar/221-editor-owns-no-view-state-uncited",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-221-editor-owns-no-view-state-uncited.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "43d93a3feaf1ecf74f2bfef1a020efb217baf268",
+  "startedAt": "2026-07-29T00:56:54-04:00"
+}

@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #221 editor-owns-no-view-state-uncited  [building]
+  `tmux attach -t invar/221-editor-owns-no-view-state-uncited`
 - #220 editor-registers-as-contributor-with-manifest  [building]
   `tmux attach -t invar/220-editor-registers-as-contributor-with-manifest`
 - #215 agent-tmux-send-confirm-false-negative  [building]
@@ -16,11 +18,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (15)
+## VERIFICATION-INTEGRITY (14)
 - #229 scale-parity-selection-smoke
 - #227 dispatch-cuts-worktree-after-record-commit
 - #225 system-invariants-rotted-enumeration
-- #221 editor-owns-no-view-state-uncited
 - #210 mutation-probes-for-semantic-weakening
 - #190 pool-membership-must-be-earned  [ACTIVE — premise corrected in place]
 - #183 quiet-lock-degrades-and-runs-anyway  [ACTIVE — unfixed, and it has already cost samples]
