@@ -1,6 +1,6 @@
 # 35 — structure navigator pane
 
-State: IN-PROGRESS
+State: COMPLETED — 986ae1c2 — the proof: new citizen with a zero-host-edit diff; documentSymbol outline; scale-invariant request cost; seam finding became #245; round-2 smoke-order fix
 Created: 2026-07-28
 Engine: claude
 Environment: linux
