@@ -120,6 +120,10 @@ class $FindBar {
     }
   }
 
+  copyInputSelection(): Promise<number> {
+    return this.focusedInput?.copySelection() ?? Promise.resolve(0);
+  }
+
   /** Tab switches which field types (replace mode only). */
   switchField(): void {
     if (this.mode.value === 'replace')

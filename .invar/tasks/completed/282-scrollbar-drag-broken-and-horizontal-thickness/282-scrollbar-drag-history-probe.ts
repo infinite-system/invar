@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 // This probe records real PTY thumb-drag positions for the editor and structure right dock.
-// Run it as `bun .invar/tasks/*/282-scrollbar-drag-broken-and-horizontal-thickness/282-scrollbar-drag-history-probe.ts [repository-root] [line-count] [theme] [focus-click]`.
+// Run it as `bun .invar/tasks/*/282-scrollbar-drag-broken-and-horizontal-thickness/282-scrollbar-drag-history-probe.ts [repository-root] [line-count] [theme] [focus-click|filter-input]`.
 // Each printed sequence is the published scroll offset after successive pressed-pointer moves.
 // A growing sequence means the thumb tracked the drag. A flat sequence means the drag did not move it.
 // The paint fingerprint counts lower-half and full-block cells and lists their foreground colours.
+// `filter-input` also prints the structure filter's unselected-copy, selected-copy, and word-delete
+// results. Equal results at 500 and 100000 lines mean the field behavior is document-scale invariant.
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -100,6 +102,9 @@ class $ScrollbarDragHistoryProbe {
               60_000,
             )
           : driver.snapshot();
+      if (warmUp === 'filter-input') {
+        await this.probeStructureFilterInput(driver, statusPath, snapshot);
+      }
       console.log('phase=drag');
       const probes = deriveScrollbarThumbDragTargets(
         snapshot,
@@ -190,6 +195,76 @@ class $ScrollbarDragHistoryProbe {
       `horizontalPaint=lowerHalf:${lowerHalfCells.length},` +
       `fullBlock:${fullBlockCells.length},` +
       `foregrounds:${foregroundColors.join('|')}`
+    );
+  }
+
+  protected static async probeStructureFilterInput(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+    snapshot: ReturnType<InstanceType<typeof PtyTestDriver.Class>['snapshot']>,
+  ): Promise<void> {
+    const searchPosition = snapshot.findText('⌕');
+    if (!searchPosition) {
+      throw new Error('The structure filter search mark is not visible.');
+    }
+    driver.sendMouseWithoutFrameExpectation({
+      kind: 'press',
+      column: searchPosition.column,
+      row: searchPosition.row,
+      button: 'left',
+    });
+    driver.sendMouse({
+      kind: 'release',
+      column: searchPosition.column,
+      row: searchPosition.row,
+      button: 'left',
+    });
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the structure filter owns focus before its scale probe',
+      (candidate) => candidate.rightDockFocused === true,
+    );
+    driver.sendText('alpha beta');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the structure filter receives its scale probe text',
+      (candidate) => candidate.structureFilter === 'alpha beta',
+    );
+    driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'unselected structure-filter copy publishes zero characters',
+      (candidate) => candidate.lastCopyChars === 0,
+    );
+    driver.sendKeys('Shift+Left');
+    driver.sendKeys('Shift+Left');
+    driver.sendRawInputWithoutFrameExpectation('\x1b[27;5;99~');
+    await HarnessSmoke.Class.awaitStatusWithoutFrame(
+      driver,
+      statusPath,
+      'selected structure-filter copy publishes two characters',
+      (candidate) => candidate.lastCopyChars === 2,
+    );
+    driver.sendKeys('End');
+    driver.sendRawInput('\x1b\x7f');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'structure-filter Alt+Backspace removes one word',
+      (candidate) => candidate.structureFilter === 'alpha ',
+    );
+    console.log(
+      'structureFilterInput=unselectedCopy:0,selectedCopy:2,wordDelete:"alpha "',
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      'the structure filter clears before the scrollbar probe',
+      (candidate) => candidate.structureFilter === '',
     );
   }
 }

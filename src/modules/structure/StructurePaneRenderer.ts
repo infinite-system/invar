@@ -27,12 +27,13 @@ class $StructurePaneRenderer {
     const depthControl = ` ${context.structureMarks.structureDepth} ${context.defaultDepth}`;
     const filterWidth = Math.max(1, innerWidth - depthControl.length);
     const filterField = TextFieldPainter.Class.paint({
-      prefix: `${context.searchGlyph ?? '/'} `,
+      prefix: ` ${context.searchGlyph ?? '/'} `,
       input: context.filterInput ?? outline.filterInput,
       tone: TextFieldPainter.Class.toneFor(
         palette,
         context.structureFocused ? 'focused' : 'idle',
       ),
+      selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
       surfaceBackground: palette.panel,
       caretVisible: context.structureFocused,
       width: filterWidth,

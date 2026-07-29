@@ -16,7 +16,8 @@ class $KeybindingPlatform {
    * The actions whose PRIMARY MODIFIER is platform-variant: on macOS the user reaches them with Cmd.
    * Deliberately an explicit list, not "every ctrl binding" — most Ctrl chords must stay Ctrl on
    * macOS too, because they are readline/job-control bytes the user expects to send unchanged
-   * (Ctrl+C as SIGINT, Ctrl+E to line end, Ctrl+A) or host chords with no mac-native Cmd form.
+   * (Ctrl+C as SIGINT and Ctrl+E to line end) or host chords with no mac-native Cmd form. Text-input
+   * copy and select-all are explicit exceptions while an Invar-owned field has focus.
    */
   protected static get $primaryModifierActions(): ReadonlySet<string> {
     const primaryModifierActions = new Set<string>([
@@ -32,6 +33,8 @@ class $KeybindingPlatform {
       'palette.open',
       'quickopen.open',
       'terminal.copy',
+      'textInput.copy',
+      'textInput.selectAll',
       'workspace.next',
       'workspace.previous',
     ]);

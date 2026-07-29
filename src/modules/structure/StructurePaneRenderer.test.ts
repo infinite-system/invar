@@ -30,6 +30,27 @@ function foregroundOfText(
   return styled.chunks.find((chunk) => chunk.text.includes(text))?.fg;
 }
 
+test('the structure search mark keeps one leading cell', () => {
+  const outline = makeOutline();
+  outline.filterInput.setValue('needle');
+  const rendered = renderedText(
+    StructurePaneRenderer.Class.render({
+      outline,
+      structureFocused: true,
+      palette: ThemePalettes.Class.DARK,
+      symbolMarks: ThemeIcons.Class.symbolMarksFor('ascii'),
+      structureMarks: ThemeIcons.Class.interfaceGlyphVocabularyFor('ascii'),
+      searchGlyph: '/',
+      defaultDepth: 1,
+      height: 5,
+      innerWidth: 30,
+      viewportWidth: 29,
+    }),
+  );
+  expect(rendered.split('\n')[0]).toStartWith(' / needle');
+  outline.dispose();
+});
+
 test('renders only the visible window of a large outline', () => {
   const outline = makeOutline();
   outline.rows.value = Array.from({ length: 5_000 }, (_, index) => ({

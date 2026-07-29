@@ -328,29 +328,32 @@ composer painting typed text in either of its two reserved right-edge columns.
 
 ### Composer editing uses the input model
 
-**Invariant:** If the agent composer edits or moves within its logical line, then its text and
-grapheme caret operations come from `TextInputModel`.
+**Invariant:** If the agent composer edits, selects, copies, or moves within its logical line, then
+its text, grapheme caret, and selection operations come from `TextInputModel`.
 
 **Scope:** Agent composer insertion, backspace, forward delete, previous-word and next-word delete,
-line delete, Left and Right movement, word movement, Home, and End. Wrapping, selection, pointer
-mapping, transcript scrolling, and send history remain `AgentComposer` responsibilities.
+line delete, Left and Right movement, Shift selection, word movement, Home, End, selected text, and
+copy. Wrapping, pointer-to-grapheme mapping, transcript scrolling, and send history remain
+`AgentComposer` responsibilities.
 
 **Mechanism:** `AgentComposer` owns one `TextInputModel` and delegates its editing core while keeping
-its existing `AgentWordWrap` and `TextSelectionModel` composition. `TextInputModel` delegates word
-boundaries to `TextEditing`; the shared input keybinding table reaches it through
-`AgentPaneContent.applyComposerInputAction`.
+its existing `AgentWordWrap` projection. Pointer cells map through that projection to the input
+model's grapheme selection, and the model maps the selected graphemes back to exact text.
+`TextInputModel` delegates word boundaries to `TextEditing`; the shared input keybinding table
+reaches it through `AgentPaneContent.applyComposerInputAction`.
 
 **Generates:** Composer parity with every search input; grapheme-safe middle insertion and deletion;
-Alt-Delete next-word deletion without a composer-local implementation.
+Shift selection and copy; Alt-Delete next-word deletion without a composer-local implementation.
 
 **Evidence:** `src/modules/agent/AgentComposer.test.ts`;
-`src/modules/editor/TextInputModel.test.ts`;
+`src/modules/text/TextInputModel.test.ts`;
 `scripts/harness/smoke-agent-pane-ux-harness.ts`.
 
-**Impossible if true:** `AgentComposer` storing a second editable buffer or caret; composer word
-deletion disagreeing with the editor for the same text; movement or deletion splitting a grapheme.
+**Impossible if true:** `AgentComposer` storing a second editable buffer, caret, or selection model;
+composer word deletion disagreeing with the editor for the same text; movement or deletion splitting
+a grapheme.
 
-**Verification:** `bun test src/modules/agent/AgentComposer.test.ts src/modules/editor/TextInputModel.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
+**Verification:** `bun test src/modules/agent/AgentComposer.test.ts src/modules/text/TextInputModel.test.ts && bun scripts/harness/smoke-agent-pane-ux-harness.ts`
 
 **Status:** provisional
 

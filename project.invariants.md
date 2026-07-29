@@ -537,19 +537,19 @@ reimplementation.
 bolts on momentum + a scrollbar it must then suppress. Duplicate per consumer (a word-delete in each
 input) — drifts.
 
-**Evidence:** `src/modules/editor/TextInputModel.ts` owns one-line text and caret operations for
-`AgentComposer`, `QuickOpen`, `CommandRegistry`, and `FindInBuffer`; `TextEditing.deletePreviousWord`
-and `deleteNextWord` supply both word boundaries; the composer refused `ScrollableTextViewport`
-because it would suppress momentum + the scrollbar, and split to a shared wrap + selection seam
-instead (agent-pane-scroll build, 2026-07-23); `src/modules/editor/ReadOnlyTextBuffer.ts` is consumed
+**Evidence:** `src/modules/text/TextInputModel.ts` owns one-line text, caret, selection, and copy for
+all adopted fields; `TextEditing.deletePreviousWord` and `deleteNextWord` supply both word
+boundaries; the composer refused `ScrollableTextViewport` because it would suppress momentum + the
+scrollbar, and split to a shared wrap seam instead (agent-pane-scroll build, 2026-07-23);
+`src/modules/editor/ReadOnlyTextBuffer.ts` is consumed
 by `Editor`, `DiffView`, and `MarkdownSplitView` without exposing editing or undo.
 
 **Impossible if true:** A behavior implemented more than once across consumers that share its generator;
 a consumer of a shared seam that must disable that seam's core/generative behavior (peripheral config
 excepted).
 
-**Verification:** grep — no duplicate implementation of a shared-generator behavior; each shared seam's
-consumers all exercise its core, differing only in peripheral flags.
+**Verification:** `bun scripts/ast-query.ts text-input-census --require-zero`; each shared seam's
+consumers exercise its core, differing only in peripheral flags.
 
 **Status:** established
 
@@ -599,45 +599,52 @@ scripts/harness/smoke-wrap-harness.ts && bun scripts/harness/smoke-agent-pane-ux
 ### Editable text fields share one input model
 
 **Invariant:** If Invar owns an editable one-logical-line text field, then its text, grapheme caret,
-insertion, deletion, and horizontal movement come from `TextInputModel`, and every action
-`TextInputModel.apply` implements is REACHABLE in that field.
+selection, insertion, deletion, horizontal movement, and selected-text copy come from
+`TextInputModel`, and every action `TextInputModel.apply` implements is REACHABLE in that field.
 
-**Scope:** `AgentComposer`; `QuickOpen.query`; `CommandRegistry.query`; `FindInBuffer.query` and
-`replacement`; `BoundedListPopup.query`; the database connection path; every future one-line
-editable field. Full document editors and terminal subprocess input are outside this rule.
+**Scope:** `AgentComposer`; `StructureOutline.filterInput`; `QuickOpen.query`;
+`CommandRegistry.query`; `FindInBuffer.query` and `replacement`; `BoundedListPopup.query`;
+`GoToLinePrompt.input`; the database connection path; every future one-line editable field. Full
+document editors and terminal subprocess input are outside this rule.
 
-**Mechanism:** `TextInputModel` owns the reactive string and grapheme caret and delegates word
-boundaries to `TextEditing`. Consumers retain only their surface-specific filtering, layout,
-selection, pointer, history, or navigation behavior. `scripts/ast-query.ts text-input-census
---require-zero` fails when a class still combines its own input-like state with edit or movement
-members. Reachability has one chord table too: `KeybindingDefaults.textInputBindings(context)` emits
-the `textInput.*` bindings per field context and `Bootstrap.applyTextInputAction` routes them to the
-focused field, so a surface that already owns an unmodified key declares it in `hostOwnedPlainKeys`
-instead of writing a second mapping.
+**Mechanism:** `TextInputModel` owns the reactive string, grapheme caret, selection anchor, selected
+text, and copy through `Clipboard`; it delegates word boundaries to `TextEditing`. Consumers retain
+only their surface-specific filtering, layout, pointer mapping, history, or navigation behavior.
+`scripts/ast-query.ts text-input-census --require-zero` fails when a class still combines its own
+input-like state with edit or movement members. The conventions gate first runs that census against
+a known-bad independent input fixture. Reachability has one chord table too:
+`KeybindingDefaults.textInputBindings(context)` emits the `textInput.*` bindings per field context
+and `Bootstrap.applyTextInputAction` routes them to the focused field. Plain movement declares
+`shift: false`, so Shift movement reaches selection. A surface that already owns an unmodified key
+declares it in `hostOwnedPlainKeys` instead of writing a second mapping.
 
 **Generates:** One editing behavior across every text field; one complete text-input keybinding
-table; caret painting at the real grapheme position; an enforced zero-count census gate.
+table; selection and exact copy everywhere; caret painting at the real grapheme position; an
+enforced zero-count census gate with a positive control.
 
 **Rejected alternatives:** Per-surface query editing — fields drift until some lack caret movement
 or delete a different span.
 
-**Evidence:** `src/modules/editor/TextInputModel.ts`;
-`src/modules/editor/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
-`src/modules/search/QuickOpen.ts`, `src/modules/commands/CommandRegistry.ts`, and
-`src/modules/search/FindInBuffer.ts`; `src/modules/ui/BoundedListPopup.ts`
-(`applyQueryInputAction`); `src/modules/database/DatabasePaneContent.ts`;
+**Evidence:** `src/modules/text/TextInputModel.ts`;
+`src/modules/text/TextInputModel.test.ts`; adopters in `src/modules/agent/AgentComposer.ts`,
+`src/modules/structure/StructureOutline.ts`, `src/modules/search/QuickOpen.ts`,
+`src/modules/commands/CommandRegistry.ts`, `src/modules/search/FindInBuffer.ts`,
+`src/modules/ui/BoundedListPopup.ts`, `src/modules/navigation/GoToLinePrompt.ts`, and
+`src/modules/database/DatabasePaneContent.ts`;
 `src/modules/keybindings/KeybindingDefaults.ts`
 (`textInputBindings`); `scripts/conventions-gate.sh`.
 
 **Impossible if true:** An adopted text field storing its own query or caret and reimplementing
 insert, backspace, delete, word deletion, or horizontal movement; an adopted field that composes the
-model yet leaves word movement or word deletion unreachable because its keys were never routed; a
-fourth chord table for the same `textInput.*` actions.
+model yet leaves selection, copy, word movement, or word deletion unreachable because its keys were
+never routed; a fourth chord table for the same `textInput.*` actions.
 
-**Verification:** `bun test src/modules/editor/TextInputModel.test.ts
+**Verification:** `bun test src/modules/text/TextInputModel.test.ts
 src/modules/keybindings/KeybindingDefaults.test.ts && bun scripts/ast-query.ts text-input-census
 --require-zero && bun scripts/harness/smoke-text-input-harness.ts && bun
-scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-database-harness.ts`
+scripts/harness/smoke-field-caret-harness.ts && bun
+scripts/harness/smoke-plugin-manifest-harness.ts && bun
+scripts/harness/smoke-agent-pane-ux-harness.ts && bun scripts/harness/smoke-database-harness.ts`
 
 **Status:** provisional
 

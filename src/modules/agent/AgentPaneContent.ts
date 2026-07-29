@@ -809,6 +809,14 @@ class $AgentPaneContent implements PaneContent {
     this.composerHandled();
   }
 
+  applyInputAction(action: TextInputAction): void {
+    this.applyComposerInputAction(action);
+  }
+
+  copyInputSelection(): Promise<number> {
+    return this.composer.copySelection();
+  }
+
   cancelTurn(): boolean {
     return this.session.interrupt();
   }

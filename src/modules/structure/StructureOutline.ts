@@ -452,12 +452,13 @@ class $StructureOutline {
   }
 
   applyFilterInputAction(action: TextInputAction): void {
-    const queryChanged = this.filterInput.apply(action);
-    if (queryChanged) {
+    const originalFilter = this.filterInput.value;
+    const actionChangedState = this.filterInput.apply(action);
+    if (this.filterInput.value !== originalFilter) {
       this.selectedIndex.value = 0;
       this.scrollTop.value = 0;
       this.reproject();
-    } else {
+    } else if (actionChangedState) {
       this.version.value++;
     }
   }

@@ -146,12 +146,20 @@ class $CommandRegistry {
     this.recompute();
   }
 
-  applyQueryInputAction(action: TextInputAction): void {
+  applyInputAction(action: TextInputAction): void {
     const originalQuery = this.queryInput.value;
     this.queryInput.apply(action);
     if (this.queryInput.value === originalQuery) return;
     this.selectedIndex.value = 0;
     this.recompute();
+  }
+
+  applyQueryInputAction(action: TextInputAction): void {
+    this.applyInputAction(action);
+  }
+
+  copyInputSelection(): Promise<number> {
+    return this.queryInput.copySelection();
   }
 
   moveSelection(delta: number): void {

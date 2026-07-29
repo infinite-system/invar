@@ -191,8 +191,9 @@ workspace session. They are not saved to settings or written into the document.
 - *Folds refine depth* — Left collapses the selected parent and Right expands it. Fold state is
   keyed by document and row; it does not alter the file depth.
 - *Filtering reuses the text seams* — the field uses `TextInputModel`, the shared text-input
-  bindings, and `CommandScoring.fuzzyScore`. Filtering includes source rows hidden by depth,
-  selection and Enter still use the normal jump contract, and Escape clears the query.
+  bindings, `TextFieldPainter`, and `CommandScoring.fuzzyScore`. Its search mark has one leading
+  cell, matching the bounded popup field. Filtering includes source rows hidden by depth, selection
+  and Enter still use the normal jump contract, and Escape clears the query.
 - *One scroll projection* — keyboard reveal, wheel momentum, and the shared right-dock scrollbar
   read and write `StructureOutline.scrollTop`; the filter row stays above that viewport.
 - *One default-depth setting with two surfaces* — Settings and the depth gear beside the filter both

@@ -48,6 +48,10 @@ class $GoToLinePrompt {
     this.notice.value = '';
   }
 
+  copyInputSelection(): Promise<number> {
+    return this.input.copySelection();
+  }
+
   parse(): GoToLineTarget | null {
     const match = /^([1-9]\d*)(?::([1-9]\d*))?$/.exec(this.input.value.trim());
     if (!match) {

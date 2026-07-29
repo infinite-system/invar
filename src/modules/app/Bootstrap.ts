@@ -1105,15 +1105,22 @@ class $Bootstrap {
       void commands.open.value;
       void commands.query.value;
       void commands.queryInput.caret.value;
+      void commands.queryInput.selectionAnchor.value;
       void quickOpen.open.value; // repaint the quick-open modal on open/query/selection/hover change
       void quickOpen.query.value;
       void quickOpen.queryInput.caret.value;
+      void quickOpen.queryInput.selectionAnchor.value;
       void quickOpen.selectedIndex.value;
       void quickOpen.hoveredIndex.value;
       void quickOpen.workspacePathOpenable.value; // repaint the path-alert glyph live as the path changes
+      void goToLinePrompt.open.value;
+      void goToLinePrompt.input.text.value;
+      void goToLinePrompt.input.caret.value;
+      void goToLinePrompt.input.selectionAnchor.value;
       void findBar.open.value;
       void findBar.engine?.query.value;
       void findBar.focusedInput?.caret.value;
+      void findBar.focusedInput?.selectionAnchor.value;
       void findBar.engine?.matches.value;
       void findBar.engine?.currentMatchIndex.value; // repaint the match counter on next/prev
       void findBar.caseSensitive; // repaint the case toggle on flip
@@ -1556,28 +1563,22 @@ class $Bootstrap {
     // Keyboard: ONE decode layer (OpenTUI) -> registry resolution (pure data lookup) -> action
     // dispatch. No chord conditionals live here — bindings are data in keybindings.defaults/mac.
     // invariant: Bindings are intent addressed (src/modules/keybindings/keybindings.invariants.md)
-    const applyTextInputAction = (action: TextInputAction): void => {
+    const activeTextInputPort = (): PaneTextInputPort | null => {
       // The bounded popup is modal and topmost, so its search field owns text input first.
       if (boundedListPopup.acceptsQueryInput) {
-        boundedListPopup.applyQueryInputAction(action);
-        return;
+        return boundedListPopup;
       }
       if (findBar.open.value) {
-        findBar.applyInputAction(action);
-        revealFindMatch();
-        return;
+        return findBar;
       }
       if (quickOpen.open.value) {
-        quickOpen.applyQueryInputAction(action);
-        return;
+        return quickOpen;
       }
       if (commands.open.value) {
-        commands.applyQueryInputAction(action);
-        return;
+        return commands;
       }
       if (goToLinePrompt.open.value) {
-        goToLinePrompt.applyInputAction(action);
-        return;
+        return goToLinePrompt;
       }
       const primaryDockTextInput = primaryDockHost.focused.value
         ? primaryDockHost.focusedContent?.capability?.<PaneTextInputPort>(
@@ -1585,20 +1586,29 @@ class $Bootstrap {
           )
         : null;
       if (primaryDockTextInput) {
-        primaryDockTextInput.applyInputAction(action);
-        return;
+        return primaryDockTextInput;
       }
       const rightDockTextInput =
         rightDockHost.focusedContent?.capability?.<PaneTextInputPort>(
           'text-input',
         );
       if (rightDockHost.focused.value && rightDockTextInput) {
-        rightDockTextInput.applyInputAction(action);
-        return;
+        return rightDockTextInput;
       }
       const focusedContent = panelHost.focusedContent;
       if (focusedContent instanceof AgentPaneContent.Class) {
-        focusedContent.applyComposerInputAction(action);
+        return focusedContent;
+      }
+      return null;
+    };
+
+    const applyTextInputAction = (action: TextInputAction): void => {
+      const inputPort = activeTextInputPort();
+      if (!inputPort) return;
+      inputPort.applyInputAction(action);
+      if (inputPort === findBar) revealFindMatch();
+      if (inputPort instanceof AgentPaneContent.Class) {
+        const focusedContent = inputPort;
         synchronizeAgentSkillPopup(focusedContent);
       }
     };
@@ -1676,6 +1686,18 @@ class $Bootstrap {
       'textInput.moveWordRight': () => applyTextInputAction('moveWordRight'),
       'textInput.moveHome': () => applyTextInputAction('moveHome'),
       'textInput.moveEnd': () => applyTextInputAction('moveEnd'),
+      'textInput.selectLeft': () => applyTextInputAction('selectLeft'),
+      'textInput.selectRight': () => applyTextInputAction('selectRight'),
+      'textInput.selectWordLeft': () => applyTextInputAction('selectWordLeft'),
+      'textInput.selectWordRight': () =>
+        applyTextInputAction('selectWordRight'),
+      'textInput.selectHome': () => applyTextInputAction('selectHome'),
+      'textInput.selectEnd': () => applyTextInputAction('selectEnd'),
+      'textInput.selectAll': () => applyTextInputAction('selectAll'),
+      'textInput.copy': () => {
+        const inputPort = activeTextInputPort();
+        if (inputPort) publishCopyResult(inputPort.copyInputSelection());
+      },
       'textInput.backspace': () => applyTextInputAction('backspace'),
       'textInput.deleteForward': () => applyTextInputAction('deleteForward'),
       'textInput.deletePreviousWord': () =>

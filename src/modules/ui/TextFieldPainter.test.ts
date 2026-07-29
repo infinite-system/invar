@@ -28,6 +28,20 @@ function caretChunkText(
   throw new Error(`No painted chunk at column ${caretColumn}`);
 }
 
+function chunkAtColumn(
+  result: ReturnType<typeof TextFieldPainter.Class.paint>,
+  column: number,
+) {
+  let chunkStartColumn = 0;
+  for (const chunk of result.chunks) {
+    const chunkEndColumn =
+      chunkStartColumn + TextCoordinates.Class.lineWidth(chunk.text);
+    if (column >= chunkStartColumn && column < chunkEndColumn) return chunk;
+    chunkStartColumn = chunkEndColumn;
+  }
+  throw new Error(`No painted chunk at column ${column}`);
+}
+
 function paintField(
   value: string,
   caret: number,
@@ -40,6 +54,7 @@ function paintField(
     prefix: '> ',
     input,
     tone: TextFieldPainter.Class.toneFor(palette, state),
+    selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
     surfaceBackground: palette.panel,
     caretVisible: state !== 'idle',
     width,
@@ -164,4 +179,44 @@ test('an inline field paints only its own columns', () => {
   expect(paintedText(result)).toBe('> hi ');
   expect(result.paintedWidth).toBe(5);
   expect(result.caretColumn).toBe(4);
+});
+
+test('the painter highlights exactly the model selection without changing geometry', () => {
+  const input = new TextInputModel.Class('alpha beta');
+  input.apply('selectWordLeft');
+  const result = TextFieldPainter.Class.paint({
+    prefix: '> ',
+    input,
+    tone: TextFieldPainter.Class.toneFor(palette, 'focused'),
+    selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
+    surfaceBackground: palette.panel,
+    caretVisible: true,
+    width: 20,
+  });
+  const unselectedChunk = chunkAtColumn(result, '> alpha '.length - 1);
+  const selectedChunk = chunkAtColumn(result, '> alpha '.length + 1);
+
+  expect(paintedText(result)).toBe('> alpha beta        ');
+  expect(result.caretColumn).toBe('> alpha '.length);
+  expect(unselectedChunk.bg?.buffer).not.toEqual(selectedChunk.bg?.buffer);
+  expect(selectedChunk.text).toBe('eta');
+});
+
+test('a selected range keeps its tone when the caret window clips the field', () => {
+  const input = new TextInputModel.Class('0123456789abcdef');
+  input.apply('moveHome');
+  input.apply('selectEnd');
+  const result = TextFieldPainter.Class.paint({
+    prefix: '> ',
+    input,
+    tone: TextFieldPainter.Class.toneFor(palette, 'focused'),
+    selectionTone: TextFieldPainter.Class.selectionToneFor(palette),
+    surfaceBackground: palette.panel,
+    caretVisible: true,
+    width: 10,
+  });
+
+  expect(paintedText(result)).toBe('789abcdef ');
+  expect(result.paintedWidth).toBe(10);
+  expect(chunkAtColumn(result, 0).text).toBe('789abcdef');
 });

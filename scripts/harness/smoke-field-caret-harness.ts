@@ -11,6 +11,7 @@
 // invariant: One painter draws every single-line text field (src/modules/ui/ui.invariants.md)
 // invariant: Editable text fields share one input model (project.invariants.md)
 import { mkdtempSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
@@ -51,6 +52,8 @@ const idleTone = TextFieldPainter.Class.toneFor(palette, 'idle');
 const focusedTone = TextFieldPainter.Class.toneFor(palette, 'focused');
 
 const hoveredTone = TextFieldPainter.Class.toneFor(palette, 'hovered');
+
+const selectionTone = TextFieldPainter.Class.selectionToneFor(palette);
 
 const searchFieldPrefix = ` ${ThemeIcons.Class.findIconsFor('unicode').search} `;
 
@@ -243,6 +246,62 @@ try {
     (candidate) => candidate.boundedListPopupMatches === 1,
   );
   HarnessSmoke.Class.pass('typing filters while the caret tracks the model');
+
+  console.log(
+    '== field caret: selection and copy come from the shared input ==',
+  );
+  driver.sendKeys('Control+c');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'copy without a popup query selection publishes zero characters',
+    (candidate) => candidate.lastCopyChars === 0,
+  );
+  for (let selectionStep = 0; selectionStep < 3; selectionStep += 1) {
+    driver.sendKeys('Shift+Left');
+  }
+  snapshot = await driver.awaitGridCondition(
+    'the popup query paints the selected suffix',
+    (candidate) =>
+      candidate.cell(
+        geometry.searchRow ?? -1,
+        geometry.listLeft +
+          TextCoordinates.Class.lineWidth(searchFieldPrefix) +
+          9,
+      )?.background === colorNumber(selectionTone.background),
+  );
+  HarnessSmoke.Class.requireCondition(
+    snapshot.cell(
+      geometry.searchRow ?? -1,
+      geometry.listLeft +
+        TextCoordinates.Class.lineWidth(searchFieldPrefix) +
+        9,
+    )?.background === colorNumber(selectionTone.background),
+    'the popup query uses the shared selection tone',
+  );
+  driver.sendKeys('Control+c');
+  const selectedSuffixHash = createHash('sha256')
+    .update('007', 'utf8')
+    .digest('hex');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'copy publishes the exact popup query suffix',
+    (candidate) =>
+      candidate.lastCopyChars === 3 &&
+      candidate.lastCopyHash === selectedSuffixHash,
+  );
+  HarnessSmoke.Class.pass(
+    'the popup query copies its exact Shift-selected suffix',
+  );
+  driver.sendKeys('End');
+  await assertModelCaretIsPainted(
+    driver,
+    statusPath,
+    'End after selection',
+    'branch-007',
+    10,
+  );
 
   console.log('== field caret: word movement, home, and end ==');
   driver.sendKeys('Alt+Left');
