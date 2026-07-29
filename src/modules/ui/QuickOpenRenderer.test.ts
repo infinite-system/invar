@@ -53,7 +53,7 @@ describe('QuickOpenRenderer file-enumeration messages', () => {
     expect(completeEmptyText).toContain('no project files');
     expect(completeEmptyText).not.toContain('Bounded folder scan');
     expect(degradedEmptyText).toContain('Bounded folder scan');
-    expect(degradedEmptyText).toContain('no project files');
+    expect(degradedEmptyText).not.toContain('no project files');
     expect(failedText).toContain('Project files unavailable');
     expect(failedText).not.toContain('no project files');
   });

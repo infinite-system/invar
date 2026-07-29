@@ -4,9 +4,10 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Quick Open activates the selected entry (src/modules/search/search.invariants.md)
-import { mkdirSync, mkdtempSync } from 'node:fs';
+// invariant: File enumeration failures stay visible (src/modules/search/search.invariants.md)
+import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
 
@@ -18,7 +19,18 @@ const homeDirectory = mkdtempSync(
 
 const statusPath = join(homeDirectory, 'status.json');
 
+const degradedFixtureRoot = mkdtempSync(
+  join(tmpdir(), 'tui-quickopen-degraded-harness-'),
+);
+
+const degradedHomeDirectory = mkdtempSync(
+  join(tmpdir(), 'tui-quickopen-degraded-harness-home-'),
+);
+
+const degradedStatusPath = join(degradedHomeDirectory, 'status.json');
+
 HarnessSmoke.Class.runGit(fixtureRoot, ['init', '-q']);
+HarnessSmoke.Class.runGit(degradedFixtureRoot, ['init', '-q']);
 
 for (const fileName of [
   'alpha.txt',
@@ -33,6 +45,24 @@ for (const fileName of [
 mkdirSync(join(fixtureRoot, 'src'));
 
 await Bun.write(join(fixtureRoot, 'src', 'widget.txt'), 'content\n');
+
+mkdirSync(join(degradedFixtureRoot, 'ignored'));
+
+await Bun.write(
+  join(degradedFixtureRoot, '.git', 'info', 'exclude'),
+  'ignored/\n',
+);
+
+await Bun.write(join(degradedFixtureRoot, 'ignored', 'hidden.txt'), 'hidden\n');
+
+function pathWithoutRipgrep(): string {
+  return (process.env.PATH ?? '')
+    .split(delimiter)
+    .filter(
+      (pathEntry) => pathEntry.length > 0 && !existsSync(join(pathEntry, 'rg')),
+    )
+    .join(delimiter);
+}
 
 const driver = new PtyTestDriver.Class({
   workspaceRoot: fixtureRoot,
@@ -123,9 +153,88 @@ try {
   );
 
   driver.sendKeys('Control+q');
+
+  console.log(
+    '== harness quick-open: an empty Git fallback stays visibly degraded ==',
+  );
+  const degradedDriver = new PtyTestDriver.Class({
+    workspaceRoot: degradedFixtureRoot,
+    columns: 120,
+    rows: 40,
+    homeDirectory: degradedHomeDirectory,
+    environment: {
+      PATH: pathWithoutRipgrep(),
+      TUI_STATUS_PATH: degradedStatusPath,
+    },
+  });
+  try {
+    await degradedDriver.awaitGridCondition(
+      'the degraded fixture workspace to publish ready state',
+      () => {
+        try {
+          return (
+            HarnessSmoke.Class.readStatus(degradedStatusPath).ready === true
+          );
+        } catch {
+          return false;
+        }
+      },
+      15_000,
+    );
+    degradedDriver.sendKeys('Control+p');
+    await degradedDriver.awaitGridCondition(
+      'Quick Open to publish and paint the degraded empty Git fallback',
+      (snapshot) => {
+        try {
+          const status = HarnessSmoke.Class.readStatus(degradedStatusPath);
+          return (
+            status.quickOpenOpen === true &&
+            status.quickOpenFileEnumerationState === 'degraded' &&
+            status.quickOpenFileEnumerationMessage ===
+              'enumeration degraded — install ripgrep or open a git-tracked folder' &&
+            snapshot.findText('enumeration degraded') !== null &&
+            snapshot.findText(
+              'install ripgrep or open a git-tracked folder',
+            ) !== null
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+    degradedDriver.sendText('hidden.txt');
+    const degradedSnapshot = await degradedDriver.awaitGridCondition(
+      'the degraded message to remain visible after a query with no enumerated match',
+      (snapshot) => {
+        try {
+          const status = HarnessSmoke.Class.readStatus(degradedStatusPath);
+          return (
+            status.quickOpenQuery === 'hidden.txt' &&
+            status.quickOpenMatches === 0 &&
+            snapshot.findText('enumeration degraded') !== null
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+    HarnessSmoke.Class.requireCondition(
+      degradedSnapshot.findText('(no matching files)') === null,
+      'the degraded result does not masquerade as an ordinary empty match',
+    );
+    HarnessSmoke.Class.pass(
+      'the missing-ripgrep and empty-Git path stayed visibly degraded',
+    );
+    degradedDriver.sendKeys('Control+q');
+  } finally {
+    await degradedDriver.dispose();
+  }
+
   console.log('smoke-quickopen-harness: ALL-PASS');
 } finally {
   await driver.dispose();
   await HarnessSmoke.Class.removeTemporaryDirectory(fixtureRoot);
   await HarnessSmoke.Class.removeTemporaryDirectory(homeDirectory);
+  await HarnessSmoke.Class.removeTemporaryDirectory(degradedFixtureRoot);
+  await HarnessSmoke.Class.removeTemporaryDirectory(degradedHomeDirectory);
 }

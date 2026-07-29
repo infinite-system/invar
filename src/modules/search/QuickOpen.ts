@@ -309,10 +309,14 @@ class $QuickOpen {
       projectRoot,
     );
     if (gitResult.ok) {
+      const gitProjectFiles = this.pathsFromProcessOutput(gitResult.stdout);
       return {
-        files: this.pathsFromProcessOutput(gitResult.stdout),
-        state: 'complete',
-        message: '',
+        files: gitProjectFiles,
+        state: gitProjectFiles.length > 0 ? 'complete' : 'degraded',
+        message:
+          gitProjectFiles.length > 0
+            ? ''
+            : 'enumeration degraded — install ripgrep or open a git-tracked folder',
       };
     }
 
