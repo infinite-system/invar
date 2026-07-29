@@ -1,6 +1,6 @@
 # 267 — go-to-line does not exist, and a task file assumed it did
 
-State: IN-PROGRESS
+State: COMPLETED — d1784f94 — Go-to-line built: Alt+G, shared painter prompt, clamped line:column, both jump ends recorded, 10+100k contract
 Created: 2026-07-29
 Engine: codex
 Environment: linux
