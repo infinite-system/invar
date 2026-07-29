@@ -1,6 +1,6 @@
 # 220 — the editor registers as a contributor with a manifest and uninstall symmetry
 
-State: IN-PROGRESS
+State: COMPLETED — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
 Created: 2026-07-29
 Engine: claude
 Environment: linux

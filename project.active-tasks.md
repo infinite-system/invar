@@ -6,10 +6,6 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
-- #220 editor-registers-as-contributor-with-manifest  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/220-editor-registers-as-contributor-with-manifest`
-
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
@@ -73,9 +69,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 33 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 34 — full log: project.tasks-completed.md)
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
+- #220 editor-registers-as-contributor-with-manifest — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
 - #219 source-text-view-onto-pane-content-seam — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
 - #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 - #216 drive-onramp-quick-open-blind-enumeration — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
@@ -88,4 +85,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
 - #203 folded-editing-scale-invariance — e479b98
 - #202 tab-reactivation-rereads-whole-file — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
-- #201 quick-open-silent-empty-enumeration — fb199cb
