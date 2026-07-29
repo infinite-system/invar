@@ -75,6 +75,9 @@ interface PanelHeadingGeometryStatus {
   }[];
 }
 
+const DARK_SCROLLBAR_COLORS = [0x16161e, 0x787c99] as const;
+const LIGHT_SCROLLBAR_COLORS = [0x848cb5, 0xd4d6e4] as const;
+
 function pass(label: string): void {
   console.log(`  PASS  ${label}`);
 }
@@ -152,6 +155,45 @@ function requireEditorTwoAxisBarOwnershipAndColors(
   return [...verticalBackgroundColors].sort(
     (firstColor, secondColor) => firstColor - secondColor,
   );
+}
+
+function scrollbarColorsMatch(
+  colors: readonly number[],
+  expectedColors: readonly number[],
+): boolean {
+  return (
+    colors.length === expectedColors.length &&
+    colors.every((color, colorIndex) => color === expectedColors[colorIndex])
+  );
+}
+
+function editorVerticalScrollbarColors(
+  snapshot: HarnessSnapshot.Model,
+  targets: readonly ScrollbarThumbDragTarget[],
+): readonly number[] {
+  const verticalTarget = targets.find(
+    (target) => target.name === 'editorVertical',
+  );
+  const horizontalTarget = targets.find(
+    (target) => target.name === 'editorHorizontal',
+  );
+  if (!verticalTarget || !horizontalTarget) return [];
+  return [
+    ...new Set(
+      Array.from(
+        {
+          length: horizontalTarget.pressRow - verticalTarget.pressRow + 1,
+        },
+        (_unusedValue, rowOffset) =>
+          snapshot.cell(
+            verticalTarget.pressRow + rowOffset,
+            verticalTarget.pressColumn,
+          ),
+      )
+        .filter((cell) => cell?.isBackgroundRgb === true)
+        .map((cell) => cell!.background),
+    ),
+  ].sort((firstColor, secondColor) => firstColor - secondColor);
 }
 
 function runGit(repositoryRoot: string, commandArguments: string[]): void {
@@ -263,6 +305,10 @@ async function proveContinuousScrollbarThumbDrag(
       targets,
       `${lineCount}-line dark theme`,
     );
+    requireCondition(
+      scrollbarColorsMatch(darkThemeScrollbarColors, DARK_SCROLLBAR_COLORS),
+      `${lineCount}-line dark theme uses the live panel and dim pair`,
+    );
     const horizontalTarget = targets[0];
     requireCondition(
       horizontalTarget !== undefined &&
@@ -349,17 +395,82 @@ async function proveContinuousScrollbarThumbDrag(
       lightThemeTargets,
       `${lineCount}-line light theme switch`,
     );
-    if (
-      darkThemeScrollbarColors.join(',') === lightThemeScrollbarColors.join(',')
-    ) {
-      console.log(
-        `  OBSERVED #284 (scrollbar colours captured at construction): ` +
-          `colours stayed ${lightThemeScrollbarColors
-            .map((color) => color.toString(16))
-            .join('/')} after the live light switch`,
+    requireCondition(
+      scrollbarColorsMatch(lightThemeScrollbarColors, LIGHT_SCROLLBAR_COLORS),
+      `${lineCount}-line light theme switch uses the live panel and dim pair`,
+    );
+    requireCondition(
+      darkThemeScrollbarColors.every(
+        (darkColor) => !lightThemeScrollbarColors.includes(darkColor),
+      ),
+      `${lineCount}-line light theme switch removes the dark pair`,
+    );
+
+    driver.sendKeys('Control+,');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive reopens Settings before the dark switch`,
+      (candidate) =>
+        candidate.settingsOpen === true &&
+        candidate.settingsSelectedLabel === 'Theme' &&
+        candidate.settingsSelectedValue === 'light',
+    );
+    driver.sendKeys('Right');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive switches the live theme back to dark`,
+      (candidate) =>
+        candidate.settingsSelectedLabel === 'Theme' &&
+        candidate.settingsSelectedValue === 'dark',
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive closes Settings after the live dark switch`,
+      (candidate) => candidate.settingsOpen === false,
+    );
+    let returnedDarkThemeTargets: readonly ScrollbarThumbDragTarget[] = [];
+    const returnedDarkThemeSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line editor repaints after the live dark switch`,
+      (candidate) => {
+        try {
+          returnedDarkThemeTargets = deriveScrollbarThumbDragTargets(
+            candidate,
+            HarnessSmoke.Class.readStatus(statusPath),
+          );
+          return scrollbarColorsMatch(
+            editorVerticalScrollbarColors(candidate, returnedDarkThemeTargets),
+            DARK_SCROLLBAR_COLORS,
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+    const returnedDarkThemeScrollbarColors =
+      requireEditorTwoAxisBarOwnershipAndColors(
+        returnedDarkThemeSnapshot,
+        returnedDarkThemeTargets,
+        `${lineCount}-line returned dark theme`,
       );
-    }
-    for (const target of lightThemeTargets) {
+    requireCondition(
+      scrollbarColorsMatch(
+        returnedDarkThemeScrollbarColors,
+        DARK_SCROLLBAR_COLORS,
+      ),
+      `${lineCount}-line returned dark theme restores the panel and dim pair`,
+    );
+    requireCondition(
+      lightThemeScrollbarColors.every(
+        (lightColor) => !returnedDarkThemeScrollbarColors.includes(lightColor),
+      ),
+      `${lineCount}-line returned dark theme removes the light pair`,
+    );
+
+    for (const target of returnedDarkThemeTargets) {
       const positions = await dragScrollbarThumb(driver, statusPath, target);
       requireCondition(
         positions.length === 4 &&
