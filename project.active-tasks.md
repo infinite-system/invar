@@ -8,7 +8,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (2)
 - #202 tab-reactivation-rereads-whole-file
+  `tmux attach -t invar/202-tab-reactivation-rereads-whole-file`
 - #114 modularity-umbrella-provider-runtime
+  `tmux attach -t invar/114-modularity-umbrella-provider-runtime`
 
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling

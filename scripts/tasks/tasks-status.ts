@@ -254,7 +254,12 @@ function renderActiveView(records: TaskRecord[]): string {
     .sort(byNumberDescending);
   if (inProgress.length > 0) {
     outputLines.push(`## IN-PROGRESS (${inProgress.length})`);
-    for (const record of inProgress) outputLines.push(taskLine(record));
+    for (const record of inProgress) {
+      outputLines.push(taskLine(record));
+      // The attach command rides the entry, so joining a live builder is one copy-paste.
+      // Session naming is dispatch.sh's convention: invar/<folder-name>.
+      outputLines.push(`  \`tmux attach -t invar/${record.folderName}\``);
+    }
     outputLines.push('');
   }
 
