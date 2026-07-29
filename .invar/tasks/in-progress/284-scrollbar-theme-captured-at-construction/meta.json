@@ -1,0 +1,15 @@
+{
+  "task": 284,
+  "slug": "scrollbar-theme-captured-at-construction",
+  "branch": "fleet/284-scrollbar-theme-captured-at-construction",
+  "worktree": ".invar/worktrees/284-scrollbar-theme-captured-at-construction",
+  "tmuxSession": "invar/284-scrollbar-theme-captured-at-construction",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-284-scrollbar-theme-captured-at-construction.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "1b66eb26e41dc952a3110cfe6a6b621db7b4b5c0",
+  "startedAt": "2026-07-29T16:17:05-04:00"
+}

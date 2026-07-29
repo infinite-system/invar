@@ -1,6 +1,6 @@
 # 284 — scrollbar colours captured at construction never follow the live theme
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
