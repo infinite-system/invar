@@ -1,0 +1,15 @@
+{
+  "task": 285,
+  "slug": "preview-last-body-row-hit-test",
+  "branch": "fleet/285-preview-last-body-row-hit-test",
+  "worktree": ".invar/worktrees/285-preview-last-body-row-hit-test",
+  "tmuxSession": "invar/285-preview-last-body-row-hit-test",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-285-preview-last-body-row-hit-test.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "a0db15c073651527a2c1f4b75a2c82a4cf185f68",
+  "startedAt": "2026-07-29T15:09:15-04:00"
+}

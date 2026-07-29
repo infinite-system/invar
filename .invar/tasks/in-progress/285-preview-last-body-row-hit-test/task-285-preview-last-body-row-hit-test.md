@@ -1,6 +1,6 @@
 # 285 — the preview's LAST body row is hit-test dead
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
