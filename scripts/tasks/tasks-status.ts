@@ -789,6 +789,36 @@ function lineDeltaBadge(folderName: string): string {
 // first time snaps — only CHANGES animate.
 const numberTweens = new Map<string, number>();
 
+// Change pops: when a tracked value JUMPS, the jump itself appears beside the
+// number ("+37") and fades over ~2 s — bold, then normal, then dim, then
+// gone. A paint-frame clock drives the decay; the static lens never pops.
+let currentPaintFrame = -1;
+const targetsSeen = new Map<string, number>();
+const recentPops = new Map<string, { delta: number; atFrame: number }>();
+const POP_LIFETIME_FRAMES = 60;
+
+function notePop(key: string, target: number): void {
+  const seen = targetsSeen.get(key);
+  targetsSeen.set(key, target);
+  if (seen === undefined || seen === target || currentPaintFrame < 0) return;
+  recentPops.set(key, { delta: target - seen, atFrame: currentPaintFrame });
+}
+
+function popSuffix(key: string): string {
+  const pop = recentPops.get(key);
+  if (pop === undefined || currentPaintFrame < 0) return '';
+  const age = currentPaintFrame - pop.atFrame;
+  if (age > POP_LIFETIME_FRAMES) {
+    recentPops.delete(key);
+    return '';
+  }
+  const signed = pop.delta > 0 ? `+${pop.delta}` : String(pop.delta);
+  if (age < POP_LIFETIME_FRAMES / 3) return ` ${paint('1;38;5;51', signed)}`;
+  if (age < (POP_LIFETIME_FRAMES * 2) / 3)
+    return ` ${paint('38;5;44', signed)}`;
+  return ` ${dim(signed)}`;
+}
+
 function rollingNumber(
   key: string,
   target: number,
@@ -814,9 +844,12 @@ function rollingBadge(
   prefixText: string,
   colour: (t: string) => string,
 ): string {
+  notePop(key, target);
   const { shown, rolling } = rollingNumber(key, target);
   const rendered = `${prefixText}${shown.toLocaleString('en-US')}`;
-  return rolling ? paint('1;38;5;51', rendered) : colour(rendered);
+  return (
+    (rolling ? paint('1;38;5;51', rendered) : colour(rendered)) + popSuffix(key)
+  );
 }
 
 // The word itself carries the current: a cool gradient flows through the
@@ -1129,6 +1162,7 @@ async function watchLenses(tasksRoot: string): Promise<number> {
         sampledLines = sourceLineCount(); // only when a landing moved main
       }
     }
+    currentPaintFrame = frame;
     // Home, then clear to end — repaint in place inside the alt screen.
     process.stdout.write('\x1b[H\x1b[0J');
     const clock = new Date().toLocaleTimeString('en-GB', { hour12: false });
