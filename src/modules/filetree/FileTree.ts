@@ -2,7 +2,7 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import { Files, type DirEntry } from '../system/Files';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 // A lazily-expanded file tree. Children are read only when a directory is expanded, and the
 // flattened visible list is a plain getter over the expansion state — no reactive node per
@@ -121,11 +121,7 @@ class $FileTree {
       (widestWidth, row) =>
         Math.max(
           widestWidth,
-          1 +
-            row.depth * 2 +
-            1 +
-            1 +
-            EditorCoordinates.Class.lineWidth(row.name),
+          1 + row.depth * 2 + 1 + 1 + TextCoordinates.Class.lineWidth(row.name),
         ),
       0,
     );

@@ -4,11 +4,11 @@
 //
 // invariant: Cost tracks the actively observed set (project.invariants.md)
 // invariant: Async results are revision-stamped and stale results discarded (project.invariants.md)
-// invariant: The dirty marker is derived from content, never asserted (editor.invariants.md)
+// invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { Files } from '../system/Files';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 
 class $TextDocument {
   path = '';
@@ -323,7 +323,7 @@ class $TextDocument {
     this.maximumLineWidthLineIndex = maximumLineWidthLineIndex;
   }
 
-  // invariant: Geometry aggregates match their consumers (editor.invariants.md)
+  // invariant: Geometry aggregates match their consumers (src/modules/editor/editor.invariants.md)
   protected rebuildMaximumLineWidth(): void {
     this.maximumLineWidthValue = 0;
     this.maximumLineWidthLineIndex = -1;
@@ -364,7 +364,7 @@ class $TextDocument {
 
   protected measureLineDisplayWidth(line: string): number {
     if (/^[\x20-\x7e]*$/.test(line)) return line.length;
-    return EditorCoordinates.Class.lineWidth(line);
+    return TextCoordinates.Class.lineWidth(line);
   }
 
   protected splitTextIntoLines(text: string): string[] {
@@ -476,11 +476,8 @@ class $TextDocument {
   /** Insert `text` (no newlines) at line/grapheme-col. Returns the new grapheme col. */
   insertInline(line: number, column: number, text: string): number {
     const currentLine = this.line(line);
-    const graphemeColumn = EditorCoordinates.Class.clampCol(
-      currentLine,
-      column,
-    );
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const graphemeColumn = TextCoordinates.Class.clampCol(currentLine, column);
+    const utf16Offset = TextCoordinates.Class.graphemeToU16(
       currentLine,
       graphemeColumn,
     );
@@ -488,15 +485,15 @@ class $TextDocument {
       currentLine.slice(0, utf16Offset) + text + currentLine.slice(utf16Offset),
     ]);
     this.revision.value++;
-    return graphemeColumn + EditorCoordinates.Class.graphemeCount(text);
+    return graphemeColumn + TextCoordinates.Class.graphemeCount(text);
   }
 
   /** Split a line at grapheme-col into two lines (Enter). Returns new cursor {line, col}. */
   splitLine(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const utf16Offset = TextCoordinates.Class.graphemeToU16(
       currentLine,
-      EditorCoordinates.Class.clampCol(currentLine, column),
+      TextCoordinates.Class.clampCol(currentLine, column),
     );
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
@@ -509,15 +506,15 @@ class $TextDocument {
   deleteBackward(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
     if (column > 0) {
-      const graphemeColumn = EditorCoordinates.Class.clampCol(
+      const graphemeColumn = TextCoordinates.Class.clampCol(
         currentLine,
         column,
       );
-      const start = EditorCoordinates.Class.graphemeToU16(
+      const start = TextCoordinates.Class.graphemeToU16(
         currentLine,
         graphemeColumn - 1,
       );
-      const end = EditorCoordinates.Class.graphemeToU16(
+      const end = TextCoordinates.Class.graphemeToU16(
         currentLine,
         graphemeColumn,
       );
@@ -529,7 +526,7 @@ class $TextDocument {
     }
     if (line > 0) {
       const previousLine = this.line(line - 1);
-      const newColumn = EditorCoordinates.Class.graphemeCount(previousLine);
+      const newColumn = TextCoordinates.Class.graphemeCount(previousLine);
       this.replaceLineRange(line - 1, 2, [previousLine + currentLine]);
       this.revision.value++;
       return { line: line - 1, col: newColumn };
@@ -540,16 +537,13 @@ class $TextDocument {
   /** Delete the grapheme at line/col (Delete). Returns cursor unchanged. */
   deleteForward(line: number, column: number): { line: number; col: number } {
     const currentLine = this.line(line);
-    const graphemeColumn = EditorCoordinates.Class.clampCol(
-      currentLine,
-      column,
-    );
-    if (graphemeColumn < EditorCoordinates.Class.graphemeCount(currentLine)) {
-      const start = EditorCoordinates.Class.graphemeToU16(
+    const graphemeColumn = TextCoordinates.Class.clampCol(currentLine, column);
+    if (graphemeColumn < TextCoordinates.Class.graphemeCount(currentLine)) {
+      const start = TextCoordinates.Class.graphemeToU16(
         currentLine,
         graphemeColumn,
       );
-      const end = EditorCoordinates.Class.graphemeToU16(
+      const end = TextCoordinates.Class.graphemeToU16(
         currentLine,
         graphemeColumn + 1,
       );
@@ -574,19 +568,19 @@ class $TextDocument {
     if (start.line === end.line) {
       const currentLine = this.line(start.line);
       return currentLine.slice(
-        EditorCoordinates.Class.graphemeToU16(currentLine, start.col),
-        EditorCoordinates.Class.graphemeToU16(currentLine, end.col),
+        TextCoordinates.Class.graphemeToU16(currentLine, start.col),
+        TextCoordinates.Class.graphemeToU16(currentLine, end.col),
       );
     }
     const first = this.line(start.line);
     const last = this.line(end.line);
     const parts: string[] = [
-      first.slice(EditorCoordinates.Class.graphemeToU16(first, start.col)),
+      first.slice(TextCoordinates.Class.graphemeToU16(first, start.col)),
     ];
     for (let index = start.line + 1; index < end.line; index++)
       parts.push(this.line(index));
     parts.push(
-      last.slice(0, EditorCoordinates.Class.graphemeToU16(last, end.col)),
+      last.slice(0, TextCoordinates.Class.graphemeToU16(last, end.col)),
     );
     return parts.join(this._eol);
   }
@@ -601,19 +595,19 @@ class $TextDocument {
       this.replaceLineRange(start.line, 1, [
         currentLine.slice(
           0,
-          EditorCoordinates.Class.graphemeToU16(currentLine, start.col),
+          TextCoordinates.Class.graphemeToU16(currentLine, start.col),
         ) +
           currentLine.slice(
-            EditorCoordinates.Class.graphemeToU16(currentLine, end.col),
+            TextCoordinates.Class.graphemeToU16(currentLine, end.col),
           ),
       ]);
     } else {
       const head = this.line(start.line).slice(
         0,
-        EditorCoordinates.Class.graphemeToU16(this.line(start.line), start.col),
+        TextCoordinates.Class.graphemeToU16(this.line(start.line), start.col),
       );
       const tail = this.line(end.line).slice(
-        EditorCoordinates.Class.graphemeToU16(this.line(end.line), end.col),
+        TextCoordinates.Class.graphemeToU16(this.line(end.line), end.col),
       );
       this.replaceLineRange(start.line, end.line - start.line + 1, [
         head + tail,
@@ -634,9 +628,9 @@ class $TextDocument {
       return { line, col: this.insertInline(line, column, parts[0] ?? '') };
     }
     const currentLine = this.line(line);
-    const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const utf16Offset = TextCoordinates.Class.graphemeToU16(
       currentLine,
-      EditorCoordinates.Class.clampCol(currentLine, column),
+      TextCoordinates.Class.clampCol(currentLine, column),
     );
     const before = currentLine.slice(0, utf16Offset);
     const after = currentLine.slice(utf16Offset);
@@ -651,7 +645,7 @@ class $TextDocument {
     this.revision.value++;
     return {
       line: line + parts.length - 1,
-      col: EditorCoordinates.Class.graphemeCount(lastPart),
+      col: TextCoordinates.Class.graphemeCount(lastPart),
     };
   }
 
@@ -665,10 +659,10 @@ class $TextDocument {
     const lastLine = this.line(end.line);
     const head = firstLine.slice(
       0,
-      EditorCoordinates.Class.graphemeToU16(firstLine, start.col),
+      TextCoordinates.Class.graphemeToU16(firstLine, start.col),
     );
     const tail = lastLine.slice(
-      EditorCoordinates.Class.graphemeToU16(lastLine, end.col),
+      TextCoordinates.Class.graphemeToU16(lastLine, end.col),
     );
     const replacementParts = text.split(/\r?\n/);
     const firstPart = replacementParts[0] ?? '';
@@ -686,11 +680,11 @@ class $TextDocument {
     return replacementParts.length === 1
       ? {
           line: start.line,
-          col: start.col + EditorCoordinates.Class.graphemeCount(firstPart),
+          col: start.col + TextCoordinates.Class.graphemeCount(firstPart),
         }
       : {
           line: start.line + replacementParts.length - 1,
-          col: EditorCoordinates.Class.graphemeCount(lastPart),
+          col: TextCoordinates.Class.graphemeCount(lastPart),
         };
   }
 

@@ -11,8 +11,8 @@
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import { bg, fg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import type { TextInputModel } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import type { TextInputModel } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 
 class $TextFieldPainter {
@@ -39,10 +39,10 @@ class $TextFieldPainter {
    * Paint one field. The caret cell is always emitted — only its colours depend on
    * `caretVisible` — so a field's painted width and text window are identical in every state.
    * The caret sits on the grapheme at `input.caret` (a space when the caret is at the end), and
-   * every column here is measured through `EditorCoordinates`, never through string length.
+   * every column here is measured through `TextCoordinates`, never through string length.
    */
   static paint(context: TextFieldPaintContext): TextFieldPaintResult {
-    const editorCoordinates = EditorCoordinates.Class;
+    const editorCoordinates = TextCoordinates.Class;
     const leadText = context.prefix + context.input.valueBeforeCaret;
     const afterCaretText = context.input.valueAfterCaret;
     const caretGraphemeEnd = editorCoordinates.graphemeToU16(afterCaretText, 1);
@@ -114,9 +114,9 @@ class $TextFieldPainter {
    *  its own window). Returns whole graphemes only, so no wide glyph is cut in half. */
   protected static trailingColumnWindow(text: string, budget: number): string {
     if (budget <= 0) return '';
-    const totalWidth = EditorCoordinates.Class.lineWidth(text);
+    const totalWidth = TextCoordinates.Class.lineWidth(text);
     if (totalWidth <= budget) return text;
-    return EditorCoordinates.Class.displayColumnWindow(
+    return TextCoordinates.Class.displayColumnWindow(
       text,
       totalWidth - budget,
       budget,

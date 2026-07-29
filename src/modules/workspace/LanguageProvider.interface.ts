@@ -1,4 +1,4 @@
-import type { TextDocument } from '../editor/TextDocument';
+import type { TextDocument } from '../text/TextDocument';
 import type { SymbolClass } from '../theme/ThemeIcons';
 import type { WorkspaceProvider } from './WorkspaceContributor.interface';
 

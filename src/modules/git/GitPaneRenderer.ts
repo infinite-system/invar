@@ -13,7 +13,7 @@
 // invariant: Selection is item-anchored click-set keyboard-moved and stays (src/modules/ui/ui.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { GitRows, type ChangeRow } from './GitRows';
 import { GitLogRows, type CommitLogRow } from './GitLogRows';
 import type { Palette } from '../theme/ThemePalettes';
@@ -49,7 +49,7 @@ class $GitPaneRenderer {
       (widestWidth, row) =>
         Math.max(
           widestWidth,
-          EditorCoordinates.Class.lineWidth(
+          TextCoordinates.Class.lineWidth(
             this.changeRowText(row, checkboxIcons),
           ),
         ),
@@ -62,7 +62,7 @@ class $GitPaneRenderer {
       []) {
       widestWidth = Math.max(
         widestWidth,
-        EditorCoordinates.Class.lineWidth(
+        TextCoordinates.Class.lineWidth(
           ` ▸ ${record.shortSha} ${record.subject}`,
         ),
       );
@@ -72,7 +72,7 @@ class $GitPaneRenderer {
       for (const file of expansion.files ?? []) {
         widestWidth = Math.max(
           widestWidth,
-          EditorCoordinates.Class.lineWidth(`    ${file.status} ${file.path}`),
+          TextCoordinates.Class.lineWidth(`    ${file.status} ${file.path}`),
         );
       }
     }
@@ -116,13 +116,13 @@ class $GitPaneRenderer {
         1,
         Math.min(innerWidth, options.viewportWidth ?? innerWidth),
       );
-      let label = EditorCoordinates.Class.displayColumnWindow(
+      let label = TextCoordinates.Class.displayColumnWindow(
         text,
         options.scrollLeft ?? 0,
         viewportWidth,
       );
-      label = EditorCoordinates.Class.padToDisplayWidth(label, viewportWidth);
-      label = EditorCoordinates.Class.padToDisplayWidth(label, innerWidth);
+      label = TextCoordinates.Class.padToDisplayWidth(label, viewportWidth);
+      label = TextCoordinates.Class.padToDisplayWidth(label, innerWidth);
       let chunk = fg(color)(label);
       if (options.bold) chunk = bold(chunk);
       if (options.background) chunk = bg(options.background)(chunk);
@@ -228,8 +228,8 @@ class $GitPaneRenderer {
             const staged = row.bucket === 'staged';
             const stageGlyph = staged ? actionIcons.unstage : actionIcons.stage;
             const stageColor = staged ? palette.dim : palette.added;
-            const pathText = EditorCoordinates.Class.padToDisplayWidth(
-              EditorCoordinates.Class.displayColumnWindow(
+            const pathText = TextCoordinates.Class.padToDisplayWidth(
+              TextCoordinates.Class.displayColumnWindow(
                 label,
                 gitPanel.changesScrollLeft.value,
                 changesActiveNameWidth,

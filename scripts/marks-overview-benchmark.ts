@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { TextDocument } from '../src/modules/editor/TextDocument';
+import { TextDocument } from '../src/modules/text/TextDocument';
 import { OverviewRuler } from '../src/modules/ui/OverviewRuler';
 import { DocumentHandle } from '../src/modules/workspace/DocumentHandle';
 import {

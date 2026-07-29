@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { FindInBuffer } from './FindInBuffer';
 
 function createFindInBuffer(text: string): {

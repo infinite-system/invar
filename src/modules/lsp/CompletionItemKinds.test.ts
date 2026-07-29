@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { CompletionItemKinds } from './CompletionItemKinds';
 
@@ -17,7 +17,7 @@ test('every completion kind in the protocol classifies and resolves to a mark', 
     for (const glyphLevel of glyphLevels) {
       const mark = ThemeIcons.Class.symbolMarkFor(glyphLevel, symbolClass);
       expect(mark.length).toBeGreaterThan(0);
-      expect(EditorCoordinates.Class.lineWidth(mark)).toBe(1);
+      expect(TextCoordinates.Class.lineWidth(mark)).toBe(1);
     }
   }
 });

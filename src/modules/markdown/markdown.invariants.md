@@ -233,7 +233,7 @@ Malformed tables and whole-preview find materialization use the fallback behavio
 - *Parsing owns table syntax* — `BlockRecord.table` carries rows, cells, and alignments; projection
   never parses pipe syntax.
 - *Projection owns display geometry* — equal column shares come from pane width, and cell text is
-  measured, truncated, aligned, and padded through `EditorCoordinates`.
+  measured, truncated, aligned, and padded through `TextCoordinates`.
 - *Painting stays viewport bounded* — `totalRows` counts table rows without visiting cells, and
   `visibleRows` materializes table rows only where they intersect the viewport.
 

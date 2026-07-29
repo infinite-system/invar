@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
-import { TextInputModel } from '../editor/TextInputModel';
+import { TextCoordinates } from '../text/TextCoordinates';
+import { TextInputModel } from '../text/TextInputModel';
 import { ThemePalettes } from '../theme/ThemePalettes';
 import { TextFieldPainter, type TextFieldState } from './TextFieldPainter';
 
@@ -19,7 +19,7 @@ function caretChunkText(
   let chunkStartColumn = 0;
   for (const chunk of result.chunks) {
     const chunkEndColumn =
-      chunkStartColumn + EditorCoordinates.Class.lineWidth(chunk.text);
+      chunkStartColumn + TextCoordinates.Class.lineWidth(chunk.text);
     if (caretColumn >= chunkStartColumn && caretColumn < chunkEndColumn) {
       return chunk.text;
     }

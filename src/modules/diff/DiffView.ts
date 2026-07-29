@@ -16,7 +16,7 @@ import {
 } from '@opentui/core';
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ReadOnlyTextBuffer } from '../editor/ReadOnlyTextBuffer';
 import { SplitterModel } from '../layout/SplitterModel';
 import { SplitterElement } from '../ui/SplitterElement';
@@ -74,8 +74,8 @@ class $DiffView {
     return DiffAlignment.Class;
   }
 
-  protected get EditorCoordinates() {
-    return EditorCoordinates.Class;
+  protected get TextCoordinates() {
+    return TextCoordinates.Class;
   }
 
   protected get Highlighter() {
@@ -745,7 +745,7 @@ class $DiffView {
       color: string,
     ): TextChunk => {
       const startColumn = nextColumn;
-      nextColumn += this.EditorCoordinates.lineWidth(label);
+      nextColumn += this.TextCoordinates.lineWidth(label);
       headerSegments.push({
         kind,
         startColumn,
@@ -755,7 +755,7 @@ class $DiffView {
     };
     const counterText = ` ${changeCounter}`;
     const chunks: TextChunk[] = [fg(palette.fg)(counterText)];
-    nextColumn += this.EditorCoordinates.lineWidth(counterText);
+    nextColumn += this.TextCoordinates.lineWidth(counterText);
     const headerWidth = Math.max(
       1,
       Number(this.headerRenderable.width) ||
@@ -770,7 +770,7 @@ class $DiffView {
       laidOutCurrentPaneStart > 0
         ? laidOutCurrentPaneStart
         : ratioCurrentPaneStart;
-    const actionGroupWidth = this.EditorCoordinates.lineWidth(
+    const actionGroupWidth = this.TextCoordinates.lineWidth(
       previousLabel + nextLabel + openLabel,
     );
     const openSegmentStart = Math.max(
@@ -882,7 +882,7 @@ class $DiffView {
         codeChunks.push(...lineChunks);
         const remainingColumns = Math.max(
           0,
-          codeContentWidth - this.EditorCoordinates.lineWidth(visibleLine),
+          codeContentWidth - this.TextCoordinates.lineWidth(visibleLine),
         );
         if (remainingColumns > 0) {
           const paddingChunk = fg(palette.fg)(' '.repeat(remainingColumns));
@@ -926,7 +926,7 @@ class $DiffView {
             (match) => match.line === lineIndex,
           ) ?? []);
     const visibleGraphemeCount =
-      this.EditorCoordinates.graphemeCount(visibleLine);
+      this.TextCoordinates.graphemeCount(visibleLine);
     const boundaries = new Set<number>([0, visibleGraphemeCount]);
     for (const match of lineMatches) {
       boundaries.add(
@@ -961,8 +961,8 @@ class $DiffView {
       const segmentEnd = orderedBoundaries[boundaryIndex + 1]!;
       if (segmentEnd <= segmentStart) continue;
       const segmentText = visibleLine.slice(
-        this.EditorCoordinates.graphemeToU16(visibleLine, segmentStart),
-        this.EditorCoordinates.graphemeToU16(visibleLine, segmentEnd),
+        this.TextCoordinates.graphemeToU16(visibleLine, segmentStart),
+        this.TextCoordinates.graphemeToU16(visibleLine, segmentEnd),
       );
       const findHighlighted = lineMatches.some(
         (match) =>
@@ -1000,25 +1000,25 @@ class $DiffView {
     ) {
       return { text: sourceLine, startGrapheme: 0 };
     }
-    let startGraphemeIndex = this.EditorCoordinates.graphemeAtDisplayColumn(
+    let startGraphemeIndex = this.TextCoordinates.graphemeAtDisplayColumn(
       sourceLine,
       horizontalScrollOffset,
     );
     if (
-      this.EditorCoordinates.displayColumn(sourceLine, startGraphemeIndex) <
+      this.TextCoordinates.displayColumn(sourceLine, startGraphemeIndex) <
       horizontalScrollOffset
     ) {
       startGraphemeIndex++;
     }
     const endGraphemeIndex =
-      this.EditorCoordinates.graphemeAtDisplayColumn(
+      this.TextCoordinates.graphemeAtDisplayColumn(
         sourceLine,
         horizontalScrollOffset + codeViewportWidth,
       ) + 1;
     return {
       text: sourceLine.slice(
-        this.EditorCoordinates.graphemeToU16(sourceLine, startGraphemeIndex),
-        this.EditorCoordinates.graphemeToU16(sourceLine, endGraphemeIndex),
+        this.TextCoordinates.graphemeToU16(sourceLine, startGraphemeIndex),
+        this.TextCoordinates.graphemeToU16(sourceLine, endGraphemeIndex),
       ),
       startGrapheme: startGraphemeIndex,
     };
@@ -1210,7 +1210,7 @@ class $DiffView {
       horizontalScrollingEnabled: () => true,
       lineGraphemeCount: (lineIndex) =>
         this.activeSelectionBuffer
-          ? this.EditorCoordinates.graphemeCount(
+          ? this.TextCoordinates.graphemeCount(
               this.activeSelectionBuffer.document.line(lineIndex),
             )
           : 0,
@@ -1296,7 +1296,7 @@ class $DiffView {
       Math.max(0, screenColumn - codeRenderable.x - 1);
     return {
       line: lineNumber - 1,
-      column: this.EditorCoordinates.graphemeAtDisplayColumn(
+      column: this.TextCoordinates.graphemeAtDisplayColumn(
         sourceLine,
         displayColumn,
       ),
@@ -1463,14 +1463,14 @@ class $DiffView {
     const lastLineIndex = lastSelectedVisibleRow.lineNumber - 1;
     const startDisplayColumn =
       firstLineIndex === selectionRange.start.line
-        ? this.EditorCoordinates.displayColumn(
+        ? this.TextCoordinates.displayColumn(
             this.lineForSide(side, firstSelectedVisibleRow.lineNumber),
             selectionRange.start.col,
           ) - this.horizontalScrollOffset.value
         : 0;
     const endDisplayColumn =
       lastLineIndex === selectionRange.end.line
-        ? this.EditorCoordinates.displayColumn(
+        ? this.TextCoordinates.displayColumn(
             this.lineForSide(side, lastSelectedVisibleRow.lineNumber),
             selectionRange.end.col,
           ) - this.horizontalScrollOffset.value

@@ -9,9 +9,9 @@ import { TextSegmentation } from '../system/TextSegmentation';
 //   - UTF-16 offset   : index into the string, for slicing (and for LSP after mapping).
 //   - display column  : terminal columns — tab-expanded and wide/zero-width aware, for the caret
 //                        and rendering.
-// invariant: A cursor position resolves to three distinct coordinates (editor.invariants.md)
+// invariant: A cursor position resolves to three distinct coordinates (src/modules/text/text.invariants.md)
 // invariant: Construction goes through overridable seams (project.invariants.md)
-class $EditorCoordinates {
+class $TextCoordinates {
   protected static get MEMO_CAPACITY(): number {
     return 512;
   }
@@ -321,7 +321,7 @@ class $EditorCoordinates {
   }
 }
 
-export namespace EditorCoordinates {
-  export const $Class = Static($EditorCoordinates);
+export namespace TextCoordinates {
+  export const $Class = Static($TextCoordinates);
   export let Class = $Class;
 }

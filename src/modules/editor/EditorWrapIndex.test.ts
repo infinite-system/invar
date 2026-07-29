@@ -5,7 +5,7 @@
 import { test, expect, describe } from 'bun:test';
 import { effect, stop } from 'vue';
 import { EditorWrap } from './EditorWrap';
-import { TextDocument } from './TextDocument';
+import { TextDocument } from '../text/TextDocument';
 
 class IndexProbeDocument {
   lineReads = 0;

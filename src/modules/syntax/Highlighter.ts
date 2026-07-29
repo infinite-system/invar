@@ -1,5 +1,5 @@
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 // Immediate-layer syntax highlighter: per-line tokenization into semantic role spans.
 // This is the fast path that never blocks (Tree-sitter/LSP semantic tokens are the deferred
@@ -532,9 +532,7 @@ class $Highlighter {
     const sliced: Span[] = [];
     let spanStartGrapheme = 0;
     for (const span of spans) {
-      const spanGraphemeCount = EditorCoordinates.Class.graphemeCount(
-        span.text,
-      );
+      const spanGraphemeCount = TextCoordinates.Class.graphemeCount(span.text);
       const spanEndGrapheme = spanStartGrapheme + spanGraphemeCount;
       if (spanEndGrapheme <= startGrapheme) {
         spanStartGrapheme = spanEndGrapheme;
@@ -549,11 +547,8 @@ class $Highlighter {
         sliceStartInSpan === 0 && sliceEndInSpan === spanGraphemeCount
           ? span.text
           : span.text.slice(
-              EditorCoordinates.Class.graphemeToU16(
-                span.text,
-                sliceStartInSpan,
-              ),
-              EditorCoordinates.Class.graphemeToU16(span.text, sliceEndInSpan),
+              TextCoordinates.Class.graphemeToU16(span.text, sliceStartInSpan),
+              TextCoordinates.Class.graphemeToU16(span.text, sliceEndInSpan),
             );
       if (text) sliced.push({ text, role: span.role });
       spanStartGrapheme = spanEndGrapheme;

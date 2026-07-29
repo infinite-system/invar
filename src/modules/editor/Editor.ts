@@ -1,9 +1,9 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
 import { Viewport } from './Viewport';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { EditorIndent } from './EditorIndent';
-import { TextEditing } from './TextEditing';
+import { TextEditing } from '../text/TextEditing';
 import { EditorWrap } from './EditorWrap';
 import { CodeFolding, type FoldRange } from './CodeFolding';
 import { ReadOnlyTextBuffer } from './ReadOnlyTextBuffer';
@@ -23,7 +23,7 @@ import type { EditorContributions } from './EditorContributions';
 //
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
-// invariant: The dirty marker is derived from content, never asserted (editor.invariants.md)
+// invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
 class $Editor extends ReadOnlyTextBuffer.$Class {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
@@ -197,7 +197,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       this.cursor.clearSelection();
       this.placeCursor(
         range.startLine,
-        EditorCoordinates.Class.clampCol(
+        TextCoordinates.Class.clampCol(
           this.document.line(range.startLine),
           this.cursor.col.value,
         ),
@@ -306,7 +306,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
         ? [
             {
               startGrapheme: 0,
-              endGrapheme: EditorCoordinates.Class.graphemeCount(
+              endGrapheme: TextCoordinates.Class.graphemeCount(
                 this.document.line(this.cursor.line.value),
               ),
               startDisplayColumn: 0,
@@ -470,7 +470,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.viewport.haltScrollMomentum(); // precise cursor move adopts authority, stops wheel glide
     this.unfoldToRevealLine(line);
     const lineText = this.document.line(line);
-    const absoluteDisplayColumn = EditorCoordinates.Class.displayColumn(
+    const absoluteDisplayColumn = TextCoordinates.Class.displayColumn(
       lineText,
       column,
     );
@@ -672,7 +672,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.document.setLine(line, above);
     this.placeCursor(
       line - 1,
-      EditorCoordinates.Class.clampCol(moved, this.cursor.col.value),
+      TextCoordinates.Class.clampCol(moved, this.cursor.col.value),
     );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line - 1);
@@ -691,7 +691,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.document.setLine(line, below);
     this.placeCursor(
       line + 1,
-      EditorCoordinates.Class.clampCol(moved, this.cursor.col.value),
+      TextCoordinates.Class.clampCol(moved, this.cursor.col.value),
     );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line + 1);
@@ -707,7 +707,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     this.document.insertLine(line + 1, text);
     this.placeCursor(
       line + 1,
-      EditorCoordinates.Class.clampCol(text, this.cursor.col.value),
+      TextCoordinates.Class.clampCol(text, this.cursor.col.value),
     );
     this.cursor.clearSelection();
     this.scrollLineIntoView(line + 1);
@@ -809,7 +809,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const cursorDelta = columnDeltaByLine.get(cursorLine) ?? 0;
     this.placeCursor(
       cursorLine,
-      EditorCoordinates.Class.clampCol(
+      TextCoordinates.Class.clampCol(
         this.document.line(cursorLine),
         Math.max(0, this.cursor.col.value + cursorDelta),
       ),
@@ -935,7 +935,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   // --- movement (extend = shift-select) -------------------------------------
 
   protected currentLineLength(): number {
-    return EditorCoordinates.Class.graphemeCount(
+    return TextCoordinates.Class.graphemeCount(
       this.document.line(this.cursor.line.value),
     );
   }
@@ -952,7 +952,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     );
     this.cursor.moveToLineKeepingGoal(target.line, target.col);
     this.viewport.scrollToColumn(
-      EditorCoordinates.Class.displayColumn(
+      TextCoordinates.Class.displayColumn(
         this.document.line(target.line),
         target.col,
       ),
@@ -967,9 +967,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     if (column < 0) {
       if (line > 0) {
         line = this.previousVisibleLine(line);
-        column = EditorCoordinates.Class.graphemeCount(
-          this.document.line(line),
-        );
+        column = TextCoordinates.Class.graphemeCount(this.document.line(line));
       } else {
         column = 0;
       }
@@ -1021,7 +1019,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     let line = this.cursor.line.value;
     let column = this.cursor.col.value;
     const clusters = () =>
-      EditorCoordinates.Class.graphemes(this.document.line(line));
+      TextCoordinates.Class.graphemes(this.document.line(line));
     let lineClusters = clusters();
     if (column >= lineClusters.length) {
       if (line >= this.document.lineCount - 1) return;
@@ -1055,7 +1053,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   } {
     const currentLineIndex = this.cursor.line.value;
     const currentLineText = this.document.line(currentLineIndex);
-    const currentPrefixEndUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const currentPrefixEndUtf16Offset = TextCoordinates.Class.graphemeToU16(
       currentLineText,
       this.cursor.col.value,
     );
@@ -1068,13 +1066,13 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
       currentLineIndex > 0 ? this.document.line(previousLineIndex) : '';
     const currentLineStart =
       currentLineIndex > 0
-        ? EditorCoordinates.Class.graphemeCount(previousLineText) + 1
+        ? TextCoordinates.Class.graphemeCount(previousLineText) + 1
         : 0;
     const localText =
       currentLineIndex > 0
         ? `${previousLineText}\n${currentPrefix}`
         : currentPrefix;
-    const localCursor = EditorCoordinates.Class.graphemeCount(localText);
+    const localCursor = TextCoordinates.Class.graphemeCount(localText);
     const localStart = useDeletionRange
       ? TextEditing.Class.deletePreviousWord(localText, localCursor).start
       : TextEditing.Class.wordLeft(localText, localCursor);
@@ -1098,7 +1096,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     const lastLine = this.document.lineCount - 1;
     this.placeCursor(
       lastLine,
-      EditorCoordinates.Class.graphemeCount(this.document.line(lastLine)),
+      TextCoordinates.Class.graphemeCount(this.document.line(lastLine)),
     );
     this.scrollLineIntoView(lastLine);
   }

@@ -72,7 +72,7 @@ both cite it. Three mechanisms in cost order:
 Separate and smaller: \`scripts/smoke-agent-search.sh:66\` hardcodes \`⌕\`. That glyph is current so it
 passes today, but it is an appearance dependency of the class that re-broke twice during icon work.`,
 
-  107: `Found by the width-agreement instrument (\`EditorCoordinates.lineWidth\` from OpenTUI versus
+  107: `Found by the width-agreement instrument (\`TextCoordinates.lineWidth\` from OpenTUI versus
 \`@xterm/headless\` \`cell.getWidth()\`, with a \`漢\`→2 positive control).
 
 The app measures \`🔒\` and \`🖼\` at TWO cells while the terminal renders them at ONE. Same defect class as

@@ -1,7 +1,7 @@
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { Highlighter, type LangId, type Span } from '../syntax/Highlighter';
-import type { TextDocument } from './TextDocument';
+import type { TextDocument } from '../text/TextDocument';
 import type { EditorFrameAttribution } from './EditorFrameAttribution';
 
 // Bracket matching (editor parity): given the cursor position, find the bracket the cursor is ON or
@@ -55,8 +55,8 @@ class $BracketMatch {
     return 100_000;
   }
 
-  protected static get EditorCoordinates() {
-    return EditorCoordinates.Class;
+  protected static get TextCoordinates() {
+    return TextCoordinates.Class;
   }
 
   protected static get Highlighter() {
@@ -177,7 +177,7 @@ class $BracketMatch {
       if (!cellsMemo.has(lineIndex)) {
         cellsMemo.set(
           lineIndex,
-          this.EditorCoordinates.graphemes(
+          this.TextCoordinates.graphemes(
             frameAttribution
               ? frameAttribution.documentLine(document, lineIndex)
               : document.line(lineIndex),
@@ -198,7 +198,7 @@ class $BracketMatch {
         );
       }
       const spans = spansMemo.get(lineIndex)!;
-      const utf16 = this.EditorCoordinates.graphemeToU16(text, column);
+      const utf16 = this.TextCoordinates.graphemeToU16(text, column);
       let accumulated = 0;
       for (const span of spans) {
         if (utf16 >= accumulated && utf16 < accumulated + span.text.length)

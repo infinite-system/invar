@@ -14,8 +14,8 @@ import {
 import { WrapText } from '../ui/WrapText';
 import { Clipboard } from '../system/Clipboard';
 import { TextSegmentation } from '../system/TextSegmentation';
-import { TextDocument } from '../editor/TextDocument';
-import type { TextInputAction } from '../editor/TextInputModel';
+import { TextDocument } from '../text/TextDocument';
+import type { TextInputAction } from '../text/TextInputModel';
 import type { FindBar, FindBarTarget } from '../search/FindBar';
 import type { FindInBuffer, FindInBufferMatch } from '../search/FindInBuffer';
 import { AgentPaneRenderer, type SelectionRange } from './AgentPaneRenderer';

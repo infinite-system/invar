@@ -3,7 +3,7 @@
 // real syntax tokenizer skips a bracket inside a string.
 import { test, expect } from 'bun:test';
 import { BracketMatch, type BracketMatchQuery } from './BracketMatch';
-import { TextDocument } from './TextDocument';
+import { TextDocument } from '../text/TextDocument';
 
 function query(
   lines: string[],

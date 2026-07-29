@@ -113,7 +113,7 @@ outside this rule — a wrapping surface resolves its caret through a row mappin
 window.
 
 **Components:**
-- *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `EditorCoordinates.lineWidth` gives the
+- *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `TextCoordinates.lineWidth` gives the
   caret's display column; the grapheme at the caret (a space at end-of-text) is the inverted cell.
 - *State tone* — `TextFieldPainter.toneFor` maps `idle`/`focused`/`hovered` to one palette pair;
   `stateFor` decides that hover outranks focus.
@@ -121,7 +121,7 @@ window.
   and text window are identical in every state.
 
 **Mechanism:** `TextFieldPainter.paint` takes the input MODEL, never a caret index, so a painted caret
-cannot be re-derived from string length; every column it computes goes through `EditorCoordinates`, so
+cannot be re-derived from string length; every column it computes goes through `TextCoordinates`, so
 a wide or East-Asian grapheme moves the caret by display cells. Inverting a cell costs no column and
 needs no glyph, so the caret shifts nothing and adds no appearance literal — the same reduction
 `SolidThumbScrollBar` made for thumbs. `toneFor` reads `border`/`dim`, `cursorLine`/`fg`, and

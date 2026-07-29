@@ -570,7 +570,7 @@ while emitting the same segment. The action opens the shared `FindBar` for a `Fi
 The target's document is a MIRROR: `AgentPaneContent.synchronizeTranscriptSearch()` rebuilds it inside
 `render()` from the same `AgentTranscriptProjection` lines the frame paints, re-running the engine only
 when the projected text changed. `AgentTranscriptSearch` converts the engine's grapheme-column matches
-to per-row DISPLAY-CELL spans (shared `EditorCoordinates`/`WrapText` seams — never UTF-16 slicing); the
+to per-row DISPLAY-CELL spans (shared `TextCoordinates`/`WrapText` seams — never UTF-16 slicing); the
 renderer paints them per row, current match as a selection, others with the editor's find-match
 background. Reveal scrolls the existing transcript scroll port; Esc closes the bar and the keys fall
 back to the composer. Matching inside a COLLAPSED tool row's full JSON is deliberately out of scope —

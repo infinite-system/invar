@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { FindBar } from './FindBar';
 
 test('deletePreviousWord edits both find and replace fields through the shared boundary', () => {

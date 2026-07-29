@@ -3,7 +3,7 @@ import { Reactive } from 'ivue';
 import { ref } from 'vue';
 import { resolve as resolvePath } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { Environment } from '../system/Environment';
 import { Files } from '../system/Files';
 import { Logging } from '../system/Logging';
@@ -101,8 +101,8 @@ class $LanguageClient {
     );
   }
 
-  protected get EditorCoordinates() {
-    return EditorCoordinates.Class;
+  protected get TextCoordinates() {
+    return TextCoordinates.Class;
   }
 
   protected get Environment() {
@@ -1063,7 +1063,7 @@ class $LanguageClient {
     const graphemeColumn = Math.max(0, Math.trunc(position.column));
     return {
       line,
-      character: this.EditorCoordinates.graphemeToU16(text, graphemeColumn),
+      character: this.TextCoordinates.graphemeToU16(text, graphemeColumn),
     };
   }
 
@@ -1078,7 +1078,7 @@ class $LanguageClient {
     );
     return {
       line: position.line,
-      column: this.EditorCoordinates.u16ToGrapheme(lineText, utf16Column),
+      column: this.TextCoordinates.u16ToGrapheme(lineText, utf16Column),
     };
   }
 

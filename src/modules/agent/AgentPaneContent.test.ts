@@ -7,7 +7,7 @@ import { ThemePalettes } from '../theme/ThemePalettes';
 import type { PaneRenderContext } from '../ui/PaneContent.interface';
 import { ref } from 'vue';
 import type { AgentTerminalFollowMode } from '../settings/Settings';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 const darkPalette = ThemePalettes.Class.DARK;
 
@@ -357,9 +357,9 @@ describe('AgentPaneContent — compact footer', () => {
     pane.attachEnginePort(new FakeEnginePort());
     const narrowContext = context({ width: 18 });
     const finalRow = paintedText(pane.render(narrowContext)).split('\n').at(-1);
-    expect(
-      EditorCoordinates.Class.lineWidth(finalRow ?? ''),
-    ).toBeLessThanOrEqual(narrowContext.width);
+    expect(TextCoordinates.Class.lineWidth(finalRow ?? '')).toBeLessThanOrEqual(
+      narrowContext.width,
+    );
     expect(finalRow).toContain('perm:');
   });
 });

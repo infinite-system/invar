@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 import { WrapBreakOpportunity } from './WrapBreakOpportunity';
 
 describe('WrapBreakOpportunity prose profile', () => {
@@ -17,9 +17,7 @@ describe('WrapBreakOpportunity prose profile', () => {
   });
 
   test('offers whitespace and post-hyphen boundaries only', () => {
-    const graphemes = EditorCoordinates.Class.graphemes(
-      'alpha beta-gamma_delta',
-    );
+    const graphemes = TextCoordinates.Class.graphemes('alpha beta-gamma_delta');
     const breakKinds = graphemes.map((_grapheme, graphemeIndex) =>
       WrapBreakOpportunity.Class.breakKindBetween(
         graphemes[graphemeIndex]!,
@@ -40,7 +38,7 @@ describe('WrapBreakOpportunity prose profile', () => {
   });
 
   test('does not adopt code-only separators', () => {
-    const graphemes = EditorCoordinates.Class.graphemes('alpha_beta');
+    const graphemes = TextCoordinates.Class.graphemes('alpha_beta');
     expect(
       WrapBreakOpportunity.Class.previousBreakOpportunity(
         graphemes,
@@ -63,7 +61,7 @@ describe('WrapBreakOpportunity prose profile', () => {
 describe('WrapBreakOpportunity code profile', () => {
   test('offers every configured separator and bracket boundary', () => {
     for (const separator of ['-', '_', '/', '\\', '.', ',', ';', ':']) {
-      const graphemes = EditorCoordinates.Class.graphemes(
+      const graphemes = TextCoordinates.Class.graphemes(
         `alpha${separator}beta`,
       );
       expect(
@@ -75,7 +73,7 @@ describe('WrapBreakOpportunity code profile', () => {
       ).toBe('separator');
     }
     for (const openingBracket of ['(', '[', '{']) {
-      const graphemes = EditorCoordinates.Class.graphemes(
+      const graphemes = TextCoordinates.Class.graphemes(
         `call${openingBracket}value`,
       );
       expect(
@@ -87,7 +85,7 @@ describe('WrapBreakOpportunity code profile', () => {
       ).toBe('separator');
     }
     for (const closingBracket of [')', ']', '}']) {
-      const graphemes = EditorCoordinates.Class.graphemes(
+      const graphemes = TextCoordinates.Class.graphemes(
         `value${closingBracket}`,
       );
       expect(
@@ -101,7 +99,7 @@ describe('WrapBreakOpportunity code profile', () => {
   });
 
   test('offers readable seams for paths punctuation brackets and camelCase', () => {
-    const graphemes = EditorCoordinates.Class.graphemes(
+    const graphemes = TextCoordinates.Class.graphemes(
       'alpha_beta/path.name,(camelCase)',
     );
     const opportunities = graphemes
@@ -129,7 +127,7 @@ describe('WrapBreakOpportunity code profile', () => {
   });
 
   test('offers boundaries around operator runs without splitting the run', () => {
-    const graphemes = EditorCoordinates.Class.graphemes('alpha===beta');
+    const graphemes = TextCoordinates.Class.graphemes('alpha===beta');
     expect(
       WrapBreakOpportunity.Class.breakKindBetween(
         graphemes[4]!,
@@ -161,7 +159,7 @@ describe('WrapBreakOpportunity code profile', () => {
   });
 
   test('returns the latest fitting opportunity or the segment start', () => {
-    const graphemes = EditorCoordinates.Class.graphemes('repository/path.name');
+    const graphemes = TextCoordinates.Class.graphemes('repository/path.name');
     expect(
       WrapBreakOpportunity.Class.previousBreakOpportunity(
         graphemes,
@@ -181,7 +179,7 @@ describe('WrapBreakOpportunity code profile', () => {
   });
 
   test('accepts only boundaries between complete grapheme clusters', () => {
-    const graphemes = EditorCoordinates.Class.graphemes('family-👨‍👩‍👧‍👦Path');
+    const graphemes = TextCoordinates.Class.graphemes('family-👨‍👩‍👧‍👦Path');
     expect(graphemes).toContain('👨‍👩‍👧‍👦');
     expect(
       WrapBreakOpportunity.Class.previousBreakOpportunity(

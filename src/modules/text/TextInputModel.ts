@@ -1,6 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref } from 'vue';
-import { EditorCoordinates } from './EditorCoordinates';
+import { TextCoordinates } from './TextCoordinates';
 import { TextEditing } from './TextEditing';
 
 // invariant: Editable text fields share one input model (project.invariants.md)
@@ -23,7 +23,7 @@ class $TextInputModel {
     return this.text.value.length === 0;
   }
   get graphemeCount(): number {
-    return EditorCoordinates.Class.graphemeCount(this.text.value);
+    return TextCoordinates.Class.graphemeCount(this.text.value);
   }
   get isAtEnd(): boolean {
     return this.clampedCaret === this.graphemeCount;
@@ -39,7 +39,7 @@ class $TextInputModel {
     return Math.max(0, Math.min(this.caret.value, this.graphemeCount));
   }
   protected get caretUtf16Offset(): number {
-    return EditorCoordinates.Class.graphemeToU16(
+    return TextCoordinates.Class.graphemeToU16(
       this.text.value,
       this.clampedCaret,
     );
@@ -63,11 +63,11 @@ class $TextInputModel {
     if (clampedStart === clampedEnd && flattenedReplacement.length === 0) {
       return false;
     }
-    const startUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const startUtf16Offset = TextCoordinates.Class.graphemeToU16(
       this.text.value,
       clampedStart,
     );
-    const endUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const endUtf16Offset = TextCoordinates.Class.graphemeToU16(
       this.text.value,
       clampedEnd,
     );
@@ -76,8 +76,7 @@ class $TextInputModel {
       flattenedReplacement +
       this.text.value.slice(endUtf16Offset);
     this.caret.value =
-      clampedStart +
-      EditorCoordinates.Class.graphemeCount(flattenedReplacement);
+      clampedStart + TextCoordinates.Class.graphemeCount(flattenedReplacement);
     return true;
   }
 
@@ -85,7 +84,7 @@ class $TextInputModel {
     this.text.value = this.flatten(value);
     this.caret.value =
       caret === undefined
-        ? EditorCoordinates.Class.graphemeCount(this.text.value)
+        ? TextCoordinates.Class.graphemeCount(this.text.value)
         : Math.max(0, Math.min(caret, this.graphemeCount));
   }
 

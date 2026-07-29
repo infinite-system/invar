@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { CommandScoring } from '../commands/CommandScoring';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import { BoundedListPopup } from './BoundedListPopup';
 
@@ -171,16 +171,13 @@ describe('BoundedListPopup', () => {
     expect(iconColumns).toBe(1);
     const labelOffsets = items.map(
       (item) =>
-        EditorCoordinates.Class.lineWidth(
+        TextCoordinates.Class.lineWidth(
           BoundedListPopup.$Class.itemRowText(item, iconColumns),
-        ) - EditorCoordinates.Class.lineWidth(item.label),
+        ) - TextCoordinates.Class.lineWidth(item.label),
     );
     expect(new Set(labelOffsets).size).toBe(1);
     expect(BoundedListPopup.$Class.itemSetMaximumWidth(items)).toBe(
-      1 +
-        iconColumns +
-        1 +
-        EditorCoordinates.Class.lineWidth('picker-module.ts'),
+      1 + iconColumns + 1 + TextCoordinates.Class.lineWidth('picker-module.ts'),
     );
   });
 
@@ -278,7 +275,7 @@ describe('BoundedListPopup', () => {
 
     const maximumItemWidth = BoundedListPopup.$Class.itemSetMaximumWidth(items);
     expect(maximumItemWidth).toBe(
-      1 + EditorCoordinates.Class.lineWidth('wide界'),
+      1 + TextCoordinates.Class.lineWidth('wide界'),
     );
     expect(
       BoundedListPopup.$Class.desiredBoxWidth(maximumItemWidth, '', 1),

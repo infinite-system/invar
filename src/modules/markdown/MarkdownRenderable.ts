@@ -16,7 +16,7 @@ import { MarkdownPreview, type PreviewRow } from './MarkdownPreview';
 import type { Palette } from '../theme/ThemePalettes';
 import type { TableBorderGlyphSet } from '../theme/ThemeIcons';
 import { SelectableText } from '../ui/SelectableText';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import type { FindInBuffer } from '../search/FindInBuffer';
 
 // invariant: Preview rendering follows visible rows (src/modules/markdown/markdown.invariants.md)
@@ -78,7 +78,7 @@ class $MarkdownRenderable extends BoxRenderable {
     const rowText = this.preview.textForRow(row);
     return {
       line: this.preview.scrollTop.value + visibleRowIndex,
-      column: EditorCoordinates.Class.graphemeAtDisplayColumn(
+      column: TextCoordinates.Class.graphemeAtDisplayColumn(
         rowText,
         Math.max(0, screenColumn - this.bodyRenderable.x),
       ),
@@ -97,11 +97,11 @@ class $MarkdownRenderable extends BoxRenderable {
     if (row.tableCells && row.tableRowIndex !== undefined) {
       return this.tableReferenceAtDisplayColumn(row, rowDisplayColumn);
     }
-    const rowGraphemeColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+    const rowGraphemeColumn = TextCoordinates.Class.graphemeAtDisplayColumn(
       rowText,
       rowDisplayColumn,
     );
-    const rowUtf16Offset = EditorCoordinates.Class.graphemeToU16(
+    const rowUtf16Offset = TextCoordinates.Class.graphemeToU16(
       rowText,
       rowGraphemeColumn,
     );
@@ -257,11 +257,11 @@ class $MarkdownRenderable extends BoxRenderable {
 
       let findHighlighted = false;
       for (const match of findMatches) {
-        const matchStartUtf16 = EditorCoordinates.Class.graphemeToU16(
+        const matchStartUtf16 = TextCoordinates.Class.graphemeToU16(
           rowText,
           match.startColumn,
         );
-        const matchEndUtf16 = EditorCoordinates.Class.graphemeToU16(
+        const matchEndUtf16 = TextCoordinates.Class.graphemeToU16(
           rowText,
           match.endColumn,
         );
@@ -382,7 +382,7 @@ class $MarkdownRenderable extends BoxRenderable {
       return null;
     }
     for (const previewCell of row.tableCells) {
-      const visibleTextWidth = EditorCoordinates.Class.lineWidth(
+      const visibleTextWidth = TextCoordinates.Class.lineWidth(
         previewCell.visibleText,
       );
       if (
@@ -394,11 +394,11 @@ class $MarkdownRenderable extends BoxRenderable {
       }
       const localDisplayColumn =
         rowDisplayColumn - previewCell.textStartDisplayColumn;
-      const graphemeColumn = EditorCoordinates.Class.graphemeAtDisplayColumn(
+      const graphemeColumn = TextCoordinates.Class.graphemeAtDisplayColumn(
         previewCell.visibleText,
         localDisplayColumn,
       );
-      const utf16Offset = EditorCoordinates.Class.graphemeToU16(
+      const utf16Offset = TextCoordinates.Class.graphemeToU16(
         previewCell.visibleText,
         graphemeColumn,
       );

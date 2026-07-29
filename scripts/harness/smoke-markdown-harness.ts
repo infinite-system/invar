@@ -7,7 +7,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import { ThemeIcons } from '../../src/modules/theme/ThemeIcons';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -249,15 +249,15 @@ try {
         headerBoundaries[1]! +
           2 +
           Math.floor(
-            (secondContentWidth - EditorCoordinates.Class.lineWidth('middle')) /
+            (secondContentWidth - TextCoordinates.Class.lineWidth('middle')) /
               2,
           ) &&
       asciiRowText.indexOf('7', headerBoundaries[2]) ===
         headerBoundaries[2]! +
           2 +
           thirdContentWidth -
-          EditorCoordinates.Class.lineWidth('7') &&
-      firstContentWidth >= EditorCoordinates.Class.lineWidth('alpha'),
+          TextCoordinates.Class.lineWidth('7') &&
+      firstContentWidth >= TextCoordinates.Class.lineWidth('alpha'),
     'alignment markers place body cells left center and right',
   );
   const separatorRow = previewRowContaining(

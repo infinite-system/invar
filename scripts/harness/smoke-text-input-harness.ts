@@ -9,7 +9,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EditorCoordinates } from '../../src/modules/editor/EditorCoordinates';
+import { TextCoordinates } from '../../src/modules/text/TextCoordinates';
 import { ThemePalettes } from '../../src/modules/theme/ThemePalettes';
 import type { HarnessSnapshot } from './HarnessSnapshot';
 import { HarnessSmoke } from './HarnessSmoke';
@@ -38,7 +38,7 @@ async function awaitInputValue(
   return driver.awaitGridCondition(description, (snapshot) => {
     const rowText = snapshot.rowText(inputPosition.row);
     const caretColumn =
-      inputPosition.column + EditorCoordinates.Class.lineWidth(beforeCaret);
+      inputPosition.column + TextCoordinates.Class.lineWidth(beforeCaret);
     const caretCell = snapshot.cell(inputPosition.row, caretColumn);
     return (
       rowText.slice(inputPosition.column, caretColumn) === beforeCaret &&

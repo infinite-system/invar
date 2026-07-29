@@ -1,6 +1,6 @@
 // The shared text-GEOMETRY seam: hard-wrap segmentation measured in terminal DISPLAY CELLS over
 // GRAPHEME CLUSTERS, with the forward/inverse position mapping every consumer derives caret, selection,
-// and hit-test behavior from. One generator (built on EditorCoordinates' grapheme + wcwidth tools — the
+// and hit-test behavior from. One generator (built on TextCoordinates' grapheme + wcwidth tools — the
 // editor's own width engine, not a second vocabulary) serves the agent transcript (read-only) and the
 // composer (editable), so their wrapping and their GEOMETRY can never drift — the review-found bug class
 // was exactly this drift: code-point wrapping let CJK overflow panes, split combining marks across rows,
@@ -14,17 +14,15 @@
 //
 // invariant: Seams are drawn at the shared generator (project.invariants.md)
 import { Static } from 'ivue/extras';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 
 class $WrapText {
   protected static cellWidthOf(cluster: string): number {
-    return cluster === '\t'
-      ? 1
-      : EditorCoordinates.Class.graphemeWidth(cluster);
+    return cluster === '\t' ? 1 : TextCoordinates.Class.graphemeWidth(cluster);
   }
   public static displayWidth(text: string): number {
     let width = 0;
-    for (const cluster of EditorCoordinates.Class.graphemes(text))
+    for (const cluster of TextCoordinates.Class.graphemes(text))
       width += this.cellWidthOf(cluster);
     return width;
   }
@@ -34,7 +32,7 @@ class $WrapText {
     let graphemeOffset = 0;
     const logicalLines = text.split('\n');
     logicalLines.forEach((logicalLine, logicalIndex) => {
-      const clusters = EditorCoordinates.Class.graphemes(logicalLine);
+      const clusters = TextCoordinates.Class.graphemes(logicalLine);
       if (clusters.length === 0) {
         out.push({
           text: '',
@@ -101,7 +99,7 @@ class $WrapText {
         return {
           line: index,
           column: this.displayWidth(
-            EditorCoordinates.Class.graphemes(segment.text)
+            TextCoordinates.Class.graphemes(segment.text)
               .slice(0, within)
               .join(''),
           ),
@@ -119,7 +117,7 @@ class $WrapText {
     if (segments.length === 0) return 0;
     const rowIndex = Math.max(0, Math.min(line, segments.length - 1));
     const segment = segments[rowIndex]!;
-    const clusters = EditorCoordinates.Class.graphemes(segment.text);
+    const clusters = TextCoordinates.Class.graphemes(segment.text);
     let cells = 0;
     for (let index = 0; index < clusters.length; index += 1) {
       const clusterWidth = this.cellWidthOf(clusters[index]!);
@@ -135,7 +133,7 @@ class $WrapText {
     endCell: number,
   ): string {
     if (endCell <= startCell) return '';
-    const clusters = EditorCoordinates.Class.graphemes(text);
+    const clusters = TextCoordinates.Class.graphemes(text);
     let cells = 0;
     let sliced = '';
     for (const cluster of clusters) {
@@ -163,7 +161,7 @@ class $WrapText {
   protected static prefixToDisplayWidth(text: string, cells: number): string {
     let prefix = '';
     let prefixWidth = 0;
-    for (const cluster of EditorCoordinates.Class.graphemes(text)) {
+    for (const cluster of TextCoordinates.Class.graphemes(text)) {
       const clusterWidth = this.cellWidthOf(cluster);
       if (prefixWidth + clusterWidth > cells) break;
       prefix += cluster;

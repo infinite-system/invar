@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { EditorCoordinates } from '../editor/EditorCoordinates';
+import { TextCoordinates } from '../text/TextCoordinates';
 import { EditorWrap } from '../editor/EditorWrap';
 import { Highlighter, type LangId } from './Highlighter';
 
@@ -191,26 +191,28 @@ test('horizontal display-column slicing preserves logical roles at an astral bou
   const line = '// prefix 👍 tailcomment afterfind';
   const logicalLineSpans = Highlighter.Class.highlightLine(line, 'typescript');
   const astralGraphemeIndex =
-    EditorCoordinates.Class.graphemes(line).indexOf('👍');
+    TextCoordinates.Class.graphemes(line).indexOf('👍');
   const scrollLeft =
-    EditorCoordinates.Class.displayColumn(line, astralGraphemeIndex) + 1;
+    TextCoordinates.Class.displayColumn(line, astralGraphemeIndex) + 1;
   const viewportWidth = 24;
-  let windowStartGraphemeIndex =
-    EditorCoordinates.Class.graphemeAtDisplayColumn(line, scrollLeft);
+  let windowStartGraphemeIndex = TextCoordinates.Class.graphemeAtDisplayColumn(
+    line,
+    scrollLeft,
+  );
   if (
-    EditorCoordinates.Class.displayColumn(line, windowStartGraphemeIndex) <
+    TextCoordinates.Class.displayColumn(line, windowStartGraphemeIndex) <
     scrollLeft
   ) {
     windowStartGraphemeIndex += 1;
   }
   const windowEndGraphemeIndex =
-    EditorCoordinates.Class.graphemeAtDisplayColumn(
+    TextCoordinates.Class.graphemeAtDisplayColumn(
       line,
       scrollLeft + viewportWidth,
     ) + 1;
   const windowText = line.slice(
-    EditorCoordinates.Class.graphemeToU16(line, windowStartGraphemeIndex),
-    EditorCoordinates.Class.graphemeToU16(line, windowEndGraphemeIndex),
+    TextCoordinates.Class.graphemeToU16(line, windowStartGraphemeIndex),
+    TextCoordinates.Class.graphemeToU16(line, windowEndGraphemeIndex),
   );
   const windowSpans = Highlighter.Class.sliceSpans(
     logicalLineSpans,
@@ -221,14 +223,14 @@ test('horizontal display-column slicing preserves logical roles at an astral bou
   expect(windowText.startsWith(' tailcomment')).toBe(true);
   expect(windowSpans.map((span) => span.text).join('')).toBe(windowText);
   expect(windowSpans.every((span) => span.role === 'comment')).toBe(true);
-  const postFindStartGraphemeIndex = EditorCoordinates.Class.u16ToGrapheme(
+  const postFindStartGraphemeIndex = TextCoordinates.Class.u16ToGrapheme(
     windowText,
     windowText.indexOf('afterfind'),
   );
   const postFindSpans = Highlighter.Class.sliceSpans(
     windowSpans,
     postFindStartGraphemeIndex,
-    EditorCoordinates.Class.graphemeCount(windowText),
+    TextCoordinates.Class.graphemeCount(windowText),
   );
   expect(postFindSpans.map((span) => span.text).join('')).toBe('afterfind');
   expect(postFindSpans.every((span) => span.role === 'comment')).toBe(true);
@@ -248,8 +250,8 @@ test('wrap continuation rows of a long // comment slice to all-comment spans', (
       segment.endGrapheme,
     );
     const segmentText = line.slice(
-      EditorCoordinates.Class.graphemeToU16(line, segment.startGrapheme),
-      EditorCoordinates.Class.graphemeToU16(line, segment.endGrapheme),
+      TextCoordinates.Class.graphemeToU16(line, segment.startGrapheme),
+      TextCoordinates.Class.graphemeToU16(line, segment.endGrapheme),
     );
     expect(segmentSpans.map((span) => span.text).join('')).toBe(segmentText);
     expect(segmentSpans.every((span) => span.role === 'comment')).toBe(true);

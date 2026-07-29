@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test';
 import { LanguageClient } from './LanguageClient';
-import { TextDocument } from '../editor/TextDocument';
+import { TextDocument } from '../text/TextDocument';
 import { FakeLspProcess, FakeProvider, flush } from './lsp.fakes.test';
 
 const ROOT = '/tmp/fake-lsp-coord';

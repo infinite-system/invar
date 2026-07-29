@@ -393,3 +393,49 @@ were inline there and made it read as a log.
   without the recipe itself getting clearer is evidence the area is volatile, which makes it a candidate
   for PROMOTION to an executed gated contract. Log length is a promotion signal, not decoration — which
   is what keeps the ledger from becoming the unread-artifact trap that killed the drive corpus.
+
+## The shared text primitives leave the source-text view (#122, 2026-07-28)
+
+Context: #122 asked for the capstone of the modularity extraction — the source-text view stops
+being a privileged built-in and becomes an ordinary contributor. Its done-test was mechanical:
+`modules/editor/` host references go 4 → 0, the standard git, LSP, and the terminal already meet.
+
+The measurement was measuring the wrong thing, and the brief predicted it would. Counting which
+host files name `modules/editor/` said 4. Counting relative production imports said 33. The gap is
+not bycatch — it is the finding. `modules/editor/` held TWO different things:
+
+- the SOURCE-TEXT VIEW — `Editor`, `EditorWrap`, `EditorPane`, `BracketMatch`, `CodeFolding`;
+- the SHARED TEXT PRIMITIVES every text surface in the app stands on.
+
+`EditorCoordinates` was imported by 33 production files across 12 modules — agent, app, diff,
+filetree, git, inline-rewrite, lsp, markdown, scripts, search, syntax, ui. `TextInputModel` by 10
+across 5. Those are not the host knowing about the editor. That is the host doing grapheme and
+display-column arithmetic, and being charged for a dependency on the editor to do it.
+
+The contract layer already knew. `TextInputModel` cites *Editable text fields share one input
+model*, `WrapBreakOpportunity` cites *Wrapped surfaces share one break generator*, `TextEditing`
+cites *Seams are drawn at the shared generator* — all three records live in `project.invariants.md`,
+not `editor.invariants.md`, and AGENTS.md names `TextEditing` word-edits as a shared generator in
+the convention itself. `EditorCoordinates` documented itself as "the shared horizontal-scroll
+primitive for every list/text pane". Only the FOLDER disagreed.
+
+Decision: the shared text primitives move to `src/modules/text/` and `EditorCoordinates` is renamed
+`TextCoordinates`, because a class named for the editor in every host file is itself the false
+signal the census kept reporting. Four invariant records moved with them into
+`src/modules/text/text.invariants.md`. The rules did not change; their recorded owner did.
+
+Why this is a precondition and not a detour: the editor's host coupling cannot be measured, let
+alone removed, while the measurement counts the app's text primitives. It is also what the
+workspace needs — once the editor is a plugin, `Workspace`, `DocumentHandle`, and
+`LanguageProvider` must still hold documents without depending on it. `TextDocument` moved for
+that reason.
+
+The seam has one direction, and a conventions-gate rule (1.52) enforces it: `src/modules/text/`
+never imports `../editor/`. A primitive that reaches back into the view stops being shared and
+silently re-fuses the two.
+
+What this did NOT reach: the census went 4 → 3 and 33 → 9, not to 0. The residue is the real
+capstone — `Workspace` constructs `Editor` buffers, `RootView` mounts the editor as native
+renderables rather than through the `PaneContent` seam, and `Bootstrap` reads bracket state. The
+editor is the only pane that is not a `PaneContent`, and putting it on that seam is the rewrite the
+capstone actually names. See the #122 report for the measured evidence.
