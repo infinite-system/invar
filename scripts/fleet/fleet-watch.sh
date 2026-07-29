@@ -41,6 +41,24 @@ emit_ready_events() {
   done
 }
 
+# Reports are now born in the task folder (dispatch.sh points builders there).
+# The /tmp glob above stays for the transition and for fallback reports.
+emit_folder_report_events() {
+  [ -d "$tasks_in_progress" ] || return 0
+  local task_folder folder_name report_file
+  for task_folder in "$tasks_in_progress"/*/; do
+    [ -d "$task_folder" ] || continue
+    folder_name="$(basename "$task_folder")"
+    for report_file in "$task_folder"report-*; do
+      [ -e "$report_file" ] || continue
+      if [ ! -f "/tmp/fleet-watch-report-${folder_name}-$(basename "$report_file").seen" ]; then
+        echo "READY: ${report_file}"
+        touch "/tmp/fleet-watch-report-${folder_name}-$(basename "$report_file").seen"
+      fi
+    done
+  done
+}
+
 emit_silent_events() {
   [ -d "$tasks_in_progress" ] || return 0
   local task_folder folder_name transcript recent
@@ -107,6 +125,7 @@ fi
 
 while true; do
   emit_ready_events
+  emit_folder_report_events
   emit_silent_events
   emit_gate_events
   sleep "$CYCLE_SECONDS"

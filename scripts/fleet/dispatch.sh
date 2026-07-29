@@ -106,7 +106,10 @@ tmux_session="invar/${name}"
 # existed that task read as ordinary backlog. A dispatch here would have cut a worktree, installed
 # dependencies, and launched an agent that could not run a single smoke.
 # ---------------------------------------------------------------------------
-task_file="$(ls "${repository_root}"/.invar/tasks/*/"${name}"/task-"${name}".md 2>/dev/null | head -1)"
+# `|| true`: with pipefail, a no-match ls fails the assignment and set -e kills the
+# script SILENTLY with exit 2. A dispatch without a pre-filed task file must proceed
+# to the guards, not die mute. Caught by a DRY_RUN whose task number had no folder.
+task_file="$(ls "${repository_root}"/.invar/tasks/*/"${name}"/task-"${name}".md 2>/dev/null | head -1 || true)"
 if [ -n "$task_file" ]; then
   read_field() { grep -m1 "^$1:" "$task_file" | sed "s/^$1:[[:space:]]*//" | tr -d '\r'; }
   declared_engine="$(read_field Engine)"
@@ -383,8 +386,12 @@ AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/sc
 tmux pipe-pane -t "$tmux_session" -o "cat >> '${transcript_path}'"
 
 # The opening turn goes through `send`, which confirms it submitted.
+# The report is born in its durable home — the task folder in the MAIN checkout — so
+# delivery needs no copy step and survives a reboot (/tmp does not). The builder only
+# creates a new untracked file there; the conductor stays the only committer.
+report_home="${repository_root}/.invar/tasks/in-progress/${name}/report-${name}.md"
 AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/scripts/agent-tmux.sh" send "$name" \
-  "Read TASK.md in this directory and execute it fully. Report to /tmp/${name}-READY.md." >/dev/null
+  "Read TASK.md in this directory and execute it fully. Write your READY report to ${report_home} (absolute path, outside your worktree — create only that file there). If that directory does not exist when you finish, write to /tmp/${name}-READY.md instead and say so in the report." >/dev/null
 
 
 echo
@@ -395,4 +402,4 @@ echo "  monitor:    confirm fleet-watch is armed (TaskList); if missing:"
 echo "              Monitor(command: bash scripts/fleet/fleet-watch.sh, persistent: true)"
 echo "  transcript: ${transcript_path}"
 echo "  worktree:   ${worktree_path}"
-echo "  report to:  /tmp/${name}-READY.md"
+echo "  report to:  ${report_home}"
