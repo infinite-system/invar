@@ -1,0 +1,15 @@
+{
+  "task": 267,
+  "slug": "go-to-line-does-not-exist",
+  "branch": "fleet/267-go-to-line-does-not-exist",
+  "worktree": ".invar/worktrees/267-go-to-line-does-not-exist",
+  "tmuxSession": "invar/267-go-to-line-does-not-exist",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-267-go-to-line-does-not-exist.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "c258d348fe2e21a8d0299323f73e7ea0dad02451",
+  "startedAt": "2026-07-29T16:18:31-04:00"
+}

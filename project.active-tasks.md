@@ -6,11 +6,13 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
 - #284 [scrollbar-theme-captured-at-construction](.invar/tasks/in-progress/284-scrollbar-theme-captured-at-construction/task-284-scrollbar-theme-captured-at-construction.md)  [building]
   `tmux attach -t invar/284-scrollbar-theme-captured-at-construction`
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/in-progress/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)  [building]
   `tmux attach -t invar/277-markdown-preview-body-viewport-settles-after-parent-growth`
+- #267 [go-to-line-does-not-exist](.invar/tasks/in-progress/267-go-to-line-does-not-exist/task-267-go-to-line-does-not-exist.md)  [building]
+  `tmux attach -t invar/267-go-to-line-does-not-exist`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -69,9 +71,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 [popup-arrow-keys-fall-through](.invar/tasks/active/94-popup-arrow-keys-fall-through/task-94-popup-arrow-keys-fall-through.md)  [ACTIVE — decision taken, not yet built]
 - #86 [wheel-first-frame-fixed-latency](.invar/tasks/active/86-wheel-first-frame-fixed-latency/task-86-wheel-first-frame-fixed-latency.md)  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (13)
+## ARCHITECTURE-HYGIENE (12)
 - #272 [task-record-system-contract](.invar/tasks/active/272-task-record-system-contract/task-272-task-record-system-contract.md)
-- #267 [go-to-line-does-not-exist](.invar/tasks/active/267-go-to-line-does-not-exist/task-267-go-to-line-does-not-exist.md)
 - #262 [structure-activity-action-orphaned](.invar/tasks/active/262-structure-activity-action-orphaned/task-262-structure-activity-action-orphaned.md)
 - #242 [shared-paint-hit-generator-decision](.invar/tasks/active/242-shared-paint-hit-generator-decision/task-242-shared-paint-hit-generator-decision.md)
 - #241 [ui-contract-split-decision](.invar/tasks/active/241-ui-contract-split-decision/task-241-ui-contract-split-decision.md)
