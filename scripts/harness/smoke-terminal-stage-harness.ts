@@ -547,30 +547,30 @@ async function driveReducedMotion(
     const command = `printf INSTANT > ${reducedMotionPath} # ${'x'.repeat(120)}`;
     let firstTypingFrameObserved = false;
     let firstTypingFrameWasComplete = false;
-    const completedFrameObservations =
-      await driver.collectCompletedFrameObservationsUntil({
-        conditionDescription:
-          'the reduced-motion terminal command creates its proof file',
-        condition: () => existsSync(reducedMotionPath),
-        performAction: () => {
-          driver.sendText(`terminal-tools:run:${command}`);
-          driver.sendKeys('Enter');
-        },
-      });
-    for (const completed of completedFrameObservations) {
-      const projectedTerminalText = activePanelText(
-        completed.snapshot,
-        statusPath,
-      );
-      if (
-        !firstTypingFrameObserved &&
-        projectedTerminalText.includes('printf')
-      ) {
-        firstTypingFrameObserved = true;
-        firstTypingFrameWasComplete =
-          projectedTerminalText.includes('xxxxxxxxxxxx');
-      }
-    }
+    await driver.collectCompletedFrameObservationsUntil({
+      conditionDescription:
+        'the reduced-motion terminal command paints and creates its proof file',
+      condition: () =>
+        existsSync(reducedMotionPath) && firstTypingFrameObserved,
+      observeFrame: (completedFrameObservation) => {
+        const projectedTerminalText = activePanelText(
+          completedFrameObservation.snapshot,
+          statusPath,
+        );
+        if (
+          !firstTypingFrameObserved &&
+          projectedTerminalText.includes('printf')
+        ) {
+          firstTypingFrameObserved = true;
+          firstTypingFrameWasComplete =
+            projectedTerminalText.includes('xxxxxxxxxxxx');
+        }
+      },
+      performAction: () => {
+        driver.sendText(`terminal-tools:run:${command}`);
+        driver.sendKeys('Enter');
+      },
+    });
     await awaitFileContents(reducedMotionPath, 'INSTANT');
     const positiveControlFailure = firstTypingFrameCompletionFailure(
       true,
@@ -583,6 +583,16 @@ async function driveReducedMotion(
     console.log(
       `reduced-motion frame positive control RED (expected): ` +
         positiveControlFailure,
+    );
+    const missingFramePositiveControlFailure =
+      firstTypingFrameCompletionFailure(false, false);
+    HarnessSmoke.Class.requireCondition(
+      missingFramePositiveControlFailure !== null,
+      'reduced-motion frame positive control rejects a missing typing frame',
+    );
+    console.log(
+      `reduced-motion missing-frame positive control RED (expected): ` +
+        missingFramePositiveControlFailure,
     );
     const completionFailure = firstTypingFrameCompletionFailure(
       firstTypingFrameObserved,

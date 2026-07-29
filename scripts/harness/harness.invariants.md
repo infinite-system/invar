@@ -425,13 +425,16 @@ history already recorded while that condition was pending. `assertContentInvaria
 captures both required regions, performs the action, uses change in the required comparison region as
 the liveness condition, and compares the invariant region's serialized cells byte-for-byte.
 `HarnessSmoke.awaitScrollPosition` checks the exact published coordinate before polling, so an
-already-satisfied clamp resolves without requiring input to repaint.
+already-satisfied clamp resolves without requiring input to repaint. A frame-history check that also
+requires a process side effect keeps collecting until both the side effect and its named frame
+observation have occurred.
 
 **Generates:** already-satisfied fast paths; transition waits named for visible outcomes; timeout
 errors containing the predicate description and final relevant grid region; frame coalescing and
 zero-frame actions that cannot strand a condition already visible; visual assertions that cannot
 race a later paint from the action they verify; content-invariance assertions whose action cannot pass
-without a visible change.
+without a visible change; frame-history assertions that cannot stop on a faster external side effect
+before they observe the frame they judge.
 
 **Rejected alternatives:** Wait for frame N — repaint coalescing changes frame ordinals under load,
 and an action whose target is already rendered may emit no frame. Record a frame count and require the
@@ -452,6 +455,8 @@ not drop (fixed: 6-of-6 green against 3 failures in 4 attempts). `smoke-pixel-pr
 fixed sleeps of 250 ms and 750 ms and took a timeout retry under load 3.5. The principle here was
 already correct; its impossibility set was too narrow to make either mistake unwritable, which is how
 a true invariant with a thin negative space protects nothing.
+`scripts/harness/smoke-terminal-stage-harness.ts` requires both its shell proof file and an observed
+command frame before it judges reduced-motion first-frame completeness.
 
 **Impossible if true:** A transition timeout that names a target frame ordinal; a satisfied grid
 predicate waiting for another frame; two coalesced invalidations requiring two completed frames; a
@@ -461,14 +466,16 @@ next step races); a bare `Bun.sleep` standing between a drive and the assertion 
 visual stability claim expressed as frame silence; a content-invariance assertion with no required
 changed region proving the action occurred; `runGit`, a file operation, or a spawned process consuming
 state produced asynchronously by the app before a deadline-bounded disk or process observation proves
-that state exists; a primitive that promises to await the next synchronized frame.
+that state exists; a frame-history assertion ending on an external proof before its subject frame is
+observed; a primitive that promises to await the next synchronized frame.
 
 **Verification:** `bun test scripts/harness/PtyTestDriver.test.ts
-scripts/harness/SynchronizedOutputQuiescence.test.ts scripts/harness/HarnessSmoke.test.ts`
+scripts/harness/SynchronizedOutputQuiescence.test.ts scripts/harness/HarnessSmoke.test.ts && bun
+scripts/harness/smoke-terminal-stage-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### Drive clicks resolve from roles and text
 
