@@ -9,7 +9,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 ## IN-PROGRESS (3)
 - #233 wrap-contract-red-settings-leak  [building]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
-- #230 author-ui-lattice  [building]
+- #230 author-ui-lattice  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/230-author-ui-lattice`
 - #35 structure-navigator-plugin-pane  [building]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
@@ -22,7 +22,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (16)
+## VERIFICATION-INTEGRITY (18)
+- #240 momentum-records-placement-call
+- #239 ui-contract-citation-repairs
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
 - #229 scale-parity-selection-smoke
@@ -67,7 +69,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (9)
+## ARCHITECTURE-HYGIENE (11)
+- #242 shared-paint-hit-generator-decision
+- #241 ui-contract-split-decision
 - #234 navigation-getters-and-hop-depth-ratchet
 - #228 source-text-keys-through-pane-context
 - #226 clock-freeze-hook-and-getter-conversion
