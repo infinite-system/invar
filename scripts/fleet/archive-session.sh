@@ -6,7 +6,9 @@
 # pane transcript truncates. Codex retains them indefinitely TODAY, but retention
 # is a requested feature upstream and may change. Post-analysis (which tool calls
 # failed, where time went) needs the file to outlive their policy, so LAND copies
-# it here: tmp/native-sessions/<task-folder-name>-<original-basename>.
+# it BESIDE the pane transcript, where one ls shows every artifact of a task:
+# tmp/transcripts/transcript-RAW-<engine>-<model>-<effort>-<n>-<slug>.jsonl —
+# the same identity as its pane-transcript sibling, so the pair sorts together.
 #
 # The link was written at dispatch: tmp/transcripts/session-link-<name>.txt.
 #
@@ -16,7 +18,7 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
-archive_directory="${repository_root}/tmp/native-sessions"
+archive_directory="${repository_root}/tmp/transcripts"
 
 archive_one() {
   local task_folder_name="$1"
@@ -33,7 +35,18 @@ archive_one() {
     return 1
   fi
   mkdir -p "$archive_directory"
-  local destination="${archive_directory}/${task_folder_name}-$(basename "$session_file")"
+  # Name the raw copy after its pane-transcript sibling: the same
+  # <engine>-<model>-<effort>-<n>-<slug> identity with RAW inserted, so the pair
+  # sorts together and carries one identity. Fallback: the folder name alone.
+  local pane_transcript identity
+  pane_transcript="$(ls "${archive_directory}"/transcript-*-"${task_folder_name}".md 2>/dev/null | head -1 || true)"
+  if [ -n "$pane_transcript" ]; then
+    identity="$(basename "$pane_transcript" .md)"
+    identity="${identity#transcript-}"
+  else
+    identity="$task_folder_name"
+  fi
+  local destination="${archive_directory}/transcript-RAW-${identity}.jsonl"
   cp "$session_file" "$destination"
   # Prove the copy: same byte count, or the archive is a lie.
   local source_bytes destination_bytes
@@ -66,7 +79,7 @@ if [ "${1:-}" = "--self-test" ]; then
   rm -rf "$sandbox" \
     "${repository_root}/tmp/transcripts/session-link-selftest-present-arm.txt" \
     "${repository_root}/tmp/transcripts/session-link-selftest-broken-arm.txt" \
-    "${archive_directory}/selftest-present-arm-rollout-test.jsonl"
+    "${archive_directory}/transcript-RAW-selftest-present-arm.jsonl"
   if [ "$failures" = "0" ]; then
     echo "SELF-TEST: archive proves bytes, missing and broken links fail loudly."
     exit 0
