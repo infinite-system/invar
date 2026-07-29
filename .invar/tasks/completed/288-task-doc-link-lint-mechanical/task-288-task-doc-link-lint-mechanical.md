@@ -1,6 +1,6 @@
 # 288 — every doc reference in tasks/briefs/reports is a resolving md link, mechanically
 
-State: IN-PROGRESS
+State: COMPLETED — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
 Created: 2026-07-29
 Engine: codex
 Environment: linux

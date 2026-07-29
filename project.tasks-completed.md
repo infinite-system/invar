@@ -5,6 +5,7 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
