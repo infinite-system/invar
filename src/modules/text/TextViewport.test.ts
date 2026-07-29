@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { Viewport } from './Viewport';
+import { TextViewport } from './TextViewport';
 
 test('keeps a target line within the window', () => {
-  const viewport = new Viewport.Class();
+  const viewport = new TextViewport.Class();
   viewport.setSize(80, 10);
   viewport.scrollToLine(50, 100);
   expect(viewport.firstVisible).toBeLessThanOrEqual(50);
@@ -12,7 +12,7 @@ test('keeps a target line within the window', () => {
 });
 
 test('never scrolls past the last page', () => {
-  const viewport = new Viewport.Class();
+  const viewport = new TextViewport.Class();
   viewport.setSize(80, 10);
   viewport.scrollBy(1000, 30);
   expect(viewport.firstVisible).toBe(20);

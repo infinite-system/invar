@@ -40,6 +40,60 @@ src/modules/workspace/OpenBufferSet.test.ts`.
 
 **Last refined:** 2026-07-26
 
+### One provider creates every workspace buffer view
+
+**Invariant:** If a workspace holds a buffer, then that buffer is a DOCUMENT plus a VIEW: the
+document lives on the buffer's stable `DocumentHandle` and answers every language request, and the
+view came from this workspace's single injected `SourceTextViewProvider`. The host never names,
+constructs, or asserts the class behind that provider.
+
+**Scope:** `Workspace` buffer creation and disposal, the empty document-less view, the six
+language-intelligence requests, the content-type router, and the global word-wrap and code-folding
+attachments. `OpenBufferSet`'s flyweight discipline is governed separately by *N open tabs do not
+cost N live documents*.
+
+**Components:**
+- *Documents answer document questions* — sync, hover, completion, diagnostics, go-to-definition,
+  the image router, and reference resolution read `buffers.activeDocumentHandle.document`. Only the
+  CARET fallback of go-to-definition reads the view, because a caret is view state.
+- *One creator* — `createBufferSet`'s `createBuffer` seam is the sole source of a buffer view, and
+  it records what it made in `viewsByLiveBuffer`. Every later seam reads that map, so no site has
+  to assert what a buffer is.
+- *Lazy provider* — the provider resolves on first use, so a workspace built only to carry
+  contributions (source control, language, file tree) needs no view at all.
+
+**Mechanism:** `WorkspaceOptions.createSourceTextViews` supplies the provider, lazily, on first
+use; `src/modules/editor/EditorSourceTextViews` is the one implementation, and `Bootstrap` is the
+one place that names it. `Workspace.editor` returns the `SourceTextView` seam, so a host site that
+needs more than the contract fails to compile instead of reaching through it.
+
+**Generates:** A workspace that serves language requests with no view built; a source-text view
+that is replaceable per workspace; the conventions-gate rule that `src/modules/workspace/` never
+imports `../editor/`.
+
+**Rejected alternatives:** Cast `buffers.activeBuffer` to the editor at each use — the rule "this
+seam is the sole creator" then lives only in a comment beside five casts, and the language requests
+depend on a view to answer a document question. Keep constructing the view in the workspace and
+only move the type — the construction IS the coupling.
+
+**Evidence:** `Workspace.ts` (`sourceTextViews`, `createSourceTextView`, `viewsByLiveBuffer`,
+`languageRequestDocument`); `SourceTextView.interface.ts`;
+`src/modules/editor/EditorSourceTextViews.ts` + `EditorSourceTextViews.test.ts`;
+`Workspace.test.ts` ("language requests read the document on the handle, never a view", "a
+workspace with NO view provider is legal until a view is actually needed", "one creator, one
+disposer"); conventions-gate rule 1.53.
+
+**Impossible if true:** A host file naming `Editor`; a language request answered through a view; a
+buffer view the workspace did not create or does not release; two contribution registries in one
+workspace.
+
+**Verification:** `bun test src/modules/workspace/Workspace.test.ts
+src/modules/editor/EditorSourceTextViews.test.ts && bash scripts/conventions-gate.sh`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Gutter marks come from document scoped contributions
 
 **Invariant:** If a line mark is painted in the editor gutter, body, or overview, then it came from

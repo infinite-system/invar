@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 
 let workspaceDirectory = '';
 
@@ -37,7 +38,9 @@ afterEach(() => {
 
 describe('Workspace navigation history (Go Back / Go Forward)', () => {
   test('opening two files records the trail; back returns to the first, forward to the second', () => {
-    const workspace = new Workspace.Class();
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     const [alpha, beta] = filePaths as [string, string, string];
     workspace.openFileInTab(alpha);
     workspace.openFileInTab(beta);
@@ -51,7 +54,9 @@ describe('Workspace navigation history (Go Back / Go Forward)', () => {
   });
 
   test('back restores the cursor position left behind in the source file', () => {
-    const workspace = new Workspace.Class();
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     const [alpha, beta] = filePaths as [string, string, string];
     workspace.openFileInTab(alpha);
     workspace.editor.placeCursor(3, 2); // move within alpha, then leave it
@@ -64,7 +69,9 @@ describe('Workspace navigation history (Go Back / Go Forward)', () => {
   });
 
   test('a programmatic back/forward does not itself record new history', () => {
-    const workspace = new Workspace.Class();
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     const [alpha, beta] = filePaths as [string, string, string];
     workspace.openFileInTab(alpha);
     workspace.openFileInTab(beta);
@@ -75,7 +82,9 @@ describe('Workspace navigation history (Go Back / Go Forward)', () => {
   });
 
   test('a new navigation after going back truncates the forward trail', () => {
-    const workspace = new Workspace.Class();
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     const [alpha, beta, gamma] = filePaths as [string, string, string];
     workspace.openFileInTab(alpha);
     workspace.openFileInTab(beta);
@@ -91,7 +100,9 @@ describe('Workspace navigation history (Go Back / Go Forward)', () => {
   });
 
   test('navigateBack is a safe no-op with no history', () => {
-    const workspace = new Workspace.Class();
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     expect(() => workspace.navigateBack()).not.toThrow();
     expect(() => workspace.navigateForward()).not.toThrow();
     expect(workspace.editor.hasDocument.value).toBe(false);

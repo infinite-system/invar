@@ -18,6 +18,7 @@ import { Settings } from '../settings/Settings';
 import { Theme } from '../theme/Theme';
 import { WorkspaceSet } from '../workspace/WorkspaceSet';
 import { InlineRewriteContributor } from './InlineRewriteContributor';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 
 class DeferredRewriteProvider implements RewriteProvider {
   readonly available = true;
@@ -42,7 +43,9 @@ function createFixture() {
   const keybindings = new KeybindingRegistry.Class();
   const commands = new CommandRegistry.Class();
   const theme = new Theme.Class();
-  const workspaceSet = new WorkspaceSet.Class(settings);
+  const workspaceSet = new WorkspaceSet.Class(settings, {
+    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+  });
   workspaceSet.open('/tmp');
   const statusProjectionContributions =
     new StatusProjectionContributions.Class();

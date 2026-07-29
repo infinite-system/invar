@@ -1,5 +1,5 @@
 import type { TextDocument } from '../text/TextDocument';
-import type { EditorFoldState } from '../editor/Editor';
+import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
 
 // invariant: Document identity survives document instance replacement (workspace.invariants.md)
 class $DocumentHandle {
@@ -9,7 +9,7 @@ class $DocumentHandle {
   ) {}
 
   protected documentInstance: TextDocument.Model | null = null;
-  readonly foldState: EditorFoldState = {
+  readonly foldState: DocumentFoldState = {
     collapsedLineStarts: new Set<number>(),
   };
 

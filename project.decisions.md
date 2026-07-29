@@ -439,3 +439,59 @@ capstone — `Workspace` constructs `Editor` buffers, `RootView` mounts the edit
 renderables rather than through the `PaneContent` seam, and `Bootstrap` reads bracket state. The
 editor is the only pane that is not a `PaneContent`, and putting it on that seam is the rewrite the
 capstone actually names. See the #122 report for the measured evidence.
+
+## Fold state is document-adjacent persistence, not a view property (#218, 2026-07-29)
+
+`DocumentHandle` held a `foldState` typed `EditorFoldState`, imported from `src/modules/editor/`.
+The type sat in a document seam and was named after the view. #218 had to decide where fold state
+belongs before it could remove that import, because "just move the type" and "move the state" are
+different answers.
+
+Decision: fold state is DOCUMENT-ADJACENT PERSISTENCE. It stays on the stable `DocumentHandle`,
+and its type moves to `src/modules/text/DocumentFoldState.interface.ts` beside the document. A
+view ATTACHES to a fold state it does not own (`SourceTextView.attachFoldState`).
+
+The reasoning is the flyweight. A clean background tab is dehydrated: its view is disposed and a
+later activation builds a new one. A collapsed region is a user decision about a FILE, not about
+the current instance showing it. Store it on the view and every eviction silently discards it —
+the exact stale-state class *Document identity survives document instance replacement* exists to
+prevent. Store it beside the document and it survives, which is what the code already did; only
+the recorded owner was wrong.
+
+The type test agrees with the storage test. A fold is `{ collapsedLineStarts: Set<number> }` — a
+set of DOCUMENT line numbers. It carries no wrap width, no scroll offset, and no visual row, so
+nothing in it needs the view to be interpreted. `FoldRange` is now an alias of the same file's
+`DocumentFoldRange` for the same reason: a foldable region is a document range and the view adds
+no coordinate of its own.
+
+Rejected: make fold state a view property and re-derive it on rehydration from a persisted
+side-table. That is the same storage with an extra copy, and it puts the authority in the place
+that keeps being destroyed.
+
+## The cursor and the scroll window are text primitives, not view parts (#218, 2026-07-29)
+
+To state what a workspace buffer's VIEW is without naming the editor, #218 needed a contract
+(`src/modules/workspace/SourceTextView.interface.ts`) that could say `cursor` and `viewport`. Both
+classes lived in `src/modules/editor/`, so the contract could not name them without re-creating the
+import it exists to remove.
+
+The measurement settled it. `Cursor` and `Viewport` had ZERO importers outside
+`src/modules/editor/` — every consumer reached them only through `editor.cursor` and
+`editor.viewport`, so no host file named either type. That is the #122 finding again at a smaller
+size: a primitive parked behind the editor door that the app uses without knowing it.
+
+The contract layer agreed, as it did in #122. `Cursor` already cited *A cursor position resolves to
+three distinct coordinates*, which lives in `src/modules/text/text.invariants.md`, not
+`editor.invariants.md`. `Viewport` cited two `project.invariants.md` records (*The terminal shows a
+bounded viewport*, *Cost tracks the actively observed set*). Neither record had to move with the
+files, which is the strongest sign the folder was the only thing that disagreed.
+
+Decision: both move to `src/modules/text/` as `TextCursor` and `TextViewport`. They are renamed for
+the same reason `EditorCoordinates` became `TextCoordinates` — the file names are the seam, and
+`Viewport` alone reads as any pane's viewport rather than the window one text surface shows.
+`ReadOnlyTextBuffer`, the shared model behind the editor, the diff view, and the Markdown split
+view, already owned the cursor, so this puts the type where its one generator is.
+
+What did NOT move: `ReadOnlyTextBuffer`, `EditorWrap`, `CodeFolding`, and `BracketMatch`. Those are
+source-text-view behaviour, and moving them for the convenience of one interface would repeat the
+mistake in the other direction.

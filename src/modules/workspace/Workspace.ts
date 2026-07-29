@@ -1,7 +1,6 @@
 import { Reactive } from 'ivue';
-import { ref, shallowRef, type Ref } from 'vue';
-import { Editor } from '../editor/Editor';
-import { OpenBufferSet } from './OpenBufferSet';
+import { ref, type Ref } from 'vue';
+import { OpenBufferSet, type LiveBuffer } from './OpenBufferSet';
 import {
   NavigationHistory,
   type Location,
@@ -29,12 +28,22 @@ import type {
   WorkspaceContributor,
   WorkspaceProvider,
 } from './WorkspaceContributor.interface';
-import { EditorContributions } from '../editor/EditorContributions';
+import type {
+  SourceTextView,
+  SourceTextViewContributions,
+  SourceTextViewProvider,
+} from './SourceTextView.interface';
+import type { TextDocument } from '../text/TextDocument';
 
-// A workspace: one project root with its editor, documents, and generic contribution lifecycle.
-// WorkspaceSet layers project tabs and flyweight activation over this per-root core.
+// A workspace: one project root with its open buffers, documents, and generic contribution
+// lifecycle. WorkspaceSet layers project tabs and flyweight activation over this per-root core.
+//
+// A BUFFER here is a DOCUMENT plus a VIEW HANDLE, never a view class. The document is held by the
+// stable `DocumentHandle` and is what the language requests read; the view comes from the injected
+// `SourceTextViewProvider` and is what the flyweight disposes and rebuilds.
 //
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
+// invariant: One provider creates every workspace buffer view (workspace.invariants.md)
 
 class $Workspace {
   constructor(protected readonly options: WorkspaceOptions = {}) {
@@ -48,7 +57,6 @@ class $Workspace {
   // tab, never replaces. Flyweight — a bounded recent set (and any dirty background buffer) holds
   // live documents; older clean tabs dehydrate to a light handle and rehydrate on activation.
   buffers = this.createBufferSet();
-  editorContributions = new EditorContributions.Class();
   documentLifecycle = new DocumentLifecycle.Class();
   gutterDecorations = new GutterDecorations.Class();
   // Contributions claim the editor surface here and the host asks them capability questions. It
@@ -98,50 +106,93 @@ class $Workspace {
   // location arrived at, so Alt+[ / Alt+] can walk the trail. Reactive so the UI can later show
   // enabled/disabled affordances.
   navigationHistory = this.createNavigationHistory();
-  // The document-less editor shown whenever the active buffer is not the subject of the editor
+  // The provider that makes every buffer view for this workspace. The host never learns what it
+  // returns. Resolved LAZILY so a workspace whose caller only wants documents, tabs, or
+  // contributions — the common shape in tests and in headless callers — needs no view at all.
+  protected sourceTextViewProvider: SourceTextViewProvider | null = null;
+  // Which view backs each live buffer. The buffer set drives a deliberately minimal `LiveBuffer`
+  // surface, so this map — not a cast — is how the seams below get back the view they were handed,
+  // and how the global-preference attachments walk the live views. A provider that returns the
+  // view itself maps it to itself; one that returns a wrapper does not, and neither case asks the
+  // host to assert anything.
+  protected readonly viewsByLiveBuffer = new Map<LiveBuffer, SourceTextView>();
+  // The document-less view shown whenever the active buffer is not the subject of the editor
   // surface: no tab open, or a contributed surface presenting something else. One instance serves
-  // both — they were two identical empty editors, and "empty" is the whole of either's behaviour.
-  protected emptyEditor = this.createEditor();
+  // both — they were two identical empty views, and "empty" is the whole of either's behaviour.
+  protected emptySourceTextView: SourceTextView | null = null;
 
-  protected createEditor() {
-    const editor = new Editor.Class();
-    editor.attachEditorContributions(this.editorContributions);
-    // Word wrap is global: every editor reads the SAME settings.wordWrap when settings are attached, so
-    // the mode is consistent across tabs and the empty editor. Editors made before attachSettings
-    // (emptyEditor) are retro-attached there.
-    if (this.settingsSource)
-      editor.attachWordWrap(this.settingsSource.wordWrap);
-    if (this.codeFoldingEnabledSource) {
-      editor.attachCodeFolding(this.codeFoldingEnabledSource);
+  protected get sourceTextViews(): SourceTextViewProvider {
+    if (this.sourceTextViewProvider) return this.sourceTextViewProvider;
+    const provider = this.options.createSourceTextViews?.();
+    if (!provider) {
+      throw new Error(
+        'This workspace was built without a source-text view provider, so it holds documents ' +
+          'but cannot show them. Pass createSourceTextViews to WorkspaceOptions.',
+      );
     }
-    return editor;
+    this.sourceTextViewProvider = provider;
+    return provider;
+  }
+
+  /** The registry that view contributions attach to — one per workspace. */
+  get editorContributions(): SourceTextViewContributions {
+    return this.sourceTextViews.contributions;
+  }
+
+  protected get emptyView(): SourceTextView {
+    this.emptySourceTextView ??= this.createSourceTextView();
+    return this.emptySourceTextView;
+  }
+
+  protected createSourceTextView(): SourceTextView {
+    const view = this.sourceTextViews.createView();
+    // Word wrap is global: every view reads the SAME settings.wordWrap when settings are attached,
+    // so the mode is consistent across tabs and the empty view. Views made before attachSettings
+    // are retro-attached there.
+    if (this.settingsSource) view.attachWordWrap(this.settingsSource.wordWrap);
+    if (this.codeFoldingEnabledSource) {
+      view.attachCodeFolding(this.codeFoldingEnabledSource);
+    }
+    return view;
+  }
+
+  /** Every live view: the buffer views plus the empty one, once it has been asked for. */
+  protected get sourceTextViewsInUse(): readonly SourceTextView[] {
+    const views = [...this.viewsByLiveBuffer.values()];
+    if (this.emptySourceTextView) views.push(this.emptySourceTextView);
+    return views;
   }
   protected createNavigationHistory() {
     return new NavigationHistory.Class();
   }
   protected createBufferSet() {
+    // This seam is the SOLE creator of a buffer view, so every live buffer in the set came from
+    // this workspace's provider. The seams below carry the view they made, so nothing downstream
+    // has to assert what a buffer is.
     return new OpenBufferSet.Class({
-      // The set only ever holds Editors (this seam is the sole creator), so `editor` below can treat
-      // activeBuffer as an Editor.
       createBuffer: (path, documentHandle) => {
-        const editor = this.createEditor();
-        editor.attachFoldState(documentHandle.foldState);
-        editor.openFile(path);
-        return editor;
+        const view = this.createSourceTextView();
+        view.attachFoldState(documentHandle.foldState);
+        view.openFile(path);
+        this.viewsByLiveBuffer.set(view, view);
+        return view;
       },
       disposeBuffer: (buffer) => {
-        const editor = buffer as Editor.Instance;
-        editor.dispose();
+        const view = this.viewsByLiveBuffer.get(buffer);
+        if (!view) return;
+        this.viewsByLiveBuffer.delete(buffer);
+        view.dispose();
       },
       opened: (handle, buffer) => {
-        const editor = buffer as Editor.Instance;
-        handle.attach(editor.document);
+        const view = this.viewsByLiveBuffer.get(buffer);
+        if (view) handle.attach(view.document);
         this.documentLifecycle.opened(handle);
       },
       becameActive: (handle) => this.documentLifecycle.becameActive(handle),
       closed: (handle, buffer) => {
         this.documentLifecycle.closed(handle);
-        handle.detach((buffer as Editor.Instance).document);
+        const view = this.viewsByLiveBuffer.get(buffer);
+        if (view) handle.detach(view.document);
       },
     });
   }
@@ -167,33 +218,40 @@ class $Workspace {
     return this.provider<LanguageProvider>('language');
   }
 
+  /**
+   * The document a language request is ABOUT: the active tab's, taken from its stable handle, and
+   * only while that document is the text on screen. It is a document question, so it is answered
+   * from the document side of the buffer — no view is consulted, and none has to exist.
+   *
+   * invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
+   */
+  protected get languageRequestDocument(): TextDocument.Model | null {
+    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
+    const document = this.buffers.activeDocumentHandle?.document ?? null;
+    if (!document || !document.path) return null;
+    return document;
+  }
+
   /** Push the active buffer's current text to every installed semantic provider. */
   syncActiveDocumentWithLanguageProviders(): void {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return;
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) return;
-    this.languageProvider?.syncDocument(editor.document);
+    const document = this.languageRequestDocument;
+    if (!document) return;
+    this.languageProvider?.syncDocument(document);
   }
 
   /** A provider-owned size notice for the legacy observability projection. */
   languageSizeNotice(): string | null {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) {
-      return null;
-    }
-    return this.languageProvider?.statusNotice(editor.document) ?? null;
+    const document = this.languageRequestDocument;
+    if (!document) return null;
+    return this.languageProvider?.statusNotice(document) ?? null;
   }
 
   /** A provider-owned notice, or a legible empty state when none is installed. */
   languageProviderNotice(): string | null {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) {
-      return null;
-    }
+    const document = this.languageRequestDocument;
+    if (!document) return null;
     return (
-      this.languageProvider?.statusNotice(editor.document) ??
+      this.languageProvider?.statusNotice(document) ??
       (this.languageProvider
         ? null
         : 'Language features unavailable — no provider installed')
@@ -209,20 +267,17 @@ class $Workspace {
    * invariant: Plugin boundaries grant one authority (project.invariants.md)
    */
   async goToDefinition(position?: LanguagePosition): Promise<boolean> {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return false;
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path)
-      return false;
+    const document = this.languageRequestDocument;
+    if (!document) return false;
     const provider = this.languageProvider;
     if (!provider) return false;
+    // The DOCUMENT is the subject; only the fallback position — where the caret sits — is a view
+    // question, and the caret belongs to the view showing this document.
     const requestPosition = position ?? {
-      line: editor.cursor.line.value,
-      column: editor.cursor.col.value,
+      line: this.editor.cursor.line.value,
+      column: this.editor.cursor.col.value,
     };
-    const location = await provider.definition(
-      editor.document,
-      requestPosition,
-    );
+    const location = await provider.definition(document, requestPosition);
     if (!location) return false;
     return this.jumpToLocation(location);
   }
@@ -236,26 +291,19 @@ class $Workspace {
    * invariant: A hover card reflects the language server type at the pointed symbol (src/modules/ui/ui.invariants.md)
    */
   async hoverAt(position: LanguagePosition): Promise<LanguageHover | null> {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return null;
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path)
-      return null;
-    return this.languageProvider?.hover(editor.document, position) ?? null;
+    const document = this.languageRequestDocument;
+    if (!document) return null;
+    return this.languageProvider?.hover(document, position) ?? null;
   }
 
   async completionAt(
     position: LanguagePosition,
     context: LanguageCompletionContext,
   ): Promise<LanguageCompletionList> {
-    if (!this.editorSurfaces.activeDocumentIsPresented) {
-      return { items: [], isIncomplete: false };
-    }
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (!editor || !editor.hasDocument.value || !editor.document.path) {
-      return { items: [], isIncomplete: false };
-    }
+    const document = this.languageRequestDocument;
+    if (!document) return { items: [], isIncomplete: false };
     return (
-      this.languageProvider?.completion(editor.document, position, context) ?? {
+      this.languageProvider?.completion(document, position, context) ?? {
         items: [],
         isIncomplete: false,
       }
@@ -271,17 +319,9 @@ class $Workspace {
   diagnosticsAt(
     position: LanguagePosition,
   ): readonly LanguageHoverDiagnostic[] {
-    const editor = this.buffers.activeBuffer as Editor.Instance | null;
-    if (
-      !this.editorSurfaces.activeDocumentIsPresented ||
-      !editor ||
-      !editor.hasDocument.value
-    ) {
-      return [];
-    }
-    return (
-      this.languageProvider?.diagnosticsAt(editor.document, position) ?? []
-    );
+    const document = this.languageRequestDocument;
+    if (!document) return [];
+    return this.languageProvider?.diagnosticsAt(document, position) ?? [];
   }
 
   /** Open the located file through the existing tab path and reveal the declaration. */
@@ -317,23 +357,22 @@ class $Workspace {
    *  document open, or while a contributed surface presents something other than this buffer. */
   // invariant: An image buffer replaces the code text and leaves other files untouched (src/modules/image/image.invariants.md)
   get activeFileIsImage(): boolean {
+    const document = this.languageRequestDocument;
     return (
-      this.editorSurfaces.activeDocumentIsPresented &&
-      this.editor.hasDocument.value &&
-      ImageDecoders.Class.supports(
-        Files.Class.extname(this.editor.document.path),
-      )
+      document !== null &&
+      ImageDecoders.Class.supports(Files.Class.extname(document.path))
     );
   }
 
-  /** The editor whose text is the subject of the editor surface: the active tab's buffer, else the
-   *  document-less empty editor — which is also what a contributed surface presenting something
+  /** The view whose text is the subject of the editor surface: the active tab's buffer view, else
+   *  the document-less empty view — which is also what a contributed surface presenting something
    *  else leaves behind. All movement/render/edit target this one. */
-  get editor(): Editor.Instance {
-    if (!this.editorSurfaces.activeDocumentIsPresented) return this.emptyEditor;
-    // Safe cast: createBufferSet's seam is the only buffer creator and always makes an Editor.
+  get editor(): SourceTextView {
+    if (!this.editorSurfaces.activeDocumentIsPresented) return this.emptyView;
+    const activeBuffer = this.buffers.activeBuffer;
     return (
-      (this.buffers.activeBuffer as Editor.Instance | null) ?? this.emptyEditor
+      (activeBuffer && this.viewsByLiveBuffer.get(activeBuffer)) ??
+      this.emptyView
     );
   }
 
@@ -355,21 +394,18 @@ class $Workspace {
 
   attachCodeFolding(enabled: Ref<boolean>): void {
     this.codeFoldingEnabledSource = enabled;
-    this.emptyEditor.attachCodeFolding(enabled);
-    for (const entry of this.buffers.entries.value) {
-      (entry.buffer as Editor.Instance | null)?.attachCodeFolding(enabled);
+    for (const view of this.sourceTextViewsInUse) {
+      view.attachCodeFolding(enabled);
     }
   }
 
   attachSettings(settings: Settings.Instance): void {
     this.settingsSource = settings;
-    // Retro-attach the global wordWrap source to editors already built (the field-init empty editor +
-    // any live buffers from session restore). Future editors get it in createEditor.
-    this.emptyEditor.attachWordWrap(settings.wordWrap);
-    for (const entry of this.buffers.entries.value) {
-      (entry.buffer as Editor.Instance | null)?.attachWordWrap(
-        settings.wordWrap,
-      );
+    // Retro-attach the global wordWrap source to views already built (an empty view that has been
+    // asked for + any live buffers from session restore). Later views get it in
+    // createSourceTextView.
+    for (const view of this.sourceTextViewsInUse) {
+      view.attachWordWrap(settings.wordWrap);
     }
     for (const contribution of this.contributions) {
       contribution.settingsAttached?.(settings);
@@ -435,7 +471,8 @@ class $Workspace {
       disposeContribution();
     }
     this.buffers.disposeAll();
-    this.emptyEditor.dispose();
+    this.emptySourceTextView?.dispose();
+    this.emptySourceTextView = null;
   }
 
   toggleFocus(): void {
@@ -605,11 +642,14 @@ class $Workspace {
       // A malformed percent escape is not a file target.
       return null;
     }
+    // "Beside the active file" is a DOCUMENT question, so it is answered from the active tab's
+    // handle rather than from whatever view happens to be showing it.
+    const activeDocument = this.buffers.activeDocumentHandle?.document ?? null;
     const candidatePaths = [
       Files.Class.confineToRoot(this.root, decodedReference),
-      this.editor.hasDocument.value
+      activeDocument
         ? Files.Class.confineToRoot(
-            Files.Class.dirname(this.editor.document.path),
+            Files.Class.dirname(activeDocument.path),
             decodedReference,
           )
         : null,
@@ -713,4 +753,7 @@ export type Focus = 'editor' | 'primaryPane';
 export interface WorkspaceOptions {
   awaitNextViewPaint?: () => Promise<void>;
   contributors?: readonly WorkspaceContributor[];
+  /** Supplies this workspace's buffer views. Called once, lazily, the first time a view is
+   *  needed — a workspace that is only asked about documents, tabs, or contributions builds none. */
+  createSourceTextViews?: () => SourceTextViewProvider;
 }

@@ -1,6 +1,6 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
-import { Viewport } from './Viewport';
+import { TextViewport } from '../text/TextViewport';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { EditorIndent } from './EditorIndent';
 import { TextEditing } from '../text/TextEditing';
@@ -17,6 +17,8 @@ import type {
 } from '../workspace/LanguageProvider.interface';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
 import type { EditorContributions } from './EditorContributions';
+import type { DocumentFoldState } from '../text/DocumentFoldState.interface';
+import type { SourceTextView } from '../workspace/SourceTextView.interface';
 
 // The editor: owns a document, a cursor, and a viewport, and coordinates movement, selection,
 // editing, and scroll.
@@ -24,7 +26,7 @@ import type { EditorContributions } from './EditorContributions';
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (editor.invariants.md)
 // invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
-class $Editor extends ReadOnlyTextBuffer.$Class {
+class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
   protected undo = this.createUndo();
@@ -40,7 +42,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   }
 
   protected createViewport() {
-    return new Viewport.Class();
+    return new TextViewport.Class();
   }
   protected createUndo() {
     return new UndoStore.Class();
@@ -87,7 +89,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
     return this.codeFoldingSource?.value ?? true;
   }
   get foldState() {
-    return shallowRef<EditorFoldState>({
+    return shallowRef<DocumentFoldState>({
       collapsedLineStarts: new Set<number>(),
     });
   }
@@ -98,7 +100,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class {
   protected collapsedFoldRangesFoldRevision = -1;
   protected collapsedFoldRangesValue: readonly FoldRange[] = [];
 
-  attachFoldState(foldState: EditorFoldState): void {
+  attachFoldState(foldState: DocumentFoldState): void {
     this.foldState.value = foldState;
     this.foldRevision.value++;
   }
@@ -1133,8 +1135,4 @@ export namespace Editor {
   export let Class = Reactive($Class);
   export type Model = InstanceType<typeof Class>;
   export type Instance = typeof Class.Instance;
-}
-
-export interface EditorFoldState {
-  readonly collapsedLineStarts: Set<number>;
 }

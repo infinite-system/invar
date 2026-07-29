@@ -1,6 +1,7 @@
 import { Static } from 'ivue/extras';
 import { Highlighter, type LangId } from '../syntax/Highlighter';
 import { TextCoordinates } from '../text/TextCoordinates';
+import type { DocumentFoldRange } from '../text/DocumentFoldState.interface';
 
 // Fold discovery is proportional to what asks for it: gutter paint caches exact ranges only for
 // visible starts, while whole-document commands share the global snapshot.
@@ -384,11 +385,8 @@ export namespace CodeFolding {
   export let Class = $Class;
 }
 
-export interface FoldRange {
-  readonly startLine: number;
-  readonly endLine: number;
-  readonly kind: 'delimiter' | 'indentation';
-}
+/** A foldable region is a DOCUMENT range; the view adds no coordinate of its own. */
+export type FoldRange = DocumentFoldRange;
 
 export interface FoldableDocument {
   readonly lineCount: number;

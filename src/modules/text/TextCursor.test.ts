@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { Cursor } from './Cursor';
+import { TextCursor } from './TextCursor';
 
 test('selection range normalizes anchor and cursor order', () => {
-  const cursor = new Cursor.Class();
+  const cursor = new TextCursor.Class();
   cursor.set(2, 3);
   cursor.setAnchorHere();
   cursor.set(1, 0);

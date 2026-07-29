@@ -63,6 +63,22 @@ if [ -n "$text_seam_back_edges" ]; then
   fail=1
 fi
 
+# 1.53) WORKSPACE-SEAM DIRECTION: `src/modules/workspace/` is the HOST. It holds documents and
+#       view HANDLES: a buffer is a `TextDocument` on a stable `DocumentHandle` plus a view its
+#       injected `SourceTextViewProvider` made. The host must not name the class behind that
+#       provider. One import of the source-text view is enough to put the host back in the
+#       business of constructing editors, which is the coupling #218 removed. Tests may import it
+#       — a test is allowed to know which provider it wired.
+workspace_seam_back_edges=$(
+  grep -rn "from '\.\./editor/" --include='*.ts' --exclude='*.test.ts' \
+    src/modules/workspace || true
+)
+if [ -n "$workspace_seam_back_edges" ]; then
+  echo "CONVENTIONS FAIL: src/modules/workspace imports the source-text view:"
+  echo "$workspace_seam_back_edges"
+  fail=1
+fi
+
 # 1.55) WRAP-INDEX EDIT CENSUS: a same-line edit may loop over its changed range, never the
 #       document-sized line count or an array length.
 if ! "$bun_binary" scripts/ast-query.ts wrap-index-edit-loop-census \

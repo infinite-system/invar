@@ -11,6 +11,13 @@ import {
 } from 'node:fs';
 import { tmpdir as temporaryDirectory } from 'node:os';
 import { join } from 'node:path';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
+
+function createWorkspace() {
+  return new Workspace.Class({
+    createSourceTextViews: () => new EditorSourceTextViews.Class(),
+  });
+}
 
 let workspaceDirectory = '';
 
@@ -34,7 +41,7 @@ afterEach(() => {
 
 describe('Workspace editor buffer tabs (item 10a)', () => {
   test('opening files ADDS tabs and activates the newest; reopening focuses the existing tab', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     workspace.openFileInTab(filePaths[0]!);
     workspace.openFileInTab(filePaths[1]!);
     workspace.openFileInTab(filePaths[2]!);
@@ -50,14 +57,14 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
   });
 
   test('FLYWEIGHT: N clean tabs cost a bounded two live documents', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     for (const path of filePaths) workspace.openFileInTab(path);
     expect(workspace.buffers.count).toBe(4);
     expect(workspace.buffers.liveCount).toBe(2);
   });
 
   test('cycleTab wraps and keeps the live document count bounded', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     for (const path of filePaths) workspace.openFileInTab(path); // active = 3
     workspace.cycleTab(1); // wraps to 0
     expect(workspace.buffers.activeIndex.value).toBe(0);
@@ -68,7 +75,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
   });
 
   test('closing a clean tab disposes it and activates a neighbour; closing all returns to empty', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     for (const path of filePaths) workspace.openFileInTab(path);
     workspace.closeTab(workspace.buffers.activeIndex.value);
     expect(workspace.buffers.count).toBe(3);
@@ -82,7 +89,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
   });
 
   test('a DIRTY tab requires a close confirmation; confirm closes, cancel keeps it', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     workspace.openFileInTab(filePaths[0]!);
     workspace.editor.insertText('x'); // now dirty
     expect(workspace.editor.dirty).toBe(true);
@@ -102,7 +109,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
   });
 
   test('a DIRTY background tab stays live (its unsaved edits survive dehydration)', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     workspace.openFileInTab(filePaths[0]!);
     workspace.editor.insertText('edit'); // tab 0 is dirty
     workspace.openFileInTab(filePaths[1]!); // switch away — tab 0 must NOT dehydrate
@@ -111,7 +118,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
 
   // invariant: The editor surface answers capabilities, not plugin modes (workspace.invariants.md)
   test('opening a real file releases a contributed surface; the visible editor becomes the active tab', () => {
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     // A contribution shaped like a read-only comparison: it occupies the surface and replaces the
     // active buffer's text. The host never learns what it is.
     const surface = {
@@ -135,6 +142,72 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     expect(workspace.editor.document.path).toBe(filePaths[0]!);
   });
 
+  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  test('language requests read the document on the handle, never a view', () => {
+    const workspace = createWorkspace();
+    workspace.root = workspaceDirectory;
+    workspace.openFileInTab(filePaths[0]!);
+
+    // The subject of every language request is the instance the stable handle holds.
+    const handleDocument = workspace.activeDocumentHandle?.document;
+    expect(handleDocument).toBeDefined();
+    expect(handleDocument?.path).toBe(filePaths[0]!);
+    expect(workspace.activeFileIsImage).toBe(false);
+    expect(workspace.languageProviderNotice()).toBe(
+      'Language features unavailable — no provider installed',
+    );
+    // Reference resolution reads the same document, not the view showing it.
+    expect(workspace.resolveFileReference('file2.txt')).toBe(filePaths[1]!);
+
+    // Switching away and back replaces the VIEW; the handle keeps identifying the document.
+    workspace.openFileInTab(filePaths[1]!);
+    workspace.activateTab(0);
+    expect(workspace.activeDocumentHandle?.path).toBe(filePaths[0]!);
+    expect(workspace.activeDocumentHandle?.document?.path).toBe(filePaths[0]!);
+  });
+
+  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  test('a workspace with NO view provider is legal until a view is actually needed', () => {
+    // The provider resolves lazily, which is what lets a contributor-only workspace exist.
+    const workspace = new Workspace.Class();
+    workspace.root = workspaceDirectory;
+
+    expect(workspace.buffers.count).toBe(0);
+    expect(workspace.tabDetail).toBe('');
+    // Asking for a view says what is missing instead of failing quietly.
+    expect(() => workspace.editor).toThrow(/source-text view provider/);
+  });
+
+  // invariant: One provider creates every workspace buffer view (workspace.invariants.md)
+  test('one creator, one disposer: every view a workspace made is released with its buffer', () => {
+    const disposedViewCount = { value: 0 };
+    const workspace = new Workspace.Class({
+      createSourceTextViews: () => {
+        const provider = new EditorSourceTextViews.Class();
+        return {
+          contributions: provider.contributions,
+          createView: () => {
+            const view = provider.createView();
+            const dispose = view.dispose.bind(view);
+            view.dispose = () => {
+              disposedViewCount.value += 1;
+              dispose();
+            };
+            return view;
+          },
+        };
+      },
+    });
+    for (const path of filePaths) workspace.openFileInTab(path);
+    // Four tabs, two live: the flyweight already released the two views it evicted.
+    expect(workspace.buffers.liveCount).toBe(2);
+    expect(disposedViewCount.value).toBe(2);
+
+    // Four buffer views plus the one empty view the first tab open built.
+    workspace.dispose();
+    expect(disposedViewCount.value).toBe(5);
+  });
+
   // invariant: A file reference opens from rendered Markdown (src/modules/markdown/markdown.invariants.md)
   test('rendered file references resolve only to real files inside the workspace', () => {
     const sourceDirectory = join(workspaceDirectory, 'guides');
@@ -149,7 +222,7 @@ describe('Workspace editor buffer tabs (item 10a)', () => {
     writeFileSync(sourceRelativeTarget, '# Details\n');
     writeFileSync(rootRelativeTarget, '# Invariants\n');
 
-    const workspace = new Workspace.Class();
+    const workspace = createWorkspace();
     workspace.root = workspaceDirectory;
     workspace.openFileInTab(sourcePath);
 

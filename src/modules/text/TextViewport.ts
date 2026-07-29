@@ -2,12 +2,13 @@ import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 
-// Scroll/viewport state. The editor renders only the lines this window exposes — memory
-// and render cost track the visible set, not the file size.
+// The scroll window one text surface shows: offsets, size, and wheel momentum. A surface renders
+// only the lines this window exposes — memory and render cost track the visible set, not the
+// file size.
 //
 // invariant: The terminal shows a bounded viewport (project.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
-class $Viewport {
+class $TextViewport {
   get scrollTop() {
     return ref(0);
   }
@@ -88,8 +89,8 @@ class $Viewport {
   }
 }
 
-export namespace Viewport {
-  export const $Class = $Viewport;
+export namespace TextViewport {
+  export const $Class = $TextViewport;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
