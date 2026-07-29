@@ -69,7 +69,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
 ## RECENTLY COMPLETED (last 15 of 28 — full log: project.tasks-completed.md)
-- #218 workspace-buffer-splits-document-from-view — IN-PROGRESS
+- #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 - #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc

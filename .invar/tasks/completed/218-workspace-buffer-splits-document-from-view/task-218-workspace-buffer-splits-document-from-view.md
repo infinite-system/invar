@@ -1,6 +1,6 @@
 # 218 — a Workspace buffer becomes a document plus a view handle, not an Editor
 
-State: IN-PROGRESS
+State: COMPLETED — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
 Created: 2026-07-29
 Engine: claude
 Environment: linux

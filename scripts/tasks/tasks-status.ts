@@ -563,6 +563,65 @@ function selfTest(): number {
   return failures === 0 ? 0 : 1;
 }
 
+// Command-line lenses, one per state the user asks about. `live` answers "what
+// is running and how do I join it"; `active` answers "what is waiting, in what
+// order"; `completed` answers "what landed, with which commit".
+function live(tasksRoot: string): number {
+  const records = readTaskRecords(tasksRoot)
+    .filter((record) => record.directoryState === 'in-progress')
+    .sort(byNumberDescending);
+  if (records.length === 0) {
+    console.log('IN-PROGRESS: none.');
+    return 0;
+  }
+  console.log(`IN-PROGRESS (${records.length})`);
+  for (const record of records) {
+    const builderStatus =
+      record.reportCount > 0
+        ? 'READY delivered — awaiting landing'
+        : 'building';
+    console.log(
+      `  #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}  [${builderStatus}]`,
+    );
+    console.log(`      tmux attach -t invar/${record.folderName}`);
+  }
+  return 0;
+}
+
+function activeOnly(tasksRoot: string): number {
+  const records = readTaskRecords(tasksRoot).filter(
+    (record) => record.directoryState === 'active',
+  );
+  if (records.length === 0) {
+    console.log('ACTIVE: none.');
+    return 0;
+  }
+  console.log(`ACTIVE (${records.length}) — grouped by priority`);
+  for (const group of [...PRIORITY_ORDER, null]) {
+    const inGroup = records
+      .filter((record) => record.priorityGroup === group)
+      .sort(byNumberDescending);
+    if (inGroup.length === 0) continue;
+    console.log(`  ${group ?? 'unprioritised'}:`);
+    for (const record of inGroup) console.log(`  ${taskLine(record)}`);
+  }
+  return 0;
+}
+
+function completedOnly(tasksRoot: string): number {
+  const records = readTaskRecords(tasksRoot);
+  const completedCount = records.filter(
+    (record) => record.directoryState === 'completed',
+  ).length;
+  if (completedCount === 0) {
+    console.log('COMPLETED: none.');
+    return 0;
+  }
+  console.log(`COMPLETED (${completedCount}) — latest first`);
+  console.log(renderCompletedLog(records));
+  return 0;
+}
+
 const repositoryRoot = join(import.meta.dir, '..', '..');
 
 const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
@@ -570,9 +629,15 @@ const tasksRoot = join(repositoryRoot, '.invar', 'tasks');
 process.exit(
   process.argv.includes('--self-test')
     ? selfTest()
-    : process.argv.includes('backlog')
-      ? backlog(tasksRoot, false)
-      : process.argv.includes('write-active')
-        ? backlog(tasksRoot, true)
-        : report(tasksRoot),
+    : process.argv.includes('live')
+      ? live(tasksRoot)
+      : process.argv.includes('active')
+        ? activeOnly(tasksRoot)
+        : process.argv.includes('completed')
+          ? completedOnly(tasksRoot)
+          : process.argv.includes('backlog')
+            ? backlog(tasksRoot, false)
+            : process.argv.includes('write-active')
+              ? backlog(tasksRoot, true)
+              : report(tasksRoot),
 );
