@@ -4,7 +4,7 @@
 // Kitty-encoded escapes the shell cannot read). Pure, allocation-light, and unit-tested against the
 // control-byte and arrow cases.
 //
-// invariant: A focused panel routes keystrokes to its active pane content (src/modules/terminal/terminal.invariants.md)
+// invariant: A focused panel routes keystrokes to its active pane content (src/modules/ui/ui.invariants.md)
 // invariant: Terminal word operations reach readline (src/modules/terminal/terminal.invariants.md)
 import { Static } from 'ivue/extras';
 import type { KeyEvent } from '@opentui/core';

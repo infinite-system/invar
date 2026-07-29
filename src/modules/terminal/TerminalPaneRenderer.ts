@@ -4,7 +4,7 @@
 // Stateless Static capability: every read flows through the passed-in TerminalInstance, so reactivity
 // flows when the owner calls render() inside its reactive update.
 //
-// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/terminal/terminal.invariants.md)
+// invariant: The panel renders exactly the visible pane content cells each frame (src/modules/ui/ui.invariants.md)
 // invariant: The emulator is the single source of terminal screen state (src/modules/terminal/terminal.invariants.md)
 import { StyledText, fg, bg, bold, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';

@@ -14,7 +14,7 @@ import { FindBar } from '../search/FindBar';
 import { QuickOpen } from '../search/QuickOpen';
 import { Settings, type SettingsFileSystem } from '../settings/Settings';
 import { SettingsPanel } from '../settings/SettingsPanel';
-import { StatusChannel } from '../system/StatusChannel';
+import { StatusChannel, type StatusSnapshot } from '../system/StatusChannel';
 import { ContextMenu } from '../ui/ContextMenu';
 import { BoundedListPopup } from '../ui/BoundedListPopup';
 import { PanelHost } from '../ui/PanelHost';
@@ -101,22 +101,15 @@ describe('AppStatusProjection', () => {
     const panelHost = new PanelHost.Class();
     const primaryDockHost = new PanelHost.Class();
     const rightDockHost = new PanelHost.Class();
+    // The terminal's status now arrives the way every contributed runtime's does — through the
+    // contribution channel, not a host-held pane reference.
     const statusProjectionContributions = {
-      snapshot: () => ({}),
+      snapshot: () => contributedStatus,
     };
+    let contributedStatus: Partial<StatusSnapshot> = {};
     let mouse: AppStatusMouseEvent | null = null;
     let narration: InstanceType<typeof NarrationProjection.Class> | null = null;
     let agentPaneContent: AgentPaneContent.Model | null = null;
-    let terminalPaneContent: {
-      observedEventCount: number;
-      terminalExited: boolean;
-      terminalExitCode: number | null;
-      lastObservedBoundarySource: 'osc133' | 'heuristic' | null;
-      scrollTop: number;
-      scrollContentRows: number;
-      scrollViewportRows: number;
-      forwardsWheelToChild: boolean;
-    } | null = null;
     const ports: AppStatusProjectionPorts = {
       workspaceSet,
       settings,
@@ -212,9 +205,6 @@ describe('AppStatusProjection', () => {
       get agentPaneContent() {
         return agentPaneContent;
       },
-      get terminalPaneContent() {
-        return terminalPaneContent;
-      },
     };
 
     workspaceSet.active.editor.document.loadFromText(
@@ -229,8 +219,10 @@ describe('AppStatusProjection', () => {
     expect(initialSnapshot.agentAssistantEntryCount).toBe(0);
     expect(initialSnapshot.agentLastAssistantText).toBe('');
     expect(initialSnapshot.terminalFollowMode).toBe('off');
-    expect(initialSnapshot.terminalObservedEventCount).toBe(0);
-    expect(initialSnapshot.terminalLastObservedBoundarySource).toBeNull();
+    // With no runtime contributing terminal status, the keys are simply absent — the host holds no
+    // terminal default of its own.
+    expect(initialSnapshot.terminalObservedEventCount).toBeUndefined();
+    expect(initialSnapshot.terminalLastObservedBoundarySource).toBeUndefined();
     expect(initialSnapshot.boundedListPopupTitle).toBe('');
     expect(initialSnapshot.boundedListPopupItemIdentifiers).toEqual([]);
     expect(initialSnapshot.boundedListPopupMatchIdentifiers).toEqual([]);
@@ -284,15 +276,15 @@ describe('AppStatusProjection', () => {
       currentEngine: 'codex',
       title: 'Codex (working…)',
     } as unknown as AgentPaneContent.Model;
-    terminalPaneContent = {
-      observedEventCount: 7,
+    contributedStatus = {
+      terminalObservedEventCount: 7,
       terminalExited: true,
       terminalExitCode: 17,
-      lastObservedBoundarySource: 'heuristic',
-      scrollTop: 19,
-      scrollContentRows: 43,
-      scrollViewportRows: 24,
-      forwardsWheelToChild: true,
+      terminalLastObservedBoundarySource: 'heuristic',
+      terminalScrollTop: 19,
+      terminalScrollContentRows: 43,
+      terminalScrollViewportRows: 24,
+      terminalWheelForwardedToChild: true,
     };
     quickOpen.matches.value = [
       { path: 'TASK.md', score: 0 },

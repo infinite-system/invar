@@ -605,37 +605,8 @@ class $KeybindingDefaults {
         context: 'agent',
       },
       ...this.textInputBindings('agent'),
-      // A terminal selection owns copy; without a selection the same chord falls through as SIGINT.
-      {
-        chord: { key: 'c', ctrl: true },
-        action: 'terminal.copy',
-        context: 'terminal',
-      },
-      {
-        chord: { key: 'left', alt: true },
-        action: 'terminal.wordLeft',
-        context: 'terminal',
-      },
-      {
-        chord: { key: 'b', alt: true },
-        action: 'terminal.wordLeft',
-        context: 'terminal',
-      },
-      {
-        chord: { key: 'right', alt: true },
-        action: 'terminal.wordRight',
-        context: 'terminal',
-      },
-      {
-        chord: { key: 'f', alt: true },
-        action: 'terminal.wordRight',
-        context: 'terminal',
-      },
-      {
-        chord: { key: 'backspace', alt: true },
-        action: 'terminal.deletePreviousWord',
-        context: 'terminal',
-      },
+      // The `terminal` context's bindings are contributed by the terminal RUNTIME plugin, not by
+      // this canonical layer — the host declares no pane-runtime vocabulary.
       // Guarded: with a selection Ctrl+X cuts (outranks starting the quit chord); without, the
       // global quit chord starts.
       {

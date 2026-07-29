@@ -7,7 +7,7 @@
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
 // invariant: Panel controls share paint and hit geometry (src/modules/ui/ui.invariants.md)
-// invariant: Each panel instance owns one independent session (src/modules/terminal/terminal.invariants.md)
+// invariant: Each panel instance owns one independent session (src/modules/ui/ui.invariants.md)
 // invariant: Expanded panel overrides only the editor center rows (src/modules/layout/layout.invariants.md)
 // invariant: An unexpanded bottom panel leaves one editor row (src/modules/layout/layout.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';

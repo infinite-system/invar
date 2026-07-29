@@ -294,113 +294,6 @@ of terminal behavior that needs a real shell; a second byte path around the back
 
 **Last refined:** 2026-07-23
 
-### The panel renders exactly the visible pane content cells each frame
-
-**Invariant:** The bottom panel slot (`PanelHost`) projects every resolved visible
-`PaneContent.render(region)` into that content's own cell each frame, with no per-content wiring in
-the host or in RootView. Adding another content (Output, Problems, a plugin) needs zero host change.
-
-**Scope:** `PaneContent` (the composable-view seam), `PanelHost` (the generic slot), the panel mount +
-render in `RootView`, and `TerminalPaneContent` (the terminal's implementation of the seam).
-
-**Mechanism:** `PanelHost` holds a registry keyed by `PaneContent.id`, resolves the visible cell
-layout, and keeps `activeId` aligned with the focused content. `RootView.update` mounts one generic
-heading-and-body container per resolved cell and fills its body from
-`content.render({width, height, palette, focused})`. RootView contains no terminal-specific render
-branch.
-
-**Generates:** a composable bottom panel where each content owns a headed region and any future
-PaneContent slots in unchanged; a stateless panel projection.
-
-**Evidence:** `src/modules/ui/PanelHost.test.ts` (registration, generic switching between two fake
-contents, focused-key routing, size convergence); `scripts/smoke-terminal.sh` (the terminal renders in
-the panel body).
-
-**Impossible if true:** RootView or PanelHost branching on a specific content type to render; a
-second content requiring host edits to appear; one visible content being omitted or rendered in
-another content's region.
-
-**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
-
-**Status:** provisional
-
-**Last refined:** 2026-07-25
-
-### Each panel instance owns one independent session
-
-**Invariant:** If Add creates another Terminal or Agent instance, then it receives a unique instance
-identifier and label, owns a newly constructed backend/session, remains registered while hidden, and
-releases that owned session only when its heading or contents-list row is closed.
-
-**Scope:** `TerminalFactory`, `AgentFactory`, their `PaneContent` implementations, Bootstrap's
-per-kind instance registries, and the bottom `PanelHost`. Output and Problems content kinds are
-outside this wave.
-
-**Mechanism:** Bootstrap allocates `terminal-N`/`agent-N` identities and calls the corresponding
-factory for every Add selection. `PanelHost` retains all instances in one ordered registry but
-projects at most one visible instance of each kind; selecting another same-kind row swaps the
-visible cell without disposal. `removeContent` unregisters exactly that identity and calls its
-`dispose` seam, while other instances and their session state survive.
-
-**Generates:** Independent Terminal 2 and Agent 2 sessions; hidden live instances selectable from the
-contents list; one terminal plus one agent visible side by side; instance-scoped close.
-
-**Evidence:** `src/modules/terminal/TerminalFactory.ts`;
-`src/modules/terminal/TerminalPaneContent.ts`; `src/modules/agent/AgentFactory.ts`;
-`src/modules/agent/AgentPaneContent.ts`; `src/modules/app/Bootstrap.ts`;
-`src/modules/ui/PanelHost.test.ts`; `src/modules/terminal/TerminalFactory.test.ts`;
-`src/modules/agent/AgentFactory.test.ts`; `scripts/harness/smoke-panel-chrome-harness.ts`.
-
-**Impossible if true:** Terminal 2 sharing Terminal 1's backend; selecting a hidden instance
-destroying the prior instance; closing Agent 2 disposing Agent 1; two same-kind instances occupying
-simultaneous cells.
-
-**Verification:** `bun test src/modules/terminal/TerminalFactory.test.ts
-src/modules/agent/AgentFactory.test.ts src/modules/ui/PanelHost.test.ts && bun
-scripts/harness/smoke-panel-chrome-harness.ts`
-
-**Status:** provisional
-
-**Last refined:** 2026-07-25
-
-### A focused panel routes keystrokes to its active pane content
-
-**Invariant:** When the panel is focused and no modal input overlay owns the keyboard, every
-non-reserved keystroke is encoded to terminal bytes and delivered to `activeContent.handleKey`;
-reserved global chords (quit, panel toggle) still fire first so the user is never trapped, and an
-unencodable key is swallowed rather than driving the hidden editor beneath. When the panel is not
-focused or a modal input overlay owns the keyboard, it consumes no keys.
-
-**Scope:** `TerminalKeys` (key→bytes), `TerminalPaneContent.handleKey`, `PanelHost.handleKey`, and the
-panel-input branch in `Bootstrap.keyTick`.
-
-**Mechanism:** `Bootstrap.keyTick` resolves reserved global chords first (`app.quit`,
-`panel.toggleTerminal`), then reads `RootView.modalOverlayOwnsScreen`, which delegates to the
-overlay layer's one modal-focus derivation. Only when that slot is empty and
-`panelHost.visible && focused` does it call `panelHost.handleKey(key)` and return.
-`TerminalPaneContent.handleKey` runs `TerminalKeys.encode` (canonical VT bytes from the parsed key
-fields, not the Kitty-encoded `sequence`) and writes them via `sendInput` → the backend seam. Focus
-follows the toggle and clicks (`panelContainsPoint`).
-
-**Generates:** a terminal that receives Ctrl+C/Ctrl+D/arrows/typing as a real terminal would, while
-Ctrl+Q and the toggle always work; no keystroke both drives the shell and the editor.
-
-**Evidence:** `src/modules/terminal/TerminalKeys.test.ts` (control-byte, arrow, named-key, printable
-encoding); `src/modules/ui/PanelHost.test.ts` (focused host routes to the active content);
-`scripts/smoke-terminal.sh` (typed `echo hello`+Enter reaches the shell and renders; Ctrl+Q from the
-focused terminal still quits); `scripts/harness/smoke-overlay-dialog-harness.ts` (Settings Escape
-outranks retained terminal and agent focus).
-
-**Impossible if true:** a focused terminal where typing drives the editor; a key that both types into
-the shell and moves the editor cursor; Ctrl+Q swallowed by the focused terminal; keys consumed while
-the panel is unfocused; a modal overlay key reaching the pane retained beneath it.
-
-**Verification:** `bun test src/modules/terminal/TerminalKeys.test.ts src/modules/ui/PanelHost.test.ts && bash scripts/smoke-terminal.sh`
-
-**Status:** provisional
-
-**Last refined:** 2026-07-25
-
 ### Child terminal modes own wheel input
 
 **Invariant:** A wheel over a terminal scrolls host scrollback only while the primary screen is
@@ -499,80 +392,6 @@ scripts/harness/smoke-terminal-stage-harness.ts`
 
 **Last refined:** 2026-07-24
 
-### Copy reaches the host terminal
-
-**Invariant:** If the user copies selected text from Settings, the terminal pane, agent transcript,
-or agent composer, then the exact selected UTF-8 text is emitted as OSC 52 through Invar stdout so
-the host terminal receives it across cmux, SSH, or a VM boundary.
-
-**Scope:** `Clipboard.copy`, Settings selection, terminal-pane selection, agent-transcript
-selection, and agent-composer selection. Clipboard reads remain local-tool or in-app-buffer
-operations because OSC 52 is write-only.
-
-**Mechanism:** Every selectable surface reconstructs text grapheme-safely, then calls the one
-`Clipboard.copy` seam. That seam buffers in-app, submits one complete
-`OSC 52 ; c ; base64 BEL` string through the renderer-coordinated `writeOut` binding, and also writes
-a local clipboard tool when available.
-
-**Generates:** Remote copy without `DISPLAY`; one raw-byte assertion shared by every copy surface;
-frame-boundary emission; local clipboard compatibility and in-app paste remain available.
-
-**Rejected alternatives:** Shell out only to xclip or wl-copy — those tools address the remote
-machine clipboard and commonly fail across SSH or VM boundaries.
-
-**Evidence:** The user's cmux host accepted a hand-run OSC 52 sequence on 2026-07-25;
-`src/modules/system/Clipboard.ts`; `scripts/harness/smoke-paste-harness.ts`;
-`scripts/harness/smoke-agent-pane-ux-harness.ts`;
-`scripts/harness/smoke-clipboard-frame-boundary-harness.ts`.
-
-**Impossible if true:** A successful in-app copy status with no OSC 52 bytes crossing the app PTY;
-Settings swallowing its registered copy action; terminal selection sending Ctrl+C to the child
-instead of copying; copied Unicode being sliced by UTF-16 units; OSC 52 beginning inside another
-terminal control sequence or synchronized frame.
-
-**Verification:** `bun scripts/harness/smoke-paste-harness.ts && bun
-scripts/harness/smoke-agent-pane-ux-harness.ts && bun
-scripts/harness/smoke-clipboard-frame-boundary-harness.ts`
-
-**Status:** established
-
-**Last refined:** 2026-07-27
-
-### Bracketed paste survives stream chunking
-
-**Invariant:** If a bracketed paste sequence reaches Invar in arbitrary input chunks, then exactly
-one complete UTF-8 payload is routed to the focused terminal child or agent composer.
-
-**Scope:** OpenTUI `StdinParser`, `Bootstrap` paste dispatch, `PanelHost.handlePaste`,
-`TerminalPaneContent.handlePaste`, `AgentPaneContent.handlePaste`, and `OpenPty.write`. Editor and
-single-line overlay routing keeps the same dispatcher but is outside the two real-host acceptance
-paths.
-
-**Mechanism:** OpenTUI's stream parser retains split start marker, payload, and end marker bytes
-until it emits one paste event. `Bootstrap` dispatches that complete text through the focused pane
-seam, and `OpenPty.write` queues partial libc writes on a non-blocking descriptor until every
-terminal payload byte crosses the PTY.
-
-**Generates:** Marker-edge input fixtures; exact 10-byte, 1 KB, and 64 KB terminal and composer
-drives; large terminal payloads that cannot truncate on a partial PTY write.
-
-**Rejected alternatives:** Send every harness paste as one write — real terminals split large
-payloads and both bracketed-paste markers across PTY chunks.
-
-**Evidence:** `scripts/harness/BracketedPasteInput.test.ts`;
-`scripts/harness/smoke-paste-harness.ts`; `src/modules/terminal/OpenPty.ts`.
-
-**Impossible if true:** A split marker becomes typed text; one paste produces multiple composer
-insertions; a 64 KB terminal paste loses a suffix because libc accepted only a partial write; paste
-reaches the editor while a terminal or agent pane owns focus.
-
-**Verification:** `bun test scripts/harness/BracketedPasteInput.test.ts && bun
-scripts/harness/smoke-paste-harness.ts`
-
-**Status:** established
-
-**Last refined:** 2026-07-25
-
 ### Terminal word operations reach readline
 
 **Invariant:** If the terminal pane is focused and the user invokes word-left, word-right, or
@@ -627,83 +446,54 @@ old and new command concatenating; a replacement bypassing sanitization or graph
 
 **Last refined:** 2026-07-24
 
-### A split panel renders every visible cell into its own sub-region
+### The terminal is a runtime plugin
 
-**Invariant:** When the panel holds two or more visible cells, the slot is partitioned left-to-right by
-each cell's ratio (one column per interior divider), and each cell's `PaneContent.render` AND its
-`onResize` see ONLY that cell's sub-region — never the full slot. The single-cell case is the same code
-with one full-width partition, so nothing regresses when nothing is split. One width algorithm
-(`PanelHost.cellSpans`) feeds BOTH the laid-out cell width and the content's `onResize`, so a cell can
-never be sized for a region different from the one it is painted into.
+**Invariant:** If Invar hosts a terminal, then it does so through `TerminalPlugin` — a contributed
+runtime registered in `DefaultPlugins` — and no file under `src/modules/{app,workspace,ui}` imports
+`src/modules/terminal/` or names its record. Shell choice, prompt theming, clean-prompt policy,
+instance registry, command-note wording, terminal keybindings, and terminal status all live inside
+this module.
 
-**Scope:** `PanelHost` (`layout`, `resolvedCells`, `cellSpans`, `setViewportSize`, `moveDivider`), the
-panel cell-pool render in `RootView` (`syncPanelCellMount`, the per-span body loop), and any
-`PaneContent` (e.g. `AgentPaneContent`, `TerminalPaneContent`) that occupies a cell.
+**Scope:** `TerminalPlugin`, `TerminalFactory`, `TerminalPaneContent`'s capability and
+keybinding-context surface, `TerminalCommandNote`, and the terminal entry in `DefaultPlugins`. The
+byte, emulator, and observation contracts above are unchanged by the extraction.
 
-**Mechanism:** `PanelHost.cellSpans(totalColumns)` distributes the slot's inner columns across the
-resolved cells by normalized ratio, reserving one column per divider and giving the remainder to the
-last cell. `RootView.update` mounts one heading-and-body container per span (a divider before each
-container from the second on), sets its width to the span, and fills its body from
-`span.content.render({width: span.columns, …})`.
-`Bootstrap`'s converge step calls `panelHost.setViewportSize`, which walks the SAME `cellSpans` and
-calls each `content.onResize(span.columns, rows)`. `moveDivider` re-flows only the two cells adjacent
-to the dragged divider, each clamped to a minimum share.
+**Components:**
+- Registered as a runtime — `activateApplication` calls `registerPaneRuntime(this)` and nothing
+  else registers the `terminal` kind.
+- Contributed keybindings — the six `terminal` context bindings ship in the plugin's manifest, not
+  in the host's canonical keybinding layer.
+- Contributed status — terminal status keys reach probes through `StatusProjectionContributions`;
+  the host holds no terminal status default.
+- Capability-resolved ports — `terminal-commands`, `terminal-observation`, and `text-selection` are
+  resolved by identifier through `PaneContent.capability`, so the agent's tools and follow
+  controller reach the terminal without either side importing the other's class.
+- Declined actions — `claimsContextAction` returns false for `terminal.copy` without a selection, so
+  Ctrl+C still reaches the child as SIGINT without the host special-casing the pane.
 
-**Generates:** a terminal | agent (or N-way) bottom panel where each pane is a first-class occupant of
-its own region; a resizable divider that reflows both neighbours; a single-pane panel as the degenerate
-1-cell case with byte-identical behaviour.
+**Mechanism:** `TerminalPlugin` reads `settings.terminalCleanPrompt`, `theme.palette.terminalPrompt`,
+`settings.agentTypingSpeed`, and `settings.reducedMotion` itself and passes them to
+`TerminalFactory.create`; a request carrying a declared `process` is launched with its own prompt
+instead. The plugin keeps its own map of the panes it created and resolves "the current terminal"
+as the host-reported visible pane, else its oldest live instance.
 
-**Evidence:** `src/modules/ui/PanelHost.test.ts` (`split` layout + normalized shares, `cellSpans`
-per-cell widths reserving the divider column, `setViewportSize` resizes each cell independently,
-`moveDivider` re-flow + minimum clamp); `scripts/harness/smoke-panel-split-harness.ts` clicks the
-second status control and drives Ctrl+Shift+S to produce the same terminal | agent split, asserts both headings
-and distinct sub-widths, drags the divider, and restores the full-width pane.
+**Generates:** a host that can be read end to end without learning what a PTY is; an uninstallable
+terminal; a terminal profile (a CLI agent in a pane) expressible as a request rather than a new
+host concept.
 
-**Impossible if true:** a split cell rendered at the full slot width while another cell overlaps it; a
-cell whose content is `onResize`d to a region different from the one it is painted into; a divider drag
-that resizes one neighbour but not the other; a split that changes the single-pane render path.
+**Evidence:** `src/modules/terminal/TerminalPlugin.ts`;
+`src/modules/terminal/TerminalPlugin.test.ts`; `src/modules/plugins/DefaultPlugins.ts`;
+`scripts/harness/smoke-terminal-harness.ts`; `scripts/harness/smoke-terminal-stage-harness.ts`;
+`scripts/harness/smoke-panel-split-harness.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts`.
 
-**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
-scripts/harness/smoke-panel-split-harness.ts`
+**Impossible if true:** a host file importing `../terminal/…`; a terminal keybinding resolving with
+the plugin uninstalled; terminal status keys surviving uninstall; the host reading a terminal
+command event.
 
-**Status:** provisional
-
-**Last refined:** 2026-07-25
-
-### A focused split panel routes keystrokes to the focused cell
-
-**Invariant:** When the panel is focused and split, every non-reserved keystroke goes to exactly ONE
-cell — the focused cell — and clicking a cell makes it the focused cell (focus-follows-click at the
-cell grain). The block caret is drawn in the focused cell's sub-region. An unfocused cell receives no
-keys and shows no caret. With a single cell this is identical to the old "focused panel routes to its
-active content".
-
-**Scope:** `PanelHost` (`focusedIndex`, `focusedContent`, `focusCell`, `handleKey`, `retargetFocus`),
-the panel cell-body `onMouseDown` handlers + caret anchoring in `RootView`, and the panel-input branch
-in `Bootstrap.keyTick`.
-
-**Mechanism:** `PanelHost.handleKey` delegates to `focusedContent` (the resolved cell at `focusedIndex`,
-or the single active content). `RootView` gives each cell body an `onMouseDown` that calls
-`panelHost.focus()` + `panelHost.focusCell(index)`, and anchors the caret to the focused cell body's
-laid-out screen cell. `focusCell` also writes `activeId`, so the compatibility
-`panelActiveContent` projection remains truthful. `focusCell`/`split`/`unsplit` run through
-`retargetFocus`, which fires
-`onBlur`/`onFocus` only when the focused content actually changes, so exactly one cell is ever focused.
-
-**Generates:** two live panes (agent | terminal) where typing drives only the one you clicked, the
-caret sits in the active pane, and switching panes is a single click; no keystroke drives two panes.
-
-**Evidence:** `src/modules/ui/PanelHost.test.ts` (a focused split routes to the focused cell; `focusCell`
-moves the routing target; splitting while focused blurs the old content and focuses the new cell);
-`scripts/harness/smoke-panel-split-harness.ts` types into the focused agent cell, clicks the terminal
-cell, and asserts later terminal keys never reach the now-blurred agent.
-
-**Impossible if true:** a keystroke delivered to an unfocused cell; two cells focused at once; a click
-on a cell that does not focus it; a caret drawn in a blurred cell.
-
-**Verification:** `bun test src/modules/ui/PanelHost.test.ts && bun
-scripts/harness/smoke-panel-split-harness.ts`
+**Verification:** `bun test src/modules/terminal/TerminalPlugin.test.ts && grep -rln
+"modules/terminal/" --include='*.ts' src/modules/app src/modules/workspace src/modules/ui`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-28

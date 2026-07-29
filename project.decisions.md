@@ -295,6 +295,41 @@ it should not be able to see.
 
 **Status:** adopted · **Logged:** 2026-07-25
 
+## D — The terminal is a RUNTIME, and reverse presence is a capability on it, not a channel (#114 Wave B, 2026-07-28)
+
+The terminal became the first `PaneRuntime`: the third plugin kind #103 named. The host supplies
+identity, laid-out geometry, a working folder, and — for a declared task — the command line it was
+told to run. It never chooses a shell, a prompt, a lifetime, or a disposal order.
+
+**Why a runtime seam rather than another provider.** A provider ANSWERS; a runtime OWNS. The
+`LanguageProvider` shape (Wave A) is a question-answer port with no lifetime — asking twice is free.
+A terminal has a process behind it, so its seam must carry creation, instance identity, removal, and
+absence. Reusing the provider seam would have forced the host to hold the process's lifetime on the
+runtime's behalf, which is exactly the coupling being removed.
+
+**Why the agent half needs no new surface.** A CLI agent in a pane is a terminal PROFILE: a
+`PaneRuntimeRequest` with a `process` declaration and a `workingDirectory`. `claude`/`codex` read
+their context from the workspace folder they are started in, so "context verified present" is a
+check the RUNTIME performs before it starts the child — the host cannot verify what it is not
+allowed to know it started. That is why agents are not a plugin: the expressive power already exists
+in the request.
+
+**#46 (TerminalObserver, reverse presence) — folded in, not deferred.** Its two waves are already
+built: `TerminalObserver` (bounded, redacted, write-incapable) and `AgentTerminalFollow`'s four
+modes behind the #53 footer control. What Wave B settles is WHERE the presence channel lives: it is
+the `terminal-observation` capability on the pane, resolved by identifier through
+`PaneContent.capability`. Neither side imports the other's class, and the channel is withdrawn with
+the runtime. No separate observer registry is needed and none should be added.
+
+**#46 versus #157 (external harnesses over MCP) — share the PAYLOAD, not the channel.** They are
+two directions of one idea but not of one mechanism. Outbound observation is in-process, already
+bounded and redacted, and carries no trust boundary; inbound control from an external harness is
+where transport, discovery, instance identity, attribution, and consent all live. Unifying them
+would drag a trust boundary into a path that has none. What they should share is the event
+vocabulary already recorded in `terminal.invariants.md` — a command boundary plus a payload that
+declares `headLines`, `tailLines`, `totalLines`, `truncated`, and `byteCap` — so an MCP tool can
+serve the same events without a second shape.
+
 ## Convention provenance (moved out of project.conventions.md, 2026-07-27)
 
 `project.conventions.md` is the canonical WHAT; these are the cases that produced its rules. They
