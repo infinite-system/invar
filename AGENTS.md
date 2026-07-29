@@ -182,6 +182,10 @@ already written, amend that rule in place. Do not add a section beside it.
 
 ## Reporting to the user
 
+- Write every document reference in a task, brief, report, or probe as a
+  Markdown link. Make the destination relative to the file that contains it.
+- Before READY, lint the report links with
+  `bun scripts/tasks/lint-task-links.ts <report-file>`. Fix every finding.
 - **Never cite a task number alone.** Write `#151 (dependency boot guard)`, never `#151`.
   The numbering is an index into a 150-entry list nobody memorises. A bare number transfers
   no information and forces a lookup, or worse, agreement without knowing which item is

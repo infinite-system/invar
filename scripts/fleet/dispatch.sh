@@ -40,11 +40,23 @@ case "$slug" in
   ''|*[!a-z0-9-]*) echo "dispatch: slug must be lowercase letters, digits, hyphens" >&2; exit 2;;
 esac
 [ -f "$brief_file" ] || { echo "dispatch: brief not found: $brief_file" >&2; exit 2; }
+name="${task_number}-${slug}"
+script_repository_root="$(cd "$(dirname "$0")/../.." && pwd)"
+brief_link_directory="${script_repository_root}/.invar/tasks/in-progress/${name}"
+for task_state in active in-progress completed retired; do
+  task_record_directory="${script_repository_root}/.invar/tasks/${task_state}/${name}"
+  if [ -d "$task_record_directory" ]; then
+    brief_link_directory="$task_record_directory"
+    break
+  fi
+done
 
 # THE INVARIANT DIALOGUE IS MECHANICAL. A brief without its two sections does
 # not launch — the loop cannot depend on the conductor remembering it.
 #   ## Invariants in scope   — enumerated records, or the explicit word "none"
 #   ## Bycatch expected      — the standing order restated, with the taxonomy pointer
+# Its relative document links must resolve, and bare document references are
+# not records a reader can open.
 if ! grep -q "^## Invariants in scope" "$brief_file"; then
   echo "dispatch: REFUSING — the brief has no '## Invariants in scope' section." >&2
   echo "  Enumerate the records this task implicates (name, path, why), or write 'none'." >&2
@@ -54,6 +66,12 @@ if ! grep -q "^## Bycatch expected" "$brief_file"; then
   echo "dispatch: REFUSING — the brief has no '## Bycatch expected' section." >&2
   echo "  Restate the standing order with the AGENTS.md taxonomy pointer; the READY report" >&2
   echo "  must carry '## Bycatch' even when it reads 'None observed'." >&2
+  exit 2
+fi
+if ! bun "${script_repository_root}/scripts/tasks/lint-task-links.ts" \
+     --base-directory "$brief_link_directory" "$brief_file"; then
+  echo "dispatch: REFUSING — the brief has dead or bare document references." >&2
+  echo "  Fix them, or run: bun scripts/tasks/lint-task-links.ts --fix --base-directory ${brief_link_directory} ${brief_file}" >&2
   exit 2
 fi
 
@@ -103,8 +121,6 @@ if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
   echo "dispatch: REFUSING — the repository is mid-merge; finish or abort the merge first." >&2
   exit 2
 fi
-
-name="${task_number}-${slug}"
 
 # EXPERIMENT=1 marks work that is HELD FROM MAIN pending proof — the branch name carries the policy
 # so nobody has to remember it. `land.sh` refuses to merge an `experiment/` branch without an
