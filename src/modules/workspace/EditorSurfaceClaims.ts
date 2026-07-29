@@ -15,6 +15,7 @@
 // "is a diff showing?" question could not express.
 //
 // invariant: The editor surface answers capabilities, not plugin modes (src/modules/workspace/workspace.invariants.md)
+// invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 class $EditorSurfaceClaims {
   protected readonly claims = new Set<EditorSurfaceClaim>();
 
@@ -49,6 +50,14 @@ class $EditorSurfaceClaims {
     );
   }
 
+  /** Let the occupying surface follow a source jump when it presents that same document. */
+  revealPresentedSourceLine(lineIndex: number): void {
+    const claim = this.occupyingClaim;
+    if (claim?.activeDocumentIsPresented) {
+      claim.revealPresentedSourceLine?.(lineIndex);
+    }
+  }
+
   /** Give the editor surface back to the active buffer — opening a real file, or switching tabs,
    *  replaces any transient surface. The claim tears down its own state; the host never writes it. */
   releaseOccupying(): void {
@@ -76,6 +85,8 @@ export interface EditorSurfaceClaim {
   /** Does the active tab's editor still own the keyboard? Omit to answer the same as
    *  `activeDocumentIsPresented` — a claim that fully replaces the text also takes the keys. */
   readonly activeDocumentIsKeyboardTarget?: boolean;
+  /** Follow an explicit source jump in another projection of the same presented document. */
+  revealPresentedSourceLine?(lineIndex: number): void;
   /** Stop occupying the surface and drop the transient state behind it. */
   release(): void;
 }

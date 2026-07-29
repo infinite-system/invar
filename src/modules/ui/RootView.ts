@@ -1339,12 +1339,11 @@ class $RootView {
         replaceAllowed: !editor.readOnly.value,
         revealMatch: (match) => {
           editorContentMount.contributedSurface?.yieldKeyboardToSourceEditor();
-          editor.placeCursor(match.line, match.endColumn);
+          workspaceSet.active.revealSourceLocation(match.line, match.endColumn);
           editor.cursor.anchor.value = {
             line: match.line,
             col: match.startColumn,
           };
-          editor.revealCursor();
         },
       };
     }

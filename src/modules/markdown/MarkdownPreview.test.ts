@@ -81,6 +81,26 @@ test('renders only the visible window of rows', async () => {
   ).toBe(false);
 });
 
+test('reveals the block for a source line at the shared reading position', async () => {
+  const sourceLines = Array.from(
+    { length: 40 },
+    (_unusedValue, headingIndex) =>
+      `## Heading ${headingIndex}\n\nParagraph ${headingIndex}.`,
+  );
+  const preview = new MarkdownPreview.Class();
+  preview.open(createSource(sourceLines.join('\n\n')), null, {
+    debounceMs: 0,
+  });
+  await waitForTaskTurn();
+  await waitForTaskTurn();
+
+  const sourceLine = 4 * 25;
+  const targetRow = preview.firstRenderedRowForSourceLine(sourceLine, 80);
+  expect(targetRow).not.toBeNull();
+  expect(preview.revealSourceLine(sourceLine, 80, 15)).toBe(true);
+  expect(targetRow! - preview.scrollTop.value).toBe(2);
+});
+
 // invariant: Markdown panes keep independent find state (src/modules/markdown/markdown.invariants.md)
 test('exposes the complete rendered row domain for preview find and selection mapping', async () => {
   const preview = new MarkdownPreview.Class();

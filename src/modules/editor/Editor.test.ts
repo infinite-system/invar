@@ -310,6 +310,22 @@ test('fold toggles preserve a deep viewport anchor for pointer and keyboard path
   expect(editor.viewport.scrollTop.value).toBe(500);
 });
 
+test('an explicit reveal places a jump at the reading position', () => {
+  const editor = openWith(
+    Array.from(
+      { length: 100 },
+      (_unusedValue, lineIndex) => `line ${lineIndex}`,
+    ).join('\n'),
+  );
+  editor.viewport.setSize(80, 15);
+
+  editor.placeCursor(50, 0);
+  expect(editor.viewport.scrollTop.value).toBe(0);
+  editor.revealCursor();
+
+  expect(editor.viewport.scrollTop.value).toBe(48);
+});
+
 test('undo back to the saved content reads as UNCHANGED (dirty clears, redo re-dirties)', () => {
   const editor = openWith('a'); // loaded content "a" is the clean baseline
   editor.cursor.set(0, 1);

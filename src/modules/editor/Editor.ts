@@ -1,6 +1,9 @@
 import { Reactive } from 'ivue';
 import { ref, shallowRef, type Ref } from 'vue';
-import { TextViewport } from '../text/TextViewport';
+import {
+  TextViewport,
+  type ViewportTargetPlacement,
+} from '../text/TextViewport';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { EditorIndent } from './EditorIndent';
 import { TextEditing } from '../text/TextEditing';
@@ -26,6 +29,7 @@ import type { SourceTextView } from '../workspace/SourceTextView.interface';
 // invariant: Data flows one way (project.invariants.md)
 // invariant: Selection is an anchor plus the cursor and edits replace it (src/modules/editor/editor.invariants.md)
 // invariant: The dirty marker is derived from content, never asserted (src/modules/text/text.invariants.md)
+// invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   // invariant: Construction goes through overridable seams (project.invariants.md)
   viewport = this.createViewport();
@@ -301,7 +305,9 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
   // the scrollbar reads visual extent), so the reveal is the plain min/max on the cursor's ABSOLUTE
   // visual row = (first visual row of its line) + (its segment within the line). This is what makes the
   // scroll reach the true last visual row: no logical-line quantization.
-  protected revealCursorMapped(): void {
+  protected revealCursorMapped(
+    placement: ViewportTargetPlacement = 'nearest',
+  ): void {
     const wrapWidth = this.visualWrapWidth();
     const segments =
       wrapWidth === null
@@ -329,14 +335,13 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
         wrapWidth,
         this.collapsedFoldRanges,
       ) + segmentIndex;
-    const height = this.viewport.height.value;
-    const top = this.viewport.scrollTop.value;
-    const maximumTop = Math.max(0, this.totalVisualRows() - height);
-    let next = top;
-    if (cursorVisualRow < top) next = cursorVisualRow;
-    else if (cursorVisualRow >= top + height)
-      next = cursorVisualRow - height + 1;
-    this.viewport.scrollTop.value = Math.max(0, Math.min(next, maximumTop));
+    this.viewport.scrollTop.value = TextViewport.Class.scrollTopForTarget(
+      cursorVisualRow,
+      this.viewport.scrollTop.value,
+      this.viewport.height.value,
+      this.totalVisualRows(),
+      placement,
+    );
   }
 
   /** Reveal through the shared visual-row projection in both wrap modes. */
@@ -353,7 +358,7 @@ class $Editor extends ReadOnlyTextBuffer.$Class implements SourceTextView {
    */
   revealCursor(): void {
     if (!this.hasDocument.value) return;
-    this.scrollLineIntoView(this.cursor.line.value);
+    this.revealCursorMapped('reading');
   }
 
   openFile(path: string): void {

@@ -40,6 +40,8 @@ class $MarkdownPlugin implements ApplicationContributor, WorkspaceContributor {
     const markdownWorkspace = new MarkdownWorkspace.Class(
       workspace,
       () => this.surface?.previewContent?.previewFocused ?? false,
+      (lineIndex) =>
+        this.surface?.previewContent?.splitView.revealSourceLine(lineIndex),
     );
     this.workspaces.set(workspace, markdownWorkspace);
     return markdownWorkspace;

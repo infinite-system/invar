@@ -30,6 +30,9 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     /** Whether the MOUNTED preview pane currently holds the keyboard. Supplied by the plugin, which
      *  owns the surface; null while nothing is mounted. */
     protected readonly mountedPreviewFocused: () => boolean,
+    protected readonly revealMountedPreviewSourceLine: (
+      lineIndex: number,
+    ) => void = () => {},
   ) {
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
     // The table of contents rides the host-carried provider rendezvous: the structure pane
@@ -163,6 +166,10 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
    *  editor is not the keyboard target. */
   get activeDocumentIsKeyboardTarget(): boolean {
     return !this.mountedPreviewFocused();
+  }
+
+  revealPresentedSourceLine(lineIndex: number): void {
+    this.revealMountedPreviewSourceLine(lineIndex);
   }
 
   /** Nothing to tear down: this claim is DERIVED from which tab is active, not stored, so opening or

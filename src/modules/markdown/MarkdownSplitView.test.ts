@@ -92,6 +92,58 @@ test('unchanged frames do not materialize the whole preview document', () => {
   expect(wholePreviewMaterializationCount).toBe(1);
 });
 
+// invariant: A Markdown file offers a live source preview split (src/modules/markdown/markdown.invariants.md)
+test('a source reveal waits for the preview revision that matches the source', () => {
+  class $ProbedMarkdownSplitView extends MarkdownSplitView.$Class {
+    queueSourceRevealForTest(lineIndex: number): void {
+      this.pendingSourceRevealLine = lineIndex;
+    }
+
+    applySourceRevealForTest(): void {
+      this.applyPendingSourceReveal();
+    }
+
+    protected override previewViewportWidth(): number {
+      return 40;
+    }
+
+    protected override previewViewportHeight(): number {
+      return 15;
+    }
+  }
+
+  const revealedLines: number[] = [];
+  const previewState = {
+    parsedRevision: 6,
+    revealSourceLine: (lineIndex: number) => {
+      revealedLines.push(lineIndex);
+      return true;
+    },
+  };
+  const splitView = Object.create(
+    $ProbedMarkdownSplitView.prototype,
+  ) as $ProbedMarkdownSplitView;
+  Object.defineProperties(splitView, {
+    preview: { value: previewState },
+    options: {
+      value: {
+        source: {
+          revision: ref(7),
+        },
+      },
+    },
+    pendingSourceRevealLine: { value: null, writable: true },
+  });
+
+  splitView.queueSourceRevealForTest(24);
+  splitView.applySourceRevealForTest();
+  expect(revealedLines).toEqual([]);
+
+  previewState.parsedRevision = 7;
+  splitView.applySourceRevealForTest();
+  expect(revealedLines).toEqual([24]);
+});
+
 // invariant: The Markdown preview opens itself and sits on the configured side (src/modules/markdown/markdown.invariants.md)
 test('the preview side defaults to left and follows the option', () => {
   const defaultSplitView = Object.create(

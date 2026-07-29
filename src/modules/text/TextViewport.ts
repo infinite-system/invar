@@ -1,4 +1,5 @@
 import { Reactive } from 'ivue';
+import { Static } from 'ivue/extras';
 import { ref, shallowRef } from 'vue';
 import { Momentum, type ScrollMomentum } from '../system/Momentum';
 
@@ -8,7 +9,66 @@ import { Momentum, type ScrollMomentum } from '../system/Momentum';
 //
 // invariant: The terminal shows a bounded viewport (project.invariants.md)
 // invariant: Cost tracks the actively observed set (project.invariants.md)
+// invariant: Explicit jumps use one reading position (src/modules/text/text.invariants.md)
 class $TextViewport {
+  protected static get READING_CONTEXT_ROWS(): number {
+    return 2;
+  }
+
+  /**
+   * Return the scroll position that reveals one target row. Ordinary movement changes the window
+   * only when the target leaves it. A reading jump places up to two context rows above the target.
+   */
+  static scrollTopForTarget(
+    targetRow: number,
+    currentScrollTop: number,
+    viewportRows: number,
+    totalRows: number,
+    placement: ViewportTargetPlacement = 'nearest',
+  ): number {
+    const normalizedViewportRows = Math.max(1, Math.floor(viewportRows));
+    const normalizedTotalRows = Math.max(0, Math.floor(totalRows));
+    const maximumScrollTop = Math.max(
+      0,
+      normalizedTotalRows - normalizedViewportRows,
+    );
+    const normalizedTargetRow = Math.max(
+      0,
+      Math.min(Math.max(0, normalizedTotalRows - 1), Math.floor(targetRow)),
+    );
+    const normalizedCurrentScrollTop = Math.max(
+      0,
+      Math.min(maximumScrollTop, Math.floor(currentScrollTop)),
+    );
+
+    if (placement === 'reading') {
+      const contextRows = Math.min(
+        this.READING_CONTEXT_ROWS,
+        Math.max(0, normalizedViewportRows - 2),
+      );
+      return Math.max(
+        0,
+        Math.min(maximumScrollTop, normalizedTargetRow - contextRows),
+      );
+    }
+    if (normalizedTargetRow < normalizedCurrentScrollTop) {
+      return normalizedTargetRow;
+    }
+    if (
+      normalizedTargetRow >=
+      normalizedCurrentScrollTop + normalizedViewportRows
+    ) {
+      return Math.max(
+        0,
+        Math.min(
+          maximumScrollTop,
+          normalizedTargetRow - normalizedViewportRows + 1,
+        ),
+      );
+    }
+    return normalizedCurrentScrollTop;
+  }
+
   get scrollTop() {
     return ref(0);
   }
@@ -36,16 +96,13 @@ class $TextViewport {
   /** Ensure line `line` is visible within [scrollTop, scrollTop+height). */
   scrollToLine(line: number, totalLines: number): void {
     this.haltScrollMomentum();
-    const viewportHeight = this.height.value;
-    if (line < this.scrollTop.value) {
-      this.scrollTop.value = line;
-    } else if (line >= this.scrollTop.value + viewportHeight) {
-      this.scrollTop.value = line - viewportHeight + 1;
-    }
-    const maxScrollTop = Math.max(0, totalLines - viewportHeight);
-    if (this.scrollTop.value > maxScrollTop)
-      this.scrollTop.value = maxScrollTop;
-    if (this.scrollTop.value < 0) this.scrollTop.value = 0;
+    const viewportClass = this.constructor as typeof $TextViewport;
+    this.scrollTop.value = viewportClass.scrollTopForTarget(
+      line,
+      this.scrollTop.value,
+      this.height.value,
+      totalLines,
+    );
   }
 
   scrollBy(delta: number, totalLines: number): void {
@@ -90,7 +147,9 @@ class $TextViewport {
 }
 
 export namespace TextViewport {
-  export const $Class = $TextViewport;
+  export const $Class = Static($TextViewport);
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
 }
+
+export type ViewportTargetPlacement = 'nearest' | 'reading';
