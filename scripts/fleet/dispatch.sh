@@ -229,6 +229,13 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 # 3. Place the brief in BOTH homes: the worktree (for the builder) and the
 #    dispatch record (for the audit trail).
 # ---------------------------------------------------------------------------
+# A pre-filed task MOVES from active/ — one task, one folder, forever. mkdir alone would leave the
+# active copy behind and the first dispatch of a filed task would duplicate it. The State line
+# follows the folder so STATE-MISMATCH stays quiet on a healthy dispatch.
+if [ -d "${repository_root}/.invar/tasks/active/${name}" ]; then
+  git mv "${repository_root}/.invar/tasks/active/${name}" "$dispatch_directory"
+  sed -i '0,/^State: .*/s//State: IN-PROGRESS/' "$dispatch_directory/task-${name}.md" 2>/dev/null || true
+fi
 mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
 # Brief naming is brief-<task-number>-<sequence>-<slug>.md — the NUMBER leads, so every file in the
 # folder sorts under its task and a directory listing groups by task before it groups by round. The
@@ -316,7 +323,12 @@ AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/sc
 
 echo
 # The active-backlog view regenerates as a BYPRODUCT of dispatching — never a separate step.
-bun scripts/tasks/tasks-status.ts write-active >/dev/null 2>&1 || true
+# Absolute path: by this point the script has cd'd into the worktree, and the relative invocation
+# failed SILENTLY behind || true — the STALE-ACTIVE-VIEW signal caught it on the first real
+# dispatch. The || true stays (a launched builder must not be failed by its bookkeeping), but the
+# failure now says so instead of vanishing.
+(cd "$repository_root" && bun "$repository_root/scripts/tasks/tasks-status.ts" write-active >/dev/null 2>&1) \
+  || echo "dispatch: WARNING — write-active failed; run it by hand" >&2
 echo "dispatch: LAUNCHED #${task_number} ${slug}"
 echo "  attach:     tmux attach -t ${tmux_session}"
 echo "  transcript: ${transcript_path}"

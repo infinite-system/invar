@@ -6,6 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #59 prettier-format-gate-and-reformat
+
 ## USER-DIRECTED (3)
 - #205 gate-launch-time-and-memory-ceiling
 - #202 tab-reactivation-rereads-whole-file
@@ -49,12 +52,11 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (8)
+## ARCHITECTURE-HYGIENE (7)
 - #136 shared-scale-fixture-corpus-cache
 - #122 editor-becomes-final-contributor  [ACTIVE — blocked, strictly after #114]
 - #114 modularity-umbrella-provider-runtime  [ACTIVE — Wave A landed, Wave B open]
 - #62 parameter-count-ports-object-sweep
-- #59 prettier-format-gate-and-reformat  [ACTIVE — deliberately LAST]
 - #46 terminal-observer-reverse-presence  [ACTIVE — design doc exists, no branch cut]
 - #35 structure-navigator-plugin-pane  [ACTIVE — sequenced after the #114/#122 capstone]
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
