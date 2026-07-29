@@ -136,22 +136,7 @@ try {
     hoverSuffix: string,
   ): Promise<void> => {
     for (let attempt = 0; attempt < 10; attempt++) {
-      let position = await settledPreviewPosition(needle);
-      if (position.row >= driver.snapshot().rows - 3) {
-        // The pane's last body row does not hit-test (observed; reported as bycatch) — nudge the
-        // line one step up and re-measure.
-        const grid = driver.snapshot();
-        const border = grid.findText('╭─Preview');
-        if (border)
-          driver.sendMouseWithoutFrameExpectation({
-            kind: 'wheel',
-            direction: 'down',
-            column: border.column + 5,
-            row: 12,
-          });
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        position = await settledPreviewPosition(needle);
-      }
+      const position = await settledPreviewPosition(needle);
       driver.sendMouseWithoutFrameExpectation({
         kind: 'move',
         column: position.column,
