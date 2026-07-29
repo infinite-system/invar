@@ -6,19 +6,23 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #238 structure-default-right-and-md-toc  [building]
+## IN-PROGRESS (1)
+- #238 structure-default-right-and-md-toc  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/238-structure-default-right-and-md-toc`
-- #237 markdown-preview-left-and-auto-open  [building]
-  `tmux attach -t invar/237-markdown-preview-left-and-auto-open`
 
-## USER-DIRECTED (4)
+## USER-DIRECTED (7)
+- #264 boot-save-erases-unregistered-settings
+- #263 terminal-shrink-markdown-split-frozen
+- #259 right-dock-click-leaves-double-focus
 - #256 editor-stray-glyph-after-emoji
 - #235 tasks-dashboard-pane-live-active-done
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (17)
+## VERIFICATION-INTEGRITY (20)
+- #266 drive-settle-ignores-debounced-parse
+- #265 status-projection-drops-plugin-keys
+- #261 drive-harness-drops-shifted-control-chords
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
@@ -37,7 +41,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (17)
+## FLAKE-EVIDENCE (18)
+- #260 first-click-of-a-session-lands-nowhere
 - #257 last-row-right-border-blank-cell
 - #255 extensions-row-locator-wrapped-label
 - #252 activitybar-smoke-pre-satisfied-waits
@@ -67,7 +72,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (10)
+## ARCHITECTURE-HYGIENE (12)
+- #267 go-to-line-does-not-exist
+- #262 structure-activity-action-orphaned
 - #242 shared-paint-hit-generator-decision
 - #241 ui-contract-split-decision
 - #234 navigation-getters-and-hop-depth-ratchet
@@ -79,7 +86,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 45 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 46 — full log: project.tasks-completed.md)
 - #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
 - #253 ui-contract-systematic-citation-sweep — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
 - #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
@@ -87,6 +94,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
+- #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
 - #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
 - #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
@@ -94,4 +102,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
 - #220 editor-registers-as-contributor-with-manifest — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
 - #219 source-text-view-onto-pane-content-seam — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
-- #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
