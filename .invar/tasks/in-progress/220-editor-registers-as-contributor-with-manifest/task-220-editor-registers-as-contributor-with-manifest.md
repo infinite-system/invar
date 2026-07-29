@@ -5,7 +5,7 @@ Created: 2026-07-29
 Engine: claude
 Environment: linux
 Model: opus-5
-Effort: high
+Effort: medium
 Priority: architecture-hygiene
 Assignment note: Capstone step 3 of 3. Strictly after #219. #35 is only real evidence after this lands.
 
