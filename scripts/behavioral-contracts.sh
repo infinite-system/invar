@@ -1270,6 +1270,13 @@ else
   bad "go-to-line PTY drive failed"
 fi
 
+echo "== CONTRACT breadcrumbs: one navigation owner and readable live-theme separators =="
+if COLORTERM=truecolor "$BUN" "$DIR/harness/smoke-breadcrumb-harness.ts"; then
+  pass "breadcrumb controls, contrast, scale parity, and live theme derivation hold"
+else
+  bad "breadcrumb PTY drive failed"
+fi
+
 echo ""
 if [ "$fail" = 0 ]; then echo "behavioral-contracts: ALL-PASS"; else echo "behavioral-contracts: FAILURES"; fi
 exit "$fail"

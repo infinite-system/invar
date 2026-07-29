@@ -21,15 +21,6 @@ class $TabBarRenderer {
   protected static get WORKSPACE_TAB_MAX_LABEL_WIDTH() {
     return 18;
   }
-  protected static get BREADCRUMB_BACK_COLUMN() {
-    return 1;
-  }
-  protected static get BREADCRUMB_FORWARD_COLUMN() {
-    return 3;
-  }
-  protected static get BREADCRUMB_NAV_PREFIX_WIDTH() {
-    return 5;
-  }
   protected static ellipsize(text: string, width: number): string {
     if (width <= 0) return '';
     if (TextCoordinates.Class.lineWidth(text) <= width)
@@ -547,25 +538,10 @@ class $TabBarRenderer {
     segments.push({ kind: 'badge', start: badgeStart, end: column });
     return { text: new StyledText(chunks), segments, revealedIndex };
   }
-  public static breadcrumbNavButtonAt(
-    localColumn: number,
-  ): 'back' | 'forward' | null {
-    if (
-      localColumn === this.BREADCRUMB_BACK_COLUMN ||
-      localColumn === this.BREADCRUMB_BACK_COLUMN - 1
-    )
-      return 'back';
-    if (
-      localColumn === this.BREADCRUMB_FORWARD_COLUMN ||
-      localColumn === this.BREADCRUMB_FORWARD_COLUMN - 1
-    )
-      return 'forward';
-    return null;
-  }
   public static renderBreadcrumb(
     context: BreadcrumbBarRenderContext,
   ): BreadcrumbBarRender {
-    const { strip, palette, projectRoot, canGoBack, canGoForward } = context;
+    const { strip, palette, projectRoot } = context;
     const activeTab = strip.items.find((tab) => tab.active);
     if (!activeTab)
       return {
@@ -575,20 +551,12 @@ class $TabBarRenderer {
     const barWidth = Math.max(1, context.barWidth);
     const crumbs = Breadcrumb.Class.fitPathSegments(
       Breadcrumb.Class.pathSegments(activeTab.identifier, projectRoot),
-      Math.max(1, barWidth - this.BREADCRUMB_NAV_PREFIX_WIDTH - 1), // reserve the nav-button prefix + a trailing pad
+      Math.max(1, barWidth - 2), // reserve one leading and one trailing pad
       3,
     );
-    // History nav buttons (‹ ›) ahead of the path: accent when a move is available, dim at an end.
-    // The column geometry is shared with $breadcrumbNavButtonAt so clicks land on the glyph.
-    const chunks: TextChunk[] = [
-      fg(palette.fg)(' '),
-      fg(canGoBack ? palette.accent : palette.dim)('‹'),
-      fg(palette.fg)(' '),
-      fg(canGoForward ? palette.accent : palette.dim)('›'),
-      fg(palette.fg)(' '),
-    ];
+    const chunks: TextChunk[] = [fg(palette.fg)(' ')];
     const segments: BreadcrumbBarSegment[] = [];
-    let column = this.BREADCRUMB_NAV_PREFIX_WIDTH;
+    let column = 1;
     crumbs.forEach((crumb, index) => {
       const isFilename = index === crumbs.length - 1;
       const styledCrumb = fg(isFilename ? palette.fg : palette.dim)(
@@ -605,7 +573,7 @@ class $TabBarRenderer {
         end: column + TextCoordinates.Class.lineWidth(crumb.label),
       });
       column += TextCoordinates.Class.lineWidth(crumb.label);
-      if (!isFilename) chunks.push(fg(palette.border)(' › '));
+      if (!isFilename) chunks.push(fg(palette.dim)(' › '));
       if (!isFilename) column += 3;
     });
     return { text: new StyledText(chunks), segments };
@@ -714,10 +682,6 @@ export interface BreadcrumbBarRenderContext {
   barWidth: number;
   /** Active workspace root — the breadcrumb is the active file's path relative to it. */
   projectRoot: string;
-  /** Whether the back (‹) button is live (there is an older location to return to). */
-  canGoBack: boolean;
-  /** Whether the forward (›) button is live (there is a newer location to return to). */
-  canGoForward: boolean;
   hoveredSourceIndex: number | null;
 }
 
