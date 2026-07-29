@@ -88,6 +88,24 @@ await Bun.write(join(fixtureRoot, '.hidden-marker'), 'hidden\n');
 // A file no structure source supports — the structure arm proves the stated degrade on it.
 await Bun.write(join(fixtureRoot, 'notes.txt'), 'plain notes\n');
 
+// A markdown fixture — the TOC arm proves headings become the outline through the same seam.
+await Bun.write(
+  join(fixtureRoot, 'outline.md'),
+  [
+    '# Doc Title',
+    '',
+    'intro',
+    '',
+    '## Section One',
+    '',
+    'body',
+    '',
+    '## Section Two',
+    'tail',
+    '',
+  ].join('\n'),
+);
+
 // A Markdown file for the auto-open uninstall-symmetry arm.
 await Bun.write(
   join(fixtureRoot, 'z-auto-notes.md'),
@@ -920,14 +938,15 @@ try {
       status.quickOpenOpen === false &&
       String(status.activeBuffer).endsWith('/z-language.ts'),
   );
-  driver.sendKeys('Control+Shift+u');
+  // DEFAULT-ON, RIGHT: the outline shows itself in the right dock, unbidden, once a source
+  // answers for the opened document — no keystroke between the open and this wait.
   const outlineReadyStatus = await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the structure pane shows and the real server answers an outline',
     (status) =>
-      status.sidebarView === 'structure' &&
-      status.focus === 'structure' &&
+      status.rightDockVisible === true &&
+      status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'ready' &&
       Number(status.structureRows) > 0,
   );
@@ -938,9 +957,16 @@ try {
       snapshot.findText('languageProbe :1') !== null,
   );
   HarnessSmoke.Class.pass(
-    'the structure pane lists the real documentSymbol outline',
+    'the structure pane shows itself at the right and lists the real documentSymbol outline',
   );
 
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the show chord focuses the right-dock structure pane',
+    (status) => status.rightDockFocused === true,
+  );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -949,6 +975,7 @@ try {
     (status) => {
       const cursor = status.cursor as { line: number; col: number } | null;
       return (
+        status.rightDockFocused === false &&
         status.focus === 'editor' &&
         cursor !== null &&
         cursor.line === 0 &&
@@ -978,13 +1005,16 @@ try {
     (status) => Number(status.quickOpenMatches) > 0,
   );
   driver.sendKeys('Enter');
+  // The pane was SHOWN BY HAND above, so it stays for the unsupported file and states the
+  // degrade instead of hiding — the default only conceals what the default itself revealed
+  // (the auto-conceal path is proven in StructureDefaultVisibility.test.ts).
   driver.sendKeys('Control+Shift+u');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
     'the structure pane states the unsupported-file degrade',
     (status) =>
-      status.sidebarView === 'structure' &&
+      status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'unavailable' &&
       String(status.structureNotice).includes('file type'),
   );
@@ -1003,23 +1033,61 @@ try {
     'an unsupported file states its affordance at zero request cost',
   );
 
-  // Cross-plugin symmetry: uninstalling Language Intelligence withdraws the SOURCE while the
-  // PANE stays installed — it must degrade to a stated notice, and come back on reinstall.
+  // MARKDOWN TOC: headings become the outline through the SAME provider seam — the markdown
+  // plugin provides, the pane consumes unchanged.
   driver.sendKeys('Control+p');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Go to File opens before the source-withdrawal drive',
+    'Go to File opens before the markdown TOC drive',
     (status) => status.quickOpenOpen === true,
   );
-  driver.sendText('z-language.ts');
+  driver.sendText('outline.md');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'Go to File finds the language fixture again',
+    'Go to File finds the markdown fixture',
     (status) => Number(status.quickOpenMatches) > 0,
   );
   driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the markdown TOC lists the document headings',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) === 3,
+  );
+  await driver.awaitGridCondition(
+    'the TOC paints headings document-ordered and nested',
+    (snapshot) =>
+      snapshot.findText('Doc Title :1') !== null &&
+      snapshot.findText('Section One :5') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'markdown headings become the outline through the provider seam',
+  );
+
+  // Cross-plugin symmetry: uninstalling Markdown withdraws the TOC source while the pane stays
+  // installed; uninstalling Language Intelligence too leaves NO source, and the pane states the
+  // install guidance. Both reinstall symmetrically.
+  await selectExtensionsRow('[x] Markdown');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'Markdown uninstalls under the structure pane',
+    (snapshot) => snapshot.findText('› [ ] Markdown') !== null,
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the markdown file without its source states the file-type degrade',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.structureStatus === 'unavailable' &&
+      String(status.structureNotice).includes('file type'),
+  );
   await selectExtensionsRow('[x] Language Intelligence');
   driver.sendKeys('Space');
   await driver.awaitGridCondition(
@@ -1030,11 +1098,27 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the pane without a source states it, never a blank',
+    'the pane without any source states it, never a blank',
     (status) =>
-      status.sidebarView === 'structure' &&
+      status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'unavailable' &&
       String(status.structureNotice).includes('No structure source'),
+  );
+  await selectExtensionsRow('[ ] Markdown');
+  driver.sendKeys('Space');
+  await driver.awaitGridCondition(
+    'Markdown reinstalls under the structure pane',
+    (snapshot) => snapshot.findText('› [x] Markdown') !== null,
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled markdown source feeds the TOC again',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) === 3,
   );
   await selectExtensionsRow('[ ] Language Intelligence');
   driver.sendKeys('Space');
@@ -1042,18 +1126,34 @@ try {
     'Language Intelligence reinstalls under the structure pane',
     (snapshot) => snapshot.findText('› [x] Language Intelligence') !== null,
   );
-  driver.sendKeys('Control+Shift+u');
+  HarnessSmoke.Class.pass(
+    'the pane degrades and recovers with each source plugin lifecycle',
+  );
+
+  // Return to the language fixture so the plugin-uninstall arm below compares like for like.
+  driver.sendKeys('Control+p');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the reinstalled source feeds the pane an outline again',
-    (status) =>
-      status.sidebarView === 'structure' &&
-      status.structureStatus === 'ready' &&
-      Number(status.structureRows) > 0,
+    'Go to File opens before the plugin-uninstall arm',
+    (status) => status.quickOpenOpen === true,
   );
-  HarnessSmoke.Class.pass(
-    'the pane degrades and recovers with the source plugin lifecycle',
+  driver.sendText('z-language.ts');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Go to File finds the language fixture again',
+    (status) => Number(status.quickOpenMatches) > 0,
+  );
+  driver.sendKeys('Enter');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the reinstalled language source outlines the fixture again',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.structureStatus === 'ready' &&
+      Number(status.structureRows) === Number(outlineReadyStatus.structureRows),
   );
 
   // The plugin's own uninstall symmetry, with the reinstall arm — the fourth-verse lesson.
@@ -1064,7 +1164,8 @@ try {
     statusPath,
     'uninstall removes the structure pane and withdraws its projection',
     (status) =>
-      !(status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      !(status.rightDockContentIds as string[]).includes('structure') &&
+      status.rightDockVisible === false &&
       status.structureStatus === undefined,
   );
   driver.sendKeysWithoutFrameExpectation('Control+Shift+u');
@@ -1088,8 +1189,7 @@ try {
     driver,
     statusPath,
     'reinstall restores the structure pane registration',
-    (status) =>
-      (status.sidebarViewIdentifiers as string[]).includes('structure'),
+    (status) => (status.rightDockContentIds as string[]).includes('structure'),
   );
   driver.sendKeys('Control+Shift+u');
   await HarnessSmoke.Class.awaitStatus(
@@ -1097,8 +1197,8 @@ try {
     statusPath,
     'the reinstalled structure pane outlines the fixture again',
     (status) =>
-      status.sidebarView === 'structure' &&
-      status.focus === 'structure' &&
+      status.rightDockActiveContent === 'structure' &&
+      status.rightDockFocused === true &&
       status.structureStatus === 'ready' &&
       Number(status.structureRows) === Number(outlineReadyStatus.structureRows),
   );

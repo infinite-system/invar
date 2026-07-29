@@ -1,6 +1,6 @@
 # Structure — Module Invariants
 
-The structure navigator: the active document's symbol outline as a primary-dock pane, fed by a
+The structure navigator: the active document's symbol outline as a right-dock pane, fed by a
 provider-registered structure source and navigable back into the editor. This contract governs
 `src/modules/structure/`. It stands on the root `project.invariants.md` — in particular *Language
 and git tools are separate failable processes*, *An async result can outlive the state it
@@ -55,10 +55,10 @@ current text.
 ### The structure navigator is a pane content citizen
 
 **Invariant:** If the structure navigator is installed, then it is an ordinary contribution: a
-manifest row (`structure-navigator`) registering one primary-dock pane content (`structure`),
-its keybindings, its commands, and its status projection through the same
-`ApplicationContributionContext` seams every citizen uses — zero host edits — and uninstalling
-it withdraws all of it while a reinstall rebuilds all of it from the same context.
+manifest row (`structure-navigator`) registering one right-dock pane content (`structure`),
+its keybindings, its commands, its contributed setting, and its status projection through the
+same `ApplicationContributionContext` seams every citizen uses — zero host edits — and
+uninstalling it withdraws all of it while a reinstall rebuilds all of it from the same context.
 
 **Scope:** `StructurePlugin`, `StructurePaneContent`, and their registration through
 `DefaultPlugins`. Install, uninstall, and reinstall of the Structure Navigator extension.
@@ -66,9 +66,10 @@ it withdraws all of it while a reinstall rebuilds all of it from the same contex
 **Components:**
 - *A cells citizen* — the pane returns a `StyledText` from `render`; it owns no renderable and
   declares no native surface.
-- *Withdrawal is total* — `disposeApplication` releases the commands and the status projection;
-  the host unregisters the pane, keybindings, and settings scoped to the activation; each
-  workspace contribution disposes its outline (timers, lifecycle registration, watch effects).
+- *Withdrawal is total* — `disposeApplication` releases the commands, the default-visibility
+  policy, and the status projection; the host unregisters the pane, keybindings, and settings
+  scoped to the activation; each workspace contribution disposes its outline (timers, lifecycle
+  registration, watch effects).
 - *The projection is absent, not stale* — with the plugin uninstalled the `structure*` status
   keys are gone, so nothing reports rows nobody can see.
 - *Reinstall rebuilds* — a second activation registers a fresh pane and a live projection; no
@@ -120,6 +121,10 @@ without the pane.
 - *Consumer-owned seam* — the interface lives in the consumer module. A source plugin imports
   it and registers through the type-blind workspace registry; neither plugin names the
   other's concrete class.
+- *Sources answer per file type* — several sources can register the same `structure`
+  capability (LSP symbols for code, markdown headings for `.md`). The outline resolves them
+  all and asks the NEWEST registration whose `supportsDocument` answers; when none answers,
+  the pane states the file-type affordance.
 - *Registration is reversible* — `register` returns the disposer; the LSP provider's
   `disposed()` withdraws its source, and the pane degrades to its stated affordance; a
   re-registration restores it.
@@ -139,10 +144,12 @@ identifier, lifetime, and reactivity generator. An empty pane for unsupported fi
 blank-lie shape the degraded-affordance precedent exists to prevent.
 
 **Evidence:** `src/modules/structure/StructureSource.interface.ts`;
-`src/modules/plugins/ProviderRegistry.ts`; `src/modules/structure/StructureOutline.ts`
-(`applyEmpty` and the `null` branch of `refresh`);
+`src/modules/plugins/ProviderRegistry.ts` (`resolveAll`);
+`src/modules/structure/StructureOutline.ts`
+(`applyEmpty`, `sourceForDocument`, and the `null` branch of `refresh`);
 `src/modules/structure/StructurePaneRenderer.ts` (`renderEmptyState`);
-`src/modules/lsp/LspWorkspaceProvider.ts` (source registration and `structureNotice`).
+`src/modules/lsp/LspWorkspaceProvider.ts` (source registration and `structureNotice`);
+`src/modules/markdown/MarkdownStructureSource.ts` (the second source behind the same seam).
 
 **Impossible if true:** A structure pane painting nothing while installed; an uninstalled
 Language Intelligence leaving the pane asking a disposed provider; a source forced to fake an
@@ -151,6 +158,59 @@ empty document to say "I cannot answer".
 **Verification:** `bun test src/modules/structure/StructureOutline.test.ts
 src/modules/structure/StructurePaneContent.test.ts
 src/modules/lsp/LspWorkspaceProvider.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### The structure pane shows itself for a supported document
+
+**Invariant:** If the active document has an installed structure source that answers for it and
+the contributed `structureShowByDefault` setting is on, then the structure pane reveals itself
+in the right dock without a keystroke and without taking the keyboard; and if the reader closes
+the pane by hand, that document keeps it closed while other supported documents re-apply the
+default. The policy conceals only what it revealed itself, and it decides with the cheap
+`supportsDocument` question only — never an outline request.
+
+**Scope:** `StructureDefaultVisibility` (the policy), the right-dock `PanelHost` it drives,
+`StructurePlugin`'s `structureShowByDefault` setting registration, and the `view.showStructure`
+command's re-endorsement. Not the outline's own request cost, which the observed-cost record
+governs.
+
+**Components:**
+- *Default-on, right* — a document some source answers reveals the `structure` content through
+  `PanelHost.revealContent`, which never focuses; the surface the user is driving keeps the
+  keys.
+- *The reader's close is per document* — a visibility drop the policy did not make records the
+  active document's path; the default skips recorded paths until a hand reopen or the
+  `view.showStructure` command re-endorses them.
+- *Honest absence* — an unsupported document takes an AUTO-shown pane back down; a pane the
+  user summoned stays and states its affordance.
+- *The setting turns the default off* — with `structureShowByDefault` false the policy reveals
+  nothing; the command and toggle paths still work.
+
+**Mechanism:** One watch funnels workspace identity, document path, provider revision, and the
+setting into `applyDefault`. A sync-flush watch on dock visibility separates the policy's own
+writes (guarded by an applying flag) from the reader's gestures, so an auto-reveal is never
+recorded as a hand-open and a hand-close is never mistaken for the policy's own conceal.
+
+**Rejected alternatives:** Keying the default off outline status — the outline only refreshes
+while observed, so a hidden pane could never learn a document became supported. Focusing the
+pane on reveal — steals the keyboard from the editor mid-typing, the exact cost
+`revealContent` exists to avoid.
+
+**Evidence:** `src/modules/structure/StructureDefaultVisibility.ts`;
+`src/modules/ui/PanelHost.ts` (`revealContent`);
+`src/modules/structure/StructurePlugin.ts` (setting registration, `noteManualShow` in the show
+command); `src/modules/structure/StructureDefaultVisibility.test.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts` (the default-on arm).
+
+**Impossible if true:** A supported document opening with the pane absent at default settings;
+an auto-reveal that steals keyboard focus; a hand-closed document whose pane returns on its
+own; the policy issuing an outline request to decide visibility.
+
+**Verification:** `bun test src/modules/structure/StructureDefaultVisibility.test.ts` and
+`bun scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Status:** provisional
 
@@ -204,7 +264,8 @@ stale-answer cases) and the scale drives recorded in
 
 **Invariant:** If a symbol row is activated (Enter, Space, or a click), then the editor lands on
 that symbol through the existing source-text view contract — `placeCursor` on the symbol's name,
-`revealCursor`, focus returned to the editor — with the departure and the landing both recorded
+`revealCursor`, focus returned to the editor (the right dock blurs with it) — with the
+departure and the landing both recorded
 in the navigation history, exactly as `goToDefinition` records its jump; and with no row to
 activate the gesture is a no-op, never a crash.
 

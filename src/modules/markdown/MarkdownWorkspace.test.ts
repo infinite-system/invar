@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { ref } from 'vue';
 import { MarkdownWorkspace } from './MarkdownWorkspace';
 import { EditorSurfaceClaims } from '../workspace/EditorSurfaceClaims';
+import { ProviderRegistry } from '../plugins/ProviderRegistry';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
 import type { Workspace } from '../workspace/Workspace';
 
@@ -11,6 +12,7 @@ function createHostWorkspace(path: string) {
   let focused = '';
   const workspace = {
     editorSurfaces,
+    providers: new ProviderRegistry.Class(),
     root: '/project',
     get activeDocumentHandle() {
       return activePath.value === '' ? null : { path: activePath.value };
@@ -190,5 +192,12 @@ describe('MarkdownWorkspace', () => {
     expect(workspace.editorSurfaces.occupyingClaim).toBeNull();
     workspace.activateTab('/project/b.md');
     expect(contribution.previewPaths.value.size).toBe(0); // the watcher is stopped
+  });
+
+  it('registers the heading structure source and withdraws it on disposal', () => {
+    const { workspace, contribution } = createContribution('/project/notes.md');
+    expect(workspace.providers.resolveAll('structure')).toHaveLength(1);
+    contribution.disposed();
+    expect(workspace.providers.resolveAll('structure')).toHaveLength(0);
   });
 });

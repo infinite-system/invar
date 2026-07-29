@@ -31,8 +31,15 @@ function previewBorder(snapshot: HarnessSnapshot.Model): {
 function previewPaneRightColumn(snapshot: HarnessSnapshot.Model): number {
   const preview = previewBorder(snapshot);
   const rowText = snapshot.rowText(preview.row);
-  const closingColumn = rowText.indexOf('╮', preview.column);
-  return closingColumn >= 0 ? closingColumn : rowText.length;
+  // The LAST closing corner before the source pane's opening corner, not the first: after a
+  // layout change (the concealed structure dock returning its columns) a stale `╮` from the
+  // narrower layout can linger mid-row for a frame, and anchoring on it truncates every
+  // preview scan (paint residue reported as bycatch; the source `╭` is repainted reliably).
+  const sourceOpeningColumn = rowText.indexOf('╭', preview.column + 1);
+  const scanEndColumn =
+    sourceOpeningColumn >= 0 ? sourceOpeningColumn : rowText.length;
+  const closingColumn = rowText.lastIndexOf('╮', scanEndColumn);
+  return closingColumn > preview.column ? closingColumn : rowText.length;
 }
 
 /** The source pane's opening border corner: the next box corner right of the preview pane. */
@@ -243,6 +250,29 @@ try {
   HarnessSmoke.Class.pass(
     'opening a Markdown file auto-opens its preview without a keystroke',
   );
+  // At defaults the structure dock ALSO opens (the markdown TOC answers this file) and the
+  // preview+source panes shrink until table cells truncate below what the rendering arms
+  // assert. Those properties were sized for the two-pane split; conceal the dock through the
+  // user's own gesture and keep the property labels unchanged.
+  await HarnessSmoke.Class.concealAutoRevealedRightDock(driver, statusPath);
+  // Known defect, not masked: the split's CONTENT viewports keep their pre-conceal width when
+  // the editor column grows back (#263's resize-handshake family — reported as bycatch from
+  // this arm). Remount the split at the final width through the user's own preview toggle so
+  // the arms below measure the geometry they were written for.
+  driver.sendKeys('Control+Shift+v');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the preview toggles off before the width-true remount',
+    (status) => status.markdownPreviewOpen === false,
+  );
+  driver.sendKeys('Control+Shift+v');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the preview remounts at the dock-free width',
+    (status) => status.markdownPreviewOpen === true,
+  );
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
@@ -387,13 +417,29 @@ try {
   });
   const narrowSnapshot = await driver.awaitGridCondition(
     'the aligned table repaints inside the dragged-narrow preview pane',
-    (candidate) =>
-      candidate.findText('╭─Preview') !== null &&
-      previewPaneRightColumn(candidate) <
-        previewBorder(candidate).column + 24 &&
-      candidate.findText(
-        ThemeIcons.Class.tableBordersFor('unicode').leftJunction,
-      ) !== null,
+    (candidate) => {
+      // The wait must observe a COHERENT narrow frame: pane narrowed AND the table's junction
+      // row re-laid-out to end exactly on the pane border. Under gate load the drag's resize
+      // and the table's re-layout land in separate frames, and sampling between them let the
+      // border-intact assertion below read a mid-relayout grid.
+      if (candidate.findText('╭─Preview') === null) return false;
+      const candidatePreviewColumn = previewBorder(candidate).column;
+      const candidateRightColumn = previewPaneRightColumn(candidate);
+      if (candidateRightColumn >= candidatePreviewColumn + 24) return false;
+      const junctionGlyph =
+        ThemeIcons.Class.tableBordersFor('unicode').leftJunction;
+      for (let row = 0; row < candidate.rows; row++) {
+        const paneText = candidate
+          .rowText(row)
+          .slice(candidatePreviewColumn, candidateRightColumn);
+        if (!paneText.includes(junctionGlyph)) continue;
+        return (
+          candidate.cell(row, candidateRightColumn)?.characters ===
+          ThemeIcons.Class.tableBordersFor('unicode').vertical
+        );
+      }
+      return false;
+    },
   );
   const narrowHeaderRow = previewRowContaining(
     narrowSnapshot,
@@ -518,9 +564,18 @@ try {
   );
   snapshot = await driver.awaitGridCondition(
     'the tab toggle is painted for the reopen',
-    (candidate) =>
-      candidate.findText('╭─Preview') === null &&
-      findPreviewButton(candidate) !== null,
+    (candidate) => {
+      // Returning to README also auto-hides the structure dock (its reader closed it for this
+      // document), and the toggle button rides the editor column's right edge as it widens.
+      // Clicking a pre-relayout position lands on empty tab row, so wait for the button at its
+      // settled dock-free position before measuring the click target.
+      const candidateButton = findPreviewButton(candidate);
+      return (
+        candidate.findText('╭─Preview') === null &&
+        candidateButton !== null &&
+        candidateButton.column > candidate.columns - 12
+      );
+    },
   );
   button = previewButton(snapshot);
   clickCell(driver, button.column, button.row);

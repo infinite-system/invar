@@ -273,11 +273,14 @@ try {
   pass('mouse click is published by the real input path');
 
   console.log('== harness editor: End reveals the long line end ==');
+  // findEditorText, not findText: at defaults the structure dock lists this same heading
+  // ('Fixture Project — …') ABOVE the source row, so a whole-grid search anchors on the outline
+  // pane and every wait below reads the wrong row forever.
   snapshot = await driver.awaitGridCondition(
     'the long fixture line is visible before moving to its end',
-    (candidate) => candidate.findText('Fixture') !== null,
+    (candidate) => candidate.findEditorText('Fixture') !== null,
   );
-  const longLineHead = snapshot.findText('Fixture');
+  const longLineHead = snapshot.findEditorText('Fixture');
   requireCondition(longLineHead !== null, 'long fixture line is visible');
   // Measure the editor pane's left border from a cell known to sit inside it.
   // The auto-opened markdown preview (left of the source since #237) paints the
@@ -399,6 +402,17 @@ try {
   console.log(
     '== harness editor: held right-edge drag auto-scrolls and extends selection ==',
   );
+  // The edge-hold target is MEASURED: at defaults the structure dock occupies the columns right
+  // of the editor, so the old fixed column 117 would carry the pointer out of the editor pane and
+  // the edge engine would never see the hold.
+  const editorRightBorderColumn = driver
+    .snapshot()
+    .rowText(fixturePosition.row)
+    .indexOf('│', fixturePosition.column);
+  requireCondition(
+    editorRightBorderColumn > fixturePosition.column,
+    'editor pane right border is measurable for the edge hold',
+  );
   driver.sendMouseWithoutFrameExpectation({
     kind: 'press',
     column: fixturePosition.column + 10,
@@ -407,7 +421,7 @@ try {
   });
   driver.sendMouseWithoutFrameExpectation({
     kind: 'move',
-    column: 117,
+    column: editorRightBorderColumn - 1,
     row: fixturePosition.row,
     button: 'left',
   });
@@ -419,7 +433,7 @@ try {
   const edgeScrollLeft = Number(edgeScrollStatus.editorScrollLeft);
   driver.sendMouseWithoutFrameExpectation({
     kind: 'release',
-    column: 117,
+    column: editorRightBorderColumn - 1,
     row: fixturePosition.row,
     button: 'left',
   });

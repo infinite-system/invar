@@ -169,6 +169,10 @@ smoke: try {
     (snapshot) => lineHasGutterMarker(snapshot, 'const label = value'),
     10_000,
   );
+  // The rewrite ghost (`source → candidate` on one line) was sized for the editor width this
+  // fixture had before the structure dock's default-ON; with the dock open the candidate tail
+  // clips out of the pane. Conceal the dock through the user's own gesture.
+  await HarnessSmoke.Class.concealAutoRevealedRightDock(driver, statusPath);
   if (reproductionMode === 'plugin-disabled') {
     driver.sendKeys('Control+Shift+x', 'Down', 'Down', 'Down');
     await driver.awaitGridCondition(

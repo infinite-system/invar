@@ -1,10 +1,10 @@
 import { Reactive } from 'ivue';
 import { shallowRef } from 'vue';
-import { Files } from '../system/Files';
 import type { Settings } from '../settings/Settings';
 import type { Workspace } from '../workspace/Workspace';
 import type { WorkspaceContribution } from '../workspace/WorkspaceContributor.interface';
 import type { EditorSurfaceClaim } from '../workspace/EditorSurfaceClaims';
+import { MarkdownStructureSource } from './MarkdownStructureSource';
 
 // Markdown's per-workspace contribution: which tabs are showing the source | preview split, and the
 // claim that answers the host's capability questions while one is.
@@ -32,6 +32,14 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
     protected readonly mountedPreviewFocused: () => boolean,
   ) {
     this.disposeEditorSurfaceClaim = workspace.editorSurfaces.register(this);
+    // The table of contents rides the host-carried provider rendezvous: the structure pane
+    // resolves it by identifier and neither plugin names the other's concrete class.
+    // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
+    this.structureSource = this.createStructureSource();
+    this.disposeStructureSource = workspace.providers.register(
+      'structure',
+      this.structureSource,
+    );
     // Sync flush: the auto-open must land in the same flush as the tab activation, so the mount
     // sync that runs on the next paint already sees the claim. The getter consults the surface
     // capability, which is safe in a WATCH (an action-time read, like togglePreview's guard) —
@@ -44,6 +52,13 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   }
 
   protected readonly disposeEditorSurfaceClaim: () => void;
+  protected readonly structureSource: MarkdownStructureSource.Model;
+  protected readonly disposeStructureSource: () => void;
+
+  // invariant: Construction goes through overridable seams (project.invariants.md)
+  protected createStructureSource(): MarkdownStructureSource.Model {
+    return new MarkdownStructureSource.Class();
+  }
 
   /** File paths whose tabs currently show the source | preview split. A set keeps the mode PER TAB,
    *  so switching away and back does not silently discard the user's view choice. */
@@ -93,8 +108,7 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
    *  `previewToggleAvailable` is where the capability belongs, and it is safe there because the
    *  answer THIS claim gives back is a constant. */
   get activeFileIsMarkdown(): boolean {
-    const path = this.activeTabPath();
-    return path !== '' && Files.Class.extname(path).toLowerCase() === '.md';
+    return MarkdownStructureSource.Class.isMarkdownPath(this.activeTabPath());
   }
 
   /** Whether to offer the preview toggle: a Markdown tab that is itself the presented document, so a
@@ -164,6 +178,8 @@ class $MarkdownWorkspace implements WorkspaceContribution, EditorSurfaceClaim {
   resumed(): void {}
   disposed(): void {
     this.disposeEditorSurfaceClaim();
+    this.disposeStructureSource();
+    this.structureSource.dispose();
     this.$stopEffects();
     this.previewPaths.value = new Set();
     this.dismissedPreviewPaths.value = new Set();

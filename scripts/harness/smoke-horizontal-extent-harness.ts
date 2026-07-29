@@ -73,6 +73,11 @@ try {
     15_000,
   );
   pass(`opened src/modules/image/${regressionFileName}`);
+  // The horizontal-extent properties were sized for the editor width this file had before the
+  // structure dock's default-ON: with the dock open, the widest-line reveals below can no
+  // longer fit the pane. Conceal the dock through the user's own gesture; the changed-region
+  // assertion right after re-measures from the live grid.
+  await HarnessSmoke.Class.concealAutoRevealedRightDock(driver, statusPath);
   const openingSnapshot = await driver.awaitGridCondition(
     `${regressionFileName} is rendered before horizontal input`,
     (candidate) => candidate.findText(regressionFileName) !== null,

@@ -24,6 +24,28 @@ test('providers register last-wins and withdraw to the previous answer', () => {
   expect(registry.revision.value).toBe(revisionBefore + 4);
 });
 
+test('resolveAll returns every registration oldest-first and tracks withdrawal', () => {
+  const registry = new ProviderRegistry.Class();
+  const firstProvider = { name: 'first' };
+  const secondProvider = { name: 'second' };
+
+  expect(registry.resolveAll('example')).toEqual([]);
+
+  const disposeFirst = registry.register('example', firstProvider);
+  const disposeSecond = registry.register('example', secondProvider);
+  expect(registry.resolveAll<typeof firstProvider>('example')).toEqual([
+    firstProvider,
+    secondProvider,
+  ]);
+
+  disposeFirst();
+  expect(registry.resolveAll<typeof secondProvider>('example')).toEqual([
+    secondProvider,
+  ]);
+  disposeSecond();
+  expect(registry.resolveAll('example')).toEqual([]);
+});
+
 test('registry instances isolate workspace provider selections', () => {
   const firstWorkspaceProviders = new ProviderRegistry.Class();
   const secondWorkspaceProviders = new ProviderRegistry.Class();

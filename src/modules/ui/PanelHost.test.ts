@@ -63,6 +63,30 @@ test('a dock-style host reveals itself when content is registered', () => {
   expect(host.activeId.value).toBe('navigator');
 });
 
+test('revealContent shows the slot and its content without taking the keyboard', () => {
+  const host = new PanelHost.Class();
+  const navigator = fakeContent('navigator');
+  const other = fakeContent('other');
+  host.register(navigator);
+  host.register(other);
+
+  host.revealContent('other');
+  expect(host.visible.value).toBe(true);
+  expect(host.activeId.value).toBe('other');
+  // The reveal never focuses — the surface the user is driving keeps the keys.
+  expect(host.focused.value).toBe(false);
+  expect(other.focused).toBe(false);
+
+  // Positive control: the user gesture DOES focus, so the two paths are observably different.
+  host.showContent('other');
+  expect(host.focused.value).toBe(true);
+
+  // An unknown id is a no-op, never a crash.
+  host.hide();
+  host.revealContent('missing');
+  expect(host.visible.value).toBe(false);
+});
+
 test('persisted order filters dormant ids and appends unseen content', () => {
   const order = ref(['files', 'git', 'extensions']);
   const host = new PanelHost.Class({ contentOrder: order });

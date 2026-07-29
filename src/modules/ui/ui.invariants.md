@@ -1913,15 +1913,17 @@ adjust/clamp path.
 affordance performs that same toggle and visibly reflects the resulting state; mouse and keyboard
 never mutate separate visibility flags.
 
-**Scope:** The empty-by-default right-dock slot, `view.toggleRightDock`, and the right-dock button in
-`StatusBar`.
+**Scope:** The right-dock slot (a generic `PanelHost`; the structure navigator is its first
+contributed occupant), `view.toggleRightDock`, and the right-dock button in `StatusBar`.
 
 **Mechanism:** Bootstrap owns one `toggleRightDock` closure over the right dock's `PanelHost` and
 injects it into both the command registry and `StatusBar`. The button calls that closure and paints
 with the accent role while hovered or while the dock is visible.
 
-**Generates:** A future `PaneContent` registration reveals the same host; clicking the status button
-or invoking the command opens and closes the same resizable dock.
+**Generates:** A `PaneContent` registration (the structure pane today) reveals the same host;
+clicking the status button or invoking the command opens and closes the same resizable dock; a
+focused right-dock content resolves its own keybinding context before raw `handleKey`, the same
+contract the primary dock gives its contents.
 
 **Evidence:** `src/modules/app/Bootstrap.ts`; `src/modules/commands/CommandDefaults.ts`;
 `src/modules/ui/StatusBar.ts`; `scripts/harness/smoke-layout-harness.ts`.

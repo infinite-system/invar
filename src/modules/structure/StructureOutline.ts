@@ -52,7 +52,11 @@ class $StructureOutline {
       closed: () => this.scheduleRefresh(this.switchRefreshDelay),
     });
     // The one reactive trigger: observation, document identity, document revision, and source
-    // installation all funnel into the same debounced refresh.
+    // installation all funnel into the same debounced refresh. IMMEDIATE: the outline can be
+    // constructed after the boot state has already settled (document open, pane revealed by the
+    // default-visibility policy), so the initial fingerprint is already the final one and no
+    // change would ever fire — the immediate call schedules the first honest refresh, and it
+    // stays free when unobserved because refresh() itself gates on observation.
     this.$watch(
       () => this.refreshFingerprint,
       (_fingerprint, previousFingerprint) => {
@@ -64,6 +68,7 @@ class $StructureOutline {
           revisionOnly ? this.editRefreshDelay : this.switchRefreshDelay,
         );
       },
+      { immediate: true },
     );
   }
 
@@ -171,9 +176,9 @@ class $StructureOutline {
       this.applyEmpty('no-document', null);
       return;
     }
-    const source =
-      this.workspace.providers.resolve<StructureSource>('structure');
-    if (!source) {
+    const sources =
+      this.workspace.providers.resolveAll<StructureSource>('structure');
+    if (sources.length === 0) {
       this.applyEmpty(
         'unavailable',
         'No structure source is installed. ' +
@@ -181,7 +186,12 @@ class $StructureOutline {
       );
       return;
     }
-    if (!source.supportsDocument(document)) {
+    // Sources answer per file type (LSP symbols for ts/js, markdown headings for .md), so the
+    // outline asks the NEWEST registration that supports this document — the same
+    // last-registration-wins substitution rule `resolve` applies, restricted to the sources
+    // that answer at all.
+    const source = this.sourceForDocument(sources, document);
+    if (!source) {
       this.applyEmpty(
         'unavailable',
         'No installed source answers for this file type.',
@@ -215,6 +225,18 @@ class $StructureOutline {
       return;
     }
     this.applyResult(result);
+  }
+
+  /** The newest-registered source that supports the document, or null when none answers. */
+  protected sourceForDocument(
+    sources: readonly StructureSource[],
+    document: StructureDocument,
+  ): StructureSource | null {
+    for (let index = sources.length - 1; index >= 0; index--) {
+      const candidate = sources[index];
+      if (candidate && candidate.supportsDocument(document)) return candidate;
+    }
+    return null;
   }
 
   protected applyEmpty(

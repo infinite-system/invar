@@ -112,6 +112,30 @@ class $HarnessSmoke {
     }
   }
 
+  /** Close the auto-revealed structure dock through the user's own toggle gesture (Ctrl+Alt+B),
+   *  for a smoke whose PROPERTY needs the editor width the dock occupies at the app's defaults
+   *  (a long-line reveal, a rewrite ghost, a preview table). Call it after opening a document a
+   *  structure source supports: the wait for the reveal keeps the toggle from racing the
+   *  default-visibility policy and reopening the dock instead. */
+  static async concealAutoRevealedRightDock(
+    driver: PtyTestDriver.Model,
+    statusPath: string,
+  ): Promise<void> {
+    await this.awaitStatus(
+      driver,
+      statusPath,
+      'the structure pane auto-reveals before the dock is concealed',
+      (status) => status.rightDockVisible === true,
+    );
+    driver.sendKeys('Control+Alt+b');
+    await this.awaitStatus(
+      driver,
+      statusPath,
+      'the right dock is concealed for the width-dependent arms',
+      (status) => status.rightDockVisible === false,
+    );
+  }
+
   static async awaitScrollPosition(
     driver: PtyTestDriver.Model,
     statusPath: string,

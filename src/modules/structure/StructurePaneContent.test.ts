@@ -62,7 +62,7 @@ function makePane(
           },
         },
       },
-      primaryDockHost: { focused: ref(true) },
+      rightDockHost: { focused: ref(true), blur: () => {} },
       settings: { scrollbarThickness: ref(1) },
       theme: { glyphLevel: ref('unicode') },
       requestRender: () => {},
@@ -92,7 +92,9 @@ describe('StructurePaneContent', () => {
     expect(pane.activityAction).toBe('view.showStructure');
     expect(pane.onPointerDown(0, 1)).toBe(true);
     expect(outline.selectedIndex.value).toBe(1);
-    expect(workspaceFocus.value).toBe('primaryPane');
+    // Focus stays host-owned in the right dock: the click activates without touching the
+    // workspace's primary-pane focus model.
+    expect(workspaceFocus.value).toBe('editor');
     expect(activations.count).toBe(1);
     // A click below the last row selects nothing and consumes nothing.
     expect(pane.onPointerDown(0, 9)).toBe(false);

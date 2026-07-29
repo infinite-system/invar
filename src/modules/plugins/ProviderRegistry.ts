@@ -34,6 +34,17 @@ class $ProviderRegistry {
     return (providers[providers.length - 1] as Provider | undefined) ?? null;
   }
 
+  /** Every registered provider for a capability, registration-ordered (oldest first). For a
+   *  capability whose providers each answer a SUBSET of subjects (a per-file-type source), the
+   *  consumer walks this list and picks the provider that answers — `resolve` alone would let the
+   *  newest registration shadow a peer that still answers for other subjects. */
+  resolveAll<Provider>(identifier: string): readonly Provider[] {
+    void this.revision.value;
+    const providers = this.providersByIdentifier.get(identifier);
+    if (!providers || providers.length === 0) return [];
+    return [...providers] as Provider[];
+  }
+
   dispose(): void {
     if (this.providersByIdentifier.size === 0) return;
     this.providersByIdentifier.clear();
