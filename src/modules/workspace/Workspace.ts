@@ -663,11 +663,19 @@ class $Workspace {
    *  try the reference against the workspace root and against the active document's directory,
    *  keeping only a target that exists, is not a directory, and stays inside the root. Nothing here
    *  knows what produced the reference; rendered documents are simply its first caller. */
+  /** True when the reference is a `scheme:` URL (http, https, mailto, …) — a target that can
+   *  never name a workspace file. The ONE scheme rule, shared with `resolveFileReference`, so a
+   *  caller explaining an unresolved reference classifies it the same way resolution rejected it. */
+  referenceIsExternal(reference: string): boolean {
+    const withoutFragment =
+      reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
+    return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(withoutFragment);
+  }
+
   resolveFileReference(reference: string): string | null {
     const withoutFragment =
       reference.split('#', 1)[0]?.split('?', 1)[0]?.trim() ?? '';
-    if (!withoutFragment || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(withoutFragment))
-      return null;
+    if (!withoutFragment || this.referenceIsExternal(reference)) return null;
     let decodedReference = withoutFragment;
     try {
       decodedReference = decodeURIComponent(withoutFragment);

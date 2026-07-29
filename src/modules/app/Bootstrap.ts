@@ -117,6 +117,40 @@ class $Bootstrap {
       useKittyKeyboard: {},
     });
 
+    // Ctrl+click routing guard. OpenTUI treats Ctrl+left-down as "extend the current native
+    // selection" and CONSUMES the event whenever `currentSelection` exists — and an ordinary
+    // click on any selectable text (a tab label, a tree row) leaves a zero-width selection
+    // behind. That residue silently eats every later Ctrl+click, so any renderable listening
+    // for a modified click (a rendered link, a go-to-definition target) never hears it. A
+    // selection the user is actively DRAGGING keeps the native gesture; a non-dragging one is
+    // cleared here so the down reaches the renderable under the pointer. Host-generic: no
+    // consumer is named — whoever handles Ctrl+click simply receives it again.
+    {
+      const routedRenderer = renderer as unknown as {
+        processSingleMouseEvent: (mouseEvent: {
+          type: string;
+          button?: number;
+          modifiers?: { ctrl?: boolean };
+        }) => boolean;
+        currentSelection?: { isDragging: boolean } | null;
+        clearSelection: () => void;
+      };
+      const originalProcessSingleMouseEvent =
+        routedRenderer.processSingleMouseEvent.bind(renderer);
+      routedRenderer.processSingleMouseEvent = (mouseEvent) => {
+        if (
+          mouseEvent.type === 'down' &&
+          mouseEvent.button === 0 &&
+          mouseEvent.modifiers?.ctrl === true &&
+          routedRenderer.currentSelection &&
+          !routedRenderer.currentSelection.isDragging
+        ) {
+          routedRenderer.clearSelection();
+        }
+        return originalProcessSingleMouseEvent(mouseEvent);
+      };
+    }
+
     Kernel.Class.instance.seal();
     Kernel.Class.instance.assertSealed();
 

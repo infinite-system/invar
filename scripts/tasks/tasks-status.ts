@@ -303,6 +303,22 @@ function byNumberDescending(left: TaskRecord, right: TaskRecord): number {
   return right.taskNumber - left.taskNumber;
 }
 
+// The view files live at the repo root (two levels above tasksRoot), so a root-relative path
+// reaches the record from where the view is READ — both by a human and by the markdown preview's
+// reference resolver, which tries references against the workspace root first.
+function taskRecordLinkPath(record: TaskRecord): string | null {
+  if (record.taskFileName === null) return null;
+  return `.invar/tasks/${record.directoryState}/${record.folderName}/${record.taskFileName}`;
+}
+
+// Every task line names its record as a markdown link, so the generated views are walkable by
+// click in the rendered preview. A folder with no task-*.md file has no record to link; its
+// label stays plain text rather than linking to a miss.
+function linkedTaskLabel(record: TaskRecord, label: string): string {
+  const linkPath = taskRecordLinkPath(record);
+  return linkPath === null ? label : `[${label}](${linkPath})`;
+}
+
 function taskLine(record: TaskRecord): string {
   const stateSuffix =
     record.declaredState !== null &&
@@ -310,7 +326,8 @@ function taskLine(record: TaskRecord): string {
     record.declaredState !== 'IN-PROGRESS'
       ? `  [${record.declaredState}]`
       : '';
-  return `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${stateSuffix}`;
+  const label = record.folderName.replace(/^\d+-/, '');
+  return `- #${record.taskNumber} ${linkedTaskLabel(record, label)}${stateSuffix}`;
 }
 
 function renderActiveView(records: TaskRecord[]): string {
@@ -358,7 +375,9 @@ function renderActiveView(records: TaskRecord[]): string {
       `## NO PRIORITY GROUP (${ungrouped.length}) — stamp Priority: into these task files`,
     );
     for (const record of ungrouped)
-      outputLines.push(`- #${record.taskNumber} ${record.folderName}`);
+      outputLines.push(
+        `- #${record.taskNumber} ${linkedTaskLabel(record, record.folderName)}`,
+      );
     outputLines.push('');
   }
 
@@ -387,7 +406,8 @@ export function completedStateAttachment(record: TaskRecord): string {
 function completedLine(record: TaskRecord): string {
   const stateRemainder = completedStateAttachment(record);
   const attachment = stateRemainder.length > 0 ? ` — ${stateRemainder}` : '';
-  return `- #${record.taskNumber} ${record.folderName.replace(/^\d+-/, '')}${attachment}`;
+  const label = record.folderName.replace(/^\d+-/, '');
+  return `- #${record.taskNumber} ${linkedTaskLabel(record, label)}${attachment}`;
 }
 
 const COMPLETED_LOG_HEADER =
@@ -596,6 +616,31 @@ function selfTest(): number {
   const staleDetected = activeViewIsStale(root, plantedRecords);
   backlogWriteForTest(root, plantedRecords);
   const freshMisreported = activeViewIsStale(root, plantedRecords);
+
+  // Task-record links, both polarities (#276). Every task line in both generated views must carry
+  // a markdown link whose target exists on disk; and the predicate itself must go red on a line
+  // whose link is stripped, or the green above proves nothing.
+  const generatedViews =
+    readFileSync(activeViewPath(root), 'utf8') +
+    readFileSync(completedLogPath(root), 'utf8');
+  const renderedTaskLines = generatedViews
+    .split('\n')
+    .filter((line) => /^- #\d+ /.test(line));
+  const linkPattern = /^- #\d+ \[[^\]]+\]\((\.invar\/tasks\/[^)]+)\)/;
+  const linklessLines = renderedTaskLines.filter(
+    (line) => !linkPattern.test(line),
+  );
+  const brokenLinkTargets = renderedTaskLines
+    .map((line) => linkPattern.exec(line)?.[1])
+    .filter(
+      (target): target is string =>
+        target !== undefined && !existsSync(join(sandbox, target)),
+    );
+  const strippedLine = renderedTaskLines[0]?.replace(linkPattern, (matched) =>
+    matched.replace(/\[([^\]]+)\]\([^)]+\)/, '$1'),
+  );
+  const stripDetected =
+    strippedLine !== undefined && !linkPattern.test(strippedLine);
   rmSync(sandbox, { recursive: true, force: true });
 
   const expected: Array<[DriftSignal, number]> = [
@@ -623,6 +668,19 @@ function selfTest(): number {
     );
     if (!fired) failures++;
   }
+  console.log(
+    `  ${linklessLines.length === 0 ? 'PASS' : 'FAIL'}  every rendered task line links its record (${linklessLines.length} linkless)`,
+  );
+  if (linklessLines.length > 0) failures++;
+  console.log(
+    `  ${brokenLinkTargets.length === 0 ? 'PASS' : 'FAIL'}  every task-record link target exists (${brokenLinkTargets.length} broken)`,
+  );
+  if (brokenLinkTargets.length > 0) failures++;
+  console.log(
+    `  ${stripDetected ? 'PASS' : 'FAIL'}  the link check goes red on a link-stripped line`,
+  );
+  if (!stripDetected) failures++;
+
   const noiseOnClean = findings.filter((finding) => finding.taskNumber === 905);
   console.log(
     `  ${noiseOnClean.length === 0 ? 'PASS' : 'FAIL'}  clean control #905 produced ${noiseOnClean.length} finding(s), expected 0`,

@@ -46,7 +46,13 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
       findBar: context.findBar,
       resolveReference: (reference) =>
         workspace.resolveFileReference(reference),
-      openReference: (path) => workspace.openFileInTab(path),
+      // Open + focus, the #235 open-seam pattern: the user asked for the file, so the keyboard
+      // follows it — without the focus move, editor-context chords (Back/Forward) stay dead
+      // after a click-open.
+      openReference: (path) => {
+        workspace.openFileInTab(path);
+        workspace.focus.value = 'editor';
+      },
       showReferenceTooltip: (path, screenColumn, screenRow) => {
         const label = Files.Class.relative(workspace.root, path);
         const bindingHint = context.keybindings.bindingHint(
@@ -60,6 +66,14 @@ class $MarkdownPreviewContent implements EditorSurfaceContent {
         );
       },
       clearReferenceTooltip: () => context.tooltip.clear(),
+      // invariant: An unresolvable Markdown link states why (src/modules/markdown/markdown.invariants.md)
+      notifyUnresolvedReference: (target, screenColumn, screenRow, gesture) => {
+        const message = workspace.referenceIsExternal(target)
+          ? `External link — not opened here: ${target}`
+          : `Link target not found: ${target}`;
+        context.tooltip.point(message, screenColumn, screenRow);
+        if (gesture === 'activate') this.view.linkNotice.value = message;
+      },
     });
   }
 

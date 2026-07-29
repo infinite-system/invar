@@ -5,59 +5,59 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
-- #282 scrollbar-drag-broken-and-horizontal-thickness — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
-- #275 db-navigator-real-connection — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
-- #274 structure-scrollbar-depth-filter — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
-- #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
-- #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
-- #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
-- #263 terminal-shrink-markdown-split-frozen — facc262b — terminal shrink reflows the split; layout reads live renderer dims
-- #259 right-dock-click-leaves-double-focus — 587eed67 — one focus-set owner across docks; click path double-focus fixed
-- #254 gate-workers-validated-after-side-effects — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
-- #253 ui-contract-systematic-citation-sweep — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
-- #251 gate-refuses-unlinked-node-modules — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
-- #245 provider-seam-open-or-bless-decision — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
-- #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
-- #243 ui-contract-sibling-rot-round-two — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
-- #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
-- #238 structure-default-right-and-md-toc — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
-- #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
-- #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
-- #235 tasks-dashboard-pane-live-active-done — 4fd04703 — tasks dashboard pane: three lenses, cycling, record-open; CLI readers are the one generator
-- #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
-- #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
-- #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
-- #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
-- #220 editor-registers-as-contributor-with-manifest — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
-- #219 source-text-view-onto-pane-content-seam — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
-- #218 workspace-buffer-splits-document-from-view — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
-- #216 drive-onramp-quick-open-blind-enumeration — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
-- #215 agent-tmux-send-confirm-false-negative — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
-- #211 horizontal-extent-grid-wait-timeout — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
-- #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
-- #208 git-commit-collapse-wiring-gap — merged 15f51dc
-- #207 silently-discarded-user-input — fb199cb
-- #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
-- #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
-- #203 folded-editing-scale-invariance — e479b98
-- #202 tab-reactivation-rereads-whole-file — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
-- #201 quick-open-silent-empty-enumeration — fb199cb
-- #197 lsp-size-budget-guards-reads — 659b649
-- #196 editor-flyweight-edit-path
-- #195 start-script-drops-path-argument — fb199cb
-- #194 reserved-chord-fixture-self-contained — d3721b2
-- #192 residual-harness-wait-audit
-- #191 terminal-stage-compound-predicate
-- #189 gate-reds-population-separation
-- #188 frame-ordinal-wait-regressions
-- #187 wheel-at-clamp-unreachable-wait
-- #186 max-width-rescan-at-500k
-- #174 markdown-preview-omits-ragged-table — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
-- #122 editor-becomes-final-contributor — IN-PROGRESS
-- #114 modularity-umbrella-provider-runtime — IN-PROGRESS
-- #108 gear-mark-four-owners-collision — merged 186f2d8, fix 82b746c (user accepted Pair A)
-- #107 emoji-width-authority-disagreement — glyphs swapped at 966c5d1; the exception list is now empty
-- #77 coverage-ratchet-remaining-holes — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
-- #59 prettier-format-gate-and-reformat — 243c160 — prettier format gate + one-shot repo reformat (205 files) + blank-line grammar rule; .git-blame-ignore-revs carries the reformat sha; combined-tree gate green except two pre-existing reds (#211 horizontal-extent, #174 ragged table) both reproduced on plain main by control runs
-- #46 terminal-observer-reverse-presence — 5e10f43 — resolved by #114 Wave B: both waves were already built (TerminalObserver + follow modes); the open question (where the presence channel lives) settled as the terminal-observation capability on the pane; no observer registry; #157 shares the payload vocabulary, not the channel
-- #35 structure-navigator-plugin-pane — 986ae1c2 — the proof: new citizen with a zero-host-edit diff; documentSymbol outline; scale-invariant request cost; seam finding became #245; round-2 smoke-order fix
+- #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
+- #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
+- #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
+- #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared
+- #266 [drive-settle-ignores-debounced-parse](.invar/tasks/completed/266-drive-settle-ignores-debounced-parse/task-266-drive-settle-ignores-debounced-parse.md) — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
+- #264 [boot-save-erases-unregistered-settings](.invar/tasks/completed/264-boot-save-erases-unregistered-settings/task-264-boot-save-erases-unregistered-settings.md) — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
+- #263 [terminal-shrink-markdown-split-frozen](.invar/tasks/completed/263-terminal-shrink-markdown-split-frozen/task-263-terminal-shrink-markdown-split-frozen.md) — facc262b — terminal shrink reflows the split; layout reads live renderer dims
+- #259 [right-dock-click-leaves-double-focus](.invar/tasks/completed/259-right-dock-click-leaves-double-focus/task-259-right-dock-click-leaves-double-focus.md) — 587eed67 — one focus-set owner across docks; click path double-focus fixed
+- #254 [gate-workers-validated-after-side-effects](.invar/tasks/completed/254-gate-workers-validated-after-side-effects/task-254-gate-workers-validated-after-side-effects.md) — 93bd4c2c — workers guard joins preflight; violation reproduced then proven absent, both polarities
+- #253 [ui-contract-systematic-citation-sweep](.invar/tasks/completed/253-ui-contract-systematic-citation-sweep/task-253-ui-contract-systematic-citation-sweep.md) — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
+- #251 [gate-refuses-unlinked-node-modules](.invar/tasks/completed/251-gate-refuses-unlinked-node-modules/task-251-gate-refuses-unlinked-node-modules.md) — 0da7803e — dependency preflight, distinct exit 3, three control arms proven outside the gate
+- #245 [provider-seam-open-or-bless-decision](.invar/tasks/completed/245-provider-seam-open-or-bless-decision/task-245-provider-seam-open-or-bless-decision.md) — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
+- #244 [sdk-binary-extraction-leak-fills-disk](.invar/tasks/completed/244-sdk-binary-extraction-leak-fills-disk/task-244-sdk-binary-extraction-leak-fills-disk.md) — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
+- #243 [ui-contract-sibling-rot-round-two](.invar/tasks/completed/243-ui-contract-sibling-rot-round-two/task-243-ui-contract-sibling-rot-round-two.md) — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
+- #239 [ui-contract-citation-repairs](.invar/tasks/completed/239-ui-contract-citation-repairs/task-239-ui-contract-citation-repairs.md) — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
+- #238 [structure-default-right-and-md-toc](.invar/tasks/completed/238-structure-default-right-and-md-toc/task-238-structure-default-right-and-md-toc.md) — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
+- #237 [markdown-preview-left-and-auto-open](.invar/tasks/completed/237-markdown-preview-left-and-auto-open/task-237-markdown-preview-left-and-auto-open.md) — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
+- #236 [markdown-terminal-stylesheet-readable](.invar/tasks/completed/236-markdown-terminal-stylesheet-readable/task-236-markdown-terminal-stylesheet-readable.md) — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
+- #235 [tasks-dashboard-pane-live-active-done](.invar/tasks/completed/235-tasks-dashboard-pane-live-active-done/task-235-tasks-dashboard-pane-live-active-done.md) — 4fd04703 — tasks dashboard pane: three lenses, cycling, record-open; CLI readers are the one generator
+- #233 [wrap-contract-red-settings-leak](.invar/tasks/completed/233-wrap-contract-red-settings-leak/task-233-wrap-contract-red-settings-leak.md) — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
+- #230 [author-ui-lattice](.invar/tasks/completed/230-author-ui-lattice/task-230-author-ui-lattice.md) — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
+- #222 [provider-seam-analysis-and-convention](.invar/tasks/completed/222-provider-seam-analysis-and-convention/task-222-provider-seam-analysis-and-convention.md) — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
+- #221 [editor-owns-no-view-state-uncited](.invar/tasks/completed/221-editor-owns-no-view-state-uncited/task-221-editor-owns-no-view-state-uncited.md) — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
+- #220 [editor-registers-as-contributor-with-manifest](.invar/tasks/completed/220-editor-registers-as-contributor-with-manifest/task-220-editor-registers-as-contributor-with-manifest.md) — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
+- #219 [source-text-view-onto-pane-content-seam](.invar/tasks/completed/219-source-text-view-onto-pane-content-seam/task-219-source-text-view-onto-pane-content-seam.md) — 43b6002 — PaneContent grew native-surface (who paints); editor is a citizen via SourceTextPaneContent + PaneProjection; paint-then-selection ordering became a tested invariant; release path ready for #220; fingerprints unchanged at 10/100k/500k; boundaries filed as #228, #229
+- #218 [workspace-buffer-splits-document-from-view](.invar/tasks/completed/218-workspace-buffer-splits-document-from-view/task-218-workspace-buffer-splits-document-from-view.md) — 2e36ed83 — workspace holds documents plus view handles via SourceTextViewProvider; casts replaced by the recorded creator invariant; TextCursor/TextViewport extracted; fold state document-adjacent; #219 boundary mapped in the report
+- #216 [drive-onramp-quick-open-blind-enumeration](.invar/tasks/completed/216-drive-onramp-quick-open-blind-enumeration/task-216-drive-onramp-quick-open-blind-enumeration.md) — 03b61df — Quick Open publishes degraded (never a false complete) with a recovery message; drive fixtures in system temp outside the ignored path; codex-ships-ripgrep caught by PATH surgery; one-sighting probed 3x, no repro, parked
+- #215 [agent-tmux-send-confirm-false-negative](.invar/tasks/completed/215-agent-tmux-send-confirm-false-negative/task-215-agent-tmux-send-confirm-false-negative.md) — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
+- #211 [horizontal-extent-grid-wait-timeout](.invar/tasks/completed/211-horizontal-extent-grid-wait-timeout/task-211-horizontal-extent-grid-wait-timeout.md) — b076fef — unreachable wait: faeaa99 wrapped encodeBandsJpeg across rows, so the contiguous-string predicate could never match (#173 class, harness side); smoke now waits on the comment tail with a pre-action hidden assertion; positive control red demonstrated
+- #209 [mine-session-transcript-for-task-detail](.invar/tasks/completed/209-mine-session-transcript-for-task-detail/task-209-mine-session-transcript-for-task-detail.md) — 4e23b88, 3e31e4a
+- #208 [git-commit-collapse-wiring-gap](.invar/tasks/completed/208-git-commit-collapse-wiring-gap/task-208-git-commit-collapse-wiring-gap.md) — merged 15f51dc
+- #207 [silently-discarded-user-input](.invar/tasks/completed/207-silently-discarded-user-input/task-207-silently-discarded-user-input.md) — fb199cb
+- #206 [gate-retry-population-repair](.invar/tasks/completed/206-gate-retry-population-repair/task-206-gate-retry-population-repair.md) — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
+- #204 [drive-tool-step-model-and-targeting](.invar/tasks/completed/204-drive-tool-step-model-and-targeting/task-204-drive-tool-step-model-and-targeting.md) — merged 7aa3a7c
+- #203 [folded-editing-scale-invariance](.invar/tasks/completed/203-folded-editing-scale-invariance/task-203-folded-editing-scale-invariance.md) — e479b98
+- #202 [tab-reactivation-rereads-whole-file](.invar/tasks/completed/202-tab-reactivation-rereads-whole-file/task-202-tab-reactivation-rereads-whole-file.md) — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
+- #201 [quick-open-silent-empty-enumeration](.invar/tasks/completed/201-quick-open-silent-empty-enumeration/task-201-quick-open-silent-empty-enumeration.md) — fb199cb
+- #197 [lsp-size-budget-guards-reads](.invar/tasks/completed/197-lsp-size-budget-guards-reads/task-197-lsp-size-budget-guards-reads.md) — 659b649
+- #196 [editor-flyweight-edit-path](.invar/tasks/completed/196-editor-flyweight-edit-path/task-196-editor-flyweight-edit-path.md)
+- #195 [start-script-drops-path-argument](.invar/tasks/completed/195-start-script-drops-path-argument/task-195-start-script-drops-path-argument.md) — fb199cb
+- #194 [reserved-chord-fixture-self-contained](.invar/tasks/completed/194-reserved-chord-fixture-self-contained/task-194-reserved-chord-fixture-self-contained.md) — d3721b2
+- #192 [residual-harness-wait-audit](.invar/tasks/completed/192-residual-harness-wait-audit/task-192-residual-harness-wait-audit.md)
+- #191 [terminal-stage-compound-predicate](.invar/tasks/completed/191-terminal-stage-compound-predicate/task-191-terminal-stage-compound-predicate.md)
+- #189 [gate-reds-population-separation](.invar/tasks/completed/189-gate-reds-population-separation/task-189-gate-reds-population-separation.md)
+- #188 [frame-ordinal-wait-regressions](.invar/tasks/completed/188-frame-ordinal-wait-regressions/task-188-frame-ordinal-wait-regressions.md)
+- #187 [wheel-at-clamp-unreachable-wait](.invar/tasks/completed/187-wheel-at-clamp-unreachable-wait/task-187-wheel-at-clamp-unreachable-wait.md)
+- #186 [max-width-rescan-at-500k](.invar/tasks/completed/186-max-width-rescan-at-500k/task-186-max-width-rescan-at-500k.md)
+- #174 [markdown-preview-omits-ragged-table](.invar/tasks/completed/174-markdown-preview-omits-ragged-table/task-174-markdown-preview-omits-ragged-table.md) — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
+- #122 [editor-becomes-final-contributor](.invar/tasks/completed/122-editor-becomes-final-contributor/task-122-editor-becomes-final-contributor.md) — IN-PROGRESS
+- #114 [modularity-umbrella-provider-runtime](.invar/tasks/completed/114-modularity-umbrella-provider-runtime/task-114-modularity-umbrella-provider-runtime.md) — IN-PROGRESS
+- #108 [gear-mark-four-owners-collision](.invar/tasks/completed/108-gear-mark-four-owners-collision/task-108-gear-mark-four-owners-collision.md) — merged 186f2d8, fix 82b746c (user accepted Pair A)
+- #107 [emoji-width-authority-disagreement](.invar/tasks/completed/107-emoji-width-authority-disagreement/task-107-emoji-width-authority-disagreement.md) — glyphs swapped at 966c5d1; the exception list is now empty
+- #77 [coverage-ratchet-remaining-holes](.invar/tasks/completed/77-coverage-ratchet-remaining-holes/task-77-coverage-ratchet-remaining-holes.md) — holes 1 and 2 landed at 4ab250f; hole 3 carved out to #210
+- #59 [prettier-format-gate-and-reformat](.invar/tasks/completed/59-prettier-format-gate-and-reformat/task-59-prettier-format-gate-and-reformat.md) — 243c160 — prettier format gate + one-shot repo reformat (205 files) + blank-line grammar rule; .git-blame-ignore-revs carries the reformat sha; combined-tree gate green except two pre-existing reds (#211 horizontal-extent, #174 ragged table) both reproduced on plain main by control runs
+- #46 [terminal-observer-reverse-presence](.invar/tasks/completed/46-terminal-observer-reverse-presence/task-46-terminal-observer-reverse-presence.md) — 5e10f43 — resolved by #114 Wave B: both waves were already built (TerminalObserver + follow modes); the open question (where the presence channel lives) settled as the terminal-observation capability on the pane; no observer registry; #157 shares the payload vocabulary, not the channel
+- #35 [structure-navigator-plugin-pane](.invar/tasks/completed/35-structure-navigator-plugin-pane/task-35-structure-navigator-plugin-pane.md) — 986ae1c2 — the proof: new citizen with a zero-host-edit diff; documentSymbol outline; scale-invariant request cost; seam finding became #245; round-2 smoke-order fix

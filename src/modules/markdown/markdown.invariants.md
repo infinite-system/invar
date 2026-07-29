@@ -462,24 +462,78 @@ generic `Workspace.resolveFileReference`.
 coordinates. `Workspace.resolveFileReference` — kept in the host because it is GENERIC path
 confinement with no markdown in it, and rendered documents are simply its first caller — strips
 fragments, rejects external schemes and escapes, and confirms the target exists before
-`MarkdownPreviewContent` routes it through `Workspace.openFileInTab`.
+`MarkdownPreviewContent` routes it through `Workspace.openFileInTab` and moves keyboard focus to
+the editor, so the jump is immediately navigable (Back/Forward record both ends through the
+navigation records). A Bootstrap routing guard clears a non-dragging native selection residue on
+Ctrl+left-down — OpenTUI otherwise consumes the down as "extend selection" after any click on
+selectable text, and the link click silently dies before reaching the pane.
 
 **Generates:** clickable standard Markdown links; clickable backtick file paths; hover emphasis and
-an explanatory tooltip; a keyboard activation chord; no-op external or missing targets.
+an explanatory tooltip; a keyboard activation chord; focus following the opened file; the stated
+outcome for external or missing targets (`An unresolvable Markdown link states why`).
 
 **Evidence:** `src/modules/markdown/MarkdownRenderable.ts` (`referenceAtCell`);
-`src/modules/markdown/MarkdownSplitView.ts` (`resolvedReferenceAt`, `openHoveredReference`);
-`src/modules/workspace/Workspace.ts` (`resolveFileReference`); `scripts/smoke-markdown.sh`.
+`src/modules/markdown/MarkdownSplitView.ts` (`referenceAt`, `openHoveredReference`);
+`src/modules/markdown/MarkdownPreviewContent.ts` (`openReference` wiring);
+`src/modules/workspace/Workspace.ts` (`resolveFileReference`);
+`src/modules/app/Bootstrap.ts` (the Ctrl+click routing guard); `scripts/smoke-markdown.sh`;
+`scripts/harness/smoke-markdown-harness.ts`.
 
 **Impossible if true:** a valid in-root backtick path being hovered but unable to open by either
 activation; an HTTP URL or path escaping the workspace being opened as an editor file; the drawn
-reference text and its clickable cells disagreeing.
+reference text and its clickable cells disagreeing; a Ctrl+click on a rendered link dying because
+an earlier click left a native selection residue; a click-opened file whose editor does not hold
+the keyboard.
 
-**Verification:** `bash scripts/smoke-markdown.sh`.
+**Verification:** `bash scripts/smoke-markdown.sh && bun scripts/harness/smoke-markdown-harness.ts`.
 
 **Status:** established
 
-**Last refined:** 2026-07-22
+**Last refined:** 2026-07-29
+
+### An unresolvable Markdown link states why
+
+**Invariant:** If an authored Markdown link (`[label](target)`) is activated in the rendered
+preview and its target does not resolve to a workspace file, then the app states the reason — an
+external-scheme target answers `External link — not opened here: <target>` and a missing file
+answers `Link target not found: <target>` — in the status bar and at the pointer; silence is
+never the outcome. Unresolved inline-code text stays ordinary prose with no affordance and no
+message.
+
+**Scope:** `MarkdownSplitView.referenceAt` / `bindPreviewEvents` (keeping unresolved authored
+links as references), the `notifyUnresolvedReference` option wired by `MarkdownPreviewContent`,
+`Workspace.referenceIsExternal` (the ONE scheme rule, shared with `resolveFileReference`), and
+`MarkdownPlugin` (the `markdownLinkNotice` status projection and status-bar segment).
+
+**Mechanism:** `MarkdownReferenceHit.explicitLink` separates authored links from backtick spans at
+the hit-test, so the unresolved-link case survives resolution failure instead of being dropped.
+Hover explains in place through the shared tooltip; activation additionally writes the message to
+`MarkdownSplitView.linkNotice`, which the plugin's own status-bar segment shows. A later
+successful open clears the owed notice.
+
+**Generates:** the hover explanation before a click is spent; the status-bar answer to a spent
+click; the smoke's missing-target and external-link positive controls; the notice-clearing rule.
+
+**Rejected alternatives:** Opening http(s) targets in a browser — out of scope for a terminal
+editor and a surprise seam. Treating unresolved backtick text as a miss — every non-path backtick
+token would shout.
+
+**Evidence:** `src/modules/markdown/MarkdownSplitView.ts` (`referenceAt`, `linkNotice`, the
+activation branch); `src/modules/markdown/MarkdownPreviewContent.ts` (`notifyUnresolvedReference`
+wiring); `src/modules/markdown/MarkdownPlugin.ts` (`segments`, `markdownLinkNotice`);
+`src/modules/app/Bootstrap.ts` (the Ctrl+click routing guard that keeps the click deliverable);
+`scripts/harness/smoke-markdown-harness.ts` (the "unresolvable link states why" arms).
+
+**Impossible if true:** a Ctrl+click on a rendered link that neither opens a tab nor states why;
+an http(s) link click that silently does nothing; a missing-file link click whose miss is not
+stated; a plain backtick word acquiring a miss message.
+
+**Verification:** `bun scripts/harness/smoke-markdown-harness.ts` and
+`bun test src/modules/markdown/MarkdownSplitView.test.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
 
 ### Markdown preview selection reuses shared drag behavior
 
