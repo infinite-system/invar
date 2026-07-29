@@ -220,6 +220,48 @@ descriptor that the shared allocator does not own.
 
 **Last refined:** 2026-07-24
 
+### A controlling PTY resize reaches the renderer
+
+**Invariant:** If the controlling PTY accepts a positive rows-by-columns window change, then Invar
+accepts the same columns and rows from OpenTUI's renderer resize seam. Published status and the next
+layout projection agree on that viewport.
+
+**Scope:** `OpenPty.resize`, the OpenTUI renderer resize event, Bootstrap's resize projection, and
+`RootView`'s viewport input. Resize policy inside an integrated terminal pane remains owned by
+`TerminalInstance`.
+
+**Mechanism:** `OpenPty.resize` checks the `TIOCSWINSZ` result and throws with `errno` on failure. On
+success, the kernel updates the controlling PTY and OpenTUI emits its renderer resize event.
+Bootstrap publishes the renderer's accepted dimensions. `RootView` resolves its one layout geometry
+from those live renderer dimensions. It never prefers a positive Yoga canvas size, because that size
+still describes the previous frame during a terminal resize.
+
+**Generates:** Loud PTY window-size failures; status dimensions that name the renderer viewport;
+renderer-owned layout inputs; terminal-shrink layout without an input-event handshake.
+
+**Rejected alternatives:** Add a stdout-to-renderer compatibility bridge — removing that bridge
+twice left the real smoke green, so it did not control the defect. Send a harness-only resize
+message — real terminals would stay broken. Prefer `layoutCanvas.width` and `height` when positive —
+those values are one layout frame old during shrink.
+
+**Evidence:** `src/modules/terminal/OpenPty.ts`;
+`src/modules/app/Bootstrap.ts`; `src/modules/ui/RootView.ts`;
+`src/modules/terminal/OpenPty.test.ts` (`a failed PTY window resize names the ioctl and errno`);
+`scripts/harness/smoke-markdown-harness.ts` (120 by 40 to 60 by 25 at 10 and 100,000 lines).
+
+**Impossible if true:** `TIOCSWINSZ` failing silently; the harness emulator showing 60 columns while
+published width remains 120; published width becoming 60 while layout still uses 120 columns; a
+mouse or keyboard byte being required before renderer geometry changes.
+
+**Verification:** `bun test src/modules/terminal/OpenPty.test.ts`; `bun
+scripts/harness/smoke-markdown-harness.ts`; restore the old positive-canvas preference in
+`synchronizeLayoutGeometry` and confirm that published width reaches 60 while the smoke times out
+with the preview still running past column 60.
+
+**Status:** established
+
+**Last refined:** 2026-07-29
+
 ### Shared PTY writes never block the event loop
 
 **Invariant:** If `OpenPty.write` accepts bytes for a PTY master descriptor, then delivery never

@@ -136,3 +136,39 @@ test('a genuine asynchronous PTY write failure names its errno', async () => {
   expect(exitCode, standardError).toBe(0);
   expect(standardOutput).toContain('PTY write failed with errno 9');
 });
+
+test('a failed PTY window resize names the ioctl and errno', async () => {
+  const childSource = String.raw`
+    import { closeSync } from 'node:fs';
+    import { OpenPty } from './src/modules/terminal/OpenPty';
+
+    class BrokenResizeOpenPty extends OpenPty.$Class {
+      breakMasterDescriptor(): void {
+        closeSync(this.masterFileDescriptor);
+      }
+    }
+
+    const openPty = new BrokenResizeOpenPty();
+    openPty.releaseSlaveFileDescriptor();
+    openPty.breakMasterDescriptor();
+    try {
+      openPty.resize(60, 25);
+      process.exit(2);
+    } catch (error) {
+      console.log(error instanceof Error ? error.message : String(error));
+    }
+  `;
+  const child = Bun.spawn([process.execPath, '--eval', childSource], {
+    cwd: process.cwd(),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const exitCode = await child.exited;
+  const standardOutput = await new Response(child.stdout).text();
+  const standardError = await new Response(child.stderr).text();
+
+  expect(exitCode, standardError).toBe(0);
+  expect(standardOutput).toContain(
+    'OpenPty TIOCSWINSZ failed with errno 9 for 60x25',
+  );
+});
