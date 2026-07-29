@@ -1,6 +1,6 @@
 # 298 — breadcrumbs: drop prev/forward (workspace bar owns them); separators a bit lighter
 
-State: IN-PROGRESS
+State: COMPLETED — f3603a8f — breadcrumbs: drop nav arrows, theme-derived lighter separators
 Created: 2026-07-29
 Engine: codex
 Environment: linux
