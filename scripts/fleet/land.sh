@@ -20,6 +20,13 @@
 #   - refuse a mid-turn builder; idle needs the READY report too
 #   - refuse untracked source in the worktree (a merge will not carry it)
 #   - surface bycatch and HOLD without BYCATCH_TRIAGED=1
+#   - REFUSE WITHOUT A READ GATE VERDICT (2026-07-29: the conductor chained
+#     land.sh behind an unchecked wrapper exit and landed #237 on GATE_EXIT=1;
+#     the wrapper's exit was the echo's, not the gate's). GATE_LOG=<path> must
+#     name a log whose GATE_EXIT is 0, or GATE_OVERRIDE=<written reason> takes
+#     the exception deliberately (contract-only landings, batch-covered
+#     serial landings after ONE green log, and red-classified-pre-existing
+#     are the known legitimate reasons — write which).
 #
 # Landing is DELIBERATE: no gate here (gate the combined tree BEFORE), no push.
 
@@ -37,6 +44,25 @@ shift 3
 summary="$*"
 
 [ -f "$merge_message_file" ] || { echo "land: merge message not found: $merge_message_file" >&2; exit 2; }
+
+# Refuse without a READ gate verdict. The wrapper exit code around a gate run
+# is the last command's, not the gate's — the only truth is the GATE_EXIT
+# sentinel in the log itself, and it must be READ, not assumed.
+if [ -n "${GATE_OVERRIDE:-}" ]; then
+  echo "land: gate verdict overridden deliberately: ${GATE_OVERRIDE}"
+elif [ -n "${GATE_LOG:-}" ]; then
+  gate_sentinel="$({ grep -m1 "^GATE_EXIT=" "$GATE_LOG" 2>/dev/null || true; })"
+  if [ "$gate_sentinel" != "GATE_EXIT=0" ]; then
+    echo "land: REFUSING — ${GATE_LOG} has '${gate_sentinel:-no GATE_EXIT sentinel}', not GATE_EXIT=0." >&2
+    exit 6
+  fi
+  echo "land: gate verdict read: GATE_EXIT=0 (${GATE_LOG})"
+else
+  echo "land: REFUSING — no gate verdict supplied. Pass GATE_LOG=<log with GATE_EXIT=0>" >&2
+  echo "  or GATE_OVERRIDE='<written reason>' to take the exception deliberately." >&2
+  exit 6
+fi
+
 
 repository_root="$(git rev-parse --show-toplevel)"
 cd "$repository_root"

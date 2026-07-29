@@ -502,6 +502,12 @@ authoritative liveness signal, not process topology.
   defect already on main is hostage-taking. "Re-run until green" is the same action with none
   of the accounting, and it is never acceptable.
 - **Experiments never merge to main.** Provenance decides main, not quality.
+- **land.sh now REFUSES without a READ verdict (exit 6).** Pass `GATE_LOG=<log>` whose
+  sentinel is `GATE_EXIT=0`, or `GATE_OVERRIDE='<written reason>'` to take the exception
+  deliberately (contract-only landing, batch covered by ONE green log, red classified
+  pre-existing — write which). Bought on 2026-07-29: the conductor chained land.sh behind
+  a wrapper whose exit was an echo's, not the gate's, and landed #237 on GATE_EXIT=1.
+  A verdict must be READ from the log, never inferred from a wrapper's exit code.
 
 ---
 
