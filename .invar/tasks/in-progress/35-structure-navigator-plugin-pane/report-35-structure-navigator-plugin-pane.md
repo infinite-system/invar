@@ -287,6 +287,12 @@ environment on that runner, or a 233-side env difference `scripts/tui-harness.sh
 the completion smoke's own driver does not, which would route it to #233 (wrap contract red —
 settings leak).
 
+**Resolution (conductor, after the above):** reds 2 and 3 were a gate-tree artifact — an
+UNINSTALLED node_modules on the gate's scratch tree, masked by Bun auto-install for 57 steps
+until the unlinked provider binaries broke exactly these two arms. The four green solo runs
+above were correct. Filed as #251 (the gate will refuse an unlinked tree). Nothing further owed
+from this branch.
+
 Verification after the follow-up: `smoke-activitybar-harness` exit 0 ALL-PASS,
 `behavioral-contracts.sh` exit 0 ALL-PASS, `bunx tsc --noEmit` exit 0, and the worktree is
 clean at `215724d1`. The follow-up touches one smoke file; no production code moved, so the

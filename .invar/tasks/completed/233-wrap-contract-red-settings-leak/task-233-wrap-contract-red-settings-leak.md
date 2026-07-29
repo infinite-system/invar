@@ -1,6 +1,6 @@
 # 233 — wrap-mode contract red: the user's real settings leak into the harness
 
-State: IN-PROGRESS
+State: COMPLETED — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
 Created: 2026-07-29
 Engine: codex
 Environment: linux

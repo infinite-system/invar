@@ -6,9 +6,7 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #233 wrap-contract-red-settings-leak  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/233-wrap-contract-red-settings-leak`
+## IN-PROGRESS (1)
 - #35 structure-navigator-plugin-pane  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
@@ -21,7 +19,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (18)
+## VERIFICATION-INTEGRITY (19)
+- #251 gate-refuses-unlinked-node-modules
 - #243 ui-contract-sibling-rot-round-two
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
@@ -80,9 +79,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 37 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 38 — full log: project.tasks-completed.md)
 - #244 sdk-binary-extraction-leak-fills-disk — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #239 ui-contract-citation-repairs — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
+- #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
@@ -95,4 +95,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #209 mine-session-transcript-for-task-detail — 4e23b88, 3e31e4a
 - #208 git-commit-collapse-wiring-gap — merged 15f51dc
 - #207 silently-discarded-user-input — fb199cb
-- #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
