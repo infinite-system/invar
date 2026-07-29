@@ -27,7 +27,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #90 harness-diagnostic-provenance-guard
 - #75 in-gate-app-crash-undiagnosed  [ACTIVE — reproduced, mechanism still open]
 
-## FLAKE-EVIDENCE (12)
+## FLAKE-EVIDENCE (13)
+- #211 horizontal-extent-grid-wait-timeout
 - #200 input-byte-latency-above-baseline
 - #198 selection-harness-pre-satisfied-wheels
 - #193 fold-dense-contract-row-shortfall  [ACTIVE — single unexplained miss]

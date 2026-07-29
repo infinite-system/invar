@@ -24,6 +24,12 @@ import { createInterface } from 'node:readline';
 const transcriptPath =
   '/home/parallels/.claude/projects/-home-parallels-dev-ibr/faf7e858-c256-4735-9bbd-ba8dca8023dd.jsonl';
 const outputDirectory = process.argv[2];
+if (outputDirectory === undefined) {
+  console.error(
+    'usage: mine-transcript-for-task-detail.ts <output-directory> <task-number>...',
+  );
+  process.exit(2);
+}
 const wantedNumbers = new Set(process.argv.slice(3));
 mkdirSync(outputDirectory, { recursive: true });
 
