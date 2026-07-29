@@ -25,6 +25,7 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #187 wheel-at-clamp-unreachable-wait
 - #186 max-width-rescan-at-500k
 - #174 markdown-preview-omits-ragged-table — 638b5c0 — harness predicate race, not the parser: smoke asserted preview content before the preview parsed the opened revision; fix waits on markdownParsing=false + revision convergence; flip commit faeaa99 (timing, whitespace-only); positive control proved a planted parser defect still reds; bycatch filed as #212
+- #122 editor-becomes-final-contributor — IN-PROGRESS
 - #114 modularity-umbrella-provider-runtime — IN-PROGRESS
 - #108 gear-mark-four-owners-collision — merged 186f2d8, fix 82b746c (user accepted Pair A)
 - #107 emoji-width-authority-disagreement — glyphs swapped at 966c5d1; the exception list is now empty
