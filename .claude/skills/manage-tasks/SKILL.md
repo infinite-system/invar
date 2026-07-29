@@ -54,7 +54,12 @@ Transcripts are not stored here. They are gitignored under `tmp/transcripts/`.
 ```
 bun scripts/tasks/tasks-status.ts             # counts + drift signals
 bun scripts/tasks/tasks-status.ts --self-test # positive control
+bun run tasks:live                            # in-progress + attach commands
+bun run tasks:active                          # backlog by priority
+bun run tasks:done                            # completion log, latest first
 ```
+
+The command reference for humans is `project.tasks.md` in the repo root.
 
 The tracker counts each state and reports five drift signals, strongest first:
 
