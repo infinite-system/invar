@@ -11,10 +11,11 @@
 import {
   copyFileSync,
   existsSync,
-  mkdirSync,
+  mkdtempSync,
   realpathSync,
   statSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { Static } from 'ivue/extras';
 import { KeybindingDefaults } from '../../src/modules/keybindings/KeybindingDefaults';
@@ -39,15 +40,15 @@ class $Drive {
   }
 
   static async main(argumentsList: readonly string[]): Promise<void> {
-    const repositoryRoot = process.cwd();
+    const repositoryRoot = resolve(import.meta.dir, '../..');
     const options = this.parseOptions(argumentsList);
     if (options.showHelp) {
       console.log(this.helpText);
       return;
     }
 
-    const target = await this.prepareTarget(repositoryRoot, options);
-    const homeDirectory = this.createHomeDirectory(repositoryRoot);
+    const target = await this.prepareTarget(options);
+    const homeDirectory = this.createHomeDirectory();
     const statusPath = join(homeDirectory, 'status.json');
     const driver = new PtyTestDriver.Class({
       workspaceRoot: target.workspaceRoot,
@@ -386,17 +387,12 @@ class $Drive {
   }
 
   protected static async prepareTarget(
-    repositoryRoot: string,
     options: DriveOptions,
   ): Promise<DriveTarget> {
     if (options.fixtureSize !== null) {
-      const workspaceRoot = join(
-        repositoryRoot,
-        'tmp',
-        'drive',
-        `fixture-${options.fixtureSize}`,
+      const workspaceRoot = mkdtempSync(
+        join(tmpdir(), `invar-drive-fixture-${options.fixtureSize}-`),
       );
-      mkdirSync(workspaceRoot, { recursive: true });
       const filePath = join(workspaceRoot, `scale-${options.fixtureSize}.txt`);
       const fixtureLines = Array.from(
         { length: options.fixtureSize },
@@ -405,7 +401,11 @@ class $Drive {
           `content at scale ${options.fixtureSize}`,
       );
       await Bun.write(filePath, fixtureLines.join('\n'));
-      return { workspaceRoot, filePath };
+      return {
+        workspaceRoot,
+        filePath,
+        temporaryWorkspaceRoot: workspaceRoot,
+      };
     }
 
     if (options.openPath) {
@@ -421,13 +421,7 @@ class $Drive {
         return { workspaceRoot: canonicalPath, filePath: null };
       }
       if (statSync(canonicalPath).isFile()) {
-        const workspaceRoot = join(
-          repositoryRoot,
-          'tmp',
-          'drive',
-          `file-${crypto.randomUUID()}`,
-        );
-        mkdirSync(workspaceRoot, { recursive: true });
+        const workspaceRoot = mkdtempSync(join(tmpdir(), 'invar-drive-file-'));
         const filePath = join(workspaceRoot, basename(canonicalPath));
         copyFileSync(canonicalPath, filePath);
         return {
@@ -440,8 +434,7 @@ class $Drive {
       throw new Error(`--open requires a file or directory: ${canonicalPath}`);
     }
 
-    const workspaceRoot = join(repositoryRoot, 'tmp', 'drive', 'default');
-    mkdirSync(workspaceRoot, { recursive: true });
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'invar-drive-default-'));
     await Bun.write(
       join(workspaceRoot, 'sample.ts'),
       [
@@ -453,18 +446,15 @@ class $Drive {
         '',
       ].join('\n'),
     );
-    return { workspaceRoot, filePath: null };
+    return {
+      workspaceRoot,
+      filePath: null,
+      temporaryWorkspaceRoot: workspaceRoot,
+    };
   }
 
-  protected static createHomeDirectory(repositoryRoot: string): string {
-    const homeDirectory = join(
-      repositoryRoot,
-      'tmp',
-      'drive',
-      `home-${crypto.randomUUID()}`,
-    );
-    mkdirSync(homeDirectory, { recursive: true });
-    return homeDirectory;
+  protected static createHomeDirectory(): string {
+    return mkdtempSync(join(tmpdir(), 'invar-drive-home-'));
   }
 
   protected static async openFile(
@@ -839,7 +829,7 @@ class $Drive {
       '',
       '  --open PATH          open a workspace or file',
       '  --geometry COLUMNSxROWS',
-      '  --size LINE_COUNT    generate and open a scale fixture under tmp/',
+      '  --size LINE_COUNT    generate and open a temporary scale fixture',
       '  --key NAME           send one named key; repeat to preserve order',
       '  --wheel DIRECTION    send one wheel notch at the grid center',
       '  --click TARGET       click COLUMN,ROW, text=TEXT, or fold-control=TEXT',

@@ -111,6 +111,36 @@ describe('QuickOpen', () => {
     expect(quickOpen.fileEnumerationMessage.value).toBe('');
   });
 
+  test('an empty Git fallback stays visibly degraded when ripgrep is absent', async () => {
+    const processArguments: string[][] = [];
+    const quickOpen = new QuickOpen.Class({
+      runProcess: async (argumentVector) => {
+        processArguments.push(argumentVector);
+        if (argumentVector[0] === 'rg') {
+          return {
+            code: -1,
+            stdout: '',
+            stderr: 'Executable not found',
+            ok: false,
+          };
+        }
+        return { code: 0, stdout: '', stderr: '', ok: true };
+      },
+    });
+
+    await quickOpen.show('/ignored-project');
+
+    expect(processArguments).toEqual([
+      ['rg', '--files'],
+      ['git', 'ls-files', '--cached', '--others', '--exclude-standard'],
+    ]);
+    expect(quickOpen.matches.value).toEqual([]);
+    expect(quickOpen.fileEnumerationState.value).toBe('degraded');
+    expect(quickOpen.fileEnumerationMessage.value).toBe(
+      'enumeration degraded — install ripgrep or open a git-tracked folder',
+    );
+  });
+
   test('every failed enumeration strategy publishes failure instead of empty', async () => {
     const quickOpen = new QuickOpen.Class({
       runProcess: async () => ({

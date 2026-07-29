@@ -76,15 +76,12 @@ class $QuickOpenRenderer {
         '  Check ripgrep, Git, or folder permissions',
       ];
     }
+    if (quickOpen.fileEnumerationState.value === 'degraded') {
+      return [`  ${quickOpen.fileEnumerationMessage.value}`];
+    }
     const emptyResultMessage = quickOpen.query.value
       ? '  (no matching files)'
       : '  (no project files)';
-    if (quickOpen.fileEnumerationState.value === 'degraded') {
-      return [
-        `  ${quickOpen.fileEnumerationMessage.value}`,
-        emptyResultMessage,
-      ];
-    }
     return [emptyResultMessage];
   }
 

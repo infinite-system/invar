@@ -1153,7 +1153,9 @@ class $OverlayLayer {
             : palette.warning;
         inputChunks.push(
           fg(noticeColour)(
-            `  ${theme.alertIcon} ${quickOpen.fileEnumerationMessage.value}`,
+            quickOpen.matches.value.length === 0
+              ? `  ${theme.alertIcon}`
+              : `  ${theme.alertIcon} ${quickOpen.fileEnumerationMessage.value}`,
           ),
         );
       }

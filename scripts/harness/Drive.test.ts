@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { TerminalEmulator } from '../../src/modules/terminal/TerminalEmulator';
+import { HarnessSmoke } from './HarnessSmoke';
 import { HarnessSnapshot, type HarnessSnapshotCell } from './HarnessSnapshot';
 import { Drive } from './Drive';
 
@@ -29,6 +33,19 @@ class TestDrive extends Drive.$Class {
       column,
       row,
     });
+  }
+
+  static async preparedTarget(argumentList: readonly string[]): Promise<{
+    workspaceRoot: string;
+    filePath: string | null;
+    temporaryWorkspaceRoot?: string;
+  }> {
+    const target = await this.prepareTarget(this.parseOptions(argumentList));
+    return {
+      workspaceRoot: target.workspaceRoot,
+      filePath: target.filePath,
+      temporaryWorkspaceRoot: target.temporaryWorkspaceRoot,
+    };
   }
 }
 
@@ -149,5 +166,20 @@ describe('Drive role and text click targeting', () => {
     expect(() =>
       TestDrive.foldControlPosition(snapshot, '"group0000": {'),
     ).toThrow('No fold-control role precedes visible text');
+  });
+});
+
+describe('Drive temporary workspaces', () => {
+  test('creates scale fixtures outside the repository and marks them for cleanup', async () => {
+    const target = await TestDrive.preparedTarget(['--size', '10']);
+    try {
+      expect(target.workspaceRoot.startsWith(resolve(tmpdir()))).toBe(true);
+      expect(target.workspaceRoot.includes('/tmp/drive/')).toBe(false);
+      expect(target.temporaryWorkspaceRoot).toBe(target.workspaceRoot);
+      expect(target.filePath).not.toBeNull();
+      expect(existsSync(target.filePath ?? '')).toBe(true);
+    } finally {
+      await HarnessSmoke.Class.removeTemporaryDirectory(target.workspaceRoot);
+    }
   });
 });

@@ -8,8 +8,9 @@ bun run drive
 ```
 
 Use `--open PATH` for a file or workspace, `--geometry 100x30` for the
-terminal size, and `--size 100000` for a generated large-file fixture under
-`tmp/`. Input flags run in order and reprint after each action:
+terminal size, and `--size 100000` for a generated large-file fixture in the
+system temporary directory. Input flags run in order and reprint after each
+action:
 
 File input is copied into a disposable single-file workspace, so exploratory
 edits cannot touch the source. Directory input drives that workspace in place.
