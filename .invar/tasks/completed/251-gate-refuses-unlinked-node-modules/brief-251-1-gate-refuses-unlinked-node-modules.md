@@ -26,13 +26,13 @@ preflight is separable and your controls prove it alone.
 
 - The gate's preflight contract (merge-gate.sh's header comment states the
   gate's own rules — extend it with the ground-truth clause).
-- `scripts/harness/harness.invariants.md` — if a record should state "a
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — if a record should state "a
   verification run's dependencies are proven present", add it; if that
   belongs at the gate layer instead, say why.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — you are reading the gate's preflight
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — you are reading the gate's preflight
 neighborhood, where guards-go-first violations have bitten three times; look
 for other checks that run after side effects. The READY report carries
 `## Bycatch` even if it reads `None observed`.

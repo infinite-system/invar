@@ -1,7 +1,7 @@
 # TASK — #186: every edit that lengthens the widest line rescans the whole document
 
 Work ONLY in this worktree. Do NOT run `scripts/merge-gate.sh`; do NOT push, merge, tag or delete.
-Report to `/tmp/186-max-width-rescan-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then
+Report to [/tmp/186-max-width-rescan-READY.md](../../../../../../../../../../../tmp/186-max-width-rescan-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then
 `bun install` FIRST — a fresh worktree has no `node_modules` and every preflight reds on unresolved
 imports until you do.
 

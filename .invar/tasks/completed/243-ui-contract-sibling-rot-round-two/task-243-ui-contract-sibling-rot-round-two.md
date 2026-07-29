@@ -31,12 +31,12 @@ task.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the three sites.
-- `src/modules/ui/ui.lattice.md` — links stable (217) after.
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the three sites.
+- [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) — links stable (217) after.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

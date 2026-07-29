@@ -20,7 +20,7 @@ Reorder dispatch.sh: guards and base-ref resolution first (all refusals before
 any side effect — the validate-late lesson is already written in the script),
 then the record commit (folder move, brief, meta, views, pathspec commit on
 main), THEN cut the worktree from the commit that contains the move, install,
-copy TASK.md, launch. The branch then carries `in-progress/<task>/` with its
+copy [TASK.md](../../../../TASK.md), launch. The branch then carries `in-progress/<task>/` with its
 brief and meta, and a builder's task-folder commits merge without renames.
 
 Test in a throwaway clone (never the live repo), RECORD_ONLY=1 for the record

@@ -20,13 +20,13 @@ as its own task?
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the three sites, plus any siblings
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the three sites, plus any siblings
   your reading finds.
-- `src/modules/ui/ui.lattice.md` — links stable (217) after, counts quoted.
+- [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) — links stable (217) after, counts quoted.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — comment drift above all; you are reading rot's
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — comment drift above all; you are reading rot's
 favorite neighborhoods. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 

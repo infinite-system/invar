@@ -1,7 +1,7 @@
 # Brief — #219: retrofit the source-text view onto the PaneContent seam
 
 Read first, in order:
-1. `.invar/tasks/active/219-source-text-view-onto-pane-content-seam/task-219-source-text-view-onto-pane-content-seam.md`
+1. [.invar/tasks/active/219-source-text-view-onto-pane-content-seam/task-219-source-text-view-onto-pane-content-seam.md](task-219-source-text-view-onto-pane-content-seam.md)
 2. `.invar/tasks/completed/218-workspace-buffer-splits-document-from-view/report-218-...md`
    — "The boundary I stopped at" maps your starting line exactly. Read it twice.
 3. `.invar/tasks/completed/114-modularity-umbrella-provider-runtime/` — both reports:
@@ -49,5 +49,5 @@ also have been driven green BEFORE your first edit, so silence is a comparison.
 
 Do not run `scripts/merge-gate.sh`. Commit with
 `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`. Leave the tree
-clean. Prose per `.claude/skills/ste-expression/SKILL.md`, flavored. Report
+clean. Prose per [.claude/skills/ste-expression/SKILL.md](../../../../.claude/skills/ste-expression/SKILL.md), flavored. Report
 bycatch explicitly.

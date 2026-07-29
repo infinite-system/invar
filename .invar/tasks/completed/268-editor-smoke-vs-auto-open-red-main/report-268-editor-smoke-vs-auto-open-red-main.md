@@ -28,8 +28,8 @@ error: FAIL wrap-off keeps consecutive logical lines on consecutive terminal row
 
 My probe (`.invar/tasks/in-progress/268-editor-smoke-vs-auto-open-red-main/probe-268-wrap-off-grid.ts`,
 committed) repeats the smoke's walk and prints the grid with column rulers.
-The tree-walk opens `fixtures/README.md`. The preview auto-opens LEFT of the
-source, per the record in `src/modules/markdown/markdown.invariants.md`. The
+The tree-walk opens [fixtures/README.md](../../../../fixtures/README.md). The preview auto-opens LEFT of the
+source, per the record in [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md). The
 editor pane now spans columns ~79–119; the preview spans ~38–78. The typed X
 sits at row 7, column 85; the gutter digits sit at columns ~82–83. The
 smoke's `gutterNumber()` read the fixed window `slice(37, 44)` — now inside
@@ -92,10 +92,10 @@ The plant is removed; `git diff --stat src/` is empty on the commit.
 (the known flake classes; my diff does not touch them).
 
 **Records honored.** The wrap-off record ("One visible file line is one
-visual row when word wrap is off", `src/modules/ui/ui.invariants.md`) keeps
+visual row when word wrap is off", [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)) keeps
 its smoke check with the same label. The auto-open record ("The Markdown
 preview opens itself and sits on the configured side",
-`src/modules/markdown/markdown.invariants.md`) is untouched; the smoke now
+[src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md)) is untouched; the smoke now
 holds WITH the preview open, which is the point.
 
 ## Bycatch
@@ -105,7 +105,7 @@ holds WITH the preview open, which is the point.
   `slice(37,44)` gutter window. Suspect red under the auto-open default if
   anyone runs the `INVAR_FULL_TMUX=1` tier (the gate skips it). Not run,
   not fixed here. Note: the wrap-off record's Evidence and Verification
-  lines in `src/modules/ui/ui.invariants.md` cite this legacy check, so
+  lines in [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) cite this legacy check, so
   the record points at a stale instrument once that red is confirmed.
 - **Other smokes hard-code editor-area columns** (they hold today because
   their fixtures are not markdown, so no preview opens; named, not fixed):

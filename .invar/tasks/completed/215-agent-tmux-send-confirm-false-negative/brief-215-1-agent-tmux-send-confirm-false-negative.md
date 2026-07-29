@@ -1,8 +1,8 @@
 # Brief — #215: agent-tmux send-confirm false negative (three sightings)
 
-Read first: `.invar/tasks/active/215-agent-tmux-send-confirm-false-negative/task-215-agent-tmux-send-confirm-false-negative.md`,
+Read first: [.invar/tasks/active/215-agent-tmux-send-confirm-false-negative/task-215-agent-tmux-send-confirm-false-negative.md](task-215-agent-tmux-send-confirm-false-negative.md),
 then `.claude/skills/agent-tmux/scripts/agent-tmux.sh` (the `send` verb) and
-`.claude/skills/agent-tmux/SKILL.md`.
+[.claude/skills/agent-tmux/SKILL.md](../../../../.claude/skills/agent-tmux/SKILL.md).
 
 ## The defect
 

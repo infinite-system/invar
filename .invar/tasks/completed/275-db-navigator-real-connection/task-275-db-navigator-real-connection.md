@@ -38,13 +38,13 @@ not a blank pane.
 
 ## Invariants in scope
 
-- The provider seam records from #245 (plugins.invariants.md rendezvous);
+- The provider seam records from #245 ([plugins.invariants.md](../../../../src/modules/plugins/plugins.invariants.md) rendezvous);
   the database plugin's own record (author or extend); settings records if
   a connection setting is added.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

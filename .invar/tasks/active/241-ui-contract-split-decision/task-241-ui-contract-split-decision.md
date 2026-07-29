@@ -1,4 +1,4 @@
-# 241 — DECISION: split ui.invariants.md along the five lattice families?
+# 241 — DECISION: split [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) along the five lattice families?
 
 State: ACTIVE
 Created: 2026-07-29
@@ -10,8 +10,8 @@ Priority: architecture-hygiene
 
 ## Outline
 
-Raised by #230. `ui.invariants.md` holds 61 records — the largest contract in
-the repo (project: 32; next module: 20). The new `ui.lattice.md` names five
+Raised by #230. [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) holds 61 records — the largest contract in
+the repo (project: 32; next module: 20). The new [ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) names five
 clean families: the pane seam, bounded-popup geometry, the modal slot,
 scrollbars and marks, editor-body projection. `scroll` was split out of this
 same file already — the precedent exists.
@@ -24,7 +24,7 @@ map.
 
 ## Invariants in scope
 
-All of `ui.invariants.md` and `ui.lattice.md` (read-only until decided).
+All of [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) and [ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) (read-only until decided).
 
 ## Bycatch expected
 
@@ -32,11 +32,11 @@ n/a — decision task.
 
 ## Sources
 
-- `report-230-...md`, "ui.invariants.md is due a split".
+- `report-230-...md`, "[ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) is due a split".
 
 ## Evidence from #243 (2026-07-29)
 
-The contract-layer gap made concrete: `ui.invariants.md`'s header claims it
+The contract-layer gap made concrete: [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md)'s header claims it
 governs `src/modules/ui/`, but the repaired records now cite owners in
 `editor`, `filetree`, and `git` — the contract boundary has not followed the
 pane extractions. This strengthens the split question this task decides.

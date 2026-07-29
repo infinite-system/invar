@@ -29,14 +29,14 @@ says stop: the recorded shape names all three sites and the divergences.
 
 ## Invariants in scope
 
-- ui records naming row rendering/selection; `structure.invariants.md`;
+- ui records naming row rendering/selection; [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md);
   filetree and git domain records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources
 
-- `report-35-structure-navigator-plugin-pane.md`, Bycatch item 3.
+- [report-35-structure-navigator-plugin-pane.md](../../completed/35-structure-navigator-plugin-pane/report-35-structure-navigator-plugin-pane.md), Bycatch item 3.

@@ -29,4 +29,4 @@ the checker task.
 ## Sources
 
 - `.invar/tasks/completed/222-provider-seam-analysis-and-convention/` — report
-  Bycatch item 2 and `analysis-222-minimal-conversion-set.md` Tier 1.
+  Bycatch item 2 and [analysis-222-minimal-conversion-set.md](../../completed/222-provider-seam-analysis-and-convention/analysis-222-minimal-conversion-set.md) Tier 1.

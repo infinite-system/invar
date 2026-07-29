@@ -38,7 +38,7 @@ Found while auditing on-the-class enforcement. A module-level `const CONSTANT = 
 `module-variable` rule, gate-blocking across all 22 modules, with a fixture proving `const
 detachedData = 1` exits 1. **But once the constant moves onto the class, the checker does not
 distinguish `protected static get constant()` from `static readonly constant = 1`.** The getter form is
-law in `project.conventions.md` but is not a distinct AST rule, so a static property slips through.
+law in [project.conventions.md](../../../../project.conventions.md) but is not a distinct AST rule, so a static property slips through.
 
 Fold that rule in here, **with care**: namespace-manifest assignments like `static snapshot = $snapshot`
 are static properties BY DESIGN. The rule must flag only *literal* initializers.

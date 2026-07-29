@@ -18,8 +18,8 @@ smoke already declared fixed, not a new sighting. `move-line` shows the same sig
 Converted into the #161–#167 batch during a sweep. Worth stating what that batch contained, because it
 is the argument for the sweep itself:
 
-> Three were **user-visible defects**: Quick Open opening `project.tasks.md` while publishing and
-> rendering `TASK.md`; the Files pane blank at settled boot with `treeRows=50` published; the Settings
+> Three were **user-visible defects**: Quick Open opening [project.tasks.md](../../../../project.tasks.md) while publishing and
+> rendering [TASK.md](../../../../TASK.md); the Files pane blank at settled boot with `treeRows=50` published; the Settings
 > selection moving below the painted viewport at 80×24. **A user would have hit all three, and none of
 > them came from anyone looking for them.**
 

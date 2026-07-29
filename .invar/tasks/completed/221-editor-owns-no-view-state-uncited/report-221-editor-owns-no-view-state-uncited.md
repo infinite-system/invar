@@ -24,12 +24,12 @@ I folded each clause into its current owner:
 - *The source text editor is a pane content citizen* retains the host boundary.
   The host owns no source-text render, selection, caret, or hit-test path.
 - The cursor and viewport ownership correction remains in
-  `project.decisions.md`.
+  [project.decisions.md](../../../../project.decisions.md).
 
-`editor.invariants.md` keeps a visible folded-record pointer. It names the
+[editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) keeps a visible folded-record pointer. It names the
 former position and links every replacement record.
 
-`project.lattice.md` now records the composition *Source text state survives
+[project.lattice.md](../../../../project.lattice.md) now records the composition *Source text state survives
 replaceable projection*. It derives persistent fold state and replaceable
 rendering from the five current records.
 
@@ -47,7 +47,7 @@ to narrower current records. No annotation disappeared because the old record
 had no annotation.
 
 The checker still prints `one category is empty — fine while bootstrapping` for
-`editor.invariants.md`. I left it in place. This fold did not expose an
+[editor.invariants.md](../../../../src/modules/editor/editor.invariants.md). I left it in place. This fold did not expose an
 editor-specific reality invariant.
 
 ## Positive control

@@ -38,4 +38,4 @@ with the baseline re-reviewed UPWARD in writing, or a ranked ladder of accumulat
 
 ## Sources
 
-- `brief-200-1-input-byte-latency-above-baseline.md`
+- [brief-200-1-input-byte-latency-above-baseline.md](brief-200-1-input-byte-latency-above-baseline.md)

@@ -1,7 +1,7 @@
 # TASK — #187: the wheel-at-clamp wait. Two consumers, one shape. SOLE GATE BLOCKER.
 
 Work ONLY in this worktree. Branch `fleet/187-clamp`. Do NOT push, merge, tag or delete. Report to
-`/tmp/187-clamp-READY.md`. `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
+[/tmp/187-clamp-READY.md](../../../../../../../../../../../tmp/187-clamp-READY.md). `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST.
 
 **YOU ARE THE ONLY BUILDER.** You may run `scripts/merge-gate.sh` — and you must, because the tree
 already carries #189, #191 and #192's repairs, so **your gate is also main's verification.** Take the
@@ -85,7 +85,7 @@ implicated files had no diff.
 ## Repo law
 
 `export let Class = $Class`; the `Static()` wrapper lives at the `$Class` anchor; `Reactive()` is exempt.
-Harness invariant records at `scripts/harness/harness.invariants.md`, cited by ROOT-RELATIVE path. Full
+Harness invariant records at [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md), cited by ROOT-RELATIVE path. Full
 descriptive identifier names — no abbreviations. 80 columns.
 
 ## Verification — quote exact exit codes, never read `$?` after a pipeline

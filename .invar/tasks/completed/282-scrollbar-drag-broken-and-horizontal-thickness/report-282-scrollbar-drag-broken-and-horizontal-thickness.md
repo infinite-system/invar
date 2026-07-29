@@ -75,7 +75,7 @@ The unit contract supplies the dark pair `#1a1b26` and `#7aa2f7`, and the light 
 `#2e7de9`. Both paint only `▄`, with both supplied foreground colours present. The real default
 frame painted 45 lower-half cells and zero full blocks.
 
-I refined `ui.invariants.md` and `ui.lattice.md`. The selected record is now “One scrollbar painter
+I refined [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) and [ui.lattice.md](../../../../src/modules/ui/ui.lattice.md). The selected record is now “One scrollbar painter
 gives each axis equal visual weight.” It permits lower-half glyphs only on horizontal bars and keeps
 the seamless background-fill rule on vertical bars.
 
@@ -122,7 +122,7 @@ I removed the plant. The focused and complete scrollbar harnesses then passed.
 
 The reusable history probe is
 `.invar/tasks/active/282-scrollbar-drag-broken-and-horizontal-thickness/282-scrollbar-drag-history-probe.ts`.
-Its header gives the exact command and explains every reported number. `project.tools.md` lists it.
+Its header gives the exact command and explains every reported number. [project.tools.md](../../../../project.tools.md) lists it.
 
 ## Verification
 

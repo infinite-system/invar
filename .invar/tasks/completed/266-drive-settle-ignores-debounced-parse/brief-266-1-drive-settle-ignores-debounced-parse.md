@@ -29,12 +29,12 @@ your fix should cover or explicitly scope them:
 
 ## Invariants in scope
 
-- `scripts/harness/harness.invariants.md` — the settled-frame contract;
+- [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md) — the settled-frame contract;
   the drive tool's records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## End state (mechanical)

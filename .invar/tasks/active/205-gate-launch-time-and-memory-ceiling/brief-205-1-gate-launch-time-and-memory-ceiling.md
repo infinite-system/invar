@@ -10,7 +10,7 @@ measured causes — not to make the retries stop being reported.
 - The conductor skill's sections on **asking for evidence of a change that will not happen** (this
   repo's dominant defect class, now seven spellings), **a pre-satisfied wait**, and **a repaired
   instrument needs its subject's states enumerated, not the last failure replayed**.
-- `scripts/harness/drive.md` and `scripts/harness/harness.invariants.md`.
+- [scripts/harness/drive.md](../../../../scripts/harness/drive.md) and [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md).
 - IBR: several of these are probably ONE defect wearing different names. Reduce before repairing. A
   repair that fixes one smoke and leaves its four siblings is a symptom fix.
 
@@ -111,6 +111,6 @@ path. Full descriptive identifier names. 80 columns. A fragment, not a substitut
 count off this tree), `bun scripts/check-coverage-ratchet.ts`, `bash scripts/behavioral-contracts.sh`.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean. Report to
-`/tmp/205-flake-population-READY.md`: the dependency tables, the before/after run tables with exit
+[/tmp/205-flake-population-READY.md](../../../../../../../../../../../tmp/205-flake-population-READY.md): the dependency tables, the before/after run tables with exit
 codes, each positive control red then green, any reduction to a shared generator, and everything you
 could not establish. An honest partial result with measured mechanisms is the expected deliverable.

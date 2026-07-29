@@ -104,6 +104,6 @@ annotation count off this tree rather than chasing a number from a brief),
 `bun scripts/check-coverage-ratchet.ts`, `bash scripts/behavioral-contracts.sh`.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean. Report to
-`/tmp/194-reserved-chord-READY.md`: the contradiction's resolution, the run tables with exit codes, the
+[/tmp/194-reserved-chord-READY.md](../../../../../../../../../../../tmp/194-reserved-chord-READY.md): the contradiction's resolution, the run tables with exit codes, the
 positive control shown red then green, and anything you could not establish. An honest negative is a
 valid deliverable; a confident claim measurement does not support is not.

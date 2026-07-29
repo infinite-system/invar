@@ -28,4 +28,4 @@ the unreachable-wait class (family 1), not load.
 
 ## Sources
 
-- `report-59-prettier-format-gate-and-reformat.md` (## Bycatch) — the finding's origin, verbatim.
+- [report-59-prettier-format-gate-and-reformat.md](../59-prettier-format-gate-and-reformat/report-59-prettier-format-gate-and-reformat.md) (## Bycatch) — the finding's origin, verbatim.

@@ -203,20 +203,20 @@ a plugin (the manifest smoke caught this).
 
 ## Contract changes
 
-- `structure.invariants.md`: the citizen record now names the right dock and the setting;
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md): the citizen record now names the right dock and the setting;
   the answers-or-declines record gains the per-file-type multi-source component; NEW record
   "The structure pane shows itself for a supported document"; the jump record notes the
   dock blur.
-- `markdown.invariants.md`: NEW record "Markdown headings are the document's structure".
-- `plugins.invariants.md`: the rendezvous record gains the "A consumer can enumerate"
+- [markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md): NEW record "Markdown headings are the document's structure".
+- [plugins.invariants.md](../../../../src/modules/plugins/plugins.invariants.md): the rendezvous record gains the "A consumer can enumerate"
   component (`resolveAll`); evidence updated; the census path corrected from
   `tasks/active/245-…` to `tasks/completed/245-…` (it had rotted when #245 completed).
-- `ui.invariants.md`: the right-dock toggle record's scope and generates now name the
+- [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md): the right-dock toggle record's scope and generates now name the
   first occupant and the content-context key routing.
 
 ## Bycatch
 
-- FIXED (in the task commit, in-scope record): `plugins.invariants.md` cited the #245
+- FIXED (in the task commit, in-scope record): [plugins.invariants.md](../../../../src/modules/plugins/plugins.invariants.md) cited the #245
   census at `tasks/active/…` after the folder moved to `tasks/completed/…` — comment
   drift; both citations corrected.
 - Generator drift risk, named: `Bootstrap.ts` now holds two near-copies of the

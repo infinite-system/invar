@@ -26,12 +26,12 @@ a smoke starts asserting boot frames.
 
 ## Invariants in scope
 
-- `structure.invariants.md` — the citizen record if it names the activity
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) — the citizen record if it names the activity
   action; the pane interface records.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

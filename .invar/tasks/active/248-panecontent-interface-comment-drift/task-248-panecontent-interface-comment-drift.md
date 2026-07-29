@@ -26,15 +26,15 @@ do not guess the citizen list. Nothing else in the file changes.
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — if any record cites the header's
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — if any record cites the header's
   claim, repoint it; lattice links stable after.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — comment drift especially: you are reading a file
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — comment drift especially: you are reading a file
 whose header rotted once already; check its neighbors. The READY report
 carries `## Bycatch` even if it reads `None observed`.
 
 ## Sources
 
-- `report-35-structure-navigator-plugin-pane.md`, Bycatch item 4.
+- [report-35-structure-navigator-plugin-pane.md](../../completed/35-structure-navigator-plugin-pane/report-35-structure-navigator-plugin-pane.md), Bycatch item 4.

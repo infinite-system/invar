@@ -1,9 +1,9 @@
-# project.active-tasks.md — AUTO-GENERATED, NEVER EDIT BY HAND
+# [project.active-tasks.md](project.active-tasks.md) — AUTO-GENERATED, NEVER EDIT BY HAND
 
 Every byte of this file is written by `bun scripts/tasks/tasks-status.ts write-active`,
 derived from the Priority: field in each task file. Any hand edit is destroyed on the next
 regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING is
-hand-written in the sibling file `project.active-priority-tasks.md`.
+hand-written in the sibling file [project.active-priority-tasks.md](project.active-priority-tasks.md).
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
 ## IN-PROGRESS (3)
@@ -89,7 +89,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 61 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 61 — full log: [project.tasks-completed.md](project.tasks-completed.md))
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
 - #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position

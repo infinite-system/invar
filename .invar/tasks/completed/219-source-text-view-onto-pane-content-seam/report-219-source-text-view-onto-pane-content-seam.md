@@ -17,7 +17,7 @@ seam grew is one capability that says **who paints**.
 exactly one surface: cells the host paints, or renderables it owns and paints itself. Never both,
 never neither.
 
-The reason `render` had to become optional is AGENTS.md rule 2's own tell. Keeping it required
+The reason `render` had to become optional is [AGENTS.md](../../../../AGENTS.md) rule 2's own tell. Keeping it required
 would have forced the editor to return an empty `StyledText` it never uses — a consumer
 suppressing the seam's core to be allowed through it. That is the signal that the boundary is in
 the wrong place, so I moved the boundary instead of the editor.
@@ -68,8 +68,8 @@ Three splits I had to name to get this right:
 
 ## The rules the removed branches were carrying — written FIRST
 
-Per the #114 lesson, both layers. Two records went into `src/modules/ui/ui.invariants.md` before
-any branch came out, and one component into `workspace.invariants.md`.
+Per the #114 lesson, both layers. Two records went into [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) before
+any branch came out, and one component into [workspace.invariants.md](../../../../src/modules/workspace/workspace.invariants.md).
 
 **A pane content projects through exactly one surface.** Its components record what only comments
 enforced: the resolver asks the capability first; neither surface is a defect and gets named, not a
@@ -200,12 +200,12 @@ this diff will look for and not find. They are boundaries, not oversights.
   item above.
 - **The invariant record *The editor owns no view state* still has no citing annotation.** The
   checker reports it as a coverage gap. Pre-existing, already filed as #221.
-- **`editor.invariants.md` still emits `one category is empty — fine while bootstrapping`.**
+- **[editor.invariants.md](../../../../src/modules/editor/editor.invariants.md) still emits `one category is empty — fine while bootstrapping`.**
   Pre-existing, flagged by #122, unchanged.
 - **`Enter` on a freshly opened directory workspace does not open the selected tree row**, because
   focus starts on the editor, not the tree. A click on the row does. Reproduced twice. This is
   probably correct behaviour rather than a defect, but it costs every new drive script one wrong
-  turn, and `drive.md` does not say it.
+  turn, and [drive.md](../../../../scripts/harness/drive.md) does not say it.
 - No mispainted cell, focus jump, stall, or wrong glyph was seen in any drive, at any of the three
   scales, before or after.
 

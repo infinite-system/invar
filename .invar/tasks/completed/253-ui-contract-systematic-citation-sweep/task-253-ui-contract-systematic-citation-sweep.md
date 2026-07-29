@@ -1,4 +1,4 @@
-# 253 — the systematic sweep: every ui.invariants.md citation AST-verified
+# 253 — the systematic sweep: every [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) citation AST-verified
 
 State: COMPLETED — ad6abff4 — all 244 fields verified via census table; checker refuses short paths repo-wide
 Created: 2026-07-29
@@ -15,7 +15,7 @@ more, plus a fourth dead path found by a mere path census): the
 neighborhoods keep yielding, so rot is NOT exhausted and spot repair has hit
 its limit. This task is the sweep both reports asked for.
 
-Enumerate EVERY citation in `src/modules/ui/ui.invariants.md` — Mechanism,
+Enumerate EVERY citation in [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — Mechanism,
 Evidence, Scope, and Verification sections — and verify each named path
 exists AND each named symbol is owned by the cited file (AST, via
 `bun scripts/ast-query.ts identifiers <name> --tests`; existence checks
@@ -43,13 +43,13 @@ removed), evidence pointer. The exhaustion claim this time must be earned:
 
 ## Invariants in scope
 
-- `src/modules/ui/ui.invariants.md` — the whole file.
-- `src/modules/ui/ui.lattice.md` — 217 links stable, counts quoted.
+- [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) — the whole file.
+- [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md) — 217 links stable, counts quoted.
 - The checker itself if the short-form decision changes it.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy — the contract-boundary gap especially: #243 found
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy — the contract-boundary gap especially: #243 found
 the header's claimed scope (`src/modules/ui/`) no longer matches owners in
 editor/filetree/git; that evidence belongs to #241 (the user's split
 decision), report anything more you find toward it.

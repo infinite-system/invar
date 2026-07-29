@@ -20,12 +20,12 @@ segments*, after which the seven become instances with their own geometry.
 convention 2 rejects over-unification as firmly as duplication. The lattice
 records the recurring SHAPE as the honest halfway point. The decision: is the
 shape a project-level record (the seven cite it), or is the shared prose the
-tell of a false unification? Decide reading `ui.lattice.md`'s "recurring
+tell of a false unification? Decide reading [ui.lattice.md](../../../../src/modules/ui/ui.lattice.md)'s "recurring
 shapes" section; if promoted, the edit is small and contract-only.
 
 ## Invariants in scope
 
-The seven named ui records; `project.invariants.md` (the candidate's home).
+The seven named ui records; [project.invariants.md](../../../../project.invariants.md) (the candidate's home).
 
 ## Bycatch expected
 

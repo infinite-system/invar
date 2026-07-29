@@ -39,12 +39,12 @@ All arms under real defaults, positive control each, labels stable.
 
 ## Invariants in scope
 
-- structure.invariants.md (#274's records — extend, don't fork); the
+- [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) (#274's records — extend, don't fork); the
   settings records; the ivue $cache conventions (project.ivue-reference).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy. The READY report carries `## Bycatch` even if it
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy. The READY report carries `## Bycatch` even if it
 reads `None observed`.
 
 ## Sources

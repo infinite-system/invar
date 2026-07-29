@@ -26,5 +26,5 @@ revision-convergence pattern simply needs applying at the copy/paste seam too.
 
 ## Sources
 
-- `/tmp/174-markdown-preview-omits-ragged-table-READY.md` — Bycatch section
+- [/tmp/174-markdown-preview-omits-ragged-table-READY.md](../../../../../../../../../../../tmp/174-markdown-preview-omits-ragged-table-READY.md) — Bycatch section
   (copied into `.invar/tasks/completed/174-.../` at #174's landing).

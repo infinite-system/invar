@@ -1,7 +1,7 @@
 # TASK — #191: terminal-stage is the hard gate blocker. Split the conjunction first.
 
 Work ONLY in this worktree. Branch `fleet/191-terminal-stage-compound-predicate`. Do NOT push, merge,
-tag or delete. Report to `/tmp/191-terminal-stage-compound-predicate-READY.md`.
+tag or delete. Report to [/tmp/191-terminal-stage-compound-predicate-READY.md](../../../../../../../../../../../tmp/191-terminal-stage-compound-predicate-READY.md).
 `export PATH=$HOME/.bun/bin:$PATH`, then `bun install` FIRST — a fresh worktree has no
 `node_modules`.
 
@@ -85,7 +85,7 @@ and reported its own regressions as pre-existing.
 `export let Class = $Class`; the `Static()` wrapper lives at the `$Class` anchor, never
 `Class = Static($Class)`; `Reactive()` is exempt. Invariant records live at
 `src/modules/<domain>/<domain>.invariants.md` (harness records at
-`scripts/harness/harness.invariants.md`), cited by ROOT-RELATIVE path. Full descriptive identifier
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md)), cited by ROOT-RELATIVE path. Full descriptive identifier
 names — no abbreviations. 80 columns.
 
 ## Verification — quote exact exit codes, never read `$?` after a pipeline

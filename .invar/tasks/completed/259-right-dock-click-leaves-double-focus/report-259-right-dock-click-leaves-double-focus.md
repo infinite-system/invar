@@ -27,7 +27,7 @@ primary dock focused.
 therefore observe all three host focus flags.
 
 The new `One panel host owns keyboard focus` record in
-`src/modules/ui/ui.invariants.md` states the focus-set rule and its evidence.
+[src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) states the focus-set rule and its evidence.
 
 ## Driven evidence
 

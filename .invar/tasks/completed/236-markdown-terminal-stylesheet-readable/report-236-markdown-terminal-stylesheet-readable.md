@@ -13,7 +13,7 @@ glyphs, palette color SLOTS, and text attributes. `MarkdownPreview` asks it
 for geometry. `MarkdownRenderable` asks it for paint. Themes stay upstream:
 the stylesheet names slots, the painter resolves them against the active
 palette. A new record *Markdown presentation resolves through one
-stylesheet* is in `src/modules/markdown/markdown.invariants.md`, and the
+stylesheet* is in [src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md), and the
 census test in `MarkdownStylesheet.test.ts` proves the two consumers hold
 no presentation vocabulary of their own (zero box-drawing or bullet
 literals; zero direct palette slot reads beyond the pane fg/bg defaults).

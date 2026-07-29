@@ -60,8 +60,8 @@ No product parser or renderer code changed.
 - `bunx prettier --check .` — exit `0`
 
 Invariant scope was derived from the touched harness path plus the Markdown
-table fallback assertions: `scripts/harness/harness.invariants.md`,
-`src/modules/markdown/markdown.invariants.md`, and the root project contract.
+table fallback assertions: [scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md),
+[src/modules/markdown/markdown.invariants.md](../../../../src/modules/markdown/markdown.invariants.md), and the root project contract.
 All implicated invariants are upheld (single-pass evidence review, no
 downgrades).
 

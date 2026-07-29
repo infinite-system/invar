@@ -10,7 +10,7 @@ that are not true, and both make it lie quietly rather than fail.
 
 ## Why this comes before anything built on top of it
 
-A follow-on decision (recorded in `project.decisions.md`) is to store drive RECIPES — intent — rather
+A follow-on decision (recorded in [project.decisions.md](../../../../project.decisions.md)) is to store drive RECIPES — intent — rather
 than drive code, precisely because stored scripts rot. A recipe reads "open the nested fixture, collapse
 the first top-level region, type at the root, page past the collapsed body."
 
@@ -51,7 +51,7 @@ an early `return` at `Drive.ts:416-418`. Extend that structure rather than inven
 
 ## Defect 2 — targets are fixed cell coordinates
 
-`scripts/harness/drive.md` documents `--click 60,20`, and a real drive from this session contains
+[scripts/harness/drive.md](../../../../scripts/harness/drive.md) documents `--click 60,20`, and a real drive from this session contains
 `--click 45,7` — two integers encoding "the fold gutter of the first top-level region," true only for
 today's gutter width, sidebar width and layout defaults. #143 was this class at scale: "eight probes
 still keyed to retired copy or fixed rows." A coordinate that lands one column off does not fail; it
@@ -71,7 +71,7 @@ geometry tests, but as the exception that justifies itself rather than the defau
   the right element after a simulated layout shift (change a width/dock that moves it). Per standing
   doctrine, a targeting fix verified against one layout is a fix with one tested outcome — enumerate the
   states, do not replay the one case in front of you.
-- `drive` still works for its existing documented uses; `scripts/harness/drive.md` updated to match the
+- `drive` still works for its existing documented uses; [scripts/harness/drive.md](../../../../scripts/harness/drive.md) updated to match the
   code, since a doc that describes retired behaviour is its own defect (that happened twice today).
 - `git diff --stat`. The user's governing criterion is whether a change complexifies everything
   downstream; the line count is part of the verdict, not a footnote. Prefer extending the existing
@@ -90,7 +90,7 @@ Do NOT run `scripts/merge-gate.sh`, push, merge, tag, or delete branches.
 
 `export let Class = $Class`; the `Static()` wrapper lives at the `$Class` anchor; `Reactive()` is
 exempt. Invariant records at `src/modules/<domain>/<domain>.invariants.md` (harness contracts in
-`scripts/harness/harness.invariants.md`), cited by ROOT-RELATIVE path. Full descriptive identifier names
+[scripts/harness/harness.invariants.md](../../../../scripts/harness/harness.invariants.md)), cited by ROOT-RELATIVE path. Full descriptive identifier names
 — `lineIndex` not `i`. 80 columns. A fragment, not a substitute for the conventions and skills.
 
 ## Verification — quote exact exit codes, never read `$?` after a pipeline
@@ -101,5 +101,5 @@ count off this tree), `bun scripts/check-coverage-ratchet.ts`, `bash scripts/beh
 plus the drive invocations above with their exit codes.
 
 Commit with `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`; leave the tree clean. Report to
-`/tmp/204-drive-tool-READY.md`: the chord case before and after, each positive control shown red then
+[/tmp/204-drive-tool-READY.md](../../../../../../../../../../../tmp/204-drive-tool-READY.md): the chord case before and after, each positive control shown red then
 green, the layout-shift evidence for targeting, the diff stat, and anything you could not establish.

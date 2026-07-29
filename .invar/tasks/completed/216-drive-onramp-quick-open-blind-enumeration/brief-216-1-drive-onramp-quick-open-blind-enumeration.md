@@ -1,6 +1,6 @@
 # Brief — #216: fix drive's on-ramp and make empty enumeration visible
 
-Read first: `.invar/tasks/active/216-drive-onramp-quick-open-blind-enumeration/task-216-drive-onramp-quick-open-blind-enumeration.md`.
+Read first: [.invar/tasks/active/216-drive-onramp-quick-open-blind-enumeration/task-216-drive-onramp-quick-open-blind-enumeration.md](task-216-drive-onramp-quick-open-blind-enumeration.md).
 It carries both defects with their mechanism. Reproduction is deterministic:
 `bun run drive --size 100000 --key Control+End` on an unmodified tree.
 
@@ -42,5 +42,5 @@ uninstalling anything).
 
 Do not run `scripts/merge-gate.sh`. Commit with
 `SKIP_GATE=1 git -c commit.gpgsign=false commit -F <file>`. Leave the tree
-clean. Prose per `.claude/skills/ste-expression/SKILL.md`, flavored. Report
+clean. Prose per [.claude/skills/ste-expression/SKILL.md](../../../../.claude/skills/ste-expression/SKILL.md), flavored. Report
 bycatch explicitly.

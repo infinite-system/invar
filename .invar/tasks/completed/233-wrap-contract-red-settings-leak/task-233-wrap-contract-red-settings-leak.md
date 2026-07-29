@@ -47,14 +47,14 @@ inverse arm: a harness run must leave the real settings file byte-identical.
 
 ## Invariants in scope
 
-- The wrap/scroll records in `src/modules/editor/` and `scroll.invariants.md`
+- The wrap/scroll records in `src/modules/editor/` and [scroll.invariants.md](../../../../src/modules/ui/scroll.invariants.md)
   that the wrap-mode contract cites — read which one asserts visual-row
   scrolling, and whether it states the DEFAULTS assumption anywhere.
-- `project.conventions.md` defaults-first doctrine.
+- [project.conventions.md](../../../../project.conventions.md) defaults-first doctrine.
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

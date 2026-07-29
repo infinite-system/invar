@@ -30,14 +30,14 @@ establishes).
 
 ## Invariants in scope
 
-- Whatever `structure.invariants.md` #35 authors — this task extends it and
+- Whatever [structure.invariants.md](../../../../src/modules/structure/structure.invariants.md) #35 authors — this task extends it and
   must keep it SHORTER-or-clearer per the burden-of-proof rule.
-- The right-dock records in `ui.invariants.md`.
+- The right-dock records in [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md).
 - The provider-kind records (#103).
 
 ## Bycatch expected
 
-Per AGENTS.md's taxonomy, all seven categories. The READY report carries
+Per [AGENTS.md](../../../../AGENTS.md)'s taxonomy, all seven categories. The READY report carries
 `## Bycatch` even if it reads `None observed`.
 
 ## Sources

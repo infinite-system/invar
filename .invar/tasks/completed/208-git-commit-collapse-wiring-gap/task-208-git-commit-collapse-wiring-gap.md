@@ -34,5 +34,5 @@ fixes and confirmed the persistence works on a real run rather than only against
 
 ## Sources
 
-- `brief-208-1-git-commit-collapse-wiring-gap.md`
+- [brief-208-1-git-commit-collapse-wiring-gap.md](brief-208-1-git-commit-collapse-wiring-gap.md)
 - Detail above additionally recovered from the session transcript (`faf7e858-…jsonl`).

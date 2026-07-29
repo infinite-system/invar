@@ -9,11 +9,11 @@ Tree: clean
 
 ## Scope
 
-The sweep covered all 61 records in `src/modules/ui/ui.invariants.md`.
+The sweep covered all 61 records in [src/modules/ui/ui.invariants.md](../../../../src/modules/ui/ui.invariants.md).
 It inspected all 244 Scope, Mechanism, Evidence, and Verification fields.
 Of these fields, 234 contain one or more code citations.
 
-The sweep also covered `src/modules/ui/ui.lattice.md`.
+The sweep also covered [src/modules/ui/ui.lattice.md](../../../../src/modules/ui/ui.lattice.md).
 The resolved lattice count stayed at 217 before and after the change.
 
 The checker changed because it accepted file-relative contract paths.
@@ -344,10 +344,10 @@ No runtime behavior changed, so scale parity does not apply.
 
 ## Bycatch
 
-- **Contract-layer gap:** `ui.invariants.md` claims `src/modules/ui/` scope,
+- **Contract-layer gap:** [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) claims `src/modules/ui/` scope,
   but it contains 86 explicit path citations into 13 other modules.
   The modules are agent, app, commands, editor, filetree, git, keybindings,
   lsp, settings, system, terminal, theme, and workspace.
-  This strengthens #241 (decide whether to split `ui.invariants.md` along
+  This strengthens #241 (decide whether to split [ui.invariants.md](../../../../src/modules/ui/ui.invariants.md) along
   its five lattice families). I did not change the contract boundary.
 
