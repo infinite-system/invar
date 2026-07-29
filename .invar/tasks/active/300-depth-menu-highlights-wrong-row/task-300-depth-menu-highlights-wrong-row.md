@@ -41,3 +41,17 @@ it reads `None observed`.
 ## Sources
 
 - User message 2026-07-29 ~17:1x (verbatim above).
+
+## Refinement (user, 2026-07-29 ~17:2x, verbatim)
+
+"also maybe current should not say current just have a highlight on the
+left or right like the activity bar does"
+
+Replace the "(current)" TEXT with the activity bar's active-indicator
+vocabulary: an edge marker (left or right — match the activity bar's
+side convention) on the current value's row. One indicator vocabulary
+across activity bar and value-picker menus; the text suffix goes away.
+The initial-highlight arm above still binds — the highlight starts on
+the marked row, and marker + highlight derive from the one source.
+Driven both themes: the marker cell paints the active-indicator slot;
+no row text contains "(current)".
