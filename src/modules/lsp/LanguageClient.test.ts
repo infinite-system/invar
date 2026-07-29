@@ -179,6 +179,7 @@ test('a missing server executable degrades to unavailable without throwing', asy
           hover: true,
           references: true,
           completion: true,
+          documentSymbols: true,
         },
         supportsPath: (path: string) => path.endsWith('.ts'),
         resolve: async () => null,

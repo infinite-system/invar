@@ -22,15 +22,22 @@ import type {
   WorkspaceContribution,
   WorkspaceProvider,
 } from '../workspace/WorkspaceContributor.interface';
+import type {
+  StructureOutlineResult,
+  StructureSource,
+} from '../structure/StructureSource.interface';
+import { StructureSources } from '../structure/StructureSources';
 import { LanguageClient } from './LanguageClient';
 
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
 // invariant: LSP is a provider plugin (src/modules/lsp/lsp.invariants.md)
+// invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
 class $LspWorkspaceProvider
   implements
     WorkspaceContribution,
     LanguageProvider,
-    GutterDecorationContribution
+    GutterDecorationContribution,
+    StructureSource
 {
   readonly identifier = 'language' as const;
   readonly providers: readonly WorkspaceProvider[] = [this];
@@ -38,6 +45,7 @@ class $LspWorkspaceProvider
   protected client: LanguageClient.Model | null = null;
   protected disposeDocumentLifecycle: (() => void) | null = null;
   protected disposeGutterDecorations: (() => void) | null = null;
+  protected disposeStructureSource: (() => void) | null = null;
 
   constructor(
     protected readonly workspace: Workspace.Model,
@@ -49,6 +57,12 @@ class $LspWorkspaceProvider
       closed: (handle) => this.closeDocument(handle),
     });
     this.disposeGutterDecorations = workspace.gutterDecorations.register(this);
+    // The structure pane consumes THIS provider through the consumer-owned registry, so
+    // uninstalling Language Intelligence withdraws the outline source symmetrically.
+    this.disposeStructureSource = StructureSources.Class.register(
+      workspace,
+      this,
+    );
   }
 
   get completionTriggerCharacters(): readonly string[] {
@@ -74,6 +88,8 @@ class $LspWorkspaceProvider
     this.disposeDocumentLifecycle = null;
     this.disposeGutterDecorations?.();
     this.disposeGutterDecorations = null;
+    this.disposeStructureSource?.();
+    this.disposeStructureSource = null;
     // invariant: Client disposal releases the server (src/modules/lsp/lsp.invariants.md)
     this.releaseClient();
   }
@@ -113,6 +129,25 @@ class $LspWorkspaceProvider
     return client.supportsDocument(document)
       ? client.completion(document, position, context)
       : { items: [], isIncomplete: false };
+  }
+
+  /** StructureSource: cheap capability answer — a path check, never a server start. */
+  supportsDocument(document: LanguageDocument): boolean {
+    return this.ensureClient().supportsDocument(document);
+  }
+
+  /** StructureSource: the outline, or null when the client cannot answer for this document. */
+  async documentSymbols(
+    document: LanguageDocument,
+  ): Promise<StructureOutlineResult | null> {
+    const client = this.ensureClient();
+    if (!client.supportsDocument(document)) return null;
+    return client.documentSymbols(document);
+  }
+
+  /** StructureSource: the stated reason symbols are withheld (today: the size budget). */
+  structureNotice(document: LanguageDocument): string | null {
+    return this.statusNotice(document);
   }
 
   diagnosticsAt(

@@ -16,4 +16,5 @@ export interface LanguageCapabilities {
   hover: boolean;
   references: boolean;
   completion: boolean;
+  documentSymbols: boolean;
 }

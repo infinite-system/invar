@@ -161,6 +161,7 @@ const FULL_CAPABILITIES: LanguageCapabilities = {
   hover: true,
   references: true,
   completion: true,
+  documentSymbols: true,
 };
 
 /** A provider that resolves a dummy command without touching disk. */

@@ -49,6 +49,7 @@ class $TypeScriptProvider implements LanguageServerProvider {
     hover: true,
     references: true,
     completion: true,
+    documentSymbols: true,
   };
 
   constructor(protected readonly options: TypeScriptProviderOptions = {}) {}

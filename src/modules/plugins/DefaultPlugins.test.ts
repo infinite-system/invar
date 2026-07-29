@@ -16,16 +16,17 @@ test('the shipped application registers its built in contributions', () => {
     ['terminal', 'Terminal'],
     ['inline-rewrite', 'Inline Rewrite'],
     ['source-text-editor', 'Source Text Editor'],
+    ['structure-navigator', 'Structure Navigator'],
     ['extensions', 'Extensions'],
   ]);
   expect(
     contributors.flatMap(
       (contributor) => contributor.primaryDockContentIdentifiers ?? [],
     ),
-  ).toEqual(['files', 'git', 'extensions']);
+  ).toEqual(['files', 'git', 'structure', 'extensions']);
   expect(
     contributors.map(
       (contributor) => contributor.workspaceContributor !== undefined,
     ),
-  ).toEqual([true, true, true, true, false, true, false, false]);
+  ).toEqual([true, true, true, true, false, true, false, true, false]);
 });

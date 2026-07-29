@@ -484,6 +484,14 @@ try {
   console.log(
     '== harness activitybar: keyboard and pointer share persisted reorder ==',
   );
+  // Every expected order DERIVES from the observed initial order. A literal list here is a
+  // rotted enumeration the moment the manifest grows a contributor — it did (#35 added the
+  // structure navigator as the ninth), and the literal 'files,extensions,git' went red while
+  // the behaviour it guarded stayed correct.
+  const activityOrderAfterAltUp = [...initialActivityOrder];
+  const activeExtensionsIndex = activityOrderAfterAltUp.indexOf('extensions');
+  activityOrderAfterAltUp.splice(activeExtensionsIndex, 1);
+  activityOrderAfterAltUp.splice(activeExtensionsIndex - 1, 0, 'extensions');
   driver.sendKeys('Alt+Up');
   await HarnessSmoke.Class.awaitStatus(
     driver,
@@ -491,7 +499,8 @@ try {
     'Alt+Up moves the active Extensions item through the activity order',
     (status) =>
       Array.isArray(status.activityBarItemIdentifiers) &&
-      status.activityBarItemIdentifiers.join(',') === 'files,extensions,git',
+      status.activityBarItemIdentifiers.join(',') ===
+        activityOrderAfterAltUp.join(','),
   );
   HarnessSmoke.Class.pass('Alt+Up reorders the active activity item');
   driver.sendKeys('Alt+Down');
@@ -530,7 +539,12 @@ try {
     row: dragTargetRow,
     button: 'left',
   });
-  const draggedActivityOrder = ['git', 'files', 'extensions'];
+  // Dropping Git on the Explorer row moves it to Explorer's index; derive the expectation from
+  // the initial order so a longer manifest keeps the assertion honest.
+  const draggedActivityOrder = initialActivityOrder.filter(
+    (identifier) => identifier !== 'git',
+  );
+  draggedActivityOrder.splice(draggedActivityOrder.indexOf('files'), 0, 'git');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
