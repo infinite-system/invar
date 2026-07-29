@@ -1,6 +1,6 @@
 # 282 — BUG: scrollbar thumb dragging broke (both axes); horizontal bar too thick
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
