@@ -46,14 +46,14 @@ test('scrollbars stay above later default-layer content without overriding a str
 });
 
 test.each([
-  ['dark', '#1a1b26', '#7aa2f7'],
-  ['light', '#e1e2e7', '#2e7de9'],
+  ['dark', '#16161e', '#787c99'],
+  ['light', '#d4d6e4', '#848cb5'],
 ] as const)(
-  'horizontal bars paint one lower half-cell in the %s palette',
+  'both axes paint the same track and thumb pair in the %s palette',
   async (_paletteName, trackColor, thumbColor) => {
     const setup = await createTestRenderer({ width: 20, height: 4 });
     renderer = setup.renderer;
-    const scrollBar = new SolidThumbScrollBar.Class(renderer, {
+    const horizontalScrollBar = new SolidThumbScrollBar.Class(renderer, {
       id: 'horizontal-half-cell',
       orientation: 'horizontal',
       position: 'absolute',
@@ -65,10 +65,26 @@ test.each([
         foregroundColor: thumbColor,
       },
     });
-    renderer.root.add(scrollBar);
-    scrollBar.scrollSize = 100;
-    scrollBar.viewportSize = 20;
-    scrollBar.scrollPosition = 40;
+    const verticalScrollBar = new SolidThumbScrollBar.Class(renderer, {
+      id: 'vertical-whole-cell',
+      orientation: 'vertical',
+      position: 'absolute',
+      left: 15,
+      width: 1,
+      height: 4,
+      showArrows: false,
+      trackOptions: {
+        backgroundColor: trackColor,
+        foregroundColor: thumbColor,
+      },
+    });
+    renderer.root.add(horizontalScrollBar);
+    renderer.root.add(verticalScrollBar);
+    for (const scrollBar of [horizontalScrollBar, verticalScrollBar]) {
+      scrollBar.scrollSize = 100;
+      scrollBar.viewportSize = 20;
+      scrollBar.scrollPosition = 40;
+    }
 
     await setup.renderOnce();
 
@@ -82,6 +98,19 @@ test.each([
         .map((span) => span.fg.toString()),
     );
     expect(paintedForegrounds).toEqual(
+      new Set([
+        RGBA.fromHex(trackColor).toString(),
+        RGBA.fromHex(thumbColor).toString(),
+      ]),
+    );
+    const verticalBackgrounds = new Set(
+      setup
+        .captureSpans()
+        .lines.flatMap((line) => line.spans)
+        .filter((span) => span.text.includes(' ') && span.bg.a > 0)
+        .map((span) => span.bg.toString()),
+    );
+    expect(verticalBackgrounds).toEqual(
       new Set([
         RGBA.fromHex(trackColor).toString(),
         RGBA.fromHex(thumbColor).toString(),

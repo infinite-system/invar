@@ -18,6 +18,7 @@ import {
   deriveMarkdownPreviewScrollbarThumbDragTargets,
   deriveScrollbarThumbDragTargets,
   dragScrollbarThumb,
+  type ScrollbarThumbDragTarget,
 } from './ScrollbarThumbDrag';
 
 interface VerticalScrollBarProof {
@@ -84,6 +85,73 @@ function requireCondition(
 ): asserts condition {
   if (!condition) throw new Error(`FAIL ${label}`);
   pass(label);
+}
+
+function requireEditorTwoAxisBarOwnershipAndColors(
+  snapshot: HarnessSnapshot.Model,
+  targets: readonly ScrollbarThumbDragTarget[],
+  label: string,
+): readonly number[] {
+  const horizontalTarget = targets.find(
+    (target) => target.name === 'editorHorizontal',
+  );
+  const verticalTarget = targets.find(
+    (target) => target.name === 'editorVertical',
+  );
+  requireCondition(
+    horizontalTarget !== undefined && verticalTarget !== undefined,
+    `${label} exposes both editor scrollbar axes`,
+  );
+
+  const horizontalTrackCells = snapshot
+    .rowCells(horizontalTarget.pressRow)
+    .slice(horizontalTarget.pressColumn, verticalTarget.pressColumn);
+  requireCondition(
+    horizontalTrackCells.length >= 2 &&
+      horizontalTrackCells.every((cell) => cell.characters === '▄') &&
+      horizontalTrackCells.at(-1)?.column === verticalTarget.pressColumn - 1,
+    `${label} horizontal track ends one column before the vertical track`,
+  );
+
+  const verticalTrackCells = Array.from(
+    {
+      length: horizontalTarget.pressRow - verticalTarget.pressRow + 1,
+    },
+    (_unusedValue, rowOffset) =>
+      snapshot.cell(
+        verticalTarget.pressRow + rowOffset,
+        verticalTarget.pressColumn,
+      ),
+  );
+  const verticalBackgroundColors = new Set(
+    verticalTrackCells
+      .filter((cell) => cell?.isBackgroundRgb === true)
+      .map((cell) => cell!.background),
+  );
+  const cornerCell = verticalTrackCells.at(-1);
+  requireCondition(
+    cornerCell?.characters === ' ' &&
+      cornerCell.isBackgroundRgb &&
+      verticalBackgroundColors.has(cornerCell.background),
+    `${label} corner cell paints vertical-bar content`,
+  );
+
+  const horizontalForegroundColors = new Set(
+    horizontalTrackCells
+      .filter((cell) => cell.isForegroundRgb)
+      .map((cell) => cell.foreground),
+  );
+  requireCondition(
+    verticalBackgroundColors.size === 2 &&
+      horizontalForegroundColors.size === 2 &&
+      [...verticalBackgroundColors].every((color) =>
+        horizontalForegroundColors.has(color),
+      ),
+    `${label} horizontal and vertical bars use the same track and thumb colours`,
+  );
+  return [...verticalBackgroundColors].sort(
+    (firstColor, secondColor) => firstColor - secondColor,
+  );
 }
 
 function runGit(repositoryRoot: string, commandArguments: string[]): void {
@@ -190,6 +258,11 @@ async function proveContinuousScrollbarThumbDrag(
         'editorHorizontal,editorVertical,rightDockVertical',
       `${lineCount}-line drive finds both editor axes and the right-dock bar`,
     );
+    const darkThemeScrollbarColors = requireEditorTwoAxisBarOwnershipAndColors(
+      snapshot,
+      targets,
+      `${lineCount}-line dark theme`,
+    );
     const horizontalTarget = targets[0];
     requireCondition(
       horizontalTarget !== undefined &&
@@ -201,7 +274,92 @@ async function proveContinuousScrollbarThumbDrag(
           .every((cell) => cell.characters !== '█' && cell.characters !== '▀'),
       `${lineCount}-line editor horizontal bar is lower-half cells only`,
     );
-    for (const target of targets) {
+    driver.sendKeys('Control+,');
+    let settingsStatus = await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive opens Settings before the live theme switch`,
+      (candidate) =>
+        candidate.settingsOpen === true &&
+        typeof candidate.settingsSelectedLabel === 'string',
+    );
+    for (
+      let navigationStep = 0;
+      navigationStep < 40 && settingsStatus.settingsSelectedLabel !== 'Theme';
+      navigationStep++
+    ) {
+      const previousSelectedLabel = settingsStatus.settingsSelectedLabel;
+      driver.sendKeys('Down');
+      settingsStatus = await HarnessSmoke.Class.awaitStatus(
+        driver,
+        statusPath,
+        `${lineCount}-line settings navigation advances toward Theme`,
+        (candidate) =>
+          candidate.settingsSelectedLabel !== previousSelectedLabel,
+      );
+    }
+    requireCondition(
+      settingsStatus.settingsSelectedLabel === 'Theme',
+      `${lineCount}-line drive finds the live Theme setting`,
+    );
+    const previousThemeValue = settingsStatus.settingsSelectedValue;
+    driver.sendKeys('Right');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive switches the live theme to light`,
+      (candidate) =>
+        candidate.settingsSelectedLabel === 'Theme' &&
+        candidate.settingsSelectedValue === 'light' &&
+        candidate.settingsSelectedValue !== previousThemeValue,
+    );
+    driver.sendKeys('Escape');
+    await HarnessSmoke.Class.awaitStatus(
+      driver,
+      statusPath,
+      `${lineCount}-line drive closes Settings after the live theme switch`,
+      (candidate) => candidate.settingsOpen === false,
+    );
+    let lightThemeTargets: readonly ScrollbarThumbDragTarget[] = [];
+    const lightThemeSnapshot = await driver.awaitGridCondition(
+      `${lineCount}-line editor repaints after the live theme switch`,
+      (candidate) => {
+        if (
+          candidate.findText('symbol000000 :1') === null ||
+          candidate.findText('export const symbol000000') === null
+        ) {
+          return false;
+        }
+        try {
+          lightThemeTargets = deriveScrollbarThumbDragTargets(
+            candidate,
+            HarnessSmoke.Class.readStatus(statusPath),
+          );
+          return (
+            lightThemeTargets.map((target) => target.name).join(',') ===
+            'editorHorizontal,editorVertical,rightDockVertical'
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+    const lightThemeScrollbarColors = requireEditorTwoAxisBarOwnershipAndColors(
+      lightThemeSnapshot,
+      lightThemeTargets,
+      `${lineCount}-line light theme switch`,
+    );
+    if (
+      darkThemeScrollbarColors.join(',') === lightThemeScrollbarColors.join(',')
+    ) {
+      console.log(
+        `  OBSERVED #284 (scrollbar colours captured at construction): ` +
+          `colours stayed ${lightThemeScrollbarColors
+            .map((color) => color.toString(16))
+            .join('/')} after the live light switch`,
+      );
+    }
+    for (const target of lightThemeTargets) {
       const positions = await dragScrollbarThumb(driver, statusPath, target);
       requireCondition(
         positions.length === 4 &&
@@ -414,59 +572,40 @@ async function proveContinuousScrollbarThumbDrag(
   }
 }
 
-function dominantSidebarBackground(
-  snapshot: HarnessSnapshot.Model,
-): number | null {
-  const backgroundCounts = new Map<number, number>();
-  for (let row = 0; row < snapshot.rows; row++) {
-    for (let column = 1; column < Math.min(27, snapshot.columns); column++) {
-      const cell = snapshot.cell(row, column);
-      if (!cell?.isBackgroundRgb) continue;
-      backgroundCounts.set(
-        cell.background,
-        (backgroundCounts.get(cell.background) ?? 0) + 1,
-      );
-    }
-  }
-  let dominantBackground: number | null = null;
-  let dominantCount = 0;
-  for (const [background, count] of backgroundCounts) {
-    if (count <= dominantCount) continue;
-    dominantBackground = background;
-    dominantCount = count;
-  }
-  return dominantBackground;
-}
-
 function verticalScrollBarProof(
   snapshot: HarnessSnapshot.Model,
 ): VerticalScrollBarProof | null {
-  const paneBackground = dominantSidebarBackground(snapshot);
-  if (paneBackground === null) return null;
-  let bestColumn = -1;
-  let bestPaintedRows: Array<{ row: number; background: number }> = [];
-  for (let column = 1; column < Math.min(27, snapshot.columns); column++) {
-    const paintedRows: Array<{ row: number; background: number }> = [];
-    for (let row = 0; row < snapshot.rows; row++) {
-      if (!snapshot.rowText(row).startsWith('│')) continue;
-      const cell = snapshot.cell(row, column);
-      if (
-        cell?.characters === ' ' &&
-        cell.isBackgroundRgb &&
-        cell.background !== paneBackground
-      ) {
-        paintedRows.push({ row, background: cell.background });
+  let verticalTrackColumn = -1;
+  let longestHorizontalTrackLength = 0;
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (!snapshot.rowText(row).startsWith('│')) continue;
+    let currentHorizontalTrackLength = 0;
+    for (let column = 1; column < Math.min(27, snapshot.columns); column++) {
+      if (snapshot.cell(row, column)?.characters === '▄') {
+        currentHorizontalTrackLength++;
+        if (currentHorizontalTrackLength > longestHorizontalTrackLength) {
+          longestHorizontalTrackLength = currentHorizontalTrackLength;
+          verticalTrackColumn = column + 1;
+        }
+      } else {
+        currentHorizontalTrackLength = 0;
       }
     }
-    if (paintedRows.length > bestPaintedRows.length) {
-      bestColumn = column;
-      bestPaintedRows = paintedRows;
+  }
+  if (verticalTrackColumn < 0 || longestHorizontalTrackLength < 4) return null;
+
+  const trackRows: Array<{ row: number; background: number }> = [];
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (!snapshot.rowText(row).startsWith('│')) continue;
+    const cell = snapshot.cell(row, verticalTrackColumn);
+    if (cell?.characters === ' ' && cell.isBackgroundRgb) {
+      trackRows.push({ row, background: cell.background });
     }
   }
-  if (bestColumn < 0 || bestPaintedRows.length < 10) return null;
+  if (trackRows.length < 10) return null;
 
   const colorCounts = new Map<number, number>();
-  for (const paintedCell of bestPaintedRows) {
+  for (const paintedCell of trackRows) {
     colorCounts.set(
       paintedCell.background,
       (colorCounts.get(paintedCell.background) ?? 0) + 1,
@@ -478,11 +617,10 @@ function verticalScrollBarProof(
   );
   const thumbBackground = orderedColors[0]?.[0];
   if (thumbBackground === undefined) return null;
-  const thumbRows = bestPaintedRows
+  const thumbRows = trackRows
     .filter((paintedCell) => paintedCell.background === thumbBackground)
     .map((paintedCell) => paintedCell.row);
-  if (thumbRows.length < 2 || thumbRows.length >= bestPaintedRows.length)
-    return null;
+  if (thumbRows.length < 2 || thumbRows.length >= trackRows.length) return null;
   const thumbStartRow = thumbRows[0];
   const thumbEndRow = thumbRows.at(-1);
   if (
@@ -493,13 +631,13 @@ function verticalScrollBarProof(
     return null;
   }
   return {
-    column: bestColumn,
+    column: verticalTrackColumn,
     thumbBackground,
     thumbStartRow,
     thumbEndRow,
     thumbLength: thumbRows.length,
-    trackStartRow: bestPaintedRows[0]?.row ?? 0,
-    trackLength: bestPaintedRows.length,
+    trackStartRow: trackRows[0]?.row ?? 0,
+    trackLength: trackRows.length,
   };
 }
 
