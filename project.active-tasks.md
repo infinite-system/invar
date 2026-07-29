@@ -6,6 +6,10 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
+## IN-PROGRESS (1)
+- #218 workspace-buffer-splits-document-from-view  [building]
+  `tmux attach -t invar/218-workspace-buffer-splits-document-from-view`
+
 ## USER-DIRECTED (2)
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
@@ -52,10 +56,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #94 popup-arrow-keys-fall-through  [ACTIVE — decision taken, not yet built]
 - #86 wheel-first-frame-fixed-latency  [ACTIVE — WAITING ON THE USER (a feel decision, not a defect)]
 
-## ARCHITECTURE-HYGIENE (8)
+## ARCHITECTURE-HYGIENE (7)
 - #220 editor-registers-as-contributor-with-manifest
 - #219 source-text-view-onto-pane-content-seam
-- #218 workspace-buffer-splits-document-from-view
 - #217 split-geometry-aggregates-invariant
 - #136 shared-scale-fixture-corpus-cache
 - #62 parameter-count-ports-object-sweep

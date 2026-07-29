@@ -1,0 +1,15 @@
+{
+  "task": 218,
+  "slug": "workspace-buffer-splits-document-from-view",
+  "branch": "fleet/218-workspace-buffer-splits-document-from-view",
+  "worktree": ".invar/worktrees/218-workspace-buffer-splits-document-from-view",
+  "tmuxSession": "invar/218-workspace-buffer-splits-document-from-view",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-high-218-workspace-buffer-splits-document-from-view.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "7aa2d2146b764ae5d9aa2eaaa25083912c5f25b2",
+  "startedAt": "2026-07-28T23:47:01-04:00"
+}

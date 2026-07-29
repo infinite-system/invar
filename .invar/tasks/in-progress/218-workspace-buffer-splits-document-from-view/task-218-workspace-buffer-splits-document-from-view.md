@@ -1,6 +1,6 @@
 # 218 — a Workspace buffer becomes a document plus a view handle, not an Editor
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: claude
 Environment: linux
