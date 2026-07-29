@@ -14,10 +14,13 @@
 //
 // invariant: Outline cost tracks the observed document (src/modules/structure/structure.invariants.md)
 // invariant: A structure source answers or declines, never blanks (src/modules/structure/structure.invariants.md)
+// invariant: The outline projection has one depth and filter policy (src/modules/structure/structure.invariants.md)
 // invariant: Symbol selection jumps through the source-text view contract (src/modules/structure/structure.invariants.md)
 import { Reactive } from 'ivue';
 import { ref, shallowRef } from 'vue';
+import { CommandScoring } from '../commands/CommandScoring';
 import { Momentum } from '../system/Momentum';
+import { TextInputModel, type TextInputAction } from '../text/TextInputModel';
 import type { Workspace } from '../workspace/Workspace';
 import type { SymbolClass } from '../theme/ThemeIcons';
 import type {
@@ -45,7 +48,9 @@ class $StructureOutline {
   constructor(
     protected readonly workspace: Workspace.Model,
     protected readonly isObserved: () => boolean,
+    protected readonly defaultDepth: () => number = () => 1,
   ) {
+    this.filterInput = this.createFilterInput();
     this.disposeDocumentLifecycle = workspace.documentLifecycle.register({
       opened: () => {},
       becameActive: () => this.scheduleRefresh(this.switchRefreshDelay),
@@ -75,6 +80,18 @@ class $StructureOutline {
   protected disposeDocumentLifecycle: (() => void) | null = null;
   protected refreshTimer: ReturnType<typeof setTimeout> | null = null;
   protected requestGeneration = 0;
+  protected sourceRows: readonly StructureRow[] = [];
+  protected projectedDocumentPath = '';
+  protected readonly depthOverrides = new Map<string, number>();
+  protected readonly expandedRowsByDocument = new Map<string, Set<string>>();
+  protected readonly collapsedRowsByDocument = new Map<string, Set<string>>();
+
+  readonly filterInput: TextInputModel.Model;
+
+  // invariant: Construction goes through overridable seams (project.invariants.md)
+  protected createFilterInput(): TextInputModel.Model {
+    return new TextInputModel.Class();
+  }
 
   get rows() {
     return shallowRef<readonly StructureRow[]>([]);
@@ -173,9 +190,11 @@ class $StructureOutline {
     if (!this.isObserved()) return;
     const document = this.activeDocument;
     if (!document) {
+      this.selectProjectedDocument('');
       this.applyEmpty('no-document', null);
       return;
     }
+    this.selectProjectedDocument(document.path);
     const sources =
       this.workspace.providers.resolveAll<StructureSource>('structure');
     if (sources.length === 0) {
@@ -243,6 +262,7 @@ class $StructureOutline {
     status: Exclude<StructureOutlineStatus, 'ready' | 'loading'>,
     notice: string | null,
   ): void {
+    this.sourceRows = [];
     this.rows.value = [];
     this.status.value = status;
     this.notice.value = notice;
@@ -254,25 +274,27 @@ class $StructureOutline {
 
   protected applyResult(result: StructureOutlineResult): void {
     const rows: StructureRow[] = [];
-    this.flattenInto(rows, result.symbols, 0);
-    this.rows.value = rows;
+    this.flattenInto(rows, result.symbols, 0, []);
+    this.sourceRows = rows;
     this.status.value = 'ready';
     this.truncated.value = result.truncated;
     this.notice.value = result.truncated
       ? 'The outline is truncated — the source capped the symbol count.'
       : null;
-    this.selectedIndex.value = Math.min(
-      this.selectedIndex.value,
-      Math.max(0, rows.length - 1),
-    );
-    this.clampScroll();
-    this.version.value++;
+    this.reproject();
+  }
+
+  protected selectProjectedDocument(documentPath: string): void {
+    if (documentPath === this.projectedDocumentPath) return;
+    this.projectedDocumentPath = documentPath;
+    this.filterInput.clear();
   }
 
   protected flattenInto(
     rows: StructureRow[],
     symbols: readonly StructureSymbol[],
     depth: number,
+    ancestorKeys: readonly string[],
   ): void {
     // Source order is document order for every real server; sort defensively so keyboard
     // navigation always walks downward through the file.
@@ -281,16 +303,209 @@ class $StructureOutline {
         first.line - second.line || first.column - second.column,
     );
     for (const symbol of ordered) {
+      const key = [
+        symbol.line,
+        symbol.column,
+        symbol.endLine,
+        symbol.name,
+      ].join(':');
       rows.push({
+        key,
+        ancestorKeys,
         depth,
         name: symbol.name,
         symbolClass: symbol.symbolClass,
         line: symbol.line,
         column: symbol.column,
         endLine: symbol.endLine,
+        hasChildren: symbol.children.length > 0,
+        childrenVisible: false,
       });
-      this.flattenInto(rows, symbol.children, depth + 1);
+      this.flattenInto(rows, symbol.children, depth + 1, [
+        ...ancestorKeys,
+        key,
+      ]);
     }
+  }
+
+  protected get activeDocumentPath(): string {
+    return this.activeDocument?.path ?? '';
+  }
+
+  get depth(): number {
+    return (
+      this.depthOverrides.get(this.activeDocumentPath) ??
+      this.clampedDepth(this.defaultDepth())
+    );
+  }
+
+  get depthIsOverridden(): boolean {
+    return this.depthOverrides.has(this.activeDocumentPath);
+  }
+
+  protected clampedDepth(depth: number): number {
+    return Math.max(0, Math.min(8, Math.round(depth)));
+  }
+
+  protected rowKeysFor(rowsByDocument: Map<string, Set<string>>): Set<string> {
+    const documentPath = this.activeDocumentPath;
+    let rowKeys = rowsByDocument.get(documentPath);
+    if (!rowKeys) {
+      rowKeys = new Set<string>();
+      rowsByDocument.set(documentPath, rowKeys);
+    }
+    return rowKeys;
+  }
+
+  protected childrenAreVisible(
+    row: StructureRow,
+    depth: number,
+    expandedRows: ReadonlySet<string>,
+    collapsedRows: ReadonlySet<string>,
+  ): boolean {
+    if (!row.hasChildren || !row.key || collapsedRows.has(row.key)) {
+      return false;
+    }
+    return row.depth < depth || expandedRows.has(row.key);
+  }
+
+  protected rowIsVisible(
+    row: StructureRow,
+    depth: number,
+    sourceRowsByKey: ReadonlyMap<string, StructureRow>,
+    expandedRows: ReadonlySet<string>,
+    collapsedRows: ReadonlySet<string>,
+  ): boolean {
+    for (const ancestorKey of row.ancestorKeys ?? []) {
+      const ancestor = sourceRowsByKey.get(ancestorKey);
+      if (
+        !ancestor ||
+        !this.childrenAreVisible(ancestor, depth, expandedRows, collapsedRows)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  refreshProjection(): void {
+    this.reproject();
+  }
+
+  protected reproject(): void {
+    const depth = this.depth;
+    const expandedRows = this.rowKeysFor(this.expandedRowsByDocument);
+    const collapsedRows = this.rowKeysFor(this.collapsedRowsByDocument);
+    const sourceRowsByKey = new Map(
+      this.sourceRows.flatMap((row) => (row.key ? [[row.key, row]] : [])),
+    );
+    const depthRows = this.sourceRows
+      .filter((row) =>
+        this.rowIsVisible(
+          row,
+          depth,
+          sourceRowsByKey,
+          expandedRows,
+          collapsedRows,
+        ),
+      )
+      .map((row) => ({
+        ...row,
+        childrenVisible: this.childrenAreVisible(
+          row,
+          depth,
+          expandedRows,
+          collapsedRows,
+        ),
+      }));
+    const query = this.filterInput.value.trim();
+    if (query.length === 0) {
+      this.rows.value = depthRows;
+    } else {
+      this.rows.value = this.sourceRows
+        .map((row) => ({
+          row,
+          score: CommandScoring.Class.fuzzyScore(query, row.name),
+        }))
+        .filter((match) => match.score >= 0)
+        .sort(
+          (first, second) =>
+            first.score - second.score ||
+            first.row.line - second.row.line ||
+            first.row.column - second.row.column,
+        )
+        .map(({ row }) => ({ ...row, childrenVisible: false }));
+    }
+    this.selectedIndex.value = Math.min(
+      this.selectedIndex.value,
+      Math.max(0, this.rows.value.length - 1),
+    );
+    this.clampScroll();
+    this.version.value++;
+  }
+
+  applyFilterInputAction(action: TextInputAction): void {
+    const queryChanged = this.filterInput.apply(action);
+    if (queryChanged) {
+      this.selectedIndex.value = 0;
+      this.scrollTop.value = 0;
+      this.reproject();
+    } else {
+      this.version.value++;
+    }
+  }
+
+  insertFilterText(text: string): void {
+    if (!this.filterInput.insert(text)) return;
+    this.selectedIndex.value = 0;
+    this.scrollTop.value = 0;
+    this.reproject();
+  }
+
+  clearFilter(): boolean {
+    if (this.filterInput.isEmpty) return false;
+    this.filterInput.clear();
+    this.selectedIndex.value = 0;
+    this.scrollTop.value = 0;
+    this.reproject();
+    return true;
+  }
+
+  toggleSelectedFold(): boolean {
+    if (!this.filterInput.isEmpty) return false;
+    const row = this.rows.value[this.selectedIndex.value];
+    if (!row?.hasChildren || !row.key) return false;
+    const expandedRows = this.rowKeysFor(this.expandedRowsByDocument);
+    const collapsedRows = this.rowKeysFor(this.collapsedRowsByDocument);
+    if (row.childrenVisible) {
+      expandedRows.delete(row.key);
+      collapsedRows.add(row.key);
+    } else {
+      collapsedRows.delete(row.key);
+      expandedRows.add(row.key);
+    }
+    this.reproject();
+    return true;
+  }
+
+  setDepthForActiveFile(depth: number): void {
+    const documentPath = this.activeDocumentPath;
+    if (!documentPath) return;
+    this.depthOverrides.set(documentPath, this.clampedDepth(depth));
+    this.selectedIndex.value = 0;
+    this.scrollTop.value = 0;
+    this.reproject();
+  }
+
+  adjustDepthForActiveFile(delta: number): void {
+    this.setDepthForActiveFile(this.depth + delta);
+  }
+
+  resetDepthForActiveFile(): void {
+    if (!this.depthOverrides.delete(this.activeDocumentPath)) return;
+    this.selectedIndex.value = 0;
+    this.scrollTop.value = 0;
+    this.reproject();
   }
 
   moveSelection(delta: number): void {
@@ -378,12 +593,16 @@ export namespace StructureOutline {
 
 /** One flattened, paintable outline row. */
 export interface StructureRow {
+  readonly key?: string;
+  readonly ancestorKeys?: readonly string[];
   readonly depth: number;
   readonly name: string;
   readonly symbolClass: SymbolClass;
   readonly line: number;
   readonly column: number;
   readonly endLine: number;
+  readonly hasChildren?: boolean;
+  readonly childrenVisible?: boolean;
 }
 
 /** The pane's honest states. `unavailable` always carries a stated reason, never a blank. */

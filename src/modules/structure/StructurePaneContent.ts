@@ -4,6 +4,7 @@
 // accessor, exactly like the file-tree pane.
 //
 // invariant: The structure navigator is a pane content citizen (src/modules/structure/structure.invariants.md)
+// invariant: The outline projection has one depth and filter policy (src/modules/structure/structure.invariants.md)
 // invariant: A pane content projects through exactly one surface (src/modules/ui/ui.invariants.md)
 // invariant: Plugin panes use the shared pane and popup hosts (src/modules/ui/ui.invariants.md)
 import type { KeyEvent, StyledText } from '@opentui/core';
@@ -13,7 +14,10 @@ import type { ApplicationContributionContext } from '../app/ApplicationContribut
 import type {
   PaneContent,
   PaneRenderContext,
+  PaneTextInputPort,
 } from '../ui/PaneContent.interface';
+import type { TextInputAction } from '../text/TextInputModel';
+import { TextInputKey } from '../text/TextInputKey';
 import { ThemeIcons } from '../theme/ThemeIcons';
 import type { StructureWorkspace } from './StructureWorkspace';
 import { StructurePaneRenderer } from './StructurePaneRenderer';
@@ -23,6 +27,8 @@ class $StructurePaneContent implements PaneContent {
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => StructureWorkspace.Model,
   ) {}
+
+  protected filterCaretColumn = 0;
 
   get id(): string {
     return 'structure';
@@ -72,6 +78,10 @@ class $StructurePaneContent implements PaneContent {
       outline.scrollTop.value,
       outline.viewportHeight.value,
       outline.viewportWidth.value,
+      outline.filterInput.text.value,
+      outline.filterInput.caret.value,
+      outline.depth,
+      outline.depthIsOverridden,
     ].join(':');
   }
 
@@ -83,14 +93,45 @@ class $StructurePaneContent implements PaneContent {
       structureFocused: context.focused,
       palette: context.palette,
       symbolMarks: ThemeIcons.Class.symbolMarksFor(context.glyphLevel),
-      height: Math.max(1, context.height),
+      filterInput: outline.filterInput,
+      searchGlyph: ThemeIcons.Class.findIconsFor(context.glyphLevel).search,
+      foldOpenGlyph: ThemeIcons.Class.glyphFor(context.glyphLevel, 'foldOpen'),
+      foldClosedGlyph: ThemeIcons.Class.glyphFor(
+        context.glyphLevel,
+        'foldClosed',
+      ),
+      setFilterCaretColumn: (column) => {
+        this.filterCaretColumn = column;
+      },
+      height: Math.max(1, context.height - 1),
       innerWidth,
       viewportWidth: Math.max(1, innerWidth - this.scrollbarThicknessCells),
     });
   }
 
-  handleKey(_key: KeyEvent): boolean {
-    return false;
+  caret(): { column: number; row: number } {
+    return { column: this.filterCaretColumn, row: 0 };
+  }
+
+  capability<Port>(identifier: string): Port | null {
+    return identifier === 'text-input'
+      ? (this as unknown as PaneTextInputPort as Port)
+      : null;
+  }
+
+  applyInputAction(action: TextInputAction): void {
+    this.activeWorkspace().outline.applyFilterInputAction(action);
+  }
+
+  handleKey(key: KeyEvent): boolean {
+    if (!TextInputKey.Class.isTypedCharacter(key)) return false;
+    this.activeWorkspace().outline.insertFilterText(key.sequence);
+    return true;
+  }
+
+  handlePaste(text: string): boolean {
+    this.activeWorkspace().outline.insertFilterText(text);
+    return true;
   }
 
   onWheel(rowDelta: number): boolean {
@@ -99,11 +140,18 @@ class $StructurePaneContent implements PaneContent {
     return true;
   }
 
+  protected foldControlColumn(rowIndex: number): number {
+    const row = this.activeWorkspace().outline.rows.value[rowIndex];
+    return row ? 1 + row.depth * 2 : -1;
+  }
+
   onPointerMove(_column: number, row: number): boolean {
     const outline = this.activeWorkspace().outline;
-    const rowIndex = outline.windowTop() + row;
+    const rowIndex = outline.windowTop() + row - 1;
     outline.hoveredIndex.value =
-      rowIndex >= 0 && rowIndex < outline.rows.value.length ? rowIndex : -1;
+      row > 0 && rowIndex >= 0 && rowIndex < outline.rows.value.length
+        ? rowIndex
+        : -1;
     return true;
   }
 
@@ -111,23 +159,32 @@ class $StructurePaneContent implements PaneContent {
     this.activeWorkspace().outline.hoveredIndex.value = -1;
   }
 
-  onPointerDown(_column: number, row: number): boolean {
+  onPointerDown(column: number, row: number): boolean {
     const workspace = this.activeWorkspace();
-    this.onFocus();
     workspace.haltVerticalScroll();
+    if (row === 0) {
+      this.application.requestRender();
+      return true;
+    }
     const outline = workspace.outline;
-    const rowIndex = outline.windowTop() + row;
+    const rowIndex = outline.windowTop() + row - 1;
     if (rowIndex < 0 || rowIndex >= outline.rows.value.length) return false;
     outline.setSelection(rowIndex);
-    // The jump lands IN the editor, so the keyboard follows it out of the dock.
-    if (workspace.activateSelected()) this.application.rightDockHost.blur();
+    if (
+      column === this.foldControlColumn(rowIndex) &&
+      outline.rows.value[rowIndex]?.hasChildren
+    ) {
+      outline.toggleSelectedFold();
+    } else if (workspace.activateSelected()) {
+      this.application.rightDockHost.blur();
+    }
     this.application.requestRender();
     return true;
   }
 
   onResize(columns: number, rows: number): void {
     const outline = this.activeWorkspace().outline;
-    const viewportHeight = Math.max(1, rows);
+    const viewportHeight = Math.max(1, rows - 1);
     const viewportWidth = Math.max(1, columns - this.scrollbarThicknessCells);
     if (outline.viewportHeight.value !== viewportHeight) {
       outline.viewportHeight.value = viewportHeight;
@@ -153,6 +210,10 @@ class $StructurePaneContent implements PaneContent {
 
   get scrollViewportRows(): number {
     return this.activeWorkspace().outline.viewportHeight.value;
+  }
+
+  get scrollbarRowOffset(): number {
+    return 1;
   }
 
   haltScrollMomentum(): void {
