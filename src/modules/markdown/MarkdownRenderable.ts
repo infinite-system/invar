@@ -60,6 +60,7 @@ class $MarkdownRenderable extends BoxRenderable {
       selectable: false,
     });
     this.add(this.bodyRenderable);
+    this.onSizeChange = () => this.refresh();
     this.preview.attachRenderTarget(this);
   }
 
@@ -176,11 +177,11 @@ class $MarkdownRenderable extends BoxRenderable {
 
   protected pullVisibleRows(): void {
     const palette = this.theme.palette;
-    const width = Math.max(1, this.width);
-    const height = Math.max(1, this.height);
+    const viewportWidth = Math.max(1, this.width);
+    const viewportHeight = Math.max(1, this.height);
     const rows = this.preview.visibleRows(
-      width,
-      height,
+      viewportWidth,
+      viewportHeight,
       this.theme.tableBorders,
     );
     this.visibleRowsSnapshot = rows;
@@ -193,7 +194,7 @@ class $MarkdownRenderable extends BoxRenderable {
         ...this.windowChunks(
           rowChunks,
           this.preview.scrollLeft.value,
-          width,
+          viewportWidth,
           palette,
         ),
       );
