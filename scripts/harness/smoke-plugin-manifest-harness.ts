@@ -1046,6 +1046,10 @@ try {
   );
 
   const initialStructureRows = Number(outlineReadyStatus.structureRows);
+  await driver.awaitGridCondition(
+    'the structure scrollbar publishes its settled dock-height geometry',
+    () => (latestRightDockScrollbarDiagnostic()?.height ?? 0) > 1,
+  );
   const scrollbarDiagnostic = latestRightDockScrollbarDiagnostic();
   HarnessSmoke.Class.requireCondition(
     scrollbarDiagnostic !== null,
