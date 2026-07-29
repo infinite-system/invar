@@ -75,6 +75,17 @@ of your READY report, one line each: what you saw, the exact steps or frame that
 and whether it reproduced a second time. If it costs under a minute, capture the reproduction
 (fixture, keys sent). If not, the observation alone is still owed.
 
+Bycatch explicitly includes the CONTRACT LAYER, not only runtime defects:
+
+- **An invariant violated in function**: code you read or drove that does what a record says
+  is impossible, or skips what a record requires. Name the record and the site.
+- **Comment drift**: a comment, doc line, or record clause that no longer matches the code or
+  the invariant beside it — a stale citation, a rotted enumeration, a rule stated only in a
+  comment with no record behind it. Name both sides of the disagreement.
+
+These reports feed later cleanup tasks. A drifted comment you silently pass is a trap set
+for the next reader; a named one is a task someone can dispatch.
+
 A SMALL-AND-OBVIOUS fix is allowed, under all four conditions, and it is still reported:
 1. LOCAL: a few lines in one file you already understand, with an obvious correct form (a
    typo, an off-by-one, a wrong glyph constant, a stale label). Never a shared seam, a
