@@ -55,6 +55,13 @@ esac
 repository_root="$(git rev-parse --show-toplevel)"
 cd "$repository_root"
 
+# A pathspec commit is impossible mid-merge, and a dispatch mid-merge is a
+# mistake anyway. Refuse before any side effect.
+if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  echo "dispatch: REFUSING — the repository is mid-merge; finish or abort the merge first." >&2
+  exit 2
+fi
+
 name="${task_number}-${slug}"
 
 # EXPERIMENT=1 marks work that is HELD FROM MAIN pending proof — the branch name carries the policy
@@ -78,7 +85,6 @@ worktree_path="${repository_root}/.invar/worktrees/${name}"
 # A SLUG MUST BE DESCRIPTIVE — three words minimum. `fold-flyweight` required opening the brief to learn
 # what it meant; `folded-editing-scale-invariance` does not. A folder name is read far more often than
 # it is typed.
-dispatch_directory="${repository_root}/.invar/tasks/in-progress/${name}"
 slug_word_count="$(printf '%s' "$slug" | tr '-' '\n' | grep -c .)"
 if [ "$slug_word_count" -lt 3 ]; then
   echo "dispatch: REFUSING — slug '$slug' has $slug_word_count word(s); 3 minimum." >&2
@@ -163,6 +169,46 @@ if [ "${DRY_RUN:-0}" = "1" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# THE TASK RECORD LANDS ON MAIN, whatever branch is checked out here.
+#
+# The record is main-line ledger state. Committing it to whichever branch
+# happens to be checked out strands it there, and main's task list silently
+# lies. Two arms, chosen by where HEAD is:
+#   - HEAD is main: record in this checkout (the normal case).
+#   - HEAD is elsewhere: main is by definition not checked out here, so borrow
+#     it into a temporary worktree, record there, remove the worktree.
+# If main cannot be borrowed (checked out in some other worktree), REFUSE —
+# a wrong-branch ledger commit is silent drift; a refused dispatch is visible.
+# ---------------------------------------------------------------------------
+ledger_root="$repository_root"
+ledger_worktree_temporary=""
+# Compare the BRANCH NAME, not the commit: a branch freshly cut from main has
+# main's exact commit, and a commit-equality check then records onto the branch.
+# The throwaway-clone test caught that on its first run. Detached HEAD (empty
+# name) is also not main.
+checked_out_branch="$(git symbolic-ref --quiet --short HEAD || true)"
+if [ "$checked_out_branch" != "main" ]; then
+  ledger_worktree_temporary="$(mktemp -d /tmp/dispatch-ledger-XXXXXX)"
+  if ! git worktree add --quiet "$ledger_worktree_temporary" main 2>/dev/null; then
+    echo "dispatch: REFUSING — checkout is on '$(git branch --show-current)' and main cannot be borrowed into a temporary worktree." >&2
+    echo "  The task record must land on main, never on the checked-out branch. Another worktree may hold main:" >&2
+    git worktree list >&2
+    rmdir "$ledger_worktree_temporary" 2>/dev/null || true
+    exit 2
+  fi
+  ledger_root="$ledger_worktree_temporary"
+  echo "dispatch: ledger — recording on main via temporary worktree (checkout is on $(git branch --show-current))"
+fi
+cleanup_ledger_worktree() {
+  if [ -n "$ledger_worktree_temporary" ]; then
+    git worktree remove "$ledger_worktree_temporary" 2>/dev/null \
+      || echo "dispatch: WARNING — temporary ledger worktree left at $ledger_worktree_temporary for inspection" >&2
+  fi
+}
+trap cleanup_ledger_worktree EXIT
+dispatch_directory="${ledger_root}/.invar/tasks/in-progress/${name}"
+
+# ---------------------------------------------------------------------------
 # 1. REFUSE on any collision. A leftover worktree has silently started a builder
 #    on the WRONG BASE three separate times; picking a new path costs nothing and
 #    reusing one costs a whole run.
@@ -232,8 +278,8 @@ echo "dispatch: installing dependencies (not optional, not the builder's job to 
 # A pre-filed task MOVES from active/ — one task, one folder, forever. mkdir alone would leave the
 # active copy behind and the first dispatch of a filed task would duplicate it. The State line
 # follows the folder so STATE-MISMATCH stays quiet on a healthy dispatch.
-if [ -d "${repository_root}/.invar/tasks/active/${name}" ]; then
-  git mv "${repository_root}/.invar/tasks/active/${name}" "$dispatch_directory"
+if [ -d "${ledger_root}/.invar/tasks/active/${name}" ]; then
+  git -C "$ledger_root" mv ".invar/tasks/active/${name}" ".invar/tasks/in-progress/${name}"
   sed -i '0,/^State: .*/s//State: IN-PROGRESS/' "$dispatch_directory/task-${name}.md" 2>/dev/null || true
 fi
 mkdir -p "$dispatch_directory" "$(dirname "$transcript_path")"
@@ -266,27 +312,47 @@ cat > "$dispatch_directory/meta.json" <<META
   "model": "${declared_model:-unknown}",
   "effort": "${declared_effort:-default}",
   "heldFromMain": $([ "${EXPERIMENT:-0}" = "1" ] && echo true || echo false),
-  "baseCommit": "$(git rev-parse HEAD)",
+  "baseCommit": "$(git rev-parse "$base_ref")",
   "startedAt": "$(date -Is)"
 }
 META
 
 # ---------------------------------------------------------------------------
-# 4. COMMIT THE BRIEF BEFORE LAUNCHING. This is the step the whole script exists
-#    for. If it fails, no agent starts — an unrecorded dispatch is worse than no
-#    dispatch, because it produces work nobody can audit.
-#    SKIP_GATE: markdown only, and the gate is for landing, not for dispatching.
+# 4. COMMIT THE WHOLE RECORD BEFORE LAUNCHING. This is the step the whole
+#    script exists for. If it fails, no agent starts — an unrecorded dispatch
+#    is worse than no dispatch, because it produces work nobody can audit.
+#
+#    The commit is PATHSPEC-LIMITED to the task tree and its generated views:
+#    it records exactly those paths and ignores everything else in the
+#    checkout, staged or not. This closed a real gap — the first version named
+#    only the brief and meta.json, so the active/ -> in-progress/ move stayed
+#    staged and uncommitted, and the next merge tripped over it.
+#
+#    write-active runs FIRST and in the ledger root, so the regenerated views
+#    ride the same commit as the move they reflect.
+#    SKIP_GATE: markdown only, and the gate is for landing, not dispatching.
 # ---------------------------------------------------------------------------
-git add "$dispatch_directory/$brief_dated_name" "$dispatch_directory/meta.json"
-if ! SKIP_GATE=1 git -c commit.gpgsign=false commit -q \
+(cd "$ledger_root" && PATH="$HOME/.bun/bin:$PATH" bun "scripts/tasks/tasks-status.ts" write-active >/dev/null 2>&1) \
+  || echo "dispatch: WARNING — write-active failed; generated views may lag this dispatch" >&2
+git -C "$ledger_root" add -A -- .invar/tasks project.active-tasks.md project.tasks-completed.md
+if ! SKIP_GATE=1 git -C "$ledger_root" -c commit.gpgsign=false commit -q \
       -m "dispatch #${task_number}: ${slug}
 
-Brief committed before the agent starts, so the record cannot drift from what
-was actually asked. Branch ${branch}, worktree .invar/worktrees/${name},
-session ${tmux_session}, engine ${engine}." \
-      -- "$dispatch_directory/$brief_dated_name" "$dispatch_directory/meta.json"; then
-  echo "dispatch: BRIEF COMMIT FAILED — refusing to launch" >&2
+Brief, task move, and regenerated views committed before the agent starts, so
+the record cannot drift from what was actually asked. Branch ${branch},
+worktree .invar/worktrees/${name}, session ${tmux_session}, engine ${engine}." \
+      -- .invar/tasks project.active-tasks.md project.tasks-completed.md; then
+  echo "dispatch: RECORD COMMIT FAILED — refusing to launch. Uncommitted record state:" >&2
+  git -C "$ledger_root" status --porcelain -- .invar/tasks project.active-tasks.md project.tasks-completed.md >&2
   exit 1
+fi
+
+# RECORD_ONLY=1 stops here — record committed, no agent. This is the testable
+# seam for both ledger arms (on-main and borrowed-main) in a throwaway clone,
+# without launching tmux or an agent. It is not for production dispatches.
+if [ "${RECORD_ONLY:-0}" = "1" ]; then
+  echo "dispatch: RECORD_ONLY — record committed on main, no agent launched."
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -322,13 +388,7 @@ AGENT_TMUX_PREFIX="invar/" bash "${repository_root}/.claude/skills/agent-tmux/sc
 
 
 echo
-# The active-backlog view regenerates as a BYPRODUCT of dispatching — never a separate step.
-# Absolute path: by this point the script has cd'd into the worktree, and the relative invocation
-# failed SILENTLY behind || true — the STALE-ACTIVE-VIEW signal caught it on the first real
-# dispatch. The || true stays (a launched builder must not be failed by its bookkeeping), but the
-# failure now says so instead of vanishing.
-(cd "$repository_root" && bun "$repository_root/scripts/tasks/tasks-status.ts" write-active >/dev/null 2>&1) \
-  || echo "dispatch: WARNING — write-active failed; run it by hand" >&2
+# The generated views were regenerated and committed WITH the record in step 4.
 echo "dispatch: LAUNCHED #${task_number} ${slug}"
 echo "  attach:     tmux attach -t ${tmux_session}"
 echo "  transcript: ${transcript_path}"
