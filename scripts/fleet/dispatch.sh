@@ -390,10 +390,41 @@ fi
 # NOT hand-roll send-keys here or in any caller. Its `send` verb splits text from Enter and then
 # CONFIRMS submission by polling the busy marker; a bare send-keys leaves a large paste sitting
 # unsubmitted in the composer, which is exactly what happened.
+# THE ASSIGNMENT IS TRANSMITTED, NOT ONLY ENFORCED. The Model/Effort fields
+# were checked at dispatch but never passed to the engine, so every claude
+# builder ran at its default (medium) while the task file said high — caught
+# by the user reading a tmux footer against the tasks:live lens on 2026-07-29.
+# Model aliases verified live: opus-5 -> opus, fable-5 -> fable (the -5 forms
+# are not valid CLI aliases); codex 5.6-sol -> gpt-5.6-sol (matches the footer
+# of every codex session tonight). Effort: claude --effort <level>; codex
+# -c model_reasoning_effort=<level>; 'default' means say nothing.
+model_flags=""
 case "$engine" in
-  codex)  agent_command="codex --dangerously-bypass-approvals-and-sandbox";;
-  claude) agent_command="claude --dangerously-skip-permissions";;
+  codex)
+    agent_command="codex --dangerously-bypass-approvals-and-sandbox"
+    case "${declared_model:-}" in
+      5.6-sol) model_flags=" -m gpt-5.6-sol";;
+      "" ) ;;
+      *) model_flags=" -m ${declared_model}";;
+    esac
+    if [ -n "${declared_effort:-}" ] && [ "$declared_effort" != "default" ]; then
+      model_flags="${model_flags} -c model_reasoning_effort=${declared_effort}"
+    fi
+    ;;
+  claude)
+    agent_command="claude --dangerously-skip-permissions"
+    case "${declared_model:-}" in
+      opus-5)  model_flags=" --model opus";;
+      fable-5) model_flags=" --model fable";;
+      "" ) ;;
+      *) model_flags=" --model ${declared_model}";;
+    esac
+    if [ -n "${declared_effort:-}" ] && [ "$declared_effort" != "default" ]; then
+      model_flags="${model_flags} --effort ${declared_effort}"
+    fi
+    ;;
 esac
+agent_command="${agent_command}${model_flags}"
 
 # A marker taken BEFORE launch makes the native-session link deterministic:
 # the engine's store file created after this instant belongs to this launch.
