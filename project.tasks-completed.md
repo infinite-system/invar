@@ -6,6 +6,7 @@ derived from `.invar/tasks/completed/`. Each line: number, name, and the landing
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
+- #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
 - #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position

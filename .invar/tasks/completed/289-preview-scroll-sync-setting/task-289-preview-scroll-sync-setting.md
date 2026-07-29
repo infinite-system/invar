@@ -1,6 +1,6 @@
 # 289 — preview scroll syncs with editor scroll (setting, default ON)
 
-State: IN-PROGRESS
+State: COMPLETED — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
 Created: 2026-07-29
 Engine: codex
 Environment: linux
