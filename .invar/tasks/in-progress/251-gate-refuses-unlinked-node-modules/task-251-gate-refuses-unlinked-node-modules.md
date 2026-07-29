@@ -1,6 +1,6 @@
 # 251 — the gate ran 60 smokes on an EMPTY node_modules and reported 57 green
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #251 gate-refuses-unlinked-node-modules  [building]
+  `tmux attach -t invar/251-gate-refuses-unlinked-node-modules`
 - #245 provider-seam-open-or-bless-decision  [building]
   `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
 - #236 markdown-terminal-stylesheet-readable  [building]
@@ -20,7 +22,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
 ## VERIFICATION-INTEGRITY (18)
-- #251 gate-refuses-unlinked-node-modules
+- #253 ui-contract-systematic-citation-sweep
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
