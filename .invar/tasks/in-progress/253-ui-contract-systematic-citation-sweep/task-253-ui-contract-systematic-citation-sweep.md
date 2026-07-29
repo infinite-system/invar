@@ -1,6 +1,6 @@
 # 253 — the systematic sweep: every ui.invariants.md citation AST-verified
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -1,0 +1,15 @@
+{
+  "task": 253,
+  "slug": "ui-contract-systematic-citation-sweep",
+  "branch": "fleet/253-ui-contract-systematic-citation-sweep",
+  "worktree": ".invar/worktrees/253-ui-contract-systematic-citation-sweep",
+  "tmuxSession": "invar/253-ui-contract-systematic-citation-sweep",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-253-ui-contract-systematic-citation-sweep.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "adbd75aa6b29f9b97d6535d4705b510945880f03",
+  "startedAt": "2026-07-29T04:47:21-04:00"
+}
