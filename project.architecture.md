@@ -33,7 +33,7 @@ visible window from the model during render; it holds no state.
 
 ## The three class kinds (per module)
 
-- **Reactive domain models** — `App`, `Workspace`, `Buffer`, `Cursor`, `Editor`, `Viewport`,
+- **Reactive domain models** — `App`, `Workspace`, `Buffer`, `TextCursor`, `Editor`, `TextViewport`,
   `GitRepository`, `DiffModel`, `LanguageClient`, `MarkdownPreview`, `Theme`. `Reactive($Class)`,
   ref-returning getters, plain-getter derivation, `$watch`/`$stopEffects` ownership.
 - **Plain stateful classes** — `PieceTable`, `LineIndex`, `UndoStore`, `RingBuffer`, `PackedSpans`,

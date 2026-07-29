@@ -5,7 +5,7 @@ import { ref, shallowRef } from 'vue';
 // movement and an optional selection anchor.
 // invariant: A cursor position resolves to three distinct coordinates (src/modules/text/text.invariants.md)
 //   — line/col are grapheme positions; display-column mapping is the view's job.
-class $Cursor {
+class $TextCursor {
   get line() {
     return ref(0);
   }
@@ -19,7 +19,7 @@ class $Cursor {
   }
   // Selection anchor (the fixed end); null when there is no selection.
   get anchor() {
-    return shallowRef<Position | null>(null);
+    return shallowRef<TextPosition | null>(null);
   }
 
   /**
@@ -56,10 +56,10 @@ class $Cursor {
   }
 
   /** Normalized selection {start <= end}, or null if there is no non-empty selection. */
-  selectionRange(): { start: Position; end: Position } | null {
+  selectionRange(): { start: TextPosition; end: TextPosition } | null {
     const anchorPosition = this.anchor.value;
     if (!anchorPosition) return null;
-    const cursorPosition: Position = {
+    const cursorPosition: TextPosition = {
       line: this.line.value,
       col: this.col.value,
     };
@@ -78,14 +78,14 @@ class $Cursor {
   }
 }
 
-export namespace Cursor {
-  export const $Class = $Cursor;
+export namespace TextCursor {
+  export const $Class = $TextCursor;
   export let Class = Reactive($Class);
   export type Instance = typeof Class.Instance;
   export type Model = InstanceType<typeof Class>;
 }
 
-export interface Position {
+export interface TextPosition {
   line: number;
   col: number;
 }

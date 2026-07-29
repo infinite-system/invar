@@ -60,6 +60,7 @@ import { PaneRuntimes } from '../ui/PaneRuntimes';
 import { AgentFactory } from '../agent/AgentFactory';
 import type { AgentTerminalToolPort } from '../agent/AgentTerminalTools';
 import { BracketMatch } from '../editor/BracketMatch';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 import { TextCoordinates } from '../text/TextCoordinates';
 import type { TextInputAction } from '../text/TextInputModel';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
@@ -150,6 +151,7 @@ class $Bootstrap {
           renderer.once('frame', () => resolve());
         }),
       codeFoldingEnabled: codeFoldingEnabled.value,
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
     });
     workspaceSet.open(options.root ?? Environment.Class.cwd);
     const keybindings = new KeybindingRegistry.Class();

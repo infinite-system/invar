@@ -1,6 +1,6 @@
 import { bg, dim, fg, italic, type TextChunk } from '@opentui/core';
 import type { RewriteProvider } from './RewriteProvider.interface';
-import type { Editor } from '../editor/Editor';
+import type { SourceTextView } from '../workspace/SourceTextView.interface';
 import type { EditorContribution } from '../editor/EditorContributions';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { LanguageRegistry } from '../syntax/LanguageRegistry';
@@ -18,7 +18,7 @@ class $InlineRewriteWorkspace
   implements WorkspaceContribution, EditorContribution
 {
   protected readonly controllers = new Map<
-    Editor.Model,
+    SourceTextView,
     InlineRewrite.Instance
   >();
   protected disposeEditorContribution: (() => void) | null = null;
@@ -57,15 +57,15 @@ class $InlineRewriteWorkspace
     this.options.disposed?.();
   }
 
-  attached(_editor: Editor.Model): void {}
+  attached(_editor: SourceTextView): void {}
 
-  detached(editor: Editor.Model): void {
+  detached(editor: SourceTextView): void {
     this.controllers.get(editor)?.dispose();
     this.controllers.delete(editor);
   }
 
   recordTyping(
-    editor: Editor.Model,
+    editor: SourceTextView,
     firstEditedLine: number,
     lastEditedLine: number,
   ): void {
@@ -76,11 +76,11 @@ class $InlineRewriteWorkspace
     );
   }
 
-  recordOrdinaryEdit(editor: Editor.Model): void {
+  recordOrdinaryEdit(editor: SourceTextView): void {
     this.controllers.get(editor)?.dismiss();
   }
 
-  lineEndChunks(editor: Editor.Model, lineIndex: number): TextChunk[] {
+  lineEndChunks(editor: SourceTextView, lineIndex: number): TextChunk[] {
     const controller = this.controllers.get(editor);
     const projectedLine = controller?.projectedLine(
       lineIndex,
@@ -100,7 +100,7 @@ class $InlineRewriteWorkspace
     ];
   }
 
-  title(editor: Editor.Model): { text: string; color: string } | null {
+  title(editor: SourceTextView): { text: string; color: string } | null {
     const controller = this.controllers.get(editor);
     if (!controller?.selectedCandidate) return null;
     const acceptHint = this.options.bindingHint(
@@ -126,27 +126,27 @@ class $InlineRewriteWorkspace
     };
   }
 
-  request(editor: Editor.Model): void {
+  request(editor: SourceTextView): void {
     this.controllerFor(editor, true)?.requestNow();
   }
 
-  accept(editor: Editor.Model): void {
+  accept(editor: SourceTextView): void {
     const controller = this.controllers.get(editor);
     const candidate = controller?.takeSelectedCandidate();
     if (!candidate) return;
     editor.replaceRangeAsUndoStep(candidate.region, candidate.replacementText);
   }
 
-  reject(editor: Editor.Model): void {
+  reject(editor: SourceTextView): void {
     this.controllers.get(editor)?.dismiss();
   }
 
-  cycle(editor: Editor.Model, candidateDelta: number): void {
+  cycle(editor: SourceTextView, candidateDelta: number): void {
     this.controllers.get(editor)?.cycle(candidateDelta);
   }
 
   controllerFor(
-    editor: Editor.Model,
+    editor: SourceTextView,
     create = false,
   ): InlineRewrite.Instance | null {
     const existing = this.controllers.get(editor);
@@ -156,7 +156,7 @@ class $InlineRewriteWorkspace
     return controller;
   }
 
-  protected createController(editor: Editor.Model): InlineRewrite.Instance {
+  protected createController(editor: SourceTextView): InlineRewrite.Instance {
     const controller = new InlineRewrite.Class({
       provider: this.options.createProvider(),
       snapshot: (region) => {
@@ -199,7 +199,7 @@ class $InlineRewriteWorkspace
   }
 
   protected lineRegion(
-    editor: Editor.Model,
+    editor: SourceTextView,
     firstLine: number,
     lastLine: number,
   ) {

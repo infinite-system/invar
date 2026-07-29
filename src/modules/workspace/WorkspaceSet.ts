@@ -3,6 +3,7 @@ import { ref, shallowRef, type Ref } from 'vue';
 import { Workspace } from './Workspace';
 import type { Settings } from '../settings/Settings';
 import type { WorkspaceContributor } from './WorkspaceContributor.interface';
+import type { SourceTextViewProvider } from './SourceTextView.interface';
 
 /** The project-layer workspace set. Each entry preserves its own editor/tree state while cold. */
 // invariant: Workspace and file navigation are separate layers (workspace.invariants.md)
@@ -153,6 +154,7 @@ class $WorkspaceSet {
       new Workspace.Class({
         awaitNextViewPaint: this.options.awaitNextViewPaint,
         contributors: this.contributors,
+        createSourceTextViews: this.options.createSourceTextViews,
       })
     );
   }
@@ -166,6 +168,8 @@ export namespace WorkspaceSet {
 
 export interface WorkspaceSetOptions {
   createWorkspace?: () => Workspace.Instance;
+  /** Passed to every workspace this set opens: who makes its buffer views. */
+  createSourceTextViews?: () => SourceTextViewProvider;
   awaitNextViewPaint?: () => Promise<void>;
   contributors?: readonly WorkspaceContributor[];
   codeFoldingEnabled?: Ref<boolean>;

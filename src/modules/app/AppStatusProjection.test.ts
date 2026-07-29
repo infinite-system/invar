@@ -26,6 +26,7 @@ import {
   type AppStatusMouseEvent,
   type AppStatusProjectionPorts,
 } from './AppStatusProjection';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 
 let temporaryRoot = '';
 
@@ -67,7 +68,9 @@ function createSettings(): InstanceType<typeof Settings.Class> {
 describe('AppStatusProjection', () => {
   test('reads optional live ports on every snapshot and publishes the active agent title', () => {
     const settings = createSettings();
-    workspaceSet = new WorkspaceSet.Class(settings);
+    workspaceSet = new WorkspaceSet.Class(settings, {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
     workspaceSet.open(temporaryRoot);
     const commands = new CommandRegistry.Class();
     const keybindings = new KeybindingRegistry.Class();

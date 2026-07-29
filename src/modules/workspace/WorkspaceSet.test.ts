@@ -11,6 +11,7 @@ import { ref } from 'vue';
 import { Settings, type SettingsFileSystem } from '../settings/Settings';
 import { WorkspaceSet } from './WorkspaceSet';
 import { GitPlugin } from '../git/GitPlugin';
+import { EditorSourceTextViews } from '../editor/EditorSourceTextViews';
 
 let temporaryRoot = '';
 
@@ -46,6 +47,7 @@ describe('WorkspaceSet project-layer flyweight', () => {
   test('host code-folding capability attaches to every workspace editor', () => {
     const codeFoldingEnabled = ref(false);
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
       codeFoldingEnabled,
     });
     workspaceSet.open(workspaceRoots[0]!);
@@ -58,6 +60,7 @@ describe('WorkspaceSet project-layer flyweight', () => {
   test('N open workspaces keep exactly one live GitWatcher', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
       contributors: [plugin],
     });
     for (const workspaceRoot of workspaceRoots)
@@ -85,7 +88,9 @@ describe('WorkspaceSet project-layer flyweight', () => {
     const secondFilePath = join(workspaceRoots[1]!, 'second.txt');
     writeFileSync(firstFilePath, 'first workspace\n');
     writeFileSync(secondFilePath, 'second workspace\n');
-    const workspaceSet = new WorkspaceSet.Class(createSettings());
+    const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
+    });
 
     workspaceSet.open(workspaceRoots[0]!);
     workspaceSet.active.openFileInTab(firstFilePath);
@@ -104,6 +109,7 @@ describe('WorkspaceSet project-layer flyweight', () => {
   test('closing disposes one workspace and activates a stable neighbour', () => {
     const plugin = new GitPlugin.Class();
     const workspaceSet = new WorkspaceSet.Class(createSettings(), {
+      createSourceTextViews: () => new EditorSourceTextViews.Class(),
       contributors: [plugin],
     });
     for (const workspaceRoot of workspaceRoots)

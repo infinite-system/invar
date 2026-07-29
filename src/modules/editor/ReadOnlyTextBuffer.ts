@@ -1,7 +1,7 @@
 import type { FindBarTarget } from '../search/FindBar';
 import type { FindInBufferMatch } from '../search/FindInBuffer';
 import { Clipboard } from '../system/Clipboard';
-import { Cursor } from './Cursor';
+import { TextCursor } from '../text/TextCursor';
 import { TextCoordinates } from '../text/TextCoordinates';
 import { TextDocument } from '../text/TextDocument';
 
@@ -21,8 +21,8 @@ class $ReadOnlyTextBuffer {
     return new TextDocument.Class();
   }
 
-  protected createCursor(): Cursor.Model {
-    return new Cursor.Class();
+  protected createCursor(): TextCursor.Model {
+    return new TextCursor.Class();
   }
 
   openText(displayPath: string, text: string): void {
