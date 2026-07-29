@@ -4,7 +4,7 @@
 # active), the Ctrl+Shift+E/G/X chords switch the same views, and a glyph renders in the portable
 # fallback tier (the default no-Nerd-Font env). Semantic state -> per-session status channel; visual
 # (accent + glyph + switched content) -> FrameProbe.
-# invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
+# invariant: The active activity item determines its dock content (src/modules/ui/ui.invariants.md)
 set -uo pipefail
 
 script_directory="$(cd "$(dirname "$0")" && pwd)"

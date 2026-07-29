@@ -6,7 +6,7 @@
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Harness waits observe conditions not frame ordinals (scripts/harness/harness.invariants.md)
 // invariant: Every wait names itself (scripts/harness/harness.invariants.md)
-// invariant: The active activity item determines the sidebar content (src/modules/ui/ui.invariants.md)
+// invariant: The active activity item determines its dock content (src/modules/ui/ui.invariants.md)
 // invariant: One panel host owns keyboard focus (src/modules/ui/ui.invariants.md)
 // invariant: Appearance is data with a capability fallback (project.invariants.md)
 import { mkdirSync, mkdtempSync } from 'node:fs';
@@ -35,6 +35,17 @@ function activityGlyphsFor(
 function glyphRow(snapshot: HarnessSnapshot.Model, glyph: string): number {
   for (let row = 0; row < snapshot.rows; row++) {
     if (snapshot.cell(row, 2)?.characters === glyph) return row;
+  }
+  return -1;
+}
+
+function glyphRowAtColumn(
+  snapshot: HarnessSnapshot.Model,
+  glyph: string,
+  column: number,
+): number {
+  for (let row = 0; row < snapshot.rows; row++) {
+    if (snapshot.cell(row, column)?.characters === glyph) return row;
   }
   return -1;
 }
@@ -266,10 +277,16 @@ try {
   const filesRow = glyphRow(snapshot, 'F');
   const gitRow = glyphRow(snapshot, 'G');
   const extensionsRow = glyphRow(snapshot, 'X');
+  const structureRow = glyphRow(snapshot, 't');
+  const tasksRow = glyphRow(snapshot, '#');
   HarnessSmoke.Class.pass(`Explorer glyph 'F' rendered (row ${filesRow})`);
   HarnessSmoke.Class.pass(`Source Control glyph 'G' rendered (row ${gitRow})`);
   HarnessSmoke.Class.pass(
     `Extensions glyph 'X' rendered (row ${extensionsRow})`,
+  );
+  HarnessSmoke.Class.requireCondition(
+    structureRow >= 0 && tasksRow >= 0,
+    'right-dock Structure and Tasks glyphs render in the activity surface',
   );
 
   console.log(
@@ -306,8 +323,12 @@ try {
   console.log('== harness activitybar: initial Explorer state is coherent ==');
   const pluginPrimaryDockContentIdentifiers =
     initialStatus.pluginPrimaryDockContentIdentifiers as string[];
-  const expectedPrimaryDockContentIdentifiers =
-    pluginPrimaryDockContentIdentifiers;
+  const registeredDockContentIdentifiers = [
+    ...(initialStatus.sidebarViewIdentifiers as string[]),
+    ...(initialStatus.rightDockContentIds as string[]),
+  ];
+  const activityBarItemIdentifiers =
+    initialStatus.activityBarItemIdentifiers as string[];
   HarnessSmoke.Class.requireCondition(
     pluginPrimaryDockContentIdentifiers.includes('files'),
     'the default plugin manifest declares the Explorer view',
@@ -317,13 +338,18 @@ try {
     'the default plugin manifest declares the Source Control view',
   );
   HarnessSmoke.Class.requireCondition(
-    JSON.stringify(initialStatus.activityBarItemIdentifiers) ===
-      JSON.stringify(expectedPrimaryDockContentIdentifiers),
-    'the activity bar item set contains every plugin-contributed view in order',
+    activityBarItemIdentifiers.length ===
+      new Set(activityBarItemIdentifiers).size &&
+      activityBarItemIdentifiers.length ===
+        registeredDockContentIdentifiers.length &&
+      registeredDockContentIdentifiers.every((identifier) =>
+        activityBarItemIdentifiers.includes(identifier),
+      ),
+    'the activity surface contains every registered dock content exactly once',
   );
   HarnessSmoke.Class.requireCondition(
     JSON.stringify(initialStatus.sidebarViewIdentifiers) ===
-      JSON.stringify(expectedPrimaryDockContentIdentifiers),
+      JSON.stringify(pluginPrimaryDockContentIdentifiers),
     'the sidebar view-id set contains every plugin-contributed view in order',
   );
   HarnessSmoke.Class.pass('boots on the Explorer view');
@@ -338,6 +364,176 @@ try {
   HarnessSmoke.Class.requireCondition(
     snapshot.findText('tree-marker.txt') !== null,
     'Explorer view renders the file tree',
+  );
+
+  console.log(
+    '== harness activitybar: mirror and live dock side share one surface ==',
+  );
+  HarnessSmoke.Class.requireCondition(
+    (initialStatus.layoutSlots as Record<string, { width: number }>)
+      .rightActivityBar?.width === 0,
+    'the mirrored right activity bar is off by default',
+  );
+  driver.sendKeys('Control+,');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings opens before the mirrored activity-bar drive',
+    (status) => status.settingsOpen === true,
+  );
+  driver.sendKeys(...Array.from({ length: 26 }, () => 'Down'));
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the mirror setting is selected before it changes',
+    (status) =>
+      status.settingsSelectedLabel === 'Mirror activity bar on right' &&
+      status.settingsSelectedValue === 'off',
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the mirror setting allocates the right activity-bar slot live',
+    (status) =>
+      status.showRightActivityBar === true &&
+      (status.layoutSlots as Record<string, { width: number }>).rightActivityBar
+        ?.width === 4,
+  );
+  driver.sendKeys('Escape');
+  snapshot = await driver.awaitGridCondition(
+    'the mirrored right activity bar paints the same registered glyphs',
+    (candidate) =>
+      glyphRowAtColumn(candidate, 'F', candidate.columns - 2) >= 0 &&
+      glyphRowAtColumn(candidate, 't', candidate.columns - 2) >= 0 &&
+      glyphRowAtColumn(candidate, '#', candidate.columns - 2) >= 0,
+  );
+  HarnessSmoke.Class.pass(
+    'the optional right activity bar mirrors the dock-agnostic surface',
+  );
+  driver.sendKeys('Control+,');
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'turning the mirror off removes its slot live',
+    (status) =>
+      status.showRightActivityBar === false &&
+      (status.layoutSlots as Record<string, { width: number }>).rightActivityBar
+        ?.width === 0,
+  );
+
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes before the activity-surface click',
+    (status) => status.settingsOpen === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the single left activity surface remains after the mirror closes',
+    (candidate) =>
+      glyphRow(candidate, 't') === structureRow &&
+      candidate.findText('Mirror activity bar on right') === null,
+  );
+  clickCell(driver, 1, structureRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Structure activity item focuses its suggested right host',
+    (status) =>
+      status.rightDockActiveContent === 'structure' &&
+      status.rightDockVisible === true &&
+      status.rightDockFocused === true &&
+      status.primaryDockFocused === false,
+  );
+  driver.sendKeys('Control+,');
+  driver.sendKeys(...Array.from({ length: 14 }, () => 'Down'));
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the Structure dock-side setting is selected at its default',
+    (status) =>
+      status.settingsSelected === 40 &&
+      status.settingsSelectedLabel === 'Dock side' &&
+      status.settingsSelectedValue === 'right',
+  );
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the visible Structure instance moves from right to left with focus',
+    (status) =>
+      (status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      !(status.rightDockContentIds as string[]).includes('structure') &&
+      status.sidebarView === 'structure' &&
+      status.primaryDockVisible === true &&
+      status.primaryDockFocused === true &&
+      status.rightDockVisible === false,
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the visible Structure instance moves from left to right with focus',
+    (status) =>
+      !(status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      (status.rightDockContentIds as string[]).includes('structure') &&
+      status.primaryDockVisible === false &&
+      status.rightDockVisible === true &&
+      status.rightDockFocused === true,
+  );
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the same visible Structure instance moves back from right to left',
+    (status) =>
+      (status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      !(status.rightDockContentIds as string[]).includes('structure') &&
+      status.primaryDockVisible === true &&
+      status.primaryDockFocused === true &&
+      status.rightDockVisible === false,
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Structure returns to its suggested right side before later drives',
+    (status) =>
+      !(status.sidebarViewIdentifiers as string[]).includes('structure') &&
+      (status.rightDockContentIds as string[]).includes('structure') &&
+      status.rightDockFocused === true,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Settings closes before the Structure toggle drive',
+    (status) => status.settingsOpen === false,
+  );
+  snapshot = await driver.awaitGridCondition(
+    'the settings paint leaves before the Structure toggle click',
+    (candidate) =>
+      glyphRow(candidate, 't') >= 0 &&
+      candidate.findText('Mirror activity bar on right') === null,
+  );
+  clickCell(driver, 1, glyphRow(snapshot, 't'));
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a second Structure activity click toggles its right host closed',
+    (status) => status.rightDockVisible === false,
+  );
+  clickCell(driver, 1, filesRow);
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Explorer restores the primary dock after the side-setting drive',
+    (status) =>
+      status.sidebarView === 'files' &&
+      status.primaryDockVisible === true &&
+      status.primaryDockFocused === true,
   );
 
   console.log(

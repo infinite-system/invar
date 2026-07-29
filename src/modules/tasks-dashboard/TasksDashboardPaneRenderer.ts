@@ -1,5 +1,5 @@
 // The tasks dashboard renderer: the lens tab line, then the visible window of lens rows, as a
-// StyledText for the right-dock body. Stateless capability — pure statics behind the Static()
+// StyledText for the dock body. Stateless capability — pure statics behind the Static()
 // seam; every model read happens through the passed-in context so reactivity flows from the
 // host's reactive render call.
 //

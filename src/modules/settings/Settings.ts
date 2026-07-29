@@ -104,6 +104,9 @@ class $Settings {
   get showActivityBar(): Ref<boolean> {
     return ref(true);
   }
+  get showRightActivityBar(): Ref<boolean> {
+    return ref(false);
+  }
   get showIndentGuides(): Ref<boolean> {
     return ref(true);
   }
@@ -186,6 +189,7 @@ class $Settings {
       theme: this.theme,
       wordWrap: this.wordWrap,
       showActivityBar: this.showActivityBar,
+      showRightActivityBar: this.showRightActivityBar,
       showIndentGuides: this.showIndentGuides,
       reducedMotion: this.reducedMotion,
       workspaceTabPosition: this.workspaceTabPosition,
@@ -491,6 +495,7 @@ class $Settings {
       theme: 'dark',
       wordWrap: false,
       showActivityBar: true,
+      showRightActivityBar: false,
       showIndentGuides: true,
       reducedMotion: false,
       workspaceTabPosition: 'top',
@@ -573,6 +578,8 @@ class $Settings {
     if (typeof record.wordWrap === 'boolean') result.wordWrap = record.wordWrap;
     if (typeof record.showActivityBar === 'boolean')
       result.showActivityBar = record.showActivityBar;
+    if (typeof record.showRightActivityBar === 'boolean')
+      result.showRightActivityBar = record.showRightActivityBar;
     if (typeof record.showIndentGuides === 'boolean')
       result.showIndentGuides = record.showIndentGuides;
     if (typeof record.reducedMotion === 'boolean')
@@ -708,6 +715,7 @@ export interface SettingsValues {
   theme: string;
   wordWrap: boolean;
   showActivityBar: boolean;
+  showRightActivityBar: boolean;
   showIndentGuides: boolean;
   reducedMotion: boolean;
   workspaceTabPosition: WorkspaceTabPosition;

@@ -1373,6 +1373,7 @@ try {
     'uninstall removes the structure pane and withdraws its projection',
     (status) =>
       !(status.rightDockContentIds as string[]).includes('structure') &&
+      !(status.activityBarItemIdentifiers as string[]).includes('structure') &&
       // The dock stays visible: the tasks dashboard is a second right-dock citizen now, and the
       // host falls back to the surviving content instead of hiding an occupied dock.
       status.rightDockActiveContent === 'tasks' &&
@@ -1399,7 +1400,9 @@ try {
     driver,
     statusPath,
     'reinstall restores the structure pane registration',
-    (status) => (status.rightDockContentIds as string[]).includes('structure'),
+    (status) =>
+      (status.rightDockContentIds as string[]).includes('structure') &&
+      (status.activityBarItemIdentifiers as string[]).includes('structure'),
   );
   driver.sendKeys('Control+Shift+u');
   await HarnessSmoke.Class.awaitStatus(

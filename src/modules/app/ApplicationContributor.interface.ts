@@ -70,6 +70,9 @@ export interface ApplicationContributionContext {
   readonly registerSetting: <Value extends SettingValue>(
     contribution: SettingContribution<Value>,
   ) => RegisteredSetting<Value>;
+  readonly registerDockContent: (
+    contribution: DockContentContribution,
+  ) => RegisteredDockContent;
   readonly registerPrimaryDockContent: (content: PaneContent) => void;
   readonly registerRightDockContent: (content: PaneContent) => void;
   /** Register a RUNTIME: the owner of one bottom-panel pane kind and the processes behind it. The
@@ -92,4 +95,22 @@ export interface ApplicationContributionEntry {
   name: string;
   enabled: boolean;
   canDisable: boolean;
+}
+
+export type DockSide = 'left' | 'right';
+
+export interface DockContentContribution {
+  content: PaneContent;
+  settingIdentifier: string;
+  settingLabel: string;
+  section: string;
+  suggestedSide: DockSide;
+}
+
+export interface RegisteredDockContent extends RegisteredSetting<DockSide> {
+  host(): PanelHost.Instance;
+  isVisible(): boolean;
+  reveal(): void;
+  show(): void;
+  blur(): void;
 }
