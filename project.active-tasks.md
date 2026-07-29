@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #274 structure-scrollbar-depth-filter  [building]
   `tmux attach -t invar/274-structure-scrollbar-depth-filter`
-- #235 tasks-dashboard-pane-live-active-done  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/235-tasks-dashboard-pane-live-active-done`
 
 ## USER-DIRECTED (3)
 - #256 editor-stray-glyph-after-emoji
@@ -86,7 +84,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 52 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 53 — full log: project.tasks-completed.md)
 - #268 editor-smoke-vs-auto-open-red-main — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 drive-settle-ignores-debounced-parse — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 boot-save-erases-unregistered-settings — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings

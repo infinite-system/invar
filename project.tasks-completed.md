@@ -20,6 +20,7 @@ task file’s State line. Completion chronology in full detail: `git log -- .inv
 - #238 structure-default-right-and-md-toc — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
 - #237 markdown-preview-left-and-auto-open — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
 - #236 markdown-terminal-stylesheet-readable — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k
+- #235 tasks-dashboard-pane-live-active-done — 4fd04703 — tasks dashboard pane: three lenses, cycling, record-open; CLI readers are the one generator
 - #233 wrap-contract-red-settings-leak — 3a1172c0 — harness-only: isolated per-run HOME/XDG, pinned geometry, settle race fixed; settings exonerated by hash
 - #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226

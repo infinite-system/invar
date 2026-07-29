@@ -1,6 +1,6 @@
 # 235 — a tasks dashboard pane: live / active / done, cycling overview, linked to the records
 
-State: IN-PROGRESS
+State: COMPLETED — 4fd04703 — tasks dashboard pane: three lenses, cycling, record-open; CLI readers are the one generator
 Created: 2026-07-29
 Engine: claude
 Environment: linux
