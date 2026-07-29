@@ -14,7 +14,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (17)
+## VERIFICATION-INTEGRITY (18)
+- #233 wrap-contract-red-settings-leak
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects
 - #230 author-ui-lattice
