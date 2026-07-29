@@ -230,6 +230,39 @@ scripts/merge-gate.sh && bash scripts/check-retired-smoke-references.sh && rg
 
 **Last refined:** 2026-07-27
 
+### Smoke boots do not extract agent binaries
+
+**Invariant:** If a PTY harness smoke boots Invar without starting an agent turn, then the boot and
+clean exit leave the isolated Claude Agent SDK extraction set unchanged.
+
+**Scope:** `PtyTestDriver` app boots with isolated `TMPDIR` and `CLAUDE_CODE_TMPDIR`; the direct
+temporary children matching `.<hex>-<counter>.claude-agent-sdk*`. Agent turns are outside this boot
+contract.
+
+**Mechanism:** `smoke-sdk-extraction-harness.ts` plants one matching directory as the census control,
+removes it, and plants one stale unheld directory as the boot-reaper control. It drives the real
+`src/main.ts` entry to ready through the PTY, exits through `Control+q`, and compares the remaining
+directory-name set with the clean baseline at all boundaries.
+
+**Generates:** A gate backstop against static SDK runtime imports; parallel-safe extraction
+accounting; separate boot and first-use boundaries.
+
+**Rejected alternatives:** Count the shared `/tmp` directory during a parallel smoke pool — another
+app can change that population and create a false verdict.
+
+**Evidence:** `scripts/harness/smoke-sdk-extraction-harness.ts`;
+`src/modules/agent/SdkStreamBackend.test.ts`.
+
+**Impossible if true:** A no-turn smoke boot or clean exit adding an SDK extraction directory; a
+green census that cannot detect one planted matching directory; a boot that keeps the planted stale
+unheld directory.
+
+**Verification:** `bun scripts/harness/smoke-sdk-extraction-harness.ts`
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### Input byte latency uses a reviewed gate baseline
 
 **Invariant:** If the merge gate checks input byte flush, then each edited

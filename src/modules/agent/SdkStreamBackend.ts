@@ -21,13 +21,11 @@
 // invariant: Every agent turn reaches a terminal state (src/modules/agent/agent.invariants.md)
 // invariant: Agent instructions match the workspace (src/modules/agent/agent.invariants.md)
 // invariant: Every agent backend session begins from the IBR foundation (src/modules/agent/agent.invariants.md)
-import {
-  createSdkMcpServer,
-  query,
-  tool,
-  type Query,
-  type Options,
-  type PermissionResult,
+// invariant: SDK runtime loads on first turn (src/modules/agent/agent.invariants.md)
+import type {
+  Query,
+  Options,
+  PermissionResult,
 } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { AgentBackend } from './AgentBackend.interface';
@@ -49,8 +47,11 @@ class $SdkStreamBackend implements AgentBackend {
 
   protected eventCallback: ((event: AgentEvent) => void) | null = null;
   protected activeQuery: Query | null = null;
+  protected sdkModulePromise: Promise<ClaudeAgentSdkModule> | null = null;
   protected sessionId: string | null = null;
   protected streamEndReason: AgentEndReason | null = null;
+  protected turnGeneration = 0;
+  protected starting = false;
   protected interrupting = false;
   protected disposed = false;
   /** Session-scoped auto-allow: tools the user answered 'always-allow' for — future calls skip the prompt. */
@@ -60,79 +61,112 @@ class $SdkStreamBackend implements AgentBackend {
   constructor(protected readonly options: SdkStreamOptions) {}
 
   send(prompt: string): void {
-    if (this.disposed || this.activeQuery) return; // one turn at a time (AgentSession also guards this)
+    if (this.disposed || this.activeQuery || this.starting) return; // one turn at a time (AgentSession also guards this)
+    this.starting = true;
     this.streamEndReason = null;
     this.interrupting = false;
-    const bypass = AgentPermissions.Class.resolveLive(
-      this.options.skipPermissions,
-    );
-    const terminalToolDefinitions = this.options.terminalTools
-      ? AgentTerminalTools.Class.definitions(bypass, this.options.terminalTools)
-      : [];
-    const terminalToolServer =
-      terminalToolDefinitions.length > 0
-        ? createSdkMcpServer({
-            name: 'invar-terminal',
-            version: '1.0.0',
-            alwaysLoad: true,
-            tools: terminalToolDefinitions.map((definition) =>
-              tool(
-                definition.name,
-                definition.description,
-                definition.requiresCommand
-                  ? { command: z.string() }
-                  : definition.name === 'readTerminalScrollback'
-                    ? {
-                        lineCount: z.number().int().positive().optional(),
-                        range: z
-                          .object({
-                            startLine: z.number().int().positive(),
-                            endLine: z.number().int().positive(),
-                          })
-                          .optional(),
-                      }
-                    : {},
-                async (input) => ({
-                  content: [
-                    { type: 'text', text: await definition.invoke(input) },
-                  ],
-                }),
-                { alwaysLoad: true },
-              ),
-            ),
-          })
-        : null;
+    const turnGeneration = ++this.turnGeneration;
+    void this.startTurn(prompt, turnGeneration);
+  }
+
+  protected async startTurn(
+    prompt: string,
+    turnGeneration: number,
+  ): Promise<void> {
+    let sdkModule: ClaudeAgentSdkModule;
+    try {
+      sdkModule = await this.loadSdkModule();
+    } catch (error) {
+      if (this.turnGeneration !== turnGeneration || this.disposed) return;
+      this.sdkModulePromise = null;
+      this.starting = false;
+      this.emit({
+        kind: 'error',
+        message: `Failed to load the Claude Agent SDK: ${String(error)}`,
+      });
+      this.emit({ kind: 'session-end', reason: 'error' });
+      return;
+    }
+    if (this.turnGeneration !== turnGeneration || this.disposed) return;
+
     let turn: Query;
     try {
-      turn = this.createQuery(prompt, {
-        cwd: this.options.cwd,
-        settingSources: ['user', 'project'],
-        ...(this.options.ibrFoundationContent !== undefined
-          ? {
-              systemPrompt: {
-                type: 'preset' as const,
-                preset: 'claude_code' as const,
-                append: this.options.ibrFoundationContent,
-              },
-            }
-          : {}),
-        model: this.options.model || undefined,
-        resume: this.sessionId ?? undefined,
-        ...(terminalToolServer
-          ? { mcpServers: { 'invar-terminal': terminalToolServer } }
-          : {}),
-        ...(bypass
-          ? {
-              permissionMode: 'bypassPermissions' as const,
-              allowDangerouslySkipPermissions: true,
-            }
-          : {
-              permissionMode: 'default' as const,
-              canUseTool: (toolName, input) =>
-                this.gateToolCall(toolName, input),
-            }),
-      });
+      const bypass = AgentPermissions.Class.resolveLive(
+        this.options.skipPermissions,
+      );
+      const terminalToolDefinitions = this.options.terminalTools
+        ? AgentTerminalTools.Class.definitions(
+            bypass,
+            this.options.terminalTools,
+          )
+        : [];
+      const terminalToolServer =
+        terminalToolDefinitions.length > 0
+          ? sdkModule.createSdkMcpServer({
+              name: 'invar-terminal',
+              version: '1.0.0',
+              alwaysLoad: true,
+              tools: terminalToolDefinitions.map((definition) =>
+                sdkModule.tool(
+                  definition.name,
+                  definition.description,
+                  definition.requiresCommand
+                    ? { command: z.string() }
+                    : definition.name === 'readTerminalScrollback'
+                      ? {
+                          lineCount: z.number().int().positive().optional(),
+                          range: z
+                            .object({
+                              startLine: z.number().int().positive(),
+                              endLine: z.number().int().positive(),
+                            })
+                            .optional(),
+                        }
+                      : {},
+                  async (input) => ({
+                    content: [
+                      { type: 'text', text: await definition.invoke(input) },
+                    ],
+                  }),
+                  { alwaysLoad: true },
+                ),
+              ),
+            })
+          : null;
+      turn = this.createQuery(
+        prompt,
+        {
+          cwd: this.options.cwd,
+          settingSources: ['user', 'project'],
+          ...(this.options.ibrFoundationContent !== undefined
+            ? {
+                systemPrompt: {
+                  type: 'preset' as const,
+                  preset: 'claude_code' as const,
+                  append: this.options.ibrFoundationContent,
+                },
+              }
+            : {}),
+          model: this.options.model || undefined,
+          resume: this.sessionId ?? undefined,
+          ...(terminalToolServer
+            ? { mcpServers: { 'invar-terminal': terminalToolServer } }
+            : {}),
+          ...(bypass
+            ? {
+                permissionMode: 'bypassPermissions' as const,
+                allowDangerouslySkipPermissions: true,
+              }
+            : {
+                permissionMode: 'default' as const,
+                canUseTool: (toolName, input) =>
+                  this.gateToolCall(toolName, input),
+              }),
+        },
+        sdkModule,
+      );
     } catch (error) {
+      this.starting = false;
       this.emit({
         kind: 'error',
         message: `Failed to start the Claude SDK session: ${String(error)}`,
@@ -140,12 +174,29 @@ class $SdkStreamBackend implements AgentBackend {
       this.emit({ kind: 'session-end', reason: 'error' });
       return;
     }
+    if (this.turnGeneration !== turnGeneration || this.disposed) {
+      this.starting = false;
+      void turn.interrupt().catch(() => {
+        /* canceled while the SDK constructed the query */
+      });
+      return;
+    }
+    this.starting = false;
     this.activeQuery = turn;
     void this.pump(turn);
   }
 
-  protected createQuery(prompt: string, options: Options): Query {
-    return query({ prompt, options });
+  protected loadSdkModule(): Promise<ClaudeAgentSdkModule> {
+    this.sdkModulePromise ??= import('@anthropic-ai/claude-agent-sdk');
+    return this.sdkModulePromise;
+  }
+
+  protected createQuery(
+    prompt: string,
+    options: Options,
+    sdkModule: ClaudeAgentSdkModule,
+  ): Query {
+    return sdkModule.query({ prompt, options });
   }
 
   /** The SDK's canUseTool: pause the gated call as a 'permission-request' event until respond() answers.
@@ -225,6 +276,8 @@ class $SdkStreamBackend implements AgentBackend {
   }
 
   interrupt(): void {
+    this.turnGeneration += 1;
+    this.starting = false;
     if (this.activeQuery) {
       const interruptedQuery = this.activeQuery;
       this.interrupting = true;
@@ -241,6 +294,8 @@ class $SdkStreamBackend implements AgentBackend {
 
   dispose(): void {
     this.disposed = true;
+    this.turnGeneration += 1;
+    this.starting = false;
     void this.activeQuery?.interrupt().catch(() => {
       /* already gone */
     });
@@ -266,3 +321,5 @@ export interface SdkStreamOptions {
   model?: string;
   terminalTools?: AgentTerminalToolPort;
 }
+
+type ClaudeAgentSdkModule = typeof import('@anthropic-ai/claude-agent-sdk');
