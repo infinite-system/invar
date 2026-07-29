@@ -406,10 +406,31 @@ if [ ! -s "$transcript_path" ]; then
 fi
 
 # Resolve the native session file (the engine's own structured record — full tool
-# inputs/outputs our pane transcript truncates). Newest store file created after the
-# pre-launch marker belongs to this launch. The link lives beside the transcript
-# (main repo, gitignored, reboot-safe); archive-session.sh copies the file at LAND.
-native_session_file="$(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null | head -1 || true)"
+# inputs/outputs our pane transcript truncates). The link lives beside the
+# transcript (main repo, gitignored, reboot-safe); archive-session.sh copies at LAND.
+#
+# claude: derive the project directory from the WORKTREE PATH — its store is keyed
+# by cwd, so the mapping is exact. The earlier marker method ("newest file in the
+# store") matched the CONDUCTOR'S OWN live session, which is always the most
+# recently written file; two links pointed at the wrong sessions before this.
+# codex: the store is date-keyed rollouts with no cwd in the name, so keep the
+# marker, but require the candidate to NAME this worktree in its head — a
+# concurrent dispatch cannot cross-match a file that records a different cwd.
+native_session_file=""
+case "$engine" in
+  claude)
+    claude_project_directory="$HOME/.claude/projects/$(printf '%s' "$worktree_path" | tr '/.' '--')"
+    native_session_file="$(ls -t "$claude_project_directory"/*.jsonl 2>/dev/null | head -1 || true)"
+    ;;
+  codex)
+    for candidate in $(find "$native_session_store" -type f -newer "$native_session_marker" 2>/dev/null); do
+      if head -c 8000 "$candidate" | grep -q "worktrees/${name}"; then
+        native_session_file="$candidate"
+        break
+      fi
+    done
+    ;;
+esac
 rm -f "$native_session_marker"
 session_link_path="${repository_root}/tmp/transcripts/session-link-${name}.txt"
 if [ -n "$native_session_file" ]; then
