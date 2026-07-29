@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #293 [preview-deep-hover-blocks-next-input](.invar/tasks/in-progress/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md)  [building]
+  `tmux attach -t invar/293-preview-deep-hover-blocks-next-input`
 - #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/in-progress/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md)  [building]
   `tmux attach -t invar/290-scrollbar-corner-vertical-owns-bottom`
 

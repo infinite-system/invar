@@ -1,6 +1,6 @@
 # 293 — deep markdown preview hover blocks the next input at 100k lines
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

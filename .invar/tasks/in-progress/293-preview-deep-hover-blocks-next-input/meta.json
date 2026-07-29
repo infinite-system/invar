@@ -1,0 +1,15 @@
+{
+  "task": 293,
+  "slug": "preview-deep-hover-blocks-next-input",
+  "branch": "fleet/293-preview-deep-hover-blocks-next-input",
+  "worktree": ".invar/worktrees/293-preview-deep-hover-blocks-next-input",
+  "tmuxSession": "invar/293-preview-deep-hover-blocks-next-input",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-medium-293-preview-deep-hover-blocks-next-input.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "medium",
+  "heldFromMain": false,
+  "baseCommit": "22c4639286b253b9aa801be45124b9ece4398bd7",
+  "startedAt": "2026-07-29T15:31:21-04:00"
+}
