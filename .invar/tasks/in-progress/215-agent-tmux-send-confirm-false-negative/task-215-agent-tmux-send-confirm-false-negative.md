@@ -1,6 +1,6 @@
 # 215 — agent-tmux send reports NOT CONFIRMED while the claude builder is working
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-28
 Engine: codex
 Environment: linux

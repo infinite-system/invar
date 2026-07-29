@@ -1,0 +1,15 @@
+{
+  "task": 215,
+  "slug": "agent-tmux-send-confirm-false-negative",
+  "branch": "fleet/215-agent-tmux-send-confirm-false-negative",
+  "worktree": ".invar/worktrees/215-agent-tmux-send-confirm-false-negative",
+  "tmuxSession": "invar/215-agent-tmux-send-confirm-false-negative",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-default-215-agent-tmux-send-confirm-false-negative.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "default",
+  "heldFromMain": false,
+  "baseCommit": "e8ac0c43240e1db0a72fda54392b92ad476464b3",
+  "startedAt": "2026-07-29T00:56:39-04:00"
+}
