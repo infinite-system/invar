@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
+- #275 db-navigator-real-connection  [building]
+  `tmux attach -t invar/275-db-navigator-real-connection`
 - #274 structure-scrollbar-depth-filter  [building]
   `tmux attach -t invar/274-structure-scrollbar-depth-filter`
 
