@@ -6,13 +6,69 @@
 # violating project.requirements.md "MEASURED != ENFORCED". This wrapper runs them all; ANY non-zero
 # exit fails the gate. Slow (many app launches) — it is the MERGE gate, not the every-keystroke check;
 # conventions-gate.sh stays the fast inner loop (and is step 1 here).
+# The dependency preflight runs before any step or setup side effect. It proves that node_modules is
+# non-empty. It also proves that every local provider binary used by the real-provider smokes is linked.
+# Missing dependency ground truth exits 3 and names the frozen-lockfile repair.
 #
-# Usage: bash scripts/merge-gate.sh          (run everything)
-#        FAST=1 bash scripts/merge-gate.sh   (skip the multi-launch smokes; conventions + contracts + meta only)
+# Usage: bash scripts/merge-gate.sh                 (run everything)
+#        bash scripts/merge-gate.sh --dependency-preflight
+#        FAST=1 bash scripts/merge-gate.sh          (skip the multi-launch smokes; conventions + contracts + meta only)
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 cd "$ROOT"
+
+dependency_preflight_exit_code=3
+required_provider_binary_names=(
+  "tsgo"
+  "typescript-language-server"
+)
+
+run_dependency_preflight() {
+  local dependency_problem=0
+  local provider_binary_name
+  local -a missing_provider_binary_paths=()
+
+  if [ -f "$ROOT/bun.lock" ] &&
+    {
+      [ ! -d "$ROOT/node_modules" ] ||
+        [ -z "$(find "$ROOT/node_modules" -mindepth 1 -maxdepth 1 -print -quit)" ]
+    }
+  then
+    echo "merge-gate: dependency preflight failed because node_modules is missing or empty." >&2
+    dependency_problem=1
+  fi
+
+  for provider_binary_name in "${required_provider_binary_names[@]}"; do
+    if [ ! -x "$ROOT/node_modules/.bin/$provider_binary_name" ]; then
+      missing_provider_binary_paths+=(
+        "node_modules/.bin/$provider_binary_name"
+      )
+    fi
+  done
+  if [ "${#missing_provider_binary_paths[@]}" -gt 0 ]; then
+    echo "merge-gate: dependency preflight failed because provider binaries are missing:" >&2
+    printf '  %s\n' "${missing_provider_binary_paths[@]}" >&2
+    dependency_problem=1
+  fi
+  if [ "$dependency_problem" -ne 0 ]; then
+    echo "Run: bun install --frozen-lockfile" >&2
+    return "$dependency_preflight_exit_code"
+  fi
+}
+
+case "${1:-}" in
+  --dependency-preflight)
+    run_dependency_preflight
+    dependency_preflight_result=$?
+    exit "$dependency_preflight_result"
+    ;;
+esac
+
+if ! run_dependency_preflight; then
+  exit "$dependency_preflight_exit_code"
+fi
+
 export PATH="$HOME/.bun/bin:$PATH"
 export INVAR_TEST_SUPPRESS_BUILT_IN_TASK=1
 gate_started_seconds="$(date +%s)"
