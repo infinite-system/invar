@@ -218,6 +218,10 @@ class $ThemeIcons {
       { mark: unicodeVocabulary.foldOpen, owner: 'the open fold control' },
       { mark: unicodeVocabulary.foldClosed, owner: 'the closed fold control' },
       {
+        mark: unicodeVocabulary.structureDepth,
+        owner: 'the structure depth selector',
+      },
+      {
         mark: this.TAB_SEPARATORS.unicode,
         owner: 'the buffer-tab separator',
       },
@@ -443,6 +447,14 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
+        structurePublic: '+',
+        structureProtected: '◇',
+        structurePrivate: '−',
+        structureCached: '$',
+        structureOverride: '↑',
+        structureGetter: '↤',
+        structureSetter: '↦',
+        structureDepth: '⛭',
       },
       unicode: {
         // ≡ (U+2261) not ☰ (U+2630): OpenTUI measures U+2630 as TWO cells while the terminal
@@ -473,6 +485,14 @@ class $ThemeIcons {
         overviewMark: '•',
         foldOpen: '⌄',
         foldClosed: '›',
+        structurePublic: '+',
+        structureProtected: '◇',
+        structurePrivate: '−',
+        structureCached: '$',
+        structureOverride: '↑',
+        structureGetter: '↤',
+        structureSetter: '↦',
+        structureDepth: '⛭',
       },
       ascii: {
         activityFiles: 'F',
@@ -490,6 +510,14 @@ class $ThemeIcons {
         overviewMark: '.',
         foldOpen: 'v',
         foldClosed: ']',
+        structurePublic: '+',
+        structureProtected: '~',
+        structurePrivate: '-',
+        structureCached: '$',
+        structureOverride: '^',
+        structureGetter: 'g',
+        structureSetter: 's',
+        structureDepth: '#',
       },
     };
   }
@@ -884,6 +912,14 @@ export interface InterfaceGlyphVocabulary {
   overviewMark: string;
   foldOpen: string;
   foldClosed: string;
+  structurePublic: string;
+  structureProtected: string;
+  structurePrivate: string;
+  structureCached: string;
+  structureOverride: string;
+  structureGetter: string;
+  structureSetter: string;
+  structureDepth: string;
 }
 
 export type GlyphSlot = keyof InterfaceGlyphVocabulary;

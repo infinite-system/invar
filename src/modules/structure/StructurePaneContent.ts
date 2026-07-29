@@ -13,6 +13,7 @@ import { computed } from 'vue';
 import type { ApplicationContributionContext } from '../app/ApplicationContributor.interface';
 import type {
   PaneContent,
+  PanePointerContext,
   PaneRenderContext,
   PaneTextInputPort,
 } from '../ui/PaneContent.interface';
@@ -26,9 +27,12 @@ class $StructurePaneContent implements PaneContent {
   constructor(
     protected readonly application: ApplicationContributionContext,
     protected readonly activeWorkspace: () => StructureWorkspace.Model,
+    protected readonly defaultDepth: () => number = () => 1,
+    protected readonly setDefaultDepth: (depth: number) => void = () => {},
   ) {}
 
   protected filterCaretColumn = 0;
+  protected depthControlColumn = 0;
 
   get id(): string {
     return 'structure';
@@ -88,13 +92,19 @@ class $StructurePaneContent implements PaneContent {
   render(context: PaneRenderContext): StyledText {
     const outline = this.activeWorkspace().outline;
     const innerWidth = Math.max(1, context.width);
+    this.depthControlColumn = Math.max(0, innerWidth - 3);
+    const interfaceGlyphs = ThemeIcons.Class.interfaceGlyphVocabularyFor(
+      context.glyphLevel,
+    );
     return StructurePaneRenderer.Class.render({
       outline,
       structureFocused: context.focused,
       palette: context.palette,
       symbolMarks: ThemeIcons.Class.symbolMarksFor(context.glyphLevel),
+      structureMarks: interfaceGlyphs,
       filterInput: outline.filterInput,
       searchGlyph: ThemeIcons.Class.findIconsFor(context.glyphLevel).search,
+      defaultDepth: this.defaultDepth(),
       foldOpenGlyph: ThemeIcons.Class.glyphFor(context.glyphLevel, 'foldOpen'),
       foldClosedGlyph: ThemeIcons.Class.glyphFor(
         context.glyphLevel,
@@ -159,10 +169,23 @@ class $StructurePaneContent implements PaneContent {
     this.activeWorkspace().outline.hoveredIndex.value = -1;
   }
 
-  onPointerDown(column: number, row: number): boolean {
+  tooltipAt(column: number, row: number): string | null {
+    return row === 0 && column >= this.depthControlColumn
+      ? `Default symbol depth: ${this.defaultDepth()}. Click to choose.`
+      : null;
+  }
+
+  onPointerDown(
+    column: number,
+    row: number,
+    context?: PanePointerContext,
+  ): boolean {
     const workspace = this.activeWorkspace();
     workspace.haltVerticalScroll();
     if (row === 0) {
+      if (column >= this.depthControlColumn && context) {
+        this.openDepthSelector(context);
+      }
       this.application.requestRender();
       return true;
     }
@@ -180,6 +203,33 @@ class $StructurePaneContent implements PaneContent {
     }
     this.application.requestRender();
     return true;
+  }
+
+  protected openDepthSelector(context: PanePointerContext): void {
+    const currentDepth = this.defaultDepth();
+    this.application.overlayCoordinator.openExclusiveOverlay(
+      'contextMenu',
+      () =>
+        this.application.contextMenu.openAt(
+          Array.from({ length: 9 }, (_, depth) => ({
+            id: `structure-depth:${depth}`,
+            label: `Depth ${depth}${depth === currentDepth ? ' (current)' : ''}`,
+            enabled: true,
+          })),
+          context.screenColumn,
+          context.screenRow,
+          {
+            width: this.application.renderer.width,
+            height: this.application.renderer.height,
+          },
+          (identifier) => {
+            const depth = Number(identifier.slice(identifier.indexOf(':') + 1));
+            if (!Number.isInteger(depth)) return;
+            this.setDefaultDepth(depth);
+            this.application.requestRender();
+          },
+        ),
+    );
   }
 
   onResize(columns: number, rows: number): void {

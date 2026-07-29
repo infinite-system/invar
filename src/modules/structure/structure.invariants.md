@@ -52,6 +52,70 @@ current text.
 
 ## Chosen invariants
 
+### Outline labels expose source semantics
+
+**Invariant:** If the TypeScript analyzer supplies an outline, then each member label exposes the
+source semantics needed to distinguish it from a plain member: public, protected, private, and
+hash-private visibility; ivue `$` cache names; getters and setters; and inheritance-aware
+overrides. Import declarations and heritage clauses are analyzer noise, not outline rows. The
+marks keep fixed slots and semantic colors in both themes and at every glyph tier.
+
+**Scope:** The TypeScript and JavaScript extensions served by `TypeScriptProvider`;
+`TypeScriptStructureAnalyzer`'s refinement of LSP document symbols; the semantic fields on
+`StructureSymbol`; and `StructurePaneRenderer`. Markdown headings and other structure sources do
+not acquire TypeScript semantics.
+
+**Components:**
+- *Declaration noise stops at the analyzer* — imports and heritage-clause pseudo-symbols are
+  removed for `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, and `.cjs`.
+- *Visibility comes from syntax* — explicit public, protected, and private modifiers map to
+  distinct marks; an unmodified member is public; a hash-private name is private.
+- *Cache names stay legible* — a member whose source name starts with `$` receives the cache mark
+  without changing its analyzer-supplied symbol class.
+- *Overrides know the parent chain* — an explicit `override` or a matching non-private member on
+  a local or imported ancestor receives the override mark. Parent discovery follows only the
+  inheritance chain and does not build a workspace-wide program.
+- *Accessors are not methods* — getters and setters receive distinct marks. Their label and mark
+  use the palette's information color, which remains subtle and readable in the dark and light
+  themes.
+- *Slots do not shift* — visibility, accessor, cache, and override occupy four fixed cells between
+  the analyzer's ordinary symbol mark and the name. A missing fact leaves its cell blank.
+
+**Mechanism:** After `LanguageClient` parses the server's document symbols, the TypeScript
+provider refines that result against the current document's TypeScript syntax tree. It removes
+nodes whose anchors fall inside import or heritage ranges and annotates class-member anchors.
+Override discovery parses only resolved parent files in the direct inheritance chain. The
+provider-neutral `StructureSymbol` record carries those optional facts unchanged to the outline,
+and the renderer resolves their marks through `ThemeIcons`.
+
+**Rejected alternatives:** Filtering imports in the renderer — it leaves source noise in every
+consumer and cannot identify declaration ranges honestly. Treating every `$` identifier as a new
+symbol class — it destroys the language server's classification. Showing the inheritance clause
+behind a new setting — one row does not justify another policy source, so the clause is removed.
+A workspace-wide TypeScript `Program` — it makes a visible outline pay for unrelated files.
+
+**Evidence:** `src/modules/lsp/TypeScriptStructureAnalyzer.ts`;
+`src/modules/structure/StructureSource.interface.ts`;
+`src/modules/structure/StructureOutline.ts`;
+`src/modules/structure/StructurePaneRenderer.ts`;
+`src/modules/theme/ThemeIcons.ts`;
+`src/modules/lsp/TypeScriptStructureAnalyzer.test.ts`;
+`src/modules/structure/StructurePaneRenderer.test.ts`; and
+`scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Impossible if true:** An import or inheritance clause appearing as a TypeScript outline row; a
+private and public member painting the same visibility mark; a `$` cache getter reading like an
+ordinary field; a child member matching an inherited non-private name without an override mark;
+or a getter losing its semantic color when the theme changes.
+
+**Verification:** `bun test src/modules/lsp/TypeScriptStructureAnalyzer.test.ts
+src/modules/structure/StructurePaneRenderer.test.ts src/modules/theme/ThemeIcons.test.ts` and
+`bun scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
 ### The structure navigator is a pane content citizen
 
 **Invariant:** If the structure navigator is installed, then it is an ordinary contribution: a
@@ -131,12 +195,19 @@ workspace session. They are not saved to settings or written into the document.
   selection and Enter still use the normal jump contract, and Escape clears the query.
 - *One scroll projection* — keyboard reveal, wheel momentum, and the shared right-dock scrollbar
   read and write `StructureOutline.scrollTop`; the filter row stays above that viewport.
+- *One default-depth setting with two surfaces* — Settings and the depth gear beside the filter both
+  read and write `structureDefaultDepth`. The gear opens the shared context menu with depths zero
+  through eight. Its `structureDepth` semantic glyph is distinct from the global Settings gear, so
+  glyph-based pointer discovery cannot address the wrong owner. It does not own another value or
+  bypass the contributed-setting save path.
 
 **Mechanism:** The outline retains the flattened source rows and computes paintable rows from the
 active path's depth and fold sets. A non-empty query switches the projection to fuzzy-score order
 over all retained rows. `StructurePaneContent` exposes the standard pane scroll facts, with one
 fixed filter-row offset, so `ScrollbarSync` supplies the same `SolidThumbScrollBar` used by other
-overflowing panes.
+overflowing panes. The in-pane selector calls `Settings.setContributed` for
+`structureDefaultDepth`, so the setting's existing changed callback refreshes every active
+projection and its registered setting saves the value.
 
 **Rejected alternatives:** Persisting per-file depth in global settings — it turns transient
 navigation state into an ever-growing path database. Filtering only the current depth projection —
@@ -154,10 +225,12 @@ it duplicates shared geometry or ordering policy.
 
 **Impossible if true:** Two files sharing an override; depth two issuing a second source request; a
 filter missing a matching depth-hidden row; Escape leaving filtered rows behind; a scrollbar,
-wheel, and keyboard movement disagreeing about the first visible row.
+wheel, and keyboard movement disagreeing about the first visible row; or the gear depth and
+Settings depth disagreeing; or the depth selector and global Settings control sharing a glyph.
 
 **Verification:** `bun test src/modules/structure/StructureOutline.test.ts
-src/modules/structure/StructurePaneContent.test.ts` and
+src/modules/structure/StructurePaneContent.test.ts
+src/modules/structure/StructurePlugin.test.ts` and
 `bun scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Status:** provisional

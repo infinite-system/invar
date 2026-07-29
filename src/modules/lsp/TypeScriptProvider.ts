@@ -58,11 +58,15 @@ class $TypeScriptProvider implements LanguageServerProvider {
     return Files.Class;
   }
 
+  static supportsPath(path: string): boolean {
+    return this.$typescriptExtensions.has(
+      Files.Class.extname(path).toLowerCase(),
+    );
+  }
+
   supportsPath(path: string): boolean {
     const providerClass = this.constructor as typeof $TypeScriptProvider;
-    return providerClass.$typescriptExtensions.has(
-      this.Files.extname(path).toLowerCase(),
-    );
+    return providerClass.supportsPath(path);
   }
 
   async resolve(rootPath: string): Promise<LanguageServerCommand | null> {

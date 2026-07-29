@@ -35,6 +35,14 @@ export interface StructureSymbol {
   readonly name: string;
   /** The theme's symbol-class vocabulary, so the one mark table resolves this row's icon. */
   readonly symbolClass: SymbolClass;
+  /** Source-level member visibility. Null means this symbol is not a class member. */
+  readonly visibility?: StructureMemberVisibility | null;
+  /** True for an ivue `$`-cache member. */
+  readonly cached?: boolean;
+  /** True when this member replaces a member inherited from a parent class. */
+  readonly override?: boolean;
+  /** Accessor syntax, distinct from methods and fields. */
+  readonly accessor?: StructureAccessorKind | null;
   /** 0-based document line of the symbol's name (its selection anchor — where a jump lands). */
   readonly line: number;
   /** Grapheme column of the symbol's name on `line`. */
@@ -50,3 +58,7 @@ export interface StructureOutlineResult {
   readonly symbols: readonly StructureSymbol[];
   readonly truncated: boolean;
 }
+
+export type StructureMemberVisibility = 'public' | 'protected' | 'private';
+
+export type StructureAccessorKind = 'getter' | 'setter';

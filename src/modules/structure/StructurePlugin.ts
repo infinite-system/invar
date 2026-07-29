@@ -174,9 +174,20 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
   protected createPaneContent(
     context: ApplicationContributionContext,
   ): StructurePaneContent.Model {
-    return new StructurePaneContent.Class(context, () =>
-      this.activeWorkspace(),
+    return new StructurePaneContent.Class(
+      context,
+      () => this.activeWorkspace(),
+      () => this.defaultDepthSetting?.value.value ?? 1,
+      (depth) => this.updateDefaultDepth(context, depth),
     );
+  }
+
+  protected updateDefaultDepth(
+    context: ApplicationContributionContext,
+    depth: number,
+  ): void {
+    context.settings.setContributed('structureDefaultDepth', depth);
+    this.defaultDepthSetting?.save();
   }
 
   protected createDefaultVisibility(
@@ -365,6 +376,7 @@ class $StructurePlugin implements ApplicationContributor, WorkspaceContributor {
       structureTruncated: outline.truncated.value,
       structureRequests: outline.requestCount.value,
       structureDepth: outline.depth,
+      structureDefaultDepth: this.defaultDepthSetting?.value.value ?? 1,
       structureDepthIsOverridden: outline.depthIsOverridden,
       structureFilter: outline.filterInput.value,
     };
