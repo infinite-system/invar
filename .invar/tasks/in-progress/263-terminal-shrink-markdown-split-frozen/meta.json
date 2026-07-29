@@ -1,0 +1,15 @@
+{
+  "task": 263,
+  "slug": "terminal-shrink-markdown-split-frozen",
+  "branch": "fleet/263-terminal-shrink-markdown-split-frozen",
+  "worktree": ".invar/worktrees/263-terminal-shrink-markdown-split-frozen",
+  "tmuxSession": "invar/263-terminal-shrink-markdown-split-frozen",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-263-terminal-shrink-markdown-split-frozen.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e13f86cda571addc10a180ca1d21e1585087614c",
+  "startedAt": "2026-07-29T08:16:14-04:00"
+}

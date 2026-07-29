@@ -1,6 +1,6 @@
 # 263 — a terminal shrink never re-lays-out the markdown split until a mouse event
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux
