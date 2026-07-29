@@ -864,15 +864,13 @@ function gateBadge(spinnerFrame?: number): string {
   if (glance.exitCode !== null)
     return `  ${red(`⛩ gate red (exit ${glance.exitCode})`)}`;
   const elapsed = formatDuration(Date.now() - glance.startedAtMilliseconds);
-  // A running gate flows the same gradient as the building word, and the ⛩
-  // glyph rides the flow's leading color — one visual language for "work in
-  // motion" across builders and the gate.
+  // A running gate flows its OWN gold current — motion says running, and the
+  // color says judge, not builder. The ⛩ glyph rides the flow's leading color.
   if (spinnerFrame === undefined) {
-    return `  ${paint('38;5;44', '⛩')} ${paint('38;5;44', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
+    return `  ${paint('38;5;220', '⛩')} ${paint('38;5;220', `gate: ${glance.phase}`)} ${cyan(elapsed)}`;
   }
-  const leadingColor =
-    GRADIENT_RAMP[spinnerFrame % GRADIENT_RAMP.length] ?? '38;5;44';
-  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame)} ${cyan(elapsed)}`;
+  const leadingColor = GATE_RAMP[spinnerFrame % GATE_RAMP.length] ?? '38;5;220';
+  return `  ${paint(leadingColor, '⛩')} ${gradientWord(`gate: ${glance.phase}`, spinnerFrame, GATE_RAMP)} ${cyan(elapsed)}`;
 }
 
 function fleetDeltaTotals(): {
@@ -984,14 +982,37 @@ const GRADIENT_RAMP = [
   '38;5;39',
 ];
 
-function gradientWord(word: string, shift: number): string {
+// Exploring wears quieter weather: white through light blue into navy grey.
+// Reading is motion too, but it should not shout like building does.
+const EXPLORING_RAMP = [
+  '38;5;231',
+  '38;5;189',
+  '38;5;153',
+  '38;5;110',
+  '38;5;103',
+  '38;5;60',
+];
+
+// The gate flows gold — a torii's color, and unmistakably not a builder.
+// Three motions, three currents: teal builds, white-navy reads, gold judges.
+const GATE_RAMP = [
+  '38;5;178',
+  '38;5;214',
+  '38;5;220',
+  '38;5;221',
+  '38;5;214',
+  '38;5;172',
+];
+
+function gradientWord(
+  word: string,
+  shift: number,
+  ramp: string[] = GRADIENT_RAMP,
+): string {
   return word
     .split('')
     .map((letter, index) =>
-      paint(
-        GRADIENT_RAMP[(index + shift) % GRADIENT_RAMP.length] ?? '38;5;44',
-        letter,
-      ),
+      paint(ramp[(index + shift) % ramp.length] ?? '38;5;44', letter),
     )
     .join('');
 }
@@ -1062,26 +1083,36 @@ function live(
       spinnerFrame === undefined
         ? null
         : (SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length] ?? null);
-    const buildingGlyph =
-      breath === null ? paint('38;5;45', '●') : paint(breath[1], breath[0]);
     const roundSuffix =
       round > 1 ? ` ${paint('38;5;179', `round ${round}`)}` : '';
     // EXPLORING vs BUILDING. Until the worktree diff shows one changed line,
     // the builder is READING — records, code, the brief. The first ±line flips
     // the word to building, stickily (a later revert to ±0 does not demote it;
-    // firstEditSeen remembers per watch session).
+    // firstEditSeen remembers per watch session). Each phase wears its own
+    // gradient — building in the teal current, exploring in white-to-navy —
+    // and the breathing glyph rides its phase's ramp, icon and text as one.
     const delta = lineDeltaCache.get(record.folderName) ?? null;
     const hasEdits = delta !== null && delta.added + delta.removed > 0;
     if (hasEdits) firstEditSeen.add(record.folderName);
-    const phaseWord = firstEditSeen.has(record.folderName)
-      ? 'building'
-      : 'exploring';
+    const exploring = !firstEditSeen.has(record.folderName);
+    const phaseWord = exploring ? 'exploring' : 'building';
+    const phaseRamp = exploring ? EXPLORING_RAMP : GRADIENT_RAMP;
+    const phaseGlyph =
+      breath === null
+        ? paint(exploring ? '38;5;153' : '38;5;45', '●')
+        : paint(
+            exploring
+              ? (EXPLORING_RAMP[(spinnerFrame ?? 0) % EXPLORING_RAMP.length] ??
+                  '38;5;153')
+              : breath[1],
+            breath[0],
+          );
     const statusBadge = ready
       ? `${green('◉ READY')}${roundSuffix}${gateGlanceCache !== null ? gateBadge(spinnerFrame) : green(' — awaiting landing')}`
-      : `${buildingGlyph} ${
+      : `${phaseGlyph} ${
           spinnerFrame === undefined
-            ? paint('38;5;44', phaseWord)
-            : gradientWord(phaseWord, spinnerFrame)
+            ? paint(exploring ? '38;5;153' : '38;5;44', phaseWord)
+            : gradientWord(phaseWord, spinnerFrame, phaseRamp)
         }${roundSuffix}`;
     const startedAt = startedAtMilliseconds(tasksRoot, record);
     const runningFor =
