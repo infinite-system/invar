@@ -1,6 +1,6 @@
 # 215 — agent-tmux send reports NOT CONFIRMED while the claude builder is working
 
-State: IN-PROGRESS
+State: COMPLETED — 7968d49f — claude confirm keys on the bottom composer frame (structure, not strings); codex signature kept; dispatch waits 15s for the cwd-derived session file; planted false-positive shape reds the contract; bycatch filed as #231
 Created: 2026-07-28
 Engine: codex
 Environment: linux
