@@ -60,7 +60,12 @@ The judgment classes stay manual: bare references and dead links refuse/
 warn with suggestions exactly as today — an auto-fix must never choose a
 target or alter testimony, only refresh a path to the same proven file.
 Self-test arm: --moved-only must not touch a bare reference even when
-its suggestion is unambiguous.
+its suggestion is unambiguous. COST BOUND (user: "only if cheap"): the
+hook-time fix operates ONLY on the records being acted on (one brief at
+dispatch; the landing task's report + task file) — never a directory
+walk, never the sweep; per-link cost is a stat. If measurement shows it
+exceeding ~100ms total per invocation, drop the wiring and report that
+instead.
 
 ## Arm 5 (user, 13:2x): the preview paints dead links RED
 
