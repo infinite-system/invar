@@ -1,6 +1,6 @@
 # 288 — every doc reference in tasks/briefs/reports is a resolving md link, mechanically
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

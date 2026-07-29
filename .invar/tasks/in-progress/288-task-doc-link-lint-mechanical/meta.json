@@ -1,0 +1,15 @@
+{
+  "task": 288,
+  "slug": "task-doc-link-lint-mechanical",
+  "branch": "fleet/288-task-doc-link-lint-mechanical",
+  "worktree": ".invar/worktrees/288-task-doc-link-lint-mechanical",
+  "tmuxSession": "invar/288-task-doc-link-lint-mechanical",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-288-task-doc-link-lint-mechanical.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "b5cfa3c2c1227514850df93ab56c6a394a35f690",
+  "startedAt": "2026-07-29T11:57:05-04:00"
+}

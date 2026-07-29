@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #288 [task-doc-link-lint-mechanical](.invar/tasks/in-progress/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md)  [building]
+  `tmux attach -t invar/288-task-doc-link-lint-mechanical`
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/in-progress/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md)  [building]
   `tmux attach -t invar/286-toc-click-drives-preview-scroll-into-view`
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/in-progress/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md)  [building]
