@@ -1,6 +1,6 @@
 # 230 — author ui.lattice.md: the ui records need the unification scroll has
 
-State: IN-PROGRESS
+State: COMPLETED — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 Created: 2026-07-29
 Engine: claude
 Environment: linux

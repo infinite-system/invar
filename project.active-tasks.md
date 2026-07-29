@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #233 wrap-contract-red-settings-leak  [building]
   `tmux attach -t invar/233-wrap-contract-red-settings-leak`
-- #230 author-ui-lattice  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/230-author-ui-lattice`
 - #35 structure-navigator-plugin-pane  [building]
   `tmux attach -t invar/35-structure-navigator-plugin-pane`
 
@@ -82,7 +80,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 parameter-count-ports-object-sweep
 - #31 getter-census-scoped-invalidation  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 34 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 35 — full log: project.tasks-completed.md)
+- #230 author-ui-lattice — c669256f — ui.lattice.md authored: five generators, three recurring shapes, eight compositions; 77->217 resolved links, 0 problems, all 61 records woven; six-finding bycatch converted to #239-#242
 - #222 provider-seam-analysis-and-convention — merged docs-only — classification (9 effectful, 2 pure), convention 12 + gate rule with 5 controls, DataStore cursor seam, minimal set 3 files; corrected the brief twice; bycatch filed as #224-#226
 - #221 editor-owns-no-view-state-uncited — merged contract-only — record subsumed and folded clause-by-clause (12->11 records, 67->77 lattice links, new composition); pointer left in place; checker 973/77/0; first consumer of #216 fixed on-ramp
 - #220 editor-registers-as-contributor-with-manifest — 219f160a — eighth DefaultPlugins contributor with uninstall symmetry; release goes THROUGH the buffer set (the fourth-verse reversibility fix); EditorColumnDefault beside EditorSurfaceContents; empty column states its affordance; censuses honest; fingerprints unchanged; ran at medium
@@ -97,4 +96,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #206 gate-retry-population-repair — eabe010 (merged as fleet/205-flake-population; the label predates this ID)
 - #204 drive-tool-step-model-and-targeting — merged 7aa3a7c
 - #203 folded-editing-scale-invariance — e479b98
-- #202 tab-reactivation-rereads-whole-file — 8d9bd6a — bounded warm set: 2 most-recent clean documents stay hydrated; clean 500k switch 107-113ms -> 12-22ms; 103-tab RSS bounded (+4.9MB); editor smoke updated to the exact warm count with a demonstrated red
