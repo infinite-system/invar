@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #289 [preview-scroll-sync-setting](.invar/tasks/in-progress/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/289-preview-scroll-sync-setting`
-- #281 [structure-pane-round-two-refinements](.invar/tasks/in-progress/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md)  [building]
+- #281 [structure-pane-round-two-refinements](.invar/tasks/in-progress/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/281-structure-pane-round-two-refinements`
-- #279 [drive-settle-unsupported-file-structure](.invar/tasks/in-progress/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md)  [building]
-  `tmux attach -t invar/279-drive-settle-unsupported-file-structure`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -88,12 +86,13 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 63 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 64 — full log: project.tasks-completed.md)
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
 - #287 [preview-renders-header-block-as-block](.invar/tasks/completed/287-preview-renders-header-block-as-block/task-287-preview-renders-header-block-as-block.md) — 98c25506 — metadata stacks render as stacks; H1 color not underline
 - #286 [toc-click-drives-preview-scroll-into-view](.invar/tasks/completed/286-toc-click-drives-preview-scroll-into-view/task-286-toc-click-drives-preview-scroll-into-view.md) — f7b2e202 — TOC click follows in preview; jumps land top-third reading position
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
+- #279 [drive-settle-unsupported-file-structure](.invar/tasks/completed/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md) — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/completed/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md) — 83554f14 — activity surface serves both docks; dockSide is a live setting; optional right mirror
 - #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
@@ -103,4 +102,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #266 [drive-settle-ignores-debounced-parse](.invar/tasks/completed/266-drive-settle-ignores-debounced-parse/task-266-drive-settle-ignores-debounced-parse.md) — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 [boot-save-erases-unregistered-settings](.invar/tasks/completed/264-boot-save-erases-unregistered-settings/task-264-boot-save-erases-unregistered-settings.md) — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
 - #263 [terminal-shrink-markdown-split-frozen](.invar/tasks/completed/263-terminal-shrink-markdown-split-frozen/task-263-terminal-shrink-markdown-split-frozen.md) — facc262b — terminal shrink reflows the split; layout reads live renderer dims
-- #259 [right-dock-click-leaves-double-focus](.invar/tasks/completed/259-right-dock-click-leaves-double-focus/task-259-right-dock-click-leaves-double-focus.md) — 587eed67 — one focus-set owner across docks; click path double-focus fixed

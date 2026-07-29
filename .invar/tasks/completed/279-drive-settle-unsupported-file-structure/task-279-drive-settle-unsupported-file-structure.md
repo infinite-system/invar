@@ -1,6 +1,6 @@
 # 279 — the drive treats a hidden structure pane's "no-document" as unsettled
 
-State: IN-PROGRESS
+State: COMPLETED — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 Created: 2026-07-29
 Engine: codex
 Environment: linux
