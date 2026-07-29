@@ -17,9 +17,10 @@ list.
 **Scope:** every scrollable/virtualized pane under OpenTUI's Yoga flex layout — the editor code
 area, the file tree, the git changes list, and the git commit log.
 
-**Mechanism:** the render window is a function of container height (`renderGitPanel` derives `bodyH`
-from `sidebar.height`; the editor from `editorArea.height`). A flex chain whose parent sizes to
-content closes the loop. Pinning the height (sidebar `width`+`height:'100%'`, `editorArea`
+**Mechanism:** the render window is a function of container height (`GitPaneContent.render` passes
+`PaneRenderContext.height` to `GitPaneRenderer.bodyHeight`; the editor reads its host-supplied
+viewport height through `SourceTextPaneContent`). A flex chain whose parent sizes to content closes
+the loop. Pinning the height (sidebar `width`+`height:'100%'`, `editorArea`
 `flexGrow:1`+`height:'100%'`, code area `flexGrow:1`) breaks it. Cross-substrate transfer from the
 browser `VirtualScroller` (`min-height:0` / viewport-pinned there) — the reality is substrate-
 independent; only the pinning mechanism rebinds (CSS flex → Yoga flex).
@@ -716,10 +717,11 @@ indentation is what shows.
 **Generates:** scannable nesting depth (VS Code parity) at zero cost to selection/caret correctness; a
 single settings toggle that fully removes them; clean degradation without a Nerd Font.
 
-**Evidence:** `src/modules/ui/EditorPaneRenderer.ts` (leading-space guide scan plus in-place glyph in
-the code-body loop); `src/modules/ui/EditorPane.ts` (`showIndentGuides` + `indentGuideGlyph` passed to
-the render context); `src/modules/settings/Settings.ts` + `src/modules/settings/SettingsPanel.ts` (the
-setting and its boolean panel row); `scripts/smoke-indent-guides.sh`.
+**Evidence:** `src/modules/editor/EditorPaneRenderer.ts` (leading-space guide scan plus in-place glyph
+in the code-body loop); `src/modules/editor/EditorPane.ts` (`showIndentGuides` + `indentGuideGlyph`
+passed to the render context); `src/modules/settings/Settings.ts` +
+`src/modules/settings/SettingsPanel.ts` (the setting and its boolean panel row);
+`scripts/smoke-indent-guides.sh`.
 
 **Impossible if true:** a guide that changes a line's character columns (a caret or selection landing
 one cell off when guides are on vs off); a guide drawn past the leading whitespace or over a
@@ -1408,9 +1410,9 @@ window is materialized into renderables each frame — render cost is O(viewport
 
 **Scope:** editor body, file tree, palette list rendering in `RootView`.
 
-**Mechanism:** `renderEditorStyled` slices `document.slice(top, height)` and tokenizes only those
-lines; `renderTree` slices the visible tree window; the palette caps at 12. Realizes *Cost tracks
-the actively observed set*.
+**Mechanism:** `EditorPaneRenderer.render` asks `EditorWrap.visualRowsFromOffset` for the viewport
+window and tokenizes only those rows; `TreePaneRenderer.render` slices the visible tree window; the
+palette caps at 12. Realizes *Cost tracks the actively observed set*.
 
 **Generates:** viewport-bounded tokenization; windowed tree/list rendering; flat render cost as
 files/repos grow.
@@ -1535,14 +1537,6 @@ tabs); `applySelection()` then projects the model into the native highlight each
 OWN mouse-drag selection is DISABLED (`selectable:false`) — it was a second writer the model never
 saw, so the next paint wiped its highlight (the human-QA "selection appears then disappears" bug),
 and Ctrl+C (which copies the model selection) copied nothing.
-
-The MODEL is the only selection writer (mouse, 2026-07-21). Mouse events on the code renderable drive
-`cursor`+`anchor` (`documentPositionAtCell`: line = scrollTop + rowOffset, column =
-`graphemeAtDisplayColumn` — the display→grapheme inverse, unit-tested for wide glyphs and tabs);
-`applySelection()` then projects the model into the native highlight each paint. OpenTUI's OWN
-mouse-drag selection is DISABLED (`selectable:false`) — it was a second writer the model never saw,
-so the next paint wiped its highlight (the human-QA "selection appears then disappears" bug), and
-Ctrl+C (which copies the model selection) copied nothing.
 
 **Generates:** a visible selection block that tracks the model; multi-line shading without touching
 the gutter.
@@ -1768,8 +1762,8 @@ focus decision) — but that neither moves nor clears the list's selection.
 
 **Mechanism:** `FileTree.selectedIndex` and `GitPanel.changesIndex`/`logIndex` hold selection;
 `hoveredIndex`/`changesHovered`/`logHovered` and each pane's scroll offsets hold the other two states.
-`RootView.renderTree` and `RootView.renderGitPanel` always project selection, using
-`palette.selection` while its region owns keyboard focus and `palette.cursorLine` otherwise;
+`TreePaneRenderer.render` and `GitPaneRenderer.render` always project selection, using
+`palette.selection` while each region owns keyboard focus and `palette.cursorLine` otherwise;
 `GitPanel.setChangesSelection`/`setLogSelection` leave scroll untouched while keyboard movement
 minimally reveals through the pane's live viewport height.
 
@@ -1777,8 +1771,10 @@ minimally reveals through the pane's live viewport height.
 selection + reveal; wheel/scrollbar → move viewport only; hover → transient highlight only; blur →
 selection stays, highlight dims.
 
-**Evidence:** `src/modules/ui/RootView.ts` (`renderTree`, `renderGitPanel`, sidebar click/hover/scroll
-handlers); `src/modules/workspace/GitPanel.ts` selection setters and movers;
+**Evidence:** `src/modules/filetree/TreePaneRenderer.ts` and
+`src/modules/git/GitPaneRenderer.ts` (selection paint);
+`src/modules/filetree/FileTreePaneContent.ts` and `src/modules/git/GitPaneContent.ts` (click, hover,
+and scroll handlers); `src/modules/workspace/GitPanel.ts` selection setters and movers;
 `src/modules/workspace/GitPanel.test.ts`; `scripts/smoke-selection.sh`, hard-wired in
 `scripts/merge-gate.sh`, drives tree, changes, and commit-log click/hover/wheel/blur/refocus paths and
 asserts full/dim backgrounds through FrameProbe.
@@ -1819,7 +1815,7 @@ proportional scrollbar positions; a gutter whose red can only mean a source-cont
 in the same column, which is the user-visible ambiguity that refined this record.
 
 **Evidence:** `src/modules/lsp/LspWorkspaceProvider.ts`;
-`src/modules/ui/EditorPaneRenderer.ts`;
+`src/modules/editor/EditorPaneRenderer.ts`;
 `src/modules/ui/OverviewRuler.ts`; `scripts/harness/smoke-diagnostics-harness.ts` drives both real
 TypeScript servers and observes the underline, overview, and absent diagnostic gutter mark.
 
