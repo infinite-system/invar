@@ -6,6 +6,7 @@ derived from `.invar/tasks/completed/`. Each line: number, name, and the landing
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
+- #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 - #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared

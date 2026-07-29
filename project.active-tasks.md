@@ -6,11 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (1)
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/in-progress/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md)  [building]
   `tmux attach -t invar/278-activity-bar-dock-agnostic-side-setting`
-- #276 [task-md-links-walkable](.invar/tasks/in-progress/276-task-md-links-walkable/task-276-task-md-links-walkable.md)  [READY delivered — builder idle, awaiting landing]
-  `tmux attach -t invar/276-task-md-links-walkable`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -87,8 +85,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 56 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 57 — full log: project.tasks-completed.md)
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
+- #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 - #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared
@@ -102,4 +101,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #245 [provider-seam-open-or-bless-decision](.invar/tasks/completed/245-provider-seam-open-or-bless-decision/task-245-provider-seam-open-or-bless-decision.md) — b2bd2e57 — one registry census-proven; SQLite+fake+consumer proof; both workarounds deleted
 - #244 [sdk-binary-extraction-leak-fills-disk](.invar/tasks/completed/244-sdk-binary-extraction-leak-fills-disk/task-244-sdk-binary-extraction-leak-fills-disk.md) — c44c23db — lazy SDK import at first send; bounded boot/exit reaper; permanent extraction smoke
 - #243 [ui-contract-sibling-rot-round-two](.invar/tasks/completed/243-ui-contract-sibling-rot-round-two/task-243-ui-contract-sibling-rot-round-two.md) — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
-- #239 [ui-contract-citation-repairs](.invar/tasks/completed/239-ui-contract-citation-repairs/task-239-ui-contract-citation-repairs.md) — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243

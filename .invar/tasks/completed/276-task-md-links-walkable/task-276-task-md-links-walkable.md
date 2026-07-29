@@ -1,6 +1,6 @@
 # 276 — project.active-tasks.md and task files link into the task records, walkable by click
 
-State: IN-PROGRESS
+State: COMPLETED — 173daff9 — task views link to records; md links walk by click with jump ends
 Created: 2026-07-29
 Engine: claude
 Environment: linux
