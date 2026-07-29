@@ -1,4 +1,8 @@
 import { expect, test } from 'bun:test';
+import { Database as BunSqliteDatabase } from 'bun:sqlite';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Workspace } from '../workspace/Workspace';
 import type {
   WorkspaceContribution,
@@ -98,6 +102,14 @@ class FakeDatabaseProviderPlugin implements WorkspaceContributor {
 }
 
 test('the consumer swaps SQLite for a fake by plugin substitution alone', async () => {
+  const temporaryDirectory = mkdtempSync(
+    join(tmpdir(), 'invar-database-consumer-'),
+  );
+  const databasePath = join(temporaryDirectory, 'real.sqlite');
+  const database = new BunSqliteDatabase(databasePath);
+  database.run('CREATE TABLE provider_seam_probe (value INTEGER)');
+  database.run('INSERT INTO provider_seam_probe VALUES (42)');
+  database.close();
   const workspace = new Workspace.Class();
   const alternateProvider = new FakeDatabaseProvider('fake-alternate', 84);
   const disposeSqliteProviderPlugin = workspace.registerContributor(
@@ -105,29 +117,39 @@ test('the consumer swaps SQLite for a fake by plugin substitution alone', async 
   );
   const consumer = new DatabaseConsumerWorkspace.Class(workspace, () => true);
 
-  await consumer.refresh();
-  expect(consumer.status.value).toBe('ready');
-  expect(consumer.providerIdentifier.value).toBe('sqlite');
-  expect(consumer.queryValue.value).toBe('42');
-  expect(consumer.descriptions.value[0]?.name).toBe('provider_seam_probe');
+  try {
+    await consumer.connect(databasePath);
+    expect(consumer.status.value).toBe('ready');
+    expect(consumer.providerIdentifier.value).toBe('sqlite');
+    expect(consumer.descriptions.value[0]?.description.name).toBe(
+      'provider_seam_probe',
+    );
+    await consumer.activateSelectedDescription();
+    expect(consumer.previewRows.value[0]?.value).toBe(42);
 
-  disposeSqliteProviderPlugin();
-  await consumer.refresh();
-  expect(consumer.status.value).toBe('unavailable');
+    disposeSqliteProviderPlugin();
+    await consumer.refresh();
+    expect(consumer.status.value).toBe('unavailable');
 
-  const disposeAlternateProviderPlugin = workspace.registerContributor(
-    new FakeDatabaseProviderPlugin(alternateProvider),
-  );
-  await consumer.refresh();
-  expect(consumer.providerIdentifier.value).toBe('fake-alternate');
-  expect(consumer.queryValue.value).toBe('84');
-  expect(consumer.descriptions.value[0]?.name).toBe('fake-alternate');
+    const disposeAlternateProviderPlugin = workspace.registerContributor(
+      new FakeDatabaseProviderPlugin(alternateProvider),
+    );
+    await consumer.refresh();
+    expect(consumer.providerIdentifier.value).toBe('fake-alternate');
+    expect(consumer.descriptions.value[0]?.description.name).toBe(
+      'fake-alternate',
+    );
+    await consumer.activateSelectedDescription();
+    expect(consumer.previewRows.value[0]?.value).toBe(84);
 
-  disposeAlternateProviderPlugin();
-  await consumer.refresh();
-  expect(alternateProvider.connections.every((entry) => entry.disposed)).toBe(
-    true,
-  );
-  consumer.disposed();
-  workspace.dispose();
+    disposeAlternateProviderPlugin();
+    await consumer.refresh();
+    expect(alternateProvider.connections.every((entry) => entry.disposed)).toBe(
+      true,
+    );
+  } finally {
+    consumer.disposed();
+    workspace.dispose();
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 });

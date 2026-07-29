@@ -14,7 +14,7 @@ class $KeybindingDefaults {
    * it in `hostOwnedPlainKeys`, so the field never advertises a chord it cannot receive; the
    * modified chords — word movement, word deletion, Home/End, delete-line — always reach the field.
    */
-  protected static textInputBindings(
+  static textInputBindings(
     context: TextInputBindingContext,
     options: TextInputBindingOptions = {},
   ): Keybinding[] {
@@ -669,7 +669,13 @@ export namespace KeybindingDefaults {
 }
 
 export type TextInputBindingContext =
-  'palette' | 'quickopen' | 'find' | 'agent' | 'listPopup';
+  | 'palette'
+  | 'quickopen'
+  | 'find'
+  | 'agent'
+  | 'listPopup'
+  | 'structure'
+  | 'database';
 
 export interface TextInputBindingOptions {
   /** Unmodified keys the surrounding surface already owns; their text-field chords are omitted. */

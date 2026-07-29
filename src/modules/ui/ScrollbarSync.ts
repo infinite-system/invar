@@ -26,6 +26,7 @@ class $ScrollbarSync {
   protected readonly editorHorizontalBar: SolidThumbScrollBar.Model;
   protected readonly primaryDockVerticalBar: SolidThumbScrollBar.Model;
   protected readonly primaryDockHorizontalBar: SolidThumbScrollBar.Model;
+  protected readonly rightDockVerticalBar: SolidThumbScrollBar.Model;
   protected readonly editorOverviewRuler = new OverviewRuler.Class();
   protected editorOverviewMarks: readonly OverviewRulerMark[] = [];
   protected paintedEditorOverviewMarks: readonly OverviewRulerMark[] | null =
@@ -108,10 +109,22 @@ class $ScrollbarSync {
         foregroundColor: dependencies.theme.palette.accent,
       },
     );
+    this.rightDockVerticalBar = makeBar(
+      'right-dock-scrollbar-v',
+      'vertical',
+      (position) => {
+        const content = dependencies.rightDockHost.activeContent;
+        content?.haltScrollMomentum?.();
+        content?.scrollToLine?.(
+          this.truePosition(this.rightDockVerticalBar, position),
+        );
+      },
+    );
     dependencies.editorArea.add(this.editorVerticalBar);
     dependencies.editorArea.add(this.editorHorizontalBar);
     dependencies.sidebar.add(this.primaryDockVerticalBar);
     dependencies.sidebar.add(this.primaryDockHorizontalBar);
+    dependencies.rightDockBox.add(this.rightDockVerticalBar);
     for (const bar of [
       this.editorHorizontalBar,
       this.primaryDockHorizontalBar,
@@ -297,20 +310,29 @@ class $ScrollbarSync {
   }
 
   syncPaneViewportGeometry(): boolean {
-    const content = this.dependencies.primaryDockHost.activeContent;
-    if (!content) return false;
-    const viewportHeight = Math.max(
-      1,
-      Number(this.dependencies.sidebar.height) - 2,
-    );
-    const paneColumns = Math.max(1, this.dependencies.sidebarWidth() - 2);
-    const originalViewportHeight = content.scrollViewportRows;
-    const originalViewportWidth = content.scrollViewportColumns;
-    content.onResize(paneColumns, viewportHeight);
-    return (
-      content.scrollViewportRows !== originalViewportHeight ||
-      content.scrollViewportColumns !== originalViewportWidth
-    );
+    let changed = false;
+    for (const pane of [
+      {
+        content: this.dependencies.primaryDockHost.activeContent,
+        columns: Math.max(1, this.dependencies.sidebarWidth() - 2),
+        rows: Math.max(1, Number(this.dependencies.sidebar.height) - 2),
+      },
+      {
+        content: this.dependencies.rightDockHost.activeContent,
+        columns: Math.max(1, Number(this.dependencies.rightDockBox.width) - 2),
+        rows: Math.max(1, Number(this.dependencies.rightDockBox.height) - 2),
+      },
+    ]) {
+      if (!pane.content) continue;
+      const originalViewportHeight = pane.content.scrollViewportRows;
+      const originalViewportWidth = pane.content.scrollViewportColumns;
+      pane.content.onResize(pane.columns, pane.rows);
+      changed =
+        pane.content.scrollViewportRows !== originalViewportHeight ||
+        pane.content.scrollViewportColumns !== originalViewportWidth ||
+        changed;
+    }
+    return changed;
   }
 
   syncScrollbars(): void {
@@ -366,6 +388,23 @@ class $ScrollbarSync {
         primaryDockContent?.scrollViewportColumns ?? sidebarRegion.width,
       scrollPosition: primaryDockContent?.scrollLeft ?? 0,
     });
+    const rightDockContent = this.dependencies.rightDockHost.visible.value
+      ? this.dependencies.rightDockHost.activeContent
+      : null;
+    const rightDockRegion = {
+      top: rightDockContent?.scrollbarRowOffset ?? 0,
+      left: 0,
+      width: Math.max(1, Number(this.dependencies.rightDockBox.width) - 2),
+      height:
+        rightDockContent?.scrollViewportRows ??
+        Math.max(1, Number(this.dependencies.rightDockBox.height) - 2),
+    };
+    this.applyBar(this.rightDockVerticalBar, 'vertical', rightDockRegion, {
+      scrollSize: rightDockContent?.scrollContentRows ?? 0,
+      viewportSize:
+        rightDockContent?.scrollViewportRows ?? rightDockRegion.height,
+      scrollPosition: rightDockContent?.scrollTop ?? 0,
+    });
   }
 }
 
@@ -384,7 +423,9 @@ export interface ScrollbarSyncDependencies {
    *  does not hold that renderable. Only the left edge and width matter to a scrollbar track. */
   codeSurface: { x: number; width: number | string };
   sidebar: BoxRenderable;
+  rightDockBox: BoxRenderable;
   primaryDockHost: import('./PanelHost').PanelHost.Instance;
+  rightDockHost: import('./PanelHost').PanelHost.Instance;
   tooltip: Tooltip.Instance;
   editorViewportHeight: () => number;
   editorViewportWidth: () => number;

@@ -827,6 +827,7 @@ if [ "${FAST:-0}" != "1" ]; then
   parallel_safe_full_tmux_smoke "smoke: word-delete" bash scripts/smoke-word-delete.sh
   parallel_safe_smoke "smoke: word-delete harness" bun scripts/harness/smoke-word-delete-harness.ts
   parallel_safe_smoke "smoke: shared text-input harness" bun scripts/harness/smoke-text-input-harness.ts
+  parallel_safe_smoke "smoke: database harness" bun scripts/harness/smoke-database-harness.ts
   parallel_safe_full_tmux_smoke "smoke: quick-open"  bash scripts/smoke-quickopen.sh
   parallel_safe_full_tmux_smoke "smoke: open-project" bash scripts/smoke-openproject.sh
   parallel_safe_full_tmux_smoke "smoke: search-mouse" bash scripts/smoke-search-mouse.sh

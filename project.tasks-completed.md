@@ -5,6 +5,8 @@ completed folder is never deleted. Written by `bun scripts/tasks/tasks-status.ts
 derived from `.invar/tasks/completed/`. Each line: number, name, and the landing commit from the
 task file’s State line. Completion chronology in full detail: `git log -- .invar/tasks/`.
 
+- #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
+- #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 [drive-settle-ignores-debounced-parse](.invar/tasks/completed/266-drive-settle-ignores-debounced-parse/task-266-drive-settle-ignores-debounced-parse.md) — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 [boot-save-erases-unregistered-settings](.invar/tasks/completed/264-boot-save-erases-unregistered-settings/task-264-boot-save-erases-unregistered-settings.md) — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings

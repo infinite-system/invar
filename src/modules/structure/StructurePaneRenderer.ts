@@ -1,5 +1,5 @@
-// The structure pane renderer: the visible window of outline rows as a StyledText for the primary
-// dock body, plus the stated empty affordances. Stateless capability — pure statics behind the
+// The structure pane renderer: the filter field and visible outline window as a StyledText for the
+// right dock body, plus the stated empty affordances. Stateless capability — pure statics behind the
 // Static() seam; every model read happens through the passed-in outline so reactivity flows from
 // the host's reactive render call.
 //
@@ -13,30 +13,54 @@
 import { StyledText, fg, bg, type TextChunk } from '@opentui/core';
 import { Static } from 'ivue/extras';
 import { TextCoordinates } from '../text/TextCoordinates';
+import type { TextInputModel } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 import type { SymbolMarkSet } from '../theme/ThemeIcons';
+import { TextFieldPainter } from '../ui/TextFieldPainter';
 import type { StructureOutline } from './StructureOutline';
 
 class $StructurePaneRenderer {
   static render(context: StructurePaneRenderContext): StyledText {
     const { outline, palette, innerWidth } = context;
+    const filterField = TextFieldPainter.Class.paint({
+      prefix: `${context.searchGlyph ?? '/'} `,
+      input: context.filterInput ?? outline.filterInput,
+      tone: TextFieldPainter.Class.toneFor(
+        palette,
+        context.structureFocused ? 'focused' : 'idle',
+      ),
+      surfaceBackground: palette.panel,
+      caretVisible: context.structureFocused,
+      width: innerWidth,
+    });
+    context.setFilterCaretColumn?.(filterField.caretColumn);
     const rows = outline.rows.value;
     if (rows.length === 0) {
-      return this.renderEmptyState(context);
+      const emptyState = this.renderEmptyState(context);
+      return new StyledText([
+        ...filterField.chunks,
+        fg(palette.fg)('\n'),
+        ...(emptyState.chunks as TextChunk[]),
+      ]);
     }
     const selectedIndex = outline.selectedIndex.value;
     const hoveredIndex = outline.hoveredIndex.value;
     const top = outline.windowTop();
     const visible = rows.slice(top, top + context.height);
-    const chunks: TextChunk[] = [];
+    const chunks: TextChunk[] = [...filterField.chunks, fg(palette.fg)('\n')];
     visible.forEach((row, visibleIndex) => {
       const rowIndex = top + visibleIndex;
       const selected = rowIndex === selectedIndex;
       const hovered = rowIndex === hoveredIndex;
       const indent = '  '.repeat(row.depth);
+      const foldMark = row.hasChildren
+        ? row.childrenVisible
+          ? (context.foldOpenGlyph ?? 'v')
+          : (context.foldClosedGlyph ?? '>')
+        : ' ';
       const mark = context.symbolMarks[row.symbolClass];
       const lineLabel = `:${row.line + 1}`;
-      const completeLabel = ` ${indent}${mark} ${row.name} ${lineLabel}`;
+      const completeLabel = ` ${indent}${foldMark} ${mark} ${row.name} ${lineLabel}`;
       let label = TextCoordinates.Class.displayColumnWindow(
         completeLabel,
         0,
@@ -72,7 +96,9 @@ class $StructurePaneRenderer {
         : status === 'loading'
           ? 'Reading structure…'
           : status === 'ready'
-            ? 'No symbols in this file.'
+            ? outline.filterInput.isEmpty
+              ? 'No symbols in this file.'
+              : 'No matching symbols.'
             : 'No structure available.';
     const lines: string[] = [headline];
     const notice = outline.notice.value;
@@ -123,6 +149,11 @@ export interface StructurePaneRenderContext {
   palette: Palette;
   /** The theme's symbol-mark row for the active glyph tier — the one resolver, read once. */
   symbolMarks: SymbolMarkSet;
+  filterInput?: TextInputModel.Model;
+  searchGlyph?: string;
+  foldOpenGlyph?: string;
+  foldClosedGlyph?: string;
+  setFilterCaretColumn?(column: number): void;
   /** Visible row count (pane body height). */
   height: number;
   /** Pane inner width — rows pad to this so the row highlight spans the full width. */

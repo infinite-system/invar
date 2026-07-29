@@ -108,10 +108,10 @@ is drawn by INVERTING the cell it occupies, and the tone is one of `idle`, `focu
 with the focus tone quieter than the hover tone.
 
 **Scope:** `BoundedListPopup`'s search row, the command-palette and Quick Open inputs in
-`OverlayLayer`, and the query and replacement fields in `FindBarRenderer`. The editor body caret
-(projected as the terminal's own hardware cursor) and the multi-line wrapping `AgentComposer` are
-outside this rule — a wrapping surface resolves its caret through a row mapping, not a one-line
-window.
+`OverlayLayer`, the query and replacement fields in `FindBarRenderer`, and the database connection
+path in `DatabasePaneContent`. The editor body caret (projected as the terminal's own hardware
+cursor) and the multi-line wrapping `AgentComposer` are outside this rule — a wrapping surface
+resolves its caret through a row mapping, not a one-line window.
 
 **Components:**
 - *Caret cell* — `TextInputModel.valueBeforeCaret` measured by `TextCoordinates.lineWidth` gives the
@@ -144,7 +144,8 @@ two of the three states would be unreachable decoration.
 **Evidence:** `src/modules/ui/TextFieldPainter.ts`; `src/modules/ui/TextFieldPainter.test.ts` (caret at
 the model offset, end-of-text caret, wide-glyph columns, identical geometry across the three states,
 tone ordering); consumers `src/modules/ui/BoundedListPopup.ts`, `src/modules/ui/OverlayLayer.ts`,
-`src/modules/ui/FindBarRenderer.ts`; `scripts/harness/smoke-field-caret-harness.ts` (caret at the
+`src/modules/ui/FindBarRenderer.ts`, `src/modules/database/DatabasePaneContent.ts`;
+`scripts/harness/smoke-field-caret-harness.ts` (caret at the
 published `boundedListPopupQueryCaretCell` through typing, word movement, word deletion, and a pasted
 wide-glyph query; three distinct observed backgrounds);
 `scripts/harness/smoke-text-input-harness.ts` (the inverted caret cell in open-project, the palette,
@@ -157,11 +158,11 @@ the text after it; a caret that requests frames while the app is at rest.
 
 **Verification:** `bun test src/modules/ui/TextFieldPainter.test.ts && bun
 scripts/harness/smoke-field-caret-harness.ts && bun scripts/harness/smoke-text-input-harness.ts &&
-bash scripts/behavioral-contracts.sh`
+bun scripts/harness/smoke-database-harness.ts && bash scripts/behavioral-contracts.sh`
 
 **Status:** provisional
 
-**Last refined:** 2026-07-26
+**Last refined:** 2026-07-29
 
 ### Bounded list popups share paint and hit geometry
 
@@ -1635,7 +1636,7 @@ source; every non-overflowing axis has no bar, and scrollbar visual thickness is
 
 **Scope:** every scrollbar (editor vertical + horizontal, file tree vertical + horizontal, git
 changes vertical + horizontal, git commit log vertical + horizontal, agent transcript, terminal
-scrollback, and any future pane).
+scrollback, the structure right dock, and any future pane).
 
 **Mechanism:** `ScrollbarGeometry.Class.scrollbarGeometry(orientation, region, scroll)` is the only
 authority for placement, track length, min-thumb inflation, exact-extremes scale, and hidden-when-
@@ -1648,7 +1649,8 @@ clipped content; grabbable thumbs; no phantom bars; equal visual thickness acros
 
 **Evidence:** `src/modules/ui/ScrollbarGeometry.test.ts` (17 region/property cases);
 `scripts/harness/smoke-scrollbars-harness.ts` (narrow tree/changes/log overflow, raw SGR reveal,
-fitting-pane absence, and the agent per-frame input/paint probe);
+`scripts/harness/smoke-plugin-manifest-harness.ts` (overflowing structure rows, live right-dock
+geometry, track click, and keyboard parity);
 `scripts/harness/smoke-terminal-harness.ts` (long terminal scrollback and solid vertical thumb),
 wired in `scripts/merge-gate.sh`.
 
@@ -1657,11 +1659,13 @@ reached; a bar visible with nothing to scroll; a horizontal thumb that reads twi
 same configured vertical thumb; two bars deriving placement from different math.
 
 **Verification:** `bun test src/modules/ui/ScrollbarGeometry.test.ts && bun
-scripts/harness/smoke-scrollbars-harness.ts && bun scripts/harness/smoke-terminal-harness.ts`
+scripts/harness/smoke-scrollbars-harness.ts && bun
+scripts/harness/smoke-plugin-manifest-harness.ts && bun
+scripts/harness/smoke-terminal-harness.ts`
 
 **Status:** established
 
-**Last refined:** 2026-07-25
+**Last refined:** 2026-07-29
 
 ### The editor overview derives from the decoration snapshot
 

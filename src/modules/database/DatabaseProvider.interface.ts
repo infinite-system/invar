@@ -33,7 +33,7 @@ export interface DatabaseQueryResult {
 export interface DatabaseObjectDescription {
   readonly reference: string;
   readonly name: string;
-  readonly kind: 'table' | 'view' | 'column';
+  readonly kind: 'table' | 'view' | 'column' | 'index';
   readonly detail: string | null;
   readonly mayHaveChildren: boolean;
 }

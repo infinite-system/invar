@@ -56,8 +56,9 @@ current text.
 
 **Invariant:** If the structure navigator is installed, then it is an ordinary contribution: a
 manifest row (`structure-navigator`) registering one right-dock pane content (`structure`),
-its keybindings, its commands, its contributed setting, and its status projection through the
-same `ApplicationContributionContext` seams every citizen uses — zero host edits — and
+its keybindings, its commands, its contributed settings, and its status projection through the
+same `ApplicationContributionContext` seams every citizen uses — zero structure-specific host
+edits — and
 uninstalling it withdraws all of it while a reinstall rebuilds all of it from the same context.
 
 **Scope:** `StructurePlugin`, `StructurePaneContent`, and their registration through
@@ -98,6 +99,65 @@ pane, binding, command, or status key behind; a reinstall that cannot rebuild th
 **Verification:** `grep -rln "modules/structure/" --include='*.ts' src/modules/app
 src/modules/workspace src/modules/ui | grep -v '\.test\.'` prints nothing;
 `bun test src/modules/structure/StructurePlugin.test.ts`; and
+`bun scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Status:** provisional
+
+**Last refined:** 2026-07-29
+
+### The outline projection has one depth and filter policy
+
+**Invariant:** If a structure source answers with a symbol tree, then the pane projects that one
+tree through a file-scoped depth, row folds, and an optional fuzzy filter: the default depth is one
+(top-level symbols and direct children), a file override lasts for the workspace session until
+reset, row folds override that file's depth without changing it, and a filter searches every source
+row with the Quick Open score even when depth currently hides that row.
+
+**Scope:** `StructureOutline` owns the source rows and every projection; `StructurePaneContent`
+owns the filter field, fold hit target, and scroll projection; `StructurePlugin` contributes the
+default-depth setting, commands, bindings, and status facts. Overrides last for the current
+workspace session. They are not saved to settings or written into the document.
+
+**Components:**
+- *One source tree* — a successful answer is flattened once with stable ancestor keys. Depth,
+  folds, and filtering derive rows from that snapshot; none asks the provider again.
+- *Depth belongs to a file* — `structureDefaultDepth` supplies the baseline. Ctrl+Up and Ctrl+Down
+  install an override for the active path, and Ctrl+0 removes it so later setting changes apply
+  again. Changing files selects that file's own override.
+- *Folds refine depth* — Left collapses the selected parent and Right expands it. Fold state is
+  keyed by document and row; it does not alter the file depth.
+- *Filtering reuses the text seams* — the field uses `TextInputModel`, the shared text-input
+  bindings, and `CommandScoring.fuzzyScore`. Filtering includes source rows hidden by depth,
+  selection and Enter still use the normal jump contract, and Escape clears the query.
+- *One scroll projection* — keyboard reveal, wheel momentum, and the shared right-dock scrollbar
+  read and write `StructureOutline.scrollTop`; the filter row stays above that viewport.
+
+**Mechanism:** The outline retains the flattened source rows and computes paintable rows from the
+active path's depth and fold sets. A non-empty query switches the projection to fuzzy-score order
+over all retained rows. `StructurePaneContent` exposes the standard pane scroll facts, with one
+fixed filter-row offset, so `ScrollbarSync` supplies the same `SolidThumbScrollBar` used by other
+overflowing panes.
+
+**Rejected alternatives:** Persisting per-file depth in global settings — it turns transient
+navigation state into an ever-growing path database. Filtering only the current depth projection —
+it makes a known nested symbol impossible to find. A structure-owned scrollbar or fuzzy scorer —
+it duplicates shared geometry or ordering policy.
+
+**Evidence:** `src/modules/structure/StructureOutline.ts`;
+`src/modules/structure/StructurePaneContent.ts`;
+`src/modules/structure/StructurePaneRenderer.ts`;
+`src/modules/structure/StructurePlugin.ts`;
+`src/modules/ui/ScrollbarSync.ts`;
+`src/modules/structure/StructureOutline.test.ts`;
+`src/modules/structure/StructurePaneContent.test.ts`;
+`scripts/harness/smoke-plugin-manifest-harness.ts`.
+
+**Impossible if true:** Two files sharing an override; depth two issuing a second source request; a
+filter missing a matching depth-hidden row; Escape leaving filtered rows behind; a scrollbar,
+wheel, and keyboard movement disagreeing about the first visible row.
+
+**Verification:** `bun test src/modules/structure/StructureOutline.test.ts
+src/modules/structure/StructurePaneContent.test.ts` and
 `bun scripts/harness/smoke-plugin-manifest-harness.ts`.
 
 **Status:** provisional
@@ -262,7 +322,7 @@ stale-answer cases) and the scale drives recorded in
 
 ### Symbol selection jumps through the source-text view contract
 
-**Invariant:** If a symbol row is activated (Enter, Space, or a click), then the editor lands on
+**Invariant:** If a symbol row is activated (Enter or a click), then the editor lands on
 that symbol through the existing source-text view contract — `placeCursor` on the symbol's name,
 `revealCursor`, focus returned to the editor (the right dock blurs with it) — with the
 departure and the landing both recorded
@@ -278,8 +338,8 @@ to move its own cursor through public members (`recordCurrentLocation`, `editor.
 internals. The row's line/column are the symbol's selection anchor, converted to grapheme
 columns at the LSP boundary.
 
-**Generates:** `StructureOutline.activateSelected`; the `structure.activate` command and its
-Enter/Space bindings; the pointer-down activation.
+**Generates:** `StructureOutline.activateSelected`; the `structure.activate` command and its Enter
+binding; the pointer-down activation.
 
 **Rejected alternatives:** A parallel cursor/reveal path in the structure module — two openers
 would drift on focus and history semantics, the same reason `goToDefinition` reuses

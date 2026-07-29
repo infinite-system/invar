@@ -6,18 +6,17 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
-- #275 [db-navigator-real-connection](.invar/tasks/in-progress/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md)  [building]
-  `tmux attach -t invar/275-db-navigator-real-connection`
-- #274 [structure-scrollbar-depth-filter](.invar/tasks/in-progress/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md)  [building]
-  `tmux attach -t invar/274-structure-scrollbar-depth-filter`
+## IN-PROGRESS (1)
+- #276 [task-md-links-walkable](.invar/tasks/in-progress/276-task-md-links-walkable/task-276-task-md-links-walkable.md)  [READY delivered — builder idle, awaiting landing]
+  `tmux attach -t invar/276-task-md-links-walkable`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
 - #205 [gate-launch-time-and-memory-ceiling](.invar/tasks/active/205-gate-launch-time-and-memory-ceiling/task-205-gate-launch-time-and-memory-ceiling.md)
 - #199 [find-reveal-blank-target-line](.invar/tasks/active/199-find-reveal-blank-target-line/task-199-find-reveal-blank-target-line.md)  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (21)
+## VERIFICATION-INTEGRITY (22)
+- #279 [drive-settle-unsupported-file-structure](.invar/tasks/active/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md)
 - #277 [markdown-preview-body-viewport-settles-after-parent-growth](.invar/tasks/active/277-markdown-preview-body-viewport-settles-after-parent-growth/task-277-markdown-preview-body-viewport-settles-after-parent-growth.md)
 - #269 [smokes-assume-editor-geometry-sweep](.invar/tasks/active/269-smokes-assume-editor-geometry-sweep/task-269-smokes-assume-editor-geometry-sweep.md)
 - #265 [status-projection-drops-plugin-keys](.invar/tasks/active/265-status-projection-drops-plugin-keys/task-265-status-projection-drops-plugin-keys.md)
@@ -86,7 +85,9 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 53 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 55 — full log: project.tasks-completed.md)
+- #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
+- #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared
 - #266 [drive-settle-ignores-debounced-parse](.invar/tasks/completed/266-drive-settle-ignores-debounced-parse/task-266-drive-settle-ignores-debounced-parse.md) — 2dd57fee — drive settle includes debounced work; terminal-stage race fixed
 - #264 [boot-save-erases-unregistered-settings](.invar/tasks/completed/264-boot-save-erases-unregistered-settings/task-264-boot-save-erases-unregistered-settings.md) — 4cc0f68a — persistenceSnapshot round-trips unknown keys; boot save no longer erases contributed settings
@@ -100,5 +101,3 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #243 [ui-contract-sibling-rot-round-two](.invar/tasks/completed/243-ui-contract-sibling-rot-round-two/task-243-ui-contract-sibling-rot-round-two.md) — 44d8def4 — five citation repairs AST-verified; 1027/217/0; rot NOT exhausted — systematic sweep filed
 - #239 [ui-contract-citation-repairs](.invar/tasks/completed/239-ui-contract-citation-repairs/task-239-ui-contract-citation-repairs.md) — 83695510 — six citation repairs, AST-verified owners, duplicated paragraph removed; 993/217/0 stable; three more rots found reading neighborhoods -> #243
 - #238 [structure-default-right-and-md-toc](.invar/tasks/completed/238-structure-default-right-and-md-toc/task-238-structure-default-right-and-md-toc.md) — 578b728a — structure default-ON right + md TOC; smoke fleet adapted to real defaults
-- #237 [markdown-preview-left-and-auto-open](.invar/tasks/completed/237-markdown-preview-left-and-auto-open/task-237-markdown-preview-left-and-auto-open.md) — d42f2af0 — auto-open + left placement + per-document dismissal; five bycatch filed incl. the settings eraser
-- #236 [markdown-terminal-stylesheet-readable](.invar/tasks/completed/236-markdown-terminal-stylesheet-readable/task-236-markdown-terminal-stylesheet-readable.md) — 06580a9f — one stylesheet seam census-proven; padding, quotes, fences, lists, CJK wrapping; scale parity at 100k

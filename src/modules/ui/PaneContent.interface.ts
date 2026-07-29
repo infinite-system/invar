@@ -19,6 +19,7 @@ import type { StyledText } from '@opentui/core';
 import type { KeyEvent } from '@opentui/core';
 import type { Ref } from 'vue';
 import type { MomentumOptions } from '../system/Momentum';
+import type { TextInputAction } from '../text/TextInputModel';
 import type { Palette } from '../theme/ThemePalettes';
 import type { GlyphLevel, ColorDepth } from '../theme/TerminalCapabilities';
 import type {
@@ -157,6 +158,11 @@ export interface PaneSurfaceRegion {
 export interface PaneTextSelectionPort {
   hasSelection(): boolean;
   copySelection(): Promise<number>;
+}
+
+/** The `text-input` capability: a pane-owned one-line input that uses the shared input model. */
+export interface PaneTextInputPort {
+  applyInputAction(action: TextInputAction): void;
 }
 
 export interface PaneContentSplitter {

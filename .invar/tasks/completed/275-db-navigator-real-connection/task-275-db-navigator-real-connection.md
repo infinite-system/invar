@@ -1,6 +1,6 @@
 # 275 — DB navigator connects to a real database
 
-State: IN-PROGRESS
+State: COMPLETED — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 Created: 2026-07-29
 Engine: codex
 Environment: linux

@@ -4,11 +4,52 @@
 // invariant: Harness input and output use the real PTY (scripts/harness/harness.invariants.md)
 // invariant: The terminal emulator is the harness screen oracle (scripts/harness/harness.invariants.md)
 // invariant: Plugin boundaries grant one authority (project.invariants.md)
-import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HarnessSmoke } from './HarnessSmoke';
 import { PtyTestDriver } from './PtyTestDriver';
+
+interface ScrollbarDiagnostic {
+  readonly scrollSize: number;
+  readonly viewportSize: number;
+  readonly scrollPosition: number;
+  readonly column: number;
+  readonly row: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+function latestRightDockScrollbarDiagnostic(): ScrollbarDiagnostic | null {
+  let logText: string;
+  try {
+    logText = readFileSync(join(process.cwd(), 'artifacts', 'tui.log'), 'utf8');
+  } catch {
+    return null;
+  }
+  const currentBootStart = logText.lastIndexOf('Boot start');
+  if (currentBootStart < 0) return null;
+  const currentBootLog = logText.slice(currentBootStart);
+  const latestLine = currentBootLog
+    .split('\n')
+    .filter((line) => line.includes('bar right-dock-scrollbar-v:'))
+    .at(-1);
+  if (!latestLine) return null;
+  const match =
+    /scrollSize=(?<scrollSize>\d+) viewportSize=(?<viewportSize>\d+) scrollPosition=(?<scrollPosition>\d+).*laidX=(?<column>\d+) laidY=(?<row>\d+) laidW=(?<width>\d+) laidH=(?<height>\d+)/.exec(
+      latestLine,
+    );
+  if (!match?.groups) return null;
+  return {
+    scrollSize: Number(match.groups.scrollSize),
+    viewportSize: Number(match.groups.viewportSize),
+    scrollPosition: Number(match.groups.scrollPosition),
+    column: Number(match.groups.column),
+    row: Number(match.groups.row),
+    width: Number(match.groups.width),
+    height: Number(match.groups.height),
+  };
+}
 
 async function selectSetting(
   driver: PtyTestDriver.Model,
@@ -87,6 +128,17 @@ await Bun.write(
     'const brokenValue: string = 1;',
     'languageProbe;',
     '',
+    'export namespace OuterSpace {',
+    '  export class InnerClass {',
+    '    deepSymbolMethod() {}',
+    '  }',
+    '}',
+    ...Array.from(
+      { length: 32 },
+      (_, symbolIndex) =>
+        `export const overflowSymbol${symbolIndex} = ${symbolIndex};`,
+    ),
+    '',
   ].join('\n'),
 );
 
@@ -142,6 +194,7 @@ const driver = new PtyTestDriver.Class({
   homeDirectory,
   environment: {
     TUI_STATUS_PATH: statusPath,
+    TUI_DEBUG_BARS: '1',
     COLORTERM: 'truecolor',
   },
   command: [
@@ -978,31 +1031,140 @@ try {
     'the structure pane shows itself at the right and lists the real documentSymbol outline',
   );
 
+  const initialStructureRows = Number(outlineReadyStatus.structureRows);
+  const scrollbarDiagnostic = latestRightDockScrollbarDiagnostic();
+  HarnessSmoke.Class.requireCondition(
+    scrollbarDiagnostic !== null,
+    'the overflowing structure outline publishes right-dock scrollbar geometry',
+  );
+  if (!scrollbarDiagnostic) {
+    throw new Error('The checked structure scrollbar diagnostic is absent');
+  }
+  HarnessSmoke.Class.requireCondition(
+    scrollbarDiagnostic.scrollSize === initialStructureRows &&
+      scrollbarDiagnostic.scrollSize > scrollbarDiagnostic.viewportSize &&
+      scrollbarDiagnostic.width === 1 &&
+      scrollbarDiagnostic.height > 1,
+    'the overflowing structure outline projects a live right-dock scrollbar',
+  );
+  driver.sendMouseClick({
+    column: scrollbarDiagnostic.column,
+    row: scrollbarDiagnostic.row + scrollbarDiagnostic.height - 2,
+  });
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'a structure scrollbar track click changes the outline projection',
+    (status) => Number(status.structureScrollTop) > 0,
+  );
   driver.sendKeys('Control+Shift+u');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the show chord focuses the right-dock structure pane',
+    'the show chord focuses the structure pane after its scrollbar drive',
     (status) => status.rightDockFocused === true,
+  );
+  driver.sendKeys('Up');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'keyboard reveal returns the selected structure row to view',
+    (status) => Number(status.structureScrollTop) === 0,
+  );
+  HarnessSmoke.Class.pass(
+    'the structure scrollbar and keyboard navigation mutate one scroll projection',
+  );
+
+  driver.sendText('dsm');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'type-to-filter finds a symbol hidden below the default depth',
+    (status) =>
+      status.structureFilter === 'dsm' && Number(status.structureRows) === 1,
+  );
+  await driver.awaitGridCondition(
+    'the filtered hidden-depth symbol is painted',
+    (snapshot) => snapshot.findText('deepSymbolMethod') !== null,
   );
   driver.sendKeys('Enter');
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'activating the selected symbol jumps the editor to its name',
+    'activating the filtered match jumps the editor to its name',
     (status) => {
       const cursor = status.cursor as { line: number; col: number } | null;
       return (
         status.rightDockFocused === false &&
         status.focus === 'editor' &&
-        cursor !== null &&
-        cursor.line === 0 &&
-        cursor.col === 13
+        cursor?.line === 6 &&
+        cursor.col === 4
       );
     },
   );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the show chord returns to the filtered structure pane',
+    (status) => status.rightDockFocused === true,
+  );
+  driver.sendKeys('Escape');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Escape clears the structure filter and restores the depth projection',
+    (status) =>
+      status.structureFilter === '' &&
+      Number(status.structureRows) === initialStructureRows,
+  );
   HarnessSmoke.Class.pass(
-    'Enter jumps the editor to the symbol through the view contract',
+    'type-to-filter reuses hidden symbols, preserves jump, and clears with Escape',
+  );
+
+  driver.sendKeys('Down');
+  driver.sendKeys('Down');
+  const rowsBeforeFold = Number(
+    HarnessSmoke.Class.readStatus(statusPath).structureRows,
+  );
+  driver.sendKeys('Left');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Left folds the selected namespace row',
+    (status) => Number(status.structureRows) < rowsBeforeFold,
+  );
+  driver.sendKeys('Right');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Right unfolds the selected namespace row',
+    (status) => Number(status.structureRows) === rowsBeforeFold,
+  );
+  driver.sendKeys('Control+Down');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the file depth override reveals the nested method',
+    (status) =>
+      status.structureDepth === 2 &&
+      status.structureDepthIsOverridden === true &&
+      Number(status.structureRows) > rowsBeforeFold,
+  );
+  await driver.awaitGridCondition(
+    'depth two paints the nested method without a filter',
+    (snapshot) => snapshot.findText('deepSymbolMethod') !== null,
+  );
+  HarnessSmoke.Class.pass(
+    'row folds and the file depth override shape the same outline projection',
+  );
+
+  driver.sendKeys('Tab');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'Tab returns focus to the editor after the depth drive',
+    (status) => status.rightDockFocused === false && status.focus === 'editor',
   );
 
   const requestsAfterOutline = Number(
@@ -1075,7 +1237,9 @@ try {
     (status) =>
       status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'ready' &&
-      Number(status.structureRows) === 3,
+      Number(status.structureRows) === 3 &&
+      status.structureDepth === 1 &&
+      status.structureDepthIsOverridden === false,
   );
   await driver.awaitGridCondition(
     'the TOC paints headings document-ordered and nested',
@@ -1167,11 +1331,37 @@ try {
   await HarnessSmoke.Class.awaitStatus(
     driver,
     statusPath,
-    'the reinstalled language source outlines the fixture again',
+    'the language file restores its session depth override',
     (status) =>
       status.rightDockActiveContent === 'structure' &&
       status.structureStatus === 'ready' &&
-      Number(status.structureRows) === Number(outlineReadyStatus.structureRows),
+      status.structureDepth === 2 &&
+      status.structureDepthIsOverridden === true &&
+      Number(status.structureRows) > initialStructureRows,
+  );
+  driver.sendKeys('Control+Shift+u');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'the show chord focuses the language outline before depth reset',
+    (status) => status.rightDockFocused === true,
+  );
+  driver.sendKeys('Control+0');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'depth reset rejoins the default policy for this file',
+    (status) =>
+      status.structureDepth === 1 &&
+      status.structureDepthIsOverridden === false &&
+      Number(status.structureRows) === initialStructureRows,
+  );
+  driver.sendKeys('Tab');
+  await HarnessSmoke.Class.awaitStatus(
+    driver,
+    statusPath,
+    'depth reset returns to the editor before plugin uninstall',
+    (status) => status.rightDockFocused === false && status.focus === 'editor',
   );
 
   // The plugin's own uninstall symmetry, with the reinstall arm — the fourth-verse lesson.
@@ -1236,16 +1426,14 @@ try {
     'the database consumer resolves the installed SQLite provider',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
-      status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42',
+      status.databaseConsumerStatus === 'disconnected' &&
+      status.databaseProviderIdentifier === 'sqlite',
   );
   await driver.awaitGridCondition(
-    'the database pane paints the bounded query and lazy schema results',
+    'the database pane asks for a user-selected database file',
     (snapshot) =>
-      snapshot.findText('Provider: sqlite') !== null &&
-      snapshot.findText('Query value: 42') !== null &&
-      snapshot.findText('Schema: provider_seam_probe') !== null,
+      snapshot.findText('No database is connected.') !== null &&
+      snapshot.findText('Database: Connect') !== null,
   );
 
   await selectExtensionsRow('[x] SQLite Provider');
@@ -1283,9 +1471,8 @@ try {
     'the database consumer resolves the reinstalled provider',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
+      status.databaseConsumerStatus === 'disconnected' &&
       status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42' &&
       status.databaseProviderPluginActive === true,
   );
 
@@ -1298,9 +1485,20 @@ try {
     (status) =>
       !(status.sidebarViewIdentifiers as string[]).includes('database') &&
       status.databaseConsumerStatus === undefined &&
+      status.databaseConsumerVersion === undefined &&
       status.databaseProviderIdentifier === undefined &&
+      status.databaseFilePath === undefined &&
+      status.databasePathInputActive === undefined &&
+      status.databasePathInputValue === undefined &&
       status.databaseQueryValue === undefined &&
       status.databaseSchemaObjectNames === undefined &&
+      status.databaseSchemaObjectKinds === undefined &&
+      status.databaseSelectedSchemaIndex === undefined &&
+      status.databasePreviewTableName === undefined &&
+      status.databasePreviewPageIndex === undefined &&
+      status.databasePreviewRowCount === undefined &&
+      status.databasePreviewHasMoreRows === undefined &&
+      status.databasePreviewFirstRow === undefined &&
       status.databaseConsumerFailure === undefined &&
       status.databaseProviderPluginActive === true,
   );
@@ -1335,9 +1533,8 @@ try {
     'the reinstalled database consumer resolves SQLite again',
     (status) =>
       status.sidebarView === 'database' &&
-      status.databaseConsumerStatus === 'ready' &&
-      status.databaseProviderIdentifier === 'sqlite' &&
-      status.databaseQueryValue === '42',
+      status.databaseConsumerStatus === 'disconnected' &&
+      status.databaseProviderIdentifier === 'sqlite',
   );
   HarnessSmoke.Class.pass(
     'the database provider and consumer uninstall and reinstall symmetrically',

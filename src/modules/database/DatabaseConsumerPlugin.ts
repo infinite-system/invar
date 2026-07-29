@@ -2,6 +2,7 @@ import type {
   ApplicationContributionContext,
   ApplicationContributor,
 } from '../app/ApplicationContributor.interface';
+import { KeybindingDefaults } from '../keybindings/KeybindingDefaults';
 import type { StatusSnapshot } from '../system/StatusChannel';
 import type { Workspace } from '../workspace/Workspace';
 import type {
@@ -12,6 +13,7 @@ import { DatabaseConsumerWorkspace } from './DatabaseConsumerWorkspace';
 import { DatabasePaneContent } from './DatabasePaneContent';
 
 // invariant: Provider rendezvous is host carried (src/modules/plugins/plugins.invariants.md)
+// invariant: Database files are user selected (src/modules/database/database.invariants.md)
 class $DatabaseConsumerPlugin
   implements ApplicationContributor, WorkspaceContributor
 {
@@ -36,21 +38,120 @@ class $DatabaseConsumerPlugin
         action: 'view.showDatabase',
       },
       { chord: { key: 'tab' }, action: 'focus.toggle', context: 'database' },
+      {
+        chord: { key: 'return' },
+        action: 'database.submitOrActivate',
+        context: 'database',
+      },
+      {
+        chord: { key: 'escape' },
+        action: 'database.cancelInput',
+        context: 'database',
+      },
+      {
+        chord: { key: 'up' },
+        action: 'database.previousSchemaItem',
+        context: 'database',
+      },
+      {
+        chord: { key: 'down' },
+        action: 'database.nextSchemaItem',
+        context: 'database',
+      },
+      {
+        chord: { key: 'pageup' },
+        action: 'database.previousPage',
+        context: 'database',
+      },
+      {
+        chord: { key: 'pagedown' },
+        action: 'database.nextPage',
+        context: 'database',
+      },
+      ...KeybindingDefaults.Class.textInputBindings('database'),
     ]);
     this.paneContent = new DatabasePaneContent.Class(context, () =>
       this.activeWorkspace(),
     );
     context.registerPrimaryDockContent(this.paneContent);
-    this.disposeCommands = context.commands.register({
-      id: 'view.showDatabase',
-      title: 'View: Show Database',
-      category: 'View',
-      run: () => {
-        context.primaryDockHost.showContent('database');
-        context.workspaceSet.active.focusPrimaryPane('database');
-        void this.activeWorkspace().refresh();
+    this.disposeCommands = context.commands.registerAll([
+      {
+        id: 'view.showDatabase',
+        title: 'View: Show Database',
+        category: 'View',
+        run: () => this.showDatabase(),
       },
-    });
+      {
+        id: 'database.connect',
+        title: 'Database: Connect',
+        category: 'Database',
+        run: () => {
+          this.showDatabase();
+          this.paneContent?.beginConnectionInput();
+        },
+      },
+      {
+        id: 'database.disconnect',
+        title: 'Database: Disconnect',
+        category: 'Database',
+        run: () => this.activeWorkspace().disconnect(),
+        when: () => this.activeWorkspace().filePath.value !== null,
+      },
+      {
+        id: 'database.reconnect',
+        title: 'Database: Reconnect',
+        category: 'Database',
+        run: () => {
+          this.showDatabase();
+          void this.activeWorkspace().reconnect();
+        },
+        when: () => this.activeWorkspace().filePath.value !== null,
+      },
+      {
+        id: 'database.submitOrActivate',
+        title: 'Database: Open Selected Schema Item',
+        category: 'Database',
+        run: () => this.paneContent?.submitOrActivate(),
+        when: () => this.databaseOwnsFocus(),
+      },
+      {
+        id: 'database.cancelInput',
+        title: 'Database: Cancel Path Input',
+        category: 'Database',
+        run: () => this.paneContent?.cancelConnectionInput(),
+        when: () =>
+          this.databaseOwnsFocus() &&
+          (this.paneContent?.inputActive.value ?? false),
+      },
+      {
+        id: 'database.previousSchemaItem',
+        title: 'Database: Select Previous Schema Item',
+        category: 'Database',
+        run: () => this.activeWorkspace().moveSelection(-1),
+        when: () => this.databaseOwnsFocus(),
+      },
+      {
+        id: 'database.nextSchemaItem',
+        title: 'Database: Select Next Schema Item',
+        category: 'Database',
+        run: () => this.activeWorkspace().moveSelection(1),
+        when: () => this.databaseOwnsFocus(),
+      },
+      {
+        id: 'database.previousPage',
+        title: 'Database: Previous Row Page',
+        category: 'Database',
+        run: () => void this.activeWorkspace().previousPreviewPage(),
+        when: () => this.databaseOwnsFocus(),
+      },
+      {
+        id: 'database.nextPage',
+        title: 'Database: Next Row Page',
+        category: 'Database',
+        run: () => void this.activeWorkspace().nextPreviewPage(),
+        when: () => this.databaseOwnsFocus(),
+      },
+    ]);
     this.disposeStatusProjection =
       context.statusProjectionContributions.register({
         snapshot: () => this.statusSnapshot(),
@@ -62,7 +163,21 @@ class $DatabaseConsumerPlugin
       this.paneIsObserved(workspace),
     );
     this.workspaces.set(workspace, contribution);
-    return contribution;
+    return {
+      opened(root: string): void {
+        contribution.opened(root);
+      },
+      suspended(): void {
+        contribution.suspended();
+      },
+      resumed(): void {
+        contribution.resumed();
+      },
+      disposed: () => {
+        this.workspaces.delete(workspace);
+        contribution.disposed();
+      },
+    };
   }
 
   disposeApplication(): void {
@@ -72,6 +187,22 @@ class $DatabaseConsumerPlugin
     this.disposeStatusProjection?.();
     this.disposeStatusProjection = null;
     this.application = null;
+  }
+
+  protected showDatabase(): void {
+    const application = this.application;
+    if (!application) return;
+    application.primaryDockHost.showContent('database');
+    application.workspaceSet.active.focusPrimaryPane('database');
+  }
+
+  protected databaseOwnsFocus(): boolean {
+    const application = this.application;
+    return Boolean(
+      application &&
+      application.primaryDockHost.focused.value &&
+      application.primaryDockHost.activeContent?.id === 'database',
+    );
   }
 
   protected activeWorkspace(): DatabaseConsumerWorkspace.Model {
@@ -106,11 +237,25 @@ class $DatabaseConsumerPlugin
     const workspace = this.activeWorkspace();
     return {
       databaseConsumerStatus: workspace.status.value,
+      databaseConsumerVersion: workspace.version.value,
       databaseProviderIdentifier: workspace.providerIdentifier.value,
-      databaseQueryValue: workspace.queryValue.value,
+      databaseFilePath: workspace.filePath.value,
+      databasePathInputActive: this.paneContent?.inputActive.value ?? false,
+      databasePathInputValue: this.paneContent?.inputActive.value
+        ? this.paneContent.pathInputValue
+        : '',
       databaseSchemaObjectNames: workspace.descriptions.value.map(
-        (entry) => entry.name,
+        (row) => row.description.name,
       ),
+      databaseSchemaObjectKinds: workspace.descriptions.value.map(
+        (row) => row.description.kind,
+      ),
+      databaseSelectedSchemaIndex: workspace.selectedDescriptionIndex.value,
+      databasePreviewTableName: workspace.previewTableName.value,
+      databasePreviewPageIndex: workspace.previewPageIndex.value,
+      databasePreviewRowCount: workspace.previewRows.value.length,
+      databasePreviewHasMoreRows: workspace.previewHasMoreRows.value,
+      databasePreviewFirstRow: workspace.previewRows.value[0] ?? null,
       databaseConsumerFailure: workspace.failure.value,
     };
   }

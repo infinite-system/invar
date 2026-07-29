@@ -90,7 +90,9 @@ describe('StructurePaneContent', () => {
     expect(pane.title).toBe('Structure');
     expect(pane.keybindingContext).toBe('structure');
     expect(pane.activityAction).toBe('view.showStructure');
-    expect(pane.onPointerDown(0, 1)).toBe(true);
+    expect(pane.onPointerDown(0, 0)).toBe(true);
+    expect(activations.count).toBe(0);
+    expect(pane.onPointerDown(0, 2)).toBe(true);
     expect(outline.selectedIndex.value).toBe(1);
     // Focus stays host-owned in the right dock: the click activates without touching the
     // workspace's primary-pane focus model.
@@ -106,9 +108,10 @@ describe('StructurePaneContent', () => {
     const outline = makeOutline();
     const { pane } = makePane(outline, { count: 0 });
     pane.onResize(30, 12);
-    expect(outline.viewportHeight.value).toBe(12);
+    expect(outline.viewportHeight.value).toBe(11);
     expect(outline.viewportWidth.value).toBe(29);
-    expect(pane.scrollViewportRows).toBe(12);
+    expect(pane.scrollViewportRows).toBe(11);
+    expect(pane.scrollbarRowOffset).toBe(1);
     outline.dispose();
   });
 
@@ -127,6 +130,7 @@ describe('StructurePaneContent', () => {
       }),
     );
     const marks: SymbolMarkSet = ThemeIcons.Class.symbolMarksFor('unicode');
+    expect(rendered).toContain(ThemeIcons.Class.findIconsFor('unicode').search);
     expect(rendered).toContain(`${marks.type} Widget :1`);
     expect(rendered).toContain(`  ${marks.callable} render :2`);
     outline.dispose();
@@ -157,6 +161,43 @@ describe('StructurePaneContent', () => {
     expect(renderedText(pane.render(renderContext))).toContain(
       'No symbols in this file',
     );
+    outline.insertFilterText('missing');
+    expect(renderedText(pane.render(renderContext))).toContain(
+      'No matching symbols',
+    );
+    outline.dispose();
+  });
+
+  test('typing and the shared text-input port edit the live filter', () => {
+    const outline = makeOutline();
+    seedRows(outline);
+    const { pane } = makePane(outline, { count: 0 });
+    expect(
+      pane.handleKey({
+        name: 'w',
+        sequence: 'w',
+        ctrl: false,
+        meta: false,
+        option: false,
+        shift: false,
+      } as never),
+    ).toBe(true);
+    expect(outline.filterInput.value).toBe('w');
+    pane.applyInputAction('backspace');
+    expect(outline.filterInput.value).toBe('');
+    expect(pane.handlePaste('Wid')).toBe(true);
+    expect(outline.filterInput.value).toBe('Wid');
+    expect(
+      pane.handleKey({
+        name: 'space',
+        sequence: ' ',
+        ctrl: false,
+        meta: false,
+        option: false,
+        shift: false,
+      } as never),
+    ).toBe(true);
+    expect(outline.filterInput.value).toBe('Wid ');
     outline.dispose();
   });
 });
