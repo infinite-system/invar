@@ -674,12 +674,10 @@ function landedAtMilliseconds(record: TaskRecord): number | null {
 // The spinner belongs to WORK IN MOTION only: building tasks spin, READY ones
 // hold still. One glyph per task, not per line — motion marks the task, the
 // details stay readable.
-// A snake of fine braille dots on the cell's four corners: head advances to
-// the next corner, tail catches up — single dot, edge pair, single dot,
-// edge pair, around the lap. Eight frames, advancing every second paint at
-// 30 fps; one crawl ~530 ms.
-const SPINNER_FRAMES = ['⠁', '⠉', '⠈', '⠨', '⠠', '⠤', '⠄', '⠅'];
-const SPINNER_PAINTS_PER_STEP = 2;
+// A pulse: a small dot breathes into a big one and back (· • ● •). Four
+// frames, advancing every fourth paint at 30 fps; one breath ~530 ms.
+const SPINNER_FRAMES = ['·', '•', '●', '•'];
+const SPINNER_PAINTS_PER_STEP = 4;
 
 function live(
   tasksRoot: string,
