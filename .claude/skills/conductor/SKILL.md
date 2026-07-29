@@ -133,6 +133,12 @@ readable files.
 
 **Rules the tooling cannot enforce:**
 
+- **A brief is a contract: every briefing act declares a mechanically checkable
+  END STATE** (user, 07-29). Round 1's is "a report file exists in the folder";
+  round N's is "the report is newer than the filing stamp". A steer with no
+  end state is a wish — neither the lens nor the conductor can say when it was
+  answered. Same generator as "a wait must be a condition": the request and
+  its completion predicate are one act.
 - **Every follow-up round is `round-brief.sh`'s act, FILED BEFORE THE STEER.**
   Round 1 is dispatch.sh; round N is
   `scripts/fleet/round-brief.sh <folder-name> <brief-file>` — it copies the
