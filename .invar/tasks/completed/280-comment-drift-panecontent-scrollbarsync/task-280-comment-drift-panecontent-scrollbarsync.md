@@ -1,6 +1,6 @@
 # 280 — comment drift: PaneContent.interface.ts and RootView ScrollbarSync
 
-State: IN-PROGRESS
+State: COMPLETED — ae310859 — Comment drift: PaneContent citizens, ScrollbarSync ownership, Workspace doc blocks — code-evidenced corrections only
 Created: 2026-07-29
 Engine: codex
 Environment: linux

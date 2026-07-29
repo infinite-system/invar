@@ -6,13 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (3)
+## IN-PROGRESS (2)
 - #293 [preview-deep-hover-blocks-next-input](.invar/tasks/in-progress/293-preview-deep-hover-blocks-next-input/task-293-preview-deep-hover-blocks-next-input.md)  [building]
   `tmux attach -t invar/293-preview-deep-hover-blocks-next-input`
-- #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/in-progress/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md)  [building]
+- #290 [scrollbar-corner-vertical-owns-bottom](.invar/tasks/in-progress/290-scrollbar-corner-vertical-owns-bottom/task-290-scrollbar-corner-vertical-owns-bottom.md)  [READY delivered — builder idle, awaiting landing]
   `tmux attach -t invar/290-scrollbar-corner-vertical-owns-bottom`
-- #280 [comment-drift-panecontent-scrollbarsync](.invar/tasks/in-progress/280-comment-drift-panecontent-scrollbarsync/task-280-comment-drift-panecontent-scrollbarsync.md)  [building]
-  `tmux attach -t invar/280-comment-drift-panecontent-scrollbarsync`
 
 ## USER-DIRECTED (3)
 - #256 [editor-stray-glyph-after-emoji](.invar/tasks/active/256-editor-stray-glyph-after-emoji/task-256-editor-stray-glyph-after-emoji.md)
@@ -87,7 +85,7 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## RECENTLY COMPLETED (last 15 of 68 — full log: project.tasks-completed.md)
+## RECENTLY COMPLETED (last 15 of 69 — full log: project.tasks-completed.md)
 - #291 [task-links-survive-state-moves](.invar/tasks/completed/291-task-links-survive-state-moves/task-291-task-links-survive-state-moves.md) — 41aa3654 — State-proof task links: shared name-identity predicate in app+linter, moved-vs-dead lint, records sweep, hook-time --fix --moved-only (14ms), dead links paint red in preview
 - #289 [preview-scroll-sync-setting](.invar/tasks/completed/289-preview-scroll-sync-setting/task-289-preview-scroll-sync-setting.md) — 7c65b3e8 — Markdown preview: bidirectional input-leader scroll-sync (setting, default ON) + both-axis scrollbars; activity-bar harness locator fixed by-label at the generator
 - #288 [task-doc-link-lint-mechanical](.invar/tasks/completed/288-task-doc-link-lint-mechanical/task-288-task-doc-link-lint-mechanical.md) — 6e83766e — record links lint mechanically; dispatch and round-brief refuse dead references
@@ -96,10 +94,10 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #285 [preview-last-body-row-hit-test](.invar/tasks/completed/285-preview-last-body-row-hit-test/task-285-preview-last-body-row-hit-test.md) — 5d9f0a1a — Preview last-row hit test: #289's seam change confirmed as generator fix by red control; workaround removed; boundary gated; deep-hover stall filed #293
 - #282 [scrollbar-drag-broken-and-horizontal-thickness](.invar/tasks/completed/282-scrollbar-drag-broken-and-horizontal-thickness/task-282-scrollbar-drag-broken-and-horizontal-thickness.md) — be7fb372 — thumb drag repaired both axes (z-index hit-grid, since #220); horizontal bars thin app-wide
 - #281 [structure-pane-round-two-refinements](.invar/tasks/completed/281-structure-pane-round-two-refinements/task-281-structure-pane-round-two-refinements.md) — 35151464 — Structure round two: no import/heritage noise, visibility+cache+override+getter marks, own ⛭ depth gear in-pane
+- #280 [comment-drift-panecontent-scrollbarsync](.invar/tasks/completed/280-comment-drift-panecontent-scrollbarsync/task-280-comment-drift-panecontent-scrollbarsync.md) — ae310859 — Comment drift: PaneContent citizens, ScrollbarSync ownership, Workspace doc blocks — code-evidenced corrections only
 - #279 [drive-settle-unsupported-file-structure](.invar/tasks/completed/279-drive-settle-unsupported-file-structure/task-279-drive-settle-unsupported-file-structure.md) — bfa860d8 — Drive settle: hidden no-document is a decline, not pending; loading still holds; settings paint race filed as #292
 - #278 [activity-bar-dock-agnostic-side-setting](.invar/tasks/completed/278-activity-bar-dock-agnostic-side-setting/task-278-activity-bar-dock-agnostic-side-setting.md) — 83554f14 — activity surface serves both docks; dockSide is a live setting; optional right mirror
 - #276 [task-md-links-walkable](.invar/tasks/completed/276-task-md-links-walkable/task-276-task-md-links-walkable.md) — 173daff9 — task views link to records; md links walk by click with jump ends
 - #275 [db-navigator-real-connection](.invar/tasks/completed/275-db-navigator-real-connection/task-275-db-navigator-real-connection.md) — f21d0a12 — DB navigator opens user-selected SQLite: schema walk + bounded row pages
 - #274 [structure-scrollbar-depth-filter](.invar/tasks/completed/274-structure-scrollbar-depth-filter/task-274-structure-scrollbar-depth-filter.md) — 0a5e2474 — structure scrollbar + depth-1 default with per-file override + fuzzy filter
 - #273 [tasks-pane-follow-ups](.invar/tasks/completed/273-tasks-pane-follow-ups/task-273-tasks-pane-follow-ups.md) — 6ad6acc6 — Tasks pane cockpit: watch motion, tmux attach pane, row action icons, fleet glance, show-by-default setting
-- #268 [editor-smoke-vs-auto-open-red-main](.invar/tasks/completed/268-editor-smoke-vs-auto-open-red-main/task-268-editor-smoke-vs-auto-open-red-main.md) — 5c9965a4 — editor smoke measures the pane; red main cleared
