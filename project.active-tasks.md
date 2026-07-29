@@ -6,7 +6,9 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (2)
+## IN-PROGRESS (3)
+- #311 [vue-sfc-integration-map](.invar/tasks/in-progress/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)  [building]
+  `tmux attach -t invar/311-vue-sfc-integration-map`
 - #305 [unknown-task-variables-pass-through](.invar/tasks/in-progress/305-unknown-task-variables-pass-through/task-305-unknown-task-variables-pass-through.md)  [building]
   `tmux attach -t invar/305-unknown-task-variables-pass-through`
 - #300 eight-ui-nitpicks-bundled  [building]
@@ -83,13 +85,12 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #62 [parameter-count-ports-object-sweep](.invar/tasks/active/62-parameter-count-ports-object-sweep/task-62-parameter-count-ports-object-sweep.md)
 - #31 [getter-census-scoped-invalidation](.invar/tasks/active/31-getter-census-scoped-invalidation/task-31-getter-census-scoped-invalidation.md)  [ACTIVE — hold, partly overtaken]
 
-## NO PRIORITY GROUP (7) — stamp Priority: into these task files
+## NO PRIORITY GROUP (6) — stamp Priority: into these task files
 - #306 [306-tree-indent-one-key-tighter](.invar/tasks/active/306-tree-indent-one-key-tighter/task-306-tree-indent-one-key-tighter.md)
 - #307 [307-markdown-toggle-moves-to-breadcrumb-row-right](.invar/tasks/active/307-markdown-toggle-moves-to-breadcrumb-row-right/task-307-markdown-toggle-moves-to-breadcrumb-row-right.md)
 - #308 [308-markdown-view-only-mode-persistent](.invar/tasks/active/308-markdown-view-only-mode-persistent/task-308-markdown-view-only-mode-persistent.md)
 - #309 [309-markdown-no-blank-line-before-headline](.invar/tasks/active/309-markdown-no-blank-line-before-headline/task-309-markdown-no-blank-line-before-headline.md)
 - #310 [310-markdown-title-blue-like-subtitles](.invar/tasks/active/310-markdown-title-blue-like-subtitles/task-310-markdown-title-blue-like-subtitles.md)
-- #311 [311-vue-sfc-integration-map](.invar/tasks/active/311-vue-sfc-integration-map/task-311-vue-sfc-integration-map.md)
 - #312 [312-vue-sfc-integration-implement](.invar/tasks/active/312-vue-sfc-integration-implement/task-312-vue-sfc-integration-implement.md)
 
 ## RECENTLY COMPLETED (last 15 of 79 — full log: project.tasks-completed.md)
