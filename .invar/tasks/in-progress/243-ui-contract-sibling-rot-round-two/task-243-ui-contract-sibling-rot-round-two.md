@@ -1,6 +1,6 @@
 # 243 — ui contract sibling rot, round two: three more drifted citations
 
-State: ACTIVE
+State: IN-PROGRESS
 Created: 2026-07-29
 Engine: codex
 Environment: linux

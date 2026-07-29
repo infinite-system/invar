@@ -6,9 +6,11 @@ regeneration and reads as STALE-ACTIVE-VIEW until then. Prioritisation REASONING
 hand-written in the sibling file `project.active-priority-tasks.md`.
 Detail per task: `.invar/tasks/<state>/<folder>/`.
 
-## IN-PROGRESS (1)
+## IN-PROGRESS (2)
 - #245 provider-seam-open-or-bless-decision  [building]
   `tmux attach -t invar/245-provider-seam-open-or-bless-decision`
+- #243 ui-contract-sibling-rot-round-two  [building]
+  `tmux attach -t invar/243-ui-contract-sibling-rot-round-two`
 
 ## USER-DIRECTED (6)
 - #238 structure-default-right-and-md-toc
@@ -18,9 +20,8 @@ Detail per task: `.invar/tasks/<state>/<folder>/`.
 - #205 gate-launch-time-and-memory-ceiling
 - #199 find-reveal-blank-target-line  [ACTIVE — not yet diagnosed]
 
-## VERIFICATION-INTEGRITY (19)
+## VERIFICATION-INTEGRITY (18)
 - #251 gate-refuses-unlinked-node-modules
-- #243 ui-contract-sibling-rot-round-two
 - #240 momentum-records-placement-call
 - #232 file-tree-empty-outside-git-repo
 - #231 agent-tmux-launch-and-list-defects

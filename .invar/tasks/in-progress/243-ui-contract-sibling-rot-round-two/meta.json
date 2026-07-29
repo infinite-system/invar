@@ -1,0 +1,15 @@
+{
+  "task": 243,
+  "slug": "ui-contract-sibling-rot-round-two",
+  "branch": "fleet/243-ui-contract-sibling-rot-round-two",
+  "worktree": ".invar/worktrees/243-ui-contract-sibling-rot-round-two",
+  "tmuxSession": "invar/243-ui-contract-sibling-rot-round-two",
+  "transcript": "tmp/transcripts/transcript-codex-5.6-sol-high-243-ui-contract-sibling-rot-round-two.md",
+  "engine": "codex",
+  "environment": "linux",
+  "model": "5.6-sol",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "e2cb12371a45109bfbcb1dc5d3704c0f6a7862c1",
+  "startedAt": "2026-07-29T04:20:49-04:00"
+}
