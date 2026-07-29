@@ -1,0 +1,15 @@
+{
+  "task": 114,
+  "slug": "modularity-umbrella-provider-runtime",
+  "branch": "fleet/114-modularity-umbrella-provider-runtime",
+  "worktree": ".invar/worktrees/114-modularity-umbrella-provider-runtime",
+  "tmuxSession": "invar/114-modularity-umbrella-provider-runtime",
+  "transcript": "tmp/transcripts/transcript-claude-opus-5-high-114-modularity-umbrella-provider-runtime.md",
+  "engine": "claude",
+  "environment": "linux",
+  "model": "opus-5",
+  "effort": "high",
+  "heldFromMain": false,
+  "baseCommit": "f65c7f3772f3144125004e31aa34b363952911bd",
+  "startedAt": "2026-07-28T21:53:13-04:00"
+}
